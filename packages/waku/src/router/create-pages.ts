@@ -188,6 +188,13 @@ export type CreateApi = <Path extends string>(
       },
 ) => void;
 
+export type CreatePagePartComponent = <Path extends string>(params: {
+  path: Path;
+  render: 'static' | 'dynamic';
+  order: number;
+  component: FunctionComponent<{ children: ReactNode }>;
+}) => void;
+
 type RootItem = {
   render: 'static' | 'dynamic';
   component: FunctionComponent<{ children: ReactNode }>;
