@@ -125,22 +125,26 @@ export type CreatePage = <
     | {
         render: Extract<Render, 'static'>;
         path: PathWithoutSlug<Path>;
-        component: FunctionComponent<PropsForPages<Path>>;
+        /** page component. `null` would indicate the page will use `createPagePartComponent` instead. */
+        component: FunctionComponent<PropsForPages<Path>> | null;
       }
     | ({
         render: Extract<Render, 'static'>;
         path: PathWithStaticSlugs<Path>;
-        component: FunctionComponent<PropsForPages<Path>>;
+        /** page component. `null` would indicate the page will use `createPagePartComponent` instead. */
+        component: FunctionComponent<PropsForPages<Path>> | null;
       } & (ExactPath extends true ? {} : { staticPaths: StaticPaths }))
     | {
         render: Extract<Render, 'dynamic'>;
         path: PathWithoutSlug<Path>;
-        component: FunctionComponent<PropsForPages<Path>>;
+        /** page component. `null` would indicate the page will use `createPagePartComponent` instead. */
+        component: FunctionComponent<PropsForPages<Path>> | null;
       }
     | {
         render: Extract<Render, 'dynamic'>;
         path: PathWithWildcard<Path, SlugKey, WildSlugKey>;
-        component: FunctionComponent<PropsForPages<Path>>;
+        /** page component. `null` would indicate the page will use `createPagePartComponent` instead. */
+        component: FunctionComponent<PropsForPages<Path>> | null;
       }
   ) & {
     unstable_disableSSR?: boolean;
@@ -244,6 +248,7 @@ export const createPages = <
     createLayout: CreateLayout;
     createRoot: CreateRoot;
     createApi: CreateApi;
+    createPagePartComponent: CreatePagePartComponent;
   }) => Promise<AllPages>,
 ) => {
   let configured = false;
@@ -258,6 +263,10 @@ export const createPages = <
   const dynamicPagePathMap = new Map<
     string,
     [PathSpec, FunctionComponent<any>]
+  >();
+  const dynamicPagePartComponentMap = new Map<
+    string,
+    [number, FunctionComponent<any>]
   >();
   const wildcardPagePathMap = new Map<
     string,
@@ -507,10 +516,33 @@ export const createPages = <
     }
   };
 
+  const createPagePartComponent: CreatePagePartComponent = (params) => {
+    if (configured) {
+      throw new Error('createPagePartComponent no longer available');
+    }
+    if (params.render === 'static') {
+      const id = joinPath(params.path, 'page/component').replace(/^\//, '');
+      registerStaticComponent(id, params.component);
+    } else if (params.render === 'dynamic') {
+      dynamicPagePartComponentMap.set(params.path, [
+        params.order,
+        params.component,
+      ]);
+    } else {
+      throw new Error('Invalid pagePartComponent configuration');
+    }
+  };
+
   let ready: Promise<AllPages | void> | undefined;
   const configure = async () => {
     if (!configured && !ready) {
-      ready = fn({ createPage, createLayout, createRoot, createApi });
+      ready = fn({
+        createPage,
+        createLayout,
+        createRoot,
+        createApi,
+        createPagePartComponent,
+      });
       await ready;
       configured = true;
     }
