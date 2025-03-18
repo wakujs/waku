@@ -1,3 +1,3 @@
 # SSR Context Provider
 
-To cover https://github.com/dai-shi/waku/issues/631 case
+To cover https://github.com/wakujs/waku/issues/631 case
