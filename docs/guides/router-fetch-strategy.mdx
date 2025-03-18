@@ -1,9 +1,7 @@
 ---
-slug: waku-router-under-the-hood
+slug: router-fetch-strategy
 title: Waku Router Under the Hood
 description: A brief look into the mechanics of the Waku Router
-author: tyler
-date: 2025/03/19
 ---
 
 When routing around a waku app, you may notice some surprisingly quick navigation speeds. This was my experience while starting development at least. Let's walk through the basic mechanics of the router to get a better shared understanding of how it works and maybe even how to speed things up even further 🚀.
@@ -25,11 +23,7 @@ For dynamic pages, the expectation is that they should be re-requested from the 
 Fear not! We can take advantage of a very common trick for speeding the perceived load time of dynamic pages.
 
 ```tsx
-"use client";
-import { useRouter_UNSTABLE as useRouter } from 'waku/router';
-...
-const router = useRouter()
-<Link onMouseEnter={() => router.prefetch('/dynamic')} to='/dynamic'>
+<Link unstable_prefetchOnEnter to='/dynamic'>
   Dynamic
 </Link>
 ```
