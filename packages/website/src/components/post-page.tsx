@@ -19,7 +19,7 @@ export async function PostPage({
     return null;
   }
 
-  const path = `./private/contents/${fileName}`;
+  const path = `${folder}/${fileName}`;
   const source = readFileSync(path, 'utf8');
   const mdx = await compileMDX({
     source,
