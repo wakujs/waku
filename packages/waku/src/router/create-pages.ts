@@ -125,25 +125,23 @@ export type CreatePage = <
     | {
         render: Extract<Render, 'static'>;
         path: PathWithoutSlug<Path>;
-        /** page component. `null` would indicate the page will use `createPagePartComponent` instead. */
-        component: FunctionComponent<PropsForPages<Path>> | null;
+        component: FunctionComponent<PropsForPages<Path>>;
       }
     | ({
         render: Extract<Render, 'static'>;
         path: PathWithStaticSlugs<Path>;
-        /** page component. `null` would indicate the page will use `createPagePartComponent` instead. */
-        component: FunctionComponent<PropsForPages<Path>> | null;
+        component: FunctionComponent<PropsForPages<Path>>;
       } & (ExactPath extends true ? {} : { staticPaths: StaticPaths }))
     | {
         render: Extract<Render, 'dynamic'>;
         path: PathWithoutSlug<Path>;
-        /** page component. `null` would indicate the page will use `createPagePartComponent` instead. */
+        /** single page component. `null` would indicate the page will use `createPagePartComponent` instead. */
         component: FunctionComponent<PropsForPages<Path>> | null;
       }
     | {
         render: Extract<Render, 'dynamic'>;
         path: PathWithWildcard<Path, SlugKey, WildSlugKey>;
-        /** page component. `null` would indicate the page will use `createPagePartComponent` instead. */
+        /** single page component. `null` would indicate the page will use `createPagePartComponent` instead. */
         component: FunctionComponent<PropsForPages<Path>> | null;
       }
   ) & {
@@ -240,6 +238,13 @@ const createNestedElements = (
   );
 };
 
+type ComponentList = {
+  render: 'static' | 'dynamic';
+  component: FunctionComponent<any>;
+}[];
+
+type ComponentEntry = FunctionComponent<any> | ComponentList;
+
 export const createPages = <
   AllPages extends (AnyPage | ReturnType<CreateLayout>)[],
 >(
@@ -260,22 +265,9 @@ export const createPages = <
     string,
     { literalSpec: PathSpec; originalSpec?: PathSpec }
   >();
-  const dynamicPagePathMap = new Map<
-    string,
-    [PathSpec, FunctionComponent<any>]
-  >();
-  const dynamicPagePartComponentMap = new Map<
-    string,
-    [number, FunctionComponent<any>]
-  >();
-  const wildcardPagePathMap = new Map<
-    string,
-    [PathSpec, FunctionComponent<any>]
-  >();
-  const dynamicLayoutPathMap = new Map<
-    string,
-    [PathSpec, FunctionComponent<any>]
-  >();
+  const dynamicPagePathMap = new Map<string, [PathSpec, ComponentEntry]>();
+  const wildcardPagePathMap = new Map<string, [PathSpec, ComponentEntry]>();
+  const dynamicLayoutPathMap = new Map<string, [PathSpec, ComponentEntry]>();
   const apiPathMap = new Map<
     string, // `${method} ${path}`
     {
@@ -359,22 +351,10 @@ export const createPages = <
     }
 
     const pathSpec = parsePathWithSlug(page.path);
+    const { numSlugs, numWildcards } = getSlugsAndWildcards(pathSpec);
     if (page.unstable_disableSSR) {
       noSsrSet.add(pathSpec);
     }
-    const { numSlugs, numWildcards } = (() => {
-      let numSlugs = 0;
-      let numWildcards = 0;
-      for (const slug of pathSpec) {
-        if (slug.type !== 'literal') {
-          numSlugs++;
-        }
-        if (slug.type === 'wildcard') {
-          numWildcards++;
-        }
-      }
-      return { numSlugs, numWildcards };
-    })();
 
     if (page.exactPath) {
       const spec = parseExactPath(page.path);
@@ -383,9 +363,13 @@ export const createPages = <
           literalSpec: spec,
         });
         const id = joinPath(page.path, 'page').replace(/^\//, '');
-        registerStaticComponent(id, page.component);
-      } else {
+        if (page.component) {
+          registerStaticComponent(id, page.component);
+        }
+      } else if (page.component) {
         dynamicPagePathMap.set(page.path, [spec, page.component]);
+      } else {
+        dynamicPagePathMap.set(page.path, [spec, []]);
       }
     } else if (page.render === 'static' && numSlugs === 0) {
       const pagePath = getGrouplessPath(page.path);
@@ -396,7 +380,9 @@ export const createPages = <
       if (pagePath !== page.path) {
         groupPathLookup.set(pagePath, page.path);
       }
-      registerStaticComponent(id, page.component);
+      if (page.component) {
+        registerStaticComponent(id, page.component);
+      }
     } else if (
       page.render === 'static' &&
       numSlugs > 0 &&
@@ -448,13 +434,13 @@ export const createPages = <
       if (pagePath !== page.path) {
         groupPathLookup.set(pagePath, page.path);
       }
-      dynamicPagePathMap.set(pagePath, [pathSpec, page.component]);
+      dynamicPagePathMap.set(pagePath, [pathSpec, page.component ?? []]);
     } else if (page.render === 'dynamic' && numWildcards === 1) {
       const pagePath = getGrouplessPath(page.path);
       if (pagePath !== page.path) {
         groupPathLookup.set(pagePath, page.path);
       }
-      wildcardPagePathMap.set(pagePath, [pathSpec, page.component]);
+      wildcardPagePathMap.set(pagePath, [pathSpec, page.component ?? []]);
     } else {
       throw new Error('Invalid page configuration');
     }
@@ -525,13 +511,28 @@ export const createPages = <
       throw new Error('createPagePartComponent no longer available');
     }
     if (params.render === 'static') {
-      const id = joinPath(params.path, 'page/component').replace(/^\//, '');
+      const id = joinPath(
+        params.path,
+        'page/component-' + params.order,
+      ).replace(/^\//, '');
       registerStaticComponent(id, params.component);
     } else if (params.render === 'dynamic') {
-      dynamicPagePartComponentMap.set(params.path, [
-        params.order,
-        params.component,
-      ]);
+      const pathSpec = parsePathWithSlug(params.path);
+      const { numWildcards } = getSlugsAndWildcards(pathSpec);
+      const pagePathMap =
+        numWildcards === 0 ? dynamicPagePathMap : wildcardPagePathMap;
+      const pageComponents = pagePathMap.get(params.path)?.[1];
+      if (Array.isArray(pageComponents)) {
+        if (pageComponents[params.order]) {
+          throw new Error(
+            'Duplicated pagePartComponent order: ' + params.order,
+          );
+        }
+        pageComponents[params.order] = {
+          render: params.render,
+          component: params.component,
+        };
+      }
     } else {
       throw new Error('Invalid pagePartComponent configuration');
     }
@@ -769,4 +770,18 @@ export const createPages = <
       void // createLayout returns void
     >;
   };
+};
+
+const getSlugsAndWildcards = (pathSpec: PathSpec) => {
+  let numSlugs = 0;
+  let numWildcards = 0;
+  for (const slug of pathSpec) {
+    if (slug.type !== 'literal') {
+      numSlugs++;
+    }
+    if (slug.type === 'wildcard') {
+      numWildcards++;
+    }
+  }
+  return { numSlugs, numWildcards };
 };
