@@ -4,7 +4,7 @@
 
 visit [waku.gg](https://waku.gg) or `npm create waku@latest`
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/dai-shi/waku/test.yml?branch=main&style=flat&colorA=000000&colorB=000000)](https://github.com/dai-shi/waku/actions?query=workflow%3ATest)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/wakujs/waku/test.yml?branch=main&style=flat&colorA=000000&colorB=000000)](https://github.com/wakujs/waku/actions?query=workflow%3ATest)
 [![Version](https://img.shields.io/npm/v/waku?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/waku)
 [![Downloads](https://img.shields.io/npm/dt/waku.svg?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/waku)
 [![Discord Shield](https://img.shields.io/discord/627656437971288081?style=flat&colorA=000000&colorB=000000&label=discord&logo=discord&logoColor=ffffff)](https://discord.gg/MrQdmzd)
@@ -21,7 +21,7 @@ We recommend other frameworks for heavy ecommerce or enterprise applications. Wa
 
 ## Getting started
 
-Start a new Waku project with the `create` command for your preferred package manager. It will scaffold a new project with our default [Waku starter](https://github.com/dai-shi/waku/tree/main/examples/01_template).
+Start a new Waku project with the `create` command for your preferred package manager. It will scaffold a new project with our default [Waku starter](https://github.com/wakujs/waku/tree/main/examples/01_template).
 
 ```sh
 npm create waku@latest
@@ -145,7 +145,7 @@ To learn more about the modern React architecture, we recommend [Making Sense of
 
 Waku provides a minimal file-based “pages router” experience built for the server components era.
 
-Its underlying [low-level API](https://github.com/dai-shi/waku/blob/main/docs/create-pages.mdx) is also available for those that prefer programmatic routing. This documentation covers file-based routing since many React developers prefer it, but please feel free to try both and see which you like more!
+Its underlying [low-level API](https://github.com/wakujs/waku/blob/main/docs/create-pages.mdx) is also available for those that prefer programmatic routing. This documentation covers file-based routing since many React developers prefer it, but please feel free to try both and see which you like more!
 
 ### Overview
 
@@ -1075,8 +1075,8 @@ Streaming can be activated by setting environment variable `DEPLOY_AWS_LAMBDA_ST
 
 ## Community
 
-Please join our friendly [GitHub discussions](https://github.com/dai-shi/waku/discussions) or [Discord server](https://discord.gg/MrQdmzd) to participate in the Waku community. Hope to see you there!
+Please join our friendly [GitHub discussions](https://github.com/wakujs/waku/discussions) or [Discord server](https://discord.gg/MrQdmzd) to participate in the Waku community. Hope to see you there!
 
 ## Roadmap
 
-Waku is in active development and we’re seeking additional contributors. Check out our [roadmap](https://github.com/dai-shi/waku/issues/24) for more information.
+Waku is in active development and we’re seeking additional contributors. Check out our [roadmap](https://github.com/wakujs/waku/issues/24) for more information.
