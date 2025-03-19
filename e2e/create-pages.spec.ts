@@ -134,7 +134,7 @@ for (const mode of ['DEV', 'PRD'] as const) {
       ({ port, stopApp } = await startApp(mode));
     });
 
-    // https://github.com/dai-shi/waku/issues/1255
+    // https://github.com/wakujs/waku/issues/1255
     test('long suspense', async ({ page }) => {
       await page.goto(`http://localhost:${port}/long-suspense/1`);
       await expect(
