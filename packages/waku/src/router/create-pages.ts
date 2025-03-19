@@ -528,6 +528,10 @@ export const createPages = <
           render: params.render,
           component: params.component,
         };
+      } else {
+        throw new Error(
+          'pagePartComponent can only be created when createPage.component is null',
+        );
       }
     } else {
       throw new Error('Invalid pagePartComponent configuration');
