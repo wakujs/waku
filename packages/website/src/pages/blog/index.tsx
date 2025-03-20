@@ -5,7 +5,7 @@ import { Page } from '../../components/page';
 import { Meta } from '../../components/meta';
 import { getAuthor } from '../../lib/get-author';
 import type { BlogFrontmatter } from '../../types';
-import { PostList } from '../../components/post-list';
+import { PostList, PostListContainer } from '../../components/post-list';
 
 export default async function BlogIndexPage() {
   const articles = await getArticles();
@@ -13,7 +13,9 @@ export default async function BlogIndexPage() {
   return (
     <Page>
       <Meta title="Waku blog" description="The official Waku developer blog." />
-      <PostList posts={articles} path="blog" />
+      <PostListContainer>
+        <PostList posts={articles} path="blog" />
+      </PostListContainer>
     </Page>
   );
 }
