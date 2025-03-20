@@ -6,7 +6,7 @@ description: A brief look into the mechanics of the Waku Router
 
 When routing around a waku app, you may notice some surprisingly quick navigation speeds. This was my experience while starting development at least. Let's walk through the basic mechanics of the router to get a better shared understanding of how it works and maybe even how to speed things up even further 🚀.
 
-## Power of Client-Side Cacheing
+## Power of Client-Side Caching
 
 Let's say you load into `/` first and there is a `<Link to='/about' />` on the page.
 
@@ -32,6 +32,6 @@ Now, when the user places their cursor over our link, we will fetch the RSC of t
 
 ## Why is This Cool?
 
-None of this is specific to RSC, nor is it unique to Waku as a framework. However, the ergonomics of `prefetch` paired with the power of the client cacheing static RSC are quite nice features that will not be the default experience everywhere.
+None of this is specific to RSC, nor is it unique to Waku as a framework. However, the ergonomics of `prefetch` paired with the power of the client caching static RSC are quite nice features that will not be the default experience everywhere.
 
 We hope to cache only what is obviously cache-able with static RSC. Then we'll give you the tools to speed up your router interactions from there!
