@@ -135,13 +135,13 @@ export type CreatePage = <
     | {
         render: Extract<Render, 'dynamic'>;
         path: PathWithoutSlug<Path>;
-        /** single page component. `null` would indicate the page will use `createPagePartComponent` instead. */
+        /** single page component. `null` would indicate the page will use `createPagePart` instead. */
         component: FunctionComponent<PropsForPages<Path>> | null;
       }
     | {
         render: Extract<Render, 'dynamic'>;
         path: PathWithWildcard<Path, SlugKey, WildSlugKey>;
-        /** single page component. `null` would indicate the page will use `createPagePartComponent` instead. */
+        /** single page component. `null` would indicate the page will use `createPagePart` instead. */
         component: FunctionComponent<PropsForPages<Path>> | null;
       }
   ) & {
@@ -190,7 +190,7 @@ export type CreateApi = <Path extends string>(
       },
 ) => void;
 
-export type CreatePagePartComponent = <Path extends string>(params: {
+export type CreatePagePart = <Path extends string>(params: {
   path: Path;
   render: 'static' | 'dynamic';
   order: number;
@@ -253,7 +253,7 @@ export const createPages = <
     createLayout: CreateLayout;
     createRoot: CreateRoot;
     createApi: CreateApi;
-    createPagePartComponent: CreatePagePartComponent;
+    createPagePart: CreatePagePart;
   }) => Promise<AllPages>,
 ) => {
   let configured = false;
@@ -506,9 +506,9 @@ export const createPages = <
     }
   };
 
-  const createPagePartComponent: CreatePagePartComponent = (params) => {
+  const createPagePart: CreatePagePartComponent = (params) => {
     if (configured) {
-      throw new Error('createPagePartComponent no longer available');
+      throw new Error('createPagePart no longer available');
     }
     if (params.render === 'static') {
       const id = joinPath(
@@ -550,7 +550,7 @@ export const createPages = <
         createLayout,
         createRoot,
         createApi,
-        createPagePartComponent,
+        createPagePart,
       });
       await ready;
       configured = true;
