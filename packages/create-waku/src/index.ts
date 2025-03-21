@@ -107,7 +107,7 @@ async function doPrompts() {
   let targetDir = values['project-name'] || defaultProjectName;
 
   try {
-    const { projectName } = await p.group(
+    const results = await p.group(
       {
         projectName: () =>
           p.text({
@@ -115,23 +115,24 @@ async function doPrompts() {
             message: 'Project Name',
             placeholder: defaultProjectName,
           }),
-      },
-      { onCancel },
-    );
-    targetDir =
-      typeof projectName === 'string' ? projectName.trim() : targetDir;
-    if (!canSafelyOverwrite(targetDir)) {
-      const confirmed = await p.confirm({
-        message: `${targetDir} is not empty. Remove existing files and continue?`,
-      });
-      if (!confirmed) {
-        p.cancel(red('✖') + ' Operation cancelled');
-        process.exit(0);
-      }
-    }
-
-    const results = await p.group(
-      {
+        overwrites: ({ results }) => {
+          targetDir =
+            typeof results.projectName === 'string'
+              ? results.projectName.trim()
+              : targetDir;
+          if (!canSafelyOverwrite(targetDir)) {
+            return p.confirm({
+              message: `would you like to overwrite ${results.projectName}?`,
+            });
+          }
+          return Promise.resolve(true);
+        },
+        checkOverwrites: ({ results }) => {
+          if (!results.overwrites) {
+            p.cancel(red('✖') + ' Operation cancelled');
+          }
+          return Promise.resolve(true);
+        },
         packageName: () =>
           p.text({
             message: 'Package name',
@@ -150,9 +151,7 @@ async function doPrompts() {
             })),
           }),
       },
-      {
-        onCancel,
-      },
+      { onCancel },
     );
 
     return {
