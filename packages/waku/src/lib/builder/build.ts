@@ -11,7 +11,6 @@ import { INTERNAL_setAllEnv, unstable_getBuildOptions } from '../../server.js';
 import type { EntriesPrd } from '../types.js';
 import type { ConfigDev } from '../config.js';
 import { resolveConfigDev } from '../config.js';
-import { EXTENSIONS } from '../constants.js';
 import type { PathSpec } from '../utils/path.js';
 import {
   decodeFilePathFromAbsolute,
@@ -49,6 +48,7 @@ import { rscEnvPlugin } from '../plugins/vite-plugin-rsc-env.js';
 import { rscPrivatePlugin } from '../plugins/vite-plugin-rsc-private.js';
 import { rscManagedPlugin } from '../plugins/vite-plugin-rsc-managed.js';
 import {
+  EXTENSIONS,
   DIST_ENTRIES_JS,
   DIST_PUBLIC,
   DIST_ASSETS,

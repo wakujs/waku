@@ -6,7 +6,7 @@ import viteReact from '@vitejs/plugin-react';
 
 import type { EntriesDev } from '../types.js';
 import { resolveConfigDev } from '../config.js';
-import { SRC_MAIN, SRC_ENTRIES } from '../constants.js';
+import { SRC_MAIN, SRC_ENTRIES } from '../builder/constants.js';
 import {
   decodeFilePathFromAbsolute,
   joinPath,

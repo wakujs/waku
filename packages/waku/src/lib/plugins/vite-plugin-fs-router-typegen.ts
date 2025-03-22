@@ -1,7 +1,7 @@
 import type { Plugin } from 'vite';
 import { readdir, writeFile } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
-import { SRC_ENTRIES, EXTENSIONS } from '../constants.js';
+import { SRC_ENTRIES, EXTENSIONS } from '../builder/constants.js';
 import { joinPath } from '../utils/path.js';
 import { isIgnoredPath } from '../utils/fs-router.js';
 import { getGrouplessPath } from '../utils/create-pages.js';

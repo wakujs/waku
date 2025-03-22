@@ -3,7 +3,7 @@ import path from 'node:path';
 import { normalizePath } from 'vite';
 import type { Plugin } from 'vite';
 
-import { SRC_ENTRIES } from '../constants.js';
+import { SRC_ENTRIES } from '../builder/constants.js';
 import { extname, joinPath } from '../utils/path.js';
 import { treeshake, removeObjectProperty } from '../utils/treeshake.js';
 

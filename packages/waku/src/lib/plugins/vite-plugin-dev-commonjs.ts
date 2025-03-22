@@ -1,7 +1,7 @@
 import { transformWithEsbuild } from 'vite';
 import type { Plugin } from 'vite';
 
-import { EXTENSIONS } from '../constants.js';
+import { EXTENSIONS } from '../builder/constants.js';
 import { extname } from '../utils/path.js';
 
 // https://github.com/vite-plugin/vite-plugin-commonjs/blob/5e3294e78fabb037e12aab75433908fbee17192a/src/utils.ts#L9-L15

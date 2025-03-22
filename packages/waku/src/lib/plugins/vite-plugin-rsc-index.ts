@@ -1,6 +1,6 @@
 import type { Plugin } from 'vite';
 
-import { SRC_MAIN } from '../constants.js';
+import { SRC_MAIN } from '../builder/constants.js';
 
 export function rscIndexPlugin(opts: {
   basePath: string;
