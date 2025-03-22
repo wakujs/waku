@@ -4,7 +4,7 @@ import { compileMDX } from 'next-mdx-remote/rsc';
 import { Page } from '../../components/page';
 import { Meta } from '../../components/meta';
 import type { BlogFrontmatter } from '../../types';
-import { PostList } from '../../components/post-list';
+import { PostList, PostListContainer } from '../../components/post-list';
 
 export default async function BlogIndexPage() {
   const articles = await getArticles();
@@ -15,14 +15,14 @@ export default async function BlogIndexPage() {
         title="Waku guide"
         description="The guides for working with Waku."
       />
-      <div className="relative z-10 mx-auto w-full max-w-[80ch] pt-16 text-white lg:pt-36 xl:-right-[calc(296px/2)] 2xl:right-auto">
+      <PostListContainer>
         <p className="bg-gray-950/90 mb-16 rounded-xl border border-gray-800 p-4 text-white sm:p-6 lg:p-12">
           Our guides walk through hosting instructions, framework behavior,
           developer tooling, and more! We will talk through unstable APIs here,
           so you can help experiment with our new and fun features.
         </p>
         <PostList posts={articles} path="guides" />
-      </div>
+      </PostListContainer>
     </Page>
   );
 }
