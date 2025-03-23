@@ -13,7 +13,13 @@ import { DeeplyNestedLayout } from './components/DeeplyNestedLayout';
 import { readFile } from 'node:fs/promises';
 
 const pages = createPages(
-  async ({ createPage, createLayout, createRoot, createApi }) => [
+  async ({
+    createPage,
+    createLayout,
+    createRoot,
+    createApi,
+    createPagePart,
+  }) => [
     createRoot({
       render: 'static',
       component: Root,
@@ -154,6 +160,28 @@ const pages = createPages(
           status: 200,
         });
       },
+    }),
+
+    createPagePart({
+      path: '/page-parts',
+      render: 'static',
+      order: 0,
+      component: () => (
+        <h2 suppressHydrationWarning>
+          Static Page Part {new Date().toLocaleString()}
+        </h2>
+      ),
+    }),
+
+    createPagePart({
+      path: '/page-parts',
+      render: 'dynamic',
+      order: 1,
+      component: () => (
+        <h2 suppressHydrationWarning>
+          Dynamic Page Part {new Date().toLocaleString()}
+        </h2>
+      ),
     }),
   ],
 );
