@@ -13,10 +13,12 @@ import path from 'node:path';
 import type { Plugin } from 'vite';
 
 import { emitPlatformData } from '../builder/platform-data.js';
-import { unstable_getBuildOptions } from '../../server.js';
-import { DIST_PUBLIC } from '../builder/constants.js';
-import { SRC_ENTRIES } from '../constants.js';
+import {
+  unstable_getBuildOptions,
+  unstable_builderConstants,
+} from '../../server.js';
 
+const { SRC_ENTRIES, DIST_PUBLIC } = unstable_builderConstants;
 const SERVE_JS = 'serve-cloudflare.js';
 
 const getServeJsContent = (srcEntriesFile: string) => `
@@ -51,7 +53,7 @@ const createApp = (app) => {
 export default {
   async fetch(request, env, ctx) {
     if (!serve) {
-      serve = serverEngine({ cmd: 'start', loadEntries, env });
+      serve = serverEngine({ cmd: 'start', loadEntries, env, unstable_onError: new Set() });
     }
     if (!app) {
       const entries = await loadEntries();
@@ -210,22 +212,32 @@ export function deployCloudflarePlugin(opts: {
       await emitPlatformData(workerDistDir);
 
       const wranglerTomlFile = path.join(rootDir, 'wrangler.toml');
-      if (!existsSync(wranglerTomlFile)) {
+      const wranglerJsonFile = path.join(rootDir, 'wrangler.json');
+      const wranglerJsoncFile = path.join(rootDir, 'wrangler.jsonc');
+      if (
+        !existsSync(wranglerTomlFile) &&
+        !existsSync(wranglerJsonFile) &&
+        !existsSync(wranglerJsoncFile)
+      ) {
         writeFileSync(
-          wranglerTomlFile,
+          wranglerJsonFile,
           `
-# See https://developers.cloudflare.com/pages/functions/wrangler-configuration/
-name = "waku-project"
-compatibility_date = "2024-09-23"
-compatibility_flags = [ "nodejs_als" ]
-main = "./dist/worker/serve-cloudflare.js"
-
-[assets]
-directory = "./dist/assets"
-binding = "ASSETS"
-html_handling = "drop-trailing-slash"
-# "single-page-application" | "404-page" | "none"
-not_found_handling = "404-page"
+{
+  "name": "waku-project",
+  "main": "./dist/worker/serve-cloudflare.js",
+  // https://developers.cloudflare.com/workers/platform/compatibility-dates
+  "compatibility_date": "2024-11-11",
+  // nodejs_als is required for Waku server-side request context
+  // It can be removed if only building static pages
+  "compatibility_flags": ["nodejs_als"],
+  // https://developers.cloudflare.com/workers/static-assets/binding/
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist/assets",
+    "html_handling": "drop-trailing-slash",
+    "not_found_handling": "404-page",
+  }
+}
 `,
         );
       }

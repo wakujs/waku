@@ -2,10 +2,12 @@ import path from 'node:path';
 import { existsSync, writeFileSync } from 'node:fs';
 import type { Plugin } from 'vite';
 
-import { unstable_getBuildOptions } from '../../server.js';
-import { SRC_ENTRIES } from '../constants.js';
-import { DIST_PUBLIC } from '../builder/constants.js';
+import {
+  unstable_getBuildOptions,
+  unstable_builderConstants,
+} from '../../server.js';
 
+const { SRC_ENTRIES, DIST_PUBLIC } = unstable_builderConstants;
 const SERVE_JS = 'serve-partykit.js';
 
 const getServeJsContent = (srcEntriesFile: string) => `
@@ -40,7 +42,7 @@ const createApp = (app) => {
 export default {
   async onFetch(request, lobby, ctx) {
     if (!serve) {
-      serve = serverEngine({ cmd: 'start', loadEntries, env: lobby });
+      serve = serverEngine({ cmd: 'start', loadEntries, env: lobby, unstable_onError: new Set() });
     }
     if (!app) {
       const entries = await loadEntries();

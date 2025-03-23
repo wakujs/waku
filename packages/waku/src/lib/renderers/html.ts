@@ -5,14 +5,13 @@ import type { default as RSDWClientType } from 'react-server-dom-webpack/client.
 import { injectRSCPayload } from 'rsc-html-stream/server';
 
 import type * as WakuMinimalClientType from '../../minimal/client.js';
-import type { PureConfig } from '../config.js';
-import { SRC_MAIN } from '../constants.js';
+import type { ConfigDev, ConfigPrd } from '../config.js';
+import { SRC_MAIN } from '../builder/constants.js';
 import { concatUint8Arrays } from '../utils/stream.js';
 import { filePathToFileURL } from '../utils/path.js';
 import { encodeRscPath } from './utils.js';
 import { renderRsc, renderRscElement, getExtractFormState } from './rsc.js';
-// TODO move types somewhere
-import type { HandlerContext } from '../middleware/types.js';
+import type { HandlerContext, ErrorCallback } from '../middleware/types.js';
 
 type Elements = Record<string, unknown>;
 
@@ -162,10 +161,11 @@ const rectifyHtml = () => {
 let hackToIgnoreTheVeryFirstError = true;
 
 export async function renderHtml(
-  config: PureConfig,
+  config: ConfigDev | ConfigPrd,
   ctx: Pick<HandlerContext, 'unstable_modules' | 'unstable_devServer'>,
   htmlHead: string,
   elements: Elements,
+  onError: Set<ErrorCallback>,
   html: ReactNode,
   rscPath: string,
   actionResult?: unknown,
@@ -183,8 +183,8 @@ export async function renderHtml(
   const { INTERNAL_ServerRoot } =
     modules.wakuMinimalClient as typeof WakuMinimalClientType;
 
-  const stream = await renderRsc(config, ctx, elements);
-  const htmlStream = renderRscElement(config, ctx, html);
+  const stream = await renderRsc(config, ctx, elements, onError);
+  const htmlStream = renderRscElement(config, ctx, html, onError);
   const isDev = !!ctx.unstable_devServer;
   const moduleMap = new Proxy(
     {} as Record<string, Record<string, ImportManifestEntry>>,
@@ -241,10 +241,11 @@ export async function renderHtml(
           if (hackToIgnoreTheVeryFirstError) {
             return;
           }
+          console.error(err);
+          onError.forEach((fn) => fn(err, ctx as HandlerContext, 'html'));
           if (typeof (err as any)?.digest === 'string') {
             return (err as { digest: string }).digest;
           }
-          console.error(err);
         },
       },
     );
@@ -254,7 +255,9 @@ export async function renderHtml(
         injectHtmlHead(
           config.basePath + config.rscBase + '/' + encodeRscPath(rscPath),
           htmlHead,
-          isDev ? `${config.basePath}${config.srcDir}/${SRC_MAIN}` : '',
+          isDev
+            ? `${config.basePath}${(config as ConfigDev).srcDir}/${SRC_MAIN}`
+            : '',
         ),
       )
       .pipeThrough(injectRSCPayload(stream2));
@@ -268,6 +271,7 @@ export async function renderHtml(
         ctx,
         htmlHead,
         elements,
+        onError,
         html,
         rscPath,
         actionResult,

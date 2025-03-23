@@ -2,11 +2,13 @@ import path from 'node:path';
 import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import type { Plugin } from 'vite';
 
-import { unstable_getBuildOptions } from '../../server.js';
-import { SRC_ENTRIES } from '../constants.js';
-import { DIST_PUBLIC } from '../builder/constants.js';
 import { emitPlatformData } from '../builder/platform-data.js';
+import {
+  unstable_getBuildOptions,
+  unstable_builderConstants,
+} from '../../server.js';
 
+const { SRC_ENTRIES, DIST_PUBLIC } = unstable_builderConstants;
 const SERVE_JS = 'serve-vercel.js';
 
 const getServeJsContent = (
@@ -27,7 +29,7 @@ const loadEntries = () => import('${srcEntriesFile}');
 const configPromise = loadEntries().then((entries) => entries.loadConfig());
 
 const createApp = (app) => {
-  app.use(serverEngine({ cmd: 'start', loadEntries, env: process.env }));
+  app.use(serverEngine({ cmd: 'start', loadEntries, env: process.env, unstable_onError: new Set() }));
   app.notFound((c) => {
     // FIXME better implementation using node stream?
     const file = path.join(distDir, publicDir, '404.html');

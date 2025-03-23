@@ -7,7 +7,7 @@ export interface Config {
   /**
    * The base path for serve HTTP.
    * Defaults to  "/".
-   * TODO https://github.com/dai-shi/waku/issues/698
+   * TODO https://github.com/wakujs/waku/issues/698
    */
   basePath?: string;
   /**
@@ -26,6 +26,11 @@ export interface Config {
    * Defaults to "pages".
    */
   pagesDir?: string;
+  /**
+   * The api directory inside pagesDir.
+   * Defaults to "api".
+   */
+  apiDir?: string;
   /**
    * The private directory relative to root.
    * This folder will contain files that should be read only on the server.

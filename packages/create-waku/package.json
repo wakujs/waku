@@ -1,6 +1,6 @@
 {
   "name": "create-waku",
-  "version": "0.11.3-0.21.22-0",
+  "version": "0.11.3-0.21.23-0",
   "author": "Daishi Kato",
   "type": "module",
   "contributors": [
@@ -8,7 +8,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/dai-shi/waku.git",
+    "url": "https://github.com/wakujs/waku.git",
     "directory": "packages/create-waku"
   },
   "bin": {

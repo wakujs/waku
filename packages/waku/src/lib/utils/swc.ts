@@ -6,7 +6,7 @@ export const parseOpts = (ext: string) => {
     } as const;
   }
   // We hoped to use 'typescript' for everything, but it fails in some cases.
-  // https://github.com/dai-shi/waku/issues/677
+  // https://github.com/wakujs/waku/issues/677
   return {
     syntax: 'ecmascript',
     jsx: ext.endsWith('x'),

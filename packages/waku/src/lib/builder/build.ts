@@ -9,9 +9,8 @@ import type { ReactNode } from 'react';
 import type { Config } from '../../config.js';
 import { INTERNAL_setAllEnv, unstable_getBuildOptions } from '../../server.js';
 import type { EntriesPrd } from '../types.js';
-import type { ResolvedConfig } from '../config.js';
-import { resolveConfig } from '../config.js';
-import { EXTENSIONS } from '../constants.js';
+import type { ConfigDev } from '../config.js';
+import { resolveConfigDev } from '../config.js';
 import type { PathSpec } from '../utils/path.js';
 import {
   decodeFilePathFromAbsolute,
@@ -22,7 +21,6 @@ import {
 } from '../utils/path.js';
 import { extendViteConfig } from '../utils/vite-config.js';
 import {
-  appendFile,
   copyFile,
   createWriteStream,
   existsSync,
@@ -50,6 +48,7 @@ import { rscEnvPlugin } from '../plugins/vite-plugin-rsc-env.js';
 import { rscPrivatePlugin } from '../plugins/vite-plugin-rsc-private.js';
 import { rscManagedPlugin } from '../plugins/vite-plugin-rsc-managed.js';
 import {
+  EXTENSIONS,
   DIST_ENTRIES_JS,
   DIST_PUBLIC,
   DIST_ASSETS,
@@ -82,7 +81,7 @@ const onwarn = (warning: RollupLog, defaultHandler: LoggingFunction) => {
   defaultHandler(warning);
 };
 
-const deployPlugins = (config: ResolvedConfig) => [
+const deployPlugins = (config: ConfigDev) => [
   deployVercelPlugin(config),
   deployNetlifyPlugin(config),
   deployCloudflarePlugin(config),
@@ -91,7 +90,7 @@ const deployPlugins = (config: ResolvedConfig) => [
   deployAwsLambdaPlugin(config),
 ];
 
-const analyzeEntries = async (rootDir: string, config: ResolvedConfig) => {
+const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
   const wakuClientDist = decodeFilePathFromAbsolute(
     joinPath(fileURLToFilePath(import.meta.url), '../../../client.js'),
   );
@@ -207,7 +206,7 @@ const analyzeEntries = async (rootDir: string, config: ResolvedConfig) => {
 const buildServerBundle = async (
   rootDir: string,
   env: Record<string, string>,
-  config: ResolvedConfig,
+  config: ConfigDev,
   clientEntryFiles: Record<string, string>,
   serverEntryFiles: Record<string, string>,
   serverModuleFiles: Record<string, string>,
@@ -233,6 +232,8 @@ const buildServerBundle = async (
             addEntriesToInput: true,
           }),
           rscEntriesPlugin({
+            basePath: config.basePath,
+            rscBase: config.rscBase,
             srcDir: config.srcDir,
             ssrDir: DIST_SSR,
             moduleMap: {
@@ -309,7 +310,7 @@ const buildServerBundle = async (
 const buildSsrBundle = async (
   rootDir: string,
   env: Record<string, string>,
-  config: ResolvedConfig,
+  config: ConfigDev,
   clientEntryFiles: Record<string, string>,
   serverEntryFiles: Record<string, string>,
   serverBuildOutput: Awaited<ReturnType<typeof buildServerBundle>>,
@@ -383,7 +384,7 @@ const buildSsrBundle = async (
 const buildClientBundle = async (
   rootDir: string,
   env: Record<string, string>,
-  config: ResolvedConfig,
+  config: ConfigDev,
   clientEntryFiles: Record<string, string>,
   serverEntryFiles: Record<string, string>,
   serverBuildOutput: Awaited<ReturnType<typeof buildServerBundle>>,
@@ -486,7 +487,7 @@ const { runTask, waitForTasks } = createTaskRunner(WRITE_FILE_BATCH_SIZE);
 
 const emitStaticFile = (
   rootDir: string,
-  config: ResolvedConfig,
+  config: ConfigDev,
   pathname: string,
   body: Promise<ReadableStream> | string,
 ) => {
@@ -519,7 +520,7 @@ const emitStaticFile = (
 
 const emitStaticFiles = async (
   rootDir: string,
-  config: ResolvedConfig,
+  config: ConfigDev,
   distEntriesFile: string,
   distEntries: EntriesPrd,
   cssAssets: string[],
@@ -564,6 +565,7 @@ const emitStaticFiles = async (
         config,
         { unstable_modules },
         elements,
+        new Set(),
         options?.moduleIdCallback,
       ),
     renderHtml: async (
@@ -576,6 +578,7 @@ const emitStaticFiles = async (
         { unstable_modules },
         defaultHtmlHead + (options.htmlHead || ''),
         elements,
+        new Set(),
         html,
         options.rscPath,
       );
@@ -627,16 +630,23 @@ const emitStaticFiles = async (
   }
   await waitForTasks();
   const dynamicHtmlPaths = Array.from(dynamicHtmlPathMap);
-  const code = `
-export const dynamicHtmlPaths = ${JSON.stringify(dynamicHtmlPaths)};
-export const publicIndexHtml = ${JSON.stringify(defaultHtmlStr)};
-`;
-  await appendFile(distEntriesFile, code);
+  let distEntriesFileContent = await readFile(distEntriesFile, {
+    encoding: 'utf8',
+  });
+  distEntriesFileContent = distEntriesFileContent.replace(
+    'globalThis.__WAKU_DYNAMIC_HTML_PATHS__',
+    JSON.stringify(dynamicHtmlPaths),
+  );
+  distEntriesFileContent = distEntriesFileContent.replace(
+    'globalThis.__WAKU_PUBLIC_INDEX_HTML__',
+    JSON.stringify(defaultHtmlStr),
+  );
+  await writeFile(distEntriesFile, distEntriesFileContent);
 };
 
 // For Deploy
 // FIXME Is this a good approach? I wonder if there's something missing.
-const buildDeploy = async (rootDir: string, config: ResolvedConfig) => {
+const buildDeploy = async (rootDir: string, config: ConfigDev) => {
   const DUMMY = 'dummy-entry';
   await buildVite({
     plugins: [
@@ -696,7 +706,7 @@ export async function build(options: {
     | undefined;
 }) {
   const env = options.env || {};
-  const config = await resolveConfig(options.config);
+  const config = await resolveConfigDev(options.config);
   const rootDir = (
     await resolveViteConfig({}, 'build', 'production', 'production')
   ).root;
