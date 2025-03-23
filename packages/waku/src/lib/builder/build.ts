@@ -155,7 +155,7 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
       'build-analyze',
     ),
   );
-  const clientEntryFiles = Object.fromEntries(
+  let clientEntryFiles = Object.fromEntries(
     Array.from(clientFileMap).map(([fname, hash], i) => [
       `${DIST_ASSETS}/rsc${i}-${hash}`,
       fname,
@@ -166,7 +166,7 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
       {
         mode: 'production',
         plugins: [
-          rscAnalyzePlugin({ isClient: true, serverFileMap }),
+          rscAnalyzePlugin({ isClient: true, clientFileMap, serverFileMap }),
           rscManagedPlugin({ ...config, addMainToInput: true }),
           ...deployPlugins(config),
         ],
@@ -187,6 +187,12 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
       config,
       'build-analyze',
     ),
+  );
+  clientEntryFiles = Object.fromEntries(
+    Array.from(clientFileMap).map(([fname, hash], i) => [
+      `${DIST_ASSETS}/rsc${i}-${hash}`,
+      fname,
+    ]),
   );
   const serverEntryFiles = Object.fromEntries(
     Array.from(serverFileMap).map(([fname, hash], i) => [
