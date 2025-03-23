@@ -1,4 +1,4 @@
-import { createElement } from 'react';
+import { createElement, Fragment } from 'react';
 import type { FunctionComponent, ReactNode } from 'react';
 
 import { unstable_defineRouter } from './define-router.js';
@@ -135,14 +135,12 @@ export type CreatePage = <
     | {
         render: Extract<Render, 'dynamic'>;
         path: PathWithoutSlug<Path>;
-        /** single page component. `null` would indicate the page will use `createPagePart` instead. */
-        component: FunctionComponent<PropsForPages<Path>> | null;
+        component: FunctionComponent<PropsForPages<Path>>;
       }
     | {
         render: Extract<Render, 'dynamic'>;
         path: PathWithWildcard<Path, SlugKey, WildSlugKey>;
-        /** single page component. `null` would indicate the page will use `createPagePart` instead. */
-        component: FunctionComponent<PropsForPages<Path>> | null;
+        component: FunctionComponent<PropsForPages<Path>>;
       }
   ) & {
     unstable_disableSSR?: boolean;
@@ -230,11 +228,12 @@ const createNestedElements = (
     component: FunctionComponent<any>;
     props?: Record<string, unknown>;
   }[],
+  children: ReactNode,
 ) => {
   return elements.reduceRight<ReactNode>(
     (result, element) =>
       createElement(element.component, element.props, result),
-    null,
+    children, // Ensure the specific children node is the starting point
   );
 };
 
@@ -502,15 +501,18 @@ export const createPages = <
     }
   };
 
-  const createPagePart: CreatePagePartComponent = (params) => {
+  const createPagePart: CreatePagePart = (params) => {
     if (configured) {
       throw new Error('createPagePart no longer available');
     }
+    if (pagePathExists(params.path)) {
+      throw new Error(
+        `Duplicated path: ${params.path}. Tip: createPagePart cannot be used with createPage. Only one at a time is allowed.`,
+      );
+    }
     if (params.render === 'static') {
-      const id = joinPath(
-        params.path,
-        'page/component-' + params.order,
-      ).replace(/^\//, '');
+      const id =
+        joinPath(params.path, 'page').replace(/^\//, '') + ':' + params.order;
       registerStaticComponent(id, params.component);
     } else if (params.render === 'dynamic') {
       const pathSpec = parsePathWithSlug(params.path);
@@ -676,17 +678,29 @@ export const createPages = <
       if (!pageComponent) {
         throw new Error('Page not found: ' + path);
       }
-
       const layoutMatchPath = groupPathLookup.get(routePath) ?? routePath;
       const pathSpec = parsePathWithSlug(layoutMatchPath);
       const mapping = getPathMapping(pathSpec, path);
-      const result: Record<string, unknown> = {
-        [`page:${routePath}`]: createElement(
+      const result: Record<string, unknown> = {};
+      if (Array.isArray(pageComponent)) {
+        for (let i = 0; i < pageComponent.length; i++) {
+          const comp = pageComponent[i];
+          if (!comp) {
+            continue;
+          }
+          result[`page:${routePath}:${i}`] = createElement(comp.component, {
+            ...mapping,
+            ...(query ? { query } : {}),
+            path,
+          });
+        }
+      } else {
+        result[`page:${routePath}`] = createElement(
           pageComponent,
           { ...mapping, ...(query ? { query } : {}), path },
           createElement(Children),
-        ),
-      };
+        );
+      }
 
       const layoutPaths = getLayouts(
         getOriginalStaticPathSpec(path) ?? pathSpec,
@@ -699,25 +713,34 @@ export const createPages = <
 
         const isDynamic = dynamicLayoutPathMap.has(segment);
 
-        // always true
-        if (layout) {
+        if (layout && !Array.isArray(layout)) {
           const id = 'layout:' + segment;
           result[id] = createElement(
             layout,
             isDynamic ? { path } : null,
             createElement(Children),
           );
+        } else {
+          throw new Error('Invalid layout ' + segment);
         }
       }
 
       // loop over all layouts for path
-      const routeChildren = [
-        ...layoutPaths.map((lPath) => ({
-          component: Slot,
-          props: { id: `layout:${lPath}` },
-        })),
-        { component: Slot, props: { id: `page:${routePath}` } },
-      ];
+      const layouts = layoutPaths.map((lPath) => ({
+        component: Slot,
+        props: { id: `layout:${lPath}` },
+      }));
+      const finalPageChildren = Array.isArray(pageComponent)
+        ? createElement(
+            Fragment,
+            null,
+            pageComponent.map((_comp, order) =>
+              createElement(Slot, {
+                id: `page:${routePath}:${order}`,
+              }),
+            ),
+          )
+        : createElement(Slot, { id: `page:${routePath}` });
 
       return {
         elements: result,
@@ -726,7 +749,7 @@ export const createPages = <
           null,
           createElement(Children),
         ),
-        routeElement: createNestedElements(routeChildren),
+        routeElement: createNestedElements(layouts, finalPageChildren),
       };
     },
     getApiConfig: async () => {
