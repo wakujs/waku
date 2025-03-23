@@ -1,6 +1,6 @@
 import type { Plugin } from 'vite';
 
-import { EXTENSIONS, SRC_MAIN, SRC_ENTRIES } from '../constants.js';
+import { EXTENSIONS, SRC_MAIN, SRC_ENTRIES } from '../builder/constants.js';
 import { extname, joinPath, filePathToFileURL } from '../utils/path.js';
 
 const stripExt = (fname: string) => {

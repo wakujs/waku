@@ -1,7 +1,7 @@
 import type { Plugin } from 'vite';
 import * as swc from '@swc/core';
 
-import { EXTENSIONS } from '../constants.js';
+import { EXTENSIONS } from '../builder/constants.js';
 import { extname, joinPath } from '../utils/path.js';
 import { parseOpts } from '../utils/swc.js';
 

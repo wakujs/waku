@@ -1,0 +1,37 @@
+---
+slug: router-fetch-strategy
+title: Waku Router Under the Hood
+description: A brief look into the mechanics of the Waku Router
+---
+
+When routing around a waku app, you may notice some surprisingly quick navigation speeds. This was my experience while starting development at least. Let's walk through the basic mechanics of the router to get a better shared understanding of how it works and maybe even how to speed things up even further 🚀.
+
+## Power of Client-Side Caching
+
+Let's say you load into `/` first and there is a `<Link to='/about' />` on the page.
+
+On initial load, the page from `pages/index.tsx` loads along with its route specific js bundle. As this loads, React does its hydration and we setup our RSC cache (we will revisit this later).
+
+Next, we press on the `/about` link and the router will fetch the RSC associated with the new page. Now that we are on the `/about` page and have read all about the project, we're ready to click the logo and navigate back to `/`.
+
+Here is where our first nice boost comes in! Since `/` is static, the client knows it can cache the RSC for this page, so we get our cache hit and immediately start rendering `/` without needing to go back to the server.
+
+## Speeding up Navigation with Dynamic Pages
+
+For dynamic pages, the expectation is that they should be re-requested from the server on each visit. So, links to a dynamic page will take the time that it takes for the server to render the page + the time spent over the network transmitting the RSC payload. This can make a navigation event to a dynamic page feel much slower.
+
+Fear not! We can take advantage of a very common trick for speeding the perceived load time of dynamic pages.
+
+```tsx
+<Link unstable_prefetchOnEnter to="/dynamic">
+  Dynamic
+</Link>
+```
+
+Now, when the user places their cursor over our link, we will fetch the RSC of that next page. Then when the user presses the link, if the promise for the RSC has resolved, we will switch to the next page, otherwise we will wait for the initial prefetch to finish. It's still a nice head start though!
+
+## Why is This Cool?
+
+None of this is specific to RSC, nor is it unique to Waku as a framework. However, the ergonomics of `prefetch` paired with the power of the client caching static RSC are quite nice features that will not be the default experience everywhere.
+
+We hope to cache only what is obviously cache-able with static RSC. Then we'll give you the tools to speed up your router interactions from there!
