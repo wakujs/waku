@@ -233,7 +233,7 @@ const createNestedElements = (
   return elements.reduceRight<ReactNode>(
     (result, element) =>
       createElement(element.component, element.props, result),
-    children, // Ensure the specific children node is the starting point
+    children,
   );
 };
 
