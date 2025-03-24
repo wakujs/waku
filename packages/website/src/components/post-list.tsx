@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link } from 'waku';
 
 type PostListItemProps = {
@@ -68,4 +69,10 @@ export const PostList = ({
       <PostListItem key={post.slug} postItem={post} path={path} />
     ))}
   </ul>
+);
+
+export const PostListContainer = ({ children }: { children: ReactNode }) => (
+  <div className="relative z-10 mx-auto w-full max-w-[80ch] pt-16 text-white lg:pt-36 xl:-right-[calc(296px/2)] 2xl:right-auto">
+    {children}
+  </div>
 );
