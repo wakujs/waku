@@ -3,7 +3,6 @@ import { compileMDX } from 'next-mdx-remote/rsc';
 
 import { Page } from '../../components/page';
 import { Meta } from '../../components/meta';
-import { getAuthor } from '../../lib/get-author';
 import type { BlogFrontmatter } from '../../types';
 import { PostList } from '../../components/post-list';
 
@@ -12,8 +11,18 @@ export default async function BlogIndexPage() {
 
   return (
     <Page>
-      <Meta title="Waku blog" description="The official Waku developer blog." />
-      <PostList posts={articles} path="blog" />
+      <Meta
+        title="Waku guide"
+        description="The guides for working with Waku."
+      />
+      <div className="relative z-10 mx-auto w-full max-w-[80ch] pt-16 text-white lg:pt-36 xl:-right-[calc(296px/2)] 2xl:right-auto">
+        <p className="bg-gray-950/90 mb-16 rounded-xl border border-gray-800 p-4 text-white sm:p-6 lg:p-12">
+          Our guides walk through hosting instructions, framework behavior,
+          developer tooling, and more! We will talk through unstable APIs here,
+          so you can help experiment with our new and fun features.
+        </p>
+        <PostList posts={articles} path="guides" />
+      </div>
     </Page>
   );
 }
@@ -24,20 +33,16 @@ const getArticles = async () => {
     slug: string;
     title: string;
     description: string;
-    author: { name: string };
-    date: string;
-    rawDate: string;
-    release: string | undefined;
   }> = [];
 
-  readdirSync('./private/contents').forEach((fileName) => {
+  readdirSync('../../docs/guides/').forEach((fileName) => {
     if (fileName.endsWith('.mdx')) {
       blogFileNames.push(fileName);
     }
   });
 
   for await (const fileName of blogFileNames) {
-    const path = `./private/contents/${fileName}`;
+    const path = `../../docs/guides/${fileName}`;
     const source = readFileSync(path, 'utf8');
     const mdx = await compileMDX({
       source,
@@ -45,27 +50,16 @@ const getArticles = async () => {
     });
     const frontmatter = mdx.frontmatter as BlogFrontmatter;
 
-    const author = getAuthor(frontmatter.author);
-    const date = new Date(frontmatter.date).toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    });
-
     const article = {
       slug: frontmatter.slug,
       title: frontmatter.title,
       description: frontmatter.description,
-      author,
-      release: frontmatter.release,
-      date,
-      rawDate: frontmatter.date,
     };
 
     blogArticles.push(article);
   }
 
-  return blogArticles.sort((a, b) => (a.rawDate > b.rawDate ? -1 : 1));
+  return blogArticles.sort((a, b) => a.slug.localeCompare(b.slug));
 };
 
 export const getConfig = async () => {
