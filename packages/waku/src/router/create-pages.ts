@@ -506,6 +506,10 @@ export const createPages = <
   };
 
   const createPagePart: CreatePagePart = (params) => {
+    if (!import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER) {
+      console.warn('createPagePart is still experimental');
+      return;
+    }
     if (configured) {
       throw new Error('createPagePart no longer available');
     }
@@ -756,7 +760,6 @@ export const createPages = <
           throw new Error('Invalid layout ' + segment);
         }
       }
-
       // loop over all layouts for path
       const layouts = layoutPaths.map((lPath) => ({
         component: Slot,

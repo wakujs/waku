@@ -11,6 +11,8 @@ import Root from './components/Root';
 import NestedLayout from './components/NestedLayout';
 import { DeeplyNestedLayout } from './components/DeeplyNestedLayout';
 import { readFile } from 'node:fs/promises';
+import DynamicPagePart from './components/DynamicPagePart';
+import StaticPagePart from './components/StaticPagePart';
 
 const pages = createPages(
   async ({
@@ -166,22 +168,14 @@ const pages = createPages(
       path: '/page-parts',
       render: 'static',
       order: 0,
-      component: () => (
-        <h2 suppressHydrationWarning>
-          Static Page Part {new Date().toLocaleString()}
-        </h2>
-      ),
+      component: StaticPagePart,
     }),
 
     createPagePart({
       path: '/page-parts',
       render: 'dynamic',
       order: 1,
-      component: () => (
-        <h2 suppressHydrationWarning>
-          Dynamic Page Part {new Date().toLocaleString()}
-        </h2>
-      ),
+      component: DynamicPagePart,
     }),
   ],
 );
