@@ -26,7 +26,13 @@ export function unstable_fsRouter(
 ) {
   const buildOptions = unstable_getBuildOptions();
   return createPages(
-    async ({ createPage, createLayout, createRoot, createApi }) => {
+    async ({
+      createPage,
+      createLayout,
+      createRoot,
+      createApi,
+      createPagePart,
+    }) => {
       let files = await unstable_getPlatformData<string[]>('fsRouterFiles');
       if (!files) {
         // dev and build only
@@ -92,7 +98,8 @@ export function unstable_fsRouter(
         }
         const path =
           '/' +
-          (['_layout', 'index', '_root'].includes(pathItems.at(-1)!)
+          (['_layout', 'index', '_root'].includes(pathItems.at(-1)!) ||
+          pathItems.at(-1)?.startsWith('_part')
             ? pathItems.slice(0, -1)
             : pathItems
           ).join('/');
@@ -147,6 +154,15 @@ export function unstable_fsRouter(
           createRoot({
             component: mod.default,
             render: 'static',
+            ...config,
+          });
+        } else if (pathItems.at(-1)?.startsWith('_part')) {
+          const order = parseInt(pathItems.at(-1)!.split('-')[0]!.substring(5));
+          createPagePart({
+            path,
+            component: mod.default,
+            render: 'static',
+            order,
             ...config,
           });
         } else {
