@@ -188,12 +188,12 @@ export type CreateApi = <Path extends string>(
       },
 ) => void;
 
-export type CreatePagePart = <Path extends string>(params: {
+export type CreatePagePart = <const Path extends string>(params: {
   path: Path;
   render: 'static' | 'dynamic';
   order: number;
   component: FunctionComponent<{ children: ReactNode }>;
-}) => void;
+}) => typeof params;
 
 type RootItem = {
   render: 'static' | 'dynamic';
@@ -512,7 +512,7 @@ export const createPages = <
   const createPagePart: CreatePagePart = (params) => {
     if (!import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER) {
       console.warn('createPagePart is still experimental');
-      return;
+      return params;
     }
     if (configured) {
       throw new Error('createPagePart no longer available');
@@ -556,6 +556,10 @@ export const createPages = <
         };
       }
     }
+    return params as Exclude<
+      typeof params,
+      { path: never } | { render: never }
+    >;
   };
 
   let ready: Promise<AllPages | void> | undefined;
