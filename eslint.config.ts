@@ -3,11 +3,14 @@ import { FlatCompat } from '@eslint/eslintrc';
 import tseslint from 'typescript-eslint';
 import importPlugin from 'eslint-plugin-import';
 import react from 'eslint-plugin-react';
+import unicorn from 'eslint-plugin-unicorn';
 
 const compat = new FlatCompat();
 
 export default tseslint.config(
-  { ignores: ['**/dist/', 'packages/create-waku/template/'] },
+  {
+    ignores: ['**/dist/', 'packages/create-waku/template/', '**/.cache/'],
+  },
   eslint.configs.recommended,
   tseslint.configs.recommended,
   importPlugin.flatConfigs.recommended,
@@ -15,6 +18,8 @@ export default tseslint.config(
   react.configs.flat['jsx-runtime'],
   ...compat.extends('plugin:react-hooks/recommended'),
   {
+    files: ['**/*.{ts,tsx,js,jsx}'],
+    ignores: ['**/dist/', 'packages/create-waku/template/', '.cache/'],
     settings: {
       'import/resolver': {
         typescript: {
@@ -28,6 +33,9 @@ export default tseslint.config(
         project: './tsconfig.eslint.json',
       },
     },
+    plugins: {
+      unicorn,
+    },
     rules: {
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/no-explicit-any': 'off',
@@ -36,8 +44,10 @@ export default tseslint.config(
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
+      'no-undef': 'off',
       'react/prop-types': 'off',
       curly: ['error', 'all'],
+      'unicorn/prefer-string-slice': 'error',
     },
   },
   {
