@@ -157,7 +157,16 @@ export function unstable_fsRouter(
             ...config,
           });
         } else if (pathItems.at(-1)?.startsWith('_part')) {
-          const order = parseInt(pathItems.at(-1)!.split('-')[0]!.substring(5));
+          const order = parseInt(
+            pathItems.at(-1)!.split('-')[0]!.slice('_part'.length),
+          );
+          if (isNaN(order)) {
+            throw new Error(
+              'Invalid page part order: ' +
+                pathItems.at(-1)! +
+                '. Please use the following convention: _part[order]-component.tsx',
+            );
+          }
           createPagePart({
             path,
             component: mod.default,
