@@ -170,7 +170,7 @@ export function unstable_fsRouter(
           createPagePart({
             path,
             component: mod.default,
-            render: 'static',
+            render: 'dynamic',
             order,
             ...config,
           });
