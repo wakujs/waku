@@ -160,7 +160,7 @@ export function unstable_fsRouter(
           const order = parseInt(
             pathItems.at(-1)!.split('-')[0]!.slice('_part'.length),
           );
-          if (isNaN(order)) {
+          if (Number.isNaN(order)) {
             throw new Error(
               'Invalid page part order: ' +
                 pathItems.at(-1)! +
