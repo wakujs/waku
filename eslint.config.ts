@@ -19,7 +19,6 @@ export default tseslint.config(
   ...compat.extends('plugin:react-hooks/recommended'),
   {
     files: ['**/*.{ts,tsx,js,jsx}'],
-    ignores: ['**/dist/', 'packages/create-waku/template/', '.cache/'],
     settings: {
       'import/resolver': {
         typescript: {
