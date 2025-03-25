@@ -9,7 +9,12 @@ const compat = new FlatCompat();
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/', 'packages/create-waku/template/', '**/.cache/'],
+    ignores: [
+      '**/dist/',
+      '**/.cache/',
+      'packages/create-waku/template/',
+      'examples/07_cloudflare/.wrangler/',
+    ],
   },
   eslint.configs.recommended,
   tseslint.configs.recommended,
@@ -31,6 +36,11 @@ export default tseslint.config(
       parserOptions: {
         project: './tsconfig.eslint.json',
       },
+      globals: {
+        globalThis: 'readonly',
+        document: 'readonly',
+        setTimeout: 'readonly',
+      },
     },
     plugins: {
       unicorn,
@@ -43,7 +53,6 @@ export default tseslint.config(
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
-      'no-undef': 'off',
       'react/prop-types': 'off',
       curly: ['error', 'all'],
       'unicorn/prefer-string-slice': 'error',
@@ -59,5 +68,4 @@ export default tseslint.config(
       'import/no-unresolved': 'off',
     },
   },
-  { ignores: ['examples/07_cloudflare/.wrangler/'] },
 );
