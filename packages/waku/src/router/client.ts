@@ -344,6 +344,89 @@ export class ErrorBoundary extends Component<
   }
 }
 
+/**
+ * Enhanced Error Boundary for development mode with improved error display
+ */
+export class DevModeErrorBoundary extends Component<
+  { children: ReactNode },
+  { error?: unknown; errorInfo?: React.ErrorInfo }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = {};
+  }
+  
+  static getDerivedStateFromError(error: unknown) {
+    return { error };
+  }
+  
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    this.setState({ errorInfo });
+    // Optionally log to console for additional debugging
+    console.error("React Error Boundary caught an error:", error, errorInfo);
+  }
+  
+  render() {
+    if ('error' in this.state) {
+      // In development mode, render a more detailed error UI
+      return createElement(
+        'div',
+        { 
+          style: {
+            padding: '20px',
+            backgroundColor: 'rgba(255, 0, 0, 0.05)',
+            border: '1px solid rgba(255, 0, 0, 0.2)',
+            borderRadius: '5px',
+            margin: '20px',
+            fontFamily: 'monospace',
+            whiteSpace: 'pre-wrap'
+          } 
+        },
+        createElement('h2', { style: { color: 'crimson' } }, '⚠️ React Error'),
+        createElement('div', {}, 
+          createElement('strong', {}, 'Error:'),
+          ' ',
+          this.state.error instanceof Error 
+            ? this.state.error.message 
+            : String(this.state.error)
+        ),
+        this.state.error instanceof Error && this.state.error.stack 
+          ? createElement('div', { style: { marginTop: '10px' } },
+              createElement('strong', {}, 'Stack Trace:'),
+              createElement('pre', { style: { fontSize: '0.9em', overflow: 'auto', maxHeight: '200px' } }, 
+                this.state.error.stack
+              )
+            )
+          : null,
+        this.state.errorInfo 
+          ? createElement('div', { style: { marginTop: '10px' } },
+              createElement('strong', {}, 'Component Stack:'),
+              createElement('pre', { style: { fontSize: '0.9em', overflow: 'auto', maxHeight: '200px' } }, 
+                this.state.errorInfo.componentStack
+              )
+            )
+          : null,
+        createElement('div', { style: { marginTop: '15px', fontSize: '0.9em' } },
+          'This error occurred in development mode. The error boundary prevented the entire app from crashing.'
+        ),
+        createElement('button', { 
+          onClick: () => this.setState({}),
+          style: {
+            marginTop: '15px',
+            padding: '5px 10px',
+            backgroundColor: '#f0f0f0',
+            border: '1px solid #ccc',
+            borderRadius: '3px',
+            cursor: 'pointer'
+          }
+        }, 'Try to Recover')
+      );
+    }
+    
+    return this.props.children;
+  }
+}
+
 const NotFound = ({
   has404,
   reset,

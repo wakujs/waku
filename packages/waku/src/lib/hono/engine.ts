@@ -17,7 +17,7 @@ export const serverEngine = (options: MiddlewareOptions): MiddlewareHandler => {
       ? entriesPromise.then((entries) =>
           // TODO eliminate loadConfig
           entries.loadConfig().then((config) => resolveConfigDev(config)),
-        )
+        )        
       : resolveConfigDev(options.config);
   const handlersPromise = configPromise.then((config) =>
     Promise.all(

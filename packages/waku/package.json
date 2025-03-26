@@ -1,5 +1,5 @@
 {
-  "name": "waku",
+  "name": "@brrock/waku",
   "description": "⛩️ The minimal React framework",
   "version": "0.21.24",
   "type": "module",

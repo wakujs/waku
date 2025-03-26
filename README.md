@@ -13,9 +13,9 @@ visit [waku.gg](https://waku.gg) or `npm create waku@latest`
 
 ## Introduction
 
-**Waku** _(wah-ku)_ or **わく** means “framework” in Japanese. As the minimal React framework, it’s designed to accelerate the work of developers at startups and agencies building small to medium-sized React projects. These include marketing websites, light ecommerce, and web applications.
+**Waku** _(wah-ku)_ or **わく** means "framework" in Japanese. As the minimal React framework, it's designed to accelerate the work of developers at startups and agencies building small to medium-sized React projects. These include marketing websites, light ecommerce, and web applications.
 
-We recommend other frameworks for heavy ecommerce or enterprise applications. Waku is a lightweight alternative bringing a fun developer experience to the server components era. Yes, let’s make React development fun again!
+We recommend other frameworks for heavy ecommerce or enterprise applications. Waku is a lightweight alternative bringing a fun developer experience to the server components era. Yes, let's make React development fun again!
 
 > Waku is in rapid development and some features are currently missing. Please try it on non-production projects and report any issues you may encounter. Expect that there will be some breaking changes on the road towards a stable v1 release. Contributors are welcome.
 
@@ -31,17 +31,17 @@ npm create waku@latest
 
 ## Rendering
 
-While there’s a bit of a learning curve to modern React rendering, it introduces powerful new patterns of full-stack composability that are only possible with the advent of [server components](https://github.com/reactjs/rfcs/blob/main/text/0188-server-components.md).
+While there's a bit of a learning curve to modern React rendering, it introduces powerful new patterns of full-stack composability that are only possible with the advent of [server components](https://github.com/reactjs/rfcs/blob/main/text/0188-server-components.md).
 
-So please don’t be intimidated by the `'use client'` directive! Once you get the hang of it, you’ll appreciate how awesome it is to flexibly move server-client boundaries with a single line of code as your full-stack React codebase evolves over time. It’s way simpler than maintaining separate codebases for your backend and frontend.
+So please don't be intimidated by the `'use client'` directive! Once you get the hang of it, you'll appreciate how awesome it is to flexibly move server-client boundaries with a single line of code as your full-stack React codebase evolves over time. It's way simpler than maintaining separate codebases for your backend and frontend.
 
-And please don’t fret about client components! Even if you only lightly optimize towards server components, your client bundle size will be smaller than traditional React frameworks, which are always 100% client components.
+And please don't fret about client components! Even if you only lightly optimize towards server components, your client bundle size will be smaller than traditional React frameworks, which are always 100% client components.
 
 > Future versions of Waku may provide additional opt-in APIs to abstract some of the complexity away for an improved developer experience.
 
 #### Server components
 
-Server components can be made async and can securely perform server-side logic and data fetching. Feel free to access the local file-system and import heavy dependencies since they aren’t included in the client bundle. They have no state, interactivity, or access to browser APIs since they run _exclusively_ on the server.
+Server components can be made async and can securely perform server-side logic and data fetching. Feel free to access the local file-system and import heavy dependencies since they aren't included in the client bundle. They have no state, interactivity, or access to browser APIs since they run _exclusively_ on the server.
 
 ```tsx
 // server component
@@ -131,9 +131,9 @@ Waku provides static prerendering (SSG) and server-side rendering (SSR) options 
 
 Each layout and page in Waku is composed of a React component hierarchy.
 
-It begins with a server component at the top of the tree. Then at points down the hierarchy, you’ll eventually import a component that needs client component APIs. Mark this file with a `'use client'` directive at the top. When imported into a server component, it will create a server-client boundary. Below this point, all imported components are hydrated and will run in the browser as well.
+It begins with a server component at the top of the tree. Then at points down the hierarchy, you'll eventually import a component that needs client component APIs. Mark this file with a `'use client'` directive at the top. When imported into a server component, it will create a server-client boundary. Below this point, all imported components are hydrated and will run in the browser as well.
 
-Server components can be rendered below this boundary, but only via composition (e.g., `children` props). Together they form [a new “React server” layer](https://github.com/reactwg/server-components/discussions/4) that runs _before_ the traditional “React client” layer with which you’re already familiar.
+Server components can be rendered below this boundary, but only via composition (e.g., `children` props). Together they form [a new "React server" layer](https://github.com/reactwg/server-components/discussions/4) that runs _before_ the traditional "React client" layer with which you're already familiar.
 
 Client components are still server-side rendered as SSR is separate from RSC. Please see the [linked diagrams](https://github.com/reactwg/server-components/discussions/4) for a helpful visual.
 
@@ -143,7 +143,7 @@ To learn more about the modern React architecture, we recommend [Making Sense of
 
 ## Routing
 
-Waku provides a minimal file-based “pages router” experience built for the server components era.
+Waku provides a minimal file-based "pages router" experience built for the server components era.
 
 Its underlying [low-level API](https://github.com/wakujs/waku/blob/main/docs/create-pages.mdx) is also available for those that prefer programmatic routing. This documentation covers file-based routing since many React developers prefer it, but please feel free to try both and see which you like more!
 
@@ -393,7 +393,7 @@ export const getConfig = async () => {
 
 #### Catch-all routes
 
-Catch-all or “wildcard” segment routes (e.g., `/app/[...catchAll]`) are marked with an ellipsis before the name and have indefinite segments.
+Catch-all or "wildcard" segment routes (e.g., `/app/[...catchAll]`) are marked with an ellipsis before the name and have indefinite segments.
 
 Wildcard routes receive a prop with segment values as an ordered array. For example, the `/app/profile/settings` route would receive a `catchAll` prop with the value `['profile', 'settings']`. These values can then be used to determine what to render in the component.
 
@@ -517,7 +517,7 @@ export const getConfig = async () => {
 
 ### Link
 
-The`<Link />` component should be used for internal links. It accepts a `to` prop for the destination, which is automatically prefetched ahead of the navigation.
+The `<Link />` component should be used for internal links. It accepts a `to` prop for the destination, which is automatically prefetched ahead of the navigation.
 
 ```tsx
 // ./src/pages/index.tsx
@@ -795,7 +795,7 @@ When the directive is placed at the top of a function body, it will mark that sp
 
 Be careful not to add the directive where inappropriate and inadvertently create unwanted endpoints. Endpoints created by server actions are _not_ secured unless you add your own authentication and authorization logic inside the function body.
 
-> The `'use server'` directive has no relation to the`'use client'` directive. It does **not** mark a component as a server component and should **not** be placed at the top of server components!
+> The `'use server'` directive has no relation to the `'use client'` directive. It does **not** mark a component as a server component and should **not** be placed at the top of server components!
 
 #### Making and consuming actions
 
@@ -926,17 +926,17 @@ export const ContactForm = ({ author = 'guest' }) => {
 
 Server actions integrate with many other React APIs such as the [`useTransition`](https://react.dev/reference/react/useTransition) hook for handling pending states, the [`useActionState`](https://react.dev/reference/react/useActionState) hook for accessing returned values, and the [`useOptimistic`](https://react.dev/reference/react/useOptimistic) hook for performing optimistic UI updates.
 
-See the talk [What’s new in React 19?](https://www.youtube.com/watch?v=AJOGzVygGcY) to learn more.
+See the talk [What's new in React 19?](https://www.youtube.com/watch?v=AJOGzVygGcY) to learn more.
 
 ## State management
 
-We recommend [Jotai](https://jotai.org) for global React state management based on the atomic model’s performance and scalability, but Waku is compatible with all React state management libraries such as Zustand and Valtio.
+We recommend [Jotai](https://jotai.org) for global React state management based on the atomic model's performance and scalability, but Waku is compatible with all React state management libraries such as Zustand and Valtio.
 
-> We’re exploring a deeper integration of atomic state management into Waku to achieve the performance and developer experience of signals while preserving React’s declarative programming model.
+> We're exploring a deeper integration of atomic state management into Waku to achieve the performance and developer experience of signals while preserving React's declarative programming model.
 
 ## Environment variables
 
-It’s important to distinguish environment variables that must be kept secret from those that can be made public.
+It's important to distinguish environment variables that must be kept secret from those that can be made public.
 
 #### Private
 
@@ -944,7 +944,7 @@ By default all environment variables are considered private and are accessible o
 
 #### Public
 
-A special `WAKU_PUBLIC_` prefix is required to make an environment variable public and accessible in client components. They will be present as cleartext in the production JavaScript bundle sent to users’ browsers.
+A special `WAKU_PUBLIC_` prefix is required to make an environment variable public and accessible in client components. They will be present as cleartext in the production JavaScript bundle sent to users' browsers.
 
 ### Runtime agnostic (recommended)
 
@@ -1079,4 +1079,168 @@ Please join our friendly [GitHub discussions](https://github.com/wakujs/waku/dis
 
 ## Roadmap
 
-Waku is in active development and we’re seeking additional contributors. Check out our [roadmap](https://github.com/wakujs/waku/issues/24) for more information.
+Waku is in active development and we're seeking additional contributors. Check out our [roadmap](https://github.com/wakujs/waku/issues/24) for more information.
+
+## API Routes
+
+Waku provides a powerful API Routes system that allows you to create serverless functions within your application. These API routes are defined in a specific directory structure and follow a convention-based approach.
+
+### Directory Structure
+
+API routes are defined under a specific directory within your pages directory. By default, this is `pages/api`. Each file in this directory becomes an API endpoint with the route matching the file path.
+
+```
+src/pages/api/hello.ts → /api/hello
+src/pages/api/users/[id].ts → /api/users/:id
+```
+
+### Creating API Routes
+
+There are two types of API routes in Waku:
+
+#### 1. Static API Routes
+
+Static API routes only support the GET method and are pre-rendered at build time.
+
+```typescript
+// src/pages/api/static-example.ts
+export const GET = async (req: Request): Promise<Response> => {
+  return new Response(JSON.stringify({ message: "This is a static API response" }), {
+    headers: { 'Content-Type': 'application/json' }
+  });
+};
+
+// Optional: mark the route as static
+export const getConfig = () => ({
+  render: 'static'
+});
+```
+
+#### 2. Dynamic API Routes
+
+Dynamic API routes support all HTTP methods and are executed on each request.
+
+```typescript
+// src/pages/api/users/[id].ts
+export const GET = async (req: Request): Promise<Response> => {
+  const url = new URL(req.url);
+  const pathParts = url.pathname.split('/');
+  const userId = pathParts[pathParts.length - 1];
+
+  return new Response(JSON.stringify({ userId, method: "GET" }), {
+    headers: { 'Content-Type': 'application/json' }
+  });
+};
+
+export const POST = async (req: Request): Promise<Response> => {
+  const data = await req.json();
+  
+  return new Response(JSON.stringify({ received: data, method: "POST" }), {
+    headers: { 'Content-Type': 'application/json' }
+  });
+};
+```
+
+### Supported HTTP Methods
+
+Waku supports the following HTTP methods for API routes:
+
+- `GET`
+- `HEAD`
+- `POST`
+- `PUT`
+- `DELETE`
+- `CONNECT`
+- `OPTIONS`
+- `TRACE`
+- `PATCH`
+
+### Dynamic Routes with Parameters
+
+You can create dynamic API routes with parameters using square brackets notation in the filename:
+
+- `[param]`: Matches a single path segment
+- `[...param]`: Matches multiple path segments (catch all)
+
+Examples:
+
+```typescript
+// src/pages/api/users/[id].ts → Matches /api/users/123
+export const GET = async (req: Request): Promise<Response> => {
+  const url = new URL(req.url);
+  const id = url.pathname.split('/').pop();
+  return new Response(JSON.stringify({ id }));
+};
+
+// src/pages/api/files/[...path].ts → Matches /api/files/docs/report.pdf
+export const GET = async (req: Request): Promise<Response> => {
+  const url = new URL(req.url);
+  const pathSegments = url.pathname.replace('/api/files/', '').split('/');
+  return new Response(JSON.stringify({ pathSegments }));
+};
+```
+
+### Request and Response
+
+API routes use the standard Web API `Request` and `Response` objects:
+
+```typescript
+export const POST = async (req: Request): Promise<Response> => {
+  // Parse JSON body
+  const body = await req.json();
+  
+  // Get query parameters
+  const url = new URL(req.url);
+  const query = url.searchParams;
+  
+  // Get headers
+  const authorization = req.headers.get('Authorization');
+  
+  // Return Response with status code and headers
+  return new Response(
+    JSON.stringify({ success: true, data: body }),
+    {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Custom-Header': 'custom-value'
+      }
+    }
+  );
+};
+```
+
+### Error Handling
+
+To return errors from your API routes, simply return a Response with an appropriate status code:
+
+```typescript
+export const GET = async (req: Request): Promise<Response> => {
+  try {
+    // Some operation that might fail
+    throw new Error('Resource not found');
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  }
+};
+```
+
+### Configuration
+
+API routes can be configured using the `getConfig` export:
+
+```typescript
+export const getConfig = () => ({
+  // 'static' will pre-render at build time
+  // 'dynamic' will execute on each request (default)
+  render: 'dynamic'
+});
+```
+
+For static API routes, only the GET method is supported.

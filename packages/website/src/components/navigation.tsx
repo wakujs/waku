@@ -188,6 +188,7 @@ const docs = [
   { to: '/#state-management', label: 'State Management' },
   { to: '/#environment-variables', label: 'Environment Variables' },
   { to: '/#deployment', label: 'Deployment' },
+  { to: '/#api-routes', label: 'API routes' },
   // { to: '/#community', label: 'Community' },
   // { to: '/#roadmap', label: 'Roadmap' },
 ];

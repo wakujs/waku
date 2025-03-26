@@ -18,7 +18,7 @@ import type {
   PropsForPages,
 } from './create-pages-utils/inferred-path-types.js';
 import { Children, Slot } from '../minimal/client.js';
-import { ErrorBoundary } from '../router/client.js';
+import { ConfigurableErrorBoundary } from '../lib/utils/error-boundary.js';
 
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods
 export const METHODS = [
@@ -206,7 +206,7 @@ export type CreateRoot = (root: RootItem) => void;
  */
 const DefaultRoot = ({ children }: { children: ReactNode }) =>
   createElement(
-    ErrorBoundary,
+    ConfigurableErrorBoundary,
     null,
     createElement(
       'html',
