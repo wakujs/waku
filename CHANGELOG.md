@@ -8,7 +8,6 @@
 
 - Bug fixes & some updates
 
-
 ## [0.21.23] - 2025-03-10
 
 ### Changed
