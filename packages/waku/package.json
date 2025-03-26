@@ -1,7 +1,7 @@
 {
   "name": "@brrock/waku",
   "description": "⛩️ The minimal React framework",
-  "version": "0.21.24",
+  "version": "0.21.24.1",
   "type": "module",
   "author": "Daishi Kato",
   "homepage": "https://waku.gg",
@@ -88,7 +88,7 @@
   "dependencies": {
     "@hono/node-server": "1.14.0",
     "@swc/core": "1.11.13",
-    "@vitejs/plugin-react": "4.3.4",
+    "@vitejs/plugin-react-swc": "^3.8.1",
     "dotenv": "16.4.7",
     "hono": "4.7.5",
     "rsc-html-stream": "0.0.5",

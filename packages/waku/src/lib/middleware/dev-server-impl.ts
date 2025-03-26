@@ -2,7 +2,7 @@ import { Readable, Writable } from 'node:stream';
 import { Server } from 'node:http';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createServer as createViteServer } from 'vite';
-import viteReact from '@vitejs/plugin-react';
+import viteReact from '@vitejs/plugin-react-swc';
 
 import type { EntriesDev } from '../types.js';
 import { resolveConfigDev } from '../config.js';

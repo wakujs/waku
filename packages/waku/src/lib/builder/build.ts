@@ -2,7 +2,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
 import { build as buildVite, resolveConfig as resolveViteConfig } from 'vite';
-import viteReact from '@vitejs/plugin-react';
+import viteReact from '@vitejs/plugin-react-swc';
 import type { LoggingFunction, RollupLog } from 'rollup';
 import type { ReactNode } from 'react';
 
