@@ -654,46 +654,52 @@ const emitStaticFiles = async (
 // FIXME Is this a good approach? I wonder if there's something missing.
 const buildDeploy = async (rootDir: string, config: ConfigDev) => {
   const DUMMY = 'dummy-entry';
-  await buildVite({
-    plugins: [
+  await buildVite(
+    extendViteConfig(
       {
-        // FIXME This is too hacky. There must be a better way.
-        name: 'dummy-entry-plugin',
-        resolveId(source) {
-          if (source === DUMMY) {
-            return source;
-          }
-        },
-        load(id) {
-          if (id === DUMMY) {
-            return '';
-          }
-        },
-        generateBundle(_options, bundle) {
-          Object.entries(bundle).forEach(([key, value]) => {
-            if (value.name === DUMMY) {
-              delete bundle[key];
-            }
-          });
+        plugins: [
+          {
+            // FIXME This is too hacky. There must be a better way.
+            name: 'dummy-entry-plugin',
+            resolveId(source) {
+              if (source === DUMMY) {
+                return source;
+              }
+            },
+            load(id) {
+              if (id === DUMMY) {
+                return '';
+              }
+            },
+            generateBundle(_options, bundle) {
+              Object.entries(bundle).forEach(([key, value]) => {
+                if (value.name === DUMMY) {
+                  delete bundle[key];
+                }
+              });
+            },
+          },
+          ...deployPlugins(config),
+        ],
+        publicDir: false,
+        build: {
+          emptyOutDir: false,
+          ssr: true,
+          rollupOptions: {
+            onwarn: (warning, warn) => {
+              if (!warning.message.startsWith('Generated an empty chunk:')) {
+                warn(warning);
+              }
+            },
+            input: { [DUMMY]: DUMMY },
+          },
+          outDir: joinPath(rootDir, config.distDir),
         },
       },
-      ...deployPlugins(config),
-    ],
-    publicDir: false,
-    build: {
-      emptyOutDir: false,
-      ssr: true,
-      rollupOptions: {
-        onwarn: (warning, warn) => {
-          if (!warning.message.startsWith('Generated an empty chunk:')) {
-            warn(warning);
-          }
-        },
-        input: { [DUMMY]: DUMMY },
-      },
-      outDir: joinPath(rootDir, config.distDir),
-    },
-  });
+      config,
+      'build-deploy',
+    ),
+  );
 };
 
 export async function build(options: {
