@@ -83,7 +83,7 @@ const parseRouteFromLocation = (): RouteProps => {
 
 function isAltClick(event: MouseEvent<HTMLAnchorElement>) {
   return (
-    event.button === 0 ||
+    event.button !== 0 ||
     !!(event.metaKey || event.altKey || event.ctrlKey || event.shiftKey)
   );
 }
