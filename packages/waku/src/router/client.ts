@@ -108,7 +108,7 @@ const RouterContext = createContext<{
   prefetchRoute: PrefetchRoute;
 } | null>(null);
 
-export function useRouter_UNSTABLE() {
+export function useRouter() {
   const router = useContext(RouterContext);
   if (!router) {
     throw new Error('Missing Router');
