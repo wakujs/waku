@@ -27,7 +27,7 @@ Start a new Waku project with the `create` command for your preferred package ma
 npm create waku@latest
 ```
 
-**Node.js version requirement:** `^20.8.0` or `^18.17.0`
+**Node.js version requirement:** `^22.7.0` or `^20.8.0` or `^18.17.0`
 
 ## Rendering
 
@@ -544,7 +544,7 @@ The `router` object has two properties related to the current route: `path` (str
 ```tsx
 'use client';
 
-import { useRouter_UNSTABLE as useRouter } from 'waku';
+import { useRouter } from 'waku';
 
 export const Component = () => {
   const { path, query } = useRouter();
@@ -577,7 +577,7 @@ The `router` object also contains several methods for programmatic navigation:
 ```tsx
 'use client';
 
-import { useRouter_UNSTABLE as useRouter } from 'waku';
+import { useRouter } from 'waku';
 
 export const Component = () => {
   const router = useRouter();

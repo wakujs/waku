@@ -73,6 +73,7 @@ export interface Config {
         'build-server'?: () => UserConfig;
         'build-ssr'?: () => UserConfig;
         'build-client'?: () => UserConfig;
+        'build-deploy'?: () => UserConfig;
       }
     | undefined;
 }

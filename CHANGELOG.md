@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.21.24] - 2025-03-26
+
+### Changed
+
+- Bug fixes & some updates
+
 ## [0.21.23] - 2025-03-10
 
 ### Changed
