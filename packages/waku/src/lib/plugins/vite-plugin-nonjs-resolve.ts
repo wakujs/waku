@@ -1,6 +1,6 @@
 import type { Plugin } from 'vite';
 
-import { EXTENSIONS } from '../constants.js';
+import { EXTENSIONS } from '../builder/constants.js';
 import { extname } from '../utils/path.js';
 
 export function nonjsResolvePlugin(): Plugin {

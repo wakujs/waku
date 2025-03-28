@@ -2,10 +2,12 @@ import path from 'node:path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import type { Plugin } from 'vite';
 
-import { unstable_getBuildOptions } from '../../server.js';
-import { SRC_ENTRIES } from '../constants.js';
-import { DIST_PUBLIC } from '../builder/constants.js';
+import {
+  unstable_getBuildOptions,
+  unstable_builderConstants,
+} from '../../server.js';
 
+const { SRC_ENTRIES, DIST_PUBLIC } = unstable_builderConstants;
 const SERVE_JS = 'serve-netlify.js';
 
 const getServeJsContent = (srcEntriesFile: string) => `
@@ -17,7 +19,7 @@ const loadEntries = () => import('${srcEntriesFile}');
 const configPromise = loadEntries().then((entries) => entries.loadConfig());
 
 const createApp = (app) => {
-  app.use(serverEngine({ cmd: 'start', loadEntries, env: process.env }));
+  app.use(serverEngine({ cmd: 'start', loadEntries, env: process.env, unstable_onError: new Set() }));
   app.notFound((c) => {
     const notFoundHtml = globalThis.__WAKU_NOT_FOUND_HTML__;
     if (typeof notFoundHtml === 'string') {

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { normalizePath } from 'vite';
 import type { Plugin } from 'vite';
 
-import { SRC_ENTRIES } from '../constants.js';
+import { SRC_ENTRIES } from '../builder/constants.js';
 import { extname, joinPath } from '../utils/path.js';
 import { treeshake, removeObjectProperty } from '../utils/treeshake.js';
 
@@ -15,6 +15,8 @@ const stripExt = (fname: string) => {
 const CONFIG_FILE = 'waku.config.ts'; // XXX only ts extension
 
 export function rscEntriesPlugin(opts: {
+  basePath: string;
+  rscBase: string;
   srcDir: string;
   ssrDir: string;
   moduleMap: Record<string, string>;
@@ -23,6 +25,10 @@ export function rscEntriesPlugin(opts: {
 globalThis.AsyncLocalStorage = require('node:async_hooks').AsyncLocalStorage;
 `;
   const codeToAppend = `
+export const configPrd = {
+  basePath: '${opts.basePath}',
+  rscBase: '${opts.rscBase}',
+};
 export function loadModule(id) {
   switch (id) {
     ${Object.entries(opts.moduleMap)
@@ -33,6 +39,9 @@ export function loadModule(id) {
 }
 globalThis.__WAKU_SERVER_IMPORT__ = loadModule;
 globalThis.__WAKU_CLIENT_IMPORT__ = (id) => loadModule('${opts.ssrDir}/' + id);
+export const dynamicHtmlPaths = globalThis.__WAKU_DYNAMIC_HTML_PATHS__;
+export const publicIndexHtml = globalThis.__WAKU_PUBLIC_INDEX_HTML__;
+export const loadPlatformData = globalThis.__WAKU_LOAD_PLATFORM_DATA__;
 `;
   let entriesFile = '';
   let configFile = '';

@@ -5,8 +5,8 @@ import { createServer as createViteServer } from 'vite';
 import viteReact from '@vitejs/plugin-react';
 
 import type { EntriesDev } from '../types.js';
-import { resolveConfig, extractPureConfig } from '../config.js';
-import { SRC_MAIN, SRC_ENTRIES } from '../constants.js';
+import { resolveConfigDev } from '../config.js';
+import { SRC_MAIN, SRC_ENTRIES } from '../builder/constants.js';
 import {
   decodeFilePathFromAbsolute,
   joinPath,
@@ -28,6 +28,7 @@ import { rscManagedPlugin } from '../plugins/vite-plugin-rsc-managed.js';
 import { rscDelegatePlugin } from '../plugins/vite-plugin-rsc-delegate.js';
 import type { ClonableModuleNode, Middleware } from './types.js';
 import { fsRouterTypegenPlugin } from '../plugins/vite-plugin-fs-router-typegen.js';
+import { hackTailwindcss4Stackblitz } from '../plugins/hack-tailwindcss4-stackblitz.js';
 
 // TODO there is huge room for refactoring in this file
 
@@ -76,7 +77,7 @@ const createStreamPair = (): [Writable, Promise<ReadableStream | null>] => {
 
 const createMainViteServer = (
   env: Record<string, string>,
-  configPromise: ReturnType<typeof resolveConfig>,
+  configPromise: ReturnType<typeof resolveConfigDev>,
   hotUpdateCallbackSet: Set<(payload: HotUpdatePayload) => void>,
   resolvedMap: Map<string, string>,
 ) => {
@@ -112,6 +113,7 @@ const createMainViteServer = (
             rscTransformPlugin({ isClient: true, isBuild: false }),
             rscHmrPlugin(),
             fsRouterTypegenPlugin(config),
+            hackTailwindcss4Stackblitz(),
           ],
           optimizeDeps: {
             include: ['react-server-dom-webpack/client', 'react-dom/client'],
@@ -237,7 +239,7 @@ const createMainViteServer = (
 
 const createRscViteServer = (
   env: Record<string, string>,
-  configPromise: ReturnType<typeof resolveConfig>,
+  configPromise: ReturnType<typeof resolveConfigDev>,
   hotUpdateCallbackSet: Set<(payload: HotUpdatePayload) => void>,
   resolvedMap: Map<string, string>,
 ) => {
@@ -268,6 +270,7 @@ const createRscViteServer = (
               resolvedMap,
             }),
             rscDelegatePlugin(hotUpdateCallback),
+            hackTailwindcss4Stackblitz(),
           ],
           optimizeDeps: {
             include: ['react-server-dom-webpack/client', 'react-dom/client'],
@@ -357,8 +360,8 @@ export const devServer: Middleware = (options) => {
     return (_ctx, next) => next();
   }
 
-  const env = options.env || {};
-  const configPromise = resolveConfig(options.config);
+  const env = options.env;
+  const configPromise = resolveConfigDev(options.config);
 
   (globalThis as any).__WAKU_SERVER_IMPORT__ = (id: string) =>
     loadServerModuleRsc(id);
@@ -387,10 +390,7 @@ export const devServer: Middleware = (options) => {
   let initialModules: ClonableModuleNode[];
 
   return async (ctx, next) => {
-    const [config, vite] = await Promise.all([
-      configPromise.then(extractPureConfig),
-      vitePromise,
-    ]);
+    const [config, vite] = await Promise.all([configPromise, vitePromise]);
 
     if (!initialModules) {
       const processedModules = new Set<string>();

@@ -20,6 +20,7 @@ import type { PathSpec } from '../lib/utils/path.js';
 import { INTERNAL_ServerRouter } from './client.js';
 import { getContext } from '../middleware/context.js';
 import { stringToStream } from '../lib/utils/stream.js';
+import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
 
 const isStringArray = (x: unknown): x is string[] =>
   Array.isArray(x) && x.every((y) => typeof y === 'string');
@@ -69,6 +70,17 @@ export function unstable_rerenderRoute(pathname: string, query?: string) {
   getRerender()(rscPath, query && new URLSearchParams({ query }));
 }
 
+export function unstable_notFound(): never {
+  throw createCustomError('Not Found', { status: 404 });
+}
+
+export function unstable_redirect(
+  location: string,
+  status: 307 | 308 = 307,
+): never {
+  throw createCustomError('Redirect', { status, location });
+}
+
 type SlotId = string;
 
 const ROUTE_SLOT_ID_PREFIX = 'route:';
@@ -103,6 +115,7 @@ export function unstable_defineRouter(fns: {
   handleApi?: (
     path: string,
     options: {
+      url: URL;
       body: ReadableStream | null;
       headers: Readonly<Record<string, string>>;
       method: string;
@@ -230,11 +243,12 @@ export function unstable_defineRouter(fns: {
     if (!pathConfigItem.specs.rootElementIsStatic || !skipIdSet.has('root')) {
       entries.root = rootElement;
     }
-    const routeId = ROUTE_SLOT_ID_PREFIX + pathname;
+    const decodedPathname = decodeURIComponent(pathname);
+    const routeId = ROUTE_SLOT_ID_PREFIX + decodedPathname;
     if (!pathConfigItem.specs.routeElementIsStatic || !skipIdSet.has(routeId)) {
       entries[routeId] = routeElement;
     }
-    entries[ROUTE_ID] = [pathname, query];
+    entries[ROUTE_ID] = [decodedPathname, query];
     entries[IS_STATIC_ID] = !!pathConfigItem.specs.isStatic;
     if (await has404()) {
       entries[HAS404_ID] = true;
@@ -294,36 +308,46 @@ export function unstable_defineRouter(fns: {
     const pathConfigItem = await getPathConfigItem(input.pathname);
     if (pathConfigItem?.specs?.isApi && fns.handleApi) {
       return fns.handleApi(input.pathname, {
+        url: input.req.url,
         body: input.req.body,
         headers: input.req.headers,
         method: input.req.method,
       });
     }
     if (input.type === 'action' || input.type === 'custom') {
-      let pathname = input.pathname;
+      const renderIt = async (pathname: string, query: string) => {
+        const rscPath = encodeRoutePath(pathname);
+        const rscParams = new URLSearchParams({ query });
+        const entries = await getEntries(rscPath, rscParams, input.req.headers);
+        if (!entries) {
+          return null;
+        }
+        const html = createElement(INTERNAL_ServerRouter, {
+          route: { path: pathname, query, hash: '' },
+        });
+        const actionResult =
+          input.type === 'action' ? await input.fn() : undefined;
+        return renderHtml(entries, html, { rscPath, actionResult });
+      };
       const query = input.req.url.searchParams.toString();
       if (pathConfigItem?.specs?.noSsr) {
         return null;
       }
-      if (!pathConfigItem) {
-        if (await has404()) {
-          pathname = '/404';
-        } else {
-          return null;
+      try {
+        if (pathConfigItem) {
+          return await renderIt(input.pathname, query);
+        }
+      } catch (e) {
+        const info = getErrorInfo(e);
+        if (info?.status !== 404) {
+          throw e;
         }
       }
-      const rscPath = encodeRoutePath(pathname);
-      const rscParams = new URLSearchParams({ query });
-      const entries = await getEntries(rscPath, rscParams, input.req.headers);
-      if (!entries) {
+      if (await has404()) {
+        return { ...(await renderIt('/404', '')), status: 404 };
+      } else {
         return null;
       }
-      const html = createElement(INTERNAL_ServerRouter, {
-        route: { path: pathname, query, hash: '' },
-      });
-      const actionResult =
-        input.type === 'action' ? await input.fn() : undefined;
-      return renderHtml(entries, html, { rscPath, actionResult });
     }
   };
 
@@ -346,6 +370,7 @@ export function unstable_defineRouter(fns: {
             type: 'file',
             pathname,
             body: handleApi(pathname, {
+              url: new URL(pathname, 'http://localhost:3000'),
               body: null,
               headers: {},
               method: 'GET',
