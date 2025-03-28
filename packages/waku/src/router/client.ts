@@ -81,12 +81,12 @@ const parseRouteFromLocation = (): RouteProps => {
   return parseRoute(new URL(window.location.href));
 };
 
-function isAltClick(event: MouseEvent<HTMLAnchorElement>) {
+const isAltClick = (event: MouseEvent<HTMLAnchorElement>) => {
   return (
     event.button !== 0 ||
     !!(event.metaKey || event.altKey || event.ctrlKey || event.shiftKey)
   );
-}
+};
 
 let savedRscParams: [query: string, rscParams: URLSearchParams] | undefined;
 
@@ -272,7 +272,7 @@ export function Link({
       };
     }
   }, [unstable_prefetchOnView, router, to]);
-  const internalOnClick = (_event: MouseEvent<HTMLAnchorElement>) => {
+  const internalOnClick = () => {
     const url = new URL(to, window.location.href);
     if (url.href !== window.location.href) {
       const route = parseRoute(url);
@@ -296,7 +296,8 @@ export function Link({
       props.onClick(event);
     }
     if (!event.defaultPrevented && !isAltClick(event)) {
-      internalOnClick(event);
+      event.preventDefault();
+      internalOnClick();
     }
   };
   const onMouseEnter = unstable_prefetchOnEnter
