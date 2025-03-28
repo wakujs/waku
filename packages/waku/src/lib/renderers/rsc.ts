@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 import type { default as RSDWServerType } from 'react-server-dom-webpack/server.edge';
 
-import type { PureConfig } from '../config.js';
+import type { ConfigPrd } from '../config.js';
 // TODO move types somewhere
-import type { HandlerContext } from '../middleware/types.js';
+import type { HandlerContext, ErrorCallback } from '../middleware/types.js';
 import { filePathToFileURL } from '../utils/path.js';
 import { streamToArrayBuffer } from '../utils/stream.js';
 import { bufferToString, parseFormData } from '../utils/buffer.js';
@@ -13,9 +13,10 @@ const resolveClientEntryForPrd = (id: string, config: { basePath: string }) => {
 };
 
 export async function renderRsc(
-  config: PureConfig,
+  config: ConfigPrd,
   ctx: Pick<HandlerContext, 'unstable_modules' | 'unstable_devServer'>,
   elements: Record<string, unknown>,
+  onError: Set<ErrorCallback>,
   moduleIdCallback?: (id: string) => void,
 ): Promise<ReadableStream> {
   const modules = ctx.unstable_modules;
@@ -39,13 +40,22 @@ export async function renderRsc(
       },
     },
   );
-  return renderToReadableStream(elements, clientBundlerConfig);
+  return renderToReadableStream(elements, clientBundlerConfig, {
+    onError: (err: unknown) => {
+      onError.forEach((fn) => fn(err, ctx as HandlerContext, 'rsc'));
+      if (typeof (err as any)?.digest === 'string') {
+        // This is not correct according to the type though.
+        return (err as { digest: string }).digest;
+      }
+    },
+  });
 }
 
 export function renderRscElement(
-  config: PureConfig,
+  config: ConfigPrd,
   ctx: Pick<HandlerContext, 'unstable_modules' | 'unstable_devServer'>,
   element: ReactNode,
+  onError: Set<ErrorCallback>,
 ): ReadableStream {
   const modules = ctx.unstable_modules;
   if (!modules) {
@@ -67,11 +77,19 @@ export function renderRscElement(
       },
     },
   );
-  return renderToReadableStream(element, clientBundlerConfig);
+  return renderToReadableStream(element, clientBundlerConfig, {
+    onError: (err: unknown) => {
+      onError.forEach((fn) => fn(err, ctx as HandlerContext, 'rsc'));
+      if (typeof (err as any)?.digest === 'string') {
+        // This is not correct according to the type though.
+        return (err as { digest: string }).digest;
+      }
+    },
+  });
 }
 
 export async function collectClientModules(
-  config: PureConfig,
+  config: ConfigPrd,
   rsdwServer: { default: typeof RSDWServerType },
   elements: Record<string, unknown>,
 ): Promise<string[]> {
@@ -189,9 +207,17 @@ export async function decodePostAction(
       typeof contentType === 'string' &&
       contentType.startsWith('multipart/form-data')
     ) {
-      const bodyBuf = await streamToArrayBuffer(ctx.req.body);
+      const [stream1, stream2] = ctx.req.body.tee();
+      ctx.req.body = stream1;
+      const bodyBuf = await streamToArrayBuffer(stream2);
       // XXX This doesn't support streaming unlike busboy
       const formData = await parseFormData(bodyBuf, contentType);
+      if (
+        Array.from(formData.keys()).every((key) => !key.startsWith('$ACTION_'))
+      ) {
+        // Assuming this is probably for api
+        return null;
+      }
       const serverBundlerConfig = new Proxy(
         {},
         {

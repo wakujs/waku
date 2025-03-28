@@ -1,9 +1,11 @@
 import type { Plugin } from 'vite';
 
-import { unstable_getBuildOptions } from '../../server.js';
-import { SRC_ENTRIES } from '../constants.js';
-import { DIST_PUBLIC } from '../builder/constants.js';
+import {
+  unstable_getBuildOptions,
+  unstable_builderConstants,
+} from '../../server.js';
 
+const { SRC_ENTRIES, DIST_PUBLIC } = unstable_builderConstants;
 const SERVE_JS = 'serve-deno.js';
 
 const getServeJsContent = (
@@ -23,7 +25,7 @@ const env = Deno.env.toObject();
 
 const createApp = (app) => {
   app.use(serveStatic({ root: distDir + '/' + publicDir }));
-  app.use(serverEngine({ cmd: 'start', loadEntries, env }));
+  app.use(serverEngine({ cmd: 'start', loadEntries, env, unstable_onError: new Set() }));
   app.notFound(async (c) => {
     const file = distDir + '/' + publicDir + '/404.html';
     try {

@@ -7,6 +7,9 @@
   "include": ["playwright.config.base.ts", "playwright.config.ts", "./e2e"],
   "references": [
     {
+      "path": "./e2e/fixtures/rsc-asset/tsconfig.json"
+    },
+    {
       "path": "./e2e/fixtures/rsc-basic/tsconfig.json"
     },
     {
@@ -41,6 +44,9 @@
     },
     {
       "path": "./e2e/fixtures/ssr-catch-error/tsconfig.json"
+    },
+    {
+      "path": "./e2e/fixtures/ssr-redirect/tsconfig.json"
     },
     {
       "path": "./e2e/fixtures/use-router/tsconfig.json"

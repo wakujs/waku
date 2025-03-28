@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
-import { resolveConfig, extractPureConfig } from '../config.js';
-import type { PureConfig } from '../config.js';
+import { resolveConfigDev } from '../config.js';
+import type { ConfigPrd } from '../config.js';
 import {
   INTERNAL_setAllEnv,
   INTERNAL_setPlatformDataLoader,
@@ -12,6 +12,7 @@ import { renderRsc, decodeBody, decodePostAction } from '../renderers/rsc.js';
 import { renderHtml } from '../renderers/html.js';
 import { decodeRscPath, decodeFuncId } from '../renderers/utils.js';
 import { filePathToFileURL, getPathMapping } from '../utils/path.js';
+import { getErrorInfo } from '../utils/custom-errors.js';
 import { stringToStream } from '../utils/stream.js';
 
 export const SERVER_MODULE_MAP = {
@@ -25,7 +26,7 @@ export const CLIENT_MODULE_MAP = {
 export const CLIENT_PREFIX = 'client/';
 
 const getInput = async (
-  config: PureConfig,
+  config: ConfigPrd,
   ctx: HandlerContext,
   loadServerModule: (fileId: string) => Promise<unknown>,
 ): Promise<Parameters<HandleRequest>[0] | null> => {
@@ -70,30 +71,27 @@ const getInput = async (
 };
 
 export const handler: Middleware = (options) => {
-  const env = options.env || {};
+  const env = options.env;
   INTERNAL_setAllEnv(env);
-  const entriesPromise =
-    options.cmd === 'start'
-      ? options.loadEntries()
-      : ('Error: loadEntries are not available' as never);
-  const configPromise =
-    options.cmd === 'start'
-      ? entriesPromise.then(async (entries) => {
-          if (entries.loadPlatformData) {
-            INTERNAL_setPlatformDataLoader(entries.loadPlatformData);
-          }
-          return resolveConfig(await entries.loadConfig());
-        })
-      : resolveConfig(options.config);
+  const entriesPrdPromise =
+    options.cmd === 'start' ? options.loadEntries() : null;
+  entriesPrdPromise
+    ?.then((entries) => {
+      if (entries.loadPlatformData) {
+        INTERNAL_setPlatformDataLoader(entries.loadPlatformData);
+      }
+    })
+    .catch(() => {});
+  const configDevPromise =
+    options.cmd === 'dev' ? resolveConfigDev(options.config) : null;
 
   return async (ctx, next) => {
     const { unstable_devServer: devServer } = ctx;
-    const [config, entriesPrd] = await Promise.all([
-      configPromise.then(extractPureConfig),
-      entriesPromise,
-    ]);
-    const entriesDev = devServer && (await devServer.loadEntriesDev(config));
-    const entries = devServer ? entriesDev! : entriesPrd;
+    const entriesPrd = await entriesPrdPromise!;
+    const config = devServer ? await configDevPromise! : entriesPrd.configPrd;
+    const entries = devServer
+      ? await devServer.loadEntriesDev(await configDevPromise!)
+      : entriesPrd;
     const rsdwServer = devServer
       ? await devServer.loadServerModuleRsc(SERVER_MODULE_MAP['rsdw-server'])
       : await entriesPrd.loadModule('rsdw-server');
@@ -131,20 +129,21 @@ export const handler: Middleware = (options) => {
       devServer && (await devServer.transformIndexHtml(ctx.req.url.pathname));
     const utils = {
       renderRsc: (elements: Record<string, unknown>) =>
-        renderRsc(config, ctx, elements),
+        renderRsc(config, ctx, elements, options.unstable_onError),
       renderHtml: async (
         elements: Record<string, unknown>,
         html: ReactNode,
-        options: { rscPath: string; actionResult?: unknown },
+        opts: { rscPath: string; actionResult?: unknown },
       ) => {
         const readable = await renderHtml(
           config,
           ctx,
           htmlHead,
           elements,
+          options.unstable_onError,
           html,
-          options.rscPath,
-          options.actionResult,
+          opts.rscPath,
+          opts.actionResult,
         );
         const headers = { 'content-type': 'text/html; charset=utf-8' };
         let body = readable;
@@ -161,10 +160,17 @@ export const handler: Middleware = (options) => {
       try {
         res = await entries.default.handleRequest(input, utils);
       } catch (e) {
-        ctx.res.status = 500;
-        ctx.res.body = stringToStream(
-          (e as { message?: string } | undefined)?.message || String(e),
-        );
+        options.unstable_onError.forEach((fn) => fn(e, ctx, 'handler'));
+        const info = getErrorInfo(e);
+        if (info?.status !== 404) {
+          ctx.res.status = info?.status || 500;
+          ctx.res.body = stringToStream(
+            (e as { message?: string } | undefined)?.message || String(e),
+          );
+          if (info?.location) {
+            (ctx.res.headers ||= {}).location = info.location;
+          }
+        }
       }
       if (res instanceof ReadableStream) {
         ctx.res.body = res;

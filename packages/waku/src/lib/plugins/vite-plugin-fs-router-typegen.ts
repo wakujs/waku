@@ -1,8 +1,10 @@
 import type { Plugin } from 'vite';
 import { readdir, writeFile } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
-import { SRC_ENTRIES, EXTENSIONS } from '../constants.js';
+import { SRC_ENTRIES, EXTENSIONS } from '../builder/constants.js';
 import { joinPath } from '../utils/path.js';
+import { isIgnoredPath } from '../utils/fs-router.js';
+import { getGrouplessPath } from '../utils/create-pages.js';
 import * as swc from '@swc/core';
 
 const SRC_PAGES = 'pages';
@@ -153,18 +155,21 @@ export const fsRouterTypegenPlugin = (opts: { srcDir: string }): Plugin => {
             return null;
           }
 
-          if (filePath.endsWith('/_layout.tsx')) {
+          if (
+            filePath.endsWith('/_layout.tsx') ||
+            isIgnoredPath(filePath.split('/'))
+          ) {
             continue;
           } else if (filePath.endsWith('/index.tsx')) {
             const path = filePath.slice(0, -'/index.tsx'.length);
             fileInfo.push({
-              path: path || '/',
+              path: getGrouplessPath(path) || '/',
               src,
               hasGetConfig,
             });
           } else {
             fileInfo.push({
-              path: filePath.replace('.tsx', ''),
+              path: getGrouplessPath(filePath.replace('.tsx', '')),
               src,
               hasGetConfig,
             });

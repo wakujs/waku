@@ -3,7 +3,6 @@
 import {
   createContext,
   createElement,
-  startTransition,
   useCallback,
   useContext,
   useEffect,
@@ -23,11 +22,12 @@ import type {
 } from 'react';
 
 import {
-  fetchRsc,
   prefetchRsc,
   Root,
   Slot,
   useRefetch,
+  ThrowError_UNSTABLE as ThrowError,
+  useResetError_UNSTABLE as useResetError,
 } from '../minimal/client.js';
 import {
   encodeRoutePath,
@@ -38,6 +38,7 @@ import {
 } from './common.js';
 import type { RouteProps } from './common.js';
 import type { RouteConfig } from './base-types.js';
+import { getErrorInfo } from '../lib/utils/custom-errors.js';
 
 type AllowPathDecorators<Path extends string> = Path extends unknown
   ? Path | `${Path}?${string}` | `${Path}#${string}`
@@ -196,8 +197,7 @@ export function useRouter() {
 
 export type LinkProps = {
   to: InferredPaths;
-  pending?: ReactNode;
-  notPending?: ReactNode;
+  children: ReactNode;
   /**
    * indicates if the link should scroll or not on navigation
    * - `true`: always scroll
@@ -205,7 +205,8 @@ export type LinkProps = {
    * - `undefined`: scroll on path change (not on searchParams change)
    */
   scroll?: boolean;
-  children: ReactNode;
+  unstable_pending?: ReactNode;
+  unstable_notPending?: ReactNode;
   unstable_prefetchOnEnter?: boolean;
   unstable_prefetchOnView?: boolean;
   unstable_startTransition?: ((fn: () => void) => void) | undefined;
@@ -214,12 +215,12 @@ export type LinkProps = {
 export function Link({
   to,
   children,
-  pending,
-  notPending,
+  scroll,
+  unstable_pending,
+  unstable_notPending,
   unstable_prefetchOnEnter,
   unstable_prefetchOnView,
   unstable_startTransition,
-  scroll,
   ...props
 }: LinkProps): ReactElement {
   const router = useContext(RouterContext);
@@ -234,6 +235,10 @@ export function Link({
         throw new Error('Missing Router');
       };
   const [isPending, startTransition] = useTransition();
+  const startTransitionFn =
+    unstable_startTransition ||
+    ((unstable_pending || unstable_notPending) && startTransition) ||
+    ((fn: () => void) => fn());
   const ref = useRef<HTMLAnchorElement>(undefined);
 
   useEffect(() => {
@@ -266,7 +271,7 @@ export function Link({
     if (url.href !== window.location.href) {
       const route = parseRoute(url);
       prefetchRoute(route);
-      (unstable_startTransition || startTransition)(() => {
+      startTransitionFn(() => {
         const newPath = url.pathname !== window.location.pathname;
         window.history.pushState(
           {
@@ -296,11 +301,11 @@ export function Link({
     { ...props, href: to, onClick, onMouseEnter, ref },
     children,
   );
-  if (isPending && pending !== undefined) {
-    return createElement(Fragment, null, ele, pending);
+  if (isPending && unstable_pending !== undefined) {
+    return createElement(Fragment, null, ele, unstable_pending);
   }
-  if (!isPending && notPending !== undefined) {
-    return createElement(Fragment, null, ele, notPending);
+  if (!isPending && unstable_notPending !== undefined) {
+    return createElement(Fragment, null, ele, unstable_notPending);
   }
   return ele;
 }
@@ -339,7 +344,98 @@ export class ErrorBoundary extends Component<
   }
 }
 
-const getRouteSlotId = (path: string) => 'route:' + path;
+const NotFound = ({
+  has404,
+  reset,
+}: {
+  has404: boolean;
+  reset: () => void;
+}) => {
+  const resetError = useResetError();
+  const router = useContext(RouterContext);
+  if (!router) {
+    throw new Error('Missing Router');
+  }
+  const { changeRoute } = router;
+  useEffect(() => {
+    if (has404) {
+      const url = new URL('/404', window.location.href);
+      changeRoute(parseRoute(url), { shouldScroll: true });
+      resetError?.();
+      reset();
+    }
+  }, [has404, resetError, reset, changeRoute]);
+  return has404 ? null : createElement('h1', null, 'Not Found');
+};
+
+const Redirect = ({ to, reset }: { to: string; reset: () => void }) => {
+  const resetError = useResetError();
+  const router = useContext(RouterContext);
+  if (!router) {
+    throw new Error('Missing Router');
+  }
+  const { changeRoute } = router;
+  useEffect(() => {
+    const url = new URL(to, window.location.href);
+    // FIXME this condition seems too naive
+    if (url.hostname !== window.location.hostname) {
+      window.location.replace(to);
+      return;
+    }
+    const newPath = url.pathname !== window.location.pathname;
+    window.history.pushState(
+      {
+        ...window.history.state,
+        waku_new_path: newPath,
+      },
+      '',
+      url,
+    );
+    changeRoute(parseRoute(url), { shouldScroll: newPath });
+    resetError?.();
+    reset();
+  }, [to, resetError, reset, changeRoute]);
+  return null;
+};
+
+class CustomErrorHandler extends Component<
+  { has404: boolean; children?: ReactNode },
+  { error: unknown | null }
+> {
+  constructor(props: { has404: boolean; children?: ReactNode }) {
+    super(props);
+    this.state = { error: null };
+    this.reset = this.reset.bind(this);
+  }
+  static getDerivedStateFromError(error: unknown) {
+    return { error };
+  }
+  reset() {
+    this.setState({ error: null });
+  }
+  render() {
+    const { error } = this.state;
+    if (error !== null) {
+      const info = getErrorInfo(error);
+      if (info?.status === 404) {
+        return createElement(NotFound, {
+          has404: this.props.has404,
+          reset: this.reset,
+        });
+      }
+      if (info?.location) {
+        return createElement(Redirect, {
+          to: info.location,
+          reset: this.reset,
+        });
+      }
+      throw error;
+    }
+    return this.props.children;
+  }
+}
+
+const getRouteSlotId = (path: string) => 'route:' + decodeURIComponent(path);
 
 const handleScroll = () => {
   const { hash } = window.location;
@@ -359,7 +455,7 @@ const InnerRouter = ({
   routerData: Required<RouterData>;
   initialRoute: RouteProps;
 }) => {
-  const [locationListeners, staticPathSet] = routerData;
+  const [locationListeners, staticPathSet, , has404] = routerData;
   const refetch = useRefetch();
   const [route, setRoute] = useState(() => ({
     // This is the first initialization of the route, and it has
@@ -386,17 +482,15 @@ const InnerRouter = ({
   const changeRoute: ChangeRoute = useCallback(
     (route, options) => {
       const { skipRefetch } = options || {};
-      startTransition(() => {
-        if (!staticPathSet.has(route.path) && !skipRefetch) {
-          const rscPath = encodeRoutePath(route.path);
-          const rscParams = createRscParams(route.query);
-          refetch(rscPath, rscParams);
-        }
-        if (options.shouldScroll) {
-          handleScroll();
-        }
-        setRoute(route);
-      });
+      if (!staticPathSet.has(route.path) && !skipRefetch) {
+        const rscPath = encodeRoutePath(route.path);
+        const rscParams = createRscParams(route.query);
+        refetch(rscPath, rscParams);
+      }
+      if (options.shouldScroll) {
+        handleScroll();
+      }
+      setRoute(route);
     },
     [refetch, staticPathSet],
   );
@@ -452,8 +546,15 @@ const InnerRouter = ({
   const routeElement = createElement(Slot, { id: getRouteSlotId(route.path) });
   const rootElement = createElement(
     Slot,
-    { id: 'root', unstable_fallbackToPrev: true },
-    routeElement,
+    {
+      id: 'root',
+      unstable_handleError: createElement(
+        CustomErrorHandler,
+        { has404 },
+        createElement(ThrowError),
+      ),
+    },
+    createElement(CustomErrorHandler, { has404 }, routeElement),
   );
   return createElement(
     RouterContext.Provider,
@@ -461,6 +562,12 @@ const InnerRouter = ({
     rootElement,
   );
 };
+
+type Elements = Record<string, unknown>;
+type EnhanceFetch = (fetchFn: typeof fetch) => typeof fetch;
+type EnhanceCreateData = (
+  createData: (responsePromise: Promise<Response>) => Promise<Elements>,
+) => (responsePromise: Promise<Response>) => Promise<Elements>;
 
 // Note: The router data must be a stable mutable object (array).
 type RouterData = [
@@ -475,12 +582,19 @@ const DEFAULT_ROUTER_DATA: RouterData = [];
 export function Router({
   routerData = DEFAULT_ROUTER_DATA,
   initialRoute = parseRouteFromLocation(),
+  unstable_enhanceFetch,
+  unstable_enhanceCreateData,
+}: {
+  routerData?: RouterData;
+  initialRoute?: RouteProps;
+  unstable_enhanceFetch?: EnhanceFetch;
+  unstable_enhanceCreateData?: EnhanceCreateData;
 }) {
   const initialRscPath = encodeRoutePath(initialRoute.path);
   const locationListeners = (routerData[0] ||= new Set());
   const staticPathSet = (routerData[1] ||= new Set());
   const cachedIdSet = (routerData[2] ||= new Set());
-  const unstable_enhanceFetch =
+  const enhanceFetch =
     (fetchFn: typeof fetch) =>
     (input: RequestInfo | URL, init: RequestInit = {}) => {
       const skipStr = JSON.stringify(Array.from(cachedIdSet));
@@ -492,20 +606,13 @@ export function Router({
       }
       return fetchFn(input, init);
     };
-  const unstable_enhanceCreateData =
+  const enhanceCreateData =
     (
       createData: (
         responsePromise: Promise<Response>,
       ) => Promise<Record<string, unknown>>,
     ) =>
     async (responsePromise: Promise<Response>) => {
-      const has404 = (routerData[3] ||= false);
-      const response = await responsePromise;
-      if (response.status === 404 && has404) {
-        // HACK this is still an experimental logic. It's very fragile.
-        // FIXME we should cache it if 404.txt is static.
-        return fetchRsc(encodeRoutePath('/404'));
-      }
       const data = createData(responsePromise);
       Promise.resolve(data)
         .then((data) => {
@@ -547,8 +654,12 @@ export function Router({
     {
       initialRscPath,
       initialRscParams,
-      unstable_enhanceFetch,
-      unstable_enhanceCreateData,
+      unstable_enhanceFetch: unstable_enhanceFetch
+        ? (fn) => unstable_enhanceFetch(enhanceFetch(fn))
+        : enhanceFetch,
+      unstable_enhanceCreateData: unstable_enhanceCreateData
+        ? (fn) => unstable_enhanceCreateData(enhanceCreateData(fn))
+        : enhanceCreateData,
     },
     createElement(InnerRouter, {
       routerData: routerData as Required<RouterData>,
@@ -565,7 +676,7 @@ export function INTERNAL_ServerRouter({ route }: { route: RouteProps }) {
   const routeElement = createElement(Slot, { id: getRouteSlotId(route.path) });
   const rootElement = createElement(
     Slot,
-    { id: 'root', unstable_fallbackToPrev: true },
+    { id: 'root', unstable_handleError: null },
     routeElement,
   );
   return createElement(

@@ -1,7 +1,7 @@
 import type { Plugin, ViteDevServer } from 'vite';
 import * as swc from '@swc/core';
 
-import { EXTENSIONS } from '../constants.js';
+import { EXTENSIONS } from '../builder/constants.js';
 import { extname } from '../utils/path.js';
 import { parseOpts } from '../utils/swc.js';
 import type { HotUpdatePayload } from './vite-plugin-rsc-hmr.js';
@@ -94,10 +94,8 @@ export function rscDelegatePlugin(
               data: { ...transformedResult, source, id: ctx.file },
             });
           }
-        } else if (
-          ctx.modules.length &&
-          !isClientEntry(ctx.file, await ctx.read())
-        ) {
+        }
+        if (ctx.modules.length && !isClientEntry(ctx.file, await ctx.read())) {
           console.log('[rsc] hot reload', ctx.file);
           callback({ type: 'custom', event: 'rsc-reload' });
         }

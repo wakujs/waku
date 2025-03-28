@@ -14,6 +14,7 @@ import {
 import type { ReactNode } from 'react';
 import RSDWClient from 'react-server-dom-webpack/client';
 
+import { createCustomError } from '../lib/utils/custom-errors.js';
 import { encodeRscPath, encodeFuncId } from '../lib/renderers/utils.js';
 
 const { createFromFetch, encodeReply } = RSDWClient;
@@ -33,7 +34,7 @@ const DEFAULT_HTML_HEAD = [
   createElement('meta', { name: 'generator', content: 'Waku' }),
 ];
 
-const BASE_PATH = `${import.meta.env?.WAKU_CONFIG_BASE_PATH}${
+const BASE_RSC_PATH = `${import.meta.env?.WAKU_CONFIG_BASE_PATH}${
   import.meta.env?.WAKU_CONFIG_RSC_BASE
 }/`;
 
@@ -42,14 +43,26 @@ const checkStatus = async (
 ): Promise<Response> => {
   const response = await responsePromise;
   if (!response.ok) {
-    const err = new Error((await response.text()) || response.statusText);
-    (err as any).statusCode = response.status;
+    const location = response.headers.get('location');
+    const err = createCustomError(
+      (await response.text()) || response.statusText,
+      {
+        status: response.status,
+        ...(location && { location }),
+      },
+    );
     throw err;
   }
   return response;
 };
 
 type Elements = Record<string, unknown>;
+
+// HACK I'm not super happy with this hack
+const erroredElementsPromiseMap = new WeakMap<
+  Promise<Elements>,
+  Promise<Elements>
+>();
 
 const getCached = <T>(c: () => T, m: WeakMap<object, T>, k: object): T =>
   (m.has(k) ? m : m.set(k, c())).get(k) as T;
@@ -58,12 +71,19 @@ const mergeElementsPromise = (
   a: Promise<Elements>,
   b: Promise<Elements>,
 ): Promise<Elements> => {
-  const getResult = () =>
-    Promise.all([a, b]).then(([a, b]) => {
-      const nextElements = { ...a, ...b };
-      delete nextElements._value;
-      return nextElements;
-    });
+  const getResult = () => {
+    const p = Promise.all([erroredElementsPromiseMap.get(a) || a, b])
+      .then(([a, b]) => {
+        const nextElements = { ...a, ...b };
+        delete nextElements._value;
+        return nextElements;
+      })
+      .catch((err) => {
+        erroredElementsPromiseMap.set(p, a);
+        throw err;
+      });
+    return p;
+  };
   const cache2 = getCached(() => new WeakMap(), cache1, a);
   return getCached(getResult, cache2, b);
 };
@@ -110,7 +130,7 @@ export const unstable_callServerRsc = async (
       callServer: (funcId: string, args: unknown[]) =>
         unstable_callServerRsc(funcId, args, fetchCache),
     });
-  const url = BASE_PATH + encodeRscPath(encodeFuncId(funcId));
+  const url = BASE_RSC_PATH + encodeRscPath(encodeFuncId(funcId));
   const responsePromise =
     args.length === 1 && args[0] instanceof URLSearchParams
       ? enhanceFetch(fetch)(url + '?' + args[0])
@@ -157,7 +177,7 @@ export const fetchRsc = (
         unstable_callServerRsc(funcId, args, fetchCache),
     });
   const prefetched = ((globalThis as any).__WAKU_PREFETCHED__ ||= {});
-  const url = BASE_PATH + encodeRscPath(rscPath);
+  const url = BASE_RSC_PATH + encodeRscPath(rscPath);
   const hasValidPrefetchedResponse =
     !!prefetched[url] &&
     // HACK .has() is for the initial hydration
@@ -179,7 +199,7 @@ export const prefetchRsc = (
   fetchCache = defaultFetchCache,
 ): void => {
   const prefetched = ((globalThis as any).__WAKU_PREFETCHED__ ||= {});
-  const url = BASE_PATH + encodeRscPath(rscPath);
+  const url = BASE_RSC_PATH + encodeRscPath(rscPath);
   if (!(url in prefetched)) {
     prefetched[url] = fetchRscInternal(url, rscParams, fetchCache);
     prefetchedParams.set(prefetched[url], rscParams);
@@ -241,6 +261,27 @@ export const useRefetch = () => use(RefetchContext);
 
 const ChildrenContext = createContext<ReactNode>(undefined);
 const ChildrenContextProvider = memo(ChildrenContext.Provider);
+const ErrorContext = createContext<
+  [error: unknown, reset: () => void] | undefined
+>(undefined);
+const ErrorContextProvider = memo(ErrorContext.Provider);
+
+export const Children = () => use(ChildrenContext);
+
+export const ThrowError_UNSTABLE = () => {
+  const errAndReset = use(ErrorContext);
+  if (errAndReset) {
+    throw errAndReset[0];
+  }
+  return null;
+};
+
+export const useResetError_UNSTABLE = () => {
+  const errAndReset = use(ErrorContext);
+  if (errAndReset) {
+    return errAndReset[1];
+  }
+};
 
 export const useElement = (id: string) => {
   const elementsPromise = use(ElementsContext);
@@ -257,22 +298,22 @@ export const useElement = (id: string) => {
 const InnerSlot = ({
   id,
   children,
-  setFallback,
+  setValidElement,
   unstable_fallback,
 }: {
   id: string;
   children?: ReactNode;
-  setFallback?: (fallback: ReactNode) => void;
+  setValidElement?: (element: ReactNode) => void;
   unstable_fallback?: ReactNode;
 }) => {
   const element = useElement(id);
   const isValidElement = element !== undefined;
   useEffect(() => {
-    if (isValidElement && setFallback) {
+    if (isValidElement && setValidElement) {
       // FIXME is there `isReactNode` type checker?
-      setFallback(element as ReactNode);
+      setValidElement(element as ReactNode);
     }
-  }, [isValidElement, element, setFallback]);
+  }, [isValidElement, element, setValidElement]);
   if (!isValidElement) {
     if (unstable_fallback) {
       return unstable_fallback;
@@ -287,31 +328,32 @@ const InnerSlot = ({
   );
 };
 
-const ThrowError = ({ error }: { error: unknown }) => {
-  throw error;
-};
-
-class Fallback extends Component<
-  { children: ReactNode; fallback: ReactNode },
-  { error?: unknown }
+class GeneralErrorHandler extends Component<
+  { children?: ReactNode; errorHandler: ReactNode },
+  { error: unknown | null }
 > {
-  constructor(props: { children: ReactNode; fallback: ReactNode }) {
+  constructor(props: { children?: ReactNode; errorHandler: ReactNode }) {
     super(props);
-    this.state = {};
+    this.state = { error: null };
+    this.reset = this.reset.bind(this);
   }
   static getDerivedStateFromError(error: unknown) {
     return { error };
   }
+  reset() {
+    this.setState({ error: null });
+  }
   render() {
-    if ('error' in this.state) {
-      if (this.props.fallback) {
+    const { error } = this.state;
+    if (error !== null) {
+      if (this.props.errorHandler) {
         return createElement(
-          ChildrenContextProvider,
-          { value: createElement(ThrowError, { error: this.state.error }) },
-          this.props.fallback,
+          ErrorContextProvider,
+          { value: [error, this.reset] },
+          this.props.errorHandler,
         );
       }
-      throw this.state.error;
+      throw error;
     }
     return this.props.children;
   }
@@ -334,26 +376,35 @@ class Fallback extends Component<
 export const Slot = ({
   id,
   children,
-  unstable_fallbackToPrev,
+  unstable_handleError,
   unstable_fallback,
 }: {
   id: string;
   children?: ReactNode;
-  unstable_fallbackToPrev?: boolean;
+  unstable_handleError?: ReactNode;
   unstable_fallback?: ReactNode;
 }) => {
-  const [fallback, setFallback] = useState<ReactNode>();
-  if (unstable_fallbackToPrev) {
+  const [errorHandler, setErrorHandler] = useState<ReactNode>();
+  const setValidElement = useCallback(
+    (element: ReactNode) =>
+      setErrorHandler(
+        createElement(
+          ChildrenContextProvider,
+          { value: unstable_handleError },
+          element,
+        ),
+      ),
+    [unstable_handleError],
+  );
+  if (unstable_handleError !== undefined) {
     return createElement(
-      Fallback,
-      { fallback } as never,
-      createElement(InnerSlot, { id, setFallback }, children),
+      GeneralErrorHandler,
+      { errorHandler },
+      createElement(InnerSlot, { id, setValidElement }, children),
     );
   }
   return createElement(InnerSlot, { id, unstable_fallback }, children);
 };
-
-export const Children = () => use(ChildrenContext);
 
 /**
  * ServerRoot for SSR
