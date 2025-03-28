@@ -10,9 +10,9 @@
   },
   "dependencies": {
     "ai": "^4.2.2",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
-    "react-server-dom-webpack": "19.0.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-server-dom-webpack": "19.1.0",
     "waku": "workspace:*"
   },
   "devDependencies": {
