@@ -81,12 +81,9 @@ const parseRouteFromLocation = (): RouteProps => {
   return parseRoute(new URL(window.location.href));
 };
 
-const isAltClick = (event: MouseEvent<HTMLAnchorElement>) => {
-  return (
-    event.button !== 0 ||
-    !!(event.metaKey || event.altKey || event.ctrlKey || event.shiftKey)
-  );
-};
+const isAltClick = (event: MouseEvent<HTMLAnchorElement>) =>
+  event.button !== 0 ||
+  !!(event.metaKey || event.altKey || event.ctrlKey || event.shiftKey);
 
 let savedRscParams: [query: string, rscParams: URLSearchParams] | undefined;
 
