@@ -81,5 +81,18 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await page.goto(`http://localhost:${port}/_components/Counter`);
       await expect(page.getByText('404 Not Found')).toBeVisible();
     });
+
+    test('alt click', async ({ page }) => {
+      await page.goto(`http://localhost:${port}`);
+      await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+      await page.click("a[href='/foo']", {
+        button: 'right',
+      });
+      await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+      await page.click("a[href='/foo']", {
+        modifiers: ['ControlOrMeta'],
+      });
+      await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+    });
   });
 }
