@@ -81,6 +81,10 @@ const parseRouteFromLocation = (): RouteProps => {
   return parseRoute(new URL(window.location.href));
 };
 
+const isAltClick = (event: MouseEvent<HTMLAnchorElement>) =>
+  event.button !== 0 ||
+  !!(event.metaKey || event.altKey || event.ctrlKey || event.shiftKey);
+
 let savedRscParams: [query: string, rscParams: URLSearchParams] | undefined;
 
 const createRscParams = (query: string): URLSearchParams => {
@@ -265,8 +269,7 @@ export function Link({
       };
     }
   }, [unstable_prefetchOnView, router, to]);
-  const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
+  const internalOnClick = () => {
     const url = new URL(to, window.location.href);
     if (url.href !== window.location.href) {
       const route = parseRoute(url);
@@ -284,7 +287,15 @@ export function Link({
         changeRoute(route, { shouldScroll: scroll ?? newPath });
       });
     }
-    props.onClick?.(event);
+  };
+  const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (props.onClick) {
+      props.onClick(event);
+    }
+    if (!event.defaultPrevented && !isAltClick(event)) {
+      event.preventDefault();
+      internalOnClick();
+    }
   };
   const onMouseEnter = unstable_prefetchOnEnter
     ? (event: MouseEvent<HTMLAnchorElement>) => {
