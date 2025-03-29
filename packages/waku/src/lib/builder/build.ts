@@ -240,6 +240,8 @@ const buildServerBundle = async (
           rscEntriesPlugin({
             basePath: config.basePath,
             rscBase: config.rscBase,
+            middleware: config.middleware,
+            rootDir,
             srcDir: config.srcDir,
             ssrDir: DIST_SSR,
             moduleMap: {
