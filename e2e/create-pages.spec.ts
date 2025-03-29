@@ -67,6 +67,13 @@ for (const mode of ['DEV', 'PRD'] as const) {
       ).toBeVisible();
     });
 
+    test("nested/cat's pajamas", async ({ page }) => {
+      await page.goto(`http://localhost:${port}/nested/cat's%20pajamas`);
+      await expect(
+        page.getByRole('heading', { name: "Dynamic: cat's pajamas" }),
+      ).toBeVisible();
+    });
+
     test('jump', async ({ page }) => {
       await page.goto(`http://localhost:${port}`);
       await page.click("a[href='/foo']");
@@ -127,7 +134,7 @@ for (const mode of ['DEV', 'PRD'] as const) {
       ({ port, stopApp } = await startApp(mode));
     });
 
-    // https://github.com/dai-shi/waku/issues/1255
+    // https://github.com/wakujs/waku/issues/1255
     test('long suspense', async ({ page }) => {
       await page.goto(`http://localhost:${port}/long-suspense/1`);
       await expect(
@@ -144,6 +151,14 @@ for (const mode of ['DEV', 'PRD'] as const) {
       const res = await fetch(`http://localhost:${port}/api/hi`);
       expect(res.status).toBe(200);
       expect(await res.text()).toBe('hello world!');
+    });
+
+    test('api url with search params', async () => {
+      const res = await fetch(`http://localhost:${port}/api/url?foo=bar`);
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe(
+        `url http://localhost:${port}/api/url?foo=bar`,
+      );
     });
 
     test('api hi.txt', async () => {

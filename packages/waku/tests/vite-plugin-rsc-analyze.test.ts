@@ -56,6 +56,7 @@ async function runTest(
       isClient
         ? rscAnalyzePlugin({
             isClient: true,
+            clientFileMap,
             serverFileMap,
           })
         : rscAnalyzePlugin({
@@ -115,7 +116,7 @@ describe('vite-plugin-rsc-analyze', () => {
       path.resolve(root, './plugin-rsc-analyze'),
       true,
       'client.ts',
-      new Set(),
+      new Set(['client.ts']),
       new Set(),
     );
   });
@@ -135,7 +136,7 @@ describe('vite-plugin-rsc-analyze', () => {
       path.resolve(root, './plugin-rsc-analyze'),
       true,
       'import-client.ts',
-      new Set(),
+      new Set(['client.ts']),
       new Set(),
     );
   });

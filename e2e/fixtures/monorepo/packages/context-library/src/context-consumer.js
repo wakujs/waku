@@ -4,7 +4,7 @@
 import { createElement, useContext, useEffect, useState } from 'react';
 
 // Do not add '.js' extension to reproduce the issue
-// https://github.com/dai-shi/waku/pull/1162
+// https://github.com/wakujs/waku/pull/1162
 import { Context } from './context-provider';
 
 export const ContextConsumer = () => {

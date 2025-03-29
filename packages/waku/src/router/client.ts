@@ -22,11 +22,12 @@ import type {
 } from 'react';
 
 import {
-  fetchRsc,
   prefetchRsc,
   Root,
   Slot,
   useRefetch,
+  ThrowError_UNSTABLE as ThrowError,
+  useResetError_UNSTABLE as useResetError,
 } from '../minimal/client.js';
 import {
   encodeRoutePath,
@@ -80,6 +81,10 @@ const parseRouteFromLocation = (): RouteProps => {
   return parseRoute(new URL(window.location.href));
 };
 
+const isAltClick = (event: MouseEvent<HTMLAnchorElement>) =>
+  event.button !== 0 ||
+  !!(event.metaKey || event.altKey || event.ctrlKey || event.shiftKey);
+
 let savedRscParams: [query: string, rscParams: URLSearchParams] | undefined;
 
 const createRscParams = (query: string): URLSearchParams => {
@@ -107,7 +112,7 @@ const RouterContext = createContext<{
   prefetchRoute: PrefetchRoute;
 } | null>(null);
 
-export function useRouter_UNSTABLE() {
+export function useRouter() {
   const router = useContext(RouterContext);
   if (!router) {
     throw new Error('Missing Router');
@@ -264,8 +269,7 @@ export function Link({
       };
     }
   }, [unstable_prefetchOnView, router, to]);
-  const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
+  const internalOnClick = () => {
     const url = new URL(to, window.location.href);
     if (url.href !== window.location.href) {
       const route = parseRoute(url);
@@ -283,7 +287,15 @@ export function Link({
         changeRoute(route, { shouldScroll: scroll ?? newPath });
       });
     }
-    props.onClick?.(event);
+  };
+  const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (props.onClick) {
+      props.onClick(event);
+    }
+    if (!event.defaultPrevented && !isAltClick(event)) {
+      event.preventDefault();
+      internalOnClick();
+    }
   };
   const onMouseEnter = unstable_prefetchOnEnter
     ? (event: MouseEvent<HTMLAnchorElement>) => {
@@ -350,6 +362,7 @@ const NotFound = ({
   has404: boolean;
   reset: () => void;
 }) => {
+  const resetError = useResetError();
   const router = useContext(RouterContext);
   if (!router) {
     throw new Error('Missing Router');
@@ -359,13 +372,15 @@ const NotFound = ({
     if (has404) {
       const url = new URL('/404', window.location.href);
       changeRoute(parseRoute(url), { shouldScroll: true });
+      resetError?.();
       reset();
     }
-  }, [has404, reset, changeRoute]);
-  return createElement('h1', null, 'Not Found');
+  }, [has404, resetError, reset, changeRoute]);
+  return has404 ? null : createElement('h1', null, 'Not Found');
 };
 
 const Redirect = ({ to, reset }: { to: string; reset: () => void }) => {
+  const resetError = useResetError();
   const router = useContext(RouterContext);
   if (!router) {
     throw new Error('Missing Router');
@@ -388,8 +403,9 @@ const Redirect = ({ to, reset }: { to: string; reset: () => void }) => {
       url,
     );
     changeRoute(parseRoute(url), { shouldScroll: newPath });
+    resetError?.();
     reset();
-  }, [to, reset, changeRoute]);
+  }, [to, resetError, reset, changeRoute]);
   return null;
 };
 
@@ -430,7 +446,7 @@ class CustomErrorHandler extends Component<
   }
 }
 
-const getRouteSlotId = (path: string) => 'route:' + path;
+const getRouteSlotId = (path: string) => 'route:' + decodeURIComponent(path);
 
 const handleScroll = () => {
   const { hash } = window.location;
@@ -541,7 +557,14 @@ const InnerRouter = ({
   const routeElement = createElement(Slot, { id: getRouteSlotId(route.path) });
   const rootElement = createElement(
     Slot,
-    { id: 'root', unstable_fallbackToPrev: true },
+    {
+      id: 'root',
+      unstable_handleError: createElement(
+        CustomErrorHandler,
+        { has404 },
+        createElement(ThrowError),
+      ),
+    },
     createElement(CustomErrorHandler, { has404 }, routeElement),
   );
   return createElement(
@@ -550,6 +573,12 @@ const InnerRouter = ({
     rootElement,
   );
 };
+
+type Elements = Record<string, unknown>;
+type EnhanceFetch = (fetchFn: typeof fetch) => typeof fetch;
+type EnhanceCreateData = (
+  createData: (responsePromise: Promise<Response>) => Promise<Elements>,
+) => (responsePromise: Promise<Response>) => Promise<Elements>;
 
 // Note: The router data must be a stable mutable object (array).
 type RouterData = [
@@ -564,12 +593,19 @@ const DEFAULT_ROUTER_DATA: RouterData = [];
 export function Router({
   routerData = DEFAULT_ROUTER_DATA,
   initialRoute = parseRouteFromLocation(),
+  unstable_enhanceFetch,
+  unstable_enhanceCreateData,
+}: {
+  routerData?: RouterData;
+  initialRoute?: RouteProps;
+  unstable_enhanceFetch?: EnhanceFetch;
+  unstable_enhanceCreateData?: EnhanceCreateData;
 }) {
   const initialRscPath = encodeRoutePath(initialRoute.path);
   const locationListeners = (routerData[0] ||= new Set());
   const staticPathSet = (routerData[1] ||= new Set());
   const cachedIdSet = (routerData[2] ||= new Set());
-  const unstable_enhanceFetch =
+  const enhanceFetch =
     (fetchFn: typeof fetch) =>
     (input: RequestInfo | URL, init: RequestInit = {}) => {
       const skipStr = JSON.stringify(Array.from(cachedIdSet));
@@ -581,20 +617,13 @@ export function Router({
       }
       return fetchFn(input, init);
     };
-  const unstable_enhanceCreateData =
+  const enhanceCreateData =
     (
       createData: (
         responsePromise: Promise<Response>,
       ) => Promise<Record<string, unknown>>,
     ) =>
     async (responsePromise: Promise<Response>) => {
-      const has404 = (routerData[3] ||= false);
-      const response = await responsePromise;
-      if (response.status === 404 && has404) {
-        // HACK this is still an experimental logic. It's very fragile.
-        // FIXME we should cache it if 404.txt is static.
-        return fetchRsc(encodeRoutePath('/404'));
-      }
       const data = createData(responsePromise);
       Promise.resolve(data)
         .then((data) => {
@@ -636,8 +665,12 @@ export function Router({
     {
       initialRscPath,
       initialRscParams,
-      unstable_enhanceFetch,
-      unstable_enhanceCreateData,
+      unstable_enhanceFetch: unstable_enhanceFetch
+        ? (fn) => unstable_enhanceFetch(enhanceFetch(fn))
+        : enhanceFetch,
+      unstable_enhanceCreateData: unstable_enhanceCreateData
+        ? (fn) => unstable_enhanceCreateData(enhanceCreateData(fn))
+        : enhanceCreateData,
     },
     createElement(InnerRouter, {
       routerData: routerData as Required<RouterData>,
@@ -654,7 +687,7 @@ export function INTERNAL_ServerRouter({ route }: { route: RouteProps }) {
   const routeElement = createElement(Slot, { id: getRouteSlotId(route.path) });
   const rootElement = createElement(
     Slot,
-    { id: 'root', unstable_fallbackToPrev: true },
+    { id: 'root', unstable_handleError: null },
     routeElement,
   );
   return createElement(

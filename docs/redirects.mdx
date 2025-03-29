@@ -8,7 +8,7 @@ description: How to add HTTP redirects to your Waku project.
 
 Redirects are not handled by Waku directly. Instead, you can use either a custom middleware or the hosting environment to achieve that. The `<Link />` component does not deal with redirects either and will by default show the **404** page instead. To resolve this, you have to add an additional redirect for each redirected path, that points Waku to the correct `RSC` file. If there is a redirect from `/old` to `/new`, there also has to be one from `/RSC/old.txt`` to `/RSC/new.txt`to make the `<Link />` component`s smooth page transition work.
 
-> The `/RSC/` file naming convention is [subject to change](https://github.com/dai-shi/waku/discussions/929#discussioncomment-10825975) in future versions of Waku.
+> The `/RSC/` file naming convention is [subject to change](https://github.com/wakujs/waku/discussions/929#discussioncomment-10825975) in future versions of Waku.
 
 #### Redirect via middleware
 

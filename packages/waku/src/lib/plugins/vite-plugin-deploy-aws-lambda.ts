@@ -2,10 +2,12 @@ import path from 'node:path';
 import { writeFileSync } from 'node:fs';
 import type { Plugin } from 'vite';
 
-import { unstable_getBuildOptions } from '../../server.js';
-import { SRC_ENTRIES } from '../constants.js';
-import { DIST_PUBLIC } from '../builder/constants.js';
+import {
+  unstable_getBuildOptions,
+  unstable_builderConstants,
+} from '../../server.js';
 
+const { SRC_ENTRIES, DIST_PUBLIC } = unstable_builderConstants;
 const SERVE_JS = 'serve-aws-lambda.js';
 
 const lambdaStreaming = process.env.DEPLOY_AWS_LAMBDA_STREAMING === 'true';

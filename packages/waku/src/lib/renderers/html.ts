@@ -6,7 +6,7 @@ import { injectRSCPayload } from 'rsc-html-stream/server';
 
 import type * as WakuMinimalClientType from '../../minimal/client.js';
 import type { ConfigDev, ConfigPrd } from '../config.js';
-import { SRC_MAIN } from '../constants.js';
+import { SRC_MAIN } from '../builder/constants.js';
 import { concatUint8Arrays } from '../utils/stream.js';
 import { filePathToFileURL } from '../utils/path.js';
 import { encodeRscPath } from './utils.js';

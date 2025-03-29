@@ -464,10 +464,6 @@ export const createPages = <
   };
 
   const createApi: CreateApi = (options) => {
-    if (!import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER) {
-      console.warn('createApi is still experimental');
-      return;
-    }
     if (configured) {
       throw new Error('createApi no longer available');
     }
@@ -699,22 +695,14 @@ export const createPages = <
         };
       });
     },
-    handleApi: async (path, options) => {
+    handleApi: async (path, { url, ...options }) => {
       await configure();
       const routePath = getApiRoutePath(path, options.method);
       if (!routePath) {
         throw new Error('API Route not found: ' + path);
       }
       const { handlers } = apiPathMap.get(routePath)!;
-
-      const req = new Request(
-        new URL(
-          path,
-          // TODO consider if we should apply `Forwarded` header here
-          'http://localhost',
-        ),
-        options,
-      );
+      const req = new Request(url, options);
       const handler = handlers[options.method as Method];
       if (!handler) {
         throw new Error(
