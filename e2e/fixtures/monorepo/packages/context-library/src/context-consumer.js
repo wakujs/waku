@@ -1,6 +1,5 @@
 'use client';
 
-// eslint-disable-next-line import/no-unresolved
 import { createElement, useContext, useEffect, useState } from 'react';
 
 // Do not add '.js' extension to reproduce the issue
