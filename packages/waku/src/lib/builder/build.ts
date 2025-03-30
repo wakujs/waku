@@ -144,7 +144,7 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
         build: {
           write: false,
           ssr: true,
-          target: 'node18',
+          target: 'node20',
           rollupOptions: {
             onwarn,
             input: Object.fromEntries(moduleFileMap),
@@ -177,7 +177,7 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
         build: {
           write: false,
           ssr: true,
-          target: 'node18',
+          target: 'node20',
           rollupOptions: {
             onwarn,
             input: clientEntryFiles,
@@ -291,7 +291,7 @@ const buildServerBundle = async (
           emptyOutDir: !partial,
           ssr: true,
           ssrEmitAssets: true,
-          target: 'node18',
+          target: 'node20',
           outDir: joinPath(rootDir, config.distDir),
           rollupOptions: {
             onwarn,
@@ -358,7 +358,7 @@ const buildSsrBundle = async (
         build: {
           emptyOutDir: !partial,
           ssr: true,
-          target: 'node18',
+          target: 'node20',
           outDir: joinPath(rootDir, config.distDir, DIST_SSR),
           rollupOptions: {
             onwarn,
