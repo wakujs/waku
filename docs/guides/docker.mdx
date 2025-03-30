@@ -17,7 +17,7 @@ Make sure you have Docker and Node.js installed on your machine. We will prepare
 First, let's take a look at `Dockerfile` where we define the Docker commands to build the app image.
 
 ```dockerfile
-FROM node:22-alpine as builder
+FROM node:20-alpine as builder
 
 WORKDIR /app
 
@@ -39,7 +39,7 @@ CMD ["npm", "run", "start"]
 
 Dockerfile is set up so that it uses Docker's [multi-stage build](https://docs.docker.com/build/building/multi-stage/) paradigm, in which different layers of the process are cached and reused on subsequent builds if the underlying files have not changed since the previous build. Here's a breakdown of the commands:
 
-1. FROM: use a Node v22 base image to scaffold the build process
+1. FROM: use a Node v20 base image to scaffold the build process
 2. WORKDIR: set a directory path where all the following commands take place
 3. COPY: copy dependency info to the working directory (signified by the **dot** at the end)
 4. RUN: install project dependencies
