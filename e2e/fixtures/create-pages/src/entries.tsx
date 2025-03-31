@@ -227,6 +227,20 @@ const pages: ReturnType<typeof createPages> = createPages(
       order: 1,
       component: DynamicPagePart,
     }),
+
+    createPagePart({
+      path: '/page-parts/should-be-static',
+      render: 'static',
+      order: 0,
+      component: StaticPagePart,
+    }),
+
+    createPagePart({
+      path: '/page-parts/should-be-static',
+      render: 'static',
+      order: 1,
+      component: StaticPagePart,
+    }),
   ],
 );
 

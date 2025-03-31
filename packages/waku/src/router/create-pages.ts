@@ -269,6 +269,7 @@ export const createPages = <
     { literalSpec: PathSpec; originalSpec?: PathSpec }
   >();
   const pagePartRenderModeMap = new Map<string, 'static' | 'dynamic'>();
+  const staticPagePartRoutes = new Set<string>();
   const dynamicPagePathMap = new Map<string, [PathSpec, ComponentEntry]>();
   const wildcardPagePathMap = new Map<string, [PathSpec, ComponentEntry]>();
   const dynamicLayoutPathMap = new Map<string, [PathSpec, ComponentEntry]>();
@@ -286,7 +287,10 @@ export const createPages = <
 
   /** helper to find dynamic path when slugs are used */
   const getPageRoutePath: (path: string) => string | undefined = (path) => {
-    if (staticComponentMap.has(joinPath(path, 'page').slice(1))) {
+    if (
+      staticComponentMap.has(joinPath(path, 'page').slice(1)) ||
+      staticPagePartRoutes.has(path)
+    ) {
       return path;
     }
     const allPaths = [
@@ -587,6 +591,7 @@ export const createPages = <
         if (renderMode === 'dynamic') {
           continue;
         }
+        staticPagePartRoutes.add(path);
         const pathSpec = parsePathWithSlug(path);
         const { numWildcards } = getSlugsAndWildcards(pathSpec);
         const pagePathMap =
@@ -743,11 +748,21 @@ export const createPages = <
         throw new Error('Route not found: ' + path);
       }
 
-      const pageComponent =
+      let pageComponent =
         staticComponentMap.get(joinPath(routePath, 'page').slice(1)) ??
         dynamicPagePathMap.get(routePath)?.[1] ??
         wildcardPagePathMap.get(routePath)?.[1];
-
+      if (!pageComponent && staticPagePartRoutes.has(routePath)) {
+        pageComponent = [];
+        for (const [name, v] of staticComponentMap.entries()) {
+          if (name.startsWith(joinPath(routePath, 'page').slice(1))) {
+            pageComponent.push({
+              component: v,
+              render: 'static',
+            });
+          }
+        }
+      }
       if (!pageComponent) {
         throw new Error('Page not found: ' + path);
       }
