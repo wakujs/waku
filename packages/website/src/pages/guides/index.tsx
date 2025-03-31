@@ -12,7 +12,7 @@ export default async function BlogIndexPage() {
   return (
     <Page>
       <Meta
-        title="Waku guide"
+        title="Waku guides"
         description="The guides for working with Waku."
       />
       <PostListContainer>
