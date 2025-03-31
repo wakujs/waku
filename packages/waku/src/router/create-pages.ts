@@ -268,6 +268,7 @@ export const createPages = <
     string,
     { literalSpec: PathSpec; originalSpec?: PathSpec }
   >();
+  const pagePartRenderModeMap = new Map<string, 'static' | 'dynamic'>();
   const dynamicPagePathMap = new Map<string, [PathSpec, ComponentEntry]>();
   const wildcardPagePathMap = new Map<string, [PathSpec, ComponentEntry]>();
   const dynamicLayoutPathMap = new Map<string, [PathSpec, ComponentEntry]>();
@@ -510,8 +511,19 @@ export const createPages = <
       console.warn('createPagePart is still experimental');
       return params;
     }
+    if (params.path.endsWith('[path]')) {
+      throw new Error(
+        'Page part file cannot be named [path]. This will conflict with the path prop of the page component.',
+      );
+    }
     if (configured) {
       throw new Error('createPagePart no longer available');
+    }
+    const pagePartRenderMode = pagePartRenderModeMap.get(params.path);
+    if (!pagePartRenderMode) {
+      pagePartRenderModeMap.set(params.path, params.render);
+    } else if (params.render === 'dynamic' && pagePartRenderMode === 'static') {
+      pagePartRenderModeMap.set(params.path, 'dynamic');
     }
     const pathSpec = parsePathWithSlug(params.path);
     const { numWildcards } = getSlugsAndWildcards(pathSpec);
@@ -569,6 +581,27 @@ export const createPages = <
         createPagePart,
       });
       await ready;
+
+      // check for page parts pages that can be made static
+      for (const [path, renderMode] of pagePartRenderModeMap) {
+        if (renderMode === 'dynamic') {
+          continue;
+        }
+        const pathSpec = parsePathWithSlug(path);
+        const { numWildcards } = getSlugsAndWildcards(pathSpec);
+        const pagePathMap =
+          numWildcards === 0 ? dynamicPagePathMap : wildcardPagePathMap;
+
+        pagePathMap.delete(path);
+        const pagePath = getGrouplessPath(path);
+        staticPathMap.set(pagePath, {
+          literalSpec: pathSpec,
+        });
+        if (path !== pagePath) {
+          groupPathLookup.set(pagePath, pagePath);
+        }
+      }
+
       configured = true;
     }
     await ready;
