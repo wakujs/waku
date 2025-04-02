@@ -12,7 +12,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-server-dom-webpack": "19.1.0",
-    "react-textarea-autosize": "^8.5.8",
+    "react-textarea-autosize": "^8.5.9",
     "waku": "workspace:*"
   },
   "devDependencies": {
