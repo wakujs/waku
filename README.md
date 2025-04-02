@@ -1080,3 +1080,15 @@ Please join our friendly [GitHub discussions](https://github.com/wakujs/waku/dis
 ## Roadmap
 
 Waku is in active development and we’re seeking additional contributors. Check out our [roadmap](https://github.com/wakujs/waku/issues/24) for more information.
+
+## Contributing
+
+To build an app with an experimental version of Waku, change the `waku` dependency in the app's `package.json` to `"github:<REPO_OWNER>/waku#<GIT_REF>&path:/packages/waku"` and run `pnpm install`. For example:
+
+```json
+{
+  "dependencies": {
+    "waku": "github:your_username/waku#your_branch&path:/packages/waku"
+  }
+}
+```
