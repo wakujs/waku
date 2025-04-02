@@ -27,10 +27,7 @@ export const POST = async (request: Request): Promise<Response> => {
   const body = await request.json();
 
   if (!body.message) {
-    return Response.json(
-      { message: 'Invalid' },
-      { status: 400 },
-    );
+    return Response.json({ message: 'Invalid' }, { status: 400 });
   }
 
   try {
@@ -41,15 +38,9 @@ export const POST = async (request: Request): Promise<Response> => {
       Body: body.message,
     });
 
-    return Response.json(
-      { message: 'Success' },
-      { status: 200 },
-    );
+    return Response.json({ message: 'Success' }, { status: 200 });
   } catch (error) {
-    return Response.json(
-      { message: 'Failure' },
-      { status: 500 },
-    );
+    return Response.json({ message: 'Failure' }, { status: 500 });
   }
 };
 ```
@@ -110,7 +101,7 @@ export const ContactForm = () => {
       {status === 'error' && <p>Failed. Please try again.</p>}
     </form>
   );
-}
+};
 ```
 
 ### Configuring API routes
