@@ -22,7 +22,7 @@
     "@types/react-dom": "19.0.4",
     "@vanilla-extract/vite-plugin": "4.0.19",
     "typescript": "5.8.2",
-    "vite": "6.2.3",
+    "vite": "6.2.4",
     "vite-plugin-stylex-dev": "0.7.5"
   }
 }
