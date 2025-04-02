@@ -241,6 +241,32 @@ const pages: ReturnType<typeof createPages> = createPages(
       order: 1,
       component: StaticPagePart,
     }),
+
+    createLayout({
+      render: 'dynamic',
+      path: '/(dynamic)',
+      component: ({ children }) => (
+        <div>
+          <h2>Dynamic Layout {new Date().toISOString()}</h2>
+          {children}
+        </div>
+      ),
+    }),
+    createLayout({
+      render: 'static',
+      path: '/(dynamic)/(static)',
+      component: ({ children }) => (
+        <div>
+          <h2>Static Layout {new Date().toISOString()}</h2>
+          {children}
+        </div>
+      ),
+    }),
+    createPage({
+      render: 'static',
+      path: '/(dynamic)/(static)/nested-layouts',
+      component: () => <h1>Nested Layouts page</h1>,
+    }),
   ],
 );
 

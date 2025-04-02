@@ -12,7 +12,7 @@
   "dependencies": {
     "@sindresorhus/slugify": "^2.2.1",
     "classnames": "2.3.2",
-    "framer-motion": "^12.5.0",
+    "framer-motion": "^12.6.3",
     "jotai": "^2.12.2",
     "next-mdx-remote": "^5.0.0",
     "react": "19.1.0",
@@ -30,6 +30,6 @@
     "shiki": "^3.2.1",
     "tailwindcss": "4.0.15",
     "typescript": "^5.8.2",
-    "vite": "6.2.3"
+    "vite": "6.2.4"
   }
 }
