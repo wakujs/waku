@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.22.1] - 2025-04-02
+
+### Changed
+
+- Fix dependencies
+
 ## [0.22.0] - 2025-04-02
 
 ### Added
