@@ -1,7 +1,7 @@
 {
   "name": "waku",
   "description": "⛩️ The minimal React framework",
-  "version": "0.21.24",
+  "version": "0.22.1",
   "type": "module",
   "author": "Daishi Kato",
   "homepage": "https://waku.gg",
@@ -79,7 +79,8 @@
     "test:watch": "vitest",
     "compile": "rm -rf dist *.tsbuildinfo && pnpm run compile:code && pnpm run compile:types && cp ../../README.md .",
     "compile:code": "swc src -d dist --strip-leading-paths",
-    "compile:types": "tsc --project tsconfig.json"
+    "compile:types": "tsc --project tsconfig.json",
+    "prepare": "pnpm run compile"
   },
   "license": "MIT",
   "engines": {
@@ -87,12 +88,13 @@
   },
   "dependencies": {
     "@hono/node-server": "1.14.0",
-    "@swc/core": "1.11.13",
+    "@swc/core": "1.11.16",
     "@vitejs/plugin-react": "4.3.4",
     "dotenv": "16.4.7",
     "hono": "4.7.5",
+    "rollup": "4.38.0",
     "rsc-html-stream": "0.0.5",
-    "vite": "6.2.3"
+    "vite": "6.2.4"
   },
   "devDependencies": {
     "@netlify/functions": "^3.0.4",
@@ -100,9 +102,8 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-server-dom-webpack": "19.1.0",
-    "rollup": "^4.37.0",
     "ts-expect": "^1.3.0",
-    "vitest": "3.0.9"
+    "vitest": "^3.1.1"
   },
   "peerDependencies": {
     "react": "~19.1.0",

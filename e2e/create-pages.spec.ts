@@ -206,5 +206,76 @@ for (const mode of ['DEV', 'PRD'] as const) {
         page.getByRole('heading', { name: '/test Layout' }),
       ).not.toBeVisible();
     });
+
+    test('all page parts show', async ({ page }) => {
+      await page.goto(`http://localhost:${port}/page-parts`);
+      await expect(
+        page.getByRole('heading', { name: 'Static Page Part' }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: 'Dynamic Page Part' }),
+      ).toBeVisible();
+    });
+
+    test('static page part', async ({ page }) => {
+      await page.goto(`http://localhost:${port}/page-parts`);
+      const staticPageTime = (
+        await page
+          .getByRole('heading', { name: 'Static Page Part' })
+          .textContent()
+      )?.split('Part ')[1];
+      expect(staticPageTime).toBeTruthy();
+      await page.click("a[href='/']");
+      await page.waitForTimeout(100);
+      await page.click("a[href='/page-parts']");
+      await expect(
+        page.getByRole('heading', { name: 'Static Page Part' }),
+      ).toBeVisible();
+      const newStaticPageTime = (
+        await page
+          .getByRole('heading', { name: 'Static Page Part' })
+          .textContent()
+      )?.split('Part ')[1];
+      expect(newStaticPageTime).toBe(staticPageTime);
+      const dynamicPageTime = (
+        await page
+          .getByRole('heading', { name: 'Dynamic Page Part' })
+          .textContent()
+      )?.split('Part ')[1];
+      expect(dynamicPageTime).toBeTruthy();
+      expect(dynamicPageTime).not.toBe(staticPageTime);
+    });
+
+    test('group layout static + dynamic', async ({ page }) => {
+      const whatTime = async (selector: string) =>
+        new Date(
+          (await page
+            .getByRole('heading', { name: selector })
+            .textContent())!.replace(selector + ' ', ''),
+        ).getSeconds();
+
+      await page.goto(`http://localhost:${port}/nested-layouts`);
+      await expect(
+        page.getByRole('heading', { name: 'Dynamic Layout' }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: 'Static Layout' }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('link', { name: 'Nested Layouts' }),
+      ).toBeVisible();
+      const dynamicTime = await whatTime('Dynamic Layout');
+      const staticTime = await whatTime('Static Layout');
+      expect(dynamicTime).toEqual(staticTime);
+
+      await page.getByRole('link', { name: 'Home' }).click();
+      await sleep(1000);
+      await page.getByRole('link', { name: 'Nested Layouts' }).click();
+      const dynamicTime2 = await whatTime('Dynamic Layout');
+      const staticTime2 = await whatTime('Static Layout');
+      expect(dynamicTime2).not.toEqual(staticTime2);
+    });
   });
 }
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
