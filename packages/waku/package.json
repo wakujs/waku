@@ -79,7 +79,8 @@
     "test:watch": "vitest",
     "compile": "rm -rf dist *.tsbuildinfo && pnpm run compile:code && pnpm run compile:types && cp ../../README.md .",
     "compile:code": "swc src -d dist --strip-leading-paths",
-    "compile:types": "tsc --project tsconfig.json"
+    "compile:types": "tsc --project tsconfig.json",
+    "prepare": "pnpm run compile"
   },
   "license": "MIT",
   "engines": {
