@@ -11,9 +11,17 @@ import Root from './components/Root';
 import NestedLayout from './components/NestedLayout';
 import { DeeplyNestedLayout } from './components/DeeplyNestedLayout';
 import { readFile } from 'node:fs/promises';
+import DynamicPagePart from './components/DynamicPagePart';
+import StaticPagePart from './components/StaticPagePart';
 
 const pages = createPages(
-  async ({ createPage, createLayout, createRoot, createApi }) => [
+  async ({
+    createPage,
+    createLayout,
+    createRoot,
+    createApi,
+    createPagePart,
+  }) => [
     createRoot({
       render: 'static',
       component: Root,
@@ -154,6 +162,20 @@ const pages = createPages(
           status: 200,
         });
       },
+    }),
+
+    createPagePart({
+      path: '/page-parts',
+      render: 'static',
+      order: 0,
+      component: StaticPagePart,
+    }),
+
+    createPagePart({
+      path: '/page-parts',
+      render: 'dynamic',
+      order: 1,
+      component: DynamicPagePart,
     }),
   ],
 );
