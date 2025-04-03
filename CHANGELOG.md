@@ -2,6 +2,30 @@
 
 ## [Unreleased]
 
+## [0.22.1] - 2025-04-02
+
+### Changed
+
+- Fix dependencies
+
+## [0.22.0] - 2025-04-02
+
+### Added
+
+- Support for API routes
+- String-based waku.config.ts
+- React 19.1
+
+### Removed
+
+- Drop Node 18
+
+## [0.21.24] - 2025-03-26
+
+### Changed
+
+- Bug fixes & some updates
+
 ## [0.21.23] - 2025-03-10
 
 ### Changed

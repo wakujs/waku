@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react'; // eslint-disable-line import/no-unresolved
+import { useState } from 'react';
 
 export const Counter = () => {
   const [count, setCount] = useState(0);

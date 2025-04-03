@@ -253,8 +253,8 @@ export const createPages = <
     createRoot: CreateRoot;
     createApi: CreateApi;
     /**
-     * Page Part pages are assumed to be dynamic in order to allow dynamic components.
-     * If you are looking for a fully static page, use createPage instead.
+     * Page Part pages will be dynamic when any part is dynamic.
+     * If all parts are static, the page will be static.
      */
     createPagePart: CreatePagePart;
   }) => Promise<AllPages>,
@@ -268,6 +268,8 @@ export const createPages = <
     string,
     { literalSpec: PathSpec; originalSpec?: PathSpec }
   >();
+  const pagePartRenderModeMap = new Map<string, 'static' | 'dynamic'>();
+  const staticPagePartRoutes = new Set<string>();
   const dynamicPagePathMap = new Map<string, [PathSpec, ComponentEntry]>();
   const wildcardPagePathMap = new Map<string, [PathSpec, ComponentEntry]>();
   const dynamicLayoutPathMap = new Map<string, [PathSpec, ComponentEntry]>();
@@ -285,7 +287,10 @@ export const createPages = <
 
   /** helper to find dynamic path when slugs are used */
   const getPageRoutePath: (path: string) => string | undefined = (path) => {
-    if (staticComponentMap.has(joinPath(path, 'page').slice(1))) {
+    if (
+      staticComponentMap.has(joinPath(path, 'page').slice(1)) ||
+      staticPagePartRoutes.has(path)
+    ) {
       return path;
     }
     const allPaths = [
@@ -469,10 +474,6 @@ export const createPages = <
   };
 
   const createApi: CreateApi = (options) => {
-    if (!import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER) {
-      console.warn('createApi is still experimental');
-      return;
-    }
     if (configured) {
       throw new Error('createApi no longer available');
     }
@@ -514,8 +515,19 @@ export const createPages = <
       console.warn('createPagePart is still experimental');
       return params;
     }
+    if (params.path.endsWith('[path]')) {
+      throw new Error(
+        'Page part file cannot be named [path]. This will conflict with the path prop of the page component.',
+      );
+    }
     if (configured) {
       throw new Error('createPagePart no longer available');
+    }
+    const pagePartRenderMode = pagePartRenderModeMap.get(params.path);
+    if (!pagePartRenderMode) {
+      pagePartRenderModeMap.set(params.path, params.render);
+    } else if (params.render === 'dynamic' && pagePartRenderMode === 'static') {
+      pagePartRenderModeMap.set(params.path, 'dynamic');
     }
     const pathSpec = parsePathWithSlug(params.path);
     const { numWildcards } = getSlugsAndWildcards(pathSpec);
@@ -573,6 +585,28 @@ export const createPages = <
         createPagePart,
       });
       await ready;
+
+      // check for page parts pages that can be made static
+      for (const [path, renderMode] of pagePartRenderModeMap) {
+        if (renderMode === 'dynamic') {
+          continue;
+        }
+        staticPagePartRoutes.add(path);
+        const pathSpec = parsePathWithSlug(path);
+        const { numWildcards } = getSlugsAndWildcards(pathSpec);
+        const pagePathMap =
+          numWildcards === 0 ? dynamicPagePathMap : wildcardPagePathMap;
+
+        pagePathMap.delete(path);
+        const pagePath = getGrouplessPath(path);
+        staticPathMap.set(pagePath, {
+          literalSpec: pathSpec,
+        });
+        if (path !== pagePath) {
+          groupPathLookup.set(pagePath, pagePath);
+        }
+      }
+
       configured = true;
     }
     await ready;
@@ -714,11 +748,21 @@ export const createPages = <
         throw new Error('Route not found: ' + path);
       }
 
-      const pageComponent =
+      let pageComponent =
         staticComponentMap.get(joinPath(routePath, 'page').slice(1)) ??
         dynamicPagePathMap.get(routePath)?.[1] ??
         wildcardPagePathMap.get(routePath)?.[1];
-
+      if (!pageComponent && staticPagePartRoutes.has(routePath)) {
+        pageComponent = [];
+        for (const [name, v] of staticComponentMap.entries()) {
+          if (name.startsWith(joinPath(routePath, 'page').slice(1))) {
+            pageComponent.push({
+              component: v,
+              render: 'static',
+            });
+          }
+        }
+      }
       if (!pageComponent) {
         throw new Error('Page not found: ' + path);
       }

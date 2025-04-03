@@ -1,7 +1,7 @@
 import { getContext } from './middleware/context.js';
 
 export * as unstable_builderConstants from './lib/builder/constants.js';
-export { emitPlatformData as unstable_emitPlatfromData } from './lib/builder/platform-data.js';
+export { emitPlatformData as unstable_emitPlatformData } from './lib/builder/platform-data.js';
 
 // The use of `globalThis` in this file is more or less a hack.
 // It should be revisited with a better solution.

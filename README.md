@@ -27,7 +27,7 @@ Start a new Waku project with the `create` command for your preferred package ma
 npm create waku@latest
 ```
 
-**Node.js version requirement:** `^20.8.0` or `^18.17.0`
+**Node.js version requirement:** `^22.7.0` or `^20.8.0`
 
 ## Rendering
 
@@ -544,7 +544,7 @@ The `router` object has two properties related to the current route: `path` (str
 ```tsx
 'use client';
 
-import { useRouter_UNSTABLE as useRouter } from 'waku';
+import { useRouter } from 'waku';
 
 export const Component = () => {
   const { path, query } = useRouter();
@@ -577,7 +577,7 @@ The `router` object also contains several methods for programmatic navigation:
 ```tsx
 'use client';
 
-import { useRouter_UNSTABLE as useRouter } from 'waku';
+import { useRouter } from 'waku';
 
 export const Component = () => {
   const router = useRouter();
@@ -1080,3 +1080,15 @@ Please join our friendly [GitHub discussions](https://github.com/wakujs/waku/dis
 ## Roadmap
 
 Waku is in active development and we’re seeking additional contributors. Check out our [roadmap](https://github.com/wakujs/waku/issues/24) for more information.
+
+## Contributing
+
+To build an app with an experimental version of Waku, change the `waku` dependency in the app's `package.json` to `"github:<REPO_OWNER>/waku#<GIT_REF>&path:/packages/waku"` and run `pnpm install`. For example:
+
+```json
+{
+  "dependencies": {
+    "waku": "github:your_username/waku#your_branch&path:/packages/waku"
+  }
+}
+```
