@@ -140,7 +140,7 @@ export function deployVercelPlugin(opts: {
           );
         }
         const vcConfigJson = {
-          runtime: 'nodejs20.x',
+          runtime: 'nodejs22.x',
           handler: `${opts.distDir}/${SERVE_JS}`,
           launcherType: 'Nodejs',
         };
