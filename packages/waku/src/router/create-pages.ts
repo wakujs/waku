@@ -253,8 +253,8 @@ export const createPages = <
     createRoot: CreateRoot;
     createApi: CreateApi;
     /**
-     * Page Part pages are assumed to be dynamic in order to allow dynamic components.
-     * If you are looking for a fully static page, use createPage instead.
+     * Page Part pages will be dynamic when any part is dynamic.
+     * If all parts are static, the page will be static.
      */
     createPagePart: CreatePagePart;
   }) => Promise<AllPages>,
