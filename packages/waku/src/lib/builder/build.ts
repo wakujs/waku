@@ -12,13 +12,7 @@ import type { EntriesPrd } from '../types.js';
 import type { ConfigDev } from '../config.js';
 import { resolveConfigDev } from '../config.js';
 import type { PathSpec } from '../utils/path.js';
-import {
-  decodeFilePathFromAbsolute,
-  extname,
-  filePathToFileURL,
-  fileURLToFilePath,
-  joinPath,
-} from '../utils/path.js';
+import { extname, filePathToFileURL, joinPath } from '../utils/path.js';
 import { extendViteConfig } from '../utils/vite-config.js';
 import {
   copyFile,
@@ -91,17 +85,7 @@ const deployPlugins = (config: ConfigDev) => [
 ];
 
 const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
-  const wakuClientDist = decodeFilePathFromAbsolute(
-    joinPath(fileURLToFilePath(import.meta.url), '../../../client.js'),
-  );
-  const wakuMinimalClientDist = decodeFilePathFromAbsolute(
-    joinPath(fileURLToFilePath(import.meta.url), '../../../minimal/client.js'),
-  );
-  const clientFileMap = new Map<string, string>([
-    // FIXME 'lib' should be the real hash
-    [wakuClientDist, 'lib'],
-    [wakuMinimalClientDist, 'lib'],
-  ]);
+  const clientFileMap = new Map<string, string>();
   const serverFileMap = new Map<string, string>();
   const moduleFileMap = new Map<string, string>(); // module id -> full path
   const pagesDirPath = joinPath(rootDir, config.srcDir, config.pagesDir);
@@ -148,6 +132,9 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
           rollupOptions: {
             onwarn,
             input: Object.fromEntries(moduleFileMap),
+            output: {
+              inlineDynamicImports: false,
+            },
           },
         },
       },
@@ -181,6 +168,9 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
           rollupOptions: {
             onwarn,
             input: clientEntryFiles,
+            output: {
+              inlineDynamicImports: false,
+            },
           },
         },
       },
