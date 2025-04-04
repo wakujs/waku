@@ -7,3 +7,7 @@ export const ping = async () => {
 export const increase = async (value: number) => {
   return value + 1;
 };
+
+export const wrap = async (node: React.ReactNode) => {
+  return <span className="via-server">{node}</span>;
+};
