@@ -64,6 +64,9 @@ const HomeLayout = ({ children }: { children: ReactNode }) => (
           Nested / Qux
         </Link>
       </li>
+      <li>
+        <Link to="/page-parts">Page Parts</Link>
+      </li>
     </ul>
     {children}
   </div>
