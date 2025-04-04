@@ -781,7 +781,160 @@ Data should be fetched on the server when possible for the best user experience,
 
 ## Mutations
 
-Data mutations can be performed via [server actions](https://react.dev/reference/rsc/server-actions) or API endpoints (coming soon).
+Data mutations can be performed via [server actions](https://react.dev/reference/rsc/server-actions) or API endpoints.
+
+### API endpoints
+
+Create API routes by making a new file in the special `./src/pages/api` directory and exporting one or more functions named after the HTTP methods that you want it to support: `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `CONNECT`, `OPTIONS`, `TRACE`, or `PATCH`. The name of the file determines the route it will be served from. Each function receives a standard [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) object and returns a standard [Response](https://developer.mozilla.org/en-US/docs/Web/API/Response) object.
+
+```ts
+// ./src/pages/api/contact.ts
+import emailClient from 'some-email';
+
+const client = new emailClient(process.env.EMAIL_API_TOKEN!);
+
+export const POST = async (request: Request): Promise<Response> => {
+  const body = await request.json();
+
+  if (!body.message) {
+    return Response.json({ message: 'Invalid' }, { status: 400 });
+  }
+
+  try {
+    await client.sendEmail({
+      From: 'noreply@example.com',
+      To: 'someone@example.com',
+      Subject: 'Contact form submission',
+      Body: body.message,
+    });
+
+    return Response.json({ message: 'Success' }, { status: 200 });
+  } catch (error) {
+    return Response.json({ message: 'Failure' }, { status: 500 });
+  }
+};
+```
+
+#### Calling API routes
+
+API routes are accessible at paths that match their file location. For example a file at `./src/pages/api/contact.ts` is available at `/api/contact`. You can call these endpoints from your client components using the standard [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) method.
+
+```tsx
+'use client';
+
+import { useState } from 'react';
+
+export const ContactForm = () => {
+  const [message, setMessage] = useState('');
+  const [status, setStatus] = useState('idle');
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setStatus('sending');
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message }),
+      });
+
+      const data = await response.json();
+
+      if (response.status === 200) {
+        setStatus('success');
+        setMessage('');
+      } else {
+        setStatus('error');
+        console.error('Error:', data.message);
+      }
+    } catch (error) {
+      setStatus('error');
+      console.error('Error:', error);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <textarea
+        value={message}
+        onChange={(event) => setMessage(event.target.value)}
+        placeholder="Your message..."
+        required
+      />
+      <button type="submit" disabled={status === 'sending'}>
+        {status === 'sending' ? 'Sending...' : 'Send Message'}
+      </button>
+      {status === 'success' && <p>Message sent!</p>}
+      {status === 'error' && <p>Failed. Please try again.</p>}
+    </form>
+  );
+};
+```
+
+#### Configuring API routes
+
+API routes are dynamic by default, but if you’re using them to create a static resource such as an XML document, you can export a `getConfig` function that returns a config object with the render property set to `'static'`.
+
+```ts
+// ./src/pages/api/rss.xml.ts
+
+export const GET = async () => {
+  const rssFeed = generateRSSFeed(items);
+
+  return new Response(rssFeed, {
+    headers: {
+      'Content-Type': 'application/rss+xml',
+    },
+  });
+};
+
+export const getConfig = async () => {
+  return {
+    render: 'static',
+  } as const;
+};
+
+const items = [
+  {
+    title: `Announcing API routes`,
+    description: `Easily add public API endpoints to your Waku projects.`
+    pubDate: `Tue, 1 Apr 2025 00:00:00 GMT`,
+    link: `https://waku.gg/blog/api-routes`,
+  },
+  // ...
+];
+
+const generateRSSFeed = (items) => {
+  const itemsXML = items
+    .map(
+      (item) => `
+        <item>
+          <title>${item.title}</title>
+          <link>${item.link}</link>
+          <pubDate>${item.pubDate}</pubDate>
+          <description>${item.description}</description>
+        </item>
+      `,
+    )
+    .join('');
+
+  return `
+    <?xml version="1.0" encoding="UTF-8" ?>
+    <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+      <atom:link href="https://waku.gg/api/rss.xml" rel="self" type="application/rss+xml" />
+      <title>Waku</title>
+      <link>https://waku.gg</link>
+      <description>The minimal React framework</description>
+      ${itemsXML}
+    </channel>
+    </rss>
+  `;
+};
+```
 
 ### Server actions
 

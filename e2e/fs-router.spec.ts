@@ -82,6 +82,45 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await expect(page.getByText('404 Not Found')).toBeVisible();
     });
 
+    test('all page parts show', async ({ page }) => {
+      await page.goto(`http://localhost:${port}/page-parts`);
+      await expect(
+        page.getByRole('heading', { name: 'Static Page Part' }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: 'Dynamic Page Part' }),
+      ).toBeVisible();
+    });
+
+    test('static page part', async ({ page }) => {
+      await page.goto(`http://localhost:${port}/page-parts`);
+      const staticPageTime = (
+        await page
+          .getByRole('heading', { name: 'Static Page Part' })
+          .textContent()
+      )?.split('Part ')[1];
+      expect(staticPageTime).toBeTruthy();
+      await page.click("a[href='/']");
+      await page.waitForTimeout(100);
+      await page.click("a[href='/page-parts']");
+      await expect(
+        page.getByRole('heading', { name: 'Static Page Part' }),
+      ).toBeVisible();
+      const newStaticPageTime = (
+        await page
+          .getByRole('heading', { name: 'Static Page Part' })
+          .textContent()
+      )?.split('Part ')[1];
+      expect(newStaticPageTime).toBe(staticPageTime);
+      const dynamicPageTime = (
+        await page
+          .getByRole('heading', { name: 'Dynamic Page Part' })
+          .textContent()
+      )?.split('Part ')[1];
+      expect(dynamicPageTime).toBeTruthy();
+      expect(dynamicPageTime).not.toBe(staticPageTime);
+    });
+
     test('alt click', async ({ page }) => {
       await page.goto(`http://localhost:${port}`);
       await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
