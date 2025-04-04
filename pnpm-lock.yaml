@@ -1411,19 +1411,10 @@ importers:
         version: 5.8.2
 
   packages/create-waku:
-    devDependencies:
+    dependencies:
       '@clack/prompts':
         specifier: ^0.10.0
         version: 0.10.0
-      '@types/fs-extra':
-        specifier: ^11.0.4
-        version: 11.0.4
-      '@types/tar':
-        specifier: ^6.1.13
-        version: 6.1.13
-      execa:
-        specifier: ^9.5.2
-        version: 9.5.2
       fs-extra:
         specifier: ^11.3.0
         version: 11.3.0
@@ -1433,12 +1424,22 @@ importers:
       tar:
         specifier: ^7.4.3
         version: 7.4.3
-      tsup:
-        specifier: ^8.4.0
-        version: 8.4.0(@swc/core@1.11.16(@swc/helpers@0.5.15))(jiti@2.4.2)(postcss@8.5.3)(tsx@4.19.3)(typescript@5.8.2)(yaml@2.7.1)
       update-check:
         specifier: ^1.5.4
         version: 1.5.4
+    devDependencies:
+      '@types/fs-extra':
+        specifier: ^11.0.4
+        version: 11.0.4
+      '@types/tar':
+        specifier: ^6.1.13
+        version: 6.1.13
+      execa:
+        specifier: ^9.5.2
+        version: 9.5.2
+      tsup:
+        specifier: ^8.4.0
+        version: 8.4.0(@swc/core@1.11.16(@swc/helpers@0.5.15))(jiti@2.4.2)(postcss@8.5.3)(tsx@4.19.3)(typescript@5.8.2)(yaml@2.7.1)
       vitest:
         specifier: ^3.1.1
         version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.17)(jiti@2.4.2)(lightningcss@1.29.3)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.1)
