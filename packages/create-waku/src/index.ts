@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import fse from 'fs-extra/esm';
-import { bold, green, red } from 'picocolors';
+import pc from 'picocolors';
 import * as p from '@clack/prompts';
 import checkForUpdate from 'update-check';
 import {
@@ -71,6 +71,12 @@ const { values } = parseArgs({
     'project-name': {
       type: 'string',
     },
+    'package-name': {
+      type: 'string',
+    },
+    'skip-install': {
+      type: 'boolean',
+    },
     help: {
       type: 'boolean',
       short: 'h',
@@ -79,7 +85,7 @@ const { values } = parseArgs({
 });
 
 const onCancel = () => {
-  p.cancel(red('✖') + ' Operation cancelled');
+  p.cancel(pc.red('✖') + ' Operation cancelled');
   process.exit(0);
 };
 
@@ -109,12 +115,16 @@ async function doPrompts() {
   try {
     const results = await p.group(
       {
-        projectName: () =>
-          p.text({
+        projectName: () => {
+          if (values['project-name']) {
+            return Promise.resolve(values['project-name']);
+          }
+          return p.text({
             defaultValue: targetDir,
             message: 'Project Name',
             placeholder: defaultProjectName,
-          }),
+          });
+        },
         overwrites: ({ results }) => {
           targetDir =
             typeof results.projectName === 'string'
@@ -122,42 +132,57 @@ async function doPrompts() {
               : targetDir;
           if (!canSafelyOverwrite(targetDir)) {
             return p.confirm({
-              message: `would you like to overwrite ${results.projectName}?`,
+              message: `${results.projectName} is not empty. Remove existing files and continue?`,
             });
           }
           return Promise.resolve(true);
         },
         checkOverwrites: ({ results }) => {
           if (!results.overwrites) {
-            p.cancel(red('✖') + ' Operation cancelled');
+            p.cancel(pc.red('✖') + ' Operation cancelled');
           }
           return Promise.resolve(true);
         },
-        packageName: () =>
-          p.text({
+        packageName: () => {
+          if (values['package-name']) {
+            return Promise.resolve(values['package-name']);
+          }
+          return p.text({
             message: 'Package name',
             validate: (dir: string) => {
               if (!isValidPackageName(dir)) {
                 return 'Invalid package.json name';
               }
             },
-          }),
-        templateName: () =>
-          p.select({
+          });
+        },
+        templateName: () => {
+          if (values.template || values.example) {
+            return Promise.resolve(values.template || values.example);
+          }
+          return p.select({
             message: 'Choose a starter template',
             options: templateNames.map((name) => ({
               label: name,
               value: name,
             })),
-          }),
+          });
+        },
       },
       { onCancel },
     );
 
     return {
       ...results,
-      packageName: results.packageName ?? toValidPackageName(targetDir),
-      templateName: results.templateName ?? values.template ?? templateNames[0],
+      packageName:
+        values['package-name'] ??
+        results.packageName ??
+        toValidPackageName(targetDir),
+      templateName:
+        values.template ??
+        results.templateName ??
+        templateNames[0] ??
+        toValidPackageName(targetDir),
       targetDir,
     };
   } catch (err) {
@@ -177,6 +202,8 @@ Options:
   --template            Specify a template
   --example             Specify an example use as a template
   --project-name        Specify a project name
+  --package-name        Specify a package name
+  --skip-install        Skip installation of dependencies
   -h, --help            Display this help message
 `);
 }
@@ -222,6 +249,15 @@ async function init() {
     await installTemplate(root, packageName, templateRoot, templateName);
   }
 
+  if (values['skip-install']) {
+    console.log(`\nDone. Now run:\n`);
+    console.log(`${pc.bold(pc.green(`cd ${targetDir}`))}`);
+    console.log(`${pc.bold(pc.green(commands.install))}`);
+    console.log(`${pc.bold(pc.green(commands.dev))}`);
+
+    return;
+  }
+
   // 1. check packageManager
   // 2. and then install dependencies
   console.log();
@@ -237,14 +273,14 @@ async function init() {
     // process exit code
     if (code !== 0) {
       console.log(`Could not execute ${commands.install}. Please run`);
-      console.log(`${bold(green(`cd ${targetDir}`))}`);
-      console.log(`${bold(green(commands.install))}`);
-      console.log(`${bold(green(commands.dev))}`);
+      console.log(`${pc.bold(pc.green(`cd ${targetDir}`))}`);
+      console.log(`${pc.bold(pc.green(commands.install))}`);
+      console.log(`${pc.bold(pc.green(commands.dev))}`);
       console.log();
     } else {
       console.log(`\nDone. Now run:\n`);
-      console.log(`${bold(green(`cd ${targetDir}`))}`);
-      console.log(`${bold(green(commands.dev))}`);
+      console.log(`${pc.bold(pc.green(`cd ${targetDir}`))}`);
+      console.log(`${pc.bold(pc.green(commands.dev))}`);
       console.log();
     }
   });
