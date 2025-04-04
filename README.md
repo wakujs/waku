@@ -785,7 +785,9 @@ Data mutations can be performed via [server actions](https://react.dev/reference
 
 ### API endpoints
 
-Create API routes by making a new file in the special `./src/pages/api` directory and exporting one or more functions named after the HTTP methods that you want it to support: `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `CONNECT`, `OPTIONS`, `TRACE`, or `PATCH`. The name of the file determines the route it will be served from. Each function receives a standard [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) object and returns a standard [Response](https://developer.mozilla.org/en-US/docs/Web/API/Response) object.
+Create API routes by making a new file in the special `./src/pages/api` directory and exporting one or more functions named after the HTTP methods that you want it to support: `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `CONNECT`, `OPTIONS`, `TRACE`, or `PATCH`. When there is a `default` exported, this will be treated as a catch all handler that will handle any method used on the route. Named method exports take precedence though, so if `GET` and `default` are exported, only the `GET` will be used for `GET` requests.
+
+The name of the file determines the route it will be served from. Each function receives a standard [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) object and returns a standard [Response](https://developer.mozilla.org/en-US/docs/Web/API/Response) object.
 
 ```ts
 // ./src/pages/api/contact.ts
@@ -813,6 +815,13 @@ export const POST = async (request: Request): Promise<Response> => {
     return Response.json({ message: 'Failure' }, { status: 500 });
   }
 };
+
+export default function handler(request: Request): Response {
+  return Response.json(
+    { message: 'Default handler ' + request.method },
+    { status: 200 },
+  );
+}
 ```
 
 #### Calling API routes
