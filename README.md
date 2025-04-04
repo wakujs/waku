@@ -1236,4 +1236,4 @@ Waku is in active development and we’re seeking additional contributors. Check
 
 ## Contributing
 
-If you would like to contribute, please see [CONTRIBUTING.md](./CONTRIBUTING.md)!
+If you would like to contribute, please see [CONTRIBUTING.md](https://github.com/wakujs/waku/blob/main/CHANGELOG.md)!
