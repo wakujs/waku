@@ -184,7 +184,11 @@ export type CreateApi = <Path extends string>(
     | {
         render: 'dynamic';
         path: Path;
-        handlers: Partial<Record<Method, ApiHandler>>;
+        /**
+         * Handlers by named method. Use `all` to handle all methods.
+         * Named methods will take precedence over `all`.
+         */
+        handlers: Partial<Record<Method | 'all', ApiHandler>>;
       },
 ) => void;
 
@@ -278,7 +282,7 @@ export const createPages = <
     {
       render: 'static' | 'dynamic';
       pathSpec: PathSpec;
-      handlers: Partial<Record<Method, ApiHandler>>;
+      handlers: Partial<Record<Method | 'all', ApiHandler>>;
     }
   >();
   const staticComponentMap = new Map<string, FunctionComponent<any>>();
@@ -309,7 +313,10 @@ export const createPages = <
     method: string,
   ) => string | undefined = (path, method) => {
     for (const [p, v] of apiPathMap.entries()) {
-      if (method in v.handlers && getPathMapping(parsePathWithSlug(p!), path)) {
+      if (
+        (method in v.handlers || v.handlers.all) &&
+        getPathMapping(parsePathWithSlug(p!), path)
+      ) {
         return p;
       }
     }
@@ -858,7 +865,7 @@ export const createPages = <
       }
       const { handlers } = apiPathMap.get(routePath)!;
       const req = new Request(url, options);
-      const handler = handlers[options.method as Method];
+      const handler = handlers[options.method as Method] ?? handlers.all;
       if (!handler) {
         throw new Error(
           'API method not found: ' + options.method + 'for path: ' + path,

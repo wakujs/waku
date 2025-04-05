@@ -123,9 +123,10 @@ export function unstable_fsRouter(
           } else {
             const validMethods = new Set(METHODS);
             const handlers = Object.fromEntries(
-              Object.entries(mod).filter(([exportName]) => {
+              Object.entries(mod).flatMap(([exportName, handler]) => {
                 const isValidExport =
                   exportName === 'getConfig' ||
+                  exportName === 'default' ||
                   validMethods.has(exportName as Method);
                 if (!isValidExport) {
                   console.warn(
@@ -134,7 +135,11 @@ export function unstable_fsRouter(
                     )}`,
                   );
                 }
-                return isValidExport && exportName !== 'getConfig';
+                return isValidExport && exportName !== 'getConfig'
+                  ? exportName === 'default'
+                    ? [['all', handler]]
+                    : [[exportName, handler]]
+                  : [];
               }),
             );
             createApi({
