@@ -1248,12 +1248,4 @@ Waku is in active development and we’re seeking additional contributors. Check
 
 ## Contributing
 
-To build an app with an experimental version of Waku, change the `waku` dependency in the app's `package.json` to `"github:<REPO_OWNER>/waku#<GIT_REF>&path:/packages/waku"` and run `pnpm install`. For example:
-
-```json
-{
-  "dependencies": {
-    "waku": "github:your_username/waku#your_branch&path:/packages/waku"
-  }
-}
-```
+If you would like to contribute, please see [CONTRIBUTING.md](https://github.com/wakujs/waku/blob/main/CONTRIBUTING.md)!

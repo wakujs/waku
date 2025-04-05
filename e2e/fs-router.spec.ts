@@ -144,7 +144,7 @@ for (const mode of ['DEV', 'PRD'] as const) {
       });
       await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
       await page.click("a[href='/foo']", {
-        modifiers: ['ControlOrMeta'],
+        modifiers: ['Alt'],
       });
       await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
     });
