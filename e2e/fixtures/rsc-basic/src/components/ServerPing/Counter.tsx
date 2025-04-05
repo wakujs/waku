@@ -1,17 +1,18 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import type { ReactNode } from 'react';
 
 export type CounterProps = {
   ping: () => Promise<string>;
   increase: (value: number) => Promise<number>;
-  wrap: (node: React.ReactNode) => Promise<React.ReactNode>;
+  wrap: (node: ReactNode) => Promise<ReactNode>;
 };
 
 export function Counter({ increase, ping, wrap }: CounterProps) {
   const [pong, setPong] = useState<string | null>(null);
   const [counter, setCounter] = useState(0);
-  const [wrapped, setWrapped] = useState<React.ReactNode>(null);
+  const [wrapped, setWrapped] = useState<ReactNode>(null);
   return (
     <div>
       <p data-testid="pong">{pong}</p>
