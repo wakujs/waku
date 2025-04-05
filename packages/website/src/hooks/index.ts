@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, type RefObject } from 'react';
 
 export const useOnEscape = (handler: () => void) => {
   const handleEscape = useCallback(
@@ -23,7 +23,7 @@ export const useOnEscape = (handler: () => void) => {
 
 export const useOnClickOutside = (
   handler: (event: Event) => void,
-  node: React.RefObject<HTMLElement>,
+  node: RefObject<HTMLElement>,
 ) => {
   useEffect(() => {
     const listener = (event: Event) => {

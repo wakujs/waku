@@ -56,6 +56,14 @@ export default tseslint.config(
       'react/prop-types': 'off',
       curly: ['error', 'all'],
       'unicorn/prefer-string-slice': 'error',
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "TSQualifiedName[left.name='React']",
+          message:
+            'Import React types directly instead of using React.* namespace',
+        },
+      ],
     },
   },
   {
