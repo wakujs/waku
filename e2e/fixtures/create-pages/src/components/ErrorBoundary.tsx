@@ -5,7 +5,7 @@ import {
   type ErrorBoundaryProps,
 } from 'react-error-boundary';
 
-const ErrorBoundary: React.FC<ErrorBoundaryProps> = (props) => {
+const ErrorBoundary = (props: ErrorBoundaryProps) => {
   return <ReactErrorBoundary {...props} />;
 };
 
