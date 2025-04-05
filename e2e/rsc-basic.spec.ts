@@ -30,6 +30,11 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await expect(
         page.getByTestId('client-counter').getByTestId('count'),
       ).toHaveText('2');
+    });
+
+    test('server ping', async ({ page }) => {
+      await page.goto(`http://localhost:${port}/`);
+      await expect(page.getByTestId('app-name')).toHaveText('Waku');
 
       await expect(
         page.getByTestId('server-ping').getByTestId('pong'),
