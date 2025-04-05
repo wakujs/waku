@@ -12,13 +12,7 @@ import type { EntriesPrd } from '../types.js';
 import type { ConfigDev } from '../config.js';
 import { resolveConfigDev } from '../config.js';
 import type { PathSpec } from '../utils/path.js';
-import {
-  decodeFilePathFromAbsolute,
-  extname,
-  filePathToFileURL,
-  fileURLToFilePath,
-  joinPath,
-} from '../utils/path.js';
+import { extname, filePathToFileURL, joinPath } from '../utils/path.js';
 import { extendViteConfig } from '../utils/vite-config.js';
 import {
   copyFile,
@@ -91,19 +85,9 @@ const deployPlugins = (config: ConfigDev) => [
 ];
 
 const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
-  const wakuClientDist = decodeFilePathFromAbsolute(
-    joinPath(fileURLToFilePath(import.meta.url), '../../../client.js'),
-  );
-  const wakuMinimalClientDist = decodeFilePathFromAbsolute(
-    joinPath(fileURLToFilePath(import.meta.url), '../../../minimal/client.js'),
-  );
-  const clientFileMap = new Map<string, string>([
-    // FIXME 'lib' should be the real hash
-    [wakuClientDist, 'lib'],
-    [wakuMinimalClientDist, 'lib'],
-  ]);
+  const clientFileMap = new Map<string, string>();
   const serverFileMap = new Map<string, string>();
-  const moduleFileMap = new Map<string, string>(); // module id -> full path
+  const serverPageFiles: Record<string, string> = {}; // page id -> full path
   const pagesDirPath = joinPath(rootDir, config.srcDir, config.pagesDir);
   if (existsSync(pagesDirPath)) {
     const files = await readdir(pagesDirPath, {
@@ -113,10 +97,8 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
     for (const file of files) {
       const ext = extname(file);
       if (EXTENSIONS.includes(ext)) {
-        moduleFileMap.set(
-          joinPath(config.pagesDir, file.slice(0, -ext.length)),
-          joinPath(pagesDirPath, file),
-        );
+        serverPageFiles[joinPath(config.pagesDir, file.slice(0, -ext.length))] =
+          joinPath(pagesDirPath, file);
       }
     }
   }
@@ -147,7 +129,10 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
           target: 'node20',
           rollupOptions: {
             onwarn,
-            input: Object.fromEntries(moduleFileMap),
+            input: serverPageFiles,
+            output: {
+              inlineDynamicImports: false,
+            },
           },
         },
       },
@@ -181,6 +166,9 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
           rollupOptions: {
             onwarn,
             input: clientEntryFiles,
+            output: {
+              inlineDynamicImports: false,
+            },
           },
         },
       },
@@ -200,11 +188,10 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
       fname,
     ]),
   );
-  const serverModuleFiles = Object.fromEntries(moduleFileMap);
   return {
     clientEntryFiles,
     serverEntryFiles,
-    serverModuleFiles,
+    serverPageFiles,
   };
 };
 
@@ -215,7 +202,7 @@ const buildServerBundle = async (
   config: ConfigDev,
   clientEntryFiles: Record<string, string>,
   serverEntryFiles: Record<string, string>,
-  serverModuleFiles: Record<string, string>,
+  serverPageFiles: Record<string, string>,
   partial: boolean,
 ) => {
   const serverBuildOutput = await buildVite(
@@ -297,7 +284,7 @@ const buildServerBundle = async (
             onwarn,
             input: {
               ...SERVER_MODULE_MAP,
-              ...serverModuleFiles,
+              ...serverPageFiles,
               ...clientEntryFiles,
               ...serverEntryFiles,
             },
@@ -730,7 +717,7 @@ export async function build(options: {
   buildOptions.deploy = options.deploy;
 
   buildOptions.unstable_phase = 'analyzeEntries';
-  const { clientEntryFiles, serverEntryFiles, serverModuleFiles } =
+  const { clientEntryFiles, serverEntryFiles, serverPageFiles } =
     await analyzeEntries(rootDir, config);
   buildOptions.unstable_phase = 'buildServerBundle';
   const serverBuildOutput = await buildServerBundle(
@@ -739,7 +726,7 @@ export async function build(options: {
     config,
     clientEntryFiles,
     serverEntryFiles,
-    serverModuleFiles,
+    serverPageFiles,
     !!options.partial,
   );
   buildOptions.unstable_phase = 'buildSsrBundle';
