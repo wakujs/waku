@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react';
-import type { default as RSDWServerType } from 'react-server-dom-webpack/server.edge';
+import type {
+  default as RSDWServerType,
+  TemporaryReferenceSet,
+} from 'react-server-dom-webpack/server.edge';
 
 import type { ConfigPrd } from '../config.js';
 // TODO move types somewhere
@@ -11,6 +14,11 @@ import { bufferToString, parseFormData } from '../utils/buffer.js';
 const resolveClientEntryForPrd = (id: string, config: { basePath: string }) => {
   return config.basePath + id + '.js';
 };
+
+const temporaryReferencesMap = new WeakMap<
+  Pick<HandlerContext, never>,
+  TemporaryReferenceSet
+>();
 
 export async function renderRsc(
   config: ConfigPrd,
@@ -48,6 +56,7 @@ export async function renderRsc(
         return (err as { digest: string }).digest;
       }
     },
+    temporaryReferences: temporaryReferencesMap.get(ctx),
   });
 }
 
@@ -85,6 +94,7 @@ export function renderRscElement(
         return (err as { digest: string }).digest;
       }
     },
+    temporaryReferences: temporaryReferencesMap.get(ctx),
   });
 }
 
@@ -132,7 +142,7 @@ export async function decodeBody(
     throw new Error('handler middleware required (missing modules)');
   }
   const {
-    default: { decodeReply },
+    default: { decodeReply, createTemporaryReferenceSet },
   } = modules.rsdwServer as { default: typeof RSDWServerType };
   const serverBundlerConfig = new Proxy(
     {},
@@ -144,6 +154,8 @@ export async function decodeBody(
       },
     },
   );
+  const temporaryReferences = createTemporaryReferenceSet();
+  temporaryReferencesMap.set(ctx, temporaryReferences);
   let decodedBody: unknown = ctx.req.url.searchParams;
   if (ctx.req.body) {
     const bodyBuf = await streamToArrayBuffer(ctx.req.body);
@@ -154,10 +166,14 @@ export async function decodeBody(
     ) {
       // XXX This doesn't support streaming unlike busboy
       const formData = await parseFormData(bodyBuf, contentType);
-      decodedBody = await decodeReply(formData, serverBundlerConfig);
+      decodedBody = await decodeReply(formData, serverBundlerConfig, {
+        temporaryReferences,
+      });
     } else if (bodyBuf.byteLength > 0) {
       const bodyStr = bufferToString(bodyBuf);
-      decodedBody = await decodeReply(bodyStr, serverBundlerConfig);
+      decodedBody = await decodeReply(bodyStr, serverBundlerConfig, {
+        temporaryReferences,
+      });
     }
   }
   return decodedBody;

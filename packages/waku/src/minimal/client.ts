@@ -17,7 +17,8 @@ import RSDWClient from 'react-server-dom-webpack/client';
 import { createCustomError } from '../lib/utils/custom-errors.js';
 import { encodeRscPath, encodeFuncId } from '../lib/renderers/utils.js';
 
-const { createFromFetch, encodeReply } = RSDWClient;
+const { createFromFetch, encodeReply, createTemporaryReferenceSet } =
+  RSDWClient;
 
 declare global {
   interface ImportMeta {
@@ -125,16 +126,18 @@ export const unstable_callServerRsc = async (
 ) => {
   const enhanceFetch = fetchCache[ENHANCE_FETCH] || ((f) => f);
   const enhanceCreateData = fetchCache[ENHANCE_CREATE_DATA] || ((d) => d);
+  const temporaryReferences = createTemporaryReferenceSet();
   const createData = (responsePromise: Promise<Response>) =>
     createFromFetch<Elements>(checkStatus(responsePromise), {
       callServer: (funcId: string, args: unknown[]) =>
         unstable_callServerRsc(funcId, args, fetchCache),
+      temporaryReferences,
     });
   const url = BASE_RSC_PATH + encodeRscPath(encodeFuncId(funcId));
   const responsePromise =
     args.length === 1 && args[0] instanceof URLSearchParams
       ? enhanceFetch(fetch)(url + '?' + args[0])
-      : encodeReply(args).then((body) =>
+      : encodeReply(args, { temporaryReferences }).then((body) =>
           enhanceFetch(fetch)(url, { method: 'POST', body }),
         );
   const data = enhanceCreateData(createData)(responsePromise);

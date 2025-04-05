@@ -18,6 +18,7 @@ for (const mode of ['DEV', 'PRD'] as const) {
     test('basic', async ({ page }) => {
       await page.goto(`http://localhost:${port}/`);
       await expect(page.getByTestId('app-name')).toHaveText('Waku');
+
       await expect(
         page.getByTestId('client-counter').getByTestId('count'),
       ).toHaveText('0');
@@ -29,6 +30,12 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await expect(
         page.getByTestId('client-counter').getByTestId('count'),
       ).toHaveText('2');
+    });
+
+    test('server ping', async ({ page }) => {
+      await page.goto(`http://localhost:${port}/`);
+      await expect(page.getByTestId('app-name')).toHaveText('Waku');
+
       await expect(
         page.getByTestId('server-ping').getByTestId('pong'),
       ).toBeEmpty();
@@ -36,6 +43,7 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await expect(
         page.getByTestId('server-ping').getByTestId('pong'),
       ).toHaveText('pong');
+
       await expect(
         page.getByTestId('server-ping').getByTestId('counter'),
       ).toHaveText('0');
@@ -47,6 +55,17 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await expect(
         page.getByTestId('server-ping').getByTestId('counter'),
       ).toHaveText('2');
+
+      await expect(
+        page.getByTestId('server-ping').getByTestId('wrapped'),
+      ).toBeEmpty();
+      await page.getByTestId('server-ping').getByTestId('wrap').click();
+      await expect(
+        page
+          .getByTestId('server-ping')
+          .getByTestId('wrapped')
+          .locator('.via-server'),
+      ).toHaveText('okay');
     });
 
     test('refetch', async ({ page }) => {
