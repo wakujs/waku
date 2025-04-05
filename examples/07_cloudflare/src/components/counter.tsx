@@ -1,8 +1,8 @@
 'use client';
 
-import { type FC, useState } from 'react';
+import { useState } from 'react';
 
-export const Counter: FC<{ max?: number | undefined }> = ({ max }) => {
+export const Counter = ({ max }: { max?: number | undefined }) => {
   const [count, setCount] = useState(0);
 
   const handleIncrement = () =>

@@ -1,12 +1,11 @@
 'use client';
 
-import type { FC } from 'react';
 import {
   ErrorBoundary as ReactErrorBoundary,
   type ErrorBoundaryProps,
 } from 'react-error-boundary';
 
-const ErrorBoundary: FC<ErrorBoundaryProps> = (props) => {
+const ErrorBoundary = (props: ErrorBoundaryProps) => {
   return <ReactErrorBoundary {...props} />;
 };
 
