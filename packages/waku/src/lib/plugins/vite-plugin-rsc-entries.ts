@@ -43,7 +43,10 @@ export function loadMiddleware() {
 export function loadModule(id) {
   switch (id) {
     ${Object.entries(opts.moduleMap)
-      .map(([k, v]) => `case '${k}': return import('' + '${v}');`)
+      .map(
+        ([k, v]) =>
+          `case '${k}': return import(${v.startsWith('./') ? "'' + " : ''}'${v}');`,
+      )
       .join('\n')}
     default: throw new Error('Cannot find module: ' + id);
   }

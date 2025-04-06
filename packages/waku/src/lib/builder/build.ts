@@ -220,10 +220,7 @@ const buildServerBundle = async (
           rscRsdwPlugin(),
           rscEnvPlugin({ isDev: false, env, config }),
           rscPrivatePlugin(config),
-          rscManagedPlugin({
-            ...config,
-            addEntriesToInput: true,
-          }),
+          rscManagedPlugin({ ...config, addEntriesToInput: true }),
           rscEntriesPlugin({
             basePath: config.basePath,
             rscBase: config.rscBase,
@@ -233,9 +230,15 @@ const buildServerBundle = async (
             ssrDir: DIST_SSR,
             moduleMap: {
               ...Object.fromEntries(
-                Object.keys(SERVER_MODULE_MAP).map((key) => [
+                Object.entries(SERVER_MODULE_MAP).map(([key, val]) => [
                   key,
-                  `./${key}.js`,
+                  val,
+                ]),
+              ),
+              ...Object.fromEntries(
+                Object.entries(serverEntryFiles || {}).map(([key, val]) => [
+                  `${key}.js`,
+                  val,
                 ]),
               ),
               ...Object.fromEntries(
@@ -248,12 +251,6 @@ const buildServerBundle = async (
                 Object.keys(clientEntryFiles || {}).map((key) => [
                   `${DIST_SSR}/${key}.js`,
                   `./${DIST_SSR}/${key}.js`,
-                ]),
-              ),
-              ...Object.fromEntries(
-                Object.keys(serverEntryFiles || {}).map((key) => [
-                  `${key}.js`,
-                  `./${key}.js`,
                 ]),
               ),
             },
@@ -298,7 +295,10 @@ const buildServerBundle = async (
   if (!('output' in serverBuildOutput)) {
     throw new Error('Unexpected vite server build output');
   }
-  return serverBuildOutput;
+  const serverAssets = serverBuildOutput.output.flatMap(({ type, fileName }) =>
+    type === 'asset' ? [fileName] : [],
+  );
+  return { serverAssets };
 };
 
 // For SSR (render client components on server to generate HTML)
@@ -308,11 +308,11 @@ const buildSsrBundle = async (
   config: ConfigDev,
   clientEntryFiles: Record<string, string>,
   serverEntryFiles: Record<string, string>,
-  serverBuildOutput: Awaited<ReturnType<typeof buildServerBundle>>,
+  serverAssets: string[],
   partial: boolean,
 ) => {
-  const cssAssets = serverBuildOutput.output.flatMap(({ type, fileName }) =>
-    type === 'asset' && fileName.endsWith('.css') ? [fileName] : [],
+  const cssAssets = serverAssets.filter((fileName) =>
+    fileName.endsWith('.css'),
   );
   await buildVite(
     extendViteConfig(
@@ -382,11 +382,11 @@ const buildClientBundle = async (
   config: ConfigDev,
   clientEntryFiles: Record<string, string>,
   serverEntryFiles: Record<string, string>,
-  serverBuildOutput: Awaited<ReturnType<typeof buildServerBundle>>,
+  serverAssets: string[],
   partial: boolean,
 ) => {
-  const nonJsAssets = serverBuildOutput.output.flatMap(({ type, fileName }) =>
-    type === 'asset' && !fileName.endsWith('.js') ? [fileName] : [],
+  const nonJsAssets = serverAssets.filter(
+    (fileName) => !fileName.endsWith('.js'),
   );
   const cssAssets = nonJsAssets.filter((asset) => asset.endsWith('.css'));
   const clientBuildOutput = await buildVite(
@@ -434,12 +434,15 @@ const buildClientBundle = async (
   if (!('output' in clientBuildOutput)) {
     throw new Error('Unexpected vite client build output');
   }
+  const clientAssets = clientBuildOutput.output.flatMap(({ type, fileName }) =>
+    type === 'asset' ? [fileName] : [],
+  );
   for (const nonJsAsset of nonJsAssets) {
     const from = joinPath(rootDir, config.distDir, nonJsAsset);
     const to = joinPath(rootDir, config.distDir, DIST_PUBLIC, nonJsAsset);
     await copyFile(from, to);
   }
-  return clientBuildOutput;
+  return { clientAssets };
 };
 
 // TODO: Add progress indication for static builds.
@@ -720,7 +723,7 @@ export async function build(options: {
   const { clientEntryFiles, serverEntryFiles, serverPageFiles } =
     await analyzeEntries(rootDir, config);
   buildOptions.unstable_phase = 'buildServerBundle';
-  const serverBuildOutput = await buildServerBundle(
+  const { serverAssets } = await buildServerBundle(
     rootDir,
     env,
     config,
@@ -736,17 +739,17 @@ export async function build(options: {
     config,
     clientEntryFiles,
     serverEntryFiles,
-    serverBuildOutput,
+    serverAssets,
     !!options.partial,
   );
   buildOptions.unstable_phase = 'buildClientBundle';
-  const clientBuildOutput = await buildClientBundle(
+  const { clientAssets } = await buildClientBundle(
     rootDir,
     env,
     config,
     clientEntryFiles,
     serverEntryFiles,
-    serverBuildOutput,
+    serverAssets,
     !!options.partial,
   );
   delete buildOptions.unstable_phase;
@@ -756,8 +759,8 @@ export async function build(options: {
   );
 
   INTERNAL_setAllEnv(env);
-  const cssAssets = clientBuildOutput.output.flatMap(({ type, fileName }) =>
-    type === 'asset' && fileName.endsWith('.css') ? [fileName] : [],
+  const cssAssets = clientAssets.filter((fileName) =>
+    fileName.endsWith('.css'),
   );
   buildOptions.unstable_phase = 'emitStaticFiles';
   await emitStaticFiles(
