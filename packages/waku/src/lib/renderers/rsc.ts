@@ -154,10 +154,10 @@ export async function decodeBody(
       },
     },
   );
-  const temporaryReferences = createTemporaryReferenceSet();
-  temporaryReferencesMap.set(ctx, temporaryReferences);
   let decodedBody: unknown = ctx.req.url.searchParams;
   if (ctx.req.body) {
+    const temporaryReferences = createTemporaryReferenceSet();
+    temporaryReferencesMap.set(ctx, temporaryReferences);
     const bodyBuf = await streamToArrayBuffer(ctx.req.body);
     const contentType = ctx.req.headers['content-type'];
     if (
