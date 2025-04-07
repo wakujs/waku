@@ -10,8 +10,6 @@ const projectName = 'test-waku-app';
 const genPath = path.join(__dirname, projectName);
 const genPathWithSubfolder = path.join(__dirname, '.test', projectName);
 
-const TEST_WITH_INSTALL_TIMEOUT = 30000;
-
 const run = <SO extends SyncOptions>(
   args: string[],
   options?: SO,
@@ -99,63 +97,51 @@ describe('create-waku CLI with args', () => {
     expect(stdout).toContain('Options:');
   });
 
-  test(
-    'accepts template option from command line',
-    () => {
-      const { stdout } = run(
-        [
-          '--project-name',
-          projectName,
-          '--package-name',
-          projectName,
-          '--template',
-          '01_template',
-        ],
-        { cwd: __dirname },
-      );
-      expect(stdout).toContain('Setting up project...');
-    },
-    TEST_WITH_INSTALL_TIMEOUT,
-  );
+  test('accepts template option from command line', () => {
+    const { stdout } = run(
+      [
+        '--project-name',
+        projectName,
+        '--package-name',
+        projectName,
+        '--template',
+        '01_template',
+      ],
+      { cwd: __dirname },
+    );
+    expect(stdout).toContain('Setting up project...');
+  }, 10000);
 
-  test(
-    'accepts example option from command line',
-    () => {
-      const { stdout } = run(
-        [
-          '--project-name',
-          projectName,
-          '--package-name',
-          projectName,
-          '--example',
-          'https://github.com/dai-shi/waku/tree/main/examples/01_template',
-        ],
-        { cwd: __dirname, timeout: 30000, reject: false },
-      );
-      expect(stdout).toContain('Setting up project...');
-    },
-    TEST_WITH_INSTALL_TIMEOUT,
-  );
+  test('accepts example option from command line', () => {
+    const { stdout } = run(
+      [
+        '--project-name',
+        projectName,
+        '--package-name',
+        projectName,
+        '--example',
+        'https://github.com/dai-shi/waku/tree/main/examples/01_template',
+      ],
+      { cwd: __dirname, timeout: 30000, reject: false },
+    );
+    expect(stdout).toContain('Setting up project...');
+  }, 10000);
 
-  test(
-    'shows installation instructions after setup',
-    () => {
-      const { stdout } = run(
-        [
-          '--project-name',
-          projectName,
-          '--package-name',
-          projectName,
-          '--template',
-          '01_template',
-        ],
-        { cwd: __dirname, timeout: 30000, reject: false },
-      );
+  test('shows installation instructions after setup', () => {
+    const { stdout } = run(
+      [
+        '--project-name',
+        projectName,
+        '--package-name',
+        projectName,
+        '--template',
+        '01_template',
+      ],
+      { cwd: __dirname, timeout: 30000, reject: false },
+    );
 
-      expect(stdout).toContain('Installing dependencies by running');
-    },
-    TEST_WITH_INSTALL_TIMEOUT,
-  );
+    expect(stdout).toContain('Installing dependencies by running');
+  }, 10000);
 
   test('handles choose flag to explicitly prompt for template', () => {
     const { stdout } = run(
@@ -173,25 +159,21 @@ describe('create-waku CLI with args', () => {
     expect(stdout).toContain('Choose a starter template');
   });
 
-  test(
-    'starts installation process after template selection',
-    () => {
-      const { stdout } = run(
-        [
-          '--project-name',
-          projectName,
-          '--package-name',
-          projectName,
-          '--template',
-          '01_template',
-        ],
-        { cwd: __dirname, timeout: 30000, reject: false },
-      );
-      expect(stdout).toContain('Setting up project...');
-      expect(stdout).toContain('Installing dependencies by running');
-    },
-    TEST_WITH_INSTALL_TIMEOUT,
-  );
+  test('starts installation process after template selection', () => {
+    const { stdout } = run(
+      [
+        '--project-name',
+        projectName,
+        '--package-name',
+        projectName,
+        '--template',
+        '01_template',
+      ],
+      { cwd: __dirname, timeout: 30000, reject: false },
+    );
+    expect(stdout).toContain('Setting up project...');
+    expect(stdout).toContain('Installing dependencies by running');
+  }, 10000);
 
   test('shows completion message with instructions', () => {
     const { stdout } = run(
