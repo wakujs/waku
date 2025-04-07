@@ -9,7 +9,7 @@ export const loadServerModule = async <T>(idOrFileURL: string): Promise<T> => {
     return import(idOrFileURL) as T;
   }
   const vite = await createViteServer({
-    server: { middlewareMode: true, watch: null },
+    server: { middlewareMode: true, watch: null, ws: false },
     appType: 'custom',
     environments: {
       config: {
