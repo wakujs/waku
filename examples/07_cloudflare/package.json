@@ -24,7 +24,7 @@
     "@types/react-dom": "19.0.4",
     "miniflare": "4.20250321.1",
     "postcss": "8.5.3",
-    "tailwindcss": "4.0.15",
+    "tailwindcss": "4.1.3",
     "typescript": "5.8.2"
   }
 }
