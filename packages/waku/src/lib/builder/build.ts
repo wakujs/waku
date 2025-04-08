@@ -107,11 +107,7 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
       {
         mode: 'production',
         plugins: [
-          rscAnalyzePlugin({
-            isClient: false,
-            clientFileMap,
-            serverFileMap,
-          }),
+          rscAnalyzePlugin({ isClient: false, clientFileMap, serverFileMap }),
           rscManagedPlugin({ ...config, addEntriesToInput: true }),
           ...deployPlugins(config),
         ],
@@ -189,16 +185,14 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
     throw new Error('Unexpected vite client analyze output');
   }
   clientEntryFiles = Object.fromEntries(
-    Array.from(clientFileMap).map(([fname, hash], i) => [
-      `${DIST_ASSETS}/rsc${i}-${hash}`,
-      fname,
-    ]),
+    Array.from(clientFileMap).flatMap(([fname, hash], i) => {
+      return [[`${DIST_ASSETS}/rsc${i}-${hash}`, fname]];
+    }),
   );
   const serverEntryFiles = Object.fromEntries(
-    Array.from(serverFileMap).map(([fname, hash], i) => [
-      `${DIST_ASSETS}/rsf${i}-${hash}`,
-      fname,
-    ]),
+    Array.from(serverFileMap).flatMap(([fname, hash], i) => {
+      return [[`${DIST_ASSETS}/rsf${i}-${hash}`, fname]];
+    }),
   );
   return {
     clientEntryFiles,
