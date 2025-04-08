@@ -14,17 +14,17 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-server-dom-webpack": "19.1.0",
-    "waku": "0.22.1",
-    "wrangler": "4.6.0"
+    "waku": "0.22.2",
+    "wrangler": "4.8.0"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "4.0.15",
-    "@types/node": "22.13.17",
-    "@types/react": "19.0.12",
-    "@types/react-dom": "19.0.4",
-    "miniflare": "4.20250321.1",
+    "@tailwindcss/postcss": "4.1.3",
+    "@types/node": "22.14.0",
+    "@types/react": "19.1.0",
+    "@types/react-dom": "19.1.1",
+    "miniflare": "4.20250405.0",
     "postcss": "8.5.3",
     "tailwindcss": "4.1.3",
-    "typescript": "5.8.2"
+    "typescript": "5.8.3"
   }
 }

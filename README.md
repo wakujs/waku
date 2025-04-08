@@ -815,6 +815,18 @@ export const POST = async (request: Request): Promise<Response> => {
 };
 ```
 
+Alternatively, you may export a default function as a "catch-all" handler that responds to all request methods.
+
+```ts
+// ./src/pages/api/other-endpoint.ts
+export default function handler(request: Request): Response {
+  return Response.json(
+    { message: 'Default handler ' + request.method },
+    { status: 200 },
+  );
+}
+```
+
 #### Calling API routes
 
 API routes are accessible at paths that match their file location. For example a file at `./src/pages/api/contact.ts` is available at `/api/contact`. You can call these endpoints from your client components using the standard [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) method.

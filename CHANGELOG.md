@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [0.22.2] - 2025-04-08
+
+### Changed
+
+- Improve create-waku
+- Bug fixes & some updates
+
 ## [0.22.1] - 2025-04-02
 
 ### Changed
