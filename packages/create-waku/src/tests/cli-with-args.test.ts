@@ -58,6 +58,7 @@ describe('create-waku CLI with args', () => {
       projectName,
       '--package-name',
       projectName,
+      '--choose',
     ]);
     expect(stdout).toContain('Choose a starter template');
   });
