@@ -77,6 +77,21 @@ for (const mode of ['DEV', 'PRD'] as const) {
       expect(await res.text()).toBe('POST Hello from API! from the test!');
     });
 
+    test('api has-default GET', async () => {
+      const res = await fetch(`http://localhost:${port}/api/has-default`);
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe('GET');
+    });
+
+    test('api has-default POST', async () => {
+      const res = await fetch(`http://localhost:${port}/api/has-default`, {
+        method: 'POST',
+        body: 'from the test!',
+      });
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe('default: POST');
+    });
+
     test('_components', async ({ page }) => {
       await page.goto(`http://localhost:${port}/_components/Counter`);
       await expect(page.getByText('404 Not Found')).toBeVisible();
