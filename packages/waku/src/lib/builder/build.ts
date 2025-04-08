@@ -102,7 +102,7 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
       }
     }
   }
-  await buildVite(
+  const serverAnalyzeOutput = await buildVite(
     extendViteConfig(
       {
         mode: 'production',
@@ -129,7 +129,10 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
           target: 'node20',
           rollupOptions: {
             onwarn,
-            input: serverPageFiles,
+            input: {
+              ...SERVER_MODULE_MAP,
+              ...serverPageFiles,
+            },
             output: {
               inlineDynamicImports: false,
             },
@@ -140,13 +143,16 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
       'build-analyze',
     ),
   );
+  if (!('output' in serverAnalyzeOutput)) {
+    throw new Error('Unexpected vite server analyze output');
+  }
   let clientEntryFiles = Object.fromEntries(
     Array.from(clientFileMap).map(([fname, hash], i) => [
       `${DIST_ASSETS}/rsc${i}-${hash}`,
       fname,
     ]),
   );
-  await buildVite(
+  const clientAnalyzeOutput = await buildVite(
     extendViteConfig(
       {
         mode: 'production',
@@ -165,7 +171,10 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
           target: 'node20',
           rollupOptions: {
             onwarn,
-            input: clientEntryFiles,
+            input: {
+              ...CLIENT_MODULE_MAP,
+              ...clientEntryFiles,
+            },
             output: {
               inlineDynamicImports: false,
             },
@@ -176,6 +185,9 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
       'build-analyze',
     ),
   );
+  if (!('output' in clientAnalyzeOutput)) {
+    throw new Error('Unexpected vite client analyze output');
+  }
   clientEntryFiles = Object.fromEntries(
     Array.from(clientFileMap).map(([fname, hash], i) => [
       `${DIST_ASSETS}/rsc${i}-${hash}`,
@@ -350,15 +362,13 @@ const buildSsrBundle = async (
           rollupOptions: {
             onwarn,
             input: {
-              ...clientEntryFiles,
               ...CLIENT_MODULE_MAP,
+              ...clientEntryFiles,
             },
             output: {
               entryFileNames: (chunkInfo: { name: string }) => {
                 if (
-                  CLIENT_MODULE_MAP[
-                    chunkInfo.name as keyof typeof CLIENT_MODULE_MAP
-                  ] ||
+                  CLIENT_MODULE_MAP[chunkInfo.name as never] ||
                   clientEntryFiles[chunkInfo.name]
                 ) {
                   return '[name].js';
