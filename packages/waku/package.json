@@ -94,7 +94,7 @@
     "hono": "4.7.5",
     "rollup": "4.38.0",
     "rsc-html-stream": "0.0.5",
-    "vite": "6.2.5"
+    "vite": "6.2.4"
   },
   "devDependencies": {
     "@netlify/functions": "^3.0.4",
