@@ -147,6 +147,9 @@ async function doPrompts() {
           if (values['package-name']) {
             return Promise.resolve(values['package-name']);
           }
+          if (isValidPackageName(targetDir)) {
+            return Promise.resolve(undefined);
+          }
           return p.text({
             message: 'Package name',
             validate: (dir: string) => {
