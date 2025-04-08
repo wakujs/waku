@@ -150,14 +150,14 @@ async function doPrompts() {
           return p.text({
             message: 'Package name',
             validate: (dir: string) => {
-              if (!isValidPackageName(dir)) {
+              if (dir && !isValidPackageName(dir)) {
                 return 'Invalid package.json name';
               }
             },
           });
         },
         templateName: () => {
-          if (values.template || values.example) {
+          if (!values.choose || values.template || values.example) {
             return Promise.resolve(values.template || values.example);
           }
           return p.select({
@@ -175,14 +175,10 @@ async function doPrompts() {
     return {
       ...results,
       packageName:
-        values['package-name'] ??
-        results.packageName ??
+        values['package-name'] ||
+        results.packageName ||
         toValidPackageName(targetDir),
-      templateName:
-        values.template ??
-        results.templateName ??
-        templateNames[0] ??
-        toValidPackageName(targetDir),
+      templateName: values.template ?? templateNames[0]!,
       targetDir,
     };
   } catch (err) {
