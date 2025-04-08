@@ -20,10 +20,10 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
       - run: pnpm install
+      - run: pnpm run compile
       - run: pnpm test
         env:
           VITE_EXPERIMENTAL_WAKU_ROUTER: true
-      - run: pnpm run compile
       - run: pnpm -r --filter='./packages/*' --no-git-checks publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
