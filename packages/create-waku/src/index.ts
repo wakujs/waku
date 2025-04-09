@@ -71,9 +71,6 @@ const { values } = parseArgs({
     'project-name': {
       type: 'string',
     },
-    'package-name': {
-      type: 'string',
-    },
     'skip-install': {
       type: 'boolean',
     },
@@ -144,13 +141,13 @@ async function doPrompts() {
           return Promise.resolve(true);
         },
         packageName: () => {
-          if (values['package-name']) {
-            return Promise.resolve(values['package-name']);
+          if (isValidPackageName(targetDir)) {
+            return Promise.resolve(undefined);
           }
           return p.text({
             message: 'Package name',
             validate: (dir: string) => {
-              if (dir && !isValidPackageName(dir)) {
+              if (!isValidPackageName(dir)) {
                 return 'Invalid package.json name';
               }
             },
@@ -174,10 +171,7 @@ async function doPrompts() {
 
     return {
       ...results,
-      packageName:
-        values['package-name'] ||
-        results.packageName ||
-        toValidPackageName(targetDir),
+      packageName: results.packageName || toValidPackageName(targetDir),
       templateName: values.template ?? templateNames[0]!,
       targetDir,
     };
@@ -198,7 +192,6 @@ Options:
   --template            Specify a template
   --example             Specify an example use as a template
   --project-name        Specify a project name
-  --package-name        Specify a package name
   --skip-install        Skip installation of dependencies
   -h, --help            Display this help message
 `);
