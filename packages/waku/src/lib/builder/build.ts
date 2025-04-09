@@ -186,11 +186,37 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
   }
   clientEntryFiles = Object.fromEntries(
     Array.from(clientFileMap).flatMap(([fname, hash], i) => {
+      // FIXME This is hardly maintainable.
+      for (const key of Object.keys(CLIENT_MODULE_MAP)) {
+        if (
+          clientAnalyzeOutput.output.find(
+            (item) =>
+              item.type === 'chunk' &&
+              item.name === key &&
+              item.moduleIds.includes(fname),
+          )
+        ) {
+          return [[key, fname]];
+        }
+      }
       return [[`${DIST_ASSETS}/rsc${i}-${hash}`, fname]];
     }),
   );
   const serverEntryFiles = Object.fromEntries(
     Array.from(serverFileMap).flatMap(([fname, hash], i) => {
+      // FIXME This is hardly maintainable.
+      for (const key of Object.keys(SERVER_MODULE_MAP)) {
+        if (
+          serverAnalyzeOutput.output.find(
+            (item) =>
+              item.type === 'chunk' &&
+              item.name === key &&
+              item.moduleIds.includes(fname),
+          )
+        ) {
+          return [[key, fname]];
+        }
+      }
       return [[`${DIST_ASSETS}/rsf${i}-${hash}`, fname]];
     }),
   );
