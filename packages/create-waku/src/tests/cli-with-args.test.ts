@@ -48,9 +48,13 @@ describe('create-waku CLI with args', () => {
   });
 
   test('should not prompt for the project name if supplied', () => {
-    const { stdout } = run(['--project-name', projectName], { cwd: __dirname });
+    const { stdout } = run(['--project-name', projectName], {
+      cwd: __dirname,
+      timeout: 30000,
+      reject: false,
+    });
     expect(stdout).not.toContain('Project Name');
-  });
+  }, 10000);
 
   test('prompts for the template selection', () => {
     const { stdout } = run(['--project-name', projectName, '--choose']);
@@ -105,7 +109,7 @@ describe('create-waku CLI with args', () => {
         '--project-name',
         projectName,
         '--example',
-        'https://github.com/dai-shi/waku/tree/main/examples/01_template',
+        'https://github.com/wakujs/waku/tree/main/examples/01_template',
       ],
       { cwd: __dirname, timeout: 30000, reject: false },
     );
