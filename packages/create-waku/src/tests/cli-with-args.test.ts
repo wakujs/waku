@@ -4,11 +4,15 @@ import type { SyncOptions, SyncResult } from 'execa';
 import { execaCommandSync } from 'execa';
 import { afterEach, beforeAll, describe, expect, test } from 'vitest';
 
-const CLI_PATH = path.join(__dirname, '../../dist/index.js');
+const CLI_PATH = path.join(import.meta.dirname, '../../dist/index.js');
 
 const projectName = 'test-waku-app';
-const genPath = path.join(__dirname, projectName);
-const genPathWithSubfolder = path.join(__dirname, '.test', projectName);
+const genPath = path.join(import.meta.dirname, projectName);
+const genPathWithSubfolder = path.join(
+  import.meta.dirname,
+  '.test',
+  projectName,
+);
 
 const run = <SO extends SyncOptions>(
   args: string[],
@@ -63,7 +67,9 @@ describe('create-waku CLI with args', () => {
 
   test('asks to overwrite non-empty target directory', () => {
     createNonEmptyDir();
-    const { stdout } = run(['--project-name', projectName], { cwd: __dirname });
+    const { stdout } = run(['--project-name', projectName], {
+      cwd: import.meta.dirname,
+    });
     expect(stdout).toContain(
       `${projectName} is not empty. Remove existing files and continue?`,
     );
@@ -72,7 +78,7 @@ describe('create-waku CLI with args', () => {
   test('asks to overwrite non-empty target directory with subfolder', () => {
     createNonEmptyDir(genPathWithSubfolder);
     const { stdout } = run(['--project-name', `.test/${projectName}`], {
-      cwd: __dirname,
+      cwd: import.meta.dirname,
     });
     expect(stdout).toContain(
       `.test/${projectName} is not empty. Remove existing files and continue?`,
@@ -80,7 +86,7 @@ describe('create-waku CLI with args', () => {
   });
 
   test('displays help message with --help flag', () => {
-    const { stdout } = run(['--help'], { cwd: __dirname });
+    const { stdout } = run(['--help'], { cwd: import.meta.dirname });
     expect(stdout).toContain('Usage:');
     expect(stdout).toContain('Options:');
     expect(stdout).toContain('--choose');
@@ -90,7 +96,7 @@ describe('create-waku CLI with args', () => {
   });
 
   test('displays help message with -h alias', () => {
-    const { stdout } = run(['-h'], { cwd: __dirname });
+    const { stdout } = run(['-h'], { cwd: import.meta.dirname });
     expect(stdout).toContain('Usage:');
     expect(stdout).toContain('Options:');
   });
@@ -98,7 +104,7 @@ describe('create-waku CLI with args', () => {
   test('accepts template option from command line', () => {
     const { stdout } = run(
       ['--project-name', projectName, '--template', '01_template'],
-      { cwd: __dirname },
+      { cwd: import.meta.dirname },
     );
     expect(stdout).toContain('Setting up project...');
   }, 10000);
@@ -111,7 +117,7 @@ describe('create-waku CLI with args', () => {
         '--example',
         'https://github.com/wakujs/waku/tree/main/examples/01_template',
       ],
-      { cwd: __dirname, timeout: 30000, reject: false },
+      { cwd: import.meta.dirname, timeout: 30000, reject: false },
     );
     expect(stdout).toContain('Setting up project...');
   }, 10000);
@@ -119,7 +125,7 @@ describe('create-waku CLI with args', () => {
   test('shows installation instructions after setup', () => {
     const { stdout } = run(
       ['--project-name', projectName, '--template', '01_template'],
-      { cwd: __dirname, timeout: 30000, reject: false },
+      { cwd: import.meta.dirname, timeout: 30000, reject: false },
     );
 
     expect(stdout).toContain('Installing dependencies by running');
@@ -127,7 +133,7 @@ describe('create-waku CLI with args', () => {
 
   test('handles choose flag to explicitly prompt for template', () => {
     const { stdout } = run(['--project-name', projectName, '--choose'], {
-      cwd: __dirname,
+      cwd: import.meta.dirname,
     });
     expect(stdout).toContain('Choose a starter template');
   });
@@ -135,7 +141,7 @@ describe('create-waku CLI with args', () => {
   test('starts installation process after template selection', () => {
     const { stdout } = run(
       ['--project-name', projectName, '--template', '01_template'],
-      { cwd: __dirname, timeout: 30000, reject: false },
+      { cwd: import.meta.dirname, timeout: 30000, reject: false },
     );
     expect(stdout).toContain('Setting up project...');
     expect(stdout).toContain('Installing dependencies by running');
@@ -150,7 +156,7 @@ describe('create-waku CLI with args', () => {
         '01_template',
         '--skip-install',
       ],
-      { cwd: __dirname, reject: false },
+      { cwd: import.meta.dirname, reject: false },
     );
 
     // Check for either successful installation or manual instructions
