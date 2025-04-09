@@ -92,7 +92,7 @@
     "@vitejs/plugin-react": "4.3.4",
     "dotenv": "16.4.7",
     "hono": "4.7.5",
-    "rollup": "4.38.0",
+    "rollup": "4.39.0",
     "rsc-html-stream": "0.0.5",
     "vite": "6.2.5"
   },
