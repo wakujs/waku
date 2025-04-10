@@ -4,11 +4,15 @@ import type { SyncOptions, SyncResult } from 'execa';
 import { execaCommandSync } from 'execa';
 import { afterEach, beforeAll, describe, expect, test } from 'vitest';
 
-const CLI_PATH = path.join(__dirname, '../../dist/index.js');
+const CLI_PATH = path.join(import.meta.dirname, '../../dist/index.js');
 
 const projectName = 'test-waku-app';
-const genPath = path.join(__dirname, projectName);
-const genPathWithSubfolder = path.join(__dirname, '.test', projectName);
+const genPath = path.join(import.meta.dirname, projectName);
+const genPathWithSubfolder = path.join(
+  import.meta.dirname,
+  '.test',
+  projectName,
+);
 
 const run = <SO extends SyncOptions>(
   args: string[],
@@ -47,25 +51,25 @@ describe('create-waku CLI with args', () => {
     expect(stdout).toContain('Project Name');
   });
 
-  test('prompts for the package name', () => {
-    const { stdout } = run(['--project-name', projectName]);
-    expect(stdout).toContain('Package name');
-  });
+  test('should not prompt for the project name if supplied', () => {
+    const { stdout } = run(['--project-name', projectName], {
+      cwd: __dirname,
+      timeout: 30000,
+      reject: false,
+    });
+    expect(stdout).not.toContain('Project Name');
+  }, 10000);
 
   test('prompts for the template selection', () => {
-    const { stdout } = run([
-      '--project-name',
-      projectName,
-      '--package-name',
-      projectName,
-      '--choose',
-    ]);
+    const { stdout } = run(['--project-name', projectName, '--choose']);
     expect(stdout).toContain('Choose a starter template');
   });
 
   test('asks to overwrite non-empty target directory', () => {
     createNonEmptyDir();
-    const { stdout } = run(['--project-name', projectName], { cwd: __dirname });
+    const { stdout } = run(['--project-name', projectName], {
+      cwd: import.meta.dirname,
+    });
     expect(stdout).toContain(
       `${projectName} is not empty. Remove existing files and continue?`,
     );
@@ -74,7 +78,7 @@ describe('create-waku CLI with args', () => {
   test('asks to overwrite non-empty target directory with subfolder', () => {
     createNonEmptyDir(genPathWithSubfolder);
     const { stdout } = run(['--project-name', `.test/${projectName}`], {
-      cwd: __dirname,
+      cwd: import.meta.dirname,
     });
     expect(stdout).toContain(
       `.test/${projectName} is not empty. Remove existing files and continue?`,
@@ -82,33 +86,25 @@ describe('create-waku CLI with args', () => {
   });
 
   test('displays help message with --help flag', () => {
-    const { stdout } = run(['--help'], { cwd: __dirname });
+    const { stdout } = run(['--help'], { cwd: import.meta.dirname });
     expect(stdout).toContain('Usage:');
     expect(stdout).toContain('Options:');
     expect(stdout).toContain('--choose');
     expect(stdout).toContain('--template');
     expect(stdout).toContain('--example');
     expect(stdout).toContain('--project-name');
-    expect(stdout).toContain('--package-name');
   });
 
   test('displays help message with -h alias', () => {
-    const { stdout } = run(['-h'], { cwd: __dirname });
+    const { stdout } = run(['-h'], { cwd: import.meta.dirname });
     expect(stdout).toContain('Usage:');
     expect(stdout).toContain('Options:');
   });
 
   test('accepts template option from command line', () => {
     const { stdout } = run(
-      [
-        '--project-name',
-        projectName,
-        '--package-name',
-        projectName,
-        '--template',
-        '01_template',
-      ],
-      { cwd: __dirname },
+      ['--project-name', projectName, '--template', '01_template'],
+      { cwd: import.meta.dirname },
     );
     expect(stdout).toContain('Setting up project...');
   }, 10000);
@@ -118,59 +114,34 @@ describe('create-waku CLI with args', () => {
       [
         '--project-name',
         projectName,
-        '--package-name',
-        projectName,
         '--example',
-        'https://github.com/dai-shi/waku/tree/main/examples/01_template',
+        'https://github.com/wakujs/waku/tree/main/examples/01_template',
       ],
-      { cwd: __dirname, timeout: 30000, reject: false },
+      { cwd: import.meta.dirname, timeout: 30000, reject: false },
     );
     expect(stdout).toContain('Setting up project...');
   }, 10000);
 
   test('shows installation instructions after setup', () => {
     const { stdout } = run(
-      [
-        '--project-name',
-        projectName,
-        '--package-name',
-        projectName,
-        '--template',
-        '01_template',
-      ],
-      { cwd: __dirname, timeout: 30000, reject: false },
+      ['--project-name', projectName, '--template', '01_template'],
+      { cwd: import.meta.dirname, timeout: 30000, reject: false },
     );
 
     expect(stdout).toContain('Installing dependencies by running');
   }, 10000);
 
   test('handles choose flag to explicitly prompt for template', () => {
-    const { stdout } = run(
-      [
-        '--project-name',
-        projectName,
-        '--package-name',
-        projectName,
-        '--choose',
-      ],
-      {
-        cwd: __dirname,
-      },
-    );
+    const { stdout } = run(['--project-name', projectName, '--choose'], {
+      cwd: import.meta.dirname,
+    });
     expect(stdout).toContain('Choose a starter template');
   });
 
   test('starts installation process after template selection', () => {
     const { stdout } = run(
-      [
-        '--project-name',
-        projectName,
-        '--package-name',
-        projectName,
-        '--template',
-        '01_template',
-      ],
-      { cwd: __dirname, timeout: 30000, reject: false },
+      ['--project-name', projectName, '--template', '01_template'],
+      { cwd: import.meta.dirname, timeout: 30000, reject: false },
     );
     expect(stdout).toContain('Setting up project...');
     expect(stdout).toContain('Installing dependencies by running');
@@ -181,13 +152,11 @@ describe('create-waku CLI with args', () => {
       [
         '--project-name',
         projectName,
-        '--package-name',
-        projectName,
         '--template',
         '01_template',
         '--skip-install',
       ],
-      { cwd: __dirname, reject: false },
+      { cwd: import.meta.dirname, reject: false },
     );
 
     // Check for either successful installation or manual instructions
