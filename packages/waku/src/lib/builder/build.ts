@@ -12,13 +12,7 @@ import type { EntriesPrd } from '../types.js';
 import type { ConfigDev } from '../config.js';
 import { resolveConfigDev } from '../config.js';
 import type { PathSpec } from '../utils/path.js';
-import {
-  decodeFilePathFromAbsolute,
-  extname,
-  filePathToFileURL,
-  fileURLToFilePath,
-  joinPath,
-} from '../utils/path.js';
+import { extname, filePathToFileURL, joinPath } from '../utils/path.js';
 import { extendViteConfig } from '../utils/vite-config.js';
 import {
   copyFile,
@@ -91,19 +85,9 @@ const deployPlugins = (config: ConfigDev) => [
 ];
 
 const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
-  const wakuClientDist = decodeFilePathFromAbsolute(
-    joinPath(fileURLToFilePath(import.meta.url), '../../../client.js'),
-  );
-  const wakuMinimalClientDist = decodeFilePathFromAbsolute(
-    joinPath(fileURLToFilePath(import.meta.url), '../../../minimal/client.js'),
-  );
-  const clientFileMap = new Map<string, string>([
-    // FIXME 'lib' should be the real hash
-    [wakuClientDist, 'lib'],
-    [wakuMinimalClientDist, 'lib'],
-  ]);
+  const clientFileMap = new Map<string, string>();
   const serverFileMap = new Map<string, string>();
-  const moduleFileMap = new Map<string, string>(); // module id -> full path
+  const serverPageFiles: Record<string, string> = {}; // page id -> full path
   const pagesDirPath = joinPath(rootDir, config.srcDir, config.pagesDir);
   if (existsSync(pagesDirPath)) {
     const files = await readdir(pagesDirPath, {
@@ -113,10 +97,8 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
     for (const file of files) {
       const ext = extname(file);
       if (EXTENSIONS.includes(ext)) {
-        moduleFileMap.set(
-          joinPath(config.pagesDir, file.slice(0, -ext.length)),
-          joinPath(pagesDirPath, file),
-        );
+        serverPageFiles[joinPath(config.pagesDir, file.slice(0, -ext.length))] =
+          joinPath(pagesDirPath, file);
       }
     }
   }
@@ -125,11 +107,7 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
       {
         mode: 'production',
         plugins: [
-          rscAnalyzePlugin({
-            isClient: false,
-            clientFileMap,
-            serverFileMap,
-          }),
+          rscAnalyzePlugin({ isClient: false, clientFileMap, serverFileMap }),
           rscManagedPlugin({ ...config, addEntriesToInput: true }),
           ...deployPlugins(config),
         ],
@@ -147,7 +125,13 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
           target: 'node20',
           rollupOptions: {
             onwarn,
-            input: Object.fromEntries(moduleFileMap),
+            input: {
+              ...SERVER_MODULE_MAP,
+              ...serverPageFiles,
+            },
+            output: {
+              inlineDynamicImports: false,
+            },
           },
         },
       },
@@ -155,13 +139,7 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
       'build-analyze',
     ),
   );
-  let clientEntryFiles = Object.fromEntries(
-    Array.from(clientFileMap).map(([fname, hash], i) => [
-      `${DIST_ASSETS}/rsc${i}-${hash}`,
-      fname,
-    ]),
-  );
-  await buildVite(
+  const clientAnalyzeOutput = await buildVite(
     extendViteConfig(
       {
         mode: 'production',
@@ -180,7 +158,18 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
           target: 'node20',
           rollupOptions: {
             onwarn,
-            input: clientEntryFiles,
+            input: {
+              ...CLIENT_MODULE_MAP,
+              ...Object.fromEntries(
+                Array.from(clientFileMap).map(([fname, hash], i) => [
+                  `${DIST_ASSETS}/rsc${i}-${hash}`,
+                  fname,
+                ]),
+              ),
+            },
+            output: {
+              inlineDynamicImports: false,
+            },
           },
         },
       },
@@ -188,23 +177,39 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
       'build-analyze',
     ),
   );
-  clientEntryFiles = Object.fromEntries(
-    Array.from(clientFileMap).map(([fname, hash], i) => [
-      `${DIST_ASSETS}/rsc${i}-${hash}`,
-      fname,
-    ]),
-  );
-  const serverEntryFiles = Object.fromEntries(
-    Array.from(serverFileMap).map(([fname, hash], i) => [
-      `${DIST_ASSETS}/rsf${i}-${hash}`,
-      fname,
-    ]),
-  );
-  const serverModuleFiles = Object.fromEntries(moduleFileMap);
+  if (!('output' in clientAnalyzeOutput)) {
+    throw new Error('Unexpected vite client analyze output');
+  }
+  const clientEntryFiles: Record<string, string> = {};
+  const clientEntryAliasMap = new Map<string, string>();
+  let index = 0;
+  for (const [fname, hash] of clientFileMap) {
+    const entry = `${DIST_ASSETS}/rsc${index++}-${hash}`;
+    clientEntryFiles[entry] = fname;
+    for (const key of Object.keys(CLIENT_MODULE_MAP)) {
+      if (
+        clientAnalyzeOutput.output.find(
+          (item) =>
+            item.type === 'chunk' &&
+            item.name === key &&
+            item.moduleIds.includes(fname),
+        )
+      ) {
+        clientEntryAliasMap.set(key, entry);
+      }
+    }
+  }
+  const serverEntryFiles: Record<string, string> = {};
+  index = 0;
+  for (const [fname, hash] of serverFileMap) {
+    const entry = `${DIST_ASSETS}/rsf${index++}-${hash}`;
+    serverEntryFiles[entry] = fname;
+  }
   return {
     clientEntryFiles,
     serverEntryFiles,
-    serverModuleFiles,
+    serverPageFiles,
+    clientEntryAliasMap,
   };
 };
 
@@ -215,7 +220,8 @@ const buildServerBundle = async (
   config: ConfigDev,
   clientEntryFiles: Record<string, string>,
   serverEntryFiles: Record<string, string>,
-  serverModuleFiles: Record<string, string>,
+  serverPageFiles: Record<string, string>,
+  clientEntryAliasMap: Map<string, string>,
   partial: boolean,
 ) => {
   const serverBuildOutput = await buildVite(
@@ -233,10 +239,7 @@ const buildServerBundle = async (
           rscRsdwPlugin(),
           rscEnvPlugin({ isDev: false, env, config }),
           rscPrivatePlugin(config),
-          rscManagedPlugin({
-            ...config,
-            addEntriesToInput: true,
-          }),
+          rscManagedPlugin({ ...config, addEntriesToInput: true }),
           rscEntriesPlugin({
             basePath: config.basePath,
             rscBase: config.rscBase,
@@ -245,28 +248,23 @@ const buildServerBundle = async (
             srcDir: config.srcDir,
             ssrDir: DIST_SSR,
             moduleMap: {
+              ...SERVER_MODULE_MAP,
               ...Object.fromEntries(
-                Object.keys(SERVER_MODULE_MAP).map((key) => [
-                  key,
-                  `./${key}.js`,
+                Object.entries(serverEntryFiles).map(([key, val]) => [
+                  `${key}.js`,
+                  val,
                 ]),
               ),
               ...Object.fromEntries(
                 Object.keys(CLIENT_MODULE_MAP).map((key) => [
                   `${CLIENT_PREFIX}${key}`,
-                  `./${DIST_SSR}/${key}.js`,
+                  `./${DIST_SSR}/${clientEntryAliasMap.get(key) || key}.js`,
                 ]),
               ),
               ...Object.fromEntries(
-                Object.keys(clientEntryFiles || {}).map((key) => [
+                Object.keys(clientEntryFiles).map((key) => [
                   `${DIST_SSR}/${key}.js`,
                   `./${DIST_SSR}/${key}.js`,
-                ]),
-              ),
-              ...Object.fromEntries(
-                Object.keys(serverEntryFiles || {}).map((key) => [
-                  `${key}.js`,
-                  `./${key}.js`,
                 ]),
               ),
             },
@@ -296,10 +294,10 @@ const buildServerBundle = async (
           rollupOptions: {
             onwarn,
             input: {
-              ...SERVER_MODULE_MAP,
-              ...serverModuleFiles,
               ...clientEntryFiles,
               ...serverEntryFiles,
+              ...SERVER_MODULE_MAP,
+              ...serverPageFiles,
             },
           },
         },
@@ -311,7 +309,10 @@ const buildServerBundle = async (
   if (!('output' in serverBuildOutput)) {
     throw new Error('Unexpected vite server build output');
   }
-  return serverBuildOutput;
+  const serverAssets = serverBuildOutput.output.flatMap(({ type, fileName }) =>
+    type === 'asset' ? [fileName] : [],
+  );
+  return { serverAssets };
 };
 
 // For SSR (render client components on server to generate HTML)
@@ -321,11 +322,11 @@ const buildSsrBundle = async (
   config: ConfigDev,
   clientEntryFiles: Record<string, string>,
   serverEntryFiles: Record<string, string>,
-  serverBuildOutput: Awaited<ReturnType<typeof buildServerBundle>>,
+  serverAssets: string[],
   partial: boolean,
 ) => {
-  const cssAssets = serverBuildOutput.output.flatMap(({ type, fileName }) =>
-    type === 'asset' && fileName.endsWith('.css') ? [fileName] : [],
+  const cssAssets = serverAssets.filter((fileName) =>
+    fileName.endsWith('.css'),
   );
   await buildVite(
     extendViteConfig(
@@ -369,9 +370,7 @@ const buildSsrBundle = async (
             output: {
               entryFileNames: (chunkInfo: { name: string }) => {
                 if (
-                  CLIENT_MODULE_MAP[
-                    chunkInfo.name as keyof typeof CLIENT_MODULE_MAP
-                  ] ||
+                  CLIENT_MODULE_MAP[chunkInfo.name as never] ||
                   clientEntryFiles[chunkInfo.name]
                 ) {
                   return '[name].js';
@@ -395,11 +394,11 @@ const buildClientBundle = async (
   config: ConfigDev,
   clientEntryFiles: Record<string, string>,
   serverEntryFiles: Record<string, string>,
-  serverBuildOutput: Awaited<ReturnType<typeof buildServerBundle>>,
+  serverAssets: string[],
   partial: boolean,
 ) => {
-  const nonJsAssets = serverBuildOutput.output.flatMap(({ type, fileName }) =>
-    type === 'asset' && !fileName.endsWith('.js') ? [fileName] : [],
+  const nonJsAssets = serverAssets.filter(
+    (fileName) => !fileName.endsWith('.js'),
   );
   const cssAssets = nonJsAssets.filter((asset) => asset.endsWith('.css'));
   const clientBuildOutput = await buildVite(
@@ -447,12 +446,15 @@ const buildClientBundle = async (
   if (!('output' in clientBuildOutput)) {
     throw new Error('Unexpected vite client build output');
   }
+  const clientAssets = clientBuildOutput.output.flatMap(({ type, fileName }) =>
+    type === 'asset' ? [fileName] : [],
+  );
   for (const nonJsAsset of nonJsAssets) {
     const from = joinPath(rootDir, config.distDir, nonJsAsset);
     const to = joinPath(rootDir, config.distDir, DIST_PUBLIC, nonJsAsset);
     await copyFile(from, to);
   }
-  return clientBuildOutput;
+  return { clientAssets };
 };
 
 // TODO: Add progress indication for static builds.
@@ -730,16 +732,21 @@ export async function build(options: {
   buildOptions.deploy = options.deploy;
 
   buildOptions.unstable_phase = 'analyzeEntries';
-  const { clientEntryFiles, serverEntryFiles, serverModuleFiles } =
-    await analyzeEntries(rootDir, config);
+  const {
+    clientEntryFiles,
+    serverEntryFiles,
+    serverPageFiles,
+    clientEntryAliasMap,
+  } = await analyzeEntries(rootDir, config);
   buildOptions.unstable_phase = 'buildServerBundle';
-  const serverBuildOutput = await buildServerBundle(
+  const { serverAssets } = await buildServerBundle(
     rootDir,
     env,
     config,
     clientEntryFiles,
     serverEntryFiles,
-    serverModuleFiles,
+    serverPageFiles,
+    clientEntryAliasMap,
     !!options.partial,
   );
   buildOptions.unstable_phase = 'buildSsrBundle';
@@ -749,17 +756,17 @@ export async function build(options: {
     config,
     clientEntryFiles,
     serverEntryFiles,
-    serverBuildOutput,
+    serverAssets,
     !!options.partial,
   );
   buildOptions.unstable_phase = 'buildClientBundle';
-  const clientBuildOutput = await buildClientBundle(
+  const { clientAssets } = await buildClientBundle(
     rootDir,
     env,
     config,
     clientEntryFiles,
     serverEntryFiles,
-    serverBuildOutput,
+    serverAssets,
     !!options.partial,
   );
   delete buildOptions.unstable_phase;
@@ -769,8 +776,8 @@ export async function build(options: {
   );
 
   INTERNAL_setAllEnv(env);
-  const cssAssets = clientBuildOutput.output.flatMap(({ type, fileName }) =>
-    type === 'asset' && fileName.endsWith('.css') ? [fileName] : [],
+  const cssAssets = clientAssets.filter((fileName) =>
+    fileName.endsWith('.css'),
   );
   buildOptions.unstable_phase = 'emitStaticFiles';
   await emitStaticFiles(
