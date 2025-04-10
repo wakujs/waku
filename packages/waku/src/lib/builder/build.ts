@@ -248,14 +248,9 @@ const buildServerBundle = async (
             srcDir: config.srcDir,
             ssrDir: DIST_SSR,
             moduleMap: {
+              ...SERVER_MODULE_MAP,
               ...Object.fromEntries(
-                Object.entries(SERVER_MODULE_MAP).map(([key, val]) => [
-                  key,
-                  val,
-                ]),
-              ),
-              ...Object.fromEntries(
-                Object.entries(serverEntryFiles || {}).map(([key, val]) => [
+                Object.entries(serverEntryFiles).map(([key, val]) => [
                   `${key}.js`,
                   val,
                 ]),
@@ -267,7 +262,7 @@ const buildServerBundle = async (
                 ]),
               ),
               ...Object.fromEntries(
-                Object.keys(clientEntryFiles || {}).map((key) => [
+                Object.keys(clientEntryFiles).map((key) => [
                   `${DIST_SSR}/${key}.js`,
                   `./${DIST_SSR}/${key}.js`,
                 ]),
