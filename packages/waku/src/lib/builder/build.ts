@@ -142,12 +142,6 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
   if (!('output' in serverAnalyzeOutput)) {
     throw new Error('Unexpected vite server analyze output');
   }
-  let clientEntryFiles = Object.fromEntries(
-    Array.from(clientFileMap).map(([fname, hash], i) => [
-      `${DIST_ASSETS}/rsc${i}-${hash}`,
-      fname,
-    ]),
-  );
   const clientAnalyzeOutput = await buildVite(
     extendViteConfig(
       {
@@ -169,7 +163,12 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
             onwarn,
             input: {
               ...CLIENT_MODULE_MAP,
-              ...clientEntryFiles,
+              ...Object.fromEntries(
+                Array.from(clientFileMap).map(([fname, hash], i) => [
+                  `${DIST_ASSETS}/rsc${i}-${hash}`,
+                  fname,
+                ]),
+              ),
             },
             output: {
               inlineDynamicImports: false,
@@ -184,7 +183,7 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
   if (!('output' in clientAnalyzeOutput)) {
     throw new Error('Unexpected vite client analyze output');
   }
-  clientEntryFiles = Object.fromEntries(
+  const clientEntryFiles = Object.fromEntries(
     Array.from(clientFileMap).flatMap(([fname, hash], i) => {
       // FIXME This is hardly maintainable.
       for (const key of Object.keys(CLIENT_MODULE_MAP)) {
