@@ -299,10 +299,10 @@ const buildServerBundle = async (
           rollupOptions: {
             onwarn,
             input: {
-              ...SERVER_MODULE_MAP,
-              ...serverPageFiles,
               ...clientEntryFiles,
               ...serverEntryFiles,
+              ...SERVER_MODULE_MAP,
+              ...serverPageFiles,
             },
           },
         },
@@ -369,8 +369,8 @@ const buildSsrBundle = async (
           rollupOptions: {
             onwarn,
             input: {
-              ...CLIENT_MODULE_MAP,
               ...clientEntryFiles,
+              ...CLIENT_MODULE_MAP,
             },
             output: {
               entryFileNames: (chunkInfo: { name: string }) => {
