@@ -102,7 +102,7 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
       }
     }
   }
-  const serverAnalyzeOutput = await buildVite(
+  await buildVite(
     extendViteConfig(
       {
         mode: 'production',
@@ -139,9 +139,6 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
       'build-analyze',
     ),
   );
-  if (!('output' in serverAnalyzeOutput)) {
-    throw new Error('Unexpected vite server analyze output');
-  }
   const clientAnalyzeOutput = await buildVite(
     extendViteConfig(
       {
@@ -183,46 +180,36 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
   if (!('output' in clientAnalyzeOutput)) {
     throw new Error('Unexpected vite client analyze output');
   }
-  const clientEntryFiles = Object.fromEntries(
-    Array.from(clientFileMap).flatMap(([fname, hash], i) => {
-      // FIXME This is hardly maintainable.
-      for (const key of Object.keys(CLIENT_MODULE_MAP)) {
-        if (
-          clientAnalyzeOutput.output.find(
-            (item) =>
-              item.type === 'chunk' &&
-              item.name === key &&
-              item.moduleIds.includes(fname),
-          )
-        ) {
-          return [[key, fname]];
-        }
+  const clientEntryFiles: Record<string, string> = {};
+  const clientEntryAliasMap = new Map<string, string>();
+  let index = 0;
+  for (const [fname, hash] of clientFileMap) {
+    const entry = `${DIST_ASSETS}/rsc${index++}-${hash}`;
+    clientEntryFiles[entry] = fname;
+    for (const key of Object.keys(CLIENT_MODULE_MAP)) {
+      if (
+        clientAnalyzeOutput.output.find(
+          (item) =>
+            item.type === 'chunk' &&
+            item.name === key &&
+            item.moduleIds.includes(fname),
+        )
+      ) {
+        clientEntryAliasMap.set(key, entry);
       }
-      return [[`${DIST_ASSETS}/rsc${i}-${hash}`, fname]];
-    }),
-  );
-  const serverEntryFiles = Object.fromEntries(
-    Array.from(serverFileMap).flatMap(([fname, hash], i) => {
-      // FIXME This is hardly maintainable.
-      for (const key of Object.keys(SERVER_MODULE_MAP)) {
-        if (
-          serverAnalyzeOutput.output.find(
-            (item) =>
-              item.type === 'chunk' &&
-              item.name === key &&
-              item.moduleIds.includes(fname),
-          )
-        ) {
-          return [[key, fname]];
-        }
-      }
-      return [[`${DIST_ASSETS}/rsf${i}-${hash}`, fname]];
-    }),
-  );
+    }
+  }
+  const serverEntryFiles: Record<string, string> = {};
+  index = 0;
+  for (const [fname, hash] of serverFileMap) {
+    const entry = `${DIST_ASSETS}/rsf${index++}-${hash}`;
+    serverEntryFiles[entry] = fname;
+  }
   return {
     clientEntryFiles,
     serverEntryFiles,
     serverPageFiles,
+    clientEntryAliasMap,
   };
 };
 
@@ -234,6 +221,7 @@ const buildServerBundle = async (
   clientEntryFiles: Record<string, string>,
   serverEntryFiles: Record<string, string>,
   serverPageFiles: Record<string, string>,
+  clientEntryAliasMap: Map<string, string>,
   partial: boolean,
 ) => {
   const serverBuildOutput = await buildVite(
@@ -275,7 +263,7 @@ const buildServerBundle = async (
               ...Object.fromEntries(
                 Object.keys(CLIENT_MODULE_MAP).map((key) => [
                   `${CLIENT_PREFIX}${key}`,
-                  `./${DIST_SSR}/${key}.js`,
+                  `./${DIST_SSR}/${clientEntryAliasMap.get(key) || key}.js`,
                 ]),
               ),
               ...Object.fromEntries(
@@ -749,8 +737,12 @@ export async function build(options: {
   buildOptions.deploy = options.deploy;
 
   buildOptions.unstable_phase = 'analyzeEntries';
-  const { clientEntryFiles, serverEntryFiles, serverPageFiles } =
-    await analyzeEntries(rootDir, config);
+  const {
+    clientEntryFiles,
+    serverEntryFiles,
+    serverPageFiles,
+    clientEntryAliasMap,
+  } = await analyzeEntries(rootDir, config);
   buildOptions.unstable_phase = 'buildServerBundle';
   const { serverAssets } = await buildServerBundle(
     rootDir,
@@ -759,6 +751,7 @@ export async function build(options: {
     clientEntryFiles,
     serverEntryFiles,
     serverPageFiles,
+    clientEntryAliasMap,
     !!options.partial,
   );
   buildOptions.unstable_phase = 'buildSsrBundle';
