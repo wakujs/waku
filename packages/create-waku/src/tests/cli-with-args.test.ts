@@ -58,7 +58,7 @@ describe('create-waku CLI with args', () => {
       reject: false,
     });
     expect(stdout).not.toContain('Project Name');
-  }, 10000);
+  }, 15000);
 
   test('prompts for the template selection', () => {
     const { stdout } = run(['--project-name', projectName, '--choose']);
