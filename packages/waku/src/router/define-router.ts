@@ -315,7 +315,11 @@ export function unstable_defineRouter(fns: {
       });
     }
     if (input.type === 'action' || input.type === 'custom') {
-      const renderIt = async (pathname: string, query: string) => {
+      const renderIt = async (
+        pathname: string,
+        query: string,
+        httpstatus = 200,
+      ) => {
         const rscPath = encodeRoutePath(pathname);
         const rscParams = new URLSearchParams({ query });
         const entries = await getEntries(rscPath, rscParams, input.req.headers);
@@ -324,6 +328,7 @@ export function unstable_defineRouter(fns: {
         }
         const html = createElement(INTERNAL_ServerRouter, {
           route: { path: pathname, query, hash: '' },
+          httpstatus,
         });
         const actionResult =
           input.type === 'action' ? await input.fn() : undefined;
@@ -344,7 +349,7 @@ export function unstable_defineRouter(fns: {
         }
       }
       if (await has404()) {
-        return { ...(await renderIt('/404', '')), status: 404 };
+        return { ...(await renderIt('/404', '', 404)), status: 404 };
       } else {
         return null;
       }
@@ -433,12 +438,12 @@ globalThis.__WAKU_ROUTER_PREFETCH__ = (path) => {
             const rscPath = encodeRoutePath(pathname);
             const code =
               unstable_generatePrefetchCode([rscPath], moduleIds) +
-              getRouterPrefetchCode() +
-              (specs.is404 ? 'globalThis.__WAKU_ROUTER_404__ = true;' : '');
+              getRouterPrefetchCode();
             const entries = entriesCache.get(pathname);
             if (specs.isStatic && entries) {
               const html = createElement(INTERNAL_ServerRouter, {
                 route: { path: pathname, query: '', hash: '' },
+                httpstatus: specs.is404 ? 404 : 200,
               });
               return {
                 type: 'file',
@@ -452,8 +457,7 @@ globalThis.__WAKU_ROUTER_PREFETCH__ = (path) => {
           }
           const code =
             unstable_generatePrefetchCode([], moduleIds) +
-            getRouterPrefetchCode() +
-            (specs.is404 ? 'globalThis.__WAKU_ROUTER_404__ = true;' : '');
+            getRouterPrefetchCode();
           return {
             type: 'htmlHead',
             pathSpec,
