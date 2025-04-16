@@ -33,6 +33,7 @@ for (const mode of ['DEV', 'PRD'] as const) {
         await page.goto(`http://localhost:${port}/broken`);
         // The page renders the custom 404.tsx
         await expect(page.getByRole('heading')).toHaveText('Custom not found');
+        await expect(page).toHaveTitle('Custom Not Found Title');
         // The browsers URL remains the one that was navigated to
         expect(page.url()).toBe(`http://localhost:${port}/broken`);
         // Go back to the index page
@@ -57,6 +58,7 @@ for (const mode of ['DEV', 'PRD'] as const) {
         await page.goto(`http://localhost:${port}/broken-redirect`);
         // The page renders the custom 404.tsx
         await expect(page.getByRole('heading')).toHaveText('Custom not found');
+        await expect(page).toHaveTitle('Custom Not Found Title');
         // The browsers URL remains the one that was redirected to
         expect(page.url()).toBe(`http://localhost:${port}/broken`);
         // Go back to the index page
@@ -97,6 +99,7 @@ test.describe('broken-links: static server', () => {
       await page.getByRole('link', { name: 'Broken link' }).click();
       // The page renders the custom 404.tsx
       await expect(page.getByRole('heading')).toHaveText('Custom not found');
+      await expect(page).toHaveTitle('Custom Not Found Title');
       // The browsers URL remains the one that was navigated to
       expect(page.url()).toBe(`http://localhost:${port}/broken`);
       // Go back to the index page
@@ -123,6 +126,7 @@ test.describe('broken-links: static server', () => {
       await page.getByRole('link', { name: 'Broken redirect' }).click();
       // The page renders the custom 404.tsx
       await expect(page.getByRole('heading')).toHaveText('Custom not found');
+      await expect(page).toHaveTitle('Custom Not Found Title');
       // The browsers URL remains the link href
       // NOTE: This is inconsistent with server side navigation, but
       //       there is no way to tell where the RSC request was redirected
@@ -149,11 +153,13 @@ for (const mode of ['DEV', 'PRD'] as const) {
     test('access sync page directly', async ({ page }) => {
       await page.goto(`http://localhost:${port}/dynamic-not-found/sync`);
       await expect(page.getByRole('heading')).toHaveText('Custom not found');
+      await expect(page).toHaveTitle('Custom Not Found Title');
     });
 
     test('access async page directly', async ({ page }) => {
       await page.goto(`http://localhost:${port}/dynamic-not-found/async`);
       await expect(page.getByRole('heading')).toHaveText('Custom not found');
+      await expect(page).toHaveTitle('Custom Not Found Title');
     });
 
     test('access sync page with client navigation', async ({ page }) => {
@@ -161,6 +167,7 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await expect(page.getByRole('heading')).toHaveText('Index');
       await page.click("a[href='/dynamic-not-found/sync']");
       await expect(page.getByRole('heading')).toHaveText('Custom not found');
+      await expect(page).toHaveTitle('Custom Not Found Title');
     });
 
     test('access async page with client navigation', async ({ page }) => {
@@ -168,6 +175,7 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await expect(page.getByRole('heading')).toHaveText('Index');
       await page.click("a[href='/dynamic-not-found/async']");
       await expect(page.getByRole('heading')).toHaveText('Custom not found');
+      await expect(page).toHaveTitle('Custom Not Found Title');
     });
   });
 }
