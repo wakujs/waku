@@ -644,6 +644,10 @@ const emitStaticFiles = async (
     encoding: 'utf8',
   });
   distEntriesFileContent = distEntriesFileContent.replace(
+    'globalThis.__WAKU_DEFAULT_HTML_HEAD__',
+    JSON.stringify(defaultHtmlHead),
+  );
+  distEntriesFileContent = distEntriesFileContent.replace(
     'globalThis.__WAKU_DYNAMIC_HTML_PATHS__',
     JSON.stringify(dynamicHtmlPaths),
   );
