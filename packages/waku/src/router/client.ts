@@ -75,7 +75,12 @@ const parseRoute = (url: URL): RouteProps => {
 };
 
 const parseRouteFromLocation = (): RouteProps => {
-  if ((globalThis as any).__WAKU_ROUTER_404__) {
+  const httpStatusMeta = document.querySelector('meta[name="httpstatus"]');
+  if (
+    httpStatusMeta &&
+    'content' in httpStatusMeta &&
+    httpStatusMeta.content === '404'
+  ) {
     return { path: '/404', query: '', hash: '' };
   }
   return parseRoute(new URL(window.location.href));
@@ -683,11 +688,18 @@ export function Router({
  * ServerRouter for SSR
  * This is not a public API.
  */
-export function INTERNAL_ServerRouter({ route }: { route: RouteProps }) {
+export function INTERNAL_ServerRouter({
+  route,
+  httpstatus,
+}: {
+  route: RouteProps;
+  httpstatus: number;
+}) {
   const routeElement = createElement(Slot, { id: getRouteSlotId(route.path) });
   const rootElement = createElement(
     Slot,
     { id: 'root', unstable_handleError: null },
+    createElement('meta', { name: 'httpstatus', content: `${httpstatus}` }),
     routeElement,
   );
   return createElement(
