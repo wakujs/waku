@@ -87,18 +87,18 @@
     "node": "^22.7.0 || ^20.8.0"
   },
   "dependencies": {
-    "@hono/node-server": "1.14.0",
-    "@swc/core": "1.11.18",
-    "@vitejs/plugin-react": "4.3.4",
-    "dotenv": "16.4.7",
-    "hono": "4.7.5",
-    "rollup": "4.39.0",
+    "@hono/node-server": "1.14.1",
+    "@swc/core": "1.11.21",
+    "@vitejs/plugin-react": "4.4.0",
+    "dotenv": "16.5.0",
+    "hono": "4.7.7",
+    "rollup": "4.40.0",
     "rsc-html-stream": "0.0.5",
-    "vite": "6.2.5"
+    "vite": "6.3.1"
   },
   "devDependencies": {
-    "@netlify/functions": "^3.0.4",
-    "@swc/cli": "^0.6.0",
+    "@netlify/functions": "^3.1.2",
+    "@swc/cli": "^0.7.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-server-dom-webpack": "19.1.0",

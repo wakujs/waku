@@ -9,15 +9,15 @@
     "start": "waku start"
   },
   "dependencies": {
-    "jotai": "2.12.2",
+    "jotai": "2.12.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-server-dom-webpack": "19.1.0",
     "waku": "0.22.2"
   },
   "devDependencies": {
-    "@types/react": "19.1.0",
-    "@types/react-dom": "19.1.1",
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
     "typescript": "5.8.3"
   }
 }
