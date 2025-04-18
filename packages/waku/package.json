@@ -94,11 +94,11 @@
     "hono": "4.7.7",
     "rollup": "4.40.0",
     "rsc-html-stream": "0.0.5",
-    "vite": "6.3.1"
+    "vite": "6.3.2"
   },
   "devDependencies": {
     "@netlify/functions": "^3.1.2",
-    "@swc/cli": "^0.7.2",
+    "@swc/cli": "^0.7.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-server-dom-webpack": "19.1.0",
