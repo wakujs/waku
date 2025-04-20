@@ -159,7 +159,9 @@ test.describe('hot reload', () => {
     expect(bgColor2).toBe('rgb(255, 255, 0)');
   });
 
-  test('css modules in client components with a reload (#1328)', async ({ page }) => {
+  test('css modules in client components with a reload (#1328)', async ({
+    page,
+  }) => {
     await page.goto(`http://localhost:${port}/css-modules-client`);
     await expect(page.getByTestId('css-modules-client')).toHaveText('Hello');
     const bgColor1 = await page.evaluate(() =>
