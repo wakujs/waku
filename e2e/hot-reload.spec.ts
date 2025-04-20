@@ -158,4 +158,43 @@ test.describe('hot reload', () => {
     );
     expect(bgColor2).toBe('rgb(255, 255, 0)');
   });
+
+  test('css modules in client components with a reload (#1328)', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/css-modules-client`);
+    await expect(page.getByTestId('css-modules-client')).toHaveText('Hello');
+    const bgColor1 = await page.evaluate(() =>
+      window
+        .getComputedStyle(
+          document.querySelector('[data-testid="css-modules-client"]')!,
+        )
+        .getPropertyValue('background-color'),
+    );
+    expect(bgColor1).toBe('rgb(255, 0, 0)');
+
+    await modifyFile(
+      standaloneDir,
+      'src/pages/css-modules-client.module.css',
+      'background-color: red;',
+      'background-color: blue;',
+    );
+    await page.waitForTimeout(500); // need to wait for full reload
+    const bgColor2 = await page.evaluate(() =>
+      window
+        .getComputedStyle(
+          document.querySelector('[data-testid="css-modules-client"]')!,
+        )
+        .getPropertyValue('background-color'),
+    );
+    expect(bgColor2).toBe('rgb(0, 0, 255)');
+
+    await page.reload();
+    const bgColor3 = await page.evaluate(() =>
+      window
+        .getComputedStyle(
+          document.querySelector('[data-testid="css-modules-client"]')!,
+        )
+        .getPropertyValue('background-color'),
+    );
+    expect(bgColor3).toBe('rgb(0, 0, 255)');
+  });
 });
