@@ -148,18 +148,18 @@ export function rscHmrPlugin(): Plugin {
       }
     },
     handleHotUpdate({ file, server }) {
-      const module = server.moduleGraph.getModuleById(file);
-      if (module?.file?.endsWith('.module.css')) {
-        module.importers.forEach((importer) => {
-          handleModuleUpdate(importer.file!, server);
-        });
-      }
       if (file.endsWith('/pages.gen.ts')) {
         // auto generated file by fsRouterTypegenPlugin
         return [];
       }
 
       handleModuleUpdate(file, server);
+      const module = server.moduleGraph.getModuleById(file);
+      if (module?.file?.endsWith('.module.css')) {
+        module.importers.forEach((importer) => {
+          handleModuleUpdate(importer.file!, server);
+        });
+      }
     },
   };
 }
@@ -263,7 +263,6 @@ function handleModuleUpdate(filePath: string, viteServer: ViteDevServer) {
   const normalizedPath = filePath.startsWith(viteServer.config.root + '/')
     ? filePath.slice(viteServer.config.root.length + 1)
     : filePath;
-
   const id = filePathToFileURL(normalizedPath);
   if (moduleLoading.has(id)) {
     moduleLoading.set(
