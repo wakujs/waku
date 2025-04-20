@@ -151,7 +151,7 @@ export function rscHmrPlugin(): Plugin {
       const module = server.moduleGraph.getModuleById(file);
       if (module?.file?.endsWith('.module.css')) {
         module.importers.forEach((importer) => {
-          handleModuleUpdate(importer.file!, server);
+          // handleModuleUpdate(importer.file!, server);
         });
       }
       if (file.endsWith('/pages.gen.ts')) {
