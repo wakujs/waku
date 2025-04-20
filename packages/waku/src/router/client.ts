@@ -239,12 +239,14 @@ export function Link({
         throw new Error('Missing Router');
       };
   const [isPending, startTransition] = useTransition();
-  const startTransitionFn =
-    unstable_startTransition ||
-    ((unstable_pending || unstable_notPending) && startTransition) ||
-    ((fn: () => void) => fn());
+  const handleStartTransition = (fn: () => void) => {
+    console.log('starting transition');
+    unstable_startTransition?.(fn);
+    startTransition(fn);
+    console.log('finished transition');
+  };
   const ref = useRef<HTMLAnchorElement>(undefined);
-
+  console.log('isPending in render', isPending);
   useEffect(() => {
     if (unstable_prefetchOnView && ref.current) {
       const observer = new IntersectionObserver(
@@ -274,7 +276,7 @@ export function Link({
     if (url.href !== window.location.href) {
       const route = parseRoute(url);
       prefetchRoute(route);
-      startTransitionFn(() => {
+      handleStartTransition(() => {
         const newPath = url.pathname !== window.location.pathname;
         window.history.pushState(
           {
@@ -285,6 +287,7 @@ export function Link({
           url,
         );
         changeRoute(route, { shouldScroll: scroll ?? newPath });
+        console.log('changed route');
       });
     }
   };
@@ -521,8 +524,8 @@ const InnerRouter = ({
 
   useEffect(() => {
     const callback = () => {
-      const route = parseRoute(new URL(window.location.href));
-      changeRoute(route, { shouldScroll: true });
+      const parsedRoute = parseRoute(new URL(window.location.href));
+      changeRoute(parsedRoute, { shouldScroll: true });
     };
     window.addEventListener('popstate', callback);
     return () => {

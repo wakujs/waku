@@ -1,0 +1,14 @@
+{
+  "name": "001_broken",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "waku dev"
+  },
+  "dependencies": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-server-dom-webpack": "19.1.0",
+    "waku": "workspace:*"
+  }
+}
