@@ -1,5 +1,5 @@
 import type {
-  HMRBroadcaster,
+  NormalizedHotChannel,
   HtmlTagDescriptor,
   Plugin,
   TransformResult,
@@ -166,7 +166,7 @@ export function rscHmrPlugin(): Plugin {
 
 const pendingMap = new WeakMap<ReturnType<typeof viteHot>, Set<string>>();
 
-function viteHot(viteServer: ViteDevServer): HMRBroadcaster {
+function viteHot(viteServer: ViteDevServer): NormalizedHotChannel {
   return viteServer.hot ?? viteServer.ws;
 }
 
@@ -260,13 +260,11 @@ function handleModuleUpdate(filePath: string, viteServer: ViteDevServer) {
     return;
   }
 
-  let normalizedPath = filePath;
-  if (filePath.startsWith(viteServer.config.root + '/')) {
-    normalizedPath = filePath.slice(viteServer.config.root.length + 1);
-  }
+  const normalizedPath = filePath.startsWith(viteServer.config.root + '/')
+    ? filePath.slice(viteServer.config.root.length + 1)
+    : filePath;
 
   const id = filePathToFileURL(normalizedPath);
-  console.log('updating module', id);
   if (moduleLoading.has(id)) {
     moduleLoading.set(
       id,
