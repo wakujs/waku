@@ -150,9 +150,9 @@ export function rscHmrPlugin(): Plugin {
     handleHotUpdate({ file, server }) {
       const module = server.moduleGraph.getModuleById(file);
       if (module?.file?.endsWith('.module.css')) {
-        module.importers.forEach((importer) => {
-          // handleModuleUpdate(importer.file!, server);
-        });
+        // module.importers.forEach((importer) => {
+        //   // handleModuleUpdate(importer.file!, server);
+        // });
       }
       if (file.endsWith('/pages.gen.ts')) {
         // auto generated file by fsRouterTypegenPlugin
