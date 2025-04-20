@@ -147,7 +147,7 @@ export function rscHmrPlugin(): Plugin {
         );
       }
     },
-    handleHotUpdate({ file, modules, server }) {
+    handleHotUpdate({ file, server }) {
       const module = server.moduleGraph.getModuleById(file);
       if (module?.file?.endsWith('.module.css')) {
         module.importers.forEach((importer) => {
