@@ -158,7 +158,7 @@ export function rscHmrPlugin(): Plugin {
         // auto generated file by fsRouterTypegenPlugin
         return [];
       }
-      
+
       handleModuleUpdate(file, server);
     },
   };
@@ -253,19 +253,18 @@ export function hotUpdate(vite: ViteDevServer, payload: HotUpdatePayload) {
   }
 }
 
-
 function handleModuleUpdate(filePath: string, viteServer: ViteDevServer) {
   const moduleLoading = (globalThis as any).__WAKU_CLIENT_MODULE_LOADING__;
   const moduleCache = (globalThis as any).__WAKU_CLIENT_MODULE_CACHE__;
   if (!moduleLoading || !moduleCache) {
     return;
   }
-  
+
   let normalizedPath = filePath;
   if (filePath.startsWith(viteServer.config.root + '/')) {
     normalizedPath = filePath.slice(viteServer.config.root.length + 1);
   }
-  
+
   const id = filePathToFileURL(normalizedPath);
   console.log('updating module', id);
   if (moduleLoading.has(id)) {
@@ -277,4 +276,4 @@ function handleModuleUpdate(filePath: string, viteServer: ViteDevServer) {
       }),
     );
   }
-};
+}
