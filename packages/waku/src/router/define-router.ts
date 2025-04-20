@@ -30,12 +30,36 @@ const parseRscParams = (
 ): {
   query: string;
 } => {
-  if (!(rscParams instanceof URLSearchParams)) {
-    return { query: '' };
+  if (rscParams instanceof URLSearchParams) {
+    return { query: rscParams.get('query') || '' };
   }
-  const query = rscParams.get('query') || '';
-  return { query };
+  if (
+    typeof (rscParams as { query?: undefined } | undefined)?.query === 'string'
+  ) {
+    return { query: (rscParams as { query: string }).query };
+  }
+  return { query: '' };
 };
+
+const RSC_PARAMS_SYMBOL = Symbol('RSC_PARAMS');
+
+const setRscParams = (rscParams: unknown) => {
+  try {
+    const context = getContext();
+    (context as unknown as Record<typeof RSC_PARAMS_SYMBOL, unknown>)[
+      RSC_PARAMS_SYMBOL
+    ] = rscParams;
+  } catch {
+    // ignore
+  }
+};
+
+export function unstable_getRscParams(): unknown {
+  const context = getContext();
+  return (context as unknown as Record<typeof RSC_PARAMS_SYMBOL, Rerender>)[
+    RSC_PARAMS_SYMBOL
+  ];
+}
 
 const RERENDER_SYMBOL = Symbol('RERENDER');
 type Rerender = (rscPath: string, rscParams?: unknown) => void;
@@ -210,6 +234,7 @@ export function unstable_defineRouter(fns: {
     rscParams: unknown,
     headers: Readonly<Record<string, string>>,
   ) => {
+    setRscParams(rscParams);
     const pathname = decodeRoutePath(rscPath);
     const pathConfigItem = await getPathConfigItem(pathname);
     if (!pathConfigItem) {
