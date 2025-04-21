@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build-cf-types": "wrangler types --experimental-include-runtime",
+    "cf-typegen": "wrangler types",
     "dev": "waku dev",
     "build": "waku build --with-cloudflare",
     "start": "wrangler dev"
