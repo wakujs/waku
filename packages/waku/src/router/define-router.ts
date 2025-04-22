@@ -55,10 +55,14 @@ const setRscParams = (rscParams: unknown) => {
 };
 
 export function unstable_getRscParams(): unknown {
-  const context = getContext();
-  return (context as unknown as Record<typeof RSC_PARAMS_SYMBOL, Rerender>)[
-    RSC_PARAMS_SYMBOL
-  ];
+  try {
+    const context = getContext();
+    return (context as unknown as Record<typeof RSC_PARAMS_SYMBOL, Rerender>)[
+      RSC_PARAMS_SYMBOL
+    ];
+  } catch {
+    return undefined;
+  }
 }
 
 const RERENDER_SYMBOL = Symbol('RERENDER');
