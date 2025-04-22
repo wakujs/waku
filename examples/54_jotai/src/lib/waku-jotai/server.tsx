@@ -6,8 +6,9 @@ import type {
   INTERNAL_AtomState as AtomState,
   INTERNAL_AtomStateMap as AtomStateMap,
 } from 'jotai/vanilla/internals';
+import { unstable_getRscParams as getRscParams } from 'waku/router/server';
 
-import { SyncAtoms } from './client';
+import { BaseSyncAtoms, SyncAtoms } from './client';
 
 const CLIENT_REFERENCE_TAG = Symbol.for('react.client.reference');
 
@@ -21,9 +22,29 @@ const getClientReferenceId = (a: Atom<unknown>) => {
   return null;
 };
 
-export const getStore = cache(() => {
+type Store = ReturnType<typeof buildStore>;
+
+const createStorePromise = cache(() => {
+  let resolveStore: ((store: Store) => void) | undefined;
+  const storePromise = new Promise<Store>((resolve) => {
+    resolveStore = resolve;
+  });
+  return { resolveStore: resolveStore!, storePromise };
+});
+
+export const getStore = () => {
+  const { storePromise } = createStorePromise();
+  return storePromise;
+};
+
+const ensureMap = (value: unknown) =>
+  value instanceof Map ? value : new Map();
+
+const prepareStore = (rscParams: unknown) => {
+  const clientAtomValues = ensureMap(
+    (rscParams as { jotai_atomValues?: unknown } | undefined)?.jotai_atomValues,
+  );
   const clientAtoms = new Map<Atom<unknown>, ClientReferenceId>();
-  const clientAtomValues = new Map<ClientReferenceId, unknown>();
   const atomStateMap = new Map<Atom<unknown>, AtomState>();
   const patchedAtomStateMap: AtomStateMap = {
     get: (a) => atomStateMap.get(a),
@@ -39,49 +60,44 @@ export const getStore = cache(() => {
     },
   };
   const store = buildStore(patchedAtomStateMap);
-  const getAtoms = () => clientAtoms;
-  const setAtomValues = (values: Iterable<[ClientReferenceId, unknown]>) => {
-    for (const [id, value] of values) {
-      clientAtomValues.set(id, value);
-    }
-  };
-  const waitForAtoms = async () => {
+  const { resolveStore } = createStorePromise();
+  resolveStore(store);
+  let resolveAtoms: (m: Map<Atom<unknown>, string>) => void;
+  const atomsPromise = new Promise<Map<Atom<unknown>, string>>((r) => {
+    resolveAtoms = r;
+  });
+  setTimeout(async () => {
     let size: number;
     do {
       size = atomStateMap.size;
       await Promise.all(Array.from(atomStateMap.values()).map((s) => s.v));
     } while (size !== atomStateMap.size);
-  };
-  return Object.assign(store, {
-    getAtoms,
-    setAtomValues,
-    waitForAtoms,
+    resolveAtoms(clientAtoms);
   });
-});
+  return atomsPromise;
+};
 
-export const Provider = ({
+export const BaseProvider = ({
   children,
+  rscPath,
   rscParams,
 }: {
   children: ReactNode;
+  rscPath: string;
   rscParams: unknown;
 }) => {
-  const atomValues = rscParams instanceof Map ? rscParams : new Map();
-  let resolveAtoms: (m: Map<Atom<unknown>, string>) => void;
-  const atomsPromise = new Promise<Map<Atom<unknown>, string>>((r) => {
-    resolveAtoms = r;
-  });
-  const store = getStore();
-  store.setAtomValues(atomValues);
-  setTimeout(() => {
-    store
-      .waitForAtoms()
-      .then(() => {
-        const atoms = store.getAtoms();
-        resolveAtoms(atoms);
-      })
-      .catch(() => {});
-  });
+  const atomsPromise = prepareStore(rscParams);
+  return (
+    <>
+      {children}
+      <BaseSyncAtoms rscPath={rscPath} atomsPromise={atomsPromise} />
+    </>
+  );
+};
+
+export const Provider = ({ children }: { children: ReactNode }) => {
+  const rscParams = getRscParams();
+  const atomsPromise = prepareStore(rscParams);
   return (
     <>
       {children}

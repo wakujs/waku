@@ -5,10 +5,56 @@ import { useRefetch } from 'waku/minimal/client';
 import { atom, useStore } from 'jotai';
 import type { Atom } from 'jotai';
 
-export const SyncAtoms = ({
+// waku/router/client internals
+const ROUTE_PREFIX = 'R';
+const encodeRoutePath = (path: string): string => {
+  if (!path.startsWith('/')) {
+    throw new Error('Path must start with `/`: ' + path);
+  }
+  if (path === '/') {
+    return ROUTE_PREFIX + '/_root';
+  }
+  if (path.endsWith('/')) {
+    throw new Error('Path must not end with `/`: ' + path);
+  }
+  return ROUTE_PREFIX + path;
+};
+const normalizeRoutePath = (path: string) => {
+  for (const suffix of ['/', '/index.html']) {
+    if (path.endsWith(suffix)) {
+      return path.slice(0, -suffix.length) || '/';
+    }
+  }
+  return path;
+};
+
+const createRscPathAndRscParams = (
+  _dummy: string,
+  rscParams: {
+    jotai_atomValues: Map<string, unknown>;
+  },
+): [string, unknown] => {
+  const { pathname, searchParams } = new URL(window.location.href);
+  const rscPath = encodeRoutePath(normalizeRoutePath(pathname));
+  (rscParams as unknown as { query: string }).query = searchParams.toString();
+  return [rscPath, rscParams];
+};
+
+const defaultCreateRscPathAndRscParams = (
+  rscPath: string,
+  rscParams: {
+    jotai_atomValues: Map<string, unknown>;
+  },
+): [string, unknown] => [rscPath, rscParams];
+
+export const BaseSyncAtoms = ({
   atomsPromise,
+  rscPath = '',
+  createRscPathAndRscParams = defaultCreateRscPathAndRscParams,
 }: {
   atomsPromise: Promise<Map<Atom<unknown>, string>>;
+  rscPath?: string;
+  createRscPathAndRscParams?: typeof defaultCreateRscPathAndRscParams;
 }) => {
   const store = useStore();
   const refetch = useRefetch();
@@ -28,11 +74,13 @@ export const SyncAtoms = ({
       );
       const callback = (atomValues: Map<Atom<unknown>, unknown>) => {
         prevAtomValues.current = atomValues;
-        const rscParams = new Map(
+        const serializedAtomValues = new Map(
           Array.from(atomValues).map(([a, value]) => [atoms.get(a)!, value]),
         );
-        // TODO rscPath==='' is hardcoded
-        refetch('', rscParams);
+        const rscParams = {
+          jotai_atomValues: serializedAtomValues,
+        };
+        refetch(...createRscPathAndRscParams(rscPath, rscParams));
       };
       const unsub = store.sub(atomValuesAtom, () => {
         callback(store.get(atomValuesAtom));
@@ -53,6 +101,18 @@ export const SyncAtoms = ({
       });
     });
     return () => controller.abort();
-  }, [store, atomsPromise, refetch]);
+  }, [store, atomsPromise, refetch, rscPath, createRscPathAndRscParams]);
   return null;
 };
+
+export const SyncAtoms = ({
+  atomsPromise,
+}: {
+  atomsPromise: Promise<Map<Atom<unknown>, string>>;
+}) => (
+  <BaseSyncAtoms
+    atomsPromise={atomsPromise}
+    rscPath={''}
+    createRscPathAndRscParams={createRscPathAndRscParams}
+  />
+);
