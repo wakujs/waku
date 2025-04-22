@@ -24,21 +24,17 @@ const getClientReferenceId = (a: Atom<unknown>) => {
 
 type Store = ReturnType<typeof buildStore>;
 
-const getStoreFns = cache(() => {
-  let resolveStore: (store: Store) => void;
-  const promise = new Promise<Store>((resolve) => {
+const createStorePromise = cache(() => {
+  let resolveStore: ((store: Store) => void) | undefined;
+  const storePromise = new Promise<Store>((resolve) => {
     resolveStore = resolve;
   });
-  const setStore = (store: Store) => {
-    resolveStore(store);
-  };
-  const getStore = () => promise;
-  return { setStore, getStore };
+  return { resolveStore: resolveStore!, storePromise };
 });
 
 export const getStore = () => {
-  const { getStore } = getStoreFns();
-  return getStore();
+  const { storePromise } = createStorePromise();
+  return storePromise;
 };
 
 const ensureMap = (value: unknown) =>
@@ -64,8 +60,8 @@ const prepareStore = (rscParams: unknown) => {
     },
   };
   const store = buildStore(patchedAtomStateMap);
-  const { setStore } = getStoreFns();
-  setStore(store);
+  const { resolveStore } = createStorePromise();
+  resolveStore(store);
   let resolveAtoms: (m: Map<Atom<unknown>, string>) => void;
   const atomsPromise = new Promise<Map<Atom<unknown>, string>>((r) => {
     resolveAtoms = r;
