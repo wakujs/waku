@@ -29,21 +29,32 @@ const normalizeRoutePath = (path: string) => {
 };
 
 const createRscPathAndRscParams = (
-  serializedAtomValues: Map<string, unknown>,
-) => {
+  _dummy: string,
+  rscParams: {
+    jotai_atomValues: Map<string, unknown>;
+  },
+): [string, unknown] => {
   const { pathname, searchParams } = new URL(window.location.href);
   const rscPath = encodeRoutePath(normalizeRoutePath(pathname));
-  const rscParams = {
-    jotai_atomValues: serializedAtomValues,
-    query: searchParams.toString(),
-  };
-  return [rscPath, rscParams] as const;
+  (rscParams as unknown as { query: string }).query = searchParams.toString();
+  return [rscPath, rscParams];
 };
 
-export const SyncAtoms = ({
+const defaultCreateRscPathAndRscParams = (
+  rscPath: string,
+  rscParams: {
+    jotai_atomValues: Map<string, unknown>;
+  },
+): [string, unknown] => [rscPath, rscParams];
+
+export const BaseSyncAtoms = ({
   atomsPromise,
+  rscPath = '',
+  createRscPathAndRscParams = defaultCreateRscPathAndRscParams,
 }: {
   atomsPromise: Promise<Map<Atom<unknown>, string>>;
+  rscPath?: string;
+  createRscPathAndRscParams?: typeof defaultCreateRscPathAndRscParams;
 }) => {
   const store = useStore();
   const refetch = useRefetch();
@@ -66,7 +77,10 @@ export const SyncAtoms = ({
         const serializedAtomValues = new Map(
           Array.from(atomValues).map(([a, value]) => [atoms.get(a)!, value]),
         );
-        refetch(...createRscPathAndRscParams(serializedAtomValues));
+        const rscParams = {
+          jotai_atomValues: serializedAtomValues,
+        };
+        refetch(...createRscPathAndRscParams(rscPath, rscParams));
       };
       const unsub = store.sub(atomValuesAtom, () => {
         callback(store.get(atomValuesAtom));
@@ -87,6 +101,18 @@ export const SyncAtoms = ({
       });
     });
     return () => controller.abort();
-  }, [store, atomsPromise, refetch]);
+  }, [store, atomsPromise, refetch, rscPath, createRscPathAndRscParams]);
   return null;
 };
+
+export const SyncAtoms = ({
+  atomsPromise,
+}: {
+  atomsPromise: Promise<Map<Atom<unknown>, string>>;
+}) => (
+  <BaseSyncAtoms
+    atomsPromise={atomsPromise}
+    rscPath={''}
+    createRscPathAndRscParams={createRscPathAndRscParams}
+  />
+);
