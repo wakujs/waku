@@ -5,7 +5,7 @@ import { useRefetch } from 'waku/minimal/client';
 
 import { ClientBox } from './Box.js';
 
-export const ClientCounter = () => {
+export const ClientCounter = ({ params }: { params: unknown }) => {
   const [count, setCount] = useState(0);
   const refetch = useRefetch();
   return (
@@ -23,6 +23,13 @@ export const ClientCounter = () => {
       <button data-testid="refetch3" onClick={() => refetch('baz/qux')}>
         Refetch3
       </button>
+      <button
+        data-testid="refetch4"
+        onClick={() => refetch('params', { foo: 'bar' })}
+      >
+        Refetch with params
+      </button>
+      <div data-testid="refetch-params">{JSON.stringify(params)}</div>
     </ClientBox>
   );
 };

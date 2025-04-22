@@ -76,6 +76,11 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await expect(page.getByTestId('app-name')).toHaveText('[bar]');
       await page.getByTestId('refetch3').click();
       await expect(page.getByTestId('app-name')).toHaveText('baz/qux');
+      await page.getByTestId('refetch4').click();
+      await expect(page.getByTestId('app-name')).toHaveText('params');
+      await expect(page.getByTestId('refetch-params')).toHaveText(
+        '{"foo":"bar"}',
+      );
     });
 
     test('server action', async ({ page }) => {
