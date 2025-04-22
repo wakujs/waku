@@ -7,7 +7,7 @@ import { ServerProvider } from './ServerAction/Server.js';
 import { ClientActionsConsumer } from './ServerAction/Client.js';
 import { ServerThrows } from './ServerThrows/index.js';
 
-const App = ({ name }: { name: string }) => {
+const App = ({ name, params }: { name: string; params: unknown }) => {
   return (
     <html>
       <head>
@@ -16,7 +16,7 @@ const App = ({ name }: { name: string }) => {
       <body>
         <ServerBox>
           <p data-testid="app-name">{name}</p>
-          <ClientCounter />
+          <ClientCounter params={params} />
           <ServerPing />
           <ServerProvider>
             <ClientActionsConsumer />
