@@ -7,7 +7,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "types": ["node", "react/experimental"]
+    "types": ["node"]
   },
   "include": ["src", "src/theme.json"],
   "references": [

@@ -9,7 +9,7 @@
     "skipLibCheck": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
-    "types": ["react/experimental", "./.wrangler/types/runtime.d.ts"],
+    "types": ["./worker-configuration.d.ts"],
     "jsx": "react-jsx"
   }
 }
