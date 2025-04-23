@@ -27,7 +27,7 @@
     "postcss": "8.5.3",
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.11",
-    "shiki": "^3.2.2",
+    "shiki": "^3.3.0",
     "tailwindcss": "4.1.4",
     "typescript": "^5.8.3",
     "vite": "6.3.2"

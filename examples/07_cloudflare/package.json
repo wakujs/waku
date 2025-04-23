@@ -15,14 +15,14 @@
     "react-dom": "19.1.0",
     "react-server-dom-webpack": "19.1.0",
     "waku": "0.22.3",
-    "wrangler": "4.12.0"
+    "wrangler": "4.12.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.1.4",
     "@types/node": "22.14.1",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
-    "miniflare": "4.20250416.0",
+    "miniflare": "4.20250417.0",
     "postcss": "8.5.3",
     "tailwindcss": "4.1.4",
     "typescript": "5.8.3"
