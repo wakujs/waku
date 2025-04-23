@@ -843,7 +843,6 @@ export function rscTransformPlugin(
   };
   return {
     name: 'rsc-transform-plugin',
-    enforce: 'pre', // required for `resolveId`
     async resolveId(id, importer, options) {
       if (opts.isBuild) {
         return;
