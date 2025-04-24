@@ -870,13 +870,14 @@ export function rscTransformPlugin(
       }
     },
     async transform(code, id, options) {
-      const ext = opts.isBuild
+      let ext = opts.isBuild
         ? extname(id)
         : // id can contain query string with vite deps optimization
           extname(id.split('?')[0]!);
       if (!EXTENSIONS.includes(ext)) {
         return;
       }
+      ext = '.js'; // force parser option to be ecmascript
       if (opts.isClient) {
         if (options?.ssr) {
           return transformClientForSSR(code, ext);
