@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'waku/router/client';
 
 import '../styles.css';
+import { RoutingHandler } from './RoutingHandler';
 
 const Pending = ({ isPending }: { isPending: boolean }) => (
   <span
@@ -18,6 +19,7 @@ const Pending = ({ isPending }: { isPending: boolean }) => (
 
 const HomeLayout = ({ children }: { children: ReactNode }) => (
   <div>
+    <RoutingHandler />
     <ul>
       <li>
         <Link

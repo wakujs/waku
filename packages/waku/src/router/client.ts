@@ -117,11 +117,42 @@ const RouterContext = createContext<{
   prefetchRoute: PrefetchRoute;
 } | null>(null);
 
+const RouteChangeContext = createContext<{
+  unstable_onRouteChangeStart: [
+    ((newRoute?: RouteProps) => void) | null,
+    (fn: (newRoute?: RouteProps) => void) => void,
+  ];
+  unstable_onRouteChangeComplete: [
+    ((newRoute?: RouteProps) => void) | null,
+    (fn: (newRoute?: RouteProps) => void) => void,
+  ];
+} | null>(null);
+
 export function useRouter() {
   const router = useContext(RouterContext);
   if (!router) {
     throw new Error('Missing Router');
   }
+  const routeChangeContext = useContext(RouteChangeContext);
+  if (!routeChangeContext) {
+    throw new Error('Missing RouteChangeContext');
+  }
+  const { unstable_onRouteChangeStart, unstable_onRouteChangeComplete } =
+    routeChangeContext;
+
+  const handleRouteChangeStart = useCallback(
+    (fn: (route: RouteProps) => void) => {
+      unstable_onRouteChangeStart?.[1]?.(fn as never);
+    },
+    [unstable_onRouteChangeStart],
+  );
+
+  const handleRouteChangeComplete = useCallback(
+    (fn: (route: RouteProps) => void) => {
+      unstable_onRouteChangeComplete?.[1]?.(fn as never);
+    },
+    [unstable_onRouteChangeComplete],
+  );
   const { route, changeRoute, prefetchRoute } = router;
   const push = useCallback(
     (
@@ -201,6 +232,8 @@ export function useRouter() {
     back,
     forward,
     prefetch,
+    unstable_onRouteChangeStart: handleRouteChangeStart,
+    unstable_onRouteChangeComplete: handleRouteChangeComplete,
   };
 }
 
@@ -471,6 +504,12 @@ const InnerRouter = ({
   routerData: Required<RouterData>;
   initialRoute: RouteProps;
 }) => {
+  const routeChangeContext = useContext(RouteChangeContext);
+  if (!routeChangeContext) {
+    throw new Error('Missing RouteChangeContext');
+  }
+  const { unstable_onRouteChangeStart, unstable_onRouteChangeComplete } =
+    routeChangeContext;
   const [locationListeners, staticPathSet, , has404] = routerData;
   const refetch = useRefetch();
   const [route, setRoute] = useState(() => ({
@@ -497,6 +536,8 @@ const InnerRouter = ({
 
   const changeRoute: ChangeRoute = useCallback(
     (route, options) => {
+      console.log('changeRoute', route);
+      unstable_onRouteChangeStart?.[0]?.(route);
       const { skipRefetch } = options || {};
       if (!staticPathSet.has(route.path) && !skipRefetch) {
         const rscPath = encodeRoutePath(route.path);
@@ -507,6 +548,7 @@ const InnerRouter = ({
         handleScroll();
       }
       setRoute(route);
+      unstable_onRouteChangeComplete?.[0]?.(route);
     },
     [refetch, staticPathSet],
   );
@@ -665,6 +707,8 @@ export function Router({
       return data;
     };
   const initialRscParams = createRscParams(initialRoute.query);
+  const onRouteChangeStartState = useState<(() => void) | null>(null);
+  const onRouteChangeCompleteState = useState<(() => void) | null>(null);
   return createElement(
     Root as FunctionComponent<Omit<ComponentProps<typeof Root>, 'children'>>,
     {
@@ -677,13 +721,22 @@ export function Router({
         ? (fn) => unstable_enhanceCreateData(enhanceCreateData(fn))
         : enhanceCreateData,
     },
-    createElement(InnerRouter, {
-      routerData: routerData as Required<RouterData>,
-      initialRoute,
-    }),
+    createElement(
+      RouteChangeContext.Provider,
+      {
+        value: {
+          unstable_onRouteChangeStart: onRouteChangeStartState,
+          unstable_onRouteChangeComplete: onRouteChangeCompleteState,
+        },
+      },
+      createElement(InnerRouter, {
+        routerData: routerData as Required<RouterData>,
+        initialRoute,
+      }),
+    ),
   );
 }
-
+const emptyRouteHandler: [null, () => void] = [null, () => {}];
 /**
  * ServerRouter for SSR
  * This is not a public API.
@@ -706,15 +759,24 @@ export function INTERNAL_ServerRouter({
     Fragment,
     null,
     createElement(
-      RouterContext.Provider,
+      RouteChangeContext.Provider,
       {
         value: {
-          route,
-          changeRoute: notAvailableInServer('changeRoute'),
-          prefetchRoute: notAvailableInServer('prefetchRoute'),
+          unstable_onRouteChangeStart: emptyRouteHandler,
+          unstable_onRouteChangeComplete: emptyRouteHandler,
         },
       },
-      rootElement,
+      createElement(
+        RouterContext.Provider,
+        {
+          value: {
+            route,
+            changeRoute: notAvailableInServer('changeRoute'),
+            prefetchRoute: notAvailableInServer('prefetchRoute'),
+          },
+        },
+        rootElement,
+      ),
     ),
   );
 }
