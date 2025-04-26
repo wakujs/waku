@@ -182,9 +182,12 @@ export async function renderHtml(
   } = modules.rsdwClient as { default: typeof RSDWClientType };
 
   // previously normalized through clientBundlerConfig and serverConsumerManifest.moduleMap
+  const resolveClientEntryForPrd = (id: string, config: { basePath: string }) => {
+    return config.basePath + id + '.js';
+  };
   function normalizeModuleId(id: string) {
-    id = ctx.unstable_devServer!.resolveClientEntry(id)
-    if (isDev) {
+    id = ctx.unstable_devServer ? ctx.unstable_devServer.resolveClientEntry(id) : resolveClientEntryForPrd(id, config);
+    if (ctx.unstable_devServer) {
       id = id.slice(config.basePath.length);
       if (id.startsWith('@id/')) {
         id = id.slice('@id/'.length);

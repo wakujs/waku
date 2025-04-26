@@ -114,6 +114,7 @@ export async function collectClientModules(
     default: { renderToReadableStream },
   } = rsdwServer;
   const idSet = new Set<string>();
+  // @ts-ignore
   const clientBundlerConfig = new Proxy(
     {},
     {
@@ -125,7 +126,9 @@ export async function collectClientModules(
       },
     },
   );
-  const readable = renderToReadableStream(elements, clientBundlerConfig);
+  const readable = renderToReadableStream(elements,
+    // clientBundlerConfig
+  );
   await new Promise<void>((resolve, reject) => {
     const writable = new WritableStream({
       close() {
