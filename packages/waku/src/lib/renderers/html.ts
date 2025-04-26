@@ -210,9 +210,6 @@ export async function renderHtml(
     modules.wakuMinimalClient as typeof WakuMinimalClientType;
 
   const stream = await renderRsc(config, ctx, elements, onError);
-  // rsc stream is fine?
-  // if (1) return stream
-
   const htmlStream = renderRscElement(config, ctx, html, onError);
   const isDev = !!ctx.unstable_devServer;
   const moduleMap = new Proxy(
