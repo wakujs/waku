@@ -226,7 +226,7 @@ export const prefetchRsc = (
 };
 
 const RefetchContext = createContext<
-  (rscPath: string, rscParams?: unknown) => void
+  (rscPath: string, rscParams?: unknown) => Promise<Elements>
 >(() => {
   throw new Error('Missing Root component');
 });
@@ -261,6 +261,7 @@ export const Root = ({
       delete fetchCache[ENTRY];
       const data = fetchRsc(rscPath, rscParams, fetchCache);
       setElements((prev) => mergeElementsPromise(prev, data));
+      return data;
     },
     [fetchCache],
   );

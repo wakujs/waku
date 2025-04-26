@@ -535,15 +535,17 @@ const InnerRouter = ({
   }, [initialRoute]);
 
   const changeRoute: ChangeRoute = useCallback(
-    (route, options) => {
+    async (route, options) => {
       console.log('changeRoute', route);
       unstable_onRouteChangeStart?.[0]?.(route);
       const { skipRefetch } = options || {};
+      let refetchPromise: Promise<Elements> | undefined = undefined;
       if (!staticPathSet.has(route.path) && !skipRefetch) {
         const rscPath = encodeRoutePath(route.path);
         const rscParams = createRscParams(route.query);
-        refetch(rscPath, rscParams);
+        refetchPromise = refetch(rscPath, rscParams);
       }
+      await refetchPromise;
       if (options.shouldScroll) {
         handleScroll();
       }
