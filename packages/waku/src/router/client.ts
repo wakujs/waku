@@ -118,13 +118,10 @@ const RouterContext = createContext<{
 } | null>(null);
 
 const RouteChangeContext = createContext<{
-  unstable_onRouteChangeStart: [
-    ((newRoute?: RouteProps) => void) | null,
-    (fn: (newRoute?: RouteProps) => void) => void,
-  ];
+  unstable_onRouteChangeStart: [ChangeRoute | null, (fn: ChangeRoute) => void];
   unstable_onRouteChangeComplete: [
-    ((newRoute?: RouteProps) => void) | null,
-    (fn: (newRoute?: RouteProps) => void) => void,
+    ChangeRoute | null,
+    (fn: ChangeRoute) => void,
   ];
 } | null>(null);
 
@@ -537,7 +534,7 @@ const InnerRouter = ({
   const changeRoute: ChangeRoute = useCallback(
     async (route, options) => {
       console.log('changeRoute', route);
-      unstable_onRouteChangeStart?.[0]?.(route);
+      unstable_onRouteChangeStart?.[0]?.(route, options);
       const { skipRefetch } = options || {};
       let refetchPromise: Promise<Elements> | undefined = undefined;
       if (!staticPathSet.has(route.path) && !skipRefetch) {
@@ -550,9 +547,14 @@ const InnerRouter = ({
         handleScroll();
       }
       setRoute(route);
-      unstable_onRouteChangeComplete?.[0]?.(route);
+      unstable_onRouteChangeComplete?.[0]?.(route, options);
     },
-    [refetch, staticPathSet],
+    [
+      refetch,
+      staticPathSet,
+      unstable_onRouteChangeStart,
+      unstable_onRouteChangeComplete,
+    ],
   );
 
   const prefetchRoute: PrefetchRoute = useCallback(
@@ -709,8 +711,8 @@ export function Router({
       return data;
     };
   const initialRscParams = createRscParams(initialRoute.query);
-  const onRouteChangeStartState = useState<(() => void) | null>(null);
-  const onRouteChangeCompleteState = useState<(() => void) | null>(null);
+  const onRouteChangeStartState = useState<ChangeRoute | null>(null);
+  const onRouteChangeCompleteState = useState<ChangeRoute | null>(null);
   return createElement(
     Root as FunctionComponent<Omit<ComponentProps<typeof Root>, 'children'>>,
     {
