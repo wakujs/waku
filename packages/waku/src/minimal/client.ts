@@ -12,13 +12,24 @@ import {
   Component,
 } from 'react';
 import type { ReactNode } from 'react';
-import RSDWClient from 'react-server-dom-webpack/client';
+import RSDWClient from 'react-server-dom-vite/client';
 
 import { createCustomError } from '../lib/utils/custom-errors.js';
 import { encodeRscPath, encodeFuncId } from '../lib/renderers/utils.js';
 
 const { createFromFetch, encodeReply, createTemporaryReferenceSet } =
   RSDWClient;
+
+// TODO
+// is it possible to move normalization to `registerClientReference` transform?
+(RSDWClient as any).setPreloadModule((id: string) => {
+  if (import.meta.env.DEV) {
+    id = '/@fs' + id;
+  } else {
+    id = '/' + id + '.js';
+  }
+  return (globalThis as any).__WAKU_CLIENT_IMPORT__(id)
+})
 
 declare global {
   interface ImportMeta {

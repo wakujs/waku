@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import type {
   default as RSDWServerType,
   TemporaryReferenceSet,
-} from 'react-server-dom-webpack/server.edge';
+} from 'react-server-dom-vite/server.edge';
 
 import type { ConfigPrd } from '../config.js';
 // TODO move types somewhere
@@ -37,6 +37,7 @@ export async function renderRsc(
   const resolveClientEntry = ctx.unstable_devServer
     ? ctx.unstable_devServer.resolveClientEntry
     : resolveClientEntryForPrd;
+  // @ts-ignore
   const clientBundlerConfig = new Proxy(
     {},
     {
@@ -48,8 +49,11 @@ export async function renderRsc(
       },
     },
   );
-  return renderToReadableStream(elements, clientBundlerConfig, {
+  return renderToReadableStream(elements,
+    // clientBundlerConfig,
+    {
     onError: (err: unknown) => {
+      console.log(err);
       onError.forEach((fn) => fn(err, ctx as HandlerContext, 'rsc'));
       if (typeof (err as any)?.digest === 'string') {
         // This is not correct according to the type though.
@@ -76,6 +80,7 @@ export function renderRscElement(
   const resolveClientEntry = ctx.unstable_devServer
     ? ctx.unstable_devServer.resolveClientEntry
     : resolveClientEntryForPrd;
+  // @ts-ignore
   const clientBundlerConfig = new Proxy(
     {},
     {
@@ -86,7 +91,9 @@ export function renderRscElement(
       },
     },
   );
-  return renderToReadableStream(element, clientBundlerConfig, {
+  return renderToReadableStream(element,
+    // clientBundlerConfig,
+    {
     onError: (err: unknown) => {
       onError.forEach((fn) => fn(err, ctx as HandlerContext, 'rsc'));
       if (typeof (err as any)?.digest === 'string') {
@@ -107,6 +114,7 @@ export async function collectClientModules(
     default: { renderToReadableStream },
   } = rsdwServer;
   const idSet = new Set<string>();
+  // @ts-ignore
   const clientBundlerConfig = new Proxy(
     {},
     {
@@ -118,7 +126,9 @@ export async function collectClientModules(
       },
     },
   );
-  const readable = renderToReadableStream(elements, clientBundlerConfig);
+  const readable = renderToReadableStream(elements,
+    // clientBundlerConfig
+  );
   await new Promise<void>((resolve, reject) => {
     const writable = new WritableStream({
       close() {
@@ -144,6 +154,7 @@ export async function decodeBody(
   const {
     default: { decodeReply, createTemporaryReferenceSet },
   } = modules.rsdwServer as { default: typeof RSDWServerType };
+  // @ts-ignore
   const serverBundlerConfig = new Proxy(
     {},
     {
@@ -166,12 +177,16 @@ export async function decodeBody(
     ) {
       // XXX This doesn't support streaming unlike busboy
       const formData = await parseFormData(bodyBuf, contentType);
-      decodedBody = await decodeReply(formData, serverBundlerConfig, {
+      decodedBody = await decodeReply(formData,
+        // serverBundlerConfig,
+        {
         temporaryReferences,
       });
     } else if (bodyBuf.byteLength > 0) {
       const bodyStr = bufferToString(bodyBuf);
-      decodedBody = await decodeReply(bodyStr, serverBundlerConfig, {
+      decodedBody = await decodeReply(bodyStr,
+        // serverBundlerConfig,
+        {
         temporaryReferences,
       });
     }
@@ -234,6 +249,7 @@ export async function decodePostAction(
         // Assuming this is probably for api
         return null;
       }
+      // @ts-ignore
       const serverBundlerConfig = new Proxy(
         {},
         {
@@ -245,9 +261,13 @@ export async function decodePostAction(
         },
       );
       setExtractFormState(ctx, (actionResult) =>
-        decodeFormState(actionResult, formData, serverBundlerConfig),
+        decodeFormState(actionResult, formData,
+          // serverBundlerConfig
+        ),
       );
-      return decodeAction(formData, serverBundlerConfig);
+      return decodeAction(formData,
+        // serverBundlerConfig
+      );
     }
   }
   return null;
