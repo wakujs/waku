@@ -11,7 +11,7 @@ export const Counter = ({ enableInnerApp }: { enableInnerApp?: boolean }) => {
     if (enableInnerApp) {
       const nextCount = count + 1;
       setCount(nextCount);
-      refetch('InnerApp=' + nextCount);
+      void refetch('InnerApp=' + nextCount);
     } else {
       setCount((c) => c + 1);
     }
@@ -21,7 +21,7 @@ export const Counter = ({ enableInnerApp }: { enableInnerApp?: boolean }) => {
       startTransition(() => {
         const nextCount = count + 1;
         setCount(nextCount);
-        refetch('InnerApp=' + nextCount);
+        void refetch('InnerApp=' + nextCount);
       });
     } else {
       setCount((c) => c + 1);
