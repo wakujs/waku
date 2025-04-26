@@ -108,6 +108,14 @@ type ChangeRoute = (
     shouldScroll: boolean;
     skipRefetch?: boolean;
   },
+) => Promise<void>;
+
+type ChangeRouteCallback = (
+  route: RouteProps,
+  options: {
+    shouldScroll: boolean;
+    skipRefetch?: boolean;
+  },
 ) => void;
 
 type PrefetchRoute = (route: RouteProps) => void;
@@ -119,8 +127,8 @@ const RouterContext = createContext<{
 } | null>(null);
 
 const RouteChangeContext = createContext<{
-  unstable_onRouteChangeStartRef: RefObject<ChangeRoute | null>;
-  unstable_onRouteChangeCompleteRef: RefObject<ChangeRoute | null>;
+  unstable_onRouteChangeStartRef: RefObject<ChangeRouteCallback | null>;
+  unstable_onRouteChangeCompleteRef: RefObject<ChangeRouteCallback | null>;
 } | null>(null);
 
 export function useRouter() {
@@ -136,7 +144,7 @@ export function useRouter() {
     routeChangeContext;
 
   const handleRouteChangeStart = useCallback(
-    (fn: ChangeRoute) => {
+    (fn: ChangeRouteCallback) => {
       if (!unstable_onRouteChangeStartRef) {
         throw new Error('Missing RouteChangeContext');
       }
@@ -146,7 +154,7 @@ export function useRouter() {
   );
 
   const handleRouteChangeComplete = useCallback(
-    (fn: ChangeRoute) => {
+    (fn: ChangeRouteCallback) => {
       if (!unstable_onRouteChangeCompleteRef) {
         throw new Error('Missing RouteChangeContext');
       }
@@ -178,7 +186,7 @@ export function useRouter() {
         '',
         url,
       );
-      changeRoute(parseRoute(url), {
+      void changeRoute(parseRoute(url), {
         shouldScroll: options?.scroll ?? newPath,
       });
     },
@@ -200,7 +208,7 @@ export function useRouter() {
       const url = new URL(to, window.location.href);
       const newPath = url.pathname !== window.location.pathname;
       window.history.replaceState(window.history.state, '', url);
-      changeRoute(parseRoute(url), {
+      void changeRoute(parseRoute(url), {
         shouldScroll: options?.scroll ?? newPath,
       });
     },
@@ -208,7 +216,7 @@ export function useRouter() {
   );
   const reload = useCallback(() => {
     const url = new URL(window.location.href);
-    changeRoute(parseRoute(url), { shouldScroll: true });
+    return changeRoute(parseRoute(url), { shouldScroll: true });
   }, [changeRoute]);
   const back = useCallback(() => {
     // FIXME is this correct?
@@ -313,7 +321,7 @@ export function Link({
     if (url.href !== window.location.href) {
       const route = parseRoute(url);
       prefetchRoute(route);
-      startTransitionFn(() => {
+      startTransitionFn(async () => {
         const newPath = url.pathname !== window.location.pathname;
         window.history.pushState(
           {
@@ -323,7 +331,7 @@ export function Link({
           '',
           url,
         );
-        changeRoute(route, { shouldScroll: scroll ?? newPath });
+        await changeRoute(route, { shouldScroll: scroll ?? newPath });
       });
     }
   };
@@ -410,7 +418,7 @@ const NotFound = ({
   useEffect(() => {
     if (has404) {
       const url = new URL('/404', window.location.href);
-      changeRoute(parseRoute(url), { shouldScroll: true });
+      void changeRoute(parseRoute(url), { shouldScroll: true });
       resetError?.();
       reset();
     }
@@ -441,7 +449,7 @@ const Redirect = ({ to, reset }: { to: string; reset: () => void }) => {
       '',
       url,
     );
-    changeRoute(parseRoute(url), { shouldScroll: newPath });
+    void changeRoute(parseRoute(url), { shouldScroll: newPath });
     resetError?.();
     reset();
   }, [to, resetError, reset, changeRoute]);
@@ -577,7 +585,7 @@ const InnerRouter = ({
   useEffect(() => {
     const callback = () => {
       const route = parseRoute(new URL(window.location.href));
-      changeRoute(route, { shouldScroll: true });
+      void changeRoute(route, { shouldScroll: true });
     };
     window.addEventListener('popstate', callback);
     return () => {
@@ -601,7 +609,10 @@ const InnerRouter = ({
           url,
         );
       }
-      changeRoute(parseRoute(url), { skipRefetch: true, shouldScroll: false });
+      void changeRoute(parseRoute(url), {
+        skipRefetch: true,
+        shouldScroll: false,
+      });
     };
     locationListeners.add(callback);
     return () => {
@@ -715,8 +726,8 @@ export function Router({
       return data;
     };
   const initialRscParams = createRscParams(initialRoute.query);
-  const onRouteChangeStartRef = useRef<ChangeRoute | null>(null);
-  const onRouteChangeCompleteRef = useRef<ChangeRoute | null>(null);
+  const onRouteChangeStartRef = useRef<ChangeRouteCallback | null>(null);
+  const onRouteChangeCompleteRef = useRef<ChangeRouteCallback | null>(null);
   return createElement(
     Root as FunctionComponent<Omit<ComponentProps<typeof Root>, 'children'>>,
     {
@@ -744,7 +755,9 @@ export function Router({
     ),
   );
 }
-const emptyRouteHandler: RefObject<ChangeRoute | null> = { current: () => {} };
+const emptyRouteHandler: RefObject<ChangeRouteCallback | null> = {
+  current: () => {},
+};
 /**
  * ServerRouter for SSR
  * This is not a public API.
