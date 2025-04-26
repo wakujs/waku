@@ -5,6 +5,8 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
+  react: 0.0.0-experimental-197d6a04-20250424
+  react-dom: 0.0.0-experimental-197d6a04-20250424
   react-server-dom-vite: file:./react-server-dom-vite-19.1.0.tgz
 
 importers:
@@ -75,14 +77,14 @@ importers:
   e2e/fixtures/broken-links:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       serve:
         specifier: ^14.2.4
         version: 14.2.4
@@ -103,17 +105,17 @@ importers:
   e2e/fixtures/create-pages:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-error-boundary:
         specifier: 5.0.0
-        version: 5.0.0(react@19.1.0)
+        version: 5.0.0(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: workspace:*
         version: link:../../../packages/waku
@@ -134,14 +136,14 @@ importers:
   e2e/fixtures/define-router:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: workspace:*
         version: link:../../../packages/waku
@@ -159,14 +161,14 @@ importers:
   e2e/fixtures/fs-router:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: workspace:*
         version: link:../../../packages/waku
@@ -184,14 +186,14 @@ importers:
   e2e/fixtures/hot-reload:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: workspace:*
         version: link:../../../packages/waku
@@ -211,14 +213,14 @@ importers:
   e2e/fixtures/partial-build:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       serve:
         specifier: ^14.2.4
         version: 14.2.4
@@ -239,14 +241,14 @@ importers:
   e2e/fixtures/render-type:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       serve:
         specifier: ^14.2.4
         version: 14.2.4
@@ -267,14 +269,14 @@ importers:
   e2e/fixtures/rsc-asset:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: workspace:*
         version: link:../../../packages/waku
@@ -298,14 +300,14 @@ importers:
         specifier: link:modules/ai
         version: link:modules/ai
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: workspace:*
         version: link:../../../packages/waku
@@ -323,14 +325,14 @@ importers:
   e2e/fixtures/rsc-css-modules:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: workspace:*
         version: link:../../../packages/waku
@@ -348,14 +350,14 @@ importers:
   e2e/fixtures/ssg-performance:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: workspace:*
         version: link:../../../packages/waku
@@ -373,14 +375,14 @@ importers:
   e2e/fixtures/ssg-wildcard:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: workspace:*
         version: link:../../../packages/waku
@@ -399,16 +401,16 @@ importers:
     dependencies:
       ai:
         specifier: ^4.3.9
-        version: 4.3.9(react@19.1.0)(zod@3.24.3)
+        version: 4.3.9(react@0.0.0-experimental-197d6a04-20250424)(zod@3.24.3)
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: workspace:*
         version: link:../../../packages/waku
@@ -426,17 +428,17 @@ importers:
   e2e/fixtures/ssr-catch-error:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-error-boundary:
         specifier: ^5.0.0
-        version: 5.0.0(react@19.1.0)
+        version: 5.0.0(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: workspace:*
         version: link:../../../packages/waku
@@ -454,14 +456,14 @@ importers:
   e2e/fixtures/ssr-context-provider:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: workspace:*
         version: link:../../../packages/waku
@@ -479,14 +481,14 @@ importers:
   e2e/fixtures/ssr-redirect:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: workspace:*
         version: link:../../../packages/waku
@@ -504,17 +506,17 @@ importers:
   e2e/fixtures/ssr-swr:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       swr:
         specifier: ^2.3.3
-        version: 2.3.3(react@19.1.0)
+        version: 2.3.3(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: workspace:*
         version: link:../../../packages/waku
@@ -532,17 +534,17 @@ importers:
   e2e/fixtures/ssr-target-bundle:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       react-textarea-autosize:
         specifier: ^8.5.9
-        version: 8.5.9(@types/react@19.1.2)(react@19.1.0)
+        version: 8.5.9(@types/react@19.1.2)(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: workspace:*
         version: link:../../../packages/waku
@@ -560,14 +562,14 @@ importers:
   e2e/fixtures/use-router:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: workspace:*
         version: link:../../../packages/waku
@@ -585,14 +587,14 @@ importers:
   examples/01_template:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -619,14 +621,14 @@ importers:
   examples/02_template_js:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -644,14 +646,14 @@ importers:
   examples/03_demo:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -678,14 +680,14 @@ importers:
   examples/04_cssmodules:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -703,14 +705,14 @@ importers:
   examples/05_compiler:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -746,14 +748,14 @@ importers:
   examples/06_form-demo:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -783,14 +785,14 @@ importers:
         specifier: 4.7.7
         version: 4.7.7
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -827,16 +829,16 @@ importers:
     dependencies:
       jotai:
         specifier: 2.12.3
-        version: 2.12.3(@types/react@19.1.2)(react@19.1.0)
+        version: 2.12.3(@types/react@19.1.2)(react@0.0.0-experimental-197d6a04-20250424)
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -863,14 +865,14 @@ importers:
   examples/11_fs-router:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -888,14 +890,14 @@ importers:
   examples/12_nossr:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -928,14 +930,14 @@ importers:
   examples/21_create-pages:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -956,14 +958,14 @@ importers:
   examples/22_define-router:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -981,14 +983,14 @@ importers:
   examples/31_minimal:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -1006,14 +1008,14 @@ importers:
   examples/32_minimal_js:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -1021,14 +1023,14 @@ importers:
   examples/33_promise:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -1046,17 +1048,17 @@ importers:
   examples/34_functions:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       react-wrap-balancer:
         specifier: 1.1.1
-        version: 1.1.1(react@19.1.0)
+        version: 1.1.1(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -1074,14 +1076,14 @@ importers:
   examples/35_nesting:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -1099,14 +1101,14 @@ importers:
   examples/36_form:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -1133,14 +1135,14 @@ importers:
         specifier: 2.3.2
         version: 2.3.2
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -1176,14 +1178,14 @@ importers:
         specifier: 4.7.7
         version: 4.7.7
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -1207,14 +1209,14 @@ importers:
   examples/39_api:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -1232,14 +1234,14 @@ importers:
   examples/41_path-alias:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -1266,17 +1268,17 @@ importers:
   examples/42_react-tweet:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       react-tweet:
         specifier: ^3.2.2
-        version: 3.2.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: 3.2.2(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -1303,14 +1305,14 @@ importers:
   examples/43_weave-render:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -1331,14 +1333,14 @@ importers:
   examples/45_view-transitions:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -1356,14 +1358,14 @@ importers:
   examples/51_spa:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -1382,19 +1384,19 @@ importers:
     dependencies:
       '@tanstack/react-router':
         specifier: 1.116.0
-        version: 1.116.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: 1.116.0(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       '@tanstack/router-devtools':
         specifier: 1.116.0
-        version: 1.116.0(@tanstack/react-router@1.116.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(@tanstack/router-core@1.115.3)(csstype@3.1.3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tiny-invariant@1.3.3)
+        version: 1.116.0(@tanstack/react-router@1.116.0(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424))(@tanstack/router-core@1.115.3)(csstype@3.1.3)(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)(tiny-invariant@1.3.3)
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -1412,14 +1414,14 @@ importers:
   examples/53_islands:
     dependencies:
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -1438,16 +1440,16 @@ importers:
     dependencies:
       jotai:
         specifier: 2.12.3
-        version: 2.12.3(@types/react@19.1.2)(react@19.1.0)
+        version: 2.12.3(@types/react@19.1.2)(react@0.0.0-experimental-197d6a04-20250424)
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: 0.22.4
         version: link:../../packages/waku
@@ -1529,14 +1531,14 @@ importers:
         specifier: ^0.7.3
         version: 0.7.3(@swc/core@1.11.21(@swc/helpers@0.5.17))(chokidar@4.0.3)
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       ts-expect:
         specifier: ^1.3.0
         version: 1.3.0
@@ -1554,22 +1556,22 @@ importers:
         version: 2.3.2
       framer-motion:
         specifier: ^12.7.4
-        version: 12.7.4(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: 12.7.4(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       jotai:
         specifier: ^2.12.3
-        version: 2.12.3(@types/react@19.1.2)(react@19.1.0)
+        version: 2.12.3(@types/react@19.1.2)(react@0.0.0-experimental-197d6a04-20250424)
       next-mdx-remote:
         specifier: ^5.0.0
-        version: 5.0.0(@types/react@19.1.2)(acorn@8.14.1)(react@19.1.0)
+        version: 5.0.0(@types/react@19.1.2)(acorn@8.14.1)(react@0.0.0-experimental-197d6a04-20250424)
       react:
-        specifier: 19.1.0
-        version: 19.1.0
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424
       react-dom:
-        specifier: 19.1.0
-        version: 19.1.0(react@19.1.0)
+        specifier: 0.0.0-experimental-197d6a04-20250424
+        version: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       react-server-dom-vite:
         specifier: file:../../react-server-dom-vite-19.1.0.tgz
-        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       waku:
         specifier: workspace:*
         version: link:../waku
@@ -1633,7 +1635,7 @@ packages:
     resolution: {integrity: sha512-/VYm8xifyngaqFDLXACk/1czDRCefNCdALUyp+kIX6DUIYUWTM93ISoZ+qJ8+3E+FiJAKBQz61o8lIIl+vYtzg==}
     engines: {node: '>=18'}
     peerDependencies:
-      react: ^18 || ^19 || ^19.0.0-rc
+      react: 0.0.0-experimental-197d6a04-20250424
       zod: ^3.23.8
     peerDependenciesMeta:
       zod:
@@ -2686,7 +2688,7 @@ packages:
     resolution: {integrity: sha512-QjHtSaoameoalGnKDT3FoIl4+9RwyTmo9ZJGBdLOks/YOiWHoRDI3PUwEzOE7kEmGcV3AFcp9K6dYu9rEuKLAQ==}
     peerDependencies:
       '@types/react': '>=16'
-      react: '>=16'
+      react: 0.0.0-experimental-197d6a04-20250424
 
   '@napi-rs/nice-android-arm-eabi@1.0.1':
     resolution: {integrity: sha512-5qpvOu5IGwDo7MEKVqqyAxF90I6aLj4n07OzpARdgDRfz8UbBztTByBp0RC59r3J1Ij8uzYi6jI7r5Lws7nn6w==}
@@ -3212,21 +3214,21 @@ packages:
     engines: {node: '>=12'}
     peerDependencies:
       '@tanstack/react-router': ^1.116.0
-      react: '>=18.0.0 || >=19.0.0'
-      react-dom: '>=18.0.0 || >=19.0.0'
+      react: 0.0.0-experimental-197d6a04-20250424
+      react-dom: 0.0.0-experimental-197d6a04-20250424
 
   '@tanstack/react-router@1.116.0':
     resolution: {integrity: sha512-ZBAg5Q6zJf0mnP9DYPiaaQ/wLDH2ujCMi/2RllpH86VUkdkyvQQzpAyKoiYJ891wh9OPgj6W6tPrzB4qy5FpRA==}
     engines: {node: '>=12'}
     peerDependencies:
-      react: '>=18.0.0 || >=19.0.0'
-      react-dom: '>=18.0.0 || >=19.0.0'
+      react: 0.0.0-experimental-197d6a04-20250424
+      react-dom: 0.0.0-experimental-197d6a04-20250424
 
   '@tanstack/react-store@0.7.0':
     resolution: {integrity: sha512-S/Rq17HaGOk+tQHV/yrePMnG1xbsKZIl/VsNWnNXt4XW+tTY8dTlvpJH2ZQ3GRALsusG5K6Q3unAGJ2pd9W/Ng==}
     peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react: 0.0.0-experimental-197d6a04-20250424
+      react-dom: 0.0.0-experimental-197d6a04-20250424
 
   '@tanstack/router-core@1.115.3':
     resolution: {integrity: sha512-gynHs72LHVg05fuJTwZZYhDL4VNEAK0sXz7IqiBv7a3qsYeEmIZsGaFr9sVjTkuF1kbrFBdJd5JYutzBh9Uuhw==}
@@ -3250,8 +3252,8 @@ packages:
     peerDependencies:
       '@tanstack/react-router': ^1.116.0
       csstype: ^3.0.10
-      react: '>=18.0.0 || >=19.0.0'
-      react-dom: '>=18.0.0 || >=19.0.0'
+      react: 0.0.0-experimental-197d6a04-20250424
+      react-dom: 0.0.0-experimental-197d6a04-20250424
     peerDependenciesMeta:
       csstype:
         optional: true
@@ -3662,7 +3664,7 @@ packages:
     resolution: {integrity: sha512-P2RpV65sWIPdUlA4f1pcJ11pB0N1YmqPVLEmC4j8WuBwKY0L3q9vGhYPh0Iv+spKHKyn0wUbMfas+7Z6nTfS0g==}
     engines: {node: '>=18'}
     peerDependencies:
-      react: ^18 || ^19 || ^19.0.0-rc
+      react: 0.0.0-experimental-197d6a04-20250424
       zod: ^3.23.8
     peerDependenciesMeta:
       react:
@@ -4729,8 +4731,8 @@ packages:
     resolution: {integrity: sha512-jX0bPsTmU0oPZTYz/dVyD0dmOyEOEJvdn0TaZBE5I8g2GvVnnQnW9f65cJnoVfUkY3WZWNXGXnPbVA9YnaIfVA==}
     peerDependencies:
       '@emotion/is-prop-valid': '*'
-      react: ^18.0.0 || ^19.0.0
-      react-dom: ^18.0.0 || ^19.0.0
+      react: 0.0.0-experimental-197d6a04-20250424
+      react-dom: 0.0.0-experimental-197d6a04-20250424
     peerDependenciesMeta:
       '@emotion/is-prop-valid':
         optional: true
@@ -5225,7 +5227,7 @@ packages:
     engines: {node: '>=12.20.0'}
     peerDependencies:
       '@types/react': '>=17.0.0'
-      react: '>=17.0.0'
+      react: 0.0.0-experimental-197d6a04-20250424
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -5820,7 +5822,7 @@ packages:
     resolution: {integrity: sha512-RNNbqRpK9/dcIFZs/esQhuLA8jANqlH694yqoDBK8hkVdJUndzzGmnPHa2nyi90N4Z9VmzuSWNRpr5ItT3M7xQ==}
     engines: {node: '>=14', npm: '>=7'}
     peerDependencies:
-      react: '>=16'
+      react: 0.0.0-experimental-197d6a04-20250424
 
   node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
@@ -6266,15 +6268,15 @@ packages:
     resolution: {integrity: sha512-y3bGgqKj3QBdxLbLkomlohkvsA8gdAiUQlSBJnBhfn+BPxg4bc62d8TcBW15wavDfgexCgccckhcZvywyQYPOw==}
     hasBin: true
 
-  react-dom@19.1.0:
-    resolution: {integrity: sha512-Xs1hdnE+DyKgeHJeJznQmYMIBG3TKIHJJT95Q58nHLSrElKlGQqDTR2HQ9fx5CN/Gk6Vh/kupBTDLU11/nDk/g==}
+  react-dom@0.0.0-experimental-197d6a04-20250424:
+    resolution: {integrity: sha512-k8W9K9/sQlkydX+gVPgmFVNVqhU5YwtWAtCshWZYpLbmMWp6Za3T0FaFYeGRBjsgpqh+4fRPtQG1MNU+gvrN8w==}
     peerDependencies:
-      react: ^19.1.0
+      react: 0.0.0-experimental-197d6a04-20250424
 
   react-error-boundary@5.0.0:
     resolution: {integrity: sha512-tnjAxG+IkpLephNcePNA7v6F/QpWLH8He65+DmedchDwg162JZqx4NmbXj0mlAYVVEd81OW7aFhmbsScYfiAFQ==}
     peerDependencies:
-      react: '>=16.13.1'
+      react: 0.0.0-experimental-197d6a04-20250424
 
   react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
@@ -6288,28 +6290,28 @@ packages:
     version: 19.1.0
     engines: {node: '>=0.10.0'}
     peerDependencies:
-      react: ^19.1.0
-      react-dom: ^19.1.0
+      react: 0.0.0-experimental-197d6a04-20250424
+      react-dom: 0.0.0-experimental-197d6a04-20250424
 
   react-textarea-autosize@8.5.9:
     resolution: {integrity: sha512-U1DGlIQN5AwgjTyOEnI1oCcMuEr1pv1qOtklB2l4nyMGbHzWrI0eFsYK0zos2YWqAolJyG0IWJaqWmWj5ETh0A==}
     engines: {node: '>=10'}
     peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react: 0.0.0-experimental-197d6a04-20250424
 
   react-tweet@3.2.2:
     resolution: {integrity: sha512-hIkxAVPpN2RqWoDEbo3TTnN/pDcp9/Jb6pTgiA4EbXa9S+m2vHIvvZKHR+eS0PDIsYqe+zTmANRa5k6+/iwGog==}
     peerDependencies:
-      react: ^18.0.0 || ^19.0.0
-      react-dom: ^18.0.0 || ^19.0.0
+      react: 0.0.0-experimental-197d6a04-20250424
+      react-dom: 0.0.0-experimental-197d6a04-20250424
 
   react-wrap-balancer@1.1.1:
     resolution: {integrity: sha512-AB+l7FPRWl6uZ28VcJ8skkwLn2+UC62bjiw8tQUrZPlEWDVnR9MG0lghyn7EyxuJSsFEpht4G+yh2WikEqQ/5Q==}
     peerDependencies:
-      react: '>=16.8.0 || ^17.0.0 || ^18'
+      react: 0.0.0-experimental-197d6a04-20250424
 
-  react@19.1.0:
-    resolution: {integrity: sha512-FS+XFBNvn3GTAWq26joslQgWNoFu08F4kl0J4CgdNKADkdSGXQyTCnKteIAJy96Br6YbpEU1LSzV5dYtjMkMDg==}
+  react@0.0.0-experimental-197d6a04-20250424:
+    resolution: {integrity: sha512-2BWhl33tYx2nVLahXumIvAmyMKQOuXKRj/DjV1gnBTRT31PV7ttMeOUDtR1Pwt648rI4ooCKyMV4wqxZotyOAA==}
     engines: {node: '>=0.10.0'}
 
   read-package-up@11.0.0:
@@ -6483,8 +6485,8 @@ packages:
     resolution: {integrity: sha512-b3rppTKm9T+PsVCBEOUR46GWI7fdOs00VKZ1+9c1EWDaDMvjQc6tUwuFyIprgGgTcWoVHSKrU8H31ZHA2e0RHA==}
     engines: {node: '>=10'}
 
-  scheduler@0.26.0:
-    resolution: {integrity: sha512-NlHwttCI/l5gCPR3D1nNXtWABUmBwvZpEQiD4IXSbIDq8BzLIK/7Ir5gTFSGZDUu37K5cMNp0hFtzO38sC7gWA==}
+  scheduler@0.0.0-experimental-197d6a04-20250424:
+    resolution: {integrity: sha512-kfVmZoI1SPFz8g24coy9aJTc/tdPjLHhs34QT5HW0+jJl2Kg5pjL1tlzM9aztfxLORQ3vS4Okg5FejbB3EVBYg==}
 
   secure-json-parse@2.7.0:
     resolution: {integrity: sha512-6aU+Rwsezw7VR8/nyvKTx8QpWH9FrcYiXXlqC4z5d5XQBDRqtbfsRjnwGyqbi3gddNtWHuEk9OANUotL26qKUw==}
@@ -6780,7 +6782,7 @@ packages:
   swr@2.3.3:
     resolution: {integrity: sha512-dshNvs3ExOqtZ6kJBaAsabhPdHyeY4P2cKwRCniDVifBMoG/SVI7tfLWqPXriVspf2Rg4tPzXJTnwaihIeFw2A==}
     peerDependencies:
-      react: ^16.11.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react: 0.0.0-experimental-197d6a04-20250424
 
   tailwindcss@4.1.4:
     resolution: {integrity: sha512-1ZIUqtPITFbv/DxRmDr5/agPqJwF69d24m9qmM1939TJehgY539CtzeZRjbLt5G6fSy/7YqqYsfvoTEw9xUI2A==}
@@ -7098,7 +7100,7 @@ packages:
     resolution: {integrity: sha512-djviaxuOOh7wkj0paeO1Q/4wMZ8Zrnag5H6yBvzN7AKKe8beOaED9SF5/ByLqsku8NP4zQqsvM2u3ew/tJK8/w==}
     peerDependencies:
       '@types/react': '*'
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react: 0.0.0-experimental-197d6a04-20250424
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -7107,7 +7109,7 @@ packages:
     resolution: {integrity: sha512-q6ayo8DWoPZT0VdG4u3D3uxcgONP3Mevx2i2b0434cwWBoL+aelL1DzkXI6w3PhTZzUeR2kaVlZn70iCiseP6w==}
     peerDependencies:
       '@types/react': '*'
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react: 0.0.0-experimental-197d6a04-20250424
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -7116,7 +7118,7 @@ packages:
     resolution: {integrity: sha512-mhg3xdm9NaM8q+gLT8KryJPnRFOz1/5XPBhmDEVZK1webPzDjrPk7f/mbpeLqTgB9msytYWANxgALOCJKnLvcQ==}
     peerDependencies:
       '@types/react': '*'
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react: 0.0.0-experimental-197d6a04-20250424
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -7124,7 +7126,7 @@ packages:
   use-sync-external-store@1.5.0:
     resolution: {integrity: sha512-Rb46I4cGGVBmjamjphe8L/UnvJD+uPPtTkNvX5mZgqdbavhI4EbgIWJiIHXJ8bc/i9EQGPRh4DwEURJ552Do0A==}
     peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react: 0.0.0-experimental-197d6a04-20250424
 
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
@@ -7479,12 +7481,12 @@ snapshots:
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/react@1.2.9(react@19.1.0)(zod@3.24.3)':
+  '@ai-sdk/react@1.2.9(react@0.0.0-experimental-197d6a04-20250424)(zod@3.24.3)':
     dependencies:
       '@ai-sdk/provider-utils': 2.2.7(zod@3.24.3)
       '@ai-sdk/ui-utils': 1.2.8(zod@3.24.3)
-      react: 19.1.0
-      swr: 2.3.3(react@19.1.0)
+      react: 0.0.0-experimental-197d6a04-20250424
+      swr: 2.3.3(react@0.0.0-experimental-197d6a04-20250424)
       throttleit: 2.1.0
     optionalDependencies:
       zod: 3.24.3
@@ -8342,11 +8344,11 @@ snapshots:
       - acorn
       - supports-color
 
-  '@mdx-js/react@3.1.0(@types/react@19.1.2)(react@19.1.0)':
+  '@mdx-js/react@3.1.0(@types/react@19.1.2)(react@0.0.0-experimental-197d6a04-20250424)':
     dependencies:
       '@types/mdx': 2.0.13
       '@types/react': 19.1.2
-      react: 19.1.0
+      react: 0.0.0-experimental-197d6a04-20250424
 
   '@napi-rs/nice-android-arm-eabi@1.0.1':
     optional: true
@@ -8833,35 +8835,35 @@ snapshots:
 
   '@tanstack/history@1.115.0': {}
 
-  '@tanstack/react-router-devtools@1.116.0(@tanstack/react-router@1.116.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(@tanstack/router-core@1.115.3)(csstype@3.1.3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tiny-invariant@1.3.3)':
+  '@tanstack/react-router-devtools@1.116.0(@tanstack/react-router@1.116.0(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424))(@tanstack/router-core@1.115.3)(csstype@3.1.3)(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)(tiny-invariant@1.3.3)':
     dependencies:
-      '@tanstack/react-router': 1.116.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@tanstack/react-router': 1.116.0(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       '@tanstack/router-devtools-core': 1.115.3(@tanstack/router-core@1.115.3)(csstype@3.1.3)(solid-js@1.9.5)(tiny-invariant@1.3.3)
-      react: 19.1.0
-      react-dom: 19.1.0(react@19.1.0)
+      react: 0.0.0-experimental-197d6a04-20250424
+      react-dom: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       solid-js: 1.9.5
     transitivePeerDependencies:
       - '@tanstack/router-core'
       - csstype
       - tiny-invariant
 
-  '@tanstack/react-router@1.116.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
+  '@tanstack/react-router@1.116.0(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)':
     dependencies:
       '@tanstack/history': 1.115.0
-      '@tanstack/react-store': 0.7.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@tanstack/react-store': 0.7.0(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
       '@tanstack/router-core': 1.115.3
       jsesc: 3.1.0
-      react: 19.1.0
-      react-dom: 19.1.0(react@19.1.0)
+      react: 0.0.0-experimental-197d6a04-20250424
+      react-dom: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
       tiny-invariant: 1.3.3
       tiny-warning: 1.0.3
 
-  '@tanstack/react-store@0.7.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
+  '@tanstack/react-store@0.7.0(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)':
     dependencies:
       '@tanstack/store': 0.7.0
-      react: 19.1.0
-      react-dom: 19.1.0(react@19.1.0)
-      use-sync-external-store: 1.5.0(react@19.1.0)
+      react: 0.0.0-experimental-197d6a04-20250424
+      react-dom: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
+      use-sync-external-store: 1.5.0(react@0.0.0-experimental-197d6a04-20250424)
 
   '@tanstack/router-core@1.115.3':
     dependencies:
@@ -8879,14 +8881,14 @@ snapshots:
     optionalDependencies:
       csstype: 3.1.3
 
-  '@tanstack/router-devtools@1.116.0(@tanstack/react-router@1.116.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(@tanstack/router-core@1.115.3)(csstype@3.1.3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tiny-invariant@1.3.3)':
+  '@tanstack/router-devtools@1.116.0(@tanstack/react-router@1.116.0(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424))(@tanstack/router-core@1.115.3)(csstype@3.1.3)(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)(tiny-invariant@1.3.3)':
     dependencies:
-      '@tanstack/react-router': 1.116.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
-      '@tanstack/react-router-devtools': 1.116.0(@tanstack/react-router@1.116.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(@tanstack/router-core@1.115.3)(csstype@3.1.3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tiny-invariant@1.3.3)
+      '@tanstack/react-router': 1.116.0(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)
+      '@tanstack/react-router-devtools': 1.116.0(@tanstack/react-router@1.116.0(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424))(@tanstack/router-core@1.115.3)(csstype@3.1.3)(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424)(tiny-invariant@1.3.3)
       clsx: 2.1.1
       goober: 2.1.16(csstype@3.1.3)
-      react: 19.1.0
-      react-dom: 19.1.0(react@19.1.0)
+      react: 0.0.0-experimental-197d6a04-20250424
+      react-dom: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
     optionalDependencies:
       csstype: 3.1.3
     transitivePeerDependencies:
@@ -9414,17 +9416,17 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  ai@4.3.9(react@19.1.0)(zod@3.24.3):
+  ai@4.3.9(react@0.0.0-experimental-197d6a04-20250424)(zod@3.24.3):
     dependencies:
       '@ai-sdk/provider': 1.1.3
       '@ai-sdk/provider-utils': 2.2.7(zod@3.24.3)
-      '@ai-sdk/react': 1.2.9(react@19.1.0)(zod@3.24.3)
+      '@ai-sdk/react': 1.2.9(react@0.0.0-experimental-197d6a04-20250424)(zod@3.24.3)
       '@ai-sdk/ui-utils': 1.2.8(zod@3.24.3)
       '@opentelemetry/api': 1.9.0
       jsondiffpatch: 0.6.0
       zod: 3.24.3
     optionalDependencies:
-      react: 19.1.0
+      react: 0.0.0-experimental-197d6a04-20250424
 
   ajv@6.12.6:
     dependencies:
@@ -10738,14 +10740,14 @@ snapshots:
     dependencies:
       fetch-blob: 3.2.0
 
-  framer-motion@12.7.4(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
+  framer-motion@12.7.4(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424):
     dependencies:
       motion-dom: 12.7.4
       motion-utils: 12.7.2
       tslib: 2.8.1
     optionalDependencies:
-      react: 19.1.0
-      react-dom: 19.1.0(react@19.1.0)
+      react: 0.0.0-experimental-197d6a04-20250424
+      react-dom: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
 
   from@0.1.7: {}
 
@@ -11273,10 +11275,10 @@ snapshots:
 
   jiti@2.4.2: {}
 
-  jotai@2.12.3(@types/react@19.1.2)(react@19.1.0):
+  jotai@2.12.3(@types/react@19.1.2)(react@0.0.0-experimental-197d6a04-20250424):
     optionalDependencies:
       '@types/react': 19.1.2
-      react: 19.1.0
+      react: 0.0.0-experimental-197d6a04-20250424
 
   joycon@3.1.1: {}
 
@@ -11967,12 +11969,12 @@ snapshots:
       p-wait-for: 5.0.2
       qs: 6.14.0
 
-  next-mdx-remote@5.0.0(@types/react@19.1.2)(acorn@8.14.1)(react@19.1.0):
+  next-mdx-remote@5.0.0(@types/react@19.1.2)(acorn@8.14.1)(react@0.0.0-experimental-197d6a04-20250424):
     dependencies:
       '@babel/code-frame': 7.26.2
       '@mdx-js/mdx': 3.1.0(acorn@8.14.1)
-      '@mdx-js/react': 3.1.0(@types/react@19.1.2)(react@19.1.0)
-      react: 19.1.0
+      '@mdx-js/react': 3.1.0(@types/react@19.1.2)(react@0.0.0-experimental-197d6a04-20250424)
+      react: 0.0.0-experimental-197d6a04-20250424
       unist-util-remove: 3.1.1
       vfile: 6.0.3
       vfile-matter: 5.0.1
@@ -12347,47 +12349,47 @@ snapshots:
       minimist: 1.2.8
       strip-json-comments: 2.0.1
 
-  react-dom@19.1.0(react@19.1.0):
+  react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424):
     dependencies:
-      react: 19.1.0
-      scheduler: 0.26.0
+      react: 0.0.0-experimental-197d6a04-20250424
+      scheduler: 0.0.0-experimental-197d6a04-20250424
 
-  react-error-boundary@5.0.0(react@19.1.0):
+  react-error-boundary@5.0.0(react@0.0.0-experimental-197d6a04-20250424):
     dependencies:
       '@babel/runtime': 7.27.0
-      react: 19.1.0
+      react: 0.0.0-experimental-197d6a04-20250424
 
   react-is@16.13.1: {}
 
   react-refresh@0.17.0: {}
 
-  react-server-dom-vite@file:react-server-dom-vite-19.1.0.tgz(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
+  react-server-dom-vite@file:react-server-dom-vite-19.1.0.tgz(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424):
     dependencies:
-      react: 19.1.0
-      react-dom: 19.1.0(react@19.1.0)
+      react: 0.0.0-experimental-197d6a04-20250424
+      react-dom: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
 
-  react-textarea-autosize@8.5.9(@types/react@19.1.2)(react@19.1.0):
+  react-textarea-autosize@8.5.9(@types/react@19.1.2)(react@0.0.0-experimental-197d6a04-20250424):
     dependencies:
       '@babel/runtime': 7.27.0
-      react: 19.1.0
-      use-composed-ref: 1.4.0(@types/react@19.1.2)(react@19.1.0)
-      use-latest: 1.3.0(@types/react@19.1.2)(react@19.1.0)
+      react: 0.0.0-experimental-197d6a04-20250424
+      use-composed-ref: 1.4.0(@types/react@19.1.2)(react@0.0.0-experimental-197d6a04-20250424)
+      use-latest: 1.3.0(@types/react@19.1.2)(react@0.0.0-experimental-197d6a04-20250424)
     transitivePeerDependencies:
       - '@types/react'
 
-  react-tweet@3.2.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
+  react-tweet@3.2.2(react-dom@0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424))(react@0.0.0-experimental-197d6a04-20250424):
     dependencies:
       '@swc/helpers': 0.5.17
       clsx: 2.1.1
-      react: 19.1.0
-      react-dom: 19.1.0(react@19.1.0)
-      swr: 2.3.3(react@19.1.0)
+      react: 0.0.0-experimental-197d6a04-20250424
+      react-dom: 0.0.0-experimental-197d6a04-20250424(react@0.0.0-experimental-197d6a04-20250424)
+      swr: 2.3.3(react@0.0.0-experimental-197d6a04-20250424)
 
-  react-wrap-balancer@1.1.1(react@19.1.0):
+  react-wrap-balancer@1.1.1(react@0.0.0-experimental-197d6a04-20250424):
     dependencies:
-      react: 19.1.0
+      react: 0.0.0-experimental-197d6a04-20250424
 
-  react@19.1.0: {}
+  react@0.0.0-experimental-197d6a04-20250424: {}
 
   read-package-up@11.0.0:
     dependencies:
@@ -12639,7 +12641,7 @@ snapshots:
 
   safe-stable-stringify@2.5.0: {}
 
-  scheduler@0.26.0: {}
+  scheduler@0.0.0-experimental-197d6a04-20250424: {}
 
   secure-json-parse@2.7.0: {}
 
@@ -13009,11 +13011,11 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
-  swr@2.3.3(react@19.1.0):
+  swr@2.3.3(react@0.0.0-experimental-197d6a04-20250424):
     dependencies:
       dequal: 2.0.3
-      react: 19.1.0
-      use-sync-external-store: 1.5.0(react@19.1.0)
+      react: 0.0.0-experimental-197d6a04-20250424
+      use-sync-external-store: 1.5.0(react@0.0.0-experimental-197d6a04-20250424)
 
   tailwindcss@4.1.4: {}
 
@@ -13376,28 +13378,28 @@ snapshots:
 
   urlpattern-polyfill@8.0.2: {}
 
-  use-composed-ref@1.4.0(@types/react@19.1.2)(react@19.1.0):
+  use-composed-ref@1.4.0(@types/react@19.1.2)(react@0.0.0-experimental-197d6a04-20250424):
     dependencies:
-      react: 19.1.0
+      react: 0.0.0-experimental-197d6a04-20250424
     optionalDependencies:
       '@types/react': 19.1.2
 
-  use-isomorphic-layout-effect@1.2.0(@types/react@19.1.2)(react@19.1.0):
+  use-isomorphic-layout-effect@1.2.0(@types/react@19.1.2)(react@0.0.0-experimental-197d6a04-20250424):
     dependencies:
-      react: 19.1.0
+      react: 0.0.0-experimental-197d6a04-20250424
     optionalDependencies:
       '@types/react': 19.1.2
 
-  use-latest@1.3.0(@types/react@19.1.2)(react@19.1.0):
+  use-latest@1.3.0(@types/react@19.1.2)(react@0.0.0-experimental-197d6a04-20250424):
     dependencies:
-      react: 19.1.0
-      use-isomorphic-layout-effect: 1.2.0(@types/react@19.1.2)(react@19.1.0)
+      react: 0.0.0-experimental-197d6a04-20250424
+      use-isomorphic-layout-effect: 1.2.0(@types/react@19.1.2)(react@0.0.0-experimental-197d6a04-20250424)
     optionalDependencies:
       '@types/react': 19.1.2
 
-  use-sync-external-store@1.5.0(react@19.1.0):
+  use-sync-external-store@1.5.0(react@0.0.0-experimental-197d6a04-20250424):
     dependencies:
-      react: 19.1.0
+      react: 0.0.0-experimental-197d6a04-20250424
 
   util-deprecate@1.0.2: {}
 
