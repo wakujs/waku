@@ -180,10 +180,29 @@ export async function renderHtml(
   const {
     default: { createFromReadableStream },
   } = modules.rsdwClient as { default: typeof RSDWClientType };
+
+  // previously normalized through clientBundlerConfig and serverConsumerManifest.moduleMap
+  function normalizeModuleId(id: string) {
+    id = ctx.unstable_devServer!.resolveClientEntry(id)
+    if (isDev) {
+      id = id.slice(config.basePath.length);
+      if (id.startsWith('@id/')) {
+        id = id.slice('@id/'.length);
+      } else if (id.startsWith('@fs/')) {
+        id = filePathToFileURL(id.slice('@fs'.length));
+      } else {
+        id = filePathToFileURL(id);
+      }
+      return id
+    }
+    // !isDev
+    id = id.slice(config.basePath.length);
+    return id
+  }
   (modules.rsdwClient as any).default.setPreloadModule((id: string) => {
-    console.log("[__WAKU_CLIENT_IMPORT__]", { id })
-    return (globalThis as any).__WAKU_CLIENT_IMPORT__(id)
+    return (globalThis as any).__WAKU_CLIENT_IMPORT__(normalizeModuleId(id))
   });
+
   const { INTERNAL_ServerRoot } =
     modules.wakuMinimalClient as typeof WakuMinimalClientType;
 
