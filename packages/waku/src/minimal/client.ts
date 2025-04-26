@@ -23,7 +23,11 @@ const { createFromFetch, encodeReply, createTemporaryReferenceSet } =
 // TODO
 // is it possible to move normalization to `registerClientReference` transform?
 (RSDWClient as any).setPreloadModule((id: string) => {
-  id = '/@fs' + id;
+  if (import.meta.env.DEV) {
+    id = '/@fs' + id;
+  } else {
+    id = '/' + id + '.js';
+  }
   return (globalThis as any).__WAKU_CLIENT_IMPORT__(id)
 })
 
