@@ -20,8 +20,12 @@ import { encodeRscPath, encodeFuncId } from '../lib/renderers/utils.js';
 const { createFromFetch, encodeReply, createTemporaryReferenceSet } =
   RSDWClient;
 
-(RSDWClient as any).setPreloadModule((id: string) =>
-  (globalThis as any).__WAKU_CLIENT_IMPORT__(id))
+// TODO
+// is it possible to move normalization to `registerClientReference` transform?
+(RSDWClient as any).setPreloadModule((id: string) => {
+  id = '/@fs' + id;
+  return (globalThis as any).__WAKU_CLIENT_IMPORT__(id)
+})
 
 declare global {
   interface ImportMeta {
