@@ -33,7 +33,7 @@ jobs:
           cache: ${{ !inputs.react_version && 'pnpm' || '' }}
       - if: ${{ inputs.react_version }}
         run: |
-          pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
+          pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-vite@${{ inputs.react_version }}
       - run: pnpm install
       - run: pnpm run compile
       - run: pnpm test

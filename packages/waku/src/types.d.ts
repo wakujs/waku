@@ -38,7 +38,7 @@ type ReactFormState<S, ReferenceId> = [
   number /* number of bound arguments */,
 ];
 
-declare module 'react-server-dom-webpack/server.edge' {
+declare module 'react-server-dom-vite/server.edge' {
   interface TemporaryReferenceSet {}
 
   type Options = {
@@ -72,7 +72,7 @@ declare module 'react-server-dom-webpack/server.edge' {
   export function createTemporaryReferenceSet(): TemporaryReferenceSet;
 }
 
-declare module 'react-server-dom-webpack/client' {
+declare module 'react-server-dom-vite/client' {
   type TemporaryReferenceSet = Map<string, Reference | symbol>;
 
   type CallServerCallback = <T, A extends unknown[] = unknown[]>(
@@ -96,7 +96,7 @@ declare module 'react-server-dom-webpack/client' {
   export function createTemporaryReferenceSet(): TemporaryReferenceSet;
 }
 
-declare module 'react-server-dom-webpack/client.edge' {
+declare module 'react-server-dom-vite/client.edge' {
   export type Options = {
     serverConsumerManifest: ServerConsumerManifest;
     nonce?: string;

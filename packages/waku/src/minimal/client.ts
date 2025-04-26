@@ -12,7 +12,7 @@ import {
   Component,
 } from 'react';
 import type { ReactNode } from 'react';
-import RSDWClient from 'react-server-dom-webpack/client';
+import RSDWClient from 'react-server-dom-vite/client';
 
 import { createCustomError } from '../lib/utils/custom-errors.js';
 import { encodeRscPath, encodeFuncId } from '../lib/renderers/utils.js';

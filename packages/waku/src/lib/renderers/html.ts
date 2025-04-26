@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 import type { ReactNode, FunctionComponent, ComponentProps } from 'react';
 import type * as RDServerType from 'react-dom/server.edge';
-import type { default as RSDWClientType } from 'react-server-dom-webpack/client.edge';
+import type { default as RSDWClientType } from 'react-server-dom-vite/client.edge';
 import { injectRSCPayload } from 'rsc-html-stream/server';
 
 import type * as WakuMinimalClientType from '../../minimal/client.js';

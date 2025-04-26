@@ -16,11 +16,11 @@ import { getErrorInfo } from '../utils/custom-errors.js';
 import { stringToStream } from '../utils/stream.js';
 
 export const SERVER_MODULE_MAP = {
-  'rsdw-server': 'react-server-dom-webpack/server.edge',
+  'rsdw-server': 'react-server-dom-vite/server.edge',
 } as const;
 export const CLIENT_MODULE_MAP = {
   'rd-server': 'react-dom/server.edge',
-  'rsdw-client': 'react-server-dom-webpack/client.edge',
+  'rsdw-client': 'react-server-dom-vite/client.edge',
   'waku-minimal-client': 'waku/minimal/client',
 } as const;
 export const CLIENT_PREFIX = 'client/';

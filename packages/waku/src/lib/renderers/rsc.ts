@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import type {
   default as RSDWServerType,
   TemporaryReferenceSet,
-} from 'react-server-dom-webpack/server.edge';
+} from 'react-server-dom-vite/server.edge';
 
 import type { ConfigPrd } from '../config.js';
 // TODO move types somewhere

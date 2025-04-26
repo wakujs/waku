@@ -47,5 +47,10 @@
     "typescript-eslint": "^8.31.0",
     "wait-port": "^1.1.0",
     "waku": "workspace:*"
+  },
+  "pnpm": {
+    "overrides": {
+      "react-server-dom-vite": "file:./react-server-dom-vite-19.1.0.tgz"
+    }
   }
 }

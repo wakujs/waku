@@ -41,16 +41,16 @@ export function rscRsdwPlugin(): Plugin {
       mode = env.mode;
     },
     async resolveId(id, importer, options) {
-      if (id === 'react-server-dom-webpack/client.edge') {
+      if (id === 'react-server-dom-vite/client.edge') {
         const resolved = await this.resolve(id, importer, options);
         if (resolved) {
           id = resolved.id;
         }
       }
-      if (id.endsWith('/react-server-dom-webpack/client.edge.js')) {
+      if (id.endsWith('/react-server-dom-vite/client.edge.js')) {
         id =
           id.slice(0, -'/client.edge.js'.length) +
-          `/cjs/react-server-dom-webpack-client.edge.${mode === 'production' ? 'production' : 'development'}.js`;
+          `/cjs/react-server-dom-vite-client.edge.${mode === 'production' ? 'production' : 'development'}.js`;
         return this.resolve(id, importer, options);
       }
     },
@@ -63,21 +63,21 @@ export function rscRsdwPlugin(): Plugin {
       }
       if (
         [
-          '/react-server-dom-webpack-server.edge.production.js',
-          '/react-server-dom-webpack-server.edge.development.js',
-          '/react-server-dom-webpack_server__edge.js',
+          '/react-server-dom-vite-server.edge.production.js',
+          '/react-server-dom-vite-server.edge.development.js',
+          '/react-server-dom-vite_server__edge.js',
         ].some((suffix) => file!.endsWith(suffix))
       ) {
         return patchRsdw(code, 'SERVER');
       }
       if (
         [
-          '/react-server-dom-webpack-client.edge.production.js',
-          '/react-server-dom-webpack-client.edge.development.js',
-          '/react-server-dom-webpack-client.browser.production.js',
-          '/react-server-dom-webpack-client.browser.development.js',
-          '/react-server-dom-webpack_client.js',
-          '/react-server-dom-webpack_client__edge.js',
+          '/react-server-dom-vite-client.edge.production.js',
+          '/react-server-dom-vite-client.edge.development.js',
+          '/react-server-dom-vite-client.browser.production.js',
+          '/react-server-dom-vite-client.browser.development.js',
+          '/react-server-dom-vite_client.js',
+          '/react-server-dom-vite_client__edge.js',
         ].some((suffix) => file!.endsWith(suffix))
       ) {
         return patchRsdw(code, 'CLIENT');
