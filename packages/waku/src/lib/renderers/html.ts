@@ -180,10 +180,17 @@ export async function renderHtml(
   const {
     default: { createFromReadableStream },
   } = modules.rsdwClient as { default: typeof RSDWClientType };
+  (modules.rsdwClient as any).default.setPreloadModule((id: string) => {
+    console.log("[__WAKU_CLIENT_IMPORT__]", { id })
+    return (globalThis as any).__WAKU_CLIENT_IMPORT__(id)
+  });
   const { INTERNAL_ServerRoot } =
     modules.wakuMinimalClient as typeof WakuMinimalClientType;
 
   const stream = await renderRsc(config, ctx, elements, onError);
+  // rsc stream is fine?
+  // if (1) return stream
+
   const htmlStream = renderRscElement(config, ctx, html, onError);
   const isDev = !!ctx.unstable_devServer;
   const moduleMap = new Proxy(
