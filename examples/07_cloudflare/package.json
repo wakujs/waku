@@ -4,27 +4,27 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build-cf-types": "wrangler types --experimental-include-runtime",
+    "cf-typegen": "wrangler types",
     "dev": "waku dev",
     "build": "waku build --with-cloudflare",
     "start": "wrangler dev"
   },
   "dependencies": {
-    "hono": "4.7.5",
+    "hono": "4.7.7",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-server-dom-webpack": "19.1.0",
-    "waku": "0.22.2",
-    "wrangler": "4.8.0"
+    "waku": "0.22.4",
+    "wrangler": "4.12.1"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "4.1.3",
-    "@types/node": "22.14.0",
-    "@types/react": "19.1.0",
-    "@types/react-dom": "19.1.1",
-    "miniflare": "4.20250405.0",
+    "@tailwindcss/postcss": "4.1.4",
+    "@types/node": "22.14.1",
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
+    "miniflare": "4.20250417.0",
     "postcss": "8.5.3",
-    "tailwindcss": "4.1.3",
+    "tailwindcss": "4.1.4",
     "typescript": "5.8.3"
   }
 }

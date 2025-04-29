@@ -269,7 +269,7 @@ for (const mode of ['DEV', 'PRD'] as const) {
       expect(dynamicTime).toEqual(staticTime);
 
       await page.getByRole('link', { name: 'Home' }).click();
-      await sleep(1000);
+      await page.waitForTimeout(1000);
       await page.getByRole('link', { name: 'Nested Layouts' }).click();
       const dynamicTime2 = await whatTime('Dynamic Layout');
       const staticTime2 = await whatTime('Static Layout');
@@ -277,5 +277,3 @@ for (const mode of ['DEV', 'PRD'] as const) {
     });
   });
 }
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

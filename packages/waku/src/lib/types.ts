@@ -85,6 +85,7 @@ export type EntriesPrd = EntriesDev & {
   configPrd: ConfigPrd;
   loadMiddleware: () => Promise<{ default: Middleware }[]>;
   loadModule: (id: string) => Promise<unknown>;
+  defaultHtmlHead: string;
   dynamicHtmlPaths: [pathSpec: PathSpec, htmlHead: string][];
   publicIndexHtml: string;
   loadPlatformData?: (key: string) => Promise<unknown>;

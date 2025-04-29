@@ -1,11 +1,9 @@
 import eslint from '@eslint/js';
-import { FlatCompat } from '@eslint/eslintrc';
 import tseslint from 'typescript-eslint';
 import importPlugin from 'eslint-plugin-import';
 import react from 'eslint-plugin-react';
+import * as reactHooks from 'eslint-plugin-react-hooks';
 import unicorn from 'eslint-plugin-unicorn';
-
-const compat = new FlatCompat();
 
 export default tseslint.config(
   {
@@ -21,7 +19,7 @@ export default tseslint.config(
   importPlugin.flatConfigs.recommended,
   react.configs.flat.recommended,
   react.configs.flat['jsx-runtime'],
-  ...compat.extends('plugin:react-hooks/recommended'),
+  reactHooks.configs.recommended,
   {
     files: ['**/*.{ts,tsx,js,jsx}'],
     settings: {
