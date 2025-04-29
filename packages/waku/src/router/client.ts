@@ -545,7 +545,6 @@ const InnerRouter = ({
 
   const changeRoute: ChangeRoute = useCallback(
     async (route, options) => {
-      console.log('changeRoute', route);
       unstable_onRouteChangeStartRef.current?.(route, options);
       const { skipRefetch } = options || {};
       let refetchPromise: Promise<Elements> | undefined = undefined;
