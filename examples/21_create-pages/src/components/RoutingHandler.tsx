@@ -1,18 +1,15 @@
 'use client';
 
-import { useCallback } from 'react';
 import { useRouter } from 'waku/router/client';
 
 export const RoutingHandler = () => {
   const { unstable_onRouteChangeComplete, unstable_onRouteChangeStart } =
     useRouter();
-  unstable_onRouteChangeStart(
-    useCallback(() => {
-      console.log('onRouteChangeStart');
-    }, []),
-  );
-  unstable_onRouteChangeComplete(() => {
-    console.log('onRouteChangeComplete');
+  unstable_onRouteChangeStart((...args) => {
+    console.log('onRouteChangeStart', args);
+  });
+  unstable_onRouteChangeComplete((...args) => {
+    console.log('onRouteChangeComplete', args);
   });
   return null;
 };

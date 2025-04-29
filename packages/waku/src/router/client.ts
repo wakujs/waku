@@ -19,6 +19,7 @@ import type {
   AnchorHTMLAttributes,
   ReactElement,
   MouseEvent,
+  RefObject,
 } from 'react';
 
 import {
@@ -107,6 +108,14 @@ type ChangeRoute = (
     shouldScroll: boolean;
     skipRefetch?: boolean;
   },
+) => Promise<void>;
+
+type ChangeRouteCallback = (
+  route: RouteProps,
+  options: {
+    shouldScroll: boolean;
+    skipRefetch?: boolean;
+  },
 ) => void;
 
 type PrefetchRoute = (route: RouteProps) => void;
@@ -118,14 +127,8 @@ const RouterContext = createContext<{
 } | null>(null);
 
 const RouteChangeContext = createContext<{
-  unstable_onRouteChangeStart: [
-    ((newRoute?: RouteProps) => void) | null,
-    (fn: (newRoute?: RouteProps) => void) => void,
-  ];
-  unstable_onRouteChangeComplete: [
-    ((newRoute?: RouteProps) => void) | null,
-    (fn: (newRoute?: RouteProps) => void) => void,
-  ];
+  unstable_onRouteChangeStartRef: RefObject<ChangeRouteCallback | null>;
+  unstable_onRouteChangeCompleteRef: RefObject<ChangeRouteCallback | null>;
 } | null>(null);
 
 export function useRouter() {
@@ -137,21 +140,27 @@ export function useRouter() {
   if (!routeChangeContext) {
     throw new Error('Missing RouteChangeContext');
   }
-  const { unstable_onRouteChangeStart, unstable_onRouteChangeComplete } =
+  const { unstable_onRouteChangeStartRef, unstable_onRouteChangeCompleteRef } =
     routeChangeContext;
 
   const handleRouteChangeStart = useCallback(
-    (fn: (route: RouteProps) => void) => {
-      unstable_onRouteChangeStart?.[1]?.(fn as never);
+    (fn: ChangeRouteCallback) => {
+      if (!unstable_onRouteChangeStartRef) {
+        throw new Error('Missing RouteChangeContext');
+      }
+      unstable_onRouteChangeStartRef.current = fn;
     },
-    [unstable_onRouteChangeStart],
+    [unstable_onRouteChangeStartRef],
   );
 
   const handleRouteChangeComplete = useCallback(
-    (fn: (route: RouteProps) => void) => {
-      unstable_onRouteChangeComplete?.[1]?.(fn as never);
+    (fn: ChangeRouteCallback) => {
+      if (!unstable_onRouteChangeCompleteRef) {
+        throw new Error('Missing RouteChangeContext');
+      }
+      unstable_onRouteChangeCompleteRef.current = fn;
     },
-    [unstable_onRouteChangeComplete],
+    [unstable_onRouteChangeCompleteRef],
   );
   const { route, changeRoute, prefetchRoute } = router;
   const push = useCallback(
@@ -177,7 +186,7 @@ export function useRouter() {
         '',
         url,
       );
-      changeRoute(parseRoute(url), {
+      void changeRoute(parseRoute(url), {
         shouldScroll: options?.scroll ?? newPath,
       });
     },
@@ -199,7 +208,7 @@ export function useRouter() {
       const url = new URL(to, window.location.href);
       const newPath = url.pathname !== window.location.pathname;
       window.history.replaceState(window.history.state, '', url);
-      changeRoute(parseRoute(url), {
+      void changeRoute(parseRoute(url), {
         shouldScroll: options?.scroll ?? newPath,
       });
     },
@@ -207,7 +216,7 @@ export function useRouter() {
   );
   const reload = useCallback(() => {
     const url = new URL(window.location.href);
-    changeRoute(parseRoute(url), { shouldScroll: true });
+    return changeRoute(parseRoute(url), { shouldScroll: true });
   }, [changeRoute]);
   const back = useCallback(() => {
     // FIXME is this correct?
@@ -312,7 +321,7 @@ export function Link({
     if (url.href !== window.location.href) {
       const route = parseRoute(url);
       prefetchRoute(route);
-      startTransitionFn(() => {
+      startTransitionFn(async () => {
         const newPath = url.pathname !== window.location.pathname;
         window.history.pushState(
           {
@@ -322,7 +331,7 @@ export function Link({
           '',
           url,
         );
-        changeRoute(route, { shouldScroll: scroll ?? newPath });
+        await changeRoute(route, { shouldScroll: scroll ?? newPath });
       });
     }
   };
@@ -409,7 +418,7 @@ const NotFound = ({
   useEffect(() => {
     if (has404) {
       const url = new URL('/404', window.location.href);
-      changeRoute(parseRoute(url), { shouldScroll: true });
+      void changeRoute(parseRoute(url), { shouldScroll: true });
       resetError?.();
       reset();
     }
@@ -440,7 +449,7 @@ const Redirect = ({ to, reset }: { to: string; reset: () => void }) => {
       '',
       url,
     );
-    changeRoute(parseRoute(url), { shouldScroll: newPath });
+    void changeRoute(parseRoute(url), { shouldScroll: newPath });
     resetError?.();
     reset();
   }, [to, resetError, reset, changeRoute]);
@@ -508,7 +517,7 @@ const InnerRouter = ({
   if (!routeChangeContext) {
     throw new Error('Missing RouteChangeContext');
   }
-  const { unstable_onRouteChangeStart, unstable_onRouteChangeComplete } =
+  const { unstable_onRouteChangeStartRef, unstable_onRouteChangeCompleteRef } =
     routeChangeContext;
   const [locationListeners, staticPathSet, , has404] = routerData;
   const refetch = useRefetch();
@@ -535,22 +544,29 @@ const InnerRouter = ({
   }, [initialRoute]);
 
   const changeRoute: ChangeRoute = useCallback(
-    (route, options) => {
+    async (route, options) => {
       console.log('changeRoute', route);
-      unstable_onRouteChangeStart?.[0]?.(route);
+      unstable_onRouteChangeStartRef.current?.(route, options);
       const { skipRefetch } = options || {};
+      let refetchPromise: Promise<Elements> | undefined = undefined;
       if (!staticPathSet.has(route.path) && !skipRefetch) {
         const rscPath = encodeRoutePath(route.path);
         const rscParams = createRscParams(route.query);
-        refetch(rscPath, rscParams);
+        refetchPromise = refetch(rscPath, rscParams);
       }
+      await refetchPromise;
       if (options.shouldScroll) {
         handleScroll();
       }
       setRoute(route);
-      unstable_onRouteChangeComplete?.[0]?.(route);
+      unstable_onRouteChangeCompleteRef.current?.(route, options);
     },
-    [refetch, staticPathSet],
+    [
+      refetch,
+      staticPathSet,
+      unstable_onRouteChangeStartRef,
+      unstable_onRouteChangeCompleteRef,
+    ],
   );
 
   const prefetchRoute: PrefetchRoute = useCallback(
@@ -569,7 +585,7 @@ const InnerRouter = ({
   useEffect(() => {
     const callback = () => {
       const route = parseRoute(new URL(window.location.href));
-      changeRoute(route, { shouldScroll: true });
+      void changeRoute(route, { shouldScroll: true });
     };
     window.addEventListener('popstate', callback);
     return () => {
@@ -593,7 +609,10 @@ const InnerRouter = ({
           url,
         );
       }
-      changeRoute(parseRoute(url), { skipRefetch: true, shouldScroll: false });
+      void changeRoute(parseRoute(url), {
+        skipRefetch: true,
+        shouldScroll: false,
+      });
     };
     locationListeners.add(callback);
     return () => {
@@ -707,8 +726,8 @@ export function Router({
       return data;
     };
   const initialRscParams = createRscParams(initialRoute.query);
-  const onRouteChangeStartState = useState<(() => void) | null>(null);
-  const onRouteChangeCompleteState = useState<(() => void) | null>(null);
+  const onRouteChangeStartRef = useRef<ChangeRouteCallback | null>(null);
+  const onRouteChangeCompleteRef = useRef<ChangeRouteCallback | null>(null);
   return createElement(
     Root as FunctionComponent<Omit<ComponentProps<typeof Root>, 'children'>>,
     {
@@ -725,8 +744,8 @@ export function Router({
       RouteChangeContext.Provider,
       {
         value: {
-          unstable_onRouteChangeStart: onRouteChangeStartState,
-          unstable_onRouteChangeComplete: onRouteChangeCompleteState,
+          unstable_onRouteChangeStartRef: onRouteChangeStartRef,
+          unstable_onRouteChangeCompleteRef: onRouteChangeCompleteRef,
         },
       },
       createElement(InnerRouter, {
@@ -736,7 +755,9 @@ export function Router({
     ),
   );
 }
-const emptyRouteHandler: [null, () => void] = [null, () => {}];
+const emptyRouteHandler: RefObject<ChangeRouteCallback | null> = {
+  current: () => {},
+};
 /**
  * ServerRouter for SSR
  * This is not a public API.
@@ -762,8 +783,8 @@ export function INTERNAL_ServerRouter({
       RouteChangeContext.Provider,
       {
         value: {
-          unstable_onRouteChangeStart: emptyRouteHandler,
-          unstable_onRouteChangeComplete: emptyRouteHandler,
+          unstable_onRouteChangeStartRef: emptyRouteHandler,
+          unstable_onRouteChangeCompleteRef: emptyRouteHandler,
         },
       },
       createElement(
