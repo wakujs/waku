@@ -1,4 +1,3 @@
-/// <reference types="react/canary" />
 'use client';
 
 import { Suspense, useState, use } from 'react';
