@@ -547,13 +547,11 @@ const InnerRouter = ({
     async (route, options) => {
       unstable_onRouteChangeStartRef.current?.(route, options);
       const { skipRefetch } = options || {};
-      let refetchPromise: Promise<Elements> | undefined = undefined;
       if (!staticPathSet.has(route.path) && !skipRefetch) {
         const rscPath = encodeRoutePath(route.path);
         const rscParams = createRscParams(route.query);
-        refetchPromise = refetch(rscPath, rscParams);
+        await refetch(rscPath, rscParams);
       }
-      await refetchPromise;
       if (options.shouldScroll) {
         handleScroll();
       }
