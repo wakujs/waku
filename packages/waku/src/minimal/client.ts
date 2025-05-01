@@ -309,7 +309,10 @@ export const useElement = (id: string) => {
   const elements = use(elementsPromise);
   if (id in elements && elements[id] == undefined) {
     throw new Error('Element cannot be undefined, use null instead: ' + id);
+  } else if (!(id in elements)) {
+    console.error('Element not found: ' + id);
   }
+  console.log(Object.keys(elements));
   return elements[id];
 };
 
