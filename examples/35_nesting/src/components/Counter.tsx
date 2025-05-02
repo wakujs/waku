@@ -11,7 +11,9 @@ export const Counter = ({ enableInnerApp }: { enableInnerApp?: boolean }) => {
     if (enableInnerApp) {
       const nextCount = count + 1;
       setCount(nextCount);
-      refetch('InnerApp=' + nextCount);
+      refetch('InnerApp=' + nextCount).catch((e) => {
+        console.error('Failed to refetch:', e);
+      });
     } else {
       setCount((c) => c + 1);
     }
@@ -21,7 +23,9 @@ export const Counter = ({ enableInnerApp }: { enableInnerApp?: boolean }) => {
       startTransition(() => {
         const nextCount = count + 1;
         setCount(nextCount);
-        refetch('InnerApp=' + nextCount);
+        refetch('InnerApp=' + nextCount).catch((e) => {
+          console.error('Failed to refetch:', e);
+        });
       });
     } else {
       setCount((c) => c + 1);

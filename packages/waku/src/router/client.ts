@@ -496,12 +496,12 @@ const InnerRouter = ({
   }, [initialRoute]);
 
   const changeRoute: ChangeRoute = useCallback(
-    (route, options) => {
+    async (route, options) => {
       const { skipRefetch } = options || {};
       if (!staticPathSet.has(route.path) && !skipRefetch) {
         const rscPath = encodeRoutePath(route.path);
         const rscParams = createRscParams(route.query);
-        refetch(rscPath, rscParams);
+        await refetch(rscPath, rscParams);
       }
       if (options.shouldScroll) {
         handleScroll();
