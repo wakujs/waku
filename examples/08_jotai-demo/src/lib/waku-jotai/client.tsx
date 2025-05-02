@@ -80,9 +80,8 @@ export const BaseSyncAtoms = ({
         const rscParams = {
           jotai_atomValues: serializedAtomValues,
         };
-        refetch(...createRscPathAndRscParams(rscPath, rscParams)).catch((e) => {
-          console.error('Failed to refetch:', e);
-        });
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        refetch(...createRscPathAndRscParams(rscPath, rscParams));
       };
       const unsub = store.sub(atomValuesAtom, () => {
         callback(store.get(atomValuesAtom));

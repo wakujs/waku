@@ -7,25 +7,21 @@ export const Counter = ({ enableInnerApp }: { enableInnerApp?: boolean }) => {
   const [count, setCount] = useState(0);
   const [isPending, startTransition] = useTransition();
   const refetch = useRefetch();
-  const handleClick = () => {
+  const handleClick = async () => {
     if (enableInnerApp) {
       const nextCount = count + 1;
       setCount(nextCount);
-      refetch('InnerApp=' + nextCount).catch((e) => {
-        console.error('Failed to refetch:', e);
-      });
+      await refetch('InnerApp=' + nextCount)
     } else {
       setCount((c) => c + 1);
     }
   };
   const handleClickWithTransition = () => {
     if (enableInnerApp) {
-      startTransition(() => {
+      startTransition(async () => {
         const nextCount = count + 1;
         setCount(nextCount);
-        refetch('InnerApp=' + nextCount).catch((e) => {
-          console.error('Failed to refetch:', e);
-        });
+        await refetch('InnerApp=' + nextCount);
       });
     } else {
       setCount((c) => c + 1);
