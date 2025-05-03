@@ -495,13 +495,20 @@ const InnerRouter = ({
     });
   }, [initialRoute]);
 
+  const [err, setErr] = useState<unknown>(null);
   const changeRoute: ChangeRoute = useCallback(
     async (route, options) => {
+      setErr(null);
       const { skipRefetch } = options || {};
       if (!staticPathSet.has(route.path) && !skipRefetch) {
         const rscPath = encodeRoutePath(route.path);
         const rscParams = createRscParams(route.query);
-        await refetch(rscPath, rscParams);
+        try {
+          await refetch(rscPath, rscParams);
+        } catch (e) {
+          setErr(e);
+          throw e;
+        }
       }
       if (options.shouldScroll) {
         handleScroll();
@@ -559,16 +566,26 @@ const InnerRouter = ({
     };
   }, [changeRoute, locationListeners]);
 
-  const routeElement = createElement(Slot, { id: getRouteSlotId(route.path) });
+  const routeElement =
+    err !== null
+      ? // TODO let's revisit very soon HACK for now
+        createElement(() => {
+          throw err;
+        })
+      : createElement(Slot, { id: getRouteSlotId(route.path) });
   const rootElement = createElement(
     Slot,
     {
       id: 'root',
-      unstable_handleError: createElement(
-        CustomErrorHandler,
-        { has404 },
-        createElement(ThrowError),
-      ),
+      unstable_handleError:
+        // @ts-expect-error intentional hack
+        // eslint-disable-next-line no-constant-binary-expression
+        null &&
+        createElement(
+          CustomErrorHandler,
+          { has404 },
+          createElement(ThrowError),
+        ),
     },
     createElement(CustomErrorHandler, { has404 }, routeElement),
   );
