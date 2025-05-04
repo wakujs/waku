@@ -453,17 +453,6 @@ class CustomErrorHandler extends Component<
 
 const getRouteSlotId = (path: string) => 'route:' + decodeURIComponent(path);
 
-const handleScroll = () => {
-  const { hash } = window.location;
-  const { state } = window.history;
-  const element = hash && document.getElementById(hash.slice(1));
-  window.scrollTo({
-    left: 0,
-    top: element ? element.getBoundingClientRect().top + window.scrollY : 0,
-    behavior: state?.waku_new_path ? 'instant' : 'auto',
-  });
-};
-
 const InnerRouter = ({
   routerData,
   initialRoute,
@@ -481,6 +470,7 @@ const InnerRouter = ({
     ...initialRoute,
     hash: '',
   }));
+  const shouldScroll = useRef(false);
   // Update the route post-load to include the current hash.
   useEffect(() => {
     setRoute((prev) => {
@@ -503,9 +493,7 @@ const InnerRouter = ({
         const rscParams = createRscParams(route.query);
         refetch(rscPath, rscParams);
       }
-      if (options.shouldScroll) {
-        handleScroll();
-      }
+      shouldScroll.current = options.shouldScroll;
       setRoute(route);
     },
     [refetch, staticPathSet],
@@ -558,6 +546,20 @@ const InnerRouter = ({
       locationListeners.delete(callback);
     };
   }, [changeRoute, locationListeners]);
+
+  useEffect(() => {
+    if (!shouldScroll.current) return;
+    shouldScroll.current = false;
+
+    const { hash } = window.location;
+    const { state } = window.history;
+    const element = hash && document.getElementById(hash.slice(1));
+    window.scrollTo({
+      left: 0,
+      top: element ? element.getBoundingClientRect().top + window.scrollY : 0,
+      behavior: state?.waku_new_path ? 'instant' : 'auto',
+    });
+  });
 
   const routeElement = createElement(Slot, { id: getRouteSlotId(route.path) });
   const rootElement = createElement(
