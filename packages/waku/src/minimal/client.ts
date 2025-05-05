@@ -259,6 +259,13 @@ export const Root = ({
       // clear cache entry before fetching
       delete fetchCache[ENTRY];
       const data = fetchRsc(rscPath, rscParams, fetchCache);
+      // HACK this pending workaround is required only for
+      // e2e/fixtures/ssr-catch-error/src/components/client-layout.tsx
+      const pending = Promise.resolve(data).then(
+        () => ({}),
+        () => ({}),
+      );
+      setElements((prev) => mergeElementsPromise(prev, pending));
       await data;
       setElements((prev) => mergeElementsPromise(prev, data));
     },
