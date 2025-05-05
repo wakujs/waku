@@ -440,6 +440,10 @@ class CustomErrorHandler extends Component<
   }
 }
 
+const ThrowError = ({ error }: { error: unknown }) => {
+  throw error;
+};
+
 const getRouteSlotId = (path: string) => 'route:' + decodeURIComponent(path);
 
 const handleScroll = () => {
@@ -563,10 +567,7 @@ const InnerRouter = ({
 
   const routeElement =
     err !== null
-      ? // TODO let's revisit very soon HACK for now
-        createElement(() => {
-          throw err;
-        })
+      ? createElement(ThrowError, { error: err })
       : createElement(Slot, { id: getRouteSlotId(route.path) });
   const rootElement = createElement(
     Slot,
