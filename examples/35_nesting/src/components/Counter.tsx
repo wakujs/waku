@@ -17,15 +17,9 @@ export const Counter = ({ enableInnerApp }: { enableInnerApp?: boolean }) => {
     }
   };
   const handleClickWithTransition = () => {
-    if (enableInnerApp) {
-      startTransition(async () => {
-        const nextCount = count + 1;
-        setCount(nextCount);
-        await refetch('InnerApp=' + nextCount);
-      });
-    } else {
-      setCount((c) => c + 1);
-    }
+    startTransition(async () => {
+      await handleClick();
+    });
   };
   return (
     <div style={{ border: '3px blue dashed', margin: '1em', padding: '1em' }}>
