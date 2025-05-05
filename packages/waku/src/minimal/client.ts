@@ -127,10 +127,11 @@ export const unstable_callServerRsc = async (
           enhanceFetch(fetch)(url, { method: 'POST', body }),
         );
   const data = enhanceCreateData(createData)(responsePromise);
-  const value = (await data)._value;
-  // FIXME this causes rerenders even if data is empty
-  fetchCache[SET_ELEMENTS]?.((prev) => mergeElementsPromise(prev, data));
-  return value;
+  const dataWithoutErrors = Promise.resolve(data).catch(() => ({}));
+  fetchCache[SET_ELEMENTS]?.((prev) =>
+    mergeElementsPromise(prev, dataWithoutErrors),
+  );
+  return (await data)._value;
 };
 
 const prefetchedParams = new WeakMap<Promise<unknown>, unknown>();
@@ -246,14 +247,10 @@ export const Root = ({
       // clear cache entry before fetching
       delete fetchCache[ENTRY];
       const data = fetchRsc(rscPath, rscParams, fetchCache);
-      // HACK this pending workaround is required only for
-      // e2e/fixtures/ssr-catch-error/src/components/client-layout.tsx
-      const pending = Promise.resolve(data).then(
-        () => ({}),
-        () => ({}),
-      );
-      setElements((prev) => mergeElementsPromise(prev, pending));
+      const dataWithoutErrors = Promise.resolve(data).catch(() => ({}));
+      setElements((prev) => mergeElementsPromise(prev, dataWithoutErrors));
       await data;
+      // TODO remove this additional setElements
       setElements((prev) => mergeElementsPromise(prev, data));
     },
     [fetchCache],
