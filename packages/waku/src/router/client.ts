@@ -558,7 +558,13 @@ const InnerRouter = ({
           url,
         );
       }
-      changeRoute(parseRoute(url), { skipRefetch: true, shouldScroll: false });
+      // TODO this setTimeout is a workaround for now.
+      setTimeout(() => {
+        changeRoute(parseRoute(url), {
+          skipRefetch: true,
+          shouldScroll: false,
+        });
+      });
     };
     locationListeners.add(callback);
     return () => {
