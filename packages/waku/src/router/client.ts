@@ -21,14 +21,7 @@ import type {
   MouseEvent,
 } from 'react';
 
-import {
-  prefetchRsc,
-  Root,
-  Slot,
-  useRefetch,
-  ThrowError_UNSTABLE as ThrowError,
-  useResetError_UNSTABLE as useResetError,
-} from '../minimal/client.js';
+import { prefetchRsc, Root, Slot, useRefetch } from '../minimal/client.js';
 import {
   encodeRoutePath,
   ROUTE_ID,
@@ -367,7 +360,6 @@ const NotFound = ({
   has404: boolean;
   reset: () => void;
 }) => {
-  const resetError = useResetError();
   const router = useContext(RouterContext);
   if (!router) {
     throw new Error('Missing Router');
@@ -377,15 +369,13 @@ const NotFound = ({
     if (has404) {
       const url = new URL('/404', window.location.href);
       changeRoute(parseRoute(url), { shouldScroll: true });
-      resetError?.();
       reset();
     }
-  }, [has404, resetError, reset, changeRoute]);
+  }, [has404, reset, changeRoute]);
   return has404 ? null : createElement('h1', null, 'Not Found');
 };
 
 const Redirect = ({ to, reset }: { to: string; reset: () => void }) => {
-  const resetError = useResetError();
   const router = useContext(RouterContext);
   if (!router) {
     throw new Error('Missing Router');
@@ -408,9 +398,8 @@ const Redirect = ({ to, reset }: { to: string; reset: () => void }) => {
       url,
     );
     changeRoute(parseRoute(url), { shouldScroll: newPath });
-    resetError?.();
     reset();
-  }, [to, resetError, reset, changeRoute]);
+  }, [to, reset, changeRoute]);
   return null;
 };
 
@@ -581,18 +570,7 @@ const InnerRouter = ({
       : createElement(Slot, { id: getRouteSlotId(route.path) });
   const rootElement = createElement(
     Slot,
-    {
-      id: 'root',
-      unstable_handleError:
-        // @ts-expect-error intentional hack
-        // eslint-disable-next-line no-constant-binary-expression
-        null &&
-        createElement(
-          CustomErrorHandler,
-          { has404 },
-          createElement(ThrowError),
-        ),
-    },
+    { id: 'root' },
     createElement(CustomErrorHandler, { has404 }, routeElement),
   );
   return createElement(
@@ -721,7 +699,7 @@ export function INTERNAL_ServerRouter({
   const routeElement = createElement(Slot, { id: getRouteSlotId(route.path) });
   const rootElement = createElement(
     Slot,
-    { id: 'root', unstable_handleError: null },
+    { id: 'root' },
     createElement('meta', { name: 'httpstatus', content: `${httpstatus}` }),
     routeElement,
   );

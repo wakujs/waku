@@ -8,7 +8,6 @@ import {
   useCallback,
   useEffect,
   useState,
-  Component,
 } from 'react';
 import type { ReactNode } from 'react';
 import RSDWClient from 'react-server-dom-webpack/client';
@@ -271,27 +270,8 @@ export const useRefetch = () => use(RefetchContext);
 
 const ChildrenContext = createContext<ReactNode>(undefined);
 const ChildrenContextProvider = memo(ChildrenContext.Provider);
-const ErrorContext = createContext<
-  [error: unknown, reset: () => void] | undefined
->(undefined);
-const ErrorContextProvider = memo(ErrorContext.Provider);
 
 export const Children = () => use(ChildrenContext);
-
-export const ThrowError_UNSTABLE = () => {
-  const errAndReset = use(ErrorContext);
-  if (errAndReset) {
-    throw errAndReset[0];
-  }
-  return null;
-};
-
-export const useResetError_UNSTABLE = () => {
-  const errAndReset = use(ErrorContext);
-  if (errAndReset) {
-    return errAndReset[1];
-  }
-};
 
 export const useElement = (id: string) => {
   const elementsPromise = use(ElementsContext);
@@ -308,22 +288,14 @@ export const useElement = (id: string) => {
 const InnerSlot = ({
   id,
   children,
-  setValidElement,
   unstable_fallback,
 }: {
   id: string;
   children?: ReactNode;
-  setValidElement?: (element: ReactNode) => void;
   unstable_fallback?: ReactNode;
 }) => {
   const element = useElement(id);
   const isValidElement = element !== undefined;
-  useEffect(() => {
-    if (isValidElement && setValidElement) {
-      // FIXME is there `isReactNode` type checker?
-      setValidElement(element as ReactNode);
-    }
-  }, [isValidElement, element, setValidElement]);
   if (!isValidElement) {
     if (unstable_fallback) {
       return unstable_fallback;
@@ -337,37 +309,6 @@ const InnerSlot = ({
     element as ReactNode,
   );
 };
-
-class GeneralErrorHandler extends Component<
-  { children?: ReactNode; errorHandler: ReactNode },
-  { error: unknown | null }
-> {
-  constructor(props: { children?: ReactNode; errorHandler: ReactNode }) {
-    super(props);
-    this.state = { error: null };
-    this.reset = this.reset.bind(this);
-  }
-  static getDerivedStateFromError(error: unknown) {
-    return { error };
-  }
-  reset() {
-    this.setState({ error: null });
-  }
-  render() {
-    const { error } = this.state;
-    if (error !== null) {
-      if (this.props.errorHandler) {
-        return createElement(
-          ErrorContextProvider,
-          { value: [error, this.reset] },
-          this.props.errorHandler,
-        );
-      }
-      throw error;
-    }
-    return this.props.children;
-  }
-}
 
 /**
  * Slot component
@@ -386,33 +327,12 @@ class GeneralErrorHandler extends Component<
 export const Slot = ({
   id,
   children,
-  unstable_handleError,
   unstable_fallback,
 }: {
   id: string;
   children?: ReactNode;
-  unstable_handleError?: ReactNode;
   unstable_fallback?: ReactNode;
 }) => {
-  const [errorHandler, setErrorHandler] = useState<ReactNode>();
-  const setValidElement = useCallback(
-    (element: ReactNode) =>
-      setErrorHandler(
-        createElement(
-          ChildrenContextProvider,
-          { value: unstable_handleError },
-          element,
-        ),
-      ),
-    [unstable_handleError],
-  );
-  if (unstable_handleError !== undefined) {
-    return createElement(
-      GeneralErrorHandler,
-      { errorHandler },
-      createElement(InnerSlot, { id, setValidElement }, children),
-    );
-  }
   return createElement(InnerSlot, { id, unstable_fallback }, children);
 };
 
