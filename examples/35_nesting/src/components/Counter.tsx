@@ -11,7 +11,7 @@ export const Counter = ({ enableInnerApp }: { enableInnerApp?: boolean }) => {
     if (enableInnerApp) {
       const nextCount = count + 1;
       setCount(nextCount);
-      await refetch('InnerApp=' + nextCount)
+      await refetch('InnerApp=' + nextCount);
     } else {
       setCount((c) => c + 1);
     }
