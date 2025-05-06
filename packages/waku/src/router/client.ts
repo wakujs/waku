@@ -491,6 +491,11 @@ const InnerRouter = ({
   const [err, setErr] = useState<unknown>(null);
   const changeRoute: ChangeRoute = useCallback(
     async (route, options) => {
+      let overridePathAndQuery: [string, string] | undefined;
+      const callback = (path: string, query: string) => {
+        overridePathAndQuery = [path, query];
+      };
+      locationListeners.add(callback);
       setErr(null);
       const { skipRefetch } = options || {};
       if (!staticPathSet.has(route.path) && !skipRefetch) {
@@ -500,15 +505,40 @@ const InnerRouter = ({
           await refetch(rscPath, rscParams);
         } catch (e) {
           setErr(e);
+          locationListeners.delete(callback);
           throw e;
         }
       }
+      locationListeners.delete(callback);
       if (options.shouldScroll) {
         handleScroll();
       }
-      setRoute(route);
+      if (overridePathAndQuery) {
+        const [path, query] = overridePathAndQuery;
+        overridePathAndQuery = undefined;
+        const url = new URL(window.location.href);
+        url.pathname = path;
+        url.search = query;
+        url.hash = '';
+        if (path !== '/404') {
+          window.history.pushState(
+            {
+              ...window.history.state,
+              waku_new_path: url.pathname !== window.location.pathname,
+            },
+            '',
+            url,
+          );
+        }
+        changeRoute(parseRoute(url), {
+          skipRefetch: true,
+          shouldScroll: false,
+        });
+      } else {
+        setRoute(route);
+      }
     },
-    [refetch, staticPathSet],
+    [locationListeners, refetch, staticPathSet],
   );
 
   const prefetchRoute: PrefetchRoute = useCallback(
@@ -534,36 +564,6 @@ const InnerRouter = ({
       window.removeEventListener('popstate', callback);
     };
   }, [changeRoute]);
-
-  useEffect(() => {
-    const callback = (path: string, query: string) => {
-      const url = new URL(window.location.href);
-      url.pathname = path;
-      url.search = query;
-      url.hash = '';
-      if (path !== '/404') {
-        window.history.pushState(
-          {
-            ...window.history.state,
-            waku_new_path: url.pathname !== window.location.pathname,
-          },
-          '',
-          url,
-        );
-      }
-      // TODO this setTimeout is a workaround for now.
-      setTimeout(() => {
-        changeRoute(parseRoute(url), {
-          skipRefetch: true,
-          shouldScroll: false,
-        });
-      });
-    };
-    locationListeners.add(callback);
-    return () => {
-      locationListeners.delete(callback);
-    };
-  }, [changeRoute, locationListeners]);
 
   const routeElement =
     err !== null
