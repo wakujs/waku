@@ -457,6 +457,41 @@ const handleScroll = () => {
   });
 };
 
+const overridePathAndQuery = (
+  changeRoute: ChangeRoute,
+  staticPathSet: Set<string>,
+  pathAndQueryHolder: [[string, string] | null],
+) => {
+  if (pathAndQueryHolder[0]) {
+    const [path, query] = pathAndQueryHolder[0];
+    pathAndQueryHolder[0] = null;
+    const url = new URL(window.location.href);
+    // FIXME this check here seems ad-hoc (less readable code)
+    if (
+      url.pathname !== path ||
+      (!staticPathSet.has(path) && url.search.replace(/^\?/, '') !== query)
+    ) {
+      url.pathname = path;
+      url.search = query;
+      url.hash = '';
+      if (path !== '/404') {
+        window.history.pushState(
+          {
+            ...window.history.state,
+            waku_new_path: url.pathname !== window.location.pathname,
+          },
+          '',
+          url,
+        );
+      }
+      changeRoute(parseRoute(url), {
+        skipRefetch: true,
+        shouldScroll: false,
+      });
+    }
+  }
+};
+
 const InnerRouter = ({
   routerData,
   initialRoute,
@@ -464,7 +499,7 @@ const InnerRouter = ({
   routerData: Required<RouterData>;
   initialRoute: RouteProps;
 }) => {
-  const [locationListeners, staticPathSet, , has404] = routerData;
+  const [staticPathSet, pathAndQueryHolder, , has404] = routerData;
   const refetch = useRefetch();
   const [route, setRoute] = useState(() => ({
     // This is the first initialization of the route, and it has
@@ -491,11 +526,6 @@ const InnerRouter = ({
   const [err, setErr] = useState<unknown>(null);
   const changeRoute: ChangeRoute = useCallback(
     async (route, options) => {
-      let overridePathAndQuery: [string, string] | undefined;
-      const callback = (path: string, query: string) => {
-        overridePathAndQuery = [path, query];
-      };
-      locationListeners.add(callback);
       setErr(null);
       const { skipRefetch } = options || {};
       if (!staticPathSet.has(route.path) && !skipRefetch) {
@@ -505,47 +535,17 @@ const InnerRouter = ({
           await refetch(rscPath, rscParams);
         } catch (e) {
           setErr(e);
-          locationListeners.delete(callback);
           throw e;
         }
       }
-      locationListeners.delete(callback);
       if (options.shouldScroll) {
         handleScroll();
       }
       setRoute(route);
-      // TODO move this logic outside of changeRoute
-      if (overridePathAndQuery) {
-        const [path, query] = overridePathAndQuery;
-        overridePathAndQuery = undefined;
-        const url = new URL(window.location.href);
-        // FIXME this check here seems ad-hoc (less readable code)
-        if (
-          url.pathname !== path ||
-          (!staticPathSet.has(path) && url.search.replace(/^\?/, '') !== query)
-        ) {
-          url.pathname = path;
-          url.search = query;
-          url.hash = '';
-          if (path !== '/404') {
-            window.history.pushState(
-              {
-                ...window.history.state,
-                waku_new_path: url.pathname !== window.location.pathname,
-              },
-              '',
-              url,
-            );
-          }
-          changeRoute(parseRoute(url), {
-            skipRefetch: true,
-            shouldScroll: false,
-          });
-          return;
-        }
-      }
+      // TODO should we move the following logic outside of changeRoute?
+      overridePathAndQuery(changeRoute, staticPathSet, pathAndQueryHolder);
     },
-    [locationListeners, refetch, staticPathSet],
+    [refetch, staticPathSet, pathAndQueryHolder],
   );
 
   const prefetchRoute: PrefetchRoute = useCallback(
@@ -596,8 +596,8 @@ type EnhanceCreateData = (
 
 // Note: The router data must be a stable mutable object (array).
 type RouterData = [
-  locationListeners?: Set<(path: string, query: string) => void>,
   staticPathSet?: Set<string>,
+  pathAndQueryHolder?: [[string, string] | null], // FIXME name it better
   cachedIdSet?: Set<string>,
   has404?: boolean,
 ];
@@ -616,8 +616,8 @@ export function Router({
   unstable_enhanceCreateData?: EnhanceCreateData;
 }) {
   const initialRscPath = encodeRoutePath(initialRoute.path);
-  const locationListeners = (routerData[0] ||= new Set());
-  const staticPathSet = (routerData[1] ||= new Set());
+  const staticPathSet = (routerData[0] ||= new Set());
+  const pathAndQueryHolder = (routerData[1] ||= [null]);
   const cachedIdSet = (routerData[2] ||= new Set());
   const enhanceFetch =
     (fetchFn: typeof fetch) =>
@@ -653,7 +653,7 @@ export function Router({
               if (isStatic) {
                 staticPathSet.add(path);
               }
-              locationListeners.forEach((listener) => listener(path, query));
+              pathAndQueryHolder[0] = [path, query];
             }
             if (has404) {
               routerData[3] = true;
