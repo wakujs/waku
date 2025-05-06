@@ -513,29 +513,36 @@ const InnerRouter = ({
       if (options.shouldScroll) {
         handleScroll();
       }
+      setRoute(route);
+      // TODO move this logic outside of changeRoute
       if (overridePathAndQuery) {
         const [path, query] = overridePathAndQuery;
         overridePathAndQuery = undefined;
         const url = new URL(window.location.href);
-        url.pathname = path;
-        url.search = query;
-        url.hash = '';
-        if (path !== '/404') {
-          window.history.pushState(
-            {
-              ...window.history.state,
-              waku_new_path: url.pathname !== window.location.pathname,
-            },
-            '',
-            url,
-          );
+        // FIXME this check here seems ad-hoc (less readable code)
+        if (
+          url.pathname !== path ||
+          (!staticPathSet.has(path) && url.search.replace(/^\?/, '') !== query)
+        ) {
+          url.pathname = path;
+          url.search = query;
+          url.hash = '';
+          if (path !== '/404') {
+            window.history.pushState(
+              {
+                ...window.history.state,
+                waku_new_path: url.pathname !== window.location.pathname,
+              },
+              '',
+              url,
+            );
+          }
+          changeRoute(parseRoute(url), {
+            skipRefetch: true,
+            shouldScroll: false,
+          });
+          return;
         }
-        changeRoute(parseRoute(url), {
-          skipRefetch: true,
-          shouldScroll: false,
-        });
-      } else {
-        setRoute(route);
       }
     },
     [locationListeners, refetch, staticPathSet],
@@ -643,17 +650,10 @@ export function Router({
             } = data;
             if (routeData) {
               const [path, query] = routeData as [string, string];
-              // FIXME this check here seems ad-hoc (less readable code)
-              if (
-                window.location.pathname !== path ||
-                (!isStatic &&
-                  window.location.search.replace(/^\?/, '') !== query)
-              ) {
-                locationListeners.forEach((listener) => listener(path, query));
-              }
               if (isStatic) {
                 staticPathSet.add(path);
               }
+              locationListeners.forEach((listener) => listener(path, query));
             }
             if (has404) {
               routerData[3] = true;
