@@ -283,31 +283,6 @@ export const useElement = (id: string) => {
   return elements[id];
 };
 
-const InnerSlot = ({
-  id,
-  children,
-  unstable_fallback,
-}: {
-  id: string;
-  children?: ReactNode;
-  unstable_fallback?: ReactNode;
-}) => {
-  const element = useElement(id);
-  const isValidElement = element !== undefined;
-  if (!isValidElement) {
-    if (unstable_fallback) {
-      return unstable_fallback;
-    }
-    throw new Error('Invalid element: ' + id);
-  }
-  return createElement(
-    ChildrenContextProvider,
-    { value: children },
-    // FIXME is there `isReactNode` type checker?
-    element as ReactNode,
-  );
-};
-
 /**
  * Slot component
  * This is used under the Root component.
@@ -331,7 +306,20 @@ export const Slot = ({
   children?: ReactNode;
   unstable_fallback?: ReactNode;
 }) => {
-  return createElement(InnerSlot, { id, unstable_fallback }, children);
+  const element = useElement(id);
+  const isValidElement = element !== undefined;
+  if (!isValidElement) {
+    if (unstable_fallback) {
+      return unstable_fallback;
+    }
+    throw new Error('Invalid element: ' + id);
+  }
+  return createElement(
+    ChildrenContextProvider,
+    { value: children },
+    // FIXME is there `isReactNode` type checker?
+    element as ReactNode,
+  );
 };
 
 /**
