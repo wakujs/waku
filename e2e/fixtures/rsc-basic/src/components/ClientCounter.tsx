@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { useRefetch } from 'waku/minimal/client';
 
 import { ClientBox } from './Box.js';
@@ -8,6 +8,7 @@ import { ClientBox } from './Box.js';
 export const ClientCounter = ({ params }: { params: unknown }) => {
   const [count, setCount] = useState(0);
   const refetch = useRefetch();
+  const [isPending, startTransition] = useTransition();
   return (
     <ClientBox data-testid="client-counter">
       <p data-testid="count">{count}</p>
@@ -30,6 +31,19 @@ export const ClientCounter = ({ params }: { params: unknown }) => {
         Refetch with params
       </button>
       <div data-testid="refetch-params">{JSON.stringify(params)}</div>
+      <button
+        data-testid="refetch5"
+        onClick={() =>
+          startTransition(async () => {
+            await refetch('with-transition');
+          })
+        }
+      >
+        Refetch with transition
+      </button>
+      <div data-testid="refetch-transition">
+        {isPending ? 'pending' : 'idle'}
+      </div>
     </ClientBox>
   );
 };
