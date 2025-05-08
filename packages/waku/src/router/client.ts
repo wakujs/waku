@@ -100,7 +100,7 @@ type ChangeRoute = (
     shouldScroll: boolean;
     skipRefetch?: boolean;
   },
-) => void;
+) => Promise<void>;
 
 type PrefetchRoute = (route: RouteProps) => void;
 
@@ -117,7 +117,7 @@ export function useRouter() {
   }
   const { route, changeRoute, prefetchRoute } = router;
   const push = useCallback(
-    (
+    async (
       to: InferredPaths,
       options?: {
         /**
@@ -139,14 +139,14 @@ export function useRouter() {
         '',
         url,
       );
-      changeRoute(parseRoute(url), {
+      await changeRoute(parseRoute(url), {
         shouldScroll: options?.scroll ?? newPath,
       });
     },
     [changeRoute],
   );
   const replace = useCallback(
-    (
+    async (
       to: InferredPaths,
       options?: {
         /**
@@ -161,15 +161,15 @@ export function useRouter() {
       const url = new URL(to, window.location.href);
       const newPath = url.pathname !== window.location.pathname;
       window.history.replaceState(window.history.state, '', url);
-      changeRoute(parseRoute(url), {
+      await changeRoute(parseRoute(url), {
         shouldScroll: options?.scroll ?? newPath,
       });
     },
     [changeRoute],
   );
-  const reload = useCallback(() => {
+  const reload = useCallback(async () => {
     const url = new URL(window.location.href);
-    changeRoute(parseRoute(url), { shouldScroll: true });
+    await changeRoute(parseRoute(url), { shouldScroll: true });
   }, [changeRoute]);
   const back = useCallback(() => {
     // FIXME is this correct?
@@ -272,7 +272,7 @@ export function Link({
     if (url.href !== window.location.href) {
       const route = parseRoute(url);
       prefetchRoute(route);
-      startTransitionFn(() => {
+      startTransitionFn(async () => {
         const newPath = url.pathname !== window.location.pathname;
         window.history.pushState(
           {
@@ -282,7 +282,7 @@ export function Link({
           '',
           url,
         );
-        changeRoute(route, { shouldScroll: scroll ?? newPath });
+        await changeRoute(route, { shouldScroll: scroll ?? newPath });
       });
     }
   };
@@ -368,8 +368,13 @@ const NotFound = ({
   useEffect(() => {
     if (has404) {
       const url = new URL('/404', window.location.href);
-      changeRoute(parseRoute(url), { shouldScroll: true });
-      reset();
+      changeRoute(parseRoute(url), { shouldScroll: true })
+        .then(() => {
+          reset();
+        })
+        .catch((err) => {
+          console.log('Error while navigating to 404:', err);
+        });
     }
   }, [has404, reset, changeRoute]);
   return has404 ? null : createElement('h1', null, 'Not Found');
@@ -397,8 +402,13 @@ const Redirect = ({ to, reset }: { to: string; reset: () => void }) => {
       '',
       url,
     );
-    changeRoute(parseRoute(url), { shouldScroll: newPath });
-    reset();
+    changeRoute(parseRoute(url), { shouldScroll: newPath })
+      .then(() => {
+        reset();
+      })
+      .catch((err) => {
+        console.log('Error while navigating to redirect:', err);
+      });
   }, [to, reset, changeRoute]);
   return null;
 };
@@ -457,7 +467,7 @@ const handleScroll = () => {
   });
 };
 
-const overridePathAndQuery = (
+const overridePathAndQuery = async (
   changeRoute: ChangeRoute,
   staticPathSet: Set<string>,
   pathAndQueryHolder: [[string, string] | null],
@@ -484,7 +494,7 @@ const overridePathAndQuery = (
           url,
         );
       }
-      changeRoute(parseRoute(url), {
+      await changeRoute(parseRoute(url), {
         skipRefetch: true,
         shouldScroll: false,
       });
@@ -543,7 +553,11 @@ const InnerRouter = ({
       }
       setRoute(route);
       // TODO should we move the following logic outside of changeRoute?
-      overridePathAndQuery(changeRoute, staticPathSet, pathAndQueryHolder);
+      await overridePathAndQuery(
+        changeRoute,
+        staticPathSet,
+        pathAndQueryHolder,
+      );
     },
     [refetch, staticPathSet, pathAndQueryHolder],
   );
@@ -564,7 +578,9 @@ const InnerRouter = ({
   useEffect(() => {
     const callback = () => {
       const route = parseRoute(new URL(window.location.href));
-      changeRoute(route, { shouldScroll: true });
+      changeRoute(route, { shouldScroll: true }).catch((err) => {
+        console.log('Error while navigating back:', err);
+      });
     };
     window.addEventListener('popstate', callback);
     return () => {

@@ -249,8 +249,6 @@ export const Root = ({
       const dataWithoutErrors = Promise.resolve(data).catch(() => ({}));
       setElements((prev) => mergeElementsPromise(prev, dataWithoutErrors));
       await data;
-      // TODO remove this additional setElements
-      setElements((prev) => mergeElementsPromise(prev, data));
     },
     [fetchCache],
   );
