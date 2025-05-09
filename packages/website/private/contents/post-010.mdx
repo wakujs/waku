@@ -1,21 +1,21 @@
 ---
 slug: fine-grained-router-components
-title: Fine-Grained Component Render Modes
-description: We're extending the power of waku/router
+title: Fine-grained component render modes
+description: We're extending the power of Waku Router
 author: tyler
 release: v0.23
 date: 2025/05/10
 ---
 
-waku@0.23 is here with an exciting new level of control with the router! This includes two main features: Group Layouts and Page Part Components.
+Waku v0.23 is here with an exciting new level of control with the router! This includes two new features: Group Layouts and Page Part Components.
 
-Group Layouts are helpful for grouping a set of routes to share a layout. Very similar versions exist for [next.js](https://nextjs.org/docs/app/building-your-application/routing/route-groups) and [tanstack/router](https://tanstack.com/router/latest/docs/framework/solid/routing/routing-concepts#pathless-route-group-directories).
+Group Layouts are helpful for grouping a set of routes to share a layout. Very similar versions exist for [Next.js](https://nextjs.org/docs/app/building-your-application/routing/route-groups) and [TanStack Router](https://tanstack.com/router/latest/docs/framework/solid/routing/routing-concepts#pathless-route-group-directories).
 
 Page Part Components will allow for making part of a page `static` and the other part `dynamic`. More on this later.
 
 ## Group Layouts
 
-Layouts are now common to different react frameworks. One thing we knew we'd need to support is a way to group together layout combinations that allow for convenient compasition of layouts, independent of the routes. This is where group layouts come in.
+Layouts are now common to different React frameworks. One thing we knew we'd need to support is a way to group together layout combinations that allow for convenient composition of layouts, independent of the routes. This is where group layouts come in.
 
 Let's say you'd like to have a home page at `/`, but all other routes should share a layout/context which is not used on `/`. This is now possible with `/(subroutes)/_layout.tsx`. An example file setup:
 
@@ -42,7 +42,7 @@ Layouts can essentially slot in anywhere and give a great feel of shared layout 
 
 ## Page Part Components
 
-Pre waku@0.23 a page is either all `static` or all `dynamic`. We're now introducing the ability to compose pages like this:
+Before Waku v0.23 a page is either all `static` or all `dynamic`. We're now introducing the ability to compose pages like this:
 
 ```tsx
 // just an example to show the full component tree of a "page"
@@ -58,21 +58,36 @@ Before, we supported a single page component (and that will stay the default). P
 
 ### How Does It Work?
 
-The filename convention for page parts is `_part[order]-component.tsx`. So to replicate the example above for route `/foo` we would have the following in our pages directory:
+The filename convention for page parts is `_part${string}.tsx` (typescript string literal syntax). So to replicate the example above for route `/foo` we would have the following files:
 
 ```
 pages
 ├── _layout.tsx
 ├── foo
-│ ├── _part0-component.tsx
-│ └── _part1-component.tsx
+│ ├── _part-banana.tsx
+│ └── _part-orange.tsx
 └── index.tsx
 ```
 
-Then in each of the component files you can add `getConfig` just as you would with normal page components to configure the render mode.
+Then your component definition could look like this:
+
+```tsx
+export default function Banana() {
+  return <p>🍌</p>;
+}
+
+export const getConfig = () => {
+  return {
+    render: 'static',
+    order: 0,
+  };
+};
+```
+
+The `order` here determines the order in which Banana is rendered. So in this case, orange could have `order: 1` to be rendered next.
 
 ## There's More To Come
 
-`waku/router` is built to be minimal and powerful. We're really excited to see what you can build with Fine-Grained Component Render Modes. We'd love to hear from you on our [Discord server](https://discord.gg/MrQdmzd), [GitHub discussions](https://github.com/wakujs/waku/discussions), or [around](https://x.com/wakujs) [the](https://bsky.app/profile/daishikato.com) [web](https://fosstodon.org/@daishi).
+Waku Router is built to be minimal and powerful. We're really excited to see what you can build with Fine-Grained Component Render Modes. We'd love to hear from you on our [Discord server](https://discord.gg/MrQdmzd), [GitHub discussions](https://github.com/wakujs/waku/discussions), or [around](https://x.com/wakujs) [the](https://bsky.app/profile/daishikato.com) [web](https://fosstodon.org/@daishi).
 
 PS: We have a [few more things](https://github.com/wakujs/waku/issues/24) coming soon!
