@@ -117,11 +117,8 @@ const RouterContext = createContext<{
   route: RouteProps;
   changeRoute: ChangeRoute;
   prefetchRoute: PrefetchRoute;
-} | null>(null);
-
-const RouteChangeContext = createContext<{
-  unstable_onRouteChangeStartRef: RefObject<ChangeRouteCallback | null>;
-  unstable_onRouteChangeCompleteRef: RefObject<ChangeRouteCallback | null>;
+  onRouteChangeStartListeners: Set<ChangeRouteCallback>;
+  onRouteChangeCompleteListeners: Set<ChangeRouteCallback>;
 } | null>(null);
 
 export function useRouter() {
@@ -129,12 +126,6 @@ export function useRouter() {
   if (!router) {
     throw new Error('Missing Router');
   }
-  const routeChangeContext = useContext(RouteChangeContext);
-  if (!routeChangeContext) {
-    throw new Error('Missing RouteChangeContext');
-  }
-  const { unstable_onRouteChangeStartRef, unstable_onRouteChangeCompleteRef } =
-    routeChangeContext;
 
   const handleRouteChangeStart = useCallback(
     (fn: ChangeRouteCallback) => {
@@ -516,12 +507,6 @@ const InnerRouter = ({
   routerData: Required<RouterData>;
   initialRoute: RouteProps;
 }) => {
-  const routeChangeContext = useContext(RouteChangeContext);
-  if (!routeChangeContext) {
-    throw new Error('Missing RouteChangeContext');
-  }
-  const { unstable_onRouteChangeStartRef, unstable_onRouteChangeCompleteRef } =
-    routeChangeContext;
   const [locationListeners, staticPathSet, , has404] = routerData;
   const refetch = useRefetch();
   const [route, setRoute] = useState(() => ({
@@ -747,8 +732,6 @@ export function Router({
       return data;
     };
   const initialRscParams = createRscParams(initialRoute.query);
-  const onRouteChangeStartRef = useRef<ChangeRouteCallback | null>(null);
-  const onRouteChangeCompleteRef = useRef<ChangeRouteCallback | null>(null);
   return createElement(
     Root as FunctionComponent<Omit<ComponentProps<typeof Root>, 'children'>>,
     {
@@ -761,19 +744,10 @@ export function Router({
         ? (fn) => unstable_enhanceCreateData(enhanceCreateData(fn))
         : enhanceCreateData,
     },
-    createElement(
-      RouteChangeContext.Provider,
-      {
-        value: {
-          unstable_onRouteChangeStartRef: onRouteChangeStartRef,
-          unstable_onRouteChangeCompleteRef: onRouteChangeCompleteRef,
-        },
-      },
-      createElement(InnerRouter, {
-        routerData: routerData as Required<RouterData>,
-        initialRoute,
-      }),
-    ),
+    createElement(InnerRouter, {
+      routerData: routerData as Required<RouterData>,
+      initialRoute,
+    }),
   );
 }
 const emptyRouteHandler: RefObject<ChangeRouteCallback | null> = {
