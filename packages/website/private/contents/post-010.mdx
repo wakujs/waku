@@ -7,15 +7,15 @@ release: v0.23
 date: 2025/05/10
 ---
 
-Waku v0.23 is here with an exciting new level of control with the router! This includes two new features: Group Layouts and Page Part Components.
+Waku v0.23 is here with an exciting new level of control with the router! This includes two new features: Pathless Route Groups and Page Part Components.
 
-Group Layouts are helpful for grouping a set of routes to share a layout. Very similar versions exist for [Next.js](https://nextjs.org/docs/app/building-your-application/routing/route-groups) and [TanStack Router](https://tanstack.com/router/latest/docs/framework/solid/routing/routing-concepts#pathless-route-group-directories).
+Pathless Route Groups are helpful for grouping a set of routes to share a layout. Very similar versions exist for [Next.js](https://nextjs.org/docs/app/building-your-application/routing/route-groups) and [TanStack Router](https://tanstack.com/router/latest/docs/framework/solid/routing/routing-concepts#pathless-route-group-directories).
 
 Page Part Components will allow for making part of a page `static` and the other part `dynamic`. More on this later.
 
-## Group Layouts
+## Pathless Route Groups
 
-Layouts are now common to different React frameworks. One thing we knew we'd need to support is a way to group together layout combinations that allow for convenient composition of layouts, independent of the routes. This is where group layouts come in.
+With Waku Router, the path of a file inside `pages` determines it's route and the layouts it will have. Layouts are now common to different React frameworks. One thing we knew we'd need to support is a way to group together layout combinations that allow for convenient composition independent of the route itself. This is where Pathless Route Groups come in.
 
 Let's say you'd like to have a home page at `/`, but all other routes should share a layout/context which is not used on `/`. This is now possible with `/(subroutes)/_layout.tsx`. An example file setup:
 
@@ -27,7 +27,7 @@ Let's say you'd like to have a home page at `/`, but all other routes should sha
 └── index.tsx
 ```
 
-The composition capabilities that group layouts unlock are really cool too! You could have some work you'd like to only occur for the layout at build time (`static`), then have more work that should be done for all routes at runtime (`dynamic`). This example could be setup like:
+The composition capabilities that Pathless Route Groups unlock are really cool too! You could have some work you'd like to only occur for the layout at build time (`static`), then have more work that should be done for all routes at runtime (`dynamic`). This example could be setup like:
 
 ```
 (subroutes)/
