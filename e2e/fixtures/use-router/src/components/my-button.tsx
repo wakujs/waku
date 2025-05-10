@@ -1,14 +1,23 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'waku';
 
 export const MyButton = () => {
   const router = useRouter();
-  router.unstable_onRouteChangeStart(() => {
-    console.log('Route change started');
-  });
-  router.unstable_onRouteChangeComplete(() => {
-    console.log('Route change completed');
+  useEffect(() => {
+    const onStart = () => {
+      console.log('Route change started');
+    };
+    const onComplete = () => {
+      console.log('Route change completed');
+    };
+    router.unstable_events.on('start', onStart);
+    router.unstable_events.on('complete', onComplete);
+    return () => {
+      router.unstable_events.off('start', onStart);
+      router.unstable_events.off('complete', onComplete);
+    };
   });
   return (
     <button onClick={() => router.push(`/static`)}>
