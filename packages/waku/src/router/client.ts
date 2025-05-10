@@ -141,7 +141,7 @@ export function useRouter() {
       router.routeChangeListeners[event].delete(handler);
     };
     return { on, off };
-  }, []);
+  }, [router.routeChangeListeners]);
 
   const { route, changeRoute, prefetchRoute } = router;
   const push = useCallback(
@@ -535,7 +535,9 @@ const InnerRouter = ({
       eventParams: Parameters<ChangeRouteCallback>,
     ) => {
       const eventListenersSet = routeChangeListenersRef.current[eventType];
-      if (!eventListenersSet.size) return;
+      if (!eventListenersSet.size) {
+        return;
+      }
       for (const listener of eventListenersSet) {
         listener(...eventParams);
       }
@@ -569,7 +571,7 @@ const InnerRouter = ({
       refetching.current[0]?.();
       refetching.current = null;
     },
-    [refetch, staticPathSet],
+    [executeListeners, refetch, staticPathSet],
   );
 
   const prefetchRoute: PrefetchRoute = useCallback(
