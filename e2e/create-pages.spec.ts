@@ -82,7 +82,7 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await page.waitForTimeout(500); // need to wait not to error
       await expect(page.getByRole('heading', { level: 2 })).toBeVisible();
       await expect(
-        page.getByRole('heading', { name: 'Foo' }),
+        page.getByRole('heading', { level: 2, name: 'Foo' }),
       ).not.toBeVisible();
     });
 
