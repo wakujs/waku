@@ -8,7 +8,6 @@ import {
   useCallback,
   useEffect,
   useState,
-  Component,
 } from 'react';
 import type { ReactNode } from 'react';
 import RSDWClient from 'react-server-dom-webpack/client';
@@ -58,12 +57,6 @@ const checkStatus = async (
 
 type Elements = Record<string, unknown>;
 
-// HACK I'm not super happy with this hack
-const erroredElementsPromiseMap = new WeakMap<
-  Promise<Elements>,
-  Promise<Elements>
->();
-
 const getCached = <T>(c: () => T, m: WeakMap<object, T>, k: object): T =>
   (m.has(k) ? m : m.set(k, c())).get(k) as T;
 const cache1 = new WeakMap();
@@ -71,19 +64,12 @@ const mergeElementsPromise = (
   a: Promise<Elements>,
   b: Promise<Elements>,
 ): Promise<Elements> => {
-  const getResult = () => {
-    const p = Promise.all([erroredElementsPromiseMap.get(a) || a, b])
-      .then(([a, b]) => {
-        const nextElements = { ...a, ...b };
-        delete nextElements._value;
-        return nextElements;
-      })
-      .catch((err) => {
-        erroredElementsPromiseMap.set(p, a);
-        throw err;
-      });
-    return p;
-  };
+  const getResult = () =>
+    Promise.all([a, b]).then(([a, b]) => {
+      const nextElements = { ...a, ...b };
+      delete nextElements._value;
+      return nextElements;
+    });
   const cache2 = getCached(() => new WeakMap(), cache1, a);
   return getCached(getResult, cache2, b);
 };
@@ -140,10 +126,11 @@ export const unstable_callServerRsc = async (
           enhanceFetch(fetch)(url, { method: 'POST', body }),
         );
   const data = enhanceCreateData(createData)(responsePromise);
-  const value = (await data)._value;
-  // FIXME this causes rerenders even if data is empty
-  fetchCache[SET_ELEMENTS]?.((prev) => mergeElementsPromise(prev, data));
-  return value;
+  const dataWithoutErrors = Promise.resolve(data).catch(() => ({}));
+  fetchCache[SET_ELEMENTS]?.((prev) =>
+    mergeElementsPromise(prev, dataWithoutErrors),
+  );
+  return (await data)._value;
 };
 
 const prefetchedParams = new WeakMap<Promise<unknown>, unknown>();
@@ -259,8 +246,8 @@ export const Root = ({
       // clear cache entry before fetching
       delete fetchCache[ENTRY];
       const data = fetchRsc(rscPath, rscParams, fetchCache);
-      setElements((prev) => mergeElementsPromise(prev, data));
-      // TODO Should we move this `await data` before `setElements` like callServerRsc and let the caller handle the error?
+      const dataWithoutErrors = Promise.resolve(data).catch(() => ({}));
+      setElements((prev) => mergeElementsPromise(prev, dataWithoutErrors));
       await data;
     },
     [fetchCache],
@@ -281,27 +268,8 @@ export const useRefetch = () => use(RefetchContext);
 
 const ChildrenContext = createContext<ReactNode>(undefined);
 const ChildrenContextProvider = memo(ChildrenContext.Provider);
-const ErrorContext = createContext<
-  [error: unknown, reset: () => void] | undefined
->(undefined);
-const ErrorContextProvider = memo(ErrorContext.Provider);
 
 export const Children = () => use(ChildrenContext);
-
-export const ThrowError_UNSTABLE = () => {
-  const errAndReset = use(ErrorContext);
-  if (errAndReset) {
-    throw errAndReset[0];
-  }
-  return null;
-};
-
-export const useResetError_UNSTABLE = () => {
-  const errAndReset = use(ErrorContext);
-  if (errAndReset) {
-    return errAndReset[1];
-  }
-};
 
 export const useElement = (id: string) => {
   const elementsPromise = use(ElementsContext);
@@ -314,70 +282,6 @@ export const useElement = (id: string) => {
   }
   return elements[id];
 };
-
-const InnerSlot = ({
-  id,
-  children,
-  setValidElement,
-  unstable_fallback,
-}: {
-  id: string;
-  children?: ReactNode;
-  setValidElement?: (element: ReactNode) => void;
-  unstable_fallback?: ReactNode;
-}) => {
-  const element = useElement(id);
-  const isValidElement = element !== undefined;
-  useEffect(() => {
-    if (isValidElement && setValidElement) {
-      // FIXME is there `isReactNode` type checker?
-      setValidElement(element as ReactNode);
-    }
-  }, [isValidElement, element, setValidElement]);
-  if (!isValidElement) {
-    if (unstable_fallback) {
-      return unstable_fallback;
-    }
-    throw new Error('Invalid element: ' + id);
-  }
-  return createElement(
-    ChildrenContextProvider,
-    { value: children },
-    // FIXME is there `isReactNode` type checker?
-    element as ReactNode,
-  );
-};
-
-class GeneralErrorHandler extends Component<
-  { children?: ReactNode; errorHandler: ReactNode },
-  { error: unknown | null }
-> {
-  constructor(props: { children?: ReactNode; errorHandler: ReactNode }) {
-    super(props);
-    this.state = { error: null };
-    this.reset = this.reset.bind(this);
-  }
-  static getDerivedStateFromError(error: unknown) {
-    return { error };
-  }
-  reset() {
-    this.setState({ error: null });
-  }
-  render() {
-    const { error } = this.state;
-    if (error !== null) {
-      if (this.props.errorHandler) {
-        return createElement(
-          ErrorContextProvider,
-          { value: [error, this.reset] },
-          this.props.errorHandler,
-        );
-      }
-      throw error;
-    }
-    return this.props.children;
-  }
-}
 
 /**
  * Slot component
@@ -396,34 +300,26 @@ class GeneralErrorHandler extends Component<
 export const Slot = ({
   id,
   children,
-  unstable_handleError,
   unstable_fallback,
 }: {
   id: string;
   children?: ReactNode;
-  unstable_handleError?: ReactNode;
   unstable_fallback?: ReactNode;
 }) => {
-  const [errorHandler, setErrorHandler] = useState<ReactNode>();
-  const setValidElement = useCallback(
-    (element: ReactNode) =>
-      setErrorHandler(
-        createElement(
-          ChildrenContextProvider,
-          { value: unstable_handleError },
-          element,
-        ),
-      ),
-    [unstable_handleError],
-  );
-  if (unstable_handleError !== undefined) {
-    return createElement(
-      GeneralErrorHandler,
-      { errorHandler },
-      createElement(InnerSlot, { id, setValidElement }, children),
-    );
+  const element = useElement(id);
+  const isValidElement = element !== undefined;
+  if (!isValidElement) {
+    if (unstable_fallback) {
+      return unstable_fallback;
+    }
+    throw new Error('Invalid element: ' + id);
   }
-  return createElement(InnerSlot, { id, unstable_fallback }, children);
+  return createElement(
+    ChildrenContextProvider,
+    { value: children },
+    // FIXME is there `isReactNode` type checker?
+    element as ReactNode,
+  );
 };
 
 /**

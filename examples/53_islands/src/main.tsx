@@ -5,7 +5,9 @@ import { Root, Slot, useRefetch } from 'waku/minimal/client';
 const DynamicFether = () => {
   const refetch = useRefetch();
   useEffect(() => {
-    void refetch('dynamic');
+    refetch('dynamic').catch((e) => {
+      console.error('Failed to refetch:', e);
+    });
   }, [refetch]);
   return null;
 };

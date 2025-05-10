@@ -80,7 +80,8 @@ export const BaseSyncAtoms = ({
         const rscParams = {
           jotai_atomValues: serializedAtomValues,
         };
-        void refetch(...createRscPathAndRscParams(rscPath, rscParams));
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        refetch(...createRscPathAndRscParams(rscPath, rscParams));
       };
       const unsub = store.sub(atomValuesAtom, () => {
         callback(store.get(atomValuesAtom));
