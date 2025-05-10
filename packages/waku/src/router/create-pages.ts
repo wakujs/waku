@@ -518,10 +518,6 @@ export const createPages = <
   };
 
   const createPagePart: CreatePagePart = (params) => {
-    if (!import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER) {
-      console.warn('createPagePart is still experimental');
-      return params;
-    }
     if (params.path.endsWith('[path]')) {
       throw new Error(
         'Page part file cannot be named [path]. This will conflict with the path prop of the page component.',
