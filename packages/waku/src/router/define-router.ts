@@ -66,7 +66,7 @@ export function unstable_getRscParams(): unknown {
 }
 
 const RERENDER_SYMBOL = Symbol('RERENDER');
-type Rerender = (rscPath: string, rscParams?: unknown) => void;
+type Rerender = (rscPath: string, rscParams?: unknown) => Promise<void>;
 
 const setRerender = (rerender: Rerender) => {
   try {
@@ -93,9 +93,9 @@ const pathSpec2pathname = (pathSpec: PathSpec) => {
   return '/' + pathSpec.map(({ name }) => name!).join('/');
 };
 
-export function unstable_rerenderRoute(pathname: string, query?: string) {
+export async function unstable_rerenderRoute(pathname: string, query?: string) {
   const rscPath = encodeRoutePath(pathname);
-  getRerender()(rscPath, query && new URLSearchParams({ query }));
+  await getRerender()(rscPath, query && new URLSearchParams({ query }));
 }
 
 export function unstable_notFound(): never {
@@ -328,6 +328,7 @@ export function unstable_defineRouter(fns: {
             ...newElements,
           };
         });
+        await elementsPromise;
       };
       setRerender(rerender);
       const value = await input.fn(...input.args);
