@@ -312,7 +312,7 @@ export function unstable_defineRouter(fns: {
         {},
       );
       let rendered = false;
-      const rerender = async (rscPath: string, rscParams?: unknown) => {
+      const rerender = (rscPath: string, rscParams?: unknown) => {
         if (rendered) {
           throw new Error('already rendered');
         }
