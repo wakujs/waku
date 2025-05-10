@@ -4,4 +4,5 @@ export default function Part() {
 
 export const getConfig = () => ({
   render: 'static',
+  order: 0,
 });
