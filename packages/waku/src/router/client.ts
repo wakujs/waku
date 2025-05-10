@@ -467,41 +467,6 @@ const handleScroll = () => {
   });
 };
 
-const overridePathAndQuery = async (
-  changeRoute: ChangeRoute,
-  staticPathSet: Set<string>,
-  pathAndQueryHolder: [[string, string] | null],
-) => {
-  if (pathAndQueryHolder[0]) {
-    const [path, query] = pathAndQueryHolder[0];
-    pathAndQueryHolder[0] = null;
-    const url = new URL(window.location.href);
-    // FIXME this check here seems ad-hoc (less readable code)
-    if (
-      url.pathname !== path ||
-      (!staticPathSet.has(path) && url.search.replace(/^\?/, '') !== query)
-    ) {
-      url.pathname = path;
-      url.search = query;
-      url.hash = '';
-      if (path !== '/404') {
-        window.history.pushState(
-          {
-            ...window.history.state,
-            waku_new_path: url.pathname !== window.location.pathname,
-          },
-          '',
-          url,
-        );
-      }
-      await changeRoute(parseRoute(url), {
-        skipRefetch: true,
-        shouldScroll: false,
-      });
-    }
-  }
-};
-
 const InnerRouter = ({
   routerData,
   initialRoute,
@@ -509,7 +474,7 @@ const InnerRouter = ({
   routerData: Required<RouterData>;
   initialRoute: RouteProps;
 }) => {
-  const [staticPathSet, pathAndQueryHolder, , has404] = routerData;
+  const [locationListeners, staticPathSet, , has404] = routerData;
   const refetch = useRefetch();
   const [route, setRoute] = useState(() => ({
     // This is the first initialization of the route, and it has
@@ -534,8 +499,11 @@ const InnerRouter = ({
   }, [initialRoute]);
 
   const [err, setErr] = useState<unknown>(null);
+  // FIXME this "refetching" hack doesn't seem ideal.
+  const refetching = useRef<[onFinish?: () => void] | null>(null);
   const changeRoute: ChangeRoute = useCallback(
     async (route, options) => {
+      refetching.current = [];
       setErr(null);
       const { skipRefetch } = options || {};
       if (!staticPathSet.has(route.path) && !skipRefetch) {
@@ -544,6 +512,7 @@ const InnerRouter = ({
         try {
           await refetch(rscPath, rscParams);
         } catch (e) {
+          refetching.current = null;
           setErr(e);
           throw e;
         }
@@ -552,14 +521,10 @@ const InnerRouter = ({
         handleScroll();
       }
       setRoute(route);
-      // TODO should we move the following logic outside of changeRoute?
-      await overridePathAndQuery(
-        changeRoute,
-        staticPathSet,
-        pathAndQueryHolder,
-      );
+      refetching.current[0]?.();
+      refetching.current = null;
     },
-    [refetch, staticPathSet, pathAndQueryHolder],
+    [refetch, staticPathSet],
   );
 
   const prefetchRoute: PrefetchRoute = useCallback(
@@ -588,6 +553,42 @@ const InnerRouter = ({
     };
   }, [changeRoute]);
 
+  useEffect(() => {
+    const callback = (path: string, query: string) => {
+      const fn = () => {
+        const url = new URL(window.location.href);
+        url.pathname = path;
+        url.search = query;
+        url.hash = '';
+        if (path !== '/404') {
+          window.history.pushState(
+            {
+              ...window.history.state,
+              waku_new_path: url.pathname !== window.location.pathname,
+            },
+            '',
+            url,
+          );
+        }
+        changeRoute(parseRoute(url), {
+          skipRefetch: true,
+          shouldScroll: false,
+        }).catch((err) => {
+          console.log('Error while navigating to new route:', err);
+        });
+      };
+      if (refetching.current) {
+        refetching.current.push(fn);
+      } else {
+        fn();
+      }
+    };
+    locationListeners.add(callback);
+    return () => {
+      locationListeners.delete(callback);
+    };
+  }, [changeRoute, locationListeners]);
+
   const routeElement =
     err !== null
       ? createElement(ThrowError, { error: err })
@@ -612,8 +613,8 @@ type EnhanceCreateData = (
 
 // Note: The router data must be a stable mutable object (array).
 type RouterData = [
+  locationListeners?: Set<(path: string, query: string) => void>,
   staticPathSet?: Set<string>,
-  pathAndQueryHolder?: [[string, string] | null], // FIXME name it better
   cachedIdSet?: Set<string>,
   has404?: boolean,
 ];
@@ -632,8 +633,8 @@ export function Router({
   unstable_enhanceCreateData?: EnhanceCreateData;
 }) {
   const initialRscPath = encodeRoutePath(initialRoute.path);
-  const staticPathSet = (routerData[0] ||= new Set());
-  const pathAndQueryHolder = (routerData[1] ||= [null]);
+  const locationListeners = (routerData[0] ||= new Set());
+  const staticPathSet = (routerData[1] ||= new Set());
   const cachedIdSet = (routerData[2] ||= new Set());
   const enhanceFetch =
     (fetchFn: typeof fetch) =>
@@ -666,10 +667,17 @@ export function Router({
             } = data;
             if (routeData) {
               const [path, query] = routeData as [string, string];
+              // FIXME this check here seems ad-hoc (less readable code)
+              if (
+                window.location.pathname !== path ||
+                (!isStatic &&
+                  window.location.search.replace(/^\?/, '') !== query)
+              ) {
+                locationListeners.forEach((listener) => listener(path, query));
+              }
               if (isStatic) {
                 staticPathSet.add(path);
               }
-              pathAndQueryHolder[0] = [path, query];
             }
             if (has404) {
               routerData[3] = true;
