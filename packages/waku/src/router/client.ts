@@ -499,8 +499,11 @@ const InnerRouter = ({
   }, [initialRoute]);
 
   const [err, setErr] = useState<unknown>(null);
+  // FIXME this "refetching" hack doesn't seem ideal.
+  const refetching = useRef<[onFinish?: () => void] | null>(null);
   const changeRoute: ChangeRoute = useCallback(
     async (route, options) => {
+      refetching.current = [];
       setErr(null);
       const { skipRefetch } = options || {};
       if (!staticPathSet.has(route.path) && !skipRefetch) {
@@ -509,6 +512,7 @@ const InnerRouter = ({
         try {
           await refetch(rscPath, rscParams);
         } catch (e) {
+          refetching.current = null;
           setErr(e);
           throw e;
         }
@@ -517,6 +521,8 @@ const InnerRouter = ({
         handleScroll();
       }
       setRoute(route);
+      refetching.current[0]?.();
+      refetching.current = null;
     },
     [refetch, staticPathSet],
   );
@@ -549,26 +555,33 @@ const InnerRouter = ({
 
   useEffect(() => {
     const callback = (path: string, query: string) => {
-      const url = new URL(window.location.href);
-      url.pathname = path;
-      url.search = query;
-      url.hash = '';
-      if (path !== '/404') {
-        window.history.pushState(
-          {
-            ...window.history.state,
-            waku_new_path: url.pathname !== window.location.pathname,
-          },
-          '',
-          url,
-        );
+      const fn = () => {
+        const url = new URL(window.location.href);
+        url.pathname = path;
+        url.search = query;
+        url.hash = '';
+        if (path !== '/404') {
+          window.history.pushState(
+            {
+              ...window.history.state,
+              waku_new_path: url.pathname !== window.location.pathname,
+            },
+            '',
+            url,
+          );
+        }
+        changeRoute(parseRoute(url), {
+          skipRefetch: true,
+          shouldScroll: false,
+        }).catch((err) => {
+          console.log('Error while navigating to new route:', err);
+        });
+      };
+      if (refetching.current) {
+        refetching.current.push(fn);
+      } else {
+        fn();
       }
-      changeRoute(parseRoute(url), {
-        skipRefetch: true,
-        shouldScroll: false,
-      }).catch((err) => {
-        console.log('Error while navigating to new route:', err);
-      });
     };
     locationListeners.add(callback);
     return () => {
