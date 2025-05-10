@@ -15,7 +15,7 @@ export const greet = async (formData: FormData) => {
     './private/message.txt',
     currentData + '\n' + formData.get('name') + ' from server!',
   );
-  await unstable_rerenderRoute('/');
+  unstable_rerenderRoute('/');
 };
 
 export const increment = async (count: number) => {
