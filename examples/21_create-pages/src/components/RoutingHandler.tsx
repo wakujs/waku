@@ -1,15 +1,23 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'waku/router/client';
 
 export const RoutingHandler = () => {
-  const { unstable_onRouteChangeComplete, unstable_onRouteChangeStart } =
-    useRouter();
-  unstable_onRouteChangeStart((...args) => {
-    console.log('onRouteChangeStart', args);
-  });
-  unstable_onRouteChangeComplete((...args) => {
-    console.log('onRouteChangeComplete', args);
+  const router = useRouter();
+  useEffect(() => {
+    const onStart = () => {
+      console.log('Route change started');
+    };
+    const onComplete = () => {
+      console.log('Route change completed');
+    };
+    router.unstable_events.on('start', onStart);
+    router.unstable_events.on('complete', onComplete);
+    return () => {
+      router.unstable_events.off('start', onStart);
+      router.unstable_events.off('complete', onComplete);
+    };
   });
   return null;
 };
