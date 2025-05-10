@@ -84,7 +84,7 @@
   },
   "license": "MIT",
   "engines": {
-    "node": "^22.7.0 || ^20.8.0"
+    "node": "^24.0.0 || ^22.7.0 || ^20.8.0"
   },
   "dependencies": {
     "@hono/node-server": "1.14.1",
