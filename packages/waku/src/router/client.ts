@@ -106,14 +106,6 @@ type ChangeRouteEvent = 'start' | 'complete';
 
 type ChangeRouteCallback = (route: RouteProps) => void;
 
-const MOCK_ROUTE_CHANGE_LISTENER: Record<
-  'on' | 'off',
-  (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
-> = {
-  on: () => notAvailableInServer('routeChange:on'),
-  off: () => notAvailableInServer('routeChange:off'),
-};
-
 type PrefetchRoute = (route: RouteProps) => void;
 
 const RouterContext = createContext<{
@@ -558,8 +550,7 @@ const InnerRouter = ({
     });
   }, [initialRoute]);
 
-  const [_routeChangeEvents, executeListeners] =
-    routeChangeListenersRef.current;
+  const [routeChangeEvents, executeListeners] = routeChangeListenersRef.current;
   const [err, setErr] = useState<unknown>(null);
   // FIXME this "refetching" hack doesn't seem ideal.
   const refetching = useRef<[onFinish?: () => void] | null>(null);
@@ -584,9 +575,9 @@ const InnerRouter = ({
         handleScroll();
       }
       setRoute(route);
-      executeListeners('complete', route);
       refetching.current[0]?.();
       refetching.current = null;
+      executeListeners('complete', route);
     },
     [executeListeners, refetch, staticPathSet],
   );
@@ -669,7 +660,7 @@ const InnerRouter = ({
         route,
         changeRoute,
         prefetchRoute,
-        routeChangeEvents: routeChangeListenersRef.current[0],
+        routeChangeEvents,
       },
     },
     rootElement,
@@ -780,7 +771,13 @@ export function Router({
     }),
   );
 }
-
+const MOCK_ROUTE_CHANGE_LISTENER: Record<
+  'on' | 'off',
+  (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
+> = {
+  on: () => notAvailableInServer('routeChange:on'),
+  off: () => notAvailableInServer('routeChange:off'),
+};
 /**
  * ServerRouter for SSR
  * This is not a public API.
