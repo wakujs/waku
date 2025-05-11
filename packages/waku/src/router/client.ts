@@ -11,7 +11,6 @@ import {
   useTransition,
   Fragment,
   Component,
-  useMemo,
 } from 'react';
 import type {
   ComponentProps,
@@ -105,18 +104,15 @@ type ChangeRoute = (
 
 type ChangeRouteEvent = 'start' | 'complete';
 
-type ChangeRouteCallback = (
-  route: RouteProps,
-  options: {
-    shouldScroll: boolean;
-    skipRefetch?: boolean;
-  },
-) => void;
+type ChangeRouteCallback = (route: RouteProps) => void;
 
-const EMPTY_ROUTE_CHANGE_LISTENERS: Record<
-  ChangeRouteEvent,
-  Set<ChangeRouteCallback>
-> = { start: new Set(), complete: new Set() };
+const EMPTY_ROUTE_CHANGE_LISTENER: Record<
+  'on' | 'off',
+  (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
+> = {
+  on: () => {},
+  off: () => {},
+};
 
 type PrefetchRoute = (route: RouteProps) => void;
 
@@ -124,7 +120,10 @@ const RouterContext = createContext<{
   route: RouteProps;
   changeRoute: ChangeRoute;
   prefetchRoute: PrefetchRoute;
-  routeChangeListeners: Record<ChangeRouteEvent, Set<ChangeRouteCallback>>;
+  routeChangeEvents: Record<
+    'on' | 'off',
+    (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
+  >;
 } | null>(null);
 
 export function useRouter() {
@@ -132,16 +131,6 @@ export function useRouter() {
   if (!router) {
     throw new Error('Missing Router');
   }
-
-  const unstable_events = useMemo(() => {
-    const on = (event: ChangeRouteEvent, handler: ChangeRouteCallback) => {
-      router.routeChangeListeners[event].add(handler);
-    };
-    const off = (event: ChangeRouteEvent, handler: ChangeRouteCallback) => {
-      router.routeChangeListeners[event].delete(handler);
-    };
-    return { on, off };
-  }, [router.routeChangeListeners]);
 
   const { route, changeRoute, prefetchRoute } = router;
   const push = useCallback(
@@ -222,7 +211,7 @@ export function useRouter() {
     back,
     forward,
     prefetch,
-    unstable_events,
+    unstable_events: router.routeChangeEvents,
   };
 }
 
@@ -513,7 +502,48 @@ const InnerRouter = ({
     ...initialRoute,
     hash: '',
   }));
-  const routeChangeListenersRef = useRef(EMPTY_ROUTE_CHANGE_LISTENERS);
+  const routeChangeListenersRef =
+    useRef<
+      [
+        Record<
+          'on' | 'off',
+          (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
+        >,
+        (
+          eventType: ChangeRouteEvent,
+          eventRoute: Parameters<ChangeRouteCallback>[0],
+        ) => void,
+      ]
+    >(null);
+  if (routeChangeListenersRef.current === null) {
+    const listeners: Record<ChangeRouteEvent, Set<ChangeRouteCallback>> = {
+      start: new Set(),
+      complete: new Set(),
+    };
+    const executeListeners = (
+      eventType: ChangeRouteEvent,
+      eventRoute: Parameters<ChangeRouteCallback>[0],
+    ) => {
+      const eventListenersSet = listeners[eventType];
+      if (!eventListenersSet.size) {
+        return;
+      }
+      for (const listener of eventListenersSet) {
+        listener(eventRoute);
+      }
+    };
+    const events = (() => {
+      const on = (event: ChangeRouteEvent, handler: ChangeRouteCallback) => {
+        listeners[event].add(handler);
+      };
+      const off = (event: ChangeRouteEvent, handler: ChangeRouteCallback) => {
+        listeners[event].delete(handler);
+      };
+      return { on, off };
+    })();
+
+    routeChangeListenersRef.current = [events, executeListeners];
+  }
   // Update the route post-load to include the current hash.
   useEffect(() => {
     setRoute((prev) => {
@@ -528,27 +558,13 @@ const InnerRouter = ({
     });
   }, [initialRoute]);
 
+  const [, executeListeners] = routeChangeListenersRef.current;
   const [err, setErr] = useState<unknown>(null);
-  const executeListeners = useCallback(
-    (
-      eventType: ChangeRouteEvent,
-      eventParams: Parameters<ChangeRouteCallback>,
-    ) => {
-      const eventListenersSet = routeChangeListenersRef.current[eventType];
-      if (!eventListenersSet.size) {
-        return;
-      }
-      for (const listener of eventListenersSet) {
-        listener(...eventParams);
-      }
-    },
-    [],
-  );
   // FIXME this "refetching" hack doesn't seem ideal.
   const refetching = useRef<[onFinish?: () => void] | null>(null);
   const changeRoute: ChangeRoute = useCallback(
     async (route, options) => {
-      executeListeners('start', [route, options]);
+      executeListeners('start', route);
       refetching.current = [];
       setErr(null);
       const { skipRefetch } = options || {};
@@ -567,7 +583,7 @@ const InnerRouter = ({
         handleScroll();
       }
       setRoute(route);
-      executeListeners('complete', [route, options]);
+      executeListeners('complete', route);
       refetching.current[0]?.();
       refetching.current = null;
     },
@@ -652,7 +668,7 @@ const InnerRouter = ({
         route,
         changeRoute,
         prefetchRoute,
-        routeChangeListeners: routeChangeListenersRef.current,
+        routeChangeEvents: routeChangeListenersRef.current[0],
       },
     },
     rootElement,
@@ -792,7 +808,7 @@ export function INTERNAL_ServerRouter({
           route,
           changeRoute: notAvailableInServer('changeRoute'),
           prefetchRoute: notAvailableInServer('prefetchRoute'),
-          routeChangeListeners: EMPTY_ROUTE_CHANGE_LISTENERS,
+          routeChangeEvents: EMPTY_ROUTE_CHANGE_LISTENER,
         },
       },
       rootElement,
