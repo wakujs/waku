@@ -102,12 +102,20 @@ type ChangeRoute = (
   },
 ) => Promise<void>;
 
+type ChangeRouteEvent = 'start' | 'complete';
+
+type ChangeRouteCallback = (route: RouteProps) => void;
+
 type PrefetchRoute = (route: RouteProps) => void;
 
 const RouterContext = createContext<{
   route: RouteProps;
   changeRoute: ChangeRoute;
   prefetchRoute: PrefetchRoute;
+  routeChangeEvents: Record<
+    'on' | 'off',
+    (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
+  >;
 } | null>(null);
 
 export function useRouter() {
@@ -115,6 +123,7 @@ export function useRouter() {
   if (!router) {
     throw new Error('Missing Router');
   }
+
   const { route, changeRoute, prefetchRoute } = router;
   const push = useCallback(
     async (
@@ -194,6 +203,7 @@ export function useRouter() {
     back,
     forward,
     prefetch,
+    unstable_events: router.routeChangeEvents,
   };
 }
 
@@ -484,6 +494,48 @@ const InnerRouter = ({
     ...initialRoute,
     hash: '',
   }));
+  const routeChangeListenersRef =
+    useRef<
+      [
+        Record<
+          'on' | 'off',
+          (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
+        >,
+        (
+          eventType: ChangeRouteEvent,
+          eventRoute: Parameters<ChangeRouteCallback>[0],
+        ) => void,
+      ]
+    >(null);
+  if (routeChangeListenersRef.current === null) {
+    const listeners: Record<ChangeRouteEvent, Set<ChangeRouteCallback>> = {
+      start: new Set(),
+      complete: new Set(),
+    };
+    const executeListeners = (
+      eventType: ChangeRouteEvent,
+      eventRoute: Parameters<ChangeRouteCallback>[0],
+    ) => {
+      const eventListenersSet = listeners[eventType];
+      if (!eventListenersSet.size) {
+        return;
+      }
+      for (const listener of eventListenersSet) {
+        listener(eventRoute);
+      }
+    };
+    const events = (() => {
+      const on = (event: ChangeRouteEvent, handler: ChangeRouteCallback) => {
+        listeners[event].add(handler);
+      };
+      const off = (event: ChangeRouteEvent, handler: ChangeRouteCallback) => {
+        listeners[event].delete(handler);
+      };
+      return { on, off };
+    })();
+
+    routeChangeListenersRef.current = [events, executeListeners];
+  }
   // Update the route post-load to include the current hash.
   useEffect(() => {
     setRoute((prev) => {
@@ -498,11 +550,13 @@ const InnerRouter = ({
     });
   }, [initialRoute]);
 
+  const [routeChangeEvents, executeListeners] = routeChangeListenersRef.current;
   const [err, setErr] = useState<unknown>(null);
   // FIXME this "refetching" hack doesn't seem ideal.
   const refetching = useRef<[onFinish?: () => void] | null>(null);
   const changeRoute: ChangeRoute = useCallback(
     async (route, options) => {
+      executeListeners('start', route);
       refetching.current = [];
       setErr(null);
       const { skipRefetch } = options || {};
@@ -523,8 +577,9 @@ const InnerRouter = ({
       setRoute(route);
       refetching.current[0]?.();
       refetching.current = null;
+      executeListeners('complete', route);
     },
-    [refetch, staticPathSet],
+    [executeListeners, refetch, staticPathSet],
   );
 
   const prefetchRoute: PrefetchRoute = useCallback(
@@ -600,7 +655,14 @@ const InnerRouter = ({
   );
   return createElement(
     RouterContext.Provider,
-    { value: { route, changeRoute, prefetchRoute } },
+    {
+      value: {
+        route,
+        changeRoute,
+        prefetchRoute,
+        routeChangeEvents,
+      },
+    },
     rootElement,
   );
 };
@@ -710,6 +772,14 @@ export function Router({
   );
 }
 
+const MOCK_ROUTE_CHANGE_LISTENER: Record<
+  'on' | 'off',
+  (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
+> = {
+  on: () => notAvailableInServer('routeChange:on'),
+  off: () => notAvailableInServer('routeChange:off'),
+};
+
 /**
  * ServerRouter for SSR
  * This is not a public API.
@@ -738,6 +808,7 @@ export function INTERNAL_ServerRouter({
           route,
           changeRoute: notAvailableInServer('changeRoute'),
           prefetchRoute: notAvailableInServer('prefetchRoute'),
+          routeChangeEvents: MOCK_ROUTE_CHANGE_LISTENER,
         },
       },
       rootElement,
