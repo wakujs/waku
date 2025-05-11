@@ -21,14 +21,7 @@ import type {
   MouseEvent,
 } from 'react';
 
-import {
-  prefetchRsc,
-  Root,
-  Slot,
-  useRefetch,
-  ThrowError_UNSTABLE as ThrowError,
-  useResetError_UNSTABLE as useResetError,
-} from '../minimal/client.js';
+import { prefetchRsc, Root, Slot, useRefetch } from '../minimal/client.js';
 import {
   encodeRoutePath,
   ROUTE_ID,
@@ -107,7 +100,11 @@ type ChangeRoute = (
     shouldScroll: boolean;
     skipRefetch?: boolean;
   },
-) => void;
+) => Promise<void>;
+
+type ChangeRouteEvent = 'start' | 'complete';
+
+type ChangeRouteCallback = (route: RouteProps) => void;
 
 type PrefetchRoute = (route: RouteProps) => void;
 
@@ -115,6 +112,10 @@ const RouterContext = createContext<{
   route: RouteProps;
   changeRoute: ChangeRoute;
   prefetchRoute: PrefetchRoute;
+  routeChangeEvents: Record<
+    'on' | 'off',
+    (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
+  >;
 } | null>(null);
 
 export function useRouter() {
@@ -122,9 +123,10 @@ export function useRouter() {
   if (!router) {
     throw new Error('Missing Router');
   }
+
   const { route, changeRoute, prefetchRoute } = router;
   const push = useCallback(
-    (
+    async (
       to: InferredPaths,
       options?: {
         /**
@@ -146,14 +148,14 @@ export function useRouter() {
         '',
         url,
       );
-      changeRoute(parseRoute(url), {
+      await changeRoute(parseRoute(url), {
         shouldScroll: options?.scroll ?? newPath,
       });
     },
     [changeRoute],
   );
   const replace = useCallback(
-    (
+    async (
       to: InferredPaths,
       options?: {
         /**
@@ -168,15 +170,15 @@ export function useRouter() {
       const url = new URL(to, window.location.href);
       const newPath = url.pathname !== window.location.pathname;
       window.history.replaceState(window.history.state, '', url);
-      changeRoute(parseRoute(url), {
+      await changeRoute(parseRoute(url), {
         shouldScroll: options?.scroll ?? newPath,
       });
     },
     [changeRoute],
   );
-  const reload = useCallback(() => {
+  const reload = useCallback(async () => {
     const url = new URL(window.location.href);
-    changeRoute(parseRoute(url), { shouldScroll: true });
+    await changeRoute(parseRoute(url), { shouldScroll: true });
   }, [changeRoute]);
   const back = useCallback(() => {
     // FIXME is this correct?
@@ -201,6 +203,7 @@ export function useRouter() {
     back,
     forward,
     prefetch,
+    unstable_events: router.routeChangeEvents,
   };
 }
 
@@ -279,7 +282,7 @@ export function Link({
     if (url.href !== window.location.href) {
       const route = parseRoute(url);
       prefetchRoute(route);
-      startTransitionFn(() => {
+      startTransitionFn(async () => {
         const newPath = url.pathname !== window.location.pathname;
         window.history.pushState(
           {
@@ -289,7 +292,7 @@ export function Link({
           '',
           url,
         );
-        changeRoute(route, { shouldScroll: scroll ?? newPath });
+        await changeRoute(route, { shouldScroll: scroll ?? newPath });
       });
     }
   };
@@ -367,7 +370,6 @@ const NotFound = ({
   has404: boolean;
   reset: () => void;
 }) => {
-  const resetError = useResetError();
   const router = useContext(RouterContext);
   if (!router) {
     throw new Error('Missing Router');
@@ -376,16 +378,19 @@ const NotFound = ({
   useEffect(() => {
     if (has404) {
       const url = new URL('/404', window.location.href);
-      changeRoute(parseRoute(url), { shouldScroll: true });
-      resetError?.();
-      reset();
+      changeRoute(parseRoute(url), { shouldScroll: true })
+        .then(() => {
+          reset();
+        })
+        .catch((err) => {
+          console.log('Error while navigating to 404:', err);
+        });
     }
-  }, [has404, resetError, reset, changeRoute]);
+  }, [has404, reset, changeRoute]);
   return has404 ? null : createElement('h1', null, 'Not Found');
 };
 
 const Redirect = ({ to, reset }: { to: string; reset: () => void }) => {
-  const resetError = useResetError();
   const router = useContext(RouterContext);
   if (!router) {
     throw new Error('Missing Router');
@@ -407,10 +412,14 @@ const Redirect = ({ to, reset }: { to: string; reset: () => void }) => {
       '',
       url,
     );
-    changeRoute(parseRoute(url), { shouldScroll: newPath });
-    resetError?.();
-    reset();
-  }, [to, resetError, reset, changeRoute]);
+    changeRoute(parseRoute(url), { shouldScroll: newPath })
+      .then(() => {
+        reset();
+      })
+      .catch((err) => {
+        console.log('Error while navigating to redirect:', err);
+      });
+  }, [to, reset, changeRoute]);
   return null;
 };
 
@@ -451,6 +460,10 @@ class CustomErrorHandler extends Component<
   }
 }
 
+const ThrowError = ({ error }: { error: unknown }) => {
+  throw error;
+};
+
 const getRouteSlotId = (path: string) => 'route:' + decodeURIComponent(path);
 
 const handleScroll = () => {
@@ -481,6 +494,48 @@ const InnerRouter = ({
     ...initialRoute,
     hash: '',
   }));
+  const routeChangeListenersRef =
+    useRef<
+      [
+        Record<
+          'on' | 'off',
+          (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
+        >,
+        (
+          eventType: ChangeRouteEvent,
+          eventRoute: Parameters<ChangeRouteCallback>[0],
+        ) => void,
+      ]
+    >(null);
+  if (routeChangeListenersRef.current === null) {
+    const listeners: Record<ChangeRouteEvent, Set<ChangeRouteCallback>> = {
+      start: new Set(),
+      complete: new Set(),
+    };
+    const executeListeners = (
+      eventType: ChangeRouteEvent,
+      eventRoute: Parameters<ChangeRouteCallback>[0],
+    ) => {
+      const eventListenersSet = listeners[eventType];
+      if (!eventListenersSet.size) {
+        return;
+      }
+      for (const listener of eventListenersSet) {
+        listener(eventRoute);
+      }
+    };
+    const events = (() => {
+      const on = (event: ChangeRouteEvent, handler: ChangeRouteCallback) => {
+        listeners[event].add(handler);
+      };
+      const off = (event: ChangeRouteEvent, handler: ChangeRouteCallback) => {
+        listeners[event].delete(handler);
+      };
+      return { on, off };
+    })();
+
+    routeChangeListenersRef.current = [events, executeListeners];
+  }
   // Update the route post-load to include the current hash.
   useEffect(() => {
     setRoute((prev) => {
@@ -495,20 +550,36 @@ const InnerRouter = ({
     });
   }, [initialRoute]);
 
+  const [routeChangeEvents, executeListeners] = routeChangeListenersRef.current;
+  const [err, setErr] = useState<unknown>(null);
+  // FIXME this "refetching" hack doesn't seem ideal.
+  const refetching = useRef<[onFinish?: () => void] | null>(null);
   const changeRoute: ChangeRoute = useCallback(
-    (route, options) => {
+    async (route, options) => {
+      executeListeners('start', route);
+      refetching.current = [];
+      setErr(null);
       const { skipRefetch } = options || {};
       if (!staticPathSet.has(route.path) && !skipRefetch) {
         const rscPath = encodeRoutePath(route.path);
         const rscParams = createRscParams(route.query);
-        refetch(rscPath, rscParams);
+        try {
+          await refetch(rscPath, rscParams);
+        } catch (e) {
+          refetching.current = null;
+          setErr(e);
+          throw e;
+        }
       }
       if (options.shouldScroll) {
         handleScroll();
       }
       setRoute(route);
+      refetching.current[0]?.();
+      refetching.current = null;
+      executeListeners('complete', route);
     },
-    [refetch, staticPathSet],
+    [executeListeners, refetch, staticPathSet],
   );
 
   const prefetchRoute: PrefetchRoute = useCallback(
@@ -527,7 +598,9 @@ const InnerRouter = ({
   useEffect(() => {
     const callback = () => {
       const route = parseRoute(new URL(window.location.href));
-      changeRoute(route, { shouldScroll: true });
+      changeRoute(route, { shouldScroll: true }).catch((err) => {
+        console.log('Error while navigating back:', err);
+      });
     };
     window.addEventListener('popstate', callback);
     return () => {
@@ -537,21 +610,33 @@ const InnerRouter = ({
 
   useEffect(() => {
     const callback = (path: string, query: string) => {
-      const url = new URL(window.location.href);
-      url.pathname = path;
-      url.search = query;
-      url.hash = '';
-      if (path !== '/404') {
-        window.history.pushState(
-          {
-            ...window.history.state,
-            waku_new_path: url.pathname !== window.location.pathname,
-          },
-          '',
-          url,
-        );
+      const fn = () => {
+        const url = new URL(window.location.href);
+        url.pathname = path;
+        url.search = query;
+        url.hash = '';
+        if (path !== '/404') {
+          window.history.pushState(
+            {
+              ...window.history.state,
+              waku_new_path: url.pathname !== window.location.pathname,
+            },
+            '',
+            url,
+          );
+        }
+        changeRoute(parseRoute(url), {
+          skipRefetch: true,
+          shouldScroll: false,
+        }).catch((err) => {
+          console.log('Error while navigating to new route:', err);
+        });
+      };
+      if (refetching.current) {
+        refetching.current.push(fn);
+      } else {
+        fn();
       }
-      changeRoute(parseRoute(url), { skipRefetch: true, shouldScroll: false });
     };
     locationListeners.add(callback);
     return () => {
@@ -559,22 +644,25 @@ const InnerRouter = ({
     };
   }, [changeRoute, locationListeners]);
 
-  const routeElement = createElement(Slot, { id: getRouteSlotId(route.path) });
+  const routeElement =
+    err !== null
+      ? createElement(ThrowError, { error: err })
+      : createElement(Slot, { id: getRouteSlotId(route.path) });
   const rootElement = createElement(
     Slot,
-    {
-      id: 'root',
-      unstable_handleError: createElement(
-        CustomErrorHandler,
-        { has404 },
-        createElement(ThrowError),
-      ),
-    },
+    { id: 'root' },
     createElement(CustomErrorHandler, { has404 }, routeElement),
   );
   return createElement(
     RouterContext.Provider,
-    { value: { route, changeRoute, prefetchRoute } },
+    {
+      value: {
+        route,
+        changeRoute,
+        prefetchRoute,
+        routeChangeEvents,
+      },
+    },
     rootElement,
   );
 };
@@ -684,6 +772,14 @@ export function Router({
   );
 }
 
+const MOCK_ROUTE_CHANGE_LISTENER: Record<
+  'on' | 'off',
+  (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
+> = {
+  on: () => notAvailableInServer('routeChange:on'),
+  off: () => notAvailableInServer('routeChange:off'),
+};
+
 /**
  * ServerRouter for SSR
  * This is not a public API.
@@ -698,7 +794,7 @@ export function INTERNAL_ServerRouter({
   const routeElement = createElement(Slot, { id: getRouteSlotId(route.path) });
   const rootElement = createElement(
     Slot,
-    { id: 'root', unstable_handleError: null },
+    { id: 'root' },
     createElement('meta', { name: 'httpstatus', content: `${httpstatus}` }),
     routeElement,
   );
@@ -712,6 +808,7 @@ export function INTERNAL_ServerRouter({
           route,
           changeRoute: notAvailableInServer('changeRoute'),
           prefetchRoute: notAvailableInServer('prefetchRoute'),
+          routeChangeEvents: MOCK_ROUTE_CHANGE_LISTENER,
         },
       },
       rootElement,

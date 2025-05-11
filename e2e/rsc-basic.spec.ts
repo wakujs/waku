@@ -83,6 +83,22 @@ for (const mode of ['DEV', 'PRD'] as const) {
       );
     });
 
+    test('refetch with transition', async ({ page }) => {
+      await page.route(/.*\/RSC\/.*/, async (route) => {
+        await new Promise((r) => setTimeout(r, 100));
+        await route.continue();
+      });
+      await page.goto(`http://localhost:${port}/`);
+      await page.getByTestId('refetch1').click();
+      await expect(page.getByTestId('app-name')).toHaveText('foo');
+      await page.getByTestId('refetch5').click();
+      await expect(page.getByTestId('refetch-transition')).toHaveText(
+        'pending',
+      );
+      await expect(page.getByTestId('app-name')).toHaveText('with-transition');
+      await expect(page.getByTestId('refetch-transition')).toHaveText('idle');
+    });
+
     test('server action', async ({ page }) => {
       await page.goto(`http://localhost:${port}/`);
       await expect(page.getByTestId('app-name')).toHaveText('Waku');
