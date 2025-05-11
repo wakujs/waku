@@ -771,6 +771,7 @@ export function Router({
     }),
   );
 }
+
 const MOCK_ROUTE_CHANGE_LISTENER: Record<
   'on' | 'off',
   (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
@@ -778,6 +779,7 @@ const MOCK_ROUTE_CHANGE_LISTENER: Record<
   on: () => notAvailableInServer('routeChange:on'),
   off: () => notAvailableInServer('routeChange:off'),
 };
+
 /**
  * ServerRouter for SSR
  * This is not a public API.
