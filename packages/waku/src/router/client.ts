@@ -106,12 +106,12 @@ type ChangeRouteEvent = 'start' | 'complete';
 
 type ChangeRouteCallback = (route: RouteProps) => void;
 
-const EMPTY_ROUTE_CHANGE_LISTENER: Record<
+const MOCK_ROUTE_CHANGE_LISTENER: Record<
   'on' | 'off',
   (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
 > = {
-  on: () => {},
-  off: () => {},
+  on: () => notAvailableInServer('routeChange:on'),
+  off: () => notAvailableInServer('routeChange:off'),
 };
 
 type PrefetchRoute = (route: RouteProps) => void;
@@ -558,7 +558,8 @@ const InnerRouter = ({
     });
   }, [initialRoute]);
 
-  const [, executeListeners] = routeChangeListenersRef.current;
+  const [_routeChangeEvents, executeListeners] =
+    routeChangeListenersRef.current;
   const [err, setErr] = useState<unknown>(null);
   // FIXME this "refetching" hack doesn't seem ideal.
   const refetching = useRef<[onFinish?: () => void] | null>(null);
@@ -808,7 +809,7 @@ export function INTERNAL_ServerRouter({
           route,
           changeRoute: notAvailableInServer('changeRoute'),
           prefetchRoute: notAvailableInServer('prefetchRoute'),
-          routeChangeEvents: EMPTY_ROUTE_CHANGE_LISTENER,
+          routeChangeEvents: MOCK_ROUTE_CHANGE_LISTENER,
         },
       },
       rootElement,
