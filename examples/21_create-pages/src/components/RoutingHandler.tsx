@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'waku';
+import { useRouter } from 'waku/router/client';
 
-export const MyButton = () => {
+export const RoutingHandler = () => {
   const router = useRouter();
   useEffect(() => {
     const onStart = () => {
@@ -19,9 +19,5 @@ export const MyButton = () => {
       router.unstable_events.off('complete', onComplete);
     };
   });
-  return (
-    <button onClick={() => router.push(`/static`)}>
-      Static router.push button
-    </button>
-  );
+  return null;
 };
