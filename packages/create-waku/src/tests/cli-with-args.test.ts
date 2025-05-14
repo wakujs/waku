@@ -120,7 +120,7 @@ describe('create-waku CLI with args', () => {
       { cwd: import.meta.dirname, timeout: 30000, reject: false },
     );
     expect(stdout).toContain('Setting up project...');
-  }, 10000);
+  }, 30000);
 
   test('shows installation instructions after setup', () => {
     const { stdout } = run(

@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [0.23.0] - 2025-05-14
+
+### Added
+
+- Pathless components in waku/router
+
+### Changed
+
+- Async refetch & changeRoute
+
 ## [0.22.4] - 2025-04-23
 
 ### Changed
