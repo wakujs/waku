@@ -15,7 +15,7 @@ Page Part Components will allow for making part of a page `static` and the other
 
 ## Route Groups
 
-With Waku Router, the path of a file inside `pages` determines it's route and the layouts it will have. Layouts are now common to different React frameworks. One thing we knew we'd need to support is a way to group together layout combinations that allow for convenient composition independent of the route itself. This is where Route Groups come in.
+With Waku Router, the path of a file inside `pages` determines its route and the layouts it will have. Layouts are now common to different React frameworks. One thing we knew we'd need to support is a way to group together layout combinations that allow for convenient composition independent of the route itself. This is where Route Groups come in.
 
 Let's say you'd like to have a home page at `/`, but all other routes should share a layout/context which is not used on `/`. This is now possible with `/(subroutes)/_layout.tsx`. An example file setup:
 
@@ -58,7 +58,7 @@ Before, we supported a single page component (and that will stay the default). P
 
 ### How Does It Work?
 
-The filename convention for page parts is `_part${string}.tsx` (typescript string literal syntax). So to replicate the example above for route `/foo` we would have the following files:
+The filename convention for page parts is `_part${string}.tsx` (TypeScript string literal syntax). So to replicate the example above for route `/foo` we would have the following files:
 
 ```
 pages
