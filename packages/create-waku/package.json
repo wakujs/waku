@@ -30,12 +30,12 @@
     "@clack/prompts": "^0.10.1",
     "@types/fs-extra": "^11.0.4",
     "@types/tar": "^6.1.13",
-    "execa": "^9.5.2",
+    "execa": "^9.5.3",
     "fs-extra": "^11.3.0",
     "picocolors": "^1.1.1",
     "tar": "^7.4.3",
     "tsup": "^8.4.0",
     "update-check": "^1.5.4",
-    "vitest": "^3.1.2"
+    "vitest": "^3.1.3"
   }
 }
