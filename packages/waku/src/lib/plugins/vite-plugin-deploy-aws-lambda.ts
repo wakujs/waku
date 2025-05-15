@@ -42,8 +42,6 @@ const loadHonoEnhancer = async () => {
   }
 };
 
-const configPromise = loadEntries().then((entries) => entries.loadConfig());
-
 const createApp = (app) => {
   app.use(serveStatic({ root: distDir + '/' + publicDir }));
   app.use(serverEngine({ cmd: 'start', loadEntries, env: process.env, unstable_onError: new Set() }));
