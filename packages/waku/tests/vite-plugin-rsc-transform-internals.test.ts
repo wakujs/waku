@@ -1,6 +1,21 @@
 import { describe, expect, test } from 'vitest';
+import * as swc from '@swc/core';
 
 import { rscTransformPlugin } from '../src/lib/plugins/vite-plugin-rsc-transform.js';
+
+const compileTsx = (code: string) =>
+  swc.transformSync(code, {
+    jsc: {
+      parser: {
+        syntax: 'typescript',
+        tsx: true,
+      },
+      transform: {
+        react: { runtime: 'automatic' },
+      },
+      target: 'esnext',
+    },
+  }).code;
 
 describe('internal transform function for server environment', () => {
   const { transform } = rscTransformPlugin({
@@ -16,18 +31,18 @@ describe('internal transform function for server environment', () => {
   };
 
   test('no transformation', async () => {
-    const code = `
+    const code = compileTsx(`
 export default function App() {
   return <div>Hello World</div>;
 }
-`;
+`);
     expect(
       await transform(code, '/src/App.tsx', { ssr: true }),
     ).toBeUndefined();
   });
 
   test('top-level use client', async () => {
-    const code = `
+    const code = compileTsx(`
 'use client';
 
 import { Component, createContext, useContext, memo } from 'react';
@@ -74,7 +89,7 @@ export default function App() {
     </MyProvider>
   );
 }
-`;
+`);
     expect((await transform(code, '/src/App.tsx', { ssr: true }))?.code)
       .toMatchInlineSnapshot(`
       "import { registerClientReference as __waku_registerClientReference } from 'react-server-dom-vite/server.edge';
@@ -144,7 +159,7 @@ export default async function() {
   });
 
   test('server action in object', async () => {
-    const code = `
+    const code = compileTsx(`
 import type { ReactNode } from 'react';
 import { createAI } from 'ai/rsc';
 
@@ -160,27 +175,27 @@ const AI = createAI({
 export function ServerProvider({ children }: { children: ReactNode }) {
   return <AI>{children}</AI>;
 }
-`;
+`);
     expect((await transform(code, '/src/App.tsx', { ssr: true }))?.code)
       .toMatchInlineSnapshot(`
-        "import type { ReactNode } from 'react';
-        import { createAI } from 'ai/rsc';
-        import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-vite/server.edge';
-        export const __waku_func1 = __waku_registerServerReference(async ()=>{
-            return 0;
-        }, "/src/App.tsx", "__waku_func1");
-        const AI = createAI({
-            actions: {
-                foo: __waku_func1.bind(null)
-            }
-        });
-        export function ServerProvider({ children }: {
-            children: ReactNode;
-        }) {
-            return <AI>{children}</AI>;
-        }
-        "
-      `);
+      "import { jsx as _jsx } from "react/jsx-runtime";
+      import { createAI } from 'ai/rsc';
+      import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-webpack/server.edge';
+      export const __waku_func1 = __waku_registerServerReference(async ()=>{
+          return 0;
+      }, "/src/App.tsx", "__waku_func1");
+      const AI = createAI({
+          actions: {
+              foo: __waku_func1.bind(null)
+          }
+      });
+      export function ServerProvider({ children }) {
+          return _jsx(AI, {
+              children: children
+          });
+      }
+      "
+    `);
   });
 
   test('top-level use server and inline use server', async () => {
@@ -231,7 +246,7 @@ export default async () => null;
   });
 
   test('inline use server (function declaration)', async () => {
-    const code = `
+    const code = compileTsx(`
 export default function App({ a }) {
   async function log(mesg) {
     'use server';
@@ -239,24 +254,27 @@ export default function App({ a }) {
   }
   return <Hello log={log} />;
 }
-`;
+`);
     expect((await transform(code, '/src/App.tsx', { ssr: true }))?.code)
       .toMatchInlineSnapshot(`
-        "import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-vite/server.edge';
+        "import { jsx as _jsx } from "react/jsx-runtime";
+        import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-webpack/server.edge';
         export async function __waku_func1(a, mesg) {
             console.log(mesg, a);
         }
         __waku_registerServerReference(__waku_func1, "/src/App.tsx", "__waku_func1");
         export default function App({ a }) {
             const log = __waku_func1.bind(null, a);
-            return <Hello log={log}/>;
+            return _jsx(Hello, {
+                log: log
+            });
         }
         "
       `);
   });
 
   test('inline use server (const function expression)', async () => {
-    const code = `
+    const code = compileTsx(`
 export default function App() {
   const rand = Math.random();
   const log = async function (mesg, rand) {
@@ -265,24 +283,27 @@ export default function App() {
   };
   return <Hello log={log} />;
 }
-`;
+`);
     expect((await transform(code, '/src/App.tsx', { ssr: true }))?.code)
       .toMatchInlineSnapshot(`
-        "import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-vite/server.edge';
+        "import { jsx as _jsx } from "react/jsx-runtime";
+        import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-webpack/server.edge';
         export const __waku_func1 = __waku_registerServerReference(async function(rand, mesg, rand) {
             console.log(mesg, rand);
         }, "/src/App.tsx", "__waku_func1");
         export default function App() {
             const rand = Math.random();
             const log = __waku_func1.bind(null, rand);
-            return <Hello log={log}/>;
+            return _jsx(Hello, {
+                log: log
+            });
         }
         "
       `);
   });
 
   test('inline use server (const arrow function)', async () => {
-    const code = `
+    const code = compileTsx(`
 const now = Date.now();
 export default function App() {
   const log = async (mesg) => {
@@ -291,24 +312,27 @@ export default function App() {
   };
   return <Hello log={log} />;
 }
-`;
+`);
     expect((await transform(code, '/src/App.tsx', { ssr: true }))?.code)
       .toMatchInlineSnapshot(`
-        "import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-vite/server.edge';
+        "import { jsx as _jsx } from "react/jsx-runtime";
+        import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-webpack/server.edge';
         export const __waku_func1 = __waku_registerServerReference(async (mesg)=>{
             console.log(mesg, now);
         }, "/src/App.tsx", "__waku_func1");
         const now = Date.now();
         export default function App() {
             const log = __waku_func1.bind(null);
-            return <Hello log={log}/>;
+            return _jsx(Hello, {
+                log: log
+            });
         }
         "
       `);
   });
 
   test('inline use server (anonymous arrow function)', async () => {
-    const code = `
+    const code = compileTsx(`
 const now = Date.now();
 export default function App() {
   return <Hello log={(mesg) => {
@@ -316,16 +340,19 @@ export default function App() {
     console.log(mesg, now);
   }} />;
 }
-`;
+`);
     expect((await transform(code, '/src/App.tsx', { ssr: true }))?.code)
       .toMatchInlineSnapshot(`
-        "import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-vite/server.edge';
+        "import { jsx as _jsx } from "react/jsx-runtime";
+        import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-webpack/server.edge';
         export const __waku_func1 = __waku_registerServerReference((mesg)=>{
             console.log(mesg, now);
         }, "/src/App.tsx", "__waku_func1");
         const now = Date.now();
         export default function App() {
-            return <Hello log={__waku_func1.bind(null)}/>;
+            return _jsx(Hello, {
+                log: __waku_func1.bind(null)
+            });
         }
         "
       `);

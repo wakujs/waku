@@ -157,8 +157,8 @@ const rectifyHtml = () => {
   });
 };
 
-// FIXME Why does it error on the first time?
-let hackToIgnoreTheVeryFirstError = true;
+// FIXME Why does it error on the first and second time?
+let hackToIgnoreFirstTwoErrors = 2;
 
 export async function renderHtml(
   config: ConfigDev | ConfigPrd,
@@ -264,7 +264,7 @@ export async function renderHtml(
             ? null
             : await getExtractFormState(ctx)(actionResult),
         onError(err) {
-          if (hackToIgnoreTheVeryFirstError) {
+          if (hackToIgnoreFirstTwoErrors) {
             return;
           }
           console.error(err);
@@ -290,8 +290,8 @@ export async function renderHtml(
     injected.allReady = readable.allReady;
     return injected as never;
   } catch (e) {
-    if (hackToIgnoreTheVeryFirstError) {
-      hackToIgnoreTheVeryFirstError = false;
+    if (hackToIgnoreFirstTwoErrors) {
+      hackToIgnoreFirstTwoErrors--;
       return renderHtml(
         config,
         ctx,

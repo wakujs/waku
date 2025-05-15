@@ -3,7 +3,6 @@ import * as swc from '@swc/core';
 
 import { EXTENSIONS } from '../builder/constants.js';
 import { extname, joinPath } from '../utils/path.js';
-import { parseOpts } from '../utils/swc.js';
 
 const collectExportNames = (mod: swc.Module) => {
   const exportNames = new Set<string>();
@@ -35,15 +34,11 @@ const collectExportNames = (mod: swc.Module) => {
   return exportNames;
 };
 
-const transformClient = (
-  code: string,
-  ext: string,
-  getServerId: () => string,
-) => {
+const transformClient = (code: string, getServerId: () => string) => {
   if (!code.includes('use server')) {
     return;
   }
-  const mod = swc.parseSync(code, parseOpts(ext));
+  const mod = swc.parseSync(code);
   let hasUseServer = false;
   for (const item of mod.body) {
     if (item.type === 'ExpressionStatement') {
@@ -69,17 +64,17 @@ export ${name === 'default' ? name : `const ${name} =`} createServerReference('$
 `;
     }
     return swc.transformSync(newCode, {
-      jsc: { parser: parseOpts(ext), target: 'esnext' },
+      jsc: { target: 'esnext' },
       sourceMaps: true,
     });
   }
 };
 
-const transformClientForSSR = (code: string, ext: string) => {
+const transformClientForSSR = (code: string) => {
   if (!code.includes('use server')) {
     return;
   }
-  const mod = swc.parseSync(code, parseOpts(ext));
+  const mod = swc.parseSync(code);
   let hasUseServer = false;
   for (const item of mod.body) {
     if (item.type === 'ExpressionStatement') {
@@ -104,7 +99,7 @@ export ${name === 'default' ? name : `const ${name} =`} () => {
 `;
     }
     return swc.transformSync(newCode, {
-      jsc: { parser: parseOpts(ext), target: 'esnext' },
+      jsc: { target: 'esnext' },
       sourceMaps: true,
     });
   }
@@ -740,14 +735,13 @@ const transformInlineServerFunctions = (
 
 const transformServer = (
   code: string,
-  ext: string,
   getClientId: () => string,
   getServerId: () => string,
 ) => {
   if (!code.includes('use client') && !code.includes('use server')) {
     return;
   }
-  const mod = swc.parseSync(code, parseOpts(ext));
+  const mod = swc.parseSync(code);
   let hasUseClient = false;
   let hasUseServer = false;
   for (let i = 0; i < mod.body.length; ++i) {
@@ -780,7 +774,7 @@ export ${name === 'default' ? name : `const ${name} =`} __waku_registerClientRef
 `;
     }
     return swc.transformSync(newCode, {
-      jsc: { parser: parseOpts(ext), target: 'esnext' },
+      jsc: { target: 'esnext' },
       sourceMaps: true,
     });
   }
@@ -843,7 +837,6 @@ export function rscTransformPlugin(
   };
   return {
     name: 'rsc-transform-plugin',
-    enforce: 'pre', // required for `resolveId`
     async resolveId(id, importer, options) {
       if (opts.isBuild) {
         return;
@@ -880,9 +873,9 @@ export function rscTransformPlugin(
       }
       if (opts.isClient) {
         if (options?.ssr) {
-          return transformClientForSSR(code, ext);
+          return transformClientForSSR(code);
         }
-        return transformClient(code, ext, () => getServerId(id));
+        return transformClient(code, () => getServerId(id));
       }
       // isClient === false
       if (!options?.ssr) {
@@ -890,7 +883,6 @@ export function rscTransformPlugin(
       }
       return transformServer(
         code,
-        ext,
         () => getClientId(id),
         () => getServerId(id),
       );

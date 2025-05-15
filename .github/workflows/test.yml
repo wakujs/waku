@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [22.7.0, 20.8.0]
+        version: [24.0.0, 22.7.0, 20.8.0]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

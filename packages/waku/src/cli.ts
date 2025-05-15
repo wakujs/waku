@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { createRequire } from 'node:module';
+import process from 'node:process';
 import { Hono } from 'hono';
 import { compress } from 'hono/compress';
 import { serve } from '@hono/node-server';
@@ -96,7 +97,23 @@ if (values.version) {
   }
 }
 
+function catchUncaughtExceptionInDev() {
+  // Workaround for https://github.com/wakujs/waku/issues/756
+  process.on('uncaughtException', (err) => {
+    const errStack = err?.stack || '';
+    if (
+      errStack.includes('ERR_INVALID_STATE') &&
+      errStack.includes('Unable to enqueue')
+    ) {
+      // ignore this error
+      return;
+    }
+    throw err;
+  });
+}
+
 async function runDev() {
+  catchUncaughtExceptionInDev();
   const config = await loadConfig();
   const honoEnhancer: HonoEnhancer = config.unstable_honoEnhancer
     ? await loadHonoEnhancer(config.unstable_honoEnhancer)

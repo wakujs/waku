@@ -2,6 +2,9 @@
   "compilerOptions": {
     "strict": true,
     "target": "esnext",
+    "noEmit": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
     "downlevelIteration": true,
     "esModuleInterop": true,
     "module": "esnext",
