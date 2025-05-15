@@ -22,9 +22,9 @@ declare global {
   var __WAKU_BASE_PATH__: string;
   var __WAKU_ROOT_DIR__: string;
 }
-// TODO
-// normalization should be moved to `registerClientReference` transform
-// is it possible to move normalization to `registerClientReference` transform?
+
+// TODO:
+// is it possible to move normalization to `registerClientReference` transform `getClientId/getServerId`?
 (RSDWClient as any).setPreloadModule((id: string) => {
   if (import.meta.env.DEV) {
     // based on `resolveClientEntry`
