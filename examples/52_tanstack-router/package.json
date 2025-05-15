@@ -12,7 +12,7 @@
     "@tanstack/router-devtools": "1.120.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-server-dom-webpack": "19.1.0",
+    "react-server-dom-vite": "19.1.0",
     "waku": "0.23.0"
   },
   "devDependencies": {
