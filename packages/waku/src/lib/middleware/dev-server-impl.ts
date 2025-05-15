@@ -114,6 +114,24 @@ const createMainViteServer = (
             rscHmrPlugin(),
             fsRouterTypegenPlugin(config),
             hackTailwindcss4Stackblitz(),
+            {
+              name: 'rsc-waku-browser-helper',
+              apply: 'serve',
+              transform(code) {
+                if (code.includes('__WAKU_BASE_PATH__')) {
+                  return code
+                    .replace(
+                      /__WAKU_BASE_PATH__/g,
+                      JSON.stringify(config.basePath),
+                    )
+                    .replace(
+                      /__WAKU_ROOT_DIR__/g,
+                      JSON.stringify(vite.config.root),
+                    );
+                }
+              },
+            },
+
           ],
           optimizeDeps: {
             include: ['react-server-dom-vite/client', 'react-dom/client'],
