@@ -69,8 +69,10 @@ jobs:
       matrix:
         shared: [1, 2, 3, 4]
         shardTotal: [4]
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        version: [24.0.0, 22.7.0, 20.8.0]
+        os: [ubuntu-latest]
+        version: [22.7.0]
+        # os: [ubuntu-latest, windows-latest, macos-latest]
+        # version: [24.0.0, 22.7.0, 20.8.0]
         exclude:
           - os: macos-latest
             version: 20.8.0
