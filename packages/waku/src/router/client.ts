@@ -380,7 +380,11 @@ const NotFound = ({
       const url = new URL('/404', window.location.href);
       changeRoute(parseRoute(url), { shouldScroll: true })
         .then(() => {
-          reset();
+          // HACK: This timeout is required for canary-ci to work
+          // FIXME: As we understand it, we should have a proper solution.
+          setTimeout(() => {
+            reset();
+          }, 1);
         })
         .catch((err) => {
           console.log('Error while navigating to 404:', err);
@@ -414,7 +418,10 @@ const Redirect = ({ to, reset }: { to: string; reset: () => void }) => {
     );
     changeRoute(parseRoute(url), { shouldScroll: newPath })
       .then(() => {
-        reset();
+        // FIXME: As we understand it, we should have a proper solution.
+        setTimeout(() => {
+          reset();
+        }, 1);
       })
       .catch((err) => {
         console.log('Error while navigating to redirect:', err);
