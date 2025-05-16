@@ -149,12 +149,6 @@ export const prepareNormalSetup = (fixtureName: string) => {
   return startApp;
 };
 
-const PACKAGE_INSTALL = {
-  npm: (path: string) => `npm add --force ${path}`,
-  pnpm: (path: string) => `pnpm add ${path}`,
-  yarn: (path: string) => `yarn add ${path}`,
-} as const;
-
 export const prepareStandaloneSetup = (fixtureName: string) => {
   const wakuDir = fileURLToPath(new URL('../packages/waku', import.meta.url));
   const { version } = createRequire(import.meta.url)(
@@ -185,8 +179,6 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         cwd: wakuDir,
       });
       const wakuPackageTgz = join(standaloneDir, `waku-${version}.tgz`);
-      const installScript = PACKAGE_INSTALL[packageManager](wakuPackageTgz);
-      execSync(installScript, { cwd: standaloneDir });
       const pkg = JSON.parse(
         readFileSync(join(standaloneDir, 'package.json'), 'utf-8'),
       );
@@ -196,29 +188,23 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
           'utf-8',
         ),
       );
-      const pnpmOverrides = rootPkg.pnpmOverrides;
-      if (pnpmOverrides !== null && typeof pnpmOverrides === 'object') {
-        switch (packageManager) {
-          case 'npm': {
-            pkg.overrides = {
-              ...pnpmOverrides,
-            };
-            break;
-          }
-          case 'pnpm': {
-            pkg.pnpm = {
-              overrides: {
-                ...pnpmOverrides,
-              },
-            };
-            break;
-          }
-          case 'yarn': {
-            pkg.resolutions = {
-              ...pnpmOverrides,
-            };
-            break;
-          }
+      const pnpmOverrides = {
+        ...rootPkg.pnpm?.overrides,
+        ...rootPkg.pnpmOverrides,
+      };
+      pkg.dependencies['waku'] = wakuPackageTgz;
+      switch (packageManager) {
+        case 'npm': {
+          pkg.overrides = pnpmOverrides;
+          break;
+        }
+        case 'pnpm': {
+          pkg.pnpm = { overrides: pnpmOverrides };
+          break;
+        }
+        case 'yarn': {
+          pkg.resolutions = pnpmOverrides;
+          break;
         }
       }
       writeFileSync(
@@ -226,6 +212,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         JSON.stringify(pkg, null, 2),
         'utf-8',
       );
+      execSync(`${packageManager} install`, { cwd: standaloneDir });
     }
     if (mode !== 'DEV' && !built) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
