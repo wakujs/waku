@@ -149,12 +149,6 @@ export const prepareNormalSetup = (fixtureName: string) => {
   return startApp;
 };
 
-const PACKAGE_INSTALL = {
-  npm: (path: string) => `npm add --force ${path}`,
-  pnpm: (path: string) => `pnpm add ${path}`,
-  yarn: (path: string) => `yarn add ${path}`,
-} as const;
-
 export const prepareStandaloneSetup = (fixtureName: string) => {
   const wakuDir = fileURLToPath(new URL('../packages/waku', import.meta.url));
   const { version } = createRequire(import.meta.url)(
@@ -185,47 +179,46 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         cwd: wakuDir,
       });
       const wakuPackageTgz = join(standaloneDir, `waku-${version}.tgz`);
-      const installScript = PACKAGE_INSTALL[packageManager](wakuPackageTgz);
-      execSync(installScript, { cwd: standaloneDir });
-      const pkg = JSON.parse(
-        readFileSync(join(standaloneDir, 'package.json'), 'utf-8'),
-      );
+      const patchPackageJson = (fn: (pkg: Record<string, unknown>) => void) => {
+        const file = join(standaloneDir!, 'package.json');
+        const pkg = JSON.parse(readFileSync(file, 'utf-8'));
+        fn(pkg);
+        writeFileSync(file, JSON.stringify(pkg, null, 2), 'utf-8');
+      };
       const rootPkg = JSON.parse(
         readFileSync(
           fileURLToPath(new URL('../package.json', import.meta.url)),
           'utf-8',
         ),
       );
-      const pnpmOverrides = rootPkg.pnpmOverrides;
-      if (pnpmOverrides !== null && typeof pnpmOverrides === 'object') {
-        switch (packageManager) {
-          case 'npm': {
-            pkg.overrides = {
-              ...pnpmOverrides,
-            };
-            break;
-          }
-          case 'pnpm': {
-            pkg.pnpm = {
-              overrides: {
-                ...pnpmOverrides,
-              },
-            };
-            break;
-          }
-          case 'yarn': {
-            pkg.resolutions = {
-              ...pnpmOverrides,
-            };
-            break;
-          }
+      const pnpmOverrides = {
+        ...rootPkg.pnpm?.overrides,
+        ...rootPkg.pnpmOverrides, // Do we need this?
+      };
+      switch (packageManager) {
+        case 'npm': {
+          execSync(`npm add --force ${wakuPackageTgz}`, { cwd: standaloneDir });
+          patchPackageJson((pkg) => {
+            pkg.overrides = pnpmOverrides;
+          });
+          break;
+        }
+        case 'pnpm': {
+          execSync(`pnpm add ${wakuPackageTgz}`, { cwd: standaloneDir });
+          patchPackageJson((pkg) => {
+            pkg.pnpm = { overrides: pnpmOverrides };
+          });
+          break;
+        }
+        case 'yarn': {
+          execSync(`yarn add ${wakuPackageTgz}`, { cwd: standaloneDir });
+          patchPackageJson((pkg) => {
+            pkg.resolutions = pnpmOverrides;
+          });
+          break;
         }
       }
-      writeFileSync(
-        join(standaloneDir, 'package.json'),
-        JSON.stringify(pkg, null, 2),
-        'utf-8',
-      );
+      execSync(`${packageManager} install`, { cwd: standaloneDir });
     }
     if (mode !== 'DEV' && !built) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
