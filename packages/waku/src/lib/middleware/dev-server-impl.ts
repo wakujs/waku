@@ -32,7 +32,7 @@ import { hackTailwindcss4Stackblitz } from '../plugins/hack-tailwindcss4-stackbl
 
 // TODO there is huge room for refactoring in this file
 
-// For react-server-dom-webpack/server.edge
+// For react-server-dom-vite/server.edge
 (globalThis as any).AsyncLocalStorage = AsyncLocalStorage;
 
 const createStreamPair = (): [Writable, Promise<ReadableStream | null>] => {
@@ -97,7 +97,7 @@ const createMainViteServer = (
             devCommonJsPlugin({
               filter: (id) => {
                 if (
-                  id.includes('/node_modules/react-server-dom-webpack/') ||
+                  id.includes('/node_modules/react-server-dom-vite/') ||
                   id.includes('/node_modules/react-dom/') ||
                   id.includes('/node_modules/react/')
                 ) {
@@ -114,9 +114,27 @@ const createMainViteServer = (
             rscHmrPlugin(),
             fsRouterTypegenPlugin(config),
             hackTailwindcss4Stackblitz(),
+            {
+              name: 'rsc-waku-browser-helper',
+              apply: 'serve',
+              transform(code) {
+                if (code.includes('__WAKU_BASE_PATH__')) {
+                  return code
+                    .replace(
+                      /__WAKU_BASE_PATH__/g,
+                      JSON.stringify(config.basePath),
+                    )
+                    .replace(
+                      /__WAKU_ROOT_DIR__/g,
+                      JSON.stringify(vite.config.root),
+                    );
+                }
+              },
+            },
+
           ],
           optimizeDeps: {
-            include: ['react-server-dom-webpack/client', 'react-dom/client'],
+            include: ['react-server-dom-vite/client', 'react-dom/client'],
             exclude: ['waku', 'rsc-html-stream/server'],
             entries: [
               `${config.srcDir}/${SRC_ENTRIES}.*`,
@@ -127,7 +145,7 @@ const createMainViteServer = (
           ssr: {
             external: ['waku'],
             optimizeDeps: {
-              include: ['react-server-dom-webpack/client.edge'],
+              include: ['react-server-dom-vite/client.edge'],
             },
           },
           appType: 'mpa',
@@ -273,7 +291,7 @@ const createRscViteServer = (
             hackTailwindcss4Stackblitz(),
           ],
           optimizeDeps: {
-            include: ['react-server-dom-webpack/client', 'react-dom/client'],
+            include: ['react-server-dom-vite/client', 'react-dom/client'],
             exclude: ['waku'],
             entries: [
               `${config.srcDir}/${SRC_ENTRIES}.*`,
@@ -289,7 +307,7 @@ const createRscViteServer = (
             noExternal: /^(?!node:)/,
             optimizeDeps: {
               include: [
-                'react-server-dom-webpack/server.edge',
+                'react-server-dom-vite/server.edge',
                 'react',
                 'react/jsx-runtime',
                 'react/jsx-dev-runtime',

@@ -55,7 +55,7 @@ const transformClient = (code: string, getServerId: () => string) => {
   if (hasUseServer) {
     const exportNames = collectExportNames(mod);
     let newCode = `
-import { createServerReference } from 'react-server-dom-webpack/client';
+import { createServerReference } from 'react-server-dom-vite/client';
 import { unstable_callServerRsc as callServerRsc } from 'waku/minimal/client';
 `;
     for (const name of exportNames) {
@@ -141,7 +141,7 @@ const createCallExpression = (
 });
 
 const serverInitCode = swc.parseSync(`
-import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-webpack/server.edge';
+import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-vite/server.edge';
 `).body;
 
 const findLastImportIndex = (mod: swc.Module) => {
@@ -765,7 +765,7 @@ const transformServer = (
   if (hasUseClient) {
     const exportNames = transformExportedClientThings(mod, getClientId);
     let newCode = `
-import { registerClientReference as __waku_registerClientReference } from 'react-server-dom-webpack/server.edge';
+import { registerClientReference as __waku_registerClientReference } from 'react-server-dom-vite/server.edge';
 `;
     newCode += swc.printSync(mod).code;
     for (const name of exportNames) {

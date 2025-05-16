@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 import type { ReactNode, FunctionComponent, ComponentProps } from 'react';
 import type * as RDServerType from 'react-dom/server.edge';
-import type { default as RSDWClientType } from 'react-server-dom-webpack/client.edge';
+import type { default as RSDWClientType } from 'react-server-dom-vite/client.edge';
 import { injectRSCPayload } from 'rsc-html-stream/server';
 
 import type * as WakuMinimalClientType from '../../minimal/client.js';
@@ -180,6 +180,32 @@ export async function renderHtml(
   const {
     default: { createFromReadableStream },
   } = modules.rsdwClient as { default: typeof RSDWClientType };
+
+  // previously normalized through clientBundlerConfig and serverConsumerManifest.moduleMap
+  const resolveClientEntryForPrd = (id: string, config: { basePath: string }) => {
+    return config.basePath + id + '.js';
+  };
+  function normalizeModuleId(id: string) {
+    id = ctx.unstable_devServer ? ctx.unstable_devServer.resolveClientEntry(id) : resolveClientEntryForPrd(id, config);
+    if (ctx.unstable_devServer) {
+      id = id.slice(config.basePath.length);
+      if (id.startsWith('@id/')) {
+        id = id.slice('@id/'.length);
+      } else if (id.startsWith('@fs/')) {
+        id = filePathToFileURL(id.slice('@fs'.length));
+      } else {
+        id = filePathToFileURL(id);
+      }
+      return id
+    }
+    // !isDev
+    id = id.slice(config.basePath.length);
+    return id
+  }
+  (modules.rsdwClient as any).default.setPreloadModule((id: string) => {
+    return (globalThis as any).__WAKU_CLIENT_IMPORT__(normalizeModuleId(id))
+  });
+
   const { INTERNAL_ServerRoot } =
     modules.wakuMinimalClient as typeof WakuMinimalClientType;
 

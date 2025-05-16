@@ -38,7 +38,7 @@ type ReactFormState<S, ReferenceId> = [
   number /* number of bound arguments */,
 ];
 
-declare module 'react-server-dom-webpack/server.edge' {
+declare module 'react-server-dom-vite/server.edge' {
   interface TemporaryReferenceSet {}
 
   type Options = {
@@ -52,27 +52,27 @@ declare module 'react-server-dom-webpack/server.edge' {
 
   export function renderToReadableStream(
     model: ReactClientValue,
-    webpackMap: ClientManifest,
+    // webpackMap: ClientManifest,
     options?: Options,
   ): ReadableStream;
   export function decodeReply<T>(
     body: string | FormData,
-    webpackMap: ServerManifest,
+    // webpackMap: ServerManifest,
     options?: { temporaryReferences?: TemporaryReferenceSet },
   ): Promise<T>;
   export function decodeAction<T>(
     body: FormData,
-    serverManifest: ServerManifest,
+    // serverManifest: ServerManifest,
   ): Promise<() => T> | null;
   export function decodeFormState<S>(
     actionResult: S,
     body: FormData,
-    serverManifest: ServerManifest,
+    // serverManifest: ServerManifest,
   ): Promise<ReactFormState<S, ServerReferenceId> | null>;
   export function createTemporaryReferenceSet(): TemporaryReferenceSet;
 }
 
-declare module 'react-server-dom-webpack/client' {
+declare module 'react-server-dom-vite/client' {
   type TemporaryReferenceSet = Map<string, Reference | symbol>;
 
   type CallServerCallback = <T, A extends unknown[] = unknown[]>(
@@ -96,9 +96,9 @@ declare module 'react-server-dom-webpack/client' {
   export function createTemporaryReferenceSet(): TemporaryReferenceSet;
 }
 
-declare module 'react-server-dom-webpack/client.edge' {
+declare module 'react-server-dom-vite/client.edge' {
   export type Options = {
-    serverConsumerManifest: ServerConsumerManifest;
+    // serverConsumerManifest: ServerConsumerManifest;
     nonce?: string;
   };
   export function createFromReadableStream<T>(

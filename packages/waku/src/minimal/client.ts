@@ -10,13 +10,46 @@ import {
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
-import RSDWClient from 'react-server-dom-webpack/client';
+import RSDWClient from 'react-server-dom-vite/client';
 
 import { createCustomError } from '../lib/utils/custom-errors.js';
 import { encodeRscPath, encodeFuncId } from '../lib/renderers/utils.js';
 
 const { createFromFetch, encodeReply, createTemporaryReferenceSet } =
   RSDWClient;
+
+declare global {
+  var __WAKU_BASE_PATH__: string;
+  var __WAKU_ROOT_DIR__: string;
+}
+
+// TODO:
+// is it possible to move normalization to `registerClientReference` transform `getClientId/getServerId`?
+(RSDWClient as any).setPreloadModule((id: string) => {
+  if (import.meta.env.DEV) {
+    // based on `resolveClientEntry`
+    let file = id;
+    if (file.startsWith('/@fs/')) {
+      file = file.slice('/@fs'.length); // keep '/' at the beginning
+    }
+    // for (const moduleNode of initialModules) {
+    //   if (moduleNode.file === file) {
+    //     return moduleNode.url;
+    //   }
+    // }
+    if (file.startsWith(__WAKU_ROOT_DIR__)) {
+      file = file.slice(__WAKU_ROOT_DIR__.length + 1); // '+ 1' to remove '/'
+    } else if (file.startsWith('/')) {
+      file = '@fs' + file;
+    } else {
+      file = '@id/' + file;
+    }
+    id = __WAKU_BASE_PATH__ + file;
+  } else {
+    id = '/' + id + '.js';
+  }
+  return (globalThis as any).__WAKU_CLIENT_IMPORT__(id);
+});
 
 declare global {
   interface ImportMeta {

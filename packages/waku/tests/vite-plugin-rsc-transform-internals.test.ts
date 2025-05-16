@@ -92,7 +92,7 @@ export default function App() {
 `);
     expect((await transform(code, '/src/App.tsx', { ssr: true }))?.code)
       .toMatchInlineSnapshot(`
-      "import { registerClientReference as __waku_registerClientReference } from 'react-server-dom-webpack/server.edge';
+      "import { registerClientReference as __waku_registerClientReference } from 'react-server-dom-vite/server.edge';
       import { atom } from 'jotai/vanilla';
       const initialCount = 1;
       const TWO = 2;
@@ -142,7 +142,7 @@ export default async function() {
 `;
     expect((await transform(code, '/src/App.tsx', { ssr: true }))?.code)
       .toMatchInlineSnapshot(`
-        "import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-webpack/server.edge';
+        "import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-vite/server.edge';
         const privateFunction = ()=>'Secret';
         export const log = __waku_registerServerReference(async (mesg)=>{
             console.log(mesg);
@@ -180,7 +180,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
       .toMatchInlineSnapshot(`
       "import { jsx as _jsx } from "react/jsx-runtime";
       import { createAI } from 'ai/rsc';
-      import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-webpack/server.edge';
+      import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-vite/server.edge';
       export const __waku_func1 = __waku_registerServerReference(async ()=>{
           return 0;
       }, "/src/App.tsx", "__waku_func1");
@@ -225,7 +225,7 @@ export default async () => null;
       .toMatchInlineSnapshot(`
         "import { InternalProvider } from './shared.js';
         import { jsx } from 'react/jsx-runtime';
-        import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-webpack/server.edge';
+        import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-vite/server.edge';
         export async function __waku_func1({ action }, ...args) {
             return await action(...args);
         }
@@ -258,7 +258,7 @@ export default function App({ a }) {
     expect((await transform(code, '/src/App.tsx', { ssr: true }))?.code)
       .toMatchInlineSnapshot(`
         "import { jsx as _jsx } from "react/jsx-runtime";
-        import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-webpack/server.edge';
+        import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-vite/server.edge';
         export async function __waku_func1(a, mesg) {
             console.log(mesg, a);
         }
@@ -287,7 +287,7 @@ export default function App() {
     expect((await transform(code, '/src/App.tsx', { ssr: true }))?.code)
       .toMatchInlineSnapshot(`
         "import { jsx as _jsx } from "react/jsx-runtime";
-        import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-webpack/server.edge';
+        import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-vite/server.edge';
         export const __waku_func1 = __waku_registerServerReference(async function(rand, mesg, rand) {
             console.log(mesg, rand);
         }, "/src/App.tsx", "__waku_func1");
@@ -316,7 +316,7 @@ export default function App() {
     expect((await transform(code, '/src/App.tsx', { ssr: true }))?.code)
       .toMatchInlineSnapshot(`
         "import { jsx as _jsx } from "react/jsx-runtime";
-        import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-webpack/server.edge';
+        import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-vite/server.edge';
         export const __waku_func1 = __waku_registerServerReference(async (mesg)=>{
             console.log(mesg, now);
         }, "/src/App.tsx", "__waku_func1");
@@ -344,7 +344,7 @@ export default function App() {
     expect((await transform(code, '/src/App.tsx', { ssr: true }))?.code)
       .toMatchInlineSnapshot(`
         "import { jsx as _jsx } from "react/jsx-runtime";
-        import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-webpack/server.edge';
+        import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-vite/server.edge';
         export const __waku_func1 = __waku_registerServerReference((mesg)=>{
             console.log(mesg, now);
         }, "/src/App.tsx", "__waku_func1");
@@ -393,7 +393,7 @@ export default async function(mesg) {
 `;
     expect((await transform(code, '/src/App.tsx', { ssr: true }))?.code)
       .toMatchInlineSnapshot(`
-        "import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-webpack/server.edge';
+        "import { registerServerReference as __waku_registerServerReference } from 'react-server-dom-vite/server.edge';
         export const __waku_func1 = __waku_registerServerReference(async (mesg)=>{
             console.log(mesg);
         }, "/src/App.tsx", "__waku_func1");
@@ -471,7 +471,7 @@ export default async function log4(mesg) {
 `;
     expect((await transform(code, '/src/func.ts'))?.code)
       .toMatchInlineSnapshot(`
-      "import { createServerReference } from 'react-server-dom-webpack/client';
+      "import { createServerReference } from 'react-server-dom-vite/client';
       import { unstable_callServerRsc as callServerRsc } from 'waku/minimal/client';
       export const log1 = createServerReference('/src/func.ts#log1', callServerRsc);
       export const log2 = createServerReference('/src/func.ts#log2', callServerRsc);
