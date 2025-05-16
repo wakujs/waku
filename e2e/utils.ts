@@ -179,7 +179,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         cwd: wakuDir,
       });
       const wakuPackageTgz = join(standaloneDir, `waku-${version}.tgz`);
-      const patchPackageJson = (fn: (pkg: any) => void) => {
+      const patchPackageJson = (fn: (pkg: Record<string, unknown>) => void) => {
         const file = join(standaloneDir!, 'package.json');
         const pkg = JSON.parse(readFileSync(file, 'utf-8'));
         fn(pkg);
