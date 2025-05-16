@@ -149,15 +149,15 @@ export const prepareNormalSetup = (fixtureName: string) => {
   return startApp;
 };
 
-const PACKAGE_INSTALL = {
-  npm: (path: string) => `npm add --force ${path}`,
-  pnpm: (path: string) => `pnpm add ${path}`,
-  yarn: (path: string) => `yarn add ${path}`,
-} as const;
+// const PACKAGE_INSTALL = {
+//   npm: (path: string) => `npm add --force ${path}`,
+//   pnpm: (path: string) => `pnpm add ${path}`,
+//   yarn: (path: string) => `yarn add ${path}`,
+// } as const;
 
 export const prepareStandaloneSetup = (fixtureName: string) => {
   // TODO
-  if (1) return prepareNormalSetup(fixtureName);
+  // if (1) return prepareNormalSetup(fixtureName);
 
   const wakuDir = fileURLToPath(new URL('../packages/waku', import.meta.url));
   const { version } = createRequire(import.meta.url)(
@@ -173,7 +173,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
   let built = false;
   const startApp = async (
     mode: 'DEV' | 'PRD' | 'STATIC',
-    packageManager: 'npm' | 'pnpm' | 'yarn' = 'npm',
+    packageManager: 'npm' | 'pnpm' | 'yarn' = 'pnpm',
     packageDir = '',
   ) => {
     if (!standaloneDir) {
@@ -188,8 +188,8 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         cwd: wakuDir,
       });
       const wakuPackageTgz = join(standaloneDir, `waku-${version}.tgz`);
-      const installScript = PACKAGE_INSTALL[packageManager](wakuPackageTgz);
-      execSync(installScript, { cwd: standaloneDir });
+      // const installScript = PACKAGE_INSTALL[packageManager](wakuPackageTgz);
+      // execSync(installScript, { cwd: standaloneDir });
       const pkg = JSON.parse(
         readFileSync(join(standaloneDir, 'package.json'), 'utf-8'),
       );
@@ -199,7 +199,14 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
           'utf-8',
         ),
       );
-      const pnpmOverrides = rootPkg.pnpmOverrides;
+      const pnpmOverrides = {
+        ...rootPkg.pnpmOverrides,
+        waku: wakuPackageTgz,
+        react: '0.0.0-experimental-197d6a04-20250424',
+        'react-dom': '0.0.0-experimental-197d6a04-20250424',
+        'react-server-dom-vite':
+          'https://github.com/hi-ogawa/vite-plugins/raw/refs/heads/04-24-refactor_rsc_use_react-server-dom-vite/react-server-dom-vite-19.1.0.tgz',
+      };
       if (pnpmOverrides !== null && typeof pnpmOverrides === 'object') {
         switch (packageManager) {
           case 'npm': {
@@ -229,6 +236,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         JSON.stringify(pkg, null, 2),
         'utf-8',
       );
+      execSync('pnpm i', { cwd: standaloneDir });
     }
     if (mode !== 'DEV' && !built) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
