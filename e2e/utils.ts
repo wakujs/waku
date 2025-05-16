@@ -156,6 +156,9 @@ const PACKAGE_INSTALL = {
 } as const;
 
 export const prepareStandaloneSetup = (fixtureName: string) => {
+  // TODO
+  if (1) return prepareNormalSetup(fixtureName);
+
   const wakuDir = fileURLToPath(new URL('../packages/waku', import.meta.url));
   const { version } = createRequire(import.meta.url)(
     join(wakuDir, 'package.json'),
