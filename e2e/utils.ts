@@ -189,12 +189,15 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         ),
       );
       const pnpmOverrides = {
+        waku: wakuPackageTgz,
         ...rootPkg.pnpm?.overrides,
         ...rootPkg.pnpmOverrides,
       };
-      pkg.dependencies['waku'] = wakuPackageTgz;
       switch (packageManager) {
         case 'npm': {
+          if (pkg.dependencies.waku) {
+            pkg.dependencies.waku = wakuPackageTgz;
+          }
           pkg.overrides = pnpmOverrides;
           break;
         }
