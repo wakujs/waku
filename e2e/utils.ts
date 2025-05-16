@@ -179,9 +179,12 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         cwd: wakuDir,
       });
       const wakuPackageTgz = join(standaloneDir, `waku-${version}.tgz`);
-      const pkg = JSON.parse(
-        readFileSync(join(standaloneDir, 'package.json'), 'utf-8'),
-      );
+      const patchPackageJson = (fn: (pkg: any) => void) => {
+        const file = join(standaloneDir!, 'package.json');
+        const pkg = JSON.parse(readFileSync(file, 'utf-8'));
+        fn(pkg);
+        writeFileSync(file, JSON.stringify(pkg, null, 2), 'utf-8');
+      };
       const rootPkg = JSON.parse(
         readFileSync(
           fileURLToPath(new URL('../package.json', import.meta.url)),
@@ -189,32 +192,32 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         ),
       );
       const pnpmOverrides = {
-        waku: wakuPackageTgz,
         ...rootPkg.pnpm?.overrides,
-        ...rootPkg.pnpmOverrides,
+        ...rootPkg.pnpmOverrides, // Do we need this?
       };
       switch (packageManager) {
         case 'npm': {
-          if (pkg.dependencies.waku) {
-            pkg.dependencies.waku = wakuPackageTgz;
-          }
-          pkg.overrides = pnpmOverrides;
+          execSync(`npm add --force ${wakuPackageTgz}`, { cwd: standaloneDir });
+          patchPackageJson((pkg) => {
+            pkg.overrides = pnpmOverrides;
+          });
           break;
         }
         case 'pnpm': {
-          pkg.pnpm = { overrides: pnpmOverrides };
+          execSync(`pnpm add ${wakuPackageTgz}`, { cwd: standaloneDir });
+          patchPackageJson((pkg) => {
+            pkg.pnpm = { overrides: pnpmOverrides };
+          });
           break;
         }
         case 'yarn': {
-          pkg.resolutions = pnpmOverrides;
+          execSync(`yarn add ${wakuPackageTgz}`, { cwd: standaloneDir });
+          patchPackageJson((pkg) => {
+            pkg.resolutions = pnpmOverrides;
+          });
           break;
         }
       }
-      writeFileSync(
-        join(standaloneDir, 'package.json'),
-        JSON.stringify(pkg, null, 2),
-        'utf-8',
-      );
       execSync(`${packageManager} install`, { cwd: standaloneDir });
     }
     if (mode !== 'DEV' && !built) {
