@@ -6,6 +6,7 @@ import {
   cpSync,
   rmSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   writeFileSync,
 } from 'node:fs';
@@ -179,43 +180,48 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         cwd: wakuDir,
       });
       const wakuPackageTgz = join(standaloneDir, `waku-${version}.tgz`);
-      const patchPackageJson = (fn: (pkg: Record<string, unknown>) => void) => {
-        const file = join(standaloneDir!, 'package.json');
-        const pkg = JSON.parse(readFileSync(file, 'utf-8'));
-        fn(pkg);
-        writeFileSync(file, JSON.stringify(pkg, null, 2), 'utf-8');
-      };
       const rootPkg = JSON.parse(
         readFileSync(
           fileURLToPath(new URL('../package.json', import.meta.url)),
-          'utf-8',
+          'utf8',
         ),
       );
       const pnpmOverrides = {
+        waku: wakuPackageTgz,
         ...rootPkg.pnpm?.overrides,
         ...rootPkg.pnpmOverrides, // Do we need this?
       };
-      switch (packageManager) {
-        case 'npm': {
-          execSync(`npm add --force ${wakuPackageTgz}`, { cwd: standaloneDir });
-          patchPackageJson((pkg) => {
-            pkg.overrides = pnpmOverrides;
-          });
-          break;
-        }
-        case 'pnpm': {
-          execSync(`pnpm add ${wakuPackageTgz}`, { cwd: standaloneDir });
-          patchPackageJson((pkg) => {
-            pkg.pnpm = { overrides: pnpmOverrides };
-          });
-          break;
-        }
-        case 'yarn': {
-          execSync(`yarn add ${wakuPackageTgz}`, { cwd: standaloneDir });
-          patchPackageJson((pkg) => {
-            pkg.resolutions = pnpmOverrides;
-          });
-          break;
+      for (const file of readdirSync(standaloneDir, {
+        encoding: 'utf8',
+        recursive: true,
+      })) {
+        if (file.endsWith('package.json')) {
+          const f = join(standaloneDir, file);
+          const pkg = JSON.parse(readFileSync(f, 'utf8'));
+          for (const deps of [pkg.dependencies, pkg.devDependencies]) {
+            Object.keys(deps || {}).forEach((key) => {
+              if (pnpmOverrides[key]) {
+                deps[key] = pnpmOverrides[key];
+              }
+            });
+          }
+          if (file === 'package.json') {
+            switch (packageManager) {
+              case 'npm': {
+                pkg.overrides = pnpmOverrides;
+                break;
+              }
+              case 'pnpm': {
+                pkg.pnpm = { overrides: pnpmOverrides };
+                break;
+              }
+              case 'yarn': {
+                pkg.resolutions = pnpmOverrides;
+                break;
+              }
+            }
+          }
+          writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
         }
       }
       execSync(`${packageManager} install`, { cwd: standaloneDir });
