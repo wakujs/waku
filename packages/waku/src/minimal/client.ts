@@ -4,6 +4,7 @@ import {
   createContext,
   createElement,
   memo,
+  startTransition,
   use,
   useCallback,
   useEffect,
@@ -62,7 +63,7 @@ const getCached = <T>(c: () => T, m: WeakMap<object, T>, k: object): T =>
 const cache1 = new WeakMap();
 const mergeElementsPromise = (
   a: Promise<Elements>,
-  b: Promise<Elements>,
+  b: Promise<Elements> | Elements,
 ): Promise<Elements> => {
   const getResult = () =>
     Promise.all([a, b]).then(([a, b]) => {
@@ -125,13 +126,14 @@ export const unstable_callServerRsc = async (
       : encodeReply(args, { temporaryReferences }).then((body) =>
           enhanceFetch(fetch)(url, { method: 'POST', body }),
         );
-  const data = enhanceCreateData(createData)(responsePromise);
-  const dataWithoutErrors = Promise.resolve(data).catch(() => ({}));
-  await Promise.resolve(); // FIXME a workaround for #1420
-  fetchCache[SET_ELEMENTS]?.((prev) =>
-    mergeElementsPromise(prev, dataWithoutErrors),
-  );
-  return (await data)._value;
+  const { _value: value, ...data } =
+    await enhanceCreateData(createData)(responsePromise);
+  if (Object.keys(data).length) {
+    startTransition(() => {
+      fetchCache[SET_ELEMENTS]?.((prev) => mergeElementsPromise(prev, data));
+    });
+  }
+  return value;
 };
 
 const prefetchedParams = new WeakMap<Promise<unknown>, unknown>();
