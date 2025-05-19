@@ -127,6 +127,7 @@ export const unstable_callServerRsc = async (
         );
   const data = enhanceCreateData(createData)(responsePromise);
   const dataWithoutErrors = Promise.resolve(data).catch(() => ({}));
+  await Promise.resolve(); // FIXME a workaround for #1420
   fetchCache[SET_ELEMENTS]?.((prev) =>
     mergeElementsPromise(prev, dataWithoutErrors),
   );
