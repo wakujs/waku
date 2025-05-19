@@ -33,6 +33,8 @@ for (const mode of ['DEV', 'PRD'] as const) {
     });
 
     test('server ping', async ({ page }) => {
+      const messages: string[] = [];
+      page.on('console', (msg) => messages.push(msg.text()));
       await page.goto(`http://localhost:${port}/`);
       await expect(page.getByTestId('app-name')).toHaveText('Waku');
 
@@ -66,6 +68,22 @@ for (const mode of ['DEV', 'PRD'] as const) {
           .getByTestId('wrapped')
           .locator('.via-server'),
       ).toHaveText('okay');
+
+      // https://github.com/wakujs/waku/issues/1420
+      await page
+        .getByTestId('server-ping')
+        .getByTestId('show-server-data')
+        .click();
+      await expect(
+        page.getByTestId('server-ping').locator('.server-data'),
+      ).toHaveText('Server Data');
+      expect(
+        messages.some((m) =>
+          /Cannot update a component \S+ while rendering a different component/.test(
+            m,
+          ),
+        ),
+      ).toBe(false);
     });
 
     test('refetch', async ({ page }) => {
