@@ -3,6 +3,7 @@
 import {
   createContext,
   createElement,
+  startTransition,
   useCallback,
   useContext,
   useEffect,
@@ -642,7 +643,7 @@ const InnerRouter = ({
       if (refetching.current) {
         refetching.current.push(fn);
       } else {
-        fn();
+        startTransition(fn);
       }
     };
     locationListeners.add(callback);
