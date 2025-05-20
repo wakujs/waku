@@ -26,7 +26,7 @@ export function toIdentifier(input: string): string {
   // Turn it into PascalCase
   // Since the first letter is uppercased, it will not be a reserved word
   return (
-    'Route_' +
+    'File_' +
     identifier
       .split('_')
       .map((part) => {
