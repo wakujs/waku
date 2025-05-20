@@ -6,9 +6,12 @@ import type {
   INTERNAL_AtomState as AtomState,
   INTERNAL_AtomStateMap as AtomStateMap,
 } from 'jotai/vanilla/internals';
-import { unstable_getRscParams as getRscParams } from 'waku/router/server';
+import {
+  unstable_getRscPath as getRscPath,
+  unstable_getRscParams as getRscParams,
+} from 'waku/router/server';
 
-import { BaseSyncAtoms, SyncAtoms } from './client';
+import { SyncAtoms } from './client';
 
 const CLIENT_REFERENCE_TAG = Symbol.for('react.client.reference');
 
@@ -40,10 +43,8 @@ export const getStore = () => {
 const ensureMap = (value: unknown) =>
   value instanceof Map ? value : new Map();
 
-const prepareStore = (rscParams: unknown) => {
-  const clientAtomValues = ensureMap(
-    (rscParams as { jotai_atomValues?: unknown } | undefined)?.jotai_atomValues,
-  );
+const prepareStore = (atomValues: unknown) => {
+  const clientAtomValues = ensureMap(atomValues);
   const clientAtoms = new Map<Atom<unknown>, ClientReferenceId>();
   const atomStateMap = new Map<Atom<unknown>, AtomState>();
   const patchedAtomStateMap: AtomStateMap = {
@@ -77,31 +78,54 @@ const prepareStore = (rscParams: unknown) => {
   return atomsPromise;
 };
 
-export const BaseProvider = ({
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+export const Provider = ({
   children,
   rscPath,
-  rscParams,
+  rscParams = {},
 }: {
   children: ReactNode;
   rscPath: string;
   rscParams: unknown;
 }) => {
-  const atomsPromise = prepareStore(rscParams);
+  if (!isObject(rscParams)) {
+    throw new Error('rscParams must be an object');
+  }
+  const { jotai_atomValues: atomValues, ...rest } = rscParams;
+  const atomsPromise = prepareStore(atomValues);
   return (
     <>
       {children}
-      <BaseSyncAtoms rscPath={rscPath} atomsPromise={atomsPromise} />
+      <SyncAtoms
+        atomsPromise={atomsPromise}
+        rscPath={rscPath}
+        rscParams={rest}
+      />
     </>
   );
 };
 
-export const Provider = ({ children }: { children: ReactNode }) => {
-  const rscParams = getRscParams();
-  const atomsPromise = prepareStore(rscParams);
+export const RouterProvider = ({ children }: { children: ReactNode }) => {
+  const rscPath = getRscPath();
+  if (rscPath === undefined) {
+    throw new Error('rscPath is undefined');
+  }
+  const rscParams = getRscParams() || {};
+  if (!isObject(rscParams)) {
+    throw new Error('rscParams must be an object');
+  }
+  const { jotai_atomValues: atomValues, ...rest } = rscParams;
+  const atomsPromise = prepareStore(atomValues);
   return (
     <>
       {children}
-      <SyncAtoms atomsPromise={atomsPromise} />
+      <SyncAtoms
+        atomsPromise={atomsPromise}
+        rscPath={rscPath}
+        rscParams={rest}
+      />
     </>
   );
 };
