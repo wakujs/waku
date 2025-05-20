@@ -87,19 +87,19 @@ describe('vite-plugin-fs-router-typegen', () => {
     await runTest(
       root,
       `// prettier-ignore
-import type { getConfig as CategoryTagsIndex_getConfig } from './pages/[category]/[...tags]/index';
+import type { getConfig as File_CategoryTagsIndex_getConfig } from './pages/[category]/[...tags]/index';
 // prettier-ignore
-import type { getConfig as Root_getConfig } from './pages/_root';
+import type { getConfig as File_Root_getConfig } from './pages/_root';
 // prettier-ignore
-import type { getConfig as Index_getConfig } from './pages/index';
+import type { getConfig as File_Index_getConfig } from './pages/index';
 // prettier-ignore
-import type { getConfig as OneTwoThree_getConfig } from './pages/one-two-three';
+import type { getConfig as File_OneTwoThree_getConfig } from './pages/one-two-three';
 // prettier-ignore
-import type { getConfig as OneTwoThree_1_getConfig } from './pages/one__two_three';
+import type { getConfig as File_OneTwoThree_1_getConfig } from './pages/one__two_three';
 // prettier-ignore
-import type { getConfig as OneTwoThree_2_getConfig } from './pages/one_two_three';
+import type { getConfig as File_OneTwoThree_2_getConfig } from './pages/one_two_three';
 // prettier-ignore
-import type { getConfig as ØnéTwoThree_getConfig } from './pages/øné_two_three';`,
+import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_two_three';`,
     );
   });
 });
