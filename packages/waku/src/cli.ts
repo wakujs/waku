@@ -100,10 +100,9 @@ if (values.version) {
 function catchUncaughtExceptionInDev() {
   // Workaround for https://github.com/wakujs/waku/issues/756
   process.on('uncaughtException', (err) => {
-    const errStack = err?.stack || '';
     if (
-      errStack.includes('ERR_INVALID_STATE') &&
-      errStack.includes('Unable to enqueue')
+      (err as { code?: unknown }).code === 'ERR_INVALID_STATE' &&
+      err.message.includes('Unable to enqueue')
     ) {
       // ignore this error
       return;
