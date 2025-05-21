@@ -65,10 +65,10 @@ The filename convention for Page Parts is `_part${string}.tsx` (TypeScript strin
 pages
 ├── _layout.tsx
 ├── foo
-│ ├── _part-banana.tsx
+│ ├── _part-banana.tsx # these combine to be the children for /foo
 │ ├── _part-orange.tsx
 │ └── _part-cherry.tsx
-└── index.tsx
+└── bar.tsx # /foo/bar
 ```
 
 Then your component definition could look like this:
