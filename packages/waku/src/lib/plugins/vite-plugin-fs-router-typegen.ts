@@ -25,15 +25,18 @@ export function toIdentifier(input: string): string {
   }
   // Turn it into PascalCase
   // Since the first letter is uppercased, it will not be a reserved word
-  return identifier
-    .split('_')
-    .map((part) => {
-      if (part[0] === undefined) {
-        return '';
-      }
-      return part[0].toUpperCase() + part.slice(1);
-    })
-    .join('');
+  return (
+    'File_' +
+    identifier
+      .split('_')
+      .map((part) => {
+        if (part[0] === undefined) {
+          return '';
+        }
+        return part[0].toUpperCase() + part.slice(1);
+      })
+      .join('')
+  );
 }
 
 export function getImportModuleNames(filePaths: string[]): {
@@ -212,7 +215,7 @@ declare module 'waku/router' {
     pages: Page;
   }
 }
-  `;
+`;
 
         return result;
       };
