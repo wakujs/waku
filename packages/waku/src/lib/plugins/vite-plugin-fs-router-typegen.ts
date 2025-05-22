@@ -215,7 +215,7 @@ declare module 'waku/router' {
     pages: Page;
   }
 }
-  `;
+`;
 
         return result;
       };
