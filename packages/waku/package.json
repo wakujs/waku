@@ -92,6 +92,7 @@
     "@vitejs/plugin-react": "4.4.1",
     "dotenv": "16.5.0",
     "hono": "4.7.10",
+    "html-react-parser": "5.2.5",
     "rollup": "4.41.0",
     "rsc-html-stream": "0.0.6",
     "vite": "6.3.5"
