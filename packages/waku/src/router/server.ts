@@ -1,5 +1,6 @@
 export {
   unstable_defineRouter,
+  unstable_getRscPath,
   unstable_getRscParams,
   unstable_rerenderRoute,
   unstable_notFound,

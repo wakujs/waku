@@ -41,7 +41,19 @@ const parseRscParams = (
   return { query: '' };
 };
 
+const RSC_PATH_SYMBOL = Symbol('RSC_PATH');
 const RSC_PARAMS_SYMBOL = Symbol('RSC_PARAMS');
+
+const setRscPath = (rscPath: string) => {
+  try {
+    const context = getContext();
+    (context as unknown as Record<typeof RSC_PATH_SYMBOL, unknown>)[
+      RSC_PATH_SYMBOL
+    ] = rscPath;
+  } catch {
+    // ignore
+  }
+};
 
 const setRscParams = (rscParams: unknown) => {
   try {
@@ -54,10 +66,21 @@ const setRscParams = (rscParams: unknown) => {
   }
 };
 
+export function unstable_getRscPath(): string | undefined {
+  try {
+    const context = getContext();
+    return (context as unknown as Record<typeof RSC_PATH_SYMBOL, string>)[
+      RSC_PATH_SYMBOL
+    ];
+  } catch {
+    return undefined;
+  }
+}
+
 export function unstable_getRscParams(): unknown {
   try {
     const context = getContext();
-    return (context as unknown as Record<typeof RSC_PARAMS_SYMBOL, Rerender>)[
+    return (context as unknown as Record<typeof RSC_PARAMS_SYMBOL, unknown>)[
       RSC_PARAMS_SYMBOL
     ];
   } catch {
@@ -238,6 +261,7 @@ export function unstable_defineRouter(fns: {
     rscParams: unknown,
     headers: Readonly<Record<string, string>>,
   ) => {
+    setRscPath(rscPath);
     setRscParams(rscParams);
     const pathname = decodeRoutePath(rscPath);
     const pathConfigItem = await getPathConfigItem(pathname);
