@@ -545,15 +545,22 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
       };
     return enhanceFetchRscInternal(
       (fetchRscInternal) =>
-        (rscPath: string, rscParams: unknown, fetchFn = fetch) => {
+        (
+          rscPath: string,
+          rscParams: unknown,
+          prefetchOnly,
+          fetchFn = fetch,
+        ) => {
           const enhancedFetch = enhanceFetch(fetchFn);
+          type Elements = Record<string, unknown>;
           const elementsPromise = fetchRscInternal(
             rscPath,
             rscParams,
+            prefetchOnly as undefined,
             enhancedFetch,
-          );
+          ) as Promise<Elements> | undefined;
           Promise.resolve(elementsPromise)
-            .then((elements) => {
+            .then((elements = {}) => {
               const { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic } =
                 elements;
               if (routeData) {
@@ -571,7 +578,7 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
               }
             })
             .catch(() => {});
-          return elementsPromise;
+          return elementsPromise as never;
         },
     );
   }, [enhanceFetchRscInternal, locationListeners]);
