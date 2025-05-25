@@ -20,6 +20,7 @@ import type {
   AnchorHTMLAttributes,
   ReactElement,
   MouseEvent,
+  TransitionFunction,
 } from 'react';
 
 import { prefetchRsc, Root, Slot, useRefetch } from '../minimal/client.js';
@@ -222,7 +223,7 @@ export type LinkProps = {
   unstable_notPending?: ReactNode;
   unstable_prefetchOnEnter?: boolean;
   unstable_prefetchOnView?: boolean;
-  unstable_startTransition?: ((fn: () => void) => void) | undefined;
+  unstable_startTransition?: ((fn: TransitionFunction) => void) | undefined;
 } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'>;
 
 export function Link({
@@ -251,7 +252,7 @@ export function Link({
   const startTransitionFn =
     unstable_startTransition ||
     ((unstable_pending || unstable_notPending) && startTransition) ||
-    ((fn: () => void) => fn());
+    ((fn: TransitionFunction) => fn());
   const ref = useRef<HTMLAnchorElement>(undefined);
 
   useEffect(() => {
