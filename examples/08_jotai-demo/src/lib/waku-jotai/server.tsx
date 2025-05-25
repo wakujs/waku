@@ -108,10 +108,7 @@ export const Provider = ({
 };
 
 export const RouterProvider = ({ children }: { children: ReactNode }) => {
-  const rscPath = getRscPath();
-  if (rscPath === undefined) {
-    throw new Error('rscPath is undefined');
-  }
+  const rscPath = getRscPath() || '';
   const rscParams = getRscParams() || {};
   if (!isObject(rscParams)) {
     throw new Error('rscParams must be an object');
