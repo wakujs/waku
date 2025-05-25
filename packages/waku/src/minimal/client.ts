@@ -8,6 +8,7 @@ import {
   use,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
@@ -203,7 +204,7 @@ const ElementsContext = createContext<Promise<Elements> | null>(null);
 
 type EnhanceFetchRscInternal = (
   fn: (fetchRscInternal: FetchRscInternal) => FetchRscInternal,
-) => void;
+) => () => void;
 
 const EnhanceFetchRscInternalContext =
   createContext<EnhanceFetchRscInternal | null>(null);
@@ -222,13 +223,25 @@ export const Root = ({
   fetchCache?: FetchCache;
   children: ReactNode;
 }) => {
-  fetchCache[FETCH_RSC_INTERNAL] ??= createFetchRscInternal(fetchCache);
-  const enhanceFetchRscInternal: EnhanceFetchRscInternal = useCallback(
-    (fn) => {
-      fetchCache[FETCH_RSC_INTERNAL] = fn(fetchCache[FETCH_RSC_INTERNAL]!);
-    },
-    [fetchCache],
-  );
+  fetchCache[FETCH_RSC_INTERNAL] = createFetchRscInternal(fetchCache);
+  const enhanceFetchRscInternal: EnhanceFetchRscInternal = useMemo(() => {
+    const enhancers = new Set<Parameters<EnhanceFetchRscInternal>[0]>();
+    const enhance = () => {
+      let fetchRscInternal = createFetchRscInternal(fetchCache);
+      for (const fn of enhancers) {
+        fetchRscInternal = fn(fetchRscInternal);
+      }
+      fetchCache[FETCH_RSC_INTERNAL] = fetchRscInternal;
+    };
+    return (fn) => {
+      enhancers.add(fn);
+      enhance();
+      return () => {
+        enhancers.delete(fn);
+        enhance();
+      };
+    };
+  }, [fetchCache]);
   const [elements, setElements] = useState(() =>
     fetchRsc(initialRscPath || '', initialRscParams, fetchCache),
   );
@@ -269,16 +282,12 @@ const ChildrenContextProvider = memo(ChildrenContext.Provider);
 
 export const Children = () => use(ChildrenContext);
 
-export const useElement = (id: string) => {
+export const useElementsPromise_UNSTABLE = () => {
   const elementsPromise = use(ElementsContext);
   if (!elementsPromise) {
     throw new Error('Missing Root component');
   }
-  const elements = use(elementsPromise);
-  if (id in elements && elements[id] == undefined) {
-    throw new Error('Element cannot be undefined, use null instead: ' + id);
-  }
-  return elements[id];
+  return elementsPromise;
 };
 
 /**
@@ -304,7 +313,12 @@ export const Slot = ({
   children?: ReactNode;
   unstable_fallback?: ReactNode;
 }) => {
-  const element = useElement(id);
+  const elementsPromise = useElementsPromise_UNSTABLE();
+  const elements = use(elementsPromise);
+  if (id in elements && elements[id] === undefined) {
+    throw new Error('Element cannot be undefined, use null instead: ' + id);
+  }
+  const element = elements[id];
   const isValidElement = element !== undefined;
   if (!isValidElement) {
     if (unstable_fallback) {

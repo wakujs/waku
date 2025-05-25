@@ -23,7 +23,14 @@ import type {
   TransitionFunction,
 } from 'react';
 
-import { prefetchRsc, Root, Slot, useRefetch } from '../minimal/client.js';
+import {
+  prefetchRsc,
+  Root,
+  Slot,
+  useElementsPromise_UNSTABLE as useElementsPromise,
+  useRefetch,
+  useEnhanceFetchRscInternal_UNSTABLE as useEnhanceFetchRscInternal,
+} from '../minimal/client.js';
 import {
   encodeRoutePath,
   ROUTE_ID,
@@ -486,14 +493,90 @@ const handleScroll = () => {
   });
 };
 
-const InnerRouter = ({
-  routerData,
-  initialRoute,
-}: {
-  routerData: Required<RouterData>;
-  initialRoute: RouteProps;
-}) => {
-  const [locationListeners, staticPathSet, , has404] = routerData;
+const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
+  const elementsPromise = useElementsPromise();
+  const [has404, setHas404] = useState(false);
+  const staticPathSetRef = useRef(new Set<string>());
+  const cachedIdSetRef = useRef(new Set<string>());
+  useEffect(() => {
+    elementsPromise.then(
+      (elements) => {
+        const {
+          [ROUTE_ID]: routeData,
+          [IS_STATIC_ID]: isStatic,
+          [HAS404_ID]: has404FromElements,
+          ...rest
+        } = elements;
+        if (has404FromElements) {
+          setHas404(true);
+        }
+        if (routeData) {
+          const [path, _query] = routeData as [string, string];
+          if (isStatic) {
+            staticPathSetRef.current.add(path);
+          }
+        }
+        Object.keys(rest).forEach((id) => {
+          cachedIdSetRef.current.add(id);
+        });
+      },
+      () => {},
+    );
+  }, [elementsPromise]);
+
+  const enhanceFetchRscInternal = useEnhanceFetchRscInternal();
+  if (!enhanceFetchRscInternal) {
+    throw new Error('useEnhanceFetchRscInternal must be defined');
+  }
+  const locationListenersRef = useRef(
+    new Set<(path: string, query: string) => void>(),
+  );
+  const locationListeners = locationListenersRef.current;
+  useEffect(() => {
+    const enhanceFetch =
+      (fetchFn: typeof fetch) =>
+      (input: RequestInfo | URL, init: RequestInit = {}) => {
+        const skipStr = JSON.stringify(Array.from(cachedIdSetRef.current));
+        const headers = (init.headers ||= {});
+        if (Array.isArray(headers)) {
+          headers.push([SKIP_HEADER, skipStr]);
+        } else {
+          (headers as Record<string, string>)[SKIP_HEADER] = skipStr;
+        }
+        return fetchFn(input, init);
+      };
+    return enhanceFetchRscInternal(
+      (fetchRscInternal) =>
+        (rscPath: string, rscParams: unknown, fetchFn = fetch) => {
+          const enhancedFetch = enhanceFetch(fetchFn);
+          const elementsPromise = fetchRscInternal(
+            rscPath,
+            rscParams,
+            enhancedFetch,
+          );
+          Promise.resolve(elementsPromise)
+            .then((elements) => {
+              const { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic } =
+                elements;
+              if (routeData) {
+                const [path, query] = routeData as [string, string];
+                // FIXME this check here seems ad-hoc (less readable code)
+                if (
+                  window.location.pathname !== path ||
+                  (!isStatic &&
+                    window.location.search.replace(/^\?/, '') !== query)
+                ) {
+                  locationListeners.forEach((listener) =>
+                    listener(path, query),
+                  );
+                }
+              }
+            })
+            .catch(() => {});
+          return elementsPromise;
+        },
+    );
+  }, [enhanceFetchRscInternal, locationListeners]);
   const refetch = useRefetch();
   const [route, setRoute] = useState(() => ({
     // This is the first initialization of the route, and it has
@@ -569,7 +652,7 @@ const InnerRouter = ({
       refetching.current = [];
       setErr(null);
       const { skipRefetch } = options || {};
-      if (!staticPathSet.has(route.path) && !skipRefetch) {
+      if (!staticPathSetRef.current.has(route.path) && !skipRefetch) {
         const rscPath = encodeRoutePath(route.path);
         const rscParams = createRscParams(route.query);
         try {
@@ -588,21 +671,18 @@ const InnerRouter = ({
       refetching.current = null;
       executeListeners('complete', route);
     },
-    [executeListeners, refetch, staticPathSet],
+    [executeListeners, refetch],
   );
 
-  const prefetchRoute: PrefetchRoute = useCallback(
-    (route) => {
-      if (staticPathSet.has(route.path)) {
-        return;
-      }
-      const rscPath = encodeRoutePath(route.path);
-      const rscParams = createRscParams(route.query);
-      prefetchRsc(rscPath, rscParams);
-      (globalThis as any).__WAKU_ROUTER_PREFETCH__?.(route.path);
-    },
-    [staticPathSet],
-  );
+  const prefetchRoute: PrefetchRoute = useCallback((route) => {
+    if (staticPathSetRef.current.has(route.path)) {
+      return;
+    }
+    const rscPath = encodeRoutePath(route.path);
+    const rscParams = createRscParams(route.query);
+    prefetchRsc(rscPath, rscParams);
+    (globalThis as any).__WAKU_ROUTER_PREFETCH__?.(route.path);
+  }, []);
 
   useEffect(() => {
     const callback = () => {
@@ -676,108 +756,20 @@ const InnerRouter = ({
   );
 };
 
-type Elements = Record<string, unknown>;
-type EnhanceFetch = (fetchFn: typeof fetch) => typeof fetch;
-type EnhanceCreateData = (
-  createData: (responsePromise: Promise<Response>) => Promise<Elements>,
-) => (responsePromise: Promise<Response>) => Promise<Elements>;
-
-// Note: The router data must be a stable mutable object (array).
-type RouterData = [
-  locationListeners?: Set<(path: string, query: string) => void>,
-  staticPathSet?: Set<string>,
-  cachedIdSet?: Set<string>,
-  has404?: boolean,
-];
-
-const DEFAULT_ROUTER_DATA: RouterData = [];
-
 export function Router({
-  routerData = DEFAULT_ROUTER_DATA,
   initialRoute = parseRouteFromLocation(),
-  unstable_enhanceFetch,
-  unstable_enhanceCreateData,
 }: {
-  routerData?: RouterData;
   initialRoute?: RouteProps;
-  unstable_enhanceFetch?: EnhanceFetch;
-  unstable_enhanceCreateData?: EnhanceCreateData;
 }) {
   const initialRscPath = encodeRoutePath(initialRoute.path);
-  const locationListeners = (routerData[0] ||= new Set());
-  const staticPathSet = (routerData[1] ||= new Set());
-  const cachedIdSet = (routerData[2] ||= new Set());
-  const enhanceFetch =
-    (fetchFn: typeof fetch) =>
-    (input: RequestInfo | URL, init: RequestInit = {}) => {
-      const skipStr = JSON.stringify(Array.from(cachedIdSet));
-      const headers = (init.headers ||= {});
-      if (Array.isArray(headers)) {
-        headers.push([SKIP_HEADER, skipStr]);
-      } else {
-        (headers as Record<string, string>)[SKIP_HEADER] = skipStr;
-      }
-      return fetchFn(input, init);
-    };
-  const enhanceCreateData =
-    (
-      createData: (
-        responsePromise: Promise<Response>,
-      ) => Promise<Record<string, unknown>>,
-    ) =>
-    async (responsePromise: Promise<Response>) => {
-      const data = createData(responsePromise);
-      Promise.resolve(data)
-        .then((data) => {
-          if (data && typeof data === 'object') {
-            const {
-              [ROUTE_ID]: routeData,
-              [IS_STATIC_ID]: isStatic,
-              [HAS404_ID]: has404,
-              ...rest
-            } = data;
-            if (routeData) {
-              const [path, query] = routeData as [string, string];
-              // FIXME this check here seems ad-hoc (less readable code)
-              if (
-                window.location.pathname !== path ||
-                (!isStatic &&
-                  window.location.search.replace(/^\?/, '') !== query)
-              ) {
-                locationListeners.forEach((listener) => listener(path, query));
-              }
-              if (isStatic) {
-                staticPathSet.add(path);
-              }
-            }
-            if (has404) {
-              routerData[3] = true;
-            }
-            Object.keys(rest).forEach((id) => {
-              cachedIdSet.add(id);
-            });
-          }
-        })
-        .catch(() => {});
-      return data;
-    };
   const initialRscParams = createRscParams(initialRoute.query);
   return createElement(
     Root as FunctionComponent<Omit<ComponentProps<typeof Root>, 'children'>>,
     {
       initialRscPath,
       initialRscParams,
-      unstable_enhanceFetch: unstable_enhanceFetch
-        ? (fn) => unstable_enhanceFetch(enhanceFetch(fn))
-        : enhanceFetch,
-      unstable_enhanceCreateData: unstable_enhanceCreateData
-        ? (fn) => unstable_enhanceCreateData(enhanceCreateData(fn))
-        : enhanceCreateData,
     },
-    createElement(InnerRouter, {
-      routerData: routerData as Required<RouterData>,
-      initialRoute,
-    }),
+    createElement(InnerRouter, { initialRoute }),
   );
 }
 
