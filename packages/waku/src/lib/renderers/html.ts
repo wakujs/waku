@@ -9,7 +9,6 @@ import type { ConfigDev, ConfigPrd } from '../config.js';
 import { SRC_MAIN } from '../builder/constants.js';
 import { concatUint8Arrays } from '../utils/stream.js';
 import { filePathToFileURL } from '../utils/path.js';
-import { encodeRscPath } from './utils.js';
 import { renderRsc, renderRscElement, getExtractFormState } from './rsc.js';
 import type { HandlerContext, ErrorCallback } from '../middleware/types.js';
 
@@ -39,7 +38,7 @@ const CLOSING_HEAD = '</head>';
 const CLOSING_BODY = '</body>';
 
 const injectHtmlHead = (
-  urlForFakeFetch: string,
+  rscPathForFakeFetch: string,
   htmlHead: string,
   mainJsPath: string, // for DEV only, pass `''` for PRD
 ) => {
@@ -61,12 +60,12 @@ const injectHtmlHead = (
       // HACK This is very brittle
       // TODO(daishi) find a better way
       const removed = matchPrefetched[2]!.replace(
-        new RegExp(`  '${urlForFakeFetch}': .*?,`),
+        new RegExp(`  '${rscPathForFakeFetch}': .*?,`),
         '',
       );
       head =
         matchPrefetched[1] +
-        `  '${urlForFakeFetch}': ${fakeFetchCode},` +
+        `  '${rscPathForFakeFetch}': ${fakeFetchCode},` +
         removed +
         matchPrefetched[3];
     }
@@ -76,7 +75,7 @@ globalThis.__WAKU_HYDRATE__ = true;
     if (!matchPrefetched) {
       code += `
 globalThis.__WAKU_PREFETCHED__ = {
-  '${urlForFakeFetch}': ${fakeFetchCode},
+  '${rscPathForFakeFetch}': ${fakeFetchCode},
 };
 `;
     }
@@ -253,7 +252,7 @@ export async function renderHtml(
       .pipeThrough(rectifyHtml())
       .pipeThrough(
         injectHtmlHead(
-          config.basePath + config.rscBase + '/' + encodeRscPath(rscPath),
+          rscPath,
           htmlHead,
           isDev
             ? `${config.basePath}${(config as ConfigDev).srcDir}/${SRC_MAIN}`
