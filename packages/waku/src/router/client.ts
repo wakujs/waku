@@ -516,9 +516,7 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
             staticPathSetRef.current.add(path);
           }
         }
-        Object.keys(rest).forEach((id) => {
-          cachedIdSetRef.current.add(id);
-        });
+        cachedIdSetRef.current = new Set(Object.keys(rest));
       },
       () => {},
     );
