@@ -225,7 +225,7 @@ export const Root = ({
   fetchCache?: FetchCache;
   children: ReactNode;
 }) => {
-  fetchCache[FETCH_RSC_INTERNAL] = createFetchRscInternal(fetchCache);
+  fetchCache[FETCH_RSC_INTERNAL] ||= createFetchRscInternal(fetchCache);
   const enhanceFetchRscInternal: EnhanceFetchRscInternal = useMemo(() => {
     const enhancers = new Set<Parameters<EnhanceFetchRscInternal>[0]>();
     const enhance = () => {
