@@ -91,27 +91,48 @@ type FetchCache = {
   [SET_ELEMENTS]?: SetElements;
 };
 
-const defaultFetchCache: FetchCache = {};
+// TODO: This does't feel like an ideal solution.
+type PrefetchedEntry =
+  | Promise<Response> // from html
+  | [elementsPromise: Promise<Elements>, rscParams: unknown]; // from prefetch
 
-const prefetchedParams = new WeakMap<Promise<unknown>, unknown>();
-const prefetchedTemporaryReferences = new WeakMap<
-  Promise<unknown>,
-  ReturnType<typeof createTemporaryReferenceSet>
->();
+const defaultFetchCache: FetchCache = {};
 
 const fetchRscInternal = (
   rscPath: string,
   rscParams: unknown,
-  temporaryReferences: ReturnType<typeof createTemporaryReferenceSet>,
+  fetchFn = fetch,
+  fetchCache = defaultFetchCache,
 ) => {
+  const prefetched: Record<string, PrefetchedEntry> = ((
+    globalThis as any
+  ).__WAKU_PREFETCHED__ ||= {});
+  let prefetchedEntry = prefetched[rscPath];
+  delete prefetched[rscPath];
+  if (Array.isArray(prefetchedEntry)) {
+    if (prefetchedEntry[1] === rscParams) {
+      delete prefetched[rscPath];
+      return prefetchedEntry[0];
+    } else {
+      prefetchedEntry = undefined;
+    }
+  }
+  const temporaryReferences = createTemporaryReferenceSet();
   const url = BASE_RSC_PATH + encodeRscPath(rscPath);
-  return rscParams === undefined
-    ? fetch(url)
-    : rscParams instanceof URLSearchParams
-      ? fetch(url + '?' + rscParams)
-      : encodeReply(rscParams, { temporaryReferences }).then((body) =>
-          fetch(url, { method: 'POST', body }),
-        );
+  const responsePromise = prefetchedEntry
+    ? prefetchedEntry
+    : rscParams === undefined
+      ? fetchFn(url)
+      : rscParams instanceof URLSearchParams
+        ? fetchFn(url + '?' + rscParams)
+        : encodeReply(rscParams, { temporaryReferences }).then((body) =>
+            fetchFn(url, { method: 'POST', body }),
+          );
+  return createFromFetch<Elements>(checkStatus(responsePromise), {
+    callServer: (funcId: string, args: unknown[]) =>
+      unstable_callServerRsc(funcId, args, fetchCache),
+    temporaryReferences,
+  });
 };
 
 /**
@@ -123,22 +144,10 @@ export const unstable_callServerRsc = async (
   args: unknown[],
   fetchCache = defaultFetchCache,
 ) => {
-  const temporaryReferences = createTemporaryReferenceSet();
-  const createData = (responsePromise: Promise<Response>) =>
-    createFromFetch<Elements>(checkStatus(responsePromise), {
-      callServer: (funcId: string, args: unknown[]) =>
-        unstable_callServerRsc(funcId, args, fetchCache),
-      temporaryReferences,
-    });
   const rscPath = encodeFuncId(funcId);
   const rscParams =
     args.length === 1 && args[0] instanceof URLSearchParams ? args[0] : args;
-  const responsePromise = fetchRscInternal(
-    rscPath,
-    rscParams,
-    temporaryReferences,
-  );
-  const { _value: value, ...data } = await createData(responsePromise);
+  const { _value: value, ...data } = await fetchRscInternal(rscPath, rscParams);
   if (Object.keys(data).length) {
     startTransition(() => {
       fetchCache[SET_ELEMENTS]?.((prev) => mergeElementsPromise(prev, data));
@@ -156,43 +165,27 @@ export const fetchRsc = (
   if (entry && entry[0] === rscPath && entry[1] === rscParams) {
     return entry[2];
   }
-  const prefetched = ((globalThis as any).__WAKU_PREFETCHED__ ||= {});
-  const hasValidPrefetchedResponse =
-    !!prefetched[rscPath] &&
-    // HACK .has() is for the initial hydration
-    // It's limited and may result in a wrong result. FIXME
-    (!prefetchedParams.has(prefetched[rscPath]) ||
-      prefetchedParams.get(prefetched[rscPath]) === rscParams);
-  const temporaryReferences =
-    prefetchedTemporaryReferences.get(prefetched[rscPath]) ||
-    createTemporaryReferenceSet();
-  const createData = (responsePromise: Promise<Response>) =>
-    createFromFetch<Elements>(checkStatus(responsePromise), {
-      callServer: (funcId: string, args: unknown[]) =>
-        unstable_callServerRsc(funcId, args, fetchCache),
-      temporaryReferences,
-    });
-  const responsePromise = hasValidPrefetchedResponse
-    ? prefetched[rscPath]
-    : fetchRscInternal(rscPath, rscParams, temporaryReferences);
-  delete prefetched[rscPath];
-  const data = createData(responsePromise);
+  const data = fetchRscInternal(rscPath, rscParams, undefined, fetchCache);
   fetchCache[ENTRY] = [rscPath, rscParams, data];
   return data;
 };
 
-export const prefetchRsc = (rscPath: string, rscParams?: unknown): void => {
-  const prefetched = ((globalThis as any).__WAKU_PREFETCHED__ ||= {});
-  if (!(rscPath in prefetched)) {
-    const temporaryReferences = createTemporaryReferenceSet();
-    prefetched[rscPath] = fetchRscInternal(
-      rscPath,
-      rscParams,
-      temporaryReferences,
-    );
-    prefetchedParams.set(prefetched[rscPath], rscParams);
-    prefetchedTemporaryReferences.set(prefetched[rscPath], temporaryReferences);
+export const prefetchRsc = (
+  rscPath: string,
+  rscParams?: unknown,
+  fetchCache = defaultFetchCache,
+): void => {
+  const prefetched: Record<string, PrefetchedEntry> = ((
+    globalThis as any
+  ).__WAKU_PREFETCHED__ ||= {});
+  const prefetchedEntry = prefetched[rscPath];
+  if (Array.isArray(prefetchedEntry) && prefetchedEntry[1] === rscParams) {
+    return; // already prefetched
   }
+  prefetched[rscPath] = [
+    fetchRscInternal(rscPath, rscParams, undefined, fetchCache),
+    rscParams,
+  ];
 };
 
 const RefetchContext = createContext<
