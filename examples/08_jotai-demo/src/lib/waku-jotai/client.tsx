@@ -106,6 +106,7 @@ export const SyncAtoms = ({
     return () => controller.abort();
   }, [store, atomsPromise, refetch, rscPath, rscParams]);
   useEffect(() => {
+    const rscParamsCache = new WeakMap<object, unknown>();
     return enhanceFetchRscInternal(
       (fetchRscInternal) =>
         (
@@ -115,10 +116,17 @@ export const SyncAtoms = ({
           fetchFn = fetch,
         ) => {
           const atoms = atomsMap.current.get(rscPath);
-          if (atoms) {
+          if (atoms?.size) {
             const atomValues = store.get(createAtomValuesAtom(atoms));
             prevAtomValues.current = atomValues;
-            rscParams = patchRscParams(rscParams, atoms, atomValues);
+            rscParams =
+              rscParamsCache.get(atoms) ||
+              patchRscParams(rscParams, atoms, atomValues);
+            if (prefetchOnly) {
+              rscParamsCache.set(atoms, rscParams);
+            } else {
+              rscParamsCache.delete(atoms);
+            }
           }
           type Elements = Record<string, unknown>;
           const elementsPromise = fetchRscInternal(
