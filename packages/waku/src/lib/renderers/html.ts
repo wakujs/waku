@@ -8,7 +8,6 @@ import parse from 'html-react-parser';
 import type * as WakuMinimalClientType from '../../minimal/client.js';
 import type { ConfigDev, ConfigPrd } from '../config.js';
 import { SRC_MAIN } from '../builder/constants.js';
-import { concatUint8Arrays } from '../utils/stream.js';
 import { filePathToFileURL } from '../utils/path.js';
 import { renderRsc, renderRscElement, getExtractFormState } from './rsc.js';
 import type { HandlerContext, ErrorCallback } from '../middleware/types.js';
@@ -73,33 +72,6 @@ globalThis.__WAKU_PREFETCHED__ = {
   }
   // @ts-expect-error invalid type
   return parse(htmlHead);
-};
-
-// HACK for now, do we want to use HTML parser?
-const rectifyHtml = () => {
-  const pending: Uint8Array[] = [];
-  const decoder = new TextDecoder();
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  return new TransformStream({
-    transform(chunk, controller) {
-      if (!(chunk instanceof Uint8Array)) {
-        throw new Error('Unknown chunk type');
-      }
-      pending.push(chunk);
-      if (/<\/\w+>$/.test(decoder.decode(chunk))) {
-        clearTimeout(timer);
-        timer = setTimeout(() => {
-          controller.enqueue(concatUint8Arrays(pending.splice(0)));
-        });
-      }
-    },
-    flush(controller) {
-      clearTimeout(timer);
-      if (pending.length) {
-        controller.enqueue(concatUint8Arrays(pending.splice(0)));
-      }
-    },
-  });
 };
 
 // FIXME Why does it error on the first and second time?
@@ -201,9 +173,8 @@ export async function renderHtml(
         },
       },
     );
-    const injected: ReadableStream & { allReady?: Promise<void> } = readable
-      .pipeThrough(rectifyHtml())
-      .pipeThrough(injectRSCPayload(stream2));
+    const injected: ReadableStream & { allReady?: Promise<void> } =
+      readable.pipeThrough(injectRSCPayload(stream2));
     injected.allReady = readable.allReady;
     return injected as never;
   } catch (e) {

@@ -184,22 +184,30 @@ const createMainViteServer = (
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
     let headSent = false;
+    let data = '';
     return new TransformStream({
       transform(chunk, controller) {
         if (!(chunk instanceof Uint8Array)) {
           throw new Error('Unknown chunk type');
         }
         if (!headSent) {
+          data += decoder.decode(chunk);
+          if (!data.includes('</head>')) {
+            return;
+          }
           headSent = true;
-          let data = decoder.decode(chunk);
           // FIXME without removing async, Vite will move it
           // to the proxy cache, which breaks __WAKU_PUSH__.
           data = data.replace(/<script type="module" async>/, '<script>');
+          const idx = data.indexOf('</head>');
+          const reamining = data.slice(idx + '</head>'.length);
+          data = data.slice(0, idx + '</head>'.length);
           return new Promise<void>((resolve, reject) => {
             vite
               .transformIndexHtml(pathname, data)
               .then((result) => {
                 controller.enqueue(encoder.encode(result));
+                controller.enqueue(encoder.encode(reamining));
                 resolve();
               })
               .catch(reject);
