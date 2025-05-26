@@ -19,11 +19,30 @@ const createAtomValuesAtom = (atoms: Map<Atom<unknown>, string>) =>
       ),
   );
 
-const serializeAtomValues = (
+const patchRscParams = (
+  rscParams: unknown,
   atoms: Map<Atom<unknown>, string>,
   atomValues: Map<Atom<unknown>, unknown>,
-) =>
-  new Map(Array.from(atomValues).map(([a, value]) => [atoms.get(a)!, value]));
+) => {
+  let newRscParams: Record<string, unknown>;
+  if (
+    // waku/router convention
+    rscParams instanceof URLSearchParams &&
+    rscParams.size === 1 &&
+    rscParams.has('query')
+  ) {
+    newRscParams = { query: rscParams.get('query') };
+  } else if (isObject(rscParams)) {
+    newRscParams = { ...rscParams };
+  } else {
+    throw new Error('rscParams must be an object');
+  }
+  const serializedAtomValues = new Map(
+    Array.from(atomValues).map(([a, value]) => [atoms.get(a)!, value]),
+  );
+  newRscParams.jotai_atomValues = serializedAtomValues;
+  return newRscParams;
+};
 
 export const SyncAtoms = ({
   atomsPromise,
@@ -62,11 +81,9 @@ export const SyncAtoms = ({
       const atomValuesAtom = createAtomValuesAtom(atoms);
       const callback = (atomValues: Map<Atom<unknown>, unknown>) => {
         prevAtomValues.current = atomValues;
-        const rscParams = {
-          jotai_atomValues: serializeAtomValues(atoms, atomValues),
-        };
+        const newRscParams = patchRscParams(rscParams, atoms, atomValues);
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        refetch(rscPath, rscParams);
+        refetch(rscPath, newRscParams);
       };
       const unsub = store.sub(atomValuesAtom, () => {
         callback(store.get(atomValuesAtom));
@@ -97,15 +114,11 @@ export const SyncAtoms = ({
           prefetchOnly,
           fetchFn = fetch,
         ) => {
-          rscParams ??= {};
-          if (!isObject(rscParams)) {
-            throw new Error('rscParams must be an object');
-          }
           const atoms = atomsMap.current.get(rscPath);
           if (atoms) {
             const atomValues = store.get(createAtomValuesAtom(atoms));
             prevAtomValues.current = atomValues;
-            rscParams.jotai_atomValues = serializeAtomValues(atoms, atomValues);
+            rscParams = patchRscParams(rscParams, atoms, atomValues);
           }
           type Elements = Record<string, unknown>;
           const elementsPromise = fetchRscInternal(
