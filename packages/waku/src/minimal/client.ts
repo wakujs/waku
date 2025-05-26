@@ -229,8 +229,11 @@ type EnhanceFetchRscInternal = (
   fn: (fetchRscInternal: FetchRscInternal) => FetchRscInternal,
 ) => () => void;
 
-const EnhanceFetchRscInternalContext =
-  createContext<EnhanceFetchRscInternal | null>(null);
+const EnhanceFetchRscInternalContext = createContext<EnhanceFetchRscInternal>(
+  () => {
+    throw new Error('Missing Root component');
+  },
+);
 
 export const useEnhanceFetchRscInternal_UNSTABLE = () =>
   use(EnhanceFetchRscInternalContext);

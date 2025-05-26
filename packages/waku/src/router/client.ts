@@ -523,9 +523,6 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
   }, [elementsPromise]);
 
   const enhanceFetchRscInternal = useEnhanceFetchRscInternal();
-  if (!enhanceFetchRscInternal) {
-    throw new Error('enhanceFetchRscInternal must be defined');
-  }
   const locationListenersRef = useRef(
     new Set<(path: string, query: string) => void>(),
   );
