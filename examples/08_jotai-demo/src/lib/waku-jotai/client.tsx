@@ -37,7 +37,7 @@ export const SyncAtoms = ({
   const store = useStore();
   const enhanceFetchRscInternal = useEnhanceFetchRscInternal();
   if (!enhanceFetchRscInternal) {
-    throw new Error('useEnhanceFetchRscInternal must be defined');
+    throw new Error('enhanceFetchRscInternal is undefined');
   }
   const refetch = useRefetch();
   const prevAtomValues = useRef(new Map<Atom<unknown>, unknown>());
