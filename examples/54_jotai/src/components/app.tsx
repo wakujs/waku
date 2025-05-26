@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { atom } from 'jotai/vanilla';
 
-import { getStore, BaseProvider } from '../lib/waku-jotai/server';
+import { getStore, Provider } from '../lib/waku-jotai/server';
 import { Counter, countAtom } from './counter';
 
 // server-only atom
@@ -35,11 +35,11 @@ const MyApp = async ({ name }: { name: string }) => {
 
 const App = ({ name, rscParams }: { name: string; rscParams: unknown }) => {
   return (
-    <BaseProvider rscPath="" rscParams={rscParams}>
+    <Provider rscPath="" rscParams={rscParams}>
       <Suspense fallback="Loading...">
         <MyApp name={name} />
       </Suspense>
-    </BaseProvider>
+    </Provider>
   );
 };
 
