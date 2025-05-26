@@ -1,64 +1,68 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useRefetch } from 'waku/minimal/client';
+import {
+  useEnhanceFetchRscInternal_UNSTABLE as useEnhanceFetchRscInternal,
+  useRefetch,
+} from 'waku/minimal/client';
 import { atom, useStore } from 'jotai';
 import type { Atom } from 'jotai';
 
-// waku/router/client internals
-const ROUTE_PREFIX = 'R';
-const encodeRoutePath = (path: string): string => {
-  if (!path.startsWith('/')) {
-    throw new Error('Path must start with `/`: ' + path);
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const createAtomValuesAtom = (atoms: Map<Atom<unknown>, string>) =>
+  atom(
+    (get) =>
+      new Map<Atom<unknown>, unknown>(
+        Array.from(atoms).map(([a]) => [a, get(a)]),
+      ),
+  );
+
+const patchRscParams = (
+  rscParams: unknown,
+  atoms: Map<Atom<unknown>, string>,
+  atomValues: Map<Atom<unknown>, unknown>,
+) => {
+  let newRscParams: Record<string, unknown>;
+  if (
+    // waku/router convention
+    rscParams instanceof URLSearchParams &&
+    rscParams.size === 1 &&
+    rscParams.has('query')
+  ) {
+    newRscParams = { query: rscParams.get('query') };
+  } else if (isObject(rscParams)) {
+    newRscParams = { ...rscParams };
+  } else {
+    throw new Error('rscParams must be an object');
   }
-  if (path === '/') {
-    return ROUTE_PREFIX + '/_root';
-  }
-  if (path.endsWith('/')) {
-    throw new Error('Path must not end with `/`: ' + path);
-  }
-  return ROUTE_PREFIX + path;
-};
-const normalizeRoutePath = (path: string) => {
-  for (const suffix of ['/', '/index.html']) {
-    if (path.endsWith(suffix)) {
-      return path.slice(0, -suffix.length) || '/';
-    }
-  }
-  return path;
+  const serializedAtomValues = new Map(
+    Array.from(atomValues).map(([a, value]) => [atoms.get(a)!, value]),
+  );
+  newRscParams.jotai_atomValues = serializedAtomValues;
+  return newRscParams;
 };
 
-const createRscPathAndRscParams = (
-  _dummy: string,
-  rscParams: {
-    jotai_atomValues: Map<string, unknown>;
-  },
-): [string, unknown] => {
-  const { pathname, searchParams } = new URL(window.location.href);
-  const rscPath = encodeRoutePath(normalizeRoutePath(pathname));
-  (rscParams as unknown as { query: string }).query = searchParams.toString();
-  return [rscPath, rscParams];
-};
-
-const defaultCreateRscPathAndRscParams = (
-  rscPath: string,
-  rscParams: {
-    jotai_atomValues: Map<string, unknown>;
-  },
-): [string, unknown] => [rscPath, rscParams];
-
-export const BaseSyncAtoms = ({
+export const SyncAtoms = ({
   atomsPromise,
-  rscPath = '',
-  createRscPathAndRscParams = defaultCreateRscPathAndRscParams,
+  rscPath,
+  rscParams,
 }: {
   atomsPromise: Promise<Map<Atom<unknown>, string>>;
-  rscPath?: string;
-  createRscPathAndRscParams?: typeof defaultCreateRscPathAndRscParams;
+  rscPath: string;
+  rscParams: unknown;
 }) => {
   const store = useStore();
+  const enhanceFetchRscInternal = useEnhanceFetchRscInternal();
   const refetch = useRefetch();
-  const prevAtomValues = useRef<Map<Atom<unknown>, unknown>>(new Map());
+  const prevAtomValues = useRef(new Map<Atom<unknown>, unknown>());
+  const atomsMap = useRef(
+    new Map<
+      string, // rscPath
+      Map<Atom<unknown>, string> // accumulated atoms (LIMITATION: increasing only)
+    >(),
+  );
   useEffect(() => {
     const controller = new AbortController();
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -66,22 +70,20 @@ export const BaseSyncAtoms = ({
       if (controller.signal.aborted) {
         return;
       }
-      const atomValuesAtom = atom(
-        (get) =>
-          new Map<Atom<unknown>, unknown>(
-            Array.from(atoms).map(([a]) => [a, get(a)]),
-          ),
-      );
+      let atomsForRscPath = atomsMap.current.get(rscPath);
+      if (!atomsForRscPath) {
+        atomsForRscPath = new Map();
+        atomsMap.current.set(rscPath, atomsForRscPath);
+      }
+      atoms.forEach((id, atom) => {
+        atomsForRscPath.set(atom, id);
+      });
+      const atomValuesAtom = createAtomValuesAtom(atoms);
       const callback = (atomValues: Map<Atom<unknown>, unknown>) => {
         prevAtomValues.current = atomValues;
-        const serializedAtomValues = new Map(
-          Array.from(atomValues).map(([a, value]) => [atoms.get(a)!, value]),
-        );
-        const rscParams = {
-          jotai_atomValues: serializedAtomValues,
-        };
+        const newRscParams = patchRscParams(rscParams, atoms, atomValues);
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        refetch(...createRscPathAndRscParams(rscPath, rscParams));
+        refetch(rscPath, newRscParams);
       };
       const unsub = store.sub(atomValuesAtom, () => {
         callback(store.get(atomValuesAtom));
@@ -102,18 +104,40 @@ export const BaseSyncAtoms = ({
       });
     });
     return () => controller.abort();
-  }, [store, atomsPromise, refetch, rscPath, createRscPathAndRscParams]);
+  }, [store, atomsPromise, refetch, rscPath, rscParams]);
+  useEffect(() => {
+    const rscParamsCache = new WeakMap<object, unknown>();
+    return enhanceFetchRscInternal(
+      (fetchRscInternal) =>
+        (
+          rscPath: string,
+          rscParams: unknown,
+          prefetchOnly,
+          fetchFn = fetch,
+        ) => {
+          const atoms = atomsMap.current.get(rscPath);
+          if (atoms?.size) {
+            const atomValues = store.get(createAtomValuesAtom(atoms));
+            prevAtomValues.current = atomValues;
+            rscParams =
+              rscParamsCache.get(atoms) ||
+              patchRscParams(rscParams, atoms, atomValues);
+            if (prefetchOnly) {
+              rscParamsCache.set(atoms, rscParams);
+            } else {
+              rscParamsCache.delete(atoms);
+            }
+          }
+          type Elements = Record<string, unknown>;
+          const elementsPromise = fetchRscInternal(
+            rscPath,
+            rscParams,
+            prefetchOnly as undefined,
+            fetchFn,
+          ) as Promise<Elements> | undefined;
+          return elementsPromise as never;
+        },
+    );
+  }, [store, enhanceFetchRscInternal]);
   return null;
 };
-
-export const SyncAtoms = ({
-  atomsPromise,
-}: {
-  atomsPromise: Promise<Map<Atom<unknown>, string>>;
-}) => (
-  <BaseSyncAtoms
-    atomsPromise={atomsPromise}
-    rscPath={''}
-    createRscPathAndRscParams={createRscPathAndRscParams}
-  />
-);

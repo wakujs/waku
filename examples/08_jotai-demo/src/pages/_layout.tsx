@@ -2,7 +2,7 @@ import '../styles.css';
 
 import type { ReactNode } from 'react';
 
-import { Provider } from '../lib/waku-jotai/server';
+import { RouterProvider } from '../lib/waku-jotai/server';
 import { Header } from '../components/header';
 import { Footer } from '../components/footer';
 
@@ -17,7 +17,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
       <link rel="icon" type="image/png" href={data.icon} />
       <Header />
       <main className="m-6 flex items-center *:min-h-64 *:min-w-64 lg:m-0 lg:min-h-svh lg:justify-center">
-        <Provider>{children}</Provider>
+        <RouterProvider>{children}</RouterProvider>
       </main>
       <Footer />
     </div>
