@@ -50,6 +50,15 @@ for (const mode of ['DEV', 'PRD'] as const) {
       ).toBeVisible();
     });
 
+    test('check hydration error', async ({ page }) => {
+      test.skip(mode !== 'DEV');
+      const errors: string[] = [];
+      page.on('pageerror', (err) => errors.push(err.message));
+      await page.goto(`http://localhost:${port}/`);
+      await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+      expect(errors.join('\n')).not.toContain('hydration-mismatch');
+    });
+
     test('api hi', async () => {
       const res = await fetch(`http://localhost:${port}/api/hi`);
       expect(res.status).toBe(200);
