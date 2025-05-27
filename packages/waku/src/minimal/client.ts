@@ -135,11 +135,16 @@ const createFetchRscInternal =
     ).__WAKU_PREFETCHED__ ||= {});
     let prefetchedEntry = prefetchOnly ? undefined : prefetched[rscPath];
     delete prefetched[rscPath];
-    if (prefetchedEntry && !Array.isArray(prefetchedEntry)) {
-      prefetchedEntry = [prefetchedEntry];
-    }
-    if (prefetchedEntry && prefetchedEntry[1] !== rscParams) {
-      prefetchedEntry = undefined;
+    if (prefetchedEntry) {
+      if (Array.isArray(prefetchedEntry)) {
+        if (prefetchedEntry[1] !== rscParams) {
+          prefetchedEntry = undefined;
+        }
+      } else {
+        // We don't check rscParams for the initial hydration
+        // It's limited and may result in a wrong result. FIXME
+        prefetchedEntry = [prefetchedEntry];
+      }
     }
     const temporaryReferences =
       prefetchedEntry?.[2] || createTemporaryReferenceSet();
