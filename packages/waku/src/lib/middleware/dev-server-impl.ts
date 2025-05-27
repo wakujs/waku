@@ -75,6 +75,19 @@ const createStreamPair = (): [Writable, Promise<ReadableStream | null>] => {
   return [writable, promise];
 };
 
+const splitByLastEndTag = (input: string): readonly [string, string] => {
+  const regex = /<\/[^>]+>/g;
+  let lastIndex = -1;
+  while (regex.exec(input) !== null) {
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex >= 0) {
+    return [input.slice(0, lastIndex), input.slice(lastIndex)];
+  } else {
+    return [input, ''];
+  }
+};
+
 const createMainViteServer = (
   env: Record<string, string>,
   configPromise: ReturnType<typeof resolveConfigDev>,
@@ -184,22 +197,28 @@ const createMainViteServer = (
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
     let headSent = false;
+    let data = '';
     return new TransformStream({
       transform(chunk, controller) {
         if (!(chunk instanceof Uint8Array)) {
           throw new Error('Unknown chunk type');
         }
         if (!headSent) {
+          data += decoder.decode(chunk);
+          if (!data.includes('</head>')) {
+            return;
+          }
           headSent = true;
-          let data = decoder.decode(chunk);
           // FIXME without removing async, Vite will move it
           // to the proxy cache, which breaks __WAKU_PUSH__.
           data = data.replace(/<script type="module" async>/, '<script>');
+          const [data1, data2] = splitByLastEndTag(data);
           return new Promise<void>((resolve, reject) => {
             vite
-              .transformIndexHtml(pathname, data)
+              .transformIndexHtml(pathname, data1)
               .then((result) => {
                 controller.enqueue(encoder.encode(result));
+                controller.enqueue(encoder.encode(data2));
                 resolve();
               })
               .catch(reject);

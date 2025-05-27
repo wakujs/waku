@@ -3,11 +3,11 @@ import type { ReactNode, FunctionComponent, ComponentProps } from 'react';
 import type * as RDServerType from 'react-dom/server.edge';
 import type { default as RSDWClientType } from 'react-server-dom-webpack/client.edge';
 import { injectRSCPayload } from 'rsc-html-stream/server';
+import parse from 'html-react-parser';
 
 import type * as WakuMinimalClientType from '../../minimal/client.js';
 import type { ConfigDev, ConfigPrd } from '../config.js';
 import { SRC_MAIN } from '../builder/constants.js';
-import { concatUint8Arrays } from '../utils/stream.js';
 import { filePathToFileURL } from '../utils/path.js';
 import { renderRsc, renderRscElement, getExtractFormState } from './rsc.js';
 import type { HandlerContext, ErrorCallback } from '../middleware/types.js';
@@ -34,126 +34,44 @@ Promise.resolve(new Response(new ReadableStream({
   .map((line) => line.trim())
   .join('');
 
-const CLOSING_HEAD = '</head>';
-const CLOSING_BODY = '</body>';
-
-const injectHtmlHead = (
+const parseHtmlHead = (
   rscPathForFakeFetch: string,
   htmlHead: string,
   mainJsPath: string, // for DEV only, pass `''` for PRD
 ) => {
-  const modifyHeadAndBody = (data: string) => {
-    const closingHeadIndex = data.indexOf(CLOSING_HEAD);
-    let [head, body] =
-      closingHeadIndex === -1
-        ? ['<head>' + CLOSING_HEAD, data]
-        : [
-            data.slice(0, closingHeadIndex + CLOSING_HEAD.length),
-            data.slice(closingHeadIndex + CLOSING_HEAD.length),
-          ];
-    head = head.slice(0, -CLOSING_HEAD.length) + htmlHead + CLOSING_HEAD;
-    const matchPrefetched = head.match(
-      // HACK This is very brittle
-      /(.*<script[^>]*>\nglobalThis\.__WAKU_PREFETCHED__ = {\n)(.*?)(\n};.*)/s,
+  const matchPrefetched = htmlHead.match(
+    // HACK This is very brittle
+    /(.*<script[^>]*>\nglobalThis\.__WAKU_PREFETCHED__ = {\n)(.*?)(\n};.*)/s,
+  );
+  if (matchPrefetched) {
+    // HACK This is very brittle
+    // TODO(daishi) find a better way
+    const removed = matchPrefetched[2]!.replace(
+      new RegExp(`  '${rscPathForFakeFetch}': .*?,`),
+      '',
     );
-    if (matchPrefetched) {
-      // HACK This is very brittle
-      // TODO(daishi) find a better way
-      const removed = matchPrefetched[2]!.replace(
-        new RegExp(`  '${rscPathForFakeFetch}': .*?,`),
-        '',
-      );
-      head =
-        matchPrefetched[1] +
-        `  '${rscPathForFakeFetch}': ${fakeFetchCode},` +
-        removed +
-        matchPrefetched[3];
-    }
-    let code = `
+    htmlHead =
+      matchPrefetched[1] +
+      `  '${rscPathForFakeFetch}': ${fakeFetchCode},` +
+      removed +
+      matchPrefetched[3];
+  }
+  let code = `
 globalThis.__WAKU_HYDRATE__ = true;
 `;
-    if (!matchPrefetched) {
-      code += `
+  if (!matchPrefetched) {
+    code += `
 globalThis.__WAKU_PREFETCHED__ = {
   '${rscPathForFakeFetch}': ${fakeFetchCode},
 };
 `;
-    }
-    if (code) {
-      head =
-        head.slice(0, -CLOSING_HEAD.length) +
-        `<script type="module" async>${code}</script>` +
-        CLOSING_HEAD;
-    }
-    if (mainJsPath) {
-      const closingBodyIndex = body.indexOf(CLOSING_BODY);
-      const [firstPart, secondPart] =
-        closingBodyIndex === -1
-          ? [body, '']
-          : [body.slice(0, closingBodyIndex), body.slice(closingBodyIndex)];
-      body =
-        firstPart +
-        `<script src="${mainJsPath}" async type="module"></script>` +
-        secondPart;
-    }
-    return head + body;
-  };
-  const encoder = new TextEncoder();
-  const decoder = new TextDecoder();
-  let headSent = false;
-  let data = '';
-  return new TransformStream({
-    transform(chunk, controller) {
-      if (!(chunk instanceof Uint8Array)) {
-        throw new Error('Unknown chunk type');
-      }
-      data += decoder.decode(chunk);
-      if (!headSent) {
-        if (!/<body[^>]*>/.test(data)) {
-          return;
-        }
-        headSent = true;
-        data = modifyHeadAndBody(data);
-      }
-      controller.enqueue(encoder.encode(data));
-      data = '';
-    },
-    flush(controller) {
-      if (!headSent) {
-        headSent = true;
-        data = modifyHeadAndBody(data);
-        controller.enqueue(encoder.encode(data));
-        data = '';
-      }
-    },
-  });
-};
-
-// HACK for now, do we want to use HTML parser?
-const rectifyHtml = () => {
-  const pending: Uint8Array[] = [];
-  const decoder = new TextDecoder();
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  return new TransformStream({
-    transform(chunk, controller) {
-      if (!(chunk instanceof Uint8Array)) {
-        throw new Error('Unknown chunk type');
-      }
-      pending.push(chunk);
-      if (/<\/\w+>$/.test(decoder.decode(chunk))) {
-        clearTimeout(timer);
-        timer = setTimeout(() => {
-          controller.enqueue(concatUint8Arrays(pending.splice(0)));
-        });
-      }
-    },
-    flush(controller) {
-      clearTimeout(timer);
-      if (pending.length) {
-        controller.enqueue(concatUint8Arrays(pending.splice(0)));
-      }
-    },
-  });
+  }
+  htmlHead += `<script type="module" async>${code}</script>`;
+  if (mainJsPath) {
+    htmlHead += `<script src="${mainJsPath}" async type="module"></script>`;
+  }
+  // @ts-expect-error invalid type
+  return parse(htmlHead);
 };
 
 // FIXME Why does it error on the first and second time?
@@ -230,6 +148,13 @@ export async function renderHtml(
         >,
         { elementsPromise },
         htmlNode as any,
+        parseHtmlHead(
+          rscPath,
+          htmlHead,
+          isDev
+            ? `${config.basePath}${(config as ConfigDev).srcDir}/${SRC_MAIN}`
+            : '',
+        ),
       ),
       {
         formState:
@@ -248,18 +173,8 @@ export async function renderHtml(
         },
       },
     );
-    const injected: ReadableStream & { allReady?: Promise<void> } = readable
-      .pipeThrough(rectifyHtml())
-      .pipeThrough(
-        injectHtmlHead(
-          rscPath,
-          htmlHead,
-          isDev
-            ? `${config.basePath}${(config as ConfigDev).srcDir}/${SRC_MAIN}`
-            : '',
-        ),
-      )
-      .pipeThrough(injectRSCPayload(stream2));
+    const injected: ReadableStream & { allReady?: Promise<void> } =
+      readable.pipeThrough(injectRSCPayload(stream2));
     injected.allReady = readable.allReady;
     return injected as never;
   } catch (e) {
