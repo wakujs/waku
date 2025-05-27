@@ -75,6 +75,19 @@ const createStreamPair = (): [Writable, Promise<ReadableStream | null>] => {
   return [writable, promise];
 };
 
+const splitByLastEndTag = (input: string): readonly [string, string] => {
+  const regex = /<\/[^>]+>/g;
+  let lastIndex = -1;
+  while (regex.exec(input) !== null) {
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex >= 0) {
+    return [input.slice(0, lastIndex), input.slice(lastIndex)];
+  } else {
+    return [input, ''];
+  }
+};
+
 const createMainViteServer = (
   env: Record<string, string>,
   configPromise: ReturnType<typeof resolveConfigDev>,
@@ -199,15 +212,13 @@ const createMainViteServer = (
           // FIXME without removing async, Vite will move it
           // to the proxy cache, which breaks __WAKU_PUSH__.
           data = data.replace(/<script type="module" async>/, '<script>');
-          const idx = data.indexOf('</head>');
-          const reamining = data.slice(idx + '</head>'.length);
-          data = data.slice(0, idx + '</head>'.length);
+          const [data1, data2] = splitByLastEndTag(data);
           return new Promise<void>((resolve, reject) => {
             vite
-              .transformIndexHtml(pathname, data)
+              .transformIndexHtml(pathname, data1)
               .then((result) => {
                 controller.enqueue(encoder.encode(result));
-                controller.enqueue(encoder.encode(reamining));
+                controller.enqueue(encoder.encode(data2));
                 resolve();
               })
               .catch(reject);
