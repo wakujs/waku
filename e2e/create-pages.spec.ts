@@ -163,6 +163,15 @@ for (const mode of ['DEV', 'PRD'] as const) {
       ).toBeVisible();
     });
 
+    // https://github.com/wakujs/waku/issues/1437
+    test('static long suspense', async ({ page }) => {
+      await page.goto(`http://localhost:${port}/static-long-suspense/3`);
+      await expect(page.getByText('Long Suspense Page 3')).toBeVisible();
+      await page.click("a[href='/static-long-suspense/4']");
+      await expect(page.getByText('Loading...')).not.toBeVisible();
+      await expect(page.getByText('Long Suspense Page 4')).toBeVisible();
+    });
+
     test('api hi', async () => {
       const res = await fetch(`http://localhost:${port}/api/hi`);
       expect(res.status).toBe(200);
