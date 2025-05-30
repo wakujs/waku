@@ -89,7 +89,7 @@
   "dependencies": {
     "@hono/node-server": "1.14.2",
     "@swc/core": "1.11.24",
-    "@vitejs/plugin-react": "4.4.1",
+    "@vitejs/plugin-react": "https://pkg.pr.new/@vitejs/plugin-react@1c00c98",
     "dotenv": "16.5.0",
     "hono": "4.7.10",
     "html-react-parser": "5.2.5",

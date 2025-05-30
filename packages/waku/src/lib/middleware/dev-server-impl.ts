@@ -14,7 +14,6 @@ import {
   filePathToFileURL,
 } from '../utils/path.js';
 import { extendViteConfig } from '../utils/vite-config.js';
-import { patchReactRefresh } from '../plugins/patch-react-refresh.js';
 import { nonjsResolvePlugin } from '../plugins/vite-plugin-nonjs-resolve.js';
 import { devCommonJsPlugin } from '../plugins/vite-plugin-dev-commonjs.js';
 import { rscRsdwPlugin } from '../plugins/vite-plugin-rsc-rsdw.js';
@@ -105,7 +104,6 @@ const createMainViteServer = (
           cacheDir: 'node_modules/.vite/waku-dev-server-main',
           base: config.basePath,
           plugins: [
-            patchReactRefresh(viteReact()),
             nonjsResolvePlugin(),
             devCommonJsPlugin({
               filter: (id) => {
