@@ -108,6 +108,7 @@ type ChangeRoute = (
   options: {
     shouldScroll: boolean;
     skipRefetch?: boolean;
+    unstable_startTransition?: ((fn: TransitionFunction) => void) | undefined;
   },
 ) => Promise<void>;
 
@@ -301,7 +302,10 @@ export function Link({
           '',
           url,
         );
-        await changeRoute(route, { shouldScroll: scroll ?? newPath });
+        await changeRoute(route, {
+          shouldScroll: scroll ?? newPath,
+          unstable_startTransition: startTransitionFn,
+        });
       });
     }
   };
@@ -651,6 +655,8 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
   const changeRoute: ChangeRoute = useCallback(
     async (route, options) => {
       executeListeners('start', route);
+      const startTransitionFn =
+        options.unstable_startTransition || ((fn: TransitionFunction) => fn());
       refetching.current = [];
       setErr(null);
       const { skipRefetch } = options || {};
@@ -665,13 +671,15 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
           throw e;
         }
       }
-      if (options.shouldScroll) {
-        handleScroll();
-      }
-      setRoute(route);
-      refetching.current[0]?.();
-      refetching.current = null;
-      executeListeners('complete', route);
+      startTransitionFn(() => {
+        if (options.shouldScroll) {
+          handleScroll();
+        }
+        setRoute(route);
+        refetching.current![0]?.();
+        refetching.current = null;
+        executeListeners('complete', route);
+      });
     },
     [executeListeners, refetch],
   );
