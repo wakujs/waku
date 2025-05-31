@@ -21,7 +21,9 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await expect(page.getByRole('heading', { name: '/' })).toBeVisible();
 
       // api route request
-      let response = await page.request.get(`http://localhost:${port}/api/greet`);
+      let response = await page.request.get(
+        `http://localhost:${port}/api/greet`,
+      );
       let text = await response.text();
       expect(text).toBe('Hello, world!');
     });
