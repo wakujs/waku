@@ -579,6 +579,31 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
 
+  e2e/fixtures/wildcard-api-routes:
+    dependencies:
+      react:
+        specifier: 19.1.0
+        version: 19.1.0
+      react-dom:
+        specifier: 19.1.0
+        version: 19.1.0(react@19.1.0)
+      react-server-dom-webpack:
+        specifier: 19.1.0
+        version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
+      waku:
+        specifier: workspace:*
+        version: link:../../../packages/waku
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.4
+        version: 19.1.4
+      '@types/react-dom':
+        specifier: ^19.1.5
+        version: 19.1.5(@types/react@19.1.4)
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
+
   examples/01_template:
     dependencies:
       react:
