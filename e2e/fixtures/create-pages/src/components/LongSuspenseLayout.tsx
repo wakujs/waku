@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'waku';
 
 export const SlowComponent = async ({ children }: { children?: ReactNode }) => {
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  await new Promise((resolve) => setTimeout(resolve, 500));
   return (
     <div data-testid="long-suspense-component">
       {children || 'Slow Component'}
