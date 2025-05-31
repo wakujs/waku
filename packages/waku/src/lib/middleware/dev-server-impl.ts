@@ -104,6 +104,7 @@ const createMainViteServer = (
           cacheDir: 'node_modules/.vite/waku-dev-server-main',
           base: config.basePath,
           plugins: [
+            viteReact(),
             nonjsResolvePlugin(),
             devCommonJsPlugin({
               filter: (id) => {
