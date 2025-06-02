@@ -145,33 +145,6 @@ for (const mode of ['DEV', 'PRD'] as const) {
       expect(dynamicPageTime).not.toBe(staticPageTime);
     });
 
-    test('dynamic route transitions', async ({ page }) => {
-      await page.goto(`http://localhost:${port}/dynamic/one`);
-      const pageTime = (
-        await page.getByRole('heading', { name: 'Page Time' }).textContent()
-      )?.split('Time ')[1];
-      expect(pageTime).toBeTruthy();
-
-      // Load page two, verify the existing time continues to display
-      // await page.click("a[href='/dynamic/two']");
-      // await page.waitForTimeout(50);
-      // await expect(
-      //   page.getByRole('heading', { name: 'Page Time' }),
-      // ).toBeVisible();
-      // const newPageTime = (
-      //   await page.getByRole('heading', { name: 'Page Time' }).textContent()
-      // )?.split('Page ')[1];
-      // expect(newPageTime).toBe(pageTime);
-
-      // Once page two loads (there will be a heading with "Dynamic two" content))
-      // verify the time is different
-      // expect(newPageTime).not.toBe(pageTime);
-
-      // load page one, confirm the page shows the existing content while transitioning
-
-      // load page three, the loading fallback should display while loading since there is no transition
-    });
-
     test('alt click', async ({ page }) => {
       await page.goto(`http://localhost:${port}`);
       await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
