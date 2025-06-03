@@ -216,6 +216,30 @@ export function useRouter() {
   };
 }
 
+function useSharedRef<T>(
+  ref:
+    | React.RefObject<T | null>
+    | ((instance: T | null) => void)
+    | null
+    | undefined,
+): React.RefObject<T | null> {
+  const managedRef = useRef<T>(null);
+
+  return {
+    set current(value: T | null) {
+      managedRef.current = value;
+      if (typeof ref === 'function') {
+        ref(value);
+      } else if (ref) {
+        ref.current = value;
+      }
+    },
+    get current(): T | null {
+      return managedRef.current;
+    },
+  };
+}
+
 export type LinkProps = {
   to: InferredPaths;
   children: ReactNode;
@@ -231,6 +255,11 @@ export type LinkProps = {
   unstable_prefetchOnEnter?: boolean;
   unstable_prefetchOnView?: boolean;
   unstable_startTransition?: ((fn: TransitionFunction) => void) | undefined;
+  ref?:
+    | React.RefObject<HTMLAnchorElement>
+    | ((instance: HTMLAnchorElement | null) => void)
+    | null
+    | undefined;
 } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'>;
 
 export function Link({
@@ -242,6 +271,7 @@ export function Link({
   unstable_prefetchOnEnter,
   unstable_prefetchOnView,
   unstable_startTransition,
+  ref: refProp,
   ...props
 }: LinkProps): ReactElement {
   const router = useContext(RouterContext);
@@ -260,7 +290,7 @@ export function Link({
     unstable_startTransition ||
     ((unstable_pending || unstable_notPending) && startTransition) ||
     ((fn: TransitionFunction) => fn());
-  const ref = useRef<HTMLAnchorElement>(undefined);
+  const ref = useSharedRef<HTMLAnchorElement>(refProp);
 
   useEffect(() => {
     if (unstable_prefetchOnView && ref.current) {
