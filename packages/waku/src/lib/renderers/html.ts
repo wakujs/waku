@@ -135,7 +135,7 @@ export async function renderHtml(
         >,
         { elementsPromise },
         // HACK We want to inject it in <head>. FIXME
-        parseHtmlHead(
+        ...parseHtmlHead(
           rscPath,
           htmlHead,
           isDev
