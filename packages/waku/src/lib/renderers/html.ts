@@ -1,5 +1,10 @@
 import { createElement } from 'react';
-import type { ReactNode, FunctionComponent, ComponentProps } from 'react';
+import type {
+  ReactElement,
+  ReactNode,
+  FunctionComponent,
+  ComponentProps,
+} from 'react';
 import type * as RDServerType from 'react-dom/server.edge';
 import type { default as RSDWClientType } from 'react-server-dom-webpack/client.edge';
 import { injectRSCPayload } from 'rsc-html-stream/server';
@@ -34,31 +39,56 @@ Promise.resolve(new Response(new ReadableStream({
   .map((line) => line.trim())
   .join('');
 
+// TODO(daishi) I think we should be able to remove `parseHtml` completely,
+// by changing the string based `htmlHead`. Will be BREAKING CHANGE.
 const parseHtmlHead = (
   rscPathForFakeFetch: string,
   htmlHead: string,
   mainJsPath: string, // for DEV only, pass `''` for PRD
-) => {
+): {
+  headCode: string;
+  headModules: string[];
+  headElements: ReactElement[];
+} => {
   htmlHead = htmlHead.replace(
     // HACK This is brittle
     /\nglobalThis\.__WAKU_PREFETCHED__ = {\n.*?\n};/s,
     '',
   );
-  let code = `
+  let headCode = `
 globalThis.__WAKU_HYDRATE__ = true;
 `;
-  code += `globalThis.__WAKU_PREFETCHED__ = {
+  headCode += `globalThis.__WAKU_PREFETCHED__ = {
   '${rscPathForFakeFetch}': ${fakeFetchCode},
 };
 `;
-  const arr = parseHtml(htmlHead);
-  if (mainJsPath) {
-    arr.unshift(
-      createElement('script', { src: mainJsPath, type: 'module', async: true }),
-    );
+  const arr = parseHtml(htmlHead) as ReactElement<any>[];
+  const headModules: string[] = [];
+  const headElements: ReactElement[] = [];
+  for (const item of arr) {
+    if (item.type === 'script') {
+      if (item.props?.src) {
+        headModules.push(item.props.src);
+        continue;
+      } else if (typeof item.props?.children === 'string') {
+        headCode += item.props.children;
+        continue;
+      } else if (
+        typeof item.props?.dangerouslySetInnerHTML?.__html === 'string' &&
+        !item.props?.dangerouslySetInnerHTML?.__html.includes(
+          '__WAKU_CLIENT_IMPORT__',
+        )
+      ) {
+        headCode += item.props.dangerouslySetInnerHTML.__html;
+        continue;
+      }
+    }
+    headElements.push(item);
   }
-  arr.unshift(createElement('script', { type: 'module', async: true }, code));
-  return arr;
+  if (mainJsPath) {
+    headModules.push(mainJsPath);
+  }
+  return { headCode, headModules, headElements };
 };
 
 // FIXME Why does it error on the first and second time?
@@ -127,6 +157,13 @@ export async function renderHtml(
   const htmlNode: Promise<ReactNode> = createFromReadableStream(htmlStream, {
     serverConsumerManifest: { moduleMap, moduleLoading: null },
   });
+  const { headCode, headModules, headElements } = parseHtmlHead(
+    rscPath,
+    htmlHead,
+    isDev
+      ? `${config.basePath}${(config as ConfigDev).srcDir}/${SRC_MAIN}`
+      : '',
+  );
   try {
     const readable = await renderToReadableStream(
       createElement(
@@ -134,17 +171,12 @@ export async function renderHtml(
           Omit<ComponentProps<typeof INTERNAL_ServerRoot>, 'children'>
         >,
         { elementsPromise },
-        // HACK We want to inject it in <head>. FIXME
-        ...parseHtmlHead(
-          rscPath,
-          htmlHead,
-          isDev
-            ? `${config.basePath}${(config as ConfigDev).srcDir}/${SRC_MAIN}`
-            : '',
-        ),
+        ...headElements,
         htmlNode as any,
       ),
       {
+        bootstrapScriptContent: headCode,
+        bootstrapModules: headModules,
         formState:
           actionResult === undefined
             ? null

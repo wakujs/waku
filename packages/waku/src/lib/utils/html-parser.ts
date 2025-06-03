@@ -8,7 +8,7 @@ export const parseHtml = (html: string): ReactElement[] => {
     throw new Error('Parsed HTML is a string, expected JSX elements');
   }
   if (Array.isArray(elements)) {
-    return elements;
+    return elements.filter((element) => typeof element !== 'string');
   }
   return [elements];
 };
