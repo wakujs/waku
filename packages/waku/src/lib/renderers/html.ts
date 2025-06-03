@@ -134,6 +134,7 @@ export async function renderHtml(
           Omit<ComponentProps<typeof INTERNAL_ServerRoot>, 'children'>
         >,
         { elementsPromise },
+        // HACK We want to inject it in <head>. FIXME
         parseHtmlHead(
           rscPath,
           htmlHead,
