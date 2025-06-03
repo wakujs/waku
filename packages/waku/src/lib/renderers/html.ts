@@ -134,7 +134,6 @@ export async function renderHtml(
           Omit<ComponentProps<typeof INTERNAL_ServerRoot>, 'children'>
         >,
         { elementsPromise },
-        htmlNode as any,
         parseHtmlHead(
           rscPath,
           htmlHead,
@@ -142,6 +141,7 @@ export async function renderHtml(
             ? `${config.basePath}${(config as ConfigDev).srcDir}/${SRC_MAIN}`
             : '',
         ),
+        htmlNode as any,
       ),
       {
         formState:
