@@ -45,11 +45,7 @@ const parseHtmlHead = (
   rscPathForFakeFetch: string,
   htmlHead: string,
   mainJsPath: string, // for DEV only, pass `''` for PRD
-): {
-  headCode: string;
-  headModules: string[];
-  headElements: ReactElement[];
-} => {
+) => {
   htmlHead = htmlHead.replace(
     // HACK This is brittle
     /\nglobalThis\.__WAKU_PREFETCHED__ = {\n.*?\n};/s,
