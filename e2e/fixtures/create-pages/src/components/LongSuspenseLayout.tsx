@@ -3,8 +3,12 @@ import type { ReactNode } from 'react';
 import { Link } from 'waku';
 
 export const SlowComponent = async ({ children }: { children?: ReactNode }) => {
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  return <div>{children || 'Slow Component'}</div>;
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  return (
+    <div data-testid="long-suspense-component">
+      {children || 'Slow Component'}
+    </div>
+  );
 };
 
 export const StaticLongSuspenseLayout = ({
@@ -15,10 +19,23 @@ export const StaticLongSuspenseLayout = ({
   return (
     <div>
       <h2>Static Long Suspense Layout</h2>
-      <Link to="/static-long-suspense/4" unstable_pending="...">
-        Click Me
-      </Link>
-      <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
+      <div>
+        <Link
+          to="/static-long-suspense/5"
+          unstable_pending={
+            <div data-testid="long-suspense-pending">Pending...</div>
+          }
+        >
+          Click Me
+        </Link>
+      </div>
+      <div>
+        <Link to="/static-long-suspense/6">Click Me Too</Link>
+      </div>
+      <Suspense fallback={<div data-testid="long-suspense">Loading...</div>}>
+        <SlowComponent />
+        {children}
+      </Suspense>
     </div>
   );
 };
@@ -27,11 +44,23 @@ export const LongSuspenseLayout = ({ children }: { children: ReactNode }) => {
   return (
     <div>
       <h2>Long Suspense Layout</h2>
-      <Link to="/long-suspense/2">Click Me</Link>
+      <div>
+        <Link
+          to="/long-suspense/2"
+          unstable_pending={
+            <div data-testid="long-suspense-pending">Pending...</div>
+          }
+        >
+          Click Me
+        </Link>
+      </div>
+      <div>
+        <Link to="/long-suspense/3">Click Me Too</Link>
+      </div>
       <Suspense fallback={<div data-testid="long-suspense">Loading...</div>}>
         <SlowComponent />
+        {children}
       </Suspense>
-      {children}
     </div>
   );
 };
