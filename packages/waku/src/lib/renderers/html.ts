@@ -3,12 +3,12 @@ import type { ReactNode, FunctionComponent, ComponentProps } from 'react';
 import type * as RDServerType from 'react-dom/server.edge';
 import type { default as RSDWClientType } from 'react-server-dom-webpack/client.edge';
 import { injectRSCPayload } from 'rsc-html-stream/server';
-import parse from 'html-react-parser';
 
 import type * as WakuMinimalClientType from '../../minimal/client.js';
 import type { ConfigDev, ConfigPrd } from '../config.js';
 import { SRC_MAIN } from '../builder/constants.js';
 import { filePathToFileURL } from '../utils/path.js';
+import { parseHtml } from '../utils/html-parser.js';
 import { renderRsc, renderRscElement, getExtractFormState } from './rsc.js';
 import type { HandlerContext, ErrorCallback } from '../middleware/types.js';
 
@@ -39,39 +39,26 @@ const parseHtmlHead = (
   htmlHead: string,
   mainJsPath: string, // for DEV only, pass `''` for PRD
 ) => {
-  const matchPrefetched = htmlHead.match(
-    // HACK This is very brittle
-    /(.*<script[^>]*>\nglobalThis\.__WAKU_PREFETCHED__ = {\n)(.*?)(\n};.*)/s,
+  htmlHead = htmlHead.replace(
+    // HACK This is brittle
+    /\nglobalThis\.__WAKU_PREFETCHED__ = {\n.*?\n};/s,
+    '',
   );
-  if (matchPrefetched) {
-    // HACK This is very brittle
-    // TODO(daishi) find a better way
-    const removed = matchPrefetched[2]!.replace(
-      new RegExp(`  '${rscPathForFakeFetch}': .*?,`),
-      '',
-    );
-    htmlHead =
-      matchPrefetched[1] +
-      `  '${rscPathForFakeFetch}': ${fakeFetchCode},` +
-      removed +
-      matchPrefetched[3];
-  }
   let code = `
 globalThis.__WAKU_HYDRATE__ = true;
 `;
-  if (!matchPrefetched) {
-    code += `
-globalThis.__WAKU_PREFETCHED__ = {
+  code += `globalThis.__WAKU_PREFETCHED__ = {
   '${rscPathForFakeFetch}': ${fakeFetchCode},
 };
 `;
-  }
-  htmlHead += `<script type="module" async>${code}</script>`;
+  const arr = parseHtml(htmlHead);
   if (mainJsPath) {
-    htmlHead += `<script src="${mainJsPath}" async type="module"></script>`;
+    arr.unshift(
+      createElement('script', { src: mainJsPath, type: 'module', async: true }),
+    );
   }
-  // @ts-expect-error invalid type
-  return parse(htmlHead);
+  arr.unshift(createElement('script', { type: 'module', async: true }, code));
+  return arr;
 };
 
 // FIXME Why does it error on the first and second time?
