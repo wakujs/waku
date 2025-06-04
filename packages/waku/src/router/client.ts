@@ -21,6 +21,7 @@ import type {
   ReactElement,
   MouseEvent,
   TransitionFunction,
+  RefObject,
 } from 'react';
 
 import {
@@ -217,27 +218,26 @@ export function useRouter() {
 }
 
 function useSharedRef<T>(
-  ref:
-    | React.RefObject<T | null>
-    | ((instance: T | null) => void)
-    | null
-    | undefined,
-): React.RefObject<T | null> {
+  ref: RefObject<T | null> | ((instance: T | null) => void) | null | undefined,
+): [RefObject<T | null>, (node: T | null) => void | (() => void)] {
   const managedRef = useRef<T>(null);
 
-  return {
-    set current(value: T | null) {
-      managedRef.current = value;
+  return [
+    managedRef,
+    function handleRef(node: T | null): void | (() => void) {
+      managedRef.current = node;
       if (typeof ref === 'function') {
-        ref(value);
+        const callbackRefResult = ref(node);
+        // if the result of the ref callback is a function, return it
+        // this handles the case where the ref callback returns a cleanup function
+        if (typeof callbackRefResult === 'function') {
+          return callbackRefResult;
+        }
       } else if (ref) {
-        ref.current = value;
+        ref.current = node;
       }
     },
-    get current(): T | null {
-      return managedRef.current;
-    },
-  };
+  ];
 }
 
 export type LinkProps = {
@@ -256,7 +256,7 @@ export type LinkProps = {
   unstable_prefetchOnView?: boolean;
   unstable_startTransition?: ((fn: TransitionFunction) => void) | undefined;
   ref?:
-    | React.RefObject<HTMLAnchorElement>
+    | RefObject<HTMLAnchorElement>
     | ((instance: HTMLAnchorElement | null) => void)
     | null
     | undefined;
@@ -290,7 +290,7 @@ export function Link({
     unstable_startTransition ||
     ((unstable_pending || unstable_notPending) && startTransition) ||
     ((fn: TransitionFunction) => fn());
-  const ref = useSharedRef<HTMLAnchorElement>(refProp);
+  const [ref, setRef] = useSharedRef<HTMLAnchorElement>(refProp);
 
   useEffect(() => {
     if (unstable_prefetchOnView && ref.current) {
@@ -315,7 +315,7 @@ export function Link({
         observer.disconnect();
       };
     }
-  }, [unstable_prefetchOnView, router, to]);
+  }, [unstable_prefetchOnView, router, to, ref]);
   const internalOnClick = () => {
     const url = new URL(to, window.location.href);
     if (url.href !== window.location.href) {
@@ -356,7 +356,7 @@ export function Link({
     : props.onMouseEnter;
   const ele = createElement(
     'a',
-    { ...props, href: to, onClick, onMouseEnter, ref },
+    { ...props, href: to, onClick, onMouseEnter, ref: setRef },
     children,
   );
   if (isPending && unstable_pending !== undefined) {
