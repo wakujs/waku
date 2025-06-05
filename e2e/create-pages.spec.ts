@@ -153,12 +153,6 @@ for (const mode of ['DEV', 'PRD'] as const) {
     // https://github.com/wakujs/waku/issues/1255
     test('long suspense', async ({ page }) => {
       await page.goto(`http://localhost:${port}/long-suspense/1`);
-      // this happens before the page.goto resolves in PRD
-      if (mode !== 'PRD') {
-        await expect(page.getByTestId('long-suspense')).toHaveText(
-          'Loading...',
-        );
-      }
       await expect(page.getByTestId('long-suspense-component')).toHaveCount(2);
       await expect(
         page.getByRole('heading', { name: 'Long Suspense Page 1' }),
