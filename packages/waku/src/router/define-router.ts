@@ -241,7 +241,17 @@ export function unstable_defineRouter(fns: {
             },
           };
         }),
-      ];
+      ]
+        // Sort wildcard routes to the end - we want to match the most specific routes first
+        .sort((pathConfigA, pathConfigB) => {
+          if (pathConfigA.pathSpec.find((spec) => spec.type === 'wildcard')) {
+            return 1;
+          }
+          if (pathConfigB.pathSpec.find((spec) => spec.type === 'wildcard')) {
+            return -1;
+          }
+          return 0;
+        });
     }
     return cachedPathConfig;
   };
