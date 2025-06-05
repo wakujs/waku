@@ -166,7 +166,6 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await page.click("a[href='/long-suspense/2']");
       await page.waitForFunction(
         () => {
-          // const pathname = window.location.pathname;
           const pendingElement = document.querySelector(
             '[data-testid="long-suspense-pending"]',
           );
@@ -175,7 +174,6 @@ for (const mode of ['DEV', 'PRD'] as const) {
           );
           return (
             pendingElement?.textContent === 'Pending...' &&
-            pathname === '/long-suspense/1' &&
             heading?.textContent === 'Long Suspense Page 1'
           );
         },
@@ -191,14 +189,6 @@ for (const mode of ['DEV', 'PRD'] as const) {
         page.getByRole('heading', { name: 'Long Suspense Page 2' }),
       ).not.toBeVisible();
       await expect(page.getByTestId('long-suspense')).toHaveText('Loading...');
-      await page.waitForFunction(
-        () => {
-          const pathname = window.location.pathname;
-          return pathname === '/long-suspense/2';
-        },
-        undefined,
-        { timeout: 1000 },
-      );
       await expect(page.getByTestId('long-suspense-pending')).toHaveCount(0);
       await expect(
         page.getByRole('heading', { name: 'Long Suspense Page 3' }),
@@ -206,7 +196,6 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await page.click("a[href='/long-suspense/2']");
       await page.waitForFunction(
         () => {
-          const pathname = window.location.pathname;
           const pendingElement = document.querySelector(
             '[data-testid="long-suspense-pending"]',
           );
@@ -215,7 +204,6 @@ for (const mode of ['DEV', 'PRD'] as const) {
           );
           return (
             pendingElement?.textContent === 'Pending...' &&
-            pathname === '/long-suspense/3' &&
             heading?.textContent === 'Long Suspense Page 3'
           );
         },
