@@ -17,8 +17,8 @@ for (const mode of ['DEV', 'PRD'] as const) {
 
     test(`works`, async ({ page }) => {
       // index route matches wildcard:
-      await page.goto(`http://localhost:${port}`);
-      await expect(page.getByRole('heading', { name: '/' })).toBeVisible();
+      await page.goto(`http://localhost:${port}/foo`);
+      await expect(page.getByRole('heading', { name: '/foo' })).toBeVisible();
 
       // api route request
       const response = await page.request.get(
