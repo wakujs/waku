@@ -175,8 +175,7 @@ for (const mode of ['DEV', 'PRD'] as const) {
           );
           return (
             pendingElement?.textContent === 'Pending...' &&
-            // This is failing
-            // pathname === '/long-suspense/1' &&
+            pathname === '/long-suspense/1' &&
             heading?.textContent === 'Long Suspense Page 1'
           );
         },
@@ -195,11 +194,7 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await page.waitForFunction(
         () => {
           const pathname = window.location.pathname;
-          return (
-            pathname === '/long-suspense/3'
-            // This is failing
-            // pathname === '/long-suspense/2'
-          );
+          return pathname === '/long-suspense/2';
         },
         undefined,
         { timeout: 1000 },
@@ -220,11 +215,8 @@ for (const mode of ['DEV', 'PRD'] as const) {
           );
           return (
             pendingElement?.textContent === 'Pending...' &&
-            pathname === '/long-suspense/2' &&
-            heading?.textContent === 'Long Suspense Page 2'
-            // This is failing
-            // pathname === '/long-suspense/3' &&
-            // heading?.textContent === 'Long Suspense Page 3'
+            pathname === '/long-suspense/3' &&
+            heading?.textContent === 'Long Suspense Page 3'
           );
         },
         undefined,
