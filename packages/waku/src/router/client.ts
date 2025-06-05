@@ -22,6 +22,7 @@ import type {
   MouseEvent,
   TransitionFunction,
   RefObject,
+  Ref,
 } from 'react';
 
 import {
@@ -218,26 +219,37 @@ export function useRouter() {
 }
 
 function useSharedRef<T>(
-  ref: RefObject<T | null> | ((instance: T | null) => void) | null | undefined,
+  ref: Ref<T | null> | undefined,
 ): [RefObject<T | null>, (node: T | null) => void | (() => void)] {
   const managedRef = useRef<T>(null);
 
-  return [
-    managedRef,
-    function handleRef(node: T | null): void | (() => void) {
+  const handleRef = useCallback(
+    (node: T | null): void | (() => void) => {
       managedRef.current = node;
-      if (typeof ref === 'function') {
-        const callbackRefResult = ref(node);
-        // if the result of the ref callback is a function, return it
-        // this handles the case where the ref callback returns a cleanup function
-        if (typeof callbackRefResult === 'function') {
-          return callbackRefResult;
-        }
+      const isRefCallback = typeof ref === 'function';
+      let cleanup: void | (() => void);
+      if (isRefCallback) {
+        cleanup = ref(node);
       } else if (ref) {
         ref.current = node;
       }
+      return () => {
+        managedRef.current = null;
+        if (isRefCallback) {
+          if (cleanup) {
+            cleanup();
+          } else {
+            ref(null);
+          }
+        } else if (ref) {
+          ref.current = null;
+        }
+      };
     },
-  ];
+    [ref],
+  );
+
+  return [managedRef, handleRef];
 }
 
 export type LinkProps = {
@@ -255,11 +267,7 @@ export type LinkProps = {
   unstable_prefetchOnEnter?: boolean;
   unstable_prefetchOnView?: boolean;
   unstable_startTransition?: ((fn: TransitionFunction) => void) | undefined;
-  ref?:
-    | RefObject<HTMLAnchorElement>
-    | ((instance: HTMLAnchorElement | null) => void)
-    | null
-    | undefined;
+  ref?: Ref<HTMLAnchorElement> | undefined;
 } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'>;
 
 export function Link({
