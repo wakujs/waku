@@ -152,6 +152,9 @@ export function useRouter() {
     ) => {
       const url = new URL(to, window.location.href);
       const newPath = url.pathname !== window.location.pathname;
+      await changeRoute(parseRoute(url), {
+        shouldScroll: options?.scroll ?? newPath,
+      });
       window.history.pushState(
         {
           ...window.history.state,
@@ -160,9 +163,6 @@ export function useRouter() {
         '',
         url,
       );
-      await changeRoute(parseRoute(url), {
-        shouldScroll: options?.scroll ?? newPath,
-      });
     },
     [changeRoute],
   );
@@ -181,10 +181,10 @@ export function useRouter() {
     ) => {
       const url = new URL(to, window.location.href);
       const newPath = url.pathname !== window.location.pathname;
-      window.history.replaceState(window.history.state, '', url);
       await changeRoute(parseRoute(url), {
         shouldScroll: options?.scroll ?? newPath,
       });
+      window.history.replaceState(window.history.state, '', url);
     },
     [changeRoute],
   );
@@ -332,6 +332,10 @@ export function Link({
       prefetchRoute(route);
       startTransitionFn(async () => {
         const newPath = url.pathname !== window.location.pathname;
+        await changeRoute(route, {
+          shouldScroll: scroll ?? newPath,
+          unstable_startTransition: startTransitionFn,
+        });
         window.history.pushState(
           {
             ...window.history.state,
@@ -340,10 +344,6 @@ export function Link({
           '',
           url,
         );
-        await changeRoute(route, {
-          shouldScroll: scroll ?? newPath,
-          unstable_startTransition: startTransitionFn,
-        });
       });
     }
   };
@@ -752,22 +752,25 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
         url.pathname = path;
         url.search = query;
         url.hash = '';
-        if (path !== '/404') {
-          window.history.pushState(
-            {
-              ...window.history.state,
-              waku_new_path: url.pathname !== window.location.pathname,
-            },
-            '',
-            url,
-          );
-        }
         changeRoute(parseRoute(url), {
           skipRefetch: true,
           shouldScroll: false,
-        }).catch((err) => {
-          console.log('Error while navigating to new route:', err);
-        });
+        })
+          .catch((err) => {
+            console.log('Error while navigating to new route:', err);
+          })
+          .finally(() => {
+            if (path !== '/404') {
+              window.history.pushState(
+                {
+                  ...window.history.state,
+                  waku_new_path: url.pathname !== window.location.pathname,
+                },
+                '',
+                url,
+              );
+            }
+          });
       };
       if (refetching.current) {
         refetching.current.push(fn);
