@@ -276,6 +276,7 @@ export function unstable_defineRouter(fns: {
     }
     const skipIdSet = new Set(isStringArray(skipParam) ? skipParam : []);
     const { query } = parseRscParams(rscParams);
+    console.log({ pathname, rscPath });
     const { rootElement, routeElement, elements } = await fns.handleRoute(
       pathname,
       pathConfigItem.specs.isStatic ? {} : { query },
