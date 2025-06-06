@@ -15,12 +15,12 @@
     "waku": "0.23.1"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "4.1.7",
-    "@types/react": "19.1.4",
-    "@types/react-dom": "19.1.5",
-    "postcss": "8.5.3",
-    "rollup": "4.41.0",
-    "tailwindcss": "4.1.7",
+    "@tailwindcss/postcss": "4.1.8",
+    "@types/react": "19.1.6",
+    "@types/react-dom": "19.1.6",
+    "postcss": "8.5.4",
+    "rollup": "4.41.1",
+    "tailwindcss": "4.1.8",
     "typescript": "5.8.3",
     "vite": "6.3.5"
   }
