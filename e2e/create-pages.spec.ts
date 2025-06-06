@@ -169,10 +169,12 @@ for (const mode of ['DEV', 'PRD'] as const) {
           const heading = document.querySelector(
             '[data-testid="long-suspense-component"] h3',
           );
+          const pathname = window.location.pathname;
           const scrollY = window.scrollY;
           return (
             pendingElement?.textContent === 'Pending...' &&
             heading?.textContent === 'Long Suspense Page 1' &&
+            pathname === '/long-suspense/1' &&
             scrollY > 0
           );
         },
@@ -191,6 +193,15 @@ for (const mode of ['DEV', 'PRD'] as const) {
       ).not.toBeVisible();
       await expect(page.getByTestId('long-suspense')).toHaveText('Loading...');
       await expect(page.getByTestId('long-suspense-pending')).toHaveCount(0);
+      await page.waitForFunction(
+        () => {
+          const pathname = window.location.pathname;
+          const scrollY = window.scrollY;
+          return pathname === '/long-suspense/2' && scrollY > 0;
+        },
+        undefined,
+        { timeout: 1000 },
+      );
       await expect(
         page.getByRole('heading', { name: 'Long Suspense Page 3' }),
       ).toBeVisible();
@@ -205,10 +216,12 @@ for (const mode of ['DEV', 'PRD'] as const) {
           const heading = document.querySelector(
             '[data-testid="long-suspense-component"] h3',
           );
+          const pathname = window.location.pathname;
           const scrollY = window.scrollY;
           return (
             pendingElement?.textContent === 'Pending...' &&
             heading?.textContent === 'Long Suspense Page 3' &&
+            pathname === '/long-suspense/3' &&
             scrollY > 0
           );
         },
