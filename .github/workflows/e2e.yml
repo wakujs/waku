@@ -43,6 +43,7 @@ jobs:
       - if: ${{ inputs.react_version }}
         run: |
           pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
+          pnpm -F waku add --save-peer react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
       - run: pnpm install
       - run: pnpm run compile
       - uses: actions/upload-artifact@v4

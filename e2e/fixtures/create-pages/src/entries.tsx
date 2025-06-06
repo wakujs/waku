@@ -9,7 +9,11 @@ import NestedBazPage from './components/NestedBazPage.js';
 import NestedLayout from './components/NestedLayout.js';
 import { DeeplyNestedLayout } from './components/DeeplyNestedLayout.js';
 import ErrorPage from './components/ErrorPage.js';
-import LongSuspenseLayout from './components/LongSuspenseLayout.js';
+import {
+  SlowComponent,
+  StaticLongSuspenseLayout,
+  LongSuspenseLayout,
+} from './components/LongSuspenseLayout.js';
 import { readFile } from 'node:fs/promises';
 import StaticPagePart from './components/StaticPagePart.js';
 import DynamicPagePart from './components/DynamicPagePart.js';
@@ -93,21 +97,75 @@ const pages: ReturnType<typeof createPages> = createPages(
     }),
 
     createLayout({
-      render: 'dynamic',
+      render: 'static',
       path: '/long-suspense',
       component: LongSuspenseLayout,
     }),
 
     createPage({
-      render: 'static',
+      render: 'dynamic',
       path: '/long-suspense/1',
-      component: () => <h3>Long Suspense Page 1</h3>,
+      component: () => (
+        <SlowComponent>
+          <h3>Long Suspense Page 1</h3>
+        </SlowComponent>
+      ),
+    }),
+
+    createPage({
+      render: 'dynamic',
+      path: '/long-suspense/2',
+      component: () => (
+        <SlowComponent>
+          <h3>Long Suspense Page 2</h3>
+        </SlowComponent>
+      ),
+    }),
+
+    createPage({
+      render: 'dynamic',
+      path: '/long-suspense/3',
+      component: () => (
+        <SlowComponent>
+          <h3>Long Suspense Page 3</h3>
+        </SlowComponent>
+      ),
+    }),
+
+    createLayout({
+      render: 'static',
+      path: '/static-long-suspense',
+      component: StaticLongSuspenseLayout,
     }),
 
     createPage({
       render: 'static',
-      path: '/long-suspense/2',
-      component: () => <h3>Long Suspense Page 2</h3>,
+      path: '/static-long-suspense/4',
+      component: () => (
+        <SlowComponent>
+          <h3>Long Suspense Page 4</h3>
+        </SlowComponent>
+      ),
+    }),
+
+    createPage({
+      render: 'static',
+      path: '/static-long-suspense/5',
+      component: () => (
+        <SlowComponent>
+          <h3>Long Suspense Page 5</h3>
+        </SlowComponent>
+      ),
+    }),
+
+    createPage({
+      render: 'static',
+      path: '/static-long-suspense/6',
+      component: () => (
+        <SlowComponent>
+          <h3>Long Suspense Page 6</h3>
+        </SlowComponent>
+      ),
     }),
 
     createPage({
