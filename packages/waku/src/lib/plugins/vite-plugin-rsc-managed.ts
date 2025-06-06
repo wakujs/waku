@@ -66,8 +66,8 @@ export function rscManagedPlugin(opts: {
       return {
         ...options,
         input: {
-          ...(opts.addEntriesToInput && { entries: entriesFile! }),
-          ...(opts.addMainToInput && { main: mainFile! }),
+          ...(opts.addEntriesToInput && { [SRC_ENTRIES]: entriesFile! }),
+          ...(opts.addMainToInput && { [SRC_MAIN]: mainFile! }),
           ...options.input,
         },
       };
