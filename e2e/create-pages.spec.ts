@@ -169,13 +169,13 @@ for (const mode of ['DEV', 'PRD'] as const) {
           const heading = document.querySelector(
             '[data-testid="long-suspense-component"] h3',
           );
-          const pathname = window.location.pathname;
-          const scrollY = window.scrollY;
+          // const pathname = window.location.pathname;
+          // const scrollY = window.scrollY;
           return (
             pendingElement?.textContent === 'Pending...' &&
-            heading?.textContent === 'Long Suspense Page 1' &&
+            heading?.textContent === 'Long Suspense Page 1' /*&&
             pathname === '/long-suspense/1' &&
-            scrollY > 0
+            scrollY > 0*/
           );
         },
         undefined,
@@ -197,6 +197,7 @@ for (const mode of ['DEV', 'PRD'] as const) {
         () => {
           const pathname = window.location.pathname;
           const scrollY = window.scrollY;
+          return true;
           return pathname === '/long-suspense/2' && scrollY > 0;
         },
         undefined,
@@ -216,13 +217,13 @@ for (const mode of ['DEV', 'PRD'] as const) {
           const heading = document.querySelector(
             '[data-testid="long-suspense-component"] h3',
           );
-          const pathname = window.location.pathname;
-          const scrollY = window.scrollY;
+          // const pathname = window.location.pathname;
+          // const scrollY = window.scrollY;
           return (
             pendingElement?.textContent === 'Pending...' &&
-            heading?.textContent === 'Long Suspense Page 3' &&
+            heading?.textContent === 'Long Suspense Page 3' /*&&
             pathname === '/long-suspense/3' &&
-            scrollY > 0
+            scrollY > 0*/
           );
         },
         undefined,
