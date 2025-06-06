@@ -81,6 +81,22 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await page.click('text=Jump to random page');
       await page.waitForTimeout(500); // need to wait not to error
       await expect(page.getByRole('heading', { level: 2 })).toBeVisible();
+      await expect(
+        page.getByRole('heading', { level: 2, name: 'Foo' }),
+      ).not.toBeVisible();
+    });
+
+    test('jump with setState', async ({ page }) => {
+      const errors: string[] = [];
+      page.on('pageerror', (err) => errors.push(err.message));
+      await page.goto(`http://localhost:${port}`);
+      await page.click("a[href='/foo']");
+      await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
+      await page.click('text=Jump with setState');
+      await expect(
+        page.getByRole('heading', { name: 'Baz', exact: true }),
+      ).toBeVisible();
+      expect(errors).toEqual([]);
     });
 
     test('errors', async ({ page }) => {

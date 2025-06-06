@@ -121,5 +121,21 @@ for (const mode of ['DEV', 'PRD'] as const) {
         await expect(page.getByTestId('hash')).toHaveText('Hash: 2');
       });
     });
+
+    test.describe('calls route change event handlers', () => {
+      test(`on dynamic pages`, async ({ page }) => {
+        await page.goto(`http://localhost:${port}/dynamic`);
+        const msgs: string[] = [];
+        page.on('console', (msg) => msgs.push(msg.text()));
+        await page.click('text=Static router.push button');
+        await expect(
+          page.getByRole('heading', { name: 'Static' }),
+        ).toBeVisible();
+        expect(msgs).toEqual([
+          'Route change started',
+          'Route change completed',
+        ]);
+      });
+    });
   });
 }

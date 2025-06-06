@@ -11,7 +11,7 @@ export const patchReactRefresh = <T extends PluginOption[]>(options: T): T =>
       return {
         ...option,
         transformIndexHtml(...args) {
-          const result = origTransformIndexHtml(...args);
+          const result = origTransformIndexHtml.call(this, ...args);
           if (Array.isArray(result)) {
             return result.map((item) => ({
               ...item,

@@ -4,11 +4,12 @@ import {
   createContext,
   createElement,
   memo,
+  startTransition,
   use,
   useCallback,
   useEffect,
+  useMemo,
   useState,
-  Component,
 } from 'react';
 import type { ReactNode } from 'react';
 import RSDWClient from 'react-server-dom-webpack/client';
@@ -58,32 +59,21 @@ const checkStatus = async (
 
 type Elements = Record<string, unknown>;
 
-// HACK I'm not super happy with this hack
-const erroredElementsPromiseMap = new WeakMap<
-  Promise<Elements>,
-  Promise<Elements>
->();
-
+// TODO(daishi) do we still this?
 const getCached = <T>(c: () => T, m: WeakMap<object, T>, k: object): T =>
   (m.has(k) ? m : m.set(k, c())).get(k) as T;
+
 const cache1 = new WeakMap();
 const mergeElementsPromise = (
   a: Promise<Elements>,
-  b: Promise<Elements>,
+  b: Promise<Elements> | Elements,
 ): Promise<Elements> => {
-  const getResult = () => {
-    const p = Promise.all([erroredElementsPromiseMap.get(a) || a, b])
-      .then(([a, b]) => {
-        const nextElements = { ...a, ...b };
-        delete nextElements._value;
-        return nextElements;
-      })
-      .catch((err) => {
-        erroredElementsPromiseMap.set(p, a);
-        throw err;
-      });
-    return p;
-  };
+  const getResult = () =>
+    Promise.all([a, b]).then(([a, b]) => {
+      const nextElements = { ...a, ...b };
+      delete nextElements._value;
+      return nextElements;
+    });
   const cache2 = getCached(() => new WeakMap(), cache1, a);
   return getCached(getResult, cache2, b);
 };
@@ -91,15 +81,25 @@ const mergeElementsPromise = (
 type SetElements = (
   updater: (prev: Promise<Elements>) => Promise<Elements>,
 ) => void;
-type EnhanceFetch = (fetchFn: typeof fetch) => typeof fetch;
-type EnhanceCreateData = (
-  createData: (responsePromise: Promise<Response>) => Promise<Elements>,
-) => (responsePromise: Promise<Response>) => Promise<Elements>;
 
 const ENTRY = 'e';
 const SET_ELEMENTS = 's';
-const ENHANCE_FETCH = 'f';
-const ENHANCE_CREATE_DATA = 'd';
+const FETCH_RSC_INTERNAL = 'f';
+
+type FetchRscInternal = {
+  (
+    rscPath: string,
+    rscParams: unknown,
+    prefetchOnly?: undefined | false,
+    fetchFn?: typeof fetch,
+  ): Promise<Elements>;
+  (
+    rscPath: string,
+    rscParams: unknown,
+    prefetchOnly: true,
+    fetchFn?: typeof fetch,
+  ): void;
+};
 
 type FetchCache = {
   [ENTRY]?: [
@@ -108,11 +108,66 @@ type FetchCache = {
     elementsPromise: Promise<Elements>,
   ];
   [SET_ELEMENTS]?: SetElements;
-  [ENHANCE_FETCH]?: EnhanceFetch | undefined;
-  [ENHANCE_CREATE_DATA]?: EnhanceCreateData | undefined;
+  [FETCH_RSC_INTERNAL]?: FetchRscInternal;
 };
 
 const defaultFetchCache: FetchCache = {};
+
+// TODO: This does't feel like an ideal solution.
+type PrefetchedEntry =
+  | Promise<Response> // from html
+  | [
+      responsePromise: Promise<Response>,
+      rscParams?: unknown,
+      temporaryReferences?: ReturnType<typeof createTemporaryReferenceSet>,
+    ]; // from prefetch
+
+const createFetchRscInternal =
+  (fetchCache: FetchCache): FetchRscInternal =>
+  (
+    rscPath: string,
+    rscParams: unknown,
+    prefetchOnly?: boolean,
+    fetchFn = fetch,
+  ) => {
+    const prefetched: Record<string, PrefetchedEntry> = ((
+      globalThis as any
+    ).__WAKU_PREFETCHED__ ||= {});
+    let prefetchedEntry = prefetchOnly ? undefined : prefetched[rscPath];
+    delete prefetched[rscPath];
+    if (prefetchedEntry) {
+      if (Array.isArray(prefetchedEntry)) {
+        if (prefetchedEntry[1] !== rscParams) {
+          prefetchedEntry = undefined;
+        }
+      } else {
+        // We don't check rscParams for the initial hydration
+        // It's limited and may result in a wrong result. FIXME
+        prefetchedEntry = [prefetchedEntry];
+      }
+    }
+    const temporaryReferences =
+      prefetchedEntry?.[2] || createTemporaryReferenceSet();
+    const url = BASE_RSC_PATH + encodeRscPath(rscPath);
+    const responsePromise = prefetchedEntry
+      ? prefetchedEntry[0]
+      : rscParams === undefined
+        ? fetchFn(url)
+        : rscParams instanceof URLSearchParams
+          ? fetchFn(url + '?' + rscParams)
+          : encodeReply(rscParams, { temporaryReferences }).then((body) =>
+              fetchFn(url, { method: 'POST', body }),
+            );
+    if (prefetchOnly) {
+      prefetched[rscPath] = [responsePromise, rscParams, temporaryReferences];
+      return undefined as never;
+    }
+    return createFromFetch<Elements>(checkStatus(responsePromise), {
+      callServer: (funcId: string, args: unknown[]) =>
+        unstable_callServerRsc(funcId, args, fetchCache),
+      temporaryReferences,
+    });
+  };
 
 /**
  * callServer callback
@@ -123,49 +178,18 @@ export const unstable_callServerRsc = async (
   args: unknown[],
   fetchCache = defaultFetchCache,
 ) => {
-  const enhanceFetch = fetchCache[ENHANCE_FETCH] || ((f) => f);
-  const enhanceCreateData = fetchCache[ENHANCE_CREATE_DATA] || ((d) => d);
-  const temporaryReferences = createTemporaryReferenceSet();
-  const createData = (responsePromise: Promise<Response>) =>
-    createFromFetch<Elements>(checkStatus(responsePromise), {
-      callServer: (funcId: string, args: unknown[]) =>
-        unstable_callServerRsc(funcId, args, fetchCache),
-      temporaryReferences,
+  const setElements = fetchCache[SET_ELEMENTS]!;
+  const fetchRscInternal = fetchCache[FETCH_RSC_INTERNAL]!;
+  const rscPath = encodeFuncId(funcId);
+  const rscParams =
+    args.length === 1 && args[0] instanceof URLSearchParams ? args[0] : args;
+  const { _value: value, ...data } = await fetchRscInternal(rscPath, rscParams);
+  if (Object.keys(data).length) {
+    startTransition(() => {
+      setElements((prev) => mergeElementsPromise(prev, data));
     });
-  const url = BASE_RSC_PATH + encodeRscPath(encodeFuncId(funcId));
-  const responsePromise =
-    args.length === 1 && args[0] instanceof URLSearchParams
-      ? enhanceFetch(fetch)(url + '?' + args[0])
-      : encodeReply(args, { temporaryReferences }).then((body) =>
-          enhanceFetch(fetch)(url, { method: 'POST', body }),
-        );
-  const data = enhanceCreateData(createData)(responsePromise);
-  const value = (await data)._value;
-  // FIXME this causes rerenders even if data is empty
-  fetchCache[SET_ELEMENTS]?.((prev) => mergeElementsPromise(prev, data));
+  }
   return value;
-};
-
-const prefetchedParams = new WeakMap<Promise<unknown>, unknown>();
-const prefetchedTemporaryReferences = new WeakMap<
-  Promise<unknown>,
-  ReturnType<typeof createTemporaryReferenceSet>
->();
-
-const fetchRscInternal = (
-  url: string,
-  rscParams: unknown,
-  temporaryReferences: ReturnType<typeof createTemporaryReferenceSet>,
-  fetchCache: FetchCache,
-) => {
-  const enhanceFetch = fetchCache[ENHANCE_FETCH] || ((f) => f);
-  return rscParams === undefined
-    ? enhanceFetch(fetch)(url)
-    : rscParams instanceof URLSearchParams
-      ? enhanceFetch(fetch)(url + '?' + rscParams)
-      : encodeReply(rscParams, { temporaryReferences }).then((body) =>
-          enhanceFetch(fetch)(url, { method: 'POST', body }),
-        );
 };
 
 export const fetchRsc = (
@@ -173,33 +197,12 @@ export const fetchRsc = (
   rscParams?: unknown,
   fetchCache = defaultFetchCache,
 ): Promise<Elements> => {
+  const fetchRscInternal = fetchCache[FETCH_RSC_INTERNAL]!;
   const entry = fetchCache[ENTRY];
   if (entry && entry[0] === rscPath && entry[1] === rscParams) {
     return entry[2];
   }
-  const enhanceCreateData = fetchCache[ENHANCE_CREATE_DATA] || ((d) => d);
-  const prefetched = ((globalThis as any).__WAKU_PREFETCHED__ ||= {});
-  const url = BASE_RSC_PATH + encodeRscPath(rscPath);
-  const hasValidPrefetchedResponse =
-    !!prefetched[url] &&
-    // HACK .has() is for the initial hydration
-    // It's limited and may result in a wrong result. FIXME
-    (!prefetchedParams.has(prefetched[url]) ||
-      prefetchedParams.get(prefetched[url]) === rscParams);
-  const temporaryReferences =
-    prefetchedTemporaryReferences.get(prefetched[url]) ||
-    createTemporaryReferenceSet();
-  const createData = (responsePromise: Promise<Response>) =>
-    createFromFetch<Elements>(checkStatus(responsePromise), {
-      callServer: (funcId: string, args: unknown[]) =>
-        unstable_callServerRsc(funcId, args, fetchCache),
-      temporaryReferences,
-    });
-  const responsePromise = hasValidPrefetchedResponse
-    ? prefetched[url]
-    : fetchRscInternal(url, rscParams, temporaryReferences, fetchCache);
-  delete prefetched[url];
-  const data = enhanceCreateData(createData)(responsePromise);
+  const data = fetchRscInternal(rscPath, rscParams);
   fetchCache[ENTRY] = [rscPath, rscParams, data];
   return data;
 };
@@ -209,45 +212,67 @@ export const prefetchRsc = (
   rscParams?: unknown,
   fetchCache = defaultFetchCache,
 ): void => {
-  const prefetched = ((globalThis as any).__WAKU_PREFETCHED__ ||= {});
-  const url = BASE_RSC_PATH + encodeRscPath(rscPath);
-  if (!(url in prefetched)) {
-    const temporaryReferences = createTemporaryReferenceSet();
-    prefetched[url] = fetchRscInternal(
-      url,
-      rscParams,
-      temporaryReferences,
-      fetchCache,
-    );
-    prefetchedParams.set(prefetched[url], rscParams);
-    prefetchedTemporaryReferences.set(prefetched[url], temporaryReferences);
+  const fetchRscInternal = fetchCache[FETCH_RSC_INTERNAL]!;
+  const prefetched: Record<string, PrefetchedEntry> = ((
+    globalThis as any
+  ).__WAKU_PREFETCHED__ ||= {});
+  const prefetchedEntry = prefetched[rscPath];
+  if (Array.isArray(prefetchedEntry) && prefetchedEntry[1] === rscParams) {
+    return; // already prefetched
   }
+  fetchRscInternal(rscPath, rscParams, true);
 };
 
 const RefetchContext = createContext<
-  (rscPath: string, rscParams?: unknown) => void
+  (rscPath: string, rscParams?: unknown) => Promise<void>
 >(() => {
   throw new Error('Missing Root component');
 });
 const ElementsContext = createContext<Promise<Elements> | null>(null);
 
+type EnhanceFetchRscInternal = (
+  fn: (fetchRscInternal: FetchRscInternal) => FetchRscInternal,
+) => () => void;
+
+const EnhanceFetchRscInternalContext = createContext<EnhanceFetchRscInternal>(
+  () => {
+    throw new Error('Missing Root component');
+  },
+);
+
+export const useEnhanceFetchRscInternal_UNSTABLE = () =>
+  use(EnhanceFetchRscInternalContext);
+
 export const Root = ({
   initialRscPath,
   initialRscParams,
   fetchCache = defaultFetchCache,
-  unstable_enhanceFetch,
-  unstable_enhanceCreateData,
   children,
 }: {
   initialRscPath?: string;
   initialRscParams?: unknown;
   fetchCache?: FetchCache;
-  unstable_enhanceFetch?: EnhanceFetch;
-  unstable_enhanceCreateData?: EnhanceCreateData;
   children: ReactNode;
 }) => {
-  fetchCache[ENHANCE_FETCH] = unstable_enhanceFetch;
-  fetchCache[ENHANCE_CREATE_DATA] = unstable_enhanceCreateData;
+  fetchCache[FETCH_RSC_INTERNAL] ||= createFetchRscInternal(fetchCache);
+  const enhanceFetchRscInternal: EnhanceFetchRscInternal = useMemo(() => {
+    const enhancers = new Set<Parameters<EnhanceFetchRscInternal>[0]>();
+    const enhance = () => {
+      let fetchRscInternal = createFetchRscInternal(fetchCache);
+      for (const fn of enhancers) {
+        fetchRscInternal = fn(fetchRscInternal);
+      }
+      fetchCache[FETCH_RSC_INTERNAL] = fetchRscInternal;
+    };
+    return (fn) => {
+      enhancers.add(fn);
+      enhance();
+      return () => {
+        enhancers.delete(fn);
+        enhance();
+      };
+    };
+  }, [fetchCache]);
   const [elements, setElements] = useState(() =>
     fetchRsc(initialRscPath || '', initialRscParams, fetchCache),
   );
@@ -255,22 +280,28 @@ export const Root = ({
     fetchCache[SET_ELEMENTS] = setElements;
   }, [fetchCache]);
   const refetch = useCallback(
-    (rscPath: string, rscParams?: unknown) => {
+    async (rscPath: string, rscParams?: unknown) => {
       // clear cache entry before fetching
       delete fetchCache[ENTRY];
       const data = fetchRsc(rscPath, rscParams, fetchCache);
-      setElements((prev) => mergeElementsPromise(prev, data));
+      const dataWithoutErrors = Promise.resolve(data).catch(() => ({}));
+      setElements((prev) => mergeElementsPromise(prev, dataWithoutErrors));
+      await data;
     },
     [fetchCache],
   );
   return createElement(
-    RefetchContext.Provider,
-    { value: refetch },
+    EnhanceFetchRscInternalContext.Provider,
+    { value: enhanceFetchRscInternal },
     createElement(
-      ElementsContext.Provider,
-      { value: elements },
-      ...DEFAULT_HTML_HEAD,
-      children,
+      RefetchContext.Provider,
+      { value: refetch },
+      createElement(
+        ElementsContext.Provider,
+        { value: elements },
+        ...DEFAULT_HTML_HEAD,
+        children,
+      ),
     ),
   );
 };
@@ -279,106 +310,16 @@ export const useRefetch = () => use(RefetchContext);
 
 const ChildrenContext = createContext<ReactNode>(undefined);
 const ChildrenContextProvider = memo(ChildrenContext.Provider);
-const ErrorContext = createContext<
-  [error: unknown, reset: () => void] | undefined
->(undefined);
-const ErrorContextProvider = memo(ErrorContext.Provider);
 
 export const Children = () => use(ChildrenContext);
 
-export const ThrowError_UNSTABLE = () => {
-  const errAndReset = use(ErrorContext);
-  if (errAndReset) {
-    throw errAndReset[0];
-  }
-  return null;
-};
-
-export const useResetError_UNSTABLE = () => {
-  const errAndReset = use(ErrorContext);
-  if (errAndReset) {
-    return errAndReset[1];
-  }
-};
-
-export const useElement = (id: string) => {
+export const useElementsPromise_UNSTABLE = () => {
   const elementsPromise = use(ElementsContext);
   if (!elementsPromise) {
     throw new Error('Missing Root component');
   }
-  const elements = use(elementsPromise);
-  if (id in elements && elements[id] == undefined) {
-    throw new Error('Element cannot be undefined, use null instead: ' + id);
-  } else if (!(id in elements)) {
-    console.error('Element not found: ' + id);
-  }
-  console.log(Object.keys(elements));
-  return elements[id];
+  return elementsPromise;
 };
-
-const InnerSlot = ({
-  id,
-  children,
-  setValidElement,
-  unstable_fallback,
-}: {
-  id: string;
-  children?: ReactNode;
-  setValidElement?: (element: ReactNode) => void;
-  unstable_fallback?: ReactNode;
-}) => {
-  const element = useElement(id);
-  const isValidElement = element !== undefined;
-  useEffect(() => {
-    if (isValidElement && setValidElement) {
-      // FIXME is there `isReactNode` type checker?
-      setValidElement(element as ReactNode);
-    }
-  }, [isValidElement, element, setValidElement]);
-  if (!isValidElement) {
-    if (unstable_fallback) {
-      return unstable_fallback;
-    }
-    throw new Error('Invalid element: ' + id);
-  }
-  return createElement(
-    ChildrenContextProvider,
-    { value: children },
-    // FIXME is there `isReactNode` type checker?
-    element as ReactNode,
-  );
-};
-
-class GeneralErrorHandler extends Component<
-  { children?: ReactNode; errorHandler: ReactNode },
-  { error: unknown | null }
-> {
-  constructor(props: { children?: ReactNode; errorHandler: ReactNode }) {
-    super(props);
-    this.state = { error: null };
-    this.reset = this.reset.bind(this);
-  }
-  static getDerivedStateFromError(error: unknown) {
-    return { error };
-  }
-  reset() {
-    this.setState({ error: null });
-  }
-  render() {
-    const { error } = this.state;
-    if (error !== null) {
-      if (this.props.errorHandler) {
-        return createElement(
-          ErrorContextProvider,
-          { value: [error, this.reset] },
-          this.props.errorHandler,
-        );
-      }
-      throw error;
-    }
-    return this.props.children;
-  }
-}
 
 /**
  * Slot component
@@ -397,34 +338,31 @@ class GeneralErrorHandler extends Component<
 export const Slot = ({
   id,
   children,
-  unstable_handleError,
   unstable_fallback,
 }: {
   id: string;
   children?: ReactNode;
-  unstable_handleError?: ReactNode;
   unstable_fallback?: ReactNode;
 }) => {
-  const [errorHandler, setErrorHandler] = useState<ReactNode>();
-  const setValidElement = useCallback(
-    (element: ReactNode) =>
-      setErrorHandler(
-        createElement(
-          ChildrenContextProvider,
-          { value: unstable_handleError },
-          element,
-        ),
-      ),
-    [unstable_handleError],
-  );
-  if (unstable_handleError !== undefined) {
-    return createElement(
-      GeneralErrorHandler,
-      { errorHandler },
-      createElement(InnerSlot, { id, setValidElement }, children),
-    );
+  const elementsPromise = useElementsPromise_UNSTABLE();
+  const elements = use(elementsPromise);
+  if (id in elements && elements[id] === undefined) {
+    throw new Error('Element cannot be undefined, use null instead: ' + id);
   }
-  return createElement(InnerSlot, { id, unstable_fallback }, children);
+  const element = elements[id];
+  const isValidElement = element !== undefined;
+  if (!isValidElement) {
+    if (unstable_fallback) {
+      return unstable_fallback;
+    }
+    throw new Error('Invalid element: ' + id);
+  }
+  return createElement(
+    ChildrenContextProvider,
+    { value: children },
+    // FIXME is there `isReactNode` type checker?
+    element as ReactNode,
+  );
 };
 
 /**

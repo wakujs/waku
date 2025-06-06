@@ -77,7 +77,7 @@ globalThis.__WAKU_PREFETCHED__ = {
 ${rscPathArray
   .map((rscPath) => {
     const url = basePrefix + encodeRscPath(rscPath);
-    return `  '${url}': fetch('${url}'),`;
+    return `  '${rscPath}': fetch('${url}'),`;
   })
   .join('\n')}
 };`;
