@@ -152,11 +152,14 @@ for (const mode of ['DEV', 'PRD'] as const) {
 
     // https://github.com/wakujs/waku/issues/1255
     test('long suspense', async ({ page }) => {
+      await page.setViewportSize({ width: 480, height: 50 });
       await page.goto(`http://localhost:${port}/long-suspense/1`);
       await expect(page.getByTestId('long-suspense-component')).toHaveCount(2);
       await expect(
         page.getByRole('heading', { name: 'Long Suspense Page 1' }),
       ).toBeVisible();
+
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
       await page.click("a[href='/long-suspense/2']");
       await page.waitForFunction(
         () => {
@@ -166,9 +169,11 @@ for (const mode of ['DEV', 'PRD'] as const) {
           const heading = document.querySelector(
             '[data-testid="long-suspense-component"] h3',
           );
+          const scrollY = window.scrollY;
           return (
             pendingElement?.textContent === 'Pending...' &&
-            heading?.textContent === 'Long Suspense Page 1'
+            heading?.textContent === 'Long Suspense Page 1' &&
+            scrollY > 0
           );
         },
         undefined,
@@ -178,6 +183,8 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await expect(
         page.getByRole('heading', { name: 'Long Suspense Page 2' }),
       ).toBeVisible();
+
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
       await page.click("a[href='/long-suspense/3']");
       await expect(
         page.getByRole('heading', { name: 'Long Suspense Page 2' }),
@@ -187,6 +194,8 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await expect(
         page.getByRole('heading', { name: 'Long Suspense Page 3' }),
       ).toBeVisible();
+
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
       await page.click("a[href='/long-suspense/2']");
       await page.waitForFunction(
         () => {
@@ -196,9 +205,11 @@ for (const mode of ['DEV', 'PRD'] as const) {
           const heading = document.querySelector(
             '[data-testid="long-suspense-component"] h3',
           );
+          const scrollY = window.scrollY;
           return (
             pendingElement?.textContent === 'Pending...' &&
-            heading?.textContent === 'Long Suspense Page 3'
+            heading?.textContent === 'Long Suspense Page 3' &&
+            scrollY > 0
           );
         },
         undefined,
