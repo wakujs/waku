@@ -36,6 +36,9 @@ export const getConfig = async () => {
 };
 ```
 
+Alternatively, you add `suppressHydrationWarning` to the `<body>` element to suppress hydration warnings.
+This is useful when you use the client-side library like [next-themes](https://www.npmjs.com/package/next-themes)
+
 ### Config-based router
 
 There is a new `createRoot` function exposed from `createPages`.
