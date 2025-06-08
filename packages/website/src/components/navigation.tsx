@@ -194,6 +194,8 @@ const docs = [
 
 const links = [
   { to: '/blog', icon: 'book', label: 'Blog' },
-  { to: 'https://github.com/dai-shi/waku', icon: 'github', label: 'GitHub' },
-  { to: 'https://discord.gg/MrQdmzd', icon: 'discord', label: 'Discord' },
+  { to: '/guides', icon: 'chalkboard', label: 'Guides' },
+  { to: 'https://github.com/wakujs/waku', icon: 'github', label: 'Repository' },
+  { to: 'https://discord.gg/MrQdmzd', icon: 'discord', label: 'Community' },
+  { to: 'https://x.com/wakujs', icon: 'twitter', label: 'Updates' },
 ];

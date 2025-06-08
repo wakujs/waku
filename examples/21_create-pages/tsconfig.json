@@ -2,6 +2,9 @@
   "compilerOptions": {
     "strict": true,
     "target": "esnext",
+    "noEmit": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
     "downlevelIteration": true,
     "esModuleInterop": true,
     "module": "esnext",
@@ -9,7 +12,6 @@
     "skipLibCheck": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
-    "types": ["react/experimental"],
     "jsx": "react-jsx"
   }
 }

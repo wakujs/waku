@@ -30,12 +30,63 @@ const parseRscParams = (
 ): {
   query: string;
 } => {
-  if (!(rscParams instanceof URLSearchParams)) {
-    return { query: '' };
+  if (rscParams instanceof URLSearchParams) {
+    return { query: rscParams.get('query') || '' };
   }
-  const query = rscParams.get('query') || '';
-  return { query };
+  if (
+    typeof (rscParams as { query?: undefined } | undefined)?.query === 'string'
+  ) {
+    return { query: (rscParams as { query: string }).query };
+  }
+  return { query: '' };
 };
+
+const RSC_PATH_SYMBOL = Symbol('RSC_PATH');
+const RSC_PARAMS_SYMBOL = Symbol('RSC_PARAMS');
+
+const setRscPath = (rscPath: string) => {
+  try {
+    const context = getContext();
+    (context as unknown as Record<typeof RSC_PATH_SYMBOL, unknown>)[
+      RSC_PATH_SYMBOL
+    ] = rscPath;
+  } catch {
+    // ignore
+  }
+};
+
+const setRscParams = (rscParams: unknown) => {
+  try {
+    const context = getContext();
+    (context as unknown as Record<typeof RSC_PARAMS_SYMBOL, unknown>)[
+      RSC_PARAMS_SYMBOL
+    ] = rscParams;
+  } catch {
+    // ignore
+  }
+};
+
+export function unstable_getRscPath(): string | undefined {
+  try {
+    const context = getContext();
+    return (context as unknown as Record<typeof RSC_PATH_SYMBOL, string>)[
+      RSC_PATH_SYMBOL
+    ];
+  } catch {
+    return undefined;
+  }
+}
+
+export function unstable_getRscParams(): unknown {
+  try {
+    const context = getContext();
+    return (context as unknown as Record<typeof RSC_PARAMS_SYMBOL, unknown>)[
+      RSC_PARAMS_SYMBOL
+    ];
+  } catch {
+    return undefined;
+  }
+}
 
 const RERENDER_SYMBOL = Symbol('RERENDER');
 type Rerender = (rscPath: string, rscParams?: unknown) => void;
@@ -115,6 +166,7 @@ export function unstable_defineRouter(fns: {
   handleApi?: (
     path: string,
     options: {
+      url: URL;
       body: ReadableStream | null;
       headers: Readonly<Record<string, string>>;
       method: string;
@@ -209,6 +261,8 @@ export function unstable_defineRouter(fns: {
     rscParams: unknown,
     headers: Readonly<Record<string, string>>,
   ) => {
+    setRscPath(rscPath);
+    setRscParams(rscParams);
     const pathname = decodeRoutePath(rscPath);
     const pathConfigItem = await getPathConfigItem(pathname);
     if (!pathConfigItem) {
@@ -242,11 +296,12 @@ export function unstable_defineRouter(fns: {
     if (!pathConfigItem.specs.rootElementIsStatic || !skipIdSet.has('root')) {
       entries.root = rootElement;
     }
-    const routeId = ROUTE_SLOT_ID_PREFIX + pathname;
+    const decodedPathname = decodeURIComponent(pathname);
+    const routeId = ROUTE_SLOT_ID_PREFIX + decodedPathname;
     if (!pathConfigItem.specs.routeElementIsStatic || !skipIdSet.has(routeId)) {
       entries[routeId] = routeElement;
     }
-    entries[ROUTE_ID] = [pathname, query];
+    entries[ROUTE_ID] = [decodedPathname, query];
     entries[IS_STATIC_ID] = !!pathConfigItem.specs.isStatic;
     if (await has404()) {
       entries[HAS404_ID] = true;
@@ -281,7 +336,7 @@ export function unstable_defineRouter(fns: {
         {},
       );
       let rendered = false;
-      const rerender = async (rscPath: string, rscParams?: unknown) => {
+      const rerender = (rscPath: string, rscParams?: unknown) => {
         if (rendered) {
           throw new Error('already rendered');
         }
@@ -306,13 +361,18 @@ export function unstable_defineRouter(fns: {
     const pathConfigItem = await getPathConfigItem(input.pathname);
     if (pathConfigItem?.specs?.isApi && fns.handleApi) {
       return fns.handleApi(input.pathname, {
+        url: input.req.url,
         body: input.req.body,
         headers: input.req.headers,
         method: input.req.method,
       });
     }
     if (input.type === 'action' || input.type === 'custom') {
-      const renderIt = async (pathname: string, query: string) => {
+      const renderIt = async (
+        pathname: string,
+        query: string,
+        httpstatus = 200,
+      ) => {
         const rscPath = encodeRoutePath(pathname);
         const rscParams = new URLSearchParams({ query });
         const entries = await getEntries(rscPath, rscParams, input.req.headers);
@@ -321,6 +381,7 @@ export function unstable_defineRouter(fns: {
         }
         const html = createElement(INTERNAL_ServerRouter, {
           route: { path: pathname, query, hash: '' },
+          httpstatus,
         });
         const actionResult =
           input.type === 'action' ? await input.fn() : undefined;
@@ -341,7 +402,7 @@ export function unstable_defineRouter(fns: {
         }
       }
       if (await has404()) {
-        return { ...(await renderIt('/404', '')), status: 404 };
+        return { ...(await renderIt('/404', '', 404)), status: 404 };
       } else {
         return null;
       }
@@ -367,6 +428,7 @@ export function unstable_defineRouter(fns: {
             type: 'file',
             pathname,
             body: handleApi(pathname, {
+              url: new URL(pathname, 'http://localhost:3000'),
               body: null,
               headers: {},
               method: 'GET',
@@ -429,12 +491,12 @@ globalThis.__WAKU_ROUTER_PREFETCH__ = (path) => {
             const rscPath = encodeRoutePath(pathname);
             const code =
               unstable_generatePrefetchCode([rscPath], moduleIds) +
-              getRouterPrefetchCode() +
-              (specs.is404 ? 'globalThis.__WAKU_ROUTER_404__ = true;' : '');
+              getRouterPrefetchCode();
             const entries = entriesCache.get(pathname);
             if (specs.isStatic && entries) {
               const html = createElement(INTERNAL_ServerRouter, {
                 route: { path: pathname, query: '', hash: '' },
+                httpstatus: specs.is404 ? 404 : 200,
               });
               return {
                 type: 'file',
@@ -448,8 +510,7 @@ globalThis.__WAKU_ROUTER_PREFETCH__ = (path) => {
           }
           const code =
             unstable_generatePrefetchCode([], moduleIds) +
-            getRouterPrefetchCode() +
-            (specs.is404 ? 'globalThis.__WAKU_ROUTER_404__ = true;' : '');
+            getRouterPrefetchCode();
           return {
             type: 'htmlHead',
             pathSpec,

@@ -1,7 +1,7 @@
 import type { Plugin } from 'vite';
 import * as swc from '@swc/core';
 
-import { EXTENSIONS } from '../constants.js';
+import { EXTENSIONS } from '../builder/constants.js';
 import { extname } from '../utils/path.js';
 import { parseOpts } from '../utils/swc.js';
 // HACK: Is it common to depend on another plugin like this?
@@ -70,6 +70,7 @@ export function rscAnalyzePlugin(
   opts:
     | {
         isClient: true;
+        clientFileMap: Map<string, string>;
         serverFileMap: Map<string, string>;
       }
     | {
@@ -94,9 +95,16 @@ export function rscAnalyzePlugin(
             item.type === 'ExpressionStatement' &&
             item.expression.type === 'StringLiteral'
           ) {
-            if (!opts.isClient && item.expression.value === 'use client') {
+            if (
+              !opts.clientFileMap.has(id) &&
+              item.expression.value === 'use client'
+            ) {
               opts.clientFileMap.set(id, await hash(code));
-            } else if (item.expression.value === 'use server') {
+            }
+            if (
+              !opts.serverFileMap.has(id) &&
+              item.expression.value === 'use server'
+            ) {
               opts.serverFileMap.set(id, await hash(code));
             }
           }

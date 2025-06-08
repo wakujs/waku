@@ -6,7 +6,7 @@ import {
 import { createPages, METHODS } from './create-pages.js';
 import type { Method } from './create-pages.js';
 
-import { EXTENSIONS } from '../lib/constants.js';
+import { EXTENSIONS } from '../lib/builder/constants.js';
 import { isIgnoredPath } from '../lib/utils/fs-router.js';
 
 const DO_NOT_BUNDLE = '';
@@ -14,14 +14,35 @@ const DO_NOT_BUNDLE = '';
 export function unstable_fsRouter(
   importMetaUrl: string,
   loadPage: (file: string) => Promise<any> | undefined,
-  pages: string,
+  options: {
+    /** e.g. `"pages"` will detect pages in `src/pages`. */
+    pagesDir: string;
+    /**
+     * e.g. `"api"` will detect pages in `src/pages/api`. Or, if `options.pagesDir`
+     * is `"foo"`, then it will detect pages in `src/foo/api`.
+     */
+    apiDir: string;
+  },
 ) {
   const buildOptions = unstable_getBuildOptions();
   return createPages(
-    async ({ createPage, createLayout, createRoot, createApi }) => {
+    async ({
+      createPage,
+      createLayout,
+      createRoot,
+      createApi,
+      createPagePart,
+    }) => {
       let files = await unstable_getPlatformData<string[]>('fsRouterFiles');
       if (!files) {
         // dev and build only
+        if (
+          import.meta.env &&
+          import.meta.env.MODE === 'production' &&
+          !buildOptions.unstable_phase
+        ) {
+          throw new Error('files must be set in production.');
+        }
         const [
           { readdir },
           { join, dirname, extname, sep },
@@ -31,7 +52,10 @@ export function unstable_fsRouter(
           import(/* @vite-ignore */ DO_NOT_BUNDLE + 'node:path'),
           import(/* @vite-ignore */ DO_NOT_BUNDLE + 'node:url'),
         ]);
-        const pagesDir = join(dirname(fileURLToPath(importMetaUrl)), pages);
+        const pagesDir = join(
+          dirname(fileURLToPath(importMetaUrl)),
+          options.pagesDir,
+        );
         files = await readdir(pagesDir, {
           encoding: 'utf8',
           recursive: true,
@@ -74,7 +98,8 @@ export function unstable_fsRouter(
         }
         const path =
           '/' +
-          (['_layout', 'index', '_root'].includes(pathItems.at(-1)!)
+          (['_layout', 'index', '_root'].includes(pathItems.at(-1)!) ||
+          pathItems.at(-1)?.startsWith('_part')
             ? pathItems.slice(0, -1)
             : pathItems
           ).join('/');
@@ -82,7 +107,7 @@ export function unstable_fsRouter(
           throw new Error(
             'Page file cannot be named [path]. This will conflict with the path prop of the page component.',
           );
-        } else if (pathItems.at(0) === 'api') {
+        } else if (pathItems.at(0) === options.apiDir) {
           if (config?.render === 'static') {
             if (Object.keys(mod).length !== 2 || !mod.GET) {
               console.warn(
@@ -98,9 +123,10 @@ export function unstable_fsRouter(
           } else {
             const validMethods = new Set(METHODS);
             const handlers = Object.fromEntries(
-              Object.entries(mod).filter(([exportName]) => {
+              Object.entries(mod).flatMap(([exportName, handler]) => {
                 const isValidExport =
                   exportName === 'getConfig' ||
+                  exportName === 'default' ||
                   validMethods.has(exportName as Method);
                 if (!isValidExport) {
                   console.warn(
@@ -109,7 +135,11 @@ export function unstable_fsRouter(
                     )}`,
                   );
                 }
-                return isValidExport && exportName !== 'getConfig';
+                return isValidExport && exportName !== 'getConfig'
+                  ? exportName === 'default'
+                    ? [['all', handler]]
+                    : [[exportName, handler]]
+                  : [];
               }),
             );
             createApi({
@@ -129,6 +159,13 @@ export function unstable_fsRouter(
           createRoot({
             component: mod.default,
             render: 'static',
+            ...config,
+          });
+        } else if (pathItems.at(-1)?.startsWith('_part')) {
+          createPagePart({
+            path,
+            component: mod.default,
+            render: 'dynamic',
             ...config,
           });
         } else {

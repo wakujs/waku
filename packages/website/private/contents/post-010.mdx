@@ -1,0 +1,95 @@
+---
+slug: fine-grained-router-components
+title: Fine-grained component render modes
+description: We’re extending the power of Waku Router.
+author: tyler
+release: v0.23
+date: 2025/05/14
+---
+
+Waku v0.23 is here with an exciting new level of control with the router! This includes two new features: Route Groups and Page Parts.
+
+Route Groups are helpful for grouping a set of routes to share a layout. Very similar versions exist for [Next.js](https://nextjs.org/docs/app/building-your-application/routing/route-groups) and [TanStack Router](https://tanstack.com/router/latest/docs/framework/solid/routing/routing-concepts#pathless-route-group-directories).
+
+Page Parts allow for mixing `static` and `dynamic` rendering on the same page.
+
+## Route Groups
+
+The path of a file inside the `pages` directory determines its route and the layouts it will have. One thing we knew we’d have to support is a way to group together layout combinations that allow for convenient composition independent of the route itself. This is where Route Groups come in.
+
+Let’s say you’d like to have a home page at `/`, but all other routes should share a layout which is not used on `/`. This is now possible by grouping those routes in a directory marked with parenthesis (e.g., `(some-group)`). An example file setup:
+
+```
+├── (some-group)
+│ ├── _layout.tsx
+│ ├── about.tsx
+│ └── other-page.tsx
+└── index.tsx
+```
+
+The composition capabilities that Route Groups unlock are really cool too! You could have some work you’d like to only occur for the layout at build time (`static`), then have more work that should be done for all routes at runtime (`dynamic`). This example could be setup like:
+
+```
+(some-group)
+├── (another-group)
+│ ├── _layout.tsx # dynamic layout
+│ ├── about.tsx
+│ └── other-page.tsx
+└── _layout.tsx # static layout
+```
+
+Layouts can essentially slot in anywhere and are great for components, state, or data shared across routes.
+
+## Page Parts
+
+Before Waku v0.23 a page was either all `static` or all `dynamic`. We’re now introducing the ability to compose pages like this:
+
+```tsx
+// just an example to show the full component tree of a page with parts
+<Root>
+  <Layout>
+    <StaticPageComponent /> // ordering is flexible here
+    <DynamicPageComponent />
+    <AnotherStaticPageComponent />
+  </Layout>
+</Root>
+```
+
+Before we supported only a single page component (and that will stay the default). Page Parts add a level of control that we think can be really powerful. Now any combination of parts is possible. Above we see `static` followed by `dynamic` followed again by `static`, but we could do any pattern or sequence.
+
+### How does it work?
+
+The filename convention for Page Parts is `_part${string}.tsx` (TypeScript string literal syntax). So to replicate the example above for route `/foo` we would have the following files:
+
+```
+pages
+├── _layout.tsx
+├── foo
+│ ├── _part-banana.tsx # these combine to be the children for /foo
+│ ├── _part-orange.tsx
+│ └── _part-cherry.tsx
+└── index.tsx # / route
+```
+
+Then your component definition could look like this:
+
+```tsx
+export default function Banana() {
+  return <p>🍌</p>;
+}
+
+export const getConfig = () => {
+  return {
+    render: 'static',
+    order: 0, // NEW!
+  };
+};
+```
+
+The `order` here determines the order in which Banana is rendered on the `/foo` page. So in this case orange could have `order: 1` to be rendered next, and cherry could have `order: 2` to be last. Now the full route is assembled from the three parts.
+
+## There’s more to come
+
+Waku Router is built to be minimal and powerful. We’re really excited to see what you can build with Fine-Grained Component Render Modes. We’d love to hear from you on our [Discord server](https://discord.gg/MrQdmzd), [GitHub discussions](https://github.com/wakujs/waku/discussions), or [around](https://x.com/wakujs) [the](https://bsky.app/profile/daishikato.com) [web](https://fosstodon.org/@daishi).
+
+P.S., We have a [few more things](https://github.com/wakujs/waku/issues/24) coming soon!

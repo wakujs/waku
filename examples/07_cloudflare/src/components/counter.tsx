@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-export const Counter: React.FC<{ max?: number | undefined }> = ({ max }) => {
+export const Counter = ({ max }: { max?: number | undefined }) => {
   const [count, setCount] = useState(0);
 
   const handleIncrement = () =>

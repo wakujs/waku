@@ -21,6 +21,10 @@ layer(base);
   body {
     @apply overflow-x-clip overflow-y-scroll overscroll-none;
   }
+  a,
+  button {
+    @apply cursor-pointer;
+  }
   #__waku {
     @apply bg-gray-950;
     opacity: 0;

@@ -50,6 +50,15 @@ for (const mode of ['DEV', 'PRD'] as const) {
       ).toBeVisible();
     });
 
+    test('check hydration error', async ({ page }) => {
+      test.skip(mode !== 'DEV');
+      const errors: string[] = [];
+      page.on('pageerror', (err) => errors.push(err.message));
+      await page.goto(`http://localhost:${port}/`);
+      await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+      expect(errors.join('\n')).not.toContain('hydration-mismatch');
+    });
+
     test('api hi', async () => {
       const res = await fetch(`http://localhost:${port}/api/hi`);
       expect(res.status).toBe(200);
@@ -77,9 +86,76 @@ for (const mode of ['DEV', 'PRD'] as const) {
       expect(await res.text()).toBe('POST Hello from API! from the test!');
     });
 
+    test('api has-default GET', async () => {
+      const res = await fetch(`http://localhost:${port}/api/has-default`);
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe('GET');
+    });
+
+    test('api has-default POST', async () => {
+      const res = await fetch(`http://localhost:${port}/api/has-default`, {
+        method: 'POST',
+        body: 'from the test!',
+      });
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe('default: POST');
+    });
+
     test('_components', async ({ page }) => {
       await page.goto(`http://localhost:${port}/_components/Counter`);
       await expect(page.getByText('404 Not Found')).toBeVisible();
+    });
+
+    test('all page parts show', async ({ page }) => {
+      await page.goto(`http://localhost:${port}/page-parts`);
+      await expect(
+        page.getByRole('heading', { name: 'Static Page Part' }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: 'Dynamic Page Part' }),
+      ).toBeVisible();
+    });
+
+    test('static page part', async ({ page }) => {
+      await page.goto(`http://localhost:${port}/page-parts`);
+      const staticPageTime = (
+        await page
+          .getByRole('heading', { name: 'Static Page Part' })
+          .textContent()
+      )?.split('Part ')[1];
+      expect(staticPageTime).toBeTruthy();
+      await page.click("a[href='/']");
+      await page.waitForTimeout(100);
+      await page.click("a[href='/page-parts']");
+      await expect(
+        page.getByRole('heading', { name: 'Static Page Part' }),
+      ).toBeVisible();
+      const newStaticPageTime = (
+        await page
+          .getByRole('heading', { name: 'Static Page Part' })
+          .textContent()
+      )?.split('Part ')[1];
+      expect(newStaticPageTime).toBe(staticPageTime);
+      const dynamicPageTime = (
+        await page
+          .getByRole('heading', { name: 'Dynamic Page Part' })
+          .textContent()
+      )?.split('Part ')[1];
+      expect(dynamicPageTime).toBeTruthy();
+      expect(dynamicPageTime).not.toBe(staticPageTime);
+    });
+
+    test('alt click', async ({ page }) => {
+      await page.goto(`http://localhost:${port}`);
+      await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+      await page.click("a[href='/foo']", {
+        button: 'right',
+      });
+      await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+      await page.click("a[href='/foo']", {
+        modifiers: ['Alt'],
+      });
+      await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
     });
   });
 }

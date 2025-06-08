@@ -7,7 +7,7 @@ export interface Config {
   /**
    * The base path for serve HTTP.
    * Defaults to  "/".
-   * TODO https://github.com/dai-shi/waku/issues/698
+   * TODO https://github.com/wakujs/waku/issues/698
    */
   basePath?: string;
   /**
@@ -27,6 +27,11 @@ export interface Config {
    */
   pagesDir?: string;
   /**
+   * The api directory inside pagesDir.
+   * Defaults to "api".
+   */
+  apiDir?: string;
+  /**
    * The private directory relative to root.
    * This folder will contain files that should be read only on the server.
    * Defaults to  "private".
@@ -40,20 +45,18 @@ export interface Config {
   /**
    * Middleware to use
    * Defaults to:
-   * () => [
-   *   import('waku/middleware/context'),
-   *   import('waku/middleware/dev-server'),
-   *   import('waku/middleware/handler'),
+   * [
+   *   'waku/middleware/context',
+   *   'waku/middleware/dev-server',
+   *   'waku/middleware/handler',
    * ]
    */
-  middleware?: () => Promise<{ default: Middleware }>[];
+  middleware?: string[];
   /**
    * Enhancer for Hono
    * Defaults to `undefined`
    */
-  unstable_honoEnhancer?:
-    | (<Hono>(createApp: (app: Hono) => Hono) => (app: Hono) => Hono)
-    | undefined;
+  unstable_honoEnhancer?: string | undefined;
   /**
    * Vite configuration options.
    * `common` can contains shared configs that are shallowly merged with other configs.
@@ -68,6 +71,7 @@ export interface Config {
         'build-server'?: () => UserConfig;
         'build-ssr'?: () => UserConfig;
         'build-client'?: () => UserConfig;
+        'build-deploy'?: () => UserConfig;
       }
     | undefined;
 }

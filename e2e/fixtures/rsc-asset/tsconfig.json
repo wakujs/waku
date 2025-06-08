@@ -9,7 +9,7 @@
     "skipLibCheck": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
-    "types": ["react/experimental", "vite/client"],
+    "types": ["vite/client"],
     "jsx": "react-jsx",
     "outDir": "./dist"
   },

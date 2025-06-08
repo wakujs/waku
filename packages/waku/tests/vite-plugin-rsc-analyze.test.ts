@@ -2,19 +2,11 @@ import { build } from 'vite';
 import { expect, test, describe } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import crypto from 'node:crypto';
 import type { LoggingFunction, RollupLog } from 'rollup';
 
 import { rscAnalyzePlugin } from '../src/lib/plugins/vite-plugin-rsc-analyze.js';
 
 const root = fileURLToPath(new URL('./fixtures', import.meta.url));
-
-// FIXME vitest node@18 environment does not have crypto - this is resolved in node@20
-try {
-  globalThis.crypto = crypto as any;
-} catch {
-  // If globalThis.crypto is a getter, we can't set it. Just ignore the error.
-}
 
 const onwarn = (warning: RollupLog, defaultHandler: LoggingFunction) => {
   if (
@@ -56,6 +48,7 @@ async function runTest(
       isClient
         ? rscAnalyzePlugin({
             isClient: true,
+            clientFileMap,
             serverFileMap,
           })
         : rscAnalyzePlugin({
@@ -115,7 +108,7 @@ describe('vite-plugin-rsc-analyze', () => {
       path.resolve(root, './plugin-rsc-analyze'),
       true,
       'client.ts',
-      new Set(),
+      new Set(['client.ts']),
       new Set(),
     );
   });
@@ -135,7 +128,7 @@ describe('vite-plugin-rsc-analyze', () => {
       path.resolve(root, './plugin-rsc-analyze'),
       true,
       'import-client.ts',
-      new Set(),
+      new Set(['client.ts']),
       new Set(),
     );
   });

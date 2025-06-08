@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [18.17.0, 20.8.0, 22.7.0]
+        version: [24.0.0, 22.7.0, 20.8.0]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,6 +35,7 @@ jobs:
         run: |
           pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
       - run: pnpm install
+      - run: pnpm run compile
       - run: pnpm test
         env:
           VITE_EXPERIMENTAL_WAKU_ROUTER: true

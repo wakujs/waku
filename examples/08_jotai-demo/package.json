@@ -1,0 +1,26 @@
+{
+  "name": "08_jotai-demo",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "waku dev",
+    "build": "waku build",
+    "start": "waku start"
+  },
+  "dependencies": {
+    "jotai": "2.12.5",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-server-dom-webpack": "19.1.0",
+    "waku": "0.23.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.1.8",
+    "@types/react": "19.1.6",
+    "@types/react-dom": "19.1.6",
+    "postcss": "8.5.4",
+    "tailwindcss": "4.1.8",
+    "typescript": "5.8.3"
+  }
+}

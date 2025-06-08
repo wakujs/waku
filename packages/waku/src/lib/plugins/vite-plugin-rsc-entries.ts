@@ -3,7 +3,7 @@ import path from 'node:path';
 import { normalizePath } from 'vite';
 import type { Plugin } from 'vite';
 
-import { SRC_ENTRIES } from '../constants.js';
+import { SRC_ENTRIES } from '../builder/constants.js';
 import { extname, joinPath } from '../utils/path.js';
 import { treeshake, removeObjectProperty } from '../utils/treeshake.js';
 
@@ -17,6 +17,8 @@ const CONFIG_FILE = 'waku.config.ts'; // XXX only ts extension
 export function rscEntriesPlugin(opts: {
   basePath: string;
   rscBase: string;
+  middleware: string[];
+  rootDir: string;
   srcDir: string;
   ssrDir: string;
   moduleMap: Record<string, string>;
@@ -29,16 +31,32 @@ export const configPrd = {
   basePath: '${opts.basePath}',
   rscBase: '${opts.rscBase}',
 };
+export function loadMiddleware() {
+  return Promise.all([
+    ${opts.middleware
+      .map(
+        (m) => `import('${m.startsWith('./') ? `${opts.rootDir}/${m}` : m}')`,
+      )
+      .join(',\n')}
+  ]);
+};
 export function loadModule(id) {
   switch (id) {
     ${Object.entries(opts.moduleMap)
-      .map(([k, v]) => `case '${k}': return import('' + '${v}');`)
+      .map(
+        ([k, v]) =>
+          `case '${k}': return import(${v.startsWith('./') ? "'' + " : ''}'${v}');`,
+      )
       .join('\n')}
     default: throw new Error('Cannot find module: ' + id);
   }
 }
 globalThis.__WAKU_SERVER_IMPORT__ = loadModule;
 globalThis.__WAKU_CLIENT_IMPORT__ = (id) => loadModule('${opts.ssrDir}/' + id);
+export const defaultHtmlHead = globalThis.__WAKU_DEFAULT_HTML_HEAD__;
+export const dynamicHtmlPaths = globalThis.__WAKU_DYNAMIC_HTML_PATHS__;
+export const publicIndexHtml = globalThis.__WAKU_PUBLIC_INDEX_HTML__;
+export const loadPlatformData = globalThis.__WAKU_LOAD_PLATFORM_DATA__;
 `;
   let entriesFile = '';
   let configFile = '';
@@ -58,17 +76,7 @@ globalThis.__WAKU_CLIENT_IMPORT__ = (id) => loadModule('${opts.ssrDir}/' + id);
         return codeToPrepend + code;
       }
       if (stripExt(id).endsWith(entriesFile)) {
-        return (
-          code +
-          codeToAppend +
-          (configFile
-            ? `
-export const loadConfig = async () => (await import('${configFile}')).default;
-`
-            : `
-export const loadConfig = async () => ({});
-`)
-        );
+        return code + codeToAppend;
       }
       if (id === configFile) {
         // FIXME this naively removes code with object key name

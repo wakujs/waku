@@ -10,6 +10,10 @@ export const jump = async () => {
   unstable_rerenderRoute(page);
 };
 
+export const jumpToNestedBaz = async () => {
+  unstable_rerenderRoute('/nested/baz');
+};
+
 export const throws = async (input: string): Promise<string> => {
   if (!input) {
     throw new Error('Something unexpected happened');

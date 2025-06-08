@@ -67,6 +67,13 @@ for (const mode of ['DEV', 'PRD'] as const) {
       ).toBeVisible();
     });
 
+    test("nested/cat's pajamas", async ({ page }) => {
+      await page.goto(`http://localhost:${port}/nested/cat's%20pajamas`);
+      await expect(
+        page.getByRole('heading', { name: "Dynamic: cat's pajamas" }),
+      ).toBeVisible();
+    });
+
     test('jump', async ({ page }) => {
       await page.goto(`http://localhost:${port}`);
       await page.click("a[href='/foo']");
@@ -74,6 +81,22 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await page.click('text=Jump to random page');
       await page.waitForTimeout(500); // need to wait not to error
       await expect(page.getByRole('heading', { level: 2 })).toBeVisible();
+      await expect(
+        page.getByRole('heading', { level: 2, name: 'Foo' }),
+      ).not.toBeVisible();
+    });
+
+    test('jump with setState', async ({ page }) => {
+      const errors: string[] = [];
+      page.on('pageerror', (err) => errors.push(err.message));
+      await page.goto(`http://localhost:${port}`);
+      await page.click("a[href='/foo']");
+      await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
+      await page.click('text=Jump with setState');
+      await expect(
+        page.getByRole('heading', { name: 'Baz', exact: true }),
+      ).toBeVisible();
+      expect(errors).toEqual([]);
     });
 
     test('errors', async ({ page }) => {
@@ -127,16 +150,89 @@ for (const mode of ['DEV', 'PRD'] as const) {
       ({ port, stopApp } = await startApp(mode));
     });
 
-    // https://github.com/dai-shi/waku/issues/1255
+    // https://github.com/wakujs/waku/issues/1255
     test('long suspense', async ({ page }) => {
       await page.goto(`http://localhost:${port}/long-suspense/1`);
+      await expect(page.getByTestId('long-suspense-component')).toHaveCount(2);
       await expect(
         page.getByRole('heading', { name: 'Long Suspense Page 1' }),
       ).toBeVisible();
       await page.click("a[href='/long-suspense/2']");
-      await expect(page.getByTestId('long-suspense')).toHaveText('Loading...');
+      await page.waitForFunction(
+        () => {
+          const pendingElement = document.querySelector(
+            '[data-testid="long-suspense-pending"]',
+          );
+          const heading = document.querySelector(
+            '[data-testid="long-suspense-component"] h3',
+          );
+          return (
+            pendingElement?.textContent === 'Pending...' &&
+            heading?.textContent === 'Long Suspense Page 1'
+          );
+        },
+        undefined,
+        { timeout: 1000 },
+      );
+      await expect(page.getByTestId('long-suspense')).toHaveCount(0);
       await expect(
         page.getByRole('heading', { name: 'Long Suspense Page 2' }),
+      ).toBeVisible();
+      await page.click("a[href='/long-suspense/3']");
+      await expect(
+        page.getByRole('heading', { name: 'Long Suspense Page 2' }),
+      ).not.toBeVisible();
+      await expect(page.getByTestId('long-suspense')).toHaveText('Loading...');
+      await expect(page.getByTestId('long-suspense-pending')).toHaveCount(0);
+      await expect(
+        page.getByRole('heading', { name: 'Long Suspense Page 3' }),
+      ).toBeVisible();
+      await page.click("a[href='/long-suspense/2']");
+      await page.waitForFunction(
+        () => {
+          const pendingElement = document.querySelector(
+            '[data-testid="long-suspense-pending"]',
+          );
+          const heading = document.querySelector(
+            '[data-testid="long-suspense-component"] h3',
+          );
+          return (
+            pendingElement?.textContent === 'Pending...' &&
+            heading?.textContent === 'Long Suspense Page 3'
+          );
+        },
+        undefined,
+        { timeout: 1000 },
+      );
+      await expect(page.getByTestId('long-suspense')).toHaveCount(0);
+      await expect(
+        page.getByRole('heading', { name: 'Long Suspense Page 2' }),
+      ).toBeVisible();
+    });
+
+    // https://github.com/wakujs/waku/issues/1437
+    test('static long suspense', async ({ page }) => {
+      await page.goto(`http://localhost:${port}/static-long-suspense/4`);
+      // no loading state for static
+      await expect(page.getByTestId('long-suspense')).toHaveCount(0);
+      await expect(page.getByTestId('long-suspense-component')).toHaveCount(2);
+      await expect(
+        page.getByRole('heading', { name: 'Long Suspense Page 4' }),
+      ).toBeVisible();
+      await page.click("a[href='/static-long-suspense/5']");
+      // It flashes very briefly
+      // await expect(page.getByTestId('long-suspense-pending')).toHaveCount(1);
+      await expect(page.getByTestId('long-suspense')).toHaveCount(0);
+      await expect(
+        page.getByRole('heading', { name: 'Long Suspense Page 5' }),
+      ).toBeVisible();
+      await page.click("a[href='/static-long-suspense/6']");
+      // It flashes very briefly
+      // await expect(page.getByTestId('long-suspense-pending')).toHaveCount(0);
+      // No loading state with static
+      await expect(page.getByTestId('long-suspense')).toHaveCount(0);
+      await expect(
+        page.getByRole('heading', { name: 'Long Suspense Page 6' }),
       ).toBeVisible();
     });
 
@@ -144,6 +240,14 @@ for (const mode of ['DEV', 'PRD'] as const) {
       const res = await fetch(`http://localhost:${port}/api/hi`);
       expect(res.status).toBe(200);
       expect(await res.text()).toBe('hello world!');
+    });
+
+    test('api url with search params', async () => {
+      const res = await fetch(`http://localhost:${port}/api/url?foo=bar`);
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe(
+        `url http://localhost:${port}/api/url?foo=bar`,
+      );
     });
 
     test('api hi.txt', async () => {
@@ -190,6 +294,75 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await expect(
         page.getByRole('heading', { name: '/test Layout' }),
       ).not.toBeVisible();
+    });
+
+    test('all page parts show', async ({ page }) => {
+      await page.goto(`http://localhost:${port}/page-parts`);
+      await expect(
+        page.getByRole('heading', { name: 'Static Page Part' }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: 'Dynamic Page Part' }),
+      ).toBeVisible();
+    });
+
+    test('static page part', async ({ page }) => {
+      await page.goto(`http://localhost:${port}/page-parts`);
+      const staticPageTime = (
+        await page
+          .getByRole('heading', { name: 'Static Page Part' })
+          .textContent()
+      )?.split('Part ')[1];
+      expect(staticPageTime).toBeTruthy();
+      await page.click("a[href='/']");
+      await page.waitForTimeout(100);
+      await page.click("a[href='/page-parts']");
+      await expect(
+        page.getByRole('heading', { name: 'Static Page Part' }),
+      ).toBeVisible();
+      const newStaticPageTime = (
+        await page
+          .getByRole('heading', { name: 'Static Page Part' })
+          .textContent()
+      )?.split('Part ')[1];
+      expect(newStaticPageTime).toBe(staticPageTime);
+      const dynamicPageTime = (
+        await page
+          .getByRole('heading', { name: 'Dynamic Page Part' })
+          .textContent()
+      )?.split('Part ')[1];
+      expect(dynamicPageTime).toBeTruthy();
+      expect(dynamicPageTime).not.toBe(staticPageTime);
+    });
+
+    test('group layout static + dynamic', async ({ page }) => {
+      const whatTime = async (selector: string) =>
+        new Date(
+          (await page
+            .getByRole('heading', { name: selector })
+            .textContent())!.replace(selector + ' ', ''),
+        ).getSeconds();
+
+      await page.goto(`http://localhost:${port}/nested-layouts`);
+      await expect(
+        page.getByRole('heading', { name: 'Dynamic Layout' }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: 'Static Layout' }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('link', { name: 'Nested Layouts' }),
+      ).toBeVisible();
+      const dynamicTime = await whatTime('Dynamic Layout');
+      const staticTime = await whatTime('Static Layout');
+      expect(dynamicTime).toEqual(staticTime);
+
+      await page.getByRole('link', { name: 'Home' }).click();
+      await page.waitForTimeout(1000);
+      await page.getByRole('link', { name: 'Nested Layouts' }).click();
+      const dynamicTime2 = await whatTime('Dynamic Layout');
+      const staticTime2 = await whatTime('Static Layout');
+      expect(dynamicTime2).not.toEqual(staticTime2);
     });
   });
 }

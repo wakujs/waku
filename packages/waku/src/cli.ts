@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { createRequire } from 'node:module';
+import process from 'node:process';
 import { Hono } from 'hono';
 import { compress } from 'hono/compress';
 import { serve } from '@hono/node-server';
@@ -96,15 +97,38 @@ if (values.version) {
   }
 }
 
+function catchUncaughtExceptionInDev() {
+  // Workaround for https://github.com/wakujs/waku/issues/756
+  process.on('uncaughtException', (err) => {
+    if (
+      (err as { code?: unknown }).code === 'ERR_INVALID_STATE' &&
+      err.message.includes('Unable to enqueue')
+    ) {
+      // ignore this error
+      return;
+    }
+    throw err;
+  });
+}
+
 async function runDev() {
+  catchUncaughtExceptionInDev();
   const config = await loadConfig();
-  const honoEnhancer =
-    config.unstable_honoEnhancer || ((createApp) => createApp);
+  const honoEnhancer: HonoEnhancer = config.unstable_honoEnhancer
+    ? await loadHonoEnhancer(config.unstable_honoEnhancer)
+    : (fn) => fn;
   const createApp = (app: Hono) => {
     if (values['experimental-compress']) {
       app.use(compress());
     }
-    app.use(serverEngine({ cmd: 'dev', config, env: process.env as any }));
+    app.use(
+      serverEngine({
+        cmd: 'dev',
+        config,
+        env: process.env as any,
+        unstable_onError: new Set(),
+      }),
+    );
     app.notFound((c) => {
       // FIXME can we avoid hardcoding the public path?
       const file = path.join('public', '404.html');
@@ -147,8 +171,9 @@ async function runBuild() {
 async function runStart() {
   const config = await loadConfig();
   const { distDir = 'dist' } = config;
-  const honoEnhancer =
-    config.unstable_honoEnhancer || ((createApp) => createApp);
+  const honoEnhancer: HonoEnhancer = config.unstable_honoEnhancer
+    ? await loadHonoEnhancer(config.unstable_honoEnhancer)
+    : (fn) => fn;
   const loadEntries = () =>
     import(pathToFileURL(path.resolve(distDir, DIST_ENTRIES_JS)).toString());
   const createApp = (app: Hono) => {
@@ -157,7 +182,12 @@ async function runStart() {
     }
     app.use(serveStatic({ root: path.join(distDir, DIST_PUBLIC) }));
     app.use(
-      serverEngine({ cmd: 'start', loadEntries, env: process.env as any }),
+      serverEngine({
+        cmd: 'start',
+        loadEntries,
+        env: process.env as any,
+        unstable_onError: new Set(),
+      }),
     );
     app.notFound((c) => {
       // FIXME better implementation using node stream?
@@ -220,7 +250,17 @@ async function loadConfig(): Promise<Config> {
   if (!existsSync(CONFIG_FILE)) {
     return {};
   }
-  const { loadServerFile } = await import('./lib/utils/vite-loader.js');
+  const { loadServerModule } = await import('./lib/utils/vite-loader.js');
   const file = pathToFileURL(path.resolve(CONFIG_FILE)).toString();
-  return (await loadServerFile(file)).default;
+  return (await loadServerModule<{ default: Config }>(file)).default;
+}
+
+type HonoEnhancer = <Hono>(fn: (app: Hono) => Hono) => (app: Hono) => Hono;
+
+async function loadHonoEnhancer(file: string): Promise<HonoEnhancer> {
+  const { loadServerModule } = await import('./lib/utils/vite-loader.js');
+  const fileUrl = pathToFileURL(
+    path.resolve(CONFIG_FILE, '..', file),
+  ).toString();
+  return (await loadServerModule<{ default: HonoEnhancer }>(fileUrl)).default;
 }

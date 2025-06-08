@@ -4,66 +4,70 @@ import { test, prepareStandaloneSetup } from './utils.js';
 
 const startApp = prepareStandaloneSetup('broken-links');
 
-test.describe('broken-links: normal server', async () => {
-  let port: number;
-  let stopApp: () => Promise<void>;
-  test.beforeAll(async () => {
-    ({ port, stopApp } = await startApp('PRD'));
+for (const mode of ['DEV', 'PRD'] as const) {
+  test.describe(`broken-links: normal server: ${mode}`, async () => {
+    let port: number;
+    let stopApp: () => Promise<void>;
+    test.beforeAll(async () => {
+      ({ port, stopApp } = await startApp(mode));
+    });
+    test.afterAll(async () => {
+      await stopApp();
+    });
+
+    test.describe('server side navigation', () => {
+      test('existing page', async ({ page }) => {
+        // Go to an existing page
+        await page.goto(`http://localhost:${port}/exists`);
+        // The page renders its header
+        await expect(page.getByRole('heading')).toHaveText('Existing page');
+        // The page URL is correct
+        expect(page.url()).toBe(`http://localhost:${port}/exists`);
+        // Go back to the index page
+        await page.getByRole('link', { name: 'Back' }).click();
+        await expect(page.getByRole('heading')).toHaveText('Index');
+      });
+
+      test('missing page', async ({ page }) => {
+        // Navigate to a non-existing page
+        await page.goto(`http://localhost:${port}/broken`);
+        // The page renders the custom 404.tsx
+        await expect(page.getByRole('heading')).toHaveText('Custom not found');
+        await expect(page).toHaveTitle('Custom Not Found Title');
+        // The browsers URL remains the one that was navigated to
+        expect(page.url()).toBe(`http://localhost:${port}/broken`);
+        // Go back to the index page
+        await page.getByRole('link', { name: 'Back' }).click();
+        await expect(page.getByRole('heading')).toHaveText('Index');
+      });
+
+      test('redirect', async ({ page }) => {
+        // Navigate to a page that redirects to an existing page
+        await page.goto(`http://localhost:${port}/redirect`);
+        // The page renders the target page
+        await expect(page.getByRole('heading')).toHaveText('Existing page');
+        // The browsers URL is the one of the target page
+        expect(page.url()).toBe(`http://localhost:${port}/exists`);
+        // Go back to the index page
+        await page.getByRole('link', { name: 'Back' }).click();
+        await expect(page.getByRole('heading')).toHaveText('Index');
+      });
+
+      test('broken redirect', async ({ page }) => {
+        // Navigate to a page that redirects to a non-existing page
+        await page.goto(`http://localhost:${port}/broken-redirect`);
+        // The page renders the custom 404.tsx
+        await expect(page.getByRole('heading')).toHaveText('Custom not found');
+        await expect(page).toHaveTitle('Custom Not Found Title');
+        // The browsers URL remains the one that was redirected to
+        expect(page.url()).toBe(`http://localhost:${port}/broken`);
+        // Go back to the index page
+        await page.getByRole('link', { name: 'Back' }).click();
+        await expect(page.getByRole('heading')).toHaveText('Index');
+      });
+    });
   });
-  test.afterAll(async () => {
-    await stopApp();
-  });
-
-  test.describe('server side navigation', () => {
-    test('existing page', async ({ page }) => {
-      // Go to an existing page
-      await page.goto(`http://localhost:${port}/exists`);
-      // The page renders its header
-      await expect(page.getByRole('heading')).toHaveText('Existing page');
-      // The page URL is correct
-      expect(page.url()).toBe(`http://localhost:${port}/exists`);
-      // Go back to the index page
-      await page.getByRole('link', { name: 'Back' }).click();
-      await expect(page.getByRole('heading')).toHaveText('Index');
-    });
-
-    test('missing page', async ({ page }) => {
-      // Navigate to a non-existing page
-      await page.goto(`http://localhost:${port}/broken`);
-      // The page renders the custom 404.tsx
-      await expect(page.getByRole('heading')).toHaveText('Custom not found');
-      // The browsers URL remains the one that was navigated to
-      expect(page.url()).toBe(`http://localhost:${port}/broken`);
-      // Go back to the index page
-      await page.getByRole('link', { name: 'Back' }).click();
-      await expect(page.getByRole('heading')).toHaveText('Index');
-    });
-
-    test('redirect', async ({ page }) => {
-      // Navigate to a page that redirects to an existing page
-      await page.goto(`http://localhost:${port}/redirect`);
-      // The page renders the target page
-      await expect(page.getByRole('heading')).toHaveText('Existing page');
-      // The browsers URL is the one of the target page
-      expect(page.url()).toBe(`http://localhost:${port}/exists`);
-      // Go back to the index page
-      await page.getByRole('link', { name: 'Back' }).click();
-      await expect(page.getByRole('heading')).toHaveText('Index');
-    });
-
-    test('broken redirect', async ({ page }) => {
-      // Navigate to a page that redirects to a non-existing page
-      await page.goto(`http://localhost:${port}/broken-redirect`);
-      // The page renders the custom 404.tsx
-      await expect(page.getByRole('heading')).toHaveText('Custom not found');
-      // The browsers URL remains the one that was redirected to
-      expect(page.url()).toBe(`http://localhost:${port}/broken`);
-      // Go back to the index page
-      await page.getByRole('link', { name: 'Back' }).click();
-      await expect(page.getByRole('heading')).toHaveText('Index');
-    });
-  });
-});
+}
 
 test.describe('broken-links: static server', () => {
   let port: number;
@@ -95,6 +99,7 @@ test.describe('broken-links: static server', () => {
       await page.getByRole('link', { name: 'Broken link' }).click();
       // The page renders the custom 404.tsx
       await expect(page.getByRole('heading')).toHaveText('Custom not found');
+      await expect(page).toHaveTitle('Custom Not Found Title');
       // The browsers URL remains the one that was navigated to
       expect(page.url()).toBe(`http://localhost:${port}/broken`);
       // Go back to the index page
@@ -121,6 +126,7 @@ test.describe('broken-links: static server', () => {
       await page.getByRole('link', { name: 'Broken redirect' }).click();
       // The page renders the custom 404.tsx
       await expect(page.getByRole('heading')).toHaveText('Custom not found');
+      await expect(page).toHaveTitle('Custom Not Found Title');
       // The browsers URL remains the link href
       // NOTE: This is inconsistent with server side navigation, but
       //       there is no way to tell where the RSC request was redirected
@@ -147,11 +153,13 @@ for (const mode of ['DEV', 'PRD'] as const) {
     test('access sync page directly', async ({ page }) => {
       await page.goto(`http://localhost:${port}/dynamic-not-found/sync`);
       await expect(page.getByRole('heading')).toHaveText('Custom not found');
+      await expect(page).toHaveTitle('Custom Not Found Title');
     });
 
     test('access async page directly', async ({ page }) => {
       await page.goto(`http://localhost:${port}/dynamic-not-found/async`);
       await expect(page.getByRole('heading')).toHaveText('Custom not found');
+      await expect(page).toHaveTitle('Custom Not Found Title');
     });
 
     test('access sync page with client navigation', async ({ page }) => {
@@ -159,6 +167,7 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await expect(page.getByRole('heading')).toHaveText('Index');
       await page.click("a[href='/dynamic-not-found/sync']");
       await expect(page.getByRole('heading')).toHaveText('Custom not found');
+      await expect(page).toHaveTitle('Custom Not Found Title');
     });
 
     test('access async page with client navigation', async ({ page }) => {
@@ -166,6 +175,7 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await expect(page.getByRole('heading')).toHaveText('Index');
       await page.click("a[href='/dynamic-not-found/async']");
       await expect(page.getByRole('heading')).toHaveText('Custom not found');
+      await expect(page).toHaveTitle('Custom Not Found Title');
     });
   });
 }

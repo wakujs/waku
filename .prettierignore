@@ -3,3 +3,4 @@
 pnpm-lock.yaml
 pnpm-workspace.yaml
 dist
+worker-configuration.d.ts

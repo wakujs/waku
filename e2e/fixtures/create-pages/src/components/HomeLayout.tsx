@@ -64,6 +64,12 @@ const HomeLayout = ({ children }: { children: ReactNode }) => (
       <li>
         <Link to="/exact/[slug]/[...wild]">Exact Path</Link>
       </li>
+      <li>
+        <Link to="/page-parts">Page Parts</Link>
+      </li>
+      <li>
+        <Link to="/nested-layouts">Nested Layouts</Link>
+      </li>
     </ul>
     {children}
   </div>

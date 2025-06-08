@@ -2,18 +2,30 @@ import path from 'node:path';
 import { existsSync, writeFileSync } from 'node:fs';
 import type { Plugin } from 'vite';
 
-import { unstable_getBuildOptions } from '../../server.js';
-import { SRC_ENTRIES } from '../constants.js';
-import { DIST_PUBLIC } from '../builder/constants.js';
+import {
+  unstable_getBuildOptions,
+  unstable_builderConstants,
+} from '../../server.js';
 
+const { SRC_ENTRIES, DIST_PUBLIC } = unstable_builderConstants;
 const SERVE_JS = 'serve-partykit.js';
 
-const getServeJsContent = (srcEntriesFile: string) => `
+const getServeJsContent = (
+  srcEntriesFile: string,
+  honoEnhancerFile: string | undefined,
+) => `
 import { serverEngine, importHono } from 'waku/unstable_hono';
 
 const { Hono } = await importHono();
 
 const loadEntries = () => import('${srcEntriesFile}');
+const loadHonoEnhancer = async () => {
+  ${
+    honoEnhancerFile
+      ? `return (await import('${honoEnhancerFile}')).default;`
+      : `return (fn) => fn;`
+  }
+};
 let serve;
 let app;
 
@@ -40,13 +52,10 @@ const createApp = (app) => {
 export default {
   async onFetch(request, lobby, ctx) {
     if (!serve) {
-      serve = serverEngine({ cmd: 'start', loadEntries, env: lobby });
+      serve = serverEngine({ cmd: 'start', loadEntries, env: lobby, unstable_onError: new Set() });
     }
     if (!app) {
-      const entries = await loadEntries();
-      const config = await entries.loadConfig();
-      const honoEnhancer =
-        config.unstable_honoEnhancer || ((createApp) => createApp);
+      const honoEnhancer = await loadHonoEnhancer();
       app = honoEnhancer(createApp)(new Hono());
     }
     return app.fetch(request, lobby, ctx);
@@ -57,10 +66,12 @@ export default {
 export function deployPartykitPlugin(opts: {
   srcDir: string;
   distDir: string;
+  unstable_honoEnhancer: string | undefined;
 }): Plugin {
   const buildOptions = unstable_getBuildOptions();
   let rootDir: string;
   let entriesFile: string;
+  let honoEnhancerFile: string | undefined;
   return {
     name: 'deploy-partykit-plugin',
     config(viteConfig) {
@@ -76,6 +87,9 @@ export function deployPartykitPlugin(opts: {
     configResolved(config) {
       rootDir = config.root;
       entriesFile = `${rootDir}/${opts.srcDir}/${SRC_ENTRIES}`;
+      if (opts.unstable_honoEnhancer) {
+        honoEnhancerFile = `${rootDir}/${opts.unstable_honoEnhancer}`;
+      }
       const { deploy, unstable_phase } = buildOptions;
       if (
         (unstable_phase !== 'buildServerBundle' &&
@@ -98,7 +112,7 @@ export function deployPartykitPlugin(opts: {
     },
     load(id) {
       if (id === `${opts.srcDir}/${SERVE_JS}`) {
-        return getServeJsContent(entriesFile);
+        return getServeJsContent(entriesFile, honoEnhancerFile);
       }
     },
     closeBundle() {

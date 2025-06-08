@@ -2,6 +2,77 @@
 
 ## [Unreleased]
 
+## [0.23.2] - 2025-06-06
+
+### Changed
+
+- Bug fixes & some updates
+
+## [0.23.1] - 2025-05-21
+
+### Changed
+
+- Bug fixes & some updates
+
+## [0.23.0] - 2025-05-14
+
+### Added
+
+- Pathless components in waku/router
+
+### Changed
+
+- Async refetch & changeRoute
+
+## [0.22.4] - 2025-04-23
+
+### Changed
+
+- Bug fixes & some updates
+
+## [0.22.3] - 2025-04-19
+
+### Changed
+
+- Bug fixes & some updates
+
+## [0.22.2] - 2025-04-08
+
+### Changed
+
+- Improve create-waku
+- Bug fixes & some updates
+
+## [0.22.1] - 2025-04-02
+
+### Changed
+
+- Fix dependencies
+
+## [0.22.0] - 2025-04-02
+
+### Added
+
+- Support for API routes
+- String-based waku.config.ts
+- React 19.1
+
+### Removed
+
+- Drop Node 18
+
+## [0.21.24] - 2025-03-26
+
+### Changed
+
+- Bug fixes & some updates
+
+## [0.21.23] - 2025-03-10
+
+### Changed
+
+- Bug fixes & some updates
+
 ## [0.21.22] - 2025-02-28
 
 ### Changed

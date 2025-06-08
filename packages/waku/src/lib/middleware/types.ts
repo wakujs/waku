@@ -12,8 +12,6 @@ export type ClonableModuleNode = { url: string; file: string };
 export type HandlerContext = {
   readonly req: HandlerReq;
   readonly res: HandlerRes;
-  /** @deprecated use `data` */
-  readonly context: Record<string, unknown>;
   readonly data: Record<string, unknown>;
   unstable_devServer?: {
     rootDir: string;
@@ -38,8 +36,16 @@ export type Handler = (
   next: () => Promise<void>,
 ) => Promise<void>;
 
+// This is highly experimental
+export type ErrorCallback = (
+  err: unknown,
+  ctx: HandlerContext,
+  origin: 'handler' | 'rsc' | 'html',
+) => void;
+
 export type MiddlewareOptions = {
-  env?: Record<string, string>;
+  env: Record<string, string>;
+  unstable_onError: Set<ErrorCallback>;
 } & (
   | { cmd: 'dev'; config: Config }
   | { cmd: 'start'; loadEntries: () => Promise<EntriesPrd> }

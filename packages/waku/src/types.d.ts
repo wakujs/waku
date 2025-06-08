@@ -1,7 +1,5 @@
 interface Reference {}
 
-type TemporaryReferenceSet = Map<string, Reference | symbol>;
-
 type ImportManifestEntry = {
   id: string;
   chunks: string[];
@@ -41,11 +39,13 @@ type ReactFormState<S, ReferenceId> = [
 ];
 
 declare module 'react-server-dom-webpack/server.edge' {
+  interface TemporaryReferenceSet {}
+
   type Options = {
     environmentName?: string;
     identifierPrefix?: string;
     signal?: AbortSignal;
-    temporaryReferences?: TemporaryReferenceSet;
+    temporaryReferences?: TemporaryReferenceSet | undefined;
     onError?: ((error: unknown) => void) | undefined;
     onPostpone?: ((reason: string) => void) | undefined;
   };
@@ -57,7 +57,8 @@ declare module 'react-server-dom-webpack/server.edge' {
   ): ReadableStream;
   export function decodeReply<T>(
     body: string | FormData,
-    webpackMap?: ServerManifest,
+    webpackMap: ServerManifest,
+    options?: { temporaryReferences?: TemporaryReferenceSet },
   ): Promise<T>;
   export function decodeAction<T>(
     body: FormData,
@@ -68,9 +69,12 @@ declare module 'react-server-dom-webpack/server.edge' {
     body: FormData,
     serverManifest: ServerManifest,
   ): Promise<ReactFormState<S, ServerReferenceId> | null>;
+  export function createTemporaryReferenceSet(): TemporaryReferenceSet;
 }
 
 declare module 'react-server-dom-webpack/client' {
+  type TemporaryReferenceSet = Map<string, Reference | symbol>;
+
   type CallServerCallback = <T, A extends unknown[] = unknown[]>(
     string,
     args: A,
@@ -89,6 +93,7 @@ declare module 'react-server-dom-webpack/client' {
     value: ReactServerValue,
     options?: { temporaryReferences?: TemporaryReferenceSet },
   ): Promise<string | URLSearchParams | FormData>;
+  export function createTemporaryReferenceSet(): TemporaryReferenceSet;
 }
 
 declare module 'react-server-dom-webpack/client.edge' {

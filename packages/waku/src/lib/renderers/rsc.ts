@@ -1,9 +1,12 @@
 import type { ReactNode } from 'react';
-import type { default as RSDWServerType } from 'react-server-dom-webpack/server.edge';
+import type {
+  default as RSDWServerType,
+  TemporaryReferenceSet,
+} from 'react-server-dom-webpack/server.edge';
 
 import type { ConfigPrd } from '../config.js';
 // TODO move types somewhere
-import type { HandlerContext } from '../middleware/types.js';
+import type { HandlerContext, ErrorCallback } from '../middleware/types.js';
 import { filePathToFileURL } from '../utils/path.js';
 import { streamToArrayBuffer } from '../utils/stream.js';
 import { bufferToString, parseFormData } from '../utils/buffer.js';
@@ -12,17 +15,16 @@ const resolveClientEntryForPrd = (id: string, config: { basePath: string }) => {
   return config.basePath + id + '.js';
 };
 
-const onError = (err: unknown) => {
-  if (typeof (err as any)?.digest === 'string') {
-    // This is not correct according to the type though.
-    return (err as { digest: string }).digest;
-  }
-};
+const temporaryReferencesMap = new WeakMap<
+  Pick<HandlerContext, never>,
+  TemporaryReferenceSet
+>();
 
 export async function renderRsc(
   config: ConfigPrd,
   ctx: Pick<HandlerContext, 'unstable_modules' | 'unstable_devServer'>,
   elements: Record<string, unknown>,
+  onError: Set<ErrorCallback>,
   moduleIdCallback?: (id: string) => void,
 ): Promise<ReadableStream> {
   const modules = ctx.unstable_modules;
@@ -46,13 +48,23 @@ export async function renderRsc(
       },
     },
   );
-  return renderToReadableStream(elements, clientBundlerConfig, { onError });
+  return renderToReadableStream(elements, clientBundlerConfig, {
+    onError: (err: unknown) => {
+      onError.forEach((fn) => fn(err, ctx as HandlerContext, 'rsc'));
+      if (typeof (err as any)?.digest === 'string') {
+        // This is not correct according to the type though.
+        return (err as { digest: string }).digest;
+      }
+    },
+    temporaryReferences: temporaryReferencesMap.get(ctx),
+  });
 }
 
 export function renderRscElement(
   config: ConfigPrd,
   ctx: Pick<HandlerContext, 'unstable_modules' | 'unstable_devServer'>,
   element: ReactNode,
+  onError: Set<ErrorCallback>,
 ): ReadableStream {
   const modules = ctx.unstable_modules;
   if (!modules) {
@@ -74,7 +86,16 @@ export function renderRscElement(
       },
     },
   );
-  return renderToReadableStream(element, clientBundlerConfig, { onError });
+  return renderToReadableStream(element, clientBundlerConfig, {
+    onError: (err: unknown) => {
+      onError.forEach((fn) => fn(err, ctx as HandlerContext, 'rsc'));
+      if (typeof (err as any)?.digest === 'string') {
+        // This is not correct according to the type though.
+        return (err as { digest: string }).digest;
+      }
+    },
+    temporaryReferences: temporaryReferencesMap.get(ctx),
+  });
 }
 
 export async function collectClientModules(
@@ -97,9 +118,7 @@ export async function collectClientModules(
       },
     },
   );
-  const readable = renderToReadableStream(elements, clientBundlerConfig, {
-    onError,
-  });
+  const readable = renderToReadableStream(elements, clientBundlerConfig);
   await new Promise<void>((resolve, reject) => {
     const writable = new WritableStream({
       close() {
@@ -123,7 +142,7 @@ export async function decodeBody(
     throw new Error('handler middleware required (missing modules)');
   }
   const {
-    default: { decodeReply },
+    default: { decodeReply, createTemporaryReferenceSet },
   } = modules.rsdwServer as { default: typeof RSDWServerType };
   const serverBundlerConfig = new Proxy(
     {},
@@ -137,6 +156,8 @@ export async function decodeBody(
   );
   let decodedBody: unknown = ctx.req.url.searchParams;
   if (ctx.req.body) {
+    const temporaryReferences = createTemporaryReferenceSet();
+    temporaryReferencesMap.set(ctx, temporaryReferences);
     const bodyBuf = await streamToArrayBuffer(ctx.req.body);
     const contentType = ctx.req.headers['content-type'];
     if (
@@ -145,10 +166,14 @@ export async function decodeBody(
     ) {
       // XXX This doesn't support streaming unlike busboy
       const formData = await parseFormData(bodyBuf, contentType);
-      decodedBody = await decodeReply(formData, serverBundlerConfig);
+      decodedBody = await decodeReply(formData, serverBundlerConfig, {
+        temporaryReferences,
+      });
     } else if (bodyBuf.byteLength > 0) {
       const bodyStr = bufferToString(bodyBuf);
-      decodedBody = await decodeReply(bodyStr, serverBundlerConfig);
+      decodedBody = await decodeReply(bodyStr, serverBundlerConfig, {
+        temporaryReferences,
+      });
     }
   }
   return decodedBody;
@@ -198,9 +223,17 @@ export async function decodePostAction(
       typeof contentType === 'string' &&
       contentType.startsWith('multipart/form-data')
     ) {
-      const bodyBuf = await streamToArrayBuffer(ctx.req.body);
+      const [stream1, stream2] = ctx.req.body.tee();
+      ctx.req.body = stream1;
+      const bodyBuf = await streamToArrayBuffer(stream2);
       // XXX This doesn't support streaming unlike busboy
       const formData = await parseFormData(bodyBuf, contentType);
+      if (
+        Array.from(formData.keys()).every((key) => !key.startsWith('$ACTION_'))
+      ) {
+        // Assuming this is probably for api
+        return null;
+      }
       const serverBundlerConfig = new Proxy(
         {},
         {

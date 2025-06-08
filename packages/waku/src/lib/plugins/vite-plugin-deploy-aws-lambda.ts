@@ -2,10 +2,12 @@ import path from 'node:path';
 import { writeFileSync } from 'node:fs';
 import type { Plugin } from 'vite';
 
-import { unstable_getBuildOptions } from '../../server.js';
-import { SRC_ENTRIES } from '../constants.js';
-import { DIST_PUBLIC } from '../builder/constants.js';
+import {
+  unstable_getBuildOptions,
+  unstable_builderConstants,
+} from '../../server.js';
 
+const { SRC_ENTRIES, DIST_PUBLIC } = unstable_builderConstants;
 const SERVE_JS = 'serve-aws-lambda.js';
 
 const lambdaStreaming = process.env.DEPLOY_AWS_LAMBDA_STREAMING === 'true';
@@ -14,6 +16,7 @@ const getServeJsContent = (
   distDir: string,
   distPublic: string,
   srcEntriesFile: string,
+  honoEnhancerFile: string | undefined,
 ) => `
 import path from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
@@ -31,12 +34,17 @@ const { ${lambdaStreaming ? 'streamHandle:' : ''}handle } = await importHonoAwsL
 const distDir = '${distDir}';
 const publicDir = '${distPublic}';
 const loadEntries = () => import('${srcEntriesFile}');
-
-const configPromise = loadEntries().then((entries) => entries.loadConfig());
+const loadHonoEnhancer = async () => {
+  ${
+    honoEnhancerFile
+      ? `return (await import('${honoEnhancerFile}')).default;`
+      : `return (fn) => fn;`
+  }
+};
 
 const createApp = (app) => {
   app.use(serveStatic({ root: distDir + '/' + publicDir }));
-  app.use(serverEngine({ cmd: 'start', loadEntries, env: process.env }));
+  app.use(serverEngine({ cmd: 'start', loadEntries, env: process.env, unstable_onError: new Set() }));
   app.notFound(async (c) => {
     const file = path.join(distDir, publicDir, '404.html');
     if (existsSync(file)) {
@@ -47,8 +55,7 @@ const createApp = (app) => {
   return app;
 };
 
-const honoEnhancer =
-  (await configPromise).unstable_honoEnhancer || ((createApp) => createApp);
+const honoEnhancer = await loadHonoEnhancer();
 
 export const handler = handle(honoEnhancer(createApp)(new Hono()));
 `;
@@ -56,9 +63,11 @@ export const handler = handle(honoEnhancer(createApp)(new Hono()));
 export function deployAwsLambdaPlugin(opts: {
   srcDir: string;
   distDir: string;
+  unstable_honoEnhancer: string | undefined;
 }): Plugin {
   const buildOptions = unstable_getBuildOptions();
   let entriesFile: string;
+  let honoEnhancerFile: string | undefined;
   return {
     name: 'deploy-aws-lambda-plugin',
     config(viteConfig) {
@@ -73,6 +82,9 @@ export function deployAwsLambdaPlugin(opts: {
     },
     configResolved(config) {
       entriesFile = `${config.root}/${opts.srcDir}/${SRC_ENTRIES}`;
+      if (opts.unstable_honoEnhancer) {
+        honoEnhancerFile = `${config.root}/${opts.unstable_honoEnhancer}`;
+      }
     },
     resolveId(source) {
       if (source === `${opts.srcDir}/${SERVE_JS}`) {
@@ -81,7 +93,12 @@ export function deployAwsLambdaPlugin(opts: {
     },
     load(id) {
       if (id === `${opts.srcDir}/${SERVE_JS}`) {
-        return getServeJsContent(opts.distDir, DIST_PUBLIC, entriesFile);
+        return getServeJsContent(
+          opts.distDir,
+          DIST_PUBLIC,
+          entriesFile,
+          honoEnhancerFile,
+        );
       }
     },
     closeBundle() {

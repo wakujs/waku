@@ -12,24 +12,24 @@
   "dependencies": {
     "@sindresorhus/slugify": "^2.2.1",
     "classnames": "2.3.2",
-    "framer-motion": "^12.4.7",
-    "jotai": "^2.12.1",
+    "framer-motion": "^12.16.0",
+    "jotai": "^2.12.5",
     "next-mdx-remote": "^5.0.0",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
-    "react-server-dom-webpack": "19.0.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-server-dom-webpack": "19.1.0",
     "waku": "workspace:*"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "4.0.9",
-    "@types/react": "^19.0.10",
-    "@types/react-dom": "^19.0.4",
-    "postcss": "8.5.3",
-    "prettier": "^3.5.2",
-    "prettier-plugin-tailwindcss": "^0.6.11",
-    "shiki": "^3.1.0",
-    "tailwindcss": "4.0.9",
-    "typescript": "^5.7.3",
-    "vite": "6.2.0"
+    "@tailwindcss/postcss": "4.1.8",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.6",
+    "postcss": "8.5.4",
+    "prettier": "^3.5.3",
+    "prettier-plugin-tailwindcss": "^0.6.12",
+    "shiki": "^3.5.0",
+    "tailwindcss": "4.1.8",
+    "typescript": "^5.8.3",
+    "vite": "6.3.5"
   }
 }
