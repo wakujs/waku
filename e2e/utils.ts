@@ -150,6 +150,12 @@ export const prepareNormalSetup = (fixtureName: string) => {
   return startApp;
 };
 
+const PACKAGE_INSTALL = {
+  npm: `npm install --force`,
+  pnpm: `pnpm install`,
+  yarn: `yarn install`,
+} as const;
+
 export const prepareStandaloneSetup = (fixtureName: string) => {
   const wakuDir = fileURLToPath(new URL('../packages/waku', import.meta.url));
   const { version } = createRequire(import.meta.url)(
@@ -224,7 +230,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
           writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
         }
       }
-      execSync(`${packageManager} install --force`, { cwd: standaloneDir });
+      execSync(PACKAGE_INSTALL[packageManager], { cwd: standaloneDir });
     }
     if (mode !== 'DEV' && !built) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
