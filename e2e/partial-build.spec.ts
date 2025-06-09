@@ -17,6 +17,10 @@ test.describe(`partial builds`, () => {
     ({ browserName }) => browserName !== 'chromium',
     'Browsers are not relevant for this test. One is enough.',
   );
+  test.skip(
+    ({ mode }) => mode !== 'PRD',
+    'Partial builds are only relevant in production mode.',
+  );
 
   let cp: ChildProcess;
   let port: number;
