@@ -112,6 +112,30 @@ export const test = basicTest.extend<{ page: Page }>({
   },
 });
 
+async function terminateHmrProcess() {
+  const HMR_PORT = 24678;
+  if (!(await isPortAvailable(HMR_PORT))) {
+    if (process.platform === 'win32') {
+      const output = execSync(
+        `for /f "tokens=5" %A in ('netstat -ano ^| findstr :${HMR_PORT} ^| findstr LISTENING') do @echo %A`,
+        {
+          encoding: 'utf8',
+        },
+      );
+      if (output) {
+        await terminate(parseInt(output));
+      }
+    } else {
+      const output = execSync(`lsof -i:${HMR_PORT} | awk 'NR==2 {print $2}'`, {
+        encoding: 'utf8',
+      });
+      if (output) {
+        await terminate(parseInt(output));
+      }
+    }
+  }
+}
+
 export const prepareNormalSetup = (fixtureName: string) => {
   const waku = fileURLToPath(
     new URL('../packages/waku/dist/cli.js', import.meta.url),
@@ -121,6 +145,9 @@ export const prepareNormalSetup = (fixtureName: string) => {
   );
   let built = false;
   const startApp = async (mode: 'DEV' | 'PRD' | 'STATIC') => {
+    if (mode === 'DEV') {
+      await terminateHmrProcess();
+    }
     if (mode !== 'DEV' && !built) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
       execSync(`node ${waku} build`, { cwd: fixtureDir });
@@ -174,6 +201,9 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     packageManager: 'npm' | 'pnpm' | 'yarn' = 'npm',
     packageDir = '',
   ) => {
+    if (mode === 'DEV') {
+      await terminateHmrProcess();
+    }
     if (!standaloneDir) {
       standaloneDir = mkdtempSync(join(tmpDir, fixtureName));
       cpSync(fixtureDir, standaloneDir, {
