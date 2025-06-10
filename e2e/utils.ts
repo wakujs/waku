@@ -79,8 +79,8 @@ export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
     if (ignoreErrors?.some((re) => re.test(str))) {
       return;
     }
-    info(`stdout: ${str}`);
-    console.log(`stdout: ${str}`);
+    info(`(${sourceFile}) stdout: ${str}`);
+    console.log(`(${sourceFile}) stdout: ${str}`);
   });
 
   cp.stderr?.on('data', (data) => {
@@ -93,18 +93,17 @@ export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
       title: 'Child Process Error',
       file: sourceFile,
     });
-    console.error(`stderr: ${str}`);
-    console.error(`sourceFile: ${sourceFile}`);
+    console.error(`(${sourceFile}) stderr: ${str}`);
   });
 }
 
 export const test = basicTest.extend<{ page: Page }>({
-  page: async ({ page }, pageUse) => {
+  page: async ({ page }, pageUse, testInfo) => {
     const callback = (msg: ConsoleMessage) => {
       if (unexpectedErrors.some((re) => re.test(msg.text()))) {
         throw new Error(msg.text());
       }
-      console.log(`${msg.type()}: ${msg.text()}`);
+      console.log(`(${testInfo.title}) ${msg.type()}: ${msg.text()}`);
     };
     page.on('console', callback);
     await pageUse(page);
