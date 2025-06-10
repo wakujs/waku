@@ -223,7 +223,10 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
           writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
         }
       }
-      execSync(`${packageManager} install --force`, { cwd: standaloneDir, stdio: 'inherit' });
+      execSync(`${packageManager} install --force`, {
+        cwd: standaloneDir,
+        stdio: 'inherit',
+      });
     }
     if (mode !== 'DEV' && !built) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
