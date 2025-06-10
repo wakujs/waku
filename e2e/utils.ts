@@ -223,7 +223,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
           writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
         }
       }
-      execSync(`${packageManager} install --force`, { cwd: standaloneDir });
+      execSync(`${packageManager} install --force`, { cwd: standaloneDir, stdio: 'inherit' });
     }
     if (mode !== 'DEV' && !built) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
@@ -232,7 +232,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       });
       execSync(
         `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} build`,
-        { cwd: join(standaloneDir, packageDir) },
+        { cwd: join(standaloneDir, packageDir), stdio: 'inherit' },
       );
       built = true;
     }
