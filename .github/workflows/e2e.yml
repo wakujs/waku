@@ -108,7 +108,7 @@ jobs:
           TEMP_DIR: ${{ runner.temp }}
           VITE_EXPERIMENTAL_WAKU_ROUTER: true
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: failure()
         with:
           name: playwright-report-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.shared }}
           path: test-results/
@@ -118,6 +118,8 @@ jobs:
         if: failure()
         with:
           name: output-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.shared }}
-          path: "**/dist"
+          path: |
+            **/dist
+            !node_modules/**
           retention-days: 30
           if-no-files-found: ignore
