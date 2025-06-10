@@ -120,6 +120,6 @@ jobs:
           name: output-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.shared }}
           path: |
             **/dist
-            !node_modules/**
+            !**/node_modules
           retention-days: 30
           if-no-files-found: ignore
