@@ -80,7 +80,7 @@
     "compile": "rimraf dist tsconfig.tsbuildinfo && pnpm run compile:code && pnpm run compile:types && node build.js",
     "compile:code": "swc src -d dist --strip-leading-paths",
     "compile:types": "tsc --project tsconfig.json",
-    "prepare": "pnpm run compile"
+    "prepublishOnly": "pnpm run compile"
   },
   "license": "MIT",
   "engines": {
