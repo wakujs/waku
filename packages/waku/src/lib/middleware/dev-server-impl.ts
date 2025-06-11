@@ -29,6 +29,7 @@ import { rscDelegatePlugin } from '../plugins/vite-plugin-rsc-delegate.js';
 import type { ClonableModuleNode, Middleware } from './types.js';
 import { fsRouterTypegenPlugin } from '../plugins/vite-plugin-fs-router-typegen.js';
 import { hackTailwindcss4Stackblitz } from '../plugins/hack-tailwindcss4-stackblitz.js';
+import type { AddressInfo } from 'node:net';
 
 // TODO there is huge room for refactoring in this file
 
@@ -88,6 +89,20 @@ const splitByLastEndTag = (input: string): readonly [string, string] => {
   }
 };
 
+const findAvailablePort = async () => {
+  const server = new Server();
+  await new Promise((resolve) =>
+    server.listen(
+      // listen on the `0` port, which the OS will then assign an available port
+      0,
+      () => resolve(undefined),
+    ),
+  );
+  const port = (server.address() as AddressInfo).port;
+  server.close();
+  return port;
+};
+
 const createMainViteServer = (
   env: Record<string, string>,
   configPromise: ReturnType<typeof resolveConfigDev>,
@@ -144,7 +159,10 @@ const createMainViteServer = (
             },
           },
           appType: 'mpa',
-          server: { middlewareMode: true },
+          server: {
+            middlewareMode: true,
+            hmr: { port: await findAvailablePort() },
+          },
         },
         config,
         'dev-main',
