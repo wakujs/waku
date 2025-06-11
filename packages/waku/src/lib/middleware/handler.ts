@@ -35,9 +35,10 @@ const getInput = async (
   }
   const basePrefix = config.basePath + config.rscBase + '/';
   if (ctx.req.url.pathname.startsWith(basePrefix)) {
-    const rscPath = decodeRscPath(
+    let rscPath = decodeRscPath(
       decodeURI(ctx.req.url.pathname.slice(basePrefix.length)),
     );
+    rscPath = rscPath.split('/').map(encodeURIComponent).join('/');
     const decodedBody = await decodeBody(ctx);
     const funcId = decodeFuncId(rscPath);
     if (funcId) {
