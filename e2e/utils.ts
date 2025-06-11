@@ -169,7 +169,6 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
   ) => {
     if (!standaloneDir) {
       standaloneDir = mkdtempSync(join(tmpDir, fixtureName));
-      console.log('Standalone dir:', standaloneDir);
       cpSync(fixtureDir, standaloneDir, {
         filter: (src) => {
           return !src.includes('node_modules') && !src.includes('dist');
