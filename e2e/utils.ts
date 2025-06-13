@@ -13,7 +13,6 @@ import type { ChildProcess } from 'node:child_process';
 import { expect, test as basicTest } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
 import { error, info } from '@actions/core';
-import waitPort from 'wait-port';
 import { setTimeout } from 'timers/promises'
 
 export type TestOptions = {
@@ -147,7 +146,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     }
     const cp = exec(cmd, { cwd: fixtureDir });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
-    await waitPort({ port });
+    await setTimeout(100);
     const stopApp = async () => {
       await terminate(cp.pid!);
     };
