@@ -322,7 +322,7 @@ export function unstable_defineRouter(fns: {
   ) => {
     if (input.type === 'component') {
       const entries = await getEntries(
-        input.rscPath.split('/').map(encodeURIComponent).join('/'),
+        input.rscPath,
         input.rscParams,
         input.req.headers,
       );
