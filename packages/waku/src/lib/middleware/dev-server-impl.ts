@@ -89,19 +89,15 @@ const splitByLastEndTag = (input: string): readonly [string, string] => {
   }
 };
 
-const findAvailablePort = async () => {
-  const server = new Server();
-  await new Promise((resolve) =>
-    server.listen(
-      // listen on the `0` port, which the OS will then assign an available port
-      0,
-      () => resolve(undefined),
-    ),
-  );
-  const port = (server.address() as AddressInfo).port;
-  server.close();
-  return port;
-};
+async function getFreePort(): Promise<number> {
+  return new Promise<number>((resolve) => {
+    const srv = net.createServer();
+    srv.listen(0, () => {
+      const port = (srv.address() as net.AddressInfo).port;
+      srv.close(() => resolve(port));
+    });
+  });
+}
 
 const createMainViteServer = (
   env: Record<string, string>,
