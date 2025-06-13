@@ -322,7 +322,7 @@ export function unstable_defineRouter(fns: {
   ) => {
     if (input.type === 'component') {
       const entries = await getEntries(
-        input.rscPath,
+        input.rscPath.split('/').map(encodeURIComponent).join('/'),
         input.rscParams,
         input.req.headers,
       );
@@ -373,10 +373,7 @@ export function unstable_defineRouter(fns: {
         query: string,
         httpstatus = 200,
       ) => {
-        const rscPath = encodeRoutePath(pathname)
-          .split('/')
-          .map(encodeURIComponent)
-          .join('/');
+        const rscPath = encodeRoutePath(pathname);
         const rscParams = new URLSearchParams({ query });
         const entries = await getEntries(rscPath, rscParams, input.req.headers);
         if (!entries) {
