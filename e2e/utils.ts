@@ -18,6 +18,11 @@ import type { ConsoleMessage, Page } from '@playwright/test';
 import { error, info } from '@actions/core';
 import waitPort from 'wait-port';
 
+export type TestOptions = {
+  mode: 'DEV' | 'PRD';
+  page: Page;
+};
+
 // Upstream doesn't support ES module
 //  Related: https://github.com/dwyl/terminate/pull/85
 export const terminate = createRequire(import.meta.url)(
@@ -97,7 +102,8 @@ export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
   });
 }
 
-export const test = basicTest.extend<{ page: Page }>({
+export const test = basicTest.extend<TestOptions>({
+  mode: 'DEV',
   page: async ({ page }, pageUse, testInfo) => {
     const callback = (msg: ConsoleMessage) => {
       if (unexpectedErrors.some((re) => re.test(msg.text()))) {

@@ -67,7 +67,10 @@ const cleanListAfterBuild = new Set(
 test.describe(`multi platform builds`, () => {
   for (const { cwd, project } of dryRunList) {
     for (const { platform, clearDirOrFile } of buildPlatformTarget) {
-      test(`build ${project} with ${platform} should not throw error`, async () => {
+      test(`build ${project} with ${platform} should not throw error`, async ({
+        mode,
+      }) => {
+        test.skip(mode === 'DEV', `Skipping build test in DEV mode`);
         for (const name of clearDirOrFile) {
           await rm(`${cwd}/${name}`, {
             recursive: true,
