@@ -13,7 +13,7 @@
     "react-dom": "19.1.0",
     "react-error-boundary": "^6.0.0",
     "react-server-dom-webpack": "19.1.0",
-    "waku": "workspace:*"
+    "waku": "latest"
   },
   "devDependencies": {
     "@types/react": "^19.1.6",

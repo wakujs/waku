@@ -84,7 +84,7 @@ importers:
         specifier: ^14.2.4
         version: 14.2.4
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -112,7 +112,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -140,7 +140,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -165,7 +165,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -190,7 +190,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -220,7 +220,7 @@ importers:
         specifier: ^14.2.4
         version: 14.2.4
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -248,7 +248,7 @@ importers:
         specifier: ^14.2.4
         version: 14.2.4
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -273,7 +273,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -304,7 +304,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -329,7 +329,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -354,7 +354,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -379,7 +379,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -407,7 +407,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -435,7 +435,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -460,7 +460,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -485,7 +485,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -513,7 +513,7 @@ importers:
         specifier: ^2.3.3
         version: 2.3.3(react@19.1.0)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -541,7 +541,7 @@ importers:
         specifier: ^8.5.9
         version: 8.5.9(@types/react@19.1.6)(react@19.1.0)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -566,7 +566,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
