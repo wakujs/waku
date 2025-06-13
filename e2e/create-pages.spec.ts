@@ -7,8 +7,8 @@ const startApp = prepareStandaloneSetup('create-pages');
 test.describe(`create-pages`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
-  test.beforeAll(async ({ page, mode }) => {
-    ({ port, stopApp } = await startApp(page, mode));
+  test.beforeAll(async ({ browser, mode }) => {
+    ({ port, stopApp } = await startApp(browser, mode));
   });
   test.afterAll(async () => {
     await stopApp();
@@ -116,7 +116,7 @@ test.describe(`create-pages`, () => {
     ).toHaveText('Something unexpected happened');
   });
 
-  test('server function unreachable', async ({ page, mode }) => {
+  test('server function unreachable', async ({ browser, page, mode }) => {
     await page.goto(`http://localhost:${port}`);
     await page.click("a[href='/error']");
     await expect(
@@ -135,10 +135,10 @@ test.describe(`create-pages`, () => {
     await expect(
       page.getByTestId('server-throws').getByTestId('throws-error'),
     ).toHaveText('Failed to fetch');
-    ({ port, stopApp } = await startApp(page, mode));
+    ({ port, stopApp } = await startApp(browser, mode));
   });
 
-  test('server page unreachable', async ({ page, mode }) => {
+  test('server page unreachable', async ({ browser, page, mode }) => {
     await page.goto(`http://localhost:${port}`);
     await stopApp();
     await page.click("a[href='/error']");
@@ -146,7 +146,7 @@ test.describe(`create-pages`, () => {
     await expect(
       page.getByRole('heading', { name: 'Failed to Fetch' }),
     ).toBeVisible();
-    ({ port, stopApp } = await startApp(page, mode));
+    ({ port, stopApp } = await startApp(browser, mode));
   });
 
   // https://github.com/wakujs/waku/issues/1255

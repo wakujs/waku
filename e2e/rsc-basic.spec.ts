@@ -7,8 +7,8 @@ const startApp = prepareNormalSetup('rsc-basic');
 test.describe(`rsc-basic`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
-  test.beforeAll(async ({page, mode }) => {
-    ({ port, stopApp } = await startApp(page, mode));
+  test.beforeAll(async ({browser, mode }) => {
+    ({ port, stopApp } = await startApp(browser, mode));
   });
   test.afterAll(async () => {
     await stopApp();
@@ -136,7 +136,7 @@ test.describe(`rsc-basic`, () => {
     ).toHaveText('Something unexpected happened');
   });
 
-  test('server handle network errors', async ({ page, mode }) => {
+  test('server handle network errors', async ({ browser, page, mode }) => {
     await page.goto(`http://localhost:${port}/`);
     await expect(page.getByTestId('app-name')).toHaveText('Waku');
     await page.getByTestId('server-throws').getByTestId('success').click();
@@ -152,6 +152,6 @@ test.describe(`rsc-basic`, () => {
     await expect(
       page.getByTestId('server-throws').getByTestId('throws-error'),
     ).toHaveText('Failed to fetch');
-    ({ port, stopApp } = await startApp(page, mode));
+    ({ port, stopApp } = await startApp(browser, mode));
   });
 });

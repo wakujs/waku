@@ -10,7 +10,7 @@ import {
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { ChildProcess } from 'node:child_process';
-import { expect, test as basicTest } from '@playwright/test';
+import { type Browser, expect, test as basicTest } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
 import { error, info } from '@actions/core';
 
@@ -124,7 +124,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
   let built = false;
-  const startApp = async (page: Page, mode: 'DEV' | 'PRD' | 'STATIC') => {
+  const startApp = async (browser: Browser, mode: 'DEV' | 'PRD' | 'STATIC') => {
     if (mode !== 'DEV' && !built) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
       execSync(`node ${waku} build`, { cwd: fixtureDir });
@@ -145,10 +145,14 @@ export const prepareNormalSetup = (fixtureName: string) => {
     }
     const cp = exec(cmd, { cwd: fixtureDir });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
+    const context = await browser.newContext();
+    const page = await context.newPage();
     await page.goto(`http://localhost:${port}`, {
       timeout: 30_000,
       waitUntil: 'domcontentloaded'
     });
+    await page.close()
+    await context.close();
     const stopApp = async () => {
       await terminate(cp.pid!);
     };
@@ -175,7 +179,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
   let standaloneDir: string | undefined;
   let built = false;
   const startApp = async (
-    page: Page,
+    browser: Browser,
     mode: 'DEV' | 'PRD' | 'STATIC',
     packageManager: 'npm' | 'pnpm' | 'yarn' = 'npm',
     packageDir = '',
@@ -220,10 +224,14 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     }
     const cp = exec(cmd, { cwd: join(standaloneDir, packageDir) });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
+    const context = await browser.newContext();
+    const page = await context.newPage();
     await page.goto(`http://localhost:${port}`, {
       timeout: 30_000,
       waitUntil: 'domcontentloaded'
     });
+    await page.close();
+    await context.close();
     const stopApp = async () => {
       await terminate(cp.pid!);
     };

@@ -7,8 +7,8 @@ const startApp = prepareStandaloneSetup('broken-links');
 test.describe(`broken-links: normal server`, async () => {
   let port: number;
   let stopApp: () => Promise<void>;
-  test.beforeAll(async ({ page, mode }) => {
-    ({ port, stopApp } = await startApp(page, mode));
+  test.beforeAll(async ({ browser, mode }) => {
+    ({ port, stopApp } = await startApp(browser, mode));
   });
   test.afterAll(async () => {
     await stopApp();
@@ -70,8 +70,8 @@ test.describe(`broken-links: normal server`, async () => {
 test.describe('broken-links: static server', () => {
   let port: number;
   let stopApp: () => Promise<void>;
-  test.beforeAll(async ({ page }) => {
-    ({ port, stopApp } = await startApp(page, 'STATIC'));
+  test.beforeAll(async ({ browser }) => {
+    ({ port, stopApp } = await startApp(browser, 'STATIC'));
   });
   test.afterAll(async () => {
     await stopApp();
@@ -141,8 +141,8 @@ for (const mode of ['DEV', 'PRD'] as const) {
   test.describe(`broken-links/dynamic-not-found: ${mode}`, async () => {
     let port: number;
     let stopApp: () => Promise<void>;
-    test.beforeAll(async ({ page }) => {
-      ({ port, stopApp } = await startApp(page, mode));
+    test.beforeAll(async ({ browser }) => {
+      ({ port, stopApp } = await startApp(browser, mode));
     });
     test.afterAll(async () => {
       await stopApp();
