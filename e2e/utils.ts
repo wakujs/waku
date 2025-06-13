@@ -181,9 +181,6 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         },
         recursive: true,
       });
-      execSync(`pnpm pack --pack-destination ${standaloneDir}`, {
-        cwd: wakuDir,
-      });
       for (const file of readdirSync(standaloneDir, {
         encoding: 'utf8',
         recursive: true,
@@ -199,10 +196,6 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         }
       }
       execSync(`${packageManager} install`, { cwd: standaloneDir, stdio: 'inherit' });
-      execSync(`${packageManager} install waku-${version}.tgz`, {
-        cwd: join(standaloneDir, packageDir),
-        stdio: 'inherit',
-      });
     }
     if (mode !== 'DEV' && !built) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
