@@ -14,6 +14,7 @@ import { expect, test as basicTest } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
 import { error, info } from '@actions/core';
 import waitPort from 'wait-port';
+import { setTimeout } from 'timers/promises'
 
 export type TestOptions = {
   mode: 'DEV' | 'PRD';
@@ -47,11 +48,15 @@ const ignoreErrors: RegExp[] = [
 ];
 
 export async function getFreePort(): Promise<number> {
-  return new Promise<number>((resolve) => {
+  return new Promise<number>((resolve, reject) => {
     const srv = net.createServer();
     srv.listen(0, () => {
       const port = (srv.address() as net.AddressInfo).port;
-      srv.close(() => resolve(port));
+      srv.close(() => {
+        setTimeout(100).then(
+          () => resolve(port)
+        ).catch(reject)
+      });
     });
   });
 }
