@@ -3,6 +3,7 @@
 node_modules
 dist
 /packages/waku/README.md
+/packages/waku/*.tgz
 /packages/create-waku/template
 .env
 .devcontainer
