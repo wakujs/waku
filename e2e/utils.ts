@@ -198,9 +198,10 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
           writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
         }
       }
-      execSync(`${packageManager} install`, { cwd: standaloneDir });
+      execSync(`${packageManager} install`, { cwd: standaloneDir, stdio: 'inherit' });
       execSync(`${packageManager} install waku-${version}.tgz`, {
         cwd: join(standaloneDir, packageDir),
+        stdio: 'inherit',
       });
     }
     if (mode !== 'DEV' && !built) {
