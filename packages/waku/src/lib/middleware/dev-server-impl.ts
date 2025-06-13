@@ -157,7 +157,7 @@ const createMainViteServer = (
           appType: 'mpa',
           server: {
             middlewareMode: true,
-            hmr: { port: await findAvailablePort() },
+            hmr: { port: await getFreePort() },
           },
         },
         config,
