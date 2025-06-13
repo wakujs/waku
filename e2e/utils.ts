@@ -184,6 +184,20 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       execSync(`pnpm pack --pack-destination ${standaloneDir}`, {
         cwd: wakuDir,
       });
+      for (const file of readdirSync(standaloneDir, {
+        encoding: 'utf8',
+        recursive: true,
+      })) {
+        if (file.endsWith('package.json')) {
+          const f = join(standaloneDir, file);
+          const pkg = JSON.parse(readFileSync(f, 'utf8'));
+          if (file === 'package.json') {
+            delete pkg.dependencies.waku;
+            delete pkg.devDependencies.waku;
+          }
+          writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
+        }
+      }
       execSync(`${packageManager} install`, { cwd: standaloneDir });
       execSync(`${packageManager} install waku-${version}.tgz`, {
         cwd: join(standaloneDir, packageDir),
