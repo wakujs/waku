@@ -45,7 +45,22 @@ jobs:
           pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
       - run: pnpm install
       - run: pnpm run compile
-      - run: pnpx pkg-pr-new publish ./packages/create-waku ./packages/waku
+      - run: pnpm pack --pack-destination packages/create-waku
+      - run: pnpm pack --pack-destination packages/waku
+      - uses: actions/upload-artifact@v4
+        with:
+          name: create-waku
+          path: |
+            packages/create-waku
+            !packages/create-waku/node_modules
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: waku
+          path: |
+            packages/waku
+            !packages/waku/node_modules
+          if-no-files-found: error
 
   e2e:
     name: E2E on ${{ matrix.os }} (Node ${{ matrix.version }}) - (${{ matrix.shared }}/4)${{ inputs.react_version && format(' with react@{0}', inputs.react_version) || '' }}
@@ -77,6 +92,15 @@ jobs:
       - if: ${{ inputs.react_version }}
         run: |
           pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
+      - run: pnpm install
+      - uses: actions/download-artifact@v4
+        with:
+          name: create-waku
+          path: packages/create-waku
+      - uses: actions/download-artifact@v4
+        with:
+          name: waku
+          path: packages/waku
       - name: Install Playwright
         id: install-playwright
         uses: ./.github/actions/playwright

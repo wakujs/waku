@@ -6,9 +6,6 @@ import {
   cpSync,
   rmSync,
   mkdtempSync,
-  readdirSync,
-  readFileSync,
-  writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -156,6 +153,14 @@ export const prepareNormalSetup = (fixtureName: string) => {
 };
 
 export const prepareStandaloneSetup = (fixtureName: string) => {
+  const wakuDir = fileURLToPath(new URL('../packages/waku', import.meta.url));
+  const { version } = createRequire(import.meta.url)(
+    join(wakuDir, 'package.json'),
+  );
+  execSync('pnpm pack', {
+    cwd: wakuDir,
+  });
+  const wakuTarball = join(wakuDir, `waku-${version}.tgz`);
   const fixtureDir = fileURLToPath(
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
@@ -178,6 +183,10 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         recursive: true,
       });
       execSync(`${packageManager} install`, { cwd: standaloneDir, stdio: 'inherit' });
+      execSync(
+        `${packageManager} add ${wakuTarball}`,
+        { cwd: standaloneDir, stdio: 'inherit' },
+      );
     }
     if (mode !== 'DEV' && !built) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
