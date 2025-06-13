@@ -373,7 +373,8 @@ export function unstable_defineRouter(fns: {
         query: string,
         httpstatus = 200,
       ) => {
-        const rscPath = encodeRoutePath(pathname);
+        let rscPath = encodeRoutePath(pathname);
+        rscPath = rscPath.split('/').map(encodeURIComponent).join('/');
         const rscParams = new URLSearchParams({ query });
         const entries = await getEntries(rscPath, rscParams, input.req.headers);
         if (!entries) {
