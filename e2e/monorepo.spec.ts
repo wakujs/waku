@@ -8,8 +8,9 @@ for (const packageManager of ['npm', 'pnpm', 'yarn'] as const) {
   test.describe(`${packageManager} monorepo`, () => {
     let port: number;
     let stopApp: () => Promise<void>;
-    test.beforeAll(async ({ mode }) => {
+    test.beforeAll(async ({ page, mode }) => {
       ({ port, stopApp } = await startApp(
+        page,
         mode,
         packageManager,
         'packages/waku-project',

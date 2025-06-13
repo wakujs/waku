@@ -7,8 +7,8 @@ const startApp = prepareStandaloneSetup('ssr-catch-error');
 test.describe(`ssr-catch-error`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
-  test.beforeAll(async ({ mode }) => {
-    ({ port, stopApp } = await startApp(mode));
+  test.beforeAll(async ({ page, mode }) => {
+    ({ port, stopApp } = await startApp(page, mode));
   });
   test.afterAll(async () => {
     await stopApp();

@@ -13,7 +13,6 @@ import type { ChildProcess } from 'node:child_process';
 import { expect, test as basicTest } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
 import { error, info } from '@actions/core';
-import { setTimeout } from 'timers/promises'
 
 export type TestOptions = {
   mode: 'DEV' | 'PRD';
@@ -125,7 +124,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
   let built = false;
-  const startApp = async (mode: 'DEV' | 'PRD' | 'STATIC') => {
+  const startApp = async (page: Page, mode: 'DEV' | 'PRD' | 'STATIC') => {
     if (mode !== 'DEV' && !built) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
       execSync(`node ${waku} build`, { cwd: fixtureDir });
@@ -146,7 +145,10 @@ export const prepareNormalSetup = (fixtureName: string) => {
     }
     const cp = exec(cmd, { cwd: fixtureDir });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
-    await setTimeout(100);
+    await page.goto(`http://localhost:${port}`, {
+      timeout: 30_000,
+      waitUntil: 'domcontentloaded'
+    });
     const stopApp = async () => {
       await terminate(cp.pid!);
     };
@@ -173,6 +175,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
   let standaloneDir: string | undefined;
   let built = false;
   const startApp = async (
+    page: Page,
     mode: 'DEV' | 'PRD' | 'STATIC',
     packageManager: 'npm' | 'pnpm' | 'yarn' = 'npm',
     packageDir = '',
@@ -217,7 +220,10 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     }
     const cp = exec(cmd, { cwd: join(standaloneDir, packageDir) });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
-    await setTimeout(100);
+    await page.goto(`http://localhost:${port}`, {
+      timeout: 30_000,
+      waitUntil: 'domcontentloaded'
+    });
     const stopApp = async () => {
       await terminate(cp.pid!);
     };

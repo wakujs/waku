@@ -7,8 +7,8 @@ const startApp = prepareStandaloneSetup('create-pages');
 test.describe(`create-pages`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
-  test.beforeAll(async ({ mode }) => {
-    ({ port, stopApp } = await startApp(mode));
+  test.beforeAll(async ({ page, mode }) => {
+    ({ port, stopApp } = await startApp(page, mode));
   });
   test.afterAll(async () => {
     await stopApp();
@@ -135,7 +135,7 @@ test.describe(`create-pages`, () => {
     await expect(
       page.getByTestId('server-throws').getByTestId('throws-error'),
     ).toHaveText('Failed to fetch');
-    ({ port, stopApp } = await startApp(mode));
+    ({ port, stopApp } = await startApp(page, mode));
   });
 
   test('server page unreachable', async ({ page, mode }) => {
@@ -146,7 +146,7 @@ test.describe(`create-pages`, () => {
     await expect(
       page.getByRole('heading', { name: 'Failed to Fetch' }),
     ).toBeVisible();
-    ({ port, stopApp } = await startApp(mode));
+    ({ port, stopApp } = await startApp(page, mode));
   });
 
   // https://github.com/wakujs/waku/issues/1255

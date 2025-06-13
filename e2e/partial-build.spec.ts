@@ -1,6 +1,5 @@
 import { execSync, exec, ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import waitPort from 'wait-port';
 import { getFreePort, terminate, test } from './utils.js';
 import { rm } from 'node:fs/promises';
 import { expect } from '@playwright/test';
@@ -32,7 +31,10 @@ test.describe(`partial builds`, () => {
     });
     port = await getFreePort();
     cp = exec(`node ${waku} start --port ${port}`, { cwd });
-    await waitPort({ port });
+    await page.goto(`http://localhost:${port}/`, {
+      timeout: 30_000,
+      waitUntil: 'networkidle',
+    });
     await page.goto(`http://localhost:${port}/page/a`);
     expect(await page.getByTestId('title').textContent()).toBe('a');
   });

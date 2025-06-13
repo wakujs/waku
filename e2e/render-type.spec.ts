@@ -17,8 +17,8 @@ test.describe('render type', () => {
   test.describe('static', () => {
     let port: number;
     let stopApp: () => Promise<void>;
-    test.beforeAll(async () => {
-      ({ port, stopApp } = await startApp('STATIC'));
+    test.beforeAll(async ({ page }) => {
+      ({ port, stopApp } = await startApp(page, 'STATIC'));
     });
     test.afterAll(async () => {
       await stopApp();
@@ -62,8 +62,8 @@ test.describe('render type', () => {
   test.describe('dynamic', () => {
     let port: number;
     let stopApp: () => Promise<void>;
-    test.beforeAll(async () => {
-      ({ port, stopApp } = await startApp('PRD'));
+    test.beforeAll(async ({ page }) => {
+      ({ port, stopApp } = await startApp(page, 'PRD'));
     });
     test.afterAll(async () => {
       await stopApp();

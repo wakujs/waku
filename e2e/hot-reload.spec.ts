@@ -2,6 +2,7 @@ import { execSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { expect } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 import {
   isPortAvailable,
@@ -12,7 +13,7 @@ import {
 
 const startApp = prepareStandaloneSetup('hot-reload');
 
-async function startAppDev() {
+async function startAppDev(page: Page) {
   const HMR_PORT = 24678;
   if (!(await isPortAvailable(HMR_PORT))) {
     if (process.platform === 'win32') {
@@ -34,7 +35,7 @@ async function startAppDev() {
       }
     }
   }
-  return startApp('DEV');
+  return startApp(page, 'DEV');
 }
 
 async function modifyFile(
@@ -55,8 +56,8 @@ test.describe('hot reload', () => {
     ({ mode }) => mode === 'PRD',
     'HMR is not available in production mode',
   );
-  test.beforeAll(async () => {
-    ({ port, stopApp, standaloneDir } = await startAppDev());
+  test.beforeAll(async ({ page }) => {
+    ({ port, stopApp, standaloneDir } = await startAppDev(page));
   });
   test.afterAll(async () => {
     await stopApp();

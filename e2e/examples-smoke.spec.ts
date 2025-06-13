@@ -7,7 +7,6 @@
 import { expect } from '@playwright/test';
 import { execSync, exec, ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import waitPort from 'wait-port';
 import { readdir, rm } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { getFreePort, terminate, test } from './utils.js';
@@ -62,7 +61,7 @@ for (const cwd of examples) {
         });
       });
 
-      test.beforeAll(async () => {
+      test.beforeAll(async ({ page }) => {
         if (build) {
           execSync(`node ${waku} ${build}`, { cwd });
         }
@@ -91,7 +90,10 @@ for (const cwd of examples) {
           error(`${port} stderr: ${data}`);
           console.error(`${port} stderr: `, `${data}`);
         });
-        await waitPort({ port });
+        await page.goto(`http://localhost:${port}/`, {
+          timeout: 30_000,
+          waitUntil: 'networkidle',
+        });
       });
 
       test.afterAll(async () => {
