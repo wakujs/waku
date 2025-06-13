@@ -50,12 +50,11 @@ const ignoreErrors: RegExp[] = [
 export async function getFreePort(): Promise<number> {
   return new Promise<number>((resolve, reject) => {
     const srv = net.createServer();
+    srv.on('error', reject)
     srv.listen(0, () => {
       const port = (srv.address() as net.AddressInfo).port;
       srv.close(() => {
-        setTimeout(100).then(
-          () => resolve(port)
-        ).catch(reject)
+        resolve(port)
       });
     });
   });
@@ -219,7 +218,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     }
     const cp = exec(cmd, { cwd: join(standaloneDir, packageDir) });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
-    await waitPort({ port });
+    await setTimeout(100);
     const stopApp = async () => {
       await terminate(cp.pid!);
     };
