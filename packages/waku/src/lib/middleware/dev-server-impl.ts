@@ -1,5 +1,6 @@
 import { Readable, Writable } from 'node:stream';
 import { Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createServer as createViteServer } from 'vite';
 import viteReact from '@vitejs/plugin-react';
@@ -29,7 +30,6 @@ import { rscDelegatePlugin } from '../plugins/vite-plugin-rsc-delegate.js';
 import type { ClonableModuleNode, Middleware } from './types.js';
 import { fsRouterTypegenPlugin } from '../plugins/vite-plugin-fs-router-typegen.js';
 import { hackTailwindcss4Stackblitz } from '../plugins/hack-tailwindcss4-stackblitz.js';
-import type { AddressInfo } from 'node:net';
 
 // TODO there is huge room for refactoring in this file
 
@@ -93,7 +93,7 @@ async function getFreePort(): Promise<number> {
   return new Promise<number>((resolve) => {
     const srv = net.createServer();
     srv.listen(0, () => {
-      const port = (srv.address() as net.AddressInfo).port;
+      const port = (srv.address() as AddressInfo).port;
       srv.close(() => resolve(port));
     });
   });
