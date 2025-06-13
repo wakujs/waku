@@ -2,11 +2,7 @@ import net from 'node:net';
 import { execSync, exec } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import {
-  cpSync,
-  rmSync,
-  mkdtempSync,
-} from 'node:fs';
+import { cpSync, rmSync, mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { ChildProcess } from 'node:child_process';
@@ -48,11 +44,11 @@ const ignoreErrors: RegExp[] = [
 export async function getFreePort(): Promise<number> {
   return new Promise<number>((resolve, reject) => {
     const srv = net.createServer();
-    srv.on('error', reject)
+    srv.on('error', reject);
     srv.listen(0, () => {
       const port = (srv.address() as net.AddressInfo).port;
       srv.close(() => {
-        resolve(port)
+        resolve(port);
       });
     });
   });
@@ -149,9 +145,9 @@ export const prepareNormalSetup = (fixtureName: string) => {
     const page = await context.newPage();
     await page.goto(`http://localhost:${port}`, {
       timeout: 30_000,
-      waitUntil: 'domcontentloaded'
+      waitUntil: 'domcontentloaded',
     });
-    await page.close()
+    await page.close();
     await context.close();
     const stopApp = async () => {
       await terminate(cp.pid!);
@@ -192,11 +188,14 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         },
         recursive: true,
       });
-      execSync(`${packageManager} install`, { cwd: standaloneDir, stdio: 'inherit' });
-      execSync(
-        `${packageManager} add ${wakuTarball}`,
-        { cwd: standaloneDir, stdio: 'inherit' },
-      );
+      execSync(`${packageManager} install`, {
+        cwd: standaloneDir,
+        stdio: 'inherit',
+      });
+      execSync(`${packageManager} add ${wakuTarball}`, {
+        cwd: standaloneDir,
+        stdio: 'inherit',
+      });
     }
     if (mode !== 'DEV' && !built) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
@@ -228,7 +227,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     const page = await context.newPage();
     await page.goto(`http://localhost:${port}`, {
       timeout: 30_000,
-      waitUntil: 'domcontentloaded'
+      waitUntil: 'domcontentloaded',
     });
     await page.close();
     await context.close();

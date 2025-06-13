@@ -7,7 +7,7 @@ const startApp = prepareNormalSetup('ssr-basic');
 test.describe(`ssr-basic`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
-  test.beforeAll(async ({browser, mode }) => {
+  test.beforeAll(async ({ browser, mode }) => {
     ({ port, stopApp } = await startApp(browser, mode));
   });
   test.afterAll(async () => {
