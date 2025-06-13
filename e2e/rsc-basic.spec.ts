@@ -91,7 +91,7 @@ for (const mode of ['DEV', 'PRD'] as const) {
       await page.getByTestId('refetch1').click();
       await expect(page.getByTestId('app-name')).toHaveText('foo');
       await page.getByTestId('refetch2').click();
-      await expect(page.getByTestId('app-name')).toHaveText('[bar]');
+      await expect(page.getByTestId('app-name')).toHaveText('%5Bbar%5D');
       await page.getByTestId('refetch3').click();
       await expect(page.getByTestId('app-name')).toHaveText('baz/qux');
       await page.getByTestId('refetch4').click();
