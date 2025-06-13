@@ -1,8 +1,9 @@
 import type {
-  PlaywrightTestConfig,
+  PlaywrightTestProject,
   PlaywrightWorkerOptions,
 } from '@playwright/test';
-import { devices } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
+import type { TestOptions } from './e2e/utils.js';
 
 /**
  * Read environment variables from file.
@@ -13,7 +14,7 @@ import { devices } from '@playwright/test';
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
-export const config: PlaywrightTestConfig = {
+const config = defineConfig<TestOptions>({
   testDir: './e2e',
   fullyParallel: true,
   timeout: process.env.CI ? 60_000 : 30_000,
@@ -47,7 +48,26 @@ export const config: PlaywrightTestConfig = {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
     },
-  ],
+  ].flatMap<PlaywrightTestProject<TestOptions>>((item) => [
+    {
+      ...item,
+      name: `${item.name}-dev`,
+      testIgnore: ['examples-smoke.spec.ts'],
+      use: {
+        ...item.use,
+        mode: 'DEV',
+      },
+    },
+    {
+      ...item,
+      name: `${item.name}-prd`,
+      testIgnore: ['examples-smoke.spec.ts'],
+      use: {
+        ...item.use,
+        mode: 'PRD',
+      },
+    },
+  ]),
   forbidOnly: !!process.env.CI,
   // no parallelization, otherwise the `waku` command will have race conditions
   workers: 1,
@@ -56,7 +76,7 @@ export const config: PlaywrightTestConfig = {
   // default 'list' when running locally
   // See https://playwright.dev/docs/test-reporters#github-actions-annotations
   reporter: process.env.CI ? 'github' : 'list',
-};
+});
 
 if (process.env.CI) {
   config.retries = 3;
