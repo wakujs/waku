@@ -154,7 +154,7 @@ export const getPathMapping = (
   pathSpec: PathSpec,
   pathname: string,
 ): Record<string, string | string[]> | null => {
-  const actual = pathname.split('/').filter(Boolean).map(encodeURIComponent);
+  const actual = pathname.split('/').filter(Boolean);
   if (pathSpec.length > actual.length) {
     return null;
   }
