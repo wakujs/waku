@@ -229,6 +229,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         cp.kill('SIGINT');
       });
     };
+    console.debug('Waiting for app to start...');
     await new Promise<void>((resolve) => {
       cp.stdout!.on('data', (data) => {
         const str = data.toString();
@@ -237,6 +238,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         }
       });
     });
+    console.debug('App started!');
     return { port, stopApp, standaloneDir };
   };
   return startApp;
