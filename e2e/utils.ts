@@ -175,6 +175,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     packageManager: 'npm' | 'pnpm' | 'yarn' = 'npm',
     packageDir = '',
   ) => {
+    const port = await getFreePort();
     if (!standaloneDir) {
       standaloneDir = mkdtempSync(join(tmpDir, fixtureName));
       cpSync(fixtureDir, standaloneDir, {
@@ -227,6 +228,12 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
                 break;
               }
             }
+            pkg.scripts = {
+              dev: `waku dev --port ${port}`,
+              start: `waku start --port ${port}`,
+              build: 'waku build',
+              serve: `serve dist/public --${port}`,
+            };
           }
           writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
         }
@@ -238,20 +245,21 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         recursive: true,
         force: true,
       });
-      shell.exec(`./node_modules/.bin/waku build`, { cwd: join(standaloneDir, packageDir) });
+      shell.exec(`${packageManager} run build`, {
+        cwd: join(standaloneDir, packageDir),
+      });
       built = true;
     }
-    const port = await getFreePort();
     let cmd: string;
     switch (mode) {
       case 'DEV':
-        cmd = `./node_modules/.bin/waku dev --port ${port}`;
+        cmd = `${packageManager} run dev`;
         break;
       case 'PRD':
-        cmd = `./node_modules/.bin/waku start --port ${port}`;
+        cmd = `${packageManager} run start`;
         break;
       case 'STATIC':
-        cmd = `./node_modules/.bin/serve dist/public -p ${port}`;
+        cmd = `${packageManager} run serve`;
         break;
     }
     const cp = shell.exec(cmd, {
