@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { cpSync, rmSync, mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import os, { tmpdir } from 'node:os';
 import type { ChildProcess } from 'node:child_process';
 import { type Browser, expect, test as basicTest } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
@@ -143,7 +143,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     const context = await browser.newContext();
     const page = await context.newPage();
-    await page.waitForTimeout(100)
+    await page.waitForTimeout(100);
     await page.goto(`http://localhost:${port}`, {
       timeout: 30_000,
     });
@@ -169,9 +169,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
   const fixtureDir = fileURLToPath(
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
-  // GitHub Action on Windows doesn't support mkdtemp on global temp dir,
-  // Which will cause files in `src` folder to be empty. I don't know why
-  const tmpDir = process.env.TEMP_DIR || tmpdir();
+  const tmpDir = os.tmpdir();
   let standaloneDir: string | undefined;
   let built = false;
   const startApp = async (
@@ -225,7 +223,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     const context = await browser.newContext();
     const page = await context.newPage();
-    await page.waitForTimeout(100)
+    await page.waitForTimeout(100);
     await page.goto(`http://localhost:${port}`, {
       timeout: 30_000,
     });
