@@ -1,13 +1,13 @@
 import net from 'node:net';
-import { execSync, exec } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
+import { exec, execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { cpSync, rmSync, mkdtempSync } from 'node:fs';
+import { cpSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import os from 'node:os';
-import type { ChildProcess } from 'node:child_process';
-import { type Browser, expect, test as basicTest } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
+import { type Browser, expect, test as basicTest } from '@playwright/test';
 import { error, info } from '@actions/core';
 
 export type TestOptions = {
@@ -111,13 +111,13 @@ export const prepareNormalSetup = (fixtureName: string) => {
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
   let built = false;
-  const startApp = async (
+  return async function startApp(
     _browser: Browser,
     mode: 'DEV' | 'PRD' | 'STATIC',
-  ) => {
+  ) {
     if (mode !== 'DEV' && !built) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
-      execSync(`node ${waku} build`, { cwd: fixtureDir });
+      execSync(`node ${waku} build`, { cwd: fixtureDir, stdio: 'inherit' });
       built = true;
     }
     const port = await getFreePort();
@@ -134,6 +134,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
         break;
     }
     const cp = exec(cmd, { cwd: fixtureDir });
+    console.debug('Attempting to start app with command:', cmd);
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     await new Promise<void>((resolve) => {
       cp.stdout!.on('data', (data) => {
@@ -151,7 +152,6 @@ export const prepareNormalSetup = (fixtureName: string) => {
     };
     return { port, stopApp, fixtureDir };
   };
-  return startApp;
 };
 
 export const prepareStandaloneSetup = (fixtureName: string) => {
