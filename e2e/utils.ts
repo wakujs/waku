@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { cpSync, rmSync, mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
-import os, { tmpdir } from 'node:os';
+import os from 'node:os';
 import type { ChildProcess } from 'node:child_process';
 import { type Browser, expect, test as basicTest } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
