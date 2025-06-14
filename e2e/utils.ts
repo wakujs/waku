@@ -232,7 +232,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
               dev: `waku dev --port ${port}`,
               start: `waku start --port ${port}`,
               build: 'waku build',
-              serve: `serve dist/public --${port}`,
+              serve: `serve dist/public -p ${port}`,
             };
           }
           writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
