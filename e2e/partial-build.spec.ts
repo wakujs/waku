@@ -1,6 +1,6 @@
 import { execSync, exec, ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { getFreePort, terminate, test } from './utils.js';
+import { getFreePort, test } from './utils.js';
 import { rm } from 'node:fs/promises';
 import { expect } from '@playwright/test';
 import { statSync } from 'fs';
@@ -38,7 +38,10 @@ test.describe(`partial builds`, () => {
     expect(await page.getByTestId('title').textContent()).toBe('a');
   });
   test.afterEach(async () => {
-    await terminate(cp.pid!);
+    return new Promise<void>((resolve) => {
+      cp.on('exit', () => resolve());
+      cp.kill('SIGINT');
+    });
   });
 
   test('does not change pages that already exist', async () => {

@@ -141,7 +141,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     await page.close();
     await context.close();
     const stopApp = async () => {
-      return new Promise((resolve) => {
+      return new Promise<void>((resolve) => {
         cp.on('exit', resolve);
         cp.kill('SIGINT');
       });
@@ -224,8 +224,8 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     await page.close();
     await context.close();
     const stopApp = async () => {
-      return new Promise((resolve) => {
-        cp.on('exit', resolve);
+      return new Promise<void>((resolve) => {
+        cp.on('exit', () => resolve());
         cp.kill('SIGINT');
       });
     };

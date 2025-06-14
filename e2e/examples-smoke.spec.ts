@@ -9,7 +9,7 @@ import { execSync, exec, ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { readdir, rm } from 'node:fs/promises';
 import { basename } from 'node:path';
-import { getFreePort, terminate, test } from './utils.js';
+import { getFreePort, test } from './utils.js';
 import { error, info } from '@actions/core';
 
 const examplesDir = fileURLToPath(new URL('../examples', import.meta.url));
@@ -96,7 +96,10 @@ for (const cwd of examples) {
       });
 
       test.afterAll(async () => {
-        await terminate(cp.pid!);
+        return new Promise<void>((resolve) => {
+          cp.on('exit', () => resolve());
+          cp.kill('SIGINT');
+        });
       });
 
       test('check title', async ({ page }) => {
