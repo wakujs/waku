@@ -1,5 +1,5 @@
 import net from 'node:net';
-import { execSync, exec } from 'node:child_process';
+import shell from 'shelljs'
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import {
@@ -128,7 +128,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
   const startApp = async (mode: 'DEV' | 'PRD' | 'STATIC') => {
     if (mode !== 'DEV' && !built) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
-      execSync(`node ${waku} build`, { cwd: fixtureDir });
+      shell.exec(`node ${waku} build`, { cwd: fixtureDir });
       built = true;
     }
     const port = await getFreePort();
@@ -144,7 +144,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
         cmd = `pnpm serve -l ${port} dist/public`;
         break;
     }
-    const cp = exec(cmd, { cwd: fixtureDir });
+    const cp = shell.exec(cmd, { cwd: fixtureDir, async: true });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     await waitPort({ port });
     const stopApp = async () => {
@@ -181,9 +181,9 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         },
         recursive: true,
       });
-      execSync(`pnpm pack --pack-destination ${standaloneDir}`, {
+      shell.exec(`pnpm pack --pack-destination ${standaloneDir}`, {
         cwd: wakuDir,
-      });
+      })
       const wakuPackageTgz = join(standaloneDir, `waku-${version}.tgz`);
       const rootPkg = JSON.parse(
         readFileSync(
@@ -229,14 +229,14 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
           writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
         }
       }
-      execSync(`${packageManager} install --force`, { cwd: standaloneDir });
+      shell.exec(`${packageManager} install --force`, { cwd: standaloneDir });
     }
     if (mode !== 'DEV' && !built) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
         recursive: true,
         force: true,
       });
-      execSync(
+      shell.exec(
         `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} build`,
         { cwd: join(standaloneDir, packageDir) },
       );
@@ -255,7 +255,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} dist/public -p ${port}`;
         break;
     }
-    const cp = exec(cmd, { cwd: join(standaloneDir, packageDir) });
+    const cp = shell.exec(cmd, { cwd: join(standaloneDir, packageDir), async: true });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     await waitPort({ port });
     const stopApp = async () => {
