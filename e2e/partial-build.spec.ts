@@ -33,7 +33,6 @@ test.describe(`partial builds`, () => {
     cp = exec(`node ${waku} start --port ${port}`, { cwd });
     await page.goto(`http://localhost:${port}/`, {
       timeout: 30_000,
-      waitUntil: 'networkidle',
     });
     await page.goto(`http://localhost:${port}/page/a`);
     expect(await page.getByTestId('title').textContent()).toBe('a');

@@ -92,7 +92,6 @@ for (const cwd of examples) {
         });
         await page.goto(`http://localhost:${port}/`, {
           timeout: 30_000,
-          waitUntil: 'networkidle',
         });
       });
 

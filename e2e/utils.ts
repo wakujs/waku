@@ -143,9 +143,9 @@ export const prepareNormalSetup = (fixtureName: string) => {
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     const context = await browser.newContext();
     const page = await context.newPage();
+    await page.waitForTimeout(100)
     await page.goto(`http://localhost:${port}`, {
       timeout: 30_000,
-      waitUntil: 'domcontentloaded',
     });
     await page.close();
     await context.close();
@@ -225,9 +225,9 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     const context = await browser.newContext();
     const page = await context.newPage();
+    await page.waitForTimeout(100)
     await page.goto(`http://localhost:${port}`, {
       timeout: 30_000,
-      waitUntil: 'domcontentloaded',
     });
     await page.close();
     await context.close();
