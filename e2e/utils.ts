@@ -1,5 +1,5 @@
 import net from 'node:net';
-import shell from 'shelljs'
+import shell from 'shelljs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import {
@@ -183,7 +183,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       });
       shell.exec(`pnpm pack --pack-destination ${standaloneDir}`, {
         cwd: wakuDir,
-      })
+      });
       const wakuPackageTgz = join(standaloneDir, `waku-${version}.tgz`);
       const rootPkg = JSON.parse(
         readFileSync(
@@ -255,7 +255,10 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} dist/public -p ${port}`;
         break;
     }
-    const cp = shell.exec(cmd, { cwd: join(standaloneDir, packageDir), async: true });
+    const cp = shell.exec(cmd, {
+      cwd: join(standaloneDir, packageDir),
+      async: true,
+    });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     await waitPort({ port });
     const stopApp = async () => {
