@@ -111,7 +111,10 @@ export const prepareNormalSetup = (fixtureName: string) => {
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
   let built = false;
-  const startApp = async (browser: Browser, mode: 'DEV' | 'PRD' | 'STATIC') => {
+  const startApp = async (
+    _browser: Browser,
+    mode: 'DEV' | 'PRD' | 'STATIC',
+  ) => {
     if (mode !== 'DEV' && !built) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
       execSync(`node ${waku} build`, { cwd: fixtureDir });
@@ -132,14 +135,14 @@ export const prepareNormalSetup = (fixtureName: string) => {
     }
     const cp = exec(cmd, { cwd: fixtureDir });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    await page.waitForTimeout(100);
-    await page.goto(`http://localhost:${port}`, {
-      timeout: 30_000,
+    await new Promise<void>((resolve) => {
+      cp.stdout!.on('data', (data) => {
+        const str = data.toString();
+        if (str.includes('http://')) {
+          resolve();
+        }
+      });
     });
-    await page.close();
-    await context.close();
     const stopApp = async () => {
       return new Promise<void>((resolve) => {
         cp.on('exit', resolve);
@@ -167,7 +170,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
   let standaloneDir: string | undefined;
   let built = false;
   const startApp = async (
-    browser: Browser,
+    _browser: Browser,
     mode: 'DEV' | 'PRD' | 'STATIC',
     packageManager: 'npm' | 'pnpm' | 'yarn' = 'npm',
     packageDir = '',
@@ -215,20 +218,20 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     }
     const cp = exec(cmd, { cwd: join(standaloneDir, packageDir) });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    await page.waitForTimeout(100);
-    await page.goto(`http://localhost:${port}`, {
-      timeout: 30_000,
-    });
-    await page.close();
-    await context.close();
     const stopApp = async () => {
       return new Promise<void>((resolve) => {
         cp.on('exit', () => resolve());
         cp.kill('SIGINT');
       });
     };
+    await new Promise<void>((resolve) => {
+      cp.stdout!.on('data', (data) => {
+        const str = data.toString();
+        if (str.includes('http://')) {
+          resolve();
+        }
+      });
+    });
     return { port, stopApp, standaloneDir };
   };
   return startApp;
