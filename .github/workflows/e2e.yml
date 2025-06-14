@@ -105,7 +105,6 @@ jobs:
         id: install-playwright
         uses: ./.github/actions/playwright
       - run: pnpm exec playwright test --shard=${{ matrix.shared }}/${{ matrix.shardTotal }}
-        timeout-minutes: 15
         env:
           TEMP_DIR: ${{ runner.temp }}
           VITE_EXPERIMENTAL_WAKU_ROUTER: true

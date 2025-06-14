@@ -188,7 +188,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         },
         recursive: true,
       });
-      execSync(`${packageManager} install`, {
+      execSync(`${packageManager} install --force`, {
         cwd: standaloneDir,
         stdio: 'inherit',
       });
