@@ -167,32 +167,36 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
   const tmpDir = os.tmpdir();
-  let standaloneDir: string | undefined;
+  const standaloneDir = mkdtempSync(join(tmpDir, fixtureName));
   let built = false;
+  cpSync(fixtureDir, standaloneDir, {
+    filter: (src) => {
+      return !src.includes('node_modules') && !src.includes('dist');
+    },
+    recursive: true,
+  });
   const startApp = async (
     _browser: Browser,
     mode: 'DEV' | 'PRD' | 'STATIC',
     packageManager: 'npm' | 'pnpm' | 'yarn' = 'npm',
     packageDir = '',
   ) => {
-    if (!standaloneDir) {
-      standaloneDir = mkdtempSync(join(tmpDir, fixtureName));
-      cpSync(fixtureDir, standaloneDir, {
-        filter: (src) => {
-          return !src.includes('node_modules') && !src.includes('dist');
-        },
-        recursive: true,
-      });
-      execSync(`${packageManager} install --force`, {
-        cwd: standaloneDir,
-        stdio: 'inherit',
-      });
-      execSync(`${packageManager} add ${wakuTarball}`, {
-        cwd: standaloneDir,
-        stdio: 'inherit',
-      });
-    }
+    console.debug(
+      `Installing app in ${standaloneDir} with package manager ${packageManager}`,
+    );
+    execSync(`${packageManager} install --force`, {
+      cwd: standaloneDir,
+      stdio: 'inherit',
+    });
+    execSync(`${packageManager} add ${wakuTarball}`, {
+      cwd: standaloneDir,
+      stdio: 'inherit',
+    });
+    console.debug(
+      `Starting app in ${standaloneDir} with package manager ${packageManager}`,
+    );
     if (mode !== 'DEV' && !built) {
+      console.debug(`Building app in ${standaloneDir}/${packageDir}`);
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
         recursive: true,
         force: true,
@@ -216,6 +220,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} dist/public -p ${port}`;
         break;
     }
+    console.debug(`Running app in ${standaloneDir} with command: ${cmd}`);
     const cp = exec(cmd, { cwd: join(standaloneDir, packageDir) });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     const stopApp = async () => {
