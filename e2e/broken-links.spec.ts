@@ -15,7 +15,7 @@ test.describe(`broken-links: normal server`, async () => {
   });
 
   test.describe('server side navigation', () => {
-    test.only('existing page', async ({ page }) => {
+    test('existing page', async ({ page }) => {
       // Go to an existing page
       await page.goto(`http://localhost:${port}/exists`);
       // The page renders its header
