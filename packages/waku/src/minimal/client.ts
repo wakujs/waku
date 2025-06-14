@@ -291,13 +291,13 @@ export const Root = ({
     [fetchCache],
   );
   return createElement(
-    EnhanceFetchRscInternalContext.Provider,
+    EnhanceFetchRscInternalContext,
     { value: enhanceFetchRscInternal },
     createElement(
-      RefetchContext.Provider,
+      RefetchContext,
       { value: refetch },
       createElement(
-        ElementsContext.Provider,
+        ElementsContext,
         { value: elements },
         ...DEFAULT_HTML_HEAD,
         children,
@@ -309,7 +309,7 @@ export const Root = ({
 export const useRefetch = () => use(RefetchContext);
 
 const ChildrenContext = createContext<ReactNode>(undefined);
-const ChildrenContextProvider = memo(ChildrenContext.Provider);
+const ChildrenContextProvider = memo(ChildrenContext);
 
 export const Children = () => use(ChildrenContext);
 
@@ -377,7 +377,7 @@ export const INTERNAL_ServerRoot = ({
   children: ReactNode;
 }) =>
   createElement(
-    ElementsContext.Provider,
+    ElementsContext,
     { value: elementsPromise },
     ...DEFAULT_HTML_HEAD,
     children,
