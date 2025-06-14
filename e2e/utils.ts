@@ -238,7 +238,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         recursive: true,
         force: true,
       });
-      shell.exec(`waku build`, { cwd: join(standaloneDir, packageDir) });
+      shell.exec(`./node_modules/.bin/waku build`, { cwd: join(standaloneDir, packageDir) });
       built = true;
     }
     const port = await getFreePort();
