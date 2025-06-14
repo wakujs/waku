@@ -77,28 +77,30 @@ export async function isPortAvailable(port: number): Promise<boolean> {
   });
 }
 
-export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
-  cp.stdout?.on('data', (data) => {
+export function hookChildProcess(cp: ChildProcess, sourceFile: string) {
+  cp.stdout!.on('data', (data) => {
     const str = data.toString();
     expect(unexpectedErrors.some((re) => re.test(str))).toBeFalsy();
     if (ignoreErrors?.some((re) => re.test(str))) {
       return;
     }
-    info(`(${sourceFile}) stdout: ${str}`);
-    console.log(`(${sourceFile}) stdout: ${str}`);
+    if (process.env.CI) {
+      info(`(${sourceFile}) stdout: ${str}`);
+    }
   });
 
-  cp.stderr?.on('data', (data) => {
+  cp.stderr!.on('data', (data) => {
     const str = data.toString();
     expect(unexpectedErrors.some((re) => re.test(str))).toBeFalsy();
     if (ignoreErrors?.some((re) => re.test(str))) {
       return;
     }
-    error(`stderr: ${str}`, {
-      title: 'Child Process Error',
-      file: sourceFile,
-    });
-    console.error(`(${sourceFile}) stderr: ${str}`);
+    if (process.env.CI) {
+      error(`stderr: ${str}`, {
+        title: 'Child Process Error',
+        file: sourceFile,
+      });
+    }
   });
 }
 
@@ -145,7 +147,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
         break;
     }
     const cp = shell.exec(cmd, { cwd: fixtureDir, async: true });
-    debugChildProcess(cp, fileURLToPath(import.meta.url));
+    hookChildProcess(cp, fileURLToPath(import.meta.url));
     await waitPort({ port });
     const stopApp = async () => {
       await terminate(cp.pid!);
@@ -236,30 +238,27 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         recursive: true,
         force: true,
       });
-      shell.exec(
-        `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} build`,
-        { cwd: join(standaloneDir, packageDir) },
-      );
+      shell.exec(`waku build`, { cwd: join(standaloneDir, packageDir) });
       built = true;
     }
     const port = await getFreePort();
     let cmd: string;
     switch (mode) {
       case 'DEV':
-        cmd = `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} dev --port ${port}`;
+        cmd = `./node_modules/.bin/waku dev --port ${port}`;
         break;
       case 'PRD':
-        cmd = `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} start --port ${port}`;
+        cmd = `./node_modules/.bin/waku start --port ${port}`;
         break;
       case 'STATIC':
-        cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} dist/public -p ${port}`;
+        cmd = `./node_modules/.bin/serve dist/public -p ${port}`;
         break;
     }
     const cp = shell.exec(cmd, {
       cwd: join(standaloneDir, packageDir),
       async: true,
     });
-    debugChildProcess(cp, fileURLToPath(import.meta.url));
+    hookChildProcess(cp, fileURLToPath(import.meta.url));
     await waitPort({ port });
     const stopApp = async () => {
       await terminate(cp.pid!);
