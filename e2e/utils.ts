@@ -15,15 +15,6 @@ export type TestOptions = {
   page: Page;
 };
 
-// Upstream doesn't support ES module
-//  Related: https://github.com/dwyl/terminate/pull/85
-export const terminate = createRequire(import.meta.url)(
-  // use terminate instead of cp.kill,
-  //  because cp.kill will not kill the child process of the child process
-  //  to avoid the zombie process
-  'terminate/promise',
-) as (pid: number) => Promise<void>;
-
 const unexpectedErrors: RegExp[] = [
   /^You did not run Node.js with the `--conditions react-server` flag/,
   /^\(node:14372\)/,
@@ -150,7 +141,10 @@ export const prepareNormalSetup = (fixtureName: string) => {
     await page.close();
     await context.close();
     const stopApp = async () => {
-      await terminate(cp.pid!);
+      return new Promise((resolve) => {
+        cp.on('exit', resolve);
+        cp.kill('SIGINT');
+      });
     };
     return { port, stopApp, fixtureDir };
   };
@@ -230,7 +224,10 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     await page.close();
     await context.close();
     const stopApp = async () => {
-      await terminate(cp.pid!);
+      return new Promise((resolve) => {
+        cp.on('exit', resolve);
+        cp.kill('SIGINT');
+      });
     };
     return { port, stopApp, standaloneDir };
   };
