@@ -8,6 +8,7 @@ on:
       - 'examples/**'
       - 'e2e/**'
       - '.github/workflows/e2e.yml'
+      - 'pnpm-lock.yaml'
   pull_request:
     types: [opened, synchronize]
     paths:
@@ -15,6 +16,7 @@ on:
       - 'examples/**'
       - 'e2e/**'
       - '.github/workflows/e2e.yml'
+      - 'pnpm-lock.yaml'
   workflow_call:
     inputs:
       ref:
