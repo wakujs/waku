@@ -10,7 +10,7 @@ test.describe('render type', () => {
     'Browsers are not relevant for this test. One is enough.',
   );
   test.skip(
-    ({ mode }) => mode !== 'PRD',
+    ({ mode }) => mode === 'PRD',
     'This test is only relevant in production mode.',
   );
 

@@ -7,10 +7,9 @@
 import { expect } from '@playwright/test';
 import { execSync, exec, ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import waitPort from 'wait-port';
 import { readdir, rm } from 'node:fs/promises';
 import { basename } from 'node:path';
-import { getFreePort, terminate, test } from './utils.js';
+import { findWakuPort, terminate, test } from './utils.js';
 import { error, info } from '@actions/core';
 
 const examplesDir = fileURLToPath(new URL('../examples', import.meta.url));
@@ -66,11 +65,10 @@ for (const cwd of examples) {
         if (build) {
           execSync(`node ${waku} ${build}`, { cwd });
         }
-        port = await getFreePort();
-        cp = exec(`${command} --port ${port}`, { cwd });
+        cp = exec(`${command}`, { cwd });
         cp.stdout?.on('data', (data) => {
-          info(`${port} stdout: ${data}`);
-          console.log(`${port} stdout: `, `${data}`);
+          info(`stdout: ${data}`);
+          console.log(`stdout: `, `${data}`);
         });
         cp.stderr?.on('data', (data) => {
           if (
@@ -88,10 +86,10 @@ for (const cwd of examples) {
             // ignore this error
             return;
           }
-          error(`${port} stderr: ${data}`);
-          console.error(`${port} stderr: `, `${data}`);
+          error(`stderr: ${data}`);
+          console.error(`stderr: `, `${data}`);
         });
-        await waitPort({ port });
+        port = await findWakuPort(cp);
       });
 
       test.afterAll(async () => {
