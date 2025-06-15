@@ -2,11 +2,7 @@ import net from 'node:net';
 import { execSync, exec } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import {
-  cpSync,
-  rmSync,
-  mkdtempSync,
-} from 'node:fs';
+import { cpSync, rmSync, mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { ChildProcess } from 'node:child_process';
@@ -192,7 +188,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       execSync(`${packageManager} install`, { cwd: standaloneDir });
       execSync(`${packageManager} add ${wakuPackageTgz}`, {
         cwd: join(standaloneDir),
-      })
+      });
     }
     if (mode !== 'DEV' && !built) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
