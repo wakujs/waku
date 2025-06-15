@@ -8,6 +8,7 @@ on:
       - 'examples/**'
       - 'e2e/**'
       - '.github/workflows/e2e.yml'
+      - 'pnpm-lock.yaml'
   pull_request:
     types: [opened, synchronize]
     paths:
@@ -15,6 +16,7 @@ on:
       - 'examples/**'
       - 'e2e/**'
       - '.github/workflows/e2e.yml'
+      - 'pnpm-lock.yaml'
   workflow_call:
     inputs:
       ref:
@@ -76,6 +78,10 @@ jobs:
             version: 20.8.0
           - os: windows-latest
             version: 20.8.0
+          - os: macos-latest
+            version: 22.7.0
+          - os: windows-latest
+            version: 22.7.0
 
     runs-on: ${{ matrix.os }}
     steps:
