@@ -24,7 +24,7 @@ export type TestOptions = {
 
 export async function findWakuPort(cp: ChildProcess): Promise<number> {
   return new Promise((resolve, reject) => {
-    function listener (data: unknown) {
+    function listener(data: unknown) {
       const str = `${data}`;
       const match = str.match(/http:\/\/localhost:(\d+)/g);
       if (match) {
