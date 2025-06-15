@@ -62,6 +62,9 @@ importers:
       typescript-eslint:
         specifier: ^8.33.1
         version: 8.33.1(eslint@9.28.0(jiti@2.4.2))(typescript@5.8.3)
+      wait-port:
+        specifier: ^1.1.0
+        version: 1.1.0
       waku:
         specifier: workspace:*
         version: link:packages/waku
@@ -4195,6 +4198,10 @@ packages:
     resolution: {integrity: sha512-OkTL9umf+He2DZkUq8f8J9of7yL6RJKI24dVITBmNfZBmri9zYZQrKkuXiKhyfPSu8tUhnVBB1iKXevvnlR4Ww==}
     engines: {node: '>= 12'}
 
+  commander@9.5.0:
+    resolution: {integrity: sha512-KRs7WVDKg86PWiuAqhDrAQnTXZKraVcCc6vFdL14qrZ/DcWwuRo7VoiYXalXO7S5GKpqYiVEwCbgFDfxNHKJBQ==}
+    engines: {node: ^12.20.0 || >=14}
+
   common-path-prefix@3.0.0:
     resolution: {integrity: sha512-QE33hToZseCH3jS0qN96O/bSh3kaw/h+Tq7ngyY9eWDUnTlTNUyqfqvCXioLe5Na5jFsL78ra/wuBU4iuEgd4w==}
 
@@ -7371,6 +7378,11 @@ packages:
       jsdom:
         optional: true
 
+  wait-port@1.1.0:
+    resolution: {integrity: sha512-3e04qkoN3LxTMLakdqeWth8nih8usyg+sf1Bgdf9wwUkp05iuK1eSY/QpLvscT/+F/gA89+LpUmmgBtesbqI2Q==}
+    engines: {node: '>=10'}
+    hasBin: true
+
   waku@0.23.2:
     resolution: {integrity: sha512-eaqqrWhiGj5t2oIbLG7JX5iX+Z0rVIfMdrcQ9EQWwlRAyomFkaVVt1DDstOGpWXm6X7dzjmMCgarLmk8Ys48iw==}
     engines: {node: ^24.0.0 || ^22.7.0 || ^20.8.0}
@@ -10126,6 +10138,8 @@ snapshots:
   commander@6.2.1: {}
 
   commander@8.3.0: {}
+
+  commander@9.5.0: {}
 
   common-path-prefix@3.0.0: {}
 
@@ -13844,6 +13858,14 @@ snapshots:
       - terser
       - tsx
       - yaml
+
+  wait-port@1.1.0:
+    dependencies:
+      chalk: 4.1.2
+      commander: 9.5.0
+      debug: 4.4.1
+    transitivePeerDependencies:
+      - supports-color
 
   waku@0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0):
     dependencies:
