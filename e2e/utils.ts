@@ -22,7 +22,7 @@ export type TestOptions = {
   page: Page;
 };
 
-const findPort = async (cp: ChildProcess): Promise<number> => {
+export async function findWakuPort(cp: ChildProcess): Promise<number> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error('Timeout while waiting for port'));
@@ -63,16 +63,6 @@ const ignoreErrors: RegExp[] = [
   // FIXME Is this too general and miss meaningful errors?
   /^\[Error: An error occurred in the Server Components render./,
 ];
-
-export async function getFreePort(): Promise<number> {
-  return new Promise<number>((resolve) => {
-    const srv = net.createServer();
-    srv.listen(0, () => {
-      const port = (srv.address() as net.AddressInfo).port;
-      srv.close(() => resolve(port));
-    });
-  });
-}
 
 export async function isPortAvailable(port: number): Promise<boolean> {
   return new Promise<boolean>((resolve, reject) => {
@@ -160,7 +150,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     }
     const cp = exec(cmd, { cwd: fixtureDir });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
-    const port = await findPort(cp);
+    const port = await findWakuPort(cp);
     const stopApp = async () => {
       await terminate(cp.pid!);
     };
@@ -270,7 +260,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     }
     const cp = exec(cmd, { cwd: join(standaloneDir, packageDir) });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
-    const port = await findPort(cp);
+    const port = await findWakuPort(cp);
     const stopApp = async () => {
       await terminate(cp.pid!);
     };

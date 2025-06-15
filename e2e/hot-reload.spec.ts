@@ -13,6 +13,7 @@ import {
 const startApp = prepareStandaloneSetup('hot-reload');
 
 async function startAppDev() {
+  // fixme: since HMR port is dynamic, we should change this logic
   const HMR_PORT = 24678;
   if (!(await isPortAvailable(HMR_PORT))) {
     if (process.platform === 'win32') {
