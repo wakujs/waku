@@ -96,7 +96,7 @@ jobs:
       - if: ${{ inputs.react_version }}
         run: |
           pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
-      - run: pnpm install --ignore-scripts --filter waku-monorepo --filter waku --filter create-waku
+      - run: pnpm install
       - uses: actions/download-artifact@v4
         with:
           name: create-waku
