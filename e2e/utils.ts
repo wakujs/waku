@@ -6,9 +6,6 @@ import {
   cpSync,
   rmSync,
   mkdtempSync,
-  readdirSync,
-  readFileSync,
-  writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -192,51 +189,10 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         cwd: wakuDir,
       });
       const wakuPackageTgz = join(standaloneDir, `waku-${version}.tgz`);
-      const rootPkg = JSON.parse(
-        readFileSync(
-          fileURLToPath(new URL('../package.json', import.meta.url)),
-          'utf8',
-        ),
-      );
-      const pnpmOverrides = {
-        waku: wakuPackageTgz,
-        ...rootPkg.pnpm?.overrides,
-        ...rootPkg.pnpmOverrides, // Do we need this?
-      };
-      for (const file of readdirSync(standaloneDir, {
-        encoding: 'utf8',
-        recursive: true,
-      })) {
-        if (file.endsWith('package.json')) {
-          const f = join(standaloneDir, file);
-          const pkg = JSON.parse(readFileSync(f, 'utf8'));
-          for (const deps of [pkg.dependencies, pkg.devDependencies]) {
-            Object.keys(deps || {}).forEach((key) => {
-              if (pnpmOverrides[key]) {
-                deps[key] = pnpmOverrides[key];
-              }
-            });
-          }
-          if (file === 'package.json') {
-            switch (packageManager) {
-              case 'npm': {
-                pkg.overrides = pnpmOverrides;
-                break;
-              }
-              case 'pnpm': {
-                pkg.pnpm = { overrides: pnpmOverrides };
-                break;
-              }
-              case 'yarn': {
-                pkg.resolutions = pnpmOverrides;
-                break;
-              }
-            }
-          }
-          writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
-        }
-      }
-      execSync(`${packageManager} install --force`, { cwd: standaloneDir });
+      execSync(`${packageManager} install`, { cwd: standaloneDir });
+      execSync(`${packageManager} add ${wakuPackageTgz}`, {
+        cwd: join(standaloneDir),
+      })
     }
     if (mode !== 'DEV' && !built) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
