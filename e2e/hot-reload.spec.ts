@@ -1,42 +1,10 @@
-import { execSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { expect } from '@playwright/test';
 
-import {
-  isPortAvailable,
-  terminate,
-  test,
-  prepareStandaloneSetup,
-} from './utils.js';
+import { test, prepareStandaloneSetup } from './utils.js';
 
 const startApp = prepareStandaloneSetup('hot-reload');
-
-async function startAppDev() {
-  // fixme: since HMR port is dynamic, we should change this logic
-  const HMR_PORT = 24678;
-  if (!(await isPortAvailable(HMR_PORT))) {
-    if (process.platform === 'win32') {
-      const output = execSync(
-        `for /f "tokens=5" %A in ('netstat -ano ^| findstr :${HMR_PORT} ^| findstr LISTENING') do @echo %A`,
-        {
-          encoding: 'utf8',
-        },
-      );
-      if (output) {
-        await terminate(parseInt(output));
-      }
-    } else {
-      const output = execSync(`lsof -i:${HMR_PORT} | awk 'NR==2 {print $2}'`, {
-        encoding: 'utf8',
-      });
-      if (output) {
-        await terminate(parseInt(output));
-      }
-    }
-  }
-  return startApp('DEV');
-}
 
 async function modifyFile(
   standaloneDir: string,
@@ -57,7 +25,7 @@ test.describe('hot reload', () => {
     'HMR is not available in production mode',
   );
   test.beforeAll(async () => {
-    ({ port, stopApp, standaloneDir } = await startAppDev());
+    ({ port, stopApp, standaloneDir } = await startApp('DEV'));
   });
   test.afterAll(async () => {
     await stopApp();
