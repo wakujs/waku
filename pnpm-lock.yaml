@@ -81,7 +81,7 @@ importers:
         specifier: ^14.2.4
         version: 14.2.4
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -109,7 +109,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -137,7 +137,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -162,7 +162,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -187,7 +187,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -217,7 +217,7 @@ importers:
         specifier: ^14.2.4
         version: 14.2.4
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -245,7 +245,7 @@ importers:
         specifier: ^14.2.4
         version: 14.2.4
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -270,7 +270,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -301,7 +301,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -326,7 +326,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -351,7 +351,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -376,7 +376,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -404,7 +404,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -432,7 +432,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -457,7 +457,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -482,7 +482,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -510,7 +510,7 @@ importers:
         specifier: ^2.3.3
         version: 2.3.3(react@19.1.0)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -538,7 +538,7 @@ importers:
         specifier: ^8.5.9
         version: 8.5.9(@types/react@19.1.6)(react@19.1.0)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -563,7 +563,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -589,7 +589,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@tailwindcss/postcss':
         specifier: 4.1.8
@@ -623,7 +623,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@tailwindcss/postcss':
         specifier: 4.1.8
@@ -648,7 +648,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@tailwindcss/postcss':
         specifier: 4.1.8
@@ -682,7 +682,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@types/react':
         specifier: 19.1.6
@@ -707,7 +707,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@tailwindcss/postcss':
         specifier: 4.1.8
@@ -750,7 +750,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@tailwindcss/postcss':
         specifier: 4.1.8
@@ -787,7 +787,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
       wrangler:
         specifier: 4.19.1
         version: 4.19.1
@@ -833,7 +833,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@tailwindcss/postcss':
         specifier: 4.1.8
@@ -867,7 +867,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@types/react':
         specifier: 19.1.6
@@ -892,7 +892,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@tailwindcss/postcss':
         specifier: 4.1.8
@@ -932,7 +932,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@types/react':
         specifier: 19.1.6
@@ -960,7 +960,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@types/react':
         specifier: 19.1.6
@@ -985,7 +985,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@types/react':
         specifier: 19.1.6
@@ -1010,7 +1010,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
 
   examples/33_promise:
     dependencies:
@@ -1025,7 +1025,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@types/react':
         specifier: 19.1.6
@@ -1053,7 +1053,7 @@ importers:
         version: 1.1.1(react@19.1.0)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@types/react':
         specifier: 19.1.6
@@ -1078,7 +1078,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@types/react':
         specifier: 19.1.6
@@ -1103,7 +1103,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@types/react':
         specifier: 19.1.6
@@ -1137,7 +1137,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@types/react':
         specifier: 19.1.6
@@ -1180,7 +1180,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@types/cookie':
         specifier: 1.0.0
@@ -1211,7 +1211,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@types/react':
         specifier: 19.1.6
@@ -1236,7 +1236,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@types/react':
         specifier: 19.1.6
@@ -1273,7 +1273,7 @@ importers:
         version: 3.2.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@tailwindcss/postcss':
         specifier: 4.1.8
@@ -1307,7 +1307,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@types/react':
         specifier: 19.1.6
@@ -1335,7 +1335,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@types/react':
         specifier: 19.1.6
@@ -1360,7 +1360,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@types/react':
         specifier: 19.1.6
@@ -1391,7 +1391,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@types/react':
         specifier: 19.1.6
@@ -1416,7 +1416,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@types/react':
         specifier: 19.1.6
@@ -1444,7 +1444,7 @@ importers:
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
         specifier: 0.23.2
-        version: 0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
+        version: link:../../packages/waku
     devDependencies:
       '@types/react':
         specifier: 19.1.6
@@ -1481,7 +1481,7 @@ importers:
         version: 7.4.3
       tsup:
         specifier: ^8.5.0
-        version: 8.5.0(@swc/core@1.11.31)(jiti@2.4.2)(postcss@8.5.4)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.0)
+        version: 8.5.0(@swc/core@1.11.31(@swc/helpers@0.5.17))(jiti@2.4.2)(postcss@8.5.4)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.0)
       update-check:
         specifier: ^1.5.4
         version: 1.5.4
@@ -7371,15 +7371,6 @@ packages:
       jsdom:
         optional: true
 
-  waku@0.23.2:
-    resolution: {integrity: sha512-eaqqrWhiGj5t2oIbLG7JX5iX+Z0rVIfMdrcQ9EQWwlRAyomFkaVVt1DDstOGpWXm6X7dzjmMCgarLmk8Ys48iw==}
-    engines: {node: ^24.0.0 || ^22.7.0 || ^20.8.0}
-    hasBin: true
-    peerDependencies:
-      react: ~19.1.0
-      react-dom: ~19.1.0
-      react-server-dom-webpack: ~19.1.0
-
   watchpack@2.4.4:
     resolution: {integrity: sha512-c5EGNOiyxxV5qmTtAB7rbiXxi1ooX1pQKMLX/MIabJjRA0SJBQOjKF+KSVfHkr9U1cADPon0mRiVe/riyaiDUA==}
     engines: {node: '>=10.13.0'}
@@ -10688,7 +10679,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.0(@typescript-eslint/parser@8.33.1(eslint@9.28.0(jiti@2.4.2))(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@4.4.2(eslint-plugin-import@2.31.0)(eslint@9.28.0(jiti@2.4.2)))(eslint@9.28.0(jiti@2.4.2)):
+  eslint-module-utils@2.12.0(@typescript-eslint/parser@8.33.1(eslint@9.28.0(jiti@2.4.2))(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@4.4.2)(eslint@9.28.0(jiti@2.4.2)):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
@@ -10710,7 +10701,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.28.0(jiti@2.4.2)
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.0(@typescript-eslint/parser@8.33.1(eslint@9.28.0(jiti@2.4.2))(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@4.4.2(eslint-plugin-import@2.31.0)(eslint@9.28.0(jiti@2.4.2)))(eslint@9.28.0(jiti@2.4.2))
+      eslint-module-utils: 2.12.0(@typescript-eslint/parser@8.33.1(eslint@9.28.0(jiti@2.4.2))(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@4.4.2)(eslint@9.28.0(jiti@2.4.2))
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3
@@ -13433,7 +13424,7 @@ snapshots:
 
   tslib@2.8.1: {}
 
-  tsup@8.5.0(@swc/core@1.11.31)(jiti@2.4.2)(postcss@8.5.4)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.0):
+  tsup@8.5.0(@swc/core@1.11.31(@swc/helpers@0.5.17))(jiti@2.4.2)(postcss@8.5.4)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.0):
     dependencies:
       bundle-require: 5.1.0(esbuild@0.25.5)
       cac: 6.7.14
@@ -13836,36 +13827,6 @@ snapshots:
       - less
       - lightningcss
       - msw
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - supports-color
-      - terser
-      - tsx
-      - yaml
-
-  waku@0.23.2(@swc/helpers@0.5.17)(@types/node@22.15.29)(@types/react@19.1.6)(jiti@2.4.2)(lightningcss@1.30.1)(react-dom@19.1.0(react@19.1.0))(react-server-dom-webpack@19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9))(react@19.1.0)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0):
-    dependencies:
-      '@hono/node-server': 1.14.3(hono@4.7.11)
-      '@swc/core': 1.11.31(@swc/helpers@0.5.17)
-      '@vitejs/plugin-react': 4.5.1(vite@6.3.5(@types/node@22.15.29)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0))
-      dotenv: 16.5.0
-      hono: 4.7.11
-      html-react-parser: 5.2.5(@types/react@19.1.6)(react@19.1.0)
-      react: 19.1.0
-      react-dom: 19.1.0(react@19.1.0)
-      react-server-dom-webpack: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
-      rollup: 4.41.1
-      rsc-html-stream: 0.0.6
-      vite: 6.3.5(@types/node@22.15.29)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0)
-    transitivePeerDependencies:
-      - '@swc/helpers'
-      - '@types/node'
-      - '@types/react'
-      - jiti
-      - less
-      - lightningcss
       - sass
       - sass-embedded
       - stylus

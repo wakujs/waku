@@ -2,7 +2,7 @@
   "name": "waku-monorepo",
   "version": "0.1.0",
   "type": "module",
-  "packageManager": "pnpm@9.4.0",
+  "packageManager": "pnpm@10.12.1",
   "private": true,
   "scripts": {
     "dev": "pnpm -r --filter='./packages/*' run dev",
