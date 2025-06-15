@@ -24,17 +24,22 @@ export type TestOptions = {
 
 export async function findWakuPort(cp: ChildProcess): Promise<number> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error('Timeout while waiting for port'));
-    }, 10_000);
-    cp.stdout?.on('data', (data) => {
-      const str = data.toString();
-      const match = str.match(/http:\/\/localhost:(\d+)\//);
+    function listener (data: unknown) {
+      const str = `${data}`;
+      const match = str.match(/http:\/\/localhost:(\d+)/g);
       if (match) {
         clearTimeout(timer);
-        resolve(Number(match[1]));
+        cp.stdout?.off('data', listener);
+        const url = new URL(match[0]);
+        info(`Waku server started at ${url}`);
+        resolve(parseInt(url.port, 10));
       }
-    });
+    }
+    cp.stdout?.on('data', listener);
+    const timer = setTimeout(() => {
+      cp.stdout?.off('data', listener);
+      reject(new Error('Timeout while waiting for port'));
+    }, 10_000);
   });
 }
 
@@ -90,7 +95,6 @@ export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
       return;
     }
     info(`(${sourceFile}) stdout: ${str}`);
-    console.log(`(${sourceFile}) stdout: ${str}`);
   });
 
   cp.stderr?.on('data', (data) => {
@@ -103,7 +107,6 @@ export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
       title: 'Child Process Error',
       file: sourceFile,
     });
-    console.error(`(${sourceFile}) stderr: ${str}`);
   });
 }
 
