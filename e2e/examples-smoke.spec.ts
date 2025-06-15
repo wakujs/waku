@@ -7,7 +7,6 @@
 import { expect } from '@playwright/test';
 import { execSync, exec, ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import waitPort from 'wait-port';
 import { readdir, rm } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { findWakuPort, terminate, test } from './utils.js';
@@ -91,7 +90,6 @@ for (const cwd of examples) {
           console.error(`stderr: `, `${data}`);
         });
         port = await findWakuPort(cp);
-        await waitPort({ port });
       });
 
       test.afterAll(async () => {
