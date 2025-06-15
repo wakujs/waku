@@ -69,8 +69,7 @@ const config = defineConfig<TestOptions>({
     },
   ]),
   forbidOnly: !!process.env.CI,
-  // no parallelization, otherwise the `waku` command will have race conditions
-  workers: 1,
+  workers: process.env.CI ? 1 : 3,
   retries: 0,
   // 'github' for GitHub Actions CI to generate annotations, plus a concise 'dot'
   // default 'list' when running locally

@@ -16,12 +16,27 @@ import type { ChildProcess } from 'node:child_process';
 import { expect, test as basicTest } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
 import { error, info } from '@actions/core';
-import waitPort from 'wait-port';
 
 export type TestOptions = {
   mode: 'DEV' | 'PRD';
   page: Page;
 };
+
+const findPort = async (cp: ChildProcess): Promise<number> => {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('Timeout while waiting for port'));
+    }, 10_000);
+    cp.stdout?.on('data', (data) => {
+      const str = data.toString();
+      const match = str.match(/http:\/\/localhost:(\d+)\//);
+      if (match) {
+        clearTimeout(timer);
+        resolve(Number(match[1]));
+      }
+    });
+  });
+}
 
 // Upstream doesn't support ES module
 //  Related: https://github.com/dwyl/terminate/pull/85
@@ -131,22 +146,21 @@ export const prepareNormalSetup = (fixtureName: string) => {
       execSync(`node ${waku} build`, { cwd: fixtureDir });
       built = true;
     }
-    const port = await getFreePort();
     let cmd: string;
     switch (mode) {
       case 'DEV':
-        cmd = `node ${waku} dev --port ${port}`;
+        cmd = `node ${waku} dev`;
         break;
       case 'PRD':
-        cmd = `node ${waku} start --port ${port}`;
+        cmd = `node ${waku} start`;
         break;
       case 'STATIC':
-        cmd = `pnpm serve -l ${port} dist/public`;
+        cmd = `pnpm serve dist/public`;
         break;
     }
     const cp = exec(cmd, { cwd: fixtureDir });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
-    await waitPort({ port });
+    const port = await findPort(cp);
     const stopApp = async () => {
       await terminate(cp.pid!);
     };
@@ -242,22 +256,21 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       );
       built = true;
     }
-    const port = await getFreePort();
     let cmd: string;
     switch (mode) {
       case 'DEV':
-        cmd = `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} dev --port ${port}`;
+        cmd = `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} dev`;
         break;
       case 'PRD':
-        cmd = `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} start --port ${port}`;
+        cmd = `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} start`;
         break;
       case 'STATIC':
-        cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} dist/public -p ${port}`;
+        cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} dist/public`;
         break;
     }
     const cp = exec(cmd, { cwd: join(standaloneDir, packageDir) });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
-    await waitPort({ port });
+    const port = await findPort(cp);
     const stopApp = async () => {
       await terminate(cp.pid!);
     };
