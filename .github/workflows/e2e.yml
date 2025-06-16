@@ -62,6 +62,47 @@ jobs:
             !packages/waku/node_modules
           if-no-files-found: error
 
+  bisect:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - run: pnpm install
+      - uses: actions/download-artifact@v4
+        with:
+          name: create-waku
+          path: packages/create-waku
+      - uses: actions/download-artifact@v4
+        with:
+          name: waku
+          path: packages/waku
+      - name: Install Playwright
+        id: install-playwright
+        uses: ./.github/actions/playwright
+      - name: Run git bisect
+        run: |
+          git bisect start
+          git bisect bad 26a78180
+          git bisect good 57b72325
+          git bisect run pnpm run e2e ./e2e/broken-links.spec.ts -g "existing page" --project=chromium-prd
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.shared }}
+          path: test-results/
+          retention-days: 30
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: output-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.shared }}
+          path: |
+            **/dist
+            **/node_modules/.vite
+            !**/node_modules
+          retention-days: 30
+          if-no-files-found: ignore
+
   e2e:
     name: E2E on ${{ matrix.os }} (Node ${{ matrix.version }}) - (${{ matrix.shared }}/4)${{ inputs.react_version && format(' with react@{0}', inputs.react_version) || '' }}
     needs:
