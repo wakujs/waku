@@ -87,7 +87,7 @@ jobs:
             pnpm install --frozen-lockfile
             pnpm run compile
             pnpm exec playwright test e2e/broken-links.spec.ts \
-            -g "existing page" --project=chromium-prd
+            -g "existing page"
             '
       - uses: actions/upload-artifact@v4
         if: failure()
