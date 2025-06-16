@@ -13,6 +13,7 @@ import {
 const startApp = prepareStandaloneSetup('hot-reload');
 
 async function startAppDev() {
+  // fixme: since HMR port is dynamic, we should change this logic
   const HMR_PORT = 24678;
   if (!(await isPortAvailable(HMR_PORT))) {
     if (process.platform === 'win32') {
@@ -51,6 +52,10 @@ test.describe('hot reload', () => {
   let port: number;
   let stopApp: () => Promise<void>;
   let standaloneDir: string;
+  test.skip(
+    ({ mode }) => mode === 'PRD',
+    'HMR is not available in production mode',
+  );
   test.beforeAll(async () => {
     ({ port, stopApp, standaloneDir } = await startAppDev());
   });

@@ -9,6 +9,10 @@ test.describe(`high volume static site generation`, () => {
     ({ browserName }) => browserName !== 'chromium',
     'Browsers are not relevant for this test. One is enough.',
   );
+  test.skip(
+    ({ mode }) => mode !== 'PRD',
+    'This test is only relevant in production mode.',
+  );
 
   test('build and verify', async ({ page }) => {
     test.setTimeout(60000);
