@@ -83,7 +83,12 @@ jobs:
           git bisect start
           git bisect bad 26a78180
           git bisect good 57b72325
-          git bisect run pnpm i && pnpm run compile && pnpm exec playwright test ./e2e/broken-links.spec.ts -g "existing page" --project=chromium-prd
+          git bisect run bash -eo pipefail -c '
+            pnpm install --frozen-lockfile
+            pnpm run compile
+            pnpm exec playwright test e2e/broken-links.spec.ts \
+              -g "existing page" \
+              --project=chromium-prd
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
