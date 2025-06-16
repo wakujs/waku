@@ -85,7 +85,7 @@ jobs:
           git bisect good 57b72325
           git bisect run bash -eo pipefail -c '
             pnpm install --frozen-lockfile
-            pnpm run compile
+            pnpm -r compile
             pnpm exec playwright test e2e/broken-links.spec.ts \
             -g "existing page"
             '
