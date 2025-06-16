@@ -75,14 +75,6 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install
-      - uses: actions/download-artifact@v4
-        with:
-          name: create-waku
-          path: packages/create-waku
-      - uses: actions/download-artifact@v4
-        with:
-          name: waku
-          path: packages/waku
       - name: Install Playwright
         id: install-playwright
         uses: ./.github/actions/playwright
@@ -91,7 +83,7 @@ jobs:
           git bisect start
           git bisect bad 26a78180
           git bisect good 57b72325
-          git bisect run pnpm run e2e ./e2e/broken-links.spec.ts -g "existing page" --project=chromium-prd
+          git bisect run pnpm i && pnpm run compile && pnpm run e2e ./e2e/broken-links.spec.ts -g "existing page" --project=chromium-prd
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
