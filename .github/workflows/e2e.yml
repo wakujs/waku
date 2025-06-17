@@ -108,6 +108,8 @@ jobs:
       - name: Install Playwright
         id: install-playwright
         uses: ./.github/actions/playwright
+        with:
+          working-directory: 'e2e'
       - run: pnpm exec playwright test --shard=${{ matrix.shared }}/${{ matrix.shardTotal }}
         timeout-minutes: 15
         env:
