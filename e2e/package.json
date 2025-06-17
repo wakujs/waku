@@ -1,0 +1,16 @@
+{
+  "name": "e2e",
+  "type": "module",
+  "scripts": {
+    "e2e": "playwright test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/himself65/waku.git"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.53.0",
+    "terminate": "^2.8.0"
+  },
+  "private": true
+}

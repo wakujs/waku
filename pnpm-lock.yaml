@@ -14,9 +14,6 @@ importers:
       '@eslint/js':
         specifier: ^9.28.0
         version: 9.28.0
-      '@playwright/test':
-        specifier: ^1.53.0
-        version: 1.53.0
       '@types/babel__core':
         specifier: ^7.20.5
         version: 7.20.5
@@ -53,18 +50,21 @@ importers:
       prettier-plugin-tailwindcss:
         specifier: ^0.6.12
         version: 0.6.12(prettier@3.5.3)
-      terminate:
-        specifier: ^2.8.0
-        version: 2.8.0
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
       typescript-eslint:
         specifier: ^8.33.1
         version: 8.33.1(eslint@9.28.0(jiti@2.4.2))(typescript@5.8.3)
-      waku:
-        specifier: workspace:*
-        version: link:packages/waku
+
+  e2e:
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.53.0
+        version: 1.53.0
+      terminate:
+        specifier: ^2.8.0
+        version: 2.8.0
 
   e2e/fixtures/broken-links:
     dependencies:
