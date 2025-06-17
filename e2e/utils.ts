@@ -165,7 +165,6 @@ export const prepareNormalSetup = (fixtureName: string) => {
 
 export const prepareStandaloneSetup = (
   fixtureName: string,
-  monorepo: boolean = false
 ) => {
   const wakuDir = fileURLToPath(new URL('../packages/waku', import.meta.url));
   const { version } = createRequire(import.meta.url)(
@@ -248,7 +247,7 @@ export const prepareStandaloneSetup = (
         force: true,
       });
       execSync(
-        `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} build`,
+        `node ${join(standaloneDir, packageDir, './node_modules/waku/dist/cli.js')} build`,
         { cwd: join(standaloneDir, packageDir) },
       );
       built = true;
@@ -256,13 +255,13 @@ export const prepareStandaloneSetup = (
     let cmd: string;
     switch (mode) {
       case 'DEV':
-        cmd = `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} dev`;
+        cmd = `node ${join(standaloneDir, packageDir, './node_modules/waku/dist/cli.js')} dev`;
         break;
       case 'PRD':
-        cmd = `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} start`;
+        cmd = `node ${join(standaloneDir, packageDir, './node_modules/waku/dist/cli.js')} start`;
         break;
       case 'STATIC':
-        cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} dist/public`;
+        cmd = `node ${join(standaloneDir, packageDir, './node_modules/serve/build/main.js')} dist/public`;
         break;
     }
     const cp = exec(cmd, { cwd: join(standaloneDir, packageDir) });
