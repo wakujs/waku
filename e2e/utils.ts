@@ -170,9 +170,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
   const fixtureDir = fileURLToPath(
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
-  // GitHub Action on Windows doesn't support mkdtemp on global temp dir,
-  // Which will cause files in `src` folder to be empty. I don't know why
-  const tmpDir = process.env.TEMP_DIR || tmpdir();
+  const tmpDir = tmpdir();
   let standaloneDir: string | undefined;
   let built = false;
   const startApp = async (
