@@ -9,8 +9,8 @@
     "start": "waku start"
   },
   "dependencies": {
-    "context-library": "workspace:*",
-    "dummy-library": "workspace:*",
+    "context-library": "latest",
+    "dummy-library": "latest",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-server-dom-webpack": "19.1.0",
