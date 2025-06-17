@@ -213,10 +213,10 @@ importers:
   e2e/fixtures/monorepo/packages/waku-project:
     dependencies:
       context-library:
-        specifier: 0.0.0
+        specifier: workspace:*
         version: link:../context-library
       dummy-library:
-        specifier: 0.0.0
+        specifier: workspace:*
         version: link:../dummy-library
       react:
         specifier: 19.1.0
