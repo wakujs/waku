@@ -16,6 +16,7 @@ import type { ChildProcess } from 'node:child_process';
 import { expect, test as basicTest } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
 import { error, info } from '@actions/core';
+import { realpath } from 'node:fs/promises';
 
 export type TestOptions = {
   mode: 'DEV' | 'PRD';
@@ -162,7 +163,10 @@ export const prepareNormalSetup = (fixtureName: string) => {
   return startApp;
 };
 
-export const prepareStandaloneSetup = (fixtureName: string) => {
+export const prepareStandaloneSetup = (
+  fixtureName: string,
+  monorepo: boolean = false
+) => {
   const wakuDir = fileURLToPath(new URL('../packages/waku', import.meta.url));
   const { version } = createRequire(import.meta.url)(
     join(wakuDir, 'package.json'),
@@ -179,7 +183,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     packageDir = '',
   ) => {
     if (!standaloneDir) {
-      standaloneDir = mkdtempSync(join(tmpDir, fixtureName));
+      standaloneDir = mkdtempSync(join(await realpath(tmpDir), fixtureName));
       cpSync(fixtureDir, standaloneDir, {
         filter: (src) => {
           return !src.includes('node_modules') && !src.includes('dist');
@@ -235,7 +239,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       }
       execSync(`${packageManager} install`, { cwd: standaloneDir });
       execSync(`${packageManager} add ${wakuPackageTgz}`, {
-        cwd: join(standaloneDir),
+        cwd: join(standaloneDir, packageDir),
       });
     }
     if (mode !== 'DEV' && !built) {
