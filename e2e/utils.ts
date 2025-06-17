@@ -234,7 +234,9 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
           writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
         }
       }
-      execSync(`${packageManager} install`, { cwd: standaloneDir });
+      execSync(`${packageManager} install`, {
+        cwd: standaloneDir,
+      });
       execSync(`${packageManager} add ${wakuPackageTgz}`, {
         cwd: join(standaloneDir, packageDir),
       });
