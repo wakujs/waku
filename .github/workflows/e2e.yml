@@ -112,6 +112,7 @@ jobs:
           working-directory: 'e2e'
       - run: pnpm exec playwright test --shard=${{ matrix.shared }}/${{ matrix.shardTotal }}
         timeout-minutes: 15
+        working-directory: 'e2e'
         env:
           TEMP_DIR: ${{ runner.temp }}
           VITE_EXPERIMENTAL_WAKU_ROUTER: true
@@ -119,7 +120,7 @@ jobs:
         if: failure()
         with:
           name: playwright-report-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.shared }}
-          path: test-results/
+          path: e2e/test-results/
           retention-days: 30
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
