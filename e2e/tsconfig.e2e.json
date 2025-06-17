@@ -1,0 +1,70 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist/e2e",
+    "types": ["node"]
+  },
+  "include": ["./*.ts"],
+  "references": [
+    {
+      "path": "./fixtures/rsc-asset/tsconfig.json"
+    },
+    {
+      "path": "./fixtures/rsc-basic/tsconfig.json"
+    },
+    {
+      "path": "./fixtures/rsc-css-modules/tsconfig.json"
+    },
+    {
+      "path": "./fixtures/ssr-basic/tsconfig.json"
+    },
+    {
+      "path": "./fixtures/define-router/tsconfig.json"
+    },
+    {
+      "path": "./fixtures/ssr-target-bundle/tsconfig.json"
+    },
+    {
+      "path": "./fixtures/ssr-swr/tsconfig.json"
+    },
+    {
+      "path": "./fixtures/ssr-context-provider/tsconfig.json"
+    },
+    {
+      "path": "./fixtures/render-type/tsconfig.json"
+    },
+    {
+      "path": "./fixtures/ssg-performance/tsconfig.json"
+    },
+    {
+      "path": "./fixtures/ssg-wildcard/tsconfig.json"
+    },
+    {
+      "path": "./fixtures/partial-build/tsconfig.json"
+    },
+    {
+      "path": "./fixtures/ssr-catch-error/tsconfig.json"
+    },
+    {
+      "path": "./fixtures/ssr-redirect/tsconfig.json"
+    },
+    {
+      "path": "./fixtures/use-router/tsconfig.json"
+    },
+    {
+      "path": "./fixtures/broken-links/tsconfig.json"
+    },
+    {
+      "path": "./fixtures/hot-reload/tsconfig.json"
+    },
+    {
+      "path": "./fixtures/monorepo/packages/waku-project/tsconfig.json"
+    },
+    {
+      "path": "./fixtures/create-pages/tsconfig.json"
+    },
+    {
+      "path": "./fixtures/fs-router/tsconfig.json"
+    }
+  ]
+}

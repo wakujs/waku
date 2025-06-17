@@ -34,7 +34,7 @@
     },
     // E2E
     {
-      "path": "./tsconfig.e2e.json"
+      "path": "./e2e/tsconfig.e2e.json"
     },
     // Test
     {

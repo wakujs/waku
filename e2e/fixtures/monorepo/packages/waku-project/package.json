@@ -9,16 +9,16 @@
     "start": "waku start"
   },
   "dependencies": {
-    "context-library": "0.0.0",
-    "dummy-library": "0.0.0",
+    "context-library": "latest",
+    "dummy-library": "latest",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-server-dom-webpack": "19.1.0",
-    "waku": "0.23.2"
+    "waku": "latest"
   },
   "devDependencies": {
-    "@types/react": "19.0.1",
-    "@types/react-dom": "19.0.2",
+    "@types/react": "19.1.6",
+    "@types/react-dom": "19.1.6",
     "typescript": "5.7.2"
   }
 }

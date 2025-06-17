@@ -16,6 +16,7 @@ import type { ChildProcess } from 'node:child_process';
 import { expect, test as basicTest } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
 import { error, info } from '@actions/core';
+import { realpath } from 'node:fs/promises';
 
 export type TestOptions = {
   mode: 'DEV' | 'PRD';
@@ -170,9 +171,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
   const fixtureDir = fileURLToPath(
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
-  // GitHub Action on Windows doesn't support mkdtemp on global temp dir,
-  // Which will cause files in `src` folder to be empty. I don't know why
-  const tmpDir = process.env.TEMP_DIR || tmpdir();
+  const tmpDir = tmpdir();
   let standaloneDir: string | undefined;
   let built = false;
   const startApp = async (
@@ -181,7 +180,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     packageDir = '',
   ) => {
     if (!standaloneDir) {
-      standaloneDir = mkdtempSync(join(tmpDir, fixtureName));
+      standaloneDir = mkdtempSync(join(await realpath(tmpDir), fixtureName));
       cpSync(fixtureDir, standaloneDir, {
         filter: (src) => {
           return !src.includes('node_modules') && !src.includes('dist');
@@ -235,9 +234,11 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
           writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
         }
       }
-      execSync(`${packageManager} install`, { cwd: standaloneDir });
+      execSync(`${packageManager} install`, {
+        cwd: standaloneDir,
+      });
       execSync(`${packageManager} add ${wakuPackageTgz}`, {
-        cwd: join(standaloneDir),
+        cwd: join(standaloneDir, packageDir),
       });
     }
     if (mode !== 'DEV' && !built) {
@@ -246,7 +247,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         force: true,
       });
       execSync(
-        `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} build`,
+        `node ${join(standaloneDir, packageDir, './node_modules/waku/dist/cli.js')} build`,
         { cwd: join(standaloneDir, packageDir) },
       );
       built = true;
@@ -254,13 +255,13 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     let cmd: string;
     switch (mode) {
       case 'DEV':
-        cmd = `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} dev`;
+        cmd = `node ${join(standaloneDir, packageDir, './node_modules/waku/dist/cli.js')} dev`;
         break;
       case 'PRD':
-        cmd = `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} start`;
+        cmd = `node ${join(standaloneDir, packageDir, './node_modules/waku/dist/cli.js')} start`;
         break;
       case 'STATIC':
-        cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} dist/public`;
+        cmd = `node ${join(standaloneDir, packageDir, './node_modules/serve/build/main.js')} dist/public`;
         break;
     }
     const cp = exec(cmd, { cwd: join(standaloneDir, packageDir) });
