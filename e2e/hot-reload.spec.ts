@@ -53,7 +53,7 @@ test.describe('hot reload', () => {
   let stopApp: () => Promise<void>;
   let standaloneDir: string;
   test.skip(
-    ({ mode }) => mode === 'PRD',
+    ({ mode }) => mode !== 'PRD',
     'HMR is not available in production mode',
   );
   test.beforeAll(async () => {
