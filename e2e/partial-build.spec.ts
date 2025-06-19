@@ -21,7 +21,7 @@ test.describe(`partial builds`, () => {
     'Partial builds are only relevant in production mode.',
   );
 
-  let cp: ChildProcess;
+  let cp: ChildProcess | undefined;
   let port: number;
   test.beforeEach(async ({ page }) => {
     await rm(`${cwd}/dist`, { recursive: true, force: true });
@@ -35,7 +35,9 @@ test.describe(`partial builds`, () => {
     expect(await page.getByTestId('title').textContent()).toBe('a');
   });
   test.afterEach(async () => {
-    await terminate(cp.pid!);
+    if (cp?.pid) {
+      await terminate(cp?.pid);
+    }
   });
 
   test('does not change pages that already exist', async () => {
