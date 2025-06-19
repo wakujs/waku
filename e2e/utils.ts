@@ -17,6 +17,12 @@ import { expect, test as basicTest } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
 import { error, info } from '@actions/core';
 
+export const FETCH_ERROR_MESSAGES = {
+  chromium: 'Failed to fetch',
+  firefox: 'NetworkError when attempting to fetch resource.',
+  webkit: 'Load failed',
+};
+
 export type TestOptions = {
   mode: 'DEV' | 'PRD';
   page: Page;
