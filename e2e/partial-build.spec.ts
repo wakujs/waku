@@ -36,7 +36,7 @@ test.describe(`partial builds`, () => {
   });
   test.afterEach(async () => {
     if (cp?.pid) {
-      await terminate(cp?.pid);
+      await terminate(cp.pid);
     }
   });
 
