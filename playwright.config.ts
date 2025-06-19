@@ -1,7 +1,4 @@
-import type {
-  PlaywrightTestProject,
-  PlaywrightWorkerOptions,
-} from '@playwright/test';
+import type { PlaywrightTestProject } from '@playwright/test';
 import { defineConfig, devices } from '@playwright/test';
 import type { TestOptions } from './e2e/utils.js';
 
@@ -22,9 +19,6 @@ const config = defineConfig<TestOptions>({
     timeout: process.env.CI ? 10_000 : 5_000,
   },
   use: {
-    browserName:
-      (process.env.BROWSER as PlaywrightWorkerOptions['browserName']) ??
-      'chromium',
     viewport: { width: 1440, height: 800 },
     actionTimeout: process.env.CI ? 10_000 : 5_000,
     locale: 'en-US',

@@ -111,7 +111,7 @@ export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
 }
 
 export const test = basicTest.extend<TestOptions>({
-  mode: 'DEV',
+  mode: ['DEV', { option: true }],
   page: async ({ page }, pageUse, testInfo) => {
     const callback = (msg: ConsoleMessage) => {
       if (unexpectedErrors.some((re) => re.test(msg.text()))) {
