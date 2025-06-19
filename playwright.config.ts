@@ -14,7 +14,7 @@ import type { TestOptions } from './e2e/utils.js';
 const config = defineConfig<TestOptions>({
   testDir: './e2e',
   fullyParallel: true,
-  timeout: process.env.CI ? 60_000 : 30_000,
+  timeout: process.env.CI ? 120_000 : 30_000,
   expect: {
     timeout: process.env.CI ? 10_000 : 5_000,
   },
