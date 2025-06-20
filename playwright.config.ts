@@ -9,6 +9,9 @@ const config = defineConfig<TestOptions>({
   testDir: './e2e',
   fullyParallel: true,
   timeout: process.env.CI ? 120_000 : 30_000,
+  expect: {
+    timeout: process.env.CI ? 10_000 : 5_000,
+  },
   use: {
     viewport: { width: 1440, height: 800 },
     locale: 'en-US',
