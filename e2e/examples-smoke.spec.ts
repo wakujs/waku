@@ -52,7 +52,7 @@ for (const cwd of examples) {
     : commands;
   for (const { build, command } of exampleCommands) {
     test.describe(`smoke test on ${basename(cwd)}: ${command}`, () => {
-      let cp: ChildProcess;
+      let cp: ChildProcess | undefined;
       let port: number;
       test.beforeAll('remove cache', async () => {
         await rm(`${cwd}/dist`, {
@@ -93,7 +93,9 @@ for (const cwd of examples) {
       });
 
       test.afterAll(async () => {
-        await terminate(cp.pid!);
+        if (cp?.pid) {
+          await terminate(cp.pid);
+        }
       });
 
       test('check title', async ({ page }) => {
