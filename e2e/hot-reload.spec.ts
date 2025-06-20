@@ -195,6 +195,7 @@ test.describe('hot reload', () => {
     expect(bgColor2).toBe('rgb(0, 0, 255)');
 
     await page.reload();
+    await page.waitForTimeout(500); // need to wait?
     const bgColor3 = await page.evaluate(() =>
       window
         .getComputedStyle(
