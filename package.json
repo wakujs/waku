@@ -2,14 +2,14 @@
   "name": "waku-monorepo",
   "version": "0.1.0",
   "type": "module",
-  "packageManager": "pnpm@9.4.0",
+  "packageManager": "pnpm@10.12.1",
   "private": true,
   "scripts": {
     "dev": "pnpm -r --filter='./packages/*' run dev",
     "compile": "pnpm -r --filter='./packages/*' run compile",
     "csb-install-FIXME": "pnpm install --no-frozen-lockfile",
     "test": "prettier -c . && eslint . && tsc -b && pnpm -F 07_cloudflare cf-typegen && tsc -b --noEmit `find examples -mindepth 1 -maxdepth 1 -type d ! -name '*_js'` && pnpm run -r test",
-    "test-vite-ecosystem-ci": "VITE_EXPERIMENTAL_WAKU_ROUTER=true pnpm run -r test && VITE_EXPERIMENTAL_WAKU_ROUTER=true playwright test --project=chromium",
+    "test-vite-ecosystem-ci": "VITE_EXPERIMENTAL_WAKU_ROUTER=true pnpm run -r test && VITE_EXPERIMENTAL_WAKU_ROUTER=true playwright test --project=chromium-prd --project=chromium-dev",
     "e2e": "playwright test",
     "website:dev": "pnpm -F waku-website dev",
     "website:build": "VITE_EXPERIMENTAL_WAKU_ROUTER=true pnpm -F waku-website build",
@@ -29,7 +29,7 @@
   "devDependencies": {
     "@actions/core": "^1.11.1",
     "@eslint/js": "^9.28.0",
-    "@playwright/test": "^1.52.0",
+    "@playwright/test": "^1.53.0",
     "@types/babel__core": "^7.20.5",
     "@types/node": "^22.15.29",
     "@types/react": "^19.1.6",
@@ -45,7 +45,6 @@
     "terminate": "^2.8.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.33.1",
-    "wait-port": "^1.1.0",
     "waku": "workspace:*"
   }
 }

@@ -15,8 +15,8 @@ importers:
         specifier: ^9.28.0
         version: 9.28.0
       '@playwright/test':
-        specifier: ^1.52.0
-        version: 1.52.0
+        specifier: ^1.53.0
+        version: 1.53.0
       '@types/babel__core':
         specifier: ^7.20.5
         version: 7.20.5
@@ -62,9 +62,6 @@ importers:
       typescript-eslint:
         specifier: ^8.33.1
         version: 8.33.1(eslint@9.28.0(jiti@2.4.2))(typescript@5.8.3)
-      wait-port:
-        specifier: ^1.1.0
-        version: 1.1.0
       waku:
         specifier: workspace:*
         version: link:packages/waku
@@ -84,7 +81,7 @@ importers:
         specifier: ^14.2.4
         version: 14.2.4
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -112,7 +109,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -140,7 +137,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -165,7 +162,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -190,7 +187,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -220,7 +217,7 @@ importers:
         specifier: ^14.2.4
         version: 14.2.4
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -248,7 +245,7 @@ importers:
         specifier: ^14.2.4
         version: 14.2.4
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -273,7 +270,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -304,7 +301,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -329,7 +326,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -354,7 +351,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -379,7 +376,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -407,7 +404,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -435,7 +432,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -460,7 +457,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -485,7 +482,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -513,7 +510,7 @@ importers:
         specifier: ^2.3.3
         version: 2.3.3(react@19.1.0)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -541,7 +538,7 @@ importers:
         specifier: ^8.5.9
         version: 8.5.9(@types/react@19.1.6)(react@19.1.0)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -566,7 +563,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
@@ -1484,7 +1481,7 @@ importers:
         version: 7.4.3
       tsup:
         specifier: ^8.5.0
-        version: 8.5.0(@swc/core@1.11.31)(jiti@2.4.2)(postcss@8.5.4)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.0)
+        version: 8.5.0(@swc/core@1.11.31(@swc/helpers@0.5.17))(jiti@2.4.2)(postcss@8.5.4)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.0)
       update-check:
         specifier: ^1.5.4
         version: 1.5.4
@@ -2898,8 +2895,8 @@ packages:
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
 
-  '@playwright/test@1.52.0':
-    resolution: {integrity: sha512-uh6W7sb55hl7D6vsAeA+V2p5JnlAqzhqFyF0VcJkKZXkgnFcVG9PziERRHQfPLfNGx1C292a4JqbWzhR8L4R1g==}
+  '@playwright/test@1.53.0':
+    resolution: {integrity: sha512-15hjKreZDcp7t6TL/7jkAo6Df5STZN09jGiv5dbP9A6vMVncXRqE7/B2SncsyOwrkZRBH2i6/TPOL8BVmm3c7w==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -4197,10 +4194,6 @@ packages:
   commander@8.3.0:
     resolution: {integrity: sha512-OkTL9umf+He2DZkUq8f8J9of7yL6RJKI24dVITBmNfZBmri9zYZQrKkuXiKhyfPSu8tUhnVBB1iKXevvnlR4Ww==}
     engines: {node: '>= 12'}
-
-  commander@9.5.0:
-    resolution: {integrity: sha512-KRs7WVDKg86PWiuAqhDrAQnTXZKraVcCc6vFdL14qrZ/DcWwuRo7VoiYXalXO7S5GKpqYiVEwCbgFDfxNHKJBQ==}
-    engines: {node: ^12.20.0 || >=14}
 
   common-path-prefix@3.0.0:
     resolution: {integrity: sha512-QE33hToZseCH3jS0qN96O/bSh3kaw/h+Tq7ngyY9eWDUnTlTNUyqfqvCXioLe5Na5jFsL78ra/wuBU4iuEgd4w==}
@@ -6184,13 +6177,13 @@ packages:
   pkg-types@1.3.1:
     resolution: {integrity: sha512-/Jm5M4RvtBFVkKWRu2BLUTNP8/M2a+UwuAX+ae4770q1qVGtfjG+WTCupoZixokjmHiry8uI+dlY8KXYV5HVVQ==}
 
-  playwright-core@1.52.0:
-    resolution: {integrity: sha512-l2osTgLXSMeuLZOML9qYODUQoPPnUsKsb5/P6LJ2e6uPKXUdPK5WYhN4z03G+YNbWmGDY4YENauNu4ZKczreHg==}
+  playwright-core@1.53.0:
+    resolution: {integrity: sha512-mGLg8m0pm4+mmtB7M89Xw/GSqoNC+twivl8ITteqvAndachozYe2ZA7srU6uleV1vEdAHYqjq+SV8SNxRRFYBw==}
     engines: {node: '>=18'}
     hasBin: true
 
-  playwright@1.52.0:
-    resolution: {integrity: sha512-JAwMNMBlxJ2oD1kce4KPtMkDeKGHQstdpFPcPH3maElAXon/QZeTvtsfXmTMRyO9TslfoYOXkSsvao2nE1ilTw==}
+  playwright@1.53.0:
+    resolution: {integrity: sha512-ghGNnIEYZC4E+YtclRn4/p6oYbdPiASELBIYkBXfaTVKreQUYbMUYQDwS12a8F0/HtIjr/CkGjtwABeFPGcS4Q==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -7377,11 +7370,6 @@ packages:
         optional: true
       jsdom:
         optional: true
-
-  wait-port@1.1.0:
-    resolution: {integrity: sha512-3e04qkoN3LxTMLakdqeWth8nih8usyg+sf1Bgdf9wwUkp05iuK1eSY/QpLvscT/+F/gA89+LpUmmgBtesbqI2Q==}
-    engines: {node: '>=10'}
-    hasBin: true
 
   watchpack@2.4.4:
     resolution: {integrity: sha512-c5EGNOiyxxV5qmTtAB7rbiXxi1ooX1pQKMLX/MIabJjRA0SJBQOjKF+KSVfHkr9U1cADPon0mRiVe/riyaiDUA==}
@@ -8682,9 +8670,9 @@ snapshots:
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
-  '@playwright/test@1.52.0':
+  '@playwright/test@1.53.0':
     dependencies:
-      playwright: 1.52.0
+      playwright: 1.53.0
 
   '@rolldown/pluginutils@1.0.0-beta.9': {}
 
@@ -10130,8 +10118,6 @@ snapshots:
 
   commander@8.3.0: {}
 
-  commander@9.5.0: {}
-
   common-path-prefix@3.0.0: {}
 
   compress-commons@6.0.2:
@@ -10693,7 +10679,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.0(@typescript-eslint/parser@8.33.1(eslint@9.28.0(jiti@2.4.2))(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@4.4.2(eslint-plugin-import@2.31.0)(eslint@9.28.0(jiti@2.4.2)))(eslint@9.28.0(jiti@2.4.2)):
+  eslint-module-utils@2.12.0(@typescript-eslint/parser@8.33.1(eslint@9.28.0(jiti@2.4.2))(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@4.4.2)(eslint@9.28.0(jiti@2.4.2)):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
@@ -10715,7 +10701,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.28.0(jiti@2.4.2)
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.0(@typescript-eslint/parser@8.33.1(eslint@9.28.0(jiti@2.4.2))(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@4.4.2(eslint-plugin-import@2.31.0)(eslint@9.28.0(jiti@2.4.2)))(eslint@9.28.0(jiti@2.4.2))
+      eslint-module-utils: 2.12.0(@typescript-eslint/parser@8.33.1(eslint@9.28.0(jiti@2.4.2))(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@4.4.2)(eslint@9.28.0(jiti@2.4.2))
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3
@@ -12491,11 +12477,11 @@ snapshots:
       mlly: 1.7.4
       pathe: 2.0.3
 
-  playwright-core@1.52.0: {}
+  playwright-core@1.53.0: {}
 
-  playwright@1.52.0:
+  playwright@1.53.0:
     dependencies:
-      playwright-core: 1.52.0
+      playwright-core: 1.53.0
     optionalDependencies:
       fsevents: 2.3.2
 
@@ -13438,7 +13424,7 @@ snapshots:
 
   tslib@2.8.1: {}
 
-  tsup@8.5.0(@swc/core@1.11.31)(jiti@2.4.2)(postcss@8.5.4)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.0):
+  tsup@8.5.0(@swc/core@1.11.31(@swc/helpers@0.5.17))(jiti@2.4.2)(postcss@8.5.4)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.0):
     dependencies:
       bundle-require: 5.1.0(esbuild@0.25.5)
       cac: 6.7.14
@@ -13849,14 +13835,6 @@ snapshots:
       - terser
       - tsx
       - yaml
-
-  wait-port@1.1.0:
-    dependencies:
-      chalk: 4.1.2
-      commander: 9.5.0
-      debug: 4.4.1
-    transitivePeerDependencies:
-      - supports-color
 
   watchpack@2.4.4:
     dependencies:
