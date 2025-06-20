@@ -69,7 +69,7 @@ test.describe(`create-pages`, () => {
   test("nested/cat's pajamas", async ({ page }) => {
     await page.goto(`http://localhost:${port}/nested/cat's%20pajamas`);
     await expect(
-      page.getByRole('heading', { name: "Dynamic: cat's pajamas" }),
+      page.getByRole('heading', { name: "Dynamic: cat's%20pajamas" }),
     ).toBeVisible();
   });
 
