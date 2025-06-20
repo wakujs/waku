@@ -132,6 +132,7 @@ test.describe(`create-pages`, () => {
     ).toHaveText('init');
     await stopApp();
     await page.getByTestId('server-throws').getByTestId('success').click();
+    await page.waitForTimeout(500); // need to wait?
     await expect(
       page.getByTestId('server-throws').getByTestId('throws-error'),
     ).toHaveText(FETCH_ERROR_MESSAGES[browserName]);
