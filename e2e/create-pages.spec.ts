@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test';
 
-import { test, prepareStandaloneSetup } from './utils.js';
+import { test, prepareStandaloneSetup, FETCH_ERROR_MESSAGES } from './utils.js';
 
 const startApp = prepareStandaloneSetup('create-pages');
 
@@ -116,7 +116,7 @@ test.describe(`create-pages`, () => {
     ).toHaveText('Something unexpected happened');
   });
 
-  test('server function unreachable', async ({ page, mode }) => {
+  test('server function unreachable', async ({ page, mode, browserName }) => {
     await page.goto(`http://localhost:${port}`);
     await page.click("a[href='/error']");
     await expect(
@@ -132,19 +132,20 @@ test.describe(`create-pages`, () => {
     ).toHaveText('init');
     await stopApp();
     await page.getByTestId('server-throws').getByTestId('success').click();
+    await page.waitForTimeout(500); // need to wait?
     await expect(
       page.getByTestId('server-throws').getByTestId('throws-error'),
-    ).toHaveText('Failed to fetch');
+    ).toHaveText(FETCH_ERROR_MESSAGES[browserName]);
     ({ port, stopApp } = await startApp(mode));
   });
 
-  test('server page unreachable', async ({ page, mode }) => {
+  test('server page unreachable', async ({ page, mode, browserName }) => {
     await page.goto(`http://localhost:${port}`);
     await stopApp();
     await page.click("a[href='/error']");
     // Default router client error boundary is reached
     await expect(
-      page.getByRole('heading', { name: 'Failed to Fetch' }),
+      page.getByRole('heading', { name: FETCH_ERROR_MESSAGES[browserName] }),
     ).toBeVisible();
     ({ port, stopApp } = await startApp(mode));
   });

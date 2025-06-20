@@ -17,6 +17,12 @@ import { expect, test as basicTest } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
 import { error, info } from '@actions/core';
 
+export const FETCH_ERROR_MESSAGES = {
+  chromium: 'Failed to fetch',
+  firefox: 'NetworkError when attempting to fetch resource.',
+  webkit: 'Load failed',
+};
+
 export type TestOptions = {
   mode: 'DEV' | 'PRD';
   page: Page;
@@ -111,7 +117,7 @@ export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
 }
 
 export const test = basicTest.extend<TestOptions>({
-  mode: 'DEV',
+  mode: ['DEV', { option: true }],
   page: async ({ page }, pageUse, testInfo) => {
     const callback = (msg: ConsoleMessage) => {
       if (unexpectedErrors.some((re) => re.test(msg.text()))) {
