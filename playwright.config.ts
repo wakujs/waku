@@ -1,15 +1,6 @@
-import type {
-  PlaywrightTestProject,
-  PlaywrightWorkerOptions,
-} from '@playwright/test';
+import type { PlaywrightTestProject } from '@playwright/test';
 import { defineConfig, devices } from '@playwright/test';
 import type { TestOptions } from './e2e/utils.js';
-
-/**
- * Read environment variables from file.
- * https://github.com/motdotla/dotenv
- */
-// require('dotenv').config();
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -17,16 +8,9 @@ import type { TestOptions } from './e2e/utils.js';
 const config = defineConfig<TestOptions>({
   testDir: './e2e',
   fullyParallel: true,
-  timeout: process.env.CI ? 60_000 : 30_000,
-  expect: {
-    timeout: process.env.CI ? 10_000 : 5_000,
-  },
+  timeout: process.env.CI ? 120_000 : 30_000,
   use: {
-    browserName:
-      (process.env.BROWSER as PlaywrightWorkerOptions['browserName']) ??
-      'chromium',
     viewport: { width: 1440, height: 800 },
-    actionTimeout: process.env.CI ? 10_000 : 5_000,
     locale: 'en-US',
     // Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer
     // You can open traces locally(`npx playwright show-trace trace.zip`)
@@ -76,9 +60,5 @@ const config = defineConfig<TestOptions>({
   // See https://playwright.dev/docs/test-reporters#github-actions-annotations
   reporter: process.env.CI ? 'github' : 'list',
 });
-
-if (process.env.CI) {
-  config.retries = 3;
-}
 
 export default config;

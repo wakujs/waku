@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test';
 
-import { test, prepareNormalSetup } from './utils.js';
+import { test, prepareNormalSetup, FETCH_ERROR_MESSAGES } from './utils.js';
 
 const startApp = prepareNormalSetup('rsc-basic');
 
@@ -136,7 +136,7 @@ test.describe(`rsc-basic`, () => {
     ).toHaveText('Something unexpected happened');
   });
 
-  test('server handle network errors', async ({ page, mode }) => {
+  test('server handle network errors', async ({ page, mode, browserName }) => {
     await page.goto(`http://localhost:${port}/`);
     await expect(page.getByTestId('app-name')).toHaveText('Waku');
     await page.getByTestId('server-throws').getByTestId('success').click();
@@ -151,7 +151,7 @@ test.describe(`rsc-basic`, () => {
     await page.getByTestId('server-throws').getByTestId('success').click();
     await expect(
       page.getByTestId('server-throws').getByTestId('throws-error'),
-    ).toHaveText('Failed to fetch');
+    ).toHaveText(FETCH_ERROR_MESSAGES[browserName]);
     ({ port, stopApp } = await startApp(mode));
   });
 });
