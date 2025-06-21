@@ -152,17 +152,23 @@ export function useRouter() {
     ) => {
       const url = new URL(to, window.location.href);
       const newPath = url.pathname !== window.location.pathname;
-      await changeRoute(parseRoute(url), {
-        shouldScroll: options?.scroll ?? newPath,
-      });
-      window.history.pushState(
-        {
-          ...window.history.state,
-          waku_new_path: newPath,
-        },
-        '',
-        url,
-      );
+      try {
+        await changeRoute(parseRoute(url), {
+          shouldScroll: options?.scroll ?? newPath,
+        });
+      } catch (err) {
+        console.error('Error while navigating to new route:', err);
+        throw err;
+      } finally {
+        window.history.pushState(
+          {
+            ...window.history.state,
+            waku_new_path: newPath,
+          },
+          '',
+          url,
+        );
+      }
     },
     [changeRoute],
   );
@@ -332,18 +338,24 @@ export function Link({
       prefetchRoute(route);
       startTransitionFn(async () => {
         const newPath = url.pathname !== window.location.pathname;
-        await changeRoute(route, {
-          shouldScroll: scroll ?? newPath,
-          unstable_startTransition: startTransitionFn,
-        });
-        window.history.pushState(
-          {
-            ...window.history.state,
-            waku_new_path: newPath,
-          },
-          '',
-          url,
-        );
+        try {
+          await changeRoute(route, {
+            shouldScroll: scroll ?? newPath,
+            unstable_startTransition: startTransitionFn,
+          });
+        } catch (err) {
+          console.error('Error while navigating to new route:', err);
+          throw err;
+        } finally {
+          window.history.pushState(
+            {
+              ...window.history.state,
+              waku_new_path: newPath,
+            },
+            '',
+            url,
+          );
+        }
       });
     }
   };
@@ -459,14 +471,6 @@ const Redirect = ({ to, reset }: { to: string; reset: () => void }) => {
       return;
     }
     const newPath = url.pathname !== window.location.pathname;
-    window.history.pushState(
-      {
-        ...window.history.state,
-        waku_new_path: newPath,
-      },
-      '',
-      url,
-    );
     changeRoute(parseRoute(url), { shouldScroll: newPath })
       .then(() => {
         // FIXME: As we understand it, we should have a proper solution.
@@ -476,6 +480,16 @@ const Redirect = ({ to, reset }: { to: string; reset: () => void }) => {
       })
       .catch((err) => {
         console.log('Error while navigating to redirect:', err);
+      })
+      .finally(() => {
+        window.history.pushState(
+          {
+            ...window.history.state,
+            waku_new_path: newPath,
+          },
+          '',
+          url,
+        );
       });
   }, [to, reset, changeRoute]);
   return null;
@@ -747,30 +761,28 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
 
   useEffect(() => {
     const callback = (path: string, query: string) => {
-      const fn = () => {
+      const fn = async () => {
         const url = new URL(window.location.href);
         url.pathname = path;
         url.search = query;
         url.hash = '';
-        changeRoute(parseRoute(url), {
-          skipRefetch: true,
-          shouldScroll: false,
-        })
-          .catch((err) => {
-            console.log('Error while navigating to new route:', err);
-          })
-          .finally(() => {
-            if (path !== '/404') {
-              window.history.pushState(
-                {
-                  ...window.history.state,
-                  waku_new_path: url.pathname !== window.location.pathname,
-                },
-                '',
-                url,
-              );
-            }
+        try {
+          await changeRoute(parseRoute(url), {
+            skipRefetch: true,
+            shouldScroll: false,
           });
+        } finally {
+          if (path !== '/404') {
+            window.history.pushState(
+              {
+                ...window.history.state,
+                waku_new_path: url.pathname !== window.location.pathname,
+              },
+              '',
+              url,
+            );
+          }
+        }
       };
       if (refetching.current) {
         refetching.current.push(fn);
