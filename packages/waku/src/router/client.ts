@@ -794,7 +794,7 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
     createElement(CustomErrorHandler, { has404 }, routeElement),
   );
   return createElement(
-    RouterContext.Provider,
+    RouterContext,
     {
       value: {
         route,
@@ -854,7 +854,7 @@ export function INTERNAL_ServerRouter({
     Fragment,
     null,
     createElement(
-      RouterContext.Provider,
+      RouterContext,
       {
         value: {
           route,

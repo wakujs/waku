@@ -1,7 +1,6 @@
 import { execSync, exec, ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import waitPort from 'wait-port';
-import { getFreePort, terminate, test } from './utils.js';
+import { findWakuPort, terminate, test } from './utils.js';
 import { rm } from 'node:fs/promises';
 import { expect } from '@playwright/test';
 import { statSync } from 'fs';
@@ -17,8 +16,12 @@ test.describe(`partial builds`, () => {
     ({ browserName }) => browserName !== 'chromium',
     'Browsers are not relevant for this test. One is enough.',
   );
+  test.skip(
+    ({ mode }) => mode !== 'PRD',
+    'Partial builds are only relevant in production mode.',
+  );
 
-  let cp: ChildProcess;
+  let cp: ChildProcess | undefined;
   let port: number;
   test.beforeEach(async ({ page }) => {
     await rm(`${cwd}/dist`, { recursive: true, force: true });
@@ -26,14 +29,15 @@ test.describe(`partial builds`, () => {
       cwd,
       env: { ...process.env, PAGES: 'a' },
     });
-    port = await getFreePort();
-    cp = exec(`node ${waku} start --port ${port}`, { cwd });
-    await waitPort({ port });
+    cp = exec(`node ${waku} start`, { cwd });
+    port = await findWakuPort(cp);
     await page.goto(`http://localhost:${port}/page/a`);
     expect(await page.getByTestId('title').textContent()).toBe('a');
   });
   test.afterEach(async () => {
-    await terminate(cp.pid!);
+    if (cp?.pid) {
+      await terminate(cp.pid);
+    }
   });
 
   test('does not change pages that already exist', async () => {
