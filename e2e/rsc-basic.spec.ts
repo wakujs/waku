@@ -154,4 +154,10 @@ test.describe(`rsc-basic`, () => {
     ).toHaveText(FETCH_ERROR_MESSAGES[browserName]);
     ({ port, stopApp } = await startApp(mode));
   });
+
+  test('allowServer', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/`);
+    await expect(page.getByTestId('app-name')).toHaveText('Waku');
+    await expect(page.getByTestId('some-config-foo')).toHaveText('value-1234');
+  });
 });

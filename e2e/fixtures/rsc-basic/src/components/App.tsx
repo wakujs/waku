@@ -1,6 +1,6 @@
 // no "use server" detective
 
-import { ClientCounter } from './ClientCounter.js';
+import { ClientCounter, someConfigs } from './ClientCounter.js';
 import { ServerPing } from './ServerPing/index.js';
 import { ServerBox } from './Box.js';
 import { ServerProvider } from './ServerAction/Server.js';
@@ -22,6 +22,7 @@ const App = ({ name, params }: { name: string; params: unknown }) => {
             <ClientActionsConsumer />
           </ServerProvider>
           <ServerThrows />
+          <p data-testid="some-config-foo">{someConfigs.foo}</p>
         </ServerBox>
       </body>
     </html>
