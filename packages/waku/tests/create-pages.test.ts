@@ -479,14 +479,12 @@ beforeEach(() => {
 
 function injectedFunctions() {
   expect(defineRouterMock).toHaveBeenCalledTimes(1);
-  assert(defineRouterMock.mock.calls[0]?.[0].getRouteConfig);
+  assert(defineRouterMock.mock.calls[0]?.[0].getConfig);
   assert(defineRouterMock.mock.calls[0]?.[0].handleRoute);
-  assert(defineRouterMock.mock.calls[0]?.[0].getApiConfig);
   assert(defineRouterMock.mock.calls[0]?.[0].handleApi);
   return {
-    getRouteConfig: defineRouterMock.mock.calls[0][0].getRouteConfig,
+    getConfig: defineRouterMock.mock.calls[0][0].getConfig,
     handleRoute: defineRouterMock.mock.calls[0][0].handleRoute,
-    getApiConfig: defineRouterMock.mock.calls[0][0].getApiConfig,
     handleApi: defineRouterMock.mock.calls[0][0].handleApi,
   };
 }
@@ -501,10 +499,11 @@ describe('createPages pages and layouts', () => {
         component: TestPage,
       }),
     ]);
-    const { getRouteConfig, handleRoute } = injectedFunctions();
+    const { getConfig, handleRoute } = injectedFunctions();
 
-    expect(await getRouteConfig()).toEqual([
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'page:/test': { isStatic: true },
         },
@@ -533,9 +532,10 @@ describe('createPages pages and layouts', () => {
         component: TestPage,
       }),
     ]);
-    const { getRouteConfig, handleRoute } = injectedFunctions();
-    expect(await getRouteConfig()).toEqual([
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'page:/test': { isStatic: false },
         },
@@ -565,9 +565,10 @@ describe('createPages pages and layouts', () => {
         },
       }),
     ]);
-    const { getApiConfig, handleApi } = injectedFunctions();
-    expect(await getApiConfig()).toEqual([
+    const { getConfig, handleApi } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'api',
         path: [{ type: 'literal', name: 'test' }],
         isStatic: true,
       },
@@ -599,9 +600,10 @@ describe('createPages pages and layouts', () => {
         },
       }),
     ]);
-    const { getApiConfig, handleApi } = injectedFunctions();
-    expect(await getApiConfig()).toEqual([
+    const { getConfig, handleApi } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'api',
         path: [
           { type: 'literal', name: 'test' },
           { type: 'group', name: 'slug' },
@@ -640,9 +642,10 @@ describe('createPages pages and layouts', () => {
       }),
     ]);
 
-    const { getRouteConfig, handleRoute } = injectedFunctions();
-    expect(await getRouteConfig()).toEqual([
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'layout:/': { isStatic: true },
           'page:/test': { isStatic: true },
@@ -678,9 +681,10 @@ describe('createPages pages and layouts', () => {
       }),
     ]);
 
-    const { getRouteConfig, handleRoute } = injectedFunctions();
-    expect(await getRouteConfig()).toEqual([
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'layout:/': { isStatic: false },
           'page:/test': { isStatic: false },
@@ -710,9 +714,10 @@ describe('createPages pages and layouts', () => {
         component: TestPage,
       }),
     ]);
-    const { getRouteConfig, handleRoute } = injectedFunctions();
-    expect(await getRouteConfig()).toEqual([
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'page:/test/nested': { isStatic: true },
         },
@@ -748,9 +753,10 @@ describe('createPages pages and layouts', () => {
         component: () => null,
       }),
     ]);
-    const { getRouteConfig, handleRoute } = injectedFunctions();
-    expect(await getRouteConfig()).toEqual([
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'page:/test/nested': { isStatic: true },
           'layout:/test/nested': { isStatic: true },
@@ -785,9 +791,10 @@ describe('createPages pages and layouts', () => {
         component: TestPage,
       }),
     ]);
-    const { getRouteConfig, handleRoute } = injectedFunctions();
-    expect(await getRouteConfig()).toEqual([
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'page:/test/nested': { isStatic: false },
         },
@@ -823,9 +830,10 @@ describe('createPages pages and layouts', () => {
         component: TestPage,
       }),
     ]);
-    const { getRouteConfig, handleRoute } = injectedFunctions();
-    expect(await getRouteConfig()).toEqual([
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'page:/test/w/x': { isStatic: true },
         },
@@ -844,6 +852,7 @@ describe('createPages pages and layouts', () => {
         ],
       },
       {
+        type: 'route',
         elements: {
           'page:/test/y/z': { isStatic: true },
         },
@@ -880,9 +889,10 @@ describe('createPages pages and layouts', () => {
         component: TestPage,
       }),
     ]);
-    const { getRouteConfig, handleRoute } = injectedFunctions();
-    expect(await getRouteConfig()).toEqual([
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'page:/test/[a]/[b]': { isStatic: false },
         },
@@ -915,9 +925,10 @@ describe('createPages pages and layouts', () => {
         component: TestPage,
       }),
     ]);
-    const { getRouteConfig, handleRoute } = injectedFunctions();
-    expect(await getRouteConfig()).toEqual([
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'page:/test/a/b': { isStatic: true },
         },
@@ -953,9 +964,10 @@ describe('createPages pages and layouts', () => {
         component: TestPage,
       }),
     ]);
-    const { getRouteConfig, handleRoute } = injectedFunctions();
-    expect(await getRouteConfig()).toEqual([
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'page:/test/[...path]': { isStatic: false },
         },
@@ -987,8 +999,8 @@ describe('createPages pages and layouts', () => {
         component: () => null,
       }),
     ]);
-    const { getRouteConfig } = injectedFunctions();
-    await expect(getRouteConfig).rejects.toThrowError(
+    const { getConfig } = injectedFunctions();
+    await expect(getConfig).rejects.toThrowError(
       'staticPaths does not match with slug pattern',
     );
   });
@@ -1008,9 +1020,10 @@ describe('createPages pages and layouts', () => {
         unstable_disableSSR: true,
       }),
     ]);
-    const { getRouteConfig } = injectedFunctions();
-    expect(await getRouteConfig()).toEqual([
+    const { getConfig } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'page:/static': { isStatic: true },
         },
@@ -1020,6 +1033,7 @@ describe('createPages pages and layouts', () => {
         path: [{ name: 'static', type: 'literal' }],
       },
       {
+        type: 'route',
         elements: {
           'page:/dynamic': { isStatic: false },
         },
@@ -1044,8 +1058,8 @@ describe('createPages pages and layouts', () => {
         component: () => null,
       }),
     ]);
-    const { getRouteConfig } = injectedFunctions();
-    await expect(getRouteConfig).rejects.toThrowError('Duplicated path: /test');
+    const { getConfig } = injectedFunctions();
+    await expect(getConfig).rejects.toThrowError('Duplicated path: /test');
   });
 
   it('fails if duplicated static paths are registered', async () => {
@@ -1061,8 +1075,8 @@ describe('createPages pages and layouts', () => {
         component: () => null,
       }),
     ]);
-    const { getRouteConfig } = injectedFunctions();
-    await expect(getRouteConfig).rejects.toThrowError('Duplicated path: /test');
+    const { getConfig } = injectedFunctions();
+    await expect(getConfig).rejects.toThrowError('Duplicated path: /test');
   });
 
   it('fails if duplicated static and dynamic paths override each other', async () => {
@@ -1078,18 +1092,19 @@ describe('createPages pages and layouts', () => {
         component: () => null,
       }),
     ]);
-    const { getRouteConfig } = injectedFunctions();
-    await expect(getRouteConfig).rejects.toThrowError('Duplicated path: /test');
+    const { getConfig } = injectedFunctions();
+    await expect(getConfig).rejects.toThrowError('Duplicated path: /test');
   });
 
   it('creates a complex router', async () => {
     const TestPage = vi.fn();
     complexTestRouter(createPages, TestPage);
 
-    const { getRouteConfig, handleRoute } = injectedFunctions();
+    const { getConfig, handleRoute } = injectedFunctions();
 
-    expect(await getRouteConfig()).toEqual([
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'page:/client/static': { isStatic: true },
         },
@@ -1102,6 +1117,7 @@ describe('createPages pages and layouts', () => {
         ],
       },
       {
+        type: 'route',
         elements: {
           'page:/server/static/static-echo': { isStatic: true },
         },
@@ -1120,6 +1136,7 @@ describe('createPages pages and layouts', () => {
         ],
       },
       {
+        type: 'route',
         elements: {
           'page:/server/static/static-echo-2': { isStatic: true },
         },
@@ -1138,6 +1155,7 @@ describe('createPages pages and layouts', () => {
         ],
       },
       {
+        type: 'route',
         elements: {
           'page:/server/static/static-echo/static-echo-2': { isStatic: true },
         },
@@ -1158,6 +1176,7 @@ describe('createPages pages and layouts', () => {
         ],
       },
       {
+        type: 'route',
         elements: {
           'page:/server/static/hello/hello-2': { isStatic: true },
         },
@@ -1178,6 +1197,7 @@ describe('createPages pages and layouts', () => {
         ],
       },
       {
+        type: 'route',
         elements: {
           'page:/static/wild/bar': { isStatic: true },
         },
@@ -1196,6 +1216,7 @@ describe('createPages pages and layouts', () => {
         ],
       },
       {
+        type: 'route',
         elements: {
           'page:/static/wild/hello/hello-2': { isStatic: true },
         },
@@ -1215,6 +1236,7 @@ describe('createPages pages and layouts', () => {
         ],
       },
       {
+        type: 'route',
         elements: {
           'page:/static/wild/foo/foo-2/foo-3': { isStatic: true },
         },
@@ -1235,6 +1257,7 @@ describe('createPages pages and layouts', () => {
         ],
       },
       {
+        type: 'route',
         elements: {
           'page:/client/dynamic': { isStatic: false },
         },
@@ -1247,6 +1270,7 @@ describe('createPages pages and layouts', () => {
         ],
       },
       {
+        type: 'route',
         elements: {
           'page:/server/one/[echo]': { isStatic: false },
         },
@@ -1260,6 +1284,7 @@ describe('createPages pages and layouts', () => {
         ],
       },
       {
+        type: 'route',
         elements: {
           'page:/server/two/[echo]/[echo2]': { isStatic: false },
         },
@@ -1274,6 +1299,7 @@ describe('createPages pages and layouts', () => {
         ],
       },
       {
+        type: 'route',
         elements: {
           'page:/server/wild/[...wild]': { isStatic: false },
         },
@@ -1287,6 +1313,7 @@ describe('createPages pages and layouts', () => {
         ],
       },
       {
+        type: 'route',
         elements: {
           'page:/server/oneAndWild/[slug]/[...wild]': { isStatic: false },
         },
@@ -1325,9 +1352,10 @@ describe('createPages api', () => {
         },
       }),
     ]);
-    const { getApiConfig, handleApi } = injectedFunctions();
-    expect(await getApiConfig()).toEqual([
+    const { getConfig, handleApi } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'api',
         path: [{ type: 'literal', name: 'test' }],
         isStatic: true,
       },
@@ -1359,9 +1387,10 @@ describe('createPages api', () => {
         },
       }),
     ]);
-    const { getApiConfig, handleApi } = injectedFunctions();
-    expect(await getApiConfig()).toEqual([
+    const { getConfig, handleApi } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'api',
         path: [
           { type: 'literal', name: 'test' },
           { type: 'group', name: 'slug' },
@@ -1396,9 +1425,10 @@ describe('createPages - exactPath', () => {
         component: TestPage,
       }),
     ]);
-    const { getRouteConfig, handleRoute } = injectedFunctions();
-    expect(await getRouteConfig()).toEqual([
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'page:/test': { isStatic: true },
         },
@@ -1427,9 +1457,10 @@ describe('createPages - exactPath', () => {
         component: TestPage,
       }),
     ]);
-    const { getRouteConfig, handleRoute } = injectedFunctions();
-    expect(await getRouteConfig()).toEqual([
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'page:/test': { isStatic: false },
         },
@@ -1458,9 +1489,10 @@ describe('createPages - exactPath', () => {
         component: TestPage,
       }),
     ]);
-    const { getRouteConfig, handleRoute } = injectedFunctions();
-    expect(await getRouteConfig()).toEqual([
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'page:/test/[slug]': { isStatic: true },
         },
@@ -1492,9 +1524,10 @@ describe('createPages - exactPath', () => {
         component: TestPage,
       }),
     ]);
-    const { getRouteConfig, handleRoute } = injectedFunctions();
-    expect(await getRouteConfig()).toEqual([
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'page:/test/[...wildcard]': { isStatic: true },
         },
@@ -1526,9 +1559,10 @@ describe('createPages - exactPath', () => {
         component: TestPage,
       }),
     ]);
-    const { getRouteConfig, handleRoute } = injectedFunctions();
-    expect(await getRouteConfig()).toEqual([
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'page:/test/[...wildcard]/[slug]': { isStatic: true },
         },
@@ -1563,9 +1597,10 @@ describe('createPages - exactPath', () => {
         component: TestPage,
       }),
     ]);
-    const { getRouteConfig, handleRoute } = injectedFunctions();
-    expect(await getRouteConfig()).toEqual([
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'page:/test/[slug]': { isStatic: true },
         },
@@ -1596,9 +1631,10 @@ describe('createPages - grouped paths', () => {
         component: TestPage,
       }),
     ]);
-    const { getRouteConfig, handleRoute } = injectedFunctions();
-    expect(await getRouteConfig()).toEqual([
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'page:/test': { isStatic: true },
         },
@@ -1626,9 +1662,10 @@ describe('createPages - grouped paths', () => {
         component: TestPage,
       }),
     ]);
-    const { getRouteConfig, handleRoute } = injectedFunctions();
-    expect(await getRouteConfig()).toEqual([
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'page:/test/foo': { isStatic: true },
         },
@@ -1664,8 +1701,8 @@ describe('createPages - grouped paths', () => {
         component: TestPage,
       }),
     ]);
-    const { getRouteConfig } = injectedFunctions();
-    await expect(getRouteConfig).rejects.toThrowError('Duplicated path: /test');
+    const { getConfig } = injectedFunctions();
+    await expect(getConfig).rejects.toThrowError('Duplicated path: /test');
   });
 
   it('supports grouped path with layout', async () => {
@@ -1691,9 +1728,10 @@ describe('createPages - grouped paths', () => {
         component: TestHomePage,
       }),
     ]);
-    const { getRouteConfig, handleRoute } = injectedFunctions();
-    expect(await getRouteConfig()).toEqual([
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
       {
+        type: 'route',
         elements: {
           'layout:/': { isStatic: true },
           'layout:/(group)': { isStatic: true },
@@ -1705,6 +1743,7 @@ describe('createPages - grouped paths', () => {
         path: [{ name: 'test', type: 'literal' }],
       },
       {
+        type: 'route',
         elements: {
           'page:/': { isStatic: true },
           'layout:/(group)': { isStatic: true },
