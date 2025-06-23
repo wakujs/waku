@@ -7,7 +7,7 @@ const startApp = prepareStandaloneSetup('wildcard-api-routes');
 test.describe(`wildcard api routes`, async () => {
   let port: number;
   let stopApp: () => Promise<void>;
-  test.beforeAll(async ({mode}) => {
+  test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
@@ -27,4 +27,3 @@ test.describe(`wildcard api routes`, async () => {
     expect(text).toBe('Hello, world!');
   });
 });
-
