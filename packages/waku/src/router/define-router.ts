@@ -202,52 +202,53 @@ export function unstable_defineRouter(fns: {
       return pathConfig as MyPathConfig;
     }
     if (!cachedPathConfig) {
-      cachedPathConfig = Array.from(await fns.getConfig()).map((item) => {
-        switch (item.type) {
-          case 'route': {
-            const is404 =
-              item.path.length === 1 &&
-              item.path[0]!.type === 'literal' &&
-              item.path[0]!.name === '404';
-            const isStatic =
-              !!item.rootElement.isStatic &&
-              !!item.routeElement.isStatic &&
-              Object.values(item.elements).every((x) => x.isStatic);
-            return {
-              pathSpec: item.path,
-              pathname: pathSpec2pathname(item.path),
-              pattern: path2regexp(item.pathPattern || item.path),
-              specs: {
-                ...(item.rootElement.isStatic
-                  ? { rootElementIsStatic: true as const }
-                  : {}),
-                ...(item.routeElement.isStatic
-                  ? { routeElementIsStatic: true as const }
-                  : {}),
-                staticElementIds: Object.entries(item.elements).flatMap(
-                  ([id, { isStatic }]) => (isStatic ? [id] : []),
-                ),
-                ...(isStatic ? { isStatic: true as const } : {}),
-                ...(is404 ? { is404: true as const } : {}),
-                ...(item.noSsr ? { noSsr: true as const } : {}),
-              },
-            };
+      cachedPathConfig = Array.from(await fns.getConfig())
+        .map((item) => {
+          switch (item.type) {
+            case 'route': {
+              const is404 =
+                item.path.length === 1 &&
+                item.path[0]!.type === 'literal' &&
+                item.path[0]!.name === '404';
+              const isStatic =
+                !!item.rootElement.isStatic &&
+                !!item.routeElement.isStatic &&
+                Object.values(item.elements).every((x) => x.isStatic);
+              return {
+                pathSpec: item.path,
+                pathname: pathSpec2pathname(item.path),
+                pattern: path2regexp(item.pathPattern || item.path),
+                specs: {
+                  ...(item.rootElement.isStatic
+                    ? { rootElementIsStatic: true as const }
+                    : {}),
+                  ...(item.routeElement.isStatic
+                    ? { routeElementIsStatic: true as const }
+                    : {}),
+                  staticElementIds: Object.entries(item.elements).flatMap(
+                    ([id, { isStatic }]) => (isStatic ? [id] : []),
+                  ),
+                  ...(isStatic ? { isStatic: true as const } : {}),
+                  ...(is404 ? { is404: true as const } : {}),
+                  ...(item.noSsr ? { noSsr: true as const } : {}),
+                },
+              };
+            }
+            case 'api': {
+              return {
+                pathSpec: item.path,
+                pathname: pathSpec2pathname(item.path),
+                pattern: path2regexp(item.path),
+                specs: {
+                  ...(item.isStatic ? { isStatic: true as const } : {}),
+                  isApi: true as const,
+                },
+              };
+            }
+            default:
+              throw new Error('Unknown config type');
           }
-          case 'api': {
-            return {
-              pathSpec: item.path,
-              pathname: pathSpec2pathname(item.path),
-              pattern: path2regexp(item.path),
-              specs: {
-                ...(item.isStatic ? { isStatic: true as const } : {}),
-                isApi: true as const,
-              },
-            };
-          }
-          default:
-            throw new Error('Unknown config type');
-        }
-      })
+        })
         // Sort wildcard routes to the end - we want to match the most specific routes first
         .sort((pathConfigA, pathConfigB) => {
           if (pathConfigA.pathSpec.find((spec) => spec.type === 'wildcard')) {
