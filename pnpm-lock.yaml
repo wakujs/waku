@@ -588,7 +588,7 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
       waku:
-        specifier: workspace:*
+        specifier: latest
         version: link:../../../packages/waku
     devDependencies:
       '@types/react':
