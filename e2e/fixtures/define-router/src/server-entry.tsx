@@ -13,13 +13,14 @@ const PATH_PAGE: Record<string, unknown> = {
 };
 
 const router: ReturnType<typeof defineRouter> = defineRouter({
-  getRouteConfig: async () =>
-    STATIC_PATHS.map((path) => ({
+  getConfig: async () => [
+    ...STATIC_PATHS.map((path) => ({
+      type: 'route' as const,
       pattern: `^${path}$`,
       path: path
         .split('/')
         .filter(Boolean)
-        .map((name) => ({ type: 'literal', name })),
+        .map((name) => ({ type: 'literal', name }) as const),
       rootElement: { isStatic: true },
       routeElement: { isStatic: true },
       elements: {
@@ -27,6 +28,31 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
         [`page:${path}`]: { isStatic: true },
       },
     })),
+    {
+      type: 'api',
+      path: [
+        { type: 'literal', name: 'api' },
+        { type: 'literal', name: 'hi' },
+      ],
+      isStatic: false,
+    },
+    {
+      type: 'api',
+      path: [
+        { type: 'literal', name: 'api' },
+        { type: 'literal', name: 'hi.txt' },
+      ],
+      isStatic: false,
+    },
+    {
+      type: 'api',
+      path: [
+        { type: 'literal', name: 'api' },
+        { type: 'literal', name: 'empty' },
+      ],
+      isStatic: true,
+    },
+  ],
   handleRoute: async (path) => {
     if (!STATIC_PATHS.includes(path)) {
       throw new Error('renderRoute: No such path:' + path);
@@ -57,29 +83,6 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
       },
     };
   },
-  getApiConfig: async () => [
-    {
-      path: [
-        { type: 'literal', name: 'api' },
-        { type: 'literal', name: 'hi' },
-      ],
-      isStatic: false,
-    },
-    {
-      path: [
-        { type: 'literal', name: 'api' },
-        { type: 'literal', name: 'hi.txt' },
-      ],
-      isStatic: false,
-    },
-    {
-      path: [
-        { type: 'literal', name: 'api' },
-        { type: 'literal', name: 'empty' },
-      ],
-      isStatic: true,
-    },
-  ],
   handleApi: async (path, opt) => {
     if (path === '/api/hi.txt') {
       const hiTxt = await readFile('./private/hi.txt');

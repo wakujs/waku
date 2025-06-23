@@ -11,7 +11,7 @@ export function useActions() {
 export function InternalProvider(props) {
   return jsx('div', {
     'data-testid': 'ai-internal-provider',
-    children: jsx(ActionContext.Provider, {
+    children: jsx(ActionContext, {
       value: props.actions,
       children: props.children,
     }),
