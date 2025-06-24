@@ -787,7 +787,7 @@ export const createPages = <
       const mapping = getPathMapping(
         pathSpec,
         // ensure path is encoded for props of page component
-        encodeURI(decodeURI(path)),
+        encodeURI(path),
       );
       const result: Record<string, unknown> = {};
       if (Array.isArray(pageComponent)) {
