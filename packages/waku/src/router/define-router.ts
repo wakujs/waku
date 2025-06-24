@@ -302,7 +302,7 @@ export function unstable_defineRouter(fns: {
     if (!pathConfigItem.specs.rootElementIsStatic || !skipIdSet.has('root')) {
       entries.root = rootElement;
     }
-    const decodedPathname = decodeURIComponent(pathname);
+    const decodedPathname = decodeURI(pathname);
     const routeId = ROUTE_SLOT_ID_PREFIX + decodedPathname;
     if (!pathConfigItem.specs.routeElementIsStatic || !skipIdSet.has(routeId)) {
       entries[routeId] = routeElement;
