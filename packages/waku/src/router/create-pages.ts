@@ -632,9 +632,10 @@ export const createPages = <
   };
 
   const definedRouter = unstable_defineRouter({
-    getRouteConfig: async () => {
+    getConfig: async () => {
       await configure();
-      const paths: {
+      const routeConfigs: {
+        type: 'route';
         path: PathSpec;
         pathPattern?: PathSpec;
         rootElement: { isStatic?: boolean };
@@ -661,7 +662,8 @@ export const createPages = <
           [`page:${path}`]: { isStatic: staticPathMap.has(path) },
         };
 
-        paths.push({
+        routeConfigs.push({
+          type: 'route',
           path: literalSpec.filter((part) => !part.name?.startsWith('(')),
           ...(originalSpec && { pathPattern: originalSpec }),
           rootElement: { isStatic: rootIsStatic },
@@ -698,7 +700,8 @@ export const createPages = <
         } else {
           elements[`page:${path}`] = { isStatic: false };
         }
-        paths.push({
+        routeConfigs.push({
+          type: 'route',
           path: pathSpec.filter((part) => !part.name?.startsWith('(')),
           rootElement: { isStatic: rootIsStatic },
           routeElement: { isStatic: true },
@@ -732,7 +735,8 @@ export const createPages = <
         } else {
           elements[`page:${path}`] = { isStatic: false };
         }
-        paths.push({
+        routeConfigs.push({
+          type: 'route',
           path: pathSpec.filter((part) => !part.name?.startsWith('(')),
           rootElement: { isStatic: rootIsStatic },
           routeElement: { isStatic: true },
@@ -740,7 +744,16 @@ export const createPages = <
           noSsr,
         });
       }
-      return paths;
+      const apiConfigs = Array.from(apiPathMap.values()).map(
+        ({ pathSpec, render }) => {
+          return {
+            type: 'api' as const,
+            path: pathSpec,
+            isStatic: render === 'static',
+          };
+        },
+      );
+      return [...routeConfigs, ...apiConfigs];
     },
     handleRoute: async (path, { query }) => {
       await configure();
@@ -846,16 +859,6 @@ export const createPages = <
         ),
         routeElement: createNestedElements(layouts, finalPageChildren),
       };
-    },
-    getApiConfig: async () => {
-      await configure();
-
-      return Array.from(apiPathMap.values()).map(({ pathSpec, render }) => {
-        return {
-          path: pathSpec,
-          isStatic: render === 'static',
-        };
-      });
     },
     handleApi: async (path, { url, ...options }) => {
       await configure();

@@ -137,15 +137,23 @@ type SlotId = string;
 const ROUTE_SLOT_ID_PREFIX = 'route:';
 
 export function unstable_defineRouter(fns: {
-  getRouteConfig: () => Promise<
-    Iterable<{
-      path: PathSpec;
-      pathPattern?: PathSpec;
-      rootElement: { isStatic?: boolean };
-      routeElement: { isStatic?: boolean };
-      elements: Record<SlotId, { isStatic?: boolean }>;
-      noSsr?: boolean;
-    }>
+  getConfig: () => Promise<
+    Iterable<
+      | {
+          type: 'route';
+          path: PathSpec;
+          pathPattern?: PathSpec;
+          rootElement: { isStatic?: boolean };
+          routeElement: { isStatic?: boolean };
+          elements: Record<SlotId, { isStatic?: boolean }>;
+          noSsr?: boolean;
+        }
+      | {
+          type: 'api';
+          path: PathSpec;
+          isStatic?: boolean;
+        }
+    >
   >;
   handleRoute: (
     path: string,
@@ -157,12 +165,6 @@ export function unstable_defineRouter(fns: {
     routeElement: ReactNode;
     elements: Record<SlotId, unknown>;
   }>;
-  getApiConfig?: () => Promise<
-    Iterable<{
-      path: PathSpec;
-      isStatic?: boolean;
-    }>
-  >;
   handleApi?: (
     path: string,
     options: {
@@ -200,48 +202,52 @@ export function unstable_defineRouter(fns: {
       return pathConfig as MyPathConfig;
     }
     if (!cachedPathConfig) {
-      cachedPathConfig = [
-        ...Array.from(await fns.getRouteConfig()).map((item) => {
-          const is404 =
-            item.path.length === 1 &&
-            item.path[0]!.type === 'literal' &&
-            item.path[0]!.name === '404';
-          const isStatic =
-            !!item.rootElement.isStatic &&
-            !!item.routeElement.isStatic &&
-            Object.values(item.elements).every((x) => x.isStatic);
-          return {
-            pathSpec: item.path,
-            pathname: pathSpec2pathname(item.path),
-            pattern: path2regexp(item.pathPattern || item.path),
-            specs: {
-              ...(item.rootElement.isStatic
-                ? { rootElementIsStatic: true as const }
-                : {}),
-              ...(item.routeElement.isStatic
-                ? { routeElementIsStatic: true as const }
-                : {}),
-              staticElementIds: Object.entries(item.elements).flatMap(
-                ([id, { isStatic }]) => (isStatic ? [id] : []),
-              ),
-              ...(isStatic ? { isStatic: true as const } : {}),
-              ...(is404 ? { is404: true as const } : {}),
-              ...(item.noSsr ? { noSsr: true as const } : {}),
-            },
-          };
-        }),
-        ...Array.from((await fns.getApiConfig?.()) || []).map((item) => {
-          return {
-            pathSpec: item.path,
-            pathname: pathSpec2pathname(item.path),
-            pattern: path2regexp(item.path),
-            specs: {
-              ...(item.isStatic ? { isStatic: true as const } : {}),
-              isApi: true as const,
-            },
-          };
-        }),
-      ];
+      cachedPathConfig = Array.from(await fns.getConfig()).map((item) => {
+        switch (item.type) {
+          case 'route': {
+            const is404 =
+              item.path.length === 1 &&
+              item.path[0]!.type === 'literal' &&
+              item.path[0]!.name === '404';
+            const isStatic =
+              !!item.rootElement.isStatic &&
+              !!item.routeElement.isStatic &&
+              Object.values(item.elements).every((x) => x.isStatic);
+            return {
+              pathSpec: item.path,
+              pathname: pathSpec2pathname(item.path),
+              pattern: path2regexp(item.pathPattern || item.path),
+              specs: {
+                ...(item.rootElement.isStatic
+                  ? { rootElementIsStatic: true as const }
+                  : {}),
+                ...(item.routeElement.isStatic
+                  ? { routeElementIsStatic: true as const }
+                  : {}),
+                staticElementIds: Object.entries(item.elements).flatMap(
+                  ([id, { isStatic }]) => (isStatic ? [id] : []),
+                ),
+                ...(isStatic ? { isStatic: true as const } : {}),
+                ...(is404 ? { is404: true as const } : {}),
+                ...(item.noSsr ? { noSsr: true as const } : {}),
+              },
+            };
+          }
+          case 'api': {
+            return {
+              pathSpec: item.path,
+              pathname: pathSpec2pathname(item.path),
+              pattern: path2regexp(item.path),
+              specs: {
+                ...(item.isStatic ? { isStatic: true as const } : {}),
+                isApi: true as const,
+              },
+            };
+          }
+          default:
+            throw new Error('Unknown config type');
+        }
+      });
     }
     return cachedPathConfig;
   };
