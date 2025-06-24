@@ -753,16 +753,19 @@ export const createPages = <
           };
         },
       );
-      return [...routeConfigs, ...apiConfigs] // Sort wildcard routes to the end - we want to match the most specific routes first
-        .sort((pathConfigA, pathConfigB) => {
-          if (pathConfigA.path.find((spec) => spec.type === 'wildcard')) {
-            return 1;
-          }
-          if (pathConfigB.path.find((spec) => spec.type === 'wildcard')) {
-            return -1;
-          }
-          return 0;
-        });
+      return (
+        [...routeConfigs, ...apiConfigs]
+          // Sort wildcard routes to the end - we want to match the most specific routes first
+          .sort((pathConfigA, pathConfigB) => {
+            if (pathConfigA.path.find((spec) => spec.type === 'wildcard')) {
+              return 1;
+            }
+            if (pathConfigB.path.find((spec) => spec.type === 'wildcard')) {
+              return -1;
+            }
+            return 0;
+          })
+      );
     },
     handleRoute: async (path, { query }) => {
       await configure();
