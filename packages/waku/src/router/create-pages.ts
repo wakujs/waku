@@ -767,12 +767,10 @@ export const createPages = <
       return (
         [...routeConfigs, ...apiConfigs]
           // Sort routes by priority: "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
-          .sort((pathConfigA, pathConfigB) => {
-            const priorityA = getRoutePriority(pathConfigA);
-            const priorityB = getRoutePriority(pathConfigB);
-
-            return priorityA - priorityB;
-          })
+          .sort(
+            (configA, configB) =>
+              getRoutePriority(configA) - getRoutePriority(configB),
+          )
       );
     },
     handleRoute: async (path, { query }) => {
