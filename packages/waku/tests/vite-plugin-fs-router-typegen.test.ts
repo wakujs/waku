@@ -43,6 +43,7 @@ async function runTest(
   }
   // @ts-expect-error - we're not passing the full Vite config
   await plugin.configResolved?.({ root });
+  // @ts-expect-error - FIXME
   await plugin.configureServer?.({
     watcher: { add: () => {}, on: () => {} } as unknown as FSWatcher,
   } as ViteDevServer);
