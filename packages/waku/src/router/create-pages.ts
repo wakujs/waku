@@ -753,34 +753,23 @@ export const createPages = <
           };
         },
       );
+
+      const getRoutePriority = (
+        pathConfig: (typeof routeConfigs)[number] | (typeof apiConfigs)[number],
+      ) => {
+        const hasWildcard = pathConfig.path.at(-1)?.type === 'wildcard';
+        if (pathConfig.type === 'api') {
+          return hasWildcard ? 2 : 1;
+        }
+        return hasWildcard ? 3 : 0;
+      };
+
       return (
         [...routeConfigs, ...apiConfigs]
           // Sort routes by priority: "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
           .sort((pathConfigA, pathConfigB) => {
-            const hasWildcardA = pathConfigA.path.at(-1)?.type === 'wildcard';
-            const hasWildcardB = pathConfigB.path.at(-1)?.type === 'wildcard';
-
-            let priorityA = 0;
-            if (pathConfigA.type === 'api') {
-              if (hasWildcardA) {
-                priorityA = 2;
-              } else {
-                priorityA = 1;
-              }
-            } else if (hasWildcardA) {
-              priorityA = 3;
-            }
-
-            let priorityB = 0;
-            if (pathConfigB.type === 'api') {
-              if (hasWildcardB) {
-                priorityB = 2;
-              } else {
-                priorityB = 1;
-              }
-            } else if (hasWildcardB) {
-              priorityB = 3;
-            }
+            const priorityA = getRoutePriority(pathConfigA);
+            const priorityB = getRoutePriority(pathConfigB);
 
             return priorityA - priorityB;
           })
