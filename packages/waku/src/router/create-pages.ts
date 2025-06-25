@@ -804,7 +804,11 @@ export const createPages = <
       }
       const layoutMatchPath = groupPathLookup.get(routePath) ?? routePath;
       const pathSpec = parsePathWithSlug(layoutMatchPath);
-      const mapping = getPathMapping(pathSpec, path);
+      const mapping = getPathMapping(
+        pathSpec,
+        // ensure path is encoded for props of page component
+        encodeURI(path),
+      );
       const result: Record<string, unknown> = {};
       if (Array.isArray(pageComponent)) {
         for (let i = 0; i < pageComponent.length; i++) {

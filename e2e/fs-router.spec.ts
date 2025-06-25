@@ -156,4 +156,16 @@ test.describe(`fs-router`, async () => {
     });
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
   });
+
+  test('encoded path', async ({ page }) => {
+    await page.goto(`http://localhost:${port}`);
+    await page.click("a[href='/nested/encoded%20path']");
+    await expect(
+      page.getByRole('heading', { name: 'Nested / encoded%20path' }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(
+      page.getByRole('heading', { name: 'Nested / encoded%20path' }),
+    ).toBeVisible();
+  });
 });

@@ -58,14 +58,16 @@ const getInput = async (
       return {
         type: 'action',
         fn: postAction,
-        pathname: '/' + ctx.req.url.pathname.slice(config.basePath.length),
+        pathname:
+          '/' + decodeURI(ctx.req.url.pathname.slice(config.basePath.length)),
         req: ctx.req,
       };
     }
   }
   return {
     type: 'custom',
-    pathname: '/' + ctx.req.url.pathname.slice(config.basePath.length),
+    pathname:
+      '/' + decodeURI(ctx.req.url.pathname.slice(config.basePath.length)),
     req: ctx.req,
   };
 };
