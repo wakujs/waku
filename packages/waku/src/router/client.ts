@@ -522,7 +522,7 @@ const ThrowError = ({ error }: { error: unknown }) => {
   throw error;
 };
 
-const getRouteSlotId = (path: string) => 'route:' + decodeURIComponent(path);
+const getRouteSlotId = (path: string) => 'route:' + decodeURI(path);
 
 const handleScroll = () => {
   const { hash } = window.location;

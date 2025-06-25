@@ -65,6 +65,15 @@ const HomeLayout = ({ children }: { children: ReactNode }) => (
         </Link>
       </li>
       <li>
+        <Link
+          to="/nested/encoded%20path"
+          unstable_pending={<Pending isPending />}
+          unstable_notPending={<Pending isPending={false} />}
+        >
+          Nested / Encoded Path
+        </Link>
+      </li>
+      <li>
         <Link to="/page-parts">Page Parts</Link>
       </li>
     </ul>
