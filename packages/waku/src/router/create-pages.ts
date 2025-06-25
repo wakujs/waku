@@ -753,7 +753,25 @@ export const createPages = <
           };
         },
       );
-      return [...routeConfigs, ...apiConfigs];
+
+      const getRoutePriority = (
+        pathConfig: (typeof routeConfigs)[number] | (typeof apiConfigs)[number],
+      ) => {
+        const hasWildcard = pathConfig.path.at(-1)?.type === 'wildcard';
+        if (pathConfig.type === 'api') {
+          return hasWildcard ? 2 : 1;
+        }
+        return hasWildcard ? 3 : 0;
+      };
+
+      return (
+        [...routeConfigs, ...apiConfigs]
+          // Sort routes by priority: "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
+          .sort(
+            (configA, configB) =>
+              getRoutePriority(configA) - getRoutePriority(configB),
+          )
+      );
     },
     handleRoute: async (path, { query }) => {
       await configure();
