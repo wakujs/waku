@@ -22,6 +22,6 @@
     "rollup": "4.41.1",
     "tailwindcss": "4.1.8",
     "typescript": "5.8.3",
-    "vite": "6.3.5"
+    "vite": "7.0.0"
   }
 }

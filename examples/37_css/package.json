@@ -23,7 +23,7 @@
     "@vanilla-extract/vite-plugin": "4.0.19",
     "rollup": "4.41.1",
     "typescript": "5.8.3",
-    "vite": "6.3.5",
+    "vite": "7.0.0",
     "vite-plugin-stylex-dev": "0.7.5"
   }
 }
