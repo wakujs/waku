@@ -755,15 +755,34 @@ export const createPages = <
       );
       return (
         [...routeConfigs, ...apiConfigs]
-          // Sort wildcard routes to the end - we want to match the most specific routes first
+          // Sort routes by priority: "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
           .sort((pathConfigA, pathConfigB) => {
-            if (pathConfigA.path.find((spec) => spec.type === 'wildcard')) {
-              return 1;
+            const hasWildcardA = pathConfigA.path.at(-1)?.type === 'wildcard';
+            const hasWildcardB = pathConfigB.path.at(-1)?.type === 'wildcard';
+
+            let priorityA = 0;
+            if (pathConfigA.type === 'api') {
+              if (hasWildcardA) {
+                priorityA = 2;
+              } else {
+                priorityA = 1;
+              }
+            } else if (hasWildcardA) {
+              priorityA = 3;
             }
-            if (pathConfigB.path.find((spec) => spec.type === 'wildcard')) {
-              return -1;
+
+            let priorityB = 0;
+            if (pathConfigB.type === 'api') {
+              if (hasWildcardB) {
+                priorityB = 2;
+              } else {
+                priorityB = 1;
+              }
+            } else if (hasWildcardB) {
+              priorityB = 3;
             }
-            return 0;
+
+            return priorityA - priorityB;
           })
       );
     },

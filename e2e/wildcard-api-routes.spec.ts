@@ -14,7 +14,7 @@ test.describe(`wildcard api routes`, async () => {
     await stopApp();
   });
 
-  test(`works`, async ({ page }) => {
+  test(`api route matches before wildcard route`, async ({ page }) => {
     // index route matches wildcard:
     await page.goto(`http://localhost:${port}/foo`);
     await expect(page.getByRole('heading', { name: '/foo' })).toBeVisible();
@@ -25,5 +25,15 @@ test.describe(`wildcard api routes`, async () => {
     );
     const text = await response.text();
     expect(text).toBe('Hello, world!');
+  });
+
+  test(`api wildcard route matches before standard wildcard route`, async ({
+    page,
+  }) => {
+    const response = await page.request.get(
+      `http://localhost:${port}/api/v1/foo/bar`,
+    );
+    const text = await response.text();
+    expect(text).toBe('API Wildcard!');
   });
 });
