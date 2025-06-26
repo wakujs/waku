@@ -119,10 +119,11 @@ test.describe(`useRouter`, async () => {
     test(`on dynamic pages`, async ({ page }) => {
       await page.goto(`http://localhost:${port}/dynamic`);
       const msgs: string[] = [];
+      const prefix = '[router event] ';
       page.on('console', (msg) => {
         const text = msg.text();
-        if (text.startsWith('[router event]')) {
-          msgs.push(text);
+        if (text.startsWith(prefix)) {
+          msgs.push(text.slice(prefix.length));
         }
       });
       await page.click('text=Static router.push button');
