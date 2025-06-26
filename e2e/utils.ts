@@ -175,7 +175,7 @@ const PACKAGE_INSTALL = {
 } as const;
 
 const PACKAGE_ADD = {
-  npm: `npm install --force`,
+  npm: `npm add --force`,
   pnpm: `pnpm add`,
   yarn: `yarn add`,
 } as const;
