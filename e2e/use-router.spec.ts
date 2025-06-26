@@ -119,7 +119,13 @@ test.describe(`useRouter`, async () => {
     test(`on dynamic pages`, async ({ page }) => {
       await page.goto(`http://localhost:${port}/dynamic`);
       const msgs: string[] = [];
-      page.on('console', (msg) => msgs.push(msg.text()));
+      const prefix = '[router event] ';
+      page.on('console', (msg) => {
+        const text = msg.text();
+        if (text.startsWith(prefix)) {
+          msgs.push(text.slice(prefix.length));
+        }
+      });
       await page.click('text=Static router.push button');
       await expect(page.getByRole('heading', { name: 'Static' })).toBeVisible();
       expect(msgs).toEqual(['Route change started', 'Route change completed']);
