@@ -5,7 +5,7 @@ import {
   toIdentifier,
 } from '../src/lib/plugins/vite-plugin-fs-router-typegen.js';
 import { fileURLToPath } from 'node:url';
-import type { ViteDevServer, FSWatcher } from 'vite';
+import type { ViteDevServer, FSWatcher, ResolvedConfig } from 'vite';
 import { writeFile } from 'node:fs/promises';
 
 const root = fileURLToPath(new URL('./fixtures', import.meta.url));
@@ -41,11 +41,16 @@ async function runTest(
   ) {
     return;
   }
-  // @ts-expect-error - we're not passing the full Vite config
-  await plugin.configResolved?.({ root });
-  await plugin.configureServer?.({
-    watcher: { add: () => {}, on: () => {} } as unknown as FSWatcher,
-  } as ViteDevServer);
+  await plugin.configResolved?.call(
+    {} as never,
+    { root } as unknown as ResolvedConfig,
+  );
+  await plugin.configureServer?.call(
+    {} as never,
+    {
+      watcher: { add: () => {}, on: () => {} } as unknown as FSWatcher,
+    } as ViteDevServer,
+  );
   await vi.waitFor(async () => {
     if (vi.mocked(writeFile).mock.lastCall === undefined) {
       throw new Error('writeFile not called');

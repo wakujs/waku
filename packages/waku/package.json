@@ -83,7 +83,7 @@
   },
   "license": "MIT",
   "engines": {
-    "node": "^24.0.0 || ^22.7.0 || ^20.8.0"
+    "node": "^24.0.0 || ^22.12.0 || ^20.19.0"
   },
   "dependencies": {
     "@hono/node-server": "1.14.3",
@@ -94,7 +94,7 @@
     "html-react-parser": "5.2.5",
     "rollup": "4.41.1",
     "rsc-html-stream": "0.0.6",
-    "vite": "6.3.5"
+    "vite": "7.0.0"
   },
   "devDependencies": {
     "@netlify/functions": "^4.1.2",
