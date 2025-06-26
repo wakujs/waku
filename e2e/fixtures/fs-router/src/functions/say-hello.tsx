@@ -2,7 +2,7 @@
 
 import { SayHello } from '../components/say-hello.js';
 
-export function sayHello() {
+export async function sayHello() {
   const promise = new Promise<string>((resolve) =>
     setTimeout(() => resolve('React'), 1000),
   );
