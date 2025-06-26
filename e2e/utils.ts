@@ -174,6 +174,12 @@ const PACKAGE_INSTALL = {
   yarn: `yarn install`,
 } as const;
 
+const PACKAGE_ADD = {
+  npm: `npm install`,
+  pnpm: `pnpm add`,
+  yarn: `yarn add`,
+} as const;
+
 export const prepareStandaloneSetup = (fixtureName: string) => {
   const wakuDir = fileURLToPath(new URL('../packages/waku', import.meta.url));
   const { version } = createRequire(import.meta.url)(
@@ -248,7 +254,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         }
       }
       execSync(PACKAGE_INSTALL[packageManager], { cwd: standaloneDir });
-      execSync(`${packageManager} add ${wakuPackageTgz}`, {
+      execSync(`${PACKAGE_ADD[packageManager]} ${wakuPackageTgz}`, {
         cwd: join(standaloneDir),
       });
     }
