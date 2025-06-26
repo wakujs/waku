@@ -70,6 +70,7 @@ const ignoreErrors: RegExp[] = [
   /^Error: Something unexpected happened\s+at ErrorRender/,
   /^Error: 401 Unauthorized\s+at CheckIfAccessDenied/,
   /^Error: Not Found\s+at SyncPage/,
+  /^Error: Not Found\s+at AsyncPage/,
   /^Error: Redirect\s+at createCustomError/,
   // FIXME Is this too general and miss meaningful errors?
   /^\[Error: An error occurred in the Server Components render./,
