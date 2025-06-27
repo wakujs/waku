@@ -65,7 +65,8 @@
     "./router/server": {
       "types": "./dist/router/server.d.ts",
       "default": "./dist/router/server.js"
-    }
+    },
+    "./vite-rsc/*": "./dist/vite-rsc/*.js"
   },
   "bin": {
     "waku": "./cli.js"
@@ -86,8 +87,10 @@
     "node": "^24.0.0 || ^22.12.0 || ^20.19.0"
   },
   "dependencies": {
+    "@hiogawa/vite-rsc": "https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/vite-rsc@4b1129d",
     "@hono/node-server": "1.14.4",
     "@swc/core": "1.12.6",
+    "@vercel/nft": "^0.29.4",
     "@vitejs/plugin-react": "4.6.0",
     "dotenv": "16.5.0",
     "hono": "4.8.3",

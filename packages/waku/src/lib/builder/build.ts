@@ -495,9 +495,11 @@ const createTaskRunner = (limit: number) => {
 const WRITE_FILE_BATCH_SIZE = 2500;
 const { runTask, waitForTasks } = createTaskRunner(WRITE_FILE_BATCH_SIZE);
 
-const emitStaticFile = (
+export { waitForTasks };
+
+export const emitStaticFile = (
   rootDir: string,
-  config: ConfigDev,
+  config: Pick<ConfigDev, 'distDir'>,
   pathname: string,
   body: Promise<ReadableStream> | string,
 ) => {

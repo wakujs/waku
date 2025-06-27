@@ -2,7 +2,7 @@ import { expect } from '@playwright/test';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 
-import { test, prepareNormalSetup } from './utils.js';
+import { test, prepareNormalSetup, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('ssr-target-bundle');
 
@@ -49,6 +49,7 @@ test.describe(`ssr-target-bundle`, () => {
 
   test('add text input', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
     await expect(page.getByTestId('app-name')).toHaveText('Waku');
     await expect(page.getByTestId('textarea')).toHaveValue('EMPTY');
     const height = await page

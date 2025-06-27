@@ -54,11 +54,11 @@ type InferredPaths = RouteConfig extends {
   ? AllowPathDecorators<UserPaths>
   : string;
 
-declare global {
-  interface ImportMeta {
-    readonly env: Record<string, string>;
-  }
-}
+// declare global {
+//   interface ImportMeta {
+//     readonly env: Record<string, string>;
+//   }
+// }
 
 const normalizeRoutePath = (path: string) => {
   for (const suffix of ['/', '/index.html']) {

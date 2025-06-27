@@ -1,10 +1,10 @@
 import type { Middleware } from './types.js';
 
-declare global {
-  interface ImportMeta {
-    readonly env: Record<string, string>;
-  }
-}
+// declare global {
+//   interface ImportMeta {
+//     readonly env: Record<string, string>;
+//   }
+// }
 
 const DO_NOT_BUNDLE = '';
 

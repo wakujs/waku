@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test';
 
-import { test, prepareStandaloneSetup } from './utils.js';
+import { test, prepareStandaloneSetup, waitForHydration } from './utils.js';
 
 const startApp = prepareStandaloneSetup('fs-router');
 
@@ -123,6 +123,7 @@ test.describe(`fs-router`, async () => {
         .textContent()
     )?.split('Part ')[1];
     expect(staticPageTime).toBeTruthy();
+    await waitForHydration(page);
     await page.click("a[href='/']");
     await page.waitForTimeout(100);
     await page.click("a[href='/page-parts']");

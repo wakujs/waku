@@ -111,7 +111,7 @@ export const createEmptySpan = (): swc.Span =>
     end: 0,
   }) as swc.Span;
 
-const createIdentifier = (value: string): swc.Identifier => ({
+export const createIdentifier = (value: string): swc.Identifier => ({
   type: 'Identifier',
   value,
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -159,9 +159,10 @@ const replaceNode = <T extends swc.Node>(origNode: swc.Node, newNode: T): T => {
   return Object.assign(origNode, newNode);
 };
 
-const transformExportedClientThings = (
+export const transformExportedClientThings = (
   mod: swc.Module,
   getFuncId: () => string,
+  options?: { dceOnly?: boolean },
 ): Set<string> => {
   const exportNames = new Set<string>();
   // HACK this doesn't cover all cases
@@ -321,14 +322,16 @@ const transformExportedClientThings = (
           {
             type: 'VariableDeclarator',
             id: createIdentifier(allowServerName),
-            init: createCallExpression(
-              createIdentifier('__waku_registerClientReference'),
-              [
-                callExp,
-                createStringLiteral(getFuncId()),
-                createStringLiteral(allowServerName),
-              ],
-            ),
+            init: options?.dceOnly
+              ? callExp
+              : createCallExpression(
+                  createIdentifier('__waku_registerClientReference'),
+                  [
+                    callExp,
+                    createStringLiteral(getFuncId()),
+                    createStringLiteral(allowServerName),
+                  ],
+                ),
             definite: false,
             span: createEmptySpan(),
           },

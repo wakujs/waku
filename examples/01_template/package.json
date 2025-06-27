@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "waku dev",
     "build": "waku build",
-    "start": "waku start"
+    "start": "waku start",
+    "vc-build": "waku build --experimental-vite-rsc --with-vercel",
+    "vc-release": "vercel deploy --prod --prebuilt"
   },
   "dependencies": {
     "react": "19.1.0",

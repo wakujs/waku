@@ -885,7 +885,11 @@ export const createPages = <
         throw new Error('API Route not found: ' + path);
       }
       const { handlers } = apiPathMap.get(routePath)!;
-      const req = new Request(url, options);
+      const req = new Request(url, {
+        ...options,
+        // undici Request compat
+        ...{ duplex: 'half' },
+      });
       const handler = handlers[options.method as Method] ?? handlers.all;
       if (!handler) {
         throw new Error(
