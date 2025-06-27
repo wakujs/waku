@@ -1,5 +1,5 @@
 import { use } from 'react';
-import type { testData } from '../lib/test-data';
+import type { testData } from '../lib/test-data.js';
 
 export function Table({ data }: { data: ReturnType<typeof testData> }) {
   const tdata = use(data);
