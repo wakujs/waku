@@ -59,7 +59,7 @@ export default function wakuPlugin(
     distDir: 'dist',
     pagesDir: 'pages',
     apiDir: 'api',
-    privateDir: 'private', // TODO?
+    privateDir: 'private',
     rscBase: 'RSC',
     middleware: [
       'waku/middleware/context',
@@ -72,6 +72,7 @@ export default function wakuPlugin(
     ...wakuPluginOptions?.config,
   };
   const wakuFlags = wakuPluginOptions?.flags ?? {};
+  let privatePath: string;
 
   return [
     ...(wakuConfig.vite?.plugins ?? []),
@@ -183,6 +184,9 @@ export default function wakuPlugin(
               (name !== 'client' ? 'esnext' : undefined),
           },
         };
+      },
+      configResolved(config) {
+        privatePath = joinPath(config.root, wakuConfig.privateDir);
       },
     },
     {
@@ -453,6 +457,29 @@ export default function wakuPlugin(
           );
           fs.writeFileSync(platformDataFile, platformDataCode);
         },
+      },
+    },
+    {
+      name: 'rsc:private-dir',
+      load(id) {
+        if (id.startsWith(privatePath)) {
+          throw new Error('Private file access is not allowed');
+        }
+      },
+      hotUpdate(ctx) {
+        if (
+          this.environment.name === 'rsc' &&
+          ctx.file.startsWith(privatePath)
+        ) {
+          ctx.server.environments.client.hot.send({
+            type: 'custom',
+            event: 'rsc:update',
+            data: {
+              type: 'waku:private',
+              file: ctx.file,
+            },
+          });
+        }
       },
     },
     fsRouterTypegenPlugin({ srcDir: wakuConfig.srcDir }),
