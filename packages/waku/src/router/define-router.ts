@@ -133,8 +133,10 @@ export function unstable_redirect(
 }
 
 type SlotId = string;
+type SliceId = string;
 
 const ROUTE_SLOT_ID_PREFIX = 'route:';
+const SLICE_SLOT_ID_PREFIX = 'slice:';
 
 export function unstable_defineRouter(fns: {
   getConfig: () => Promise<
@@ -146,6 +148,7 @@ export function unstable_defineRouter(fns: {
           rootElement: { isStatic?: boolean };
           routeElement: { isStatic?: boolean };
           elements: Record<SlotId, { isStatic?: boolean }>;
+          slices?: Record<SliceId, { isStatic?: boolean }>;
           noSsr?: boolean;
         }
       | {
@@ -164,6 +167,7 @@ export function unstable_defineRouter(fns: {
     rootElement: ReactNode;
     routeElement: ReactNode;
     elements: Record<SlotId, unknown>;
+    slices?: Record<SliceId, unknown>;
   }>;
   handleApi?: (
     path: string,
@@ -213,6 +217,20 @@ export function unstable_defineRouter(fns: {
               !!item.rootElement.isStatic &&
               !!item.routeElement.isStatic &&
               Object.values(item.elements).every((x) => x.isStatic);
+            if (
+              Object.keys(item.elements).some(
+                (id) =>
+                  id.startsWith(ROUTE_SLOT_ID_PREFIX) ||
+                  id.startsWith(SLICE_SLOT_ID_PREFIX),
+              )
+            ) {
+              throw new Error(
+                'Element ID cannot start with "route:" or "slice:"',
+              );
+            }
+            if (item.slices && !import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER) {
+              throw new Error('Slice is still experimental');
+            }
             return {
               pathSpec: item.path,
               pathname: pathSpec2pathname(item.path),
@@ -224,9 +242,10 @@ export function unstable_defineRouter(fns: {
                 ...(item.routeElement.isStatic
                   ? { routeElementIsStatic: true as const }
                   : {}),
-                staticElementIds: Object.entries(item.elements).flatMap(
-                  ([id, { isStatic }]) => (isStatic ? [id] : []),
-                ),
+                staticElementIds: [
+                  ...Object.entries(item.elements),
+                  ...Object.entries(item.slices || {}),
+                ].flatMap(([id, { isStatic }]) => (isStatic ? [id] : [])),
                 ...(isStatic ? { isStatic: true as const } : {}),
                 ...(is404 ? { is404: true as const } : {}),
                 ...(item.noSsr ? { noSsr: true as const } : {}),
@@ -282,17 +301,31 @@ export function unstable_defineRouter(fns: {
     }
     const skipIdSet = new Set(isStringArray(skipParam) ? skipParam : []);
     const { query } = parseRscParams(rscParams);
-    const { rootElement, routeElement, elements } = await fns.handleRoute(
-      pathname,
-      pathConfigItem.specs.isStatic ? {} : { query },
-    );
+    const { rootElement, routeElement, elements, slices } =
+      await fns.handleRoute(
+        pathname,
+        pathConfigItem.specs.isStatic ? {} : { query },
+      );
+    if (slices && !import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER) {
+      throw new Error('Slice is still experimental');
+    }
     if (
-      Object.keys(elements).some((id) => id.startsWith(ROUTE_SLOT_ID_PREFIX))
+      Object.keys(elements).some(
+        (id) =>
+          id.startsWith(ROUTE_SLOT_ID_PREFIX) ||
+          id.startsWith(SLICE_SLOT_ID_PREFIX),
+      )
     ) {
-      throw new Error('Element ID cannot start with "route:"');
+      throw new Error('Element ID cannot start with "route:" or "slice:"');
     }
     const entries = {
       ...elements,
+      ...Object.fromEntries(
+        Object.entries(slices || {}).map(([id, element]) => [
+          SLICE_SLOT_ID_PREFIX + id,
+          element,
+        ]),
+      ),
     };
     for (const id of pathConfigItem.specs.staticElementIds || []) {
       if (skipIdSet.has(id)) {

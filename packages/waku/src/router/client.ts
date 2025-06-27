@@ -523,6 +523,20 @@ const ThrowError = ({ error }: { error: unknown }) => {
 };
 
 const getRouteSlotId = (path: string) => 'route:' + decodeURI(path);
+const getSliceSlotId = (id: string) => 'slice:' + id;
+
+export function Slice({
+  id,
+  children,
+}: {
+  id: string;
+  children?: ReactNode;
+}): ReactElement {
+  if (!import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER) {
+    throw new Error('Slice is still experimental');
+  }
+  return createElement(Slot, { id: getSliceSlotId(id) }, children);
+}
 
 const handleScroll = () => {
   const { hash } = window.location;
