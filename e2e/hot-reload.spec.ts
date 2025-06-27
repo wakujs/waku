@@ -2,15 +2,9 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { expect } from '@playwright/test';
 
-import {
-  test,
-  // prepareStandaloneSetup,
-  prepareNormalSetup,
-  waitForHydration,
-} from './utils.js';
+import { test, prepareStandaloneSetup, waitForHydration } from './utils.js';
 
-// const startApp = prepareStandaloneSetup('hot-reload');
-const startApp = prepareNormalSetup('hot-reload');
+const startApp = prepareStandaloneSetup('hot-reload');
 
 const originalFiles: Record<string, string> = {};
 
@@ -40,8 +34,7 @@ test.describe.serial('hot reload', () => {
     'HMR is not available in production mode',
   );
   test.beforeAll(async () => {
-    ({ port, stopApp, fixtureDir: standaloneDir } = await startApp('DEV'));
-    // ({ port, stopApp, standaloneDir } = await startApp('DEV'));
+    ({ port, stopApp, standaloneDir } = await startApp('DEV'));
   });
   test.afterAll(async () => {
     await stopApp();
@@ -102,7 +95,6 @@ test.describe.serial('hot reload', () => {
     await expect(page.getByText('About2 Page')).toBeVisible();
     await page.getByTestId('home').click();
     await expect(page.getByText('Edited Page')).toBeVisible();
-
     // Modify with a JSX syntax error
     await modifyFile(
       standaloneDir,

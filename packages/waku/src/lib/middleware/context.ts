@@ -26,7 +26,7 @@ try {
 let previousContext: Context | undefined;
 let currentContext: Context | undefined;
 
-export const runWithContext = <T>(context: Context, fn: () => T): T => {
+const runWithContext = <T>(context: Context, fn: () => T): T => {
   const contextStorage = getContextStorage();
   if (contextStorage) {
     return contextStorage.run(context, fn);
