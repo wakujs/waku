@@ -243,9 +243,14 @@ export function unstable_defineRouter(fns: {
                   ? { routeElementIsStatic: true as const }
                   : {}),
                 staticElementIds: [
-                  ...Object.entries(item.elements),
-                  ...Object.entries(item.slices || {}),
-                ].flatMap(([id, { isStatic }]) => (isStatic ? [id] : [])),
+                  ...Object.entries(item.elements).flatMap(
+                    ([id, { isStatic }]) => (isStatic ? [id] : []),
+                  ),
+                  ...Object.entries(item.slices || {}).flatMap(
+                    ([id, { isStatic }]) =>
+                      isStatic ? [SLICE_SLOT_ID_PREFIX + id] : [],
+                  ),
+                ],
                 ...(isStatic ? { isStatic: true as const } : {}),
                 ...(is404 ? { is404: true as const } : {}),
                 ...(item.noSsr ? { noSsr: true as const } : {}),
