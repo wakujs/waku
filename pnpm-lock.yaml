@@ -94,6 +94,37 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
 
+  e2e/fixtures/build-table:
+    dependencies:
+      react:
+        specifier: 19.1.0
+        version: 19.1.0
+      react-dom:
+        specifier: 19.1.0
+        version: 19.1.0(react@19.1.0)
+      react-error-boundary:
+        specifier: 6.0.0
+        version: 6.0.0(react@19.1.0)
+      react-server-dom-webpack:
+        specifier: 19.1.0
+        version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
+      waku:
+        specifier: latest
+        version: link:../../../packages/waku
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.8
+        version: 19.1.8
+      '@types/react-dom':
+        specifier: ^19.1.6
+        version: 19.1.6(@types/react@19.1.8)
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
+
   e2e/fixtures/create-pages:
     dependencies:
       react:
