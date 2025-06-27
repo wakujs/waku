@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { getRequestListener } from '@hono/node-server';
 import { Hono } from 'hono';
 import { createHonoHandler } from '../../entry.rsc.js';

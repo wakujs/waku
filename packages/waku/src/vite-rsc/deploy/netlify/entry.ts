@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { Hono } from 'hono';
 import { createHonoHandler } from '../../entry.rsc.js';
 import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';

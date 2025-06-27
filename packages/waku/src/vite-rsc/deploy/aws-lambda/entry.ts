@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { Hono } from 'hono';
 import * as honoAwsLambda from 'hono/aws-lambda';
 import { createHonoHandler } from '../../entry.rsc.js';

@@ -27,7 +27,7 @@ import { atom } from 'jotai/vanilla';
 const local1 = 1;
 export const countAtom = atom(local1);
 
-export const MyClientComp = __waku_no_keep__
+export const MyClientComp = () => { throw ... }
 
 */
 

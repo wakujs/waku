@@ -1,6 +1,4 @@
-/* eslint-disable */
 import * as ReactServer from '@hiogawa/vite-rsc/rsc';
-import type React from 'react';
 import type { unstable_defineEntries } from '../minimal/server.js';
 import {
   decodeFuncId,
@@ -20,6 +18,7 @@ import type {
 import { middlewares } from 'virtual:vite-rsc-waku/middlewares';
 import type { MiddlewareHandler } from 'hono';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
+import type { ReactNode } from 'react';
 
 //
 // main server handler as hono middleware
@@ -99,7 +98,7 @@ export function createHonoHandler(): MiddlewareHandler {
 //
 
 export type RscElementsPayload = Record<string, unknown>;
-export type RscHtmlPayload = React.ReactNode;
+export type RscHtmlPayload = ReactNode;
 
 type WakuServerEntry = ReturnType<typeof unstable_defineEntries>;
 type HandleRequestInput = Parameters<WakuServerEntry['handleRequest']>[0];
@@ -318,16 +317,13 @@ export async function handleBuild() {
     renderRsc: renderUtils.renderRsc,
     renderHtml: renderUtils.renderHtml,
     rscPath2pathname: (rscPath) => {
-      0 && console.log('[rscPath2pathname]', { rscPath });
       return joinPath(config.rscBase, encodeRscPath(rscPath));
     },
-    unstable_collectClientModules: async (elements) => {
-      0 && console.log('[unstable_collectClientModules]', { elements });
+    // handled by Vite RSC
+    unstable_collectClientModules: async () => {
       return [];
     },
-    unstable_generatePrefetchCode: (rscPaths, moduleIds) => {
-      0 &&
-        console.log('[unstable_generatePrefetchCode]', { rscPaths, moduleIds });
+    unstable_generatePrefetchCode: () => {
       return '';
     },
   });
