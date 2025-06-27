@@ -103,7 +103,8 @@ test.describe.serial('hot reload', () => {
     await page.getByTestId('home').click();
     await expect(page.getByText('Edited Page')).toBeVisible();
 
-    // TODO: not sure the desired behavior.
+    // TODO: transform error causes uncaught exception
+    // inside fs router since Vite RSC
     if (process.env.TEST_VITE_RSC) {
       return;
     }

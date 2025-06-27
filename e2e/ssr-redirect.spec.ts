@@ -19,6 +19,7 @@ test.describe.serial(`ssr-redirect`, () => {
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
   });
 
+  // flaky on dev since Vite RSC
   test('access async page directly', async ({ page }) => {
     await page.goto(`http://localhost:${port}/async`);
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
