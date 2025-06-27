@@ -23,6 +23,11 @@ import { wakuDeployVercelPlugin } from './deploy/vercel/plugin.js';
 import { wakuAllowServerPlugin } from './plugins/allow-server.js';
 import { DIST_PUBLIC } from '../lib/builder/constants.js';
 import { fsRouterTypegenPlugin } from '../lib/plugins/vite-plugin-fs-router-typegen.js';
+import { wakuDeployNetlifyPlugin } from './deploy/netlify/plugin.js';
+import { wakuDeployCloudflarePlugin } from './deploy/cloudflare/plugin.js';
+import { wakuDeployPartykitPlugin } from './deploy/partykit/plugin.js';
+import { wakuDeployDenoPlugin } from './deploy/deno/plugin.js';
+import { wakuDeployAwsLambdaPlugin } from './deploy/aws-lambda/plugin.js';
 
 const PKG_NAME = 'waku';
 
@@ -35,6 +40,13 @@ export type WakuFlags = {
   'experimental-compress'?: boolean | undefined;
   'experimental-partial'?: boolean | undefined;
   'with-vercel'?: boolean | undefined;
+  'with-vercel-static'?: boolean | undefined;
+  'with-netlify'?: boolean | undefined;
+  'with-netlify-static'?: boolean | undefined;
+  'with-cloudflare'?: boolean | undefined;
+  'with-partykit'?: boolean | undefined;
+  'with-deno'?: boolean | undefined;
+  'with-aws-lambda'?: boolean | undefined;
 };
 
 export default function wakuPlugin(
@@ -58,7 +70,7 @@ export default function wakuPlugin(
     vite: undefined,
     ...wakuPluginOptions?.config,
   };
-  const wakuFlags: Record<string, unknown> = wakuPluginOptions?.flags ?? {};
+  const wakuFlags = wakuPluginOptions?.flags ?? {};
 
   return [
     ...(wakuConfig.vite?.plugins ?? []),
@@ -97,9 +109,6 @@ export default function wakuPlugin(
             'import.meta.env.WAKU_CONFIG_RSC_BASE': JSON.stringify(
               wakuConfig.rscBase,
             ),
-            'import.meta.env.WAKU_SERVE_STATIC': JSON.stringify(
-              env.command === 'build',
-            ),
           },
           environments: {
             client: toEnvironmentOption('entry.browser'),
@@ -135,7 +144,7 @@ export default function wakuPlugin(
 
         return viteRscConfig;
       },
-      configEnvironment(name, config, _env) {
+      configEnvironment(name, config, env) {
         // make @hiogawa/vite-rsc usable as a transitive dependency
         // https://github.com/hi-ogawa/vite-plugins/issues/968
         if (config.optimizeDeps?.include) {
@@ -160,7 +169,7 @@ export default function wakuPlugin(
 
         return {
           resolve: {
-            noExternal: [PKG_NAME],
+            noExternal: env.command === 'build' ? true : [PKG_NAME],
           },
           optimizeDeps: {
             include: name === 'ssr' ? [`${PKG_NAME} > html-react-parser`] : [],
@@ -446,7 +455,33 @@ export default function wakuPlugin(
       },
     },
     fsRouterTypegenPlugin({ srcDir: wakuConfig.srcDir }),
-    !!wakuFlags['with-vercel'] && wakuDeployVercelPlugin(),
+    !!(
+      wakuFlags['with-vercel'] ||
+      wakuFlags['with-vercel-static'] ||
+      process.env.VERCEL
+    ) &&
+      wakuDeployVercelPlugin({
+        wakuConfig,
+        serverless: !!wakuFlags['with-vercel'],
+      }),
+    !!(
+      wakuFlags['with-netlify'] ||
+      wakuFlags['with-netlify-static'] ||
+      process.env.NETLIFY
+    ) &&
+      wakuDeployNetlifyPlugin({
+        wakuConfig,
+        serverless: !!wakuFlags['with-netlify'],
+      }),
+    !!wakuFlags['with-cloudflare'] &&
+      wakuDeployCloudflarePlugin({ wakuConfig }),
+    !!wakuFlags['with-partykit'] && wakuDeployPartykitPlugin({ wakuConfig }),
+    !!wakuFlags['with-deno'] && wakuDeployDenoPlugin({ wakuConfig }),
+    !!wakuFlags['with-aws-lambda'] &&
+      wakuDeployAwsLambdaPlugin({
+        wakuConfig,
+        streaming: process.env.DEPLOY_AWS_LAMBDA_STREAMING === 'true',
+      }),
   ];
 }
 

@@ -10,6 +10,7 @@ export default tseslint.config(
     ignores: [
       '**/dist/',
       '**/.cache/',
+      'packages/waku/src/vite-rsc/',
       'packages/create-waku/template/',
       'examples/07_cloudflare/.wrangler/',
     ],

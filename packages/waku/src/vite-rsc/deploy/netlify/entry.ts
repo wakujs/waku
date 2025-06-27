@@ -1,0 +1,23 @@
+/* eslint-disable */
+import { Hono } from 'hono';
+import { createHonoHandler } from '../../entry.rsc.js';
+import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
+
+function createApp(app: Hono) {
+  app.use(createHonoHandler());
+  app.notFound((c) => {
+    const notFoundHtml = (globalThis as any).__WAKU_NOT_FOUND_HTML__;
+    if (typeof notFoundHtml === 'string') {
+      return c.html(notFoundHtml, 404);
+    }
+    return c.text('404 Not Found', 404);
+  });
+  return app;
+}
+
+const app = honoEnhancer(createApp)(new Hono());
+
+export default async (request: Request, context: unknown) =>
+  app.fetch(request, { context });
+
+export { handleBuild } from '../../entry.rsc.js';

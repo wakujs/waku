@@ -1,21 +1,14 @@
 /* eslint-disable */
+import { getRequestListener } from '@hono/node-server';
 import { Hono } from 'hono';
-import { createHonoHandler } from './entry.rsc.js';
+import { createHonoHandler } from '../../entry.rsc.js';
 import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
-import { flags, config, isBuild } from 'virtual:vite-rsc-waku/config';
-import { compress } from 'hono/compress';
-import { serveStatic } from '@hono/node-server/serve-static';
+import { config } from 'virtual:vite-rsc-waku/config';
 import path from 'node:path';
 import fs from 'node:fs';
-import { DIST_PUBLIC } from '../lib/builder/constants.js';
+import { DIST_PUBLIC } from '../../../lib/builder/constants.js';
 
 function createApp(app: Hono) {
-  if (flags['experimental-compress']) {
-    app.use(compress());
-  }
-  if (isBuild) {
-    app.use(serveStatic({ root: path.join(config.distDir, DIST_PUBLIC) }));
-  }
   app.use(createHonoHandler());
   app.notFound((c) => {
     const file = path.join(config.distDir, DIST_PUBLIC, '404.html');
@@ -29,6 +22,6 @@ function createApp(app: Hono) {
 
 const app = honoEnhancer(createApp)(new Hono());
 
-export default app.fetch;
+export default getRequestListener(app.fetch);
 
-export { handleBuild } from './entry.rsc.js';
+export { handleBuild } from '../../entry.rsc.js';
