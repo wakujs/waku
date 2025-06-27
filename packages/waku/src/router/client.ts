@@ -532,7 +532,10 @@ export function Slice({
   id: string;
   children?: ReactNode;
 }): ReactElement {
-  if (!import.meta.env?.VITE_EXPERIMENTAL_WAKU_ROUTER) {
+  if (
+    typeof window !== 'undefined' &&
+    !import.meta.env?.VITE_EXPERIMENTAL_WAKU_ROUTER
+  ) {
     throw new Error('Slice is still experimental');
   }
   return createElement(Slot, { id: getSliceSlotId(id) }, children);
