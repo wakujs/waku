@@ -75,7 +75,7 @@ export function unstable_fsRouter(
           exts.splice(myExtIndex + 1, 1); // remove the second myExt
           for (const ext of exts) {
             const f = file.slice(0, -myExt.length) + ext;
-            if (loadPage(f)) {
+            if (loadPage(f)?.catch(() => {})) {
               return [f];
             }
           }

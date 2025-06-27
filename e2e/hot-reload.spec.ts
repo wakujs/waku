@@ -103,12 +103,6 @@ test.describe.serial('hot reload', () => {
     await page.getByTestId('home').click();
     await expect(page.getByText('Edited Page')).toBeVisible();
 
-    // TODO: transform error causes uncaught exception
-    // inside fs router since Vite RSC
-    if (process.env.TEST_VITE_RSC) {
-      return;
-    }
-
     // Modify with a JSX syntax error
     await modifyFile(
       standaloneDir,
@@ -123,6 +117,10 @@ test.describe.serial('hot reload', () => {
       '<pEdited Page</p>',
       '<p>Fixed Page</p>',
     );
+    // requires manual reload on Vite RSC
+    if (process.env.TEST_VITE_RSC) {
+      await page.reload();
+    }
     await expect(page.getByText('Fixed Page')).toBeVisible();
   });
 
