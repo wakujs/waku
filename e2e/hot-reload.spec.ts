@@ -119,6 +119,7 @@ test.describe.serial('hot reload', () => {
     );
     // requires manual reload on Vite RSC
     if (process.env.TEST_VITE_RSC) {
+      await page.waitForTimeout(500);
       await page.reload();
     }
     await expect(page.getByText('Fixed Page')).toBeVisible();
