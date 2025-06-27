@@ -27,6 +27,9 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
         'layout:/': { isStatic: true },
         [`page:${path}`]: { isStatic: true },
       },
+      slices: {
+        slice001: { isStatic: true },
+      },
     })),
     {
       type: 'api',
@@ -80,6 +83,9 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
           </Layout>
         ),
         [`page:${path}`]: PATH_PAGE[path],
+      },
+      slices: {
+        slice001: <h1 data-testid="slice001">Slice 001</h1>,
       },
     };
   },

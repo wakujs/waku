@@ -19,6 +19,7 @@ test.describe(`define-router`, () => {
     await expect(page.getByTestId('home-title')).toHaveText('Home');
     await page.getByText('Foo').click();
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');
+    await expect(page.getByTestId('slice001')).toHaveText('Slice 001');
   });
 
   test('foo', async ({ page }) => {
