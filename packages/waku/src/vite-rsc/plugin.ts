@@ -28,6 +28,7 @@ import { wakuDeployCloudflarePlugin } from './deploy/cloudflare/plugin.js';
 import { wakuDeployPartykitPlugin } from './deploy/partykit/plugin.js';
 import { wakuDeployDenoPlugin } from './deploy/deno/plugin.js';
 import { wakuDeployAwsLambdaPlugin } from './deploy/aws-lambda/plugin.js';
+import { joinPath } from '../lib/utils/path.js';
 
 const PKG_NAME = 'waku';
 
@@ -208,7 +209,7 @@ export default function wakuPlugin(
       load(id) {
         if (id === '\0virtual:vite-rsc-waku/server-entry') {
           return getManagedEntries(
-            path.join(
+            joinPath(
               this.environment.config.root,
               `${wakuConfig.srcDir}/server-entry.js`,
             ),
