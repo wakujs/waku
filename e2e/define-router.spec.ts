@@ -17,6 +17,7 @@ test.describe(`define-router`, () => {
   test('home', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
     await expect(page.getByTestId('home-title')).toHaveText('Home');
+    await expect(page.getByTestId('slice001')).toHaveText('Slice 001');
     await page.getByText('Foo').click();
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');
     await expect(page.getByTestId('slice001')).toHaveText('Slice 001');

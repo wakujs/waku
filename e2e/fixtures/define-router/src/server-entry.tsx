@@ -1,10 +1,11 @@
+import { readFile } from 'node:fs/promises';
 import { unstable_defineRouter as defineRouter } from 'waku/router/server';
 import { Slot, Children } from 'waku/minimal/client';
 
 import Layout from './routes/layout.js';
 import Page from './routes/page.js';
 import FooPage from './routes/foo/page.js';
-import { readFile } from 'node:fs/promises';
+import { Slice001 } from './components/slice001.js';
 
 const STATIC_PATHS = ['/', '/foo'];
 const PATH_PAGE: Record<string, unknown> = {
@@ -85,7 +86,7 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
         [`page:${path}`]: PATH_PAGE[path],
       },
       slices: {
-        slice001: <h1 data-testid="slice001">Slice 001</h1>,
+        slice001: <Slice001 />,
       },
     };
   },
