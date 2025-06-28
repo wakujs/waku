@@ -17,15 +17,23 @@ test.describe(`define-router`, () => {
   test('home', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
     await expect(page.getByTestId('home-title')).toHaveText('Home');
-    await expect(page.getByTestId('slice001')).toHaveText('Slice 001');
     await page.getByText('Foo').click();
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');
-    await expect(page.getByTestId('slice001')).toHaveText('Slice 001');
   });
 
   test('foo', async ({ page }) => {
     await page.goto(`http://localhost:${port}/foo`);
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');
+  });
+
+  test('bar (slice)', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/`);
+    await expect(page.getByTestId('home-title')).toHaveText('Home');
+    const sliceText = await page.getByTestId('slice001').textContent();
+    expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
+    await page.getByText('Bar').click();
+    await expect(page.getByTestId('bar-title')).toHaveText('Bar');
+    await expect(page.getByTestId('slice001')).toHaveText(sliceText!);
   });
 
   test('api hi', async () => {

@@ -5,33 +5,38 @@ import { Slot, Children } from 'waku/minimal/client';
 import Layout from './routes/layout.js';
 import Page from './routes/page.js';
 import FooPage from './routes/foo/page.js';
+import BarPage from './routes/bar/page.js';
 import { Slice001 } from './components/slice001.js';
 
 const STATIC_PATHS = ['/', '/foo'];
 const PATH_PAGE: Record<string, unknown> = {
   '/': <Page />,
   '/foo': <FooPage />,
+  '/bar': <BarPage />,
 };
 
 const router: ReturnType<typeof defineRouter> = defineRouter({
   getConfig: async () => [
-    ...STATIC_PATHS.map((path) => ({
-      type: 'route' as const,
-      pattern: `^${path}$`,
-      path: path
-        .split('/')
-        .filter(Boolean)
-        .map((name) => ({ type: 'literal', name }) as const),
-      rootElement: { isStatic: true },
-      routeElement: { isStatic: true },
-      elements: {
-        'layout:/': { isStatic: true },
-        [`page:${path}`]: { isStatic: true },
-      },
-      slices: {
-        slice001: { isStatic: true },
-      },
-    })),
+    ...Object.keys(PATH_PAGE).map((path) => {
+      const isStatic = STATIC_PATHS.includes(path);
+      return {
+        type: 'route' as const,
+        pattern: `^${path}$`,
+        path: path
+          .split('/')
+          .filter(Boolean)
+          .map((name) => ({ type: 'literal', name }) as const),
+        rootElement: { isStatic },
+        routeElement: { isStatic },
+        elements: {
+          'layout:/': { isStatic },
+          [`page:${path}`]: { isStatic },
+        },
+        ...(['/', '/bar'].includes(path)
+          ? { slices: { slice001: { isStatic: true } } }
+          : {}),
+      };
+    }),
     {
       type: 'api',
       path: [
@@ -58,7 +63,7 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
     },
   ],
   handleRoute: async (path) => {
-    if (!STATIC_PATHS.includes(path)) {
+    if (!(path in PATH_PAGE)) {
       throw new Error('renderRoute: No such path:' + path);
     }
     return {
@@ -85,9 +90,9 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
         ),
         [`page:${path}`]: PATH_PAGE[path],
       },
-      slices: {
-        slice001: <Slice001 />,
-      },
+      ...(['/', '/bar'].includes(path)
+        ? { slices: { slice001: <Slice001 /> } }
+        : {}),
     };
   },
   handleApi: async (path, opt) => {
