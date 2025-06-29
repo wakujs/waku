@@ -12,12 +12,12 @@ test.describe(`build table`, () => {
     'Partial builds are only relevant in production mode.',
   );
   let port: number;
-  let stopApp: () => Promise<void>;
+  let stopApp: (() => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode, 'npm'));
   });
   test.afterAll(async () => {
-    await stopApp();
+    await stopApp?.();
   });
 
   test('build repo', async ({ page }) => {
