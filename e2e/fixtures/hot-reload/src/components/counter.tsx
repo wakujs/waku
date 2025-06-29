@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 
+import { Message } from './message.js';
+
 export const Counter = () => {
   const [count, setCount] = useState(0);
   return (
@@ -13,6 +15,7 @@ export const Counter = () => {
       <button data-testid="increment" onClick={() => setCount((c) => c + 1)}>
         Increment
       </button>
+      <Message />
     </div>
   );
 };
