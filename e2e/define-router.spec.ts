@@ -26,6 +26,16 @@ test.describe(`define-router`, () => {
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');
   });
 
+  test('bar (slice)', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/`);
+    await expect(page.getByTestId('home-title')).toHaveText('Home');
+    const sliceText = await page.getByTestId('slice001').textContent();
+    expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
+    await page.getByText('Bar').click();
+    await expect(page.getByTestId('bar-title')).toHaveText('Bar');
+    await expect(page.getByTestId('slice001')).toHaveText(sliceText!);
+  });
+
   test('api hi', async () => {
     const res = await fetch(`http://localhost:${port}/api/hi`);
     expect(res.status).toBe(200);
