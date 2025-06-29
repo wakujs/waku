@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
-import { testData } from '../lib/test-data';
-import { Table } from '../components/table';
+import { testData } from '../lib/test-data.js';
+import { Table } from '../components/table.js';
 
 function App() {
   const data = testData();
