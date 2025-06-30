@@ -188,6 +188,11 @@ export default function wakuPlugin(
       configResolved(config) {
         privatePath = joinPath(config.root, wakuConfig.privateDir);
       },
+      async configurePreviewServer(server) {
+        const { getRequestListener } = await import('@hono/node-server');
+        const module = await import(path.resolve('./dist/rsc/index.js'));
+        server.middlewares.use(getRequestListener(module.default));
+      },
     },
     {
       name: 'rsc:waku:user-entries',
