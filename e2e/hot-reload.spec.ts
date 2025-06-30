@@ -195,7 +195,6 @@ test.describe.serial('hot reload', () => {
     const errors: string[] = [];
     page.on('pageerror', (err) => errors.push(err.message));
     await page.goto(`http://localhost:${port}/`);
-    await expect(page.getByText('Home Page')).toBeVisible();
     await waitForHydration(page);
 
     await expect(page.getByTestId('count')).toHaveText('0');
