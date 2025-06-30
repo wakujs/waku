@@ -8,7 +8,7 @@ const stripExt = (fname: string) => {
   return ext ? fname.slice(0, -ext.length) : fname;
 };
 
-const getManagedEntries = (
+export const getManagedEntries = (
   filePath: string,
   srcDir: string,
   options: { pagesDir: string; apiDir: string },
@@ -24,7 +24,7 @@ export default fsRouter(
 );
 `;
 
-const getManagedMain = () => `
+export const getManagedMain = () => `
 import { StrictMode, createElement } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { Router } from 'waku/router/client';
