@@ -190,7 +190,9 @@ export default function wakuPlugin(
       },
       async configurePreviewServer(server) {
         const { getRequestListener } = await import('@hono/node-server');
-        const module = await import(path.resolve('./dist/rsc/index.js'));
+        const module = await import(
+          pathToFileURL(path.resolve('./dist/rsc/index.js')).href
+        );
         server.middlewares.use(getRequestListener(module.default));
       },
     },
