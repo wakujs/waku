@@ -4,7 +4,7 @@ import { test, prepareNormalSetup, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('ssr-redirect');
 
-test.describe.serial(`ssr-redirect`, () => {
+test.describe(`ssr-redirect`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
   test.beforeAll(async ({ mode }) => {
@@ -19,7 +19,6 @@ test.describe.serial(`ssr-redirect`, () => {
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
   });
 
-  // flaky on dev since Vite RSC
   test('access async page directly', async ({ page }) => {
     await page.goto(`http://localhost:${port}/async`);
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
