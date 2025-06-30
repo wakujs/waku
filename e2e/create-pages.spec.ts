@@ -163,7 +163,7 @@ test.describe(`create-pages`, () => {
   // https://github.com/wakujs/waku/issues/1255
   test('long suspense', async ({ page }) => {
     await page.goto(`http://localhost:${port}/long-suspense/1`);
-    await waitForHydration(page)
+    await waitForHydration(page);
     await expect(page.getByTestId('long-suspense-component')).toHaveCount(2);
     await expect(
       page.getByRole('heading', { name: 'Long Suspense Page 1' }),
@@ -189,7 +189,6 @@ test.describe(`create-pages`, () => {
     await expect(
       page.getByRole('heading', { name: 'Long Suspense Page 2' }),
     ).toBeVisible();
-    // TODO: firefox-prd doesn't trigger suspense fallback
     await page.click("a[href='/long-suspense/3']");
     await expect(
       page.getByRole('heading', { name: 'Long Suspense Page 2' }),
