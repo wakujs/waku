@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Message } from './message.js';
 
 export const Counter = () => {
   const [count, setCount] = useState(0);
@@ -13,6 +14,7 @@ export const Counter = () => {
       <button data-testid="increment" onClick={() => setCount((c) => c + 1)}>
         Increment
       </button>
+      <Message />
     </div>
   );
 };

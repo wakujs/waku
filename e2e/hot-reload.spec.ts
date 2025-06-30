@@ -190,4 +190,36 @@ test.describe.serial('hot reload', () => {
     );
     expect(bgColor3).toBe('rgb(0, 0, 255)');
   });
+
+  test('indirect client components (#1491)', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (err) => errors.push(err.message));
+    await page.goto(`http://localhost:${port}/`);
+    await expect(page.getByText('Home Page')).toBeVisible();
+    await waitForHydration(page);
+
+    await expect(page.getByTestId('count')).toHaveText('0');
+    await page.getByTestId('increment').click();
+    await expect(page.getByTestId('count')).toHaveText('1');
+    await expect(page.getByTestId('mesg')).toHaveText('Mesg 1000');
+    // Client component HMR
+    await modifyFile(
+      standaloneDir,
+      'src/components/message.tsx',
+      'Mesg 1000',
+      'Mesg 1001',
+    );
+    await expect(page.getByTestId('mesg')).toHaveText('Mesg 1001');
+    await page.waitForTimeout(500); // need to wait not to full reload
+    await expect(page.getByTestId('count')).toHaveText('1');
+    await page.getByTestId('increment').click();
+    await expect(page.getByTestId('count')).toHaveText('2');
+    // Browser refresh
+    await page.reload();
+    await expect(page.getByTestId('mesg')).toHaveText('Mesg 1001');
+    await expect(page.getByTestId('count')).toHaveText('0');
+    await page.getByTestId('increment').click();
+    await expect(page.getByTestId('count')).toHaveText('1');
+    expect(errors.join('\n')).not.toContain('hydration-mismatch');
+  });
 });
