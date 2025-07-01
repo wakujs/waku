@@ -33,7 +33,7 @@ export function encodeRoutePath(path: string): string {
 
 export function decodeRoutePath(rscPath: string): string {
   if (!rscPath.startsWith(ROUTE_PREFIX)) {
-    throw new Error('rscPath should not start with `/`');
+    throw new Error('rscPath should start with: ' + ROUTE_PREFIX);
   }
   if (rscPath === ROUTE_PREFIX + '/_root') {
     return '/';

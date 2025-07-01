@@ -168,7 +168,6 @@ export function unstable_defineRouter(fns: {
     rootElement: ReactNode;
     routeElement: ReactNode;
     elements: Record<SlotId, unknown>;
-    slices?: Record<SliceId, unknown>;
   }>;
   handleSlice?: (sliceId: string) => Promise<{
     element: ReactNode;
@@ -187,6 +186,9 @@ export function unstable_defineRouter(fns: {
     status?: number;
   }>;
 }) {
+  if (fns.handleSlice && !import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER) {
+    throw new Error('Slice is still experimental');
+  }
   type MyPathConfig = {
     pathSpec: PathSpec;
     pathname: string | undefined;
@@ -195,6 +197,7 @@ export function unstable_defineRouter(fns: {
       rootElementIsStatic?: true;
       routeElementIsStatic?: true;
       staticElementIds?: SlotId[];
+      sliceIds?: SliceId[];
       isStatic?: true;
       noSsr?: true;
       is404?: true;
@@ -255,6 +258,7 @@ export function unstable_defineRouter(fns: {
                       isStatic ? [SLICE_SLOT_ID_PREFIX + id] : [],
                   ),
                 ],
+                ...(item.slices ? { sliceIds: Object.keys(item.slices) } : {}),
                 ...(isStatic ? { isStatic: true as const } : {}),
                 ...(is404 ? { is404: true as const } : {}),
                 ...(item.noSsr ? { noSsr: true as const } : {}),
@@ -310,14 +314,20 @@ export function unstable_defineRouter(fns: {
     }
     const skipIdSet = new Set(isStringArray(skipParam) ? skipParam : []);
     const { query } = parseRscParams(rscParams);
-    const { rootElement, routeElement, elements, slices } =
-      await fns.handleRoute(
-        pathname,
-        pathConfigItem.specs.isStatic ? {} : { query },
-      );
-    if (slices && !import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER) {
-      throw new Error('Slice is still experimental');
-    }
+    const [{ rootElement, routeElement, elements }, ...slices] =
+      await Promise.all([
+        fns.handleRoute(
+          pathname,
+          pathConfigItem.specs.isStatic ? {} : { query },
+        ),
+        ...(pathConfigItem.specs.sliceIds || []).map(async (sliceId) => {
+          if (!fns.handleSlice) {
+            throw new Error('handleSlice is not defined');
+          }
+          const result = await fns.handleSlice(sliceId);
+          return { [SLICE_SLOT_ID_PREFIX + sliceId]: result.element };
+        }),
+      ]);
     if (
       Object.keys(elements).some(
         (id) =>
@@ -329,12 +339,7 @@ export function unstable_defineRouter(fns: {
     }
     const entries = {
       ...elements,
-      ...Object.fromEntries(
-        Object.entries(slices || {}).map(([id, element]) => [
-          SLICE_SLOT_ID_PREFIX + id,
-          element,
-        ]),
-      ),
+      ...Object.assign({}, ...slices),
     };
     for (const id of pathConfigItem.specs.staticElementIds || []) {
       if (skipIdSet.has(id)) {
@@ -371,11 +376,11 @@ export function unstable_defineRouter(fns: {
     if (input.type === 'component') {
       const sliceId = decodeSliceId(input.rscPath);
       if (sliceId !== null) {
-        const result = await fns.handleSlice?.(sliceId);
-        if (!result) {
+        if (!fns.handleSlice) {
           return null;
         }
-        return renderRsc({ sliceId: result.element });
+        const { element } = await fns.handleSlice(sliceId);
+        return renderRsc({ sliceId: element });
       }
       const entries = await getEntries(
         input.rscPath,

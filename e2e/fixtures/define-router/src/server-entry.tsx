@@ -90,10 +90,13 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
         ),
         [`page:${path}`]: PATH_PAGE[path],
       },
-      ...(['/', '/bar'].includes(path)
-        ? { slices: { slice001: <Slice001 /> } }
-        : {}),
     };
+  },
+  handleSlice: async (sliceId) => {
+    if (sliceId === 'slice001') {
+      return { element: <Slice001 /> };
+    }
+    throw new Error('No such slice: ' + sliceId);
   },
   handleApi: async (path, opt) => {
     if (path === '/api/hi.txt') {
