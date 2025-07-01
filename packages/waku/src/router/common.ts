@@ -16,6 +16,7 @@ export function getComponentIds(path: string): readonly string[] {
 }
 
 const ROUTE_PREFIX = 'R';
+const SLICE_PREFIX = 'S/';
 
 export function encodeRoutePath(path: string): string {
   if (!path.startsWith('/')) {
@@ -38,6 +39,20 @@ export function decodeRoutePath(rscPath: string): string {
     return '/';
   }
   return rscPath.slice(ROUTE_PREFIX.length);
+}
+
+export function encodeSlicePath(sliceId: string): string {
+  if (sliceId.startsWith('/')) {
+    throw new Error('Slice id must not start with `/`: ' + sliceId);
+  }
+  return SLICE_PREFIX + sliceId;
+}
+
+export function decodeSlicePath(rscPath: string): string | null {
+  if (!rscPath.startsWith(SLICE_PREFIX)) {
+    return null;
+  }
+  return rscPath.slice(SLICE_PREFIX.length);
 }
 
 export const ROUTE_ID = 'ROUTE';

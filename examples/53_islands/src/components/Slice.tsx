@@ -25,10 +25,10 @@ export function Slice({
   const hasFetchArgs = !!fetchArgs;
   const [rscPath, rscParams] = hasFetchArgs ? fetchArgs : [''];
   const refetch = useRefetch();
-  const sliceId = getSliceSlotId(id);
+  const slotId = getSliceSlotId(id);
   const elementsPromise = useElementsPromise();
   const elements = use(elementsPromise);
-  const hasSlice = sliceId in elements;
+  const hasSlice = slotId in elements;
   useEffect(() => {
     if (!hasSlice && hasFetchArgs) {
       refetch(rscPath, rscParams).catch((e) => {
@@ -39,5 +39,5 @@ export function Slice({
   if (!hasSlice) {
     return fallback;
   }
-  return createElement(Slot, { id: sliceId }, children);
+  return createElement(Slot, { id: slotId }, children);
 }

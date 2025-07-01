@@ -4,6 +4,7 @@ import {
   createContext,
   createElement,
   startTransition,
+  use,
   useCallback,
   useContext,
   useEffect,
@@ -35,6 +36,7 @@ import {
 } from '../minimal/client.js';
 import {
   encodeRoutePath,
+  encodeSlicePath,
   ROUTE_ID,
   IS_STATIC_ID,
   HAS404_ID,
@@ -528,17 +530,43 @@ const getSliceSlotId = (id: string) => 'slice:' + id;
 export function Slice({
   id,
   children,
+  ...rest
 }: {
   id: string;
   children?: ReactNode;
-}): ReactElement {
+} & (
+  | {
+      delayed?: false;
+    }
+  | {
+      delayed: true;
+      fallback: ReactNode;
+    }
+)) {
   if (
     typeof window !== 'undefined' &&
     !import.meta.env?.VITE_EXPERIMENTAL_WAKU_ROUTER
   ) {
     throw new Error('Slice is still experimental');
   }
-  return createElement(Slot, { id: getSliceSlotId(id) }, children);
+  const refetch = useRefetch();
+  const slotId = getSliceSlotId(id);
+  const elementsPromise = useElementsPromise();
+  const elements = use(elementsPromise);
+  const hasSlice = slotId in elements;
+  const { delayed } = rest;
+  useEffect(() => {
+    if (!hasSlice && delayed) {
+      const rscPath = encodeSlicePath(id);
+      refetch(rscPath).catch((e) => {
+        console.error('Failed to refetch:', e);
+      });
+    }
+  }, [refetch, hasSlice, delayed, id]);
+  if (!hasSlice && delayed) {
+    return rest.fallback;
+  }
+  return createElement(Slot, { id: slotId }, children);
 }
 
 const handleScroll = () => {
