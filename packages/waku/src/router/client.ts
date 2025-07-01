@@ -122,6 +122,9 @@ type ChangeRouteCallback = (route: RouteProps) => void;
 
 type PrefetchRoute = (route: RouteProps) => void;
 
+type SliceId = string;
+
+// This is an internal thing, not a public API
 const RouterContext = createContext<{
   route: RouteProps;
   changeRoute: ChangeRoute;
@@ -130,6 +133,7 @@ const RouterContext = createContext<{
     'on' | 'off',
     (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
   >;
+  fetchingSlices: Set<SliceId>;
 } | null>(null);
 
 export function useRouter() {
@@ -525,14 +529,14 @@ const ThrowError = ({ error }: { error: unknown }) => {
 };
 
 const getRouteSlotId = (path: string) => 'route:' + decodeURI(path);
-const getSliceSlotId = (id: string) => 'slice:' + id;
+const getSliceSlotId = (id: SliceId) => 'slice:' + id;
 
 export function Slice({
   id,
   children,
   ...rest
 }: {
-  id: string;
+  id: SliceId;
   children?: ReactNode;
 } & (
   | {
@@ -549,6 +553,11 @@ export function Slice({
   ) {
     throw new Error('Slice is still experimental');
   }
+  const router = useContext(RouterContext);
+  if (!router) {
+    throw new Error('Missing Router');
+  }
+  const { fetchingSlices } = router;
   const refetch = useRefetch();
   const slotId = getSliceSlotId(id);
   const elementsPromise = useElementsPromise();
@@ -556,13 +565,18 @@ export function Slice({
   const hasSlice = slotId in elements;
   const { delayed } = rest;
   useEffect(() => {
-    if (!hasSlice && delayed) {
+    if (!hasSlice && delayed && !fetchingSlices.has(id)) {
+      fetchingSlices.add(id);
       const rscPath = encodeSliceId(id);
-      refetch(rscPath).catch((e) => {
-        console.error('Failed to refetch:', e);
-      });
+      refetch(rscPath)
+        .catch((e) => {
+          console.error('Failed to fetch slice:', e);
+        })
+        .finally(() => {
+          fetchingSlices.delete(id);
+        });
     }
-  }, [refetch, hasSlice, delayed, id]);
+  }, [fetchingSlices, refetch, hasSlice, delayed, id]);
   if (!hasSlice && delayed) {
     return rest.fallback;
   }
@@ -843,6 +857,7 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
         changeRoute,
         prefetchRoute,
         routeChangeEvents,
+        fetchingSlices: new Set<SliceId>(),
       },
     },
     rootElement,
@@ -903,6 +918,7 @@ export function INTERNAL_ServerRouter({
           changeRoute: notAvailableInServer('changeRoute'),
           prefetchRoute: notAvailableInServer('prefetchRoute'),
           routeChangeEvents: MOCK_ROUTE_CHANGE_LISTENER,
+          fetchingSlices: new Set<SliceId>(),
         },
       },
       rootElement,
