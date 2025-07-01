@@ -15,7 +15,8 @@ const App = ({ name }: { name: string }) => {
           <h1>Hello {name}!!</h1>
           <h3>This is a static server component.</h3>
           <Slot id="Dynamic" unstable_fallback={<p>Loading...</p>}>
-            <MyCounter />
+            <h4>My Counter</h4>
+            <Counter />
           </Slot>
           <div>{new Date().toISOString()}</div>
         </div>
@@ -23,12 +24,5 @@ const App = ({ name }: { name: string }) => {
     </html>
   );
 };
-
-const MyCounter = () => (
-  <>
-    <h4>Counter</h4>
-    <Counter />
-  </>
-);
 
 export default App;
