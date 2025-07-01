@@ -1,6 +1,6 @@
 'use client';
 
-import { createElement, use, useEffect } from 'react';
+import { use, useEffect } from 'react';
 import type { ReactNode } from 'react';
 
 import {
@@ -39,5 +39,5 @@ export function Slice({
   if (!hasSlice) {
     return fallback;
   }
-  return createElement(Slot, { id: slotId }, children);
+  return <Slot id={slotId}>{children}</Slot>;
 }
