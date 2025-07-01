@@ -10,6 +10,7 @@ import { unstable_defineEntries as defineEntries } from '../minimal/server.js';
 import {
   encodeRoutePath,
   decodeRoutePath,
+  decodeSliceId,
   ROUTE_ID,
   IS_STATIC_ID,
   HAS404_ID,
@@ -168,6 +169,9 @@ export function unstable_defineRouter(fns: {
     routeElement: ReactNode;
     elements: Record<SlotId, unknown>;
     slices?: Record<SliceId, unknown>;
+  }>;
+  handleSlice?: (sliceId: string) => Promise<{
+    element: ReactNode;
   }>;
   handleApi?: (
     path: string,
@@ -365,6 +369,14 @@ export function unstable_defineRouter(fns: {
     { renderRsc, renderHtml },
   ) => {
     if (input.type === 'component') {
+      const sliceId = decodeSliceId(input.rscPath);
+      if (sliceId !== null) {
+        const result = await fns.handleSlice?.(sliceId);
+        if (!result) {
+          return null;
+        }
+        return renderRsc({ sliceId: result.element });
+      }
       const entries = await getEntries(
         input.rscPath,
         input.rscParams,

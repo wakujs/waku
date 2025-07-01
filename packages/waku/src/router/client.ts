@@ -36,7 +36,7 @@ import {
 } from '../minimal/client.js';
 import {
   encodeRoutePath,
-  encodeSlicePath,
+  encodeSliceId,
   ROUTE_ID,
   IS_STATIC_ID,
   HAS404_ID,
@@ -557,7 +557,7 @@ export function Slice({
   const { delayed } = rest;
   useEffect(() => {
     if (!hasSlice && delayed) {
-      const rscPath = encodeSlicePath(id);
+      const rscPath = encodeSliceId(id);
       refetch(rscPath).catch((e) => {
         console.error('Failed to refetch:', e);
       });

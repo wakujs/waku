@@ -41,14 +41,15 @@ export function decodeRoutePath(rscPath: string): string {
   return rscPath.slice(ROUTE_PREFIX.length);
 }
 
-export function encodeSlicePath(sliceId: string): string {
+// LIMITATION: This is very limited because it does not support fetching multiple slices in one request. We should generally prefer sending slices with the route if possible.
+export function encodeSliceId(sliceId: string): string {
   if (sliceId.startsWith('/')) {
     throw new Error('Slice id must not start with `/`: ' + sliceId);
   }
   return SLICE_PREFIX + sliceId;
 }
 
-export function decodeSlicePath(rscPath: string): string | null {
+export function decodeSliceId(rscPath: string): string | null {
   if (!rscPath.startsWith(SLICE_PREFIX)) {
     return null;
   }
