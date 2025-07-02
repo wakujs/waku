@@ -534,7 +534,7 @@ const getSliceSlotId = (id: SliceId) => 'slice:' + id;
 export function Slice({
   id,
   children,
-  ...rest
+  ...props
 }: {
   id: SliceId;
   children?: ReactNode;
@@ -562,10 +562,9 @@ export function Slice({
   const slotId = getSliceSlotId(id);
   const elementsPromise = useElementsPromise();
   const elements = use(elementsPromise);
-  const hasSlice = slotId in elements;
-  const { delayed } = rest;
+  const needsToFetchSlice = props.delayed && !(slotId in elements);
   useEffect(() => {
-    if (!hasSlice && delayed && !fetchingSlices.has(id)) {
+    if (needsToFetchSlice && !fetchingSlices.has(id)) {
       fetchingSlices.add(id);
       const rscPath = encodeSliceId(id);
       refetch(rscPath)
@@ -576,9 +575,9 @@ export function Slice({
           fetchingSlices.delete(id);
         });
     }
-  }, [fetchingSlices, refetch, hasSlice, delayed, id]);
-  if (!hasSlice && delayed) {
-    return rest.fallback;
+  }, [fetchingSlices, refetch, id, needsToFetchSlice]);
+  if (needsToFetchSlice) {
+    return props.fallback;
   }
   return createElement(Slot, { id: slotId }, children);
 }
