@@ -37,6 +37,10 @@ test.describe(`define-router`, () => {
   });
 
   test('baz (delayed slice)', async ({ page }) => {
+    await page.route(/.*\/RSC\/.*/, async (route) => {
+      await new Promise((r) => setTimeout(r, 100));
+      await route.continue();
+    });
     await page.goto(`http://localhost:${port}/baz`);
     await expect(page.getByTestId('baz-title')).toHaveText('Baz');
     await expect(page.getByTestId('slice002-loading')).toBeVisible();
