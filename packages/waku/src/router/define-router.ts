@@ -169,6 +169,7 @@ export function unstable_defineRouter(fns: {
     routeElement: ReactNode;
     elements: Record<SlotId, unknown>;
   }>;
+  // XXX: Not sure if this API is well designed.
   handleSlice?: (sliceId: string) => Promise<{
     element: ReactNode;
   }>;
@@ -376,6 +377,8 @@ export function unstable_defineRouter(fns: {
     if (input.type === 'component') {
       const sliceId = decodeSliceId(input.rscPath);
       if (sliceId !== null) {
+        // LIMITATION: This is a signle slice request.
+        // Ideally, we should be able to respond with multiple slices in one request.
         if (!fns.handleSlice) {
           return null;
         }
