@@ -36,6 +36,13 @@ test.describe(`define-router`, () => {
     await expect(page.getByTestId('slice001')).toHaveText(sliceText!);
   });
 
+  test('baz (delayed slice)', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/baz`);
+    await expect(page.getByTestId('baz-title')).toHaveText('Baz');
+    await expect(page.getByTestId('slice002-loading')).toBeVisible();
+    await expect(page.getByTestId('slice002')).toHaveText('Slice 002');
+  });
+
   test('api hi', async () => {
     const res = await fetch(`http://localhost:${port}/api/hi`);
     expect(res.status).toBe(200);

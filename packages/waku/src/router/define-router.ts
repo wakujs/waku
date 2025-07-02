@@ -380,7 +380,7 @@ export function unstable_defineRouter(fns: {
           return null;
         }
         const { element } = await fns.handleSlice(sliceId);
-        return renderRsc({ sliceId: element });
+        return renderRsc({ [SLICE_SLOT_ID_PREFIX + sliceId]: element });
       }
       const entries = await getEntries(
         input.rscPath,

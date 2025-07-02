@@ -856,7 +856,7 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
         changeRoute,
         prefetchRoute,
         routeChangeEvents,
-        fetchingSlices: new Set<SliceId>(),
+        fetchingSlices: useRef(new Set<SliceId>()).current,
       },
     },
     rootElement,
