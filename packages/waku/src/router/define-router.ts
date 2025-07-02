@@ -10,6 +10,7 @@ import { unstable_defineEntries as defineEntries } from '../minimal/server.js';
 import {
   encodeRoutePath,
   decodeRoutePath,
+  decodeSliceId,
   ROUTE_ID,
   IS_STATIC_ID,
   HAS404_ID,
@@ -167,7 +168,10 @@ export function unstable_defineRouter(fns: {
     rootElement: ReactNode;
     routeElement: ReactNode;
     elements: Record<SlotId, unknown>;
-    slices?: Record<SliceId, unknown>;
+  }>;
+  // XXX: Not sure if this API is well designed.
+  handleSlice?: (sliceId: string) => Promise<{
+    element: ReactNode;
   }>;
   handleApi?: (
     path: string,
@@ -183,6 +187,9 @@ export function unstable_defineRouter(fns: {
     status?: number;
   }>;
 }) {
+  if (fns.handleSlice && !import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER) {
+    throw new Error('Slice is still experimental');
+  }
   type MyPathConfig = {
     pathSpec: PathSpec;
     pathname: string | undefined;
@@ -191,6 +198,7 @@ export function unstable_defineRouter(fns: {
       rootElementIsStatic?: true;
       routeElementIsStatic?: true;
       staticElementIds?: SlotId[];
+      sliceIds?: SliceId[];
       isStatic?: true;
       noSsr?: true;
       is404?: true;
@@ -251,6 +259,7 @@ export function unstable_defineRouter(fns: {
                       isStatic ? [SLICE_SLOT_ID_PREFIX + id] : [],
                   ),
                 ],
+                ...(item.slices ? { sliceIds: Object.keys(item.slices) } : {}),
                 ...(isStatic ? { isStatic: true as const } : {}),
                 ...(is404 ? { is404: true as const } : {}),
                 ...(item.noSsr ? { noSsr: true as const } : {}),
@@ -306,14 +315,20 @@ export function unstable_defineRouter(fns: {
     }
     const skipIdSet = new Set(isStringArray(skipParam) ? skipParam : []);
     const { query } = parseRscParams(rscParams);
-    const { rootElement, routeElement, elements, slices } =
-      await fns.handleRoute(
-        pathname,
-        pathConfigItem.specs.isStatic ? {} : { query },
-      );
-    if (slices && !import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER) {
-      throw new Error('Slice is still experimental');
-    }
+    const [{ rootElement, routeElement, elements }, ...slices] =
+      await Promise.all([
+        fns.handleRoute(
+          pathname,
+          pathConfigItem.specs.isStatic ? {} : { query },
+        ),
+        ...(pathConfigItem.specs.sliceIds || []).map(async (sliceId) => {
+          if (!fns.handleSlice) {
+            throw new Error('handleSlice is not defined');
+          }
+          const result = await fns.handleSlice(sliceId);
+          return { [SLICE_SLOT_ID_PREFIX + sliceId]: result.element };
+        }),
+      ]);
     if (
       Object.keys(elements).some(
         (id) =>
@@ -325,12 +340,7 @@ export function unstable_defineRouter(fns: {
     }
     const entries = {
       ...elements,
-      ...Object.fromEntries(
-        Object.entries(slices || {}).map(([id, element]) => [
-          SLICE_SLOT_ID_PREFIX + id,
-          element,
-        ]),
-      ),
+      ...Object.assign({}, ...slices),
     };
     for (const id of pathConfigItem.specs.staticElementIds || []) {
       if (skipIdSet.has(id)) {
@@ -365,6 +375,16 @@ export function unstable_defineRouter(fns: {
     { renderRsc, renderHtml },
   ) => {
     if (input.type === 'component') {
+      const sliceId = decodeSliceId(input.rscPath);
+      if (sliceId !== null) {
+        // LIMITATION: This is a signle slice request.
+        // Ideally, we should be able to respond with multiple slices in one request.
+        if (!fns.handleSlice) {
+          return null;
+        }
+        const { element } = await fns.handleSlice(sliceId);
+        return renderRsc({ [SLICE_SLOT_ID_PREFIX + sliceId]: element });
+      }
       const entries = await getEntries(
         input.rscPath,
         input.rscParams,

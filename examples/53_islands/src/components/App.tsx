@@ -1,5 +1,4 @@
-import { Slot } from 'waku/minimal/client';
-
+import { Slice } from './Slice';
 import { Counter } from './Counter';
 
 const App = ({ name }: { name: string }) => {
@@ -14,21 +13,19 @@ const App = ({ name }: { name: string }) => {
         >
           <h1>Hello {name}!!</h1>
           <h3>This is a static server component.</h3>
-          <Slot id="Dynamic" unstable_fallback={<p>Loading...</p>}>
-            <MyCounter />
-          </Slot>
+          <Slice
+            id="dynamic"
+            fetchArgs={['dynamic-slices']}
+            fallback={<p>Loading...</p>}
+          >
+            <h4>My Counter</h4>
+            <Counter />
+          </Slice>
           <div>{new Date().toISOString()}</div>
         </div>
       </body>
     </html>
   );
 };
-
-const MyCounter = () => (
-  <>
-    <h4>Counter</h4>
-    <Counter />
-  </>
-);
 
 export default App;
