@@ -194,6 +194,9 @@ export default function wakuPlugin(
       // resolve user entries and fallbacks to "managed mode" if not found.
       async resolveId(source, _importer, options) {
         if (source === 'virtual:vite-rsc-waku/server-entry') {
+          return `\0` + source;
+        }
+        if (source === 'virtual:vite-rsc-waku/server-entry-inner') {
           const resolved = await this.resolve(
             `/${wakuConfig.srcDir}/server-entry`,
             undefined,
@@ -212,6 +215,14 @@ export default function wakuPlugin(
       },
       load(id) {
         if (id === '\0virtual:vite-rsc-waku/server-entry') {
+          return `\
+export { default } from 'virtual:vite-rsc-waku/server-entry-inner';
+if (import.meta.hot) {
+  import.meta.hot.accept()
+}
+`;
+        }
+        if (id === '\0virtual:vite-rsc-waku/server-entry-inner') {
           return getManagedEntries(
             joinPath(
               this.environment.config.root,
