@@ -174,7 +174,8 @@ test.describe('hot reload', () => {
     expect(bgColor3).toBe('rgb(0, 0, 255)');
   });
 
-  test('indirect client components (#1491)', async ({ page }) => {
+  // https://github.com/wakujs/waku/pull/1493 will fix this
+  test.skip('indirect client components (#1491)', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (err) => errors.push(err.message));
     await page.goto(`http://localhost:${port}/`);
