@@ -332,11 +332,9 @@ export const useElementsPromise_UNSTABLE = () => {
 export const Slot = ({
   id,
   children,
-  unstable_fallback,
 }: {
   id: string;
   children?: ReactNode;
-  unstable_fallback?: ReactNode;
 }) => {
   const elementsPromise = useElementsPromise_UNSTABLE();
   const elements = use(elementsPromise);
@@ -346,9 +344,6 @@ export const Slot = ({
   const element = elements[id];
   const isValidElement = element !== undefined;
   if (!isValidElement) {
-    if (unstable_fallback) {
-      return unstable_fallback;
-    }
     throw new Error('Invalid element: ' + id);
   }
   return createElement(

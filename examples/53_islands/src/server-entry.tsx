@@ -13,9 +13,9 @@ export default defineEntries({
           App: <App name={input.rscPath || 'Waku'} />,
         });
       }
-      if (input.rscPath === 'dynamic') {
+      if (input.rscPath === 'dynamic-slices') {
         return renderRsc({
-          Dynamic: (
+          'slice:dynamic': (
             <Dynamic>
               <Children />
             </Dynamic>

@@ -4,6 +4,7 @@ import {
   createContext,
   createElement,
   startTransition,
+  use,
   useCallback,
   useContext,
   useEffect,
@@ -35,6 +36,7 @@ import {
 } from '../minimal/client.js';
 import {
   encodeRoutePath,
+  encodeSliceId,
   ROUTE_ID,
   IS_STATIC_ID,
   HAS404_ID,
@@ -114,6 +116,9 @@ type ChangeRouteCallback = (route: RouteProps) => void;
 
 type PrefetchRoute = (route: RouteProps) => void;
 
+type SliceId = string;
+
+// This is an internal thing, not a public API
 const RouterContext = createContext<{
   route: RouteProps;
   changeRoute: ChangeRoute;
@@ -122,6 +127,7 @@ const RouterContext = createContext<{
     'on' | 'off',
     (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
   >;
+  fetchingSlices: Set<SliceId>;
 } | null>(null);
 
 export function useRouter() {
@@ -534,22 +540,57 @@ const ThrowError = ({ error }: { error: unknown }) => {
 };
 
 const getRouteSlotId = (path: string) => 'route:' + decodeURI(path);
-const getSliceSlotId = (id: string) => 'slice:' + id;
+const getSliceSlotId = (id: SliceId) => 'slice:' + id;
 
 export function Slice({
   id,
   children,
+  ...props
 }: {
-  id: string;
+  id: SliceId;
   children?: ReactNode;
-}): ReactElement {
+} & (
+  | {
+      delayed?: false;
+    }
+  | {
+      delayed: true;
+      fallback: ReactNode;
+    }
+)) {
   if (
     typeof window !== 'undefined' &&
     !import.meta.env?.VITE_EXPERIMENTAL_WAKU_ROUTER
   ) {
     throw new Error('Slice is still experimental');
   }
-  return createElement(Slot, { id: getSliceSlotId(id) }, children);
+  const router = useContext(RouterContext);
+  if (!router) {
+    throw new Error('Missing Router');
+  }
+  const { fetchingSlices } = router;
+  const refetch = useRefetch();
+  const slotId = getSliceSlotId(id);
+  const elementsPromise = useElementsPromise();
+  const elements = use(elementsPromise);
+  const needsToFetchSlice = props.delayed && !(slotId in elements);
+  useEffect(() => {
+    if (needsToFetchSlice && !fetchingSlices.has(id)) {
+      fetchingSlices.add(id);
+      const rscPath = encodeSliceId(id);
+      refetch(rscPath)
+        .catch((e) => {
+          console.error('Failed to fetch slice:', e);
+        })
+        .finally(() => {
+          fetchingSlices.delete(id);
+        });
+    }
+  }, [fetchingSlices, refetch, id, needsToFetchSlice]);
+  if (needsToFetchSlice) {
+    return props.fallback;
+  }
+  return createElement(Slot, { id: slotId }, children);
 }
 
 const handleScroll = () => {
@@ -826,6 +867,7 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
         changeRoute,
         prefetchRoute,
         routeChangeEvents,
+        fetchingSlices: useRef(new Set<SliceId>()).current,
       },
     },
     rootElement,
@@ -886,6 +928,7 @@ export function INTERNAL_ServerRouter({
           changeRoute: notAvailableInServer('changeRoute'),
           prefetchRoute: notAvailableInServer('prefetchRoute'),
           routeChangeEvents: MOCK_ROUTE_CHANGE_LISTENER,
+          fetchingSlices: new Set<SliceId>(),
         },
       },
       rootElement,
