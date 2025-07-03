@@ -4,7 +4,7 @@ const redirectsMiddleware: Middleware = () => async (ctx, next) => {
   const redirects = {
     '/redirect': '/exists',
     '/RSC/R/redirect.txt': '/RSC/R/exists.txt',
-    'broken-redirect': '/broken',
+    '/broken-redirect': '/broken',
     '/RSC/R/broken-redirect.txt': '/RSC/R/broken.txt',
   };
   if (ctx.req.url.pathname in redirects) {
