@@ -6,13 +6,16 @@ import Layout from './routes/layout.js';
 import Page from './routes/page.js';
 import FooPage from './routes/foo/page.js';
 import BarPage from './routes/bar/page.js';
+import BazPage from './routes/baz/page.js';
 import { Slice001 } from './components/slice001.js';
+import { Slice002 } from './components/slice002.js';
 
 const STATIC_PATHS = ['/', '/foo'];
 const PATH_PAGE: Record<string, unknown> = {
   '/': <Page />,
   '/foo': <FooPage />,
   '/bar': <BarPage />,
+  '/baz': <BazPage />,
 };
 
 const router: ReturnType<typeof defineRouter> = defineRouter({
@@ -90,10 +93,16 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
         ),
         [`page:${path}`]: PATH_PAGE[path],
       },
-      ...(['/', '/bar'].includes(path)
-        ? { slices: { slice001: <Slice001 /> } }
-        : {}),
     };
+  },
+  handleSlice: async (sliceId) => {
+    if (sliceId === 'slice001') {
+      return { element: <Slice001 /> };
+    }
+    if (sliceId === 'slice002') {
+      return { element: <Slice002 /> };
+    }
+    throw new Error('No such slice: ' + sliceId);
   },
   handleApi: async (path, opt) => {
     if (path === '/api/hi.txt') {
