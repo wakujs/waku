@@ -1,21 +1,10 @@
-import { StrictMode, useEffect } from 'react';
+import { StrictMode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
-import { Root, Slot, useRefetch } from 'waku/minimal/client';
-
-const DynamicFether = () => {
-  const refetch = useRefetch();
-  useEffect(() => {
-    refetch('dynamic').catch((e) => {
-      console.error('Failed to refetch:', e);
-    });
-  }, [refetch]);
-  return null;
-};
+import { Root, Slot } from 'waku/minimal/client';
 
 const rootElement = (
   <StrictMode>
     <Root>
-      <DynamicFether />
       <Slot id="App" />
     </Root>
   </StrictMode>

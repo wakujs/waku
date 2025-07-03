@@ -1,34 +1,72 @@
+import { readFile } from 'node:fs/promises';
 import { unstable_defineRouter as defineRouter } from 'waku/router/server';
 import { Slot, Children } from 'waku/minimal/client';
 
 import Layout from './routes/layout.js';
 import Page from './routes/page.js';
 import FooPage from './routes/foo/page.js';
-import { readFile } from 'node:fs/promises';
+import BarPage from './routes/bar/page.js';
+import BazPage from './routes/baz/page.js';
+import { Slice001 } from './components/slice001.js';
+import { Slice002 } from './components/slice002.js';
 
 const STATIC_PATHS = ['/', '/foo'];
 const PATH_PAGE: Record<string, unknown> = {
   '/': <Page />,
   '/foo': <FooPage />,
+  '/bar': <BarPage />,
+  '/baz': <BazPage />,
 };
 
 const router: ReturnType<typeof defineRouter> = defineRouter({
-  getRouteConfig: async () =>
-    STATIC_PATHS.map((path) => ({
-      pattern: `^${path}$`,
-      path: path
-        .split('/')
-        .filter(Boolean)
-        .map((name) => ({ type: 'literal', name })),
-      rootElement: { isStatic: true },
-      routeElement: { isStatic: true },
-      elements: {
-        'layout:/': { isStatic: true },
-        [`page:${path}`]: { isStatic: true },
-      },
-    })),
+  getConfig: async () => [
+    ...Object.keys(PATH_PAGE).map((path) => {
+      const isStatic = STATIC_PATHS.includes(path);
+      return {
+        type: 'route' as const,
+        pattern: `^${path}$`,
+        path: path
+          .split('/')
+          .filter(Boolean)
+          .map((name) => ({ type: 'literal', name }) as const),
+        rootElement: { isStatic },
+        routeElement: { isStatic },
+        elements: {
+          'layout:/': { isStatic },
+          [`page:${path}`]: { isStatic },
+        },
+        ...(['/', '/bar'].includes(path)
+          ? { slices: { slice001: { isStatic: true } } }
+          : {}),
+      };
+    }),
+    {
+      type: 'api',
+      path: [
+        { type: 'literal', name: 'api' },
+        { type: 'literal', name: 'hi' },
+      ],
+      isStatic: false,
+    },
+    {
+      type: 'api',
+      path: [
+        { type: 'literal', name: 'api' },
+        { type: 'literal', name: 'hi.txt' },
+      ],
+      isStatic: false,
+    },
+    {
+      type: 'api',
+      path: [
+        { type: 'literal', name: 'api' },
+        { type: 'literal', name: 'empty' },
+      ],
+      isStatic: true,
+    },
+  ],
   handleRoute: async (path) => {
-    if (!STATIC_PATHS.includes(path)) {
+    if (!(path in PATH_PAGE)) {
       throw new Error('renderRoute: No such path:' + path);
     }
     return {
@@ -57,29 +95,15 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
       },
     };
   },
-  getApiConfig: async () => [
-    {
-      path: [
-        { type: 'literal', name: 'api' },
-        { type: 'literal', name: 'hi' },
-      ],
-      isStatic: false,
-    },
-    {
-      path: [
-        { type: 'literal', name: 'api' },
-        { type: 'literal', name: 'hi.txt' },
-      ],
-      isStatic: false,
-    },
-    {
-      path: [
-        { type: 'literal', name: 'api' },
-        { type: 'literal', name: 'empty' },
-      ],
-      isStatic: true,
-    },
-  ],
+  handleSlice: async (sliceId) => {
+    if (sliceId === 'slice001') {
+      return { element: <Slice001 /> };
+    }
+    if (sliceId === 'slice002') {
+      return { element: <Slice002 /> };
+    }
+    throw new Error('No such slice: ' + sliceId);
+  },
   handleApi: async (path, opt) => {
     if (path === '/api/hi.txt') {
       const hiTxt = await readFile('./private/hi.txt');

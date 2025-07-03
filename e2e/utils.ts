@@ -70,6 +70,7 @@ const ignoreErrors: RegExp[] = [
   /^Error: Something unexpected happened\s+at ErrorRender/,
   /^Error: 401 Unauthorized\s+at CheckIfAccessDenied/,
   /^Error: Not Found\s+at SyncPage/,
+  /^Error: Not Found\s+at AsyncPage/,
   /^Error: Redirect\s+at createCustomError/,
   // FIXME Is this too general and miss meaningful errors?
   /^\[Error: An error occurred in the Server Components render./,
@@ -168,6 +169,18 @@ export const prepareNormalSetup = (fixtureName: string) => {
   return startApp;
 };
 
+const PACKAGE_INSTALL = {
+  npm: `npm install --force`,
+  pnpm: `pnpm install`,
+  yarn: `yarn install`,
+} as const;
+
+const PACKAGE_ADD = {
+  npm: `npm add --force`,
+  pnpm: `pnpm add`,
+  yarn: `yarn add`,
+} as const;
+
 export const prepareStandaloneSetup = (fixtureName: string) => {
   const wakuDir = fileURLToPath(new URL('../packages/waku', import.meta.url));
   const { version } = createRequire(import.meta.url)(
@@ -241,8 +254,8 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
           writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
         }
       }
-      execSync(`${packageManager} install`, { cwd: standaloneDir });
-      execSync(`${packageManager} add ${wakuPackageTgz}`, {
+      execSync(PACKAGE_INSTALL[packageManager], { cwd: standaloneDir });
+      execSync(`${PACKAGE_ADD[packageManager]} ${wakuPackageTgz}`, {
         cwd: join(standaloneDir),
       });
     }

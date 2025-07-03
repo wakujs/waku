@@ -7,10 +7,10 @@ export const MyButton = () => {
   const router = useRouter();
   useEffect(() => {
     const onStart = () => {
-      console.log('Route change started');
+      console.log('[router event] Route change started');
     };
     const onComplete = () => {
-      console.log('Route change completed');
+      console.log('[router event] Route change completed');
     };
     router.unstable_events.on('start', onStart);
     router.unstable_events.on('complete', onComplete);
