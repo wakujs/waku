@@ -66,11 +66,7 @@
       "types": "./dist/router/server.d.ts",
       "default": "./dist/router/server.js"
     },
-    "./vite-rsc/entry.browser": "./dist/vite-rsc/entry.browser.js",
-    "./vite-rsc/entry.ssr": "./dist/vite-rsc/entry.ssr.js",
-    "./vite-rsc/entry.rsc": "./dist/vite-rsc/entry.rsc.js",
-    "./vite-rsc/entry.rsc.node": "./dist/vite-rsc/entry.rsc.node.js",
-    "./vite-rsc/plugin": "./dist/vite-rsc/plugin.js"
+    "./vite-rsc/*": "./dist/vite-rsc/*.js"
   },
   "bin": {
     "waku": "./cli.js"
