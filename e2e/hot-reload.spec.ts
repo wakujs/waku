@@ -196,7 +196,6 @@ test.describe.serial('hot reload', () => {
     page.on('pageerror', (err) => errors.push(err.message));
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
-
     await expect(page.getByTestId('count')).toHaveText('0');
     await page.getByTestId('increment').click();
     await expect(page.getByTestId('count')).toHaveText('1');

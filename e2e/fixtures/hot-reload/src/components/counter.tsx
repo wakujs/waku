@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { Message } from './message.js';
 
+import { Message } from './message.js';
+
 export const Counter = () => {
   const [count, setCount] = useState(0);
   return (
