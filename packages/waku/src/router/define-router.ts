@@ -169,9 +169,10 @@ export function unstable_defineRouter(fns: {
     routeElement: ReactNode;
     elements: Record<SlotId, unknown>;
   }>;
-  // XXX: Not sure if this API is well designed.
+  // TODO: Not sure if this API is well designed. Let's revisit it later.
   handleSlice?: (sliceId: string) => Promise<{
     element: ReactNode;
+    isStatic?: boolean; // This flag is only used for delayed slices.
   }>;
   handleApi?: (
     path: string,
@@ -199,6 +200,7 @@ export function unstable_defineRouter(fns: {
       routeElementIsStatic?: true;
       staticElementIds?: SlotId[];
       sliceIds?: SliceId[];
+      staticSliceIds?: SliceId[];
       isStatic?: true;
       noSsr?: true;
       is404?: true;
@@ -250,16 +252,18 @@ export function unstable_defineRouter(fns: {
                 ...(item.routeElement.isStatic
                   ? { routeElementIsStatic: true as const }
                   : {}),
-                staticElementIds: [
-                  ...Object.entries(item.elements).flatMap(
-                    ([id, { isStatic }]) => (isStatic ? [id] : []),
-                  ),
-                  ...Object.entries(item.slices || {}).flatMap(
-                    ([id, { isStatic }]) =>
-                      isStatic ? [SLICE_SLOT_ID_PREFIX + id] : [],
-                  ),
-                ],
-                ...(item.slices ? { sliceIds: Object.keys(item.slices) } : {}),
+                staticElementIds: Object.entries(item.elements).flatMap(
+                  ([id, { isStatic }]) => (isStatic ? [id] : []),
+                ),
+                ...(item.slices
+                  ? {
+                      sliceIds: Object.keys(item.slices),
+                      staticSliceIds: Object.entries(item.slices).flatMap(
+                        ([sliceId, { isStatic }]) =>
+                          isStatic ? [sliceId] : [],
+                      ),
+                    }
+                  : {}),
                 ...(isStatic ? { isStatic: true as const } : {}),
                 ...(is404 ? { is404: true as const } : {}),
                 ...(item.noSsr ? { noSsr: true as const } : {}),
@@ -321,12 +325,19 @@ export function unstable_defineRouter(fns: {
           pathname,
           pathConfigItem.specs.isStatic ? {} : { query },
         ),
-        ...(pathConfigItem.specs.sliceIds || []).map(async (sliceId) => {
+        ...(pathConfigItem.specs.sliceIds || []).flatMap(async (sliceId) => {
           if (!fns.handleSlice) {
             throw new Error('handleSlice is not defined');
           }
-          const result = await fns.handleSlice(sliceId);
-          return { [SLICE_SLOT_ID_PREFIX + sliceId]: result.element };
+          const id = SLICE_SLOT_ID_PREFIX + sliceId;
+          if (
+            pathConfigItem.specs.staticSliceIds?.includes(sliceId) &&
+            skipIdSet.has(id)
+          ) {
+            return [];
+          }
+          const { element } = await fns.handleSlice(sliceId);
+          return [{ [id]: element }];
         }),
       ]);
     if (
@@ -382,8 +393,12 @@ export function unstable_defineRouter(fns: {
         if (!fns.handleSlice) {
           return null;
         }
-        const { element } = await fns.handleSlice(sliceId);
-        return renderRsc({ [SLICE_SLOT_ID_PREFIX + sliceId]: element });
+        const { element, isStatic } = await fns.handleSlice(sliceId);
+        return renderRsc({
+          [SLICE_SLOT_ID_PREFIX + sliceId]: element,
+          // FIXME: hard-coded for now
+          [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + sliceId]: !!isStatic,
+        });
       }
       const entries = await getEntries(
         input.rscPath,

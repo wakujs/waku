@@ -562,7 +562,11 @@ export function Slice({
   const slotId = getSliceSlotId(id);
   const elementsPromise = useElementsPromise();
   const elements = use(elementsPromise);
-  const needsToFetchSlice = props.delayed && !(slotId in elements);
+  const needsToFetchSlice =
+    props.delayed &&
+    (!(slotId in elements) ||
+      // FIXME: hard-coded for now
+      elements[IS_STATIC_ID + ':' + slotId] !== true);
   useEffect(() => {
     if (needsToFetchSlice && !fetchingSlices.has(id)) {
       fetchingSlices.add(id);
