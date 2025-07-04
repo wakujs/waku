@@ -102,7 +102,7 @@ function copyDirectory(srcDir: string, destDir: string) {
   }
 }
 
-function separatePublicAssetsFromFunctions({
+export function separatePublicAssetsFromFunctions({
   outDir,
   functionDir,
   assetsDir,

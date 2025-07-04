@@ -20,12 +20,6 @@ import { encodeRscPath, encodeFuncId } from '../lib/renderers/utils.js';
 const { createFromFetch, encodeReply, createTemporaryReferenceSet } =
   RSDWClient;
 
-declare global {
-  interface ImportMeta {
-    readonly env: Record<string, string>;
-  }
-}
-
 const DEFAULT_HTML_HEAD = [
   createElement('meta', { charSet: 'utf-8' }),
   createElement('meta', {

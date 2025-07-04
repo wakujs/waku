@@ -18,9 +18,13 @@ const dryRunList = [
   },
 ];
 
-const waku = fileURLToPath(
+let waku = fileURLToPath(
   new URL('../packages/waku/dist/cli.js', import.meta.url),
 );
+
+if (process.env.TEST_VITE_RSC) {
+  waku += ` --experimental-vite-rsc`;
+}
 
 const buildPlatformTarget = [
   {
@@ -64,7 +68,7 @@ const cleanListAfterBuild = new Set(
   ),
 );
 
-test.describe(`multi platform builds`, () => {
+test.describe.serial(`multi platform builds`, () => {
   for (const { cwd, project } of dryRunList) {
     for (const { platform, clearDirOrFile } of buildPlatformTarget) {
       test(`build ${project} with ${platform} should not throw error`, async ({

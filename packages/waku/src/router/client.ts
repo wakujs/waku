@@ -56,12 +56,6 @@ type InferredPaths = RouteConfig extends {
   ? AllowPathDecorators<UserPaths>
   : string;
 
-declare global {
-  interface ImportMeta {
-    readonly env: Record<string, string>;
-  }
-}
-
 const normalizeRoutePath = (path: string) => {
   for (const suffix of ['/', '/index.html']) {
     if (path.endsWith(suffix)) {
@@ -451,13 +445,29 @@ const NotFound = ({
   return has404 ? null : createElement('h1', null, 'Not Found');
 };
 
-const Redirect = ({ to, reset }: { to: string; reset: () => void }) => {
+const errorRedirectionMap = new WeakMap<object, boolean>();
+
+const Redirect = ({
+  error,
+  to,
+  reset,
+}: {
+  error: any;
+  to: string;
+  reset: () => void;
+}) => {
   const router = useContext(RouterContext);
   if (!router) {
     throw new Error('Missing Router');
   }
   const { changeRoute } = router;
   useEffect(() => {
+    // ensure single re-fetch per server redirection error on StrictMode
+    if (errorRedirectionMap.get(error)) {
+      return;
+    }
+    errorRedirectionMap.set(error, true);
+
     const url = new URL(to, window.location.href);
     // FIXME this condition seems too naive
     if (url.hostname !== window.location.hostname) {
@@ -483,7 +493,7 @@ const Redirect = ({ to, reset }: { to: string; reset: () => void }) => {
       .catch((err) => {
         console.log('Error while navigating to redirect:', err);
       });
-  }, [to, reset, changeRoute]);
+  }, [error, to, reset, changeRoute]);
   return null;
 };
 
@@ -514,6 +524,7 @@ class CustomErrorHandler extends Component<
       }
       if (info?.location) {
         return createElement(Redirect, {
+          error,
           to: info.location,
           reset: this.reset,
         });
