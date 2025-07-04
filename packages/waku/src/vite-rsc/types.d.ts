@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-/// <reference types="@hiogawa/vite-rsc/types" />
+/// <reference types="@vitejs/plugin-rsc/types" />
 
 declare module 'virtual:vite-rsc-waku/server-entry' {
   const default_: import('../lib/types.ts').EntriesDev['default'];

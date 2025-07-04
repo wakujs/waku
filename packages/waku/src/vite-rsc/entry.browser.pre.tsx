@@ -1,4 +1,4 @@
-import * as ReactClient from '@hiogawa/vite-rsc/browser';
+import * as ReactClient from '@vitejs/plugin-rsc/browser';
 import { unstable_callServerRsc } from '../minimal/client.js';
 ReactClient.setServerCallback(unstable_callServerRsc);
 

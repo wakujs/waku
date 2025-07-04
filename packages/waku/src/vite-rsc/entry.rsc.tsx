@@ -1,4 +1,4 @@
-import * as ReactServer from '@hiogawa/vite-rsc/rsc';
+import * as ReactServer from '@vitejs/plugin-rsc/rsc';
 import type { unstable_defineEntries } from '../minimal/server.js';
 import {
   decodeFuncId,
