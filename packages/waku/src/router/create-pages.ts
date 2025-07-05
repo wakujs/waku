@@ -248,6 +248,20 @@ type ComponentList = {
 
 type ComponentEntry = FunctionComponent<any> | ComponentList;
 
+const getRoutePriority = (
+  // @TODO: maybe a better type for this?
+  pathConfig: {
+    path: PathSpec;
+    type: 'route' | 'api';
+  },
+) => {
+  const hasWildcard = pathConfig.path.at(-1)?.type === 'wildcard';
+  if (pathConfig.type === 'api') {
+    return hasWildcard ? 2 : 1;
+  }
+  return hasWildcard ? 3 : 0;
+};
+
 export const createPages = <
   AllPages extends (AnyPage | ReturnType<CreateLayout>)[],
 >(
@@ -312,7 +326,15 @@ export const createPages = <
     path: string,
     method: string,
   ) => string | undefined = (path, method) => {
-    for (const [p, v] of apiPathMap.entries()) {
+    const apiConfigEntries = Array.from(apiPathMap.entries()).sort(
+      ([__, a], [___, b]) => {
+        return (
+          getRoutePriority({ path: a.pathSpec, type: 'api' }) -
+          getRoutePriority({ path: b.pathSpec, type: 'api' })
+        );
+      },
+    );
+    for (const [p, v] of apiConfigEntries) {
       if (
         (method in v.handlers || v.handlers.all) &&
         getPathMapping(parsePathWithSlug(p!), path)
@@ -753,16 +775,6 @@ export const createPages = <
           };
         },
       );
-
-      const getRoutePriority = (
-        pathConfig: (typeof routeConfigs)[number] | (typeof apiConfigs)[number],
-      ) => {
-        const hasWildcard = pathConfig.path.at(-1)?.type === 'wildcard';
-        if (pathConfig.type === 'api') {
-          return hasWildcard ? 2 : 1;
-        }
-        return hasWildcard ? 3 : 0;
-      };
 
       return (
         [...routeConfigs, ...apiConfigs]
