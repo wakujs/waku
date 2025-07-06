@@ -623,6 +623,7 @@ const handleScroll = () => {
 const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
   const elementsPromise = useElementsPromise();
   const [has404, setHas404] = useState(false);
+  const requestedRouteRef = useRef<RouteProps>(initialRoute);
   const staticPathSetRef = useRef(new Set<string>());
   const cachedIdSetRef = useRef(new Set<string>());
   useEffect(() => {
@@ -689,11 +690,9 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
                 elements;
               if (routeData) {
                 const [path, query] = routeData as [string, string];
-                // FIXME this check here seems ad-hoc (less readable code)
                 if (
-                  window.location.pathname !== path ||
-                  (!isStatic &&
-                    window.location.search.replace(/^\?/, '') !== query)
+                  requestedRouteRef.current.path !== path ||
+                  (!isStatic && requestedRouteRef.current.query !== query)
                 ) {
                   locationListeners.forEach((listener) =>
                     listener(path, query),
@@ -777,6 +776,7 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
   const refetching = useRef<[onFinish?: () => void] | null>(null);
   const changeRoute: ChangeRoute = useCallback(
     async (route, options) => {
+      requestedRouteRef.current = route;
       executeListeners('start', route);
       const startTransitionFn =
         options.unstable_startTransition || ((fn: TransitionFunction) => fn());
