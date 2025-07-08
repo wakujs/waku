@@ -159,24 +159,18 @@ export function useRouter() {
       const url = new URL(to, window.location.href);
       const currentPath = window.location.pathname;
       const newPath = url.pathname !== currentPath;
-      try {
-        await changeRoute(parseRoute(url), {
-          shouldScroll: options?.scroll ?? newPath,
-        });
-      } catch (err) {
-        console.error('Error while navigating to new route:', err);
-        throw err;
-      } finally {
-        if (window.location.pathname === currentPath) {
-          window.history.pushState(
-            {
-              ...window.history.state,
-              waku_new_path: newPath,
-            },
-            '',
-            url,
-          );
-        }
+      await changeRoute(parseRoute(url), {
+        shouldScroll: options?.scroll ?? newPath,
+      });
+      if (window.location.pathname === currentPath) {
+        window.history.pushState(
+          {
+            ...window.history.state,
+            waku_new_path: newPath,
+          },
+          '',
+          url,
+        );
       }
     },
     [changeRoute],
