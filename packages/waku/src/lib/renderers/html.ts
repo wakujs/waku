@@ -19,7 +19,8 @@ import type { HandlerContext, ErrorCallback } from '../middleware/types.js';
 
 type Elements = Record<string, unknown>;
 
-const fakeFetchCode = `
+// This is exported for vite-rsc. https://github.com/wakujs/waku/pull/1493
+export const fakeFetchCode = `
 Promise.resolve(new Response(new ReadableStream({
   start(c) {
     const d = (self.__FLIGHT_DATA ||= []);

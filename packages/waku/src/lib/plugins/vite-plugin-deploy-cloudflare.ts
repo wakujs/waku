@@ -102,7 +102,8 @@ function copyDirectory(srcDir: string, destDir: string) {
   }
 }
 
-function separatePublicAssetsFromFunctions({
+// This is exported for vite-rsc. https://github.com/wakujs/waku/pull/1493
+export function separatePublicAssetsFromFunctions({
   outDir,
   functionDir,
   assetsDir,
