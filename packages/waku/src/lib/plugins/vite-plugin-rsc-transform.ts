@@ -159,6 +159,7 @@ const replaceNode = <T extends swc.Node>(origNode: swc.Node, newNode: T): T => {
   return Object.assign(origNode, newNode);
 };
 
+// This is exported and `dceOnly` mode is used vite-rsc. https://github.com/wakujs/waku/pull/1493
 export const transformExportedClientThings = (
   mod: swc.Module,
   getFuncId: () => string,

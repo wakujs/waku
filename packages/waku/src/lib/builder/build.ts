@@ -495,8 +495,10 @@ const createTaskRunner = (limit: number) => {
 const WRITE_FILE_BATCH_SIZE = 2500;
 const { runTask, waitForTasks } = createTaskRunner(WRITE_FILE_BATCH_SIZE);
 
+// This is exported for vite-rsc. https://github.com/wakujs/waku/pull/1493
 export { waitForTasks };
 
+// This is exported for vite-rsc. https://github.com/wakujs/waku/pull/1493
 export const emitStaticFile = (
   rootDir: string,
   config: Pick<ConfigDev, 'distDir'>,
