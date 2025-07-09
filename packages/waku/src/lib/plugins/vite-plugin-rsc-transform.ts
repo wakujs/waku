@@ -159,9 +159,11 @@ const replaceNode = <T extends swc.Node>(origNode: swc.Node, newNode: T): T => {
   return Object.assign(origNode, newNode);
 };
 
-const transformExportedClientThings = (
+// This is exported and `dceOnly` mode is used vite-rsc. https://github.com/wakujs/waku/pull/1493
+export const transformExportedClientThings = (
   mod: swc.Module,
   getFuncId: () => string,
+  options?: { dceOnly?: boolean },
 ): Set<string> => {
   const exportNames = new Set<string>();
   // HACK this doesn't cover all cases
@@ -321,14 +323,16 @@ const transformExportedClientThings = (
           {
             type: 'VariableDeclarator',
             id: createIdentifier(allowServerName),
-            init: createCallExpression(
-              createIdentifier('__waku_registerClientReference'),
-              [
-                callExp,
-                createStringLiteral(getFuncId()),
-                createStringLiteral(allowServerName),
-              ],
-            ),
+            init: options?.dceOnly
+              ? callExp
+              : createCallExpression(
+                  createIdentifier('__waku_registerClientReference'),
+                  [
+                    callExp,
+                    createStringLiteral(getFuncId()),
+                    createStringLiteral(allowServerName),
+                  ],
+                ),
             definite: false,
             span: createEmptySpan(),
           },
