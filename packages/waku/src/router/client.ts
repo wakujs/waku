@@ -573,8 +573,13 @@ export function Slice({
   const slotId = getSliceSlotId(id);
   const elementsPromise = useElementsPromise();
   const elements = use(elementsPromise);
-  const needsToFetchSlice = props.delayed && !(slotId in elements);
+  const needsToFetchSlice =
+    props.delayed &&
+    (!(slotId in elements) ||
+      // FIXME: hard-coded for now
+      elements[IS_STATIC_ID + ':' + slotId] !== true);
   useEffect(() => {
+    // FIXME this works because of subtle timing behavior.
     if (needsToFetchSlice && !fetchingSlices.has(id)) {
       fetchingSlices.add(id);
       const rscPath = encodeSliceId(id);
@@ -587,7 +592,8 @@ export function Slice({
         });
     }
   }, [fetchingSlices, refetch, id, needsToFetchSlice]);
-  if (needsToFetchSlice) {
+  if (props.delayed && !(slotId in elements)) {
+    // FIXME the fallback doesn't show on refetch after the first one.
     return props.fallback;
   }
   return createElement(Slot, { id: slotId }, children);
