@@ -445,14 +445,12 @@ const NotFound = ({
   return has404 ? null : createElement('h1', null, 'Not Found');
 };
 
-const errorRedirectionMap = new WeakMap<object, boolean>();
-
 const Redirect = ({
   error,
   to,
   reset,
 }: {
-  error: any;
+  error: unknown;
   to: string;
   reset: () => void;
 }) => {
@@ -461,12 +459,14 @@ const Redirect = ({
     throw new Error('Missing Router');
   }
   const { changeRoute } = router;
+  const handledErrorSet = useRef(new WeakSet());
   useEffect(() => {
     // ensure single re-fetch per server redirection error on StrictMode
-    if (errorRedirectionMap.get(error)) {
+    // https://github.com/wakujs/waku/pull/1512
+    if (handledErrorSet.current.has(error as object)) {
       return;
     }
-    errorRedirectionMap.set(error, true);
+    handledErrorSet.current.add(error as object);
 
     const url = new URL(to, window.location.href);
     // FIXME this condition seems too naive
