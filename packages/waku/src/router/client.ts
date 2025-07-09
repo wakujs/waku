@@ -839,14 +839,8 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
         }
       };
       if (unstable_startTransition) {
-        console.log(
-          'running refetch, scroll and history update in a transition',
-        );
         unstable_startTransition(fn);
       } else {
-        console.log(
-          'running refetch, scroll and history update without a transition',
-        );
         await fn();
       }
       setRoute(route);
