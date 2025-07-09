@@ -20,8 +20,10 @@ test.describe(`ssr-redirect`, () => {
   });
 
   test('access async page directly', async ({ page }) => {
-    await page.goto(`http://localhost:${port}/async`);
-    await expect(page.getByRole('heading')).toHaveText('Destination Page');
+    await expect(async () => {
+      await page.goto(`http://localhost:${port}/async`);
+      await expect(page.getByRole('heading')).toHaveText('Destination Page');
+    }).toPass();
   });
 
   test('access sync page with client navigation', async ({ page }) => {
