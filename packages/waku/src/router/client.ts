@@ -808,27 +808,33 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
       executeListeners('start', route);
       refetching.current = [];
       setErr(null);
-      if (!staticPathSetRef.current.has(route.path) && !skipRefetch) {
-        const rscPath = encodeRoutePath(route.path);
-        const rscParams = createRscParams(route.query);
-        try {
-          await refetch(rscPath, rscParams);
-        } catch (e) {
-          refetching.current = null;
-          setErr(e);
-          throw e;
+      try {
+        if (!staticPathSetRef.current.has(route.path) && !skipRefetch) {
+          const rscPath = encodeRoutePath(route.path);
+          const rscParams = createRscParams(route.query);
+          try {
+            await refetch(rscPath, rscParams);
+          } catch (e) {
+            refetching.current = null;
+            setErr(e);
+            throw e;
+          }
         }
+      } finally {
+        if (shouldScroll) {
+          handleScroll();
+        }
+        if (options.history) {
+          handleHistory(options.history, {
+            requestedRoute: route,
+            initialRoute,
+          });
+        }
+        setRoute(route);
+        refetching.current![0]?.();
+        refetching.current = null;
+        executeListeners('complete', route);
       }
-      if (shouldScroll) {
-        handleScroll();
-      }
-      if (options.history) {
-        handleHistory(options.history, { requestedRoute: route, initialRoute });
-      }
-      setRoute(route);
-      refetching.current![0]?.();
-      refetching.current = null;
-      executeListeners('complete', route);
     },
     [executeListeners, refetch],
   );
