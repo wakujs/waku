@@ -833,7 +833,7 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
           shouldScroll: false,
         })
           .catch((err) => {
-            console.log('Error while changing route:', err);
+            console.log('Error while handling location listeners:', err);
           })
           .finally(() => {
             if (path !== '/404') {
