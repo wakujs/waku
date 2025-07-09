@@ -78,7 +78,7 @@ export default function wakuPlugin(
   if (
     !extraPlugins
       .flat()
-      .map((p) => p && 'name' in p && typeof p.name.startsWith('vite:react'))
+      .some((p) => p && 'name' in p && typeof p.name.startsWith('vite:react'))
   ) {
     extraPlugins.push(react());
   }
