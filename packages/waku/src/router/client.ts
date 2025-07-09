@@ -350,9 +350,6 @@ export function Link({
             shouldScroll: scroll ?? newPath,
             unstable_startTransition: startTransitionFn,
           });
-        } catch (err) {
-          console.error('Error while navigating to new route:', err);
-          throw err;
         } finally {
           if (window.location.pathname === currentPath) {
             // Update history if it wasn't already updated
