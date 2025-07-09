@@ -113,9 +113,10 @@ const createRscParams = (query: string): URLSearchParams => {
 type ChangeRoute = (
   route: RouteProps,
   options: {
+    history?: 'push' | 'replace' | false | undefined;
     shouldScroll?: boolean | undefined;
     skipRefetch?: boolean | undefined;
-    history?: 'push' | 'replace' | false | undefined;
+    unstable_startTransition?: ((fn: TransitionFunction) => void) | undefined;
   },
 ) => Promise<void>;
 
@@ -161,8 +162,8 @@ export function useRouter() {
     ) => {
       const url = new URL(to, window.location.href);
       await changeRoute(parseRoute(url), {
-        shouldScroll: options?.scroll,
         history: 'push',
+        shouldScroll: options?.scroll,
       });
     },
     [changeRoute],
@@ -182,8 +183,8 @@ export function useRouter() {
     ) => {
       const url = new URL(to, window.location.href);
       await changeRoute(parseRoute(url), {
-        shouldScroll: options?.scroll,
         history: 'replace',
+        shouldScroll: options?.scroll,
       });
     },
     [changeRoute],
@@ -191,8 +192,8 @@ export function useRouter() {
   const reload = useCallback(async () => {
     const url = new URL(window.location.href);
     await changeRoute(parseRoute(url), {
-      shouldScroll: true,
       history: false,
+      shouldScroll: true,
     });
   }, [changeRoute]);
   const back = useCallback(() => {
@@ -335,8 +336,12 @@ export function Link({
       prefetchRoute(route);
       startTransitionFn(async () => {
         await changeRoute(route, {
-          shouldScroll: scroll,
           history: 'push',
+          shouldScroll: scroll,
+          unstable_startTransition:
+            unstable_startTransition ||
+            ((unstable_pending || unstable_notPending) && startTransition) ||
+            undefined,
         });
       });
     }
@@ -424,8 +429,8 @@ const NotFound = ({
     if (has404) {
       const url = new URL('/404', window.location.href);
       changeRoute(parseRoute(url), {
-        shouldScroll: true,
         history: false,
+        shouldScroll: true,
       })
         .then(() => {
           // HACK: This timeout is required for canary-ci to work
@@ -474,8 +479,8 @@ const Redirect = ({
     const currentPath = window.location.pathname;
     const newPath = url.pathname !== currentPath;
     changeRoute(parseRoute(url), {
-      shouldScroll: newPath,
       history: 'replace',
+      shouldScroll: newPath,
     })
       .then(() => {
         // FIXME: As we understand it, we should have a proper solution.
@@ -802,39 +807,52 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
       const initialRoute = parseRoute(new URL(window.location.href));
       const newPath = route.path !== initialRoute.path;
       const shouldScroll = options?.shouldScroll ?? newPath;
-      const { skipRefetch } = options || {};
+      const { skipRefetch, unstable_startTransition } = options || {};
 
       requestedRouteRef.current = route;
       executeListeners('start', route);
       refetching.current = [];
       setErr(null);
-      try {
-        if (!staticPathSetRef.current.has(route.path) && !skipRefetch) {
-          const rscPath = encodeRoutePath(route.path);
-          const rscParams = createRscParams(route.query);
-          try {
-            await refetch(rscPath, rscParams);
-          } catch (e) {
-            refetching.current = null;
-            setErr(e);
-            throw e;
+      const fn = async () => {
+        try {
+          if (!staticPathSetRef.current.has(route.path) && !skipRefetch) {
+            const rscPath = encodeRoutePath(route.path);
+            const rscParams = createRscParams(route.query);
+            try {
+              await refetch(rscPath, rscParams);
+            } catch (e) {
+              refetching.current = null;
+              setErr(e);
+              throw e;
+            }
+          }
+        } finally {
+          if (shouldScroll) {
+            handleScroll();
+          }
+          if (options.history) {
+            handleHistory(options.history, {
+              requestedRoute: route,
+              initialRoute,
+            });
           }
         }
-      } finally {
-        if (shouldScroll) {
-          handleScroll();
-        }
-        if (options.history) {
-          handleHistory(options.history, {
-            requestedRoute: route,
-            initialRoute,
-          });
-        }
-        setRoute(route);
-        refetching.current![0]?.();
-        refetching.current = null;
-        executeListeners('complete', route);
+      };
+      if (unstable_startTransition) {
+        console.log(
+          'running refetch, scroll and history update in a transition',
+        );
+        unstable_startTransition(fn);
+      } else {
+        console.log(
+          'running refetch, scroll and history update without a transition',
+        );
+        await fn();
       }
+      setRoute(route);
+      refetching.current![0]?.();
+      refetching.current = null;
+      executeListeners('complete', route);
     },
     [executeListeners, refetch],
   );
