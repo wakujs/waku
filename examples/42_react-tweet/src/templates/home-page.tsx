@@ -5,6 +5,12 @@ export const HomePage = async () => {
 
   return (
     <div>
+      {/*
+        currently manually injecting `loadCss` API is required for react-tweet.
+        https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-rsc#importmetaviterscloadcss
+      */}
+      {/* @ts-ignore */}
+      {import.meta.viteRsc.loadCss()}
       <title>{data.title}</title>
       <h1 className="text-4xl font-bold tracking-tight">{data.headline}</h1>
       <Tweet id="1735308967880823082" />
