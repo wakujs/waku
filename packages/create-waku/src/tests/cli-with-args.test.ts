@@ -28,11 +28,13 @@ const run = <SO extends SyncOptions>(
   const command = `node ${CLI_PATH} ${args.join(' ')}`;
   const result = execaCommandSync(command, options);
   onTestFailed(() => {
-    console.error('======= CLI:', command);
+    console.error('======= command');
+    console.error(command);
     console.error('======= stdout');
     console.error(result.stdout);
     console.error('======= stderr');
     console.error(result.stderr);
+    console.error('=======');
   });
   // @ts-expect-error relies on exactOptionalPropertyTypes being false
   return result;
