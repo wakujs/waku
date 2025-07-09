@@ -1,4 +1,4 @@
-import { type Plugin } from 'vite';
+import { type Plugin, type ResolvedConfig } from 'vite';
 import type { Config } from '../../../config.js';
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -6,7 +6,6 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const SERVER_ENTRY = path.join(__dirname, 'entry.js');
-
 const SERVE_JS = 'serve-deno.js';
 
 export function wakuDeployDenoPlugin(deployOptions: {
@@ -37,12 +36,20 @@ export function wakuDeployDenoPlugin(deployOptions: {
         if (this.environment.name !== 'ssr') {
           return;
         }
-        const opts = deployOptions.wakuConfig;
-        writeFileSync(
-          path.join(opts.distDir, SERVE_JS),
-          `import './rsc/deno.js';\n`,
-        );
+        await build({
+          config: this.environment.getTopLevelConfig(),
+          opts: deployOptions.wakuConfig,
+        });
       },
     },
   };
+}
+
+async function build({
+  opts,
+}: {
+  config: ResolvedConfig;
+  opts: Required<Config>;
+}) {
+  writeFileSync(path.join(opts.distDir, SERVE_JS), `import './rsc/deno.js';\n`);
 }

@@ -1,4 +1,8 @@
-import { type EnvironmentOptions, type Plugin } from 'vite';
+import {
+  type EnvironmentOptions,
+  type Plugin,
+  type ResolvedConfig,
+} from 'vite';
 import type { Config } from '../../../config.js';
 import path from 'node:path';
 import { existsSync, writeFileSync } from 'node:fs';
@@ -52,32 +56,40 @@ export function wakuDeployPartykitPlugin(deployOptions: {
         if (this.environment.name !== 'ssr') {
           return;
         }
-        const config = this.environment.getTopLevelConfig();
-        const opts = deployOptions.wakuConfig;
-        const rootDir = config.root;
-
-        writeFileSync(
-          path.join(opts.distDir, SERVE_JS),
-          `import './rsc/index.js';`,
-        );
-
-        const partykitJsonFile = path.join(rootDir, 'partykit.json');
-        if (!existsSync(partykitJsonFile)) {
-          writeFileSync(
-            partykitJsonFile,
-            JSON.stringify(
-              {
-                name: 'waku-project',
-                main: `${opts.distDir}/${SERVE_JS}`,
-                compatibilityDate: '2023-02-16',
-                serve: `./${opts.distDir}/${DIST_PUBLIC}`,
-              },
-              null,
-              2,
-            ) + '\n',
-          );
-        }
+        await build({
+          config: this.environment.getTopLevelConfig(),
+          opts: deployOptions.wakuConfig,
+        });
       },
     },
   };
+}
+
+async function build({
+  config,
+  opts,
+}: {
+  config: ResolvedConfig;
+  opts: Required<Config>;
+}) {
+  const rootDir = config.root;
+
+  writeFileSync(path.join(opts.distDir, SERVE_JS), `import './rsc/index.js';`);
+
+  const partykitJsonFile = path.join(rootDir, 'partykit.json');
+  if (!existsSync(partykitJsonFile)) {
+    writeFileSync(
+      partykitJsonFile,
+      JSON.stringify(
+        {
+          name: 'waku-project',
+          main: `${opts.distDir}/${SERVE_JS}`,
+          compatibilityDate: '2023-02-16',
+          serve: `./${opts.distDir}/${DIST_PUBLIC}`,
+        },
+        null,
+        2,
+      ) + '\n',
+    );
+  }
 }

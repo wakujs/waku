@@ -1,4 +1,8 @@
-import { type EnvironmentOptions, type Plugin } from 'vite';
+import {
+  type EnvironmentOptions,
+  type Plugin,
+  type ResolvedConfig,
+} from 'vite';
 import type { Config } from '../../../config.js';
 import { separatePublicAssetsFromFunctions } from '../../../lib/plugins/vite-plugin-deploy-cloudflare.js';
 import path from 'node:path';
@@ -52,36 +56,49 @@ export function wakuDeployCloudflarePlugin(deployOptions: {
         if (this.environment.name !== 'ssr') {
           return;
         }
-        const config = this.environment.getTopLevelConfig();
-        const rootDir = config.root;
-        const opts = deployOptions.wakuConfig;
-
-        const outDir = path.join(rootDir, opts.distDir);
-        const assetsDistDir = path.join(outDir, 'assets');
-        const workerDistDir = path.join(outDir, 'worker');
-
-        writeFileSync(
-          path.join(outDir, SERVE_JS),
-          `export { default } from './rsc/index.js';\n`,
-        );
-
-        separatePublicAssetsFromFunctions({
-          outDir,
-          assetsDir: assetsDistDir,
-          functionDir: workerDistDir,
+        await build({
+          config: this.environment.getTopLevelConfig(),
+          opts: deployOptions.wakuConfig,
         });
+      },
+    },
+  };
+}
 
-        const wranglerTomlFile = path.join(rootDir, 'wrangler.toml');
-        const wranglerJsonFile = path.join(rootDir, 'wrangler.json');
-        const wranglerJsoncFile = path.join(rootDir, 'wrangler.jsonc');
-        if (
-          !existsSync(wranglerTomlFile) &&
-          !existsSync(wranglerJsonFile) &&
-          !existsSync(wranglerJsoncFile)
-        ) {
-          writeFileSync(
-            wranglerJsoncFile,
-            `\
+async function build({
+  config,
+  opts,
+}: {
+  config: ResolvedConfig;
+  opts: Required<Config>;
+}) {
+  const rootDir = config.root;
+  const outDir = path.join(rootDir, opts.distDir);
+  const assetsDistDir = path.join(outDir, 'assets');
+  const workerDistDir = path.join(outDir, 'worker');
+
+  writeFileSync(
+    path.join(outDir, SERVE_JS),
+    `export { default } from './rsc/index.js';\n`,
+  );
+
+  separatePublicAssetsFromFunctions({
+    outDir,
+    assetsDir: assetsDistDir,
+    functionDir: workerDistDir,
+  });
+
+  const wranglerTomlFile = path.join(rootDir, 'wrangler.toml');
+  const wranglerJsonFile = path.join(rootDir, 'wrangler.json');
+  const wranglerJsoncFile = path.join(rootDir, 'wrangler.jsonc');
+  if (
+    !existsSync(wranglerTomlFile) &&
+    !existsSync(wranglerJsonFile) &&
+    !existsSync(wranglerJsoncFile)
+  ) {
+    writeFileSync(
+      wranglerJsoncFile,
+      `\
 {
   "name": "waku-project",
   "main": "./dist/worker/serve-cloudflare.js",
@@ -99,9 +116,6 @@ export function wakuDeployCloudflarePlugin(deployOptions: {
   }
 }
 `,
-          );
-        }
-      },
-    },
-  };
+    );
+  }
 }
