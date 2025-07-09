@@ -445,13 +445,29 @@ const NotFound = ({
   return has404 ? null : createElement('h1', null, 'Not Found');
 };
 
-const Redirect = ({ to, reset }: { to: string; reset: () => void }) => {
+const Redirect = ({
+  error,
+  to,
+  reset,
+}: {
+  error: unknown;
+  to: string;
+  reset: () => void;
+}) => {
   const router = useContext(RouterContext);
   if (!router) {
     throw new Error('Missing Router');
   }
   const { changeRoute } = router;
+  const handledErrorSet = useRef(new WeakSet());
   useEffect(() => {
+    // ensure single re-fetch per server redirection error on StrictMode
+    // https://github.com/wakujs/waku/pull/1512
+    if (handledErrorSet.current.has(error as object)) {
+      return;
+    }
+    handledErrorSet.current.add(error as object);
+
     const url = new URL(to, window.location.href);
     // FIXME this condition seems too naive
     if (url.hostname !== window.location.hostname) {
@@ -477,7 +493,7 @@ const Redirect = ({ to, reset }: { to: string; reset: () => void }) => {
       .catch((err) => {
         console.log('Error while navigating to redirect:', err);
       });
-  }, [to, reset, changeRoute]);
+  }, [error, to, reset, changeRoute]);
   return null;
 };
 
@@ -508,6 +524,7 @@ class CustomErrorHandler extends Component<
       }
       if (info?.location) {
         return createElement(Redirect, {
+          error,
           to: info.location,
           reset: this.reset,
         });
