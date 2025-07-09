@@ -15,7 +15,7 @@ if (process.env.TEST_VITE_RSC) {
   waku = `${waku} --experimental-vite-rsc`;
 }
 
-test.describe.serial(`partial builds`, () => {
+test.describe(`partial builds`, () => {
   test.skip(
     ({ browserName }) => browserName !== 'chromium',
     'Browsers are not relevant for this test. One is enough.',

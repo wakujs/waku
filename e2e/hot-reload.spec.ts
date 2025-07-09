@@ -25,7 +25,7 @@ test.afterAll(async () => {
   }
 });
 
-test.describe.serial('hot reload', () => {
+test.describe('hot reload', () => {
   let port: number;
   let stopApp: () => Promise<void>;
   let standaloneDir: string;

@@ -53,7 +53,8 @@ const config = defineConfig<TestOptions>({
     },
   ]),
   forbidOnly: !!process.env.CI,
-  workers: process.env.CI ? 1 : 3,
+  // workers: process.env.CI ? 1 : 3,
+  workers: 1,
   retries: 0,
   // 'github' for GitHub Actions CI to generate annotations, plus a concise 'dot'
   // default 'list' when running locally
