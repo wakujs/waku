@@ -74,4 +74,12 @@ test.describe(`ssr-basic`, () => {
     await expect(page.getByTestId('count')).toHaveText('1');
     expect(messages.join('\n')).not.toContain('hydration-mismatch');
   });
+
+  test('check Minified React error #418', async ({ page, mode }) => {
+    test.skip(mode === 'DEV');
+    const errors: string[] = [];
+    page.on('pageerror', (err) => errors.push(err.message));
+    await page.goto(`http://localhost:${port}/`);
+    expect(errors.join('\n')).not.toContain('Minified React error #418');
+  });
 });
