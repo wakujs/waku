@@ -20,7 +20,7 @@ import {
 } from '../lib/plugins/vite-plugin-rsc-managed.js';
 import { wakuDeployVercelPlugin } from './deploy/vercel/plugin.js';
 import { wakuAllowServerPlugin } from './plugins/allow-server.js';
-import { DIST_PUBLIC } from '../lib/builder/constants.js';
+import { DIST_PUBLIC, SRC_ENTRIES } from '../lib/builder/constants.js';
 import { fsRouterTypegenPlugin } from '../lib/plugins/vite-plugin-fs-router-typegen.js';
 import { wakuDeployNetlifyPlugin } from './deploy/netlify/plugin.js';
 import { wakuDeployCloudflarePlugin } from './deploy/cloudflare/plugin.js';
@@ -111,6 +111,12 @@ export default function wakuPlugin(
                     index: path.join(__dirname, 'entry.browser.js'),
                   },
                 },
+              },
+              optimizeDeps: {
+                entries: [
+                  `${wakuConfig.srcDir}/${SRC_ENTRIES}.*`,
+                  `${wakuConfig.srcDir}/${wakuConfig.pagesDir}/**/*.*`,
+                ],
               },
             },
             ssr: {
