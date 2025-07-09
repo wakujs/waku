@@ -8,7 +8,8 @@ const stripExt = (fname: string) => {
   return ext ? fname.slice(0, -ext.length) : fname;
 };
 
-const getManagedEntries = (
+// This is exported for vite-rsc. https://github.com/wakujs/waku/pull/1493
+export const getManagedEntries = (
   filePath: string,
   srcDir: string,
   options: { pagesDir: string; apiDir: string },
@@ -24,7 +25,8 @@ export default fsRouter(
 );
 `;
 
-const getManagedMain = () => `
+// This is exported for vite-rsc. https://github.com/wakujs/waku/pull/1493
+export const getManagedMain = () => `
 import { StrictMode, createElement } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { Router } from 'waku/router/client';
