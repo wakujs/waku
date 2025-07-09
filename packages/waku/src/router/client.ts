@@ -823,28 +823,30 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
 
   useEffect(() => {
     const callback = (path: string, query: string) => {
-      const fn = async () => {
+      const fn = () => {
         const url = new URL(window.location.href);
         url.pathname = path;
         url.search = query;
         url.hash = '';
-        try {
-          await changeRoute(parseRoute(url), {
-            skipRefetch: true,
-            shouldScroll: false,
+        changeRoute(parseRoute(url), {
+          skipRefetch: true,
+          shouldScroll: false,
+        })
+          .catch((err) => {
+            console.log('Error while changing route:', err);
+          })
+          .finally(() => {
+            if (path !== '/404') {
+              window.history.pushState(
+                {
+                  ...window.history.state,
+                  waku_new_path: url.pathname !== window.location.pathname,
+                },
+                '',
+                url,
+              );
+            }
           });
-        } finally {
-          if (path !== '/404') {
-            window.history.pushState(
-              {
-                ...window.history.state,
-                waku_new_path: url.pathname !== window.location.pathname,
-              },
-              '',
-              url,
-            );
-          }
-        }
       };
       if (refetching.current) {
         refetching.current.push(fn);
