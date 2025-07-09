@@ -73,9 +73,18 @@ export default function wakuPlugin(
   const wakuFlags = wakuPluginOptions?.flags ?? {};
   let privatePath: string;
 
+  const extraPlugins = [...(wakuConfig.vite?.plugins ?? [])];
+  // add react plugin automatically if users didn't include it on their own (e.g. swc, oxc, babel react compiler)
+  if (
+    !extraPlugins
+      .flat()
+      .map((p) => p && 'name' in p && typeof p.name.startsWith('vite:react'))
+  ) {
+    extraPlugins.push(react());
+  }
+
   return [
-    ...(wakuConfig.vite?.plugins ?? []),
-    react(),
+    ...extraPlugins,
     wakuAllowServerPlugin(), // apply `allowServer` DCE before "use client" transform
     rsc({
       keepUseCientProxy: true,
