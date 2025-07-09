@@ -1,14 +1,13 @@
 import {
   mergeConfig,
   normalizePath,
-  type EnvironmentOptions,
   type Plugin,
   type PluginOption,
   type UserConfig,
 } from 'vite';
 import react from '@vitejs/plugin-react';
 import rsc from '@vitejs/plugin-rsc';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -85,17 +84,7 @@ export default function wakuPlugin(
     {
       name: 'rsc:waku',
       async config(_config, env) {
-        const toEnvironmentOption = (entry: string) =>
-          ({
-            build: {
-              rollupOptions: {
-                input: {
-                  index: `${PKG_NAME}/vite-rsc/${entry}`,
-                },
-              },
-            },
-          }) satisfies EnvironmentOptions;
-
+        const __dirname = fileURLToPath(new URL('.', import.meta.url));
         let viteRscConfig: UserConfig = {
           define: {
             'import.meta.env.WAKU_CONFIG_BASE_PATH': JSON.stringify(
@@ -106,9 +95,33 @@ export default function wakuPlugin(
             ),
           },
           environments: {
-            client: toEnvironmentOption('entry.browser'),
-            ssr: toEnvironmentOption('entry.ssr'),
-            rsc: toEnvironmentOption('entry.rsc.node'),
+            client: {
+              build: {
+                rollupOptions: {
+                  input: {
+                    index: path.join(__dirname, 'entry.browser.js'),
+                  },
+                },
+              },
+            },
+            ssr: {
+              build: {
+                rollupOptions: {
+                  input: {
+                    index: path.join(__dirname, 'entry.ssr.js'),
+                  },
+                },
+              },
+            },
+            rsc: {
+              build: {
+                rollupOptions: {
+                  input: {
+                    index: path.join(__dirname, 'entry.rsc.node.js'),
+                  },
+                },
+              },
+            },
           },
         };
 

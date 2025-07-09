@@ -2,7 +2,10 @@ import { type Plugin } from 'vite';
 import path from 'node:path';
 import { rmSync, cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import type { Config } from '../../../config.js';
+import { fileURLToPath } from 'node:url';
 
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+const SERVER_ENTRY = path.join(__dirname, 'entry.js');
 const SERVE_JS = 'serve-vercel.js';
 
 export function wakuDeployVercelPlugin(deployOptions: {
@@ -18,7 +21,7 @@ export function wakuDeployVercelPlugin(deployOptions: {
             build: {
               rollupOptions: {
                 input: {
-                  index: 'waku/vite-rsc/deploy/vercel/entry',
+                  index: SERVER_ENTRY,
                 },
               },
             },

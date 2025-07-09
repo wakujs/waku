@@ -2,6 +2,10 @@ import { type Plugin } from 'vite';
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { Config } from '../../../config.js';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+const SERVER_ENTRY = path.join(__dirname, 'entry.js');
 
 const SERVE_JS = 'serve-aws-lambda.js';
 
@@ -18,7 +22,7 @@ export function wakuDeployAwsLambdaPlugin(deployOptions: {
             build: {
               rollupOptions: {
                 input: {
-                  index: 'waku/vite-rsc/deploy/aws-lambda/entry',
+                  index: SERVER_ENTRY,
                 },
               },
             },

@@ -3,6 +3,10 @@ import type { Config } from '../../../config.js';
 import path from 'node:path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { DIST_PUBLIC } from '../../../lib/builder/constants.js';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+const SERVER_ENTRY = path.join(__dirname, 'entry.js');
 
 export function wakuDeployNetlifyPlugin(deployOptions: {
   wakuConfig: Required<Config>;
@@ -17,7 +21,7 @@ export function wakuDeployNetlifyPlugin(deployOptions: {
             build: {
               rollupOptions: {
                 input: {
-                  index: 'waku/vite-rsc/deploy/netlify/entry',
+                  index: SERVER_ENTRY,
                 },
               },
             },

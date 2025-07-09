@@ -65,8 +65,7 @@
     "./router/server": {
       "types": "./dist/router/server.d.ts",
       "default": "./dist/router/server.js"
-    },
-    "./vite-rsc/*": "./dist/vite-rsc/*.js"
+    }
   },
   "bin": {
     "waku": "./cli.js"

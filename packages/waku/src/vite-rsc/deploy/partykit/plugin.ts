@@ -3,7 +3,10 @@ import type { Config } from '../../../config.js';
 import path from 'node:path';
 import { existsSync, writeFileSync } from 'node:fs';
 import { DIST_PUBLIC } from '../../../lib/builder/constants.js';
+import { fileURLToPath } from 'node:url';
 
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+const SERVER_ENTRY = path.join(__dirname, 'entry.js');
 const SERVE_JS = 'serve-partykit.js';
 
 export function wakuDeployPartykitPlugin(deployOptions: {
@@ -32,7 +35,7 @@ export function wakuDeployPartykitPlugin(deployOptions: {
             build: {
               rollupOptions: {
                 input: {
-                  index: 'waku/vite-rsc/deploy/partykit/entry',
+                  index: SERVER_ENTRY,
                 },
               },
             },

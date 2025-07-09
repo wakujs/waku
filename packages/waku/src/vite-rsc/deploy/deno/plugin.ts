@@ -2,6 +2,10 @@ import { type Plugin } from 'vite';
 import type { Config } from '../../../config.js';
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+const SERVER_ENTRY = path.join(__dirname, 'entry.js');
 
 const SERVE_JS = 'serve-deno.js';
 
@@ -17,7 +21,7 @@ export function wakuDeployDenoPlugin(deployOptions: {
             build: {
               rollupOptions: {
                 input: {
-                  deno: 'waku/vite-rsc/deploy/deno/entry',
+                  deno: SERVER_ENTRY,
                 },
                 external: [/^jsr:/],
               },
