@@ -325,7 +325,7 @@ export function unstable_defineRouter(fns: {
           pathname,
           pathConfigItem.specs.isStatic ? {} : { query },
         ),
-        ...(pathConfigItem.specs.sliceIds || []).flatMap(async (sliceId) => {
+        ...(pathConfigItem.specs.sliceIds || []).map(async (sliceId) => {
           if (!fns.handleSlice) {
             throw new Error('handleSlice is not defined');
           }
@@ -334,10 +334,10 @@ export function unstable_defineRouter(fns: {
             pathConfigItem.specs.staticSliceIds?.includes(sliceId) &&
             skipIdSet.has(id)
           ) {
-            return [];
+            return {};
           }
           const { element } = await fns.handleSlice(sliceId);
-          return [{ [id]: element }];
+          return { [id]: element };
         }),
       ]);
     if (
