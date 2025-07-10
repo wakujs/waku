@@ -827,14 +827,21 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
             }
           }
         } finally {
-          if (shouldScroll) {
-            handleScroll();
-          }
-          if (options.history) {
-            handleHistory(options.history, {
-              requestedRoute: route,
-              initialRoute,
-            });
+          const finallyFn = () => {
+            if (shouldScroll) {
+              handleScroll();
+            }
+            if (options.history) {
+              handleHistory(options.history, {
+                requestedRoute: route,
+                initialRoute,
+              });
+            }
+          };
+          if (unstable_startTransition) {
+            unstable_startTransition(finallyFn);
+          } else {
+            finallyFn();
           }
         }
       };
