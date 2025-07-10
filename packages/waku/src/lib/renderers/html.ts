@@ -11,7 +11,7 @@ import { injectRSCPayload } from 'rsc-html-stream/server';
 
 import type * as WakuMinimalClientType from '../../minimal/client.js';
 import type { ConfigDev, ConfigPrd } from '../config.js';
-import { SRC_MAIN } from '../builder/constants.js';
+import { SRC_CLIENT_ENTRY } from '../builder/constants.js';
 import { filePathToFileURL } from '../utils/path.js';
 import { parseHtml } from '../utils/html-parser.js';
 import { renderRsc, renderRscElement, getExtractFormState } from './rsc.js';
@@ -158,7 +158,7 @@ export async function renderHtml(
     rscPath,
     htmlHead,
     isDev
-      ? `${config.basePath}${(config as ConfigDev).srcDir}/${SRC_MAIN}`
+      ? `${config.basePath}${(config as ConfigDev).srcDir}/${SRC_CLIENT_ENTRY}`
       : '',
   );
   try {

@@ -1,6 +1,6 @@
 import type { Plugin } from 'vite';
 
-import { SRC_MAIN } from '../builder/constants.js';
+import { SRC_CLIENT_ENTRY } from '../builder/constants.js';
 
 export function rscIndexPlugin(opts: {
   basePath: string;
@@ -14,7 +14,7 @@ export function rscIndexPlugin(opts: {
   <head>
   </head>
   <body>
-    <script src="${opts.basePath}${opts.srcDir}/${SRC_MAIN}" async type="module"></script>
+    <script src="${opts.basePath}${opts.srcDir}/${SRC_CLIENT_ENTRY}" async type="module"></script>
   </body>
 </html>
 `;
@@ -23,7 +23,7 @@ export function rscIndexPlugin(opts: {
     config() {
       return {
         optimizeDeps: {
-          entries: [`${opts.srcDir}/${SRC_MAIN}.*`],
+          entries: [`${opts.srcDir}/${SRC_CLIENT_ENTRY}.*`],
         },
       };
     },
