@@ -807,53 +807,39 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
       const initialRoute = parseRoute(new URL(window.location.href));
       const newPath = route.path !== initialRoute.path;
       const shouldScroll = options?.shouldScroll ?? newPath;
-      const { skipRefetch, unstable_startTransition } = options || {};
-
       requestedRouteRef.current = route;
       executeListeners('start', route);
+      const startTransitionFn =
+        options.unstable_startTransition || ((fn: TransitionFunction) => fn());
       refetching.current = [];
       setErr(null);
-      const fn = async () => {
+      const { skipRefetch } = options || {};
+      if (!staticPathSetRef.current.has(route.path) && !skipRefetch) {
+        const rscPath = encodeRoutePath(route.path);
+        const rscParams = createRscParams(route.query);
         try {
-          if (!staticPathSetRef.current.has(route.path) && !skipRefetch) {
-            const rscPath = encodeRoutePath(route.path);
-            const rscParams = createRscParams(route.query);
-            try {
-              await refetch(rscPath, rscParams);
-            } catch (e) {
-              refetching.current = null;
-              setErr(e);
-              throw e;
-            }
-          }
-        } finally {
-          const finallyFn = () => {
-            if (shouldScroll) {
-              handleScroll();
-            }
-            if (options.history) {
-              handleHistory(options.history, {
-                requestedRoute: route,
-                initialRoute,
-              });
-            }
-          };
-          if (unstable_startTransition) {
-            unstable_startTransition(finallyFn);
-          } else {
-            finallyFn();
-          }
+          await refetch(rscPath, rscParams);
+        } catch (e) {
+          refetching.current = null;
+          setErr(e);
+          throw e;
         }
-      };
-      if (unstable_startTransition) {
-        unstable_startTransition(fn);
-      } else {
-        await fn();
       }
-      setRoute(route);
-      refetching.current![0]?.();
-      refetching.current = null;
-      executeListeners('complete', route);
+      startTransitionFn(() => {
+        if (shouldScroll) {
+          handleScroll();
+        }
+        if (options.history) {
+          handleHistory(options.history, {
+            requestedRoute: route,
+            initialRoute,
+          });
+        }
+        setRoute(route);
+        refetching.current![0]?.();
+        refetching.current = null;
+        executeListeners('complete', route);
+      });
     },
     [executeListeners, refetch],
   );
