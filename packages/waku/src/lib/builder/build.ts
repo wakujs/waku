@@ -43,7 +43,7 @@ import { rscPrivatePlugin } from '../plugins/vite-plugin-rsc-private.js';
 import { rscManagedPlugin } from '../plugins/vite-plugin-rsc-managed.js';
 import {
   EXTENSIONS,
-  DIST_ENTRIES_JS,
+  DIST_SERVER_ENTRY_JS,
   DIST_PUBLIC,
   DIST_ASSETS,
   DIST_SSR,
@@ -734,7 +734,11 @@ export async function build(options: {
   const rootDir = (
     await resolveViteConfig({}, 'build', 'production', 'production')
   ).root;
-  const distEntriesFile = joinPath(rootDir, config.distDir, DIST_ENTRIES_JS);
+  const distEntriesFile = joinPath(
+    rootDir,
+    config.distDir,
+    DIST_SERVER_ENTRY_JS,
+  );
 
   const buildOptions = unstable_getBuildOptions();
   buildOptions.deploy = options.deploy;

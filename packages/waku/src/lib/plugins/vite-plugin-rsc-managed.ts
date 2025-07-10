@@ -1,6 +1,10 @@
 import type { Plugin } from 'vite';
 
-import { EXTENSIONS, SRC_MAIN, SRC_ENTRIES } from '../builder/constants.js';
+import {
+  EXTENSIONS,
+  SRC_CLIENT_ENTRY,
+  SRC_SERVER_ENTRY,
+} from '../builder/constants.js';
 import { extname, joinPath, filePathToFileURL } from '../utils/path.js';
 
 const stripExt = (fname: string) => {
@@ -50,13 +54,13 @@ export function rscManagedPlugin(opts: {
 }): Plugin {
   let entriesFile: string | undefined;
   let mainFile: string | undefined;
-  const mainPath = `${opts.basePath}${opts.srcDir}/${SRC_MAIN}`;
+  const mainPath = `${opts.basePath}${opts.srcDir}/${SRC_CLIENT_ENTRY}`;
   return {
     name: 'rsc-managed-plugin',
     enforce: 'pre',
     configResolved(config) {
-      entriesFile = joinPath(config.root, opts.srcDir, SRC_ENTRIES);
-      mainFile = joinPath(config.root, opts.srcDir, SRC_MAIN);
+      entriesFile = joinPath(config.root, opts.srcDir, SRC_SERVER_ENTRY);
+      mainFile = joinPath(config.root, opts.srcDir, SRC_CLIENT_ENTRY);
     },
     options(options) {
       if (typeof options.input === 'string') {
@@ -68,8 +72,8 @@ export function rscManagedPlugin(opts: {
       return {
         ...options,
         input: {
-          ...(opts.addEntriesToInput && { [SRC_ENTRIES]: entriesFile! }),
-          ...(opts.addMainToInput && { [SRC_MAIN]: mainFile! }),
+          ...(opts.addEntriesToInput && { [SRC_SERVER_ENTRY]: entriesFile! }),
+          ...(opts.addMainToInput && { [SRC_CLIENT_ENTRY]: mainFile! }),
           ...options.input,
         },
       };
