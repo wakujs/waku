@@ -2,7 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { SyncOptions, SyncResult } from 'execa';
 import { execaCommandSync } from 'execa';
-import { afterEach, beforeAll, describe, expect, test } from 'vitest';
+import {
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  onTestFailed,
+  test,
+} from 'vitest';
 
 const CLI_PATH = path.join(import.meta.dirname, '../../dist/index.js');
 
@@ -18,8 +25,19 @@ const run = <SO extends SyncOptions>(
   args: string[],
   options?: SO,
 ): SyncResult<SO> => {
+  const command = `node ${CLI_PATH} ${args.join(' ')}`;
+  const result = execaCommandSync(command, options);
+  onTestFailed(() => {
+    console.error('======= command');
+    console.error(command);
+    console.error('======= stdout');
+    console.error(result.stdout);
+    console.error('======= stderr');
+    console.error(result.stderr);
+    console.error('=======');
+  });
   // @ts-expect-error relies on exactOptionalPropertyTypes being false
-  return execaCommandSync(`node ${CLI_PATH} ${args.join(' ')}`, options);
+  return result;
 };
 
 // Helper to create a non-empty directory
