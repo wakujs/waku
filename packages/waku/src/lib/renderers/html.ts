@@ -7,7 +7,6 @@ import type {
 } from 'react';
 import type * as RDServerType from 'react-dom/server.edge';
 import type { default as RSDWClientType } from 'react-server-dom-webpack/client.edge';
-import { injectRSCPayload } from 'rsc-html-stream/server';
 
 import type * as WakuMinimalClientType from '../../minimal/client.js';
 import type { ConfigDev, ConfigPrd } from '../config.js';
@@ -16,6 +15,7 @@ import { filePathToFileURL } from '../utils/path.js';
 import { parseHtml } from '../utils/html-parser.js';
 import { renderRsc, renderRscElement, getExtractFormState } from './rsc.js';
 import type { HandlerContext, ErrorCallback } from '../middleware/types.js';
+import { injectRSCPayload } from '../rsc-html-stream/server.js';
 
 type Elements = Record<string, unknown>;
 
