@@ -117,28 +117,27 @@ export type CreatePage = <
   Path extends string,
   SlugKey extends string,
   WildSlugKey extends string,
-  Render extends 'static' | 'dynamic',
   StaticPaths extends StaticSlugRoutePaths<Path>,
   ExactPath extends boolean | undefined = undefined,
 >(
   page: (
     | {
-        render: Extract<Render, 'static'>;
+        render: 'static';
         path: PathWithoutSlug<Path>;
         component: FunctionComponent<PropsForPages<Path>>;
       }
     | ({
-        render: Extract<Render, 'static'>;
+        render: 'static';
         path: PathWithStaticSlugs<Path>;
         component: FunctionComponent<PropsForPages<Path>>;
       } & (ExactPath extends true ? {} : { staticPaths: StaticPaths }))
     | {
-        render: Extract<Render, 'dynamic'>;
+        render: 'dynamic';
         path: PathWithoutSlug<Path>;
         component: FunctionComponent<PropsForPages<Path>>;
       }
     | {
-        render: Extract<Render, 'dynamic'>;
+        render: 'dynamic';
         path: PathWithWildcard<Path, SlugKey, WildSlugKey>;
         component: FunctionComponent<PropsForPages<Path>>;
       }
@@ -198,6 +197,22 @@ export type CreatePagePart = <const Path extends string>(params: {
   order: number;
   component: FunctionComponent<{ children: ReactNode }>;
 }) => typeof params;
+
+export type CreateSlice = <Path extends string>(
+  slice:
+    | {
+        render: 'static';
+        path: Path;
+        component: FunctionComponent<{ children: ReactNode }>;
+      }
+    | {
+        render: 'dynamic';
+        path: Path;
+        component: FunctionComponent<
+          Pick<RouteProps, 'path'> & { children: ReactNode }
+        >;
+      },
+) => void;
 
 type RootItem = {
   render: 'static' | 'dynamic';
@@ -293,6 +308,7 @@ export const createPages = <
      * If all parts are static, the page will be static.
      */
     createPagePart: CreatePagePart;
+    createSlice: CreateSlice;
   }) => Promise<AllPages>,
 ) => {
   let configured = false;
@@ -553,6 +569,24 @@ export const createPages = <
       rootItem = root;
     } else {
       throw new Error('Invalid root configuration');
+    }
+  };
+
+  const createSlice: CreateSlice = (slice) => {
+    if (configured) {
+      throw new Error('createSlice no longer available');
+    }
+    if (slice.render === 'static') {
+      const id = joinPath(slice.path, 'slice').replace(/^\//, '');
+      registerStaticComponent(id, slice.component);
+    } else if (slice.render === 'dynamic') {
+      if (dynamicSlicePathMap.has(slice.path)) {
+        throw new Error(`Duplicated dynamic path: ${slice.path}`);
+      }
+      const pathSpec = parsePathWithSlug(slice.path);
+      dynamicSlicePathMap.set(slice.path, [pathSpec, slice.component]);
+    } else {
+      throw new Error('Invalid slice configuration');
     }
   };
 
