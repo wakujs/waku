@@ -7,11 +7,8 @@ export const Counter = () => {
   const [count, setCount] = useState(0);
 
   return (
-      <button
-        onClick={() => setCount((c) => c + 1)}
-        className={clientStyle}
-      >
-        Client Style: {count} (orange)
-      </button>
+    <button onClick={() => setCount((c) => c + 1)} className={clientStyle}>
+      Client Style: {count} (orange)
+    </button>
   );
 };
