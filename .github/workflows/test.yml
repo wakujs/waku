@@ -39,3 +39,4 @@ jobs:
       - run: pnpm test
         env:
           VITE_EXPERIMENTAL_WAKU_ROUTER: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
