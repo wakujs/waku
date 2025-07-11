@@ -1096,7 +1096,7 @@ describe('createPages pages and layouts', () => {
     await expect(getConfig).rejects.toThrowError('Duplicated path: /test');
   });
 
-  it.only('creates a complex router', async () => {
+  it('creates a complex router', async () => {
     const TestPage = vi.fn();
     complexTestRouter(createPages, TestPage);
 
