@@ -5,4 +5,3 @@ dist
 .cache
 .DS_Store
 *.pem
-.vercel
