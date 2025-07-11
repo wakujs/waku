@@ -2,9 +2,11 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { expect } from '@playwright/test';
 
-import { test, prepareStandaloneSetup } from './utils.js';
+import { test, prepareStandaloneSetup, waitForHydration } from './utils.js';
 
 const startApp = prepareStandaloneSetup('hot-reload');
+
+const originalFiles: Record<string, string> = {};
 
 async function modifyFile(
   standaloneDir: string,
@@ -13,8 +15,15 @@ async function modifyFile(
   replace: string,
 ) {
   const content = await readFile(join(standaloneDir, file), 'utf-8');
+  originalFiles[join(standaloneDir, file)] ??= content;
   await writeFile(join(standaloneDir, file), content.replace(search, replace));
 }
+
+test.afterAll(async () => {
+  for (const [file, content] of Object.entries(originalFiles)) {
+    await writeFile(file, content);
+  }
+});
 
 test.describe('hot reload', () => {
   let port: number;
@@ -33,6 +42,7 @@ test.describe('hot reload', () => {
 
   test('server and client', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
     await expect(page.getByText('Home Page')).toBeVisible();
     await expect(page.getByTestId('count')).toHaveText('0');
     await page.getByTestId('increment').click();
@@ -99,11 +109,17 @@ test.describe('hot reload', () => {
       '<pEdited Page</p>',
       '<p>Fixed Page</p>',
     );
+    // requires manual reload on Vite RSC
+    if (process.env.TEST_VITE_RSC) {
+      await page.waitForTimeout(500);
+      await page.reload();
+    }
     await expect(page.getByText('Fixed Page')).toBeVisible();
   });
 
   test('css modules', async ({ page }) => {
     await page.goto(`http://localhost:${port}/css-modules`);
+    await waitForHydration(page);
     await expect(page.getByTestId('css-modules-header')).toHaveText(
       'CSS Modules',
     );
@@ -136,6 +152,7 @@ test.describe('hot reload', () => {
     page,
   }) => {
     await page.goto(`http://localhost:${port}/css-modules-client`);
+    await waitForHydration(page);
     await expect(page.getByTestId('css-modules-client')).toHaveText('Hello');
     const bgColor1 = await page.evaluate(() =>
       window
@@ -174,12 +191,11 @@ test.describe('hot reload', () => {
     expect(bgColor3).toBe('rgb(0, 0, 255)');
   });
 
-  // https://github.com/wakujs/waku/pull/1493 will fix this
-  test.skip('indirect client components (#1491)', async ({ page }) => {
+  test('indirect client components (#1491)', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (err) => errors.push(err.message));
     await page.goto(`http://localhost:${port}/`);
-    await expect(page.getByText('Home Page')).toBeVisible();
+    await waitForHydration(page);
     await expect(page.getByTestId('count')).toHaveText('0');
     await page.getByTestId('increment').click();
     await expect(page.getByTestId('count')).toHaveText('1');

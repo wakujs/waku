@@ -21,6 +21,7 @@ export async function resolveConfigDev(config: Config) {
     middleware: DEFAULT_MIDDLEWARE,
     unstable_honoEnhancer: undefined,
     unstable_viteConfigs: undefined,
+    vite: undefined,
     ...config,
   };
   return configDev;

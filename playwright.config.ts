@@ -53,12 +53,16 @@ const config = defineConfig<TestOptions>({
     },
   ]),
   forbidOnly: !!process.env.CI,
-  workers: process.env.CI ? 1 : 3,
+  // workers: process.env.CI ? 1 : 3,
+  workers: 1,
   retries: 0,
   // 'github' for GitHub Actions CI to generate annotations, plus a concise 'dot'
   // default 'list' when running locally
   // See https://playwright.dev/docs/test-reporters#github-actions-annotations
-  reporter: process.env.CI ? 'github' : 'list',
+  // reporter: process.env.CI ? 'github' : 'list',
+  reporter: ['list', process.env.CI && 'github']
+    .filter(Boolean)
+    .map((name) => [name] as any),
 });
 
 export default config;

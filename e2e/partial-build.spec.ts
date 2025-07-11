@@ -7,9 +7,13 @@ import { statSync } from 'fs';
 
 const cwd = fileURLToPath(new URL('./fixtures/partial-build', import.meta.url));
 
-const waku = fileURLToPath(
+let waku = fileURLToPath(
   new URL('../packages/waku/dist/cli.js', import.meta.url),
 );
+
+if (process.env.TEST_VITE_RSC) {
+  waku = `${waku} --experimental-vite-rsc`;
+}
 
 test.describe(`partial builds`, () => {
   test.skip(
