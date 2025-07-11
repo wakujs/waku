@@ -1,4 +1,4 @@
-import { injectRscStreamToHtml } from '@vitejs/plugin-rsc/rsc-html-stream/ssr';
+// import { injectRscStreamToHtml } from '@vitejs/plugin-rsc/rsc-html-stream/ssr';
 import * as ReactClient from '@vitejs/plugin-rsc/ssr';
 import React from 'react';
 import type { ReactFormState } from 'react-dom/client';
@@ -6,6 +6,7 @@ import * as ReactDOMServer from 'react-dom/server.edge';
 import { INTERNAL_ServerRoot } from '../minimal/client.js';
 import type { RscElementsPayload, RscHtmlPayload } from './entry.rsc.js';
 import { fakeFetchCode } from '../lib/renderers/html.js';
+import { injectRSCPayload } from '../lib/rsc-html-stream/server.js';
 
 export async function renderHTML(
   rscStream: ReadableStream<Uint8Array>,
@@ -62,7 +63,7 @@ export async function renderHTML(
 
   let responseStream: ReadableStream<Uint8Array> = htmlStream;
   responseStream = responseStream.pipeThrough(
-    injectRscStreamToHtml(stream2, {
+    injectRSCPayload(stream2, {
       nonce: options?.nonce,
     } as any),
   );
