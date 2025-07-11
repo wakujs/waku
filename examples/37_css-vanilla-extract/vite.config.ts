@@ -1,3 +1,6 @@
+// Known issues
+// - client style FOUC on dev
+
 import { defineConfig } from 'vite';
 import { vanillaExtractPlugin } from '@vanilla-extract/vite-plugin';
 
@@ -5,6 +8,3 @@ import { vanillaExtractPlugin } from '@vanilla-extract/vite-plugin';
 export default defineConfig({
   plugins: [vanillaExtractPlugin()],
 });
-
-// Known issues
-// - client style FOUC on dev
