@@ -1,10 +1,10 @@
-/** eslint-disable */
+/* eslint-disable */
 // @ts-nocheck
 
 const encoder = new TextEncoder();
 const trailer = '</body></html>';
 
-export function injectRSCPayload(rscStream, options) {
+export function injectRSCPayload(rscStream, options = {}) {
   let decoder = new TextDecoder();
   let resolveFlightDataPromise;
   let flightDataPromise = new Promise((resolve) => resolveFlightDataPromise = resolve);
@@ -45,7 +45,9 @@ export function injectRSCPayload(rscStream, options) {
       }
 
       timeout = setTimeout(async () => {
-        flushBufferedChunks(controller);
+        try {
+          flushBufferedChunks(controller);
+        } catch {}
         if (!startedRSC) {
           startedRSC = true;
           writeRSCStream(rscStream, controller, nonce)
