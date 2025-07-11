@@ -2,12 +2,12 @@ import { expect } from '@playwright/test';
 
 import {
   test,
-  prepareStandaloneSetup,
   FETCH_ERROR_MESSAGES,
   waitForHydration,
+  prepareNormalSetup,
 } from './utils.js';
 
-const startApp = prepareStandaloneSetup('create-pages');
+const startApp = prepareNormalSetup('create-pages');
 
 test.describe(`create-pages`, () => {
   let port: number;
