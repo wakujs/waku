@@ -345,12 +345,11 @@ export const createPages = <
     method: string,
   ) => string | undefined = (path, method) => {
     const apiConfigEntries = Array.from(apiPathMap.entries()).sort(
-      ([__, a], [___, b]) => {
-        return routePriorityComparator(
+      ([, a], [, b]) =>
+        routePriorityComparator(
           { path: a.pathSpec, type: 'api' },
           { path: b.pathSpec, type: 'api' },
-        );
-      },
+        ),
     );
     for (const [p, v] of apiConfigEntries) {
       if (
