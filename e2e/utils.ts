@@ -171,13 +171,13 @@ export const prepareNormalSetup = (fixtureName: string) => {
 
 const PACKAGE_INSTALL = {
   npm: `npm install --force`,
-  pnpm: `pnpm install`,
+  pnpm: `pnpm install --link-workspace-packages=true`,
   yarn: `yarn install`,
 } as const;
 
 const PACKAGE_ADD = {
   npm: `npm add --force`,
-  pnpm: `pnpm add`,
+  pnpm: `pnpm add --link-workspace-packages=true`,
   yarn: `yarn add -W`,
 } as const;
 
