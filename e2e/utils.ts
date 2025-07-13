@@ -178,7 +178,7 @@ const PACKAGE_INSTALL = {
 const PACKAGE_ADD = {
   npm: `npm add --force`,
   pnpm: `pnpm add`,
-  yarn: `yarn add`,
+  yarn: `yarn add -W`,
 } as const;
 
 export const prepareStandaloneSetup = (fixtureName: string) => {
@@ -192,15 +192,17 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
   // GitHub Action on Windows doesn't support mkdtemp on global temp dir,
   // Which will cause files in `src` folder to be empty. I don't know why
   const tmpDir = process.env.TEMP_DIR || tmpdir();
-  let standaloneDir: string | undefined;
+  const standaloneDirMap = new Map<'npm' | 'pnpm' | 'yarn', string>();
   let built = false;
   const startApp = async (
     mode: 'DEV' | 'PRD' | 'STATIC',
     packageManager: 'npm' | 'pnpm' | 'yarn' = 'npm',
     packageDir = '',
   ) => {
+    let standaloneDir = standaloneDirMap.get(packageManager);
     if (!standaloneDir) {
       standaloneDir = mkdtempSync(join(tmpDir, fixtureName));
+      standaloneDirMap.set(packageManager, standaloneDir);
       cpSync(fixtureDir, standaloneDir, {
         filter: (src) => {
           return !src.includes('node_modules') && !src.includes('dist');
@@ -250,13 +252,16 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
                 break;
               }
             }
+            if (packageManager === 'pnpm') {
+              pkg.packageManager = rootPkg.packageManager;
+            }
           }
           writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
         }
       }
       execSync(PACKAGE_INSTALL[packageManager], { cwd: standaloneDir });
       execSync(`${PACKAGE_ADD[packageManager]} ${wakuPackageTgz}`, {
-        cwd: join(standaloneDir),
+        cwd: standaloneDir,
       });
     }
     if (mode !== 'DEV' && !built) {
