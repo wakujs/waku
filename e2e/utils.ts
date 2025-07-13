@@ -259,9 +259,13 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
           writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
         }
       }
-      execSync(PACKAGE_INSTALL[packageManager], { cwd: standaloneDir });
+      execSync(PACKAGE_INSTALL[packageManager], {
+        cwd: standaloneDir,
+        stdio: 'inherit',
+      });
       execSync(`${PACKAGE_ADD[packageManager]} ${wakuPackageTgz}`, {
         cwd: standaloneDir,
+        stdio: 'inherit',
       });
     }
     if (mode !== 'DEV' && !built) {
