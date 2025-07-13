@@ -127,7 +127,23 @@ describe('create-waku CLI with args', () => {
     expect(stdout).toContain('Setting up project...');
   }, 10000);
 
-  test('accepts example option from command line', () => {
+  test('accepts example option from command line', (ctx) => {
+    if (process.env.CI) {
+      if (process.env.GITHUB_TOKEN) {
+        const oldFetch = fetch;
+        globalThis.fetch = (input, init) => {
+          const headers = new Headers(init?.headers);
+          headers.set('Authorization', `Bearer ${process.env.GITHUB_TOKEN}`);
+          return oldFetch(input, { ...init, headers });
+        };
+        ctx.onTestFinished(() => {
+          globalThis.fetch = oldFetch;
+        });
+      } else {
+        ctx.skip('requires GITHUB_TOKEN on CI');
+      }
+    }
+
     const { stdout } = run(
       [
         '--project-name',
