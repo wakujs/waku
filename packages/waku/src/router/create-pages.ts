@@ -248,36 +248,6 @@ type ComponentList = {
 
 type ComponentEntry = FunctionComponent<any> | ComponentList;
 
-const getRoutePriority = (
-  // @TODO: maybe a better type for this?
-  pathConfig: {
-    path: PathSpec;
-    type: 'route' | 'api';
-  },
-) => {
-  const path = pathConfig.path;
-  const pathLength = path.length;
-  const hasWildcard = path.at(-1)?.type === 'wildcard';
-
-  // Calculate specificity score:
-  // - Higher path length = more specific (higher priority)
-  // - No wildcard = more specific than wildcard at the end
-  let specificityScore = pathLength * 1000; // Base score from path length
-
-  if (!hasWildcard) {
-    // No wildcard - most specific
-    specificityScore += 100;
-  } else {
-    // Wildcard at the end - less specific
-    specificityScore += 0;
-  }
-
-  // API routes get slightly lower priority than page routes
-  const typeBonus = pathConfig.type === 'api' ? 0 : 10;
-
-  return specificityScore + typeBonus;
-};
-
 const routePriorityComparator = (
   a: {
     path: PathSpec;
@@ -288,10 +258,26 @@ const routePriorityComparator = (
     type: 'route' | 'api';
   },
 ) => {
-  const aPriority = getRoutePriority(a);
-  const bPriority = getRoutePriority(b);
-  // Higher priority (more specific) routes come first
-  return bPriority - aPriority;
+  const aPath = a.path;
+  const bPath = b.path;
+  const aPathLength = aPath.length;
+  const bPathLength = bPath.length;
+  const aHasWildcard = aPath.at(-1)?.type === 'wildcard';
+  const bHasWildcard = bPath.at(-1)?.type === 'wildcard';
+
+  // Compare path lengths first (longer paths are more specific)
+  if (aPathLength !== bPathLength) {
+    return aPathLength > bPathLength ? -1 : 1;
+  }
+
+  // If path lengths are equal, compare wildcard presence
+  // sort the route without the wildcard higher, to check it earlier
+  if (aHasWildcard !== bHasWildcard) {
+    return aHasWildcard ? 1 : -1;
+  }
+
+  // If all else is equal, routes have the same priority
+  return 0;
 };
 
 export const createPages = <
