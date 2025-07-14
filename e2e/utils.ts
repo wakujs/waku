@@ -199,6 +199,14 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     packageManager: 'npm' | 'pnpm' | 'yarn' = 'npm',
     packageDir = '',
   ) => {
+    const wakuPackageDir = (): string => {
+      if (!standaloneDir) {
+        throw new Error('standaloneDir is not set');
+      }
+      return packageManager === 'npm'
+        ? standaloneDir
+        : join(standaloneDir, packageDir);
+    };
     let standaloneDir = standaloneDirMap.get(packageManager);
     if (!standaloneDir) {
       standaloneDir = mkdtempSync(join(tmpDir, fixtureName));
@@ -264,7 +272,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         stdio: 'inherit',
       });
       execSync(`${PACKAGE_ADD[packageManager]} ${wakuPackageTgz}`, {
-        cwd: standaloneDir,
+        cwd: wakuPackageDir(),
         stdio: 'inherit',
       });
     }
@@ -274,7 +282,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         force: true,
       });
       execSync(
-        `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} build`,
+        `node ${join(wakuPackageDir(), './node_modules/waku/dist/cli.js')} build`,
         { cwd: join(standaloneDir, packageDir) },
       );
       built = true;
@@ -282,10 +290,10 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     let cmd: string;
     switch (mode) {
       case 'DEV':
-        cmd = `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} dev`;
+        cmd = `node ${join(wakuPackageDir(), './node_modules/waku/dist/cli.js')} dev`;
         break;
       case 'PRD':
-        cmd = `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} start`;
+        cmd = `node ${join(wakuPackageDir(), './node_modules/waku/dist/cli.js')} start`;
         break;
       case 'STATIC':
         cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} dist/public`;
