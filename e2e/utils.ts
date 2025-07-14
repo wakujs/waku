@@ -139,7 +139,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
   const fixtureDir = fileURLToPath(
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
-  let builtMode: false | 'PRD' | 'STATIC' = false;
+  let builtMode: undefined | 'PRD' | 'STATIC';
   const startApp = async (mode: 'DEV' | 'PRD' | 'STATIC') => {
     if (mode !== 'DEV' && builtMode !== mode) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
@@ -162,7 +162,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     const port = await findWakuPort(cp);
     const stopApp = async () => {
-      builtMode = false;
+      builtMode = undefined;
       await terminate(cp.pid!);
     };
     return { port, stopApp, fixtureDir };
@@ -305,6 +305,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     const port = await findWakuPort(cp);
     const stopApp = async () => {
+      builtModeMap.delete(packageManager);
       await terminate(cp.pid!);
     };
     return { port, stopApp, standaloneDir };
