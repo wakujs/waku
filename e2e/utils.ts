@@ -139,12 +139,12 @@ export const prepareNormalSetup = (fixtureName: string) => {
   const fixtureDir = fileURLToPath(
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
-  let built = false;
+  let builtMode: undefined | 'PRD' | 'STATIC';
   const startApp = async (mode: 'DEV' | 'PRD' | 'STATIC') => {
-    if (mode !== 'DEV' && !built) {
+    if (mode !== 'DEV' && builtMode !== mode) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
-      execSync(`node ${waku} build`, { cwd: fixtureDir });
-      built = true;
+      execSync(`node ${waku} build`, { cwd: fixtureDir, stdio: 'inherit' });
+      builtMode = mode;
     }
     let cmd: string;
     switch (mode) {
@@ -162,6 +162,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     const port = await findWakuPort(cp);
     const stopApp = async () => {
+      builtMode = undefined;
       await terminate(cp.pid!);
     };
     return { port, stopApp, fixtureDir };
@@ -178,7 +179,7 @@ const PACKAGE_INSTALL = {
 const PACKAGE_ADD = {
   npm: `npm add --force`,
   pnpm: `pnpm add`,
-  yarn: `yarn add`,
+  yarn: `yarn add -W`,
 } as const;
 
 export const prepareStandaloneSetup = (fixtureName: string) => {
@@ -192,15 +193,25 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
   // GitHub Action on Windows doesn't support mkdtemp on global temp dir,
   // Which will cause files in `src` folder to be empty. I don't know why
   const tmpDir = process.env.TEMP_DIR || tmpdir();
-  let standaloneDir: string | undefined;
-  let built = false;
+  const standaloneDirMap = new Map<'npm' | 'pnpm' | 'yarn', string>();
+  const builtModeMap = new Map<'npm' | 'pnpm' | 'yarn', 'PRD' | 'STATIC'>();
   const startApp = async (
     mode: 'DEV' | 'PRD' | 'STATIC',
     packageManager: 'npm' | 'pnpm' | 'yarn' = 'npm',
     packageDir = '',
   ) => {
+    const wakuPackageDir = (): string => {
+      if (!standaloneDir) {
+        throw new Error('standaloneDir is not set');
+      }
+      return packageManager === 'npm'
+        ? standaloneDir
+        : join(standaloneDir, packageDir);
+    };
+    let standaloneDir = standaloneDirMap.get(packageManager);
     if (!standaloneDir) {
       standaloneDir = mkdtempSync(join(tmpDir, fixtureName));
+      standaloneDirMap.set(packageManager, standaloneDir);
       cpSync(fixtureDir, standaloneDir, {
         filter: (src) => {
           return !src.includes('node_modules') && !src.includes('dist');
@@ -209,6 +220,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       });
       execSync(`pnpm pack --pack-destination ${standaloneDir}`, {
         cwd: wakuDir,
+        stdio: 'inherit',
       });
       const wakuPackageTgz = join(standaloneDir, `waku-${version}.tgz`);
       const rootPkg = JSON.parse(
@@ -250,33 +262,40 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
                 break;
               }
             }
+            if (packageManager === 'pnpm') {
+              pkg.packageManager = rootPkg.packageManager;
+            }
           }
           writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
         }
       }
-      execSync(PACKAGE_INSTALL[packageManager], { cwd: standaloneDir });
+      execSync(PACKAGE_INSTALL[packageManager], {
+        cwd: standaloneDir,
+        stdio: 'inherit',
+      });
       execSync(`${PACKAGE_ADD[packageManager]} ${wakuPackageTgz}`, {
-        cwd: join(standaloneDir),
+        cwd: wakuPackageDir(),
+        stdio: 'inherit',
       });
     }
-    if (mode !== 'DEV' && !built) {
+    if (mode !== 'DEV' && builtModeMap.get(packageManager) !== mode) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
         recursive: true,
         force: true,
       });
       execSync(
-        `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} build`,
-        { cwd: join(standaloneDir, packageDir) },
+        `node ${join(wakuPackageDir(), './node_modules/waku/dist/cli.js')} build`,
+        { cwd: join(standaloneDir, packageDir), stdio: 'inherit' },
       );
-      built = true;
+      builtModeMap.set(packageManager, mode);
     }
     let cmd: string;
     switch (mode) {
       case 'DEV':
-        cmd = `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} dev`;
+        cmd = `node ${join(wakuPackageDir(), './node_modules/waku/dist/cli.js')} dev`;
         break;
       case 'PRD':
-        cmd = `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} start`;
+        cmd = `node ${join(wakuPackageDir(), './node_modules/waku/dist/cli.js')} start`;
         break;
       case 'STATIC':
         cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} dist/public`;
@@ -286,6 +305,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     const port = await findWakuPort(cp);
     const stopApp = async () => {
+      builtModeMap.delete(packageManager);
       await terminate(cp.pid!);
     };
     return { port, stopApp, standaloneDir };
