@@ -52,6 +52,7 @@ for (const cwd of examples) {
     : commands;
   for (const { build, command } of exampleCommands) {
     test.describe(`smoke test on ${basename(cwd)}: ${command}`, () => {
+      test.skip(({ mode }) => mode !== (build ? 'PRD' : 'DEV'));
       let cp: ChildProcess | undefined;
       let port: number;
       test.beforeAll('remove cache', async () => {
