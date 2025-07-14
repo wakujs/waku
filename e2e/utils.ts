@@ -143,7 +143,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
   const startApp = async (mode: 'DEV' | 'PRD' | 'STATIC') => {
     if (mode !== 'DEV' && !built) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
-      execSync(`node ${waku} build`, { cwd: fixtureDir });
+      execSync(`node ${waku} build`, { cwd: fixtureDir, stdio: 'inherit' });
       built = true;
     }
     let cmd: string;
@@ -219,6 +219,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       });
       execSync(`pnpm pack --pack-destination ${standaloneDir}`, {
         cwd: wakuDir,
+        stdio: 'inherit',
       });
       const wakuPackageTgz = join(standaloneDir, `waku-${version}.tgz`);
       const rootPkg = JSON.parse(
@@ -283,7 +284,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       });
       execSync(
         `node ${join(wakuPackageDir(), './node_modules/waku/dist/cli.js')} build`,
-        { cwd: join(standaloneDir, packageDir) },
+        { cwd: join(standaloneDir, packageDir), stdio: 'inherit' },
       );
       built = true;
     }
