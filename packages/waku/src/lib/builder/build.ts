@@ -33,6 +33,7 @@ import {
   CLIENT_PREFIX,
 } from '../middleware/handler.js';
 import { rscRsdwPlugin } from '../plugins/vite-plugin-rsc-rsdw.js';
+import { rscResolveRsdwPlugin } from '../plugins/vite-plugin-rsc-resolve-rsdw.js';
 import { rscIndexPlugin } from '../plugins/vite-plugin-rsc-index.js';
 import { rscAnalyzePlugin } from '../plugins/vite-plugin-rsc-analyze.js';
 import { nonjsResolvePlugin } from '../plugins/vite-plugin-nonjs-resolve.js';
@@ -107,6 +108,7 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
       {
         mode: 'production',
         plugins: [
+          rscResolveRsdwPlugin(),
           rscAnalyzePlugin({ isClient: false, clientFileMap, serverFileMap }),
           rscManagedPlugin({ ...config, addEntriesToInput: true }),
           ...deployPlugins(config),
@@ -236,6 +238,7 @@ const buildServerBundle = async (
             clientEntryFiles,
             serverEntryFiles,
           }),
+          rscResolveRsdwPlugin(),
           rscRsdwPlugin(),
           rscEnvPlugin({ isDev: false, env, config }),
           rscPrivatePlugin(config),
