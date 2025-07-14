@@ -11,7 +11,7 @@ const waku = fileURLToPath(
   new URL('../packages/waku/dist/cli.js', import.meta.url),
 );
 
-test.describe(`partial builds`, () => {
+test.describe.serial(`partial builds`, () => {
   test.skip(
     ({ browserName }) => browserName !== 'chromium',
     'Browsers are not relevant for this test. One is enough.',

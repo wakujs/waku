@@ -139,12 +139,12 @@ export const prepareNormalSetup = (fixtureName: string) => {
   const fixtureDir = fileURLToPath(
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
-  let built = false;
+  let builtMode: false | 'PRD' | 'STATIC' = false;
   const startApp = async (mode: 'DEV' | 'PRD' | 'STATIC') => {
-    if (mode !== 'DEV' && !built) {
+    if (mode !== 'DEV' && builtMode !== mode) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
       execSync(`node ${waku} build`, { cwd: fixtureDir, stdio: 'inherit' });
-      built = true;
+      builtMode = mode;
     }
     let cmd: string;
     switch (mode) {
@@ -162,6 +162,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     const port = await findWakuPort(cp);
     const stopApp = async () => {
+      builtMode = false;
       await terminate(cp.pid!);
     };
     return { port, stopApp, fixtureDir };
@@ -193,7 +194,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
   // Which will cause files in `src` folder to be empty. I don't know why
   const tmpDir = process.env.TEMP_DIR || tmpdir();
   const standaloneDirMap = new Map<'npm' | 'pnpm' | 'yarn', string>();
-  let built = false;
+  const builtModeMap = new Map<'npm' | 'pnpm' | 'yarn', 'PRD' | 'STATIC'>();
   const startApp = async (
     mode: 'DEV' | 'PRD' | 'STATIC',
     packageManager: 'npm' | 'pnpm' | 'yarn' = 'npm',
@@ -277,7 +278,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         stdio: 'inherit',
       });
     }
-    if (mode !== 'DEV' && !built) {
+    if (mode !== 'DEV' && builtModeMap.get(packageManager) !== mode) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
         recursive: true,
         force: true,
@@ -286,7 +287,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         `node ${join(wakuPackageDir(), './node_modules/waku/dist/cli.js')} build`,
         { cwd: join(standaloneDir, packageDir), stdio: 'inherit' },
       );
-      built = true;
+      builtModeMap.set(packageManager, mode);
     }
     let cmd: string;
     switch (mode) {
