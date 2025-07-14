@@ -18,7 +18,7 @@
   "devDependencies": {
     "@types/react": "19.1.8",
     "@types/react-dom": "19.1.6",
-    "@vanilla-extract/vite-plugin": "4.0.19",
+    "@vanilla-extract/vite-plugin": "5.1.0",
     "vite": "7.0.0"
   }
 }
