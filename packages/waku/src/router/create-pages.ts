@@ -248,6 +248,38 @@ type ComponentList = {
 
 type ComponentEntry = FunctionComponent<any> | ComponentList;
 
+const routePriorityComparator = (
+  a: {
+    path: PathSpec;
+    type: 'route' | 'api';
+  },
+  b: {
+    path: PathSpec;
+    type: 'route' | 'api';
+  },
+) => {
+  const aPath = a.path;
+  const bPath = b.path;
+  const aPathLength = aPath.length;
+  const bPathLength = bPath.length;
+  const aHasWildcard = aPath.at(-1)?.type === 'wildcard';
+  const bHasWildcard = bPath.at(-1)?.type === 'wildcard';
+
+  // Compare path lengths first (longer paths are more specific)
+  if (aPathLength !== bPathLength) {
+    return aPathLength > bPathLength ? -1 : 1;
+  }
+
+  // If path lengths are equal, compare wildcard presence
+  // sort the route without the wildcard higher, to check it earlier
+  if (aHasWildcard !== bHasWildcard) {
+    return aHasWildcard ? 1 : -1;
+  }
+
+  // If all else is equal, routes have the same priority
+  return 0;
+};
+
 export const createPages = <
   AllPages extends (AnyPage | ReturnType<CreateLayout>)[],
 >(
@@ -312,7 +344,14 @@ export const createPages = <
     path: string,
     method: string,
   ) => string | undefined = (path, method) => {
-    for (const [p, v] of apiPathMap.entries()) {
+    const apiConfigEntries = Array.from(apiPathMap.entries()).sort(
+      ([, a], [, b]) =>
+        routePriorityComparator(
+          { path: a.pathSpec, type: 'api' },
+          { path: b.pathSpec, type: 'api' },
+        ),
+    );
+    for (const [p, v] of apiConfigEntries) {
       if (
         (method in v.handlers || v.handlers.all) &&
         getPathMapping(parsePathWithSlug(p!), path)
@@ -754,23 +793,10 @@ export const createPages = <
         },
       );
 
-      const getRoutePriority = (
-        pathConfig: (typeof routeConfigs)[number] | (typeof apiConfigs)[number],
-      ) => {
-        const hasWildcard = pathConfig.path.at(-1)?.type === 'wildcard';
-        if (pathConfig.type === 'api') {
-          return hasWildcard ? 2 : 1;
-        }
-        return hasWildcard ? 3 : 0;
-      };
-
       return (
         [...routeConfigs, ...apiConfigs]
           // Sort routes by priority: "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
-          .sort(
-            (configA, configB) =>
-              getRoutePriority(configA) - getRoutePriority(configB),
-          )
+          .sort((configA, configB) => routePriorityComparator(configA, configB))
       );
     },
     handleRoute: async (path, { query }) => {
