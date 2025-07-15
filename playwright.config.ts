@@ -7,7 +7,6 @@ import type { TestOptions } from './e2e/utils.js';
  */
 const config = defineConfig<TestOptions>({
   testDir: './e2e',
-  fullyParallel: true,
   timeout: process.env.CI ? 120_000 : 30_000,
   use: {
     viewport: { width: 1440, height: 800 },

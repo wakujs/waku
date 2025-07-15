@@ -58,6 +58,8 @@ const buildPlatformTarget = [
   },
 ];
 
+test.describe.configure({ mode: 'parallel' });
+
 test.describe(`multi platform builds`, () => {
   test.skip(
     ({ mode }) => mode !== 'PRD',
