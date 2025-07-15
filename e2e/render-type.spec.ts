@@ -4,7 +4,7 @@ import { test, prepareNormalSetup } from './utils.js';
 
 const startApp = prepareNormalSetup('render-type');
 
-test.describe.serial('render type', () => {
+test.describe('render type', () => {
   test.skip(
     ({ browserName }) => browserName !== 'chromium',
     'Browsers are not relevant for this test. One is enough.',

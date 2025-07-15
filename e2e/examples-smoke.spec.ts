@@ -7,7 +7,7 @@
 import { expect } from '@playwright/test';
 import { execSync, exec, ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { readdir, rm } from 'node:fs/promises';
+import { readdirSync, rmSync } from 'node:fs';
 import { basename } from 'node:path';
 import { findWakuPort, terminate, test } from './utils.js';
 import { error, info } from '@actions/core';
@@ -40,12 +40,14 @@ const commandsCloudflare = [
 ];
 
 const examples = [
-  ...(await readdir(examplesDir)).map((example) =>
+  ...readdirSync(examplesDir).map((example) =>
     fileURLToPath(new URL(`../examples/${example}`, import.meta.url)),
   ),
   // website isn't part of the examples but it is one of good examples to test here
   fileURLToPath(new URL(`../packages/website`, import.meta.url)),
 ];
+
+test.describe.configure({ mode: 'parallel' });
 
 for (const cwd of examples) {
   const exampleCommands = cwd.includes('cloudflare')
@@ -61,10 +63,7 @@ for (const cwd of examples) {
       let cp: ChildProcess | undefined;
       let port: number;
       test.beforeAll('remove cache', async () => {
-        await rm(`${cwd}/dist`, {
-          recursive: true,
-          force: true,
-        });
+        rmSync(`${cwd}/dist`, { recursive: true, force: true });
       });
 
       test.beforeAll(async () => {
