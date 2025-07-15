@@ -1,6 +1,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
+// forked with a patch from https://github.com/devongovett/rsc-html-stream/pull/10
+
 const encoder = new TextEncoder();
 const trailer = '</body></html>';
 
@@ -50,7 +52,11 @@ export function injectRSCPayload(rscStream, options = {}) {
       timeout = setTimeout(async () => {
         try {
           flushBufferedChunks(controller);
-        } catch {}
+        } catch (e) {
+          controller.error(e);
+          resolveFlightDataPromise();
+          return;
+        }
         if (!startedRSC) {
           startedRSC = true;
           writeRSCStream(rscStream, controller, nonce)
