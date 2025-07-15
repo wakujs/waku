@@ -15,6 +15,7 @@ const styles = stylex.create({
 export default async function HomePage() {
   return (
     <div>
+      <title>Waku</title>
       <div {...stylex.props(styles.server)}>Server Style (green)</div>
       <div>
         <Counter />
