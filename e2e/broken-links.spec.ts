@@ -6,12 +6,12 @@ const startApp = prepareStandaloneSetup('broken-links');
 
 test.describe(`broken-links: normal server`, async () => {
   let port: number;
-  let stopApp: () => Promise<void>;
+  let stopApp: (() => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp();
+    await stopApp?.();
   });
 
   test.describe('server side navigation', () => {
@@ -68,18 +68,21 @@ test.describe(`broken-links: normal server`, async () => {
 });
 
 test.describe('broken-links: static server', () => {
-  test.skip(({ mode }) => mode !== 'PRD');
-
-  let port: number;
-  let stopApp: () => Promise<void>;
-  test.beforeAll(async () => {
-    ({ port, stopApp } = await startApp('STATIC'));
-  });
-  test.afterAll(async () => {
-    await stopApp();
-  });
+  test.skip(
+    ({ mode }) => mode !== 'PRD',
+    'static tests are only relevant in production mode',
+  );
 
   test.describe('client side navigation', () => {
+    let port: number;
+    let stopApp: (() => Promise<void>) | undefined;
+    test.beforeAll(async () => {
+      ({ port, stopApp } = await startApp('STATIC'));
+    });
+    test.afterAll(async () => {
+      await stopApp?.();
+    });
+
     test('correct link', async ({ page }) => {
       await page.goto(`http://localhost:${port}`);
       // Click on a link to an existing page
@@ -141,12 +144,12 @@ test.describe('broken-links: static server', () => {
 
 test.describe(`broken-links/dynamic-not-found`, async () => {
   let port: number;
-  let stopApp: () => Promise<void>;
+  let stopApp: (() => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp();
+    await stopApp?.();
   });
 
   test('access sync page directly', async ({ page }) => {
