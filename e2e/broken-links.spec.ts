@@ -76,7 +76,7 @@ test.describe('broken-links: static server', () => {
     ({ port, stopApp } = await startApp('STATIC'));
   });
   test.afterAll(async () => {
-    await stopApp();
+    await stopApp?.();
   });
 
   test.describe('client side navigation', () => {

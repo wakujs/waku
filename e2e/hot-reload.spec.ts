@@ -28,7 +28,7 @@ test.describe('hot reload', () => {
     ({ port, stopApp, standaloneDir } = await startApp('DEV'));
   });
   test.afterAll(async () => {
-    await stopApp();
+    await stopApp?.();
   });
 
   test('server and client', async ({ page }) => {
