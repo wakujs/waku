@@ -10,16 +10,16 @@ const waku = fileURLToPath(
   new URL('../packages/waku/dist/cli.js', import.meta.url),
 );
 
-test.describe(`partial builds`, () => {
-  test.skip(
-    ({ browserName }) => browserName !== 'chromium',
-    'Browsers are not relevant for this test. One is enough.',
-  );
-  test.skip(
-    ({ mode }) => mode !== 'PRD',
-    'Partial builds are only relevant in production mode.',
-  );
+test.skip(
+  ({ browserName }) => browserName !== 'chromium',
+  'Browsers are not relevant for this test. One is enough.',
+);
+test.skip(
+  ({ mode }) => mode !== 'PRD',
+  'Partial builds are only relevant in production mode.',
+);
 
+test.describe(`partial builds`, () => {
   let cp: ChildProcess | undefined;
   let port: number;
   test.beforeEach(async ({ page }) => {

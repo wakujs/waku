@@ -168,8 +168,8 @@ export async function renderHtml(
           Omit<ComponentProps<typeof INTERNAL_ServerRoot>, 'children'>
         >,
         { elementsPromise },
-        ...headElements,
         htmlNode as any,
+        ...headElements,
       ),
       {
         bootstrapScriptContent: headCode,
