@@ -6,5 +6,5 @@ import type { ReactNode } from 'react';
 export const Context = createContext('original');
 
 export const ContextProvider = ({ children }: { children: ReactNode }) => {
-  return <Context.Provider value="provider value">{children}</Context.Provider>;
+  return <Context value="provider value">{children}</Context>;
 };

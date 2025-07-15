@@ -1,4 +1,4 @@
-export { Link, useRouter } from 'waku/router/client';
+export { Link, useRouter, Slice } from 'waku/router/client';
 
 export { createPages } from 'waku/router/server';
 

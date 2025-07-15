@@ -13,14 +13,14 @@
     "react-dom": "19.1.0",
     "react-server-dom-webpack": "19.1.0",
     "react-tweet": "^3.2.2",
-    "waku": "0.23.1"
+    "waku": "0.23.4"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "4.1.7",
-    "@types/react": "19.1.4",
-    "@types/react-dom": "19.1.5",
-    "postcss": "8.5.3",
-    "tailwindcss": "4.1.7",
+    "@tailwindcss/postcss": "4.1.11",
+    "@types/react": "19.1.8",
+    "@types/react-dom": "19.1.6",
+    "postcss": "8.5.6",
+    "tailwindcss": "4.1.11",
     "typescript": "5.8.3"
   }
 }

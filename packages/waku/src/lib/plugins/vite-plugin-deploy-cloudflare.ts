@@ -18,7 +18,7 @@ import {
   unstable_builderConstants,
 } from '../../server.js';
 
-const { SRC_ENTRIES, DIST_PUBLIC } = unstable_builderConstants;
+const { SRC_SERVER_ENTRY, DIST_PUBLIC } = unstable_builderConstants;
 const SERVE_JS = 'serve-cloudflare.js';
 
 const getServeJsContent = (
@@ -102,7 +102,8 @@ function copyDirectory(srcDir: string, destDir: string) {
   }
 }
 
-function separatePublicAssetsFromFunctions({
+// This is exported for vite-rsc. https://github.com/wakujs/waku/pull/1493
+export function separatePublicAssetsFromFunctions({
   outDir,
   functionDir,
   assetsDir,
@@ -175,7 +176,7 @@ export function deployCloudflarePlugin(opts: {
     },
     configResolved(config) {
       rootDir = config.root;
-      entriesFile = `${rootDir}/${opts.srcDir}/${SRC_ENTRIES}`;
+      entriesFile = `${rootDir}/${opts.srcDir}/${SRC_SERVER_ENTRY}`;
       if (opts.unstable_honoEnhancer) {
         honoEnhancerFile = `${rootDir}/${opts.unstable_honoEnhancer}`;
       }

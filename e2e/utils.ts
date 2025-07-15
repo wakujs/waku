@@ -16,7 +16,38 @@ import type { ChildProcess } from 'node:child_process';
 import { expect, test as basicTest } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
 import { error, info } from '@actions/core';
-import waitPort from 'wait-port';
+
+export const FETCH_ERROR_MESSAGES = {
+  chromium: 'Failed to fetch',
+  firefox: 'NetworkError when attempting to fetch resource.',
+  webkit: 'Load failed',
+};
+
+export type TestOptions = {
+  mode: 'DEV' | 'PRD';
+  page: Page;
+};
+
+export async function findWakuPort(cp: ChildProcess): Promise<number> {
+  return new Promise((resolve, reject) => {
+    function listener(data: unknown) {
+      const str = `${data}`;
+      const match = str.match(/http:\/\/localhost:(\d+)/g);
+      if (match) {
+        clearTimeout(timer);
+        cp.stdout?.off('data', listener);
+        const url = new URL(match[0]);
+        info(`Waku server started at ${url}`);
+        resolve(parseInt(url.port, 10));
+      }
+    }
+    cp.stdout?.on('data', listener);
+    const timer = setTimeout(() => {
+      cp.stdout?.off('data', listener);
+      reject(new Error('Timeout while waiting for port'));
+    }, 10_000);
+  });
+}
 
 // Upstream doesn't support ES module
 //  Related: https://github.com/dwyl/terminate/pull/85
@@ -39,20 +70,11 @@ const ignoreErrors: RegExp[] = [
   /^Error: Something unexpected happened\s+at ErrorRender/,
   /^Error: 401 Unauthorized\s+at CheckIfAccessDenied/,
   /^Error: Not Found\s+at SyncPage/,
+  /^Error: Not Found\s+at AsyncPage/,
   /^Error: Redirect\s+at createCustomError/,
   // FIXME Is this too general and miss meaningful errors?
   /^\[Error: An error occurred in the Server Components render./,
 ];
-
-export async function getFreePort(): Promise<number> {
-  return new Promise<number>((resolve) => {
-    const srv = net.createServer();
-    srv.listen(0, () => {
-      const port = (srv.address() as net.AddressInfo).port;
-      srv.close(() => resolve(port));
-    });
-  });
-}
 
 export async function isPortAvailable(port: number): Promise<boolean> {
   return new Promise<boolean>((resolve, reject) => {
@@ -79,8 +101,7 @@ export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
     if (ignoreErrors?.some((re) => re.test(str))) {
       return;
     }
-    info(`stdout: ${str}`);
-    console.log(`stdout: ${str}`);
+    info(`(${sourceFile}) stdout: ${str}`);
   });
 
   cp.stderr?.on('data', (data) => {
@@ -93,18 +114,17 @@ export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
       title: 'Child Process Error',
       file: sourceFile,
     });
-    console.error(`stderr: ${str}`);
-    console.error(`sourceFile: ${sourceFile}`);
   });
 }
 
-export const test = basicTest.extend<{ page: Page }>({
-  page: async ({ page }, pageUse) => {
+export const test = basicTest.extend<TestOptions>({
+  mode: ['DEV', { option: true }],
+  page: async ({ page }, pageUse, testInfo) => {
     const callback = (msg: ConsoleMessage) => {
       if (unexpectedErrors.some((re) => re.test(msg.text()))) {
         throw new Error(msg.text());
       }
-      console.log(`${msg.type()}: ${msg.text()}`);
+      console.log(`(${testInfo.title}) ${msg.type()}: ${msg.text()}`);
     };
     page.on('console', callback);
     await pageUse(page);
@@ -119,35 +139,54 @@ export const prepareNormalSetup = (fixtureName: string) => {
   const fixtureDir = fileURLToPath(
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
-  let built = false;
+  let builtMode: undefined | 'PRD' | 'STATIC';
   const startApp = async (mode: 'DEV' | 'PRD' | 'STATIC') => {
-    if (mode !== 'DEV' && !built) {
+    if (mode !== 'DEV' && builtMode !== mode) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
-      execSync(`node ${waku} build`, { cwd: fixtureDir });
-      built = true;
+      execSync(`node ${waku} build`, { cwd: fixtureDir, stdio: 'inherit' });
+      builtMode = mode;
     }
-    const port = await getFreePort();
     let cmd: string;
     switch (mode) {
       case 'DEV':
-        cmd = `node ${waku} dev --port ${port}`;
+        cmd = `node ${waku} dev`;
         break;
       case 'PRD':
-        cmd = `node ${waku} start --port ${port}`;
+        cmd = `node ${waku} start`;
         break;
       case 'STATIC':
-        cmd = `pnpm serve -l ${port} dist/public`;
+        cmd = `pnpm serve dist/public`;
         break;
     }
     const cp = exec(cmd, { cwd: fixtureDir });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
-    await waitPort({ port });
+    const port = await findWakuPort(cp);
     const stopApp = async () => {
+      builtMode = undefined;
       await terminate(cp.pid!);
     };
     return { port, stopApp, fixtureDir };
   };
   return startApp;
+};
+
+const PACKAGE_INSTALL = {
+  npm: `npm install --force`,
+  pnpm: `pnpm install`,
+  yarn: `yarn install`,
+} as const;
+
+const PACKAGE_ADD = {
+  npm: `npm add --force`,
+  pnpm: `pnpm add`,
+  yarn: `yarn add -W`,
+} as const;
+
+export const makeTempDir = (prefix: string): string => {
+  // GitHub Action on Windows doesn't support mkdtemp on global temp dir,
+  // Which will cause files in `src` folder to be empty. I don't know why
+  const tmpDir = process.env.TEMP_DIR || tmpdir();
+  return mkdtempSync(join(tmpDir, prefix));
 };
 
 export const prepareStandaloneSetup = (fixtureName: string) => {
@@ -158,18 +197,25 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
   const fixtureDir = fileURLToPath(
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
-  // GitHub Action on Windows doesn't support mkdtemp on global temp dir,
-  // Which will cause files in `src` folder to be empty. I don't know why
-  const tmpDir = process.env.TEMP_DIR || tmpdir();
-  let standaloneDir: string | undefined;
-  let built = false;
+  const standaloneDirMap = new Map<'npm' | 'pnpm' | 'yarn', string>();
+  const builtModeMap = new Map<'npm' | 'pnpm' | 'yarn', 'PRD' | 'STATIC'>();
   const startApp = async (
     mode: 'DEV' | 'PRD' | 'STATIC',
     packageManager: 'npm' | 'pnpm' | 'yarn' = 'npm',
     packageDir = '',
   ) => {
+    const wakuPackageDir = (): string => {
+      if (!standaloneDir) {
+        throw new Error('standaloneDir is not set');
+      }
+      return packageManager === 'npm'
+        ? standaloneDir
+        : join(standaloneDir, packageDir);
+    };
+    let standaloneDir = standaloneDirMap.get(packageManager);
     if (!standaloneDir) {
-      standaloneDir = mkdtempSync(join(tmpDir, fixtureName));
+      standaloneDir = makeTempDir(fixtureName);
+      standaloneDirMap.set(packageManager, standaloneDir);
       cpSync(fixtureDir, standaloneDir, {
         filter: (src) => {
           return !src.includes('node_modules') && !src.includes('dist');
@@ -178,6 +224,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       });
       execSync(`pnpm pack --pack-destination ${standaloneDir}`, {
         cwd: wakuDir,
+        stdio: 'inherit',
       });
       const wakuPackageTgz = join(standaloneDir, `waku-${version}.tgz`);
       const rootPkg = JSON.parse(
@@ -187,7 +234,6 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         ),
       );
       const pnpmOverrides = {
-        waku: wakuPackageTgz,
         ...rootPkg.pnpm?.overrides,
         ...rootPkg.pnpmOverrides, // Do we need this?
       };
@@ -220,40 +266,50 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
                 break;
               }
             }
+            if (packageManager === 'pnpm') {
+              pkg.packageManager = rootPkg.packageManager;
+            }
           }
           writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
         }
       }
-      execSync(`${packageManager} install`, { cwd: standaloneDir });
+      execSync(PACKAGE_INSTALL[packageManager], {
+        cwd: standaloneDir,
+        stdio: 'inherit',
+      });
+      execSync(`${PACKAGE_ADD[packageManager]} ${wakuPackageTgz}`, {
+        cwd: wakuPackageDir(),
+        stdio: 'inherit',
+      });
     }
-    if (mode !== 'DEV' && !built) {
+    if (mode !== 'DEV' && builtModeMap.get(packageManager) !== mode) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
         recursive: true,
         force: true,
       });
       execSync(
-        `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} build`,
-        { cwd: join(standaloneDir, packageDir) },
+        `node ${join(wakuPackageDir(), './node_modules/waku/dist/cli.js')} build`,
+        { cwd: join(standaloneDir, packageDir), stdio: 'inherit' },
       );
-      built = true;
+      builtModeMap.set(packageManager, mode);
     }
-    const port = await getFreePort();
     let cmd: string;
     switch (mode) {
       case 'DEV':
-        cmd = `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} dev --port ${port}`;
+        cmd = `node ${join(wakuPackageDir(), './node_modules/waku/dist/cli.js')} dev`;
         break;
       case 'PRD':
-        cmd = `node ${join(standaloneDir, './node_modules/waku/dist/cli.js')} start --port ${port}`;
+        cmd = `node ${join(wakuPackageDir(), './node_modules/waku/dist/cli.js')} start`;
         break;
       case 'STATIC':
-        cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} dist/public -p ${port}`;
+        cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} dist/public`;
         break;
     }
     const cp = exec(cmd, { cwd: join(standaloneDir, packageDir) });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
-    await waitPort({ port });
+    const port = await findWakuPort(cp);
     const stopApp = async () => {
+      builtModeMap.delete(packageManager);
       await terminate(cp.pid!);
     };
     return { port, stopApp, standaloneDir };

@@ -2,7 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { SyncOptions, SyncResult } from 'execa';
 import { execaCommandSync } from 'execa';
-import { afterEach, beforeAll, describe, expect, test } from 'vitest';
+import {
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  onTestFailed,
+  test,
+} from 'vitest';
 
 const CLI_PATH = path.join(import.meta.dirname, '../../dist/index.js');
 
@@ -18,8 +25,19 @@ const run = <SO extends SyncOptions>(
   args: string[],
   options?: SO,
 ): SyncResult<SO> => {
+  const command = `node ${CLI_PATH} ${args.join(' ')}`;
+  const result = execaCommandSync(command, options);
+  onTestFailed(() => {
+    console.error('======= command');
+    console.error(command);
+    console.error('======= stdout');
+    console.error(result.stdout);
+    console.error('======= stderr');
+    console.error(result.stderr);
+    console.error('=======');
+  });
   // @ts-expect-error relies on exactOptionalPropertyTypes being false
-  return execaCommandSync(`node ${CLI_PATH} ${args.join(' ')}`, options);
+  return result;
 };
 
 // Helper to create a non-empty directory
@@ -109,18 +127,22 @@ describe('create-waku CLI with args', () => {
     expect(stdout).toContain('Setting up project...');
   }, 10000);
 
-  test('accepts example option from command line', () => {
-    const { stdout } = run(
-      [
-        '--project-name',
-        projectName,
-        '--example',
-        'https://github.com/wakujs/waku/tree/main/examples/01_template',
-      ],
-      { cwd: import.meta.dirname, timeout: 30000, reject: false },
-    );
-    expect(stdout).toContain('Setting up project...');
-  }, 30000);
+  test(
+    'accepts example option from command line',
+    { timeout: 30000, retry: process.env.CI ? 3 : 0 },
+    () => {
+      const { stdout } = run(
+        [
+          '--project-name',
+          projectName,
+          '--example',
+          'https://github.com/wakujs/waku/tree/main/examples/01_template',
+        ],
+        { cwd: import.meta.dirname, timeout: 30000, reject: false },
+      );
+      expect(stdout).toContain('Setting up project...');
+    },
+  );
 
   test('shows installation instructions after setup', () => {
     const { stdout } = run(

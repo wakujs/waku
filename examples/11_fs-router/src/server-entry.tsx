@@ -1,10 +1,5 @@
+/// <reference types="vite/client" />
 import { unstable_fsRouter as fsRouter } from 'waku/router/server';
-
-declare global {
-  interface ImportMeta {
-    readonly glob: any;
-  }
-}
 
 export default fsRouter(
   import.meta.url,

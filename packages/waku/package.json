@@ -1,7 +1,7 @@
 {
   "name": "waku",
   "description": "⛩️ The minimal React framework",
-  "version": "0.23.1",
+  "version": "0.23.4",
   "type": "module",
   "author": "Daishi Kato",
   "homepage": "https://waku.gg",
@@ -79,32 +79,31 @@
     "test:watch": "vitest",
     "compile": "rm -rf dist *.tsbuildinfo && pnpm run compile:code && pnpm run compile:types && cp ../../README.md .",
     "compile:code": "swc src -d dist --strip-leading-paths",
-    "compile:types": "tsc --project tsconfig.json",
-    "prepare": "pnpm run compile"
+    "compile:types": "tsc --project tsconfig.json"
   },
   "license": "MIT",
   "engines": {
-    "node": "^24.0.0 || ^22.7.0 || ^20.8.0"
+    "node": "^24.0.0 || ^22.12.0 || ^20.19.0"
   },
   "dependencies": {
-    "@hono/node-server": "1.14.2",
-    "@swc/core": "1.11.24",
+    "@hono/node-server": "1.16.0",
+    "@swc/core": "1.12.14",
     "@vitejs/plugin-react": "https://pkg.pr.new/@vitejs/plugin-react@1c00c98",
-    "dotenv": "16.5.0",
-    "hono": "4.7.10",
+    "dotenv": "17.2.0",
+    "hono": "4.8.5",
     "html-react-parser": "5.2.5",
-    "rollup": "4.41.0",
-    "rsc-html-stream": "0.0.6",
-    "vite": "6.3.5"
+    "rollup": "4.45.0",
+    "rsc-html-stream": "0.0.7",
+    "vite": "7.0.4"
   },
   "devDependencies": {
-    "@netlify/functions": "^3.1.8",
-    "@swc/cli": "^0.7.7",
+    "@netlify/functions": "^4.1.10",
+    "@swc/cli": "^0.7.8",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-server-dom-webpack": "19.1.0",
     "ts-expect": "^1.3.0",
-    "vitest": "^3.1.4"
+    "vitest": "^3.2.4"
   },
   "peerDependencies": {
     "react": "~19.1.0",

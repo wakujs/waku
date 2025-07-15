@@ -4,6 +4,7 @@ import {
   createContext,
   createElement,
   startTransition,
+  use,
   useCallback,
   useContext,
   useEffect,
@@ -21,6 +22,8 @@ import type {
   ReactElement,
   MouseEvent,
   TransitionFunction,
+  RefObject,
+  Ref,
 } from 'react';
 
 import {
@@ -33,6 +36,7 @@ import {
 } from '../minimal/client.js';
 import {
   encodeRoutePath,
+  encodeSliceId,
   ROUTE_ID,
   IS_STATIC_ID,
   HAS404_ID,
@@ -51,12 +55,6 @@ type InferredPaths = RouteConfig extends {
 }
   ? AllowPathDecorators<UserPaths>
   : string;
-
-declare global {
-  interface ImportMeta {
-    readonly env: Record<string, string>;
-  }
-}
 
 const normalizeRoutePath = (path: string) => {
   for (const suffix of ['/', '/index.html']) {
@@ -108,6 +106,7 @@ type ChangeRoute = (
   options: {
     shouldScroll: boolean;
     skipRefetch?: boolean;
+    unstable_startTransition?: ((fn: TransitionFunction) => void) | undefined;
   },
 ) => Promise<void>;
 
@@ -117,6 +116,9 @@ type ChangeRouteCallback = (route: RouteProps) => void;
 
 type PrefetchRoute = (route: RouteProps) => void;
 
+type SliceId = string;
+
+// This is an internal thing, not a public API
 const RouterContext = createContext<{
   route: RouteProps;
   changeRoute: ChangeRoute;
@@ -125,6 +127,7 @@ const RouterContext = createContext<{
     'on' | 'off',
     (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
   >;
+  fetchingSlices: Set<SliceId>;
 } | null>(null);
 
 export function useRouter() {
@@ -148,18 +151,21 @@ export function useRouter() {
       },
     ) => {
       const url = new URL(to, window.location.href);
-      const newPath = url.pathname !== window.location.pathname;
-      window.history.pushState(
-        {
-          ...window.history.state,
-          waku_new_path: newPath,
-        },
-        '',
-        url,
-      );
+      const currentPath = window.location.pathname;
+      const newPath = url.pathname !== currentPath;
       await changeRoute(parseRoute(url), {
         shouldScroll: options?.scroll ?? newPath,
       });
+      if (window.location.pathname === currentPath) {
+        window.history.pushState(
+          {
+            ...window.history.state,
+            waku_new_path: newPath,
+          },
+          '',
+          url,
+        );
+      }
     },
     [changeRoute],
   );
@@ -177,11 +183,14 @@ export function useRouter() {
       },
     ) => {
       const url = new URL(to, window.location.href);
-      const newPath = url.pathname !== window.location.pathname;
-      window.history.replaceState(window.history.state, '', url);
+      const currentPath = window.location.pathname;
+      const newPath = url.pathname !== currentPath;
       await changeRoute(parseRoute(url), {
         shouldScroll: options?.scroll ?? newPath,
       });
+      if (window.location.pathname === currentPath) {
+        window.history.replaceState(window.history.state, '', url);
+      }
     },
     [changeRoute],
   );
@@ -216,6 +225,40 @@ export function useRouter() {
   };
 }
 
+function useSharedRef<T>(
+  ref: Ref<T | null> | undefined,
+): [RefObject<T | null>, (node: T | null) => void | (() => void)] {
+  const managedRef = useRef<T>(null);
+
+  const handleRef = useCallback(
+    (node: T | null): void | (() => void) => {
+      managedRef.current = node;
+      const isRefCallback = typeof ref === 'function';
+      let cleanup: void | (() => void);
+      if (isRefCallback) {
+        cleanup = ref(node);
+      } else if (ref) {
+        ref.current = node;
+      }
+      return () => {
+        managedRef.current = null;
+        if (isRefCallback) {
+          if (cleanup) {
+            cleanup();
+          } else {
+            ref(null);
+          }
+        } else if (ref) {
+          ref.current = null;
+        }
+      };
+    },
+    [ref],
+  );
+
+  return [managedRef, handleRef];
+}
+
 export type LinkProps = {
   to: InferredPaths;
   children: ReactNode;
@@ -231,6 +274,7 @@ export type LinkProps = {
   unstable_prefetchOnEnter?: boolean;
   unstable_prefetchOnView?: boolean;
   unstable_startTransition?: ((fn: TransitionFunction) => void) | undefined;
+  ref?: Ref<HTMLAnchorElement> | undefined;
 } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'>;
 
 export function Link({
@@ -242,6 +286,7 @@ export function Link({
   unstable_prefetchOnEnter,
   unstable_prefetchOnView,
   unstable_startTransition,
+  ref: refProp,
   ...props
 }: LinkProps): ReactElement {
   const router = useContext(RouterContext);
@@ -260,7 +305,7 @@ export function Link({
     unstable_startTransition ||
     ((unstable_pending || unstable_notPending) && startTransition) ||
     ((fn: TransitionFunction) => fn());
-  const ref = useRef<HTMLAnchorElement>(undefined);
+  const [ref, setRef] = useSharedRef<HTMLAnchorElement>(refProp);
 
   useEffect(() => {
     if (unstable_prefetchOnView && ref.current) {
@@ -285,23 +330,33 @@ export function Link({
         observer.disconnect();
       };
     }
-  }, [unstable_prefetchOnView, router, to]);
+  }, [unstable_prefetchOnView, router, to, ref]);
   const internalOnClick = () => {
     const url = new URL(to, window.location.href);
     if (url.href !== window.location.href) {
       const route = parseRoute(url);
       prefetchRoute(route);
       startTransitionFn(async () => {
-        const newPath = url.pathname !== window.location.pathname;
-        window.history.pushState(
-          {
-            ...window.history.state,
-            waku_new_path: newPath,
-          },
-          '',
-          url,
-        );
-        await changeRoute(route, { shouldScroll: scroll ?? newPath });
+        const currentPath = window.location.pathname;
+        const newPath = url.pathname !== currentPath;
+        try {
+          await changeRoute(route, {
+            shouldScroll: scroll ?? newPath,
+            unstable_startTransition: startTransitionFn,
+          });
+        } finally {
+          if (window.location.pathname === currentPath) {
+            // Update history if it wasn't already updated
+            window.history.pushState(
+              {
+                ...window.history.state,
+                waku_new_path: newPath,
+              },
+              '',
+              url,
+            );
+          }
+        }
       });
     }
   };
@@ -326,7 +381,7 @@ export function Link({
     : props.onMouseEnter;
   const ele = createElement(
     'a',
-    { ...props, href: to, onClick, onMouseEnter, ref },
+    { ...props, href: to, onClick, onMouseEnter, ref: setRef },
     children,
   );
   if (isPending && unstable_pending !== undefined) {
@@ -403,28 +458,37 @@ const NotFound = ({
   return has404 ? null : createElement('h1', null, 'Not Found');
 };
 
-const Redirect = ({ to, reset }: { to: string; reset: () => void }) => {
+const Redirect = ({
+  error,
+  to,
+  reset,
+}: {
+  error: unknown;
+  to: string;
+  reset: () => void;
+}) => {
   const router = useContext(RouterContext);
   if (!router) {
     throw new Error('Missing Router');
   }
   const { changeRoute } = router;
+  const handledErrorSet = useRef(new WeakSet());
   useEffect(() => {
+    // ensure single re-fetch per server redirection error on StrictMode
+    // https://github.com/wakujs/waku/pull/1512
+    if (handledErrorSet.current.has(error as object)) {
+      return;
+    }
+    handledErrorSet.current.add(error as object);
+
     const url = new URL(to, window.location.href);
     // FIXME this condition seems too naive
     if (url.hostname !== window.location.hostname) {
       window.location.replace(to);
       return;
     }
-    const newPath = url.pathname !== window.location.pathname;
-    window.history.pushState(
-      {
-        ...window.history.state,
-        waku_new_path: newPath,
-      },
-      '',
-      url,
-    );
+    const currentPath = window.location.pathname;
+    const newPath = url.pathname !== currentPath;
     changeRoute(parseRoute(url), { shouldScroll: newPath })
       .then(() => {
         // FIXME: As we understand it, we should have a proper solution.
@@ -434,8 +498,20 @@ const Redirect = ({ to, reset }: { to: string; reset: () => void }) => {
       })
       .catch((err) => {
         console.log('Error while navigating to redirect:', err);
+      })
+      .finally(() => {
+        if (window.location.pathname === currentPath) {
+          window.history.replaceState(
+            {
+              ...window.history.state,
+              waku_new_path: newPath,
+            },
+            '',
+            url,
+          );
+        }
       });
-  }, [to, reset, changeRoute]);
+  }, [error, to, reset, changeRoute]);
   return null;
 };
 
@@ -466,6 +542,7 @@ class CustomErrorHandler extends Component<
       }
       if (info?.location) {
         return createElement(Redirect, {
+          error,
           to: info.location,
           reset: this.reset,
         });
@@ -480,7 +557,65 @@ const ThrowError = ({ error }: { error: unknown }) => {
   throw error;
 };
 
-const getRouteSlotId = (path: string) => 'route:' + decodeURIComponent(path);
+const getRouteSlotId = (path: string) => 'route:' + decodeURI(path);
+const getSliceSlotId = (id: SliceId) => 'slice:' + id;
+
+export function Slice({
+  id,
+  children,
+  ...props
+}: {
+  id: SliceId;
+  children?: ReactNode;
+} & (
+  | {
+      delayed?: false;
+    }
+  | {
+      delayed: true;
+      fallback: ReactNode;
+    }
+)) {
+  if (
+    typeof window !== 'undefined' &&
+    !import.meta.env?.VITE_EXPERIMENTAL_WAKU_ROUTER
+  ) {
+    throw new Error('Slice is still experimental');
+  }
+  const router = useContext(RouterContext);
+  if (!router) {
+    throw new Error('Missing Router');
+  }
+  const { fetchingSlices } = router;
+  const refetch = useRefetch();
+  const slotId = getSliceSlotId(id);
+  const elementsPromise = useElementsPromise();
+  const elements = use(elementsPromise);
+  const needsToFetchSlice =
+    props.delayed &&
+    (!(slotId in elements) ||
+      // FIXME: hard-coded for now
+      elements[IS_STATIC_ID + ':' + slotId] !== true);
+  useEffect(() => {
+    // FIXME this works because of subtle timing behavior.
+    if (needsToFetchSlice && !fetchingSlices.has(id)) {
+      fetchingSlices.add(id);
+      const rscPath = encodeSliceId(id);
+      refetch(rscPath)
+        .catch((e) => {
+          console.error('Failed to fetch slice:', e);
+        })
+        .finally(() => {
+          fetchingSlices.delete(id);
+        });
+    }
+  }, [fetchingSlices, refetch, id, needsToFetchSlice]);
+  if (props.delayed && !(slotId in elements)) {
+    // FIXME the fallback doesn't show on refetch after the first one.
+    return props.fallback;
+  }
+  return createElement(Slot, { id: slotId }, children);
+}
 
 const handleScroll = () => {
   const { hash } = window.location;
@@ -496,6 +631,7 @@ const handleScroll = () => {
 const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
   const elementsPromise = useElementsPromise();
   const [has404, setHas404] = useState(false);
+  const requestedRouteRef = useRef<RouteProps>(initialRoute);
   const staticPathSetRef = useRef(new Set<string>());
   const cachedIdSetRef = useRef(new Set<string>());
   useEffect(() => {
@@ -562,11 +698,9 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
                 elements;
               if (routeData) {
                 const [path, query] = routeData as [string, string];
-                // FIXME this check here seems ad-hoc (less readable code)
                 if (
-                  window.location.pathname !== path ||
-                  (!isStatic &&
-                    window.location.search.replace(/^\?/, '') !== query)
+                  requestedRouteRef.current.path !== path ||
+                  (!isStatic && requestedRouteRef.current.query !== query)
                 ) {
                   locationListeners.forEach((listener) =>
                     listener(path, query),
@@ -650,7 +784,10 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
   const refetching = useRef<[onFinish?: () => void] | null>(null);
   const changeRoute: ChangeRoute = useCallback(
     async (route, options) => {
+      requestedRouteRef.current = route;
       executeListeners('start', route);
+      const startTransitionFn =
+        options.unstable_startTransition || ((fn: TransitionFunction) => fn());
       refetching.current = [];
       setErr(null);
       const { skipRefetch } = options || {};
@@ -665,13 +802,15 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
           throw e;
         }
       }
-      if (options.shouldScroll) {
-        handleScroll();
-      }
-      setRoute(route);
-      refetching.current[0]?.();
-      refetching.current = null;
-      executeListeners('complete', route);
+      startTransitionFn(() => {
+        if (options.shouldScroll) {
+          handleScroll();
+        }
+        setRoute(route);
+        refetching.current![0]?.();
+        refetching.current = null;
+        executeListeners('complete', route);
+      });
     },
     [executeListeners, refetch],
   );
@@ -706,22 +845,25 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
         url.pathname = path;
         url.search = query;
         url.hash = '';
-        if (path !== '/404') {
-          window.history.pushState(
-            {
-              ...window.history.state,
-              waku_new_path: url.pathname !== window.location.pathname,
-            },
-            '',
-            url,
-          );
-        }
         changeRoute(parseRoute(url), {
           skipRefetch: true,
           shouldScroll: false,
-        }).catch((err) => {
-          console.log('Error while navigating to new route:', err);
-        });
+        })
+          .catch((err) => {
+            console.log('Error while handling location listeners:', err);
+          })
+          .finally(() => {
+            if (path !== '/404') {
+              window.history.pushState(
+                {
+                  ...window.history.state,
+                  waku_new_path: url.pathname !== window.location.pathname,
+                },
+                '',
+                url,
+              );
+            }
+          });
       };
       if (refetching.current) {
         refetching.current.push(fn);
@@ -745,13 +887,14 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
     createElement(CustomErrorHandler, { has404 }, routeElement),
   );
   return createElement(
-    RouterContext.Provider,
+    RouterContext,
     {
       value: {
         route,
         changeRoute,
         prefetchRoute,
         routeChangeEvents,
+        fetchingSlices: useRef(new Set<SliceId>()).current,
       },
     },
     rootElement,
@@ -805,13 +948,14 @@ export function INTERNAL_ServerRouter({
     Fragment,
     null,
     createElement(
-      RouterContext.Provider,
+      RouterContext,
       {
         value: {
           route,
           changeRoute: notAvailableInServer('changeRoute'),
           prefetchRoute: notAvailableInServer('prefetchRoute'),
           routeChangeEvents: MOCK_ROUTE_CHANGE_LISTENER,
+          fetchingSlices: new Set<SliceId>(),
         },
       },
       rootElement,

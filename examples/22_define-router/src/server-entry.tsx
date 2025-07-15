@@ -10,67 +10,92 @@ import NestedBazPage from './components/NestedBazPage';
 import { readFile } from 'node:fs/promises';
 
 export default defineRouter({
-  getRouteConfig: async () => {
-    return [
-      {
-        pattern: '/',
-        path: [],
-        rootElement: { isStatic: true },
-        routeElement: { isStatic: true },
-        elements: {
-          'layout:/': { isStatic: true },
-          'page:/': { isStatic: true },
-        },
+  getConfig: async () => [
+    {
+      type: 'route',
+      pattern: '/',
+      path: [],
+      rootElement: { isStatic: true },
+      routeElement: { isStatic: true },
+      elements: {
+        'layout:/': { isStatic: true },
+        'page:/': { isStatic: true },
       },
-      {
-        pattern: '/foo',
-        path: [{ type: 'literal', name: 'foo' }],
-        rootElement: { isStatic: true },
-        routeElement: { isStatic: true },
-        elements: {
-          'layout:/': { isStatic: true },
-          'page:/foo': { isStatic: true },
-        },
+    },
+    {
+      type: 'route',
+      pattern: '/foo',
+      path: [{ type: 'literal', name: 'foo' }],
+      rootElement: { isStatic: true },
+      routeElement: { isStatic: true },
+      elements: {
+        'layout:/': { isStatic: true },
+        'page:/foo': { isStatic: true },
       },
-      {
-        pattern: '/bar',
-        path: [{ type: 'literal', name: 'bar' }],
-        rootElement: { isStatic: true },
-        routeElement: { isStatic: true },
-        elements: {
-          'layout:/': { isStatic: true },
-          'page:/bar': { isStatic: true },
-        },
+    },
+    {
+      type: 'route',
+      pattern: '/bar',
+      path: [{ type: 'literal', name: 'bar' }],
+      rootElement: { isStatic: true },
+      routeElement: { isStatic: true },
+      elements: {
+        'layout:/': { isStatic: true },
+        'page:/bar': { isStatic: true },
       },
-      {
-        pattern: '/nested/baz',
-        path: [
-          { type: 'literal', name: 'nested' },
-          { type: 'literal', name: 'baz' },
-        ],
-        rootElement: { isStatic: true },
-        routeElement: { isStatic: true },
-        elements: {
-          'layout:/': { isStatic: true },
-          'page:/nested/baz': { isStatic: true },
-        },
+    },
+    {
+      type: 'route',
+      pattern: '/nested/baz',
+      path: [
+        { type: 'literal', name: 'nested' },
+        { type: 'literal', name: 'baz' },
+      ],
+      rootElement: { isStatic: true },
+      routeElement: { isStatic: true },
+      elements: {
+        'layout:/': { isStatic: true },
+        'page:/nested/baz': { isStatic: true },
       },
-      {
-        pattern: '/dynamic/([^/]+)',
-        path: [
-          { type: 'literal', name: 'dynamic' },
-          { type: 'group', name: 'slug' },
-        ],
-        rootElement: { isStatic: true },
-        routeElement: { isStatic: true },
-        elements: {
-          'layout:/': { isStatic: true },
-          // using `[slug]` syntax is just an example and it technically conflicts with others. So, it's better to use a different prefix like `dynamic-page:`.
-          'page:/dynamic/[slug]': {},
-        },
+    },
+    {
+      type: 'route',
+      pattern: '/dynamic/([^/]+)',
+      path: [
+        { type: 'literal', name: 'dynamic' },
+        { type: 'group', name: 'slug' },
+      ],
+      rootElement: { isStatic: true },
+      routeElement: { isStatic: true },
+      elements: {
+        'layout:/': { isStatic: true },
+        // using `[slug]` syntax is just an example and it technically conflicts with others. So, it's better to use a different prefix like `dynamic-page:`.
+        'page:/dynamic/[slug]': {},
       },
-    ];
-  },
+    },
+    {
+      type: 'api',
+      path: [
+        { type: 'literal', name: 'api' },
+        { type: 'literal', name: 'hi' },
+      ],
+    },
+    {
+      type: 'api',
+      path: [
+        { type: 'literal', name: 'api' },
+        { type: 'literal', name: 'hi.txt' },
+      ],
+      isStatic: true,
+    },
+    {
+      type: 'api',
+      path: [
+        { type: 'literal', name: 'api' },
+        { type: 'literal', name: 'empty' },
+      ],
+    },
+  ],
   handleRoute: async (path) => {
     if (path === '/') {
       return {
@@ -184,27 +209,6 @@ export default defineRouter({
     }
     throw new Error('renderRoute: No such path:' + path);
   },
-  getApiConfig: async () => [
-    {
-      path: [
-        { type: 'literal', name: 'api' },
-        { type: 'literal', name: 'hi' },
-      ],
-    },
-    {
-      path: [
-        { type: 'literal', name: 'api' },
-        { type: 'literal', name: 'hi.txt' },
-      ],
-      isStatic: true,
-    },
-    {
-      path: [
-        { type: 'literal', name: 'api' },
-        { type: 'literal', name: 'empty' },
-      ],
-    },
-  ],
   handleApi: async (path) => {
     if (path === '/api/hi.txt') {
       const hiTxt = await readFile('./private/hi.txt');

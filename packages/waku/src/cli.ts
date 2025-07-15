@@ -13,7 +13,7 @@ import * as dotenv from 'dotenv';
 import type { Config } from './config.js';
 import { serverEngine } from './lib/hono/engine.js';
 import { build } from './lib/builder/build.js';
-import { DIST_ENTRIES_JS, DIST_PUBLIC } from './lib/builder/constants.js';
+import { DIST_SERVER_ENTRY_JS, DIST_PUBLIC } from './lib/builder/constants.js';
 
 const require = createRequire(new URL('.', import.meta.url));
 
@@ -97,22 +97,7 @@ if (values.version) {
   }
 }
 
-function catchUncaughtExceptionInDev() {
-  // Workaround for https://github.com/wakujs/waku/issues/756
-  process.on('uncaughtException', (err) => {
-    if (
-      (err as { code?: unknown }).code === 'ERR_INVALID_STATE' &&
-      err.message.includes('Unable to enqueue')
-    ) {
-      // ignore this error
-      return;
-    }
-    throw err;
-  });
-}
-
 async function runDev() {
-  catchUncaughtExceptionInDev();
   const config = await loadConfig();
   const honoEnhancer: HonoEnhancer = config.unstable_honoEnhancer
     ? await loadHonoEnhancer(config.unstable_honoEnhancer)
@@ -175,7 +160,9 @@ async function runStart() {
     ? await loadHonoEnhancer(config.unstable_honoEnhancer)
     : (fn) => fn;
   const loadEntries = () =>
-    import(pathToFileURL(path.resolve(distDir, DIST_ENTRIES_JS)).toString());
+    import(
+      pathToFileURL(path.resolve(distDir, DIST_SERVER_ENTRY_JS)).toString()
+    );
   const createApp = (app: Hono) => {
     if (values['experimental-compress']) {
       app.use(compress());

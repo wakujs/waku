@@ -1,17 +1,18 @@
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { rm } from 'node:fs/promises';
+import { cpSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 import { expect } from '@playwright/test';
 
-import { test } from './utils.js';
+import { test, makeTempDir } from './utils.js';
 
 const dryRunList = [
-  // without entries.tsx
+  // without server-entry.tsx
   {
     cwd: fileURLToPath(new URL('./fixtures/partial-build', import.meta.url)),
     project: 'partial-build',
   },
-  // with entries.tsx
+  // with server-entry.tsx
   {
     cwd: fileURLToPath(new URL('./fixtures/ssr-basic', import.meta.url)),
     project: 'ssr-basic',
@@ -57,41 +58,32 @@ const buildPlatformTarget = [
   },
 ];
 
-const cleanListAfterBuild = new Set(
-  buildPlatformTarget.reduce(
-    (prev: string[], { clearDirOrFile }) => [...prev, ...clearDirOrFile],
-    [],
-  ),
+test.describe.configure({ mode: 'parallel' });
+
+test.skip(
+  ({ mode }) => mode !== 'PRD',
+  'Build tests are only relevant in production mode.',
 );
 
 test.describe(`multi platform builds`, () => {
   for (const { cwd, project } of dryRunList) {
     for (const { platform, clearDirOrFile } of buildPlatformTarget) {
       test(`build ${project} with ${platform} should not throw error`, async () => {
+        const temp = makeTempDir(project);
+        cpSync(cwd, temp, { recursive: true });
         for (const name of clearDirOrFile) {
-          await rm(`${cwd}/${name}`, {
-            recursive: true,
-            force: true,
-          });
+          rmSync(join(temp, name), { recursive: true, force: true });
         }
         try {
           execSync(`node ${waku} build ${platform}`, {
-            cwd,
+            cwd: temp,
             env: process.env,
           });
         } catch (error) {
           expect(error).toBeNull();
         }
+        rmSync(temp, { recursive: true, force: true });
       });
     }
-
-    test.afterAll(async () => {
-      for (const name of cleanListAfterBuild) {
-        await rm(`${cwd}/${name}`, {
-          recursive: true,
-          force: true,
-        });
-      }
-    });
   }
 });

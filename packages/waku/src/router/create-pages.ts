@@ -248,6 +248,38 @@ type ComponentList = {
 
 type ComponentEntry = FunctionComponent<any> | ComponentList;
 
+const routePriorityComparator = (
+  a: {
+    path: PathSpec;
+    type: 'route' | 'api';
+  },
+  b: {
+    path: PathSpec;
+    type: 'route' | 'api';
+  },
+) => {
+  const aPath = a.path;
+  const bPath = b.path;
+  const aPathLength = aPath.length;
+  const bPathLength = bPath.length;
+  const aHasWildcard = aPath.at(-1)?.type === 'wildcard';
+  const bHasWildcard = bPath.at(-1)?.type === 'wildcard';
+
+  // Compare path lengths first (longer paths are more specific)
+  if (aPathLength !== bPathLength) {
+    return aPathLength > bPathLength ? -1 : 1;
+  }
+
+  // If path lengths are equal, compare wildcard presence
+  // sort the route without the wildcard higher, to check it earlier
+  if (aHasWildcard !== bHasWildcard) {
+    return aHasWildcard ? 1 : -1;
+  }
+
+  // If all else is equal, routes have the same priority
+  return 0;
+};
+
 export const createPages = <
   AllPages extends (AnyPage | ReturnType<CreateLayout>)[],
 >(
@@ -312,7 +344,14 @@ export const createPages = <
     path: string,
     method: string,
   ) => string | undefined = (path, method) => {
-    for (const [p, v] of apiPathMap.entries()) {
+    const apiConfigEntries = Array.from(apiPathMap.entries()).sort(
+      ([, a], [, b]) =>
+        routePriorityComparator(
+          { path: a.pathSpec, type: 'api' },
+          { path: b.pathSpec, type: 'api' },
+        ),
+    );
+    for (const [p, v] of apiConfigEntries) {
       if (
         (method in v.handlers || v.handlers.all) &&
         getPathMapping(parsePathWithSlug(p!), path)
@@ -632,9 +671,10 @@ export const createPages = <
   };
 
   const definedRouter = unstable_defineRouter({
-    getRouteConfig: async () => {
+    getConfig: async () => {
       await configure();
-      const paths: {
+      const routeConfigs: {
+        type: 'route';
         path: PathSpec;
         pathPattern?: PathSpec;
         rootElement: { isStatic?: boolean };
@@ -661,7 +701,8 @@ export const createPages = <
           [`page:${path}`]: { isStatic: staticPathMap.has(path) },
         };
 
-        paths.push({
+        routeConfigs.push({
+          type: 'route',
           path: literalSpec.filter((part) => !part.name?.startsWith('(')),
           ...(originalSpec && { pathPattern: originalSpec }),
           rootElement: { isStatic: rootIsStatic },
@@ -698,7 +739,8 @@ export const createPages = <
         } else {
           elements[`page:${path}`] = { isStatic: false };
         }
-        paths.push({
+        routeConfigs.push({
+          type: 'route',
           path: pathSpec.filter((part) => !part.name?.startsWith('(')),
           rootElement: { isStatic: rootIsStatic },
           routeElement: { isStatic: true },
@@ -732,7 +774,8 @@ export const createPages = <
         } else {
           elements[`page:${path}`] = { isStatic: false };
         }
-        paths.push({
+        routeConfigs.push({
+          type: 'route',
           path: pathSpec.filter((part) => !part.name?.startsWith('(')),
           rootElement: { isStatic: rootIsStatic },
           routeElement: { isStatic: true },
@@ -740,7 +783,21 @@ export const createPages = <
           noSsr,
         });
       }
-      return paths;
+      const apiConfigs = Array.from(apiPathMap.values()).map(
+        ({ pathSpec, render }) => {
+          return {
+            type: 'api' as const,
+            path: pathSpec,
+            isStatic: render === 'static',
+          };
+        },
+      );
+
+      return (
+        [...routeConfigs, ...apiConfigs]
+          // Sort routes by priority: "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
+          .sort((configA, configB) => routePriorityComparator(configA, configB))
+      );
     },
     handleRoute: async (path, { query }) => {
       await configure();
@@ -771,7 +828,11 @@ export const createPages = <
       }
       const layoutMatchPath = groupPathLookup.get(routePath) ?? routePath;
       const pathSpec = parsePathWithSlug(layoutMatchPath);
-      const mapping = getPathMapping(pathSpec, path);
+      const mapping = getPathMapping(
+        pathSpec,
+        // ensure path is encoded for props of page component
+        encodeURI(path),
+      );
       const result: Record<string, unknown> = {};
       if (Array.isArray(pageComponent)) {
         for (let i = 0; i < pageComponent.length; i++) {
@@ -842,16 +903,6 @@ export const createPages = <
         ),
         routeElement: createNestedElements(layouts, finalPageChildren),
       };
-    },
-    getApiConfig: async () => {
-      await configure();
-
-      return Array.from(apiPathMap.values()).map(({ pathSpec, render }) => {
-        return {
-          path: pathSpec,
-          isStatic: render === 'static',
-        };
-      });
     },
     handleApi: async (path, { url, ...options }) => {
       await configure();

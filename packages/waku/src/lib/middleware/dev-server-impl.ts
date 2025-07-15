@@ -1,12 +1,13 @@
 import { Readable, Writable } from 'node:stream';
 import { Server } from 'node:http';
+import net, { type AddressInfo } from 'node:net';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createServer as createViteServer } from 'vite';
 import viteReact from '@vitejs/plugin-react';
 
 import type { EntriesDev } from '../types.js';
 import { resolveConfigDev } from '../config.js';
-import { SRC_MAIN, SRC_ENTRIES } from '../builder/constants.js';
+import { SRC_CLIENT_ENTRY, SRC_SERVER_ENTRY } from '../builder/constants.js';
 import {
   decodeFilePathFromAbsolute,
   joinPath,
@@ -87,6 +88,16 @@ const splitByLastEndTag = (input: string): readonly [string, string] => {
   }
 };
 
+async function getFreePort(): Promise<number> {
+  return new Promise<number>((resolve) => {
+    const srv = net.createServer();
+    srv.listen(0, () => {
+      const port = (srv.address() as AddressInfo).port;
+      srv.close(() => resolve(port));
+    });
+  });
+}
+
 const createMainViteServer = (
   env: Record<string, string>,
   configPromise: ReturnType<typeof resolveConfigDev>,
@@ -131,7 +142,7 @@ const createMainViteServer = (
             include: ['react-server-dom-webpack/client', 'react-dom/client'],
             exclude: ['waku', 'rsc-html-stream/server'],
             entries: [
-              `${config.srcDir}/${SRC_ENTRIES}.*`,
+              `${config.srcDir}/${SRC_SERVER_ENTRY}.*`,
               // HACK hard-coded "pages"
               `${config.srcDir}/pages/**/*.*`,
             ],
@@ -143,7 +154,10 @@ const createMainViteServer = (
             },
           },
           appType: 'mpa',
-          server: { middlewareMode: true },
+          server: {
+            middlewareMode: true,
+            hmr: { port: await getFreePort() },
+          },
         },
         config,
         'dev-main',
@@ -294,7 +308,7 @@ const createRscViteServer = (
             include: ['react-server-dom-webpack/client', 'react-dom/client'],
             exclude: ['waku'],
             entries: [
-              `${config.srcDir}/${SRC_ENTRIES}.*`,
+              `${config.srcDir}/${SRC_SERVER_ENTRY}.*`,
               // HACK hard-coded "pages"
               `${config.srcDir}/pages/**/*.*`,
             ],
@@ -337,7 +351,11 @@ const createRscViteServer = (
 
   const loadEntriesDev = async (config: { srcDir: string }) => {
     const vite = await vitePromise;
-    const filePath = joinPath(vite.config.root, config.srcDir, SRC_ENTRIES);
+    const filePath = joinPath(
+      vite.config.root,
+      config.srcDir,
+      SRC_SERVER_ENTRY,
+    );
     return vite.ssrLoadModule(filePath) as Promise<EntriesDev>;
   };
 
@@ -443,8 +461,8 @@ export const devServer: Middleware = (options) => {
         );
       };
 
-      const mainJs = `${config.basePath}${config.srcDir}/${SRC_MAIN}`;
-      const entriesFile = `${vite.config.root}${config.basePath}${config.srcDir}/${SRC_ENTRIES}`;
+      const mainJs = `${config.basePath}${config.srcDir}/${SRC_CLIENT_ENTRY}`;
+      const entriesFile = `${vite.config.root}${config.basePath}${config.srcDir}/${SRC_SERVER_ENTRY}`;
 
       await processModule(mainJs);
       await processModule(entriesFile);

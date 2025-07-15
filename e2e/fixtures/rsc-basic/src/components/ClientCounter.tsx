@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRefetch } from 'waku/minimal/client';
+import { unstable_allowServer as allowServer } from 'waku/client';
 
 import { ClientBox } from './Box.js';
 
@@ -47,3 +48,7 @@ export const ClientCounter = ({ params }: { params: unknown }) => {
     </ClientBox>
   );
 };
+
+export const someConfigs = allowServer({
+  foo: 'value-1234',
+});

@@ -1,4 +1,3 @@
-'use server';
 import { InternalProvider } from './shared.js';
 import { jsx } from 'react/jsx-runtime';
 

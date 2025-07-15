@@ -1,20 +1,26 @@
 import { createElement } from 'react';
-import type { ReactNode, FunctionComponent, ComponentProps } from 'react';
+import type {
+  ReactElement,
+  ReactNode,
+  FunctionComponent,
+  ComponentProps,
+} from 'react';
 import type * as RDServerType from 'react-dom/server.edge';
 import type { default as RSDWClientType } from 'react-server-dom-webpack/client.edge';
 import { injectRSCPayload } from 'rsc-html-stream/server';
-import parse from 'html-react-parser';
 
 import type * as WakuMinimalClientType from '../../minimal/client.js';
 import type { ConfigDev, ConfigPrd } from '../config.js';
-import { SRC_MAIN } from '../builder/constants.js';
+import { SRC_CLIENT_ENTRY } from '../builder/constants.js';
 import { filePathToFileURL } from '../utils/path.js';
+import { parseHtml } from '../utils/html-parser.js';
 import { renderRsc, renderRscElement, getExtractFormState } from './rsc.js';
 import type { HandlerContext, ErrorCallback } from '../middleware/types.js';
 
 type Elements = Record<string, unknown>;
 
-const fakeFetchCode = `
+// This is exported for vite-rsc. https://github.com/wakujs/waku/pull/1493
+export const fakeFetchCode = `
 Promise.resolve(new Response(new ReadableStream({
   start(c) {
     const d = (self.__FLIGHT_DATA ||= []);
@@ -34,44 +40,52 @@ Promise.resolve(new Response(new ReadableStream({
   .map((line) => line.trim())
   .join('');
 
+// TODO(daishi) I think we should be able to remove `parseHtml` completely,
+// by changing the string based `htmlHead`. Will be BREAKING CHANGE.
 const parseHtmlHead = (
   rscPathForFakeFetch: string,
   htmlHead: string,
   mainJsPath: string, // for DEV only, pass `''` for PRD
 ) => {
-  const matchPrefetched = htmlHead.match(
-    // HACK This is very brittle
-    /(.*<script[^>]*>\nglobalThis\.__WAKU_PREFETCHED__ = {\n)(.*?)(\n};.*)/s,
+  htmlHead = htmlHead.replace(
+    // HACK This is brittle
+    /\nglobalThis\.__WAKU_PREFETCHED__ = {\n.*?\n};/s,
+    '',
   );
-  if (matchPrefetched) {
-    // HACK This is very brittle
-    // TODO(daishi) find a better way
-    const removed = matchPrefetched[2]!.replace(
-      new RegExp(`  '${rscPathForFakeFetch}': .*?,`),
-      '',
-    );
-    htmlHead =
-      matchPrefetched[1] +
-      `  '${rscPathForFakeFetch}': ${fakeFetchCode},` +
-      removed +
-      matchPrefetched[3];
-  }
-  let code = `
+  let headCode = `
 globalThis.__WAKU_HYDRATE__ = true;
 `;
-  if (!matchPrefetched) {
-    code += `
-globalThis.__WAKU_PREFETCHED__ = {
+  headCode += `globalThis.__WAKU_PREFETCHED__ = {
   '${rscPathForFakeFetch}': ${fakeFetchCode},
 };
 `;
+  const arr = parseHtml(htmlHead) as ReactElement<any>[];
+  const headModules: string[] = [];
+  const headElements: ReactElement[] = [];
+  for (const item of arr) {
+    if (item.type === 'script') {
+      if (item.props?.src) {
+        headModules.push(item.props.src);
+        continue;
+      } else if (typeof item.props?.children === 'string') {
+        headCode += item.props.children;
+        continue;
+      } else if (
+        typeof item.props?.dangerouslySetInnerHTML?.__html === 'string' &&
+        !item.props?.dangerouslySetInnerHTML?.__html.includes(
+          '__WAKU_CLIENT_IMPORT__',
+        )
+      ) {
+        headCode += item.props.dangerouslySetInnerHTML.__html;
+        continue;
+      }
+    }
+    headElements.push(item);
   }
-  htmlHead += `<script type="module" async>${code}</script>`;
   if (mainJsPath) {
-    htmlHead += `<script src="${mainJsPath}" async type="module"></script>`;
+    headModules.push(mainJsPath);
   }
-  // @ts-expect-error invalid type
-  return parse(htmlHead);
+  return { headCode, headModules, headElements };
 };
 
 // FIXME Why does it error on the first and second time?
@@ -140,6 +154,13 @@ export async function renderHtml(
   const htmlNode: Promise<ReactNode> = createFromReadableStream(htmlStream, {
     serverConsumerManifest: { moduleMap, moduleLoading: null },
   });
+  const { headCode, headModules, headElements } = parseHtmlHead(
+    rscPath,
+    htmlHead,
+    isDev
+      ? `${config.basePath}${(config as ConfigDev).srcDir}/${SRC_CLIENT_ENTRY}`
+      : '',
+  );
   try {
     const readable = await renderToReadableStream(
       createElement(
@@ -147,16 +168,12 @@ export async function renderHtml(
           Omit<ComponentProps<typeof INTERNAL_ServerRoot>, 'children'>
         >,
         { elementsPromise },
+        ...headElements,
         htmlNode as any,
-        parseHtmlHead(
-          rscPath,
-          htmlHead,
-          isDev
-            ? `${config.basePath}${(config as ConfigDev).srcDir}/${SRC_MAIN}`
-            : '',
-        ),
       ),
       {
+        bootstrapScriptContent: headCode,
+        bootstrapModules: headModules,
         formState:
           actionResult === undefined
             ? null
