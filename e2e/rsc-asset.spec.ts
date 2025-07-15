@@ -6,12 +6,12 @@ const startApp = prepareNormalSetup('rsc-asset');
 
 test.describe(`rsc-asset`, () => {
   let port: number;
-  let stopApp: () => Promise<void>;
+  let stopApp: (() => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp();
+    await stopApp?.();
   });
 
   test('basic', async ({ page }) => {

@@ -16,19 +16,20 @@ function modifyFile(
   writeFileSync(join(standaloneDir, file), content.replace(search, replace));
 }
 
+test.skip(
+  ({ mode }) => mode !== 'DEV',
+  'HMR is only available in development mode',
+);
+
 test.describe('hot reload', () => {
   let port: number;
-  let stopApp: () => Promise<void>;
+  let stopApp: (() => Promise<void>) | undefined;
   let standaloneDir: string;
-  test.skip(
-    ({ mode }) => mode === 'PRD',
-    'HMR is not available in production mode',
-  );
   test.beforeAll(async () => {
     ({ port, stopApp, standaloneDir } = await startApp('DEV'));
   });
   test.afterAll(async () => {
-    await stopApp();
+    await stopApp?.();
   });
 
   test('server and client', async ({ page }) => {
