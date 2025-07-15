@@ -1,9 +1,8 @@
 import { execSync, exec, ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { findWakuPort, terminate, test } from './utils.js';
-import { rm } from 'node:fs/promises';
 import { expect } from '@playwright/test';
-import { statSync } from 'fs';
+import { rmSync, statSync } from 'fs';
 
 const cwd = fileURLToPath(new URL('./fixtures/partial-build', import.meta.url));
 
@@ -11,7 +10,7 @@ const waku = fileURLToPath(
   new URL('../packages/waku/dist/cli.js', import.meta.url),
 );
 
-test.describe.serial(`partial builds`, () => {
+test.describe(`partial builds`, () => {
   test.skip(
     ({ browserName }) => browserName !== 'chromium',
     'Browsers are not relevant for this test. One is enough.',
@@ -24,7 +23,7 @@ test.describe.serial(`partial builds`, () => {
   let cp: ChildProcess | undefined;
   let port: number;
   test.beforeEach(async ({ page }) => {
-    await rm(`${cwd}/dist`, { recursive: true, force: true });
+    rmSync(`${cwd}/dist`, { recursive: true, force: true });
     execSync(`node ${waku} build`, {
       cwd,
       env: { ...process.env, PAGES: 'a' },

@@ -182,6 +182,13 @@ const PACKAGE_ADD = {
   yarn: `yarn add -W`,
 } as const;
 
+export const makeTempDir = (prefix: string): string => {
+  // GitHub Action on Windows doesn't support mkdtemp on global temp dir,
+  // Which will cause files in `src` folder to be empty. I don't know why
+  const tmpDir = process.env.TEMP_DIR || tmpdir();
+  return mkdtempSync(join(tmpDir, prefix));
+};
+
 export const prepareStandaloneSetup = (fixtureName: string) => {
   const wakuDir = fileURLToPath(new URL('../packages/waku', import.meta.url));
   const { version } = createRequire(import.meta.url)(
@@ -190,9 +197,6 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
   const fixtureDir = fileURLToPath(
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
-  // GitHub Action on Windows doesn't support mkdtemp on global temp dir,
-  // Which will cause files in `src` folder to be empty. I don't know why
-  const tmpDir = process.env.TEMP_DIR || tmpdir();
   const standaloneDirMap = new Map<'npm' | 'pnpm' | 'yarn', string>();
   const builtModeMap = new Map<'npm' | 'pnpm' | 'yarn', 'PRD' | 'STATIC'>();
   const startApp = async (
@@ -210,7 +214,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     };
     let standaloneDir = standaloneDirMap.get(packageManager);
     if (!standaloneDir) {
-      standaloneDir = mkdtempSync(join(tmpDir, fixtureName));
+      standaloneDir = makeTempDir(fixtureName);
       standaloneDirMap.set(packageManager, standaloneDir);
       cpSync(fixtureDir, standaloneDir, {
         filter: (src) => {
