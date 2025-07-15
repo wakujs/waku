@@ -7,7 +7,6 @@ import type { TestOptions } from './e2e/utils.js';
  */
 const config = defineConfig<TestOptions>({
   testDir: './e2e',
-  fullyParallel: true,
   timeout: process.env.CI ? 120_000 : 30_000,
   use: {
     viewport: { width: 1440, height: 800 },
@@ -51,7 +50,7 @@ const config = defineConfig<TestOptions>({
     },
   ]),
   forbidOnly: !!process.env.CI,
-  workers: process.env.CI ? 1 : 3,
+  workers: process.env.CI ? 1 : 4,
   retries: 0,
   // 'github' for GitHub Actions CI to generate annotations, plus a concise 'dot'
   // default 'list' when running locally
