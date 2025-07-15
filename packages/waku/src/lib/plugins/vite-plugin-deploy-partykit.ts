@@ -7,7 +7,7 @@ import {
   unstable_builderConstants,
 } from '../../server.js';
 
-const { SRC_ENTRIES, DIST_PUBLIC } = unstable_builderConstants;
+const { SRC_SERVER_ENTRY, DIST_PUBLIC } = unstable_builderConstants;
 const SERVE_JS = 'serve-partykit.js';
 
 const getServeJsContent = (
@@ -86,7 +86,7 @@ export function deployPartykitPlugin(opts: {
     },
     configResolved(config) {
       rootDir = config.root;
-      entriesFile = `${rootDir}/${opts.srcDir}/${SRC_ENTRIES}`;
+      entriesFile = `${rootDir}/${opts.srcDir}/${SRC_SERVER_ENTRY}`;
       if (opts.unstable_honoEnhancer) {
         honoEnhancerFile = `${rootDir}/${opts.unstable_honoEnhancer}`;
       }

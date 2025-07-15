@@ -20,12 +20,6 @@ import { encodeRscPath, encodeFuncId } from '../lib/renderers/utils.js';
 const { createFromFetch, encodeReply, createTemporaryReferenceSet } =
   RSDWClient;
 
-declare global {
-  interface ImportMeta {
-    readonly env: Record<string, string>;
-  }
-}
-
 const DEFAULT_HTML_HEAD = [
   createElement('meta', { charSet: 'utf-8' }),
   createElement('meta', {
@@ -338,11 +332,9 @@ export const useElementsPromise_UNSTABLE = () => {
 export const Slot = ({
   id,
   children,
-  unstable_fallback,
 }: {
   id: string;
   children?: ReactNode;
-  unstable_fallback?: ReactNode;
 }) => {
   const elementsPromise = useElementsPromise_UNSTABLE();
   const elements = use(elementsPromise);
@@ -352,9 +344,6 @@ export const Slot = ({
   const element = elements[id];
   const isValidElement = element !== undefined;
   if (!isValidElement) {
-    if (unstable_fallback) {
-      return unstable_fallback;
-    }
     throw new Error('Invalid element: ' + id);
   }
   return createElement(

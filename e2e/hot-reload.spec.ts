@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect } from '@playwright/test';
 
@@ -6,29 +6,30 @@ import { test, prepareStandaloneSetup } from './utils.js';
 
 const startApp = prepareStandaloneSetup('hot-reload');
 
-async function modifyFile(
+function modifyFile(
   standaloneDir: string,
   file: string,
   search: string,
   replace: string,
 ) {
-  const content = await readFile(join(standaloneDir, file), 'utf-8');
-  await writeFile(join(standaloneDir, file), content.replace(search, replace));
+  const content = readFileSync(join(standaloneDir, file), 'utf-8');
+  writeFileSync(join(standaloneDir, file), content.replace(search, replace));
 }
+
+test.skip(
+  ({ mode }) => mode !== 'DEV',
+  'HMR is only available in development mode',
+);
 
 test.describe('hot reload', () => {
   let port: number;
-  let stopApp: () => Promise<void>;
+  let stopApp: (() => Promise<void>) | undefined;
   let standaloneDir: string;
-  test.skip(
-    ({ mode }) => mode === 'PRD',
-    'HMR is not available in production mode',
-  );
   test.beforeAll(async () => {
     ({ port, stopApp, standaloneDir } = await startApp('DEV'));
   });
   test.afterAll(async () => {
-    await stopApp();
+    await stopApp?.();
   });
 
   test('server and client', async ({ page }) => {
@@ -38,7 +39,7 @@ test.describe('hot reload', () => {
     await page.getByTestId('increment').click();
     await expect(page.getByTestId('count')).toHaveText('1');
     // Server component hot reload
-    await modifyFile(
+    modifyFile(
       standaloneDir,
       'src/pages/index.tsx',
       'Home Page',
@@ -50,7 +51,7 @@ test.describe('hot reload', () => {
     await page.getByTestId('increment').click();
     await expect(page.getByTestId('count')).toHaveText('2');
     // Client component HMR
-    await modifyFile(
+    modifyFile(
       standaloneDir,
       'src/components/counter.tsx',
       'Increment',
@@ -62,7 +63,7 @@ test.describe('hot reload', () => {
     await page.getByTestId('increment').click();
     await expect(page.getByTestId('count')).toHaveText('3');
     // Server component hot reload again
-    await modifyFile(
+    modifyFile(
       standaloneDir,
       'src/pages/index.tsx',
       'Modified Page',
@@ -76,7 +77,7 @@ test.describe('hot reload', () => {
     // Jump to another page and back
     await page.getByTestId('about').click();
     await expect(page.getByText('About Page')).toBeVisible();
-    await modifyFile(
+    modifyFile(
       standaloneDir,
       'src/pages/about.tsx',
       'About Page',
@@ -86,14 +87,14 @@ test.describe('hot reload', () => {
     await page.getByTestId('home').click();
     await expect(page.getByText('Edited Page')).toBeVisible();
     // Modify with a JSX syntax error
-    await modifyFile(
+    modifyFile(
       standaloneDir,
       'src/pages/index.tsx',
       '<p>Edited Page</p>',
       '<pEdited Page</p>',
     );
     await page.waitForTimeout(500); // need to wait for possible crash
-    await modifyFile(
+    modifyFile(
       standaloneDir,
       'src/pages/index.tsx',
       '<pEdited Page</p>',
@@ -115,7 +116,7 @@ test.describe('hot reload', () => {
         .getPropertyValue('background-color'),
     );
     expect(bgColor1).toBe('rgb(0, 128, 0)');
-    await modifyFile(
+    modifyFile(
       standaloneDir,
       'src/pages/css-modules.module.css',
       'background-color: green;',
@@ -146,7 +147,7 @@ test.describe('hot reload', () => {
     );
     expect(bgColor1).toBe('rgb(255, 0, 0)');
 
-    await modifyFile(
+    modifyFile(
       standaloneDir,
       'src/pages/css-modules-client.module.css',
       'background-color: red;',
@@ -172,5 +173,36 @@ test.describe('hot reload', () => {
         .getPropertyValue('background-color'),
     );
     expect(bgColor3).toBe('rgb(0, 0, 255)');
+  });
+
+  // https://github.com/wakujs/waku/pull/1493 will fix this
+  test.skip('indirect client components (#1491)', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (err) => errors.push(err.message));
+    await page.goto(`http://localhost:${port}/`);
+    await expect(page.getByText('Home Page')).toBeVisible();
+    await expect(page.getByTestId('count')).toHaveText('0');
+    await page.getByTestId('increment').click();
+    await expect(page.getByTestId('count')).toHaveText('1');
+    await expect(page.getByTestId('mesg')).toHaveText('Mesg 1000');
+    // Client component HMR
+    modifyFile(
+      standaloneDir,
+      'src/components/message.tsx',
+      'Mesg 1000',
+      'Mesg 1001',
+    );
+    await expect(page.getByTestId('mesg')).toHaveText('Mesg 1001');
+    await page.waitForTimeout(500); // need to wait not to full reload
+    await expect(page.getByTestId('count')).toHaveText('1');
+    await page.getByTestId('increment').click();
+    await expect(page.getByTestId('count')).toHaveText('2');
+    // Browser refresh
+    await page.reload();
+    await expect(page.getByTestId('mesg')).toHaveText('Mesg 1001');
+    await expect(page.getByTestId('count')).toHaveText('0');
+    await page.getByTestId('increment').click();
+    await expect(page.getByTestId('count')).toHaveText('1');
+    expect(errors.join('\n')).not.toContain('hydration-mismatch');
   });
 });

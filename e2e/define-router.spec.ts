@@ -6,12 +6,12 @@ const startApp = prepareNormalSetup('define-router');
 
 test.describe(`define-router`, () => {
   let port: number;
-  let stopApp: () => Promise<void>;
+  let stopApp: (() => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp();
+    await stopApp?.();
   });
 
   test('home', async ({ page }) => {
@@ -34,6 +34,17 @@ test.describe(`define-router`, () => {
     await page.getByText('Bar').click();
     await expect(page.getByTestId('bar-title')).toHaveText('Bar');
     await expect(page.getByTestId('slice001')).toHaveText(sliceText!);
+  });
+
+  test('baz (delayed slice)', async ({ page }) => {
+    await page.route(/.*\/RSC\/.*/, async (route) => {
+      await new Promise((r) => setTimeout(r, 100));
+      await route.continue();
+    });
+    await page.goto(`http://localhost:${port}/baz`);
+    await expect(page.getByTestId('baz-title')).toHaveText('Baz');
+    await expect(page.getByTestId('slice002-loading')).toBeVisible();
+    await expect(page.getByTestId('slice002')).toHaveText('Slice 002');
   });
 
   test('api hi', async () => {

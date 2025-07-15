@@ -11,7 +11,7 @@ import { injectRSCPayload } from 'rsc-html-stream/server';
 
 import type * as WakuMinimalClientType from '../../minimal/client.js';
 import type { ConfigDev, ConfigPrd } from '../config.js';
-import { SRC_MAIN } from '../builder/constants.js';
+import { SRC_CLIENT_ENTRY } from '../builder/constants.js';
 import { filePathToFileURL } from '../utils/path.js';
 import { parseHtml } from '../utils/html-parser.js';
 import { renderRsc, renderRscElement, getExtractFormState } from './rsc.js';
@@ -19,7 +19,8 @@ import type { HandlerContext, ErrorCallback } from '../middleware/types.js';
 
 type Elements = Record<string, unknown>;
 
-const fakeFetchCode = `
+// This is exported for vite-rsc. https://github.com/wakujs/waku/pull/1493
+export const fakeFetchCode = `
 Promise.resolve(new Response(new ReadableStream({
   start(c) {
     const d = (self.__FLIGHT_DATA ||= []);
@@ -157,7 +158,7 @@ export async function renderHtml(
     rscPath,
     htmlHead,
     isDev
-      ? `${config.basePath}${(config as ConfigDev).srcDir}/${SRC_MAIN}`
+      ? `${config.basePath}${(config as ConfigDev).srcDir}/${SRC_CLIENT_ENTRY}`
       : '',
   );
   try {

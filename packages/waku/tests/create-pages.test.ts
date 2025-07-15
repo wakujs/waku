@@ -1105,227 +1105,506 @@ describe('createPages pages and layouts', () => {
     expect(await getConfig()).toEqual([
       {
         type: 'route',
-        elements: {
-          'page:/client/static': { isStatic: true },
-        },
-        rootElement: { isStatic: true },
-        routeElement: { isStatic: true },
-        noSsr: false,
         path: [
-          { name: 'client', type: 'literal' },
-          { name: 'static', type: 'literal' },
-        ],
-      },
-      {
-        type: 'route',
-        elements: {
-          'page:/server/static/static-echo': { isStatic: true },
-        },
-        rootElement: { isStatic: true },
-        routeElement: { isStatic: true },
-        noSsr: false,
-        path: [
-          { name: 'server', type: 'literal' },
-          { name: 'static', type: 'literal' },
-          { name: 'static-echo', type: 'literal' },
+          {
+            type: 'literal',
+            name: 'static',
+          },
+          {
+            type: 'literal',
+            name: 'wild',
+          },
+          {
+            type: 'literal',
+            name: 'foo',
+          },
+          {
+            type: 'literal',
+            name: 'foo-2',
+          },
+          {
+            type: 'literal',
+            name: 'foo-3',
+          },
         ],
         pathPattern: [
-          { name: 'server', type: 'literal' },
-          { name: 'static', type: 'literal' },
-          { name: 'echo', type: 'group' },
+          {
+            type: 'literal',
+            name: 'static',
+          },
+          {
+            type: 'literal',
+            name: 'wild',
+          },
+          {
+            type: 'wildcard',
+            name: 'wild',
+          },
         ],
+        rootElement: {
+          isStatic: true,
+        },
+        routeElement: {
+          isStatic: true,
+        },
+        elements: {
+          'page:/static/wild/foo/foo-2/foo-3': {
+            isStatic: true,
+          },
+        },
+        noSsr: false,
       },
       {
         type: 'route',
-        elements: {
-          'page:/server/static/static-echo-2': { isStatic: true },
-        },
-        rootElement: { isStatic: true },
-        routeElement: { isStatic: true },
-        noSsr: false,
         path: [
-          { name: 'server', type: 'literal' },
-          { name: 'static', type: 'literal' },
-          { name: 'static-echo-2', type: 'literal' },
+          {
+            type: 'literal',
+            name: 'server',
+          },
+          {
+            type: 'literal',
+            name: 'static',
+          },
+          {
+            type: 'literal',
+            name: 'static-echo',
+          },
+          {
+            type: 'literal',
+            name: 'static-echo-2',
+          },
         ],
         pathPattern: [
-          { name: 'server', type: 'literal' },
-          { name: 'static', type: 'literal' },
-          { name: 'echo', type: 'group' },
+          {
+            type: 'literal',
+            name: 'server',
+          },
+          {
+            type: 'literal',
+            name: 'static',
+          },
+          {
+            type: 'group',
+            name: 'echo',
+          },
+          {
+            type: 'group',
+            name: 'echo2',
+          },
         ],
+        rootElement: {
+          isStatic: true,
+        },
+        routeElement: {
+          isStatic: true,
+        },
+        elements: {
+          'page:/server/static/static-echo/static-echo-2': {
+            isStatic: true,
+          },
+        },
+        noSsr: false,
       },
       {
         type: 'route',
-        elements: {
-          'page:/server/static/static-echo/static-echo-2': { isStatic: true },
-        },
-        rootElement: { isStatic: true },
-        routeElement: { isStatic: true },
-        noSsr: false,
         path: [
-          { name: 'server', type: 'literal' },
-          { name: 'static', type: 'literal' },
-          { name: 'static-echo', type: 'literal' },
-          { name: 'static-echo-2', type: 'literal' },
+          {
+            type: 'literal',
+            name: 'server',
+          },
+          {
+            type: 'literal',
+            name: 'static',
+          },
+          {
+            type: 'literal',
+            name: 'hello',
+          },
+          {
+            type: 'literal',
+            name: 'hello-2',
+          },
         ],
         pathPattern: [
-          { name: 'server', type: 'literal' },
-          { name: 'static', type: 'literal' },
-          { name: 'echo', type: 'group' },
-          { name: 'echo2', type: 'group' },
+          {
+            type: 'literal',
+            name: 'server',
+          },
+          {
+            type: 'literal',
+            name: 'static',
+          },
+          {
+            type: 'group',
+            name: 'echo',
+          },
+          {
+            type: 'group',
+            name: 'echo2',
+          },
         ],
+        rootElement: {
+          isStatic: true,
+        },
+        routeElement: {
+          isStatic: true,
+        },
+        elements: {
+          'page:/server/static/hello/hello-2': {
+            isStatic: true,
+          },
+        },
+        noSsr: false,
       },
       {
         type: 'route',
-        elements: {
-          'page:/server/static/hello/hello-2': { isStatic: true },
-        },
-        rootElement: { isStatic: true },
-        routeElement: { isStatic: true },
-        noSsr: false,
         path: [
-          { name: 'server', type: 'literal' },
-          { name: 'static', type: 'literal' },
-          { name: 'hello', type: 'literal' },
-          { name: 'hello-2', type: 'literal' },
+          {
+            type: 'literal',
+            name: 'static',
+          },
+          {
+            type: 'literal',
+            name: 'wild',
+          },
+          {
+            type: 'literal',
+            name: 'hello',
+          },
+          {
+            type: 'literal',
+            name: 'hello-2',
+          },
         ],
         pathPattern: [
-          { name: 'server', type: 'literal' },
-          { name: 'static', type: 'literal' },
-          { name: 'echo', type: 'group' },
-          { name: 'echo2', type: 'group' },
+          {
+            type: 'literal',
+            name: 'static',
+          },
+          {
+            type: 'literal',
+            name: 'wild',
+          },
+          {
+            type: 'wildcard',
+            name: 'wild',
+          },
         ],
+        rootElement: {
+          isStatic: true,
+        },
+        routeElement: {
+          isStatic: true,
+        },
+        elements: {
+          'page:/static/wild/hello/hello-2': {
+            isStatic: true,
+          },
+        },
+        noSsr: false,
       },
       {
         type: 'route',
-        elements: {
-          'page:/static/wild/bar': { isStatic: true },
-        },
-        rootElement: { isStatic: true },
-        routeElement: { isStatic: true },
-        noSsr: false,
         path: [
-          { name: 'static', type: 'literal' },
-          { name: 'wild', type: 'literal' },
-          { name: 'bar', type: 'literal' },
+          {
+            type: 'literal',
+            name: 'server',
+          },
+          {
+            type: 'literal',
+            name: 'two',
+          },
+          {
+            type: 'group',
+            name: 'echo',
+          },
+          {
+            type: 'group',
+            name: 'echo2',
+          },
+        ],
+        rootElement: {
+          isStatic: true,
+        },
+        routeElement: {
+          isStatic: true,
+        },
+        elements: {
+          'page:/server/two/[echo]/[echo2]': {
+            isStatic: false,
+          },
+        },
+        noSsr: false,
+      },
+      {
+        type: 'route',
+        path: [
+          {
+            type: 'literal',
+            name: 'server',
+          },
+          {
+            type: 'literal',
+            name: 'oneAndWild',
+          },
+          {
+            type: 'group',
+            name: 'slug',
+          },
+          {
+            type: 'wildcard',
+            name: 'wild',
+          },
+        ],
+        rootElement: {
+          isStatic: true,
+        },
+        routeElement: {
+          isStatic: true,
+        },
+        elements: {
+          'page:/server/oneAndWild/[slug]/[...wild]': {
+            isStatic: false,
+          },
+        },
+        noSsr: false,
+      },
+      {
+        type: 'route',
+        path: [
+          {
+            type: 'literal',
+            name: 'server',
+          },
+          {
+            type: 'literal',
+            name: 'static',
+          },
+          {
+            type: 'literal',
+            name: 'static-echo',
+          },
         ],
         pathPattern: [
-          { name: 'static', type: 'literal' },
-          { name: 'wild', type: 'literal' },
-          { name: 'wild', type: 'wildcard' },
+          {
+            type: 'literal',
+            name: 'server',
+          },
+          {
+            type: 'literal',
+            name: 'static',
+          },
+          {
+            type: 'group',
+            name: 'echo',
+          },
         ],
+        rootElement: {
+          isStatic: true,
+        },
+        routeElement: {
+          isStatic: true,
+        },
+        elements: {
+          'page:/server/static/static-echo': {
+            isStatic: true,
+          },
+        },
+        noSsr: false,
       },
       {
         type: 'route',
-        elements: {
-          'page:/static/wild/hello/hello-2': { isStatic: true },
-        },
-        rootElement: { isStatic: true },
-        routeElement: { isStatic: true },
-        noSsr: false,
         path: [
-          { name: 'static', type: 'literal' },
-          { name: 'wild', type: 'literal' },
-          { name: 'hello', type: 'literal' },
-          { name: 'hello-2', type: 'literal' },
+          {
+            type: 'literal',
+            name: 'server',
+          },
+          {
+            type: 'literal',
+            name: 'static',
+          },
+          {
+            type: 'literal',
+            name: 'static-echo-2',
+          },
         ],
         pathPattern: [
-          { name: 'static', type: 'literal' },
-          { name: 'wild', type: 'literal' },
-          { name: 'wild', type: 'wildcard' },
+          {
+            type: 'literal',
+            name: 'server',
+          },
+          {
+            type: 'literal',
+            name: 'static',
+          },
+          {
+            type: 'group',
+            name: 'echo',
+          },
         ],
+        rootElement: {
+          isStatic: true,
+        },
+        routeElement: {
+          isStatic: true,
+        },
+        elements: {
+          'page:/server/static/static-echo-2': {
+            isStatic: true,
+          },
+        },
+        noSsr: false,
       },
       {
         type: 'route',
-        elements: {
-          'page:/static/wild/foo/foo-2/foo-3': { isStatic: true },
-        },
-        rootElement: { isStatic: true },
-        routeElement: { isStatic: true },
-        noSsr: false,
         path: [
-          { name: 'static', type: 'literal' },
-          { name: 'wild', type: 'literal' },
-          { name: 'foo', type: 'literal' },
-          { name: 'foo-2', type: 'literal' },
-          { name: 'foo-3', type: 'literal' },
+          {
+            type: 'literal',
+            name: 'static',
+          },
+          {
+            type: 'literal',
+            name: 'wild',
+          },
+          {
+            type: 'literal',
+            name: 'bar',
+          },
         ],
         pathPattern: [
-          { name: 'static', type: 'literal' },
-          { name: 'wild', type: 'literal' },
-          { name: 'wild', type: 'wildcard' },
+          {
+            type: 'literal',
+            name: 'static',
+          },
+          {
+            type: 'literal',
+            name: 'wild',
+          },
+          {
+            type: 'wildcard',
+            name: 'wild',
+          },
         ],
+        rootElement: {
+          isStatic: true,
+        },
+        routeElement: {
+          isStatic: true,
+        },
+        elements: {
+          'page:/static/wild/bar': {
+            isStatic: true,
+          },
+        },
+        noSsr: false,
       },
       {
         type: 'route',
-        elements: {
-          'page:/client/dynamic': { isStatic: false },
-        },
-        rootElement: { isStatic: true },
-        routeElement: { isStatic: true },
-        noSsr: false,
         path: [
-          { name: 'client', type: 'literal' },
-          { name: 'dynamic', type: 'literal' },
+          {
+            type: 'literal',
+            name: 'server',
+          },
+          {
+            type: 'literal',
+            name: 'one',
+          },
+          {
+            type: 'group',
+            name: 'echo',
+          },
         ],
+        rootElement: {
+          isStatic: true,
+        },
+        routeElement: {
+          isStatic: true,
+        },
+        elements: {
+          'page:/server/one/[echo]': {
+            isStatic: false,
+          },
+        },
+        noSsr: false,
       },
       {
         type: 'route',
-        elements: {
-          'page:/server/one/[echo]': { isStatic: false },
-        },
-        rootElement: { isStatic: true },
-        routeElement: { isStatic: true },
-        noSsr: false,
         path: [
-          { name: 'server', type: 'literal' },
-          { name: 'one', type: 'literal' },
-          { name: 'echo', type: 'group' },
+          {
+            type: 'literal',
+            name: 'server',
+          },
+          {
+            type: 'literal',
+            name: 'wild',
+          },
+          {
+            type: 'wildcard',
+            name: 'wild',
+          },
         ],
+        rootElement: {
+          isStatic: true,
+        },
+        routeElement: {
+          isStatic: true,
+        },
+        elements: {
+          'page:/server/wild/[...wild]': {
+            isStatic: false,
+          },
+        },
+        noSsr: false,
       },
       {
         type: 'route',
-        elements: {
-          'page:/server/two/[echo]/[echo2]': { isStatic: false },
-        },
-        rootElement: { isStatic: true },
-        routeElement: { isStatic: true },
-        noSsr: false,
         path: [
-          { name: 'server', type: 'literal' },
-          { name: 'two', type: 'literal' },
-          { name: 'echo', type: 'group' },
-          { name: 'echo2', type: 'group' },
+          {
+            type: 'literal',
+            name: 'client',
+          },
+          {
+            type: 'literal',
+            name: 'static',
+          },
         ],
+        rootElement: {
+          isStatic: true,
+        },
+        routeElement: {
+          isStatic: true,
+        },
+        elements: {
+          'page:/client/static': {
+            isStatic: true,
+          },
+        },
+        noSsr: false,
       },
       {
         type: 'route',
-        elements: {
-          'page:/server/wild/[...wild]': { isStatic: false },
-        },
-        rootElement: { isStatic: true },
-        routeElement: { isStatic: true },
-        noSsr: false,
         path: [
-          { name: 'server', type: 'literal' },
-          { name: 'wild', type: 'literal' },
-          { name: 'wild', type: 'wildcard' },
+          {
+            type: 'literal',
+            name: 'client',
+          },
+          {
+            type: 'literal',
+            name: 'dynamic',
+          },
         ],
-      },
-      {
-        type: 'route',
-        elements: {
-          'page:/server/oneAndWild/[slug]/[...wild]': { isStatic: false },
+        rootElement: {
+          isStatic: true,
         },
-        rootElement: { isStatic: true },
-        routeElement: { isStatic: true },
+        routeElement: {
+          isStatic: true,
+        },
+        elements: {
+          'page:/client/dynamic': {
+            isStatic: false,
+          },
+        },
         noSsr: false,
-        path: [
-          { name: 'server', type: 'literal' },
-          { name: 'oneAndWild', type: 'literal' },
-          { name: 'slug', type: 'group' },
-          { name: 'wild', type: 'wildcard' },
-        ],
       },
     ]);
     const route = await handleRoute('/server/two/a/b', {

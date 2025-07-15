@@ -10,6 +10,7 @@ import { unstable_defineEntries as defineEntries } from '../minimal/server.js';
 import {
   encodeRoutePath,
   decodeRoutePath,
+  decodeSliceId,
   ROUTE_ID,
   IS_STATIC_ID,
   HAS404_ID,
@@ -167,7 +168,11 @@ export function unstable_defineRouter(fns: {
     rootElement: ReactNode;
     routeElement: ReactNode;
     elements: Record<SlotId, unknown>;
-    slices?: Record<SliceId, unknown>;
+  }>;
+  // TODO: Not sure if this API is well designed. Let's revisit it later.
+  handleSlice?: (sliceId: string) => Promise<{
+    element: ReactNode;
+    isStatic?: boolean; // This flag is only used for delayed slices.
   }>;
   handleApi?: (
     path: string,
@@ -183,6 +188,9 @@ export function unstable_defineRouter(fns: {
     status?: number;
   }>;
 }) {
+  if (fns.handleSlice && !import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER) {
+    throw new Error('Slice is still experimental');
+  }
   type MyPathConfig = {
     pathSpec: PathSpec;
     pathname: string | undefined;
@@ -191,6 +199,8 @@ export function unstable_defineRouter(fns: {
       rootElementIsStatic?: true;
       routeElementIsStatic?: true;
       staticElementIds?: SlotId[];
+      sliceIds?: SliceId[];
+      staticSliceIds?: SliceId[];
       isStatic?: true;
       noSsr?: true;
       is404?: true;
@@ -242,15 +252,18 @@ export function unstable_defineRouter(fns: {
                 ...(item.routeElement.isStatic
                   ? { routeElementIsStatic: true as const }
                   : {}),
-                staticElementIds: [
-                  ...Object.entries(item.elements).flatMap(
-                    ([id, { isStatic }]) => (isStatic ? [id] : []),
-                  ),
-                  ...Object.entries(item.slices || {}).flatMap(
-                    ([id, { isStatic }]) =>
-                      isStatic ? [SLICE_SLOT_ID_PREFIX + id] : [],
-                  ),
-                ],
+                staticElementIds: Object.entries(item.elements).flatMap(
+                  ([id, { isStatic }]) => (isStatic ? [id] : []),
+                ),
+                ...(item.slices
+                  ? {
+                      sliceIds: Object.keys(item.slices),
+                      staticSliceIds: Object.entries(item.slices).flatMap(
+                        ([sliceId, { isStatic }]) =>
+                          isStatic ? [sliceId] : [],
+                      ),
+                    }
+                  : {}),
                 ...(isStatic ? { isStatic: true as const } : {}),
                 ...(is404 ? { is404: true as const } : {}),
                 ...(item.noSsr ? { noSsr: true as const } : {}),
@@ -306,14 +319,27 @@ export function unstable_defineRouter(fns: {
     }
     const skipIdSet = new Set(isStringArray(skipParam) ? skipParam : []);
     const { query } = parseRscParams(rscParams);
-    const { rootElement, routeElement, elements, slices } =
-      await fns.handleRoute(
-        pathname,
-        pathConfigItem.specs.isStatic ? {} : { query },
-      );
-    if (slices && !import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER) {
-      throw new Error('Slice is still experimental');
-    }
+    const [{ rootElement, routeElement, elements }, ...slices] =
+      await Promise.all([
+        fns.handleRoute(
+          pathname,
+          pathConfigItem.specs.isStatic ? {} : { query },
+        ),
+        ...(pathConfigItem.specs.sliceIds || []).map(async (sliceId) => {
+          if (!fns.handleSlice) {
+            throw new Error('handleSlice is not defined');
+          }
+          const id = SLICE_SLOT_ID_PREFIX + sliceId;
+          if (
+            pathConfigItem.specs.staticSliceIds?.includes(sliceId) &&
+            skipIdSet.has(id)
+          ) {
+            return {};
+          }
+          const { element } = await fns.handleSlice(sliceId);
+          return { [id]: element };
+        }),
+      ]);
     if (
       Object.keys(elements).some(
         (id) =>
@@ -325,12 +351,7 @@ export function unstable_defineRouter(fns: {
     }
     const entries = {
       ...elements,
-      ...Object.fromEntries(
-        Object.entries(slices || {}).map(([id, element]) => [
-          SLICE_SLOT_ID_PREFIX + id,
-          element,
-        ]),
-      ),
+      ...Object.assign({}, ...slices),
     };
     for (const id of pathConfigItem.specs.staticElementIds || []) {
       if (skipIdSet.has(id)) {
@@ -365,6 +386,20 @@ export function unstable_defineRouter(fns: {
     { renderRsc, renderHtml },
   ) => {
     if (input.type === 'component') {
+      const sliceId = decodeSliceId(input.rscPath);
+      if (sliceId !== null) {
+        // LIMITATION: This is a signle slice request.
+        // Ideally, we should be able to respond with multiple slices in one request.
+        if (!fns.handleSlice) {
+          return null;
+        }
+        const { element, isStatic } = await fns.handleSlice(sliceId);
+        return renderRsc({
+          [SLICE_SLOT_ID_PREFIX + sliceId]: element,
+          // FIXME: hard-coded for now
+          [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + sliceId]: !!isStatic,
+        });
+      }
       const entries = await getEntries(
         input.rscPath,
         input.rscParams,
