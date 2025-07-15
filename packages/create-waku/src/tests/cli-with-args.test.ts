@@ -127,18 +127,22 @@ describe('create-waku CLI with args', () => {
     expect(stdout).toContain('Setting up project...');
   }, 10000);
 
-  test('accepts example option from command line', () => {
-    const { stdout } = run(
-      [
-        '--project-name',
-        projectName,
-        '--example',
-        'https://github.com/wakujs/waku/tree/main/examples/01_template',
-      ],
-      { cwd: import.meta.dirname, timeout: 30000, reject: false },
-    );
-    expect(stdout).toContain('Setting up project...');
-  }, 30000);
+  test(
+    'accepts example option from command line',
+    { timeout: 30000, retry: process.env.CI ? 3 : 0 },
+    () => {
+      const { stdout } = run(
+        [
+          '--project-name',
+          projectName,
+          '--example',
+          'https://github.com/wakujs/waku/tree/main/examples/01_template',
+        ],
+        { cwd: import.meta.dirname, timeout: 30000, reject: false },
+      );
+      expect(stdout).toContain('Setting up project...');
+    },
+  );
 
   test('shows installation instructions after setup', () => {
     const { stdout } = run(

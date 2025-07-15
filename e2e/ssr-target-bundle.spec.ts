@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { readdir } from 'node:fs/promises';
+import { readdirSync } from 'node:fs';
 import path from 'node:path';
 
 import { test, prepareNormalSetup } from './utils.js';
@@ -8,19 +8,19 @@ const startApp = prepareNormalSetup('ssr-target-bundle');
 
 test.describe(`ssr-target-bundle`, () => {
   let port: number;
-  let stopApp: () => Promise<void>;
+  let stopApp: (() => Promise<void>) | undefined;
   let fixtureDir: string;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp, fixtureDir } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp();
+    await stopApp?.();
   });
 
   test('image exists in folder public/assets', async ({ mode }) => {
     test.skip(mode === 'DEV');
     const imagePath = path.join(fixtureDir, 'dist', 'public', 'assets');
-    const files = await readdir(imagePath);
+    const files = readdirSync(imagePath);
     const imageExists = files.some((file) =>
       file.startsWith('image-not-inlined-'),
     );
@@ -32,7 +32,7 @@ test.describe(`ssr-target-bundle`, () => {
   }) => {
     test.skip(mode === 'DEV');
     const imagePath = path.join(fixtureDir, 'dist', 'public', 'assets');
-    const files = await readdir(imagePath);
+    const files = readdirSync(imagePath);
     const imageExists = files.some((file) =>
       file.startsWith('json-public-linked-'),
     );
@@ -42,7 +42,7 @@ test.describe(`ssr-target-bundle`, () => {
   test('json private NOT exists in folder public/assets', async ({ mode }) => {
     test.skip(mode === 'DEV');
     const imagePath = path.join(fixtureDir, 'dist', 'public', 'assets');
-    const files = await readdir(imagePath);
+    const files = readdirSync(imagePath);
     const imageExists = files.some((file) => file.startsWith('json-private-'));
     expect(imageExists).not.toBe(true);
   });
