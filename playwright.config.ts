@@ -36,7 +36,6 @@ const config = defineConfig<TestOptions>({
     {
       ...item,
       name: `${item.name}-dev`,
-      testIgnore: ['examples-smoke.spec.ts'],
       use: {
         ...item.use,
         mode: 'DEV',
@@ -45,7 +44,6 @@ const config = defineConfig<TestOptions>({
     {
       ...item,
       name: `${item.name}-prd`,
-      testIgnore: ['examples-smoke.spec.ts'],
       use: {
         ...item.use,
         mode: 'PRD',
