@@ -68,18 +68,21 @@ test.describe(`broken-links: normal server`, async () => {
 });
 
 test.describe('broken-links: static server', () => {
-  test.skip(({ mode }) => mode !== 'PRD');
-
-  let port: number;
-  let stopApp: () => Promise<void>;
-  test.beforeAll(async () => {
-    ({ port, stopApp } = await startApp('STATIC'));
-  });
-  test.afterAll(async () => {
-    await stopApp();
-  });
+  test.skip(
+    ({ mode }) => mode !== 'PRD',
+    'static tests are only relevant in production mode',
+  );
 
   test.describe('client side navigation', () => {
+    let port: number;
+    let stopApp: () => Promise<void>;
+    test.beforeAll(async () => {
+      ({ port, stopApp } = await startApp('STATIC'));
+    });
+    test.afterAll(async () => {
+      await stopApp();
+    });
+
     test('correct link', async ({ page }) => {
       await page.goto(`http://localhost:${port}`);
       // Click on a link to an existing page

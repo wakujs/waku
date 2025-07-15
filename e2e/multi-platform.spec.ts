@@ -60,12 +60,12 @@ const buildPlatformTarget = [
 
 test.describe.configure({ mode: 'parallel' });
 
-test.describe(`multi platform builds`, () => {
-  test.skip(
-    ({ mode }) => mode !== 'PRD',
-    'Build tests are only relevant in production mode.',
-  );
+test.skip(
+  ({ mode }) => mode !== 'PRD',
+  'Build tests are only relevant in production mode.',
+);
 
+test.describe(`multi platform builds`, () => {
   for (const { cwd, project } of dryRunList) {
     for (const { platform, clearDirOrFile } of buildPlatformTarget) {
       test(`build ${project} with ${platform} should not throw error`, async () => {

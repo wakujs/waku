@@ -63,15 +63,17 @@ test.describe(`ssr-basic`, () => {
     await context.close();
   });
 
-  test('check hydration error', async ({ page, mode }) => {
-    test.skip(mode !== 'DEV');
+  test('check hydration error', async ({ page }) => {
     const messages: string[] = [];
     page.on('console', (msg) => messages.push(msg.text()));
+    const errors: string[] = [];
+    page.on('pageerror', (err) => errors.push(err.message));
     await page.goto(`http://localhost:${port}/`);
     await expect(page.getByTestId('app-name')).toHaveText('Waku');
     await expect(page.getByTestId('count')).toHaveText('0');
     await page.getByTestId('increment').click();
     await expect(page.getByTestId('count')).toHaveText('1');
     expect(messages.join('\n')).not.toContain('hydration-mismatch');
+    expect(errors.join('\n')).not.toContain('Minified React error #418');
   });
 });
