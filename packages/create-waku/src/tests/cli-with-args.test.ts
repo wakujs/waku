@@ -127,9 +127,10 @@ describe('create-waku CLI with args', () => {
     expect(stdout).toContain('Setting up project...');
   }, 10000);
 
-  test(
+  // Github api call is not reliable on CI
+  test.skipIf(process.env.CI)(
     'accepts example option from command line',
-    { timeout: 30000, retry: process.env.CI ? 3 : 0 },
+    { timeout: 30000 },
     () => {
       const { stdout } = run(
         [
