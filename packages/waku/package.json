@@ -93,7 +93,7 @@
     "hono": "4.8.5",
     "html-react-parser": "5.2.5",
     "rollup": "4.45.0",
-    "rsc-html-stream": "0.0.6",
+    "rsc-html-stream": "0.0.7",
     "vite": "7.0.4"
   },
   "devDependencies": {
