@@ -23,13 +23,13 @@ test.skip(
 
 test.describe('hot reload', () => {
   let port: number;
-  let stopApp: () => Promise<void>;
+  let stopApp: (() => Promise<void>) | undefined;
   let standaloneDir: string;
   test.beforeAll(async () => {
     ({ port, stopApp, standaloneDir } = await startApp('DEV'));
   });
   test.afterAll(async () => {
-    await stopApp();
+    await stopApp?.();
   });
 
   test('server and client', async ({ page }) => {

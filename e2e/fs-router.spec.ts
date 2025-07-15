@@ -6,12 +6,12 @@ const startApp = prepareStandaloneSetup('fs-router');
 
 test.describe(`fs-router`, async () => {
   let port: number;
-  let stopApp: () => Promise<void>;
+  let stopApp: (() => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp();
+    await stopApp?.();
   });
 
   test('home', async ({ page }) => {

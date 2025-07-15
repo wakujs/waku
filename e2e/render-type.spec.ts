@@ -16,12 +16,12 @@ test.skip(
 test.describe('render type', () => {
   test.describe('static', () => {
     let port: number;
-    let stopApp: () => Promise<void>;
+    let stopApp: (() => Promise<void>) | undefined;
     test.beforeAll(async () => {
       ({ port, stopApp } = await startApp('STATIC'));
     });
     test.afterAll(async () => {
-      await stopApp();
+      await stopApp?.();
     });
 
     test('renders static content', async ({ page }) => {
@@ -61,12 +61,12 @@ test.describe('render type', () => {
 
   test.describe('dynamic', () => {
     let port: number;
-    let stopApp: () => Promise<void>;
+    let stopApp: (() => Promise<void>) | undefined;
     test.beforeAll(async () => {
       ({ port, stopApp } = await startApp('PRD'));
     });
     test.afterAll(async () => {
-      await stopApp();
+      await stopApp?.();
     });
 
     test('renders dynamic content', async ({ page }) => {
