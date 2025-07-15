@@ -58,56 +58,58 @@ for (const cwd of examples) {
       // FIXME npx wrangler dev doesn't work on Windows and we don't know why.
       continue;
     }
-    test.describe(`smoke test on ${basename(cwd)}: ${command}`, () => {
+    test.describe(`smoke test in ${build ? 'PRD' : 'DEV'}`, () => {
       test.skip(({ mode }) => mode !== (build ? 'PRD' : 'DEV'));
-      let cp: ChildProcess | undefined;
-      let port: number;
-      test.beforeAll('remove cache', async () => {
-        rmSync(`${cwd}/dist`, { recursive: true, force: true });
-      });
-
-      test.beforeAll(async () => {
-        if (build) {
-          execSync(`node ${waku} ${build}`, { cwd });
-        }
-        cp = exec(`${command}`, { cwd });
-        cp.stdout?.on('data', (data) => {
-          info(`stdout: ${data}`);
-          console.log(`stdout: `, `${data}`);
+      test.describe(`smoke test on ${basename(cwd)}: ${command}`, () => {
+        let cp: ChildProcess | undefined;
+        let port: number;
+        test.beforeAll('remove cache', async () => {
+          rmSync(`${cwd}/dist`, { recursive: true, force: true });
         });
-        cp.stderr?.on('data', (data) => {
-          if (
-            command === 'dev' &&
-            /WebSocket server error: Port is already in use/.test(`${data}`)
-          ) {
-            // ignore this error
-            return;
+
+        test.beforeAll(async () => {
+          if (build) {
+            execSync(`node ${waku} ${build}`, { cwd });
           }
-          if (
-            /Error: The render was aborted by the server without a reason\..*\/examples\/53_islands\//s.test(
-              `${data}`,
-            )
-          ) {
-            // ignore this error
-            return;
-          }
-          error(`stderr: ${data}`);
-          console.error(`stderr: `, `${data}`);
+          cp = exec(`${command}`, { cwd });
+          cp.stdout?.on('data', (data) => {
+            info(`stdout: ${data}`);
+            console.log(`stdout: `, `${data}`);
+          });
+          cp.stderr?.on('data', (data) => {
+            if (
+              command === 'dev' &&
+              /WebSocket server error: Port is already in use/.test(`${data}`)
+            ) {
+              // ignore this error
+              return;
+            }
+            if (
+              /Error: The render was aborted by the server without a reason\..*\/examples\/53_islands\//s.test(
+                `${data}`,
+              )
+            ) {
+              // ignore this error
+              return;
+            }
+            error(`stderr: ${data}`);
+            console.error(`stderr: `, `${data}`);
+          });
+          port = await findWakuPort(cp);
         });
-        port = await findWakuPort(cp);
-      });
 
-      test.afterAll(async () => {
-        if (cp?.pid) {
-          await terminate(cp.pid);
-        }
-      });
+        test.afterAll(async () => {
+          if (cp?.pid) {
+            await terminate(cp.pid);
+          }
+        });
 
-      test('check title', async ({ page }) => {
-        await page.goto(`http://localhost:${port}/`);
-        // title maybe doesn't ready yet
-        await page.waitForLoadState('load');
-        await expect.poll(() => page.title()).toMatch(/^Waku/);
+        test('check title', async ({ page }) => {
+          await page.goto(`http://localhost:${port}/`);
+          // title maybe doesn't ready yet
+          await page.waitForLoadState('load');
+          await expect.poll(() => page.title()).toMatch(/^Waku/);
+        });
       });
     });
   }
