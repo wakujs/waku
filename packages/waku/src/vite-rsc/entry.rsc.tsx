@@ -271,6 +271,9 @@ async function handleRequest(ctx: HandlerContext) {
     res = await wakuServerEntry.handleRequest(input, renderUtils);
   } catch (e) {
     const info = getErrorInfo(e);
+    if (!info) {
+      console.error(e);
+    }
     ctx.res.status = info?.status || 500;
     ctx.res.body = stringToStream(
       (e as { message?: string } | undefined)?.message || String(e),
