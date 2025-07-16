@@ -41,25 +41,35 @@ export async function renderHTML(
   // render html (traditional SSR)
   const bootstrapScriptContent =
     await import.meta.viteRsc.loadBootstrapScriptContent('index');
-  const htmlStream = await ReactDOMServer.renderToReadableStream(<SsrRoot />, {
-    bootstrapScriptContent:
-      getBootstrapPreamble({ rscPath: options?.rscPath || '' }) +
-      bootstrapScriptContent,
-    nonce: options?.nonce,
-    onError: (e: unknown) => {
-      if (
-        e &&
-        typeof e === 'object' &&
-        'digest' in e &&
-        typeof e.digest === 'string'
-      ) {
-        return e.digest;
-      }
-      console.error('[SSR Error]', React.captureOwnerStack() || '', '\n', e);
-    },
-    // no types
-    ...{ formState: options?.formState },
-  } as any);
+
+  function renderHtmlInner() {
+    return ReactDOMServer.renderToReadableStream(<SsrRoot />, {
+      bootstrapScriptContent:
+        getBootstrapPreamble({ rscPath: options?.rscPath || '' }) +
+        bootstrapScriptContent,
+      nonce: options?.nonce,
+      onError: (e: unknown) => {
+        if (
+          e &&
+          typeof e === 'object' &&
+          'digest' in e &&
+          typeof e.digest === 'string'
+        ) {
+          return e.digest;
+        }
+        console.error(
+          '[SSR Error]',
+          React.captureOwnerStack?.() || '',
+          '\n',
+          e,
+        );
+      },
+      // no types
+      ...{ formState: options?.formState },
+    } as any);
+  }
+
+  const htmlStream = await withHackSsrRetry(renderHtmlInner)();
 
   let responseStream: ReadableStream<Uint8Array> = htmlStream;
   responseStream = responseStream.pipeThrough(
@@ -69,6 +79,23 @@ export async function renderHTML(
   );
 
   return responseStream;
+}
+
+// see https://github.com/wakujs/waku/pull/1534
+let hackSsrRetry = 1;
+
+function withHackSsrRetry<F extends (...args: any[]) => Promise<any>>(fn: F): F {
+  return async function withRetryWrapper(this: any, ...args): Promise<any> {
+    try {
+      return await fn.apply(this, args);
+    } catch (e) {
+      if (hackSsrRetry) {
+        hackSsrRetry--;
+        return withRetryWrapper.apply(this, args);
+      }
+      throw e;
+    }
+  } as F;
 }
 
 // cf. packages/waku/src/lib/renderers/html.ts `parseHtmlHead`

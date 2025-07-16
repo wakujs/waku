@@ -123,7 +123,7 @@ function createRenderUtils({
     ) {
       return e.digest;
     }
-    console.error('[RSC Error]', React.captureOwnerStack() || '', '\n', e);
+    console.error('[RSC Error]', React.captureOwnerStack?.() || '', '\n', e);
   };
 
   return {
