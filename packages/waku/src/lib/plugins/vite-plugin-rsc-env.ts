@@ -21,6 +21,7 @@ export function rscEnvPlugin({
           path: ['.env.local', '.env'],
           processEnv: env,
           override: true,
+          quiet: true,
         });
       }
 
