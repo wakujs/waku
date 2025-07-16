@@ -183,12 +183,6 @@ const PACKAGE_INSTALL = {
   yarn: `yarn install`,
 } as const;
 
-// const PACKAGE_ADD = {
-//   npm: `npm add --force`,
-//   pnpm: `pnpm add`,
-//   yarn: `yarn add -W`,
-// } as const;
-
 export const makeTempDir = (prefix: string): string => {
   // GitHub Action on Windows doesn't support mkdtemp on global temp dir,
   // Which will cause files in `src` folder to be empty. I don't know why
@@ -289,10 +283,6 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         cwd: standaloneDir,
         stdio: 'inherit',
       });
-      // execSync(`${PACKAGE_ADD[packageManager]} ${wakuPackageTgz}`, {
-      //   cwd: wakuPackageDir(),
-      //   stdio: 'inherit',
-      // });
     }
     let waku = join(wakuPackageDir(), './node_modules/waku/dist/cli.js');
     if (process.env.TEST_VITE_RSC) {
