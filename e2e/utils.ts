@@ -118,8 +118,11 @@ export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
   });
 }
 
-export const test = basicTest.extend<TestOptions>({
-  mode: ['DEV', { option: true }],
+export const test = basicTest.extend<
+  Omit<TestOptions, 'mode'>,
+  Pick<TestOptions, 'mode'>
+>({
+  mode: ['DEV', { option: true, scope: 'worker' }],
   page: async ({ page }, pageUse, testInfo) => {
     const callback = (msg: ConsoleMessage) => {
       if (unexpectedErrors.some((re) => re.test(msg.text()))) {
