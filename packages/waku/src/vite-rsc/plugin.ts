@@ -31,7 +31,7 @@ import { wakuDeployCloudflarePlugin } from './deploy/cloudflare/plugin.js';
 import { wakuDeployPartykitPlugin } from './deploy/partykit/plugin.js';
 import { wakuDeployDenoPlugin } from './deploy/deno/plugin.js';
 import { wakuDeployAwsLambdaPlugin } from './deploy/aws-lambda/plugin.js';
-import { joinPath } from '../lib/utils/path.js';
+import { filePathToFileURL, joinPath } from '../lib/utils/path.js';
 
 const PKG_NAME = 'waku';
 
@@ -76,6 +76,7 @@ export default function wakuPlugin(
   };
   const wakuFlags = wakuPluginOptions?.flags ?? {};
   let privatePath: string;
+  let customServerEntry: string | undefined;
 
   const extraPlugins = [...(wakuConfig.vite?.plugins ?? [])];
   // add react plugin automatically if users didn't include it on their own (e.g. swc, oxc, babel react compiler)
@@ -145,7 +146,8 @@ export default function wakuPlugin(
         };
 
         // backcompat for old vite config overrides
-        // TODO: adding `plugins` here is not supported.
+        // Note that adding `plugins` here is not supported and
+        // such plugins should be moved to `wakuConfig.vite`.
         viteRscConfig = mergeConfig(
           viteRscConfig,
           wakuConfig?.unstable_viteConfigs?.['common']?.() ?? {},
@@ -234,6 +236,7 @@ export default function wakuPlugin(
             undefined,
             options,
           );
+          customServerEntry = resolved?.id;
           return resolved ? resolved : '\0' + source;
         }
         if (source === 'virtual:vite-rsc-waku/client-entry') {
@@ -269,6 +272,16 @@ if (import.meta.hot) {
         }
         if (id === '\0virtual:vite-rsc-waku/client-entry') {
           return getManagedMain();
+        }
+      },
+      transform(code, id) {
+        // rewrite `fsRouter(import.meta.url, ...)` in custom server entry
+        // e.g. examples/11_fs-router/src/server-entry.tsx
+        // TODO: rework fsRouter to entirely avoid fs access on runtime
+        if (id === customServerEntry && code.includes('fsRouter')) {
+          const replacement = JSON.stringify(filePathToFileURL(id));
+          code = code.replaceAll(/\bimport\.meta\.url\b/g, () => replacement);
+          return code;
         }
       },
     },
