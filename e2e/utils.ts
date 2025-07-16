@@ -293,7 +293,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         stdio: 'inherit',
       });
     }
-    let waku = join(standaloneDir, './node_modules/waku/dist/cli.js');
+    let waku = join(wakuPackageDir(), './node_modules/waku/dist/cli.js');
     if (process.env.TEST_VITE_RSC) {
       waku = `${waku} --experimental-vite-rsc`;
     }
