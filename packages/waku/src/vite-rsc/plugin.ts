@@ -119,6 +119,7 @@ export default function wakuPlugin(
               },
               optimizeDeps: {
                 entries: [
+                  `${wakuConfig.srcDir}/${SRC_CLIENT_ENTRY}.*`,
                   `${wakuConfig.srcDir}/${SRC_SERVER_ENTRY}.*`,
                   `${wakuConfig.srcDir}/${wakuConfig.pagesDir}/**/*.*`,
                 ],
