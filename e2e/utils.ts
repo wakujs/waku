@@ -179,12 +179,6 @@ const PACKAGE_INSTALL = {
   yarn: `yarn install`,
 } as const;
 
-const PACKAGE_ADD = {
-  npm: `npm add --force`,
-  pnpm: `pnpm add`,
-  yarn: `yarn add -W`,
-} as const;
-
 export const makeTempDir = (prefix: string): string => {
   // GitHub Action on Windows doesn't support mkdtemp on global temp dir,
   // Which will cause files in `src` folder to be empty. I don't know why
@@ -281,18 +275,6 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         cwd: standaloneDir,
         stdio: 'inherit',
       });
-      // if (packageManager === 'yarn') {
-      //   // For yarn workspaces, we need to run yarn add -W from the root to add waku to workspace dependencies
-      //   execSync(`${PACKAGE_ADD[packageManager]} ${wakuPackageTgz}`, {
-      //     cwd: standaloneDir,
-      //     stdio: 'inherit',
-      //   });
-      // } else {
-      //   execSync(`${PACKAGE_ADD[packageManager]} ${wakuPackageTgz}`, {
-      //     cwd: wakuPackageDir(),
-      //     stdio: 'inherit',
-      //   });
-      // }
     }
     if (mode !== 'DEV' && builtModeMap.get(packageManager) !== mode) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
