@@ -211,7 +211,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       if (!standaloneDir) {
         throw new Error('standaloneDir is not set');
       }
-      return packageManager === 'npm'
+      return packageManager !== 'pnpm'
         ? standaloneDir
         : join(standaloneDir, packageDir);
     };
@@ -239,6 +239,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       const pnpmOverrides = {
         ...rootPkg.pnpm?.overrides,
         ...rootPkg.pnpmOverrides, // Do we need this?
+        waku: `file:${wakuPackageTgz}`,
       };
       for (const file of readdirSync(standaloneDir, {
         encoding: 'utf8',
@@ -280,10 +281,18 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         cwd: standaloneDir,
         stdio: 'inherit',
       });
-      execSync(`${PACKAGE_ADD[packageManager]} ${wakuPackageTgz}`, {
-        cwd: wakuPackageDir(),
-        stdio: 'inherit',
-      });
+      // if (packageManager === 'yarn') {
+      //   // For yarn workspaces, we need to run yarn add -W from the root to add waku to workspace dependencies
+      //   execSync(`${PACKAGE_ADD[packageManager]} ${wakuPackageTgz}`, {
+      //     cwd: standaloneDir,
+      //     stdio: 'inherit',
+      //   });
+      // } else {
+      //   execSync(`${PACKAGE_ADD[packageManager]} ${wakuPackageTgz}`, {
+      //     cwd: wakuPackageDir(),
+      //     stdio: 'inherit',
+      //   });
+      // }
     }
     if (mode !== 'DEV' && builtModeMap.get(packageManager) !== mode) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
