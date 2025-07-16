@@ -179,12 +179,6 @@ const PACKAGE_INSTALL = {
   yarn: `yarn install`,
 } as const;
 
-const PACKAGE_ADD = {
-  npm: `npm add --force`,
-  pnpm: `pnpm add`,
-  yarn: `yarn add -W`,
-} as const;
-
 export const makeTempDir = (prefix: string): string => {
   // GitHub Action on Windows doesn't support mkdtemp on global temp dir,
   // Which will cause files in `src` folder to be empty. I don't know why
@@ -211,7 +205,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       if (!standaloneDir) {
         throw new Error('standaloneDir is not set');
       }
-      return packageManager === 'npm'
+      return packageManager !== 'pnpm'
         ? standaloneDir
         : join(standaloneDir, packageDir);
     };
@@ -239,6 +233,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       const pnpmOverrides = {
         ...rootPkg.pnpm?.overrides,
         ...rootPkg.pnpmOverrides, // Do we need this?
+        waku: `file:${wakuPackageTgz}`,
       };
       for (const file of readdirSync(standaloneDir, {
         encoding: 'utf8',
@@ -278,10 +273,6 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       }
       execSync(PACKAGE_INSTALL[packageManager], {
         cwd: standaloneDir,
-        stdio: 'inherit',
-      });
-      execSync(`${PACKAGE_ADD[packageManager]} ${wakuPackageTgz}`, {
-        cwd: wakuPackageDir(),
         stdio: 'inherit',
       });
     }
