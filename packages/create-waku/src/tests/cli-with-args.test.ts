@@ -127,34 +127,22 @@ describe('create-waku CLI with args', () => {
     expect(stdout).toContain('Setting up project...');
   }, 10000);
 
-  test('accepts example option from command line', (ctx) => {
-    if (process.env.CI) {
-      if (process.env.GITHUB_TOKEN) {
-        const oldFetch = fetch;
-        globalThis.fetch = (input, init) => {
-          const headers = new Headers(init?.headers);
-          headers.set('Authorization', `Bearer ${process.env.GITHUB_TOKEN}`);
-          return oldFetch(input, { ...init, headers });
-        };
-        ctx.onTestFinished(() => {
-          globalThis.fetch = oldFetch;
-        });
-      } else {
-        ctx.skip('requires GITHUB_TOKEN on CI');
-      }
-    }
-
-    const { stdout } = run(
-      [
-        '--project-name',
-        projectName,
-        '--example',
-        'https://github.com/wakujs/waku/tree/main/examples/01_template',
-      ],
-      { cwd: import.meta.dirname, timeout: 30000, reject: false },
-    );
-    expect(stdout).toContain('Setting up project...');
-  }, 30000);
+  test(
+    'accepts example option from command line',
+    { timeout: 30000, retry: process.env.CI ? 3 : 0 },
+    () => {
+      const { stdout } = run(
+        [
+          '--project-name',
+          projectName,
+          '--example',
+          'https://github.com/wakujs/waku/tree/main/examples/01_template',
+        ],
+        { cwd: import.meta.dirname, timeout: 30000, reject: false },
+      );
+      expect(stdout).toContain('Setting up project...');
+    },
+  );
 
   test('shows installation instructions after setup', () => {
     const { stdout } = run(

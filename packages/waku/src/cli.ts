@@ -107,22 +107,7 @@ if (values.version) {
   }
 }
 
-function catchUncaughtExceptionInDev() {
-  // Workaround for https://github.com/wakujs/waku/issues/756
-  process.on('uncaughtException', (err) => {
-    if (
-      (err as { code?: unknown }).code === 'ERR_INVALID_STATE' &&
-      err.message.includes('Unable to enqueue')
-    ) {
-      // ignore this error
-      return;
-    }
-    throw err;
-  });
-}
-
 async function runDev() {
-  catchUncaughtExceptionInDev();
   const config = await loadConfig();
   const honoEnhancer: HonoEnhancer = config.unstable_honoEnhancer
     ? await loadHonoEnhancer(config.unstable_honoEnhancer)

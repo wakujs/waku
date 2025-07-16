@@ -6,12 +6,12 @@ const startApp = prepareStandaloneSetup('use-router');
 
 test.describe(`useRouter`, async () => {
   let port: number;
-  let stopApp: () => Promise<void>;
+  let stopApp: (() => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp();
+    await stopApp?.();
   });
 
   test.describe('returns the current path', () => {

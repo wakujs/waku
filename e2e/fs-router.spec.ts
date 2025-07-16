@@ -6,12 +6,12 @@ const startApp = prepareStandaloneSetup('fs-router');
 
 test.describe(`fs-router`, async () => {
   let port: number;
-  let stopApp: () => Promise<void>;
+  let stopApp: (() => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp();
+    await stopApp?.();
   });
 
   test('home', async ({ page }) => {
@@ -49,13 +49,15 @@ test.describe(`fs-router`, async () => {
     ).toBeVisible();
   });
 
-  test('check hydration error', async ({ page, mode }) => {
-    test.skip(mode !== 'DEV');
+  test('check hydration error', async ({ page }) => {
+    const messages: string[] = [];
+    page.on('console', (msg) => messages.push(msg.text()));
     const errors: string[] = [];
     page.on('pageerror', (err) => errors.push(err.message));
     await page.goto(`http://localhost:${port}/`);
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
-    expect(errors.join('\n')).not.toContain('hydration-mismatch');
+    expect(messages.join('\n')).not.toContain('hydration-mismatch');
+    expect(errors.join('\n')).not.toContain('Minified React error #418');
   });
 
   test('api hi', async () => {
