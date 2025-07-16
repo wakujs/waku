@@ -299,10 +299,10 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         recursive: true,
         force: true,
       });
-      execSync(
-        `node ${waku} build`,
-        { cwd: join(standaloneDir, packageDir), stdio: 'inherit' },
-      );
+      execSync(`node ${waku} build`, {
+        cwd: join(standaloneDir, packageDir),
+        stdio: 'inherit',
+      });
       builtModeMap.set(packageManager, mode);
     }
     let cmd: string;
