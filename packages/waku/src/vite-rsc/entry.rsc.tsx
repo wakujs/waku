@@ -19,6 +19,7 @@ import { middlewares } from 'virtual:vite-rsc-waku/middlewares';
 import type { MiddlewareHandler } from 'hono';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import type { ReactNode } from 'react';
+import React from 'react';
 
 //
 // main server handler as hono middleware
@@ -122,6 +123,7 @@ function createRenderUtils({
     ) {
       return e.digest;
     }
+    console.error('[RSC Error]', React.captureOwnerStack() || '', '\n', e);
   };
 
   return {
@@ -271,9 +273,6 @@ async function handleRequest(ctx: HandlerContext) {
     res = await wakuServerEntry.handleRequest(input, renderUtils);
   } catch (e) {
     const info = getErrorInfo(e);
-    if (!info) {
-      console.error(e);
-    }
     ctx.res.status = info?.status || 500;
     ctx.res.body = stringToStream(
       (e as { message?: string } | undefined)?.message || String(e),

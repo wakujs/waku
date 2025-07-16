@@ -55,6 +55,7 @@ export async function renderHTML(
       ) {
         return e.digest;
       }
+      console.error('[SSR Error]', React.captureOwnerStack() || '', '\n', e);
     },
     // no types
     ...{ formState: options?.formState },
