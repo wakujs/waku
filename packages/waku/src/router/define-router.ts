@@ -567,6 +567,13 @@ globalThis.__WAKU_ROUTER_PREFETCH__ = (path) => {
         tasks.push(async () => {
           const moduleIds = moduleIdsForPrefetch.get(pathSpec)!;
           if (pathname) {
+            if (specs.noSsr) {
+              // LIMITATION specs.noSsr is not supported without pathname
+              return {
+                type: 'defaultHtml',
+                pathname,
+              };
+            }
             const rscPath = encodeRoutePath(pathname);
             const code =
               unstable_generatePrefetchCode([rscPath], moduleIds) +
