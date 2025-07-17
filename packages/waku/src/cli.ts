@@ -58,6 +58,9 @@ const { values, positionals } = parseArgs({
     'experimental-vite-rsc': {
       type: 'boolean',
     },
+    'no-vite-rsc': {
+      type: 'boolean',
+    },
     port: {
       type: 'string',
       short: 'p',
@@ -81,7 +84,7 @@ if (values.version) {
 } else if (values.help) {
   displayUsage();
 } else if (
-  values['experimental-vite-rsc'] &&
+  !values['no-vite-rsc'] &&
   cmd &&
   ['dev', 'build', 'start'].includes(cmd)
 ) {

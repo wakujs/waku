@@ -113,7 +113,7 @@ jobs:
         env:
           TEMP_DIR: ${{ runner.temp }}
           VITE_EXPERIMENTAL_WAKU_ROUTER: true
-          TEST_VITE_RSC: true
+          # TEST_VITE_RSC: true
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
