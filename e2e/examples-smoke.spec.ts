@@ -20,7 +20,7 @@ let waku = fileURLToPath(
 );
 
 if (process.env.TEST_LEGACY) {
-  waku = `${waku} --legacy`;
+  waku = `${waku} --experimental-legacy-cli`;
 }
 
 const commands = [

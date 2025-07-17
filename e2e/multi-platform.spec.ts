@@ -24,7 +24,7 @@ let waku = fileURLToPath(
 );
 
 if (process.env.TEST_LEGACY) {
-  waku += ` --legacy`;
+  waku += ` --experimental-legacy-cli`;
 }
 
 const buildPlatformTarget = [

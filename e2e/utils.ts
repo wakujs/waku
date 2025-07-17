@@ -141,7 +141,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     new URL('../packages/waku/dist/cli.js', import.meta.url),
   );
   if (process.env.TEST_LEGACY) {
-    waku = `${waku} --legacy`;
+    waku = `${waku} --experimental-legacy-cli`;
   }
   const fixtureDir = fileURLToPath(
     new URL('./fixtures/' + fixtureName, import.meta.url),
@@ -286,7 +286,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     }
     let waku = join(wakuPackageDir(), './node_modules/waku/dist/cli.js');
     if (process.env.TEST_LEGACY) {
-      waku = `${waku} --legacy`;
+      waku = `${waku} --experimental-legacy-cli`;
     }
     if (mode !== 'DEV' && builtModeMap.get(packageManager) !== mode) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
