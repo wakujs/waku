@@ -198,7 +198,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
   const builtModeMap = new Map<'npm' | 'pnpm' | 'yarn', 'PRD' | 'STATIC'>();
   const startApp = async (
     mode: 'DEV' | 'PRD' | 'STATIC',
-    packageManager: 'npm' | 'pnpm' | 'yarn' = 'npm',
+    packageManager: 'npm' | 'pnpm' | 'yarn' = 'pnpm',
     packageDir = '',
   ) => {
     const wakuPackageDir = (): string => {
