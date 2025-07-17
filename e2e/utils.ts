@@ -140,8 +140,8 @@ export const prepareNormalSetup = (fixtureName: string) => {
   let waku = fileURLToPath(
     new URL('../packages/waku/dist/cli.js', import.meta.url),
   );
-  if (process.env.TEST_VITE_RSC) {
-    waku = `${waku} --experimental-vite-rsc`;
+  if (process.env.TEST_LEGACY) {
+    waku = `${waku} --legacy`;
   }
   const fixtureDir = fileURLToPath(
     new URL('./fixtures/' + fixtureName, import.meta.url),
@@ -206,7 +206,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
   const builtModeMap = new Map<'npm' | 'pnpm' | 'yarn', 'PRD' | 'STATIC'>();
   const startApp = async (
     mode: 'DEV' | 'PRD' | 'STATIC',
-    packageManager: 'npm' | 'pnpm' | 'yarn' = 'npm',
+    packageManager: 'npm' | 'pnpm' | 'yarn' = 'pnpm',
     packageDir = '',
   ) => {
     const wakuPackageDir = (): string => {
@@ -285,8 +285,8 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       });
     }
     let waku = join(wakuPackageDir(), './node_modules/waku/dist/cli.js');
-    if (process.env.TEST_VITE_RSC) {
-      waku = `${waku} --experimental-vite-rsc`;
+    if (process.env.TEST_LEGACY) {
+      waku = `${waku} --legacy`;
     }
     if (mode !== 'DEV' && builtModeMap.get(packageManager) !== mode) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {

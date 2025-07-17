@@ -23,8 +23,8 @@ let waku = fileURLToPath(
   new URL('../packages/waku/dist/cli.js', import.meta.url),
 );
 
-if (process.env.TEST_VITE_RSC) {
-  waku += ` --experimental-vite-rsc`;
+if (process.env.TEST_LEGACY) {
+  waku += ` --legacy`;
 }
 
 const buildPlatformTarget = [

@@ -55,10 +55,7 @@ const { values, positionals } = parseArgs({
     'experimental-compress': {
       type: 'boolean',
     },
-    'experimental-vite-rsc': {
-      type: 'boolean',
-    },
-    'no-vite-rsc': {
+    'legacy': {
       type: 'boolean',
     },
     port: {
@@ -84,7 +81,7 @@ if (values.version) {
 } else if (values.help) {
   displayUsage();
 } else if (
-  !values['no-vite-rsc'] &&
+  !values['legacy'] &&
   cmd &&
   ['dev', 'build', 'start'].includes(cmd)
 ) {
@@ -240,6 +237,7 @@ Options:
   --with-partykit       Output for PartyKit on build
   --with-deno           Output for Deno on build
   --with-aws-lambda     Output for AWS Lambda on build
+  --legacy              Enable legacy mode without "@vitejs/plugin-rsc"
   -p, --port            Port number for the server
   -v, --version         Display the version number
   -h, --help            Display this help message
