@@ -84,7 +84,9 @@ export async function renderHTML(
 // see https://github.com/wakujs/waku/pull/1534
 let hackSsrRetry = 1;
 
-function withHackSsrRetry<F extends (...args: any[]) => Promise<any>>(fn: F): F {
+function withHackSsrRetry<F extends (...args: any[]) => Promise<any>>(
+  fn: F,
+): F {
   return async function withRetryWrapper(this: any, ...args): Promise<any> {
     try {
       return await fn.apply(this, args);
