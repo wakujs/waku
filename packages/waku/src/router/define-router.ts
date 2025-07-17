@@ -468,7 +468,7 @@ export function unstable_defineRouter(fns: {
       };
       const query = input.req.url.searchParams.toString();
       if (pathConfigItem?.specs?.noSsr) {
-        return null;
+        return 'fallback';
       }
       try {
         if (pathConfigItem) {
