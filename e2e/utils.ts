@@ -16,6 +16,7 @@ import type { ChildProcess } from 'node:child_process';
 import { expect, test as basicTest } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
 import { error, info } from '@actions/core';
+import { stripVTControlCharacters } from 'node:util';
 
 export const FETCH_ERROR_MESSAGES = {
   chromium: 'Failed to fetch',
@@ -31,7 +32,7 @@ export type TestOptions = {
 export async function findWakuPort(cp: ChildProcess): Promise<number> {
   return new Promise((resolve, reject) => {
     function listener(data: unknown) {
-      const str = `${data}`;
+      const str = stripVTControlCharacters(`${data}`);
       const match = str.match(/http:\/\/localhost:(\d+)/g);
       if (match) {
         clearTimeout(timer);
@@ -136,9 +137,12 @@ export const test = basicTest.extend<
 });
 
 export const prepareNormalSetup = (fixtureName: string) => {
-  const waku = fileURLToPath(
+  let waku = fileURLToPath(
     new URL('../packages/waku/dist/cli.js', import.meta.url),
   );
+  if (process.env.TEST_LEGACY) {
+    waku = `${waku} --experimental-legacy-cli`;
+  }
   const fixtureDir = fileURLToPath(
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
@@ -187,6 +191,10 @@ export const makeTempDir = (prefix: string): string => {
 };
 
 export const prepareStandaloneSetup = (fixtureName: string) => {
+  if (process.env.TEST_FORCE_NORMAL_SETUP) {
+    return prepareNormalSetup(fixtureName) as any;
+  }
+
   const wakuDir = fileURLToPath(new URL('../packages/waku', import.meta.url));
   const { version } = createRequire(import.meta.url)(
     join(wakuDir, 'package.json'),
@@ -276,24 +284,28 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         stdio: 'inherit',
       });
     }
+    let waku = join(wakuPackageDir(), './node_modules/waku/dist/cli.js');
+    if (process.env.TEST_LEGACY) {
+      waku = `${waku} --experimental-legacy-cli`;
+    }
     if (mode !== 'DEV' && builtModeMap.get(packageManager) !== mode) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
         recursive: true,
         force: true,
       });
-      execSync(
-        `node ${join(wakuPackageDir(), './node_modules/waku/dist/cli.js')} build`,
-        { cwd: join(standaloneDir, packageDir), stdio: 'inherit' },
-      );
+      execSync(`node ${waku} build`, {
+        cwd: join(standaloneDir, packageDir),
+        stdio: 'inherit',
+      });
       builtModeMap.set(packageManager, mode);
     }
     let cmd: string;
     switch (mode) {
       case 'DEV':
-        cmd = `node ${join(wakuPackageDir(), './node_modules/waku/dist/cli.js')} dev`;
+        cmd = `node ${waku} dev`;
         break;
       case 'PRD':
-        cmd = `node ${join(wakuPackageDir(), './node_modules/waku/dist/cli.js')} start`;
+        cmd = `node ${waku} start`;
         break;
       case 'STATIC':
         cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} dist/public`;
@@ -310,3 +322,17 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
   };
   return startApp;
 };
+
+export async function waitForHydration(page: Page) {
+  await page.waitForFunction(
+    () => {
+      const el = document.querySelector('body');
+      if (el) {
+        const keys = Object.keys(el);
+        return keys.some((key) => key.startsWith('__reactFiber'));
+      }
+    },
+    null,
+    { timeout: 3000 },
+  );
+}

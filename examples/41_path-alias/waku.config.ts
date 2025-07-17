@@ -10,4 +10,7 @@ export default defineConfig({
       ],
     }),
   },
+  vite: {
+    plugins: [tsconfigPaths()],
+  },
 });
