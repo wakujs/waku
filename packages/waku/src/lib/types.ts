@@ -42,7 +42,7 @@ export type HandleRequest = (
     renderRsc: RenderRsc;
     renderHtml: RenderHtml;
   },
-) => Promise<ReadableStream | HandlerRes | null | undefined>;
+) => Promise<ReadableStream | HandlerRes | 'fallback' | null | undefined>;
 
 // needs better name (it's not just config)
 type BuildConfig =
