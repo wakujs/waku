@@ -565,15 +565,17 @@ globalThis.__WAKU_ROUTER_PREFETCH__ = (path) => {
           continue;
         }
         tasks.push(async () => {
+          if (specs.noSsr) {
+            if (!pathname) {
+              throw new Error('Pathname is required for noSsr routes on build');
+            }
+            return {
+              type: 'defaultHtml',
+              pathname,
+            };
+          }
           const moduleIds = moduleIdsForPrefetch.get(pathSpec)!;
           if (pathname) {
-            if (specs.noSsr) {
-              // LIMITATION specs.noSsr is not supported without pathname
-              return {
-                type: 'defaultHtml',
-                pathname,
-              };
-            }
             const rscPath = encodeRoutePath(pathname);
             const code =
               unstable_generatePrefetchCode([rscPath], moduleIds) +
