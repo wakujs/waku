@@ -6,13 +6,9 @@ import { rmSync, statSync } from 'fs';
 
 const cwd = fileURLToPath(new URL('./fixtures/partial-build', import.meta.url));
 
-let waku = fileURLToPath(
+const waku = fileURLToPath(
   new URL('../packages/waku/dist/cli.js', import.meta.url),
 );
-
-if (process.env.TEST_LEGACY) {
-  waku = `${waku} --experimental-legacy-cli`;
-}
 
 test.skip(
   ({ browserName }) => browserName !== 'chromium',

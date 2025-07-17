@@ -9,15 +9,6 @@ export default defineConfig({
       plugins: [importMetaUrlServerPlugin()],
     }),
   },
-  vite: {
-    plugins: [
-      {
-        ...importMetaUrlServerPlugin(),
-        apply: 'build',
-        applyToEnvironment: (environment) => environment.name === 'rsc',
-      },
-    ],
-  },
 });
 
 // emit asset and rewrite `new URL("./xxx", import.meta.url)` syntax for build.

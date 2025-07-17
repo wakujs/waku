@@ -49,7 +49,4 @@ export default defineConfig({
       plugins: [react({ babel: babelConfig })],
     }),
   },
-  vite: {
-    plugins: [react({ babel: babelConfig })],
-  },
 });

@@ -19,13 +19,9 @@ const dryRunList = [
   },
 ];
 
-let waku = fileURLToPath(
+const waku = fileURLToPath(
   new URL('../packages/waku/dist/cli.js', import.meta.url),
 );
-
-if (process.env.TEST_LEGACY) {
-  waku += ` --experimental-legacy-cli`;
-}
 
 const buildPlatformTarget = [
   {
