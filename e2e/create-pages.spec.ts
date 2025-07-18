@@ -376,4 +376,14 @@ test.describe(`create-pages`, () => {
     const staticTime2 = await whatTime('Static Layout');
     expect(dynamicTime2).not.toEqual(staticTime2);
   });
+
+  test('no ssr', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/no-ssr`);
+    await expect(
+      page.getByRole('heading', { name: 'No SSR', exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Only client component', exact: true }),
+    ).toBeVisible();
+  });
 });
