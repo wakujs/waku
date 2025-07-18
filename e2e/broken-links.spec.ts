@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test';
 
-import { test, prepareStandaloneSetup } from './utils.js';
+import { test, prepareStandaloneSetup, waitForHydration } from './utils.js';
 
 const startApp = prepareStandaloneSetup('broken-links');
 
@@ -43,6 +43,7 @@ test.describe(`broken-links: normal server`, async () => {
     test('redirect', async ({ page }) => {
       // Navigate to a page that redirects to an existing page
       await page.goto(`http://localhost:${port}/redirect`);
+      await waitForHydration(page);
       // The page renders the target page
       await expect(page.getByRole('heading')).toHaveText('Existing page');
       // The browsers URL is the one of the target page

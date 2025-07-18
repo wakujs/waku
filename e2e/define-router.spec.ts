@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test';
 
-import { test, prepareNormalSetup } from './utils.js';
+import { test, prepareNormalSetup, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('define-router');
 
@@ -28,6 +28,7 @@ test.describe(`define-router`, () => {
 
   test('bar (slice)', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
     await expect(page.getByTestId('home-title')).toHaveText('Home');
     const sliceText = await page.getByTestId('slice001').textContent();
     expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
