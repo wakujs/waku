@@ -290,10 +290,7 @@ const routePriorityComparator = (
 };
 
 export const createPages = <
-  AllPages extends (
-    | AnyPage
-    | ReturnType<CreateLayout>
-  )[],
+  AllPages extends (AnyPage | ReturnType<CreateLayout>)[],
 >(
   fn: (fns: {
     createPage: CreatePage;
