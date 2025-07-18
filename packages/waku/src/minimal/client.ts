@@ -37,6 +37,17 @@ const checkStatus = async (
   responsePromise: Promise<Response>,
 ): Promise<Response> => {
   const response = await responsePromise;
+  if (response.redirected) {
+    const location = response.url;
+    const err = createCustomError(
+      (await response.text()) || response.statusText,
+      {
+        status: response.status,
+        ...(location && { location }),
+      },
+    );
+    throw err;
+  }
   if (!response.ok) {
     const location = response.headers.get('location');
     const err = createCustomError(
@@ -177,18 +188,11 @@ export const unstable_callServerRsc = async (
   const rscPath = encodeFuncId(funcId);
   const rscParams =
     args.length === 1 && args[0] instanceof URLSearchParams ? args[0] : args;
-  const {
-    _value: value,
-    _error: error,
-    ...data
-  } = await fetchRscInternal(rscPath, rscParams);
+  const { _value: value, ...data } = await fetchRscInternal(rscPath, rscParams);
   if (Object.keys(data).length) {
     startTransition(() => {
       setElements((prev) => mergeElementsPromise(prev, data));
     });
-  }
-  if (error) {
-    throw error;
   }
   return value;
 };

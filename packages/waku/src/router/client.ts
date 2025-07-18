@@ -40,7 +40,6 @@ import {
   ROUTE_ID,
   IS_STATIC_ID,
   HAS404_ID,
-  DELEGATED_ERROR_ID,
   SKIP_HEADER,
 } from './common.js';
 import type { RouteProps } from './common.js';
@@ -561,15 +560,6 @@ const ThrowError = ({ error }: { error: unknown }) => {
   throw error;
 };
 
-const CustomErrorThrower = () => {
-  const elementsPromise = useElementsPromise();
-  const elements = use(elementsPromise);
-  if (DELEGATED_ERROR_ID in elements) {
-    return elements[DELEGATED_ERROR_ID] as never;
-  }
-  return null;
-};
-
 const getRouteSlotId = (path: string) => 'route:' + decodeURI(path);
 const getSliceSlotId = (id: SliceId) => 'slice:' + id;
 
@@ -897,12 +887,7 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
   const rootElement = createElement(
     Slot,
     { id: 'root' },
-    createElement(
-      CustomErrorHandler,
-      { has404 },
-      routeElement,
-      createElement(CustomErrorThrower),
-    ),
+    createElement(CustomErrorHandler, { has404 }, routeElement),
   );
   return createElement(
     RouterContext,
@@ -961,7 +946,6 @@ export function INTERNAL_ServerRouter({
     { id: 'root' },
     createElement('meta', { name: 'httpstatus', content: `${httpstatus}` }),
     routeElement,
-    createElement(CustomErrorThrower),
   );
   return createElement(
     Fragment,
