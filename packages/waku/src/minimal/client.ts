@@ -337,7 +337,7 @@ export const Slot = ({
   children?: ReactNode;
 }) => {
   const elementsPromise = useElementsPromise_UNSTABLE();
-  const elements = use(elementsPromise);
+  const elements = use2(elementsPromise);
   if (id in elements && elements[id] === undefined) {
     throw new Error('Element cannot be undefined, use null instead: ' + id);
   }
@@ -371,3 +371,79 @@ export const INTERNAL_ServerRoot = ({
     ...DEFAULT_HTML_HEAD,
     children,
   );
+
+// Use DIY `use` to workaround React SSR bug.
+// based on https://github.com/facebook/react/issues/29855
+// https://github.com/apollographql/apollo-client/blob/8e3edd4f5e5191453ba3ca1a1cc4fc4a02b936e8/src/react/hooks/internal/__use.ts#L15-L26
+
+export const use2: typeof use = (promise) => {
+  const statefulPromise = wrapPromiseWithState(promise as any);
+
+  switch (statefulPromise.status) {
+    case 'pending':
+      throw statefulPromise;
+    case 'rejected':
+      throw statefulPromise.reason;
+    case 'fulfilled':
+      return statefulPromise.value as any;
+  }
+};
+
+function wrapPromiseWithState<TValue>(
+  promise: Promise<TValue>,
+): PromiseWithState<TValue> {
+  if (isStatefulPromise(promise)) {
+    return promise;
+  }
+
+  const pendingPromise = promise as PendingPromise<TValue>;
+  pendingPromise.status = 'pending';
+
+  pendingPromise.then(
+    (value) => {
+      if (pendingPromise.status === 'pending') {
+        const fulfilledPromise =
+          pendingPromise as unknown as FulfilledPromise<TValue>;
+
+        fulfilledPromise.status = 'fulfilled';
+        fulfilledPromise.value = value;
+      }
+    },
+    (reason: unknown) => {
+      if (pendingPromise.status === 'pending') {
+        const rejectedPromise =
+          pendingPromise as unknown as RejectedPromise<TValue>;
+
+        rejectedPromise.status = 'rejected';
+        rejectedPromise.reason = reason;
+      }
+    },
+  );
+
+  return promise as PromiseWithState<TValue>;
+}
+
+function isStatefulPromise<TValue>(
+  promise: Promise<TValue>,
+): promise is PromiseWithState<TValue> {
+  return 'status' in promise;
+}
+
+export interface PendingPromise<TValue> extends Promise<TValue> {
+  status: 'pending';
+}
+
+export interface FulfilledPromise<TValue> extends Promise<TValue> {
+  status: 'fulfilled';
+  value: TValue;
+}
+
+export interface RejectedPromise<TValue> extends Promise<TValue> {
+  status: 'rejected';
+  reason: unknown;
+}
+
+export type PromiseWithState<TValue> =
+  | PendingPromise<TValue>
+  | FulfilledPromise<TValue>
+  | RejectedPromise<TValue>;

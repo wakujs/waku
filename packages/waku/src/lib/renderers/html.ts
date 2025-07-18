@@ -89,7 +89,7 @@ globalThis.__WAKU_HYDRATE__ = true;
 };
 
 // FIXME Why does it error on the first and second time?
-let hackToIgnoreFirstTwoErrors = 2;
+let hackToIgnoreFirstTwoErrors = 0;
 
 export async function renderHtml(
   config: ConfigDev | ConfigPrd,
@@ -111,7 +111,7 @@ export async function renderHtml(
   const {
     default: { createFromReadableStream },
   } = modules.rsdwClient as { default: typeof RSDWClientType };
-  const { INTERNAL_ServerRoot } =
+  const { INTERNAL_ServerRoot, use2 } =
     modules.wakuMinimalClient as typeof WakuMinimalClientType;
 
   const stream = await renderRsc(config, ctx, elements, onError);
@@ -162,34 +162,40 @@ export async function renderHtml(
       : '',
   );
   try {
-    const readable = await renderToReadableStream(
-      createElement(
+    // createFromReadableStream promise is already instrumented,
+    // but we need to instrument on our own to workaround React SSR use bug.
+    const elementsPromise2 = Promise.resolve(elementsPromise);
+    const htmlNode2 = Promise.resolve(htmlNode);
+
+    function SsrRoot() {
+      return createElement(
         INTERNAL_ServerRoot as FunctionComponent<
           Omit<ComponentProps<typeof INTERNAL_ServerRoot>, 'children'>
         >,
-        { elementsPromise },
-        htmlNode as any,
+        { elementsPromise: elementsPromise2 },
+        use2(htmlNode2),
         ...headElements,
-      ),
-      {
-        bootstrapScriptContent: headCode,
-        bootstrapModules: headModules,
-        formState:
-          actionResult === undefined
-            ? null
-            : await getExtractFormState(ctx)(actionResult),
-        onError(err) {
-          if (hackToIgnoreFirstTwoErrors) {
-            return;
-          }
-          console.error(err);
-          onError.forEach((fn) => fn(err, ctx as HandlerContext, 'html'));
-          if (typeof (err as any)?.digest === 'string') {
-            return (err as { digest: string }).digest;
-          }
-        },
+      );
+    }
+
+    const readable = await renderToReadableStream(createElement(SsrRoot), {
+      bootstrapScriptContent: headCode,
+      bootstrapModules: headModules,
+      formState:
+        actionResult === undefined
+          ? null
+          : await getExtractFormState(ctx)(actionResult),
+      onError(err) {
+        if (hackToIgnoreFirstTwoErrors) {
+          return;
+        }
+        console.error(err);
+        onError.forEach((fn) => fn(err, ctx as HandlerContext, 'html'));
+        if (typeof (err as any)?.digest === 'string') {
+          return (err as { digest: string }).digest;
+        }
       },
-    );
+    });
     const injected: ReadableStream & { allReady?: Promise<void> } =
       readable.pipeThrough(injectRSCPayload(stream2));
     injected.allReady = readable.allReady;
