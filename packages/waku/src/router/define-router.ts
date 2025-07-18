@@ -439,10 +439,16 @@ export function unstable_defineRouter(fns: {
       } catch (e) {
         const info = getErrorInfo(e);
         if (info?.location) {
-          // HACK: This is pretty hacky and feels wrong.
-          // FIXME: prefix and suffix should not be hard-coded.
-          info.location = '/RSC/' + encodeRoutePath(info.location) + '.txt';
-          throw createCustomError(String(e), info);
+          const rscPath = encodeRoutePath(info.location);
+          const entries = await getEntries(
+            rscPath,
+            undefined,
+            input.req.headers,
+          );
+          if (!entries) {
+            unstable_notFound();
+          }
+          return renderRsc(entries);
         }
         throw e;
       } finally {
