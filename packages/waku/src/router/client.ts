@@ -463,7 +463,7 @@ const Redirect = ({
   error,
   to,
   reset,
-  handledErrorSet
+  handledErrorSet,
 }: {
   error: unknown;
   to: string;
