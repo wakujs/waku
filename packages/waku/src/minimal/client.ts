@@ -372,10 +372,13 @@ export const INTERNAL_ServerRoot = ({
     children,
   );
 
-// Use DIY `use` to workaround React SSR bug https://github.com/facebook/react/issues/33937
-// The implementation is copied from https://github.com/facebook/react/issues/29855
-// https://github.com/apollographql/apollo-client/blob/8e3edd4f5e5191453ba3ca1a1cc4fc4a02b936e8/src/react/hooks/internal/__use.ts#L15-L26
-
+/**
+ * Use DIY `use` to workaround React SSR bug
+ *   https://github.com/facebook/react/issues/33937
+ * The implementation is copied from
+ *   https://github.com/facebook/react/issues/29855
+ *   https://github.com/apollographql/apollo-client/blob/8e3edd4f5e5191453ba3ca1a1cc4fc4a02b936e8/src/react/hooks/internal/__use.ts#L15-L26
+ */
 export const INTERNAL_use2: typeof use = (promise) => {
   const statefulPromise = wrapPromiseWithState(promise as any);
 
