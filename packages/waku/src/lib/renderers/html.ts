@@ -111,7 +111,7 @@ export async function renderHtml(
   const {
     default: { createFromReadableStream },
   } = modules.rsdwClient as { default: typeof RSDWClientType };
-  const { INTERNAL_ServerRoot, use2 } =
+  const { INTERNAL_ServerRoot, INTERNAL_use2 } =
     modules.wakuMinimalClient as typeof WakuMinimalClientType;
 
   const stream = await renderRsc(config, ctx, elements, onError);
@@ -162,8 +162,8 @@ export async function renderHtml(
       : '',
   );
   try {
-    // createFromReadableStream promise is already instrumented,
-    // but we need to instrument on our own to workaround React SSR use bug.
+    // `createFromReadableStream` promise is already instrumented by React.
+    // but we need to instrument them on our own to workaround React SSR use bug.
     const elementsPromise2 = Promise.resolve(elementsPromise);
     const htmlNode2 = Promise.resolve(htmlNode);
 
@@ -173,7 +173,7 @@ export async function renderHtml(
           Omit<ComponentProps<typeof INTERNAL_ServerRoot>, 'children'>
         >,
         { elementsPromise: elementsPromise2 },
-        use2(htmlNode2),
+        INTERNAL_use2(htmlNode2),
         ...headElements,
       );
     }

@@ -337,7 +337,7 @@ export const Slot = ({
   children?: ReactNode;
 }) => {
   const elementsPromise = useElementsPromise_UNSTABLE();
-  const elements = use2(elementsPromise);
+  const elements = INTERNAL_use2(elementsPromise);
   if (id in elements && elements[id] === undefined) {
     throw new Error('Element cannot be undefined, use null instead: ' + id);
   }
@@ -372,11 +372,11 @@ export const INTERNAL_ServerRoot = ({
     children,
   );
 
-// Use DIY `use` to workaround React SSR bug.
-// based on https://github.com/facebook/react/issues/29855
+// Use DIY `use` to workaround React SSR bug https://github.com/facebook/react/issues/33937
+// The implementation is copied from https://github.com/facebook/react/issues/29855
 // https://github.com/apollographql/apollo-client/blob/8e3edd4f5e5191453ba3ca1a1cc4fc4a02b936e8/src/react/hooks/internal/__use.ts#L15-L26
 
-export const use2: typeof use = (promise) => {
+export const INTERNAL_use2: typeof use = (promise) => {
   const statefulPromise = wrapPromiseWithState(promise as any);
 
   switch (statefulPromise.status) {
@@ -429,21 +429,21 @@ function isStatefulPromise<TValue>(
   return 'status' in promise;
 }
 
-export interface PendingPromise<TValue> extends Promise<TValue> {
+interface PendingPromise<TValue> extends Promise<TValue> {
   status: 'pending';
 }
 
-export interface FulfilledPromise<TValue> extends Promise<TValue> {
+interface FulfilledPromise<TValue> extends Promise<TValue> {
   status: 'fulfilled';
   value: TValue;
 }
 
-export interface RejectedPromise<TValue> extends Promise<TValue> {
+interface RejectedPromise<TValue> extends Promise<TValue> {
   status: 'rejected';
   reason: unknown;
 }
 
-export type PromiseWithState<TValue> =
+type PromiseWithState<TValue> =
   | PendingPromise<TValue>
   | FulfilledPromise<TValue>
   | RejectedPromise<TValue>;
