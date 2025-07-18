@@ -117,27 +117,28 @@ export type CreatePage = <
   Path extends string,
   SlugKey extends string,
   WildSlugKey extends string,
+  Render extends 'static' | 'dynamic',
   StaticPaths extends StaticSlugRoutePaths<Path>,
   ExactPath extends boolean | undefined = undefined,
 >(
   page: (
     | {
-        render: 'static';
+        render: Extract<Render, 'static'>;
         path: PathWithoutSlug<Path>;
         component: FunctionComponent<PropsForPages<Path>>;
       }
     | ({
-        render: 'static';
+        render: Extract<Render, 'static'>;
         path: PathWithStaticSlugs<Path>;
         component: FunctionComponent<PropsForPages<Path>>;
       } & (ExactPath extends true ? {} : { staticPaths: StaticPaths }))
     | {
-        render: 'dynamic';
+        render: Extract<Render, 'dynamic'>;
         path: PathWithoutSlug<Path>;
         component: FunctionComponent<PropsForPages<Path>>;
       }
     | {
-        render: 'dynamic';
+        render: Extract<Render, 'dynamic'>;
         path: PathWithWildcard<Path, SlugKey, WildSlugKey>;
         component: FunctionComponent<PropsForPages<Path>>;
       }
@@ -205,7 +206,7 @@ export type CreateSlice = <
   render: 'static' | 'dynamic';
   paths: Paths;
   id: ID;
-}) => typeof slice;
+}) => void;
 
 type RootItem = {
   render: 'static' | 'dynamic';
@@ -292,7 +293,6 @@ export const createPages = <
   AllPages extends (
     | AnyPage
     | ReturnType<CreateLayout>
-    | ReturnType<CreateSlice>
   )[],
 >(
   fn: (fns: {
@@ -583,7 +583,6 @@ export const createPages = <
       paths: slice.paths,
       isStatic: slice.render === 'static',
     });
-    return slice;
   };
 
   const createPagePart: CreatePagePart = (params) => {
