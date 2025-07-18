@@ -101,9 +101,6 @@ test.describe('hot reload', () => {
       '<pEdited Page</p>',
       '<p>Fixed Page</p>',
     );
-    // requires manual reload since @vitejs/plugin-rsc
-    await page.waitForTimeout(500);
-    await page.reload();
     await expect(page.getByText('Fixed Page')).toBeVisible();
   });
 
