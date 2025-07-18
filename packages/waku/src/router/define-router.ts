@@ -128,7 +128,7 @@ export function unstable_notFound(): never {
 
 export function unstable_redirect(
   location: string,
-  status: 307 | 308 = 307,
+  status: 303 | 307 | 308 = 307,
 ): never {
   throw createCustomError('Redirect', { status, location });
 }

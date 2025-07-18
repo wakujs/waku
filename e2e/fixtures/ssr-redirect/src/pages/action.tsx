@@ -7,7 +7,7 @@ export default async function ActionPage() {
       <form
         action={async () => {
           'use server';
-          redirect('/destination');
+          redirect('/destination', 303);
         }}
       >
         <button type="submit">Redirect Action</button>
