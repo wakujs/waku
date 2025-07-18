@@ -433,9 +433,21 @@ export function unstable_defineRouter(fns: {
         });
       };
       setRerender(rerender);
-      const value = await input.fn(...input.args);
-      rendered = true;
-      return renderRsc({ ...(await elementsPromise), _value: value });
+      try {
+        const value = await input.fn(...input.args);
+        return renderRsc({ ...(await elementsPromise), _value: value });
+      } catch (e) {
+        const info = getErrorInfo(e);
+        if (info?.location) {
+          // HACK: This is pretty hacky and feels wrong.
+          // FIXME: prefix and suffix should not be hard-coded.
+          info.location = '/RSC/' + encodeRoutePath(info.location) + '.txt';
+          throw createCustomError(String(e), info);
+        }
+        throw e;
+      } finally {
+        rendered = true;
+      }
     }
     const pathConfigItem = await getPathConfigItem(input.pathname);
     if (pathConfigItem?.specs?.isApi && fns.handleApi) {
