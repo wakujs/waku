@@ -198,21 +198,11 @@ export type CreatePagePart = <const Path extends string>(params: {
   component: FunctionComponent<{ children: ReactNode }>;
 }) => typeof params;
 
-export type CreateSlice = <Path extends string>(
-  slice:
-    | {
-        render: 'static';
-        path: Path;
-        component: FunctionComponent<{ children: ReactNode }>;
-      }
-    | {
-        render: 'dynamic';
-        path: Path;
-        component: FunctionComponent<
-          Pick<RouteProps, 'path'> & { children: ReactNode }
-        >;
-      },
-) => void;
+export type CreateSlice = <Path extends string, ID extends string>(slice: {
+  render: 'static' | 'dynamic';
+  path: Path;
+  id: ID;
+}) => typeof slice;
 
 type RootItem = {
   render: 'static' | 'dynamic';
@@ -588,6 +578,7 @@ export const createPages = <
     } else {
       throw new Error('Invalid slice configuration');
     }
+    return slice;
   };
 
   const createPagePart: CreatePagePart = (params) => {
@@ -659,6 +650,7 @@ export const createPages = <
         createRoot,
         createApi,
         createPagePart,
+        createSlice,
       });
       await ready;
 
