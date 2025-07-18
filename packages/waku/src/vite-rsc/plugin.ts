@@ -22,6 +22,7 @@ import { wakuDeployVercelPlugin } from './deploy/vercel/plugin.js';
 import { wakuAllowServerPlugin } from './plugins/allow-server.js';
 import {
   DIST_PUBLIC,
+  EXTENSIONS,
   SRC_CLIENT_ENTRY,
   SRC_SERVER_ENTRY,
 } from '../lib/builder/constants.js';
@@ -32,6 +33,8 @@ import { wakuDeployPartykitPlugin } from './deploy/partykit/plugin.js';
 import { wakuDeployDenoPlugin } from './deploy/deno/plugin.js';
 import { wakuDeployAwsLambdaPlugin } from './deploy/aws-lambda/plugin.js';
 import { filePathToFileURL, joinPath } from '../lib/utils/path.js';
+import * as swc from '@swc/core';
+import { parseOpts } from '../lib/utils/swc.js';
 
 const PKG_NAME = 'waku';
 
@@ -91,6 +94,25 @@ export default function wakuPlugin(
   return [
     ...extraPlugins,
     wakuAllowServerPlugin(), // apply `allowServer` DCE before "use client" transform
+    {
+      // ignore file changes with a syntax error
+      // cf. packages/waku/src/lib/plugins/vite-plugin-rsc-delegate.ts
+      name: 'waku:ignore-rsc-reload-on-syntax-error',
+      apply: 'serve',
+      async hotUpdate(ctx) {
+        if (ctx.modules.length > 0 && this.environment.name === 'rsc') {
+          const ext = path.extname(ctx.file);
+          if (EXTENSIONS.includes(ext)) {
+            const code = await ctx.read();
+            try {
+              swc.parseSync(code, parseOpts(ext));
+            } catch {
+              return [];
+            }
+          }
+        }
+      },
+    },
     rsc({
       keepUseCientProxy: true,
       ignoredPackageWarnings: [PKG_NAME],
