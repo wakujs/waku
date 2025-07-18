@@ -289,7 +289,11 @@ const routePriorityComparator = (
 };
 
 export const createPages = <
-  AllPages extends (AnyPage | ReturnType<CreateLayout>)[],
+  AllPages extends (
+    | AnyPage
+    | ReturnType<CreateLayout>
+    | ReturnType<CreateSlice>
+  )[],
 >(
   fn: (fns: {
     createPage: CreatePage;
@@ -573,6 +577,8 @@ export const createPages = <
     if (sliceMap.has(slice.id)) {
       throw new Error(`Duplicated slice id: ${slice.id}`);
     }
+    // Question: Should we error when slice.paths includes paths not yet defined by createPage?
+    // this would make the order of createPage and createSlice calls important
     sliceMap.set(slice.id, {
       paths: slice.paths,
       isStatic: slice.render === 'static',
