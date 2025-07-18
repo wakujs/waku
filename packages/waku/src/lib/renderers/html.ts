@@ -166,8 +166,8 @@ export async function renderHtml(
   function SsrRoot() {
     // ensure these two promises are resolved at the top before user components
     // to avoid potential `React.use` state mixing bugs.
-    INTERNAL_use2(htmlNode2)
-    INTERNAL_use2(elementsPromise2)
+    INTERNAL_use2(htmlNode2);
+    INTERNAL_use2(elementsPromise2);
     return createElement(
       INTERNAL_ServerRoot as FunctionComponent<
         Omit<ComponentProps<typeof INTERNAL_ServerRoot>, 'children'>
