@@ -88,9 +88,6 @@ globalThis.__WAKU_HYDRATE__ = true;
   return { headCode, headModules, headElements };
 };
 
-// FIXME Why does it error on the first and second time?
-let hackToIgnoreFirstTwoErrors = 0;
-
 export async function renderHtml(
   config: ConfigDev | ConfigPrd,
   ctx: Pick<HandlerContext, 'unstable_modules' | 'unstable_devServer'>,
@@ -161,59 +158,39 @@ export async function renderHtml(
       ? `${config.basePath}${(config as ConfigDev).srcDir}/${SRC_CLIENT_ENTRY}`
       : '',
   );
-  try {
-    // `createFromReadableStream` promise is already instrumented by React.
-    // but we need to instrument them on our own to workaround React SSR use bug.
-    const elementsPromise2 = Promise.resolve(elementsPromise);
-    const htmlNode2 = Promise.resolve(htmlNode);
+  // `createFromReadableStream` promise is already instrumented by React.
+  // but we need to instrument them on our own to workaround React SSR use bug.
+  const elementsPromise2 = Promise.resolve(elementsPromise);
+  const htmlNode2 = Promise.resolve(htmlNode);
 
-    function SsrRoot() {
-      return createElement(
-        INTERNAL_ServerRoot as FunctionComponent<
-          Omit<ComponentProps<typeof INTERNAL_ServerRoot>, 'children'>
-        >,
-        { elementsPromise: elementsPromise2 },
-        INTERNAL_use2(htmlNode2),
-        ...headElements,
-      );
-    }
-
-    const readable = await renderToReadableStream(createElement(SsrRoot), {
-      bootstrapScriptContent: headCode,
-      bootstrapModules: headModules,
-      formState:
-        actionResult === undefined
-          ? null
-          : await getExtractFormState(ctx)(actionResult),
-      onError(err) {
-        if (hackToIgnoreFirstTwoErrors) {
-          return;
-        }
-        console.error(err);
-        onError.forEach((fn) => fn(err, ctx as HandlerContext, 'html'));
-        if (typeof (err as any)?.digest === 'string') {
-          return (err as { digest: string }).digest;
-        }
-      },
-    });
-    const injected: ReadableStream & { allReady?: Promise<void> } =
-      readable.pipeThrough(injectRSCPayload(stream2));
-    injected.allReady = readable.allReady;
-    return injected as never;
-  } catch (e) {
-    if (hackToIgnoreFirstTwoErrors) {
-      hackToIgnoreFirstTwoErrors--;
-      return renderHtml(
-        config,
-        ctx,
-        htmlHead,
-        elements,
-        onError,
-        html,
-        rscPath,
-        actionResult,
-      );
-    }
-    throw e;
+  function SsrRoot() {
+    return createElement(
+      INTERNAL_ServerRoot as FunctionComponent<
+        Omit<ComponentProps<typeof INTERNAL_ServerRoot>, 'children'>
+      >,
+      { elementsPromise: elementsPromise2 },
+      INTERNAL_use2(htmlNode2),
+      ...headElements,
+    );
   }
+
+  const readable = await renderToReadableStream(createElement(SsrRoot), {
+    bootstrapScriptContent: headCode,
+    bootstrapModules: headModules,
+    formState:
+      actionResult === undefined
+        ? null
+        : await getExtractFormState(ctx)(actionResult),
+    onError(err) {
+      console.error(err);
+      onError.forEach((fn) => fn(err, ctx as HandlerContext, 'html'));
+      if (typeof (err as any)?.digest === 'string') {
+        return (err as { digest: string }).digest;
+      }
+    },
+  });
+  const injected: ReadableStream & { allReady?: Promise<void> } =
+    readable.pipeThrough(injectRSCPayload(stream2));
+  injected.allReady = readable.allReady;
+  return injected as never;
 }
