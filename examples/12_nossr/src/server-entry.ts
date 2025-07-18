@@ -12,7 +12,7 @@ const router = fsRouter(
 export default defineEntries({
   handleRequest: async (input, utils) => {
     if (input.type === 'custom') {
-      return null; // no ssr
+      return 'fallback'; // no ssr
     }
     return router.handleRequest(input, utils);
   },

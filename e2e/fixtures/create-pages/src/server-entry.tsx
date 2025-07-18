@@ -17,6 +17,7 @@ import {
 import { readFile } from 'node:fs/promises';
 import StaticPagePart from './components/StaticPagePart.js';
 import DynamicPagePart from './components/DynamicPagePart.js';
+import NoSsr from './components/NoSsr.js';
 
 const pages: ReturnType<typeof createPages> = createPages(
   async ({ createPage, createLayout, createApi, createPagePart }) => [
@@ -324,6 +325,13 @@ const pages: ReturnType<typeof createPages> = createPages(
       render: 'static',
       path: '/(dynamic)/(static)/nested-layouts',
       component: () => <h1>Nested Layouts page</h1>,
+    }),
+
+    createPage({
+      render: 'static',
+      path: '/no-ssr',
+      component: NoSsr,
+      unstable_disableSSR: true,
     }),
   ],
 );

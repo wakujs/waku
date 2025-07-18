@@ -157,7 +157,7 @@ export const handler: Middleware = (options) => {
     };
     const input = await getInput(config, ctx, loadServerModule);
     if (input) {
-      let res: ReadableStream | HandlerRes | null | undefined;
+      let res: ReadableStream | HandlerRes | 'fallback' | null | undefined;
       try {
         res = await entries.default.handleRequest(input, utils);
       } catch (e) {
@@ -173,7 +173,10 @@ export const handler: Middleware = (options) => {
           }
         }
       }
-      if (res instanceof ReadableStream) {
+      if (res === 'fallback') {
+        const newUrl = new URL(config.basePath, ctx.req.url);
+        ctx.req.url.pathname = newUrl.pathname;
+      } else if (res instanceof ReadableStream) {
         ctx.res.body = res;
       } else if (res) {
         if (res.body) {
