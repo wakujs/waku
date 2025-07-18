@@ -198,9 +198,12 @@ export type CreatePagePart = <const Path extends string>(params: {
   component: FunctionComponent<{ children: ReactNode }>;
 }) => typeof params;
 
-export type CreateSlice = <Path extends string, ID extends string>(slice: {
+export type CreateSlice = <
+  const Paths extends string[],
+  ID extends string,
+>(slice: {
   render: 'static' | 'dynamic';
-  path: Path;
+  paths: Paths;
   id: ID;
 }) => typeof slice;
 
@@ -324,6 +327,7 @@ export const createPages = <
     }
   >();
   const staticComponentMap = new Map<string, FunctionComponent<any>>();
+  const sliceMap = new Map<string, { paths: string[]; isStatic: boolean }>();
   let rootItem: RootItem | undefined = undefined;
   const noSsrSet = new WeakSet<PathSpec>();
 
@@ -566,18 +570,13 @@ export const createPages = <
     if (configured) {
       throw new Error('createSlice no longer available');
     }
-    if (slice.render === 'static') {
-      const id = joinPath(slice.path, 'slice').replace(/^\//, '');
-      registerStaticComponent(id, slice.component);
-    } else if (slice.render === 'dynamic') {
-      if (dynamicSlicePathMap.has(slice.path)) {
-        throw new Error(`Duplicated dynamic path: ${slice.path}`);
-      }
-      const pathSpec = parsePathWithSlug(slice.path);
-      dynamicSlicePathMap.set(slice.path, [pathSpec, slice.component]);
-    } else {
-      throw new Error('Invalid slice configuration');
+    if (sliceMap.has(slice.id)) {
+      throw new Error(`Duplicated slice id: ${slice.id}`);
     }
+    sliceMap.set(slice.id, {
+      paths: slice.paths,
+      isStatic: slice.render === 'static',
+    });
     return slice;
   };
 
@@ -706,9 +705,27 @@ export const createPages = <
         rootElement: { isStatic?: boolean };
         routeElement: { isStatic?: boolean };
         elements: Record<string, { isStatic?: boolean }>;
+        slices?: Record<string, { isStatic?: boolean }>;
         noSsr: boolean;
       }[] = [];
       const rootIsStatic = !rootItem || rootItem.render === 'static';
+      const pathSliceLookup = sliceMap.entries().reduce<
+        Record<
+          string, // path
+          Record<
+            string, // slice id
+            {
+              isStatic: boolean;
+            }
+          >
+        >
+      >((acc, [id, { paths, isStatic }]) => {
+        for (const path of paths) {
+          acc[path] ??= {};
+          acc[path][id] = { isStatic };
+        }
+        return acc;
+      }, {});
       for (const [path, { literalSpec, originalSpec }] of staticPathMap) {
         const noSsr = noSsrSet.has(literalSpec);
 
@@ -737,6 +754,7 @@ export const createPages = <
           },
           elements,
           noSsr,
+          ...(path in pathSliceLookup ? { slices: pathSliceLookup[path] } : {}),
         });
       }
       for (const [path, [pathSpec, components]] of dynamicPagePathMap) {
