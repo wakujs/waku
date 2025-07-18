@@ -1,5 +1,6 @@
 'use client';
 
+import { use } from 'react';
 import { useFormStatus } from 'react-dom';
 
 const SubmitButton = () => {
@@ -22,7 +23,7 @@ export const Form = ({
   greet: (formData: FormData) => Promise<void>;
 }) => (
   <div style={{ border: '3px blue dashed', margin: '1em', padding: '1em' }}>
-    <p>{message}</p>
+    <p>{use(message)}</p>
     <form action={greet}>
       Name: <input name="name" />
       <SubmitButton />
