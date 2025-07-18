@@ -1,4 +1,4 @@
-import { createElement } from 'react';
+import { createElement, Suspense } from 'react';
 import type { ReactNode } from 'react';
 
 import {
@@ -14,6 +14,7 @@ import {
   ROUTE_ID,
   IS_STATIC_ID,
   HAS404_ID,
+  DELEGATED_ERROR_ID,
   SKIP_HEADER,
 } from './common.js';
 import { getPathMapping, path2regexp } from '../lib/utils/path.js';
@@ -132,6 +133,15 @@ export function unstable_redirect(
 ): never {
   throw createCustomError('Redirect', { status, location });
 }
+
+const DelegateError = ({ error }: { error: unknown }) =>
+  createElement(
+    Suspense,
+    null,
+    createElement(() => {
+      throw error;
+    }),
+  );
 
 type SlotId = string;
 type SliceId = string;
@@ -398,6 +408,7 @@ export function unstable_defineRouter(fns: {
           [SLICE_SLOT_ID_PREFIX + sliceId]: element,
           // FIXME: hard-coded for now
           [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + sliceId]: !!isStatic,
+          [DELEGATED_ERROR_ID]: null,
         });
       }
       const entries = await getEntries(
@@ -408,7 +419,10 @@ export function unstable_defineRouter(fns: {
       if (!entries) {
         return null;
       }
-      return renderRsc(entries);
+      return renderRsc({
+        ...entries,
+        [DELEGATED_ERROR_ID]: null,
+      });
     }
     if (input.type === 'function') {
       let elementsPromise: Promise<Record<string, unknown>> = Promise.resolve(
@@ -433,9 +447,25 @@ export function unstable_defineRouter(fns: {
         });
       };
       setRerender(rerender);
-      const value = await input.fn(...input.args);
-      rendered = true;
-      return renderRsc({ ...(await elementsPromise), _value: value });
+      try {
+        const value = await input.fn(...input.args);
+        return renderRsc({
+          ...(await elementsPromise),
+          _value: value,
+          [DELEGATED_ERROR_ID]: null,
+        });
+      } catch (e) {
+        const info = getErrorInfo(e);
+        if (info) {
+          return renderRsc({
+            _error: e,
+            [DELEGATED_ERROR_ID]: createElement(DelegateError, { error: e }),
+          });
+        }
+        throw e;
+      } finally {
+        rendered = true;
+      }
     }
     const pathConfigItem = await getPathConfigItem(input.pathname);
     if (pathConfigItem?.specs?.isApi && fns.handleApi) {

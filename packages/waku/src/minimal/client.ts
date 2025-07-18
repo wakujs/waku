@@ -177,11 +177,18 @@ export const unstable_callServerRsc = async (
   const rscPath = encodeFuncId(funcId);
   const rscParams =
     args.length === 1 && args[0] instanceof URLSearchParams ? args[0] : args;
-  const { _value: value, ...data } = await fetchRscInternal(rscPath, rscParams);
+  const {
+    _value: value,
+    _error: error,
+    ...data
+  } = await fetchRscInternal(rscPath, rscParams);
   if (Object.keys(data).length) {
     startTransition(() => {
       setElements((prev) => mergeElementsPromise(prev, data));
     });
+  }
+  if (error) {
+    throw error;
   }
   return value;
 };
