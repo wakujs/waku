@@ -711,7 +711,7 @@ export const createPages = <
         noSsr: boolean;
       }[] = [];
       const rootIsStatic = !rootItem || rootItem.render === 'static';
-      const pathSliceLookup = sliceMap.entries().reduce<
+      const pathSliceLookup = Array.from(sliceMap.entries()).reduce<
         Record<
           string, // path
           Record<
