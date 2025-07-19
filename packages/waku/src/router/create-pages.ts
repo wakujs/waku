@@ -120,6 +120,7 @@ export type CreatePage = <
   Render extends 'static' | 'dynamic',
   StaticPaths extends StaticSlugRoutePaths<Path>,
   ExactPath extends boolean | undefined = undefined,
+  Slices extends string[] = [],
 >(
   page: (
     | {
@@ -149,6 +150,7 @@ export type CreatePage = <
      * This is intended for extending support to create custom routers.
      */
     exactPath?: ExactPath;
+    slices?: Slices;
   },
 ) => Omit<
   Exclude<typeof page, { path: never } | { render: never }>,
@@ -199,13 +201,10 @@ export type CreatePagePart = <const Path extends string>(params: {
   component: FunctionComponent<{ children: ReactNode }>;
 }) => typeof params;
 
-export type CreateSlice = <
-  const Paths extends string[],
-  ID extends string,
->(slice: {
+export type CreateSlice = <ID extends string>(slice: {
   render: 'static' | 'dynamic';
-  paths: Paths;
   id: ID;
+  component: FunctionComponent<{ children: ReactNode }>;
 }) => void;
 
 type RootItem = {
@@ -328,7 +327,14 @@ export const createPages = <
     }
   >();
   const staticComponentMap = new Map<string, FunctionComponent<any>>();
-  const sliceMap = new Map<string, { paths: string[]; isStatic: boolean }>();
+  const slicePathMap = new Map<string, string[]>();
+  const sliceIdMap = new Map<
+    string,
+    {
+      component: FunctionComponent<{ children: ReactNode }>;
+      isStatic: boolean;
+    }
+  >();
   let rootItem: RootItem | undefined = undefined;
   const noSsrSet = new WeakSet<PathSpec>();
 
@@ -509,6 +515,9 @@ export const createPages = <
     } else {
       throw new Error('Invalid page configuration');
     }
+    if (page.slices?.length) {
+      slicePathMap.set(page.path, page.slices);
+    }
     return page as Exclude<typeof page, { path: never } | { render: never }>;
   };
 
@@ -571,13 +580,11 @@ export const createPages = <
     if (configured) {
       throw new Error('createSlice no longer available');
     }
-    if (sliceMap.has(slice.id)) {
+    if (sliceIdMap.has(slice.id)) {
       throw new Error(`Duplicated slice id: ${slice.id}`);
     }
-    // Question: Should we error when slice.paths includes paths not yet defined by createPage?
-    // this would make the order of createPage and createSlice calls important
-    sliceMap.set(slice.id, {
-      paths: slice.paths,
+    sliceIdMap.set(slice.id, {
+      component: slice.component,
       isStatic: slice.render === 'static',
     });
   };
@@ -711,23 +718,6 @@ export const createPages = <
         noSsr: boolean;
       }[] = [];
       const rootIsStatic = !rootItem || rootItem.render === 'static';
-      const pathSliceLookup = Array.from(sliceMap.entries()).reduce<
-        Record<
-          string, // path
-          Record<
-            string, // slice id
-            {
-              isStatic: boolean;
-            }
-          >
-        >
-      >((acc, [id, { paths, isStatic }]) => {
-        for (const path of paths) {
-          acc[path] ??= {};
-          acc[path][id] = { isStatic };
-        }
-        return acc;
-      }, {});
       for (const [path, { literalSpec, originalSpec }] of staticPathMap) {
         const noSsr = noSsrSet.has(literalSpec);
 
@@ -756,7 +746,20 @@ export const createPages = <
           },
           elements,
           noSsr,
-          ...(path in pathSliceLookup ? { slices: pathSliceLookup[path] } : {}),
+          ...(slicePathMap.has(path)
+            ? {
+                slices: slicePathMap
+                  .get(path)!
+                  .reduce<
+                    Record<string, { isStatic: boolean }>
+                  >((acc, sliceId) => {
+                    acc[sliceId] = {
+                      isStatic: sliceIdMap.get(sliceId)!.isStatic,
+                    };
+                    return acc;
+                  }, {}),
+              }
+            : {}),
         });
       }
       for (const [path, [pathSpec, components]] of dynamicPagePathMap) {
@@ -971,6 +974,11 @@ export const createPages = <
         headers: Object.fromEntries(res.headers.entries()),
         status: res.status,
       };
+    },
+    handleSlice: async (sliceId) => {
+      await configure();
+      const { component } = sliceIdMap.get(sliceId)!;
+      return { element: createElement(component) };
     },
   });
 
