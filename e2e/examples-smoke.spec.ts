@@ -15,9 +15,13 @@ import os from 'node:os';
 
 const examplesDir = fileURLToPath(new URL('../examples', import.meta.url));
 
-const waku = fileURLToPath(
+let waku = fileURLToPath(
   new URL('../packages/waku/dist/cli.js', import.meta.url),
 );
+
+if (process.env.TEST_LEGACY) {
+  waku = `${waku} --experimental-legacy-cli`;
+}
 
 const commands = [
   {

@@ -1,0 +1,33 @@
+import { Hono } from 'hono';
+import { createHonoHandler } from '../../entry.rsc.js';
+import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
+
+function createApp(app: Hono) {
+  app.use(createHonoHandler());
+  app.notFound(async (c) => {
+    const assetsFetcher = (c.env as any).ASSETS;
+    const url = new URL(c.req.raw.url);
+    const errorHtmlUrl = url.origin + '/404.html';
+    const notFoundStaticAssetResponse = await assetsFetcher.fetch(
+      new URL(errorHtmlUrl),
+    );
+    if (
+      notFoundStaticAssetResponse &&
+      notFoundStaticAssetResponse.status < 400
+    ) {
+      return c.body(notFoundStaticAssetResponse.body, 404);
+    }
+    return c.text('404 Not Found', 404);
+  });
+  return app;
+}
+
+const app = honoEnhancer(createApp)(new Hono());
+
+export default {
+  async onFetch(request: Request, lobby: unknown, ctx: any) {
+    return app.fetch(request, lobby, ctx);
+  },
+};
+
+export { handleBuild } from '../../entry.rsc.js';

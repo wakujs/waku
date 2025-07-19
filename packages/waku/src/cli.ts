@@ -55,6 +55,9 @@ const { values, positionals } = parseArgs({
     'experimental-compress': {
       type: 'boolean',
     },
+    'experimental-legacy-cli': {
+      type: 'boolean',
+    },
     port: {
       type: 'string',
       short: 'p',
@@ -77,6 +80,13 @@ if (values.version) {
   console.log(version);
 } else if (values.help) {
   displayUsage();
+} else if (
+  !values['experimental-legacy-cli'] &&
+  cmd &&
+  ['dev', 'build', 'start'].includes(cmd)
+) {
+  const { cli } = await import('./vite-rsc/cli.js');
+  await cli(cmd, values);
 } else {
   switch (cmd) {
     case 'dev':
@@ -221,15 +231,16 @@ Commands:
   start       Start the production server
 
 Options:
-  --with-vercel         Output for Vercel on build
-  --with-netlify        Output for Netlify on build
-  --with-cloudflare     Output for Cloudflare on build
-  --with-partykit       Output for PartyKit on build
-  --with-deno           Output for Deno on build
-  --with-aws-lambda     Output for AWS Lambda on build
-  -p, --port            Port number for the server
-  -v, --version         Display the version number
-  -h, --help            Display this help message
+  --with-vercel                Output for Vercel on build
+  --with-netlify               Output for Netlify on build
+  --with-cloudflare            Output for Cloudflare on build
+  --with-partykit              Output for PartyKit on build
+  --with-deno                  Output for Deno on build
+  --with-aws-lambda            Output for AWS Lambda on build
+  --experimental-legacy-cli    Enable legacy mode without "@vitejs/plugin-rsc"
+  -p, --port                   Port number for the server
+  -v, --version                Display the version number
+  -h, --help                   Display this help message
 `);
 }
 
@@ -242,7 +253,9 @@ async function loadConfig(): Promise<Config> {
   return (await loadServerModule<{ default: Config }>(file)).default;
 }
 
-type HonoEnhancer = <Hono>(fn: (app: Hono) => Hono) => (app: Hono) => Hono;
+export type HonoEnhancer = <Hono>(
+  fn: (app: Hono) => Hono,
+) => (app: Hono) => Hono;
 
 async function loadHonoEnhancer(file: string): Promise<HonoEnhancer> {
   const { loadServerModule } = await import('./lib/utils/vite-loader.js');
