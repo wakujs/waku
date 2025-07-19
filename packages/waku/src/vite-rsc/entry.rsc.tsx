@@ -284,7 +284,7 @@ async function handleRequest(ctx: HandlerContext) {
 
   if (res instanceof ReadableStream) {
     ctx.res.body = res;
-  } else if (res) {
+  } else if (res && res !== 'fallback') {
     if (res.body) {
       ctx.res.body = res.body;
     }
@@ -297,7 +297,10 @@ async function handleRequest(ctx: HandlerContext) {
   }
 
   // fallback index html like packages/waku/src/lib/plugins/vite-plugin-rsc-index.ts
-  if (!(ctx.res.body || ctx.res.status) && ctx.req.url.pathname === '/') {
+  if (
+    res === 'fallback' ||
+    (!(ctx.res.body || ctx.res.status) && ctx.req.url.pathname === '/')
+  ) {
     const ssrEntryModule = await import.meta.viteRsc.loadModule<
       typeof import('./entry.ssr.tsx')
     >('ssr', 'index');
