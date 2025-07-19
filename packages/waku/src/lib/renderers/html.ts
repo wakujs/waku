@@ -165,8 +165,8 @@ export async function renderHtml(
   // isolate `React.use` in its own component
   // https://github.com/facebook/react/issues/33937#issuecomment-3091349011
   function UseWrapper(props: { value: Promise<ReactNode> }) {
-    const used = INTERNAL_use(props.value);
-    return createElement(UseWrapperInner, null, used);
+    const resolved = INTERNAL_use(props.value);
+    return createElement(UseWrapperInner, null, resolved);
   }
   function UseWrapperInner(props: PropsWithChildren) {
     return props.children;
