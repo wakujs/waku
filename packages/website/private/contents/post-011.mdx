@@ -1,0 +1,86 @@
+---
+slug: migration-to-vite-plugin-rsc
+title: Waku's Migration to @vitejs/plugin-rsc
+description: Technical details and breaking changes in Waku's migration to the official Vite React Server Components plugin.
+author: hi-ogawa
+release: v0.24
+date: 2025/07/19
+---
+
+Waku has migrated to use Vite's official plugin [`@vitejs/plugin-rsc`](https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-rsc) for its React Server Components bundler implementation. This unifies/simplifies/unlocks .... (TODO: mention Environment API.)
+
+While there were significant changes in underlying dev server, plugin, and build pipeline architecture, core routing logic remains almost unchanged, preserving Waku's existing functionality. This is thanks to Waku's "layered" routing architecture where the higher level APIs (`fsRouter`, `createPages`, `defineRouter`) are built up through the lowest level "minimal" API `defineEntries`.
+
+## New features / Breaking Changes
+
+Custom Vite configuration has changed. Vite configuration must now be nested under a `vite` property in `waku.config.ts`:
+
+TODO: mention `client/ssr/rsc` environments. add plugin examples.
+TODO: link to Environment plugin API (e.g. `applyToEnvironment`, `this.environment`).
+https://vite.dev/guide/api-environment-plugins.html
+
+_Before_
+
+```ts
+// vite.config.ts
+import { defineConfig } from "vite";
+
+export default defineConfig({ ... })
+```
+
+```ts
+// waku.config.ts
+import { defineConfig } from "waku/config";
+
+export default defineConfig({
+  unstable_viteConfigs: { ... },
+})
+```
+
+_After_
+
+```ts
+// waku.config.ts
+import { defineConfig } from "waku/config";
+
+export default defineConfig({
+  vite: { ... }
+})
+```
+
+_Example_
+
+```ts
+// waku.config.ts
+import { defineConfig } from "waku/config";
+
+export default defineConfig({
+  vite: {
+    plugins: [
+    ],
+    environments: {
+      ssr: {},
+    }
+  }
+})
+```
+
+
+## Previous Implementation
+
+The previous implementation remains available via the `--experimental-legacy-cli` flag for fallback during the transition period, for example,
+
+```bash
+waku dev --experimental-legacy-cli
+waku build --experimental-legacy-cli
+waku start --experimental-legacy-cli
+```
+
+This flag allows reverting to the previous behavior while the new implementation is refined based on usage feedback.
+
+## Future
+
+- `@cloudflare/vite-plugin`
+- Nitro plugin?
+- Better alignment with Vite ecosystem.
+- Rolldown-Vite support.
