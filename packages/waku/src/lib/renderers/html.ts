@@ -4,6 +4,7 @@ import type {
   ReactNode,
   FunctionComponent,
   ComponentProps,
+  PropsWithChildren,
 } from 'react';
 import type * as RDServerType from 'react-dom/server.edge';
 import type { default as RSDWClientType } from 'react-server-dom-webpack/client.edge';
@@ -161,6 +162,15 @@ export async function renderHtml(
       ? `${config.basePath}${(config as ConfigDev).srcDir}/${SRC_CLIENT_ENTRY}`
       : '',
   );
+  // isolate `React.use` in its own component
+  // https://github.com/facebook/react/issues/33937#issuecomment-3091349011
+  function UseWrapper(props: { value: Promise<ReactNode> }) {
+    const used = INTERNAL_use(props.value);
+    return createElement(UseWrapperInner, null, used);
+  }
+  function UseWrapperInner(props: PropsWithChildren) {
+    return props.children;
+  }
   try {
     const readable = await renderToReadableStream(
       createElement(
@@ -168,11 +178,7 @@ export async function renderHtml(
           Omit<ComponentProps<typeof INTERNAL_ServerRoot>, 'children'>
         >,
         { elementsPromise },
-        // isolate `React.use` in its own component
-        // to workaround https://github.com/facebook/react/issues/33937
-        createElement(function HtmlNodeWrapper() {
-          return INTERNAL_use(htmlNode);
-        }),
+        createElement(UseWrapper, { value: htmlNode }),
         ...headElements,
       ),
       {
