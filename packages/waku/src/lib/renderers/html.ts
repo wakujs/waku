@@ -1,4 +1,4 @@
-import { use, createElement } from 'react';
+import { createElement } from 'react';
 import type {
   ReactElement,
   ReactNode,
@@ -111,7 +111,7 @@ export async function renderHtml(
   const {
     default: { createFromReadableStream },
   } = modules.rsdwClient as { default: typeof RSDWClientType };
-  const { INTERNAL_ServerRoot } =
+  const { INTERNAL_ServerRoot, INTERNAL_use } =
     modules.wakuMinimalClient as typeof WakuMinimalClientType;
 
   const stream = await renderRsc(config, ctx, elements, onError);
@@ -170,10 +170,9 @@ export async function renderHtml(
         { elementsPromise },
         // isolate `React.use` in its own component
         // to workaround https://github.com/facebook/react/issues/33937
-        createElement(function Wrapper() {
-          return use(htmlNode);
+        createElement(function HtmlNodeWrapper() {
+          return INTERNAL_use(htmlNode);
         }),
-        // htmlNode as any,
         ...headElements,
       ),
       {

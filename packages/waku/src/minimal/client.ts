@@ -355,13 +355,16 @@ export const useElementsPromise_UNSTABLE = () => {
 //   );
 // };
 
+/** re-export use for renderes/html */
+export const INTERNAL_use = use;
+
 // isolate `React.use` in its own component
 // to workaround https://github.com/facebook/react/issues/33937
-export const Slot: typeof SlotInner = (props) => {
-  return createElement(SlotInner, props);
+export const Slot: typeof SlotUseWrapper = (props) => {
+  return createElement(SlotUseWrapper, props);
 };
 
-const SlotInner: FC<{ id: string; children?: ReactNode }> = ({
+const SlotUseWrapper: FC<{ id: string; children?: ReactNode }> = ({
   id,
   children,
 }) => {
@@ -380,13 +383,13 @@ const SlotInner: FC<{ id: string; children?: ReactNode }> = ({
     { value: children },
     // isolate potential `React.use` usage in its own component
     // https://github.com/facebook/react/issues/33937
-    createElement(Wrapper, null, element as ReactNode),
+    createElement(SlotElementWrapper, null, element as ReactNode),
     // FIXME is there `isReactNode` type checker?
     // element as ReactNode,
   );
 };
 
-const Wrapper: FC<PropsWithChildren> = (props) => {
+const SlotElementWrapper: FC<PropsWithChildren> = (props) => {
   return props.children;
 };
 
