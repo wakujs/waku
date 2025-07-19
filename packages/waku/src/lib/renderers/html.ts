@@ -205,7 +205,6 @@ export async function renderHtml(
     injected.allReady = readable.allReady;
     return injected as never;
   } catch (e) {
-    console.error('[renderHTML] Error in renderToReadableStream:', e);
     if (hackToIgnoreFirstTwoErrors) {
       hackToIgnoreFirstTwoErrors--;
       return renderHtml(

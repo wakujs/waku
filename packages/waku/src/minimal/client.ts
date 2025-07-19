@@ -329,35 +329,6 @@ export const useElementsPromise_UNSTABLE = () => {
  *   <Root><Slot id="foo" /><Slot id="bar" /></Root>
  * ```
  */
-// export const Slot = ({
-//   id,
-//   children,
-// }: {
-//   id: string;
-//   children?: ReactNode;
-// }) => {
-//   const elementsPromise = useElementsPromise_UNSTABLE();
-//   const elements = use(elementsPromise);
-//   console.log('Slot:use(elementsPromise)', id, elements);
-//   if (id in elements && elements[id] === undefined) {
-//     throw new Error('Element cannot be undefined, use null instead: ' + id);
-//   }
-//   const element = elements[id];
-//   const isValidElement = element !== undefined;
-//   if (!isValidElement) {
-//     throw new Error('Invalid element: ' + id);
-//   }
-//   return createElement(
-//     ChildrenContextProvider,
-//     { value: children },
-//     // FIXME is there `isReactNode` type checker?
-//     element as ReactNode,
-//   );
-// };
-
-/** re-export use for renderes/html */
-export const INTERNAL_use = use;
-
 export const Slot = ({
   id,
   children,
@@ -387,6 +358,9 @@ export const Slot = ({
 const SlotElementWrapper: FC<PropsWithChildren> = (props) => {
   return props.children;
 };
+
+/** re-export use for renderes/html */
+export const INTERNAL_use = use;
 
 /**
  * ServerRoot for SSR
