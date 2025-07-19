@@ -1,4 +1,4 @@
-import { createElement } from 'react';
+import { use, createElement } from 'react';
 import type {
   ReactElement,
   ReactNode,
@@ -89,7 +89,7 @@ globalThis.__WAKU_HYDRATE__ = true;
 };
 
 // FIXME Why does it error on the first and second time?
-let hackToIgnoreFirstTwoErrors = 2;
+let hackToIgnoreFirstTwoErrors = 0;
 
 export async function renderHtml(
   config: ConfigDev | ConfigPrd,
@@ -168,7 +168,12 @@ export async function renderHtml(
           Omit<ComponentProps<typeof INTERNAL_ServerRoot>, 'children'>
         >,
         { elementsPromise },
-        htmlNode as any,
+        // isolate `React.use` in its own component
+        // to workaround https://github.com/facebook/react/issues/33937
+        createElement(function Wrapper() {
+          return use(htmlNode);
+        }),
+        // htmlNode as any,
         ...headElements,
       ),
       {
@@ -195,6 +200,7 @@ export async function renderHtml(
     injected.allReady = readable.allReady;
     return injected as never;
   } catch (e) {
+    console.error('[renderHTML] Error in renderToReadableStream:', e);
     if (hackToIgnoreFirstTwoErrors) {
       hackToIgnoreFirstTwoErrors--;
       return renderHtml(

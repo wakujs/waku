@@ -11,7 +11,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import type { ReactNode } from 'react';
+import type { FC, PropsWithChildren, ReactNode } from 'react';
 import RSDWClient from 'react-server-dom-webpack/client';
 
 import { createCustomError } from '../lib/utils/custom-errors.js';
@@ -329,12 +329,41 @@ export const useElementsPromise_UNSTABLE = () => {
  *   <Root><Slot id="foo" /><Slot id="bar" /></Root>
  * ```
  */
-export const Slot = ({
+// export const Slot = ({
+//   id,
+//   children,
+// }: {
+//   id: string;
+//   children?: ReactNode;
+// }) => {
+//   const elementsPromise = useElementsPromise_UNSTABLE();
+//   const elements = use(elementsPromise);
+//   console.log('Slot:use(elementsPromise)', id, elements);
+//   if (id in elements && elements[id] === undefined) {
+//     throw new Error('Element cannot be undefined, use null instead: ' + id);
+//   }
+//   const element = elements[id];
+//   const isValidElement = element !== undefined;
+//   if (!isValidElement) {
+//     throw new Error('Invalid element: ' + id);
+//   }
+//   return createElement(
+//     ChildrenContextProvider,
+//     { value: children },
+//     // FIXME is there `isReactNode` type checker?
+//     element as ReactNode,
+//   );
+// };
+
+// isolate `React.use` in its own component
+// to workaround https://github.com/facebook/react/issues/33937
+export const Slot: typeof SlotInner = (props) => {
+  return createElement(SlotInner, props);
+};
+
+const SlotInner: FC<{ id: string; children?: ReactNode }> = ({
   id,
   children,
-}: {
-  id: string;
-  children?: ReactNode;
 }) => {
   const elementsPromise = useElementsPromise_UNSTABLE();
   const elements = use(elementsPromise);
@@ -349,9 +378,16 @@ export const Slot = ({
   return createElement(
     ChildrenContextProvider,
     { value: children },
+    // isolate potential `React.use` usage in its own component
+    // https://github.com/facebook/react/issues/33937
+    createElement(Wrapper, null, element as ReactNode),
     // FIXME is there `isReactNode` type checker?
-    element as ReactNode,
+    // element as ReactNode,
   );
+};
+
+const Wrapper: FC<PropsWithChildren> = (props) => {
+  return props.children;
 };
 
 /**
