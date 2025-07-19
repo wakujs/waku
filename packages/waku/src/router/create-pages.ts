@@ -120,6 +120,7 @@ export type CreatePage = <
   Render extends 'static' | 'dynamic',
   StaticPaths extends StaticSlugRoutePaths<Path>,
   ExactPath extends boolean | undefined = undefined,
+  Slices extends string[] = [],
 >(
   page: (
     | {
@@ -149,6 +150,7 @@ export type CreatePage = <
      * This is intended for extending support to create custom routers.
      */
     exactPath?: ExactPath;
+    slices?: Slices;
   },
 ) => Omit<
   Exclude<typeof page, { path: never } | { render: never }>,
@@ -198,6 +200,12 @@ export type CreatePagePart = <const Path extends string>(params: {
   order: number;
   component: FunctionComponent<{ children: ReactNode }>;
 }) => typeof params;
+
+export type CreateSlice = <ID extends string>(slice: {
+  render: 'static' | 'dynamic';
+  id: ID;
+  component: FunctionComponent<{ children: ReactNode }>;
+}) => void;
 
 type RootItem = {
   render: 'static' | 'dynamic';
@@ -293,6 +301,7 @@ export const createPages = <
      * If all parts are static, the page will be static.
      */
     createPagePart: CreatePagePart;
+    createSlice: CreateSlice;
   }) => Promise<AllPages>,
 ) => {
   let configured = false;
@@ -318,6 +327,14 @@ export const createPages = <
     }
   >();
   const staticComponentMap = new Map<string, FunctionComponent<any>>();
+  const slicePathMap = new Map<string, string[]>();
+  const sliceIdMap = new Map<
+    string,
+    {
+      component: FunctionComponent<{ children: ReactNode }>;
+      isStatic: boolean;
+    }
+  >();
   let rootItem: RootItem | undefined = undefined;
   const noSsrSet = new WeakSet<PathSpec>();
 
@@ -498,6 +515,9 @@ export const createPages = <
     } else {
       throw new Error('Invalid page configuration');
     }
+    if (page.slices?.length) {
+      slicePathMap.set(page.path, page.slices);
+    }
     return page as Exclude<typeof page, { path: never } | { render: never }>;
   };
 
@@ -554,6 +574,19 @@ export const createPages = <
     } else {
       throw new Error('Invalid root configuration');
     }
+  };
+
+  const createSlice: CreateSlice = (slice) => {
+    if (configured) {
+      throw new Error('createSlice no longer available');
+    }
+    if (sliceIdMap.has(slice.id)) {
+      throw new Error(`Duplicated slice id: ${slice.id}`);
+    }
+    sliceIdMap.set(slice.id, {
+      component: slice.component,
+      isStatic: slice.render === 'static',
+    });
   };
 
   const createPagePart: CreatePagePart = (params) => {
@@ -625,6 +658,7 @@ export const createPages = <
         createRoot,
         createApi,
         createPagePart,
+        createSlice,
       });
       await ready;
 
@@ -680,6 +714,7 @@ export const createPages = <
         rootElement: { isStatic?: boolean };
         routeElement: { isStatic?: boolean };
         elements: Record<string, { isStatic?: boolean }>;
+        slices?: Record<string, { isStatic?: boolean }>;
         noSsr: boolean;
       }[] = [];
       const rootIsStatic = !rootItem || rootItem.render === 'static';
@@ -711,6 +746,20 @@ export const createPages = <
           },
           elements,
           noSsr,
+          ...(slicePathMap.has(path)
+            ? {
+                slices: slicePathMap
+                  .get(path)!
+                  .reduce<
+                    Record<string, { isStatic: boolean }>
+                  >((acc, sliceId) => {
+                    acc[sliceId] = {
+                      isStatic: sliceIdMap.get(sliceId)!.isStatic,
+                    };
+                    return acc;
+                  }, {}),
+              }
+            : {}),
         });
       }
       for (const [path, [pathSpec, components]] of dynamicPagePathMap) {
@@ -925,6 +974,11 @@ export const createPages = <
         headers: Object.fromEntries(res.headers.entries()),
         status: res.status,
       };
+    },
+    handleSlice: async (sliceId) => {
+      await configure();
+      const { component } = sliceIdMap.get(sliceId)!;
+      return { element: createElement(component) };
     },
   });
 
