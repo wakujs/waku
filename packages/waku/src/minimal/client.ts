@@ -11,7 +11,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import type { ReactNode } from 'react';
+import type { FC, PropsWithChildren, ReactNode } from 'react';
 import RSDWClient from 'react-server-dom-webpack/client';
 
 import { createCustomError } from '../lib/utils/custom-errors.js';
@@ -349,10 +349,18 @@ export const Slot = ({
   return createElement(
     ChildrenContextProvider,
     { value: children },
-    // FIXME is there `isReactNode` type checker?
-    element as ReactNode,
+    // isolate potential `lazy + React.use` usage inside `element` in its own component
+    // https://github.com/facebook/react/issues/33937#issuecomment-3091349011
+    createElement(SlotElementWrapper, null, element as ReactNode),
   );
 };
+
+const SlotElementWrapper: FC<PropsWithChildren> = (props) => {
+  return props.children;
+};
+
+/** re-export use for renderes/html */
+export const INTERNAL_use = use;
 
 /**
  * ServerRoot for SSR
