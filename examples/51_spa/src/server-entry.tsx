@@ -6,6 +6,7 @@ export default defineEntries({
       const value = await input.fn(...input.args);
       return renderRsc({ _value: value });
     }
+    return 'fallback';
   },
   handleBuild: () => null,
 });

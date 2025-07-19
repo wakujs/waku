@@ -128,7 +128,7 @@ export function unstable_notFound(): never {
 
 export function unstable_redirect(
   location: string,
-  status: 307 | 308 = 307,
+  status: 303 | 307 | 308 = 307,
 ): never {
   throw createCustomError('Redirect', { status, location });
 }
@@ -433,9 +433,27 @@ export function unstable_defineRouter(fns: {
         });
       };
       setRerender(rerender);
-      const value = await input.fn(...input.args);
-      rendered = true;
-      return renderRsc({ ...(await elementsPromise), _value: value });
+      try {
+        const value = await input.fn(...input.args);
+        return renderRsc({ ...(await elementsPromise), _value: value });
+      } catch (e) {
+        const info = getErrorInfo(e);
+        if (info?.location) {
+          const rscPath = encodeRoutePath(info.location);
+          const entries = await getEntries(
+            rscPath,
+            undefined,
+            input.req.headers,
+          );
+          if (!entries) {
+            unstable_notFound();
+          }
+          return renderRsc(entries);
+        }
+        throw e;
+      } finally {
+        rendered = true;
+      }
     }
     const pathConfigItem = await getPathConfigItem(input.pathname);
     if (pathConfigItem?.specs?.isApi && fns.handleApi) {
@@ -468,7 +486,7 @@ export function unstable_defineRouter(fns: {
       };
       const query = input.req.url.searchParams.toString();
       if (pathConfigItem?.specs?.noSsr) {
-        return null;
+        return 'fallback';
       }
       try {
         if (pathConfigItem) {
@@ -565,6 +583,15 @@ globalThis.__WAKU_ROUTER_PREFETCH__ = (path) => {
           continue;
         }
         tasks.push(async () => {
+          if (specs.noSsr) {
+            if (!pathname) {
+              throw new Error('Pathname is required for noSsr routes on build');
+            }
+            return {
+              type: 'defaultHtml',
+              pathname,
+            };
+          }
           const moduleIds = moduleIdsForPrefetch.get(pathSpec)!;
           if (pathname) {
             const rscPath = encodeRoutePath(pathname);
