@@ -14,7 +14,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-server-dom-webpack": "19.1.0",
-    "waku": "0.23.4",
+    "waku": "0.23.5",
     "wrangler": "4.25.0"
   },
   "devDependencies": {
