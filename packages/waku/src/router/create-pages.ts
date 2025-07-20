@@ -150,6 +150,10 @@ export type CreatePage = <
      * This is intended for extending support to create custom routers.
      */
     exactPath?: ExactPath;
+    /**
+    * List of slice ids used in the component.
+    * This is _required_ to send the slices along with the component.
+    */
     slices?: Slices;
   },
 ) => Omit<
