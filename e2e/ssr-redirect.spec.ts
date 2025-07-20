@@ -39,4 +39,22 @@ test.describe(`ssr-redirect`, () => {
     await page.click("a[href='/async']");
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
   });
+
+  test('navigation in server action', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/action`);
+    await expect(page.getByRole('heading')).toHaveText('Action Page');
+    await page.click('text=Redirect Action');
+    await expect(page.getByRole('heading')).toHaveText('Destination Page');
+  });
+
+  test('navigation in server action (no js)', async ({ browser }) => {
+    const context = await browser.newContext({
+      javaScriptEnabled: false,
+    });
+    const page = await context.newPage();
+    await page.goto(`http://localhost:${port}/action`);
+    await expect(page.getByRole('heading')).toHaveText('Action Page');
+    await page.click('text=Redirect Action');
+    await expect(page.getByRole('heading')).toHaveText('Destination Page');
+  });
 });
