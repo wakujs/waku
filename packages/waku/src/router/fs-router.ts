@@ -32,6 +32,7 @@ export function unstable_fsRouter(
       createRoot,
       createApi,
       createPagePart,
+      createSlice,
     }) => {
       let files = await unstable_getPlatformData<string[]>('fsRouterFiles');
       if (!files) {
@@ -93,6 +94,17 @@ export function unstable_fsRouter(
           .replace(/\.\w+$/, '')
           .split('/')
           .filter(Boolean);
+        // must come before isIgnoredPath check to include slices from inside _components
+        if (pathItems.at(-1)?.startsWith('_slice')) {
+          createSlice({
+            component: mod.default,
+            render: 'dynamic',
+            // Q: should we default to using the file name as the id?
+            // id: pathItems.at(-1)!.slice('_slice'.length),
+            ...config,
+          });
+          continue;
+        }
         if (isIgnoredPath(pathItems)) {
           continue;
         }
