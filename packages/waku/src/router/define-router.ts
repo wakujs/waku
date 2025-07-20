@@ -188,9 +188,6 @@ export function unstable_defineRouter(fns: {
     status?: number;
   }>;
 }) {
-  if (fns.handleSlice && !import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER) {
-    throw new Error('Slice is still experimental');
-  }
   type MyPathConfig = {
     pathSpec: PathSpec;
     pathname: string | undefined;
@@ -238,7 +235,10 @@ export function unstable_defineRouter(fns: {
                 'Element ID cannot start with "route:" or "slice:"',
               );
             }
-            if (item.slices && !import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER) {
+            if (
+              Object.keys(item.slices || {}).length &&
+              !import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER
+            ) {
               throw new Error('Slice is still experimental');
             }
             return {
@@ -326,6 +326,12 @@ export function unstable_defineRouter(fns: {
           pathConfigItem.specs.isStatic ? {} : { query },
         ),
         ...(pathConfigItem.specs.sliceIds || []).map(async (sliceId) => {
+          if (
+            fns.handleSlice &&
+            !import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER
+          ) {
+            throw new Error('Slice is still experimental');
+          }
           if (!fns.handleSlice) {
             throw new Error('handleSlice is not defined');
           }
