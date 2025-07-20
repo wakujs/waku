@@ -5,7 +5,7 @@ const Baz = () => (
     <h2 data-testid="baz-title">Baz</h2>
     <Slice
       id="slice002"
-      delayed
+      lazy
       fallback={<p data-testid="slice002-loading">Loading...</p>}
     />
   </div>
