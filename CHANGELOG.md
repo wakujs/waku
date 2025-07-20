@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.23.6] - 2025-07-21
+
+### Changed
+
+- Hotfix for v0.23.5
+
 ## [0.23.5] - 2025-07-20
 
 ### Changed

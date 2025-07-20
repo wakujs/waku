@@ -13,7 +13,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-server-dom-webpack": "19.1.0",
-    "waku": "0.23.5"
+    "waku": "0.23.6"
   },
   "devDependencies": {
     "@babel/plugin-syntax-jsx": "^7.27.1",
