@@ -281,7 +281,7 @@ describe('type tests', () => {
       // @ts-expect-error: id is not a string
       createSlice({ render: 'static', paths: ['/'], id: 123 });
       // good
-      createSlice({ render: 'static', paths: ['/', '/foo'], id: 'slice001' });
+      createSlice({ render: 'static', component: () => null, id: 'slice001' });
     });
     it('dynamic', () => {
       const createSlice: CreateSlice = vi.fn();
@@ -296,7 +296,7 @@ describe('type tests', () => {
       // @ts-expect-error: id is not a string
       createSlice({ render: 'static', paths: ['/'], id: 123 });
       // good
-      createSlice({ render: 'static', paths: ['/', '/foo'], id: 'slice001' });
+      createSlice({ render: 'static', component: () => null, id: 'slice001' });
     });
   });
 
@@ -742,15 +742,17 @@ describe('createPages pages and layouts', () => {
 
   it('creates a simple static slice', async () => {
     const TestPage = () => null;
+    const TestSlice = () => null;
     createPages(async ({ createSlice, createPage }) => [
       createPage({
         render: 'static',
         path: '/',
         component: TestPage,
+        slices: ['slice001'],
       }),
       createSlice({
         render: 'static',
-        paths: ['/'],
+        component: TestSlice,
         id: 'slice001',
       }),
     ]);
