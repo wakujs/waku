@@ -175,12 +175,8 @@ test.describe(`fs-router`, async () => {
   test('slices', async ({ page }) => {
     await page.goto(`http://localhost:${port}/slices`);
     await waitForHydration(page);
-    await expect(
-      page
-        .getByTestId('slice001')
-        .textContent.toString()
-        .startsWith('Slice 001'),
-    ).toBeTruthy();
+    const sliceText = await page.getByTestId('slice001').textContent();
+    expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
     await expect(page.getByTestId('slice002')).toHaveText('Slice 002');
   });
 });
