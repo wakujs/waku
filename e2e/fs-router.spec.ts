@@ -173,7 +173,7 @@ test.describe(`fs-router`, async () => {
   });
 
   test('slices', async ({ page }) => {
-    await page.goto(`http://localhost:${port}/slices`);
+    await page.goto(`http://localhost:${port}/page-with-slices`);
     await waitForHydration(page);
     const sliceText = await page.getByTestId('slice001').textContent();
     expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
