@@ -1,6 +1,6 @@
 import { Readable, Writable } from 'node:stream';
 import { Server } from 'node:http';
-import net, { type AddressInfo } from 'node:net';
+import net from 'node:net';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createServer as createViteServer } from 'vite';
 import viteReact from '@vitejs/plugin-react';
@@ -89,14 +89,31 @@ const splitByLastEndTag = (input: string): readonly [string, string] => {
   }
 };
 
-async function getFreePort(): Promise<number> {
-  return new Promise<number>((resolve) => {
+async function isPortAvailable(port: number): Promise<boolean> {
+  return new Promise<boolean>((resolve, reject) => {
     const srv = net.createServer();
-    srv.listen(0, () => {
-      const port = (srv.address() as AddressInfo).port;
-      srv.close(() => resolve(port));
+    srv.once('error', (err) => {
+      if ((err as any).code === 'EADDRINUSE') {
+        resolve(false);
+      } else {
+        reject(err);
+      }
     });
+    srv.once('listening', () => {
+      srv.close();
+      resolve(true);
+    });
+    srv.listen(port);
   });
+}
+
+async function getFreePort(port: number): Promise<number> {
+  while(true) {
+    if (await isPortAvailable(port)) {
+      return port;
+    }
+    port++;
+  }
 }
 
 const createMainViteServer = (
@@ -157,7 +174,7 @@ const createMainViteServer = (
           appType: 'mpa',
           server: {
             middlewareMode: true,
-            hmr: { port: await getFreePort() },
+            hmr: { port: await getFreePort(5174) },
           },
         },
         config,
