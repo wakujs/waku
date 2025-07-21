@@ -99,8 +99,7 @@ export function unstable_fsRouter(
           createSlice({
             component: mod.default,
             render: 'dynamic',
-            // Q: should we default to using the file name as the id?
-            // id: pathItems.at(-1)!.slice('_slice'.length),
+            id: pathItems.at(-1)!.slice('_slice'.length),
             ...config,
           });
           continue;

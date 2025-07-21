@@ -5,6 +5,5 @@ export default function Slice002() {
 export const getConfig = () => {
   return {
     render: 'static',
-    id: 'slice002',
   };
 };
