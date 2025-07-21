@@ -15,7 +15,7 @@ export default async function HomePage() {
   return (
     <div>
       <Counter />
-      <h2 data-testid="double-count">doubleCount={doubleCount}</h2>
+      <h2 data-testid="double-count">[doubleCount={doubleCount}]</h2>
     </div>
   );
 }

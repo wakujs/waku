@@ -16,7 +16,7 @@ export const Counter = () => {
   };
   return (
     <div style={{ border: '3px blue dashed', margin: '1em', padding: '1em' }}>
-      <p>Count: {count}</p>
+      <p data-testid="count">[count={count}]</p>
       <button onClick={inc}>Increment</button> {isPending ? 'Pending...' : ''}
       <h3>This is a client component.</h3>
     </div>
