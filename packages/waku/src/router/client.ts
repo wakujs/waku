@@ -572,10 +572,10 @@ export function Slice({
   children?: ReactNode;
 } & (
   | {
-      delayed?: false;
+      lazy?: false;
     }
   | {
-      delayed: true;
+      lazy: true;
       fallback: ReactNode;
     }
 )) {
@@ -595,7 +595,7 @@ export function Slice({
   const elementsPromise = useElementsPromise();
   const elements = use(elementsPromise);
   const needsToFetchSlice =
-    props.delayed &&
+    props.lazy &&
     (!(slotId in elements) ||
       // FIXME: hard-coded for now
       elements[IS_STATIC_ID + ':' + slotId] !== true);
@@ -613,7 +613,7 @@ export function Slice({
         });
     }
   }, [fetchingSlices, refetch, id, needsToFetchSlice]);
-  if (props.delayed && !(slotId in elements)) {
+  if (props.lazy && !(slotId in elements)) {
     // FIXME the fallback doesn't show on refetch after the first one.
     return props.fallback;
   }
