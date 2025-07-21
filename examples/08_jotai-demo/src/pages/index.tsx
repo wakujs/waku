@@ -1,6 +1,6 @@
 import { Link } from 'waku';
 
-import { getStore } from '../lib/waku-jotai/server';
+import { getStore } from 'waku-jotai/router';
 import { Counter, countAtom } from '../components/counter';
 
 export default async function HomePage() {
