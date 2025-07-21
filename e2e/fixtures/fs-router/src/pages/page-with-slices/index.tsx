@@ -1,6 +1,6 @@
 import { Slice } from 'waku/router/client';
 
-const slices = ['slice001', '-two'] as const;
+const slices = ['slice001', 'slice-two'] as const;
 
 export default function Slices() {
   return (

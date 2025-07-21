@@ -99,7 +99,7 @@ export function unstable_fsRouter(
           createSlice({
             component: mod.default,
             render: 'dynamic',
-            id: pathItems.at(-1)!.slice('_slice'.length),
+            id: pathItems.at(-1)!.slice('_'.length),
             ...config,
           });
           continue;
