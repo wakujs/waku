@@ -576,6 +576,37 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
 
+  e2e/fixtures/waku-jotai:
+    dependencies:
+      jotai:
+        specifier: 2.12.5
+        version: 2.12.5(@types/react@19.1.8)(react@19.1.0)
+      react:
+        specifier: 19.1.0
+        version: 19.1.0
+      react-dom:
+        specifier: 19.1.0
+        version: 19.1.0(react@19.1.0)
+      react-server-dom-webpack:
+        specifier: 19.1.0
+        version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
+      waku:
+        specifier: latest
+        version: link:../../../packages/waku
+      waku-jotai:
+        specifier: 0.0.1
+        version: 0.0.1(jotai@2.12.5(@types/react@19.1.8)(react@19.1.0))(waku@packages+waku)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.8
+        version: 19.1.8
+      '@types/react-dom':
+        specifier: ^19.1.6
+        version: 19.1.6(@types/react@19.1.8)
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
+
   e2e/fixtures/wildcard-api-routes:
     dependencies:
       react:
