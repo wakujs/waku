@@ -37,7 +37,7 @@ test.describe(`define-router`, () => {
     await expect(page.getByTestId('slice001')).toHaveText(sliceText!);
   });
 
-  test('baz (delayed slice)', async ({ page }) => {
+  test('baz (lazy slice)', async ({ page }) => {
     await page.route(/.*\/RSC\/.*/, async (route) => {
       await new Promise((r) => setTimeout(r, 100));
       await route.continue();
