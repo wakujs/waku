@@ -17,7 +17,7 @@ import { DIST_SERVER_ENTRY_JS, DIST_PUBLIC } from './lib/builder/constants.js';
 
 const require = createRequire(new URL('.', import.meta.url));
 
-dotenv.config({ path: ['.env.local', '.env'] });
+dotenv.config({ path: ['.env.local', '.env'], quiet: true });
 
 const CONFIG_FILE = 'waku.config.ts'; // XXX only ts extension
 

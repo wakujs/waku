@@ -5,6 +5,7 @@ import type {
   CreateApi,
   CreateLayout,
   CreatePage,
+  CreateSlice,
   HasSlugInPath,
   HasWildcardInPath,
   IsValidPathInSlugPath,
@@ -172,7 +173,7 @@ describe('type tests', () => {
     ]);
   });
 
-  describe('CreatePage', () => {
+  describe('createPage', () => {
     it('static', () => {
       const createPage: CreatePage = vi.fn();
       // @ts-expect-error: render is not valid
@@ -236,7 +237,7 @@ describe('type tests', () => {
       createPage({ render: 'dynamic', path: '/[a]', component: () => 'Hello' });
     });
   });
-  describe('CreateLayout', () => {
+  describe('createLayout', () => {
     it('static', () => {
       const createLayout: CreateLayout = vi.fn();
       // @ts-expect-error: render is not valid
@@ -262,6 +263,40 @@ describe('type tests', () => {
 
       // good
       createLayout({ render: 'dynamic', path: '/', component: () => 'Hello' });
+    });
+  });
+  describe('createSlice', () => {
+    it('static', () => {
+      const createSlice: CreateSlice = vi.fn();
+      // @ts-expect-error: render is not valid
+      createSlice({ render: 'foo' });
+      // @ts-expect-error: path is invalid
+      createSlice({ render: 'static', path: 'bar' });
+      // @ts-expect-error: component is missing
+      createSlice({ render: 'static' });
+      // @ts-expect-error: component is not a function
+      createSlice({ render: 'static', component: 123 });
+      // @ts-expect-error: id is missing
+      createSlice({ render: 'static', paths: ['/'] });
+      // @ts-expect-error: id is not a string
+      createSlice({ render: 'static', paths: ['/'], id: 123 });
+      // good
+      createSlice({ render: 'static', component: () => null, id: 'slice001' });
+    });
+    it('dynamic', () => {
+      const createSlice: CreateSlice = vi.fn();
+      // @ts-expect-error: path is invalid
+      createSlice({ render: 'dynamic', path: 'bar' });
+      // @ts-expect-error: component is missing
+      createSlice({ render: 'dynamic' });
+      // @ts-expect-error: component is not a function
+      createSlice({ render: 'static', component: 123 });
+      // @ts-expect-error: id is missing
+      createSlice({ render: 'static', paths: ['/'] });
+      // @ts-expect-error: id is not a string
+      createSlice({ render: 'static', paths: ['/'], id: 123 });
+      // good
+      createSlice({ render: 'static', component: () => null, id: 'slice001' });
     });
   });
 
@@ -703,6 +738,111 @@ describe('createPages pages and layouts', () => {
     expect(route.rootElement).toBeDefined();
     expect(route.routeElement).toBeDefined();
     expect(Object.keys(route.elements)).toEqual(['page:/test', 'layout:/']);
+  });
+
+  it('creates a simple static slice', async () => {
+    const TestPage = () => null;
+    const TestSlice = () => null;
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'static',
+        path: '/',
+        component: TestPage,
+        slices: ['slice001'],
+      }),
+      createSlice({
+        render: 'static',
+        component: TestSlice,
+        id: 'slice001',
+      }),
+    ]);
+    const { getConfig } = injectedFunctions();
+    expect(await getConfig()).toEqual([
+      {
+        type: 'route',
+        elements: {
+          'page:/': { isStatic: true },
+        },
+        rootElement: { isStatic: true },
+        routeElement: { isStatic: true },
+        noSsr: false,
+        path: [],
+        slices: {
+          slice001: { isStatic: true },
+        },
+      },
+    ]);
+  });
+
+  it('creates a simple dynamic page with slices', async () => {
+    const TestPage = () => null;
+    const TestSlice = () => null;
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/',
+        component: TestPage,
+        slices: ['slice001'],
+      }),
+      createSlice({
+        render: 'static',
+        component: TestSlice,
+        id: 'slice001',
+      }),
+    ]);
+    const { getConfig } = injectedFunctions();
+    expect(await getConfig()).toEqual([
+      {
+        type: 'route',
+        elements: {
+          'page:/': { isStatic: false },
+        },
+        rootElement: { isStatic: true },
+        routeElement: { isStatic: true },
+        noSsr: false,
+        path: [],
+        slices: {
+          slice001: { isStatic: true },
+        },
+      },
+    ]);
+  });
+
+  it('creates a wildcard page with slices', async () => {
+    const TestPage = () => null;
+    const TestSlice = () => null;
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/test/[...wildcard]',
+        component: TestPage,
+        slices: ['slice001'],
+      }),
+      createSlice({
+        render: 'static',
+        component: TestSlice,
+        id: 'slice001',
+      }),
+    ]);
+    const { getConfig } = injectedFunctions();
+    expect(await getConfig()).toEqual([
+      {
+        type: 'route',
+        elements: {
+          'page:/test/[...wildcard]': { isStatic: false },
+        },
+        rootElement: { isStatic: true },
+        routeElement: { isStatic: true },
+        noSsr: false,
+        path: [
+          { name: 'test', type: 'literal' },
+          { name: 'wildcard', type: 'wildcard' },
+        ],
+        slices: {
+          slice001: { isStatic: true },
+        },
+      },
+    ]);
   });
 
   it('creates a nested static page', async () => {

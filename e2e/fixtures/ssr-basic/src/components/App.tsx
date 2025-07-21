@@ -18,6 +18,9 @@ const App = ({ name }: { name: string }) => {
         <title>Waku example</title>
       </head>
       <body>
+        <script id="embedding-data" type="application/json">
+          {`{ "a": 1 }`}
+        </script>
         <div
           style={{ border: '3px red dashed', margin: '1em', padding: '1em' }}
         >

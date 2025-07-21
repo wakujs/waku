@@ -12,7 +12,7 @@
   "dependencies": {
     "@sindresorhus/slugify": "^2.2.1",
     "classnames": "2.3.2",
-    "framer-motion": "^12.23.5",
+    "framer-motion": "^12.23.6",
     "jotai": "^2.12.5",
     "next-mdx-remote": "^5.0.0",
     "react": "19.1.0",
@@ -27,9 +27,9 @@
     "postcss": "8.5.6",
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.6.14",
-    "shiki": "^3.8.0",
+    "shiki": "^3.8.1",
     "tailwindcss": "4.1.11",
     "typescript": "^5.8.3",
-    "vite": "7.0.4"
+    "vite": "7.0.5"
   }
 }

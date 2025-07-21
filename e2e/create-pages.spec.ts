@@ -1,6 +1,11 @@
 import { expect } from '@playwright/test';
 
-import { test, prepareStandaloneSetup, FETCH_ERROR_MESSAGES } from './utils.js';
+import {
+  test,
+  FETCH_ERROR_MESSAGES,
+  waitForHydration,
+  prepareStandaloneSetup,
+} from './utils.js';
 
 const startApp = prepareStandaloneSetup('create-pages');
 
@@ -75,6 +80,7 @@ test.describe(`create-pages`, () => {
 
   test('jump', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
     await page.click("a[href='/foo']");
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
     await page.click('text=Jump to random page');
@@ -89,6 +95,7 @@ test.describe(`create-pages`, () => {
     const errors: string[] = [];
     page.on('pageerror', (err) => errors.push(err.message));
     await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
     await page.click("a[href='/foo']");
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
     await page.click('text=Jump with setState');
@@ -100,6 +107,7 @@ test.describe(`create-pages`, () => {
 
   test('errors', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
     await page.click("a[href='/error']");
     await expect(
       page.getByRole('heading', { name: 'Error Page' }),
@@ -118,6 +126,7 @@ test.describe(`create-pages`, () => {
 
   test('server function unreachable', async ({ page, mode, browserName }) => {
     await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
     await page.click("a[href='/error']");
     await expect(
       page.getByRole('heading', { name: 'Error Page' }),
@@ -141,6 +150,7 @@ test.describe(`create-pages`, () => {
 
   test('server page unreachable', async ({ page, mode, browserName }) => {
     await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
     await stopApp?.();
     await page.click("a[href='/error']");
     // Default router client error boundary is reached
@@ -153,6 +163,7 @@ test.describe(`create-pages`, () => {
   // https://github.com/wakujs/waku/issues/1255
   test('long suspense', async ({ page }) => {
     await page.goto(`http://localhost:${port}/long-suspense/1`);
+    await waitForHydration(page);
     await expect(page.getByTestId('long-suspense-component')).toHaveCount(2);
     await expect(
       page.getByRole('heading', { name: 'Long Suspense Page 1' }),
@@ -308,6 +319,7 @@ test.describe(`create-pages`, () => {
 
   test('static page part', async ({ page }) => {
     await page.goto(`http://localhost:${port}/page-parts`);
+    await waitForHydration(page);
     const staticPageTime = (
       await page
         .getByRole('heading', { name: 'Static Page Part' })
@@ -363,5 +375,24 @@ test.describe(`create-pages`, () => {
     const dynamicTime2 = await whatTime('Dynamic Layout');
     const staticTime2 = await whatTime('Static Layout');
     expect(dynamicTime2).not.toEqual(staticTime2);
+  });
+
+  test('no ssr', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/no-ssr`);
+    await expect(
+      page.getByRole('heading', { name: 'No SSR', exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Only client component', exact: true }),
+    ).toBeVisible();
+  });
+
+  test('slices', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/slices`);
+    await waitForHydration(page);
+    const sliceText = await page.getByTestId('slice001').textContent();
+    expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
+    const sliceText2 = await page.getByTestId('slice002').textContent();
+    expect(sliceText2).toBe('Slice 002');
   });
 });

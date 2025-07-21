@@ -1,6 +1,6 @@
 import { Readable, Writable } from 'node:stream';
 import { Server } from 'node:http';
-import net, { type AddressInfo } from 'node:net';
+import net from 'node:net';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createServer as createViteServer } from 'vite';
 import viteReact from '@vitejs/plugin-react';
@@ -88,14 +88,23 @@ const splitByLastEndTag = (input: string): readonly [string, string] => {
   }
 };
 
-async function getFreePort(): Promise<number> {
-  return new Promise<number>((resolve) => {
-    const srv = net.createServer();
-    srv.listen(0, () => {
-      const port = (srv.address() as AddressInfo).port;
-      srv.close(() => resolve(port));
-    });
-  });
+export async function getFreePort(startPort: number): Promise<number> {
+  for (let port = startPort; ; port++) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const srv = net
+          .createServer()
+          .once('error', reject)
+          .once('listening', () => srv.close(() => resolve()))
+          .listen(port);
+      });
+      return port;
+    } catch (err: any) {
+      if (err.code !== 'EADDRINUSE') {
+        throw err;
+      }
+    }
+  }
 }
 
 const createMainViteServer = (
@@ -156,7 +165,7 @@ const createMainViteServer = (
           appType: 'mpa',
           server: {
             middlewareMode: true,
-            hmr: { port: await getFreePort() },
+            hmr: { port: await getFreePort(5174) },
           },
         },
         config,

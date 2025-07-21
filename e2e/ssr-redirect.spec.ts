@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test';
 
-import { test, prepareNormalSetup } from './utils.js';
+import { test, prepareNormalSetup, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('ssr-redirect');
 
@@ -26,6 +26,7 @@ test.describe(`ssr-redirect`, () => {
 
   test('access sync page with client navigation', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
     await expect(page.getByRole('heading')).toHaveText('Home Page');
     await page.click("a[href='/sync']");
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
@@ -33,8 +34,27 @@ test.describe(`ssr-redirect`, () => {
 
   test('access async page with client navigation', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
     await expect(page.getByRole('heading')).toHaveText('Home Page');
     await page.click("a[href='/async']");
+    await expect(page.getByRole('heading')).toHaveText('Destination Page');
+  });
+
+  test('navigation in server action', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/action`);
+    await expect(page.getByRole('heading')).toHaveText('Action Page');
+    await page.click('text=Redirect Action');
+    await expect(page.getByRole('heading')).toHaveText('Destination Page');
+  });
+
+  test('navigation in server action (no js)', async ({ browser }) => {
+    const context = await browser.newContext({
+      javaScriptEnabled: false,
+    });
+    const page = await context.newPage();
+    await page.goto(`http://localhost:${port}/action`);
+    await expect(page.getByRole('heading')).toHaveText('Action Page');
+    await page.click('text=Redirect Action');
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
   });
 });

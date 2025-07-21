@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect } from '@playwright/test';
 
-import { test, prepareStandaloneSetup } from './utils.js';
+import { test, prepareStandaloneSetup, waitForHydration } from './utils.js';
 
 const startApp = prepareStandaloneSetup('hot-reload');
 
@@ -34,6 +34,7 @@ test.describe('hot reload', () => {
 
   test('server and client', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
     await expect(page.getByText('Home Page')).toBeVisible();
     await expect(page.getByTestId('count')).toHaveText('0');
     await page.getByTestId('increment').click();
@@ -105,6 +106,7 @@ test.describe('hot reload', () => {
 
   test('css modules', async ({ page }) => {
     await page.goto(`http://localhost:${port}/css-modules`);
+    await waitForHydration(page);
     await expect(page.getByTestId('css-modules-header')).toHaveText(
       'CSS Modules',
     );
@@ -137,6 +139,7 @@ test.describe('hot reload', () => {
     page,
   }) => {
     await page.goto(`http://localhost:${port}/css-modules-client`);
+    await waitForHydration(page);
     await expect(page.getByTestId('css-modules-client')).toHaveText('Hello');
     const bgColor1 = await page.evaluate(() =>
       window
@@ -180,7 +183,7 @@ test.describe('hot reload', () => {
     const errors: string[] = [];
     page.on('pageerror', (err) => errors.push(err.message));
     await page.goto(`http://localhost:${port}/`);
-    await expect(page.getByText('Home Page')).toBeVisible();
+    await waitForHydration(page);
     await expect(page.getByTestId('count')).toHaveText('0');
     await page.getByTestId('increment').click();
     await expect(page.getByTestId('count')).toHaveText('1');

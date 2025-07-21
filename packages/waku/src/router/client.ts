@@ -462,24 +462,25 @@ const Redirect = ({
   error,
   to,
   reset,
+  handledErrorSet,
 }: {
   error: unknown;
   to: string;
   reset: () => void;
+  handledErrorSet: WeakSet<object>;
 }) => {
   const router = useContext(RouterContext);
   if (!router) {
     throw new Error('Missing Router');
   }
   const { changeRoute } = router;
-  const handledErrorSet = useRef(new WeakSet());
   useEffect(() => {
     // ensure single re-fetch per server redirection error on StrictMode
     // https://github.com/wakujs/waku/pull/1512
-    if (handledErrorSet.current.has(error as object)) {
+    if (handledErrorSet.has(error as object)) {
       return;
     }
-    handledErrorSet.current.add(error as object);
+    handledErrorSet.add(error as object);
 
     const url = new URL(to, window.location.href);
     // FIXME this condition seems too naive
@@ -511,7 +512,7 @@ const Redirect = ({
           );
         }
       });
-  }, [error, to, reset, changeRoute]);
+  }, [error, to, reset, changeRoute, handledErrorSet]);
   return null;
 };
 
@@ -519,6 +520,7 @@ class CustomErrorHandler extends Component<
   { has404: boolean; children?: ReactNode },
   { error: unknown | null }
 > {
+  private handledErrorSet = new WeakSet();
   constructor(props: { has404: boolean; children?: ReactNode }) {
     super(props);
     this.state = { error: null };
@@ -545,6 +547,7 @@ class CustomErrorHandler extends Component<
           error,
           to: info.location,
           reset: this.reset,
+          handledErrorSet: this.handledErrorSet,
         });
       }
       throw error;
@@ -569,10 +572,10 @@ export function Slice({
   children?: ReactNode;
 } & (
   | {
-      delayed?: false;
+      lazy?: false;
     }
   | {
-      delayed: true;
+      lazy: true;
       fallback: ReactNode;
     }
 )) {
@@ -592,7 +595,7 @@ export function Slice({
   const elementsPromise = useElementsPromise();
   const elements = use(elementsPromise);
   const needsToFetchSlice =
-    props.delayed &&
+    props.lazy &&
     (!(slotId in elements) ||
       // FIXME: hard-coded for now
       elements[IS_STATIC_ID + ':' + slotId] !== true);
@@ -610,7 +613,7 @@ export function Slice({
         });
     }
   }, [fetchingSlices, refetch, id, needsToFetchSlice]);
-  if (props.delayed && !(slotId in elements)) {
+  if (props.lazy && !(slotId in elements)) {
     // FIXME the fallback doesn't show on refetch after the first one.
     return props.fallback;
   }

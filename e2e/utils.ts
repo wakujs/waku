@@ -1,4 +1,3 @@
-import net from 'node:net';
 import { execSync, exec } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +15,7 @@ import type { ChildProcess } from 'node:child_process';
 import { expect, test as basicTest } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
 import { error, info } from '@actions/core';
+import { stripVTControlCharacters } from 'node:util';
 
 export const FETCH_ERROR_MESSAGES = {
   chromium: 'Failed to fetch',
@@ -31,7 +31,7 @@ export type TestOptions = {
 export async function findWakuPort(cp: ChildProcess): Promise<number> {
   return new Promise((resolve, reject) => {
     function listener(data: unknown) {
-      const str = `${data}`;
+      const str = stripVTControlCharacters(`${data}`);
       const match = str.match(/http:\/\/localhost:(\d+)/g);
       if (match) {
         clearTimeout(timer);
@@ -76,24 +76,6 @@ const ignoreErrors: RegExp[] = [
   /^\[Error: An error occurred in the Server Components render./,
 ];
 
-export async function isPortAvailable(port: number): Promise<boolean> {
-  return new Promise<boolean>((resolve, reject) => {
-    const srv = net.createServer();
-    srv.once('error', (err) => {
-      if ((err as any).code === 'EADDRINUSE') {
-        resolve(false);
-      } else {
-        reject(err);
-      }
-    });
-    srv.once('listening', () => {
-      srv.close();
-      resolve(true);
-    });
-    srv.listen(port);
-  });
-}
-
 export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
   cp.stdout?.on('data', (data) => {
     const str = data.toString();
@@ -117,8 +99,11 @@ export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
   });
 }
 
-export const test = basicTest.extend<TestOptions>({
-  mode: ['DEV', { option: true }],
+export const test = basicTest.extend<
+  Omit<TestOptions, 'mode'>,
+  Pick<TestOptions, 'mode'>
+>({
+  mode: ['DEV', { option: true, scope: 'worker' }],
   page: async ({ page }, pageUse, testInfo) => {
     const callback = (msg: ConsoleMessage) => {
       if (unexpectedErrors.some((re) => re.test(msg.text()))) {
@@ -176,12 +161,6 @@ const PACKAGE_INSTALL = {
   yarn: `yarn install`,
 } as const;
 
-const PACKAGE_ADD = {
-  npm: `npm add --force`,
-  pnpm: `pnpm add`,
-  yarn: `yarn add -W`,
-} as const;
-
 export const makeTempDir = (prefix: string): string => {
   // GitHub Action on Windows doesn't support mkdtemp on global temp dir,
   // Which will cause files in `src` folder to be empty. I don't know why
@@ -201,14 +180,14 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
   const builtModeMap = new Map<'npm' | 'pnpm' | 'yarn', 'PRD' | 'STATIC'>();
   const startApp = async (
     mode: 'DEV' | 'PRD' | 'STATIC',
-    packageManager: 'npm' | 'pnpm' | 'yarn' = 'npm',
+    packageManager: 'npm' | 'pnpm' | 'yarn' = 'pnpm',
     packageDir = '',
   ) => {
     const wakuPackageDir = (): string => {
       if (!standaloneDir) {
         throw new Error('standaloneDir is not set');
       }
-      return packageManager === 'npm'
+      return packageManager !== 'pnpm'
         ? standaloneDir
         : join(standaloneDir, packageDir);
     };
@@ -236,6 +215,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       const pnpmOverrides = {
         ...rootPkg.pnpm?.overrides,
         ...rootPkg.pnpmOverrides, // Do we need this?
+        waku: `file:${wakuPackageTgz}`,
       };
       for (const file of readdirSync(standaloneDir, {
         encoding: 'utf8',
@@ -277,29 +257,26 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         cwd: standaloneDir,
         stdio: 'inherit',
       });
-      execSync(`${PACKAGE_ADD[packageManager]} ${wakuPackageTgz}`, {
-        cwd: wakuPackageDir(),
-        stdio: 'inherit',
-      });
     }
+    const waku = join(wakuPackageDir(), './node_modules/waku/dist/cli.js');
     if (mode !== 'DEV' && builtModeMap.get(packageManager) !== mode) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
         recursive: true,
         force: true,
       });
-      execSync(
-        `node ${join(wakuPackageDir(), './node_modules/waku/dist/cli.js')} build`,
-        { cwd: join(standaloneDir, packageDir), stdio: 'inherit' },
-      );
+      execSync(`node ${waku} build`, {
+        cwd: join(standaloneDir, packageDir),
+        stdio: 'inherit',
+      });
       builtModeMap.set(packageManager, mode);
     }
     let cmd: string;
     switch (mode) {
       case 'DEV':
-        cmd = `node ${join(wakuPackageDir(), './node_modules/waku/dist/cli.js')} dev`;
+        cmd = `node ${waku} dev`;
         break;
       case 'PRD':
-        cmd = `node ${join(wakuPackageDir(), './node_modules/waku/dist/cli.js')} start`;
+        cmd = `node ${waku} start`;
         break;
       case 'STATIC':
         cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} dist/public`;
@@ -316,3 +293,17 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
   };
   return startApp;
 };
+
+export async function waitForHydration(page: Page) {
+  await page.waitForFunction(
+    () => {
+      const el = document.querySelector('body');
+      if (el) {
+        const keys = Object.keys(el);
+        return keys.some((key) => key.startsWith('__reactFiber'));
+      }
+    },
+    null,
+    { timeout: 3000 },
+  );
+}
