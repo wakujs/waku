@@ -992,7 +992,11 @@ export const createPages = <
     },
     handleSlice: async (sliceId) => {
       await configure();
-      const { component } = sliceIdMap.get(sliceId)!;
+      const slice = sliceIdMap.get(sliceId);
+      if (!slice) {
+        throw new Error('Slice not found: ' + sliceId);
+      }
+      const { component } = slice;
       return { element: createElement(component) };
     },
   });
