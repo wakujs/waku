@@ -1,4 +1,3 @@
-import { Suspense } from 'react';
 import { atom } from 'jotai/vanilla';
 
 import { getStore } from 'waku-jotai/router';
@@ -14,10 +13,10 @@ export default async function HomePage() {
   const store = await getStore();
   const doubleCount = store.get(doubleCountAtom);
   return (
-    <Suspense fallback="Loading...">
+    <div>
       <Counter />
       <h2 data-testid="double-count">doubleCount={doubleCount}</h2>
-    </Suspense>
+    </div>
   );
 }
 
