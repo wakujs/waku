@@ -349,10 +349,16 @@ export const Slot = ({
   return createElement(
     ChildrenContextProvider,
     { value: children },
-    // FIXME is there `isReactNode` type checker?
-    element as ReactNode,
+    // See: https://github.com/wakujs/waku/pull/1545
+    // isolate potential `lazy + React.use` usage inside `element` in its own component
+    // https://github.com/facebook/react/issues/33937#issuecomment-3091349011
+    createElement(SlotElementWrapper, null, element as ReactNode),
   );
 };
+
+// HACK: This is only for a workaround.
+// https://github.com/facebook/react/issues/33937
+const SlotElementWrapper = (props: { children: ReactNode }) => props.children;
 
 /**
  * ServerRoot for SSR
