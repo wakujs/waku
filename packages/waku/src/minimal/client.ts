@@ -361,13 +361,6 @@ export const Slot = ({
 const SlotElementWrapper = (props: { children: ReactNode }) => props.children;
 
 /**
- * re-export `use` for renderes/html
- * HACK: This is only for a workaround.
- * https://github.com/facebook/react/issues/33937
- */
-export const INTERNAL_use = use;
-
-/**
  * ServerRoot for SSR
  * This is not a public API.
  */

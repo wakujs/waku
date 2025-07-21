@@ -108,7 +108,7 @@ export async function renderHtml(
   const {
     default: { createFromReadableStream },
   } = modules.rsdwClient as { default: typeof RSDWClientType };
-  const { INTERNAL_ServerRoot, INTERNAL_use } =
+  const { INTERNAL_ServerRoot } =
     modules.wakuMinimalClient as typeof WakuMinimalClientType;
 
   const stream = await renderRsc(config, ctx, elements, onError);
@@ -167,8 +167,8 @@ export async function renderHtml(
       // See: https://github.com/wakujs/waku/pull/1545
       // isolate `React.use` in its own component
       // https://github.com/facebook/react/issues/33937#issuecomment-3091349011
-      createElement(() => {
-        const resolvedHtmlNode = INTERNAL_use(htmlNode);
+      createElement(async () => {
+        const resolvedHtmlNode = await htmlNode;
         return createElement(HtmlNodeWrapper, null, resolvedHtmlNode);
       }),
       ...headElements,
