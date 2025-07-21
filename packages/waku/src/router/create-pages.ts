@@ -714,6 +714,26 @@ export const createPages = <
     );
   };
 
+  const getSlicesConfig = (path: string) => {
+    if (!slicePathMap.has(path)) {
+      return {};
+    }
+    return {
+      slices: slicePathMap
+        .get(path)!
+        .reduce<Record<string, { isStatic: boolean }>>((acc, sliceId) => {
+          const slice = sliceIdMap.get(sliceId);
+          if (!slice) {
+            throw new Error(`Slice not found: ${sliceId} for path: ${path}`);
+          }
+          acc[sliceId] = {
+            isStatic: slice.isStatic,
+          };
+          return acc;
+        }, {}),
+    };
+  };
+
   const definedRouter = unstable_defineRouter({
     getConfig: async () => {
       await configure();
@@ -756,20 +776,7 @@ export const createPages = <
           },
           elements,
           noSsr,
-          ...(slicePathMap.has(path)
-            ? {
-                slices: slicePathMap
-                  .get(path)!
-                  .reduce<
-                    Record<string, { isStatic: boolean }>
-                  >((acc, sliceId) => {
-                    acc[sliceId] = {
-                      isStatic: sliceIdMap.get(sliceId)!.isStatic,
-                    };
-                    return acc;
-                  }, {}),
-              }
-            : {}),
+          ...getSlicesConfig(path),
         });
       }
       for (const [path, [pathSpec, components]] of dynamicPagePathMap) {
@@ -805,6 +812,7 @@ export const createPages = <
           routeElement: { isStatic: true },
           elements,
           noSsr,
+          ...getSlicesConfig(path),
         });
       }
       for (const [path, [pathSpec, components]] of wildcardPagePathMap) {
@@ -840,6 +848,7 @@ export const createPages = <
           routeElement: { isStatic: true },
           elements,
           noSsr,
+          ...getSlicesConfig(path),
         });
       }
       const apiConfigs = Array.from(apiPathMap.values()).map(
@@ -987,7 +996,11 @@ export const createPages = <
     },
     handleSlice: async (sliceId) => {
       await configure();
-      const { component } = sliceIdMap.get(sliceId)!;
+      const slice = sliceIdMap.get(sliceId);
+      if (!slice) {
+        throw new Error('Slice not found: ' + sliceId);
+      }
+      const { component } = slice;
       return { element: createElement(component) };
     },
   });

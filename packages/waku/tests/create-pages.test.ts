@@ -774,6 +774,77 @@ describe('createPages pages and layouts', () => {
     ]);
   });
 
+  it('creates a simple dynamic page with slices', async () => {
+    const TestPage = () => null;
+    const TestSlice = () => null;
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/',
+        component: TestPage,
+        slices: ['slice001'],
+      }),
+      createSlice({
+        render: 'static',
+        component: TestSlice,
+        id: 'slice001',
+      }),
+    ]);
+    const { getConfig } = injectedFunctions();
+    expect(await getConfig()).toEqual([
+      {
+        type: 'route',
+        elements: {
+          'page:/': { isStatic: false },
+        },
+        rootElement: { isStatic: true },
+        routeElement: { isStatic: true },
+        noSsr: false,
+        path: [],
+        slices: {
+          slice001: { isStatic: true },
+        },
+      },
+    ]);
+  });
+
+  it('creates a wildcard page with slices', async () => {
+    const TestPage = () => null;
+    const TestSlice = () => null;
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/test/[...wildcard]',
+        component: TestPage,
+        slices: ['slice001'],
+      }),
+      createSlice({
+        render: 'static',
+        component: TestSlice,
+        id: 'slice001',
+      }),
+    ]);
+    const { getConfig } = injectedFunctions();
+    expect(await getConfig()).toEqual([
+      {
+        type: 'route',
+        elements: {
+          'page:/test/[...wildcard]': { isStatic: false },
+        },
+        rootElement: { isStatic: true },
+        routeElement: { isStatic: true },
+        noSsr: false,
+        path: [
+          { name: 'test', type: 'literal' },
+          { name: 'wildcard', type: 'wildcard' },
+        ],
+        slices: {
+          slice001: { isStatic: true },
+        },
+      },
+    ]);
+  });
+
   it('creates a nested static page', async () => {
     const TestPage = () => null;
     createPages(async ({ createPage }) => [

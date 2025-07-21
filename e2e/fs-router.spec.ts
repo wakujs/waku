@@ -171,4 +171,12 @@ test.describe(`fs-router`, async () => {
       page.getByRole('heading', { name: 'Nested / encoded%20path' }),
     ).toBeVisible();
   });
+
+  test('slices', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/page-with-slices`);
+    await waitForHydration(page);
+    const sliceText = await page.getByTestId('slice001').textContent();
+    expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
+    await expect(page.getByTestId('slice002')).toHaveText('Slice 002');
+  });
 });
