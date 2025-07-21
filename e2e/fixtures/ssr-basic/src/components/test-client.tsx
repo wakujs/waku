@@ -4,7 +4,9 @@
 
 import { use } from 'react';
 
-export function TestClient({ promise }: { promise: Promise<string> }) {
+const promise = Promise.resolve('test');
+
+export function TestClient() {
   const data = use(promise);
   return <div data-testid="resolved-promise">{data}</div>;
 }

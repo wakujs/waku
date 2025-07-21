@@ -10,7 +10,7 @@ const TestApp = () => {
       </head>
       <body>
         <div>
-          <TestClient promise={Promise.resolve('test')} />
+          <TestClient />
         </div>
       </body>
     </html>
