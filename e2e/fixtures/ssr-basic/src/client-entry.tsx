@@ -2,10 +2,17 @@ import { StrictMode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { Root, Slot } from 'waku/minimal/client';
 
+let rscPath = '';
+let slotId = 'App';
+if (window.location.pathname === '/test') {
+  rscPath = 'test';
+  slotId = 'TestApp';
+}
+
 const rootElement = (
   <StrictMode>
-    <Root>
-      <Slot id="App" />
+    <Root initialRscPath={rscPath}>
+      <Slot id={slotId} />
     </Root>
   </StrictMode>
 );

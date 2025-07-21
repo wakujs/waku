@@ -76,4 +76,9 @@ test.describe(`ssr-basic`, () => {
     expect(messages.join('\n')).not.toContain('hydration-mismatch');
     expect(errors.join('\n')).not.toContain('Minified React error #418');
   });
+
+  test('react bug with test app', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/test`);
+    await expect(page.getByTestId('resolved-promise')).toHaveText('test');
+  });
 });
