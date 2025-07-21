@@ -89,30 +89,22 @@ const splitByLastEndTag = (input: string): readonly [string, string] => {
   }
 };
 
-async function isPortAvailable(port: number): Promise<boolean> {
-  return new Promise<boolean>((resolve, reject) => {
-    const srv = net.createServer();
-    srv.once('error', (err) => {
-      if ((err as any).code === 'EADDRINUSE') {
-        resolve(false);
-      } else {
-        reject(err);
-      }
-    });
-    srv.once('listening', () => {
-      srv.close();
-      resolve(true);
-    });
-    srv.listen(port);
-  });
-}
-
-async function getFreePort(port: number): Promise<number> {
-  while(true) {
-    if (await isPortAvailable(port)) {
+export async function getFreePort(startPort: number): Promise<number> {
+  for (let port = startPort; ; port++) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const srv = net
+          .createServer()
+          .once('error', reject)
+          .once('listening', () => srv.close(() => resolve()))
+          .listen(port);
+      });
       return port;
+    } catch (err: any) {
+      if (err.code !== 'EADDRINUSE') {
+        throw err;
+      }
     }
-    port++;
   }
 }
 
