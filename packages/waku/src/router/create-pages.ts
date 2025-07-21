@@ -722,8 +722,12 @@ export const createPages = <
       slices: slicePathMap
         .get(path)!
         .reduce<Record<string, { isStatic: boolean }>>((acc, sliceId) => {
+          const slice = sliceIdMap.get(sliceId);
+          if (!slice) {
+            throw new Error(`Slice not found: ${sliceId} for path: ${path}`);
+          }
           acc[sliceId] = {
-            isStatic: sliceIdMap.get(sliceId)!.isStatic,
+            isStatic: slice.isStatic,
           };
           return acc;
         }, {}),
