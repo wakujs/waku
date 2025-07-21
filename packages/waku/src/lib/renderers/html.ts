@@ -4,7 +4,6 @@ import type {
   ReactNode,
   FunctionComponent,
   ComponentProps,
-  PropsWithChildren,
 } from 'react';
 import type * as RDServerType from 'react-dom/server.edge';
 import type { default as RSDWClientType } from 'react-server-dom-webpack/client.edge';
@@ -89,9 +88,6 @@ globalThis.__WAKU_HYDRATE__ = true;
   return { headCode, headModules, headElements };
 };
 
-// FIXME Why does it error on the first and second time?
-let hackToIgnoreFirstTwoErrors = 0;
-
 export async function renderHtml(
   config: ConfigDev | ConfigPrd,
   ctx: Pick<HandlerContext, 'unstable_modules' | 'unstable_devServer'>,
@@ -162,62 +158,45 @@ export async function renderHtml(
       ? `${config.basePath}${(config as ConfigDev).srcDir}/${SRC_CLIENT_ENTRY}`
       : '',
   );
-  // isolate `React.use` in its own component
-  // https://github.com/facebook/react/issues/33937#issuecomment-3091349011
-  function UseWrapper(props: { value: Promise<ReactNode> }) {
-    const resolved = INTERNAL_use(props.value);
-    return createElement(UseWrapperInner, null, resolved);
-  }
-  function UseWrapperInner(props: PropsWithChildren) {
-    return props.children;
-  }
-  try {
-    const readable = await renderToReadableStream(
-      createElement(
-        INTERNAL_ServerRoot as FunctionComponent<
-          Omit<ComponentProps<typeof INTERNAL_ServerRoot>, 'children'>
-        >,
-        { elementsPromise },
-        createElement(UseWrapper, { value: htmlNode }),
-        ...headElements,
-      ),
-      {
-        bootstrapScriptContent: headCode,
-        bootstrapModules: headModules,
-        formState:
-          actionResult === undefined
-            ? null
-            : await getExtractFormState(ctx)(actionResult),
-        onError(err) {
-          if (hackToIgnoreFirstTwoErrors) {
-            return;
-          }
-          console.error(err);
-          onError.forEach((fn) => fn(err, ctx as HandlerContext, 'html'));
-          if (typeof (err as any)?.digest === 'string') {
-            return (err as { digest: string }).digest;
-          }
-        },
+  const readable = await renderToReadableStream(
+    createElement(
+      INTERNAL_ServerRoot as FunctionComponent<
+        Omit<ComponentProps<typeof INTERNAL_ServerRoot>, 'children'>
+      >,
+      { elementsPromise },
+      // See: https://github.com/wakujs/waku/pull/1545
+      // isolate `React.use` in its own component
+      // https://github.com/facebook/react/issues/33937#issuecomment-3091349011
+      createElement(() => {
+        const resolvedHtmlNode = INTERNAL_use(htmlNode);
+        return createElement(HtmlNodeWrapper, null, resolvedHtmlNode);
+      }),
+      ...headElements,
+    ),
+    {
+      bootstrapScriptContent: headCode,
+      bootstrapModules: headModules,
+      formState:
+        actionResult === undefined
+          ? null
+          : await getExtractFormState(ctx)(actionResult),
+      onError(err) {
+        console.error(err);
+        onError.forEach((fn) => fn(err, ctx as HandlerContext, 'html'));
+        if (typeof (err as any)?.digest === 'string') {
+          return (err as { digest: string }).digest;
+        }
       },
-    );
-    const injected: ReadableStream & { allReady?: Promise<void> } =
-      readable.pipeThrough(injectRSCPayload(stream2));
-    injected.allReady = readable.allReady;
-    return injected as never;
-  } catch (e) {
-    if (hackToIgnoreFirstTwoErrors) {
-      hackToIgnoreFirstTwoErrors--;
-      return renderHtml(
-        config,
-        ctx,
-        htmlHead,
-        elements,
-        onError,
-        html,
-        rscPath,
-        actionResult,
-      );
-    }
-    throw e;
-  }
+    },
+  );
+  const injected: ReadableStream & { allReady?: Promise<void> } =
+    readable.pipeThrough(injectRSCPayload(stream2));
+  injected.allReady = readable.allReady;
+  return injected as never;
+}
+
+// HACK: This is only for a workaround.
+// https://github.com/facebook/react/issues/33937
+function HtmlNodeWrapper(props: { children: ReactNode }) {
+  return props.children;
 }
