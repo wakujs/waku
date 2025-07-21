@@ -1,4 +1,3 @@
-import net from 'node:net';
 import { execSync, exec } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -76,24 +75,6 @@ const ignoreErrors: RegExp[] = [
   // FIXME Is this too general and miss meaningful errors?
   /^\[Error: An error occurred in the Server Components render./,
 ];
-
-export async function isPortAvailable(port: number): Promise<boolean> {
-  return new Promise<boolean>((resolve, reject) => {
-    const srv = net.createServer();
-    srv.once('error', (err) => {
-      if ((err as any).code === 'EADDRINUSE') {
-        resolve(false);
-      } else {
-        reject(err);
-      }
-    });
-    srv.once('listening', () => {
-      srv.close();
-      resolve(true);
-    });
-    srv.listen(port);
-  });
-}
 
 export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
   cp.stdout?.on('data', (data) => {

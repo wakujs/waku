@@ -576,6 +576,37 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
 
+  e2e/fixtures/waku-jotai:
+    dependencies:
+      jotai:
+        specifier: 2.12.5
+        version: 2.12.5(@types/react@19.1.8)(react@19.1.0)
+      react:
+        specifier: 19.1.0
+        version: 19.1.0
+      react-dom:
+        specifier: 19.1.0
+        version: 19.1.0(react@19.1.0)
+      react-server-dom-webpack:
+        specifier: 19.1.0
+        version: 19.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(webpack@5.99.9)
+      waku:
+        specifier: latest
+        version: link:../../../packages/waku
+      waku-jotai:
+        specifier: 0.0.1
+        version: 0.0.1(jotai@2.12.5(@types/react@19.1.8)(react@19.1.0))(waku@packages+waku)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.8
+        version: 19.1.8
+      '@types/react-dom':
+        specifier: ^19.1.6
+        version: 19.1.6(@types/react@19.1.8)
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
+
   e2e/fixtures/wildcard-api-routes:
     dependencies:
       react:
@@ -862,6 +893,9 @@ importers:
       waku:
         specifier: 0.23.6
         version: link:../../packages/waku
+      waku-jotai:
+        specifier: 0.0.1
+        version: 0.0.1(jotai@2.12.5(@types/react@19.1.8)(react@19.1.0))(waku@packages+waku)
     devDependencies:
       '@tailwindcss/postcss':
         specifier: 4.1.11
@@ -1535,6 +1569,9 @@ importers:
       waku:
         specifier: 0.23.6
         version: link:../../packages/waku
+      waku-jotai:
+        specifier: 0.0.1
+        version: 0.0.1(jotai@2.12.5(@types/react@19.1.8)(react@19.1.0))(waku@packages+waku)
     devDependencies:
       '@types/react':
         specifier: 19.1.8
@@ -7313,6 +7350,12 @@ packages:
         optional: true
       jsdom:
         optional: true
+
+  waku-jotai@0.0.1:
+    resolution: {integrity: sha512-CCBBSOcWDSNIo0VcmjDfLeYioDffxdLgT967B0q3QYPrGa4X7s1qRq76loVZ4eP0vsawtlIYAiwS2Kk3g3oTYg==}
+    peerDependencies:
+      jotai: '>=2.0.0'
+      waku: '>=0.23.4'
 
   watchpack@2.4.4:
     resolution: {integrity: sha512-c5EGNOiyxxV5qmTtAB7rbiXxi1ooX1pQKMLX/MIabJjRA0SJBQOjKF+KSVfHkr9U1cADPon0mRiVe/riyaiDUA==}
@@ -13664,6 +13707,11 @@ snapshots:
       - terser
       - tsx
       - yaml
+
+  waku-jotai@0.0.1(jotai@2.12.5(@types/react@19.1.8)(react@19.1.0))(waku@packages+waku):
+    dependencies:
+      jotai: 2.12.5(@types/react@19.1.8)(react@19.1.0)
+      waku: link:packages/waku
 
   watchpack@2.4.4:
     dependencies:
