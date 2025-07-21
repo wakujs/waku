@@ -2,9 +2,9 @@
 
 'use client';
 
-import React from 'react';
+import { use } from 'react';
 
-export function TestClient(props: { serverPromise: Promise<string> }) {
-  const data = React.use(props.serverPromise);
+export function TestClient({ promise }: { promise: Promise<string> }) {
+  const data = use(promise);
   return <div data-testid="resolved-promise">{data}</div>;
 }
