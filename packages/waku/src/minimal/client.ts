@@ -358,7 +358,7 @@ export const Slot = ({
 
 // HACK: This is only for a workaround.
 // https://github.com/facebook/react/issues/33937
-const SlotElementWrapper = (props: { children: ReactNode}) =>  props.children;
+const SlotElementWrapper = (props: { children: ReactNode }) => props.children;
 
 /**
  * re-export `use` for renderes/html
