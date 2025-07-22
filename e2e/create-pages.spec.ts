@@ -386,4 +386,13 @@ test.describe(`create-pages`, () => {
       page.getByRole('heading', { name: 'Only client component', exact: true }),
     ).toBeVisible();
   });
+
+  test('slices', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/slices`);
+    await waitForHydration(page);
+    const sliceText = await page.getByTestId('slice001').textContent();
+    expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
+    const sliceText2 = await page.getByTestId('slice002').textContent();
+    expect(sliceText2).toBe('Slice 002');
+  });
 });

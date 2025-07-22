@@ -18,9 +18,18 @@ import { readFile } from 'node:fs/promises';
 import StaticPagePart from './components/StaticPagePart.js';
 import DynamicPagePart from './components/DynamicPagePart.js';
 import NoSsr from './components/NoSsr.js';
+import { Slice002 } from './components/slice002.js';
+import { Slice001 } from './components/slice001.js';
+import { Slice } from 'waku';
 
 const pages: ReturnType<typeof createPages> = createPages(
-  async ({ createPage, createLayout, createApi, createPagePart }) => [
+  async ({
+    createPage,
+    createLayout,
+    createApi,
+    createPagePart,
+    createSlice,
+  }) => [
     createLayout({
       render: 'static',
       path: '/',
@@ -332,6 +341,31 @@ const pages: ReturnType<typeof createPages> = createPages(
       path: '/no-ssr',
       component: NoSsr,
       unstable_disableSSR: true,
+    }),
+
+    createPage({
+      render: 'static',
+      path: '/slices',
+      slices: ['slice001', 'slice002'],
+      component: () => (
+        <>
+          <h2>Slices</h2>
+          <Slice id="slice001" />
+          <Slice id="slice002" />
+        </>
+      ),
+    }),
+
+    createSlice({
+      render: 'static',
+      component: Slice001,
+      id: 'slice001',
+    }),
+
+    createSlice({
+      render: 'dynamic',
+      component: Slice002,
+      id: 'slice002',
     }),
   ],
 );
