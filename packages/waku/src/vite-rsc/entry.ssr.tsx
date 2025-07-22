@@ -1,5 +1,5 @@
 import * as ReactClient from '@vitejs/plugin-rsc/ssr';
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import type { ReactFormState } from 'react-dom/client';
 import * as ReactDOMServer from 'react-dom/server.edge';
 import { INTERNAL_ServerRoot } from '../minimal/client.js';
@@ -33,7 +33,7 @@ export async function renderHTML(
       ReactClient.createFromReadableStream<RscHtmlPayload>(rscHtmlStream);
     return (
       <INTERNAL_ServerRoot elementsPromise={elementsPromise}>
-        {React.use(htmlPromise)}
+        <HtmlNodeWrapper>{React.use(htmlPromise)}</HtmlNodeWrapper>
       </INTERNAL_ServerRoot>
     );
   }
@@ -42,34 +42,25 @@ export async function renderHTML(
   const bootstrapScriptContent =
     await import.meta.viteRsc.loadBootstrapScriptContent('index');
 
-  function renderHtmlInner() {
-    return ReactDOMServer.renderToReadableStream(<SsrRoot />, {
-      bootstrapScriptContent:
-        getBootstrapPreamble({ rscPath: options?.rscPath || '' }) +
-        bootstrapScriptContent,
-      nonce: options?.nonce,
-      onError: (e: unknown) => {
-        if (
-          e &&
-          typeof e === 'object' &&
-          'digest' in e &&
-          typeof e.digest === 'string'
-        ) {
-          return e.digest;
-        }
-        console.error(
-          '[SSR Error]',
-          React.captureOwnerStack?.() || '',
-          '\n',
-          e,
-        );
-      },
-      // no types
-      ...{ formState: options?.formState },
-    } as any);
-  }
-
-  const htmlStream = await withHackSsrRetry(renderHtmlInner)();
+  const htmlStream = await ReactDOMServer.renderToReadableStream(<SsrRoot />, {
+    bootstrapScriptContent:
+      getBootstrapPreamble({ rscPath: options?.rscPath || '' }) +
+      bootstrapScriptContent,
+    nonce: options?.nonce,
+    onError: (e: unknown) => {
+      if (
+        e &&
+        typeof e === 'object' &&
+        'digest' in e &&
+        typeof e.digest === 'string'
+      ) {
+        return e.digest;
+      }
+      console.error('[SSR Error]', React.captureOwnerStack?.() || '', '\n', e);
+    },
+    // no types
+    ...{ formState: options?.formState },
+  } as any);
 
   let responseStream: ReadableStream<Uint8Array> = htmlStream;
   responseStream = responseStream.pipeThrough(
@@ -81,23 +72,10 @@ export async function renderHTML(
   return responseStream;
 }
 
-// see https://github.com/wakujs/waku/pull/1534
-let hackSsrRetry = 1;
-
-function withHackSsrRetry<F extends (...args: any[]) => Promise<any>>(
-  fn: F,
-): F {
-  return async function withRetryWrapper(this: any, ...args): Promise<any> {
-    try {
-      return await fn.apply(this, args);
-    } catch (e) {
-      if (hackSsrRetry) {
-        hackSsrRetry--;
-        return withRetryWrapper.apply(this, args);
-      }
-      throw e;
-    }
-  } as F;
+// HACK: This is only for a workaround.
+// https://github.com/facebook/react/issues/33937
+function HtmlNodeWrapper(props: { children: ReactNode }) {
+  return props.children;
 }
 
 // cf. packages/waku/src/lib/renderers/html.ts `parseHtmlHead`
