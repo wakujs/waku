@@ -118,12 +118,9 @@ export const test = basicTest.extend<
 });
 
 export const prepareNormalSetup = (fixtureName: string) => {
-  let waku = fileURLToPath(
+  const waku = fileURLToPath(
     new URL('../packages/waku/dist/cli.js', import.meta.url),
   );
-  if (process.env.TEST_LEGACY) {
-    waku = `${waku} --experimental-legacy-cli`;
-  }
   const fixtureDir = fileURLToPath(
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
@@ -172,10 +169,6 @@ export const makeTempDir = (prefix: string): string => {
 };
 
 export const prepareStandaloneSetup = (fixtureName: string) => {
-  if (process.env.TEST_FORCE_NORMAL_SETUP) {
-    return prepareNormalSetup(fixtureName) as any;
-  }
-
   const wakuDir = fileURLToPath(new URL('../packages/waku', import.meta.url));
   const { version } = createRequire(import.meta.url)(
     join(wakuDir, 'package.json'),
@@ -265,10 +258,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         stdio: 'inherit',
       });
     }
-    let waku = join(wakuPackageDir(), './node_modules/waku/dist/cli.js');
-    if (process.env.TEST_LEGACY) {
-      waku = `${waku} --experimental-legacy-cli`;
-    }
+    const waku = join(wakuPackageDir(), './node_modules/waku/dist/cli.js');
     if (mode !== 'DEV' && builtModeMap.get(packageManager) !== mode) {
       rmSync(`${join(standaloneDir, packageDir, 'dist')}`, {
         recursive: true,
