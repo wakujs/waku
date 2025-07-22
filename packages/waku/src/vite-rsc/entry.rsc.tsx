@@ -8,7 +8,6 @@ import {
 import { stringToStream } from '../lib/utils/stream.js';
 import { INTERNAL_setAllEnv } from '../server.js';
 import { joinPath } from '../lib/utils/path.js';
-import { context } from '../lib/middleware/context.js';
 import { getErrorInfo } from '../lib/utils/custom-errors.js';
 import type {
   HandlerContext,
@@ -49,11 +48,10 @@ export function createHonoHandler(): MiddlewareHandler {
   }
 
   // assume builtin handlers are always enabled
-  const allMiddlewares: Middleware[] = [
-    context,
-    ...middlewares,
-    () => handleRequest,
-  ];
+  // TODO:
+  // handle `waku/middleware/dev-server` and `waku/middleware/handler`
+  // in the same way as before
+  const allMiddlewares: Middleware[] = [...middlewares, () => handleRequest];
   const handlers = allMiddlewares.map((m) => m(middlwareOptions));
 
   return async (c, next) => {

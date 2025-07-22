@@ -333,7 +333,7 @@ if (import.meta.hot) {
       const post: string[] = [];
       const builtins: string[] = [];
       for (const file of wakuConfig.middleware) {
-        if (file.startsWith('waku/')) {
+        if (file.startsWith('waku/') && file !== 'waku/middleware/context') {
           builtins.push(file);
           continue;
         }
