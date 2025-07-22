@@ -11,7 +11,6 @@ import { joinPath } from '../lib/utils/path.js';
 import { getErrorInfo } from '../lib/utils/custom-errors.js';
 import type {
   HandlerContext,
-  Middleware,
   MiddlewareOptions,
 } from '../lib/middleware/types.js';
 import { middlewares } from 'virtual:vite-rsc-waku/middlewares';
@@ -47,12 +46,7 @@ export function createHonoHandler(): MiddlewareHandler {
     };
   }
 
-  // assume builtin handlers are always enabled
-  // TODO:
-  // handle `waku/middleware/dev-server` and `waku/middleware/handler`
-  // in the same way as before
-  const allMiddlewares: Middleware[] = [...middlewares, () => handleRequest];
-  const handlers = allMiddlewares.map((m) => m(middlwareOptions));
+  const handlers = middlewares.map((m) => m(middlwareOptions));
 
   return async (c, next) => {
     const ctx: HandlerContext = {
@@ -252,7 +246,7 @@ async function getInput(ctx: HandlerContext) {
 }
 
 // cf. `handler` in packages/waku/src/lib/middleware/handler.ts
-async function handleRequest(ctx: HandlerContext) {
+export async function handleRequest(ctx: HandlerContext) {
   INTERNAL_setAllEnv(process.env as any);
 
   await import('virtual:vite-rsc-waku/set-platform-data');

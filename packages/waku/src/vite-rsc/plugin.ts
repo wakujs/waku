@@ -38,6 +38,7 @@ import * as swc from '@swc/core';
 import { parseOpts } from '../lib/utils/swc.js';
 
 const PKG_NAME = 'waku';
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 export type WakuPluginOptions = {
   flags?: WakuFlags | undefined;
@@ -123,7 +124,6 @@ export default function wakuPlugin(
     {
       name: 'rsc:waku',
       async config(_config, env) {
-        const __dirname = fileURLToPath(new URL('.', import.meta.url));
         let viteRscConfig: UserConfig = {
           define: {
             'import.meta.env.WAKU_CONFIG_BASE_PATH': JSON.stringify(
@@ -328,46 +328,36 @@ if (import.meta.hot) {
       },
     },
     createVirtualPlugin('vite-rsc-waku/middlewares', async function () {
-      // minor tweak on middleware convention
-      const pre: string[] = [];
-      const post: string[] = [];
-      const builtins: string[] = [];
+      const ids: string[] = [];
       for (const file of wakuConfig.middleware) {
-        if (file.startsWith('waku/') && file !== 'waku/middleware/context') {
-          builtins.push(file);
+        // dev-server logic is all handled by `@vitejs/plugin-rsc`, so skipped.
+        if (file === 'waku/middleware/dev-server') continue;
+
+        // new `handler` is exported from `waku/vite-rsc/middleware/handler.js`
+        if (file === 'waku/middleware/handler') {
+          ids.push(path.join(__dirname, 'middleware/handler.js'));
           continue;
         }
+
+        // resolve local files
         let id = file;
         if (file[0] === '.') {
           const resolved = await this.resolve(file);
           if (resolved) {
             id = resolved.id;
+          } else {
+            this.error(`failed to resolve custom middleware '${file}'`);
           }
         }
-        if (builtins.includes('waku/middleware/handler')) {
-          post.push(id);
-        } else {
-          pre.push(id);
-        }
-      }
-      if (!builtins.includes('waku/middleware/handler')) {
-        this.warn(
-          "'waku/middleware/handler' is not found in 'config.middlewares', but it is always enabled.",
-        );
-      }
-      if (post.length > 0) {
-        this.warn(
-          "Post middlewares after 'waku/middleware/handler' are currently ignored. " +
-            JSON.stringify(post),
-        );
+        ids.push(id);
       }
 
       let code = '';
-      pre.forEach((file, i) => {
+      ids.forEach((file, i) => {
         code += `import __m_${i} from ${JSON.stringify(file)};\n`;
       });
       code += `export const middlewares = [`;
-      code += pre.map((_, i) => `__m_${i}`).join(',\n');
+      code += ids.map((_, i) => `__m_${i}`).join(',\n');
       code += `];\n`;
       return code;
     }),
