@@ -331,7 +331,9 @@ if (import.meta.hot) {
       const ids: string[] = [];
       for (const file of wakuConfig.middleware) {
         // dev-server logic is all handled by `@vitejs/plugin-rsc`, so skipped.
-        if (file === 'waku/middleware/dev-server') continue;
+        if (file === 'waku/middleware/dev-server') {
+          continue;
+        }
 
         // new `handler` is exported from `waku/vite-rsc/middleware/handler.js`
         if (file === 'waku/middleware/handler') {
