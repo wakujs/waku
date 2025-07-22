@@ -1,6 +1,7 @@
 import {
   mergeConfig,
   normalizePath,
+  RunnableDevEnvironment,
   type Plugin,
   type PluginOption,
   type UserConfig,
@@ -114,6 +115,7 @@ export default function wakuPlugin(
       },
     },
     rsc({
+      serverHandler: false,
       keepUseCientProxy: true,
       ignoredPackageWarnings: [PKG_NAME, 'waku-jotai'],
       frameworkPackages: ['react', 'waku'],
@@ -238,6 +240,22 @@ export default function wakuPlugin(
       },
       configResolved(config) {
         privatePath = joinPath(config.root, wakuConfig.privateDir);
+      },
+      async configureServer(server) {
+        const { getRequestListener } = await import('@hono/node-server');
+        const environment = server.environments.rsc! as RunnableDevEnvironment;
+        const entryId = (environment.config.build.rollupOptions.input as any)
+          .index;
+        return () => {
+          server.middlewares.use(async (req, res, next) => {
+            try {
+              const mod = await environment.runner.import(entryId);
+              await getRequestListener(mod.default)(req, res);
+            } catch (e) {
+              next(e);
+            }
+          });
+        };
       },
       async configurePreviewServer(server) {
         const { getRequestListener } = await import('@hono/node-server');
