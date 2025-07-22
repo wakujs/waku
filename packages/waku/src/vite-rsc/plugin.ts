@@ -118,8 +118,7 @@ export default function wakuPlugin(
     rsc({
       serverHandler: false,
       keepUseCientProxy: true,
-      ignoredPackageWarnings: [PKG_NAME, 'waku-jotai'],
-      frameworkPackages: ['react', 'waku'],
+      ignoredPackageWarnings: [/.*/],
     }),
     {
       name: 'rsc:waku',
