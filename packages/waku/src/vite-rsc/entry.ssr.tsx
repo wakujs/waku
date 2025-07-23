@@ -1,5 +1,5 @@
 import * as ReactClient from '@vitejs/plugin-rsc/ssr';
-import React, { type ReactNode } from 'react';
+import { captureOwnerStack, use, type ReactNode } from 'react';
 import type { ReactFormState } from 'react-dom/client';
 import * as ReactDOMServer from 'react-dom/server.edge';
 import { INTERNAL_ServerRoot } from '../minimal/client.js';
@@ -34,7 +34,7 @@ export async function renderHTML(
       ReactClient.createFromReadableStream<RscHtmlPayload>(rscHtmlStream);
     return (
       <INTERNAL_ServerRoot elementsPromise={elementsPromise}>
-        <HtmlNodeWrapper>{React.use(htmlPromise)}</HtmlNodeWrapper>
+        <HtmlNodeWrapper>{use(htmlPromise)}</HtmlNodeWrapper>
       </INTERNAL_ServerRoot>
     );
   }
@@ -57,7 +57,7 @@ export async function renderHTML(
       ) {
         return e.digest;
       }
-      console.error('[SSR Error]', React.captureOwnerStack?.() || '', '\n', e);
+      console.error('[SSR Error]', captureOwnerStack?.() || '', '\n', e);
     },
     // no types
     ...{ formState: options?.formState },
