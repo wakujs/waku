@@ -25,8 +25,9 @@ export async function renderHTML(
 
   // deserialize RSC stream back to React VDOM
   function SsrRoot() {
-    // RSC stream needs to be deserialized inside SSR component
-    // for ReactDomServer preinit/preload (e.g. client reference modulepreload, css)
+    // RSC stream needs to be deserialized inside SSR component.
+    // This is for ReactDomServer preinit/preload (e.g. client reference modulepreload, css)
+    // https://github.com/facebook/react/pull/31799#discussion_r1886166075
     elementsPromise ??=
       ReactClient.createFromReadableStream<RscElementsPayload>(stream1);
     htmlPromise ??=
@@ -38,7 +39,7 @@ export async function renderHTML(
     );
   }
 
-  // render html (traditional SSR)
+  // render html 
   const bootstrapScriptContent =
     await import.meta.viteRsc.loadBootstrapScriptContent('index');
 
