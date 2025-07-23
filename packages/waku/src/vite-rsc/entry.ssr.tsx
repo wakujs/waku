@@ -32,6 +32,8 @@ export async function renderHTML(
       ReactClient.createFromReadableStream<RscElementsPayload>(stream1);
     htmlPromise ??=
       ReactClient.createFromReadableStream<RscHtmlPayload>(rscHtmlStream);
+    // `HtmlNodeWrapper` is for a workaround.
+    // https://github.com/facebook/react/issues/33937
     return (
       <INTERNAL_ServerRoot elementsPromise={elementsPromise}>
         <HtmlNodeWrapper>{use(htmlPromise)}</HtmlNodeWrapper>
