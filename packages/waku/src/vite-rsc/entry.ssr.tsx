@@ -39,7 +39,7 @@ export async function renderHTML(
     );
   }
 
-  // render html 
+  // render html
   const bootstrapScriptContent =
     await import.meta.viteRsc.loadBootstrapScriptContent('index');
 
