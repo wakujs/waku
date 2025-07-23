@@ -548,6 +548,7 @@ if (import.meta.hot) {
         },
       },
     },
+    // packages/waku/src/lib/plugins/vite-plugin-rsc-private.ts
     {
       name: 'rsc:private-dir',
       load(id) {
