@@ -10,7 +10,9 @@ export async function cli(cmd: string, flags: Record<string, any>) {
   // TODO: reload during dev
   let wakuConfig: Config | undefined;
   if (existsSync('waku.config.ts') || existsSync('waku.config.js')) {
-    const imported = await vite.runnerImport<{ default: Config }>('/waku.config');
+    const imported = await vite.runnerImport<{ default: Config }>(
+      '/waku.config',
+    );
     wakuConfig = imported.module.default;
   }
 
