@@ -17,7 +17,7 @@ import { middlewares } from 'virtual:vite-rsc-waku/middlewares';
 import type { MiddlewareHandler } from 'hono';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import type { ReactNode } from 'react';
-import React from 'react';
+import { captureOwnerStack } from 'react';
 
 //
 // main server handler as hono middleware
@@ -115,7 +115,7 @@ function createRenderUtils({
     ) {
       return e.digest;
     }
-    console.error('[RSC Error]', React.captureOwnerStack?.() || '', '\n', e);
+    console.error('[RSC Error]', captureOwnerStack?.() || '', '\n', e);
   };
 
   return {
