@@ -4,6 +4,8 @@ import { preload } from 'react-dom';
 import { Counter } from './Counter.js';
 import { AIProvider } from '../ai/index.js';
 import { AIClient } from './AIClient.js';
+import { TestEnvServer } from './test-env/server.js';
+import { TestEnvClient } from './test-env/client.js';
 
 const DelayedBackground = async () => {
   await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -34,6 +36,18 @@ const App = ({ name }: { name: string }) => {
           <Suspense fallback="Loading...">
             <DelayedBackground />
           </Suspense>
+          <section>
+            <h2>TestEnvServer</h2>
+            <div data-testid="test-env-server">
+              <TestEnvServer />
+            </div>
+          </section>
+          <section>
+            <h2>TestEnvClient</h2>
+            <div data-testid="test-env-client">
+              <TestEnvClient />
+            </div>
+          </section>
         </div>
       </body>
     </html>
