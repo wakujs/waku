@@ -128,9 +128,7 @@ function createRenderUtils({
       html,
       options?: { rscPath?: string; actionResult?: any },
     ) {
-      const ssrEntryModule = await import.meta.viteRsc.loadModule<
-        typeof import('./entry.ssr.tsx')
-      >('ssr', 'index');
+      const ssrEntryModule = await loadSsrEntryModule();
 
       const rscElementsStream =
         ReactServer.renderToReadableStream<RscElementsPayload>(elements, {
@@ -289,13 +287,18 @@ export async function handleRequest(ctx: HandlerContext) {
     res === 'fallback' ||
     (!(ctx.res.body || ctx.res.status) && ctx.req.url.pathname === '/')
   ) {
-    const ssrEntryModule = await import.meta.viteRsc.loadModule<
-      typeof import('./entry.ssr.tsx')
-    >('ssr', 'index');
+    const ssrEntryModule = await loadSsrEntryModule();
     const htmlFallbackStream = await ssrEntryModule.renderHtmlFallback();
     ctx.res.body = htmlFallbackStream;
     ctx.res.headers = { 'content-type': 'text/html;charset=utf-8' };
   }
+}
+
+function loadSsrEntryModule() {
+  return import.meta.viteRsc.loadModule<typeof import('./entry.ssr.js')>(
+    'ssr',
+    'index',
+  );
 }
 
 export async function handleBuild() {
