@@ -131,6 +131,20 @@ export default function wakuPlugin(
             'import.meta.env.WAKU_CONFIG_RSC_BASE': JSON.stringify(
               wakuConfig.rscBase,
             ),
+            // packages/waku/src/lib/plugins/vite-plugin-rsc-env.ts
+            // CLI has loaded dotenv already at this point
+            ...Object.fromEntries(
+              Object.entries(process.env).flatMap(([k, v]) =>
+                k.startsWith('WAKU_PUBLIC_')
+                  ? [
+                      [`import.meta.env.${k}`, JSON.stringify(v)],
+                      // TODO: defining `process.env` on client dev is not recommended.
+                      // see https://github.com/vitest-dev/vitest/pull/6718
+                      [`process.env.${k}`, JSON.stringify(v)],
+                    ]
+                  : [],
+              ),
+            ),
           },
           environments: {
             client: {
