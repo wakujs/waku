@@ -89,10 +89,10 @@ test.describe(`ssr-basic`, () => {
     await expect(testEnvServer).toHaveText(
       JSON.stringify(
         {
-          WAKU_PUBLIC_TEST_META: 'ok',
-          WAKU_PRIVATE_TEST_META: '-',
-          WAKU_PUBLIC_TEST_PROCESS: 'ok',
-          WAKU_PRIVATE_TEST_PROCESS: 'ok',
+          "import.meta.env.WAKU_PUBLIC_TEST": 'ok',
+          "import.meta.env.WAKU_PRIVATE_TEST": '-',
+          "process.env.WAKU_PUBLIC_TEST": 'ok',
+          "process.env.WAKU_PRIVATE_TEST": 'ok',
         },
         null,
         2,
@@ -103,9 +103,9 @@ test.describe(`ssr-basic`, () => {
     await expect(testEnvClient).toHaveText(
       JSON.stringify(
         {
-          WAKU_PUBLIC_TEST_META: 'ok',
-          WAKU_PRIVATE_TEST_META: '-',
-          WAKU_PUBLIC_TEST_PROCESS: 'ok',
+          "import.meta.env.WAKU_PUBLIC_TEST": 'ok',
+          "import.meta.env.WAKU_PRIVATE_TEST": '-',
+          "process.env.WAKU_PUBLIC_TEST": 'ok',
         },
         null,
         2,

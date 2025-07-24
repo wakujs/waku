@@ -1,11 +1,11 @@
 'use client';
 
 const data = {
-  WAKU_PUBLIC_TEST_META: import.meta.env.WAKU_PUBLIC_TEST || '-',
-  WAKU_PRIVATE_TEST_META: import.meta.env.WAKU_PRIVATE_TEST || '-',
-  WAKU_PUBLIC_TEST_PROCESS: process.env.WAKU_PUBLIC_TEST || '-',
-  // this causes hydration error since SSR can access it
-  // WAKU_PRIVATE_TEST_PROCESS: process.env.WAKU_PRIVATE_TEST || '-',
+  "import.meta.env.WAKU_PUBLIC_TEST": import.meta.env.WAKU_PUBLIC_TEST || '-',
+  "import.meta.env.WAKU_PRIVATE_TEST": import.meta.env.WAKU_PRIVATE_TEST || '-',
+  "process.env.WAKU_PUBLIC_TEST": process.env.WAKU_PUBLIC_TEST || '-',
+  // this is skipped since SSR can access process.env and cause hydration error
+  // "process.env.WAKU_PRIVATE_TEST": process.env.WAKU_PRIVATE_TEST || '-',
 };
 
 export function TestEnvClient() {
