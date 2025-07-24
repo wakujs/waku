@@ -1,5 +1,5 @@
 import type { Middleware } from '../../config.js';
-import { handleRequest } from '../entry.rsc.js';
+import { handleRequest } from '../lib/rsc/handler.js';
 
 const handler: Middleware = () => handleRequest;
 
