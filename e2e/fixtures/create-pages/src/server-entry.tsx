@@ -347,7 +347,7 @@ const pages: ReturnType<typeof createPages> = createPages(
     createPage({
       render: 'dynamic',
       path: '/slices',
-      slices: ['slice001', 'slice002', 'slice003'],
+      slices: ['slice001', 'slice002'],
       component: () => (
         <>
           <h2>Slices</h2>
