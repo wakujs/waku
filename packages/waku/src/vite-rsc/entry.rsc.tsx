@@ -5,7 +5,6 @@ import type {
 import { middlewares } from 'virtual:vite-rsc-waku/middlewares';
 import type { MiddlewareHandler } from 'hono';
 import { isBuild } from 'virtual:vite-rsc-waku/config';
-import { type ReactNode } from 'react';
 
 //
 // main server handler as hono middleware
@@ -73,12 +72,5 @@ export function createHonoHandler(): MiddlewareHandler {
     await next();
   };
 }
-
-//
-// Core RSC integration
-//
-
-export type RscElementsPayload = Record<string, unknown>;
-export type RscHtmlPayload = ReactNode;
 
 export { handleBuild } from './lib/rsc/build.js';
