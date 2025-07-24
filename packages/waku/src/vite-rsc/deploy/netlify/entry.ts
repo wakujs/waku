@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { createHonoHandler } from '../../entry.rsc.js';
+import { createHonoHandler } from '../../lib/rsc.js';
 import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
 import { INTERNAL_setAllEnv } from '../../../server.js';
 
@@ -21,4 +21,4 @@ const app = honoEnhancer(createApp)(new Hono());
 export default async (request: Request, context: unknown) =>
   app.fetch(request, { context });
 
-export { handleBuild } from '../../entry.rsc.js';
+export { handleBuild } from '../../lib/rsc.js';

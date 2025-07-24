@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { createHonoHandler } from '../../entry.rsc.js';
+import { createHonoHandler } from '../../lib/rsc.js';
 import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
 import { INTERNAL_setAllEnv } from '../../../server.js';
 
@@ -35,4 +35,4 @@ export default {
   },
 };
 
-export { handleBuild } from '../../entry.rsc.js';
+export { handleBuild } from '../../lib/rsc.js';

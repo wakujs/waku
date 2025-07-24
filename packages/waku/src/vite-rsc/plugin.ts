@@ -176,7 +176,7 @@ export default function wakuPlugin(
               build: {
                 rollupOptions: {
                   input: {
-                    index: path.join(__dirname, 'entry.rsc.node.js'),
+                    index: path.join(__dirname, 'entry.rsc.js'),
                   },
                 },
               },

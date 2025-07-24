@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import * as honoAwsLambda from 'hono/aws-lambda';
-import { createHonoHandler } from '../../entry.rsc.js';
+import { createHonoHandler } from '../../lib/rsc.js';
 import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
 import { config } from 'virtual:vite-rsc-waku/config';
 import { serveStatic } from '@hono/node-server/serve-static';
@@ -29,4 +29,4 @@ export const handler: any = import.meta.env.WAKU_AWS_LAMBDA_STREAMING
   ? honoAwsLambda.streamHandle(app)
   : honoAwsLambda.handle(app);
 
-export { handleBuild } from '../../entry.rsc.js';
+export { handleBuild } from '../../lib/rsc.js';
