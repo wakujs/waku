@@ -6,7 +6,6 @@ import {
   encodeRscPath,
 } from '../lib/renderers/utils.js';
 import { stringToStream } from '../lib/utils/stream.js';
-import { INTERNAL_setAllEnv } from '../server.js';
 import { joinPath } from '../lib/utils/path.js';
 import { getErrorInfo } from '../lib/utils/custom-errors.js';
 import type {
@@ -246,8 +245,6 @@ async function getInput(ctx: HandlerContext) {
 
 // cf. `handler` in packages/waku/src/lib/middleware/handler.ts
 export async function handleRequest(ctx: HandlerContext) {
-  INTERNAL_setAllEnv(process.env as any);
-
   await import('virtual:vite-rsc-waku/set-platform-data');
 
   const { input, temporaryReferences } = await getInput(ctx);
@@ -302,8 +299,6 @@ export async function handleRequest(ctx: HandlerContext) {
 }
 
 export async function handleBuild() {
-  INTERNAL_setAllEnv(process.env as any);
-
   const wakuServerEntry = (await import('virtual:vite-rsc-waku/server-entry'))
     .default;
 

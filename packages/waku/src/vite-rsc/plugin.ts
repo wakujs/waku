@@ -13,7 +13,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import type { Config } from '../config.js';
-import { unstable_getBuildOptions } from '../server.js';
+import { INTERNAL_setAllEnv, unstable_getBuildOptions } from '../server.js';
 import { emitStaticFile, waitForTasks } from '../lib/builder/build.js';
 import {
   getManagedEntries,
@@ -531,6 +531,7 @@ if (import.meta.hot) {
           );
 
           // run `handleBuild`
+          INTERNAL_setAllEnv(process.env as any);
           unstable_getBuildOptions().unstable_phase = 'emitStaticFiles';
           const buildConfigs = await entry.handleBuild();
           for await (const buildConfig of buildConfigs || []) {

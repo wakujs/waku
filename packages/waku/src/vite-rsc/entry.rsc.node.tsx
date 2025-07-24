@@ -7,8 +7,10 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import path from 'node:path';
 import fs from 'node:fs';
 import { DIST_PUBLIC } from '../lib/builder/constants.js';
+import { INTERNAL_setAllEnv } from '../server.js';
 
 function createApp(app: Hono) {
+  INTERNAL_setAllEnv(process.env as any);
   if (flags['experimental-compress']) {
     app.use(compress());
   }

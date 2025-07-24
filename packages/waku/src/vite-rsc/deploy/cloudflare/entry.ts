@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { createHonoHandler } from '../../entry.rsc.js';
 import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
+import { INTERNAL_setAllEnv } from '../../../server.js';
 
 function createApp(app: Hono) {
   app.use(createHonoHandler());
@@ -22,10 +23,16 @@ function createApp(app: Hono) {
   return app;
 }
 
-const app = honoEnhancer(createApp)(new Hono());
+let app: Hono | undefined;
 
 export default {
-  fetch: app.fetch,
+  fetch: (request: Request, env: any, ctx: any) => {
+    if (!app) {
+      INTERNAL_setAllEnv(env);
+      app = honoEnhancer(createApp)(new Hono());
+    }
+    return app.fetch(request, env, ctx);
+  },
 };
 
 export { handleBuild } from '../../entry.rsc.js';
