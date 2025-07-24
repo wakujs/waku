@@ -2,12 +2,9 @@ import { createRenderUtils } from './render.js';
 import { encodeRscPath } from '../../../lib/renderers/utils.js';
 import { joinPath } from '../../../lib/utils/path.js';
 import { config } from 'virtual:vite-rsc-waku/config';
+import wakuServerEntry from 'virtual:vite-rsc-waku/server-entry';
 
 export async function handleBuild() {
-  // TODO: why dynamic import?
-  const wakuServerEntry = (await import('virtual:vite-rsc-waku/server-entry'))
-    .default;
-
   const renderUtils = createRenderUtils({});
 
   const buidlResult = wakuServerEntry.handleBuild({
