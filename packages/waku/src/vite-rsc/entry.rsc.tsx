@@ -1,12 +1,7 @@
 import * as ReactServer from '@vitejs/plugin-rsc/rsc';
 import type { unstable_defineEntries } from '../minimal/server.js';
-import {
-  decodeFuncId,
-  decodeRscPath,
-  encodeRscPath,
-} from '../lib/renderers/utils.js';
+import { decodeFuncId, decodeRscPath } from '../lib/renderers/utils.js';
 import { stringToStream } from '../lib/utils/stream.js';
-import { joinPath } from '../lib/utils/path.js';
 import { getErrorInfo } from '../lib/utils/custom-errors.js';
 import type {
   HandlerContext,
@@ -16,7 +11,7 @@ import { middlewares } from 'virtual:vite-rsc-waku/middlewares';
 import type { MiddlewareHandler } from 'hono';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import { type ReactNode } from 'react';
-import { createRenderUtils } from './lib/server.rsc.js';
+import { createRenderUtils } from './lib/rsc/render.js';
 
 //
 // main server handler as hono middleware
@@ -243,26 +238,4 @@ function loadSsrEntryModule() {
   );
 }
 
-export async function handleBuild() {
-  const wakuServerEntry = (await import('virtual:vite-rsc-waku/server-entry'))
-    .default;
-
-  const renderUtils = createRenderUtils({});
-
-  const buidlResult = wakuServerEntry.handleBuild({
-    renderRsc: renderUtils.renderRsc,
-    renderHtml: renderUtils.renderHtml,
-    rscPath2pathname: (rscPath) => {
-      return joinPath(config.rscBase, encodeRscPath(rscPath));
-    },
-    // handled by Vite RSC
-    unstable_collectClientModules: async () => {
-      return [];
-    },
-    unstable_generatePrefetchCode: () => {
-      return '';
-    },
-  });
-
-  return buidlResult;
-}
+export { handleBuild } from './lib/rsc/build.js';

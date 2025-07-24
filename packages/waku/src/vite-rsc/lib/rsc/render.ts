@@ -1,11 +1,10 @@
 import * as ReactServer from '@vitejs/plugin-rsc/rsc';
 import { captureOwnerStack, type ReactNode } from 'react';
-import type { HandleRequest } from '../../lib/types.js';
+import type { HandleRequest } from '../../../lib/types.js';
 
 export type RscElementsPayload = Record<string, unknown>;
 export type RscHtmlPayload = ReactNode;
-
-type RenderUtils = Parameters<HandleRequest>[1];
+export type RenderUtils = Parameters<HandleRequest>[1];
 
 export function createRenderUtils({
   temporaryReferences,
@@ -64,8 +63,8 @@ export function createRenderUtils({
   };
 }
 
-function loadSsrEntryModule() {
-  return import.meta.viteRsc.loadModule<typeof import('./server.ssr.js')>(
+export function loadSsrEntryModule() {
+  return import.meta.viteRsc.loadModule<typeof import('../ssr.js')>(
     'ssr',
     'index',
   );
