@@ -15,7 +15,8 @@ import type {
 import { middlewares } from 'virtual:vite-rsc-waku/middlewares';
 import type { MiddlewareHandler } from 'hono';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
-import { captureOwnerStack, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
+import { createRenderUtils } from './lib/server.rsc.js';
 
 //
 // main server handler as hono middleware
@@ -96,65 +97,6 @@ type HandleRequestInput = Parameters<WakuServerEntry['handleRequest']>[0];
 type HandleRequestOutput = Awaited<
   ReturnType<WakuServerEntry['handleRequest']>
 >;
-type RenderUtils = Parameters<WakuServerEntry['handleRequest']>[1];
-
-// core RSC/HTML rendering implementation
-function createRenderUtils({
-  temporaryReferences,
-}: {
-  temporaryReferences?: unknown;
-}): RenderUtils {
-  const onError = (e: unknown) => {
-    if (
-      e &&
-      typeof e === 'object' &&
-      'digest' in e &&
-      typeof e.digest === 'string'
-    ) {
-      return e.digest;
-    }
-    console.error('[RSC Error]', captureOwnerStack?.() || '', '\n', e);
-  };
-
-  return {
-    async renderRsc(elements) {
-      return ReactServer.renderToReadableStream<RscElementsPayload>(elements, {
-        temporaryReferences,
-        onError,
-      });
-    },
-    async renderHtml(
-      elements,
-      html,
-      options?: { rscPath?: string; actionResult?: any },
-    ) {
-      const ssrEntryModule = await loadSsrEntryModule();
-
-      const rscElementsStream =
-        ReactServer.renderToReadableStream<RscElementsPayload>(elements, {
-          onError,
-        });
-
-      const rscHtmlStream = ReactServer.renderToReadableStream<RscHtmlPayload>(
-        html,
-        { onError },
-      );
-
-      const htmlStream = await ssrEntryModule.renderHTML(
-        rscElementsStream,
-        rscHtmlStream,
-        {
-          formState: options?.actionResult,
-          rscPath: options?.rscPath,
-        },
-      );
-      return {
-        body: htmlStream as any,
-        headers: { 'content-type': 'text/html' },
-      };
-    },
-  };
-}
 
 // cf. `getInput` in packages/waku/src/lib/middleware/handler.ts
 async function getInput(ctx: HandlerContext) {
