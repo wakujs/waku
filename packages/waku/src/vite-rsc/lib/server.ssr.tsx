@@ -42,9 +42,7 @@ export async function renderHTML(
   }
 
   // render html
-  const bootstrapScriptContent =
-    await import.meta.viteRsc.loadBootstrapScriptContent('index');
-
+  const bootstrapScriptContent = await loadBootstrapScriptContent();
   const htmlStream = await ReactDOMServer.renderToReadableStream(<SsrRoot />, {
     bootstrapScriptContent:
       getBootstrapPreamble({ rscPath: options?.rscPath || '' }) +
@@ -92,8 +90,7 @@ function getBootstrapPreamble(options: { rscPath: string }) {
 }
 
 export async function renderHtmlFallback() {
-  const bootstrapScriptContent =
-    await import.meta.viteRsc.loadBootstrapScriptContent('index');
+  const bootstrapScriptContent = await loadBootstrapScriptContent();
   const fallback = (
     <html>
       <body></body>
@@ -103,4 +100,8 @@ export async function renderHtmlFallback() {
     bootstrapScriptContent,
   } as any);
   return htmlStream;
+}
+
+function loadBootstrapScriptContent(): Promise<string> {
+  return import.meta.viteRsc.loadBootstrapScriptContent('index');
 }
