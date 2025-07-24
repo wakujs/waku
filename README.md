@@ -27,6 +27,13 @@ Start a new Waku project with the `create` command for your preferred package ma
 npm create waku@latest
 ```
 
+Alternatively, you can choose a template via
+
+```sh
+npm create waku@latest -- --choose
+bun create waku@latest --choose
+```
+
 **Node.js version requirement:** `^24.0.0` or `^22.12.0` or `^20.19.0`
 
 ## Rendering
