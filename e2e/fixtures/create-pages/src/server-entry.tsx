@@ -197,7 +197,7 @@ const pages: ReturnType<typeof createPages> = createPages(
       render: 'static',
       method: 'GET',
       handler: async () => {
-        const hiTxt = await readFile('./private/hi.txt');
+        const hiTxt = await readFile('./private/hi.txt', 'utf-8');
         return new Response(hiTxt);
       },
     }),
