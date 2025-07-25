@@ -70,6 +70,9 @@ const HomeLayout = ({ children }: { children: ReactNode }) => (
       <li>
         <Link to="/nested-layouts">Nested Layouts</Link>
       </li>
+      <li>
+        <Link to="/slices">Slices</Link>
+      </li>
     </ul>
     {children}
   </div>
