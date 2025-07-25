@@ -60,7 +60,7 @@ const HomeLayout = ({ children }: { children: ReactNode }) => (
         <Link to="/nested/qux">Nested / Qux</Link>
       </li>
       <li>
-        <Link to="/page-parts">Page Parts</Link>
+        <Link to="/slice-page">Slice Page</Link>
       </li>
     </ul>
     {children}
