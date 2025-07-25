@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 import { defineConfig } from 'waku/config';
 import type { Plugin } from 'vite';
 import path from 'node:path';

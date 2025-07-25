@@ -387,12 +387,40 @@ test.describe(`create-pages`, () => {
     ).toBeVisible();
   });
 
-  test('slices', async ({ page }) => {
+  test('slices basic', async ({ page }) => {
     await page.goto(`http://localhost:${port}/slices`);
     await waitForHydration(page);
     const sliceText = await page.getByTestId('slice001').textContent();
     expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
     const sliceText2 = await page.getByTestId('slice002').textContent();
-    expect(sliceText2).toBe('Slice 002');
+    expect(sliceText2?.startsWith('Slice 002')).toBeTruthy();
+  });
+
+  test('slices with static page part', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/slices`);
+    await waitForHydration(page);
+    const staticSliceText = await page.getByTestId('slice001').textContent();
+    expect(staticSliceText?.startsWith('Slice 001')).toBeTruthy();
+    const dynamicSliceText = await page.getByTestId('slice002').textContent();
+    expect(dynamicSliceText?.startsWith('Slice 002')).toBeTruthy();
+
+    await page.getByRole('link', { name: 'Home' }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('link', { name: 'Slices' }).click();
+
+    const staticSliceText2 = await page.getByTestId('slice001').textContent();
+    expect(staticSliceText2).toBe(staticSliceText);
+    const dynamicSliceText2 = await page.getByTestId('slice002').textContent();
+    expect(dynamicSliceText2).not.toBe(dynamicSliceText);
+  });
+
+  test('slices with lazy', async ({ page }) => {
+    await page.route(/.*\/RSC\/.*/, async (route) => {
+      await new Promise((r) => setTimeout(r, 100));
+      await route.continue();
+    });
+    await page.goto(`http://localhost:${port}/slices`);
+    await expect(page.getByTestId('slice003-loading')).toBeVisible();
+    await expect(page.getByTestId('slice003')).toHaveText('Slice 003');
   });
 });
