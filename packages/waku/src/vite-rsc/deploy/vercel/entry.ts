@@ -6,8 +6,10 @@ import { config } from 'virtual:vite-rsc-waku/config';
 import path from 'node:path';
 import fs from 'node:fs';
 import { DIST_PUBLIC } from '../../../lib/builder/constants.js';
+import { INTERNAL_setAllEnv } from '../../../server.js';
 
 function createApp(app: Hono) {
+  INTERNAL_setAllEnv(process.env as any);
   app.use(createHonoHandler());
   app.notFound((c) => {
     const file = path.join(config.distDir, DIST_PUBLIC, '404.html');
