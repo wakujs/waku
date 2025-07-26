@@ -55,6 +55,9 @@ const { values, positionals } = parseArgs({
     'experimental-compress': {
       type: 'boolean',
     },
+    'experimental-legacy-cli': {
+      type: 'boolean',
+    },
     port: {
       type: 'string',
       short: 'p',
@@ -77,6 +80,13 @@ if (values.version) {
   console.log(version);
 } else if (values.help) {
   displayUsage();
+} else if (
+  !values['experimental-legacy-cli'] &&
+  cmd &&
+  ['dev', 'build', 'start'].includes(cmd)
+) {
+  const { cli } = await import('./vite-rsc/cli.js');
+  await cli(cmd, values);
 } else {
   switch (cmd) {
     case 'dev':
@@ -242,7 +252,9 @@ async function loadConfig(): Promise<Config> {
   return (await loadServerModule<{ default: Config }>(file)).default;
 }
 
-type HonoEnhancer = <Hono>(fn: (app: Hono) => Hono) => (app: Hono) => Hono;
+export type HonoEnhancer = <Hono>(
+  fn: (app: Hono) => Hono,
+) => (app: Hono) => Hono;
 
 async function loadHonoEnhancer(file: string): Promise<HonoEnhancer> {
   const { loadServerModule } = await import('./lib/utils/vite-loader.js');
