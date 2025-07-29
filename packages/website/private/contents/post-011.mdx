@@ -97,16 +97,6 @@ Previously Waku transformed all server packages on RSC module graph while extern
 
 This change can cause a new error during SSR development if there's a CJS dependency (directly or transitively) used in client components. For example, `swr` (ESM) package uses `use-sync-external-store` (CJS) internally and the plugin will show a warning `"found non-optimized CJS dependency"`. Currently, this needs to be manually mitigated by configuring `optimizeDeps.include` such as `environments.ssr.optimizeDeps.include: ["swr"]`.
 
-## Previous Implementation
-
-The previous implementation remains available via the `--experimental-legacy-cli` flag for fallback during the transition period, for example,
-
-```bash
-waku dev --experimental-legacy-cli
-waku build --experimental-legacy-cli
-waku start --experimental-legacy-cli
-```
-
 ## Future
 
 The migration to `@vitejs/plugin-rsc` unlocks several ecosystem opportunities. The standardized Environment API foundation paves the way for future integrations with deployment adapters like [`@cloudflare/vite-plugin`](https://www.npmjs.com/package/@cloudflare/vite-plugin).
