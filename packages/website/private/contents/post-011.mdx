@@ -7,7 +7,7 @@ release: v0.24
 date: 2025/07/19
 ---
 
-Waku has migrated to use Vite's official plugin [`@vitejs/plugin-rsc`](https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-rsc) for ReactServer Components bundler implementation. Through this plugin, Waku now adopts the [Vite Environment API](https://vite.dev/guide/api-environment.html), which provides a unified foundation for themulti-environment build system required for RSC integration. This migration simplifies internal architecture while providing users fullaccess to the Vite plugin system and benefiting from the broader ecosystem.
+Waku has migrated to use Vite's official plugin [`@vitejs/plugin-rsc`](https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-rsc) for React Server Components bundler implementation. Through this plugin, Waku now adopts the [Vite Environment API](https://vite.dev/guide/api-environment.html), which provides a unified foundation for the multi-environment build system required for RSC integration. This migration simplifies internal architecture while providing users full access to the Vite plugin system and benefiting from the broader ecosystem.
 
 Waku has pioneered RSC framework implementation on Vite and provided many insights for the official Vite plugin. Some core RSC functionalities have been incorporated into `@vitejs/plugin-rsc`, benefiting the entire Vite ecosystem.
 
@@ -107,7 +107,6 @@ waku start --experimental-legacy-cli
 
 ## Future
 
-- `@cloudflare/vite-plugin`
-- Nitro plugin?
-- Better alignment with Vite ecosystem.
-- Rolldown-Vite support.
+The migration to `@vitejs/plugin-rsc` unlocks several ecosystem opportunities. Deployment adapters like `@cloudflare/vite-plugin` can now integrate more seamlessly with Waku through the standardized Environment API foundation.
+
+This alignment with Vite's architecture positions Waku to benefit from future developments, including Rolldown bundler support. The standardized approach also enables better third-party plugin integration and community-driven solutions that were challenging with the previous custom implementation.
