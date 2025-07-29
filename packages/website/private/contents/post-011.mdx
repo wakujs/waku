@@ -91,7 +91,7 @@ export default defineConfig({
 });
 ```
 
-### Transforming external packages
+### Transforming server packages
 
 Previously Waku transformed all server packages on RSC module graph while externalizing all server packages SSR module graph during development. This has been changed to transform only React-related 3rd party packages on both server module graphs to be able to discover "use server" and "use client" inside the packages. Unrelated packages are kept externalizing for better package compatibility.
 
