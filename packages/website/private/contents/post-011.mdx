@@ -11,7 +11,7 @@ Waku has migrated to use Vite's official plugin [`@vitejs/plugin-rsc`](https://w
 
 Waku has pioneered RSC framework implementation on Vite and provided many insights for the official Vite plugin. Some core RSC functionalities have been incorporated into `@vitejs/plugin-rsc`, benefiting the entire Vite ecosystem.
 
-While there were large changes in internal Vite development server, build pipeline and plugin architecture, core routing logic remains unchanged, preserving Waku's existing functionality. This is thanks to Waku's layered routing architecture where the higher level APIs (`fsRouter`, `createPages`, and `defineRouter`) are built up on the "minimal" API `defineEntries`.
+While this migration required many changes for internal Vite development server integration, build pipeline and plugin architecture, core routing logic remains unchanged, preserving Waku's existing functionality. This is thanks to Waku's layered routing architecture where the higher level APIs (`fsRouter`, `createPages`, and `defineRouter`) are built up on the "minimal" API `defineEntries`.
 
 ## New features / Breaking Changes
 
