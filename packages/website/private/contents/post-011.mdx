@@ -48,7 +48,7 @@ _Example_
 
 ```ts
 // waku.config.ts
-import { defineConfig } from "waku/config";
+import { defineConfig } from 'waku/config';
 
 export default defineConfig({
   vite: {
@@ -57,13 +57,16 @@ export default defineConfig({
       // `client`, `ssr`, and `rsc` environments are available.
       client: {
         build: {
+          // enable source maps for client build
           sourcemap: true,
-        }
+        },
       },
       ssr: {
         optimizeeDeps: {
-          include: ['swr'],
-        }
+          include: [
+            // handle cjs package during SSR
+          ],
+        },
       },
       rsc: {
         // ...
@@ -78,13 +81,12 @@ export default defineConfig({
           if (this.environment.name === 'rsc') {
             // ...
           }
-        }
-      }
+        },
+      },
     ],
-  }
-})
+  },
+});
 ```
-
 
 ## Previous Implementation
 
