@@ -7,22 +7,15 @@ release: v0.24
 date: 2025/07/19
 ---
 
-Waku has migrated to use Vite's official plugin
-[`@vitejs/plugin-rsc`](https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-rsc) for React Server
-Components bundler implementation. This migration simplifies internal architecture and
-unlocks new capabilities through the [Vite Environment API](https://vite.dev/guide/api-environment.html).
+Waku has migrated to use Vite's official plugin [`@vitejs/plugin-rsc`](https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-rsc) for React Server Components bundler implementation. This migration simplifies internal architecture and unlocks new capabilities through the [Vite Environment API](https://vite.dev/guide/api-environment.html).
 
-Waku has pioneered RSC framework implementation on Vite and provided many insights for the official Vite plugin.
-Some core RSC functionalities have been incorporated into `@vitejs/plugin-rsc`, benefiting the entire Vite ecosystem.
+Waku has pioneered RSC framework implementation on Vite and provided many insights for the official Vite plugin. Some core RSC functionalities have been incorporated into `@vitejs/plugin-rsc`, benefiting the entire Vite ecosystem.
 
-While there were large changes in internal development server, build and plugin architecture, core routing logic
-remains almost unchanged, preserving Waku's existing functionality. This is thanks to Waku's "layered" routing
-architecture where the higher level APIs (`fsRouter`, `createPages`, and `defineRouter`) are built up on the
-"minimal" API `defineEntries`.
+While there were large changes in internal Vite development server, build pipeline and plugin architecture, core routing logic remains almost unchanged, preserving Waku's existing functionality. This is thanks to Waku's layered routing architecture where the higher level APIs (`fsRouter`, `createPages`, and `defineRouter`) are built up on the "minimal" API `defineEntries`.
 
 ## New features / Breaking Changes
 
-### Custom Vite configuration 
+### Custom Vite configuration
 
 Custom Vite configuration support has changed. Vite configuration must now be nested under a `vite` property in `waku.config.ts`:
 
