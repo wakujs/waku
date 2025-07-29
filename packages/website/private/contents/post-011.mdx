@@ -7,7 +7,7 @@ release: v0.24
 date: 2025/07/19
 ---
 
-Waku has migrated to use Vite's official plugin [`@vitejs/plugin-rsc`](https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-rsc) for React Server Components bundler implementation. This migration simplifies internal architecture and unlocks new capabilities through the [Vite Environment API](https://vite.dev/guide/api-environment.html).
+Waku has migrated to use Vite's official plugin [`@vitejs/plugin-rsc`](https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-rsc) for ReactServer Components bundler implementation. Through this plugin, Waku now adopts the [Vite Environment API](https://vite.dev/guide/api-environment.html), which provides a unified foundation for themulti-environment build system required for RSC integration. This migration simplifies internal architecture while providing users fullaccess to the Vite plugin system and benefiting from the broader ecosystem.
 
 Waku has pioneered RSC framework implementation on Vite and provided many insights for the official Vite plugin. Some core RSC functionalities have been incorporated into `@vitejs/plugin-rsc`, benefiting the entire Vite ecosystem.
 
@@ -93,7 +93,7 @@ export default defineConfig({
 
 ### Transforming external packages
 
-Previously `ssr` environment "main server") doesn't externalize server deps by default, but transform all react deps. This means if there's cjs dependency (directly or transitively) used in client component, SSR might fail during dev. For example, `swr` (esm) package uses `use-sync-external-store` (cjs) internally. This can be mitigated by `environments.ssr.optimizeDeps.include: ["swr"]`.
+Previously Waku transformed all server packages on RSC module graph while externalizing all server packages SSR module graph during development. This has been changed to transform only React 3rd party packages on both server module graphs to be able to discover "use server" and "use client" inside the packages. This change causes a new error during SSR on development if there's cjs dependency (directly or transitively) used in client component. For example, `swr` (esm) package uses `use-sync-external-store` (cjs) internally and the plugin will show a warning `found non-optimized CJS dependency`. Currently, this needs to be manually mitigated by configuring `optimizeDeps.include` such as `environments.ssr.optimizeDeps.include: ["swr"]`.
 
 ## Previous Implementation
 
@@ -104,8 +104,6 @@ waku dev --experimental-legacy-cli
 waku build --experimental-legacy-cli
 waku start --experimental-legacy-cli
 ```
-
-This flag allows reverting to the previous behavior while the new implementation is refined based on usage feedback.
 
 ## Future
 
