@@ -60,7 +60,7 @@ export default defineConfig({
       // environment-specific configurations.
       client: {
         build: {
-          // disable minifying client assets
+          // disable client assets minification
           minify: false,
         },
       },
@@ -93,7 +93,7 @@ export default defineConfig({
 
 ### Transforming external packages
 
-Previously Waku transformed all server packages on RSC module graph while externalizing all server packages SSR module graph during development. This has been changed to transform only React 3rd party packages on both server module graphs to be able to discover "use server" and "use client" inside the packages. This change causes a new error during SSR on development if there's cjs dependency (directly or transitively) used in client component. For example, `swr` (esm) package uses `use-sync-external-store` (cjs) internally and the plugin will show a warning `found non-optimized CJS dependency`. Currently, this needs to be manually mitigated by configuring `optimizeDeps.include` such as `environments.ssr.optimizeDeps.include: ["swr"]`.
+Previously Waku transformed all server packages on RSC module graph while externalizing all server packages SSR module graph during development. This has been changed to transform only React 3rd party packages on both server module graphs to be able to discover "use server" and "use client" inside the packages while unrelated packages are kept externalizing for better package compatibility. This change causes a new error during SSR on development if there's cjs dependency (directly or transitively) used in client component. For example, `swr` (esm) package uses `use-sync-external-store` (cjs) internally and the plugin will show a warning `found non-optimized CJS dependency`. Currently, this needs to be manually mitigated by configuring `optimizeDeps.include` such as `environments.ssr.optimizeDeps.include: ["swr"]`.
 
 ## Previous Implementation
 
