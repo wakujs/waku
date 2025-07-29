@@ -13,11 +13,7 @@ While there were significant changes in underlying dev server, plugin, and build
 
 ## New features / Breaking Changes
 
-Custom Vite configuration has changed. Vite configuration must now be nested under a `vite` property in `waku.config.ts`:
-
-TODO: mention `client/ssr/rsc` environments. add plugin examples.
-TODO: link to Environment plugin API (e.g. `applyToEnvironment`, `this.environment`).
-https://vite.dev/guide/api-environment-plugins.html
+Custom Vite configuration support has changed. Vite configuration must now be nested under a `vite` property in `waku.config.ts`:
 
 _Before_
 
@@ -56,11 +52,35 @@ import { defineConfig } from "waku/config";
 
 export default defineConfig({
   vite: {
-    plugins: [
-    ],
     environments: {
-      ssr: {},
-    }
+      // environment-specific configurations.
+      // `client`, `ssr`, and `rsc` environments are available.
+      client: {
+        build: {
+          sourcemap: true,
+        }
+      },
+      ssr: {
+        optimizeeDeps: {
+          include: ['swr'],
+        }
+      },
+      rsc: {
+        // ...
+      },
+    },
+    plugins: [
+      // custom plugins
+      {
+        name: 'my-custom-plugin',
+        transform(code, id) {
+          // e.g. transform only on `rsc` environment
+          if (this.environment.name === 'rsc') {
+            // ...
+          }
+        }
+      }
+    ],
   }
 })
 ```
