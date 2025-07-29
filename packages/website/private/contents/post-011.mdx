@@ -17,7 +17,7 @@ While there were large changes in internal Vite development server, build pipeli
 
 ### Custom Vite configuration
 
-Custom Vite configuration support has changed. Vite configuration must now be nested under a `vite` property in `waku.config.ts`:
+Custom Vite configuration support has been changed. Vite configuration can now be specified through `vite` property in `waku.config.ts`. `@vitejs/plugin-rsc` provides three environments `client`, `ssr`, and `rsc` for fine-grained control over the configuration and plugin pipeline. See [Vite Environment API documentation](https://vite.dev/guide/api-environment.html) for more details.
 
 _Before_
 
@@ -58,17 +58,16 @@ export default defineConfig({
   vite: {
     environments: {
       // environment-specific configurations.
-      // `client`, `ssr`, and `rsc` environments are available.
       client: {
         build: {
-          // enable source maps for client build
-          sourcemap: true,
+          // disable minifying client assets
+          minify: false,
         },
       },
       ssr: {
         optimizeeDeps: {
           include: [
-            // handle cjs package during SSR
+            // handle cjs package for SSR
           ],
         },
       },
