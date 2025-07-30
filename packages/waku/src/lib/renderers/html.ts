@@ -61,7 +61,7 @@ globalThis.__WAKU_HYDRATE__ = true;
 `;
   const arr = parseHtml(htmlHead) as ReactElement<any>[];
   const headModules: string[] = [];
-  const headElements: ReactElement[] = [];
+  const headElements: ReactElement<{ async?: unknown }>[] = [];
   for (const item of arr) {
     if (item.type === 'script') {
       if (item.props?.src) {
@@ -164,6 +164,7 @@ export async function renderHtml(
         Omit<ComponentProps<typeof INTERNAL_ServerRoot>, 'children'>
       >,
       { elementsPromise },
+      ...headElements.filter((ele) => ele.props?.async !== true),
       // See: https://github.com/wakujs/waku/pull/1545
       // isolate `React.use` in its own component
       // https://github.com/facebook/react/issues/33937#issuecomment-3091349011
@@ -171,7 +172,7 @@ export async function renderHtml(
         const resolvedHtmlNode = await htmlNode;
         return createElement(HtmlNodeWrapper, null, resolvedHtmlNode);
       }),
-      ...headElements,
+      ...headElements.filter((ele) => ele.props?.async === true),
     ),
     {
       bootstrapScriptContent: headCode,
