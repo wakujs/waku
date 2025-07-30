@@ -2,6 +2,7 @@ import type { UserConfig } from 'vite';
 import type { Middleware } from './lib/middleware/types.js';
 
 export type { Middleware };
+export type WakuMiddleware = 'waku/middleware/context' | 'waku/middleware/dev-server' | 'waku/middleware/handler';
 
 export interface Config {
   /**
@@ -51,7 +52,7 @@ export interface Config {
    *   'waku/middleware/handler',
    * ]
    */
-  middleware?: string[];
+  middleware?: (WakuMiddleware | string)[];
   /**
    * Enhancer for Hono
    * Defaults to `undefined`
