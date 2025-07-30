@@ -30,8 +30,8 @@ export async function cli(cmd: string, flags: Record<string, any>) {
       },
     });
     await server.listen();
-    server.printUrls();
-    server.bindCLIShortcuts();
+    const url = server.resolvedUrls!['local'];
+    console.log(`ready: Listening on ${url}`);
   }
 
   if (cmd === 'build') {
@@ -50,7 +50,7 @@ export async function cli(cmd: string, flags: Record<string, any>) {
         port: parseInt(flags.port || '8080', 10),
       },
     });
-    server.printUrls();
-    server.bindCLIShortcuts();
+    const url = server.resolvedUrls!['local'];
+    console.log(`ready: Listening on ${url}`);
   }
 }
