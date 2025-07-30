@@ -55,7 +55,7 @@ export interface Config {
    *   'waku/middleware/handler',
    * ]
    */
-  middleware?: (WakuMiddleware | string)[];
+  middleware?: (WakuMiddleware | (string & {}))[];
   /**
    * Enhancer for Hono
    * Defaults to `undefined`
