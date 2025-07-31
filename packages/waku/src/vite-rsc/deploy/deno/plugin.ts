@@ -8,8 +8,8 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const SERVER_ENTRY = path.join(__dirname, 'entry.js');
 const SERVE_JS = 'serve-deno.js';
 
-export function wakuDeployDenoPlugin(deployOptions: {
-  wakuConfig: Required<Config>;
+export function deployDenoPlugin(deployOptions: {
+  config: Required<Config>;
 }): Plugin {
   return {
     name: 'waku:deploy-deno',
@@ -38,7 +38,7 @@ export function wakuDeployDenoPlugin(deployOptions: {
         }
         await build({
           config: this.environment.getTopLevelConfig(),
-          opts: deployOptions.wakuConfig,
+          opts: deployOptions.config,
         });
       },
     },

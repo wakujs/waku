@@ -8,8 +8,8 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const SERVER_ENTRY = path.join(__dirname, 'entry.js');
 const SERVE_JS = 'serve-vercel.js';
 
-export function wakuDeployVercelPlugin(deployOptions: {
-  wakuConfig: Required<Config>;
+export function deployVercelPlugin(deployOptions: {
+  config: Required<Config>;
   serverless: boolean;
 }): Plugin {
   return {
@@ -40,7 +40,7 @@ export function wakuDeployVercelPlugin(deployOptions: {
         }
         await build({
           config: this.environment.getTopLevelConfig(),
-          opts: deployOptions.wakuConfig,
+          opts: deployOptions.config,
           serverless: deployOptions.serverless,
         });
       },

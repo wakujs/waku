@@ -13,8 +13,8 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const SERVER_ENTRY = path.join(__dirname, 'entry.js');
 const SERVE_JS = 'serve-cloudflare.js';
 
-export function wakuDeployCloudflarePlugin(deployOptions: {
-  wakuConfig: Required<Config>;
+export function deployCloudflarePlugin(deployOptions: {
+  config: Required<Config>;
 }): Plugin {
   return {
     name: 'waku:deploy-cloudflare',
@@ -58,7 +58,7 @@ export function wakuDeployCloudflarePlugin(deployOptions: {
         }
         await build({
           config: this.environment.getTopLevelConfig(),
-          opts: deployOptions.wakuConfig,
+          opts: deployOptions.config,
         });
       },
     },

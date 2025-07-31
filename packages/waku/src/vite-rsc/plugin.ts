@@ -19,19 +19,19 @@ import {
   getManagedEntries,
   getManagedMain,
 } from '../lib/plugins/vite-plugin-rsc-managed.js';
-import { wakuDeployVercelPlugin } from './deploy/vercel/plugin.js';
-import { wakuAllowServerPlugin } from './plugins/allow-server.js';
+import { deployVercelPlugin } from './deploy/vercel/plugin.js';
+import { allowServerPlugin } from './plugins/allow-server.js';
 import {
   DIST_PUBLIC,
   SRC_CLIENT_ENTRY,
   SRC_SERVER_ENTRY,
 } from '../lib/builder/constants.js';
 import { fsRouterTypegenPlugin } from '../lib/plugins/vite-plugin-fs-router-typegen.js';
-import { wakuDeployNetlifyPlugin } from './deploy/netlify/plugin.js';
-import { wakuDeployCloudflarePlugin } from './deploy/cloudflare/plugin.js';
-import { wakuDeployPartykitPlugin } from './deploy/partykit/plugin.js';
-import { wakuDeployDenoPlugin } from './deploy/deno/plugin.js';
-import { wakuDeployAwsLambdaPlugin } from './deploy/aws-lambda/plugin.js';
+import { deployNetlifyPlugin } from './deploy/netlify/plugin.js';
+import { deployCloudflarePlugin } from './deploy/cloudflare/plugin.js';
+import { deployPartykitPlugin } from './deploy/partykit/plugin.js';
+import { deployDenoPlugin } from './deploy/deno/plugin.js';
+import { deployAwsLambdaPlugin } from './deploy/aws-lambda/plugin.js';
 import { filePathToFileURL, joinPath } from '../lib/utils/path.js';
 
 const PKG_NAME = 'waku';
@@ -92,7 +92,7 @@ export function mainPlugin(
 
   return [
     ...extraPlugins,
-    wakuAllowServerPlugin(), // apply `allowServer` DCE before "use client" transform
+    allowServerPlugin(), // apply `allowServer` DCE before "use client" transform
     rsc({
       serverHandler: false,
       keepUseCientProxy: true,
@@ -164,7 +164,7 @@ export function mainPlugin(
 
         // backcompat for old vite config overrides
         // Note that adding `plugins` here is not supported and
-        // such plugins should be moved to `wakuConfig.vite`.
+        // such plugins should be moved to `config.vite`.
         viteRscConfig = mergeConfig(
           viteRscConfig,
           config?.unstable_viteConfigs?.['common']?.() ?? {},
@@ -570,8 +570,8 @@ if (import.meta.hot) {
       flags['with-vercel-static'] ||
       process.env.VERCEL
     ) &&
-      wakuDeployVercelPlugin({
-        wakuConfig: config,
+      deployVercelPlugin({
+        config: config,
         serverless: !!flags['with-vercel'],
       }),
     !!(
@@ -579,18 +579,16 @@ if (import.meta.hot) {
       flags['with-netlify-static'] ||
       process.env.NETLIFY
     ) &&
-      wakuDeployNetlifyPlugin({
-        wakuConfig: config,
+      deployNetlifyPlugin({
+        config: config,
         serverless: !!flags['with-netlify'],
       }),
-    !!flags['with-cloudflare'] &&
-      wakuDeployCloudflarePlugin({ wakuConfig: config }),
-    !!flags['with-partykit'] &&
-      wakuDeployPartykitPlugin({ wakuConfig: config }),
-    !!flags['with-deno'] && wakuDeployDenoPlugin({ wakuConfig: config }),
+    !!flags['with-cloudflare'] && deployCloudflarePlugin({ config: config }),
+    !!flags['with-partykit'] && deployPartykitPlugin({ config: config }),
+    !!flags['with-deno'] && deployDenoPlugin({ config: config }),
     !!flags['with-aws-lambda'] &&
-      wakuDeployAwsLambdaPlugin({
-        wakuConfig: config,
+      deployAwsLambdaPlugin({
+        config: config,
         streaming: process.env.DEPLOY_AWS_LAMBDA_STREAMING === 'true',
       }),
   ];

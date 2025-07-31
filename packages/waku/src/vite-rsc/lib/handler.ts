@@ -6,7 +6,7 @@ import type { HandlerContext } from '../../lib/middleware/types.js';
 import { config } from 'virtual:vite-rsc-waku/config';
 import { createRenderUtils, loadSsrEntryModule } from './render.js';
 import type { HandleRequest } from '../../lib/types.js';
-import wakuServerEntry from 'virtual:vite-rsc-waku/server-entry';
+import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 
 type HandleRequestInput = Parameters<HandleRequest>[0];
 type HandleRequestOutput = Awaited<ReturnType<HandleRequest>>;
@@ -23,7 +23,7 @@ export async function handleRequest(ctx: HandlerContext) {
 
   let res: HandleRequestOutput;
   try {
-    res = await wakuServerEntry.handleRequest(input, renderUtils);
+    res = await serverEntry.handleRequest(input, renderUtils);
   } catch (e) {
     const info = getErrorInfo(e);
     ctx.res.status = info?.status || 500;

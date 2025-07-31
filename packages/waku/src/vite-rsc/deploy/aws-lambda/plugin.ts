@@ -8,8 +8,8 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const SERVER_ENTRY = path.join(__dirname, 'entry.js');
 const SERVE_JS = 'serve-aws-lambda.js';
 
-export function wakuDeployAwsLambdaPlugin(deployOptions: {
-  wakuConfig: Required<Config>;
+export function deployAwsLambdaPlugin(deployOptions: {
+  config: Required<Config>;
   streaming: boolean;
 }): Plugin {
   return {
@@ -43,7 +43,7 @@ export function wakuDeployAwsLambdaPlugin(deployOptions: {
         }
         await build({
           config: this.environment.getTopLevelConfig(),
-          opts: deployOptions.wakuConfig,
+          opts: deployOptions.config,
         });
       },
     },

@@ -31,7 +31,7 @@ export const MyClientComp = () => { throw ... }
 
 */
 
-export function wakuAllowServerPlugin(): Plugin {
+export function allowServerPlugin(): Plugin {
   return {
     name: 'waku:allow-server',
     transform(code) {
