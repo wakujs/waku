@@ -37,12 +37,12 @@ import { filePathToFileURL, joinPath } from '../lib/utils/path.js';
 const PKG_NAME = 'waku';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
-export type WakuPluginOptions = {
-  flags?: WakuFlags | undefined;
+export type MainPluginOptions = {
+  flags?: Flags | undefined;
   config?: Config | undefined;
 };
 
-export type WakuFlags = {
+export type Flags = {
   'experimental-compress'?: boolean | undefined;
   'experimental-partial'?: boolean | undefined;
   'with-vercel'?: boolean | undefined;
@@ -55,10 +55,10 @@ export type WakuFlags = {
   'with-aws-lambda'?: boolean | undefined;
 };
 
-export function wakuPlugin(
-  wakuPluginOptions?: WakuPluginOptions,
+export function mainPlugin(
+  wakuPluginOptions?: MainPluginOptions,
 ): PluginOption {
-  const wakuConfig: Required<Config> = {
+  const config: Required<Config> = {
     basePath: '/',
     srcDir: 'src',
     distDir: 'dist',
@@ -76,11 +76,11 @@ export function wakuPlugin(
     vite: undefined,
     ...wakuPluginOptions?.config,
   };
-  const wakuFlags = wakuPluginOptions?.flags ?? {};
+  const flags = wakuPluginOptions?.flags ?? {};
   let privatePath: string;
   let customServerEntry: string | undefined;
 
-  const extraPlugins = [...(wakuConfig.vite?.plugins ?? [])];
+  const extraPlugins = [...(config.vite?.plugins ?? [])];
   // add react plugin automatically if users didn't include it on their own (e.g. swc, oxc, babel react compiler)
   if (
     !extraPlugins
@@ -104,10 +104,10 @@ export function wakuPlugin(
         let viteRscConfig: UserConfig = {
           define: {
             'import.meta.env.WAKU_CONFIG_BASE_PATH': JSON.stringify(
-              wakuConfig.basePath,
+              config.basePath,
             ),
             'import.meta.env.WAKU_CONFIG_RSC_BASE': JSON.stringify(
-              wakuConfig.rscBase,
+              config.rscBase,
             ),
             // packages/waku/src/lib/plugins/vite-plugin-rsc-env.ts
             // CLI has loaded dotenv already at this point
@@ -135,9 +135,9 @@ export function wakuPlugin(
               },
               optimizeDeps: {
                 entries: [
-                  `${wakuConfig.srcDir}/${SRC_CLIENT_ENTRY}.*`,
-                  `${wakuConfig.srcDir}/${SRC_SERVER_ENTRY}.*`,
-                  `${wakuConfig.srcDir}/${wakuConfig.pagesDir}/**/*.*`,
+                  `${config.srcDir}/${SRC_CLIENT_ENTRY}.*`,
+                  `${config.srcDir}/${SRC_SERVER_ENTRY}.*`,
+                  `${config.srcDir}/${config.pagesDir}/**/*.*`,
                 ],
               },
             },
@@ -167,49 +167,48 @@ export function wakuPlugin(
         // such plugins should be moved to `wakuConfig.vite`.
         viteRscConfig = mergeConfig(
           viteRscConfig,
-          wakuConfig?.unstable_viteConfigs?.['common']?.() ?? {},
+          config?.unstable_viteConfigs?.['common']?.() ?? {},
         );
         if (env.command === 'serve') {
           viteRscConfig = mergeConfig(
             viteRscConfig,
-            wakuConfig?.unstable_viteConfigs?.['dev-main']?.() ?? {},
+            config?.unstable_viteConfigs?.['dev-main']?.() ?? {},
           );
         } else {
           viteRscConfig = mergeConfig(
             viteRscConfig,
-            wakuConfig?.unstable_viteConfigs?.['build-server']?.() ?? {},
+            config?.unstable_viteConfigs?.['build-server']?.() ?? {},
           );
         }
 
-        if (wakuConfig.vite) {
+        if (config.vite) {
           viteRscConfig = mergeConfig(viteRscConfig, {
-            ...wakuConfig.vite,
+            ...config.vite,
             plugins: undefined,
           });
         }
 
         return viteRscConfig;
       },
-      configEnvironment(name, config, env) {
+      configEnvironment(name, environmentConfig, env) {
         // make @vitejs/plugin-rsc usable as a transitive dependency
         // https://github.com/hi-ogawa/vite-plugins/issues/968
-        if (config.optimizeDeps?.include) {
-          config.optimizeDeps.include = config.optimizeDeps.include.map(
-            (name) => {
+        if (environmentConfig.optimizeDeps?.include) {
+          environmentConfig.optimizeDeps.include =
+            environmentConfig.optimizeDeps.include.map((name) => {
               if (name.startsWith('@vitejs/plugin-rsc/')) {
                 name = `${PKG_NAME} > ${name}`;
               }
               return name;
-            },
-          );
+            });
         }
 
-        config.build ??= {};
-        config.build.outDir = `${wakuConfig.distDir}/${name}`;
+        environmentConfig.build ??= {};
+        environmentConfig.build.outDir = `${config.distDir}/${name}`;
         if (name === 'client') {
-          config.build.outDir = `${wakuConfig.distDir}/${DIST_PUBLIC}`;
-          if (wakuFlags['experimental-partial']) {
-            config.build.emptyOutDir = false;
+          environmentConfig.build.outDir = `${config.distDir}/${DIST_PUBLIC}`;
+          if (flags['experimental-partial']) {
+            environmentConfig.build.emptyOutDir = false;
           }
         }
 
@@ -224,13 +223,13 @@ export function wakuPlugin(
           build: {
             // top-level-await in packages/waku/src/lib/middleware/context.ts
             target:
-              config.build?.target ??
+              environmentConfig.build?.target ??
               (name !== 'client' ? 'esnext' : undefined),
           },
         };
       },
-      configResolved(config) {
-        privatePath = joinPath(config.root, wakuConfig.privateDir);
+      configResolved(viteConfig) {
+        privatePath = joinPath(viteConfig.root, config.privateDir);
       },
       async configureServer(server) {
         const { getRequestListener } = await import('@hono/node-server');
@@ -265,7 +264,7 @@ export function wakuPlugin(
         }
         if (source === 'virtual:vite-rsc-waku/server-entry-inner') {
           const resolved = await this.resolve(
-            `/${wakuConfig.srcDir}/${SRC_SERVER_ENTRY}`,
+            `/${config.srcDir}/${SRC_SERVER_ENTRY}`,
             undefined,
             options,
           );
@@ -274,7 +273,7 @@ export function wakuPlugin(
         }
         if (source === 'virtual:vite-rsc-waku/client-entry') {
           const resolved = await this.resolve(
-            `/${wakuConfig.srcDir}/${SRC_CLIENT_ENTRY}`,
+            `/${config.srcDir}/${SRC_CLIENT_ENTRY}`,
             undefined,
             options,
           );
@@ -294,12 +293,12 @@ if (import.meta.hot) {
           return getManagedEntries(
             joinPath(
               this.environment.config.root,
-              `${wakuConfig.srcDir}/server-entry.js`,
+              `${config.srcDir}/server-entry.js`,
             ),
             'src',
             {
-              pagesDir: wakuConfig.pagesDir,
-              apiDir: wakuConfig.apiDir,
+              pagesDir: config.pagesDir,
+              apiDir: config.apiDir,
             },
           );
         }
@@ -320,7 +319,7 @@ if (import.meta.hot) {
     },
     createVirtualPlugin('vite-rsc-waku/middlewares', async function () {
       const ids: string[] = [];
-      for (const file of wakuConfig.middleware) {
+      for (const file of config.middleware) {
         // dev-server logic is all handled by `@vitejs/plugin-rsc`, so skipped.
         if (file === 'waku/middleware/dev-server') {
           continue;
@@ -355,10 +354,10 @@ if (import.meta.hot) {
       return code;
     }),
     createVirtualPlugin('vite-rsc-waku/hono-enhancer', async function () {
-      if (!wakuConfig?.unstable_honoEnhancer) {
+      if (!config?.unstable_honoEnhancer) {
         return `export const honoEnhancer = (app) => app;`;
       }
-      let id = wakuConfig.unstable_honoEnhancer;
+      let id = config.unstable_honoEnhancer;
       if (id[0] === '.') {
         const resolved = await this.resolve(id);
         if (resolved) {
@@ -372,8 +371,8 @@ if (import.meta.hot) {
     }),
     createVirtualPlugin('vite-rsc-waku/config', async function () {
       return `
-        export const config = ${JSON.stringify({ ...wakuConfig, vite: undefined })};
-        export const flags = ${JSON.stringify(wakuFlags)};
+        export const config = ${JSON.stringify({ ...config, vite: undefined })};
+        export const flags = ${JSON.stringify(flags)};
         export const isBuild = ${JSON.stringify(this.environment.mode === 'build')};
       `;
     }),
@@ -499,9 +498,9 @@ if (import.meta.hot) {
           }
 
           // import server entry
-          const config = this.environment.getTopLevelConfig();
+          const viteConfig = this.environment.getTopLevelConfig();
           const entryPath = path.join(
-            config.environments.rsc!.build.outDir,
+            viteConfig.environments.rsc!.build.outDir,
             'index.js',
           );
           const entry: typeof import('./entry.server.js') = await import(
@@ -515,8 +514,8 @@ if (import.meta.hot) {
           for await (const buildConfig of buildConfigs || []) {
             if (buildConfig.type === 'file') {
               emitStaticFile(
-                config.root,
-                { distDir: wakuConfig.distDir },
+                viteConfig.root,
+                { distDir: config.distDir },
                 buildConfig.pathname,
                 buildConfig.body,
               );
@@ -565,32 +564,33 @@ if (import.meta.hot) {
         }
       },
     },
-    fsRouterTypegenPlugin({ srcDir: wakuConfig.srcDir }),
+    fsRouterTypegenPlugin({ srcDir: config.srcDir }),
     !!(
-      wakuFlags['with-vercel'] ||
-      wakuFlags['with-vercel-static'] ||
+      flags['with-vercel'] ||
+      flags['with-vercel-static'] ||
       process.env.VERCEL
     ) &&
       wakuDeployVercelPlugin({
-        wakuConfig,
-        serverless: !!wakuFlags['with-vercel'],
+        wakuConfig: config,
+        serverless: !!flags['with-vercel'],
       }),
     !!(
-      wakuFlags['with-netlify'] ||
-      wakuFlags['with-netlify-static'] ||
+      flags['with-netlify'] ||
+      flags['with-netlify-static'] ||
       process.env.NETLIFY
     ) &&
       wakuDeployNetlifyPlugin({
-        wakuConfig,
-        serverless: !!wakuFlags['with-netlify'],
+        wakuConfig: config,
+        serverless: !!flags['with-netlify'],
       }),
-    !!wakuFlags['with-cloudflare'] &&
-      wakuDeployCloudflarePlugin({ wakuConfig }),
-    !!wakuFlags['with-partykit'] && wakuDeployPartykitPlugin({ wakuConfig }),
-    !!wakuFlags['with-deno'] && wakuDeployDenoPlugin({ wakuConfig }),
-    !!wakuFlags['with-aws-lambda'] &&
+    !!flags['with-cloudflare'] &&
+      wakuDeployCloudflarePlugin({ wakuConfig: config }),
+    !!flags['with-partykit'] &&
+      wakuDeployPartykitPlugin({ wakuConfig: config }),
+    !!flags['with-deno'] && wakuDeployDenoPlugin({ wakuConfig: config }),
+    !!flags['with-aws-lambda'] &&
       wakuDeployAwsLambdaPlugin({
-        wakuConfig,
+        wakuConfig: config,
         streaming: process.env.DEPLOY_AWS_LAMBDA_STREAMING === 'true',
       }),
   ];
