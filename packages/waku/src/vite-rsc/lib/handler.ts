@@ -1,11 +1,11 @@
 import * as ReactServer from '@vitejs/plugin-rsc/rsc';
-import { decodeFuncId, decodeRscPath } from '../../../lib/renderers/utils.js';
-import { stringToStream } from '../../../lib/utils/stream.js';
-import { getErrorInfo } from '../../../lib/utils/custom-errors.js';
-import type { HandlerContext } from '../../../lib/middleware/types.js';
+import { decodeFuncId, decodeRscPath } from '../../lib/renderers/utils.js';
+import { stringToStream } from '../../lib/utils/stream.js';
+import { getErrorInfo } from '../../lib/utils/custom-errors.js';
+import type { HandlerContext } from '../../lib/middleware/types.js';
 import { config } from 'virtual:vite-rsc-waku/config';
 import { createRenderUtils, loadSsrEntryModule } from './render.js';
-import type { HandleRequest } from '../../../lib/types.js';
+import type { HandleRequest } from '../../lib/types.js';
 import wakuServerEntry from 'virtual:vite-rsc-waku/server-entry';
 
 type HandleRequestInput = Parameters<HandleRequest>[0];

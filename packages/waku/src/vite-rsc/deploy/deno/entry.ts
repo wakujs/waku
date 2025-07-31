@@ -4,7 +4,7 @@
 import { Hono } from 'jsr:@hono/hono';
 // @ts-expect-error deno
 import { serveStatic } from 'jsr:@hono/hono/deno';
-import { createHonoHandler } from '../../lib/rsc.js';
+import { createHonoHandler } from '../../lib/engine.js';
 import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
 import { config } from 'virtual:vite-rsc-waku/config';
 import path from 'node:path';

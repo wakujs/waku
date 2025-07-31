@@ -1,6 +1,6 @@
 import * as ReactServer from '@vitejs/plugin-rsc/rsc';
 import { captureOwnerStack, type ReactNode } from 'react';
-import type { HandleRequest } from '../../../lib/types.js';
+import type { HandleRequest } from '../../lib/types.js';
 
 export type RscElementsPayload = Record<string, unknown>;
 export type RscHtmlPayload = ReactNode;
@@ -64,7 +64,7 @@ export function createRenderUtils({
 }
 
 export function loadSsrEntryModule() {
-  return import.meta.viteRsc.loadModule<typeof import('../ssr.js')>(
+  return import.meta.viteRsc.loadModule<typeof import('./ssr.js')>(
     'ssr',
     'index',
   );

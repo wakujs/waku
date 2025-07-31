@@ -3,7 +3,7 @@ import { captureOwnerStack, use, type ReactNode } from 'react';
 import type { ReactFormState } from 'react-dom/client';
 import * as ReactDOMServer from 'react-dom/server.edge';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
-import type { RscElementsPayload, RscHtmlPayload } from './rsc/render.js';
+import type { RscElementsPayload, RscHtmlPayload } from './render.js';
 import { fakeFetchCode } from '../../lib/renderers/html.js';
 import { injectRSCPayload } from 'rsc-html-stream/server';
 
