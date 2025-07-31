@@ -18,7 +18,7 @@ export async function cli(cmd: string, flags: Record<string, any>) {
 
   const mainPluginOptions: MainPluginOptions = {
     flags,
-    config: config,
+    config,
   };
 
   if (cmd === 'dev') {
