@@ -1,1 +1,1 @@
-export * from './lib/ssr.js';
+export { renderHTML } from './lib/ssr.js';

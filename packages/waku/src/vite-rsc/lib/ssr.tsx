@@ -7,6 +7,9 @@ import type { RscElementsPayload, RscHtmlPayload } from './rsc/render.js';
 import { fakeFetchCode } from '../../lib/renderers/html.js';
 import { injectRSCPayload } from 'rsc-html-stream/server';
 
+// This code runs on ssr environment,
+// i.e. it runs on server but without react-server condition.
+
 export async function renderHTML(
   rscStream: ReadableStream<Uint8Array>,
   rscHtmlStream: ReadableStream<Uint8Array>,
