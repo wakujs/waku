@@ -1,8 +1,8 @@
-import type { Config, WakuMiddleware } from '../config.js';
+import type { BuiltinMiddleware, Config } from '../config.js';
 
 export type ConfigDev = Required<Config>;
 
-const DEFAULT_MIDDLEWARE: WakuMiddleware[] = [
+const DEFAULT_MIDDLEWARE: BuiltinMiddleware[] = [
   'waku/middleware/context',
   'waku/middleware/dev-server',
   'waku/middleware/handler',
