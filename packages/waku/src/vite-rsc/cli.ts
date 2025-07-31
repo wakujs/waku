@@ -1,5 +1,5 @@
 import * as vite from 'vite';
-import waku, { type WakuPluginOptions } from './plugin.js';
+import { wakuPlugin, type WakuPluginOptions } from './plugin.js';
 import type { Config } from '../config.js';
 import { existsSync } from 'node:fs';
 
@@ -24,7 +24,7 @@ export async function cli(cmd: string, flags: Record<string, any>) {
   if (cmd === 'dev') {
     const server = await vite.createServer({
       configFile: false,
-      plugins: [waku(wakuPluginOptions)],
+      plugins: [wakuPlugin(wakuPluginOptions)],
       server: {
         port: parseInt(flags.port || '3000', 10),
       },
@@ -37,7 +37,7 @@ export async function cli(cmd: string, flags: Record<string, any>) {
   if (cmd === 'build') {
     const builder = await vite.createBuilder({
       configFile: false,
-      plugins: [waku(wakuPluginOptions)],
+      plugins: [wakuPlugin(wakuPluginOptions)],
     });
     await builder.buildApp();
   }
@@ -45,7 +45,7 @@ export async function cli(cmd: string, flags: Record<string, any>) {
   if (cmd === 'start') {
     const server = await vite.preview({
       configFile: false,
-      plugins: [waku(wakuPluginOptions)],
+      plugins: [wakuPlugin(wakuPluginOptions)],
       preview: {
         port: parseInt(flags.port || '8080', 10),
       },

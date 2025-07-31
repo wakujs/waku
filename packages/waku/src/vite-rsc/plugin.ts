@@ -55,7 +55,7 @@ export type WakuFlags = {
   'with-aws-lambda'?: boolean | undefined;
 };
 
-export default function wakuPlugin(
+export function wakuPlugin(
   wakuPluginOptions?: WakuPluginOptions,
 ): PluginOption {
   const wakuConfig: Required<Config> = {
