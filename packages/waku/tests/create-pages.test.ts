@@ -1129,6 +1129,46 @@ describe('createPages pages and layouts', () => {
     expect(Object.keys(route.elements)).toEqual(['page:/test/[...path]']);
   });
 
+  it('creates a dynamic catch-all route that handles index', async () => {
+    const TestPage = vi.fn();
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/[...catchAll]',
+        component: TestPage,
+      }),
+    ]);
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
+      {
+        type: 'route',
+        elements: {
+          'page:/[...catchAll]': { isStatic: false },
+        },
+        rootElement: { isStatic: true },
+        routeElement: { isStatic: true },
+        noSsr: false,
+        path: [{ name: 'catchAll', type: 'wildcard' }],
+      },
+    ]);
+
+    // Test index route
+    const indexRoute = await handleRoute('/', {
+      query: '?skip=[]',
+    });
+    expect(indexRoute).toBeDefined();
+    expect(indexRoute.rootElement).toBeDefined();
+    expect(indexRoute.routeElement).toBeDefined();
+    expect(Object.keys(indexRoute.elements)).toEqual(['page:/[...catchAll]']);
+
+    // Test regular routes
+    const regularRoute = await handleRoute('/foo/bar', {
+      query: '?skip=[]',
+    });
+    expect(regularRoute).toBeDefined();
+    expect(Object.keys(regularRoute.elements)).toEqual(['page:/[...catchAll]']);
+  });
+
   it('fails if static paths do not match the slug pattern', async () => {
     createPages(async ({ createPage }) => [
       createPage({
