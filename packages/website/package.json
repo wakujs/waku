@@ -30,6 +30,6 @@
     "shiki": "^3.8.1",
     "tailwindcss": "4.1.11",
     "typescript": "^5.8.3",
-    "vite": "7.0.6"
+    "vite": "7.0.5"
   }
 }

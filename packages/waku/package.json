@@ -94,7 +94,7 @@
     "html-react-parser": "5.2.6",
     "rollup": "4.46.2",
     "rsc-html-stream": "0.0.7",
-    "vite": "7.0.6"
+    "vite": "7.0.5"
   },
   "devDependencies": {
     "@netlify/functions": "^4.2.1",
