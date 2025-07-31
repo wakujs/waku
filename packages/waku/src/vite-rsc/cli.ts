@@ -16,7 +16,7 @@ export async function cli(cmd: string, flags: Record<string, any>) {
     config = imported.module.default;
   }
 
-  const pluginOptions: MainPluginOptions = {
+  const mainPluginOptions: MainPluginOptions = {
     flags,
     config: config,
   };
@@ -24,7 +24,7 @@ export async function cli(cmd: string, flags: Record<string, any>) {
   if (cmd === 'dev') {
     const server = await vite.createServer({
       configFile: false,
-      plugins: [mainPlugin(pluginOptions)],
+      plugins: [mainPlugin(mainPluginOptions)],
       server: {
         port: parseInt(flags.port || '3000', 10),
       },
@@ -37,7 +37,7 @@ export async function cli(cmd: string, flags: Record<string, any>) {
   if (cmd === 'build') {
     const builder = await vite.createBuilder({
       configFile: false,
-      plugins: [mainPlugin(pluginOptions)],
+      plugins: [mainPlugin(mainPluginOptions)],
     });
     await builder.buildApp();
   }
@@ -45,7 +45,7 @@ export async function cli(cmd: string, flags: Record<string, any>) {
   if (cmd === 'start') {
     const server = await vite.preview({
       configFile: false,
-      plugins: [mainPlugin(pluginOptions)],
+      plugins: [mainPlugin(mainPluginOptions)],
       preview: {
         port: parseInt(flags.port || '8080', 10),
       },

@@ -56,7 +56,7 @@ export type Flags = {
 };
 
 export function mainPlugin(
-  wakuPluginOptions?: MainPluginOptions,
+  mainPluginOptions?: MainPluginOptions,
 ): PluginOption {
   const config: Required<Config> = {
     basePath: '/',
@@ -74,9 +74,9 @@ export function mainPlugin(
     unstable_honoEnhancer: undefined,
     unstable_viteConfigs: undefined,
     vite: undefined,
-    ...wakuPluginOptions?.config,
+    ...mainPluginOptions?.config,
   };
-  const flags = wakuPluginOptions?.flags ?? {};
+  const flags = mainPluginOptions?.flags ?? {};
   let privatePath: string;
   let customServerEntry: string | undefined;
 
