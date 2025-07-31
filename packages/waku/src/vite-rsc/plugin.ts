@@ -571,7 +571,7 @@ if (import.meta.hot) {
       process.env.VERCEL
     ) &&
       deployVercelPlugin({
-        config: config,
+        config,
         serverless: !!flags['with-vercel'],
       }),
     !!(
@@ -580,15 +580,15 @@ if (import.meta.hot) {
       process.env.NETLIFY
     ) &&
       deployNetlifyPlugin({
-        config: config,
+        config,
         serverless: !!flags['with-netlify'],
       }),
-    !!flags['with-cloudflare'] && deployCloudflarePlugin({ config: config }),
-    !!flags['with-partykit'] && deployPartykitPlugin({ config: config }),
-    !!flags['with-deno'] && deployDenoPlugin({ config: config }),
+    !!flags['with-cloudflare'] && deployCloudflarePlugin({ config }),
+    !!flags['with-partykit'] && deployPartykitPlugin({ config }),
+    !!flags['with-deno'] && deployDenoPlugin({ config }),
     !!flags['with-aws-lambda'] &&
       deployAwsLambdaPlugin({
-        config: config,
+        config,
         streaming: process.env.DEPLOY_AWS_LAMBDA_STREAMING === 'true',
       }),
   ];
