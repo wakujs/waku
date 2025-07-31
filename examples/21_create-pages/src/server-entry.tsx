@@ -11,17 +11,12 @@ import Root from './components/Root';
 import NestedLayout from './components/NestedLayout';
 import { DeeplyNestedLayout } from './components/DeeplyNestedLayout';
 import { readFile } from 'node:fs/promises';
-import DynamicPagePart from './components/DynamicPagePart';
-import StaticPagePart from './components/StaticPagePart';
+import DynamicSlice from './components/DynamicSlice';
+import StaticSlice from './components/StaticSlice';
+import SlicePage from './components/SlicePage';
 
 const pages = createPages(
-  async ({
-    createPage,
-    createLayout,
-    createRoot,
-    createApi,
-    createPagePart,
-  }) => [
+  async ({ createPage, createLayout, createRoot, createApi, createSlice }) => [
     createRoot({
       render: 'static',
       component: Root,
@@ -134,7 +129,7 @@ const pages = createPages(
       render: 'static',
       method: 'GET',
       handler: async () => {
-        const hiTxt = await readFile('./private/hi.txt');
+        const hiTxt = await readFile('./private/hi.txt', 'utf-8');
         return new Response(hiTxt);
       },
     }),
@@ -164,18 +159,23 @@ const pages = createPages(
       },
     }),
 
-    createPagePart({
-      path: '/page-parts',
-      render: 'static',
-      order: 0,
-      component: StaticPagePart,
+    createPage({
+      render: 'dynamic',
+      path: '/slice-page',
+      component: SlicePage,
+      slices: ['slice-0', 'slice-1'],
     }),
 
-    createPagePart({
-      path: '/page-parts',
+    createSlice({
+      render: 'static',
+      component: StaticSlice,
+      id: 'slice-0',
+    }),
+
+    createSlice({
       render: 'dynamic',
-      order: 1,
-      component: DynamicPagePart,
+      component: DynamicSlice,
+      id: 'slice-1',
     }),
   ],
 );

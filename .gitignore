@@ -4,7 +4,7 @@ node_modules
 dist
 /packages/waku/README.md
 /packages/create-waku/template
-.env
+.env.local
 .devcontainer
 .vscode
 *.tsbuildinfo

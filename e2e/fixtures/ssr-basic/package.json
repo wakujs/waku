@@ -10,14 +10,15 @@
   },
   "dependencies": {
     "ai": "^4.3.19",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "react-server-dom-webpack": "19.1.0",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "react-server-dom-webpack": "19.1.1",
     "waku": "latest"
   },
   "devDependencies": {
-    "@types/react": "^19.1.8",
-    "@types/react-dom": "^19.1.6",
-    "typescript": "^5.8.3"
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
+    "typescript": "^5.8.3",
+    "vite": "7.0.5"
   }
 }

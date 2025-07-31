@@ -81,4 +81,35 @@ test.describe(`ssr-basic`, () => {
     await page.goto(`http://localhost:${port}/test`);
     await expect(page.getByTestId('resolved-promise')).toHaveText('test');
   });
+
+  test('test env', async ({ page }) => {
+    await page.goto(`http://localhost:${port}`);
+
+    const testEnvServer = page.getByTestId('test-env-server');
+    await expect(testEnvServer).toHaveText(
+      JSON.stringify(
+        {
+          'import.meta.env.WAKU_PUBLIC_TEST': 'ok',
+          'import.meta.env.WAKU_PRIVATE_TEST': '-',
+          'process.env.WAKU_PUBLIC_TEST': 'ok',
+          'process.env.WAKU_PRIVATE_TEST': 'ok',
+        },
+        null,
+        2,
+      ),
+    );
+
+    const testEnvClient = page.getByTestId('test-env-client');
+    await expect(testEnvClient).toHaveText(
+      JSON.stringify(
+        {
+          'import.meta.env.WAKU_PUBLIC_TEST': 'ok',
+          'import.meta.env.WAKU_PRIVATE_TEST': '-',
+          'process.env.WAKU_PUBLIC_TEST': 'ok',
+        },
+        null,
+        2,
+      ),
+    );
+  });
 });

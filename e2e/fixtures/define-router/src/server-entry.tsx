@@ -10,7 +10,7 @@ import BazPage from './routes/baz/page.js';
 import { Slice001 } from './components/slice001.js';
 import { Slice002 } from './components/slice002.js';
 
-const STATIC_PATHS = ['/', '/foo'];
+const STATIC_PATHS = ['/', '/foo', '/baz'];
 const PATH_PAGE: Record<string, unknown> = {
   '/': <Page />,
   '/foo': <FooPage />,
