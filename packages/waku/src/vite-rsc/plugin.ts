@@ -154,7 +154,7 @@ export function wakuPlugin(
               build: {
                 rollupOptions: {
                   input: {
-                    index: path.join(__dirname, 'entry.rsc.js'),
+                    index: path.join(__dirname, 'entry.server.js'),
                   },
                 },
               },
@@ -504,7 +504,7 @@ if (import.meta.hot) {
             config.environments.rsc!.build.outDir,
             'index.js',
           );
-          const entry: typeof import('./entry.rsc.js') = await import(
+          const entry: typeof import('./entry.server.js') = await import(
             pathToFileURL(entryPath).href
           );
 
