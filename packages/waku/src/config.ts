@@ -2,7 +2,7 @@ import type { UserConfig } from 'vite';
 import type { Middleware } from './lib/middleware/types.js';
 
 export type { Middleware };
-export type WakuMiddleware =
+export type BuiltinMiddleware =
   | 'waku/middleware/context'
   | 'waku/middleware/dev-server'
   | 'waku/middleware/handler';
