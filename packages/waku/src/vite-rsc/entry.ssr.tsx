@@ -1,1 +1,1 @@
-export { renderHTML } from './lib/ssr.js';
+export { renderHTML, renderHtmlFallback } from './lib/ssr.js';
