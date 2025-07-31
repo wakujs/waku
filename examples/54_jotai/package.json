@@ -13,12 +13,12 @@
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "react-server-dom-webpack": "19.1.1",
-    "waku": "0.23.6",
+    "waku": "0.23.7",
     "waku-jotai": "0.0.2"
   },
   "devDependencies": {
-    "@types/react": "19.1.8",
-    "@types/react-dom": "19.1.6",
+    "@types/react": "19.1.9",
+    "@types/react-dom": "19.1.7",
     "typescript": "5.8.3"
   }
 }
