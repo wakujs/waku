@@ -1,6 +1,6 @@
-import * as ReactClient from '@vitejs/plugin-rsc/browser';
+import { setServerCallback } from '@vitejs/plugin-rsc/browser';
 import { unstable_callServerRsc } from '../../minimal/client.js';
-ReactClient.setServerCallback(unstable_callServerRsc);
+setServerCallback(unstable_callServerRsc);
 
 if (import.meta.hot) {
   import.meta.hot.on('rsc:update', (e) => {

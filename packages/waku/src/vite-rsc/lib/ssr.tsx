@@ -1,7 +1,7 @@
-import * as ReactClient from '@vitejs/plugin-rsc/ssr';
+import { createFromReadableStream } from '@vitejs/plugin-rsc/ssr';
 import { captureOwnerStack, use, type ReactNode } from 'react';
 import type { ReactFormState } from 'react-dom/client';
-import * as ReactDOMServer from 'react-dom/server.edge';
+import { renderToReadableStream } from 'react-dom/server.edge';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import type { RscElementsPayload, RscHtmlPayload } from './render.js';
 import { fakeFetchCode } from '../../lib/renderers/html.js';
@@ -31,10 +31,8 @@ export async function renderHTML(
     // RSC stream needs to be deserialized inside SSR component.
     // This is for ReactDomServer preinit/preload (e.g. client reference modulepreload, css)
     // https://github.com/facebook/react/pull/31799#discussion_r1886166075
-    elementsPromise ??=
-      ReactClient.createFromReadableStream<RscElementsPayload>(stream1);
-    htmlPromise ??=
-      ReactClient.createFromReadableStream<RscHtmlPayload>(rscHtmlStream);
+    elementsPromise ??= createFromReadableStream<RscElementsPayload>(stream1);
+    htmlPromise ??= createFromReadableStream<RscHtmlPayload>(rscHtmlStream);
     // `HtmlNodeWrapper` is for a workaround.
     // https://github.com/facebook/react/issues/33937
     return (
@@ -46,7 +44,7 @@ export async function renderHTML(
 
   // render html
   const bootstrapScriptContent = await loadBootstrapScriptContent();
-  const htmlStream = await ReactDOMServer.renderToReadableStream(<SsrRoot />, {
+  const htmlStream = await renderToReadableStream(<SsrRoot />, {
     bootstrapScriptContent:
       getBootstrapPreamble({ rscPath: options?.rscPath || '' }) +
       bootstrapScriptContent,
@@ -99,7 +97,7 @@ export async function renderHtmlFallback() {
       <body></body>
     </html>
   );
-  const htmlStream = await ReactDOMServer.renderToReadableStream(fallback, {
+  const htmlStream = await renderToReadableStream(fallback, {
     bootstrapScriptContent,
   } as any);
   return htmlStream;

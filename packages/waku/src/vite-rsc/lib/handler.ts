@@ -1,4 +1,10 @@
-import * as ReactServer from '@vitejs/plugin-rsc/rsc';
+import {
+  createTemporaryReferenceSet,
+  decodeReply,
+  loadServerAction,
+  decodeAction,
+  decodeFormState,
+} from '@vitejs/plugin-rsc/rsc';
 import { decodeFuncId, decodeRscPath } from '../../lib/renderers/utils.js';
 import { stringToStream } from '../../lib/utils/stream.js';
 import { getErrorInfo } from '../../lib/utils/custom-errors.js';
@@ -80,9 +86,9 @@ async function getInput(ctx: HandlerContext) {
       const body = contentType?.startsWith('multipart/form-data')
         ? await request.formData()
         : await request.text();
-      temporaryReferences = ReactServer.createTemporaryReferenceSet();
-      const args = await ReactServer.decodeReply(body, { temporaryReferences });
-      const action = await ReactServer.loadServerAction(actionId);
+      temporaryReferences = createTemporaryReferenceSet();
+      const args = await decodeReply(body, { temporaryReferences });
+      const action = await loadServerAction(actionId);
       input = {
         type: 'function',
         fn: action as any,
@@ -97,7 +103,7 @@ async function getInput(ctx: HandlerContext) {
         const body = contentType?.startsWith('multipart/form-data')
           ? await request.formData()
           : await request.text();
-        rscParams = await ReactServer.decodeReply(body, {
+        rscParams = await decodeReply(body, {
           temporaryReferences,
         });
       }
@@ -117,12 +123,12 @@ async function getInput(ctx: HandlerContext) {
     ) {
       // server action: no js (progressive enhancement)
       const formData = await request.formData();
-      const decodedAction = await ReactServer.decodeAction(formData);
+      const decodedAction = await decodeAction(formData);
       input = {
         type: 'action',
         fn: async () => {
           const result = await decodedAction();
-          return await ReactServer.decodeFormState(result, formData);
+          return await decodeFormState(result, formData);
         },
         pathname: decodeURI(url.pathname),
         req: ctx.req,
