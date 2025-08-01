@@ -1,11 +1,8 @@
 import type { UserConfig } from 'vite';
 import type { Middleware } from './lib/middleware/types.js';
+import type { BuiltinMiddleware } from './lib/config.js';
 
 export type { Middleware };
-export type BuiltinMiddleware =
-  | 'waku/middleware/context'
-  | 'waku/middleware/dev-server'
-  | 'waku/middleware/handler';
 
 export interface Config {
   /**
