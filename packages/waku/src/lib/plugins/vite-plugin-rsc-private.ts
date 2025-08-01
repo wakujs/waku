@@ -17,8 +17,11 @@ export function rscPrivatePlugin({
       privatePath = joinPath(config.root, privateDir);
     },
     load(id) {
+      if (this.environment.name === 'rsc') {
+        return;
+      }
       if (id.startsWith(privatePath)) {
-        throw new Error('Private file access is not allowed');
+        throw new Error('Load private directory in client side is not allowed');
       }
     },
     handleHotUpdate({ file }) {
