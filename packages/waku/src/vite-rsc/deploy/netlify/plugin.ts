@@ -29,15 +29,11 @@ export function deployNetlifyPlugin(deployOptions: {
         },
       };
     },
-    writeBundle: {
+    buildApp: {
       order: 'post',
-      sequential: true,
-      async handler() {
-        if (this.environment.name !== 'ssr') {
-          return;
-        }
+      async handler(builder) {
         await build({
-          config: this.environment.getTopLevelConfig(),
+          config: builder.config,
           opts: deployOptions.config,
           serverless: deployOptions.serverless,
         });

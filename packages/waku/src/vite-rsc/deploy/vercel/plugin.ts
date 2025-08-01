@@ -29,17 +29,11 @@ export function deployVercelPlugin(deployOptions: {
         },
       };
     },
-    // "post ssr writeBundle" is a signal that the entire build is finished.
-    // this can be replaced with `buildApp` hook on Vite 7 https://github.com/vitejs/vite/pull/19971
-    writeBundle: {
+    buildApp: {
       order: 'post',
-      sequential: true,
-      async handler() {
-        if (this.environment.name !== 'ssr') {
-          return;
-        }
+      async handler(builder) {
         await build({
-          config: this.environment.getTopLevelConfig(),
+          config: builder.config,
           opts: deployOptions.config,
           serverless: deployOptions.serverless,
         });

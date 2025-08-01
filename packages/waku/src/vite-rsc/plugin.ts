@@ -489,16 +489,11 @@ if (import.meta.hot) {
         }
       },
       // cf. packages/waku/src/lib/builder/build.ts
-      writeBundle: {
+      buildApp: {
         order: 'post',
-        sequential: true,
-        async handler(_options, _bundle) {
-          if (this.environment.name !== 'ssr') {
-            return;
-          }
-
+        async handler(builder) {
           // import server entry
-          const viteConfig = this.environment.getTopLevelConfig();
+          const viteConfig = builder.config;
           const entryPath = path.join(
             viteConfig.environments.rsc!.build.outDir,
             'index.js',
@@ -533,7 +528,7 @@ if (import.meta.hot) {
           // save platform data
           const platformDataCode = `globalThis.__WAKU_SERVER_PLATFORM_DATA__ = ${JSON.stringify((globalThis as any).__WAKU_SERVER_PLATFORM_DATA__ ?? {}, null, 2)}\n`;
           const platformDataFile = path.join(
-            this.environment.getTopLevelConfig().environments.rsc!.build.outDir,
+            builder.config.environments.rsc!.build.outDir,
             '__waku_set_platform_data.js',
           );
           fs.writeFileSync(platformDataFile, platformDataCode);
