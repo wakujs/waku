@@ -1,5 +1,6 @@
 import type { UserConfig } from 'vite';
 import type { Middleware } from './lib/middleware/types.js';
+import type { BuiltinMiddleware } from './lib/config.js';
 
 export type { Middleware };
 
@@ -51,7 +52,7 @@ export interface Config {
    *   'waku/middleware/handler',
    * ]
    */
-  middleware?: string[];
+  middleware?: (BuiltinMiddleware | (string & {}))[];
   /**
    * Enhancer for Hono
    * Defaults to `undefined`
