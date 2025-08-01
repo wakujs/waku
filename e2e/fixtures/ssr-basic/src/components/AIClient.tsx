@@ -1,5 +1,5 @@
 'use client';
-import { useAIState, useActions, useUIState } from 'ai/rsc';
+import { useAIState, useActions, useUIState } from '@ai-sdk/rsc';
 import type { AIProvider } from '../ai/index.js';
 import { useActionState, useTransition } from 'react';
 

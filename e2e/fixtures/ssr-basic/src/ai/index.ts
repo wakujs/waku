@@ -1,4 +1,4 @@
-import { createAI, getMutableAIState } from 'ai/rsc';
+import { createAI, getMutableAIState } from '@ai-sdk/rsc';
 
 type UIState = {
   count: number;
