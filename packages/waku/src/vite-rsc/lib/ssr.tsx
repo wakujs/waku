@@ -7,8 +7,10 @@ import type { RscElementsPayload, RscHtmlPayload } from './render.js';
 import { fakeFetchCode } from '../../lib/renderers/html.js';
 import { injectRSCPayload } from 'rsc-html-stream/server';
 
-// This code runs on ssr environment,
-// i.e. it runs on server but without react-server condition.
+// This code runs on `ssr` environment,
+// i.e. it runs on server but without `react-server` condition.
+// These utilities are used by `rsc` environment through
+// `import.meta.viteRsc.loadModule` API.
 
 export async function renderHTML(
   rscStream: ReadableStream<Uint8Array>,
