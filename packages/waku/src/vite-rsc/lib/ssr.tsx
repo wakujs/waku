@@ -6,6 +6,7 @@ import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import type { RscElementsPayload, RscHtmlPayload } from './render.js';
 import { fakeFetchCode } from '../../lib/renderers/html.js';
 import { injectRSCPayload } from 'rsc-html-stream/server';
+import fallbackHtml from 'virtual:vite-rsc-waku/fallback-html';
 
 // This code runs on `ssr` environment,
 // i.e. it runs on server but without `react-server` condition.
@@ -94,15 +95,16 @@ function getBootstrapPreamble(options: { rscPath: string }) {
 
 export async function renderHtmlFallback() {
   const bootstrapScriptContent = await loadBootstrapScriptContent();
-  const fallback = (
-    <html>
-      <body></body>
-    </html>
+  const html = fallbackHtml.replace(
+    '</body>',
+    () => `<script>${bootstrapScriptContent}</script></body>`,
   );
-  const htmlStream = await renderToReadableStream(fallback, {
-    bootstrapScriptContent,
-  } as any);
-  return htmlStream;
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(html));
+      controller.close();
+    },
+  });
 }
 
 function loadBootstrapScriptContent(): Promise<string> {
