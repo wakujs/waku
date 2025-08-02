@@ -31,9 +31,9 @@ test.describe(`rsc-basic`, () => {
     ).toHaveText('2');
   });
 
-  test('index.html', async ({ page }) => {
-    const res = await page.goto(`http://localhost:${port}/`);
-    expect(await res?.text()).toContain('name="test-custom-index-html"');
+  test('index.html', async ({ request }) => {
+    const res = await request.get(`http://localhost:${port}/`);
+    expect(await res.text()).toContain('name="test-custom-index-html"');
   });
 
   test('server ping', async ({ page }) => {
