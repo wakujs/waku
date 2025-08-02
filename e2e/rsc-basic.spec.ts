@@ -33,7 +33,9 @@ test.describe(`rsc-basic`, () => {
 
   test('index.html', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
-    await expect(page.locator('meta[name="custom-fallback-test"]')).toHaveCount(1);
+    await expect(page.locator('meta[name="custom-fallback-test"]')).toHaveCount(
+      1,
+    );
   });
 
   test('server ping', async ({ page }) => {
