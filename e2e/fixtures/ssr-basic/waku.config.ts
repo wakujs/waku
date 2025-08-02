@@ -6,7 +6,7 @@ export default defineConfig({
   unstable_viteConfigs: {
     'dev-main': () => ({
       optimizeDeps: {
-        exclude: ['ai/rsc'],
+        exclude: ['@ai-sdk/rsc'],
       },
     }),
   },
