@@ -4,6 +4,11 @@
     "parser": {
       "syntax": "typescript"
     },
+    "transform": {
+      "react": {
+        "runtime": "automatic"
+      }
+    },
     "target": "esnext"
   },
   "sourceMaps": true
