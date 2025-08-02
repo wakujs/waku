@@ -131,7 +131,6 @@ export function mainPlugin(
                 rollupOptions: {
                   input: {
                     index: path.join(__dirname, 'entry.browser.js'),
-                    indexHtml: 'index.html',
                   },
                 },
               },
