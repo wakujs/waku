@@ -7,3 +7,5 @@ packages:
 preferWorkspacePackages: true
 saveWorkspaceProtocol: true
 linkWorkspacePackages: true
+overrides:
+  vite: npm:rolldown-vite@latest
