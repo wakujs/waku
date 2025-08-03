@@ -32,7 +32,7 @@
   "devDependencies": {
     "@actions/core": "^1.11.1",
     "@eslint/js": "^9.32.0",
-    "@playwright/test": "^1.54.1",
+    "@playwright/test": "^1.54.2",
     "@types/babel__core": "^7.20.5",
     "@types/node": "^24.1.0",
     "@types/react": "^19.1.9",

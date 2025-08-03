@@ -9,7 +9,7 @@
     "start": "waku start"
   },
   "dependencies": {
-    "@stylexjs/stylex": "0.14.3",
+    "@stylexjs/stylex": "0.15.2",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "react-server-dom-webpack": "19.1.1",
