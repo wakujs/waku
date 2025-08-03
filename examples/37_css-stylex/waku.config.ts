@@ -33,23 +33,18 @@ const babelConfig = {
 };
 
 export default defineConfig({
-  unstable_viteConfigs: {
-    common: () => ({
-      css: {
-        postcss: {
-          plugins: [
-            typedStylexPlugin({
-              babelConfig: { babelrc: false, ...babelConfig },
-              include: ['./src/**/*.{js,jsx,ts,tsx}'],
-              useCSSLayers: true,
-            }),
-          ],
-        },
-      },
-      plugins: [react({ babel: babelConfig })],
-    }),
-  },
   vite: {
+    css: {
+      postcss: {
+        plugins: [
+          typedStylexPlugin({
+            babelConfig: { babelrc: false, ...babelConfig },
+            include: ['./src/**/*.{js,jsx,ts,tsx}'],
+            useCSSLayers: true,
+          }),
+        ],
+      },
+    },
     plugins: [react({ babel: babelConfig })],
   },
 });

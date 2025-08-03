@@ -12,14 +12,10 @@ export default defineConfig({
    * Defaults to "RSC".
    */
   rscBase: 'RSC', // Just for clarification in tests
-  unstable_viteConfigs: {
-    common: () => ({
-      ssr: {
-        resolve: {
-          // FIXME Ideally, we shouldn't need this.
-          conditions: ['module', 'node'],
-        },
-      },
-    }),
+  vite: {
+    resolve: {
+      // FIXME Ideally, we shouldn't need this.
+      conditions: ['module', 'node'],
+    },
   },
 });
