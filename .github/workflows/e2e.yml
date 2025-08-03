@@ -96,6 +96,13 @@ jobs:
       - if: ${{ inputs.react_version }}
         run: |
           pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
+          # overrides canary/experimental build from https://github.com/vitejs/vite-plugin-react/pull/524
+          if [ "${{ inputs.react_version }}" = "canary" ]; then
+            pnpm -r update @vitejs/plugin-rsc@https://pkg.pr.new/vitejs/vite-plugin-react/@vitejs/plugin-rsc-canary@524
+          fi
+          if [ "${{ inputs.react_version }}" = "experimental" ]; then
+            pnpm -r update @vitejs/plugin-rsc@https://pkg.pr.new/vitejs/vite-plugin-react/@vitejs/plugin-rsc-experimental@524
+          fi
       - run: pnpm install
       - uses: actions/download-artifact@v4
         with:
