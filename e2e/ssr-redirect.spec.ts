@@ -21,6 +21,7 @@ test.describe(`ssr-redirect`, () => {
 
   test('access async page directly', async ({ page, mode }) => {
     // TODO: async redirection on dev is flaky, so wrap with retry for now
+    // https://github.com/wakujs/waku/pull/1586
     if (mode === 'DEV') {
       await expect(async () => {
         await page.goto(`http://localhost:${port}/async`);
