@@ -59,6 +59,7 @@ export interface Config {
    */
   unstable_honoEnhancer?: string | undefined;
   /**
+   * @deprecated use `vite` instead.
    * Vite configuration options.
    * `common` can contains shared configs that are shallowly merged with other configs.
    * Defaults to `undefined` if not provided.
@@ -75,6 +76,12 @@ export interface Config {
         'build-deploy'?: () => UserConfig;
       }
     | undefined;
+  /**
+   * Vite configuration options.
+   * See https://vite.dev/guide/api-environment-plugins.html#environment-api-for-plugins
+   * for how to configure or enable plugins per environment.
+   */
+  vite?: UserConfig | undefined;
 }
 
 export function defineConfig(config: Config) {
