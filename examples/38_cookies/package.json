@@ -10,11 +10,11 @@
   },
   "dependencies": {
     "cookie": "1.0.2",
-    "hono": "4.8.10",
+    "hono": "4.8.12",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "react-server-dom-webpack": "19.1.1",
-    "waku": "0.23.7"
+    "waku": "0.24.0-alpha.0"
   },
   "devDependencies": {
     "@types/cookie": "1.0.0",
