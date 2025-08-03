@@ -578,7 +578,7 @@ if (import.meta.hot) {
     ) &&
       deployNetlifyPlugin({
         config,
-        serverless: !!flags['with-netlify'],
+        serverless: !flags['with-netlify-static'],
       }),
     !!flags['with-cloudflare'] && deployCloudflarePlugin({ config }),
     !!flags['with-partykit'] && deployPartykitPlugin({ config }),
