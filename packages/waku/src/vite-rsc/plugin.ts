@@ -569,7 +569,7 @@ if (import.meta.hot) {
     ) &&
       deployVercelPlugin({
         config,
-        serverless: !!flags['with-vercel'],
+        serverless: !flags['with-vercel-static'],
       }),
     !!(
       flags['with-netlify'] ||
@@ -578,7 +578,7 @@ if (import.meta.hot) {
     ) &&
       deployNetlifyPlugin({
         config,
-        serverless: !!flags['with-netlify'],
+        serverless: !flags['with-netlify-static'],
       }),
     !!flags['with-cloudflare'] && deployCloudflarePlugin({ config }),
     !!flags['with-partykit'] && deployPartykitPlugin({ config }),
