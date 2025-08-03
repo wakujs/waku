@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "cookie": "1.0.2",
-    "hono": "4.8.10",
+    "hono": "4.8.12",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "react-server-dom-webpack": "19.1.1",
