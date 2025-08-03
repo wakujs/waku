@@ -208,6 +208,9 @@ importers:
       react-dom:
         specifier: 19.1.1
         version: 19.1.1(react@19.1.1)
+      waku:
+        specifier: latest
+        version: link:../../../packages/waku
 
   e2e/fixtures/partial-build:
     dependencies:
