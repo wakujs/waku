@@ -40,6 +40,7 @@ async function runTest(
       write: false,
       rollupOptions: {
         onwarn,
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore not available on rolldown
         cache: false,
         input: path.resolve(root, inputFile),
