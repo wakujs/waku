@@ -14,8 +14,7 @@ test.describe(`wildcard api routes`, async () => {
     await stopApp?.();
   });
 
-  // @TODO: re-enable when root wildcard route can match index route - #1518
-  test.skip('catch all route can match as index route', async ({ page }) => {
+  test('catch all route can match as index route', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
     await expect(page.getByText('Catch All Pages Route')).toBeVisible();
   });

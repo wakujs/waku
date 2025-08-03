@@ -1,8 +1,13 @@
 import type { Config } from '../config.js';
 
+export type BuiltinMiddleware =
+  | 'waku/middleware/context'
+  | 'waku/middleware/dev-server'
+  | 'waku/middleware/handler';
+
 export type ConfigDev = Required<Config>;
 
-const DEFAULT_MIDDLEWARE = [
+const DEFAULT_MIDDLEWARE: BuiltinMiddleware[] = [
   'waku/middleware/context',
   'waku/middleware/dev-server',
   'waku/middleware/handler',
@@ -21,6 +26,7 @@ export async function resolveConfigDev(config: Config) {
     middleware: DEFAULT_MIDDLEWARE,
     unstable_honoEnhancer: undefined,
     unstable_viteConfigs: undefined,
+    vite: undefined,
     ...config,
   };
   return configDev;

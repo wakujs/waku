@@ -3,6 +3,7 @@ import {
   extname,
   parsePathWithSlug,
   path2regexp,
+  getPathMapping,
 } from '../src/lib/utils/path.js';
 
 function matchPath(path: string, input: string) {
@@ -43,5 +44,44 @@ describe('path2regexp', () => {
     expect(matchPath('/foo/[x]/[...y]', '/foo/bar')).toBe(false);
     expect(matchPath('/foo/[x]/[...y]', '/foo')).toBe(false);
     expect(matchPath('/foo/[x]/[...y]', '/bar')).toBe(false);
+  });
+});
+
+describe('getPathMapping', () => {
+  test('handles literal paths', () => {
+    const pathSpec = parsePathWithSlug('/foo/bar');
+    expect(getPathMapping(pathSpec, '/foo/bar')).toEqual({});
+    expect(getPathMapping(pathSpec, '/foo/baz')).toBe(null);
+  });
+
+  test('handles paths with groups', () => {
+    const pathSpec = parsePathWithSlug('/foo/[id]');
+    expect(getPathMapping(pathSpec, '/foo/123')).toEqual({ id: '123' });
+    expect(getPathMapping(pathSpec, '/foo/bar')).toEqual({ id: 'bar' });
+    expect(getPathMapping(pathSpec, '/foo')).toBe(null);
+  });
+
+  test('handles paths with wildcards', () => {
+    const pathSpec = parsePathWithSlug('/foo/[...path]');
+    expect(getPathMapping(pathSpec, '/foo/bar/baz')).toEqual({
+      path: ['bar', 'baz'],
+    });
+    expect(getPathMapping(pathSpec, '/foo/bar')).toEqual({ path: ['bar'] });
+    expect(getPathMapping(pathSpec, '/foo')).toBe(null);
+  });
+
+  test('handles wildcard at root level matching index route', () => {
+    const pathSpec = parsePathWithSlug('/[...catchAll]');
+    expect(getPathMapping(pathSpec, '/')).toEqual({ catchAll: [] });
+    expect(getPathMapping(pathSpec, '/foo')).toEqual({ catchAll: ['foo'] });
+    expect(getPathMapping(pathSpec, '/foo/bar')).toEqual({
+      catchAll: ['foo', 'bar'],
+    });
+  });
+
+  test('handles wildcard with prefix matching index', () => {
+    const pathSpec = parsePathWithSlug('/prefix/[...path]');
+    expect(getPathMapping(pathSpec, '/prefix')).toBe(null);
+    expect(getPathMapping(pathSpec, '/prefix/foo')).toEqual({ path: ['foo'] });
   });
 });
