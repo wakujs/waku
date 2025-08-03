@@ -13,6 +13,6 @@ export default function SlicePage() {
 export const getConfig = () => {
   return {
     render: 'dynamic',
-    slices: ['slice-one', 'slice-two'],
+    slices: ['one', 'two'],
   };
 };

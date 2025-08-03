@@ -95,11 +95,11 @@ export function unstable_fsRouter(
           .split('/')
           .filter(Boolean);
         // must come before isIgnoredPath check to include slices from inside _components
-        if (pathItems.at(-1)?.startsWith('_slice')) {
+        if (pathItems.at(-1)?.startsWith('_slice-')) {
           createSlice({
             component: mod.default,
             render: 'dynamic',
-            id: pathItems.at(-1)!.slice('_'.length),
+            id: pathItems.at(-1)!.slice('_slice-'.length),
             ...config,
           });
           continue;
