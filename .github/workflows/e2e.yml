@@ -115,7 +115,7 @@ jobs:
       - name: Install Playwright
         id: install-playwright
         uses: ./.github/actions/playwright
-      - run: pnpm exec playwright test --shard=${{ matrix.shared }}/${{ matrix.shardTotal }} e2e/monorepo.spec.ts
+      - run: pnpm exec playwright test --shard=${{ matrix.shared }}/${{ matrix.shardTotal }}
         timeout-minutes: 30
         env:
           TEMP_DIR: ${{ runner.temp }}
