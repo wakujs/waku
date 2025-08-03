@@ -40,6 +40,7 @@ async function runTest(
       write: false,
       rollupOptions: {
         onwarn,
+        // @ts-ignore not available on rolldown
         cache: false,
         input: path.resolve(root, inputFile),
       },
