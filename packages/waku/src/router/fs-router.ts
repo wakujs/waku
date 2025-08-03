@@ -11,6 +11,20 @@ import { isIgnoredPath } from '../lib/utils/fs-router.js';
 
 const DO_NOT_BUNDLE = '';
 
+const SLICE_PREFIX = '_slice';
+
+/**
+ * Helper to remove the `_slice-` prefix from a slice id.
+ * It will also remove any non-alphanumeric characters until one is found
+ */
+const removeStart = (s: string) => {
+  let withoutStart = s.slice(SLICE_PREFIX.length);
+  while (withoutStart.match(/[^a-zA-Z0-9]/)) {
+    withoutStart = withoutStart.slice(1);
+  }
+  return withoutStart;
+};
+
 export function unstable_fsRouter(
   importMetaUrl: string,
   loadPage: (file: string) => Promise<any> | undefined,
@@ -95,11 +109,11 @@ export function unstable_fsRouter(
           .split('/')
           .filter(Boolean);
         // must come before isIgnoredPath check to include slices from inside _components
-        if (pathItems.at(-1)?.startsWith('_slice-')) {
+        if (pathItems.at(-1)?.startsWith(SLICE_PREFIX)) {
           createSlice({
             component: mod.default,
             render: 'dynamic',
-            id: pathItems.at(-1)!.slice('_slice-'.length),
+            id: removeStart(pathItems.at(-1)!),
             ...config,
           });
           continue;
