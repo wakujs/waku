@@ -569,7 +569,7 @@ if (import.meta.hot) {
     ) &&
       deployVercelPlugin({
         config,
-        serverless: !!flags['with-vercel'],
+        serverless: !flags['with-vercel-static'],
       }),
     !!(
       flags['with-netlify'] ||
