@@ -22,7 +22,7 @@ export function llmTextPlugin(options: LLMTextPluginOptions = {}): Plugin {
   const {
     hostname = 'https://waku.gg',
     contentsPath = './private/contents',
-    outputPath = './public/llm.txt',
+    outputPath = './public/llms.txt',
   } = options;
 
   async function generateLLMText() {
@@ -67,7 +67,7 @@ export function llmTextPlugin(options: LLMTextPluginOptions = {}): Plugin {
       return new Date(b.date).getTime() - new Date(a.date).getTime();
     });
 
-    // Generate llm.txt content
+    // Generate llms.txt content
     let llmContent = `# Waku Documentation
 
 `;
@@ -101,7 +101,7 @@ export function llmTextPlugin(options: LLMTextPluginOptions = {}): Plugin {
 
     // Write the file
     await writeFile(outputPath, llmContent, 'utf8');
-    console.log(`✓ Generated llm.txt with ${posts.length} posts`);
+    console.log(`✓ Generated llms.txt with ${posts.length} posts`);
   }
 
   return {
@@ -112,21 +112,21 @@ export function llmTextPlugin(options: LLMTextPluginOptions = {}): Plugin {
     configureServer(server) {
       // Generate on dev server start
       generateLLMText().catch((error) => {
-        console.error('Failed to generate llm.txt', error);
+        console.error('Failed to generate llms.txt', error);
       });
 
       // Serve llm.txt in development
       server.middlewares.use(async (req, res, next) => {
-        if (req.url === '/llm.txt') {
+        if (req.url === '/llms.txt') {
           try {
             res.setHeader('Content-Type', 'text/plain; charset=utf-8');
             const content = await readFile(outputPath, 'utf8');
             res.end(content);
             return;
           } catch (error) {
-            console.error('Failed to read llm.txt', error);
+            console.error('Failed to read llms.txt', error);
             res.statusCode = 500;
-            res.end('Failed to read llm.txt');
+            res.end('Failed to read llms.txt');
             return;
           }
         }
