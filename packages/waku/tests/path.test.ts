@@ -84,4 +84,17 @@ describe('getPathMapping', () => {
     expect(getPathMapping(pathSpec, '/prefix')).toBe(null);
     expect(getPathMapping(pathSpec, '/prefix/foo')).toEqual({ path: ['foo'] });
   });
+
+  test('handles paths with pathless groups', () => {
+    const pathSpec = parsePathWithSlug('/(foo)/bar');
+    expect(getPathMapping(pathSpec, '/bar')).toEqual({});
+    expect(getPathMapping(pathSpec, '/(foo)/bar')).toEqual(null);
+  });
+
+  test('handles paths with pathless groups and groups', () => {
+    const pathSpec = parsePathWithSlug('/(foo)/bar/[id]');
+    expect(getPathMapping(pathSpec, '/bar/123')).toEqual({ id: '123' });
+    expect(getPathMapping(pathSpec, '/(foo)/bar/123')).toEqual(null);
+    expect(getPathMapping(pathSpec, '/(foo)/bar/[id]')).toEqual(null);
+  });
 });

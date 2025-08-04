@@ -518,7 +518,7 @@ export const createPages = <
       }
       wildcardPagePathMap.set(pagePath, [pathSpec, page.component]);
     } else {
-      throw new Error('Invalid page configuration');
+      throw new Error('Invalid page configuration ' + JSON.stringify(page));
     }
     if (page.slices?.length) {
       slicePathMap.set(page.path, page.slices);

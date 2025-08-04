@@ -155,16 +155,20 @@ export const getPathMapping = (
   pathname: string,
 ): Record<string, string | string[]> | null => {
   const actual = pathname.split('/').filter(Boolean);
-  if (pathSpec.length > actual.length) {
-    const hasWildcard = pathSpec.some((spec) => spec.type === 'wildcard');
+  // remove pathless groups
+  const cleanPathSpec = pathSpec.filter(
+    (spec) => !(spec.type === 'literal' && spec.name.startsWith('(')),
+  );
+  if (cleanPathSpec.length > actual.length) {
+    const hasWildcard = cleanPathSpec.some((spec) => spec.type === 'wildcard');
     if (!hasWildcard || actual.length > 0) {
       return null;
     }
   }
   const mapping: Record<string, string | string[]> = {};
   let wildcardStartIndex = -1;
-  for (let i = 0; i < pathSpec.length; i++) {
-    const { type, name } = pathSpec[i]!;
+  for (let i = 0; i < cleanPathSpec.length; i++) {
+    const { type, name } = cleanPathSpec[i]!;
     if (type === 'literal') {
       if (name !== actual[i]) {
         return null;
@@ -177,14 +181,14 @@ export const getPathMapping = (
     }
   }
   if (wildcardStartIndex === -1) {
-    if (pathSpec.length !== actual.length) {
+    if (cleanPathSpec.length !== actual.length) {
       return null;
     }
     return mapping;
   }
 
   if (wildcardStartIndex === 0 && actual.length === 0) {
-    const wildcardName = pathSpec[wildcardStartIndex]!.name;
+    const wildcardName = cleanPathSpec[wildcardStartIndex]!.name;
     if (wildcardName) {
       mapping[wildcardName] = [];
     }
@@ -192,8 +196,8 @@ export const getPathMapping = (
   }
 
   let wildcardEndIndex = -1;
-  for (let i = 0; i < pathSpec.length; i++) {
-    const { type, name } = pathSpec[pathSpec.length - i - 1]!;
+  for (let i = 0; i < cleanPathSpec.length; i++) {
+    const { type, name } = cleanPathSpec[cleanPathSpec.length - i - 1]!;
     if (type === 'literal') {
       if (name !== actual[actual.length - i - 1]) {
         return null;
@@ -208,7 +212,7 @@ export const getPathMapping = (
   if (wildcardStartIndex === -1 || wildcardEndIndex === -1) {
     throw new Error('Invalid wildcard path');
   }
-  const wildcardName = pathSpec[wildcardStartIndex]!.name;
+  const wildcardName = cleanPathSpec[wildcardStartIndex]!.name;
   if (wildcardName) {
     mapping[wildcardName] = actual.slice(
       wildcardStartIndex,
