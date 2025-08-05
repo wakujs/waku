@@ -385,8 +385,10 @@ export function unstable_defineRouter(fns: {
         if (!fns.handleSlice) {
           return null;
         }
-        const { isStatic } = (await fns.getSliceConfig?.(sliceId)) || {};
-        const { element } = await fns.handleSlice(sliceId);
+        const [{ isStatic }, { element }] = await Promise.all([
+          fns.getSliceConfig?.(sliceId) || ({} as { isStatic?: boolean }),
+          fns.handleSlice(sliceId),
+        ]);
         return renderRsc({
           [SLICE_SLOT_ID_PREFIX + sliceId]: element,
           // FIXME: hard-coded for now
