@@ -1,5 +1,5 @@
 import { renderToReadableStream } from '@vitejs/plugin-rsc/rsc';
-import { captureOwnerStack, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import type { HandleRequest } from '../../lib/types.js';
 
 export type RscElementsPayload = Record<string, unknown>;
@@ -20,7 +20,6 @@ export function createRenderUtils({
     ) {
       return e.digest;
     }
-    console.error('[RSC Error]', captureOwnerStack?.() || '', '\n', e);
   };
 
   return {

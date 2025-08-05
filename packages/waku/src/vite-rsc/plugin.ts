@@ -1,7 +1,7 @@
 import {
   mergeConfig,
   normalizePath,
-  RunnableDevEnvironment,
+  type RunnableDevEnvironment,
   type Plugin,
   type PluginOption,
   type UserConfig,
@@ -212,6 +212,10 @@ export function mainPlugin(
             environmentConfig.build.emptyOutDir = false;
           }
         }
+        // top-level-await in packages/waku/src/lib/middleware/context.ts
+        if (name !== 'client') {
+          environmentConfig.build.target ??= 'esnext';
+        }
 
         return {
           resolve: {
@@ -220,12 +224,6 @@ export function mainPlugin(
           optimizeDeps: {
             include: name === 'ssr' ? [`${PKG_NAME} > html-react-parser`] : [],
             exclude: [PKG_NAME, 'waku/minimal/client', 'waku/router/client'],
-          },
-          build: {
-            // top-level-await in packages/waku/src/lib/middleware/context.ts
-            target:
-              environmentConfig.build?.target ??
-              (name !== 'client' ? 'esnext' : undefined),
           },
         };
       },
@@ -540,8 +538,13 @@ if (import.meta.hot) {
     {
       name: 'rsc:private-dir',
       load(id) {
+        if (this.environment.name === 'rsc') {
+          return;
+        }
         if (id.startsWith(privatePath)) {
-          throw new Error('Private file access is not allowed');
+          throw new Error(
+            'Load private directory in client side is not allowed',
+          );
         }
       },
       hotUpdate(ctx) {
@@ -569,7 +572,7 @@ if (import.meta.hot) {
     ) &&
       deployVercelPlugin({
         config,
-        serverless: !!flags['with-vercel'],
+        serverless: !flags['with-vercel-static'],
       }),
     !!(
       flags['with-netlify'] ||
@@ -578,7 +581,7 @@ if (import.meta.hot) {
     ) &&
       deployNetlifyPlugin({
         config,
-        serverless: !!flags['with-netlify'],
+        serverless: !flags['with-netlify-static'],
       }),
     !!flags['with-cloudflare'] && deployCloudflarePlugin({ config }),
     !!flags['with-partykit'] && deployPartykitPlugin({ config }),
