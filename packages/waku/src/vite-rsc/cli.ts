@@ -28,6 +28,7 @@ export async function cli(cmd: string, flags: Record<string, any>) {
       server: {
         port: parseInt(flags.port || '3000', 10),
       },
+      base: config?.basePath ?? '/',
     });
     await server.listen();
     const url = server.resolvedUrls!['local'];
@@ -38,6 +39,7 @@ export async function cli(cmd: string, flags: Record<string, any>) {
     const builder = await vite.createBuilder({
       configFile: false,
       plugins: [mainPlugin(mainPluginOptions)],
+      base: config?.basePath ?? '/',
     });
     await builder.buildApp();
   }
@@ -49,6 +51,7 @@ export async function cli(cmd: string, flags: Record<string, any>) {
       preview: {
         port: parseInt(flags.port || '8080', 10),
       },
+      base: config?.basePath ?? '/',
     });
     const url = server.resolvedUrls!['local'];
     console.log(`ready: Listening on ${url}`);
