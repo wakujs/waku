@@ -6,6 +6,7 @@ import { AIProvider } from '../ai/index.js';
 import { AIClient } from './AIClient.js';
 import { TestEnvServer } from './test-env/server.js';
 import { TestEnvClient } from './test-env/client.js';
+import config from '../../private/config.js';
 
 const DelayedBackground = async () => {
   await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -47,6 +48,10 @@ const App = ({ name }: { name: string }) => {
             <div data-testid="test-env-client">
               <TestEnvClient />
             </div>
+          </section>
+          <section>
+            <h2>Private Config</h2>
+            <div data-testid="private-content">{config.content}</div>
           </section>
         </div>
       </body>
