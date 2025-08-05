@@ -1,6 +1,9 @@
 import { expect, vi, describe, it, beforeEach, assert } from 'vitest';
 import type { MockedFunction } from 'vitest';
-import { createPages } from '../src/router/create-pages.js';
+import {
+  createPages,
+  pathMappingWithoutGroups,
+} from '../src/router/create-pages.js';
 import type {
   CreateApi,
   CreateLayout,
@@ -20,6 +23,7 @@ import { expectType } from 'ts-expect';
 import type { TypeEqual } from 'ts-expect';
 import type { PathsForPages } from '../src/router/base-types.js';
 import type { GetSlugs } from '../src/router/create-pages-utils/inferred-path-types.js';
+import { parsePathWithSlug } from '../src/lib/utils/path.js';
 
 function Fake() {
   return null;
@@ -2237,5 +2241,22 @@ describe('createPages - grouped paths', () => {
       'layout:/',
       'layout:/(group)',
     ]);
+  });
+});
+
+describe('pathMappingWithoutGroups', () => {
+  it('handles paths with pathless groups', () => {
+    const pathSpec = parsePathWithSlug('/(foo)/bar');
+    expect(pathMappingWithoutGroups(pathSpec, '/bar')).toEqual({});
+    expect(pathMappingWithoutGroups(pathSpec, '/(foo)/bar')).toEqual(null);
+  });
+
+  it('handles paths with pathless groups and groups', () => {
+    const pathSpec = parsePathWithSlug('/(foo)/bar/[id]');
+    expect(pathMappingWithoutGroups(pathSpec, '/bar/123')).toEqual({
+      id: '123',
+    });
+    expect(pathMappingWithoutGroups(pathSpec, '/(foo)/bar/123')).toEqual(null);
+    expect(pathMappingWithoutGroups(pathSpec, '/(foo)/bar/[id]')).toEqual(null);
   });
 });
