@@ -303,11 +303,15 @@ export function unstable_defineRouter(fns: {
     }
     const skipIdSet = new Set(isStringArray(skipParam) ? skipParam : []);
     const { query } = parseRscParams(rscParams);
-    const { rootElement, routeElement, elements, slices } =
-      await fns.handleRoute(
-        pathname,
-        pathConfigItem.specs.isStatic ? {} : { query },
-      );
+    const {
+      rootElement,
+      routeElement,
+      elements,
+      slices = [],
+    } = await fns.handleRoute(
+      pathname,
+      pathConfigItem.specs.isStatic ? {} : { query },
+    );
     if (
       Object.keys(elements).some(
         (id) =>
@@ -317,15 +321,12 @@ export function unstable_defineRouter(fns: {
     ) {
       throw new Error('Element ID cannot start with "route:" or "slice:"');
     }
-    if (
-      (slices || []).length &&
-      !import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER
-    ) {
+    if (slices.length && !import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER) {
       throw new Error('Slice is still experimental');
     }
     const sliceElementEntries = (
       await Promise.all(
-        (slices || []).map(async (sliceId) => {
+        slices.map(async (sliceId) => {
           const id = SLICE_SLOT_ID_PREFIX + sliceId;
           const { isStatic } = (await fns.getSliceConfig?.(sliceId)) || {};
           if (isStatic && skipIdSet.has(id)) {
