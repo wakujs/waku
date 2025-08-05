@@ -18,11 +18,7 @@ const SLICE_PREFIX = '_slice';
  * It will also remove any non-alphanumeric characters until one is found
  */
 const removeStart = (s: string) => {
-  let withoutStart = s.slice(SLICE_PREFIX.length);
-  while (withoutStart.match(/[^a-zA-Z0-9]/)) {
-    withoutStart = withoutStart.slice(1);
-  }
-  return withoutStart;
+  return s.slice(SLICE_PREFIX.length).replace(/^[-_]*/g, '');
 };
 
 export function unstable_fsRouter(
