@@ -19,7 +19,7 @@
     "@types/react-dom": "19.1.7",
     "rollup": "4.46.2",
     "typescript": "5.9.2",
-    "vite": "7.0.5",
+    "vite": "7.0.6",
     "vite-tsconfig-paths": "5.1.4"
   }
 }
