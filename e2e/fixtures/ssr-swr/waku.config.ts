@@ -5,7 +5,7 @@ export default defineConfig({
     environments: {
       ssr: {
         optimizeDeps: {
-          include: ['swr'],
+          // include: ['swr'],
         },
       },
     },

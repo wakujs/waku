@@ -197,7 +197,7 @@ export function mainPlugin(
         if (environmentConfig.optimizeDeps?.include) {
           environmentConfig.optimizeDeps.include =
             environmentConfig.optimizeDeps.include.map((name) => {
-              if (name.startsWith('@vitejs/plugin-rsc/')) {
+              if (name.startsWith('@vitejs/plugin-rsc')) {
                 name = `${PKG_NAME} > ${name}`;
               }
               return name;
