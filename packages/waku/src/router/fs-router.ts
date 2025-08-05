@@ -1,21 +1,21 @@
-import {
-  unstable_getPlatformData,
-  unstable_setPlatformData,
-  unstable_getBuildOptions,
-} from '../server.js';
+// import {
+//   unstable_getPlatformData,
+//   unstable_setPlatformData,
+//   unstable_getBuildOptions,
+// } from '../server.js';
 import { createPages, METHODS } from './create-pages.js';
 import type { Method } from './create-pages.js';
 
-import { EXTENSIONS } from '../lib/builder/constants.js';
+// import { EXTENSIONS } from '../lib/builder/constants.js';
 import { isIgnoredPath } from '../lib/utils/fs-router.js';
 import * as virtualFsRouter from 'virtual:vite-rsc-waku/fs-router';
 
-const DO_NOT_BUNDLE = '';
+// const DO_NOT_BUNDLE = '';
 
 export function unstable_fsRouter(
-  importMetaUrl: string,
-  loadPage: (file: string) => Promise<any> | undefined,
-  options: {
+  _importMetaUrl: string,
+  _loadPage: (file: string) => Promise<any> | undefined,
+  _options: {
     /** e.g. `"pages"` will detect pages in `src/pages`. */
     pagesDir: string;
     /**
@@ -25,7 +25,7 @@ export function unstable_fsRouter(
     apiDir: string;
   },
 ) {
-  const buildOptions = unstable_getBuildOptions();
+  // const buildOptions = unstable_getBuildOptions();
   return createPages(
     async ({
       createPage,
