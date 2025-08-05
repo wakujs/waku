@@ -32,3 +32,18 @@ declare module 'virtual:vite-rsc-waku/fallback-html' {
   const default_: string;
   export default default_;
 }
+
+declare module 'virtual:vite-rsc-waku/fs-router' {
+  // const default_: string;
+  // export default default_;
+  export const files: string[];
+  export const loadPage: (file: string) => Promise<any>;
+  // export const loadPage: (file: string) => Promise<{
+  //   default: import("react").FC,
+  //   getConfig?: () => Promise<{
+  //     render?: 'dynamic' | 'static',
+  //   }>,
+  //   GET: (request: Request) => Promise<Response>,
+  // }>;
+  export const apiDir: string;
+}
