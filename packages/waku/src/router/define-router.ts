@@ -323,27 +323,25 @@ export function unstable_defineRouter(fns: {
     ) {
       throw new Error('Slice is still experimental');
     }
-    const sliceElementEntries = await Promise.all(
-      (slices || []).map(async (sliceId) => {
-        const id = SLICE_SLOT_ID_PREFIX + sliceId;
-        const { isStatic } = (await fns.getSliceConfig?.(sliceId)) || {};
-        if (isStatic && skipIdSet.has(id)) {
-          return null;
-        }
-        if (!fns.handleSlice) {
-          return null;
-        }
-        const { element } = await fns.handleSlice(sliceId);
-        return [id, element];
-      }),
-    );
+    const sliceElementEntries = (
+      await Promise.all(
+        (slices || []).map(async (sliceId) => {
+          const id = SLICE_SLOT_ID_PREFIX + sliceId;
+          const { isStatic } = (await fns.getSliceConfig?.(sliceId)) || {};
+          if (isStatic && skipIdSet.has(id)) {
+            return null;
+          }
+          if (!fns.handleSlice) {
+            return null;
+          }
+          const { element } = await fns.handleSlice(sliceId);
+          return [id, element];
+        }),
+      )
+    ).filter((ent): ent is NonNullable<typeof ent> => !!ent);
     const entries = {
       ...elements,
-      ...Object.fromEntries(
-        sliceElementEntries.filter(
-          (ent): ent is NonNullable<typeof ent> => !!ent,
-        ),
-      ),
+      ...Object.fromEntries(sliceElementEntries),
     };
     for (const id of pathConfigItem.specs.staticElementIds || []) {
       if (skipIdSet.has(id)) {
