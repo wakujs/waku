@@ -49,5 +49,10 @@
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.38.0",
     "waku": "workspace:*"
+  },
+  "pnpm": {
+    "overrides": {
+      "rollup": "4.45.3"
+    }
   }
 }
