@@ -11,6 +11,5 @@ export default function SliceTwo() {
 export const getConfig = () => {
   return {
     render: 'dynamic',
-    id: 'slice-two',
   };
 };

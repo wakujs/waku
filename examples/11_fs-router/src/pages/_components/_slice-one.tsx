@@ -11,6 +11,5 @@ export default function SliceOne() {
 export const getConfig = () => {
   return {
     render: 'static',
-    id: 'slice-one',
   };
 };
