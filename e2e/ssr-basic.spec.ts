@@ -112,4 +112,11 @@ test.describe(`ssr-basic`, () => {
       ),
     );
   });
+
+  test('private directory access', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/`);
+
+    const privateContent = page.getByTestId('private-content');
+    await expect(privateContent).toHaveText('hello world');
+  });
 });
