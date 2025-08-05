@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [0.24.0] - 2025-08-05
+
+### Added
+
+- feat: use @vitejs/plugin-rsc
+
+### Changed
+
+- Bug fixes & some updates
+
 ## [0.23.7] - 2025-07-31
 
 ### Changed
