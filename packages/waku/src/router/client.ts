@@ -79,7 +79,7 @@ const parseRoute = (url: URL, basePath: string): RouteProps => {
   };
 };
 
-const getHttpStatusFromMeta = (): string | undefined => {
+const parseRouteFromLocation = (basePath: string): RouteProps => {
   const httpStatusMeta = document.querySelector('meta[name="httpstatus"]');
   if (
     httpStatusMeta &&

@@ -29,11 +29,11 @@ const DEFAULT_HTML_HEAD = [
   createElement('meta', { name: 'generator', content: 'Waku' }),
 ];
 
-function withTrailingSlash(s: string) {
+function withTrialSlash(s: string) {
   return s.at(-1) === '/' ? s : `${s}/`;
 }
 
-const BASE_RSC_PATH = `${withTrailingSlash(import.meta.env?.WAKU_CONFIG_BASE_PATH)}${
+const BASE_RSC_PATH = `${withTrialSlash(import.meta.env?.WAKU_CONFIG_BASE_PATH)}${
   import.meta.env?.WAKU_CONFIG_RSC_BASE
 }/`;
 
