@@ -4,8 +4,8 @@ export default function SlicePage() {
   return (
     <div>
       <h2>Slice Page</h2>
-      <Slice id="slice-one" />
-      <Slice id="slice-two" />
+      <Slice id="one" />
+      <Slice id="two" />
     </div>
   );
 }
@@ -13,6 +13,6 @@ export default function SlicePage() {
 export const getConfig = () => {
   return {
     render: 'dynamic',
-    slices: ['slice-one', 'slice-two'],
+    slices: ['one', 'two'],
   };
 };
