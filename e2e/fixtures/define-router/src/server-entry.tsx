@@ -35,9 +35,6 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
           'layout:/': { isStatic },
           [`page:${path}`]: { isStatic },
         },
-        ...(['/', '/bar'].includes(path)
-          ? { slices: { slice001: { isStatic: true } } }
-          : {}),
       };
     }),
     {
@@ -93,16 +90,8 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
         ),
         [`page:${path}`]: PATH_PAGE[path],
       },
+      ...(['/', '/bar'].includes(path) ? { slices: ['slice001'] } : {}),
     };
-  },
-  handleSlice: async (sliceId) => {
-    if (sliceId === 'slice001') {
-      return { element: <Slice001 /> };
-    }
-    if (sliceId === 'slice002') {
-      return { element: <Slice002 /> };
-    }
-    throw new Error('No such slice: ' + sliceId);
   },
   handleApi: async (path, opt) => {
     if (path === '/api/hi.txt') {
@@ -148,6 +137,24 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
     return {
       status: 404,
     };
+  },
+  getSliceConfig: async (sliceId) => {
+    if (sliceId === 'slice001') {
+      return { isStatic: true };
+    }
+    if (sliceId === 'slice002') {
+      return {};
+    }
+    return null;
+  },
+  handleSlice: async (sliceId) => {
+    if (sliceId === 'slice001') {
+      return { element: <Slice001 /> };
+    }
+    if (sliceId === 'slice002') {
+      return { element: <Slice002 /> };
+    }
+    throw new Error('No such slice: ' + sliceId);
   },
 });
 

@@ -184,7 +184,7 @@ export function unstable_defineRouter(fns: {
   // TODO: Not sure if these Slice APIs are well designed. Let's revisit.
   getSliceConfig?: (sliceId: string) => Promise<{
     isStatic?: boolean;
-  }>;
+  } | null>;
   handleSlice?: (sliceId: string) => Promise<{
     element: ReactNode;
   }>;
@@ -384,14 +384,15 @@ export function unstable_defineRouter(fns: {
         if (!fns.handleSlice) {
           return null;
         }
-        const [{ isStatic }, { element }] = await Promise.all([
-          fns.getSliceConfig?.(sliceId) || ({} as { isStatic?: boolean }),
+        const [sliceConfig, { element }] = await Promise.all([
+          fns.getSliceConfig?.(sliceId),
           fns.handleSlice(sliceId),
         ]);
         return renderRsc({
           [SLICE_SLOT_ID_PREFIX + sliceId]: element,
           // FIXME: hard-coded for now
-          [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + sliceId]: !!isStatic,
+          [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + sliceId]:
+            !!sliceConfig?.isStatic,
         });
       }
       const entries = await getEntries(
