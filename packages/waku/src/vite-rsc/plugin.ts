@@ -16,14 +16,12 @@ import fs from 'node:fs';
 import type { Config } from '../config.js';
 import { INTERNAL_setAllEnv, unstable_getBuildOptions } from '../server.js';
 import { emitStaticFile, waitForTasks } from '../lib/builder/build.js';
-import {
-  getManagedEntries,
-  getManagedMain,
-} from '../lib/plugins/vite-plugin-rsc-managed.js';
+import { getManagedMain } from '../lib/plugins/vite-plugin-rsc-managed.js';
 import { deployVercelPlugin } from './deploy/vercel/plugin.js';
 import { allowServerPlugin } from './plugins/allow-server.js';
 import {
   DIST_PUBLIC,
+  EXTENSIONS,
   SRC_CLIENT_ENTRY,
   SRC_SERVER_ENTRY,
 } from '../lib/builder/constants.js';
@@ -289,17 +287,14 @@ if (import.meta.hot) {
 `;
         }
         if (id === '\0virtual:vite-rsc-waku/server-entry-inner') {
-          return getManagedEntries(
-            joinPath(
-              this.environment.config.root,
-              `${config.srcDir}/server-entry.js`,
-            ),
-            'src',
-            {
-              pagesDir: config.pagesDir,
-              apiDir: config.apiDir,
-            },
-          );
+          const globBase = `/${config.srcDir}/${config.pagesDir}/`;
+          const globPattern = `${globBase}**/*.{${EXTENSIONS.map((ext) => ext.slice(1)).join(',')}}`;
+          return `
+import { unstable_fsRouter as fsRouter } from 'waku/router/server';
+const glob = import.meta.glob(${JSON.stringify(globPattern)}, { base: ${JSON.stringify(globBase)} });
+const apiDir = ${JSON.stringify(config.apiDir)};
+export default fsRouter(glob, { apiDir });
+`;
         }
         if (id === '\0virtual:vite-rsc-waku/client-entry') {
           return getManagedMain();
