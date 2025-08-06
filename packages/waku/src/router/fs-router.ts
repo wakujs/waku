@@ -108,7 +108,7 @@ export function unstable_fsRouter(
         if (pathItems.at(-1)?.startsWith(SLICE_PREFIX)) {
           createSlice({
             component: mod.default,
-            render: 'dynamic',
+            render: 'static',
             id: removeSlicePrefix(pathItems.at(-1)!),
             ...config,
           });
@@ -193,7 +193,7 @@ export function unstable_fsRouter(
           createPage({
             path,
             component: mod.default,
-            render: 'dynamic',
+            render: 'static',
             ...config,
           });
         }
