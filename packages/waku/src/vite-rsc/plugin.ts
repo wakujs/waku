@@ -563,7 +563,6 @@ export default fsRouter('', loadPage, { pagesDir, apiDir, files });
       },
     },
     rscIndexPlugin(),
-    fsRouterPlugin({ config }),
     fsRouterTypegenPlugin({ srcDir: config.srcDir }),
     !!(
       flags['with-vercel'] ||
@@ -591,28 +590,6 @@ export default fsRouter('', loadPage, { pagesDir, apiDir, files });
         config,
         streaming: process.env.DEPLOY_AWS_LAMBDA_STREAMING === 'true',
       }),
-  ];
-}
-
-function fsRouterPlugin({ config }: { config: Required<Config> }): Plugin[] {
-  return [
-    createVirtualPlugin('vite-rsc-waku/fs-router', async function () {
-      const globBase = `/${config.srcDir}/${config.pagesDir}/`;
-      const globPattern = `${globBase}**/*.{${EXTENSIONS.map((ext) => ext.slice(1)).join(',')}}`;
-      const output = `\
-const glob = import.meta.glob(${JSON.stringify(globPattern)});
-const globBase = ${JSON.stringify(globBase)};
-const files = Object.keys(glob).map(file => file.slice(globBase.length));
-const loadPage = (file) => glob[globBase + file]();
-const apiDir = ${JSON.stringify(config.apiDir)};
-export {
-  files,
-  loadPage,
-  apiDir,
-};
-`;
-      return output;
-    }),
   ];
 }
 
