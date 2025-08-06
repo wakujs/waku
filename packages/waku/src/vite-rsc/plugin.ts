@@ -1,6 +1,5 @@
 import {
   mergeConfig,
-  normalizePath,
   type RunnableDevEnvironment,
   type Plugin,
   type PluginOption,
@@ -14,7 +13,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import type { Config } from '../config.js';
-import { INTERNAL_setAllEnv, unstable_getBuildOptions } from '../server.js';
+import { INTERNAL_setAllEnv } from '../server.js';
 import { emitStaticFile, waitForTasks } from '../lib/builder/build.js';
 import { getManagedMain } from '../lib/plugins/vite-plugin-rsc-managed.js';
 import { deployVercelPlugin } from './deploy/vercel/plugin.js';
@@ -440,36 +439,6 @@ export default fsRouter(glob, { apiDir });
     },
     {
       name: 'rsc:waku:handle-build',
-      resolveId(source) {
-        if (source === 'virtual:vite-rsc-waku/set-platform-data') {
-          assert.equal(this.environment.name, 'rsc');
-          if (this.environment.mode === 'build') {
-            return { id: source, external: true, moduleSideEffects: true };
-          }
-          return '\0' + source;
-        }
-      },
-      async load(id) {
-        if (id === '\0virtual:vite-rsc-waku/set-platform-data') {
-          // no-op during dev
-          assert.equal(this.environment.mode, 'dev');
-          return `export {}`;
-        }
-      },
-      renderChunk(code, chunk) {
-        if (code.includes(`virtual:vite-rsc-waku/set-platform-data`)) {
-          const replacement = normalizeRelativePath(
-            path.relative(
-              path.join(chunk.fileName, '..'),
-              '__waku_set_platform_data.js',
-            ),
-          );
-          return code.replaceAll(
-            'virtual:vite-rsc-waku/set-platform-data',
-            () => replacement,
-          );
-        }
-      },
       // cf. packages/waku/src/lib/builder/build.ts
       buildApp: {
         order: 'post',
@@ -486,7 +455,6 @@ export default fsRouter(glob, { apiDir });
 
           // run `handleBuild`
           INTERNAL_setAllEnv(process.env as any);
-          unstable_getBuildOptions().unstable_phase = 'emitStaticFiles';
           const buildConfigs = await entry.handleBuild();
           for await (const buildConfig of buildConfigs || []) {
             if (buildConfig.type === 'file') {
@@ -506,14 +474,6 @@ export default fsRouter(glob, { apiDir });
             }
           }
           await waitForTasks();
-
-          // save platform data
-          const platformDataCode = `globalThis.__WAKU_SERVER_PLATFORM_DATA__ = ${JSON.stringify((globalThis as any).__WAKU_SERVER_PLATFORM_DATA__ ?? {}, null, 2)}\n`;
-          const platformDataFile = path.join(
-            builder.config.environments.rsc!.build.outDir,
-            '__waku_set_platform_data.js',
-          );
-          fs.writeFileSync(platformDataFile, platformDataCode);
         },
       },
     },
@@ -644,11 +604,6 @@ function rscIndexPlugin(): Plugin {
       }
     },
   };
-}
-
-function normalizeRelativePath(s: string) {
-  s = normalizePath(s);
-  return s[0] === '.' ? s : './' + s;
 }
 
 function createVirtualPlugin(name: string, load: Plugin['load']) {

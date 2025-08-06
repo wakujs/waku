@@ -19,8 +19,6 @@ type HandleRequestOutput = Awaited<ReturnType<HandleRequest>>;
 
 // cf. `handler` in packages/waku/src/lib/middleware/handler.ts
 export async function handleRequest(ctx: HandlerContext) {
-  await import('virtual:vite-rsc-waku/set-platform-data');
-
   const { input, temporaryReferences } = await getInput(ctx);
 
   const renderUtils = createRenderUtils({
