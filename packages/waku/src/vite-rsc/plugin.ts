@@ -31,7 +31,7 @@ import { deployCloudflarePlugin } from './deploy/cloudflare/plugin.js';
 import { deployPartykitPlugin } from './deploy/partykit/plugin.js';
 import { deployDenoPlugin } from './deploy/deno/plugin.js';
 import { deployAwsLambdaPlugin } from './deploy/aws-lambda/plugin.js';
-import { filePathToFileURL, joinPath } from '../lib/utils/path.js';
+import { joinPath } from '../lib/utils/path.js';
 
 const PKG_NAME = 'waku';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -77,7 +77,6 @@ export function mainPlugin(
   };
   const flags = mainPluginOptions?.flags ?? {};
   let privatePath: string;
-  let customServerEntry: string | undefined;
 
   const extraPlugins = [...(config.vite?.plugins ?? [])];
   // add react plugin automatically if users didn't include it on their own (e.g. swc, oxc, babel react compiler)
@@ -265,7 +264,6 @@ export function mainPlugin(
             undefined,
             options,
           );
-          customServerEntry = resolved?.id;
           return resolved ? resolved : '\0' + source;
         }
         if (source === 'virtual:vite-rsc-waku/client-entry') {
@@ -298,16 +296,6 @@ export default fsRouter(glob, { apiDir });
         }
         if (id === '\0virtual:vite-rsc-waku/client-entry') {
           return getManagedMain();
-        }
-      },
-      transform(code, id) {
-        // rewrite `fsRouter(import.meta.url, ...)` in custom server entry
-        // e.g. examples/11_fs-router/src/server-entry.tsx
-        // TODO: rework fsRouter to entirely avoid fs access on runtime
-        if (id === customServerEntry && code.includes('fsRouter')) {
-          const replacement = JSON.stringify(filePathToFileURL(id));
-          code = code.replaceAll(/\bimport\.meta\.url\b/g, () => replacement);
-          return code;
         }
       },
     },
