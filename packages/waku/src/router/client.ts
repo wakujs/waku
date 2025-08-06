@@ -579,12 +579,6 @@ export function Slice({
       fallback: ReactNode;
     }
 )) {
-  if (
-    typeof window !== 'undefined' &&
-    !import.meta.env?.VITE_EXPERIMENTAL_WAKU_ROUTER
-  ) {
-    throw new Error('Slice is still experimental');
-  }
   const router = useContext(RouterContext);
   if (!router) {
     throw new Error('Missing Router');
