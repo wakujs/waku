@@ -193,11 +193,14 @@ export function mainPlugin(
       },
       configEnvironment(name, environmentConfig, env) {
         // make @vitejs/plugin-rsc usable as a transitive dependency
-        // https://github.com/hi-ogawa/vite-plugins/issues/968
+        // by rewriting `optimizeDeps.include`. e.g.
+        // include: ["@vitejs/plugin-rsc/vendor/xxx", "@vitejs/plugin-rsc > yyy"]
+        // ⇓
+        // include: ["waku > @vitejs/plugin-rsc/vendor/xxx", "waku > @vitejs/plugin-rsc > yyy"]
         if (environmentConfig.optimizeDeps?.include) {
           environmentConfig.optimizeDeps.include =
             environmentConfig.optimizeDeps.include.map((name) => {
-              if (name.startsWith('@vitejs/plugin-rsc/')) {
+              if (name.startsWith('@vitejs/plugin-rsc')) {
                 name = `${PKG_NAME} > ${name}`;
               }
               return name;
