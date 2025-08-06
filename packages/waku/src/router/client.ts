@@ -632,6 +632,26 @@ const handleScroll = () => {
 };
 
 const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
+  if (import.meta.env.WAKU_HOT_RELOAD) {
+    const refetchRoute = () => {
+      staticPathSetRef.current.clear();
+      cachedIdSetRef.current.clear();
+      const rscPath = encodeRoutePath(route.path);
+      const rscParams = createRscParams(route.query);
+      refetch(rscPath, rscParams);
+    };
+    globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= [];
+    const index = globalThis.__WAKU_RSC_RELOAD_LISTENERS__.indexOf(
+      globalThis.__WAKU_REFETCH_ROUTE__!,
+    );
+    if (index !== -1) {
+      globalThis.__WAKU_RSC_RELOAD_LISTENERS__.splice(index, 1, refetchRoute);
+    } else {
+      globalThis.__WAKU_RSC_RELOAD_LISTENERS__.unshift(refetchRoute);
+    }
+    globalThis.__WAKU_REFETCH_ROUTE__ = refetchRoute;
+  }
+
   const elementsPromise = useElementsPromise();
   const [has404, setHas404] = useState(false);
   const requestedRouteRef = useRef<RouteProps>(initialRoute);

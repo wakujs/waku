@@ -110,6 +110,9 @@ export function mainPlugin(
             'import.meta.env.WAKU_CONFIG_RSC_BASE': JSON.stringify(
               config.rscBase,
             ),
+            'import.meta.env.WAKU_HOT_RELOAD': JSON.stringify(
+              env.command === 'serve',
+            ),
             // packages/waku/src/lib/plugins/vite-plugin-rsc-env.ts
             // CLI has loaded dotenv already at this point
             ...Object.fromEntries(
@@ -396,65 +399,65 @@ if (import.meta.hot) {
         }
       },
     },
-    {
-      // cf. packages/waku/src/lib/plugins/vite-plugin-rsc-hmr.ts
-      name: 'rsc:waku:patch-server-hmr',
-      apply: 'serve',
-      async transform(code, id) {
-        if (this.environment.name !== 'client') {
-          return;
-        }
-        if (id.includes('/waku/dist/minimal/client.js')) {
-          return code.replace(
-            /\nexport const fetchRsc = \(.*?\)=>\{/,
-            (m) =>
-              m +
-              `
-{
-  const refetchRsc = () => {
-    delete fetchCache[ENTRY];
-    const data = fetchRsc(rscPath, rscParams, fetchCache);
-    fetchCache[SET_ELEMENTS](() => data);
-  };
-  globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= [];
-  const index = globalThis.__WAKU_RSC_RELOAD_LISTENERS__.indexOf(globalThis.__WAKU_REFETCH_RSC__);
-  if (index !== -1) {
-    globalThis.__WAKU_RSC_RELOAD_LISTENERS__.splice(index, 1, refetchRsc);
-  } else {
-    globalThis.__WAKU_RSC_RELOAD_LISTENERS__.push(refetchRsc);
-  }
-  globalThis.__WAKU_REFETCH_RSC__ = refetchRsc;
-}
-`,
-          );
-        } else if (id.includes('/waku/dist/router/client.js')) {
-          return code.replace(
-            /\nconst InnerRouter = \(.*?\)=>\{/,
-            (m) =>
-              m +
-              `
-{
-  const refetchRoute = () => {
-    staticPathSetRef.current.clear();
-    cachedIdSetRef.current.clear();
-    const rscPath = encodeRoutePath(route.path);
-    const rscParams = createRscParams(route.query, []);
-    refetch(rscPath, rscParams);
-  };
-  globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= [];
-  const index = globalThis.__WAKU_RSC_RELOAD_LISTENERS__.indexOf(globalThis.__WAKU_REFETCH_ROUTE__);
-  if (index !== -1) {
-    globalThis.__WAKU_RSC_RELOAD_LISTENERS__.splice(index, 1, refetchRoute);
-  } else {
-    globalThis.__WAKU_RSC_RELOAD_LISTENERS__.unshift(refetchRoute);
-  }
-  globalThis.__WAKU_REFETCH_ROUTE__ = refetchRoute;
-}
-`,
-          );
-        }
-      },
-    },
+    //     {
+    //       // cf. packages/waku/src/lib/plugins/vite-plugin-rsc-hmr.ts
+    //       name: 'rsc:waku:patch-server-hmr',
+    //       apply: 'serve',
+    //       async transform(code, id) {
+    //         if (this.environment.name !== 'client') {
+    //           return;
+    //         }
+    //         if (id.includes('/waku/dist/minimal/client.js')) {
+    // //           return code.replace(
+    // //             /\nexport const fetchRsc = \(.*?\)=>\{/,
+    // //             (m) =>
+    // //               m +
+    // //               `
+    // // {
+    // //   const refetchRsc = () => {
+    // //     delete fetchCache[ENTRY];
+    // //     const data = fetchRsc(rscPath, rscParams, fetchCache);
+    // //     fetchCache[SET_ELEMENTS](() => data);
+    // //   };
+    // //   globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= [];
+    // //   const index = globalThis.__WAKU_RSC_RELOAD_LISTENERS__.indexOf(globalThis.__WAKU_REFETCH_RSC__);
+    // //   if (index !== -1) {
+    // //     globalThis.__WAKU_RSC_RELOAD_LISTENERS__.splice(index, 1, refetchRsc);
+    // //   } else {
+    // //     globalThis.__WAKU_RSC_RELOAD_LISTENERS__.push(refetchRsc);
+    // //   }
+    // //   globalThis.__WAKU_REFETCH_RSC__ = refetchRsc;
+    // // }
+    // // `,
+    // //           );
+    //         } else if (id.includes('/waku/dist/router/client.js')) {
+    //           return code.replace(
+    //             /\nconst InnerRouter = \(.*?\)=>\{/,
+    //             (m) =>
+    //               m +
+    //               `
+    // {
+    //   const refetchRoute = () => {
+    //     staticPathSetRef.current.clear();
+    //     cachedIdSetRef.current.clear();
+    //     const rscPath = encodeRoutePath(route.path);
+    //     const rscParams = createRscParams(route.query, []);
+    //     refetch(rscPath, rscParams);
+    //   };
+    //   globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= [];
+    //   const index = globalThis.__WAKU_RSC_RELOAD_LISTENERS__.indexOf(globalThis.__WAKU_REFETCH_ROUTE__);
+    //   if (index !== -1) {
+    //     globalThis.__WAKU_RSC_RELOAD_LISTENERS__.splice(index, 1, refetchRoute);
+    //   } else {
+    //     globalThis.__WAKU_RSC_RELOAD_LISTENERS__.unshift(refetchRoute);
+    //   }
+    //   globalThis.__WAKU_REFETCH_ROUTE__ = refetchRoute;
+    // }
+    // `,
+    //           );
+    //         }
+    //       },
+    //     },
     {
       name: 'rsc:waku:handle-build',
       resolveId(source) {
