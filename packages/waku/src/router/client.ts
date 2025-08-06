@@ -638,6 +638,7 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
       cachedIdSetRef.current.clear();
       const rscPath = encodeRoutePath(route.path);
       const rscParams = createRscParams(route.query);
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       refetch(rscPath, rscParams);
     };
     globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= [];
