@@ -34,6 +34,16 @@ export const METHODS = [
 ] as const;
 export type Method = (typeof METHODS)[number];
 
+export const pathMappingWithoutGroups: typeof getPathMapping = (
+  pathSpec,
+  pathname,
+) => {
+  const cleanPathSpec = pathSpec.filter(
+    (spec) => !(spec.type === 'literal' && spec.name.startsWith('(')),
+  );
+  return getPathMapping(cleanPathSpec, pathname);
+};
+
 const sanitizeSlug = (slug: string) =>
   slug.replace(/\./g, '').replace(/ /g, '-');
 
@@ -356,7 +366,7 @@ export const createPages = <
       ...wildcardPagePathMap.keys(),
     ];
     for (const p of allPaths) {
-      if (getPathMapping(parsePathWithSlug(p), path)) {
+      if (pathMappingWithoutGroups(parsePathWithSlug(p), path)) {
         return p;
       }
     }
@@ -376,7 +386,7 @@ export const createPages = <
     for (const [p, v] of apiConfigEntries) {
       if (
         (method in v.handlers || v.handlers.all) &&
-        getPathMapping(parsePathWithSlug(p!), path)
+        pathMappingWithoutGroups(parsePathWithSlug(p!), path)
       ) {
         return p;
       }
@@ -518,7 +528,7 @@ export const createPages = <
       }
       wildcardPagePathMap.set(pagePath, [pathSpec, page.component]);
     } else {
-      throw new Error('Invalid page configuration');
+      throw new Error('Invalid page configuration ' + JSON.stringify(page));
     }
     if (page.slices?.length) {
       slicePathMap.set(page.path, page.slices);
@@ -896,7 +906,7 @@ export const createPages = <
       }
       const layoutMatchPath = groupPathLookup.get(routePath) ?? routePath;
       const pathSpec = parsePathWithSlug(layoutMatchPath);
-      const mapping = getPathMapping(
+      const mapping = pathMappingWithoutGroups(
         pathSpec,
         // ensure path is encoded for props of page component
         encodeURI(path),
