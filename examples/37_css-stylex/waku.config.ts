@@ -1,9 +1,6 @@
 // based on
 // https://github.com/pawelblaszczyk5/vite-rsc-experiments/blob/4bc05095d9ec5dcb584af43a5704c4dceffd38b8/apps/stylex/vite.config.ts
 
-// Known issues
-// - server style HMR
-
 import { defineConfig } from 'waku/config';
 
 // @ts-expect-error - untyped module
@@ -50,6 +47,13 @@ export default defineConfig({
     }),
   },
   vite: {
-    plugins: [react({ babel: babelConfig })],
+    plugins: [
+      react({
+        babel: babelConfig,
+        // avoid stylex transform breaking `__WAKU_RSC_RELOAD_LISTENERS__` injection regex.
+        // this can be removed after https://github.com/wakujs/waku/pull/1604
+        exclude: [/\/node_modules\//, /\/waku\/dist\//],
+      }),
+    ],
   },
 });
