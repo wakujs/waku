@@ -4,7 +4,7 @@ import { unstable_defineEntries as defineEntries } from 'waku/minimal/server';
 import { unstable_fsRouter as fsRouter } from 'waku/router/server';
 
 const router = fsRouter(
-  import.meta.glob('/src/pages/**/*.tsx', { base: "/src/pages" }),
+  import.meta.glob('/src/pages/**/*.tsx', { base: '/src/pages' }),
   { apiDir: 'api' },
 );
 
