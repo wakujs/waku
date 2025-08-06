@@ -4,7 +4,7 @@ title: Introducing “slice components”
 description: We’ve re-thought the api for fine-grained component rendering.
 author: tyler
 release: v0.25
-date: 2025/08/15
+date: 2025/08/12
 ---
 
 We’re happy to announce Waku v0.25 with a brand new API: the Slice Components!
@@ -45,7 +45,7 @@ export const getConfig = () => {
 };
 ```
 
-Please notice: `slices` must be specified with each of the slice ids in order for waku to know how to bundle your page without any compiler magic.
+Please notice: `slices` must be specified with each of the slice ids in order for Waku to know how to bundle your page without any compiler magic.
 
 The file convention for Slice components is `_slice-${string}.tsx` (TypeScript string literal syntax). We will look for these anywhere in the `src/pages` directory. And by default, the slice id will be the filename without the `_slice-` prefix.
 
@@ -68,7 +68,7 @@ We're really happy with the new approach and how it will allow simply importing 
 
 ## Lazy Slice Components
 
-`lazy` Slice Components are a new addition with the Slices API. They are waku's take on the [server islands feature](https://astro.build/blog/astro-4120/) from Astro. `lazy` allows components to be requested indepent from the page they are used on. This is useful for components that are expensive to render or that could be hosted separately (e.g. on a CDN).
+`lazy` Slice Components are a new addition with the Slices API. They are Waku's take on the [server islands feature](https://astro.build/blog/astro-4120/) from Astro. `lazy` allows components to be requested indepent from the page they are used on. This is useful for components that are expensive to render or that could be hosted separately (e.g. on a CDN).
 
 If we re-use the example above, it could be written like this:
 
