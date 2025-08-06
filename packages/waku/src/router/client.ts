@@ -56,25 +56,30 @@ type InferredPaths = RouteConfig extends {
   ? AllowPathDecorators<UserPaths>
   : string;
 
-const normalizeRoutePath = (path: string) => {
+const normalizeRoutePath = (path: string, basePath: string) => {
   for (const suffix of ['/', '/index.html']) {
     if (path.endsWith(suffix)) {
-      return path.slice(0, -suffix.length) || '/';
+      path = path.slice(0, -suffix.length) || '/';
+      break;
     }
+  }
+
+  if (path.startsWith(basePath)) {
+    return path.slice(basePath.length) || '/';
   }
   return path;
 };
 
-const parseRoute = (url: URL): RouteProps => {
+const parseRoute = (url: URL, basePath: string): RouteProps => {
   const { pathname, searchParams, hash } = url;
   return {
-    path: normalizeRoutePath(pathname),
+    path: normalizeRoutePath(pathname, basePath),
     query: searchParams.toString(),
     hash,
   };
 };
 
-const parseRouteFromLocation = (): RouteProps => {
+const parseRouteFromLocation = (basePath: string): RouteProps => {
   const httpStatusMeta = document.querySelector('meta[name="httpstatus"]');
   if (
     httpStatusMeta &&
@@ -83,7 +88,7 @@ const parseRouteFromLocation = (): RouteProps => {
   ) {
     return { path: '/404', query: '', hash: '' };
   }
-  return parseRoute(new URL(window.location.href));
+  return parseRoute(new URL(window.location.href), basePath);
 };
 
 const isAltClick = (event: MouseEvent<HTMLAnchorElement>) =>
@@ -905,10 +910,13 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
 };
 
 export function Router({
-  initialRoute = parseRouteFromLocation(),
+  initialRoute,
+  basePath = import.meta.env.WAKU_CONFIG_BASE_PATH ?? '/',
 }: {
   initialRoute?: RouteProps;
+  basePath?: string;
 }) {
+  initialRoute = parseRouteFromLocation(basePath);
   const initialRscPath = encodeRoutePath(initialRoute.path);
   const initialRscParams = createRscParams(initialRoute.query);
   return createElement(

@@ -29,7 +29,11 @@ const DEFAULT_HTML_HEAD = [
   createElement('meta', { name: 'generator', content: 'Waku' }),
 ];
 
-const BASE_RSC_PATH = `${import.meta.env?.WAKU_CONFIG_BASE_PATH}${
+function withTrialSlash(s: string) {
+  return s.at(-1) === '/' ? s : `${s}/`;
+}
+
+const BASE_RSC_PATH = `${withTrialSlash(import.meta.env?.WAKU_CONFIG_BASE_PATH)}${
   import.meta.env?.WAKU_CONFIG_RSC_BASE
 }/`;
 
@@ -192,6 +196,7 @@ export const fetchRsc = (
   fetchCache = defaultFetchCache,
 ): Promise<Elements> => {
   const fetchRscInternal = fetchCache[FETCH_RSC_INTERNAL]!;
+  globalThis.fetchCache = fetchCache; // for debugging
   const entry = fetchCache[ENTRY];
   if (entry && entry[0] === rscPath && entry[1] === rscParams) {
     return entry[2];
