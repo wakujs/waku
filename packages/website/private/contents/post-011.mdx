@@ -1,0 +1,104 @@
+---
+slug: migration-to-vite-plugin-rsc
+title: Migration to @vitejs/plugin-rsc
+description: Waku adopts Vite's official RSC plugin and Environment API as its foundation.
+author: hiroshi
+release: v0.24
+date: 2025/08/05
+---
+
+Waku has migrated to use Vite's official plugin [`@vitejs/plugin-rsc`](https://www.npmjs.com/package/@vitejs/plugin-rsc) for React Server Components bundler implementation. Through this plugin, Waku now adopts the [Vite Environment API](https://vite.dev/guide/api-environment.html), which provides a unified foundation for the multi-environment build system required for RSC integration. This migration simplifies internal architecture while providing users full access to the Vite plugin system and benefiting from the broader ecosystem.
+
+Waku has pioneered RSC framework implementation on Vite and provided many insights for the official Vite plugin. Some core RSC functionalities have been incorporated into `@vitejs/plugin-rsc`, benefiting the entire Vite ecosystem.
+
+While this migration required many changes for internal Vite development server integration, build pipeline and plugin architecture, core routing logic remains unchanged, preserving Waku's existing functionality. This is thanks to Waku's layered routing architecture where the higher level APIs (`fsRouter`, `createPages`, and `defineRouter`) are built up on the "minimal" API `defineEntries`.
+
+## New features / Breaking Changes
+
+### Custom Vite configuration
+
+Custom Vite configuration support has been changed. Vite configuration can now be specified through the `vite` property in `waku.config.ts`. `@vitejs/plugin-rsc` provides three environments `client`, `ssr`, and `rsc` for fine-grained control over the configuration and plugin pipeline. See [Vite Environment API documentation](https://vite.dev/guide/api-environment.html) for more details.
+
+_Before_
+
+```ts
+// vite.config.ts
+import { defineConfig } from "vite";
+
+export default defineConfig({ ... })
+```
+
+```ts
+// waku.config.ts
+import { defineConfig } from "waku/config";
+
+export default defineConfig({
+  unstable_viteConfigs: { ... },
+})
+```
+
+_After_
+
+```ts
+// waku.config.ts
+import { defineConfig } from "waku/config";
+
+export default defineConfig({
+  vite: { ... }
+})
+```
+
+_Example_
+
+```ts
+// waku.config.ts
+import { defineConfig } from 'waku/config';
+
+export default defineConfig({
+  vite: {
+    environments: {
+      // environment-specific configurations.
+      client: {
+        build: {
+          // disable client assets minification
+          minify: false,
+        },
+      },
+      ssr: {
+        optimizeeDeps: {
+          include: [
+            // handle cjs package for SSR
+          ],
+        },
+      },
+      rsc: {
+        // ...
+      },
+    },
+    plugins: [
+      // custom plugins
+      {
+        name: 'my-custom-plugin',
+        transform(code, id) {
+          // e.g. transform only on `rsc` environment
+          if (this.environment.name === 'rsc') {
+            // ...
+          }
+        },
+      },
+    ],
+  },
+});
+```
+
+### Transforming server packages
+
+Previously Waku transformed all server packages on RSC module graph while externalizing all server packages SSR module graph during development. This has been changed to transform only React-related 3rd party packages on both server module graphs to be able to discover "use server" and "use client" inside the packages. Unrelated packages are kept externalizing for better package compatibility.
+
+This change can cause a new error during SSR development if there's a CJS dependency (directly or transitively) used in client components. For example, `swr` (ESM) package uses `use-sync-external-store` (CJS) internally and the plugin will show a warning `"found non-optimized CJS dependency"`. Currently, this needs to be manually mitigated by configuring `optimizeDeps.include` such as `environments.ssr.optimizeDeps.include: ["swr"]`.
+
+## Future
+
+The migration to `@vitejs/plugin-rsc` unlocks several ecosystem opportunities. The standardized Environment API foundation paves the way for future integrations with deployment adapters like [`@cloudflare/vite-plugin`](https://www.npmjs.com/package/@cloudflare/vite-plugin).
+
+This alignment with Vite's architecture positions Waku to benefit from future developments, such as [Rolldown](https://vite.dev/guide/rolldown.html) support to improve build performance. The unified approach also enables better third-party plugin integration and community-driven solutions that were challenging with the previous custom implementation.
