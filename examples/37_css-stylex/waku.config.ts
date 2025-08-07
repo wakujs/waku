@@ -47,8 +47,6 @@ export default defineConfig({
     }),
   },
   vite: {
-    plugins: [
-      react({ babel: babelConfig }),
-    ],
+    plugins: [react({ babel: babelConfig })],
   },
 });
