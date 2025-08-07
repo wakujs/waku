@@ -48,12 +48,7 @@ export default defineConfig({
   },
   vite: {
     plugins: [
-      react({
-        babel: babelConfig,
-        // avoid stylex transform breaking `__WAKU_RSC_RELOAD_LISTENERS__` injection regex.
-        // this can be removed after https://github.com/wakujs/waku/pull/1604
-        exclude: [/\/node_modules\//, /\/waku\/dist\//],
-      }),
+      react({ babel: babelConfig }),
     ],
   },
 });
