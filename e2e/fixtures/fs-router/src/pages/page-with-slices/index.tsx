@@ -14,6 +14,7 @@ export default function Slices() {
 
 export const getConfig = () => {
   return {
+    render: 'dynamic',
     slices,
   };
 };
