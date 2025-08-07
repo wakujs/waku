@@ -444,13 +444,7 @@ export const createPages = <
 
     if (page.exactPath) {
       const spec = parseExactPath(page.path);
-      if (page.render === 'dynamic') {
-        if (page.component) {
-          dynamicPagePathMap.set(page.path, [spec, page.component]);
-        } else {
-          dynamicPagePathMap.set(page.path, [spec, []]);
-        }
-      } else {
+      if (page.render === 'static') {
         staticPathMap.set(page.path, {
           literalSpec: spec,
         });
@@ -458,6 +452,10 @@ export const createPages = <
         if (page.component) {
           registerStaticComponent(id, page.component);
         }
+      } else if (page.component) {
+        dynamicPagePathMap.set(page.path, [spec, page.component]);
+      } else {
+        dynamicPagePathMap.set(page.path, [spec, []]);
       }
     } else if (page.render === 'static' && numSlugs === 0) {
       const pagePath = getGrouplessPath(page.path);
