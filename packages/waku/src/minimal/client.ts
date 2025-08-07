@@ -191,6 +191,24 @@ export const fetchRsc = (
   rscParams?: unknown,
   fetchCache = defaultFetchCache,
 ): Promise<Elements> => {
+  if (import.meta.env.WAKU_HOT_RELOAD) {
+    const refetchRsc = () => {
+      delete fetchCache[ENTRY];
+      const data = fetchRsc(rscPath, rscParams, fetchCache);
+      fetchCache[SET_ELEMENTS]!(() => data);
+    };
+    globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= [];
+    const index = globalThis.__WAKU_RSC_RELOAD_LISTENERS__.indexOf(
+      globalThis.__WAKU_REFETCH_RSC__!,
+    );
+    if (index !== -1) {
+      globalThis.__WAKU_RSC_RELOAD_LISTENERS__.splice(index, 1, refetchRsc);
+    } else {
+      globalThis.__WAKU_RSC_RELOAD_LISTENERS__.push(refetchRsc);
+    }
+    globalThis.__WAKU_REFETCH_RSC__ = refetchRsc;
+  }
+
   const fetchRscInternal = fetchCache[FETCH_RSC_INTERNAL]!;
   const entry = fetchCache[ENTRY];
   if (entry && entry[0] === rscPath && entry[1] === rscParams) {
