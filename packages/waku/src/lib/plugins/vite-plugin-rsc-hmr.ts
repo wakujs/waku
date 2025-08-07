@@ -6,12 +6,7 @@ import type {
   ViteDevServer,
 } from 'vite';
 
-import {
-  joinPath,
-  fileURLToFilePath,
-  decodeFilePathFromAbsolute,
-  filePathToFileURL,
-} from '../utils/path.js';
+import { filePathToFileURL } from '../utils/path.js';
 
 type ModuleImportResult = TransformResult & {
   id: string;
@@ -70,16 +65,19 @@ if (import.meta.hot && !globalThis.__WAKU_HMR_CONFIGURED__) {
 `;
 
 export function rscHmrPlugin(): Plugin {
-  const wakuMinimalClientDist = decodeFilePathFromAbsolute(
-    joinPath(fileURLToFilePath(import.meta.url), '../../../minimal/client.js'),
-  );
-  const wakuRouterClientDist = decodeFilePathFromAbsolute(
-    joinPath(fileURLToFilePath(import.meta.url), '../../../router/client.js'),
-  );
   let viteServer: ViteDevServer;
   return {
     name: 'rsc-hmr-plugin',
     enforce: 'post',
+    config(_config, env) {
+      return {
+        define: {
+          'import.meta.env.WAKU_HOT_RELOAD': JSON.stringify(
+            env.command === 'serve',
+          ),
+        },
+      };
+    },
     configureServer(server) {
       viteServer = server;
     },
@@ -93,59 +91,6 @@ export function rscHmrPlugin(): Plugin {
           injectTo: 'head',
         },
       ];
-    },
-    async transform(code, id) {
-      if (id.startsWith(wakuMinimalClientDist)) {
-        // FIXME this is fragile. Can we do it better?
-        return code.replace(
-          /\nexport const fetchRsc = \(.*?\)=>\{/,
-          (m) =>
-            m +
-            `
-{
-  const refetchRsc = () => {
-    delete fetchCache[ENTRY];
-    const data = fetchRsc(rscPath, rscParams, fetchCache);
-    fetchCache[SET_ELEMENTS](() => data);
-  };
-  globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= [];
-  const index = globalThis.__WAKU_RSC_RELOAD_LISTENERS__.indexOf(globalThis.__WAKU_REFETCH_RSC__);
-  if (index !== -1) {
-    globalThis.__WAKU_RSC_RELOAD_LISTENERS__.splice(index, 1, refetchRsc);
-  } else {
-    globalThis.__WAKU_RSC_RELOAD_LISTENERS__.push(refetchRsc);
-  }
-  globalThis.__WAKU_REFETCH_RSC__ = refetchRsc;
-}
-`,
-        );
-      } else if (id.startsWith(wakuRouterClientDist)) {
-        // FIXME this is fragile. Can we do it better?
-        return code.replace(
-          /\nconst InnerRouter = \(.*?\)=>\{/,
-          (m) =>
-            m +
-            `
-{
-  const refetchRoute = () => {
-    staticPathSetRef.current.clear();
-    cachedIdSetRef.current.clear();
-    const rscPath = encodeRoutePath(route.path);
-    const rscParams = createRscParams(route.query, []);
-    refetch(rscPath, rscParams);
-  };
-  globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= [];
-  const index = globalThis.__WAKU_RSC_RELOAD_LISTENERS__.indexOf(globalThis.__WAKU_REFETCH_ROUTE__);
-  if (index !== -1) {
-    globalThis.__WAKU_RSC_RELOAD_LISTENERS__.splice(index, 1, refetchRoute);
-  } else {
-    globalThis.__WAKU_RSC_RELOAD_LISTENERS__.unshift(refetchRoute);
-  }
-  globalThis.__WAKU_REFETCH_ROUTE__ = refetchRoute;
-}
-`,
-        );
-      }
     },
     handleHotUpdate({ file, server }) {
       if (file.endsWith('/pages.gen.ts')) {
