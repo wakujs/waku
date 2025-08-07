@@ -956,6 +956,7 @@ export const createPages = <
           createElement(Children),
         ),
         routeElement: createNestedElements(layouts, finalPageChildren),
+        slices: slicePathMap.get(routePath) || [],
       };
     },
     handleApi: async (path, { url, ...options }) => {
