@@ -134,7 +134,6 @@ export function unstable_redirect(
 }
 
 type SlotId = string;
-type SliceId = string;
 
 const ROUTE_SLOT_ID_PREFIX = 'route:';
 const SLICE_SLOT_ID_PREFIX = 'slice:';
@@ -149,7 +148,6 @@ export function unstable_defineRouter(fns: {
           rootElement: { isStatic?: boolean };
           routeElement: { isStatic?: boolean };
           elements: Record<SlotId, { isStatic?: boolean }>;
-          slices?: Record<SliceId, { isStatic?: boolean }>;
           noSsr?: boolean;
         }
       | {
@@ -168,11 +166,7 @@ export function unstable_defineRouter(fns: {
     rootElement: ReactNode;
     routeElement: ReactNode;
     elements: Record<SlotId, unknown>;
-  }>;
-  // TODO: Not sure if this API is well designed. Let's revisit it later.
-  handleSlice?: (sliceId: string) => Promise<{
-    element: ReactNode;
-    isStatic?: boolean; // This flag is only used for delayed slices.
+    slices?: string[];
   }>;
   handleApi?: (
     path: string,
@@ -187,6 +181,13 @@ export function unstable_defineRouter(fns: {
     headers?: Record<string, string | string[]>;
     status?: number;
   }>;
+  // TODO: Not sure if these Slice APIs are well designed. Let's revisit.
+  getSliceConfig?: (sliceId: string) => Promise<{
+    isStatic?: boolean;
+  } | null>;
+  handleSlice?: (sliceId: string) => Promise<{
+    element: ReactNode;
+  }>;
 }) {
   type MyPathConfig = {
     pathSpec: PathSpec;
@@ -196,8 +197,6 @@ export function unstable_defineRouter(fns: {
       rootElementIsStatic?: true;
       routeElementIsStatic?: true;
       staticElementIds?: SlotId[];
-      sliceIds?: SliceId[];
-      staticSliceIds?: SliceId[];
       isStatic?: true;
       noSsr?: true;
       is404?: true;
@@ -235,12 +234,6 @@ export function unstable_defineRouter(fns: {
                 'Element ID cannot start with "route:" or "slice:"',
               );
             }
-            if (
-              Object.keys(item.slices || {}).length &&
-              !import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER
-            ) {
-              throw new Error('Slice is still experimental');
-            }
             return {
               pathSpec: item.path,
               pathname: pathSpec2pathname(item.path),
@@ -255,15 +248,6 @@ export function unstable_defineRouter(fns: {
                 staticElementIds: Object.entries(item.elements).flatMap(
                   ([id, { isStatic }]) => (isStatic ? [id] : []),
                 ),
-                ...(item.slices
-                  ? {
-                      sliceIds: Object.keys(item.slices),
-                      staticSliceIds: Object.entries(item.slices).flatMap(
-                        ([sliceId, { isStatic }]) =>
-                          isStatic ? [sliceId] : [],
-                      ),
-                    }
-                  : {}),
                 ...(isStatic ? { isStatic: true as const } : {}),
                 ...(is404 ? { is404: true as const } : {}),
                 ...(item.noSsr ? { noSsr: true as const } : {}),
@@ -319,33 +303,15 @@ export function unstable_defineRouter(fns: {
     }
     const skipIdSet = new Set(isStringArray(skipParam) ? skipParam : []);
     const { query } = parseRscParams(rscParams);
-    const [{ rootElement, routeElement, elements }, ...slices] =
-      await Promise.all([
-        fns.handleRoute(
-          pathname,
-          pathConfigItem.specs.isStatic ? {} : { query },
-        ),
-        ...(pathConfigItem.specs.sliceIds || []).map(async (sliceId) => {
-          if (
-            fns.handleSlice &&
-            !import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER
-          ) {
-            throw new Error('Slice is still experimental');
-          }
-          if (!fns.handleSlice) {
-            throw new Error('handleSlice is not defined');
-          }
-          const id = SLICE_SLOT_ID_PREFIX + sliceId;
-          if (
-            pathConfigItem.specs.staticSliceIds?.includes(sliceId) &&
-            skipIdSet.has(id)
-          ) {
-            return {};
-          }
-          const { element } = await fns.handleSlice(sliceId);
-          return { [id]: element };
-        }),
-      ]);
+    const {
+      rootElement,
+      routeElement,
+      elements,
+      slices = [],
+    } = await fns.handleRoute(
+      pathname,
+      pathConfigItem.specs.isStatic ? {} : { query },
+    );
     if (
       Object.keys(elements).some(
         (id) =>
@@ -355,9 +321,28 @@ export function unstable_defineRouter(fns: {
     ) {
       throw new Error('Element ID cannot start with "route:" or "slice:"');
     }
+    if (slices.length && !import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER) {
+      throw new Error('Slice is still experimental');
+    }
+    const sliceElementEntries = (
+      await Promise.all(
+        slices.map(async (sliceId) => {
+          const id = SLICE_SLOT_ID_PREFIX + sliceId;
+          const { isStatic } = (await fns.getSliceConfig?.(sliceId)) || {};
+          if (isStatic && skipIdSet.has(id)) {
+            return null;
+          }
+          if (!fns.handleSlice) {
+            return null;
+          }
+          const { element } = await fns.handleSlice(sliceId);
+          return [id, element];
+        }),
+      )
+    ).filter((ent): ent is NonNullable<typeof ent> => !!ent);
     const entries = {
       ...elements,
-      ...Object.assign({}, ...slices),
+      ...Object.fromEntries(sliceElementEntries),
     };
     for (const id of pathConfigItem.specs.staticElementIds || []) {
       if (skipIdSet.has(id)) {
@@ -399,11 +384,15 @@ export function unstable_defineRouter(fns: {
         if (!fns.handleSlice) {
           return null;
         }
-        const { element, isStatic } = await fns.handleSlice(sliceId);
+        const [sliceConfig, { element }] = await Promise.all([
+          fns.getSliceConfig?.(sliceId),
+          fns.handleSlice(sliceId),
+        ]);
         return renderRsc({
           [SLICE_SLOT_ID_PREFIX + sliceId]: element,
           // FIXME: hard-coded for now
-          [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + sliceId]: !!isStatic,
+          [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + sliceId]:
+            !!sliceConfig?.isStatic,
         });
       }
       const entries = await getEntries(
