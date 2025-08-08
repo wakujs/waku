@@ -9,10 +9,10 @@
     "start": "waku start"
   },
   "dependencies": {
-    "react": "19.2.0-canary-3958d5d8-20250807",
-    "react-dom": "19.2.0-canary-3958d5d8-20250807",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
     "react-error-boundary": "^6.0.0",
-    "react-server-dom-webpack": "19.2.0-canary-3958d5d8-20250807",
+    "react-server-dom-webpack": "19.1.1",
     "waku": "latest"
   },
   "devDependencies": {

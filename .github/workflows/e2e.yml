@@ -94,9 +94,7 @@ jobs:
           node-version: ${{ matrix.version }}
           cache: ${{ !inputs.react_version && 'pnpm' || '' }}
       - if: ${{ inputs.react_version }}
-        run: |
-          pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
-          pnpm -C e2e/fixtures/monorepo/packages/waku-project pkg set "dependencies.react=${{ inputs.react_version }}" "dependencies.react-dom=${{ inputs.react_version }}" "dependencies.react-server-dom-webpack=${{ inputs.react_version }}"
+        run: pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
       # overrides canary/experimental build from https://github.com/vitejs/vite-plugin-react/pull/524
       - if: ${{ inputs.react_version == 'canary' || inputs.react_version == 'experimental' }}
         run: |

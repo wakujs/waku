@@ -5,8 +5,8 @@
     "packages/*"
   ],
   "dependencies": {
-    "react": "19.2.0-canary-3958d5d8-20250807",
-    "react-dom": "19.2.0-canary-3958d5d8-20250807",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
     "waku": "latest"
   }
 }
