@@ -287,7 +287,9 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
           writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
         }
       }
-      patchMonorepoPackageJson(standaloneDir);
+      if (packageManager !== 'pnpm') {
+        patchMonorepoPackageJson(standaloneDir);
+      }
       execSync(PACKAGE_INSTALL[packageManager], {
         cwd: standaloneDir,
         stdio: 'inherit',
