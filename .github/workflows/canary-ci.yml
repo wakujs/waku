@@ -24,14 +24,14 @@ jobs:
 
   canary-ci-e2e:
     needs: parse-version
-    uses: ${{ github.repository }}/.github/workflows/e2e.yml@${{ github.sha }}
+    uses: ./.github/workflows/e2e.yml
     with:
       ref: refs/pull/${{ github.event.issue.number }}/head
       react_version: ${{ needs.parse-version.outputs.react_version }}
 
   canary-ci-test:
     needs: parse-version
-    uses: ${{ github.repository }}/.github/workflows/test.yml@${{ github.sha }}
+    uses: ./.github/workflows/test.yml
     with:
       ref: refs/pull/${{ github.event.issue.number }}/head
       react_version: ${{ needs.parse-version.outputs.react_version }}
