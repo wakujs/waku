@@ -97,6 +97,7 @@ jobs:
         run: |
           COMMIT_SHA=$(gh api repos/vitejs/vite-plugin-react/pulls/524 --jq '.head.sha')
           pnpm -r update "@vitejs/plugin-rsc@https://pkg.pr.new/vitejs/vite-plugin-react/@vitejs/plugin-rsc-canary@$COMMIT_SHA"
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
       - run: pnpm install
