@@ -100,9 +100,9 @@
   "devDependencies": {
     "@netlify/functions": "^4.2.1",
     "@swc/cli": "^0.7.8",
-    "react": "19.1.1",
-    "react-dom": "19.1.1",
-    "react-server-dom-webpack": "19.1.1",
+    "react": "19.2.0-canary-3958d5d8-20250807",
+    "react-dom": "19.2.0-canary-3958d5d8-20250807",
+    "react-server-dom-webpack": "19.2.0-canary-3958d5d8-20250807",
     "ts-expect": "^1.3.0",
     "vitest": "^3.2.4"
   },
