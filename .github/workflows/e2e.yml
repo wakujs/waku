@@ -42,8 +42,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: ''
-      - run: pnpm -r update react@canary react-dom@canary react-server-dom-webpack@canary
+          cache: ${{ !inputs.react_version && 'pnpm' || '' }}
+      - if: ${{ inputs.react_version }}
+        run: pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
       - run: pnpm install
       - run: pnpm run compile
       - uses: actions/upload-artifact@v4
@@ -62,7 +63,7 @@ jobs:
           if-no-files-found: error
 
   e2e:
-    name: E2E on ${{ matrix.os }} (Node ${{ matrix.version }}) - (${{ matrix.shared }}/4) with react@canary
+    name: E2E on ${{ matrix.os }} (Node ${{ matrix.version }}) - (${{ matrix.shared }}/4)${{ inputs.react_version && format(' with react@{0}', inputs.react_version) || '' }}
     needs:
       - build
     strategy:
@@ -91,13 +92,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.version }}
-          cache: ''
-      - run: pnpm -r update react@canary react-dom@canary react-server-dom-webpack@canary
-      - # overrides canary/experimental build from https://github.com/vitejs/vite-plugin-react/pull/524
+          cache: ${{ !inputs.react_version && 'pnpm' || '' }}
+      - if: ${{ inputs.react_version }}
+        run: pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
+      - if: ${{ inputs.react_version == 'canary' }}
+        # overrides canary/experimental build from https://github.com/vitejs/vite-plugin-react/pull/524
         run: |
           COMMIT_SHA=$(gh api repos/vitejs/vite-plugin-react/pulls/524 --jq '.head.sha')
           pnpm -r update "@vitejs/plugin-rsc@https://pkg.pr.new/vitejs/vite-plugin-react/@vitejs/plugin-rsc-canary@$COMMIT_SHA"
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - if: ${{ inputs.react_version == 'experimental' }}
+        # overrides canary/experimental build from https://github.com/vitejs/vite-plugin-react/pull/524
+        run: |
+          COMMIT_SHA=$(gh api repos/vitejs/vite-plugin-react/pulls/524 --jq '.head.sha')
+          pnpm -r update "@vitejs/plugin-rsc@https://pkg.pr.new/vitejs/vite-plugin-react/@vitejs/plugin-rsc-experimental@$COMMIT_SHA"
         env:
           GH_TOKEN: ${{ github.token }}
       - run: pnpm install
