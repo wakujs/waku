@@ -44,8 +44,7 @@ jobs:
           node-version: 20
           cache: ${{ !inputs.react_version && 'pnpm' || '' }}
       - if: ${{ inputs.react_version }}
-        run: |
-          pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
+        run: pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
       - run: pnpm install
       - run: pnpm run compile
       - uses: actions/upload-artifact@v4
@@ -95,15 +94,13 @@ jobs:
           node-version: ${{ matrix.version }}
           cache: ${{ !inputs.react_version && 'pnpm' || '' }}
       - if: ${{ inputs.react_version }}
-        run: |
-          pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
-          # overrides canary/experimental build from https://github.com/vitejs/vite-plugin-react/pull/524
-          if [ "${{ inputs.react_version }}" = "canary" ]; then
-            pnpm -r update @vitejs/plugin-rsc@https://pkg.pr.new/vitejs/vite-plugin-react/@vitejs/plugin-rsc-canary@524
-          fi
-          if [ "${{ inputs.react_version }}" = "experimental" ]; then
-            pnpm -r update @vitejs/plugin-rsc@https://pkg.pr.new/vitejs/vite-plugin-react/@vitejs/plugin-rsc-experimental@524
-          fi
+        run: pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
+      - if: ${{ inputs.react_version == 'canary' }}
+        # overrides canary/experimental build from https://github.com/vitejs/vite-plugin-react/pull/524
+        run: pnpm -r update @vitejs/plugin-rsc@https://pkg.pr.new/vitejs/vite-plugin-react/@vitejs/plugin-rsc-canary@524
+      - if: ${{ inputs.react_version == 'experimental' }}
+        # overrides canary/experimental build from https://github.com/vitejs/vite-plugin-react/pull/524
+        run: pnpm -r update @vitejs/plugin-rsc@https://pkg.pr.new/vitejs/vite-plugin-react/@vitejs/plugin-rsc-experimental@524
       - run: pnpm install
       - uses: actions/download-artifact@v4
         with:
