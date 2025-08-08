@@ -1,6 +1,5 @@
 import {
   mergeConfig,
-  normalizePath,
   type RunnableDevEnvironment,
   type Plugin,
   type PluginOption,
@@ -14,16 +13,14 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import type { Config } from '../config.js';
-import { INTERNAL_setAllEnv, unstable_getBuildOptions } from '../server.js';
+import { INTERNAL_setAllEnv } from '../server.js';
 import { emitStaticFile, waitForTasks } from '../lib/builder/build.js';
-import {
-  getManagedEntries,
-  getManagedMain,
-} from '../lib/plugins/vite-plugin-rsc-managed.js';
+import { getManagedMain } from '../lib/plugins/vite-plugin-rsc-managed.js';
 import { deployVercelPlugin } from './deploy/vercel/plugin.js';
 import { allowServerPlugin } from './plugins/allow-server.js';
 import {
   DIST_PUBLIC,
+  EXTENSIONS,
   SRC_CLIENT_ENTRY,
   SRC_SERVER_ENTRY,
 } from '../lib/builder/constants.js';
@@ -33,7 +30,7 @@ import { deployCloudflarePlugin } from './deploy/cloudflare/plugin.js';
 import { deployPartykitPlugin } from './deploy/partykit/plugin.js';
 import { deployDenoPlugin } from './deploy/deno/plugin.js';
 import { deployAwsLambdaPlugin } from './deploy/aws-lambda/plugin.js';
-import { filePathToFileURL, joinPath } from '../lib/utils/path.js';
+import { joinPath } from '../lib/utils/path.js';
 
 const PKG_NAME = 'waku';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -79,7 +76,6 @@ export function mainPlugin(
   };
   const flags = mainPluginOptions?.flags ?? {};
   let privatePath: string;
-  let customServerEntry: string | undefined;
 
   const extraPlugins = [...(config.vite?.plugins ?? [])];
   // add react plugin automatically if users didn't include it on their own (e.g. swc, oxc, babel react compiler)
@@ -274,7 +270,6 @@ export function mainPlugin(
             undefined,
             options,
           );
-          customServerEntry = resolved?.id;
           return resolved ? resolved : '\0' + source;
         }
         if (source === 'virtual:vite-rsc-waku/client-entry') {
@@ -296,30 +291,17 @@ if (import.meta.hot) {
 `;
         }
         if (id === '\0virtual:vite-rsc-waku/server-entry-inner') {
-          return getManagedEntries(
-            joinPath(
-              this.environment.config.root,
-              `${config.srcDir}/server-entry.js`,
-            ),
-            'src',
-            {
-              pagesDir: config.pagesDir,
-              apiDir: config.apiDir,
-            },
-          );
+          const globBase = `/${config.srcDir}/${config.pagesDir}/`;
+          const globPattern = `${globBase}**/*.{${EXTENSIONS.map((ext) => ext.slice(1)).join(',')}}`;
+          return `
+import { unstable_fsRouter as fsRouter } from 'waku/router/server';
+const glob = import.meta.glob(${JSON.stringify(globPattern)}, { base: ${JSON.stringify(globBase)} });
+const apiDir = ${JSON.stringify(config.apiDir)};
+export default fsRouter(glob, { apiDir });
+`;
         }
         if (id === '\0virtual:vite-rsc-waku/client-entry') {
           return getManagedMain();
-        }
-      },
-      transform(code, id) {
-        // rewrite `fsRouter(import.meta.url, ...)` in custom server entry
-        // e.g. examples/11_fs-router/src/server-entry.tsx
-        // TODO: rework fsRouter to entirely avoid fs access on runtime
-        if (id === customServerEntry && code.includes('fsRouter')) {
-          const replacement = JSON.stringify(filePathToFileURL(id));
-          code = code.replaceAll(/\bimport\.meta\.url\b/g, () => replacement);
-          return code;
         }
       },
     },
@@ -405,36 +387,6 @@ if (import.meta.hot) {
     },
     {
       name: 'rsc:waku:handle-build',
-      resolveId(source) {
-        if (source === 'virtual:vite-rsc-waku/set-platform-data') {
-          assert.equal(this.environment.name, 'rsc');
-          if (this.environment.mode === 'build') {
-            return { id: source, external: true, moduleSideEffects: true };
-          }
-          return '\0' + source;
-        }
-      },
-      async load(id) {
-        if (id === '\0virtual:vite-rsc-waku/set-platform-data') {
-          // no-op during dev
-          assert.equal(this.environment.mode, 'dev');
-          return `export {}`;
-        }
-      },
-      renderChunk(code, chunk) {
-        if (code.includes(`virtual:vite-rsc-waku/set-platform-data`)) {
-          const replacement = normalizeRelativePath(
-            path.relative(
-              path.join(chunk.fileName, '..'),
-              '__waku_set_platform_data.js',
-            ),
-          );
-          return code.replaceAll(
-            'virtual:vite-rsc-waku/set-platform-data',
-            () => replacement,
-          );
-        }
-      },
       // cf. packages/waku/src/lib/builder/build.ts
       buildApp: {
         async handler(builder) {
@@ -450,7 +402,6 @@ if (import.meta.hot) {
 
           // run `handleBuild`
           INTERNAL_setAllEnv(process.env as any);
-          unstable_getBuildOptions().unstable_phase = 'emitStaticFiles';
           const buildConfigs = await entry.handleBuild();
           for await (const buildConfig of buildConfigs || []) {
             if (buildConfig.type === 'file') {
@@ -470,14 +421,6 @@ if (import.meta.hot) {
             }
           }
           await waitForTasks();
-
-          // save platform data
-          const platformDataCode = `globalThis.__WAKU_SERVER_PLATFORM_DATA__ = ${JSON.stringify((globalThis as any).__WAKU_SERVER_PLATFORM_DATA__ ?? {}, null, 2)}\n`;
-          const platformDataFile = path.join(
-            builder.config.environments.rsc!.build.outDir,
-            '__waku_set_platform_data.js',
-          );
-          fs.writeFileSync(platformDataFile, platformDataCode);
         },
       },
     },
@@ -608,11 +551,6 @@ function rscIndexPlugin(): Plugin {
       }
     },
   };
-}
-
-function normalizeRelativePath(s: string) {
-  s = normalizePath(s);
-  return s[0] === '.' ? s : './' + s;
 }
 
 function createVirtualPlugin(name: string, load: Plugin['load']) {
