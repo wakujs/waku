@@ -34,7 +34,7 @@
     "@eslint/js": "^9.32.0",
     "@playwright/test": "^1.54.2",
     "@types/babel__core": "^7.20.5",
-    "@types/node": "^24.1.0",
+    "@types/node": "^24.2.0",
     "@types/react": "^19.1.9",
     "@types/react-dom": "^19.1.7",
     "eslint": "^9.32.0",
@@ -47,7 +47,7 @@
     "prettier-plugin-tailwindcss": "^0.6.14",
     "terminate": "^2.8.0",
     "typescript": "^5.9.2",
-    "typescript-eslint": "^8.38.0",
+    "typescript-eslint": "^8.39.0",
     "waku": "workspace:*"
   },
   "pnpm": {
