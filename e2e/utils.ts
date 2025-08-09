@@ -2,6 +2,7 @@ import { execSync, exec } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import {
+  existsSync,
   cpSync,
   rmSync,
   mkdtempSync,
@@ -161,6 +162,39 @@ const PACKAGE_INSTALL = {
   yarn: `yarn install`,
 } as const;
 
+const patchMonorepoPackageJson = (standaloneDir: string) => {
+  const packagesDir = join(standaloneDir, 'packages');
+  if (!existsSync(packagesDir)) {
+    return;
+  }
+  const rootPackageJson = JSON.parse(
+    readFileSync(join(standaloneDir, 'package.json'), 'utf8'),
+  );
+  const reactVersion = rootPackageJson.dependencies.react;
+  if (!reactVersion) {
+    return;
+  }
+  for (const dir of readdirSync(packagesDir)) {
+    const packageJsonFile = join(packagesDir, dir, 'package.json');
+    if (!existsSync(packageJsonFile)) {
+      continue;
+    }
+    let modified = false;
+    const packageJson = JSON.parse(readFileSync(packageJsonFile, 'utf8'));
+    for (const key of Object.keys(packageJson.dependencies || {})) {
+      if (key.startsWith('react')) {
+        if (packageJson.dependencies[key] !== reactVersion) {
+          packageJson.dependencies[key] = reactVersion;
+          modified = true;
+        }
+      }
+    }
+    if (modified) {
+      writeFileSync(packageJsonFile, JSON.stringify(packageJson), 'utf8');
+    }
+  }
+};
+
 export const makeTempDir = (prefix: string): string => {
   // GitHub Action on Windows doesn't support mkdtemp on global temp dir,
   // Which will cause files in `src` folder to be empty. I don't know why
@@ -253,6 +287,9 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
           writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
         }
       }
+      if (packageManager !== 'pnpm') {
+        patchMonorepoPackageJson(standaloneDir);
+      }
       execSync(PACKAGE_INSTALL[packageManager], {
         cwd: standaloneDir,
         stdio: 'inherit',
@@ -264,10 +301,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         recursive: true,
         force: true,
       });
-      execSync(`node ${waku} build`, {
-        cwd: join(standaloneDir, packageDir),
-        stdio: 'inherit',
-      });
+      execSync(`node ${waku} build`, { cwd: join(standaloneDir, packageDir) });
       builtModeMap.set(packageManager, mode);
     }
     let cmd: string;
