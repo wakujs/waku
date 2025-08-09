@@ -724,26 +724,6 @@ export const createPages = <
     );
   };
 
-  const getSlicesConfig = (path: string) => {
-    if (!slicePathMap.has(path)) {
-      return {};
-    }
-    return {
-      slices: slicePathMap
-        .get(path)!
-        .reduce<Record<string, { isStatic: boolean }>>((acc, sliceId) => {
-          const slice = sliceIdMap.get(sliceId);
-          if (!slice) {
-            throw new Error(`Slice not found: ${sliceId} for path: ${path}`);
-          }
-          acc[sliceId] = {
-            isStatic: slice.isStatic,
-          };
-          return acc;
-        }, {}),
-    };
-  };
-
   const definedRouter = unstable_defineRouter({
     getConfig: async () => {
       await configure();
@@ -754,7 +734,6 @@ export const createPages = <
         rootElement: { isStatic?: boolean };
         routeElement: { isStatic?: boolean };
         elements: Record<string, { isStatic?: boolean }>;
-        slices?: Record<string, { isStatic?: boolean }>;
         noSsr: boolean;
       }[] = [];
       const rootIsStatic = !rootItem || rootItem.render === 'static';
@@ -786,7 +765,6 @@ export const createPages = <
           },
           elements,
           noSsr,
-          ...getSlicesConfig(path),
         });
       }
       for (const [path, [pathSpec, components]] of dynamicPagePathMap) {
@@ -822,7 +800,6 @@ export const createPages = <
           routeElement: { isStatic: true },
           elements,
           noSsr,
-          ...getSlicesConfig(path),
         });
       }
       for (const [path, [pathSpec, components]] of wildcardPagePathMap) {
@@ -858,7 +835,6 @@ export const createPages = <
           routeElement: { isStatic: true },
           elements,
           noSsr,
-          ...getSlicesConfig(path),
         });
       }
       const apiConfigs = Array.from(apiPathMap.values()).map(
@@ -980,6 +956,7 @@ export const createPages = <
           createElement(Children),
         ),
         routeElement: createNestedElements(layouts, finalPageChildren),
+        slices: slicePathMap.get(routePath) || [],
       };
     },
     handleApi: async (path, { url, ...options }) => {
@@ -1003,6 +980,15 @@ export const createPages = <
         headers: Object.fromEntries(res.headers.entries()),
         status: res.status,
       };
+    },
+    getSliceConfig: async (sliceId) => {
+      await configure();
+      const slice = sliceIdMap.get(sliceId);
+      if (!slice) {
+        throw new Error('Slice not found: ' + sliceId);
+      }
+      const { isStatic } = slice;
+      return { isStatic };
     },
     handleSlice: async (sliceId) => {
       await configure();
