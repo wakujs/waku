@@ -15,3 +15,9 @@ export default async function ActionPage() {
     </div>
   );
 }
+
+export const getConfig = () => {
+  return {
+    render: 'dynamic',
+  } as const;
+};
