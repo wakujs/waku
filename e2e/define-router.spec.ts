@@ -34,13 +34,15 @@ test.describe(`define-router`, () => {
     expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
     await page.click("a[href='/bar1']");
     await expect(page.getByTestId('bar1-title')).toHaveText('Bar1');
-    await expect(page.getByTestId('slice001')).toHaveText(sliceText!);
+    const sliceText2 = await page.getByTestId('slice001').textContent();
+    expect(sliceText2).toBe(sliceText);
     const randomText = await page.getByTestId('bar1-random').textContent();
     await page.reload();
     await expect(page.getByTestId('bar1-title')).toHaveText('Bar1');
     if (mode === 'PRD') {
-      const randomText2 = await page.getByTestId('bar1-random').textContent();
-      expect(randomText !== randomText2).toBeTruthy();
+      expect(await page.getByTestId('bar1-random').textContent()).not.toBe(
+        randomText,
+      );
     }
   });
 
@@ -56,10 +58,11 @@ test.describe(`define-router`, () => {
     await page.click("a[href='/bar2']");
     await expect(page.getByTestId('bar2-title')).toHaveText('Bar2');
     const sliceText2 = await page.getByTestId('slice002').textContent();
-    expect(sliceText2 !== sliceText).toBeTruthy();
+    expect(sliceText2).not.toBe(sliceText);
     if (mode === 'PRD') {
-      const randomText2 = await page.getByTestId('bar2-random').textContent();
-      expect(randomText === randomText2).toBeTruthy();
+      expect(await page.getByTestId('bar2-random').textContent()).toBe(
+        randomText,
+      );
     }
   });
 
@@ -73,12 +76,13 @@ test.describe(`define-router`, () => {
     await expect(page.getByTestId('baz1-title')).toHaveText('Baz1');
     const randomText = await page.getByTestId('baz1-random').textContent();
     const sliceText2 = await page.getByTestId('slice001').textContent();
-    expect(sliceText === sliceText2).toBeTruthy();
+    expect(sliceText2).toBe(sliceText);
     await page.reload();
     await expect(page.getByTestId('baz1-title')).toHaveText('Baz1');
     if (mode === 'PRD') {
-      const randomText2 = await page.getByTestId('baz1-random').textContent();
-      expect(randomText !== randomText2).toBeTruthy();
+      expect(await page.getByTestId('baz1-random').textContent()).not.toBe(
+        randomText,
+      );
     }
   });
 
@@ -94,10 +98,11 @@ test.describe(`define-router`, () => {
     await page.click("a[href='/baz2']");
     await expect(page.getByTestId('baz2-title')).toHaveText('Baz2');
     const sliceText2 = await page.getByTestId('slice002').textContent();
-    expect(sliceText2 !== sliceText).toBeTruthy();
+    expect(sliceText2).not.toBe(sliceText);
     if (mode === 'PRD') {
-      const randomText2 = await page.getByTestId('baz2-random').textContent();
-      expect(randomText === randomText2).toBeTruthy();
+      expect(await page.getByTestId('baz2-random').textContent()).toBe(
+        randomText,
+      );
     }
   });
 
