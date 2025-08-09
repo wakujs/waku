@@ -6,8 +6,8 @@ import Layout from './routes/layout.js';
 import Page from './routes/page.js';
 import FooPage from './routes/foo/page.js';
 import Bar1Page from './routes/bar1/page.js';
-import Bar2Page from './routes/bar2/page.js';
-import Baz1Page from './routes/baz1/page.js';
+//import Bar2Page from './routes/bar2/page.js';
+//import Baz1Page from './routes/baz1/page.js';
 import Baz2Page from './routes/baz2/page.js';
 import { Slice001 } from './components/slice001.js';
 import { Slice002 } from './components/slice002.js';
@@ -17,8 +17,8 @@ const PATH_PAGE: Record<string, unknown> = {
   '/': <Page />,
   '/foo': <FooPage />,
   '/bar1': <Bar1Page />, // dynamic page + static slice
-  '/bar2': <Bar2Page />, // static page + dynamic slice
-  '/baz1': <Baz1Page />, // dynamic page + lazy static slice
+  //'/bar2': <Bar2Page />, // static page + dynamic slice
+  //'/baz1': <Baz1Page />, // dynamic page + lazy static slice
   '/baz2': <Baz2Page />, // static page + lazy dynamic slice
 };
 
@@ -94,7 +94,7 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
         ),
         [`page:${path}`]: PATH_PAGE[path],
       },
-      ...(['/', '/bar'].includes(path) ? { slices: ['slice001'] } : {}),
+      ...(['/', '/bar1'].includes(path) ? { slices: ['slice001'] } : {}),
     };
   },
   handleApi: async (path, opt) => {

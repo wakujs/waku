@@ -129,7 +129,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
   const startApp = async (mode: 'DEV' | 'PRD' | 'STATIC') => {
     if (mode !== 'DEV' && builtMode !== mode) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
-      execSync(`node ${waku} build`, { cwd: fixtureDir, stdio: 'inherit' });
+      execSync(`node ${waku} build`, { cwd: fixtureDir });
       builtMode = mode;
     }
     let cmd: string;
