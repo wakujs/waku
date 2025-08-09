@@ -96,6 +96,7 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
       },
       ...(path === '/' ? { slices: ['slice001', 'slice002'] } : {}),
       ...(path === '/bar1' ? { slices: ['slice001'] } : {}),
+      ...(path === '/bar2' ? { slices: ['slice002'] } : {}),
     };
   },
   handleApi: async (path, opt) => {
@@ -148,7 +149,7 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
       return { isStatic: true };
     }
     if (sliceId === 'slice002') {
-      return {}; // dynamic slice
+      return { isStatic: false };
     }
     return null;
   },

@@ -64,10 +64,6 @@ test.describe(`define-router`, () => {
   });
 
   test('baz1 (dynamic page + lazy static slice)', async ({ page, mode }) => {
-    await page.route(/.*\/RSC\/.*/, async (route) => {
-      await new Promise((r) => setTimeout(r, 100));
-      await route.continue();
-    });
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
     await expect(page.getByTestId('home-title')).toHaveText('Home');
@@ -76,8 +72,6 @@ test.describe(`define-router`, () => {
     await page.click("a[href='/baz1']");
     await expect(page.getByTestId('baz1-title')).toHaveText('Baz1');
     const randomText = await page.getByTestId('baz1-random').textContent();
-    await expect(page.getByTestId('slice001-loading')).toBeVisible();
-    await expect(page.getByTestId('slice001')).toBeVisible();
     const sliceText2 = await page.getByTestId('slice001').textContent();
     expect(sliceText === sliceText2).toBeTruthy();
     await page.reload();
@@ -89,10 +83,6 @@ test.describe(`define-router`, () => {
   });
 
   test('baz2 (static page + lazy dynamic slice)', async ({ page, mode }) => {
-    await page.route(/.*\/RSC\/.*/, async (route) => {
-      await new Promise((r) => setTimeout(r, 100));
-      await route.continue();
-    });
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
     await expect(page.getByTestId('home-title')).toHaveText('Home');
@@ -101,8 +91,6 @@ test.describe(`define-router`, () => {
     await page.click("a[href='/baz2']");
     await expect(page.getByTestId('baz2-title')).toHaveText('Baz2');
     const randomText = await page.getByTestId('baz2-random').textContent();
-    await expect(page.getByTestId('slice002-loading')).toBeVisible();
-    await expect(page.getByTestId('slice002')).toBeVisible();
     const sliceText2 = await page.getByTestId('slice002').textContent();
     expect(sliceText2 !== sliceText).toBeTruthy();
     await page.reload();
@@ -111,6 +99,32 @@ test.describe(`define-router`, () => {
       const randomText2 = await page.getByTestId('baz2-random').textContent();
       expect(randomText === randomText2).toBeTruthy();
     }
+  });
+
+  test('direct baz1 (static page + lazy dynamic slice)', async ({ page }) => {
+    await page.route(/.*\/RSC\/.*/, async (route) => {
+      await new Promise((r) => setTimeout(r, 100));
+      await route.continue();
+    });
+    await page.goto(`http://localhost:${port}/baz1`);
+    await expect(page.getByTestId('baz1-title')).toHaveText('Baz1');
+    await expect(page.getByTestId('slice001-loading')).toBeVisible();
+    await expect(page.getByTestId('slice001')).toBeVisible();
+    const sliceText = await page.getByTestId('slice001').textContent();
+    expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
+  });
+
+  test('direct baz2 (static page + lazy dynamic slice)', async ({ page }) => {
+    await page.route(/.*\/RSC\/.*/, async (route) => {
+      await new Promise((r) => setTimeout(r, 100));
+      await route.continue();
+    });
+    await page.goto(`http://localhost:${port}/baz2`);
+    await expect(page.getByTestId('baz2-title')).toHaveText('Baz2');
+    await expect(page.getByTestId('slice002-loading')).toBeVisible();
+    await expect(page.getByTestId('slice002')).toBeVisible();
+    const sliceText = await page.getByTestId('slice002').textContent();
+    expect(sliceText?.startsWith('Slice 002')).toBeTruthy();
   });
 
   test('api hi', async () => {
