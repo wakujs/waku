@@ -601,11 +601,6 @@ export const createPages = <
   };
 
   const createSlice: CreateSlice = (slice) => {
-    if (!import.meta.env?.VITE_EXPERIMENTAL_WAKU_ROUTER) {
-      throw new Error(
-        'createSlice is experimental. Enable it with VITE_EXPERIMENTAL_WAKU_ROUTER=true.',
-      );
-    }
     if (configured) {
       throw new Error('createSlice no longer available');
     }
