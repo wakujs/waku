@@ -428,6 +428,15 @@ export const createPages = <
     staticComponentMap.set(id, component);
   };
 
+  const isAllElementsStatic = (
+    elements: Record<string, { isStatic?: boolean }>,
+  ) => Object.values(elements).every((element) => element.isStatic);
+
+  const isAllSlicesStatic = (path: string) =>
+    (slicePathMap.get(path) || []).every(
+      (sliceId) => sliceIdMap.get(sliceId)?.isStatic,
+    );
+
   const createPage: CreatePage = (page) => {
     if (configured) {
       throw new Error('createPage no longer available');
@@ -730,6 +739,7 @@ export const createPages = <
       const routeConfigs: {
         type: 'route';
         path: PathSpec;
+        isStatic: boolean;
         pathPattern?: PathSpec;
         rootElement: { isStatic?: boolean };
         routeElement: { isStatic?: boolean };
@@ -758,11 +768,13 @@ export const createPages = <
         routeConfigs.push({
           type: 'route',
           path: literalSpec.filter((part) => !part.name?.startsWith('(')),
+          isStatic:
+            rootIsStatic &&
+            isAllElementsStatic(elements) &&
+            isAllSlicesStatic(path),
           ...(originalSpec && { pathPattern: originalSpec }),
           rootElement: { isStatic: rootIsStatic },
-          routeElement: {
-            isStatic: true,
-          },
+          routeElement: { isStatic: true },
           elements,
           noSsr,
         });
@@ -795,6 +807,10 @@ export const createPages = <
         }
         routeConfigs.push({
           type: 'route',
+          isStatic:
+            rootIsStatic &&
+            isAllElementsStatic(elements) &&
+            isAllSlicesStatic(path),
           path: pathSpec.filter((part) => !part.name?.startsWith('(')),
           rootElement: { isStatic: rootIsStatic },
           routeElement: { isStatic: true },
@@ -830,6 +846,10 @@ export const createPages = <
         }
         routeConfigs.push({
           type: 'route',
+          isStatic:
+            rootIsStatic &&
+            isAllElementsStatic(elements) &&
+            isAllSlicesStatic(path),
           path: pathSpec.filter((part) => !part.name?.startsWith('(')),
           rootElement: { isStatic: rootIsStatic },
           routeElement: { isStatic: true },
