@@ -26,7 +26,7 @@ test.describe(`define-router`, () => {
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');
   });
 
-  test('bar1 (dynamic page + static slice)', async ({ page }) => {
+  test('bar1 (dynamic page + static slice)', async ({ page, mode }) => {
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
     await expect(page.getByTestId('home-title')).toHaveText('Home');
@@ -35,6 +35,57 @@ test.describe(`define-router`, () => {
     await page.click("a[href='/bar1']");
     await expect(page.getByTestId('bar1-title')).toHaveText('Bar1');
     await expect(page.getByTestId('slice001')).toHaveText(sliceText!);
+    const randomText = await page.getByTestId('bar1-random').textContent();
+    await page.reload();
+    await expect(page.getByTestId('bar1-title')).toHaveText('Bar1');
+    if (mode === 'PRD') {
+      const randomText2 = await page.getByTestId('bar1-random').textContent();
+      expect(randomText !== randomText2).toBeTruthy();
+    }
+  });
+
+  test('bar2 (static page + dynamic slice)', async ({ page, mode }) => {
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    await expect(page.getByTestId('home-title')).toHaveText('Home');
+    const sliceText = await page.getByTestId('slice002').textContent();
+    expect(sliceText?.startsWith('Slice 002')).toBeTruthy();
+    await page.click("a[href='/bar2']");
+    await expect(page.getByTestId('bar2-title')).toHaveText('Bar2');
+    const randomText = await page.getByTestId('bar2-random').textContent();
+    const sliceText2 = await page.getByTestId('slice002').textContent();
+    expect(sliceText2 !== sliceText).toBeTruthy();
+    await page.reload();
+    await expect(page.getByTestId('bar2-title')).toHaveText('Bar2');
+    if (mode === 'PRD') {
+      const randomText2 = await page.getByTestId('bar2-random').textContent();
+      expect(randomText === randomText2).toBeTruthy();
+    }
+  });
+
+  test('baz1 (dynamic page + lazy static slice)', async ({ page, mode }) => {
+    await page.route(/.*\/RSC\/.*/, async (route) => {
+      await new Promise((r) => setTimeout(r, 100));
+      await route.continue();
+    });
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    await expect(page.getByTestId('home-title')).toHaveText('Home');
+    const sliceText = await page.getByTestId('slice001').textContent();
+    expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
+    await page.click("a[href='/baz1']");
+    await expect(page.getByTestId('baz1-title')).toHaveText('Baz1');
+    const randomText = await page.getByTestId('baz1-random').textContent();
+    await expect(page.getByTestId('slice001-loading')).toBeVisible();
+    await expect(page.getByTestId('slice001')).toBeVisible();
+    const sliceText2 = await page.getByTestId('slice001').textContent();
+    expect(sliceText === sliceText2).toBeTruthy();
+    await page.reload();
+    await expect(page.getByTestId('baz1-title')).toHaveText('Baz1');
+    if (mode === 'PRD') {
+      const randomText2 = await page.getByTestId('baz1-random').textContent();
+      expect(randomText !== randomText2).toBeTruthy();
+    }
   });
 
   test('baz2 (static page + lazy dynamic slice)', async ({ page, mode }) => {
@@ -42,22 +93,24 @@ test.describe(`define-router`, () => {
       await new Promise((r) => setTimeout(r, 100));
       await route.continue();
     });
-    await page.goto(`http://localhost:${port}/baz2`);
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    await expect(page.getByTestId('home-title')).toHaveText('Home');
+    const sliceText = await page.getByTestId('slice002').textContent();
+    expect(sliceText?.startsWith('Slice 002')).toBeTruthy();
+    await page.click("a[href='/baz2']");
     await expect(page.getByTestId('baz2-title')).toHaveText('Baz2');
     const randomText = await page.getByTestId('baz2-random').textContent();
     await expect(page.getByTestId('slice002-loading')).toBeVisible();
     await expect(page.getByTestId('slice002')).toBeVisible();
-    const sliceText = await page.getByTestId('slice002').textContent();
-    expect(sliceText?.startsWith('Slice 002')).toBeTruthy();
+    const sliceText2 = await page.getByTestId('slice002').textContent();
+    expect(sliceText2 !== sliceText).toBeTruthy();
     await page.reload();
     await expect(page.getByTestId('baz2-title')).toHaveText('Baz2');
     if (mode === 'PRD') {
-      await expect(page.getByTestId('baz2-random')).toHaveText(randomText!);
+      const randomText2 = await page.getByTestId('baz2-random').textContent();
+      expect(randomText === randomText2).toBeTruthy();
     }
-    await expect(page.getByTestId('slice002-loading')).toBeVisible();
-    await expect(page.getByTestId('slice002')).toBeVisible();
-    const sliceText2 = await page.getByTestId('slice002').textContent();
-    expect(sliceText2 !== sliceText).toBeTruthy();
   });
 
   test('api hi', async () => {
