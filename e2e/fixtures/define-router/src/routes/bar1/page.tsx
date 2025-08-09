@@ -1,10 +1,10 @@
 import { Slice } from 'waku/router/client';
 
-const Bar = () => (
+const Bar1 = () => (
   <div>
-    <h2 data-testid="bar-title">Bar</h2>
+    <h2 data-testid="bar1-title">Bar1</h2>
     <Slice id="slice001" />
   </div>
 );
 
-export default Bar;
+export default Bar1;
