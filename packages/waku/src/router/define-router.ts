@@ -144,6 +144,7 @@ export function unstable_defineRouter(fns: {
       | {
           type: 'route';
           path: PathSpec;
+          isStatic: boolean;
           pathPattern?: PathSpec;
           rootElement: { isStatic?: boolean };
           routeElement: { isStatic?: boolean };
@@ -153,7 +154,7 @@ export function unstable_defineRouter(fns: {
       | {
           type: 'api';
           path: PathSpec;
-          isStatic?: boolean;
+          isStatic: boolean;
         }
     >
   >;
@@ -219,10 +220,6 @@ export function unstable_defineRouter(fns: {
               item.path.length === 1 &&
               item.path[0]!.type === 'literal' &&
               item.path[0]!.name === '404';
-            const isStatic =
-              !!item.rootElement.isStatic &&
-              !!item.routeElement.isStatic &&
-              Object.values(item.elements).every((x) => x.isStatic);
             if (
               Object.keys(item.elements).some(
                 (id) =>
@@ -248,7 +245,7 @@ export function unstable_defineRouter(fns: {
                 staticElementIds: Object.entries(item.elements).flatMap(
                   ([id, { isStatic }]) => (isStatic ? [id] : []),
                 ),
-                ...(isStatic ? { isStatic: true as const } : {}),
+                ...(item.isStatic ? { isStatic: true as const } : {}),
                 ...(is404 ? { is404: true as const } : {}),
                 ...(item.noSsr ? { noSsr: true as const } : {}),
               },

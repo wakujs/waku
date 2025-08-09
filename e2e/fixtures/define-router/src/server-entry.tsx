@@ -12,7 +12,8 @@ import Baz2Page from './routes/baz2/page.js';
 import { Slice001 } from './components/slice001.js';
 import { Slice002 } from './components/slice002.js';
 
-const STATIC_PATHS = ['/', '/foo', '/bar2', '/baz2'];
+const STATIC_PATHS = ['/', '/foo', '/baz2'];
+const STATIC_PAGES = ['/', '/foo', '/bar2', '/baz2'];
 const PATH_PAGE: Record<string, unknown> = {
   '/': <Page />,
   '/foo': <FooPage />,
@@ -25,7 +26,6 @@ const PATH_PAGE: Record<string, unknown> = {
 const router: ReturnType<typeof defineRouter> = defineRouter({
   getConfig: async () => [
     ...Object.keys(PATH_PAGE).map((path) => {
-      const isStatic = STATIC_PATHS.includes(path);
       return {
         type: 'route' as const,
         pattern: `^${path}$`,
@@ -33,11 +33,12 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
           .split('/')
           .filter(Boolean)
           .map((name) => ({ type: 'literal', name }) as const),
-        rootElement: { isStatic },
-        routeElement: { isStatic },
+        isStatic: STATIC_PATHS.includes(path),
+        rootElement: { isStatic: true },
+        routeElement: { isStatic: true },
         elements: {
-          'layout:/': { isStatic },
-          [`page:${path}`]: { isStatic },
+          'layout:/': { isStatic: true },
+          [`page:${path}`]: { isStatic: STATIC_PAGES.includes(path) },
         },
       };
     }),
