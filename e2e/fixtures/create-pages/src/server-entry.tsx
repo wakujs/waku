@@ -15,8 +15,6 @@ import {
   LongSuspenseLayout,
 } from './components/LongSuspenseLayout.js';
 import { readFile } from 'node:fs/promises';
-import StaticPagePart from './components/StaticPagePart.js';
-import DynamicPagePart from './components/DynamicPagePart.js';
 import NoSsr from './components/NoSsr.js';
 import { Slice001 } from './components/slice001.js';
 import { Slice002 } from './components/slice002.js';
@@ -24,13 +22,7 @@ import { Slice003 } from './components/slice003.js';
 import { Slice } from 'waku';
 
 const pages: ReturnType<typeof createPages> = createPages(
-  async ({
-    createPage,
-    createLayout,
-    createApi,
-    createPagePart,
-    createSlice,
-  }) => [
+  async ({ createPage, createLayout, createApi, createSlice }) => [
     createLayout({
       render: 'static',
       path: '/',
@@ -281,34 +273,6 @@ const pages: ReturnType<typeof createPages> = createPages(
       render: 'dynamic',
       path: '/dynamic',
       component: () => <h1>Dynamic Page</h1>,
-    }),
-
-    createPagePart({
-      path: '/page-parts',
-      render: 'static',
-      order: 0,
-      component: StaticPagePart,
-    }),
-
-    createPagePart({
-      path: '/page-parts',
-      render: 'dynamic',
-      order: 1,
-      component: DynamicPagePart,
-    }),
-
-    createPagePart({
-      path: '/page-parts/should-be-static',
-      render: 'static',
-      order: 0,
-      component: StaticPagePart,
-    }),
-
-    createPagePart({
-      path: '/page-parts/should-be-static',
-      render: 'static',
-      order: 1,
-      component: StaticPagePart,
     }),
 
     createLayout({
