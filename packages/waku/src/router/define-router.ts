@@ -318,9 +318,6 @@ export function unstable_defineRouter(fns: {
     ) {
       throw new Error('Element ID cannot start with "route:" or "slice:"');
     }
-    if (slices.length && !import.meta.env.VITE_EXPERIMENTAL_WAKU_ROUTER) {
-      throw new Error('Slice is still experimental');
-    }
     const sliceConfigMap = new Map<string, { isStatic?: boolean }>();
     await Promise.all(
       slices.map(async (sliceId) => {
