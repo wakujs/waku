@@ -94,7 +94,7 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
         ),
         [`page:${path}`]: PATH_PAGE[path],
       },
-      ...(path === '/' ? { slices: ['slice001', 'slice002'] } : {}),
+      ...(path === '/' ? { slices: ['slice001'] } : {}),
       ...(path === '/bar1' ? { slices: ['slice001'] } : {}),
       ...(path === '/bar2' ? { slices: ['slice002'] } : {}),
     };
