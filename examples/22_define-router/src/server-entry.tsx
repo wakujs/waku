@@ -15,6 +15,7 @@ export default defineRouter({
       type: 'route',
       pattern: '/',
       path: [],
+      isStatic: true,
       rootElement: { isStatic: true },
       routeElement: { isStatic: true },
       elements: {
@@ -26,6 +27,7 @@ export default defineRouter({
       type: 'route',
       pattern: '/foo',
       path: [{ type: 'literal', name: 'foo' }],
+      isStatic: true,
       rootElement: { isStatic: true },
       routeElement: { isStatic: true },
       elements: {
@@ -37,6 +39,7 @@ export default defineRouter({
       type: 'route',
       pattern: '/bar',
       path: [{ type: 'literal', name: 'bar' }],
+      isStatic: true,
       rootElement: { isStatic: true },
       routeElement: { isStatic: true },
       elements: {
@@ -51,6 +54,7 @@ export default defineRouter({
         { type: 'literal', name: 'nested' },
         { type: 'literal', name: 'baz' },
       ],
+      isStatic: true,
       rootElement: { isStatic: true },
       routeElement: { isStatic: true },
       elements: {
@@ -65,6 +69,7 @@ export default defineRouter({
         { type: 'literal', name: 'dynamic' },
         { type: 'group', name: 'slug' },
       ],
+      isStatic: true,
       rootElement: { isStatic: true },
       routeElement: { isStatic: true },
       elements: {
@@ -79,6 +84,7 @@ export default defineRouter({
         { type: 'literal', name: 'api' },
         { type: 'literal', name: 'hi' },
       ],
+      isStatic: false,
     },
     {
       type: 'api',
@@ -94,6 +100,7 @@ export default defineRouter({
         { type: 'literal', name: 'api' },
         { type: 'literal', name: 'empty' },
       ],
+      isStatic: false,
     },
   ],
   handleRoute: async (path) => {

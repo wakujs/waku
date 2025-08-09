@@ -98,6 +98,7 @@ export function mainPlugin(
       serverHandler: false,
       keepUseCientProxy: true,
       ignoredPackageWarnings: [/.*/],
+      useBuildAppHook: true,
     }),
     {
       name: 'rsc:waku',
@@ -436,7 +437,6 @@ if (import.meta.hot) {
       },
       // cf. packages/waku/src/lib/builder/build.ts
       buildApp: {
-        order: 'post',
         async handler(builder) {
           // import server entry
           const viteConfig = builder.config;
