@@ -94,8 +94,24 @@ export const getConfig = () => {
 
 This makes it so that now you can have a `dynamic` Slice component for slice `two` here, while the rest of the page is static.
 
+## Some breaking changes
+
+We’ve standardized on the following defaults: pages, layouts, and slices are all static by default. API routes are dynamic by default.
+
+This comes with the explicit change of `pages` default render to `'static'`. So any pages that do not currently use `getConfig` should add:
+
+```ts
+export const getConfig = () => {
+  return {
+    render: 'dynamic',
+  } as const;
+};
+```
+
+If your full build is static, this change won't impact you since the static build mode makes every page only render once at build time.
+
 ## There’s more to come
 
-We're keeping Waku Router minimal and making it even more powerful with this release. We’re really excited to see what you can build with Slices and would love to hear from you on our [Discord server](https://discord.gg/MrQdmzd), [GitHub discussions](https://github.com/wakujs/waku/discussions), or [around](https://x.com/wakujs) [the](https://bsky.app/profile/daishikato.com) [web](https://fosstodon.org/@daishi).
+We’re keeping Waku Router minimal and making it even more powerful with this release. We’re really excited to see what you can build with Slices and would love to hear from you on our [Discord server](https://discord.gg/MrQdmzd), [GitHub discussions](https://github.com/wakujs/waku/discussions), or [around](https://x.com/wakujs) [the](https://bsky.app/profile/daishikato.com) [web](https://fosstodon.org/@daishi).
 
 P.S., We have a [few more things](https://github.com/wakujs/waku/issues/24) coming soon!
