@@ -13,11 +13,11 @@ We heard the feedback around the Page Part components and feel like the Slices A
 
 ## Components are re-useable across pages
 
-Slices are components that are defined in the `src/pages/slices` directory. This allows us to re-use slices across pages as any other component would be used.
+Slices are components that are defined in the `src/pages/_slices` directory. This allows us to re-use slices across pages as any other component would be used.
 
 ```
  src/pages
- ├── slices
+ ├── _slices
  │   ├── one.tsx
  │   └── two.tsx
  └── some-page.tsx
@@ -47,9 +47,9 @@ export const getConfig = () => {
 
 Please notice: `slices` must be specified with each of the slice ids in order for Waku to know how to bundle your page without any compiler magic.
 
-By default, the slice id will be the filename. If slices are nested like `src/pages/slices/one/two.tsx`, the id will be `one/two`.
+By default, the slice id will be the filename. If slices are nested like `src/pages/_slices/one/two.tsx`, the id will be `one/two`.
 
-An example for `src/pages/slices/one.tsx`:
+An example for `src/pages/_slices/one.tsx`:
 
 ```tsx
 export default function SliceOne() {
