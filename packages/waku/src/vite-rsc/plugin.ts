@@ -65,6 +65,7 @@ export function mainPlugin(
     distDir: 'dist',
     pagesDir: 'pages',
     apiDir: 'api',
+    slicesDir: 'slices',
     privateDir: 'private',
     rscBase: 'RSC',
     middleware: [
@@ -305,6 +306,7 @@ if (import.meta.hot) {
             {
               pagesDir: config.pagesDir,
               apiDir: config.apiDir,
+              slicesDir: config.slicesDir,
             },
           );
         }

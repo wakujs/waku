@@ -21,6 +21,7 @@ export async function resolveConfigDev(config: Config) {
     distDir: 'dist',
     pagesDir: 'pages',
     apiDir: 'api',
+    slicesDir: 'slices',
     privateDir: 'private',
     rscBase: 'RSC',
     middleware: DEFAULT_MIDDLEWARE,
