@@ -5,6 +5,7 @@ import {
   unstable_getPlatformData,
   unstable_setPlatformData,
   unstable_createAsyncIterable as createAsyncIterable,
+  unstable_getBuildOptions,
 } from '../server.js';
 import { unstable_defineEntries as defineEntries } from '../minimal/server.js';
 import {
@@ -205,12 +206,22 @@ export function unstable_defineRouter(fns: {
     };
   }[];
   let cachedPathConfig: MyPathConfig | undefined;
+  const buildOptions = unstable_getBuildOptions();
   const getMyPathConfig = async (): Promise<MyPathConfig> => {
     const pathConfig = await unstable_getPlatformData(
       'defineRouterPathConfigs',
     );
     if (pathConfig) {
       return pathConfig as MyPathConfig;
+    }
+    if (
+      import.meta.env &&
+      import.meta.env.MODE === 'production' &&
+      !buildOptions.unstable_phase
+    ) {
+      throw new Error(
+        '"defineRouterPathConfigs" platform data must be set in production.',
+      );
     }
     if (!cachedPathConfig) {
       cachedPathConfig = Array.from(await fns.getConfig()).map((item) => {
