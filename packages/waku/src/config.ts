@@ -34,7 +34,7 @@ export interface Config {
   apiDir?: string;
   /**
    * The slices directory inside pagesDir.
-   * Defaults to "slices".
+   * Defaults to "_slices".
    */
   slicesDir?: string;
   /**

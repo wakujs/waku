@@ -22,7 +22,7 @@ export function unstable_fsRouter(
      * is `"foo"`, then it will detect pages in `src/foo/api`.
      */
     apiDir: string;
-    /** e.g. `"slices"` will detect slices in `src/pages/slices`. */
+    /** e.g. `"_slices"` will detect slices in `src/pages/_slices`. */
     slicesDir: string;
   },
 ) {
