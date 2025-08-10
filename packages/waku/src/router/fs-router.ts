@@ -9,7 +9,7 @@ const SLICE_PREFIX = '_slice';
  * Helper to remove the `_slice-` prefix from a slice id.
  * It will also remove any non-alphanumeric characters until one is found
  */
-const removeStart = (s: string) => {
+const removeSlicePrefix = (s: string) => {
   return s.slice(SLICE_PREFIX.length).replace(/^[-_]/, '');
 };
 
@@ -55,8 +55,8 @@ export function unstable_fsRouter(
         if (pathItems.at(-1)?.startsWith(SLICE_PREFIX)) {
           createSlice({
             component: mod.default,
-            render: 'dynamic',
-            id: removeStart(pathItems.at(-1)!),
+            render: 'static',
+            id: removeSlicePrefix(pathItems.at(-1)!),
             ...config,
           });
           continue;
@@ -140,7 +140,7 @@ export function unstable_fsRouter(
           createPage({
             path,
             component: mod.default,
-            render: 'dynamic',
+            render: 'static',
             ...config,
           });
         }
