@@ -155,7 +155,7 @@ export function unstable_fsRouter(
           createSlice({
             component: mod.default,
             render: 'static',
-            id: pathItems.slice(1).join('-'),
+            id: pathItems.slice(1).join('/'),
             ...config,
           });
         } else if (pathItems.at(-1) === '_layout') {
