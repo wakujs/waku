@@ -13,13 +13,13 @@ We heard the feedback around the Page Part components and feel like the Slices A
 
 ## Components are re-useable across pages
 
-Slices are components that are defined anywhere in the `src/pages` with `_slice-` as the start of their filename. This allows us to re-use slices across pages as any other component would be used.
+Slices are components that are defined in the `src/pages/slices` directory. This allows us to re-use slices across pages as any other component would be used.
 
 ```
  src/pages
- ├── _components
- │   ├── _slice-one.tsx
- │   └── _slice-two.tsx
+ ├── slices
+ │   ├── one.tsx
+ │   └── two.tsx
  └── some-page.tsx
 ```
 
@@ -47,9 +47,9 @@ export const getConfig = () => {
 
 Please notice: `slices` must be specified with each of the slice ids in order for Waku to know how to bundle your page without any compiler magic.
 
-The file convention for Slice components is `_slice-${string}.tsx` (TypeScript string literal syntax). We will look for these anywhere in the `src/pages` directory. And by default, the slice id will be the filename without the `_slice-` prefix.
+By default, the slice id will be the filename. If slices are nested like `src/pages/slices/one/two.tsx`, the id will be `one/two`.
 
-An example for `_slice-one.tsx`:
+An example for `src/pages/slices/one.tsx`:
 
 ```tsx
 export default function SliceOne() {
@@ -59,7 +59,7 @@ export default function SliceOne() {
 export const getConfig = () => {
   return {
     id: 'one', // can be omitted if it can be taken from the file name
-    render: 'static', // default is 'dynamic'
+    render: 'static', // default is 'static'
   };
 };
 ```
@@ -107,8 +107,6 @@ export const getConfig = () => {
   } as const;
 };
 ```
-
-If your full build is static, this change won't impact you since the static build mode makes every page only render once at build time.
 
 ## There’s more to come
 
