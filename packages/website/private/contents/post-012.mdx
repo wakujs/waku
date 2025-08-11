@@ -47,7 +47,7 @@ export const getConfig = () => {
 
 Please notice: `slices` must be specified with each of the slice ids in order for Waku to know how to bundle your page without any compiler magic.
 
-By default, the slice id will be the filename. If slices are nested like `src/pages/_slices/one/two.tsx`, the id will be `one/two`.
+The slice id will be the filename. If slices are nested like `src/pages/_slices/one/two.tsx`, the id will be `one/two`.
 
 An example for `src/pages/_slices/one.tsx`:
 
@@ -58,7 +58,6 @@ export default function SliceOne() {
 
 export const getConfig = () => {
   return {
-    id: 'one', // can be omitted if it can be taken from the file name
     render: 'static', // default is 'static'
   };
 };
