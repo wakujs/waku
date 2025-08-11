@@ -89,7 +89,7 @@
     "@hono/node-server": "1.18.1",
     "@swc/core": "1.13.3",
     "@vitejs/plugin-react": "5.0.0",
-    "@vitejs/plugin-rsc": "https://pkg.pr.new/@vitejs/plugin-rsc@698",
+    "@vitejs/plugin-rsc": "0.4.19",
     "dotenv": "17.2.1",
     "hono": "4.9.0",
     "html-react-parser": "5.2.6",
