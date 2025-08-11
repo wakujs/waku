@@ -230,7 +230,6 @@ export function mainPlugin(
             noExternal: env.command === 'build' ? true : [PKG_NAME],
           },
           optimizeDeps: {
-            // include: name === 'ssr' ? [`${PKG_NAME} > html-react-parser`] : [],
             exclude: [PKG_NAME, 'waku/minimal/client', 'waku/router/client'],
           },
         };
