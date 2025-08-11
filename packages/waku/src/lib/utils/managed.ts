@@ -1,15 +1,13 @@
+import type { Config } from '../../config.js';
 import type { unstable_fsRouter } from '../../router/fs-router.js';
 import { EXTENSIONS } from '../builder/constants.js';
 
-export const getManagedServerEntry = (config: {
-  srcDir: string;
-  pagesDir: string;
-  apiDir: string;
-}) => {
+export const getManagedServerEntry = (config: Required<Config>) => {
   const globBase = `/${config.srcDir}/${config.pagesDir}/`;
   const globPattern = `${globBase}**/*.{${EXTENSIONS.map((ext) => ext.slice(1)).join(',')}}`;
   const fsRouterOptions: Parameters<typeof unstable_fsRouter>[1] = {
     apiDir: config.apiDir,
+    slicesDir: config.slicesDir,
   };
   return `
 import { unstable_fsRouter as fsRouter } from 'waku/router/server';
