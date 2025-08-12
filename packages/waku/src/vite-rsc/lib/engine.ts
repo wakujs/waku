@@ -5,7 +5,6 @@ import type {
 import { middlewares } from 'virtual:vite-rsc-waku/middlewares';
 import type { MiddlewareHandler } from 'hono';
 import { isBuild } from 'virtual:vite-rsc-waku/config';
-export { INTERNAL_setAllEnv } from '../../server.js';
 
 // cf. packages/waku/src/lib/hono/engine.ts
 export function createHonoHandler(): MiddlewareHandler {
