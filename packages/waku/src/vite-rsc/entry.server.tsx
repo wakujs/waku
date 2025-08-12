@@ -1,6 +1,33 @@
 import { Hono } from 'hono';
-import { createApp } from './lib/engine.js';
+import { createHonoHandler } from 'waku/unstable_hono';
+import { INTERNAL_setAllEnv, unstable_builderConstants } from 'waku/server';
 import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
+import { flags, config, isBuild } from 'virtual:vite-rsc-waku/config';
+import { compress } from 'hono/compress';
+import { serveStatic } from '@hono/node-server/serve-static';
+import path from 'node:path';
+import fs from 'node:fs';
+
+const { DIST_PUBLIC } = unstable_builderConstants;
+
+function createApp(app: Hono) {
+  INTERNAL_setAllEnv(process.env as any);
+  if (flags['experimental-compress']) {
+    app.use(compress());
+  }
+  if (isBuild) {
+    app.use(serveStatic({ root: path.join(config.distDir, DIST_PUBLIC) }));
+  }
+  app.use(createHonoHandler());
+  app.notFound((c) => {
+    const file = path.join(config.distDir, DIST_PUBLIC, '404.html');
+    if (fs.existsSync(file)) {
+      return c.html(fs.readFileSync(file, 'utf8'), 404);
+    }
+    return c.text('404 Not Found', 404);
+  });
+  return app;
+}
 
 const app = honoEnhancer(createApp)(new Hono());
 

@@ -2,7 +2,7 @@
 
 export { serverEngine } from './lib/hono/engine.js';
 export { getHonoContext } from './lib/hono/ctx.js';
-export { createApp } from './vite-rsc/lib/engine.js';
+export { createHonoHandler } from './vite-rsc/lib/engine.js';
 
 export const importHono = () => import('hono');
 export const importHonoNodeServer: any = () => import('@hono/node-server');
