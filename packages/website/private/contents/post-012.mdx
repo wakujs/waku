@@ -1,15 +1,15 @@
 ---
 slug: rethinking-fine-grained-components
 title: Introducing “slice components”
-description: We’ve re-thought the api for fine-grained component rendering.
+description: We’ve re-thought the API for fine-grained component rendering.
 author: tyler
 release: v0.25
 date: 2025/08/12
 ---
 
-We’re happy to announce Waku v0.25 with a brand new API: the Slice Components!
+We’re happy to announce Waku v0.25 with a brand new API: Slice Components!
 
-We heard the feedback around the Page Part components and feel like the Slices API will both solve a lot of the issues, while also unlocking brand new flexibility with render patterns!
+We feel the Slices API solves issues reported with the now deprecated Page Part components while also unlocking brand new flexibility with render patterns!
 
 ## Components are re-useable across pages
 
@@ -63,11 +63,11 @@ export const getConfig = () => {
 };
 ```
 
-We're really happy with the new approach and how it will allow simply importing and assembling your components like normal components.
+We’re really happy with the new approach and how it will allow simply importing and assembling your components like normal components, while also specifying alternate rendering.
 
 ## Lazy Slice Components
 
-`lazy` Slice Components are a new addition with the Slices API. They are Waku's take on the [server islands feature](https://astro.build/blog/astro-4120/) from Astro. `lazy` allows components to be requested independent from the page they are used on. This is useful for components will be dynamically rendered on otherwise static pages and layouts.
+`lazy` Slice Components are a new addition with the Slices API. They are Waku’s take on the [server islands feature](https://astro.build/blog/astro-4120/) from Astro. `lazy` allows components to be requested independent from the page they are used on. This is useful for components will be dynamically rendered on otherwise static pages and layouts.
 
 If we re-use the example above, it could be written like this:
 
