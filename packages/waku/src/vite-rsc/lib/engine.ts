@@ -3,7 +3,7 @@ import type {
   MiddlewareOptions,
 } from '../../lib/middleware/types.js';
 import { middlewares } from 'virtual:vite-rsc-waku/middlewares';
-import type { MiddlewareHandler, Hono } from 'hono';
+import type { MiddlewareHandler } from 'hono';
 import { isBuild } from 'virtual:vite-rsc-waku/config';
 export { INTERNAL_setAllEnv } from '../../server.js';
 
