@@ -1,17 +1,22 @@
 import { expect } from '@playwright/test';
 
-import { test, prepareStandaloneSetup, FETCH_ERROR_MESSAGES } from './utils.js';
+import {
+  test,
+  FETCH_ERROR_MESSAGES,
+  waitForHydration,
+  prepareStandaloneSetup,
+} from './utils.js';
 
 const startApp = prepareStandaloneSetup('create-pages');
 
 test.describe(`create-pages`, () => {
   let port: number;
-  let stopApp: () => Promise<void>;
+  let stopApp: (() => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp();
+    await stopApp?.();
   });
 
   test('home', async ({ page }) => {
@@ -75,6 +80,7 @@ test.describe(`create-pages`, () => {
 
   test('jump', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
     await page.click("a[href='/foo']");
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
     await page.click('text=Jump to random page');
@@ -89,6 +95,7 @@ test.describe(`create-pages`, () => {
     const errors: string[] = [];
     page.on('pageerror', (err) => errors.push(err.message));
     await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
     await page.click("a[href='/foo']");
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
     await page.click('text=Jump with setState');
@@ -100,6 +107,7 @@ test.describe(`create-pages`, () => {
 
   test('errors', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
     await page.click("a[href='/error']");
     await expect(
       page.getByRole('heading', { name: 'Error Page' }),
@@ -118,6 +126,7 @@ test.describe(`create-pages`, () => {
 
   test('server function unreachable', async ({ page, mode, browserName }) => {
     await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
     await page.click("a[href='/error']");
     await expect(
       page.getByRole('heading', { name: 'Error Page' }),
@@ -130,7 +139,7 @@ test.describe(`create-pages`, () => {
     await expect(
       page.getByTestId('server-throws').getByTestId('throws-success'),
     ).toHaveText('init');
-    await stopApp();
+    await stopApp?.();
     await page.getByTestId('server-throws').getByTestId('success').click();
     await page.waitForTimeout(500); // need to wait?
     await expect(
@@ -141,7 +150,8 @@ test.describe(`create-pages`, () => {
 
   test('server page unreachable', async ({ page, mode, browserName }) => {
     await page.goto(`http://localhost:${port}`);
-    await stopApp();
+    await waitForHydration(page);
+    await stopApp?.();
     await page.click("a[href='/error']");
     // Default router client error boundary is reached
     await expect(
@@ -153,6 +163,7 @@ test.describe(`create-pages`, () => {
   // https://github.com/wakujs/waku/issues/1255
   test('long suspense', async ({ page }) => {
     await page.goto(`http://localhost:${port}/long-suspense/1`);
+    await waitForHydration(page);
     await expect(page.getByTestId('long-suspense-component')).toHaveCount(2);
     await expect(
       page.getByRole('heading', { name: 'Long Suspense Page 1' }),
@@ -320,6 +331,7 @@ test.describe(`create-pages`, () => {
 
   test('static page part', async ({ page }) => {
     await page.goto(`http://localhost:${port}/page-parts`);
+    await waitForHydration(page);
     const staticPageTime = (
       await page
         .getByRole('heading', { name: 'Static Page Part' })
@@ -375,5 +387,52 @@ test.describe(`create-pages`, () => {
     const dynamicTime2 = await whatTime('Dynamic Layout');
     const staticTime2 = await whatTime('Static Layout');
     expect(dynamicTime2).not.toEqual(staticTime2);
+  });
+
+  test('no ssr', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/no-ssr`);
+    await expect(
+      page.getByRole('heading', { name: 'No SSR', exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Only client component', exact: true }),
+    ).toBeVisible();
+  });
+
+  test('slices basic', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/slices`);
+    await waitForHydration(page);
+    const sliceText = await page.getByTestId('slice001').textContent();
+    expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
+    const sliceText2 = await page.getByTestId('slice002').textContent();
+    expect(sliceText2?.startsWith('Slice 002')).toBeTruthy();
+  });
+
+  test('slices with static page part', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/slices`);
+    await waitForHydration(page);
+    const staticSliceText = await page.getByTestId('slice001').textContent();
+    expect(staticSliceText?.startsWith('Slice 001')).toBeTruthy();
+    const dynamicSliceText = await page.getByTestId('slice002').textContent();
+    expect(dynamicSliceText?.startsWith('Slice 002')).toBeTruthy();
+
+    await page.getByRole('link', { name: 'Home' }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('link', { name: 'Slices' }).click();
+
+    const staticSliceText2 = await page.getByTestId('slice001').textContent();
+    expect(staticSliceText2).toBe(staticSliceText);
+    const dynamicSliceText2 = await page.getByTestId('slice002').textContent();
+    expect(dynamicSliceText2).not.toBe(dynamicSliceText);
+  });
+
+  test('slices with lazy', async ({ page }) => {
+    await page.route(/.*\/RSC\/.*/, async (route) => {
+      await new Promise((r) => setTimeout(r, 100));
+      await route.continue();
+    });
+    await page.goto(`http://localhost:${port}/slices`);
+    await expect(page.getByTestId('slice003-loading')).toBeVisible();
+    await expect(page.getByTestId('slice003')).toHaveText('Slice 003');
   });
 });

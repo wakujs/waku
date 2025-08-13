@@ -6,4 +6,10 @@ const Page = ({ name }: PageProps<'/nested/[name]'>) => (
   </div>
 );
 
+export const getConfig = () => {
+  return {
+    render: 'dynamic',
+  } as const;
+};
+
 export default Page;

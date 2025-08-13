@@ -3,7 +3,7 @@ import path from 'node:path';
 import { normalizePath } from 'vite';
 import type { Plugin } from 'vite';
 
-import { SRC_ENTRIES } from '../builder/constants.js';
+import { SRC_SERVER_ENTRY } from '../builder/constants.js';
 import { extname, joinPath } from '../utils/path.js';
 import { treeshake, removeObjectProperty } from '../utils/treeshake.js';
 
@@ -63,7 +63,7 @@ export const loadPlatformData = globalThis.__WAKU_LOAD_PLATFORM_DATA__;
   return {
     name: 'rsc-entries-plugin',
     configResolved(config) {
-      entriesFile = joinPath(config.root, opts.srcDir, SRC_ENTRIES);
+      entriesFile = joinPath(config.root, opts.srcDir, SRC_SERVER_ENTRY);
       if (existsSync(CONFIG_FILE)) {
         configFile = normalizePath(path.resolve(CONFIG_FILE));
       }

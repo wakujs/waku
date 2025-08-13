@@ -33,6 +33,7 @@ import {
   CLIENT_PREFIX,
 } from '../middleware/handler.js';
 import { rscRsdwPlugin } from '../plugins/vite-plugin-rsc-rsdw.js';
+import { rscResolveRsdwPlugin } from '../plugins/vite-plugin-rsc-resolve-rsdw.js';
 import { rscIndexPlugin } from '../plugins/vite-plugin-rsc-index.js';
 import { rscAnalyzePlugin } from '../plugins/vite-plugin-rsc-analyze.js';
 import { nonjsResolvePlugin } from '../plugins/vite-plugin-nonjs-resolve.js';
@@ -43,7 +44,7 @@ import { rscPrivatePlugin } from '../plugins/vite-plugin-rsc-private.js';
 import { rscManagedPlugin } from '../plugins/vite-plugin-rsc-managed.js';
 import {
   EXTENSIONS,
-  DIST_ENTRIES_JS,
+  DIST_SERVER_ENTRY_JS,
   DIST_PUBLIC,
   DIST_ASSETS,
   DIST_SSR,
@@ -107,6 +108,7 @@ const analyzeEntries = async (rootDir: string, config: ConfigDev) => {
       {
         mode: 'production',
         plugins: [
+          rscResolveRsdwPlugin(),
           rscAnalyzePlugin({ isClient: false, clientFileMap, serverFileMap }),
           rscManagedPlugin({ ...config, addEntriesToInput: true }),
           ...deployPlugins(config),
@@ -236,6 +238,7 @@ const buildServerBundle = async (
             clientEntryFiles,
             serverEntryFiles,
           }),
+          rscResolveRsdwPlugin(),
           rscRsdwPlugin(),
           rscEnvPlugin({ isDev: false, env, config }),
           rscPrivatePlugin(config),
@@ -734,7 +737,11 @@ export async function build(options: {
   const rootDir = (
     await resolveViteConfig({}, 'build', 'production', 'production')
   ).root;
-  const distEntriesFile = joinPath(rootDir, config.distDir, DIST_ENTRIES_JS);
+  const distEntriesFile = joinPath(
+    rootDir,
+    config.distDir,
+    DIST_SERVER_ENTRY_JS,
+  );
 
   const buildOptions = unstable_getBuildOptions();
   buildOptions.deploy = options.deploy;

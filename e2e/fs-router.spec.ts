@@ -1,17 +1,17 @@
 import { expect } from '@playwright/test';
 
-import { test, prepareStandaloneSetup } from './utils.js';
+import { test, prepareStandaloneSetup, waitForHydration } from './utils.js';
 
 const startApp = prepareStandaloneSetup('fs-router');
 
 test.describe(`fs-router`, async () => {
   let port: number;
-  let stopApp: () => Promise<void>;
+  let stopApp: (() => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp();
+    await stopApp?.();
   });
 
   test('home', async ({ page }) => {
@@ -49,13 +49,15 @@ test.describe(`fs-router`, async () => {
     ).toBeVisible();
   });
 
-  test('check hydration error', async ({ page, mode }) => {
-    test.skip(mode !== 'DEV');
+  test('check hydration error', async ({ page }) => {
+    const messages: string[] = [];
+    page.on('console', (msg) => messages.push(msg.text()));
     const errors: string[] = [];
     page.on('pageerror', (err) => errors.push(err.message));
     await page.goto(`http://localhost:${port}/`);
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
-    expect(errors.join('\n')).not.toContain('hydration-mismatch');
+    expect(messages.join('\n')).not.toContain('hydration-mismatch');
+    expect(errors.join('\n')).not.toContain('Minified React error #418');
   });
 
   test('api hi', async () => {
@@ -123,6 +125,7 @@ test.describe(`fs-router`, async () => {
         .textContent()
     )?.split('Part ')[1];
     expect(staticPageTime).toBeTruthy();
+    await waitForHydration(page);
     await page.click("a[href='/']");
     await page.waitForTimeout(100);
     await page.click("a[href='/page-parts']");
@@ -167,5 +170,62 @@ test.describe(`fs-router`, async () => {
     await expect(
       page.getByRole('heading', { name: 'Nested / encoded%20path' }),
     ).toBeVisible();
+  });
+
+  test('slices', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/page-with-slices`);
+    await waitForHydration(page);
+    const sliceText = await page.getByTestId('slice001').textContent();
+    expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
+    await expect(page.getByTestId('slice002')).toHaveText('Slice 002');
+  });
+
+  test('css split', async ({ page }) => {
+    // each ssr-ed page includes split css
+    await page.goto(`http://localhost:${port}/css-split/page1`);
+    await expect(page.getByText('css-split / page1 / index')).toHaveCSS(
+      'color',
+      'rgb(255, 0, 0)', // red
+    );
+    await page.goto(`http://localhost:${port}/css-split/page1/nested`);
+    await expect(
+      page.getByText('css-split / page1 / nested / index'),
+    ).toHaveCSS(
+      'color',
+      'rgb(255, 0, 0)', // red
+    );
+    await page.goto(`http://localhost:${port}/css-split/page2`);
+    await expect(page.getByText('css-split / page2 / index')).toHaveCSS(
+      'color',
+      'rgb(0, 0, 255)', // blue
+    );
+    await page.goto(`http://localhost:${port}/css-split/page2/nested`);
+    await expect(
+      page.getByText('css-split / page2 / nested / index'),
+    ).toHaveCSS(
+      'color',
+      'rgb(0, 0, 255)', // blue
+    );
+
+    // client navigation cannot remove existing styles
+    // page1 -> red
+    // page2 -> blue
+    // page1 -> blue (last stylesheet wins)
+    await page.goto(`http://localhost:${port}/css-split/page1`);
+    await waitForHydration(page);
+    await expect(page.getByText('css-split / page1 / index')).toHaveCSS(
+      'color',
+      'rgb(255, 0, 0)', // red
+    );
+    await page.click("a[href='/css-split/page2']");
+    await expect(page.getByText('css-split / page2 / index')).toHaveCSS(
+      'color',
+      'rgb(0, 0, 255)', // blue
+    );
+    await page.click("a[href='/css-split/page1']");
+    await expect(page.getByText('css-split / page1 / index')).toHaveCSS(
+      'color',
+      'rgb(0, 0, 255)', // blue
+    );
   });
 });

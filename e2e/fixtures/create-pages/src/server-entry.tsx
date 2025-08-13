@@ -17,9 +17,20 @@ import {
 import { readFile } from 'node:fs/promises';
 import StaticPagePart from './components/StaticPagePart.js';
 import DynamicPagePart from './components/DynamicPagePart.js';
+import NoSsr from './components/NoSsr.js';
+import { Slice001 } from './components/slice001.js';
+import { Slice002 } from './components/slice002.js';
+import { Slice003 } from './components/slice003.js';
+import { Slice } from 'waku';
 
 const pages: ReturnType<typeof createPages> = createPages(
-  async ({ createPage, createLayout, createApi, createPagePart }) => [
+  async ({
+    createPage,
+    createLayout,
+    createApi,
+    createPagePart,
+    createSlice,
+  }) => [
     createLayout({
       render: 'static',
       path: '/',
@@ -186,7 +197,7 @@ const pages: ReturnType<typeof createPages> = createPages(
       render: 'static',
       method: 'GET',
       handler: async () => {
-        const hiTxt = await readFile('./private/hi.txt');
+        const hiTxt = await readFile('./private/hi.txt', 'utf-8');
         return new Response(hiTxt);
       },
     }),
@@ -324,6 +335,49 @@ const pages: ReturnType<typeof createPages> = createPages(
       render: 'static',
       path: '/(dynamic)/(static)/nested-layouts',
       component: () => <h1>Nested Layouts page</h1>,
+    }),
+
+    createPage({
+      render: 'static',
+      path: '/no-ssr',
+      component: NoSsr,
+      unstable_disableSSR: true,
+    }),
+
+    createPage({
+      render: 'dynamic',
+      path: '/slices',
+      slices: ['slice001', 'slice002'],
+      component: () => (
+        <>
+          <h2>Slices</h2>
+          <Slice id="slice001" />
+          <Slice id="slice002" />
+          <Slice
+            id="slice003"
+            lazy
+            fallback={<p data-testid="slice003-loading">Loading...</p>}
+          />
+        </>
+      ),
+    }),
+
+    createSlice({
+      render: 'static',
+      component: Slice001,
+      id: 'slice001',
+    }),
+
+    createSlice({
+      render: 'dynamic',
+      component: Slice002,
+      id: 'slice002',
+    }),
+
+    createSlice({
+      render: 'dynamic',
+      component: Slice003,
+      id: 'slice003',
     }),
   ],
 );

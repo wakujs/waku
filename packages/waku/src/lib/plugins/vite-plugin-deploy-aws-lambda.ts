@@ -7,7 +7,7 @@ import {
   unstable_builderConstants,
 } from '../../server.js';
 
-const { SRC_ENTRIES, DIST_PUBLIC } = unstable_builderConstants;
+const { SRC_SERVER_ENTRY, DIST_PUBLIC } = unstable_builderConstants;
 const SERVE_JS = 'serve-aws-lambda.js';
 
 const lambdaStreaming = process.env.DEPLOY_AWS_LAMBDA_STREAMING === 'true';
@@ -81,7 +81,7 @@ export function deployAwsLambdaPlugin(opts: {
       }
     },
     configResolved(config) {
-      entriesFile = `${config.root}/${opts.srcDir}/${SRC_ENTRIES}`;
+      entriesFile = `${config.root}/${opts.srcDir}/${SRC_SERVER_ENTRY}`;
       if (opts.unstable_honoEnhancer) {
         honoEnhancerFile = `${config.root}/${opts.unstable_honoEnhancer}`;
       }

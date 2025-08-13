@@ -2,6 +2,47 @@
 
 ## [Unreleased]
 
+## [0.25.0] - 2025-08-12
+
+### Added
+
+- Breaking: page defaults to static
+- Slice API in waku/router
+
+## [0.24.0] - 2025-08-05
+
+### Added
+
+- feat: use @vitejs/plugin-rsc
+
+### Changed
+
+- Bug fixes & some updates
+
+## [0.23.7] - 2025-07-31
+
+### Changed
+
+- Bug fixes & some updates
+
+## [0.23.6] - 2025-07-21
+
+### Changed
+
+- Hotfix for v0.23.5
+
+## [0.23.5] - 2025-07-20
+
+### Changed
+
+- Bug fixes & some updates
+
+## [0.23.4] - 2025-07-15
+
+### Changed
+
+- Bug fixes & some updates
+
 ## [0.23.3] - 2025-06-26
 
 ### Changed

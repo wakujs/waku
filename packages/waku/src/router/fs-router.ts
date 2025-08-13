@@ -22,6 +22,8 @@ export function unstable_fsRouter(
      * is `"foo"`, then it will detect pages in `src/foo/api`.
      */
     apiDir: string;
+    /** e.g. `"_slices"` will detect slices in `src/pages/_slices`. */
+    slicesDir: string;
   },
 ) {
   const buildOptions = unstable_getBuildOptions();
@@ -32,6 +34,7 @@ export function unstable_fsRouter(
       createRoot,
       createApi,
       createPagePart,
+      createSlice,
     }) => {
       let files = await unstable_getPlatformData<string[]>('fsRouterFiles');
       if (!files) {
@@ -148,6 +151,13 @@ export function unstable_fsRouter(
               handlers,
             });
           }
+        } else if (pathItems.at(0) === options.slicesDir) {
+          createSlice({
+            component: mod.default,
+            render: 'static',
+            id: pathItems.slice(1).join('/'),
+            ...config,
+          });
         } else if (pathItems.at(-1) === '_layout') {
           createLayout({
             path,
@@ -172,7 +182,7 @@ export function unstable_fsRouter(
           createPage({
             path,
             component: mod.default,
-            render: 'dynamic',
+            render: 'static',
             ...config,
           });
         }

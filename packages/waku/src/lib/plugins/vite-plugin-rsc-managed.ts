@@ -1,6 +1,10 @@
 import type { Plugin } from 'vite';
 
-import { EXTENSIONS, SRC_MAIN, SRC_ENTRIES } from '../builder/constants.js';
+import {
+  EXTENSIONS,
+  SRC_CLIENT_ENTRY,
+  SRC_SERVER_ENTRY,
+} from '../builder/constants.js';
 import { extname, joinPath, filePathToFileURL } from '../utils/path.js';
 
 const stripExt = (fname: string) => {
@@ -12,7 +16,7 @@ const stripExt = (fname: string) => {
 export const getManagedEntries = (
   filePath: string,
   srcDir: string,
-  options: { pagesDir: string; apiDir: string },
+  options: { pagesDir: string; apiDir: string; slicesDir: string },
 ) => `
 import { unstable_fsRouter as fsRouter } from 'waku/router/server';
 
@@ -21,7 +25,7 @@ export default fsRouter(
   (file) => import.meta.glob('/${srcDir}/pages/**/*.{${EXTENSIONS.map((ext) =>
     ext.replace(/^\./, ''),
   ).join(',')}}')[\`/${srcDir}/pages/\${file}\`]?.(),
-  { pagesDir: '${options.pagesDir}', apiDir: '${options.apiDir}' },
+  { pagesDir: '${options.pagesDir}', apiDir: '${options.apiDir}', slicesDir: '${options.slicesDir}' },
 );
 `;
 
@@ -45,18 +49,19 @@ export function rscManagedPlugin(opts: {
   srcDir: string;
   pagesDir: string;
   apiDir: string;
+  slicesDir: string;
   addEntriesToInput?: boolean;
   addMainToInput?: boolean;
 }): Plugin {
   let entriesFile: string | undefined;
   let mainFile: string | undefined;
-  const mainPath = `${opts.basePath}${opts.srcDir}/${SRC_MAIN}`;
+  const mainPath = `${opts.basePath}${opts.srcDir}/${SRC_CLIENT_ENTRY}`;
   return {
     name: 'rsc-managed-plugin',
     enforce: 'pre',
     configResolved(config) {
-      entriesFile = joinPath(config.root, opts.srcDir, SRC_ENTRIES);
-      mainFile = joinPath(config.root, opts.srcDir, SRC_MAIN);
+      entriesFile = joinPath(config.root, opts.srcDir, SRC_SERVER_ENTRY);
+      mainFile = joinPath(config.root, opts.srcDir, SRC_CLIENT_ENTRY);
     },
     options(options) {
       if (typeof options.input === 'string') {
@@ -68,8 +73,8 @@ export function rscManagedPlugin(opts: {
       return {
         ...options,
         input: {
-          ...(opts.addEntriesToInput && { [SRC_ENTRIES]: entriesFile! }),
-          ...(opts.addMainToInput && { [SRC_MAIN]: mainFile! }),
+          ...(opts.addEntriesToInput && { [SRC_SERVER_ENTRY]: entriesFile! }),
+          ...(opts.addMainToInput && { [SRC_CLIENT_ENTRY]: mainFile! }),
           ...options.input,
         },
       };
@@ -93,6 +98,7 @@ export function rscManagedPlugin(opts: {
         return getManagedEntries(entriesFile + '.js', opts.srcDir, {
           apiDir: opts.apiDir,
           pagesDir: opts.pagesDir,
+          slicesDir: opts.slicesDir,
         });
       }
       if (id === '\0' + mainFile + '.js' || id === '\0' + mainPath + '.js') {

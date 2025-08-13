@@ -1,4 +1,4 @@
-import { Counter } from '../../components/Counter';
+import { Counter } from '../_components/Counter';
 
 const Foo = () => (
   <div>
@@ -6,5 +6,11 @@ const Foo = () => (
     <Counter />
   </div>
 );
+
+export const getConfig = () => {
+  return {
+    render: 'dynamic',
+  } as const;
+};
 
 export default Foo;

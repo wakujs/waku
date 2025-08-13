@@ -13,11 +13,11 @@ import * as dotenv from 'dotenv';
 import type { Config } from './config.js';
 import { serverEngine } from './lib/hono/engine.js';
 import { build } from './lib/builder/build.js';
-import { DIST_ENTRIES_JS, DIST_PUBLIC } from './lib/builder/constants.js';
+import { DIST_SERVER_ENTRY_JS, DIST_PUBLIC } from './lib/builder/constants.js';
 
 const require = createRequire(new URL('.', import.meta.url));
 
-dotenv.config({ path: ['.env.local', '.env'] });
+dotenv.config({ path: ['.env.local', '.env'], quiet: true });
 
 const CONFIG_FILE = 'waku.config.ts'; // XXX only ts extension
 
@@ -55,6 +55,9 @@ const { values, positionals } = parseArgs({
     'experimental-compress': {
       type: 'boolean',
     },
+    'experimental-legacy-cli': {
+      type: 'boolean',
+    },
     port: {
       type: 'string',
       short: 'p',
@@ -77,6 +80,13 @@ if (values.version) {
   console.log(version);
 } else if (values.help) {
   displayUsage();
+} else if (
+  !values['experimental-legacy-cli'] &&
+  cmd &&
+  ['dev', 'build', 'start'].includes(cmd)
+) {
+  const { cli } = await import('./vite-rsc/cli.js');
+  await cli(cmd, values);
 } else {
   switch (cmd) {
     case 'dev':
@@ -97,22 +107,7 @@ if (values.version) {
   }
 }
 
-function catchUncaughtExceptionInDev() {
-  // Workaround for https://github.com/wakujs/waku/issues/756
-  process.on('uncaughtException', (err) => {
-    if (
-      (err as { code?: unknown }).code === 'ERR_INVALID_STATE' &&
-      err.message.includes('Unable to enqueue')
-    ) {
-      // ignore this error
-      return;
-    }
-    throw err;
-  });
-}
-
 async function runDev() {
-  catchUncaughtExceptionInDev();
   const config = await loadConfig();
   const honoEnhancer: HonoEnhancer = config.unstable_honoEnhancer
     ? await loadHonoEnhancer(config.unstable_honoEnhancer)
@@ -175,7 +170,9 @@ async function runStart() {
     ? await loadHonoEnhancer(config.unstable_honoEnhancer)
     : (fn) => fn;
   const loadEntries = () =>
-    import(pathToFileURL(path.resolve(distDir, DIST_ENTRIES_JS)).toString());
+    import(
+      pathToFileURL(path.resolve(distDir, DIST_SERVER_ENTRY_JS)).toString()
+    );
   const createApp = (app: Hono) => {
     if (values['experimental-compress']) {
       app.use(compress());
@@ -255,7 +252,9 @@ async function loadConfig(): Promise<Config> {
   return (await loadServerModule<{ default: Config }>(file)).default;
 }
 
-type HonoEnhancer = <Hono>(fn: (app: Hono) => Hono) => (app: Hono) => Hono;
+export type HonoEnhancer = <Hono>(
+  fn: (app: Hono) => Hono,
+) => (app: Hono) => Hono;
 
 async function loadHonoEnhancer(file: string): Promise<HonoEnhancer> {
   const { loadServerModule } = await import('./lib/utils/vite-loader.js');
