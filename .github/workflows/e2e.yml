@@ -17,6 +17,7 @@ on:
       - 'e2e/**'
       - '.github/workflows/e2e.yml'
       - 'pnpm-lock.yaml'
+  merge_group:
   workflow_call:
     inputs:
       ref:
@@ -43,8 +44,7 @@ jobs:
           node-version: 20
           cache: ${{ !inputs.react_version && 'pnpm' || '' }}
       - if: ${{ inputs.react_version }}
-        run: |
-          pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
+        run: pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
       - run: pnpm install
       - run: pnpm run compile
       - uses: actions/upload-artifact@v4
@@ -94,8 +94,15 @@ jobs:
           node-version: ${{ matrix.version }}
           cache: ${{ !inputs.react_version && 'pnpm' || '' }}
       - if: ${{ inputs.react_version }}
+        run: pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
+      # overrides canary/experimental build from https://github.com/vitejs/vite-plugin-react/pull/524
+      - if: ${{ inputs.react_version == 'canary' || inputs.react_version == 'experimental' }}
         run: |
-          pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
+          COMMIT_SHA=$(gh api repos/vitejs/vite-plugin-react/pulls/524 --jq '.head.sha')
+          pnpm -r update "@vitejs/plugin-rsc@https://pkg.pr.new/vitejs/vite-plugin-react/@vitejs/plugin-rsc-${{ inputs.react_version }}@$COMMIT_SHA"
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
       - run: pnpm install
       - uses: actions/download-artifact@v4
         with:
@@ -109,7 +116,7 @@ jobs:
         id: install-playwright
         uses: ./.github/actions/playwright
       - run: pnpm exec playwright test --shard=${{ matrix.shared }}/${{ matrix.shardTotal }}
-        timeout-minutes: 15
+        timeout-minutes: 30
         env:
           TEMP_DIR: ${{ runner.temp }}
           VITE_EXPERIMENTAL_WAKU_ROUTER: true

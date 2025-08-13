@@ -7,8 +7,10 @@ import type { TestOptions } from './e2e/utils.js';
  */
 const config = defineConfig<TestOptions>({
   testDir: './e2e',
-  fullyParallel: true,
   timeout: process.env.CI ? 120_000 : 30_000,
+  expect: {
+    timeout: process.env.CI ? 10_000 : 5_000,
+  },
   use: {
     viewport: { width: 1440, height: 800 },
     locale: 'en-US',
@@ -36,7 +38,6 @@ const config = defineConfig<TestOptions>({
     {
       ...item,
       name: `${item.name}-dev`,
-      testIgnore: ['examples-smoke.spec.ts'],
       use: {
         ...item.use,
         mode: 'DEV',
@@ -45,7 +46,6 @@ const config = defineConfig<TestOptions>({
     {
       ...item,
       name: `${item.name}-prd`,
-      testIgnore: ['examples-smoke.spec.ts'],
       use: {
         ...item.use,
         mode: 'PRD',
@@ -53,12 +53,12 @@ const config = defineConfig<TestOptions>({
     },
   ]),
   forbidOnly: !!process.env.CI,
-  workers: process.env.CI ? 1 : 3,
+  workers: process.env.CI ? 1 : 4,
   retries: 0,
   // 'github' for GitHub Actions CI to generate annotations, plus a concise 'dot'
   // default 'list' when running locally
   // See https://playwright.dev/docs/test-reporters#github-actions-annotations
-  reporter: process.env.CI ? 'github' : 'list',
+  reporter: process.env.CI ? [['github'], ['list']] : [['list']],
 });
 
 export default config;

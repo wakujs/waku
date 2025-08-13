@@ -1,0 +1,24 @@
+{
+  "name": "waku-jotai",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "waku dev",
+    "build": "waku build",
+    "start": "waku start"
+  },
+  "dependencies": {
+    "jotai": "2.13.1",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "react-server-dom-webpack": "19.1.1",
+    "waku": "latest",
+    "waku-jotai": "0.0.2"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "typescript": "^5.9.2"
+  }
+}

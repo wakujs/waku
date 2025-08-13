@@ -1,5 +1,6 @@
 import type { UserConfig } from 'vite';
 import type { Middleware } from './lib/middleware/types.js';
+import type { BuiltinMiddleware } from './lib/config.js';
 
 export type { Middleware };
 
@@ -32,6 +33,11 @@ export interface Config {
    */
   apiDir?: string;
   /**
+   * The slices directory inside pagesDir.
+   * Defaults to "_slices".
+   */
+  slicesDir?: string;
+  /**
    * The private directory relative to root.
    * This folder will contain files that should be read only on the server.
    * Defaults to  "private".
@@ -51,13 +57,14 @@ export interface Config {
    *   'waku/middleware/handler',
    * ]
    */
-  middleware?: string[];
+  middleware?: (BuiltinMiddleware | (string & {}))[];
   /**
    * Enhancer for Hono
    * Defaults to `undefined`
    */
   unstable_honoEnhancer?: string | undefined;
   /**
+   * @deprecated use `vite` instead.
    * Vite configuration options.
    * `common` can contains shared configs that are shallowly merged with other configs.
    * Defaults to `undefined` if not provided.
@@ -74,6 +81,12 @@ export interface Config {
         'build-deploy'?: () => UserConfig;
       }
     | undefined;
+  /**
+   * Vite configuration options.
+   * See https://vite.dev/guide/api-environment-plugins.html#environment-api-for-plugins
+   * for how to configure or enable plugins per environment.
+   */
+  vite?: UserConfig | undefined;
 }
 
 export function defineConfig(config: Config) {

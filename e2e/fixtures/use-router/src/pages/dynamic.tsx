@@ -14,4 +14,10 @@ const Page = () => (
   </>
 );
 
+export const getConfig = () => {
+  return {
+    render: 'dynamic',
+  } as const;
+};
+
 export default Page;

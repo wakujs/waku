@@ -451,24 +451,25 @@ const Redirect = ({
   error,
   to,
   reset,
+  handledErrorSet,
 }: {
   error: unknown;
   to: string;
   reset: () => void;
+  handledErrorSet: WeakSet<object>;
 }) => {
   const router = useContext(RouterContext);
   if (!router) {
     throw new Error('Missing Router');
   }
   const { changeRoute } = router;
-  const handledErrorSet = useRef(new WeakSet());
   useEffect(() => {
     // ensure single re-fetch per server redirection error on StrictMode
     // https://github.com/wakujs/waku/pull/1512
-    if (handledErrorSet.current.has(error as object)) {
+    if (handledErrorSet.has(error as object)) {
       return;
     }
-    handledErrorSet.current.add(error as object);
+    handledErrorSet.add(error as object);
 
     const url = new URL(to, window.location.href);
     // FIXME this condition seems too naive
@@ -491,7 +492,7 @@ const Redirect = ({
       .catch((err) => {
         console.log('Error while navigating to redirect:', err);
       });
-  }, [error, to, reset, changeRoute]);
+  }, [error, to, reset, changeRoute, handledErrorSet]);
   return null;
 };
 
@@ -499,6 +500,7 @@ class CustomErrorHandler extends Component<
   { has404: boolean; children?: ReactNode },
   { error: unknown | null }
 > {
+  private handledErrorSet = new WeakSet();
   constructor(props: { has404: boolean; children?: ReactNode }) {
     super(props);
     this.state = { error: null };
@@ -525,6 +527,7 @@ class CustomErrorHandler extends Component<
           error,
           to: info.location,
           reset: this.reset,
+          handledErrorSet: this.handledErrorSet,
         });
       }
       throw error;
@@ -549,19 +552,13 @@ export function Slice({
   children?: ReactNode;
 } & (
   | {
-      delayed?: false;
+      lazy?: false;
     }
   | {
-      delayed: true;
+      lazy: true;
       fallback: ReactNode;
     }
 )) {
-  if (
-    typeof window !== 'undefined' &&
-    !import.meta.env?.VITE_EXPERIMENTAL_WAKU_ROUTER
-  ) {
-    throw new Error('Slice is still experimental');
-  }
   const router = useContext(RouterContext);
   if (!router) {
     throw new Error('Missing Router');
@@ -572,7 +569,7 @@ export function Slice({
   const elementsPromise = useElementsPromise();
   const elements = use(elementsPromise);
   const needsToFetchSlice =
-    props.delayed &&
+    props.lazy &&
     (!(slotId in elements) ||
       // FIXME: hard-coded for now
       elements[IS_STATIC_ID + ':' + slotId] !== true);
@@ -590,7 +587,7 @@ export function Slice({
         });
     }
   }, [fetchingSlices, refetch, id, needsToFetchSlice]);
-  if (props.delayed && !(slotId in elements)) {
+  if (props.lazy && !(slotId in elements)) {
     // FIXME the fallback doesn't show on refetch after the first one.
     return props.fallback;
   }
@@ -649,6 +646,27 @@ const handleHistory = (
 };
 
 const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
+  if (import.meta.env.WAKU_HOT_RELOAD) {
+    const refetchRoute = () => {
+      staticPathSetRef.current.clear();
+      cachedIdSetRef.current.clear();
+      const rscPath = encodeRoutePath(route.path);
+      const rscParams = createRscParams(route.query);
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      refetch(rscPath, rscParams);
+    };
+    globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= [];
+    const index = globalThis.__WAKU_RSC_RELOAD_LISTENERS__.indexOf(
+      globalThis.__WAKU_REFETCH_ROUTE__!,
+    );
+    if (index !== -1) {
+      globalThis.__WAKU_RSC_RELOAD_LISTENERS__.splice(index, 1, refetchRoute);
+    } else {
+      globalThis.__WAKU_RSC_RELOAD_LISTENERS__.unshift(refetchRoute);
+    }
+    globalThis.__WAKU_REFETCH_ROUTE__ = refetchRoute;
+  }
+
   const elementsPromise = useElementsPromise();
   const [has404, setHas404] = useState(false);
   const requestedRouteRef = useRef<RouteProps>(initialRoute);

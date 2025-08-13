@@ -11,7 +11,7 @@ import { injectRSCPayload } from 'rsc-html-stream/server';
 
 import type * as WakuMinimalClientType from '../../minimal/client.js';
 import type { ConfigDev, ConfigPrd } from '../config.js';
-import { SRC_MAIN } from '../builder/constants.js';
+import { SRC_CLIENT_ENTRY } from '../builder/constants.js';
 import { filePathToFileURL } from '../utils/path.js';
 import { parseHtml } from '../utils/html-parser.js';
 import { renderRsc, renderRscElement, getExtractFormState } from './rsc.js';
@@ -61,7 +61,7 @@ globalThis.__WAKU_HYDRATE__ = true;
 `;
   const arr = parseHtml(htmlHead) as ReactElement<any>[];
   const headModules: string[] = [];
-  const headElements: ReactElement[] = [];
+  const headElements: ReactElement<{ async?: unknown }>[] = [];
   for (const item of arr) {
     if (item.type === 'script') {
       if (item.props?.src) {
@@ -87,9 +87,6 @@ globalThis.__WAKU_HYDRATE__ = true;
   }
   return { headCode, headModules, headElements };
 };
-
-// FIXME Why does it error on the first and second time?
-let hackToIgnoreFirstTwoErrors = 2;
 
 export async function renderHtml(
   config: ConfigDev | ConfigPrd,
@@ -158,56 +155,49 @@ export async function renderHtml(
     rscPath,
     htmlHead,
     isDev
-      ? `${config.basePath}${(config as ConfigDev).srcDir}/${SRC_MAIN}`
+      ? `${config.basePath}${(config as ConfigDev).srcDir}/${SRC_CLIENT_ENTRY}`
       : '',
   );
-  try {
-    const readable = await renderToReadableStream(
-      createElement(
-        INTERNAL_ServerRoot as FunctionComponent<
-          Omit<ComponentProps<typeof INTERNAL_ServerRoot>, 'children'>
-        >,
-        { elementsPromise },
-        ...headElements,
-        htmlNode as any,
-      ),
-      {
-        bootstrapScriptContent: headCode,
-        bootstrapModules: headModules,
-        formState:
-          actionResult === undefined
-            ? null
-            : await getExtractFormState(ctx)(actionResult),
-        onError(err) {
-          if (hackToIgnoreFirstTwoErrors) {
-            return;
-          }
-          console.error(err);
-          onError.forEach((fn) => fn(err, ctx as HandlerContext, 'html'));
-          if (typeof (err as any)?.digest === 'string') {
-            return (err as { digest: string }).digest;
-          }
-        },
+  const readable = await renderToReadableStream(
+    createElement(
+      INTERNAL_ServerRoot as FunctionComponent<
+        Omit<ComponentProps<typeof INTERNAL_ServerRoot>, 'children'>
+      >,
+      { elementsPromise },
+      ...headElements.filter((ele) => ele.props?.async !== true),
+      // See: https://github.com/wakujs/waku/pull/1545
+      // isolate `React.use` in its own component
+      // https://github.com/facebook/react/issues/33937#issuecomment-3091349011
+      createElement(async () => {
+        const resolvedHtmlNode = await htmlNode;
+        return createElement(HtmlNodeWrapper, null, resolvedHtmlNode);
+      }),
+      ...headElements.filter((ele) => ele.props?.async === true),
+    ),
+    {
+      bootstrapScriptContent: headCode,
+      bootstrapModules: headModules,
+      formState:
+        actionResult === undefined
+          ? null
+          : await getExtractFormState(ctx)(actionResult),
+      onError(err) {
+        console.error(err);
+        onError.forEach((fn) => fn(err, ctx as HandlerContext, 'html'));
+        if (typeof (err as any)?.digest === 'string') {
+          return (err as { digest: string }).digest;
+        }
       },
-    );
-    const injected: ReadableStream & { allReady?: Promise<void> } =
-      readable.pipeThrough(injectRSCPayload(stream2));
-    injected.allReady = readable.allReady;
-    return injected as never;
-  } catch (e) {
-    if (hackToIgnoreFirstTwoErrors) {
-      hackToIgnoreFirstTwoErrors--;
-      return renderHtml(
-        config,
-        ctx,
-        htmlHead,
-        elements,
-        onError,
-        html,
-        rscPath,
-        actionResult,
-      );
-    }
-    throw e;
-  }
+    },
+  );
+  const injected: ReadableStream & { allReady?: Promise<void> } =
+    readable.pipeThrough(injectRSCPayload(stream2));
+  injected.allReady = readable.allReady;
+  return injected as never;
+}
+
+// HACK: This is only for a workaround.
+// https://github.com/facebook/react/issues/33937
+function HtmlNodeWrapper(props: { children: ReactNode }) {
+  return props.children;
 }

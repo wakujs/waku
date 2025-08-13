@@ -34,6 +34,16 @@ export const METHODS = [
 ] as const;
 export type Method = (typeof METHODS)[number];
 
+export const pathMappingWithoutGroups: typeof getPathMapping = (
+  pathSpec,
+  pathname,
+) => {
+  const cleanPathSpec = pathSpec.filter(
+    (spec) => !(spec.type === 'literal' && spec.name.startsWith('(')),
+  );
+  return getPathMapping(cleanPathSpec, pathname);
+};
+
 const sanitizeSlug = (slug: string) =>
   slug.replace(/\./g, '').replace(/ /g, '-');
 
@@ -120,6 +130,7 @@ export type CreatePage = <
   Render extends 'static' | 'dynamic',
   StaticPaths extends StaticSlugRoutePaths<Path>,
   ExactPath extends boolean | undefined = undefined,
+  Slices extends string[] = [],
 >(
   page: (
     | {
@@ -149,6 +160,11 @@ export type CreatePage = <
      * This is intended for extending support to create custom routers.
      */
     exactPath?: ExactPath;
+    /**
+     * List of slice ids used in the component.
+     * This is _required_ to send the slices along with the component.
+     */
+    slices?: Slices;
   },
 ) => Omit<
   Exclude<typeof page, { path: never } | { render: never }>,
@@ -199,6 +215,12 @@ export type CreatePagePart = <const Path extends string>(params: {
   component: FunctionComponent<{ children: ReactNode }>;
 }) => typeof params;
 
+export type CreateSlice = <ID extends string>(slice: {
+  render: 'static' | 'dynamic';
+  id: ID;
+  component: FunctionComponent<{ children: ReactNode }>;
+}) => void;
+
 type RootItem = {
   render: 'static' | 'dynamic';
   component: FunctionComponent<{ children: ReactNode }>;
@@ -248,6 +270,38 @@ type ComponentList = {
 
 type ComponentEntry = FunctionComponent<any> | ComponentList;
 
+const routePriorityComparator = (
+  a: {
+    path: PathSpec;
+    type: 'route' | 'api';
+  },
+  b: {
+    path: PathSpec;
+    type: 'route' | 'api';
+  },
+) => {
+  const aPath = a.path;
+  const bPath = b.path;
+  const aPathLength = aPath.length;
+  const bPathLength = bPath.length;
+  const aHasWildcard = aPath.at(-1)?.type === 'wildcard';
+  const bHasWildcard = bPath.at(-1)?.type === 'wildcard';
+
+  // Compare path lengths first (longer paths are more specific)
+  if (aPathLength !== bPathLength) {
+    return aPathLength > bPathLength ? -1 : 1;
+  }
+
+  // If path lengths are equal, compare wildcard presence
+  // sort the route without the wildcard higher, to check it earlier
+  if (aHasWildcard !== bHasWildcard) {
+    return aHasWildcard ? 1 : -1;
+  }
+
+  // If all else is equal, routes have the same priority
+  return 0;
+};
+
 export const createPages = <
   AllPages extends (AnyPage | ReturnType<CreateLayout>)[],
 >(
@@ -259,8 +313,10 @@ export const createPages = <
     /**
      * Page Part pages will be dynamic when any part is dynamic.
      * If all parts are static, the page will be static.
+     * @deprecated to be replaced by createSlice
      */
     createPagePart: CreatePagePart;
+    createSlice: CreateSlice;
   }) => Promise<AllPages>,
 ) => {
   let configured = false;
@@ -286,6 +342,14 @@ export const createPages = <
     }
   >();
   const staticComponentMap = new Map<string, FunctionComponent<any>>();
+  const slicePathMap = new Map<string, string[]>();
+  const sliceIdMap = new Map<
+    string,
+    {
+      component: FunctionComponent<{ children: ReactNode }>;
+      isStatic: boolean;
+    }
+  >();
   let rootItem: RootItem | undefined = undefined;
   const noSsrSet = new WeakSet<PathSpec>();
 
@@ -302,7 +366,7 @@ export const createPages = <
       ...wildcardPagePathMap.keys(),
     ];
     for (const p of allPaths) {
-      if (getPathMapping(parsePathWithSlug(p), path)) {
+      if (pathMappingWithoutGroups(parsePathWithSlug(p), path)) {
         return p;
       }
     }
@@ -312,10 +376,17 @@ export const createPages = <
     path: string,
     method: string,
   ) => string | undefined = (path, method) => {
-    for (const [p, v] of apiPathMap.entries()) {
+    const apiConfigEntries = Array.from(apiPathMap.entries()).sort(
+      ([, a], [, b]) =>
+        routePriorityComparator(
+          { path: a.pathSpec, type: 'api' },
+          { path: b.pathSpec, type: 'api' },
+        ),
+    );
+    for (const [p, v] of apiConfigEntries) {
       if (
         (method in v.handlers || v.handlers.all) &&
-        getPathMapping(parsePathWithSlug(p!), path)
+        pathMappingWithoutGroups(parsePathWithSlug(p!), path)
       ) {
         return p;
       }
@@ -356,6 +427,15 @@ export const createPages = <
     }
     staticComponentMap.set(id, component);
   };
+
+  const isAllElementsStatic = (
+    elements: Record<string, { isStatic?: boolean }>,
+  ) => Object.values(elements).every((element) => element.isStatic);
+
+  const isAllSlicesStatic = (path: string) =>
+    (slicePathMap.get(path) || []).every(
+      (sliceId) => sliceIdMap.get(sliceId)?.isStatic,
+    );
 
   const createPage: CreatePage = (page) => {
     if (configured) {
@@ -457,7 +537,10 @@ export const createPages = <
       }
       wildcardPagePathMap.set(pagePath, [pathSpec, page.component]);
     } else {
-      throw new Error('Invalid page configuration');
+      throw new Error('Invalid page configuration ' + JSON.stringify(page));
+    }
+    if (page.slices?.length) {
+      slicePathMap.set(page.path, page.slices);
     }
     return page as Exclude<typeof page, { path: never } | { render: never }>;
   };
@@ -515,6 +598,19 @@ export const createPages = <
     } else {
       throw new Error('Invalid root configuration');
     }
+  };
+
+  const createSlice: CreateSlice = (slice) => {
+    if (configured) {
+      throw new Error('createSlice no longer available');
+    }
+    if (sliceIdMap.has(slice.id)) {
+      throw new Error(`Duplicated slice id: ${slice.id}`);
+    }
+    sliceIdMap.set(slice.id, {
+      component: slice.component,
+      isStatic: slice.render === 'static',
+    });
   };
 
   const createPagePart: CreatePagePart = (params) => {
@@ -586,6 +682,7 @@ export const createPages = <
         createRoot,
         createApi,
         createPagePart,
+        createSlice,
       });
       await ready;
 
@@ -637,6 +734,7 @@ export const createPages = <
       const routeConfigs: {
         type: 'route';
         path: PathSpec;
+        isStatic: boolean;
         pathPattern?: PathSpec;
         rootElement: { isStatic?: boolean };
         routeElement: { isStatic?: boolean };
@@ -665,11 +763,13 @@ export const createPages = <
         routeConfigs.push({
           type: 'route',
           path: literalSpec.filter((part) => !part.name?.startsWith('(')),
+          isStatic:
+            rootIsStatic &&
+            isAllElementsStatic(elements) &&
+            isAllSlicesStatic(path),
           ...(originalSpec && { pathPattern: originalSpec }),
           rootElement: { isStatic: rootIsStatic },
-          routeElement: {
-            isStatic: true,
-          },
+          routeElement: { isStatic: true },
           elements,
           noSsr,
         });
@@ -702,6 +802,10 @@ export const createPages = <
         }
         routeConfigs.push({
           type: 'route',
+          isStatic:
+            rootIsStatic &&
+            isAllElementsStatic(elements) &&
+            isAllSlicesStatic(path),
           path: pathSpec.filter((part) => !part.name?.startsWith('(')),
           rootElement: { isStatic: rootIsStatic },
           routeElement: { isStatic: true },
@@ -737,6 +841,10 @@ export const createPages = <
         }
         routeConfigs.push({
           type: 'route',
+          isStatic:
+            rootIsStatic &&
+            isAllElementsStatic(elements) &&
+            isAllSlicesStatic(path),
           path: pathSpec.filter((part) => !part.name?.startsWith('(')),
           rootElement: { isStatic: rootIsStatic },
           routeElement: { isStatic: true },
@@ -754,23 +862,10 @@ export const createPages = <
         },
       );
 
-      const getRoutePriority = (
-        pathConfig: (typeof routeConfigs)[number] | (typeof apiConfigs)[number],
-      ) => {
-        const hasWildcard = pathConfig.path.at(-1)?.type === 'wildcard';
-        if (pathConfig.type === 'api') {
-          return hasWildcard ? 2 : 1;
-        }
-        return hasWildcard ? 3 : 0;
-      };
-
       return (
         [...routeConfigs, ...apiConfigs]
           // Sort routes by priority: "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
-          .sort(
-            (configA, configB) =>
-              getRoutePriority(configA) - getRoutePriority(configB),
-          )
+          .sort((configA, configB) => routePriorityComparator(configA, configB))
       );
     },
     handleRoute: async (path, { query }) => {
@@ -802,7 +897,7 @@ export const createPages = <
       }
       const layoutMatchPath = groupPathLookup.get(routePath) ?? routePath;
       const pathSpec = parsePathWithSlug(layoutMatchPath);
-      const mapping = getPathMapping(
+      const mapping = pathMappingWithoutGroups(
         pathSpec,
         // ensure path is encoded for props of page component
         encodeURI(path),
@@ -876,6 +971,7 @@ export const createPages = <
           createElement(Children),
         ),
         routeElement: createNestedElements(layouts, finalPageChildren),
+        slices: slicePathMap.get(routePath) || [],
       };
     },
     handleApi: async (path, { url, ...options }) => {
@@ -899,6 +995,24 @@ export const createPages = <
         headers: Object.fromEntries(res.headers.entries()),
         status: res.status,
       };
+    },
+    getSliceConfig: async (sliceId) => {
+      await configure();
+      const slice = sliceIdMap.get(sliceId);
+      if (!slice) {
+        throw new Error('Slice not found: ' + sliceId);
+      }
+      const { isStatic } = slice;
+      return { isStatic };
+    },
+    handleSlice: async (sliceId) => {
+      await configure();
+      const slice = sliceIdMap.get(sliceId);
+      if (!slice) {
+        throw new Error('Slice not found: ' + sliceId);
+      }
+      const { component } = slice;
+      return { element: createElement(component) };
     },
   });
 

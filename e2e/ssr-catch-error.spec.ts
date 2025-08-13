@@ -1,17 +1,17 @@
 import { expect } from '@playwright/test';
 
-import { test, prepareStandaloneSetup } from './utils.js';
+import { test, prepareStandaloneSetup, waitForHydration } from './utils.js';
 
 const startApp = prepareStandaloneSetup('ssr-catch-error');
 
 test.describe(`ssr-catch-error`, () => {
   let port: number;
-  let stopApp: () => Promise<void>;
+  let stopApp: (() => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp();
+    await stopApp?.();
   });
 
   test('access top page', async ({ page }) => {
@@ -28,6 +28,7 @@ test.describe(`ssr-catch-error`, () => {
 
   test('access invalid page through client router', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
     await page.getByText('Invalid page').click();
     await expect(
       page.getByText('Unexpected error in client fallback'),
@@ -43,6 +44,7 @@ test.describe(`ssr-catch-error`, () => {
     page,
   }) => {
     await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
     await page.getByText('Invalid page').click();
     await expect(
       page.getByText('Unexpected error in client fallback'),

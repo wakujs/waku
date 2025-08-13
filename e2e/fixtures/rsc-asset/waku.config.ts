@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 import { defineConfig } from 'waku/config';
 import type { Plugin } from 'vite';
 import path from 'node:path';
@@ -8,6 +10,15 @@ export default defineConfig({
     'build-server': () => ({
       plugins: [importMetaUrlServerPlugin()],
     }),
+  },
+  vite: {
+    plugins: [
+      {
+        ...importMetaUrlServerPlugin(),
+        apply: 'build',
+        applyToEnvironment: (environment) => environment.name === 'rsc',
+      },
+    ],
   },
 });
 

@@ -156,7 +156,10 @@ export const getPathMapping = (
 ): Record<string, string | string[]> | null => {
   const actual = pathname.split('/').filter(Boolean);
   if (pathSpec.length > actual.length) {
-    return null;
+    const hasWildcard = pathSpec.some((spec) => spec.type === 'wildcard');
+    if (!hasWildcard || actual.length > 0) {
+      return null;
+    }
   }
   const mapping: Record<string, string | string[]> = {};
   let wildcardStartIndex = -1;
@@ -179,6 +182,15 @@ export const getPathMapping = (
     }
     return mapping;
   }
+
+  if (wildcardStartIndex === 0 && actual.length === 0) {
+    const wildcardName = pathSpec[wildcardStartIndex]!.name;
+    if (wildcardName) {
+      mapping[wildcardName] = [];
+    }
+    return mapping;
+  }
+
   let wildcardEndIndex = -1;
   for (let i = 0; i < pathSpec.length; i++) {
     const { type, name } = pathSpec[pathSpec.length - i - 1]!;
