@@ -1,7 +1,7 @@
 {
   "name": "waku",
   "description": "⛩️ The minimal React framework",
-  "version": "0.25.0-alpha.1",
+  "version": "0.25.0",
   "type": "module",
   "author": "Daishi Kato",
   "homepage": "https://waku.gg",
@@ -89,13 +89,13 @@
     "@hono/node-server": "1.18.1",
     "@swc/core": "1.13.3",
     "@vitejs/plugin-react": "5.0.0",
-    "@vitejs/plugin-rsc": "0.4.17",
+    "@vitejs/plugin-rsc": "0.4.19",
     "dotenv": "17.2.1",
     "hono": "4.9.0",
     "html-react-parser": "5.2.6",
     "rollup": "4.46.2",
     "rsc-html-stream": "0.0.7",
-    "vite": "7.1.1"
+    "vite": "7.1.2"
   },
   "devDependencies": {
     "@netlify/functions": "^4.2.1",
