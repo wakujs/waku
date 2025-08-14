@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import * as honoAwsLambda from 'hono/aws-lambda';
-import { createHonoHandler } from '../../lib/engine.js';
+import { createHonoHandler } from '../../lib/hono.js';
 import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
 import { config } from 'virtual:vite-rsc-waku/config';
 import { serveStatic } from '@hono/node-server/serve-static';

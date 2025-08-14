@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { createHonoHandler } from '../../lib/engine.js';
+import { createHonoHandler } from '../../lib/hono.js';
 import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
 import { INTERNAL_setAllEnv } from '../../../server.js';
 

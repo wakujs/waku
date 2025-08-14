@@ -3,14 +3,18 @@ import type {
   MiddlewareOptions,
 } from '../../lib/middleware/types.js';
 import { middlewares } from 'virtual:vite-rsc-waku/middlewares';
-import type { MiddlewareHandler } from 'hono';
 import { isBuild } from 'virtual:vite-rsc-waku/config';
 
-// cf. packages/waku/src/lib/hono/engine.ts
-export function createHonoHandler(): MiddlewareHandler {
-  let middlwareOptions: MiddlewareOptions;
+export function createEngine(): ({
+  req,
+  data,
+}: {
+  req: Request;
+  data?: Record<string, unknown>;
+}) => Promise<HandlerContext> {
+  let middlewareOptions: MiddlewareOptions;
   if (!isBuild) {
-    middlwareOptions = {
+    middlewareOptions = {
       cmd: 'dev',
       env: {},
       unstable_onError: new Set(),
@@ -19,7 +23,7 @@ export function createHonoHandler(): MiddlewareHandler {
       },
     };
   } else {
-    middlwareOptions = {
+    middlewareOptions = {
       cmd: 'start',
       env: {},
       unstable_onError: new Set(),
@@ -29,20 +33,27 @@ export function createHonoHandler(): MiddlewareHandler {
     };
   }
 
-  const handlers = middlewares.map((m) => m(middlwareOptions));
+  const handlers = middlewares.map((m) => m(middlewareOptions));
 
-  return async (c, next) => {
+  return async ({
+    req,
+    data,
+  }: {
+    req: Request;
+    data?: Record<string, unknown>;
+  }): Promise<HandlerContext> => {
     const ctx: HandlerContext = {
       req: {
-        body: c.req.raw.body,
-        url: new URL(c.req.url),
-        method: c.req.method,
-        headers: c.req.header(),
+        body: req.body,
+        url: new URL(req.url),
+        method: req.method,
+        headers: Object.fromEntries(req.headers as any) as Record<
+          string,
+          string
+        >,
       },
       res: {},
-      data: {
-        __hono_context: c,
-      },
+      data: data || {},
     };
     const run = async (index: number) => {
       if (index >= handlers.length) {
@@ -57,14 +68,6 @@ export function createHonoHandler(): MiddlewareHandler {
       });
     };
     await run(0);
-    if (ctx.res.body || ctx.res.status) {
-      const status = ctx.res.status || 200;
-      const headers = ctx.res.headers || {};
-      if (ctx.res.body) {
-        return c.body(ctx.res.body, status as never, headers);
-      }
-      return c.body(null, status as never, headers);
-    }
-    await next();
+    return ctx;
   };
 }
