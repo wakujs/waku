@@ -74,7 +74,7 @@ async function getInput(ctx: HandlerContext) {
   let rscPath: string | undefined;
   let temporaryReferences: unknown | undefined;
   let input: HandleRequestInput;
-  const request = (ctx.data.__hono_context as any).req.raw as Request;
+  const request = ctx.req.raw;
   if (url.pathname.startsWith(rscPathPrefix)) {
     rscPath = decodeRscPath(
       decodeURI(url.pathname.slice(rscPathPrefix.length)),
