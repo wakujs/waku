@@ -52,6 +52,7 @@
   },
   "pnpm": {
     "overrides": {
+      "vite": "npm:rolldown-vite@latest",
       "rollup": "4.45.3"
     }
   }
