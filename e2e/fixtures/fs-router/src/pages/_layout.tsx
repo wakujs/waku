@@ -74,9 +74,6 @@ const HomeLayout = ({ children }: { children: ReactNode }) => (
         </Link>
       </li>
       <li>
-        <Link to="/page-parts">Page Parts</Link>
-      </li>
-      <li>
         <Link to="/page-with-slices">Page with Slices</Link>
       </li>
       <li>
