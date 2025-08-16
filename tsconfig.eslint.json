@@ -10,5 +10,6 @@
     "examples/",
     "e2e/",
     "playwright.config.ts"
-  ]
+  ],
+  "exclude": ["**/node_modules", "**/dist"]
 }
