@@ -207,4 +207,41 @@ test.describe('hot reload', () => {
     await expect(page.getByTestId('count')).toHaveText('1');
     expect(errors.join('\n')).not.toContain('hydration-mismatch');
   });
+
+  test('restart server when waku config changed', async ({ request }) => {
+    const res = await request.get(`http://localhost:${port}/__test_edit`);
+    expect(await res.text()).not.toEqual('ok');
+    modifyFile(
+      standaloneDir,
+      'waku.config.ts',
+      'defineConfig({})',
+      `\
+defineConfig({
+  vite: {
+    plugins: [
+      [
+        {
+          name: 'test',
+          configureServer(server) {
+            server.middlewares.use((req, res, next) => {
+              if (req.url === "/__test_edit") {
+                res.end("ok");
+                return;
+              }
+              next();
+            });
+          }
+        }
+      ]
+    ]
+  }
+})
+`,
+    );
+    // wait for restart
+    await expect(async () => {
+      const res = await request.get(`http://localhost:${port}/__test_edit`);
+      expect(await res.text()).toEqual('ok');
+    }).toPass();
+  });
 });
