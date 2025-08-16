@@ -6,12 +6,13 @@ import {
   decodeFormState,
 } from '@vitejs/plugin-rsc/rsc';
 import { decodeFuncId, decodeRscPath } from '../../lib/renderers/utils.js';
-import { stringToStream } from '../../lib/utils/stream.js';
+import { streamToArrayBuffer, stringToStream } from '../../lib/utils/stream.js';
 import { getErrorInfo } from '../../lib/utils/custom-errors.js';
 import type { HandlerContext } from '../../lib/middleware/types.js';
 import { config } from 'virtual:vite-rsc-waku/config';
 import { createRenderUtils, loadSsrEntryModule } from './render.js';
-import type { HandleRequest } from '../../lib/types.js';
+import type { HandleRequest, HandlerReq } from '../../lib/types.js';
+import { bufferToString, parseFormData } from '../../lib/utils/buffer.js';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 
 type HandleRequestInput = Parameters<HandleRequest>[0];
@@ -74,7 +75,6 @@ async function getInput(ctx: HandlerContext) {
   let rscPath: string | undefined;
   let temporaryReferences: unknown | undefined;
   let input: HandleRequestInput;
-  const request = (ctx.data.__hono_context as any).req.raw as Request;
   if (url.pathname.startsWith(rscPathPrefix)) {
     rscPath = decodeRscPath(
       decodeURI(url.pathname.slice(rscPathPrefix.length)),
@@ -82,10 +82,7 @@ async function getInput(ctx: HandlerContext) {
     // server action: js
     const actionId = decodeFuncId(rscPath);
     if (actionId) {
-      const contentType = ctx.req.headers['content-type'];
-      const body = contentType?.startsWith('multipart/form-data')
-        ? await request.formData()
-        : await request.text();
+      const body = await getActionBody(ctx.req);
       temporaryReferences = createTemporaryReferenceSet();
       const args = await decodeReply(body, { temporaryReferences });
       const action = await loadServerAction(actionId);
@@ -99,10 +96,7 @@ async function getInput(ctx: HandlerContext) {
       // client RSC request
       let rscParams: unknown = url.searchParams;
       if (ctx.req.body) {
-        const contentType = ctx.req.headers['content-type'];
-        const body = contentType?.startsWith('multipart/form-data')
-          ? await request.formData()
-          : await request.text();
+        const body = await getActionBody(ctx.req);
         rscParams = await decodeReply(body, {
           temporaryReferences,
         });
@@ -122,7 +116,7 @@ async function getInput(ctx: HandlerContext) {
       contentType.startsWith('multipart/form-data')
     ) {
       // server action: no js (progressive enhancement)
-      const formData = await request.formData();
+      const formData = (await getActionBody(ctx.req)) as FormData;
       const decodedAction = await decodeAction(formData);
       input = {
         type: 'action',
@@ -150,4 +144,17 @@ async function getInput(ctx: HandlerContext) {
     };
   }
   return { input, temporaryReferences };
+}
+
+async function getActionBody(req: HandlerReq) {
+  if (!req.body) {
+    throw new Error('missing request body for server function');
+  }
+  const bodyBuf = await streamToArrayBuffer(req.body);
+  const contentType = req.headers['content-type'];
+  if (contentType?.startsWith('multipart/form-data')) {
+    return parseFormData(bodyBuf, contentType);
+  } else {
+    return bufferToString(bodyBuf);
+  }
 }

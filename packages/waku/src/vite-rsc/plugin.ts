@@ -65,6 +65,7 @@ export function mainPlugin(
     distDir: 'dist',
     pagesDir: 'pages',
     apiDir: 'api',
+    slicesDir: '_slices',
     privateDir: 'private',
     rscBase: 'RSC',
     middleware: [
@@ -229,7 +230,6 @@ export function mainPlugin(
             noExternal: env.command === 'build' ? true : [PKG_NAME],
           },
           optimizeDeps: {
-            include: name === 'ssr' ? [`${PKG_NAME} > html-react-parser`] : [],
             exclude: [PKG_NAME, 'waku/minimal/client', 'waku/router/client'],
           },
         };
@@ -305,6 +305,7 @@ if (import.meta.hot) {
             {
               pagesDir: config.pagesDir,
               apiDir: config.apiDir,
+              slicesDir: config.slicesDir,
             },
           );
         }

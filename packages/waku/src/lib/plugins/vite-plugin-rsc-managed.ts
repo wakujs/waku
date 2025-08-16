@@ -16,7 +16,7 @@ const stripExt = (fname: string) => {
 export const getManagedEntries = (
   filePath: string,
   srcDir: string,
-  options: { pagesDir: string; apiDir: string },
+  options: { pagesDir: string; apiDir: string; slicesDir: string },
 ) => `
 import { unstable_fsRouter as fsRouter } from 'waku/router/server';
 
@@ -25,7 +25,7 @@ export default fsRouter(
   (file) => import.meta.glob('/${srcDir}/pages/**/*.{${EXTENSIONS.map((ext) =>
     ext.replace(/^\./, ''),
   ).join(',')}}')[\`/${srcDir}/pages/\${file}\`]?.(),
-  { pagesDir: '${options.pagesDir}', apiDir: '${options.apiDir}' },
+  { pagesDir: '${options.pagesDir}', apiDir: '${options.apiDir}', slicesDir: '${options.slicesDir}' },
 );
 `;
 
@@ -49,6 +49,7 @@ export function rscManagedPlugin(opts: {
   srcDir: string;
   pagesDir: string;
   apiDir: string;
+  slicesDir: string;
   addEntriesToInput?: boolean;
   addMainToInput?: boolean;
 }): Plugin {
@@ -97,6 +98,7 @@ export function rscManagedPlugin(opts: {
         return getManagedEntries(entriesFile + '.js', opts.srcDir, {
           apiDir: opts.apiDir,
           pagesDir: opts.pagesDir,
+          slicesDir: opts.slicesDir,
         });
       }
       if (id === '\0' + mainFile + '.js' || id === '\0' + mainPath + '.js') {
