@@ -52,6 +52,7 @@
   },
   "pnpm": {
     "overrides": {
+      "@vitejs/plugin-rsc": "https://pkg.pr.new/@vitejs/plugin-rsc@721",
       "vite": "npm:rolldown-vite@7.1.2",
       "rollup": "4.45.3"
     }
