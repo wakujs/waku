@@ -415,6 +415,113 @@ export const getConfig = async () => {
 };
 ```
 
+#### Group routes
+
+Group routes allow you to organize routes into logical groups without affecting the URL structure. They're created by wrapping directory names in parentheses (e.g., `(group)`). This is particularly useful for sharing layouts across multiple routes while keeping the URL clean.
+
+For example, you might want a home page at `/` that doesn't use a shared layout, but all other routes should share a common layout. This can be achieved by grouping those routes:
+
+```
+├── (main)
+│ ├── _layout.tsx
+│ ├── about.tsx
+│ └── contact.tsx
+└── index.tsx
+```
+
+In this structure, `/about` and `/contact` will use the layout from `(main)/_layout.tsx`, but `/` (from `index.tsx`) will not.
+
+```tsx
+// ./src/pages/(main)/_layout.tsx
+import { Header } from '../../components/header';
+import { Footer } from '../../components/footer';
+
+// Create shared layout for main pages
+export default async function MainLayout({ children }) {
+  return (
+    <>
+      <Header />
+      <main>{children}</main>
+      <Footer />
+    </>
+  );
+}
+
+export const getConfig = async () => {
+  return {
+    render: 'static',
+  } as const;
+};
+```
+
+```tsx
+// ./src/pages/(main)/about.tsx
+export default async function AboutPage() {
+  return <h1>About Us</h1>;
+}
+
+export const getConfig = async () => {
+  return {
+    render: 'static',
+  } as const;
+};
+```
+
+Group routes can be nested to create complex layout compositions. For instance, you could have a static layout at the group level and a dynamic layout nested within:
+
+```
+(main)
+├── (dynamic)
+│ ├── _layout.tsx # dynamic layout
+│ ├── dashboard.tsx
+│ └── profile.tsx
+└── _layout.tsx # static layout
+```
+
+This allows for fine-grained control over rendering modes - some work can be done at build time (`static`) while other work happens at runtime (`dynamic`).
+
+```tsx
+// ./src/pages/(main)/_layout.tsx
+// Static layout - runs at build time
+export default async function MainLayout({ children }) {
+  return (
+    <div className="main-container">
+      {children}
+    </div>
+  );
+}
+
+export const getConfig = async () => {
+  return {
+    render: 'static',
+  } as const;
+};
+```
+
+```tsx
+// ./src/pages/(main)/(dynamic)/_layout.tsx
+// Dynamic layout - runs at request time
+export default async function DynamicLayout({ children }) {
+  const userData = await fetchUserData(); // Dynamic data fetching
+
+  return (
+    <div className="dynamic-container">
+      <UserContext.Provider value={userData}>
+        {children}
+      </UserContext.Provider>
+    </div>
+  );
+}
+
+export const getConfig = async () => {
+  return {
+    render: 'dynamic',
+  } as const;
+};
+```
+
+Group routes are especially powerful for organizing complex applications where different sections need different layouts, state management, or data requirements while maintaining clean URLs.
+
 ### Layouts
 
 Layouts are created with a special `_layout.tsx` file name and wrap the entire route and its descendents. They must accept a `children` prop of type `ReactNode`. While not required, you will typically want at least a root layout.
