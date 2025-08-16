@@ -65,6 +65,10 @@
     "./router/server": {
       "types": "./dist/router/server.d.ts",
       "default": "./dist/router/server.js"
+    },
+    "./unstable_engine": {
+      "types": "./dist/unstable_engine.d.ts",
+      "default": "./dist/unstable_engine.js"
     }
   },
   "bin": {

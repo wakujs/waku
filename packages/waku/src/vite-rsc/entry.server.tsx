@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { createHonoHandler } from './lib/engine.js';
+import { createHonoHandler } from './lib/hono.js';
 import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
 import { flags, config, isBuild } from 'virtual:vite-rsc-waku/config';
 import { compress } from 'hono/compress';
