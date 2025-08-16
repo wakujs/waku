@@ -211,6 +211,7 @@ test.describe('hot reload', () => {
   test('restart server when waku config changed', async ({ request }) => {
     const res = await request.get(`http://localhost:${port}/__test_edit`);
     expect(await res.text()).not.toEqual('ok');
+    // add middleware to verify the config is reloaded
     modifyFile(
       standaloneDir,
       'waku.config.ts',
