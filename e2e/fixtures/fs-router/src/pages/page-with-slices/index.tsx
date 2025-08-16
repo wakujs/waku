@@ -1,6 +1,6 @@
 import { Slice } from 'waku/router/client';
 
-const slices = ['slice001', 'slice-two'] as const;
+const slices = ['slice001', 'two'] as const;
 
 export default function Slices() {
   return (
@@ -14,6 +14,7 @@ export default function Slices() {
 
 export const getConfig = () => {
   return {
+    render: 'dynamic',
     slices,
   };
 };

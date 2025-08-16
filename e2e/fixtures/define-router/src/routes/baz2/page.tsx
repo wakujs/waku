@@ -1,9 +1,9 @@
 import { Slice } from 'waku/router/client';
 
-const Baz = () => (
+const Baz2 = () => (
   <div>
-    <h2 data-testid="baz-title">Baz</h2>
-    <p data-testid="baz-random">{Math.random()}</p>
+    <h2 data-testid="baz2-title">Baz2</h2>
+    <p data-testid="baz2-random">{Math.random()}</p>
     <Slice
       id="slice002"
       lazy
@@ -12,4 +12,4 @@ const Baz = () => (
   </div>
 );
 
-export default Baz;
+export default Baz2;

@@ -28,6 +28,13 @@ export const getAuthor = (author: string): Author => {
         avatar: 'https://avatars.githubusercontent.com/u/26290074',
         url: 'https://tylur.dev',
       };
+    case 'hiroshi':
+      return {
+        name: 'Hiroshi Ogawa',
+        biography: 'Vitest & Vite team member',
+        avatar: 'https://github.com/hi-ogawa.png',
+        url: 'https://github.com/hi-ogawa',
+      };
     default:
       return {
         name: ``,

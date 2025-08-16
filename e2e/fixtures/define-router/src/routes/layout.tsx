@@ -37,11 +37,38 @@ const HomeLayout = ({ children }: { children: ReactNode }) => (
       </li>
       <li>
         <Link
-          to="/bar"
+          to="/bar1"
           unstable_pending={<Pending isPending />}
           unstable_notPending={<Pending isPending={false} />}
         >
-          Bar
+          Bar1
+        </Link>
+      </li>
+      <li>
+        <Link
+          to="/bar2"
+          unstable_pending={<Pending isPending />}
+          unstable_notPending={<Pending isPending={false} />}
+        >
+          Bar2
+        </Link>
+      </li>
+      <li>
+        <Link
+          to="/baz1"
+          unstable_pending={<Pending isPending />}
+          unstable_notPending={<Pending isPending={false} />}
+        >
+          Baz1
+        </Link>
+      </li>
+      <li>
+        <Link
+          to="/baz2"
+          unstable_pending={<Pending isPending />}
+          unstable_notPending={<Pending isPending={false} />}
+        >
+          Baz2
         </Link>
       </li>
     </ul>

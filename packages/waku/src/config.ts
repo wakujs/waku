@@ -33,6 +33,11 @@ export interface Config {
    */
   apiDir?: string;
   /**
+   * The slices directory inside pagesDir.
+   * Defaults to "_slices".
+   */
+  slicesDir?: string;
+  /**
    * The private directory relative to root.
    * This folder will contain files that should be read only on the server.
    * Defaults to  "private".

@@ -22,6 +22,8 @@ export function unstable_fsRouter(
      * is `"foo"`, then it will detect pages in `src/foo/api`.
      */
     apiDir: string;
+    /** e.g. `"_slices"` will detect slices in `src/pages/_slices`. */
+    slicesDir: string;
   },
 ) {
   const buildOptions = unstable_getBuildOptions();
@@ -94,16 +96,6 @@ export function unstable_fsRouter(
           .replace(/\.\w+$/, '')
           .split('/')
           .filter(Boolean);
-        // must come before isIgnoredPath check to include slices from inside _components
-        if (pathItems.at(-1)?.startsWith('_slice')) {
-          createSlice({
-            component: mod.default,
-            render: 'dynamic',
-            id: pathItems.at(-1)!.slice('_'.length),
-            ...config,
-          });
-          continue;
-        }
         if (isIgnoredPath(pathItems)) {
           continue;
         }
@@ -159,6 +151,13 @@ export function unstable_fsRouter(
               handlers,
             });
           }
+        } else if (pathItems.at(0) === options.slicesDir) {
+          createSlice({
+            component: mod.default,
+            render: 'static',
+            id: pathItems.slice(1).join('/'),
+            ...config,
+          });
         } else if (pathItems.at(-1) === '_layout') {
           createLayout({
             path,
@@ -183,7 +182,7 @@ export function unstable_fsRouter(
           createPage({
             path,
             component: mod.default,
-            render: 'dynamic',
+            render: 'static',
             ...config,
           });
         }

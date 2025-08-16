@@ -34,6 +34,16 @@ export const METHODS = [
 ] as const;
 export type Method = (typeof METHODS)[number];
 
+export const pathMappingWithoutGroups: typeof getPathMapping = (
+  pathSpec,
+  pathname,
+) => {
+  const cleanPathSpec = pathSpec.filter(
+    (spec) => !(spec.type === 'literal' && spec.name.startsWith('(')),
+  );
+  return getPathMapping(cleanPathSpec, pathname);
+};
+
 const sanitizeSlug = (slug: string) =>
   slug.replace(/\./g, '').replace(/ /g, '-');
 
@@ -356,7 +366,7 @@ export const createPages = <
       ...wildcardPagePathMap.keys(),
     ];
     for (const p of allPaths) {
-      if (getPathMapping(parsePathWithSlug(p), path)) {
+      if (pathMappingWithoutGroups(parsePathWithSlug(p), path)) {
         return p;
       }
     }
@@ -376,7 +386,7 @@ export const createPages = <
     for (const [p, v] of apiConfigEntries) {
       if (
         (method in v.handlers || v.handlers.all) &&
-        getPathMapping(parsePathWithSlug(p!), path)
+        pathMappingWithoutGroups(parsePathWithSlug(p!), path)
       ) {
         return p;
       }
@@ -417,6 +427,15 @@ export const createPages = <
     }
     staticComponentMap.set(id, component);
   };
+
+  const isAllElementsStatic = (
+    elements: Record<string, { isStatic?: boolean }>,
+  ) => Object.values(elements).every((element) => element.isStatic);
+
+  const isAllSlicesStatic = (path: string) =>
+    (slicePathMap.get(path) || []).every(
+      (sliceId) => sliceIdMap.get(sliceId)?.isStatic,
+    );
 
   const createPage: CreatePage = (page) => {
     if (configured) {
@@ -518,7 +537,7 @@ export const createPages = <
       }
       wildcardPagePathMap.set(pagePath, [pathSpec, page.component]);
     } else {
-      throw new Error('Invalid page configuration');
+      throw new Error('Invalid page configuration ' + JSON.stringify(page));
     }
     if (page.slices?.length) {
       slicePathMap.set(page.path, page.slices);
@@ -582,11 +601,6 @@ export const createPages = <
   };
 
   const createSlice: CreateSlice = (slice) => {
-    if (!import.meta.env?.VITE_EXPERIMENTAL_WAKU_ROUTER) {
-      throw new Error(
-        'createSlice is experimental. Enable it with VITE_EXPERIMENTAL_WAKU_ROUTER=true.',
-      );
-    }
     if (configured) {
       throw new Error('createSlice no longer available');
     }
@@ -714,37 +728,17 @@ export const createPages = <
     );
   };
 
-  const getSlicesConfig = (path: string) => {
-    if (!slicePathMap.has(path)) {
-      return {};
-    }
-    return {
-      slices: slicePathMap
-        .get(path)!
-        .reduce<Record<string, { isStatic: boolean }>>((acc, sliceId) => {
-          const slice = sliceIdMap.get(sliceId);
-          if (!slice) {
-            throw new Error(`Slice not found: ${sliceId} for path: ${path}`);
-          }
-          acc[sliceId] = {
-            isStatic: slice.isStatic,
-          };
-          return acc;
-        }, {}),
-    };
-  };
-
   const definedRouter = unstable_defineRouter({
     getConfig: async () => {
       await configure();
       const routeConfigs: {
         type: 'route';
         path: PathSpec;
+        isStatic: boolean;
         pathPattern?: PathSpec;
         rootElement: { isStatic?: boolean };
         routeElement: { isStatic?: boolean };
         elements: Record<string, { isStatic?: boolean }>;
-        slices?: Record<string, { isStatic?: boolean }>;
         noSsr: boolean;
       }[] = [];
       const rootIsStatic = !rootItem || rootItem.render === 'static';
@@ -769,14 +763,15 @@ export const createPages = <
         routeConfigs.push({
           type: 'route',
           path: literalSpec.filter((part) => !part.name?.startsWith('(')),
+          isStatic:
+            rootIsStatic &&
+            isAllElementsStatic(elements) &&
+            isAllSlicesStatic(path),
           ...(originalSpec && { pathPattern: originalSpec }),
           rootElement: { isStatic: rootIsStatic },
-          routeElement: {
-            isStatic: true,
-          },
+          routeElement: { isStatic: true },
           elements,
           noSsr,
-          ...getSlicesConfig(path),
         });
       }
       for (const [path, [pathSpec, components]] of dynamicPagePathMap) {
@@ -807,12 +802,15 @@ export const createPages = <
         }
         routeConfigs.push({
           type: 'route',
+          isStatic:
+            rootIsStatic &&
+            isAllElementsStatic(elements) &&
+            isAllSlicesStatic(path),
           path: pathSpec.filter((part) => !part.name?.startsWith('(')),
           rootElement: { isStatic: rootIsStatic },
           routeElement: { isStatic: true },
           elements,
           noSsr,
-          ...getSlicesConfig(path),
         });
       }
       for (const [path, [pathSpec, components]] of wildcardPagePathMap) {
@@ -843,12 +841,15 @@ export const createPages = <
         }
         routeConfigs.push({
           type: 'route',
+          isStatic:
+            rootIsStatic &&
+            isAllElementsStatic(elements) &&
+            isAllSlicesStatic(path),
           path: pathSpec.filter((part) => !part.name?.startsWith('(')),
           rootElement: { isStatic: rootIsStatic },
           routeElement: { isStatic: true },
           elements,
           noSsr,
-          ...getSlicesConfig(path),
         });
       }
       const apiConfigs = Array.from(apiPathMap.values()).map(
@@ -896,7 +897,7 @@ export const createPages = <
       }
       const layoutMatchPath = groupPathLookup.get(routePath) ?? routePath;
       const pathSpec = parsePathWithSlug(layoutMatchPath);
-      const mapping = getPathMapping(
+      const mapping = pathMappingWithoutGroups(
         pathSpec,
         // ensure path is encoded for props of page component
         encodeURI(path),
@@ -970,6 +971,7 @@ export const createPages = <
           createElement(Children),
         ),
         routeElement: createNestedElements(layouts, finalPageChildren),
+        slices: slicePathMap.get(routePath) || [],
       };
     },
     handleApi: async (path, { url, ...options }) => {
@@ -993,6 +995,15 @@ export const createPages = <
         headers: Object.fromEntries(res.headers.entries()),
         status: res.status,
       };
+    },
+    getSliceConfig: async (sliceId) => {
+      await configure();
+      const slice = sliceIdMap.get(sliceId);
+      if (!slice) {
+        throw new Error('Slice not found: ' + sliceId);
+      }
+      const { isStatic } = slice;
+      return { isStatic };
     },
     handleSlice: async (sliceId) => {
       await configure();
