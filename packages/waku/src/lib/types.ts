@@ -96,6 +96,7 @@ export type HandlerReq = {
   url: URL;
   method: string;
   headers: Readonly<Record<string, string>>;
+  raw: Request;
 };
 
 export type HandlerRes = {
