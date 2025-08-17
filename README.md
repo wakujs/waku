@@ -484,11 +484,7 @@ This allows for fine-grained control over rendering modes - some work can be don
 // ./src/pages/(main)/_layout.tsx
 // Static layout - runs at build time
 export default async function MainLayout({ children }) {
-  return (
-    <div className="main-container">
-      {children}
-    </div>
-  );
+  return <div className="main-container">{children}</div>;
 }
 
 export const getConfig = async () => {
@@ -506,9 +502,7 @@ export default async function DynamicLayout({ children }) {
 
   return (
     <div className="dynamic-container">
-      <UserContext.Provider value={userData}>
-        {children}
-      </UserContext.Provider>
+      <UserContext.Provider value={userData}>{children}</UserContext.Provider>
     </div>
   );
 }
