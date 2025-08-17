@@ -3,9 +3,9 @@ import {
   unstable_setPlatformData,
 } from 'waku/server';
 
-export default function Static() {
+export default async function Static() {
   if (unstable_getBuildOptions().unstable_phase) {
-    unstable_setPlatformData('test-custom-platform-data', 'ok', true);
+    await unstable_setPlatformData('test-custom-platform-data', 'ok', true);
   }
   return (
     <div>
