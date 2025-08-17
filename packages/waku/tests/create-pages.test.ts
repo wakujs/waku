@@ -1,6 +1,9 @@
 import { expect, vi, describe, it, beforeEach, assert } from 'vitest';
 import type { MockedFunction } from 'vitest';
-import { createPages } from '../src/router/create-pages.js';
+import {
+  createPages,
+  pathMappingWithoutGroups,
+} from '../src/router/create-pages.js';
 import type {
   CreateApi,
   CreateLayout,
@@ -20,6 +23,7 @@ import { expectType } from 'ts-expect';
 import type { TypeEqual } from 'ts-expect';
 import type { PathsForPages } from '../src/router/base-types.js';
 import type { GetSlugs } from '../src/router/create-pages-utils/inferred-path-types.js';
+import { parsePathWithSlug } from '../src/lib/utils/path.js';
 
 function Fake() {
   return null;
@@ -517,10 +521,12 @@ function injectedFunctions() {
   assert(defineRouterMock.mock.calls[0]?.[0].getConfig);
   assert(defineRouterMock.mock.calls[0]?.[0].handleRoute);
   assert(defineRouterMock.mock.calls[0]?.[0].handleApi);
+  assert(defineRouterMock.mock.calls[0]?.[0].getSliceConfig);
   return {
     getConfig: defineRouterMock.mock.calls[0][0].getConfig,
     handleRoute: defineRouterMock.mock.calls[0][0].handleRoute,
     handleApi: defineRouterMock.mock.calls[0][0].handleApi,
+    getSliceConfig: defineRouterMock.mock.calls[0][0].getSliceConfig,
   };
 }
 
@@ -546,6 +552,7 @@ describe('createPages pages and layouts', () => {
         routeElement: { isStatic: true },
         noSsr: false,
         path: [{ name: 'test', type: 'literal' }],
+        isStatic: true,
       },
     ]);
 
@@ -578,6 +585,7 @@ describe('createPages pages and layouts', () => {
         routeElement: { isStatic: true },
         noSsr: false,
         path: [{ name: 'test', type: 'literal' }],
+        isStatic: false,
       },
     ]);
     const route = await handleRoute('/test', {
@@ -689,6 +697,7 @@ describe('createPages pages and layouts', () => {
         routeElement: { isStatic: true },
         noSsr: false,
         path: [{ name: 'test', type: 'literal' }],
+        isStatic: true,
       },
     ]);
     const route = await handleRoute('/test', {
@@ -728,6 +737,7 @@ describe('createPages pages and layouts', () => {
         routeElement: { isStatic: true },
         noSsr: false,
         path: [{ name: 'test', type: 'literal' }],
+        isStatic: false,
       },
     ]);
 
@@ -756,7 +766,7 @@ describe('createPages pages and layouts', () => {
         id: 'slice001',
       }),
     ]);
-    const { getConfig } = injectedFunctions();
+    const { getConfig, getSliceConfig } = injectedFunctions();
     expect(await getConfig()).toEqual([
       {
         type: 'route',
@@ -767,11 +777,10 @@ describe('createPages pages and layouts', () => {
         routeElement: { isStatic: true },
         noSsr: false,
         path: [],
-        slices: {
-          slice001: { isStatic: true },
-        },
+        isStatic: true,
       },
     ]);
+    expect(await getSliceConfig('slice001')).toEqual({ isStatic: true });
   });
 
   it('creates a simple dynamic page with slices', async () => {
@@ -790,7 +799,7 @@ describe('createPages pages and layouts', () => {
         id: 'slice001',
       }),
     ]);
-    const { getConfig } = injectedFunctions();
+    const { getConfig, getSliceConfig } = injectedFunctions();
     expect(await getConfig()).toEqual([
       {
         type: 'route',
@@ -801,11 +810,10 @@ describe('createPages pages and layouts', () => {
         routeElement: { isStatic: true },
         noSsr: false,
         path: [],
-        slices: {
-          slice001: { isStatic: true },
-        },
+        isStatic: false,
       },
     ]);
+    expect(await getSliceConfig('slice001')).toEqual({ isStatic: true });
   });
 
   it('creates a wildcard page with slices', async () => {
@@ -824,7 +832,7 @@ describe('createPages pages and layouts', () => {
         id: 'slice001',
       }),
     ]);
-    const { getConfig } = injectedFunctions();
+    const { getConfig, getSliceConfig } = injectedFunctions();
     expect(await getConfig()).toEqual([
       {
         type: 'route',
@@ -838,11 +846,10 @@ describe('createPages pages and layouts', () => {
           { name: 'test', type: 'literal' },
           { name: 'wildcard', type: 'wildcard' },
         ],
-        slices: {
-          slice001: { isStatic: true },
-        },
+        isStatic: false,
       },
     ]);
+    expect(await getSliceConfig('slice001')).toEqual({ isStatic: true });
   });
 
   it('creates a nested static page', async () => {
@@ -868,6 +875,7 @@ describe('createPages pages and layouts', () => {
           { name: 'test', type: 'literal' },
           { name: 'nested', type: 'literal' },
         ],
+        isStatic: true,
       },
     ]);
     const route = await handleRoute('/test/nested', {
@@ -908,6 +916,7 @@ describe('createPages pages and layouts', () => {
           { name: 'test', type: 'literal' },
           { name: 'nested', type: 'literal' },
         ],
+        isStatic: true,
       },
     ]);
     const route = await handleRoute('/test/nested', {
@@ -945,6 +954,7 @@ describe('createPages pages and layouts', () => {
           { name: 'test', type: 'literal' },
           { name: 'nested', type: 'literal' },
         ],
+        isStatic: false,
       },
     ]);
 
@@ -990,6 +1000,7 @@ describe('createPages pages and layouts', () => {
           { name: 'a', type: 'group' },
           { name: 'b', type: 'group' },
         ],
+        isStatic: true,
       },
       {
         type: 'route',
@@ -1009,6 +1020,7 @@ describe('createPages pages and layouts', () => {
           { name: 'a', type: 'group' },
           { name: 'b', type: 'group' },
         ],
+        isStatic: true,
       },
     ]);
     const route = await handleRoute('/test/y/z', {
@@ -1044,6 +1056,7 @@ describe('createPages pages and layouts', () => {
           { name: 'a', type: 'group' },
           { name: 'b', type: 'group' },
         ],
+        isStatic: false,
       },
     ]);
     const route = await handleRoute('/test/w/x', {
@@ -1084,6 +1097,7 @@ describe('createPages pages and layouts', () => {
           { name: 'test', type: 'literal' },
           { name: 'path', type: 'wildcard' },
         ],
+        isStatic: true,
       },
     ]);
     const route = await handleRoute('/test/a/b', {
@@ -1118,6 +1132,7 @@ describe('createPages pages and layouts', () => {
           { name: 'test', type: 'literal' },
           { name: 'path', type: 'wildcard' },
         ],
+        isStatic: false,
       },
     ]);
     const route = await handleRoute('/test/a/b', {
@@ -1149,6 +1164,7 @@ describe('createPages pages and layouts', () => {
         routeElement: { isStatic: true },
         noSsr: false,
         path: [{ name: 'catchAll', type: 'wildcard' }],
+        isStatic: false,
       },
     ]);
 
@@ -1211,6 +1227,7 @@ describe('createPages pages and layouts', () => {
         routeElement: { isStatic: true },
         noSsr: true,
         path: [{ name: 'static', type: 'literal' }],
+        isStatic: true,
       },
       {
         type: 'route',
@@ -1221,6 +1238,7 @@ describe('createPages pages and layouts', () => {
         routeElement: { isStatic: true },
         noSsr: true,
         path: [{ name: 'dynamic', type: 'literal' }],
+        isStatic: false,
       },
     ]);
   });
@@ -1333,6 +1351,7 @@ describe('createPages pages and layouts', () => {
           },
         },
         noSsr: false,
+        isStatic: true,
       },
       {
         type: 'route',
@@ -1384,6 +1403,7 @@ describe('createPages pages and layouts', () => {
           },
         },
         noSsr: false,
+        isStatic: true,
       },
       {
         type: 'route',
@@ -1435,6 +1455,7 @@ describe('createPages pages and layouts', () => {
           },
         },
         noSsr: false,
+        isStatic: true,
       },
       {
         type: 'route',
@@ -1482,6 +1503,7 @@ describe('createPages pages and layouts', () => {
           },
         },
         noSsr: false,
+        isStatic: true,
       },
       {
         type: 'route',
@@ -1515,6 +1537,7 @@ describe('createPages pages and layouts', () => {
           },
         },
         noSsr: false,
+        isStatic: false,
       },
       {
         type: 'route',
@@ -1548,6 +1571,7 @@ describe('createPages pages and layouts', () => {
           },
         },
         noSsr: false,
+        isStatic: false,
       },
       {
         type: 'route',
@@ -1591,6 +1615,7 @@ describe('createPages pages and layouts', () => {
           },
         },
         noSsr: false,
+        isStatic: true,
       },
       {
         type: 'route',
@@ -1634,6 +1659,7 @@ describe('createPages pages and layouts', () => {
           },
         },
         noSsr: false,
+        isStatic: true,
       },
       {
         type: 'route',
@@ -1677,6 +1703,7 @@ describe('createPages pages and layouts', () => {
           },
         },
         noSsr: false,
+        isStatic: true,
       },
       {
         type: 'route',
@@ -1706,6 +1733,7 @@ describe('createPages pages and layouts', () => {
           },
         },
         noSsr: false,
+        isStatic: false,
       },
       {
         type: 'route',
@@ -1735,6 +1763,7 @@ describe('createPages pages and layouts', () => {
           },
         },
         noSsr: false,
+        isStatic: false,
       },
       {
         type: 'route',
@@ -1760,6 +1789,7 @@ describe('createPages pages and layouts', () => {
           },
         },
         noSsr: false,
+        isStatic: true,
       },
       {
         type: 'route',
@@ -1785,6 +1815,7 @@ describe('createPages pages and layouts', () => {
           },
         },
         noSsr: false,
+        isStatic: false,
       },
     ]);
     const route = await handleRoute('/server/two/a/b', {
@@ -1895,6 +1926,7 @@ describe('createPages - exactPath', () => {
         routeElement: { isStatic: true },
         noSsr: false,
         path: [{ name: 'test', type: 'literal' }],
+        isStatic: true,
       },
     ]);
     const route = await handleRoute('/test', {
@@ -1927,6 +1959,7 @@ describe('createPages - exactPath', () => {
         routeElement: { isStatic: true },
         noSsr: false,
         path: [{ name: 'test', type: 'literal' }],
+        isStatic: false,
       },
     ]);
     const route = await handleRoute('/test', {
@@ -1962,6 +1995,7 @@ describe('createPages - exactPath', () => {
           { name: 'test', type: 'literal' },
           { name: '[slug]', type: 'literal' },
         ],
+        isStatic: true,
       },
     ]);
     const route = await handleRoute('/test/[slug]', {
@@ -1997,6 +2031,7 @@ describe('createPages - exactPath', () => {
           { name: 'test', type: 'literal' },
           { name: '[...wildcard]', type: 'literal' },
         ],
+        isStatic: true,
       },
     ]);
     const route = await handleRoute('/test/[...wildcard]', {
@@ -2033,6 +2068,7 @@ describe('createPages - exactPath', () => {
           { name: '[...wildcard]', type: 'literal' },
           { name: '[slug]', type: 'literal' },
         ],
+        isStatic: true,
       },
     ]);
     const route = await handleRoute('/test/[...wildcard]/[slug]', {
@@ -2070,6 +2106,7 @@ describe('createPages - exactPath', () => {
           { name: 'test', type: 'literal' },
           { name: '[slug]', type: 'literal' },
         ],
+        isStatic: true,
       },
     ]);
     await expect(async () => {
@@ -2101,6 +2138,7 @@ describe('createPages - grouped paths', () => {
         routeElement: { isStatic: true },
         noSsr: false,
         path: [{ name: 'test', type: 'literal' }],
+        isStatic: true,
       },
     ]);
     const route = await handleRoute('/test', {
@@ -2135,6 +2173,7 @@ describe('createPages - grouped paths', () => {
           { name: 'test', type: 'literal' },
           { name: 'foo', type: 'literal' },
         ],
+        isStatic: true,
       },
     ]);
     const route = await handleRoute('/test/foo', {
@@ -2200,6 +2239,7 @@ describe('createPages - grouped paths', () => {
         routeElement: { isStatic: true },
         noSsr: false,
         path: [{ name: 'test', type: 'literal' }],
+        isStatic: true,
       },
       {
         type: 'route',
@@ -2212,6 +2252,7 @@ describe('createPages - grouped paths', () => {
         routeElement: { isStatic: true },
         noSsr: false,
         path: [],
+        isStatic: true,
       },
     ]);
     const route = await handleRoute('/test', {
@@ -2237,5 +2278,22 @@ describe('createPages - grouped paths', () => {
       'layout:/',
       'layout:/(group)',
     ]);
+  });
+});
+
+describe('pathMappingWithoutGroups', () => {
+  it('handles paths with pathless groups', () => {
+    const pathSpec = parsePathWithSlug('/(foo)/bar');
+    expect(pathMappingWithoutGroups(pathSpec, '/bar')).toEqual({});
+    expect(pathMappingWithoutGroups(pathSpec, '/(foo)/bar')).toEqual(null);
+  });
+
+  it('handles paths with pathless groups and groups', () => {
+    const pathSpec = parsePathWithSlug('/(foo)/bar/[id]');
+    expect(pathMappingWithoutGroups(pathSpec, '/bar/123')).toEqual({
+      id: '123',
+    });
+    expect(pathMappingWithoutGroups(pathSpec, '/(foo)/bar/123')).toEqual(null);
+    expect(pathMappingWithoutGroups(pathSpec, '/(foo)/bar/[id]')).toEqual(null);
   });
 });
