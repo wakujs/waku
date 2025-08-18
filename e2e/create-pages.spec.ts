@@ -307,46 +307,6 @@ test.describe(`create-pages`, () => {
     ).not.toBeVisible();
   });
 
-  test('all page parts show', async ({ page }) => {
-    await page.goto(`http://localhost:${port}/page-parts`);
-    await expect(
-      page.getByRole('heading', { name: 'Static Page Part' }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole('heading', { name: 'Dynamic Page Part' }),
-    ).toBeVisible();
-  });
-
-  test('static page part', async ({ page }) => {
-    await page.goto(`http://localhost:${port}/page-parts`);
-    await waitForHydration(page);
-    const staticPageTime = (
-      await page
-        .getByRole('heading', { name: 'Static Page Part' })
-        .textContent()
-    )?.split('Part ')[1];
-    expect(staticPageTime).toBeTruthy();
-    await page.click("a[href='/']");
-    await page.waitForTimeout(100);
-    await page.click("a[href='/page-parts']");
-    await expect(
-      page.getByRole('heading', { name: 'Static Page Part' }),
-    ).toBeVisible();
-    const newStaticPageTime = (
-      await page
-        .getByRole('heading', { name: 'Static Page Part' })
-        .textContent()
-    )?.split('Part ')[1];
-    expect(newStaticPageTime).toBe(staticPageTime);
-    const dynamicPageTime = (
-      await page
-        .getByRole('heading', { name: 'Dynamic Page Part' })
-        .textContent()
-    )?.split('Part ')[1];
-    expect(dynamicPageTime).toBeTruthy();
-    expect(dynamicPageTime).not.toBe(staticPageTime);
-  });
-
   test('group layout static + dynamic', async ({ page }) => {
     const whatTime = async (selector: string) =>
       new Date(
@@ -396,7 +356,7 @@ test.describe(`create-pages`, () => {
     expect(sliceText2?.startsWith('Slice 002')).toBeTruthy();
   });
 
-  test('slices with static page part', async ({ page }) => {
+  test('slices with static page', async ({ page }) => {
     await page.goto(`http://localhost:${port}/slices`);
     await waitForHydration(page);
     const staticSliceText = await page.getByTestId('slice001').textContent();
