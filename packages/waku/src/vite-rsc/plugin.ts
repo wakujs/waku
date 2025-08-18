@@ -16,18 +16,15 @@ import fs from 'node:fs';
 import type { Config } from '../config.js';
 import { INTERNAL_setAllEnv, unstable_getBuildOptions } from '../server.js';
 import { emitStaticFile, waitForTasks } from '../lib/builder/build.js';
-import {
-  getManagedEntries,
-  getManagedMain,
-} from '../lib/plugins/vite-plugin-rsc-managed.js';
+import { getManagedEntries, getManagedMain } from '../lib/utils/managed.js';
 import { deployVercelPlugin } from './deploy/vercel/plugin.js';
-import { allowServerPlugin } from './plugins/allow-server.js';
+import { allowServerPlugin } from '../lib/vite-plugins/allow-server.js';
 import {
   DIST_PUBLIC,
   SRC_CLIENT_ENTRY,
   SRC_SERVER_ENTRY,
 } from '../lib/builder/constants.js';
-import { fsRouterTypegenPlugin } from '../lib/plugins/vite-plugin-fs-router-typegen.js';
+import { fsRouterTypegenPlugin } from '../lib/vite-plugins/fs-router-typegen.js';
 import { deployNetlifyPlugin } from './deploy/netlify/plugin.js';
 import { deployCloudflarePlugin } from './deploy/cloudflare/plugin.js';
 import { deployPartykitPlugin } from './deploy/partykit/plugin.js';

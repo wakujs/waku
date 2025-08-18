@@ -3,7 +3,7 @@ import {
   fsRouterTypegenPlugin,
   getImportModuleNames,
   toIdentifier,
-} from '../src/lib/plugins/vite-plugin-fs-router-typegen.js';
+} from '../src/lib/vite-plugins/fs-router-typegen.js';
 import { fileURLToPath } from 'node:url';
 import type { ViteDevServer, FSWatcher, ResolvedConfig } from 'vite';
 import { writeFile } from 'node:fs/promises';
