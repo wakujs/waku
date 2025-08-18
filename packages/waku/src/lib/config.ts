@@ -26,7 +26,6 @@ export async function resolveConfigDev(config: Config) {
     rscBase: 'RSC',
     middleware: DEFAULT_MIDDLEWARE,
     unstable_honoEnhancer: undefined,
-    unstable_viteConfigs: undefined,
     vite: undefined,
     ...config,
   };
