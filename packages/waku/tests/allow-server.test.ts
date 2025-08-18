@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { allowServerPlugin } from '../src/vite-rsc/plugins/allow-server.js';
+import { allowServerPlugin } from '../src/lib/plugins/allow-server.js';
 import * as swc from '@swc/core';
 
 const compileTsx = (code: string) =>
