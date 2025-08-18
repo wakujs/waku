@@ -1,7 +1,6 @@
 import { EXTENSIONS } from '../builder/constants.js';
 import { filePathToFileURL } from '../utils/path.js';
 
-// This is exported for vite-rsc. https://github.com/wakujs/waku/pull/1493
 export const getManagedEntries = (
   filePath: string,
   srcDir: string,
@@ -18,7 +17,6 @@ export default fsRouter(
 );
 `;
 
-// This is exported for vite-rsc. https://github.com/wakujs/waku/pull/1493
 export const getManagedMain = () => `
 import { StrictMode, createElement } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
