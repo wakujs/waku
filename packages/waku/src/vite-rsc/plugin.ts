@@ -16,10 +16,7 @@ import fs from 'node:fs';
 import type { Config } from '../config.js';
 import { INTERNAL_setAllEnv, unstable_getBuildOptions } from '../server.js';
 import { emitStaticFile, waitForTasks } from '../lib/builder/build.js';
-import {
-  getManagedEntries,
-  getManagedMain,
-} from '../lib/plugins/vite-plugin-rsc-managed.js';
+import { getManagedEntries, getManagedMain } from '../lib/utils/managed.js';
 import { deployVercelPlugin } from './deploy/vercel/plugin.js';
 import { allowServerPlugin } from './plugins/allow-server.js';
 import {
