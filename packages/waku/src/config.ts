@@ -1,6 +1,6 @@
 import type { UserConfig } from 'vite';
 import type { Middleware } from './lib/middleware/types.js';
-import type { BuiltinMiddleware } from './lib/config.js';
+import type { BuiltinMiddleware } from './lib/config/types.js';
 
 export type { Middleware };
 
