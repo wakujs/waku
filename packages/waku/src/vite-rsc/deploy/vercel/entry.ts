@@ -1,6 +1,6 @@
 import { getRequestListener } from '@hono/node-server';
 import { Hono } from 'hono';
-import { createHonoHandler } from '../../lib/engine.js';
+import { createHonoHandler } from '../../lib/hono.js';
 import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
 import { config } from 'virtual:vite-rsc-waku/config';
 import path from 'node:path';
