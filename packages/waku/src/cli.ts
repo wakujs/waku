@@ -1,25 +1,11 @@
-import path from 'node:path';
-import { existsSync, readFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { createRequire } from 'node:module';
 import process from 'node:process';
-import { Hono } from 'hono';
-import { compress } from 'hono/compress';
-import { serve } from '@hono/node-server';
-import { serveStatic } from '@hono/node-server/serve-static';
 import * as dotenv from 'dotenv';
-
-import type { Config } from './config.js';
-import { serverEngine } from './lib/hono/engine.js';
-import { build } from './lib/builder/build.js';
-import { DIST_SERVER_ENTRY_JS, DIST_PUBLIC } from './lib/builder/constants.js';
 
 const require = createRequire(new URL('.', import.meta.url));
 
 dotenv.config({ path: ['.env.local', '.env'], quiet: true });
-
-const CONFIG_FILE = 'waku.config.ts'; // XXX only ts extension
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
@@ -80,145 +66,14 @@ if (values.version) {
   console.log(version);
 } else if (values.help) {
   displayUsage();
-} else if (
-  !values['experimental-legacy-cli'] &&
-  cmd &&
-  ['dev', 'build', 'start'].includes(cmd)
-) {
+} else if (cmd && ['dev', 'build', 'start'].includes(cmd)) {
   const { cli } = await import('./vite-rsc/cli.js');
   await cli(cmd, values);
 } else {
-  switch (cmd) {
-    case 'dev':
-      await runDev();
-      break;
-    case 'build':
-      await runBuild();
-      break;
-    case 'start':
-      await runStart();
-      break;
-    default:
-      if (cmd) {
-        console.error('Unknown command:', cmd);
-      }
-      displayUsage();
-      break;
+  if (cmd) {
+    console.error('Unknown command:', cmd);
   }
-}
-
-async function runDev() {
-  const config = await loadConfig();
-  const honoEnhancer: HonoEnhancer = config.unstable_honoEnhancer
-    ? await loadHonoEnhancer(config.unstable_honoEnhancer)
-    : (fn) => fn;
-  const createApp = (app: Hono) => {
-    if (values['experimental-compress']) {
-      app.use(compress());
-    }
-    app.use(
-      serverEngine({
-        cmd: 'dev',
-        config,
-        env: process.env as any,
-        unstable_onError: new Set(),
-      }),
-    );
-    app.notFound((c) => {
-      // FIXME can we avoid hardcoding the public path?
-      const file = path.join('public', '404.html');
-      if (existsSync(file)) {
-        return c.html(readFileSync(file, 'utf8'), 404);
-      }
-      return c.text('404 Not Found', 404);
-    });
-    return app;
-  };
-  const port = parseInt(values.port || '3000', 10);
-  await startServer(honoEnhancer(createApp)(new Hono()), port);
-}
-
-async function runBuild() {
-  const config = await loadConfig();
-  process.env.NODE_ENV = 'production';
-  await build({
-    config,
-    env: process.env as any,
-    partial: !!values['experimental-partial'],
-    deploy:
-      ((values['with-vercel'] ?? !!process.env.VERCEL)
-        ? values['with-vercel-static']
-          ? 'vercel-static'
-          : 'vercel-serverless'
-        : undefined) ||
-      ((values['with-netlify'] ?? !!process.env.NETLIFY)
-        ? values['with-netlify-static']
-          ? 'netlify-static'
-          : 'netlify-functions'
-        : undefined) ||
-      (values['with-cloudflare'] ? 'cloudflare' : undefined) ||
-      (values['with-partykit'] ? 'partykit' : undefined) ||
-      (values['with-deno'] ? 'deno' : undefined) ||
-      (values['with-aws-lambda'] ? 'aws-lambda' : undefined),
-  });
-}
-
-async function runStart() {
-  const config = await loadConfig();
-  const { distDir = 'dist' } = config;
-  const honoEnhancer: HonoEnhancer = config.unstable_honoEnhancer
-    ? await loadHonoEnhancer(config.unstable_honoEnhancer)
-    : (fn) => fn;
-  const loadEntries = () =>
-    import(
-      pathToFileURL(path.resolve(distDir, DIST_SERVER_ENTRY_JS)).toString()
-    );
-  const createApp = (app: Hono) => {
-    if (values['experimental-compress']) {
-      app.use(compress());
-    }
-    app.use(serveStatic({ root: path.join(distDir, DIST_PUBLIC) }));
-    app.use(
-      serverEngine({
-        cmd: 'start',
-        loadEntries,
-        env: process.env as any,
-        unstable_onError: new Set(),
-      }),
-    );
-    app.notFound((c) => {
-      // FIXME better implementation using node stream?
-      const file = path.join(distDir, DIST_PUBLIC, '404.html');
-      if (existsSync(file)) {
-        return c.html(readFileSync(file, 'utf8'), 404);
-      }
-      return c.text('404 Not Found', 404);
-    });
-    return app;
-  };
-  const port = parseInt(values.port || '8080', 10);
-  await startServer(honoEnhancer(createApp)(new Hono()), port);
-}
-
-function startServer(app: Hono, port: number) {
-  return new Promise<void>((resolve, reject) => {
-    const server = serve({ ...app, port }, () => {
-      console.log(`ready: Listening on http://localhost:${port}/`);
-      resolve();
-    });
-    server.on('error', (err: NodeJS.ErrnoException) => {
-      if (err.code === 'EADDRINUSE') {
-        console.log(
-          `warn: Port ${port} is in use, trying ${port + 1} instead.`,
-        );
-        startServer(app, port + 1)
-          .then(resolve)
-          .catch(reject);
-      } else {
-        console.error(`Failed to start server: ${err.message}`);
-      }
-    });
-  });
+  displayUsage();
 }
 
 function displayUsage() {
@@ -243,23 +98,6 @@ Options:
 `);
 }
 
-async function loadConfig(): Promise<Config> {
-  if (!existsSync(CONFIG_FILE)) {
-    return {};
-  }
-  const { loadServerModule } = await import('./lib/utils/vite-loader.js');
-  const file = pathToFileURL(path.resolve(CONFIG_FILE)).toString();
-  return (await loadServerModule<{ default: Config }>(file)).default;
-}
-
 export type HonoEnhancer = <Hono>(
   fn: (app: Hono) => Hono,
 ) => (app: Hono) => Hono;
-
-async function loadHonoEnhancer(file: string): Promise<HonoEnhancer> {
-  const { loadServerModule } = await import('./lib/utils/vite-loader.js');
-  const fileUrl = pathToFileURL(
-    path.resolve(CONFIG_FILE, '..', file),
-  ).toString();
-  return (await loadServerModule<{ default: HonoEnhancer }>(fileUrl)).default;
-}
