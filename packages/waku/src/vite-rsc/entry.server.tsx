@@ -3,6 +3,7 @@ import { createHonoHandler } from './lib/engine.js';
 import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
 import { flags, config, isBuild } from 'virtual:vite-rsc-waku/config';
 import { compress } from 'hono/compress';
+import { contextStorage } from 'hono/context-storage';
 import { serveStatic } from '@hono/node-server/serve-static';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -14,6 +15,7 @@ function createApp(app: Hono) {
   if (flags['experimental-compress']) {
     app.use(compress());
   }
+  app.use(contextStorage());
   if (isBuild) {
     app.use(serveStatic({ root: path.join(config.distDir, DIST_PUBLIC) }));
   }

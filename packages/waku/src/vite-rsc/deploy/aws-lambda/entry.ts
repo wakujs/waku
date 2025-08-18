@@ -3,6 +3,7 @@ import * as honoAwsLambda from 'hono/aws-lambda';
 import { createHonoHandler } from '../../lib/engine.js';
 import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
 import { config } from 'virtual:vite-rsc-waku/config';
+import { contextStorage } from 'hono/context-storage';
 import { serveStatic } from '@hono/node-server/serve-static';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -11,6 +12,7 @@ import { INTERNAL_setAllEnv } from '../../../server.js';
 
 function createApp(app: Hono) {
   INTERNAL_setAllEnv(process.env as any);
+  app.use(contextStorage());
   app.use(serveStatic({ root: path.join(config.distDir, DIST_PUBLIC) }));
   app.use(createHonoHandler());
   app.notFound((c) => {

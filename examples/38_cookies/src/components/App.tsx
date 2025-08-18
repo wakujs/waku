@@ -1,6 +1,6 @@
 import { Suspense, cache } from 'react';
 import { getContextData } from 'waku/middleware/context';
-import { getHonoContext } from 'waku/unstable_hono';
+import { getContext as getHonoContext } from 'hono/context-storage';
 
 import { Counter } from './Counter';
 
