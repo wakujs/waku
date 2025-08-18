@@ -1,5 +1,6 @@
-/** @type {import('vite').UserConfig} */
-export default ({ mode }: { mode: string }) => {
+import { defineConfig } from 'vite';
+
+export default defineConfig(({ mode }) => {
   if (mode === 'development') {
     return {
       optimizeDeps: {
@@ -13,4 +14,4 @@ export default ({ mode }: { mode: string }) => {
     };
   }
   return {};
-};
+});
