@@ -139,4 +139,53 @@ test.describe(`fs-router`, async () => {
     expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
     await expect(page.getByTestId('slice002')).toHaveText('Slice 002');
   });
+
+  test('css split', async ({ page }) => {
+    // each ssr-ed page includes split css
+    await page.goto(`http://localhost:${port}/css-split/page1`);
+    await expect(page.getByText('css-split / page1 / index')).toHaveCSS(
+      'color',
+      'rgb(255, 0, 0)', // red
+    );
+    await page.goto(`http://localhost:${port}/css-split/page1/nested`);
+    await expect(
+      page.getByText('css-split / page1 / nested / index'),
+    ).toHaveCSS(
+      'color',
+      'rgb(255, 0, 0)', // red
+    );
+    await page.goto(`http://localhost:${port}/css-split/page2`);
+    await expect(page.getByText('css-split / page2 / index')).toHaveCSS(
+      'color',
+      'rgb(0, 0, 255)', // blue
+    );
+    await page.goto(`http://localhost:${port}/css-split/page2/nested`);
+    await expect(
+      page.getByText('css-split / page2 / nested / index'),
+    ).toHaveCSS(
+      'color',
+      'rgb(0, 0, 255)', // blue
+    );
+
+    // client navigation cannot remove existing styles
+    // page1 -> red
+    // page2 -> blue
+    // page1 -> blue (last stylesheet wins)
+    await page.goto(`http://localhost:${port}/css-split/page1`);
+    await waitForHydration(page);
+    await expect(page.getByText('css-split / page1 / index')).toHaveCSS(
+      'color',
+      'rgb(255, 0, 0)', // red
+    );
+    await page.click("a[href='/css-split/page2']");
+    await expect(page.getByText('css-split / page2 / index')).toHaveCSS(
+      'color',
+      'rgb(0, 0, 255)', // blue
+    );
+    await page.click("a[href='/css-split/page1']");
+    await expect(page.getByText('css-split / page1 / index')).toHaveCSS(
+      'color',
+      'rgb(0, 0, 255)', // blue
+    );
+  });
 });

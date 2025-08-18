@@ -1,9 +1,6 @@
 // based on
 // https://github.com/pawelblaszczyk5/vite-rsc-experiments/blob/4bc05095d9ec5dcb584af43a5704c4dceffd38b8/apps/stylex/vite.config.ts
 
-// Known issues
-// - server style HMR
-
 import { defineConfig } from 'waku/config';
 
 // @ts-expect-error - untyped module

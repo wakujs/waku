@@ -7,4 +7,10 @@ const Bar = () => (
   </div>
 );
 
+export const getConfig = () => {
+  return {
+    render: 'dynamic',
+  } as const;
+};
+
 export default Bar;

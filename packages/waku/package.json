@@ -1,7 +1,7 @@
 {
   "name": "waku",
   "description": "⛩️ The minimal React framework",
-  "version": "0.24.0",
+  "version": "0.25.0",
   "type": "module",
   "author": "Daishi Kato",
   "homepage": "https://waku.gg",
@@ -29,10 +29,6 @@
     "./middleware/*": {
       "types": "./dist/middleware/*.d.ts",
       "default": "./dist/middleware/*.js"
-    },
-    "./unstable_internals": {
-      "types": "./dist/unstable_internals.d.ts",
-      "default": "./dist/unstable_internals.js"
     },
     "./unstable_hono": {
       "types": "./dist/unstable_hono.d.ts",
@@ -88,14 +84,14 @@
   "dependencies": {
     "@hono/node-server": "1.18.1",
     "@swc/core": "1.13.3",
-    "@vitejs/plugin-react": "4.7.0",
-    "@vitejs/plugin-rsc": "0.4.16",
+    "@vitejs/plugin-react": "5.0.0",
+    "@vitejs/plugin-rsc": "0.4.19",
     "dotenv": "17.2.1",
-    "hono": "4.8.12",
+    "hono": "4.9.0",
     "html-react-parser": "5.2.6",
     "rollup": "4.46.2",
     "rsc-html-stream": "0.0.7",
-    "vite": "7.0.6"
+    "vite": "7.1.2"
   },
   "devDependencies": {
     "@netlify/functions": "^4.2.1",

@@ -11,16 +11,6 @@ import { isIgnoredPath } from '../lib/utils/fs-router.js';
 
 const DO_NOT_BUNDLE = '';
 
-const SLICE_PREFIX = '_slice';
-
-/**
- * Helper to remove the `_slice-` prefix from a slice id.
- * It will also remove any non-alphanumeric characters until one is found
- */
-const removeSlicePrefix = (s: string) => {
-  return s.slice(SLICE_PREFIX.length).replace(/^[-_]/, '');
-};
-
 export function unstable_fsRouter(
   importMetaUrl: string,
   loadPage: (file: string) => Promise<any> | undefined,
@@ -32,6 +22,8 @@ export function unstable_fsRouter(
      * is `"foo"`, then it will detect pages in `src/foo/api`.
      */
     apiDir: string;
+    /** e.g. `"_slices"` will detect slices in `src/pages/_slices`. */
+    slicesDir: string;
   },
 ) {
   const buildOptions = unstable_getBuildOptions();
@@ -103,16 +95,6 @@ export function unstable_fsRouter(
           .replace(/\.\w+$/, '')
           .split('/')
           .filter(Boolean);
-        // must come before isIgnoredPath check to include slices from inside _components
-        if (pathItems.at(-1)?.startsWith(SLICE_PREFIX)) {
-          createSlice({
-            component: mod.default,
-            render: 'dynamic',
-            id: removeSlicePrefix(pathItems.at(-1)!),
-            ...config,
-          });
-          continue;
-        }
         if (isIgnoredPath(pathItems)) {
           continue;
         }
@@ -168,6 +150,13 @@ export function unstable_fsRouter(
               handlers,
             });
           }
+        } else if (pathItems.at(0) === options.slicesDir) {
+          createSlice({
+            component: mod.default,
+            render: 'static',
+            id: pathItems.slice(1).join('/'),
+            ...config,
+          });
         } else if (pathItems.at(-1) === '_layout') {
           createLayout({
             path,
@@ -185,7 +174,7 @@ export function unstable_fsRouter(
           createPage({
             path,
             component: mod.default,
-            render: 'dynamic',
+            render: 'static',
             ...config,
           });
         }

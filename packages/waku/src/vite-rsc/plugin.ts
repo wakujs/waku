@@ -65,6 +65,7 @@ export function mainPlugin(
     distDir: 'dist',
     pagesDir: 'pages',
     apiDir: 'api',
+    slicesDir: '_slices',
     privateDir: 'private',
     rscBase: 'RSC',
     middleware: [
@@ -98,6 +99,7 @@ export function mainPlugin(
       serverHandler: false,
       keepUseCientProxy: true,
       ignoredPackageWarnings: [/.*/],
+      useBuildAppHook: true,
     }),
     {
       name: 'rsc:waku',
@@ -109,6 +111,9 @@ export function mainPlugin(
             ),
             'import.meta.env.WAKU_CONFIG_RSC_BASE': JSON.stringify(
               config.rscBase,
+            ),
+            'import.meta.env.WAKU_HOT_RELOAD': JSON.stringify(
+              env.command === 'serve',
             ),
             // packages/waku/src/lib/plugins/vite-plugin-rsc-env.ts
             // CLI has loaded dotenv already at this point
@@ -193,11 +198,14 @@ export function mainPlugin(
       },
       configEnvironment(name, environmentConfig, env) {
         // make @vitejs/plugin-rsc usable as a transitive dependency
-        // https://github.com/hi-ogawa/vite-plugins/issues/968
+        // by rewriting `optimizeDeps.include`. e.g.
+        // include: ["@vitejs/plugin-rsc/vendor/xxx", "@vitejs/plugin-rsc > yyy"]
+        // ⇓
+        // include: ["waku > @vitejs/plugin-rsc/vendor/xxx", "waku > @vitejs/plugin-rsc > yyy"]
         if (environmentConfig.optimizeDeps?.include) {
           environmentConfig.optimizeDeps.include =
             environmentConfig.optimizeDeps.include.map((name) => {
-              if (name.startsWith('@vitejs/plugin-rsc/')) {
+              if (name.startsWith('@vitejs/plugin-rsc')) {
                 name = `${PKG_NAME} > ${name}`;
               }
               return name;
@@ -222,7 +230,6 @@ export function mainPlugin(
             noExternal: env.command === 'build' ? true : [PKG_NAME],
           },
           optimizeDeps: {
-            include: name === 'ssr' ? [`${PKG_NAME} > html-react-parser`] : [],
             exclude: [PKG_NAME, 'waku/minimal/client', 'waku/router/client'],
           },
         };
@@ -298,6 +305,7 @@ if (import.meta.hot) {
             {
               pagesDir: config.pagesDir,
               apiDir: config.apiDir,
+              slicesDir: config.slicesDir,
             },
           );
         }
@@ -397,65 +405,6 @@ if (import.meta.hot) {
       },
     },
     {
-      // cf. packages/waku/src/lib/plugins/vite-plugin-rsc-hmr.ts
-      name: 'rsc:waku:patch-server-hmr',
-      apply: 'serve',
-      async transform(code, id) {
-        if (this.environment.name !== 'client') {
-          return;
-        }
-        if (id.includes('/waku/dist/minimal/client.js')) {
-          return code.replace(
-            /\nexport const fetchRsc = \(.*?\)=>\{/,
-            (m) =>
-              m +
-              `
-{
-  const refetchRsc = () => {
-    delete fetchCache[ENTRY];
-    const data = fetchRsc(rscPath, rscParams, fetchCache);
-    fetchCache[SET_ELEMENTS](() => data);
-  };
-  globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= [];
-  const index = globalThis.__WAKU_RSC_RELOAD_LISTENERS__.indexOf(globalThis.__WAKU_REFETCH_RSC__);
-  if (index !== -1) {
-    globalThis.__WAKU_RSC_RELOAD_LISTENERS__.splice(index, 1, refetchRsc);
-  } else {
-    globalThis.__WAKU_RSC_RELOAD_LISTENERS__.push(refetchRsc);
-  }
-  globalThis.__WAKU_REFETCH_RSC__ = refetchRsc;
-}
-`,
-          );
-        } else if (id.includes('/waku/dist/router/client.js')) {
-          return code.replace(
-            /\nconst InnerRouter = \(.*?\)=>\{/,
-            (m) =>
-              m +
-              `
-{
-  const refetchRoute = () => {
-    staticPathSetRef.current.clear();
-    cachedIdSetRef.current.clear();
-    const rscPath = encodeRoutePath(route.path);
-    const rscParams = createRscParams(route.query, []);
-    refetch(rscPath, rscParams);
-  };
-  globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= [];
-  const index = globalThis.__WAKU_RSC_RELOAD_LISTENERS__.indexOf(globalThis.__WAKU_REFETCH_ROUTE__);
-  if (index !== -1) {
-    globalThis.__WAKU_RSC_RELOAD_LISTENERS__.splice(index, 1, refetchRoute);
-  } else {
-    globalThis.__WAKU_RSC_RELOAD_LISTENERS__.unshift(refetchRoute);
-  }
-  globalThis.__WAKU_REFETCH_ROUTE__ = refetchRoute;
-}
-`,
-          );
-        }
-      },
-    },
-    {
       name: 'rsc:waku:handle-build',
       resolveId(source) {
         if (source === 'virtual:vite-rsc-waku/set-platform-data') {
@@ -489,7 +438,6 @@ if (import.meta.hot) {
       },
       // cf. packages/waku/src/lib/builder/build.ts
       buildApp: {
-        order: 'post',
         async handler(builder) {
           // import server entry
           const viteConfig = builder.config;
