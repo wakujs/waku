@@ -1,13 +1,14 @@
 import { Hono } from 'hono';
-import { createHonoHandler } from './lib/engine.js';
+import { createHonoHandler } from 'waku/unstable_hono';
+import { INTERNAL_setAllEnv, unstable_builderConstants } from 'waku/server';
 import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
 import { flags, config, isBuild } from 'virtual:vite-rsc-waku/config';
 import { compress } from 'hono/compress';
 import { serveStatic } from '@hono/node-server/serve-static';
 import path from 'node:path';
 import fs from 'node:fs';
-import { DIST_PUBLIC } from '../lib/builder/constants.js';
-import { INTERNAL_setAllEnv } from '../server.js';
+
+const { DIST_PUBLIC } = unstable_builderConstants;
 
 function createApp(app: Hono) {
   INTERNAL_setAllEnv(process.env as any);
