@@ -3,11 +3,10 @@
 import { defineConfig } from 'waku/config';
 
 export default defineConfig({
-  unstable_viteConfigs: {
-    'dev-main': () => ({
-      optimizeDeps: {
-        exclude: ['@ai-sdk/rsc'],
-      },
-    }),
+  vite: {
+    // FIXME How can we limit this config for only mode=development?
+    optimizeDeps: {
+      exclude: ['@ai-sdk/rsc'],
+    },
   },
 });

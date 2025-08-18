@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 import type { Middleware } from '../config.js';
-import type { ConfigPrd } from '../lib/config.js';
+import type { ConfigPrd } from '../lib/config/types.js';
 import type { PathSpec } from '../lib/utils/path.js';
 
 type Elements = Record<string, unknown>;
