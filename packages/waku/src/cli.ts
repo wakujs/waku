@@ -67,7 +67,7 @@ if (values.version) {
 } else if (values.help) {
   displayUsage();
 } else if (cmd && ['dev', 'build', 'start'].includes(cmd)) {
-  const { cli } = await import('./vite-rsc/cli.js');
+  const { cli } = await import('./lib/vite-rsc/cli.js');
   await cli(cmd, values);
 } else {
   if (cmd) {
