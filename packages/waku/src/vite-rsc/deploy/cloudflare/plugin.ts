@@ -42,6 +42,16 @@ export function deployCloudflarePlugin(deployOptions: {
         keepProcessEnv: false,
       };
 
+      // avoid `node` platform on rolldown
+      // https://github.com/vitejs/rolldown-vite/issues/256#issuecomment-2969442015
+      if ('rolldownVersion' in this.meta) {
+        serverOptions.build = {
+          rollupOptions: {
+            platform: 'neutral',
+          } as any,
+        };
+      }
+
       return {
         environments: {
           rsc: {
