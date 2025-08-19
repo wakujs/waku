@@ -71,7 +71,6 @@ export function mainPlugin(
       'waku/middleware/handler',
     ],
     unstable_honoEnhancer: undefined,
-    unstable_viteConfigs: undefined,
     vite: undefined,
     ...mainPluginOptions?.config,
   };
@@ -164,25 +163,6 @@ export function mainPlugin(
             },
           },
         };
-
-        // backcompat for old vite config overrides
-        // Note that adding `plugins` here is not supported and
-        // such plugins should be moved to `config.vite`.
-        viteRscConfig = mergeConfig(
-          viteRscConfig,
-          config?.unstable_viteConfigs?.['common']?.() ?? {},
-        );
-        if (env.command === 'serve') {
-          viteRscConfig = mergeConfig(
-            viteRscConfig,
-            config?.unstable_viteConfigs?.['dev-main']?.() ?? {},
-          );
-        } else {
-          viteRscConfig = mergeConfig(
-            viteRscConfig,
-            config?.unstable_viteConfigs?.['build-server']?.() ?? {},
-          );
-        }
 
         if (config.vite) {
           viteRscConfig = mergeConfig(viteRscConfig, {

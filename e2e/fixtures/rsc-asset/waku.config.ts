@@ -6,11 +6,6 @@ import path from 'node:path';
 import fs from 'node:fs';
 
 export default defineConfig({
-  unstable_viteConfigs: {
-    'build-server': () => ({
-      plugins: [importMetaUrlServerPlugin()],
-    }),
-  },
   vite: {
     plugins: [
       {
