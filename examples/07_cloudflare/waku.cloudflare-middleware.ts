@@ -1,9 +1,9 @@
 // Workaround https://github.com/cloudflare/workers-sdk/issues/6577
 import type { Middleware } from 'waku/config';
 
-function isWranglerDev(headers?: Record<string, string | string[]>): boolean {
+function isWranglerDev(headers: Headers): boolean {
   // This header seems to only be set for production cloudflare workers
-  return !headers?.['cf-visitor'];
+  return !headers.has('cf-visitor');
 }
 
 const cloudflareMiddleware: Middleware = () => {
@@ -15,14 +15,21 @@ const cloudflareMiddleware: Middleware = () => {
     if (!isWranglerDev(ctx.req.headers)) {
       return;
     }
-    const contentType = ctx.res.headers?.['content-type'];
-    if (
-      !contentType ||
-      contentType.includes('text/html') ||
-      contentType.includes('text/plain')
-    ) {
-      ctx.res.headers ||= {};
-      ctx.res.headers['content-encoding'] = 'Identity';
+    if (ctx.res) {
+      const contentType = ctx.res.headers.get('content-type');
+      if (
+        !contentType ||
+        contentType.includes('text/html') ||
+        contentType.includes('text/plain')
+      ) {
+        const headers = new Headers(ctx.res.headers);
+        headers.set('content-encoding', 'Identity');
+        ctx.res = new Response(ctx.res.body, {
+          status: ctx.res.status,
+          statusText: ctx.res.statusText,
+          headers: ctx.res.headers,
+        });
+      }
     }
   };
 };

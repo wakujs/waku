@@ -5,6 +5,13 @@ import { unstable_createAsyncIterable as createAsyncIterable } from 'waku/server
 import App from './components/App';
 import Dynamic from './components/Dynamic';
 
+const emptyStream = () =>
+  new ReadableStream({
+    start(c) {
+      c.close();
+    },
+  });
+
 export default defineEntries({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
@@ -58,7 +65,7 @@ export default defineEntries({
           body: renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
             rscPath: '',
             htmlHead: generateHtmlHead(),
-          }).then(({ body }) => body),
+          }).then((res) => res.body || emptyStream()),
         }),
       ];
       return tasks;

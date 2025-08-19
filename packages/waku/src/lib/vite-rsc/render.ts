@@ -32,7 +32,7 @@ export function createRenderUtils({
     async renderHtml(
       elements,
       html,
-      options?: { rscPath?: string; actionResult?: any },
+      options?: { rscPath?: string; actionResult?: any; status?: number },
     ) {
       const ssrEntryModule = await loadSsrEntryModule();
 
@@ -55,10 +55,10 @@ export function createRenderUtils({
           rscPath: options?.rscPath,
         },
       );
-      return {
-        body: htmlStream as any,
+      return new Response(htmlStream, {
+        status: options?.status || 200,
         headers: { 'content-type': 'text/html' },
-      };
+      });
     },
   };
 }

@@ -14,11 +14,8 @@ type RenderRsc<Opts = unknown> = (
 type RenderHtml<Opts = unknown> = (
   elements: Elements,
   html: ReactNode,
-  options: { rscPath: string; actionResult?: unknown } & Opts,
-) => Promise<{
-  body: ReadableStream & { allReady: Promise<void> };
-  headers: Record<'content-type', string>;
-}>;
+  options: { rscPath: string; actionResult?: unknown; status?: number } & Opts,
+) => Promise<Response>;
 
 // This API is still unstable
 export type HandleRequest = (
@@ -36,13 +33,13 @@ export type HandleRequest = (
       }
     | { type: 'custom'; pathname: string }
   ) & {
-    req: HandlerReq;
+    req: Request;
   },
   utils: {
     renderRsc: RenderRsc;
     renderHtml: RenderHtml;
   },
-) => Promise<ReadableStream | HandlerRes | 'fallback' | null | undefined>;
+) => Promise<ReadableStream | Response | 'fallback' | null | undefined>;
 
 // needs better name (it's not just config)
 type BuildConfig =
@@ -89,17 +86,4 @@ export type EntriesPrd = EntriesDev & {
   dynamicHtmlPaths: [pathSpec: PathSpec, htmlHead: string][];
   publicIndexHtml: string;
   loadPlatformData?: (key: string) => Promise<unknown>;
-};
-
-export type HandlerReq = {
-  body: ReadableStream | null;
-  url: URL;
-  method: string;
-  headers: Readonly<Record<string, string>>;
-};
-
-export type HandlerRes = {
-  body?: ReadableStream;
-  headers?: Record<string, string | string[]>;
-  status?: number;
 };
