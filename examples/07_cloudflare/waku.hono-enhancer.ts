@@ -27,7 +27,11 @@ const honoEnhancer = (createApp: (app: Hono) => Hono) => {
       };
     };
   }
-  return createApp;
+  return (appToCreate: Hono) => {
+    appToCreate.use(contextStorage());
+    const app = createApp(appToCreate);
+    return app;
+  };
 };
 
 export default honoEnhancer;
