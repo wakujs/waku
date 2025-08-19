@@ -24,8 +24,6 @@ export async function renderHTML(
     nonce?: string | undefined;
   },
 ): Promise<ReadableStream<Uint8Array>> {
-  // cf. packages/waku/src/lib/renderers/html.ts `renderHtml`
-
   const [stream1, stream2] = rscStream.tee();
 
   let elementsPromise: Promise<RscElementsPayload>;
@@ -65,15 +63,12 @@ export async function renderHTML(
       }
       console.error('[SSR Error]', captureOwnerStack?.() || '', '\n', e);
     },
-    // no types
-    ...{ formState: options?.formState },
-  } as any);
+    formState: options?.formState,
+  });
 
   let responseStream: ReadableStream<Uint8Array> = htmlStream;
   responseStream = responseStream.pipeThrough(
-    injectRSCPayload(stream2, {
-      nonce: options?.nonce,
-    } as any),
+    injectRSCPayload(stream2, options?.nonce ? { nonce: options?.nonce } : {}),
   );
 
   return responseStream;
