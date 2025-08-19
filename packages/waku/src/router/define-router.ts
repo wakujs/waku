@@ -169,19 +169,7 @@ export function unstable_defineRouter(fns: {
     elements: Record<SlotId, unknown>;
     slices?: string[];
   }>;
-  handleApi?: (
-    path: string,
-    options: {
-      url: URL;
-      body: ReadableStream | null;
-      headers: Readonly<Record<string, string>>;
-      method: string;
-    },
-  ) => Promise<{
-    body?: ReadableStream;
-    headers?: Record<string, string>;
-    status?: number;
-  }>;
+  handleApi?: (req: Request) => Promise<Response>;
   // TODO: Not sure if these Slice APIs are well designed. Let's revisit.
   getSliceConfig?: (sliceId: string) => Promise<{
     isStatic?: boolean;
@@ -458,16 +446,7 @@ export function unstable_defineRouter(fns: {
     }
     const pathConfigItem = await getPathConfigItem(input.pathname);
     if (pathConfigItem?.specs?.isApi && fns.handleApi) {
-      const res = await fns.handleApi(input.pathname, {
-        url,
-        body: input.req.body,
-        headers,
-        method: input.req.method,
-      });
-      return new Response(res.body, {
-        status: res.status || 200,
-        headers: res.headers || {},
-      });
+      return fns.handleApi(input.req);
     }
     if (input.type === 'action' || input.type === 'custom') {
       const renderIt = async (
@@ -534,12 +513,9 @@ export function unstable_defineRouter(fns: {
           tasks.push(async () => ({
             type: 'file',
             pathname,
-            body: handleApi(pathname, {
-              url: new URL(pathname, 'http://localhost:3000'),
-              body: null,
-              headers: {},
-              method: 'GET',
-            }).then(({ body }) => body || stringToStream('')),
+            body: handleApi(
+              new Request(new URL(pathname, 'http://localhost:3000')),
+            ).then((res) => res.body || stringToStream('')),
           }));
         }
       }
