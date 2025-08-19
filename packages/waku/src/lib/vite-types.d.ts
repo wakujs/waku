@@ -24,7 +24,7 @@ declare module 'virtual:vite-rsc-waku/hono-enhancer' {
 
 declare module 'virtual:vite-rsc-waku/config' {
   export const flags: import('./vite-rsc/plugin.ts').Flags;
-  export const config: Required<import('../config/types.ts').Config>;
+  export const config: import('./config/types.ts').ConfigDev;
   export const isBuild: boolean;
 }
 
