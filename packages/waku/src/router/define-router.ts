@@ -169,19 +169,7 @@ export function unstable_defineRouter(fns: {
     elements: Record<SlotId, unknown>;
     slices?: string[];
   }>;
-  handleApi?: (
-    path: string,
-    options: {
-      url: URL;
-      body: ReadableStream | null;
-      headers: Readonly<Record<string, string>>;
-      method: string;
-    },
-  ) => Promise<{
-    body?: ReadableStream;
-    headers?: Record<string, string | string[]>;
-    status?: number;
-  }>;
+  handleApi?: (req: Request) => Promise<Response>;
   // TODO: Not sure if these Slice APIs are well designed. Let's revisit.
   getSliceConfig?: (sliceId: string) => Promise<{
     isStatic?: boolean;
@@ -384,7 +372,9 @@ export function unstable_defineRouter(fns: {
   const handleRequest: HandleRequest = async (
     input,
     { renderRsc, renderHtml },
-  ) => {
+  ): Promise<ReadableStream | Response | 'fallback' | null | undefined> => {
+    const url = new URL(input.req.url);
+    const headers = Object.fromEntries(input.req.headers.entries());
     if (input.type === 'component') {
       const sliceId = decodeSliceId(input.rscPath);
       if (sliceId !== null) {
@@ -407,11 +397,7 @@ export function unstable_defineRouter(fns: {
             : {}),
         });
       }
-      const entries = await getEntries(
-        input.rscPath,
-        input.rscParams,
-        input.req.headers,
-      );
+      const entries = await getEntries(input.rscPath, input.rscParams, headers);
       if (!entries) {
         return null;
       }
@@ -428,7 +414,7 @@ export function unstable_defineRouter(fns: {
         }
         elementsPromise = Promise.all([
           elementsPromise,
-          getEntries(rscPath, rscParams, input.req.headers),
+          getEntries(rscPath, rscParams, headers),
         ]).then(([oldElements, newElements]) => {
           if (newElements === null) {
             console.warn('getEntries returned null');
@@ -447,11 +433,7 @@ export function unstable_defineRouter(fns: {
         const info = getErrorInfo(e);
         if (info?.location) {
           const rscPath = encodeRoutePath(info.location);
-          const entries = await getEntries(
-            rscPath,
-            undefined,
-            input.req.headers,
-          );
+          const entries = await getEntries(rscPath, undefined, headers);
           if (!entries) {
             unstable_notFound();
           }
@@ -464,12 +446,7 @@ export function unstable_defineRouter(fns: {
     }
     const pathConfigItem = await getPathConfigItem(input.pathname);
     if (pathConfigItem?.specs?.isApi && fns.handleApi) {
-      return fns.handleApi(input.pathname, {
-        url: input.req.url,
-        body: input.req.body,
-        headers: input.req.headers,
-        method: input.req.method,
-      });
+      return fns.handleApi(input.req);
     }
     if (input.type === 'action' || input.type === 'custom') {
       const renderIt = async (
@@ -479,7 +456,7 @@ export function unstable_defineRouter(fns: {
       ) => {
         const rscPath = encodeRoutePath(pathname);
         const rscParams = new URLSearchParams({ query });
-        const entries = await getEntries(rscPath, rscParams, input.req.headers);
+        const entries = await getEntries(rscPath, rscParams, headers);
         if (!entries) {
           return null;
         }
@@ -489,9 +466,13 @@ export function unstable_defineRouter(fns: {
         });
         const actionResult =
           input.type === 'action' ? await input.fn() : undefined;
-        return renderHtml(entries, html, { rscPath, actionResult });
+        return renderHtml(entries, html, {
+          rscPath,
+          actionResult,
+          status: httpstatus,
+        });
       };
-      const query = input.req.url.searchParams.toString();
+      const query = url.searchParams.toString();
       if (pathConfigItem?.specs?.noSsr) {
         return 'fallback';
       }
@@ -506,7 +487,7 @@ export function unstable_defineRouter(fns: {
         }
       }
       if (await has404()) {
-        return { ...(await renderIt('/404', '', 404)), status: 404 };
+        return renderIt('/404', '', 404);
       } else {
         return null;
       }
@@ -531,12 +512,9 @@ export function unstable_defineRouter(fns: {
           tasks.push(async () => ({
             type: 'file',
             pathname,
-            body: handleApi(pathname, {
-              url: new URL(pathname, 'http://localhost:3000'),
-              body: null,
-              headers: {},
-              method: 'GET',
-            }).then(({ body }) => body || stringToStream('')),
+            body: handleApi(
+              new Request(new URL(pathname, 'http://localhost:3000')),
+            ).then((res) => res.body || stringToStream('')),
           }));
         }
       }
@@ -617,7 +595,7 @@ globalThis.__WAKU_ROUTER_PREFETCH__ = (path) => {
                 body: renderHtml(entries, html, {
                   rscPath,
                   htmlHead: `<script type="module" async>${code}</script>`,
-                }).then(({ body }) => body),
+                }).then((res) => res.body || stringToStream('')),
               };
             }
           }

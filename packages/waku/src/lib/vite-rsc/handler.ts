@@ -11,7 +11,7 @@ import { getErrorInfo } from '../utils/custom-errors.js';
 import type { HandlerContext } from '../middleware/types.js';
 import { config } from 'virtual:vite-rsc-waku/config';
 import { createRenderUtils, loadSsrEntryModule } from './render.js';
-import type { HandleRequest, HandlerReq } from '../types.js';
+import type { HandleRequest } from '../types.js';
 import { bufferToString, parseFormData } from '../utils/buffer.js';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 
@@ -33,44 +33,36 @@ export async function handleRequest(ctx: HandlerContext) {
     res = await serverEntry.handleRequest(input, renderUtils);
   } catch (e) {
     const info = getErrorInfo(e);
-    ctx.res.status = info?.status || 500;
-    ctx.res.body = stringToStream(
+    const status = info?.status || 500;
+    const body = stringToStream(
       (e as { message?: string } | undefined)?.message || String(e),
     );
+    const headers: { location?: string } = {};
     if (info?.location) {
-      (ctx.res.headers ||= {}).location = info.location;
+      headers.location = info.location;
     }
+    ctx.res = new Response(body, { status, headers });
   }
 
   if (res instanceof ReadableStream) {
-    ctx.res.body = res;
+    ctx.res = new Response(res);
   } else if (res && res !== 'fallback') {
-    if (res.body) {
-      ctx.res.body = res.body;
-    }
-    if (res.status) {
-      ctx.res.status = res.status;
-    }
-    if (res.headers) {
-      Object.assign((ctx.res.headers ||= {}), res.headers);
-    }
+    ctx.res = res;
   }
 
   // fallback index html like packages/waku/src/lib/plugins/vite-plugin-rsc-index.ts
-  if (
-    res === 'fallback' ||
-    (!(ctx.res.body || ctx.res.status) && ctx.req.url.pathname === '/')
-  ) {
+  const url = new URL(ctx.req.url);
+  if (res === 'fallback' || (!ctx.res && url.pathname === '/')) {
     const { renderHtmlFallback } = await loadSsrEntryModule();
     const htmlFallbackStream = await renderHtmlFallback();
-    ctx.res.body = htmlFallbackStream;
-    ctx.res.headers = { 'content-type': 'text/html;charset=utf-8' };
+    const headers = { 'content-type': 'text/html; charset=utf-8' };
+    ctx.res = new Response(htmlFallbackStream, { headers });
   }
 }
 
 // cf. `getInput` in packages/waku/src/lib/middleware/handler.ts
 async function getInput(ctx: HandlerContext) {
-  const url = ctx.req.url;
+  const url = new URL(ctx.req.url);
   const rscPathPrefix = config.basePath + config.rscBase + '/';
   let rscPath: string | undefined;
   let temporaryReferences: unknown | undefined;
@@ -110,7 +102,7 @@ async function getInput(ctx: HandlerContext) {
     }
   } else if (ctx.req.method === 'POST') {
     // cf. packages/waku/src/lib/renderers/rsc.ts `decodePostAction`
-    const contentType = ctx.req.headers['content-type'];
+    const contentType = ctx.req.headers.get('content-type');
     if (
       typeof contentType === 'string' &&
       contentType.startsWith('multipart/form-data')
@@ -146,12 +138,12 @@ async function getInput(ctx: HandlerContext) {
   return { input, temporaryReferences };
 }
 
-async function getActionBody(req: HandlerReq) {
+async function getActionBody(req: Request) {
   if (!req.body) {
     throw new Error('missing request body for server function');
   }
   const bodyBuf = await streamToArrayBuffer(req.body);
-  const contentType = req.headers['content-type'];
+  const contentType = req.headers.get('content-type');
   if (contentType?.startsWith('multipart/form-data')) {
     return parseFormData(bodyBuf, contentType);
   } else {

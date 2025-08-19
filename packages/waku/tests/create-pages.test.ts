@@ -616,17 +616,11 @@ describe('createPages pages and layouts', () => {
         isStatic: true,
       },
     ]);
-    const res = await handleApi('/test', {
-      url: new URL('http://localhost:3000/test'),
-      method: 'GET',
-      headers: {},
-      body: null,
-    });
-    expect(res.headers).toEqual({
-      'content-type': 'text/plain;charset=UTF-8',
-    });
-    const respParsed = new Response(res.body);
-    const text = await respParsed.text();
+    const res = await handleApi(
+      new Request(new URL('http://localhost:3000/test')),
+    );
+    expect(res.headers.get('content-type')).toEqual('text/plain;charset=UTF-8');
+    const text = await res.text();
     expect(text).toEqual('Hello World');
     expect(res.status).toEqual(200);
   });
@@ -654,17 +648,11 @@ describe('createPages pages and layouts', () => {
         isStatic: false,
       },
     ]);
-    const res = await handleApi('/test/foo', {
-      url: new URL('http://localhost:3000/test/foo'),
-      method: 'GET',
-      headers: {},
-      body: null,
-    });
-    expect(res.headers).toEqual({
-      'content-type': 'text/plain;charset=UTF-8',
-    });
-    const respParsed = new Response(res.body);
-    const text = await respParsed.text();
+    const res = await handleApi(
+      new Request(new URL('http://localhost:3000/test/foo')),
+    );
+    expect(res.headers.get('content-type')).toEqual('text/plain;charset=UTF-8');
+    const text = await res.text();
     expect(text).toEqual('Hello World');
     expect(res.status).toEqual(200);
   });
@@ -1850,17 +1838,11 @@ describe('createPages api', () => {
         isStatic: true,
       },
     ]);
-    const res = await handleApi('/test', {
-      url: new URL('http://localhost:3000/test'),
-      method: 'GET',
-      headers: {},
-      body: null,
-    });
-    expect(res.headers).toEqual({
-      'content-type': 'text/plain;charset=UTF-8',
-    });
-    const respParsed = new Response(res.body);
-    const text = await respParsed.text();
+    const res = await handleApi(
+      new Request(new URL('http://localhost:3000/test')),
+    );
+    expect(res.headers.get('content-type')).toEqual('text/plain;charset=UTF-8');
+    const text = await res.text();
     expect(text).toEqual('Hello World');
     expect(res.status).toEqual(200);
   });
@@ -1888,17 +1870,11 @@ describe('createPages api', () => {
         isStatic: false,
       },
     ]);
-    const res = await handleApi('/test/foo', {
-      url: new URL('http://localhost:3000/test/foo'),
-      method: 'GET',
-      headers: {},
-      body: null,
-    });
-    expect(res.headers).toEqual({
-      'content-type': 'text/plain;charset=UTF-8',
-    });
-    const respParsed = new Response(res.body);
-    const text = await respParsed.text();
+    const res = await handleApi(
+      new Request(new URL('http://localhost:3000/test/foo')),
+    );
+    expect(res.headers.get('content-type')).toEqual('text/plain;charset=UTF-8');
+    const text = await res.text();
     expect(text).toEqual('Hello World foo');
     expect(res.status).toEqual(200);
   });
