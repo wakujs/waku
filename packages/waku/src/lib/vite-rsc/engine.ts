@@ -1,7 +1,4 @@
-import type {
-  HandlerContext,
-  MiddlewareOptions,
-} from '../../middleware/types.js';
+import type { HandlerContext, MiddlewareOptions } from '../middleware/types.js';
 import { middlewares } from 'virtual:vite-rsc-waku/middlewares';
 import type { MiddlewareHandler } from 'hono';
 import { isBuild } from 'virtual:vite-rsc-waku/config';

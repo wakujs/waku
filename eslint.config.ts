@@ -67,6 +67,7 @@ export default tseslint.config(
   {
     files: [
       'packages/waku/cli.js',
+      'packages/waku/src/lib/vite-entries/*',
       'packages/waku/src/lib/vite-rsc/**/*',
       'packages/create-waku/cli.js',
       'examples/41_path-alias/**/*.tsx',

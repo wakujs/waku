@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { createHonoHandler } from './lib/engine.js';
+import { createHonoHandler } from '../vite-rsc/engine.js';
 import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
 import { flags, config, isBuild } from 'virtual:vite-rsc-waku/config';
 import { compress } from 'hono/compress';
@@ -32,4 +32,4 @@ const app = honoEnhancer(createApp)(new Hono());
 
 export default app.fetch;
 
-export { handleBuild } from './lib/build.js';
+export { handleBuild } from '../vite-rsc/build.js';

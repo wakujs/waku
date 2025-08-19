@@ -1,6 +1,6 @@
 import { createRenderUtils } from './render.js';
-import { encodeRscPath } from '../../renderers/utils.js';
-import { joinPath } from '../../utils/path.js';
+import { encodeRscPath } from '../renderers/utils.js';
+import { joinPath } from '../utils/path.js';
 import { config } from 'virtual:vite-rsc-waku/config';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 

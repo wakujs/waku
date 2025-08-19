@@ -1,5 +1,5 @@
 import { setServerCallback } from '@vitejs/plugin-rsc/browser';
-import { unstable_callServerRsc } from '../../../minimal/client.js';
+import { unstable_callServerRsc } from '../../minimal/client.js';
 setServerCallback(unstable_callServerRsc);
 
 if (import.meta.hot) {

@@ -1,6 +1,6 @@
 import { renderToReadableStream } from '@vitejs/plugin-rsc/rsc';
 import { type ReactNode } from 'react';
-import type { HandleRequest } from '../../types.js';
+import type { HandleRequest } from '../types.js';
 
 export type RscElementsPayload = Record<string, unknown>;
 export type RscHtmlPayload = ReactNode;

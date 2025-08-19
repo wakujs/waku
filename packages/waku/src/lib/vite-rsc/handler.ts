@@ -5,14 +5,14 @@ import {
   decodeAction,
   decodeFormState,
 } from '@vitejs/plugin-rsc/rsc';
-import { decodeFuncId, decodeRscPath } from '../../renderers/utils.js';
-import { streamToArrayBuffer, stringToStream } from '../../utils/stream.js';
-import { getErrorInfo } from '../../utils/custom-errors.js';
-import type { HandlerContext } from '../../middleware/types.js';
+import { decodeFuncId, decodeRscPath } from '../renderers/utils.js';
+import { streamToArrayBuffer, stringToStream } from '../utils/stream.js';
+import { getErrorInfo } from '../utils/custom-errors.js';
+import type { HandlerContext } from '../middleware/types.js';
 import { config } from 'virtual:vite-rsc-waku/config';
 import { createRenderUtils, loadSsrEntryModule } from './render.js';
-import type { HandleRequest, HandlerReq } from '../../types.js';
-import { bufferToString, parseFormData } from '../../utils/buffer.js';
+import type { HandleRequest, HandlerReq } from '../types.js';
+import { bufferToString, parseFormData } from '../utils/buffer.js';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 
 type HandleRequestInput = Parameters<HandleRequest>[0];

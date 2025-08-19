@@ -129,7 +129,10 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
               build: {
                 rollupOptions: {
                   input: {
-                    index: path.join(__dirname, 'entry.browser.js'),
+                    index: path.join(
+                      __dirname,
+                      '../vite-entries/entry.browser.js',
+                    ),
                   },
                 },
               },
@@ -145,7 +148,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
               build: {
                 rollupOptions: {
                   input: {
-                    index: path.join(__dirname, 'entry.ssr.js'),
+                    index: path.join(__dirname, '../vite-entries/entry.ssr.js'),
                   },
                 },
               },
@@ -154,7 +157,10 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
               build: {
                 rollupOptions: {
                   input: {
-                    index: path.join(__dirname, 'entry.server.js'),
+                    index: path.join(
+                      __dirname,
+                      '../vite-entries/entry.server.js',
+                    ),
                   },
                 },
               },
@@ -274,7 +280,8 @@ if (import.meta.hot) {
           return getManagedEntries(
             joinPath(
               this.environment.config.root,
-              `${config.srcDir}/server-entry.js`,
+              config.srcDir,
+              'server-entry.js',
             ),
             'src',
             {
@@ -420,9 +427,8 @@ if (import.meta.hot) {
             viteConfig.environments.rsc!.build.outDir,
             'index.js',
           );
-          const entry: typeof import('./entry.server.js') = await import(
-            pathToFileURL(entryPath).href
-          );
+          const entry: typeof import('../vite-entries/entry.server.js') =
+            await import(pathToFileURL(entryPath).href);
 
           // run `handleBuild`
           INTERNAL_setAllEnv(process.env as any);

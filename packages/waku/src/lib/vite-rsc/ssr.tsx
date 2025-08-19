@@ -2,9 +2,9 @@ import { createFromReadableStream } from '@vitejs/plugin-rsc/ssr';
 import { captureOwnerStack, use, type ReactNode } from 'react';
 import type { ReactFormState } from 'react-dom/client';
 import { renderToReadableStream } from 'react-dom/server.edge';
-import { INTERNAL_ServerRoot } from '../../../minimal/client.js';
+import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import type { RscElementsPayload, RscHtmlPayload } from './render.js';
-import { fakeFetchCode } from '../../renderers/html.js';
+import { fakeFetchCode } from '../renderers/html.js';
 import { injectRSCPayload } from 'rsc-html-stream/server';
 import fallbackHtml from 'virtual:vite-rsc-waku/fallback-html';
 
