@@ -3,10 +3,12 @@ import { captureOwnerStack, use, type ReactNode } from 'react';
 import type { ReactFormState } from 'react-dom/client';
 import { renderToReadableStream } from 'react-dom/server.edge';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
-import type { RscElementsPayload, RscHtmlPayload } from './render.js';
 import { fakeFetchCode } from '../renderers/html.js';
 import { injectRSCPayload } from 'rsc-html-stream/server';
 import fallbackHtml from 'virtual:vite-rsc-waku/fallback-html';
+
+type RscElementsPayload = Record<string, unknown>;
+type RscHtmlPayload = ReactNode;
 
 // This code runs on `ssr` environment,
 // i.e. it runs on server but without `react-server` condition.
@@ -22,8 +24,6 @@ export async function renderHTML(
     nonce?: string | undefined;
   },
 ): Promise<ReadableStream<Uint8Array>> {
-  // cf. packages/waku/src/lib/renderers/html.ts `renderHtml`
-
   const [stream1, stream2] = rscStream.tee();
 
   let elementsPromise: Promise<RscElementsPayload>;
@@ -63,15 +63,12 @@ export async function renderHTML(
       }
       console.error('[SSR Error]', captureOwnerStack?.() || '', '\n', e);
     },
-    // no types
-    ...{ formState: options?.formState },
-  } as any);
+    formState: options?.formState,
+  });
 
   let responseStream: ReadableStream<Uint8Array> = htmlStream;
   responseStream = responseStream.pipeThrough(
-    injectRSCPayload(stream2, {
-      nonce: options?.nonce,
-    } as any),
+    injectRSCPayload(stream2, options?.nonce ? { nonce: options?.nonce } : {}),
   );
 
   return responseStream;
