@@ -30,10 +30,6 @@
       "types": "./dist/middleware/*.d.ts",
       "default": "./dist/middleware/*.js"
     },
-    "./unstable_hono": {
-      "types": "./dist/unstable_hono.d.ts",
-      "default": "./dist/unstable_hono.js"
-    },
     "./client": {
       "types": "./dist/client.d.ts",
       "default": "./dist/client.js"

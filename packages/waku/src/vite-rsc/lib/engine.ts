@@ -40,9 +40,7 @@ export function createHonoHandler(): MiddlewareHandler {
         headers: c.req.header(),
       },
       res: {},
-      data: {
-        __hono_context: c,
-      },
+      data: {},
     };
     const run = async (index: number) => {
       if (index >= handlers.length) {
