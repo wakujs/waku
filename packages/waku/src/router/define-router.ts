@@ -478,7 +478,7 @@ export function unstable_defineRouter(fns: {
       }
       try {
         if (pathConfigItem) {
-          return renderIt(input.pathname, query);
+          return await renderIt(input.pathname, query);
         }
       } catch (e) {
         const info = getErrorInfo(e);
