@@ -3,10 +3,12 @@ import { captureOwnerStack, use, type ReactNode } from 'react';
 import type { ReactFormState } from 'react-dom/client';
 import { renderToReadableStream } from 'react-dom/server.edge';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
-import type { RscElementsPayload, RscHtmlPayload } from './render.js';
 import { fakeFetchCode } from '../renderers/html.js';
 import { injectRSCPayload } from 'rsc-html-stream/server';
 import fallbackHtml from 'virtual:vite-rsc-waku/fallback-html';
+
+type RscElementsPayload = Record<string, unknown>;
+type RscHtmlPayload = ReactNode;
 
 // This code runs on `ssr` environment,
 // i.e. it runs on server but without `react-server` condition.

@@ -4,15 +4,16 @@ import {
   decodeAction,
   decodeFormState,
   loadServerAction,
+  renderToReadableStream,
 } from '@vitejs/plugin-rsc/rsc';
 import { stringToStream } from '../utils/stream.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
 import type { HandlerContext } from '../middleware/types.js';
 import { config } from 'virtual:vite-rsc-waku/config';
-import { createRenderUtils, loadSsrEntryModule } from './render.js';
 import type { HandleRequest } from '../types.js';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 import { getInput } from '../utils/request.js';
+import { createRenderUtils } from '../utils/render.js';
 
 type HandleRequestOutput = Awaited<ReturnType<HandleRequest>>;
 
@@ -29,9 +30,11 @@ export async function handleRequest(ctx: HandlerContext) {
     loadServerAction,
   );
 
-  const renderUtils = createRenderUtils({
+  const renderUtils = createRenderUtils(
     temporaryReferences,
-  });
+    renderToReadableStream,
+    loadSsrEntryModule,
+  );
 
   let res: HandleRequestOutput;
   try {
@@ -63,4 +66,13 @@ export async function handleRequest(ctx: HandlerContext) {
     const headers = { 'content-type': 'text/html; charset=utf-8' };
     ctx.res = new Response(htmlFallbackStream, { headers });
   }
+}
+
+function loadSsrEntryModule() {
+  // This is an API to communicate between two server environments `rsc` and `ssr`.
+  // https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-rsc/README.md#importmetaviterscloadmodule
+  return import.meta.viteRsc.loadModule<typeof import('./ssr.js')>(
+    'ssr',
+    'index',
+  );
 }
