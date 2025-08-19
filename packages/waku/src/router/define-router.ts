@@ -466,7 +466,11 @@ export function unstable_defineRouter(fns: {
         });
         const actionResult =
           input.type === 'action' ? await input.fn() : undefined;
-        return renderHtml(entries, html, { rscPath, actionResult });
+        return renderHtml(entries, html, {
+          rscPath,
+          actionResult,
+          status: httpstatus,
+        });
       };
       const query = url.searchParams.toString();
       if (pathConfigItem?.specs?.noSsr) {
@@ -474,11 +478,7 @@ export function unstable_defineRouter(fns: {
       }
       try {
         if (pathConfigItem) {
-          const res = await renderIt(input.pathname, query);
-          if (res) {
-            return new Response(res.body, { headers: res.headers });
-          }
-          return null;
+          return renderIt(input.pathname, query);
         }
       } catch (e) {
         const info = getErrorInfo(e);
@@ -487,8 +487,7 @@ export function unstable_defineRouter(fns: {
         }
       }
       if (await has404()) {
-        const res = await renderIt('/404', '', 404);
-        return new Response(res?.body || null, { status: 404 });
+        return renderIt('/404', '', 404);
       } else {
         return null;
       }
@@ -596,7 +595,7 @@ globalThis.__WAKU_ROUTER_PREFETCH__ = (path) => {
                 body: renderHtml(entries, html, {
                   rscPath,
                   htmlHead: `<script type="module" async>${code}</script>`,
-                }).then(({ body }) => body),
+                }).then((res) => res.body || stringToStream('')),
               };
             }
           }

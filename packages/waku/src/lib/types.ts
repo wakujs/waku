@@ -14,11 +14,8 @@ type RenderRsc<Opts = unknown> = (
 type RenderHtml<Opts = unknown> = (
   elements: Elements,
   html: ReactNode,
-  options: { rscPath: string; actionResult?: unknown } & Opts,
-) => Promise<{
-  body: ReadableStream & { allReady: Promise<void> };
-  headers: Record<'content-type', string>;
-}>;
+  options: { rscPath: string; actionResult?: unknown; status?: number } & Opts,
+) => Promise<Response>;
 
 // This API is still unstable
 export type HandleRequest = (

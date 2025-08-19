@@ -100,34 +100,32 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
       ...(path === '/bar2' ? { slices: ['slice002'] } : {}),
     };
   },
-  handleApi: async (path, opt) => {
+  handleApi: async (req): Promise<Response> => {
+    const path = new URL(req.url).pathname;
     if (path === '/api/hi.txt') {
       const hiTxt = await readFile('./private/hi.txt');
 
-      return {
-        status: 200,
-        body: new ReadableStream({
+      return new Response(
+        new ReadableStream({
           start(controller) {
             controller.enqueue(hiTxt);
             controller.close();
           },
         }),
-      };
-    } else if (path === '/api/hi' && opt.method === 'GET') {
-      return {
-        status: 200,
-        body: new ReadableStream({
+      );
+    } else if (path === '/api/hi' && req.method === 'GET') {
+      return new Response(
+        new ReadableStream({
           start(controller) {
             controller.enqueue(new TextEncoder().encode('hello world!'));
             controller.close();
           },
         }),
-      };
-    } else if (path === '/api/hi' && opt.method === 'POST') {
-      const bodyContent = await new Response(opt.body).text();
-      return {
-        status: 200,
-        body: new ReadableStream({
+      );
+    } else if (path === '/api/hi' && req.method === 'POST') {
+      const bodyContent = await new Response(req.body).text();
+      return new Response(
+        new ReadableStream({
           start(controller) {
             controller.enqueue(
               new TextEncoder().encode(`POST to hello world! ${bodyContent}`),
@@ -135,15 +133,15 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
             controller.close();
           },
         }),
-      };
+      );
     } else if (path === '/api/empty') {
-      return {
+      return new Response(null, {
         status: 200,
-      };
+      });
     }
-    return {
+    return new Response(null, {
       status: 404,
-    };
+    });
   },
   getSliceConfig: async (sliceId) => {
     if (sliceId === 'slice001') {
