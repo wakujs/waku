@@ -6,15 +6,12 @@ import type { PathSpec } from '../lib/utils/path.js';
 
 type Elements = Record<string, unknown>;
 
-type RenderRsc<Opts = unknown> = (
-  elements: Record<string, unknown>,
-  options?: Opts,
-) => Promise<ReadableStream>;
+type RenderRsc = (elements: Record<string, unknown>) => Promise<ReadableStream>;
 
-type RenderHtml<Opts = unknown> = (
+type RenderHtml = (
   elements: Elements,
   html: ReactNode,
-  options: { rscPath: string; actionResult?: unknown; status?: number } & Opts,
+  options: { rscPath: string; actionResult?: unknown; status?: number },
 ) => Promise<Response>;
 
 // This API is still unstable
@@ -61,14 +58,9 @@ type BuildConfig =
 
 // This API is still unstable
 export type HandleBuild = (utils: {
-  renderRsc: RenderRsc<{ moduleIdCallback?: (id: string) => void }>;
-  renderHtml: RenderHtml<{ htmlHead?: string }>;
+  renderRsc: RenderRsc;
+  renderHtml: RenderHtml;
   rscPath2pathname: (rscPath: string) => string;
-  unstable_generatePrefetchCode: (
-    rscPaths: Iterable<string>,
-    moduleIds: Iterable<string>,
-  ) => string;
-  unstable_collectClientModules: (elements: Elements) => Promise<string[]>;
 }) => AsyncIterable<BuildConfig> | null;
 
 export type EntriesDev = {

@@ -32,26 +32,16 @@ export default defineEntries({
       );
     }
   },
-  handleBuild: ({
-    renderRsc,
-    rscPath2pathname,
-    unstable_generatePrefetchCode,
-  }) =>
+  handleBuild: ({ renderRsc, rscPath2pathname }) =>
     createAsyncIterable(async () => {
-      const moduleIds = new Set<string>();
-      const generateHtmlHead = () =>
-        `<script type="module" async>${unstable_generatePrefetchCode(
-          [''],
-          moduleIds,
-        )}</script>`;
       const tasks = [
         async () => ({
           type: 'file' as const,
           pathname: rscPath2pathname(''),
-          body: renderRsc(
-            { App: <App name="Waku" />, InnerApp: <InnerApp count={0} /> },
-            { moduleIdCallback: (id) => moduleIds.add(id) },
-          ),
+          body: renderRsc({
+            App: <App name="Waku" />,
+            InnerApp: <InnerApp count={0} />,
+          }),
         }),
         ...[1, 2, 3, 4, 5].map((count) => async () => ({
           type: 'file' as const,
@@ -61,12 +51,12 @@ export default defineEntries({
         async () => ({
           type: 'defaultHtml' as const,
           pathname: '/',
-          htmlHead: generateHtmlHead(),
+          htmlHead: '',
         }),
         async () => ({
           type: 'defaultHtml' as const,
           pathname: '/no-ssr',
-          htmlHead: generateHtmlHead(),
+          htmlHead: '',
         }),
       ];
       return tasks;

@@ -15,41 +15,14 @@ export default defineEntries({
       });
     }
   },
-  handleBuild: ({
-    // renderRsc,
-    // renderHtml,
-    // rscPath2pathname,
-    unstable_generatePrefetchCode,
-  }) =>
+  handleBuild: () =>
     createAsyncIterable(async () => {
-      const moduleIds = new Set();
-      const generateHtmlHead = () =>
-        `<script type="module" async>${unstable_generatePrefetchCode(
-          [''],
-          moduleIds,
-        )}</script>`;
       const tasks = [
         async () => ({
           type: 'htmlHead',
           pathSpec: [],
-          head: generateHtmlHead(),
+          head: '',
         }),
-        // async () => ({
-        //   type: 'file',
-        //   pathname: rscPath2pathname(''),
-        //   body: await renderRsc(
-        //     { App: <App name="Waku" /> },
-        //     { moduleIdCallback: (id) => moduleIds.add(id) },
-        //   ),
-        // }),
-        // async () => ({
-        //   type: 'file',
-        //   pathname: '/',
-        //   body: renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
-        //     rscPath: '',
-        //     htmlHead: generateHtmlHead(),
-        //   }).then(({ body }) => body),
-        // }),
       ];
       return tasks;
     }),

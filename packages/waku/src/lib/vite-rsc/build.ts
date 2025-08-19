@@ -10,16 +10,8 @@ export async function handleBuild() {
   const buidlResult = serverEntry.handleBuild({
     renderRsc: renderUtils.renderRsc,
     renderHtml: renderUtils.renderHtml,
-    rscPath2pathname: (rscPath) => {
-      return joinPath(config.rscBase, encodeRscPath(rscPath));
-    },
-    // handled by Vite RSC
-    unstable_collectClientModules: async () => {
-      return [];
-    },
-    unstable_generatePrefetchCode: () => {
-      return '';
-    },
+    rscPath2pathname: (rscPath) =>
+      joinPath(config.rscBase, encodeRscPath(rscPath)),
   });
 
   return buidlResult;
