@@ -52,7 +52,6 @@ export async function getInput(ctx: HandlerContext, config: ConfigDev) {
       };
     }
   } else if (ctx.req.method === 'POST') {
-    // cf. packages/waku/src/lib/renderers/rsc.ts `decodePostAction`
     const contentType = ctx.req.headers.get('content-type');
     if (
       typeof contentType === 'string' &&
