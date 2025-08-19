@@ -1,10 +1,4 @@
-import {
-  createTemporaryReferenceSet,
-  decodeReply,
-  loadServerAction,
-  decodeAction,
-  decodeFormState,
-} from '@vitejs/plugin-rsc/rsc';
+import type { ReactFormState } from 'react-dom/client';
 import { decodeFuncId, decodeRscPath } from '../renderers/utils.js';
 import type { HandlerContext } from '../middleware/types.js';
 import type { ConfigDev } from '../config/types.js';
@@ -12,7 +6,21 @@ import type { HandleRequest } from '../types.js';
 
 type HandleRequestInput = Parameters<HandleRequest>[0];
 
-export async function getInput(ctx: HandlerContext, config: ConfigDev) {
+export async function getInput(
+  ctx: HandlerContext,
+  config: ConfigDev,
+  createTemporaryReferenceSet: () => unknown,
+  decodeReply: (
+    body: string | FormData,
+    options?: unknown,
+  ) => Promise<unknown[]>,
+  decodeAction: (body: FormData) => Promise<() => Promise<void>>,
+  decodeFormState: (
+    actionResult: unknown,
+    body: FormData,
+  ) => Promise<ReactFormState | undefined>,
+  loadServerAction: (id: string) => Promise<unknown>,
+) {
   const url = new URL(ctx.req.url);
   const rscPathPrefix = config.basePath + config.rscBase + '/';
   let rscPath: string | undefined;

@@ -1,3 +1,10 @@
+import {
+  createTemporaryReferenceSet,
+  decodeReply,
+  decodeAction,
+  decodeFormState,
+  loadServerAction,
+} from '@vitejs/plugin-rsc/rsc';
 import { stringToStream } from '../utils/stream.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
 import type { HandlerContext } from '../middleware/types.js';
@@ -12,7 +19,15 @@ type HandleRequestOutput = Awaited<ReturnType<HandleRequest>>;
 export async function handleRequest(ctx: HandlerContext) {
   await import('virtual:vite-rsc-waku/set-platform-data');
 
-  const { input, temporaryReferences } = await getInput(ctx, config);
+  const { input, temporaryReferences } = await getInput(
+    ctx,
+    config,
+    createTemporaryReferenceSet,
+    decodeReply,
+    decodeAction,
+    decodeFormState,
+    loadServerAction,
+  );
 
   const renderUtils = createRenderUtils({
     temporaryReferences,
