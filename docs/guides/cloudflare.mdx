@@ -34,10 +34,10 @@ You can run `npx wrangler types` to generate a `worker-configuration.d.ts` file 
 
 ## Accessing Cloudflare Bindings, Execution Context, and Request/Response Objects
 
-You can access Cloudflare bindings and execution context from the Hono context:
+Using `unstable_honoEnhancer`, you can access Cloudflare bindings and execution context from the Hono context:
 
 ```ts
-import { getContext as getHonoContext } from 'hono/context-storage';
+import { getHonoContext } from '.../hono-enhancer'; // a temporary solution. will be replaced later
 
 const getData = async () => {
   const c = getHonoContext<{ Bindings: Env }>();

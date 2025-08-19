@@ -3,8 +3,6 @@
 // @ts-expect-error deno
 import { Hono } from 'jsr:@hono/hono';
 // @ts-expect-error deno
-import { contextStorage } from 'jsr:@hono/hono/context-storage';
-// @ts-expect-error deno
 import { serveStatic } from 'jsr:@hono/hono/deno';
 import { createHonoHandler } from '../../lib/engine.js';
 import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
@@ -17,7 +15,6 @@ declare let Deno: any;
 
 function createApp(app: Hono) {
   INTERNAL_setAllEnv(Deno.env.toObject());
-  app.use(contextStorage());
   app.use(serveStatic({ root: path.join(config.distDir, DIST_PUBLIC) }));
   app.use(createHonoHandler());
   app.notFound(async (c: any) => {

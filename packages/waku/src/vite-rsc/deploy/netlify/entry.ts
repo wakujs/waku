@@ -1,12 +1,10 @@
 import { Hono } from 'hono';
-import { contextStorage } from 'hono/context-storage';
 import { createHonoHandler } from '../../lib/engine.js';
 import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
 import { INTERNAL_setAllEnv } from '../../../server.js';
 
 function createApp(app: Hono) {
   INTERNAL_setAllEnv(process.env as any);
-  app.use(contextStorage());
   app.use(createHonoHandler());
   app.notFound((c) => {
     const notFoundHtml = (globalThis as any).__WAKU_NOT_FOUND_HTML__;
