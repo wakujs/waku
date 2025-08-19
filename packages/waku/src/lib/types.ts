@@ -36,13 +36,13 @@ export type HandleRequest = (
       }
     | { type: 'custom'; pathname: string }
   ) & {
-    req: HandlerReq;
+    req: Request;
   },
   utils: {
     renderRsc: RenderRsc;
     renderHtml: RenderHtml;
   },
-) => Promise<ReadableStream | HandlerRes | 'fallback' | null | undefined>;
+) => Promise<ReadableStream | Response | 'fallback' | null | undefined>;
 
 // needs better name (it's not just config)
 type BuildConfig =
@@ -89,18 +89,4 @@ export type EntriesPrd = EntriesDev & {
   dynamicHtmlPaths: [pathSpec: PathSpec, htmlHead: string][];
   publicIndexHtml: string;
   loadPlatformData?: (key: string) => Promise<unknown>;
-};
-
-export type HandlerReq = {
-  body: ReadableStream | null;
-  url: URL;
-  method: string;
-  headers: Readonly<Record<string, string>>;
-  raw: Request;
-};
-
-export type HandlerRes = {
-  body?: ReadableStream;
-  headers?: Record<string, string | string[]>;
-  status?: number;
 };

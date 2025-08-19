@@ -1,17 +1,12 @@
 import type { Config } from '../../config.js';
 
-import type {
-  EntriesDev,
-  EntriesPrd,
-  HandlerReq,
-  HandlerRes,
-} from '../types.js';
+import type { EntriesDev, EntriesPrd } from '../types.js';
 
 export type ClonableModuleNode = { url: string; file: string };
 
 export type HandlerContext = {
-  readonly req: HandlerReq;
-  readonly res: HandlerRes;
+  req: Request;
+  res?: Response;
   readonly data: Record<string, unknown>;
   unstable_devServer?: {
     rootDir: string;

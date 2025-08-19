@@ -179,7 +179,7 @@ export function unstable_defineRouter(fns: {
     },
   ) => Promise<{
     body?: ReadableStream;
-    headers?: Record<string, string | string[]>;
+    headers?: Record<string, string>;
     status?: number;
   }>;
   // TODO: Not sure if these Slice APIs are well designed. Let's revisit.
@@ -384,7 +384,9 @@ export function unstable_defineRouter(fns: {
   const handleRequest: HandleRequest = async (
     input,
     { renderRsc, renderHtml },
-  ) => {
+  ): Promise<ReadableStream | Response | 'fallback' | null | undefined> => {
+    const url = new URL(input.req.url);
+    const headers = Object.fromEntries(input.req.headers.entries());
     if (input.type === 'component') {
       const sliceId = decodeSliceId(input.rscPath);
       if (sliceId !== null) {
@@ -407,11 +409,7 @@ export function unstable_defineRouter(fns: {
             : {}),
         });
       }
-      const entries = await getEntries(
-        input.rscPath,
-        input.rscParams,
-        input.req.headers,
-      );
+      const entries = await getEntries(input.rscPath, input.rscParams, headers);
       if (!entries) {
         return null;
       }
@@ -428,7 +426,7 @@ export function unstable_defineRouter(fns: {
         }
         elementsPromise = Promise.all([
           elementsPromise,
-          getEntries(rscPath, rscParams, input.req.headers),
+          getEntries(rscPath, rscParams, headers),
         ]).then(([oldElements, newElements]) => {
           if (newElements === null) {
             console.warn('getEntries returned null');
@@ -447,11 +445,7 @@ export function unstable_defineRouter(fns: {
         const info = getErrorInfo(e);
         if (info?.location) {
           const rscPath = encodeRoutePath(info.location);
-          const entries = await getEntries(
-            rscPath,
-            undefined,
-            input.req.headers,
-          );
+          const entries = await getEntries(rscPath, undefined, headers);
           if (!entries) {
             unstable_notFound();
           }
@@ -464,11 +458,15 @@ export function unstable_defineRouter(fns: {
     }
     const pathConfigItem = await getPathConfigItem(input.pathname);
     if (pathConfigItem?.specs?.isApi && fns.handleApi) {
-      return fns.handleApi(input.pathname, {
-        url: input.req.url,
+      const res = await fns.handleApi(input.pathname, {
+        url,
         body: input.req.body,
-        headers: input.req.headers,
+        headers,
         method: input.req.method,
+      });
+      return new Response(res.body, {
+        status: res.status || 200,
+        headers: res.headers || {},
       });
     }
     if (input.type === 'action' || input.type === 'custom') {
@@ -479,7 +477,7 @@ export function unstable_defineRouter(fns: {
       ) => {
         const rscPath = encodeRoutePath(pathname);
         const rscParams = new URLSearchParams({ query });
-        const entries = await getEntries(rscPath, rscParams, input.req.headers);
+        const entries = await getEntries(rscPath, rscParams, headers);
         if (!entries) {
           return null;
         }
@@ -491,13 +489,17 @@ export function unstable_defineRouter(fns: {
           input.type === 'action' ? await input.fn() : undefined;
         return renderHtml(entries, html, { rscPath, actionResult });
       };
-      const query = input.req.url.searchParams.toString();
+      const query = url.searchParams.toString();
       if (pathConfigItem?.specs?.noSsr) {
         return 'fallback';
       }
       try {
         if (pathConfigItem) {
-          return await renderIt(input.pathname, query);
+          const res = await renderIt(input.pathname, query);
+          if (res) {
+            return new Response(res.body, { headers: res.headers });
+          }
+          return null;
         }
       } catch (e) {
         const info = getErrorInfo(e);
@@ -506,7 +508,8 @@ export function unstable_defineRouter(fns: {
         }
       }
       if (await has404()) {
-        return { ...(await renderIt('/404', '', 404)), status: 404 };
+        const res = await renderIt('/404', '', 404);
+        return new Response(res?.body || null, { status: 404 });
       } else {
         return null;
       }
