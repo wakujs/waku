@@ -433,7 +433,7 @@ if (import.meta.hot) {
           // run `handleBuild`
           INTERNAL_setAllEnv(process.env as any);
           unstable_getBuildOptions().unstable_phase = 'emitStaticFiles';
-          const { buildConfigs, fallbackHtml } = await entry.handleBuild();
+          const { buildConfigs, getFallbackHtml } = await entry.handleBuild();
           for await (const buildConfig of buildConfigs || []) {
             if (buildConfig.type === 'file') {
               emitStaticFile(
@@ -447,7 +447,7 @@ if (import.meta.hot) {
                 viteConfig.root,
                 { distDir: config.distDir },
                 buildConfig.pathname,
-                fallbackHtml,
+                getFallbackHtml(),
               );
             }
           }

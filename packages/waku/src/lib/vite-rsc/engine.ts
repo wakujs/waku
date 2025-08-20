@@ -11,18 +11,12 @@ export function createHonoHandler(): MiddlewareHandler {
       cmd: 'dev',
       env: {},
       unstable_onError: new Set(),
-      get config(): any {
-        throw new Error('unsupported');
-      },
     };
   } else {
     middlwareOptions = {
       cmd: 'start',
       env: {},
       unstable_onError: new Set(),
-      get loadEntries(): any {
-        throw new Error('unsupported');
-      },
     };
   }
 

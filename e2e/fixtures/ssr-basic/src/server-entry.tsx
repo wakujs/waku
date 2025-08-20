@@ -1,6 +1,5 @@
 import { unstable_defineEntries as defineEntries } from 'waku/minimal/server';
 import { Slot } from 'waku/minimal/client';
-import { unstable_createAsyncIterable as createAsyncIterable } from 'waku/server';
 
 import App from './components/App.js';
 import TestApp from './components/test-app.js';
@@ -30,16 +29,7 @@ const entries: ReturnType<typeof defineEntries> = defineEntries({
       }
     }
   },
-  handleBuild: () =>
-    createAsyncIterable(async () => {
-      const tasks = [
-        async () => ({
-          type: 'htmlHead' as const,
-          pathSpec: [],
-        }),
-      ];
-      return tasks;
-    }),
+  handleBuild: () => null,
 });
 
 export default entries;

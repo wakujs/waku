@@ -5,13 +5,6 @@ import { unstable_createAsyncIterable as createAsyncIterable } from 'waku/server
 import App from './components/App';
 import Dynamic from './components/Dynamic';
 
-const emptyStream = () =>
-  new ReadableStream({
-    start(c) {
-      c.close();
-    },
-  });
-
 export default defineEntries({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
@@ -37,35 +30,20 @@ export default defineEntries({
       });
     }
   },
-  handleBuild: ({
-    renderRsc,
-    renderHtml,
-    rscPath2pathname,
-    unstable_generatePrefetchCode,
-  }) =>
+  handleBuild: ({ renderRsc, renderHtml, rscPath2pathname }) =>
     createAsyncIterable(async () => {
-      const moduleIds = new Set<string>();
-      const generateHtmlHead = () =>
-        `<script type="module" async>${unstable_generatePrefetchCode(
-          ['dynamic'],
-          moduleIds,
-        )}</script>`;
       const tasks = [
         async () => ({
           type: 'file' as const,
           pathname: rscPath2pathname(''),
-          body: renderRsc(
-            { App: <App name="Waku" /> },
-            { moduleIdCallback: (id) => moduleIds.add(id) },
-          ),
+          body: renderRsc({ App: <App name="Waku" /> }),
         }),
         async () => ({
           type: 'file' as const,
           pathname: '/',
           body: renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
             rscPath: '',
-            htmlHead: generateHtmlHead(),
-          }).then((res) => res.body || emptyStream()),
+          }).then((res) => res.body || ''),
         }),
       ];
       return tasks;
