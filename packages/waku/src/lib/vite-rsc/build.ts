@@ -27,7 +27,10 @@ export async function handleBuild() {
     },
   });
 
-  return buidlResult;
+  const ssrEntryModule = await loadSsrEntryModule();
+  const fallbackHtml = await ssrEntryModule.renderHtmlFallback();
+
+  return { buildConfigs: buidlResult, fallbackHtml };
 }
 
 function loadSsrEntryModule() {
