@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "waku dev",
     "build": "waku build",
-    "start": "waku start"
+    "start": "waku start",
+    "start:static": "serve dist/public -p 8080"
   },
   "dependencies": {
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "react-error-boundary": "6.0.0",
     "react-server-dom-webpack": "19.1.1",
+    "serve": "^14.2.4",
     "waku": "latest"
   },
   "devDependencies": {

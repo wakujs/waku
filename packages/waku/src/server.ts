@@ -69,7 +69,7 @@ export async function unstable_getPlatformData<T>(
 }
 
 export function unstable_getHeaders(): Readonly<Record<string, string>> {
-  return getContext().req.headers;
+  return Object.fromEntries(getContext().req.headers.entries());
 }
 
 type BuildOptions = {

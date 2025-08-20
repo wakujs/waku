@@ -9,7 +9,7 @@ import {
   createWriteStream,
 } from '../utils/node-fs.js';
 import { DIST_PUBLIC } from './constants.js';
-import type { ConfigDev } from '../config.js';
+import type { ConfigDev } from '../config/types.js';
 
 const createTaskRunner = (limit: number) => {
   let running = 0;

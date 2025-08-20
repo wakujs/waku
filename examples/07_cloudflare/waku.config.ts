@@ -8,4 +8,9 @@ export default defineConfig({
     './waku.cloudflare-middleware',
     'waku/middleware/handler',
   ],
+  vite: {
+    optimizeDeps: {
+      exclude: ['sqlite'],
+    },
+  },
 });

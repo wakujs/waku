@@ -1,10 +1,9 @@
 import type { AsyncLocalStorage as AsyncLocalStorageType } from 'node:async_hooks';
 
-import type { HandlerReq } from '../types.js';
 import type { Middleware } from './types.js';
 
 type Context = {
-  readonly req: HandlerReq;
+  readonly req: Request;
   readonly data: Record<string, unknown>;
 };
 

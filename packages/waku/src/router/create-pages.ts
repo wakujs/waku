@@ -874,27 +874,22 @@ export const createPages = <
         slices: slicePathMap.get(routePath) || [],
       };
     },
-    handleApi: async (path, { url, ...options }) => {
+    handleApi: async (req) => {
       await configure();
-      const routePath = getApiRoutePath(path, options.method);
+      const path = new URL(req.url).pathname;
+      const method = req.method;
+      const routePath = getApiRoutePath(path, method);
       if (!routePath) {
         throw new Error('API Route not found: ' + path);
       }
       const { handlers } = apiPathMap.get(routePath)!;
-      const req = new Request(url, options);
-      const handler = handlers[options.method as Method] ?? handlers.all;
+      const handler = handlers[method as Method] ?? handlers.all;
       if (!handler) {
         throw new Error(
-          'API method not found: ' + options.method + 'for path: ' + path,
+          'API method not found: ' + method + 'for path: ' + path,
         );
       }
-      const res = await handler(req);
-
-      return {
-        ...(res.body ? { body: res.body } : {}),
-        headers: Object.fromEntries(res.headers.entries()),
-        status: res.status,
-      };
+      return handler(req);
     },
     getSliceConfig: async (sliceId) => {
       await configure();

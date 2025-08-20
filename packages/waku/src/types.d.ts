@@ -33,13 +33,6 @@ type ClientManifest = {
   [id: string]: ImportManifestEntry;
 };
 
-type ReactFormState<S, ReferenceId> = [
-  S /* actual state value */,
-  string /* key path */,
-  ReferenceId /* Server Reference ID */,
-  number /* number of bound arguments */,
-];
-
 declare module 'react-server-dom-webpack/server.edge' {
   interface TemporaryReferenceSet {}
 
@@ -70,7 +63,7 @@ declare module 'react-server-dom-webpack/server.edge' {
     actionResult: S,
     body: FormData,
     serverManifest: ServerManifest,
-  ): Promise<ReactFormState<S, ServerReferenceId> | null>;
+  ): Promise<ReactFormState | null>;
   export function createTemporaryReferenceSet(): TemporaryReferenceSet;
 }
 
@@ -113,7 +106,7 @@ declare module 'react-dom/server.edge' {
   type Options = {
     identifierPrefix?: string;
     namespaceURI?: string;
-    nonce?: string;
+    nonce?: string | undefined;
     bootstrapScriptContent?: string;
     bootstrapScripts?: Array<string | BootstrapScriptDescriptor>;
     bootstrapModules?: Array<string | BootstrapScriptDescriptor>;
@@ -123,7 +116,7 @@ declare module 'react-dom/server.edge' {
     onPostpone?: (reason: string, postponeInfo: PostponeInfo) => void;
     unstable_externalRuntimeSrc?: string | BootstrapScriptDescriptor;
     importMap?: ImportMap;
-    formState?: ReactFormState<any, any> | null;
+    formState?: ReactFormState | undefined;
     onHeaders?: (headers: Headers) => void;
     maxHeadersLength?: number;
   };
