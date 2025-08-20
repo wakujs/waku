@@ -172,7 +172,6 @@ async function doPrompts() {
     return {
       ...results,
       packageName: results.packageName || toValidPackageName(targetDir),
-      templateName: values.template ?? templateNames[0]!,
       targetDir,
     };
   } catch (err) {
