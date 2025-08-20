@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "waku dev",
     "build": "waku build",
-    "start": "waku start"
+    "start": "waku start",
+    "start:static": "serve dist/public -p 8080"
   },
   "dependencies": {
     "react": "19.1.1",
