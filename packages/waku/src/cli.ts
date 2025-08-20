@@ -66,7 +66,7 @@ if (values.version) {
   console.log(version);
 } else if (values.help) {
   displayUsage();
-} else if (cmd && ['dev', 'build', 'start'].includes(cmd)) {
+} else if (cmd === 'dev' || cmd === 'build' || cmd === 'start') {
   const { cli } = await import('./lib/vite-rsc/cli.js');
   await cli(cmd, values);
 } else {
@@ -97,7 +97,3 @@ Options:
   -h, --help            Display this help message
 `);
 }
-
-export type HonoEnhancer = <Hono>(
-  fn: (app: Hono) => Hono,
-) => (app: Hono) => Hono;

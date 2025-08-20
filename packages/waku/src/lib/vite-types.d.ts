@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 /// <reference types="@vitejs/plugin-rsc/types" />
 
+type HonoEnhancer = <Hono>(fn: (app: Hono) => Hono) => (app: Hono) => Hono;
+
 declare module 'virtual:vite-rsc-waku/server-entry' {
   const default_: import('./types.ts').EntriesDev['default'];
   export default default_;
@@ -19,7 +21,7 @@ declare module 'virtual:vite-rsc-waku/middlewares' {
 }
 
 declare module 'virtual:vite-rsc-waku/hono-enhancer' {
-  export const honoEnhancer: import('../cli.ts').HonoEnhancer;
+  export const honoEnhancer: HonoEnhancer;
 }
 
 declare module 'virtual:vite-rsc-waku/config' {
