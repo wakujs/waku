@@ -1,7 +1,3 @@
-import type { Config } from '../../config.js';
-
-import type { EntriesPrd } from '../types.js';
-
 export type ClonableModuleNode = { url: string; file: string };
 
 export type HandlerContext = {
@@ -23,11 +19,9 @@ export type ErrorCallback = (
 ) => void;
 
 export type MiddlewareOptions = {
+  cmd: 'dev' | 'start';
   env: Record<string, string>;
   unstable_onError: Set<ErrorCallback>;
-} & (
-  | { cmd: 'dev'; config: Config }
-  | { cmd: 'start'; loadEntries: () => Promise<EntriesPrd> }
-);
+};
 
 export type Middleware = (options: MiddlewareOptions) => Handler;

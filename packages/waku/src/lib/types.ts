@@ -1,9 +1,5 @@
 import type { ReactNode } from 'react';
 
-import type { Middleware } from '../config.js';
-import type { ConfigPrd } from '../lib/config/types.js';
-import type { PathSpec } from '../lib/utils/path.js';
-
 type Elements = Record<string, unknown>;
 
 type RenderRsc = (elements: Record<string, unknown>) => Promise<ReadableStream>;
@@ -57,19 +53,9 @@ export type HandleBuild = (utils: {
   rscPath2pathname: (rscPath: string) => string;
 }) => AsyncIterable<BuildConfig> | null;
 
-export type EntriesDev = {
+export type ServerEntries = {
   default: {
     handleRequest: HandleRequest;
     handleBuild: HandleBuild;
   };
-};
-
-export type EntriesPrd = EntriesDev & {
-  configPrd: ConfigPrd;
-  loadMiddleware: () => Promise<{ default: Middleware }[]>;
-  loadModule: (id: string) => Promise<unknown>;
-  defaultHtmlHead: string;
-  dynamicHtmlPaths: [pathSpec: PathSpec, htmlHead: string][];
-  publicIndexHtml: string;
-  loadPlatformData?: (key: string) => Promise<unknown>;
 };
