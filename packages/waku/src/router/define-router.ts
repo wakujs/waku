@@ -499,8 +499,6 @@ export function unstable_defineRouter(fns: {
     renderRsc,
     renderHtml,
     rscPath2pathname,
-    unstable_generatePrefetchCode,
-    unstable_collectClientModules,
   }) =>
     createAsyncIterable(async (): Promise<Tasks> => {
       const tasks: Tasks = [];
@@ -519,17 +517,13 @@ export function unstable_defineRouter(fns: {
         }
       }
 
-      const path2moduleIds: Record<string, string[]> = {};
-      const moduleIdsForPrefetch = new WeakMap<PathSpec, Set<string>>();
       // FIXME this approach keeps all entries in memory during the loop
       const entriesCache = new Map<string, Record<string, unknown>>();
       await Promise.all(
-        pathConfig.map(async ({ pathSpec, pathname, pattern, specs }) => {
+        pathConfig.map(async ({ pathname, specs }) => {
           if (specs.isApi) {
             return;
           }
-          const moduleIds = new Set<string>();
-          moduleIdsForPrefetch.set(pathSpec, moduleIds);
           if (!pathname) {
             return;
           }
@@ -537,77 +531,46 @@ export function unstable_defineRouter(fns: {
           const entries = await getEntries(rscPath, undefined, {});
           if (entries) {
             entriesCache.set(pathname, entries);
-            path2moduleIds[pattern] =
-              await unstable_collectClientModules(entries);
             if (specs.isStatic) {
               tasks.push(async () => ({
                 type: 'file',
                 pathname: rscPath2pathname(rscPath),
-                body: renderRsc(entries, {
-                  moduleIdCallback: (id) => moduleIds.add(id),
-                }),
+                body: renderRsc(entries),
               }));
             }
           }
         }),
       );
 
-      const getRouterPrefetchCode = () => `
-globalThis.__WAKU_ROUTER_PREFETCH__ = (path) => {
-  const path2ids = ${JSON.stringify(path2moduleIds)};
-  const pattern = Object.keys(path2ids).find((key) => new RegExp(key).test(path));
-  if (pattern && path2ids[pattern]) {
-    for (const id of path2ids[pattern] || []) {
-      import(id);
-    }
-  }
-};`;
-
-      for (const { pathSpec, pathname, specs } of pathConfig) {
+      for (const { pathname, specs } of pathConfig) {
         if (specs.isApi) {
           continue;
         }
-        tasks.push(async () => {
-          if (specs.noSsr) {
-            if (!pathname) {
-              throw new Error('Pathname is required for noSsr routes on build');
-            }
-            return {
-              type: 'defaultHtml',
-              pathname,
-            };
+        if (specs.noSsr) {
+          if (!pathname) {
+            throw new Error('Pathname is required for noSsr routes on build');
           }
-          const moduleIds = moduleIdsForPrefetch.get(pathSpec)!;
-          if (pathname) {
+          tasks.push(async () => ({
+            type: 'defaultHtml',
+            pathname,
+          }));
+        } else if (pathname) {
+          const entries = entriesCache.get(pathname);
+          if (specs.isStatic && entries) {
             const rscPath = encodeRoutePath(pathname);
-            const code =
-              unstable_generatePrefetchCode([rscPath], moduleIds) +
-              getRouterPrefetchCode();
-            const entries = entriesCache.get(pathname);
-            if (specs.isStatic && entries) {
-              const html = createElement(INTERNAL_ServerRouter, {
-                route: { path: pathname, query: '', hash: '' },
-                httpstatus: specs.is404 ? 404 : 200,
-              });
-              return {
-                type: 'file',
-                pathname,
-                body: renderHtml(entries, html, {
-                  rscPath,
-                  htmlHead: `<script type="module" async>${code}</script>`,
-                }).then((res) => res.body || stringToStream('')),
-              };
-            }
+            const html = createElement(INTERNAL_ServerRouter, {
+              route: { path: pathname, query: '', hash: '' },
+              httpstatus: specs.is404 ? 404 : 200,
+            });
+            tasks.push(async () => ({
+              type: 'file',
+              pathname,
+              body: renderHtml(entries, html, {
+                rscPath,
+              }).then((res) => res.body || ''),
+            }));
           }
-          const code =
-            unstable_generatePrefetchCode([], moduleIds) +
-            getRouterPrefetchCode();
-          return {
-            type: 'htmlHead',
-            pathSpec,
-            head: `<script type="module" async>${code}</script>`,
-          };
-        });
+        }
       }
 
       await unstable_setPlatformData(

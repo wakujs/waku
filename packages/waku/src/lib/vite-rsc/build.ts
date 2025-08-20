@@ -12,25 +12,23 @@ export async function handleBuild() {
     loadSsrEntryModule,
   );
 
-  const buidlResult = serverEntry.handleBuild({
+  const buildConfigs = serverEntry.handleBuild({
     renderRsc: renderUtils.renderRsc,
     renderHtml: renderUtils.renderHtml,
-    rscPath2pathname: (rscPath) => {
-      return joinPath(config.rscBase, encodeRscPath(rscPath));
-    },
-    // handled by Vite RSC
-    unstable_collectClientModules: async () => {
-      return [];
-    },
-    unstable_generatePrefetchCode: () => {
-      return '';
-    },
+    rscPath2pathname: (rscPath) =>
+      joinPath(config.rscBase, encodeRscPath(rscPath)),
   });
 
-  const ssrEntryModule = await loadSsrEntryModule();
-  const fallbackHtml = await ssrEntryModule.renderHtmlFallback();
+  let fallbackHtml: string | undefined;
+  const getFallbackHtml = async () => {
+    if (!fallbackHtml) {
+      const ssrEntryModule = await loadSsrEntryModule();
+      fallbackHtml = await ssrEntryModule.renderHtmlFallback();
+    }
+    return fallbackHtml;
+  };
 
-  return { buildConfigs: buidlResult, fallbackHtml };
+  return { buildConfigs, getFallbackHtml };
 }
 
 function loadSsrEntryModule() {
