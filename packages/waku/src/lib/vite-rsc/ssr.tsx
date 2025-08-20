@@ -96,12 +96,7 @@ export async function renderHtmlFallback() {
     '</body>',
     () => `<script>${bootstrapScriptContent}</script></body>`,
   );
-  return new ReadableStream<Uint8Array>({
-    start(controller) {
-      controller.enqueue(new TextEncoder().encode(html));
-      controller.close();
-    },
-  });
+  return html;
 }
 
 function loadBootstrapScriptContent(): Promise<string> {
