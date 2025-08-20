@@ -13,7 +13,7 @@ npm install -D @vitejs/plugin-react babel-plugin-react-compiler
 ```ts
 // waku.config.ts
 import { defineConfig } from 'waku/config';
-import react from '@vitejs/plugin-react';
+import react from '@vitejs/plugin-react'; // make sure v5.0.1 or above is installed
 
 const ReactCompilerConfig = {};
 
@@ -25,10 +25,7 @@ export default defineConfig({
         babel: {
           plugins: ['babel-plugin-react-compiler', ReactCompilerConfig],
         },
-      }).map((p) => ({
-        ...p,
-        applyToEnvironment: (e: { name: unknown }) => e.name === 'client',
-      })),
+      }),
     ],
   },
 });
