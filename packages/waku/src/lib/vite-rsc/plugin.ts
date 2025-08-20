@@ -433,7 +433,7 @@ if (import.meta.hot) {
           // run `handleBuild`
           INTERNAL_setAllEnv(process.env as any);
           unstable_getBuildOptions().unstable_phase = 'emitStaticFiles';
-          const buildConfigs = await entry.handleBuild();
+          const { buildConfigs, getFallbackHtml } = await entry.handleBuild();
           for await (const buildConfig of buildConfigs || []) {
             if (buildConfig.type === 'file') {
               emitStaticFile(
@@ -442,13 +442,13 @@ if (import.meta.hot) {
                 buildConfig.pathname,
                 buildConfig.body,
               );
-            } else {
-              // eslint-disable-next-line
-              0 &&
-                console.warn(
-                  '[waku:vite-rsc] ignored build task:',
-                  buildConfig,
-                );
+            } else if (buildConfig.type === 'defaultHtml') {
+              emitStaticFile(
+                viteConfig.root,
+                { distDir: config.distDir },
+                buildConfig.pathname,
+                getFallbackHtml(),
+              );
             }
           }
           await waitForTasks();
