@@ -5,6 +5,17 @@ import type { Config } from '../../config.js';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 
+async function loadConfig(): Promise<Config | undefined> {
+  let config: Config | undefined;
+  if (existsSync('waku.config.ts') || existsSync('waku.config.js')) {
+    const imported = await vite.runnerImport<{ default: Config }>(
+      '/waku.config',
+    );
+    config = imported.module.default;
+  }
+  return config;
+}
+
 async function startDevServer(
   port: number,
   rscPluginOptions: RscPluginOptions,
@@ -16,6 +27,7 @@ async function startDevServer(
   });
   await server.listen();
   const url = server.resolvedUrls!['local'];
+  port = Number(url[0]?.match(/:(\d+)/)?.[1]) || port;
   console.log(`ready: Listening on ${url}`);
   const watcher = server.watcher;
   watcher.on('change', handleConfigChange);
@@ -31,7 +43,10 @@ async function startDevServer(
     ) {
       console.log(`Waku configuration file changed, restarting server...`);
       await server.close();
-      await startDevServer(port, rscPluginOptions);
+      await startDevServer(port, {
+        ...rscPluginOptions,
+        config: await loadConfig(),
+      });
     }
   }
 }
@@ -43,14 +58,10 @@ export async function cli(
   // set NODE_ENV before runnerImport https://github.com/vitejs/vite/issues/20299
   process.env.NODE_ENV ??= cmd === 'dev' ? 'development' : 'production';
 
-  let config: Config | undefined;
-  if (existsSync('waku.config.ts') || existsSync('waku.config.js')) {
-    const imported = await vite.runnerImport<{ default: Config }>(
-      '/waku.config',
-    );
-    config = imported.module.default;
-  }
-  const rscPluginOptions: RscPluginOptions = { flags, config };
+  const rscPluginOptions: RscPluginOptions = {
+    flags,
+    config: await loadConfig(),
+  };
 
   if (cmd === 'dev') {
     const port = parseInt(flags.port || '3000', 10);
