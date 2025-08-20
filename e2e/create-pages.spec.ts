@@ -384,3 +384,30 @@ test.describe(`create-pages`, () => {
     await expect(page.getByTestId('slice003')).toHaveText('Slice 003');
   });
 });
+
+test.describe(`create-pages STATIC`, () => {
+  test.skip(
+    ({ mode }) => mode !== 'PRD',
+    'static tests are only relevant in production mode',
+  );
+
+  let port: number;
+  let stopApp: (() => Promise<void>) | undefined;
+  test.beforeAll(async () => {
+    ({ port, stopApp } = await startApp('STATIC'));
+  });
+  test.afterAll(async () => {
+    await stopApp?.();
+  });
+
+  test('no ssr in no js environment', async ({ browser }) => {
+    const context = await browser.newContext({
+      javaScriptEnabled: false,
+    });
+    const page = await context.newPage();
+    await page.goto(`http://localhost:${port}/no-ssr`);
+    await expect(page.getByText('Not Found')).not.toBeVisible();
+    await page.close();
+    await context.close();
+  });
+});
