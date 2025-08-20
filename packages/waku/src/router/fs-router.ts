@@ -31,7 +31,6 @@ export function unstable_fsRouter(
       createLayout,
       createRoot,
       createApi,
-      createPagePart,
       createSlice,
     }) => {
       for (let file in pages) {
@@ -116,13 +115,6 @@ export function unstable_fsRouter(
           createRoot({
             component: mod.default,
             render: 'static',
-            ...config,
-          });
-        } else if (pathItems.at(-1)?.startsWith('_part')) {
-          createPagePart({
-            path,
-            component: mod.default,
-            render: 'dynamic',
             ...config,
           });
         } else {

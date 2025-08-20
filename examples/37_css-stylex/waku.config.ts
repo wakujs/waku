@@ -3,17 +3,7 @@
 
 import { defineConfig } from 'waku/config';
 
-// @ts-expect-error - untyped module
-import stylexPlugin from '@stylexjs/postcss-plugin';
 import react from '@vitejs/plugin-react';
-
-const typedStylexPlugin = stylexPlugin as (options: {
-  babelConfig?: unknown;
-  cwd?: string;
-  exclude?: Array<string>;
-  include?: Array<string>;
-  useCSSLayers?: boolean;
-}) => never;
 
 const babelConfig = {
   plugins: [
@@ -30,22 +20,6 @@ const babelConfig = {
 };
 
 export default defineConfig({
-  unstable_viteConfigs: {
-    common: () => ({
-      css: {
-        postcss: {
-          plugins: [
-            typedStylexPlugin({
-              babelConfig: { babelrc: false, ...babelConfig },
-              include: ['./src/**/*.{js,jsx,ts,tsx}'],
-              useCSSLayers: true,
-            }),
-          ],
-        },
-      },
-      plugins: [react({ babel: babelConfig })],
-    }),
-  },
   vite: {
     plugins: [react({ babel: babelConfig })],
   },

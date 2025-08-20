@@ -97,6 +97,7 @@ test.describe(`define-router`, () => {
     await expect(page.getByTestId('home-title')).toHaveText('Home');
     await page.click("a[href='/baz2']");
     await expect(page.getByTestId('baz2-title')).toHaveText('Baz2');
+    await page.waitForTimeout(100); // need to wait to refetch the slice
     const sliceText2 = await page.getByTestId('slice002').textContent();
     expect(sliceText2).not.toBe(sliceText);
     if (mode === 'PRD') {
