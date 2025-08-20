@@ -554,11 +554,10 @@ export function unstable_defineRouter(fns: {
             type: 'defaultHtml',
             pathname,
           }));
-        }
-        if (pathname) {
-          const rscPath = encodeRoutePath(pathname);
+        } else if (pathname) {
           const entries = entriesCache.get(pathname);
           if (specs.isStatic && entries) {
+            const rscPath = encodeRoutePath(pathname);
             const html = createElement(INTERNAL_ServerRouter, {
               route: { path: pathname, query: '', hash: '' },
               httpstatus: specs.is404 ? 404 : 200,
