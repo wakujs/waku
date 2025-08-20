@@ -19,7 +19,10 @@ export async function handleBuild() {
       joinPath(config.rscBase, encodeRscPath(rscPath)),
   });
 
-  return buidlResult;
+  const ssrEntryModule = await loadSsrEntryModule();
+  const fallbackHtml = await ssrEntryModule.renderHtmlFallback();
+
+  return { buildConfigs: buidlResult, fallbackHtml };
 }
 
 function loadSsrEntryModule() {
