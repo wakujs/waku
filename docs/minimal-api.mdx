@@ -55,20 +55,11 @@ It has to return AsyncIterable of build instructions.
           pathname: '/',
           body: renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
             rscPath: '',
-          }).then((res) => res.body || emptyStream()),
+          }).then((res) => res.body || ''),
         }),
       ];
       return tasks;
     }),
-```
-
-```js
-const emptyStream = () =>
-  new ReadableStream({
-    start(c) {
-      c.close();
-    },
-  });
 ```
 
 ### Client API

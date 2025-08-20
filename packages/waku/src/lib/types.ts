@@ -43,17 +43,11 @@ type BuildConfig =
   | {
       type: 'file';
       pathname: string;
-      body: Promise<ReadableStream>;
-    }
-  | {
-      type: 'htmlHead';
-      pathSpec: PathSpec;
-      head?: string;
+      body: Promise<ReadableStream | string>;
     }
   | {
       type: 'defaultHtml';
       pathname: string;
-      head?: string;
     };
 
 // This API is still unstable

@@ -542,43 +542,36 @@ export function unstable_defineRouter(fns: {
         }),
       );
 
-      for (const { pathSpec, pathname, specs } of pathConfig) {
+      for (const { pathname, specs } of pathConfig) {
         if (specs.isApi) {
           continue;
         }
-        tasks.push(async () => {
-          if (specs.noSsr) {
-            if (!pathname) {
-              throw new Error('Pathname is required for noSsr routes on build');
-            }
-            return {
-              type: 'defaultHtml',
+        if (specs.noSsr) {
+          if (!pathname) {
+            throw new Error('Pathname is required for noSsr routes on build');
+          }
+          tasks.push(async () => ({
+            type: 'defaultHtml',
+            pathname,
+          }));
+        }
+        if (pathname) {
+          const rscPath = encodeRoutePath(pathname);
+          const entries = entriesCache.get(pathname);
+          if (specs.isStatic && entries) {
+            const html = createElement(INTERNAL_ServerRouter, {
+              route: { path: pathname, query: '', hash: '' },
+              httpstatus: specs.is404 ? 404 : 200,
+            });
+            tasks.push(async () => ({
+              type: 'file',
               pathname,
-            };
+              body: renderHtml(entries, html, {
+                rscPath,
+              }).then((res) => res.body || ''),
+            }));
           }
-          if (pathname) {
-            const rscPath = encodeRoutePath(pathname);
-            const entries = entriesCache.get(pathname);
-            if (specs.isStatic && entries) {
-              const html = createElement(INTERNAL_ServerRouter, {
-                route: { path: pathname, query: '', hash: '' },
-                httpstatus: specs.is404 ? 404 : 200,
-              });
-              return {
-                type: 'file',
-                pathname,
-                body: renderHtml(entries, html, {
-                  rscPath,
-                }).then((res) => res.body || stringToStream('')),
-              };
-            }
-          }
-          return {
-            type: 'htmlHead',
-            pathSpec,
-            head: '',
-          };
-        });
+        }
       }
 
       await unstable_setPlatformData(
