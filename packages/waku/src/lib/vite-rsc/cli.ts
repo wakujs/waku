@@ -81,7 +81,7 @@ export async function cli(
       await import(
         pathToFileURL(path.resolve(distDir, 'rsc', 'index.js')).href
       );
-    startServer(port);
+    await startServer(port);
     function startServer(port: number) {
       return new Promise<void>((resolve, reject) => {
         const server = serve({ fetch: entry.default, port }, () => {
