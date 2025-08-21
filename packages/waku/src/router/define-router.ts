@@ -169,19 +169,7 @@ export function unstable_defineRouter(fns: {
     elements: Record<SlotId, unknown>;
     slices?: string[];
   }>;
-  handleApi?: (
-    path: string,
-    options: {
-      url: URL;
-      body: ReadableStream | null;
-      headers: Readonly<Record<string, string>>;
-      method: string;
-    },
-  ) => Promise<{
-    body?: ReadableStream;
-    headers?: Record<string, string | string[]>;
-    status?: number;
-  }>;
+  handleApi?: (req: Request) => Promise<Response>;
   // TODO: Not sure if these Slice APIs are well designed. Let's revisit.
   getSliceConfig?: (sliceId: string) => Promise<{
     isStatic?: boolean;
@@ -384,7 +372,9 @@ export function unstable_defineRouter(fns: {
   const handleRequest: HandleRequest = async (
     input,
     { renderRsc, renderHtml },
-  ) => {
+  ): Promise<ReadableStream | Response | 'fallback' | null | undefined> => {
+    const url = new URL(input.req.url);
+    const headers = Object.fromEntries(input.req.headers.entries());
     if (input.type === 'component') {
       const sliceId = decodeSliceId(input.rscPath);
       if (sliceId !== null) {
@@ -407,11 +397,7 @@ export function unstable_defineRouter(fns: {
             : {}),
         });
       }
-      const entries = await getEntries(
-        input.rscPath,
-        input.rscParams,
-        input.req.headers,
-      );
+      const entries = await getEntries(input.rscPath, input.rscParams, headers);
       if (!entries) {
         return null;
       }
@@ -428,7 +414,7 @@ export function unstable_defineRouter(fns: {
         }
         elementsPromise = Promise.all([
           elementsPromise,
-          getEntries(rscPath, rscParams, input.req.headers),
+          getEntries(rscPath, rscParams, headers),
         ]).then(([oldElements, newElements]) => {
           if (newElements === null) {
             console.warn('getEntries returned null');
@@ -447,11 +433,7 @@ export function unstable_defineRouter(fns: {
         const info = getErrorInfo(e);
         if (info?.location) {
           const rscPath = encodeRoutePath(info.location);
-          const entries = await getEntries(
-            rscPath,
-            undefined,
-            input.req.headers,
-          );
+          const entries = await getEntries(rscPath, undefined, headers);
           if (!entries) {
             unstable_notFound();
           }
@@ -464,12 +446,7 @@ export function unstable_defineRouter(fns: {
     }
     const pathConfigItem = await getPathConfigItem(input.pathname);
     if (pathConfigItem?.specs?.isApi && fns.handleApi) {
-      return fns.handleApi(input.pathname, {
-        url: input.req.url,
-        body: input.req.body,
-        headers: input.req.headers,
-        method: input.req.method,
-      });
+      return fns.handleApi(input.req);
     }
     if (input.type === 'action' || input.type === 'custom') {
       const renderIt = async (
@@ -479,7 +456,7 @@ export function unstable_defineRouter(fns: {
       ) => {
         const rscPath = encodeRoutePath(pathname);
         const rscParams = new URLSearchParams({ query });
-        const entries = await getEntries(rscPath, rscParams, input.req.headers);
+        const entries = await getEntries(rscPath, rscParams, headers);
         if (!entries) {
           return null;
         }
@@ -489,9 +466,13 @@ export function unstable_defineRouter(fns: {
         });
         const actionResult =
           input.type === 'action' ? await input.fn() : undefined;
-        return renderHtml(entries, html, { rscPath, actionResult });
+        return renderHtml(entries, html, {
+          rscPath,
+          actionResult,
+          status: httpstatus,
+        });
       };
-      const query = input.req.url.searchParams.toString();
+      const query = url.searchParams.toString();
       if (pathConfigItem?.specs?.noSsr) {
         return 'fallback';
       }
@@ -506,7 +487,7 @@ export function unstable_defineRouter(fns: {
         }
       }
       if (await has404()) {
-        return { ...(await renderIt('/404', '', 404)), status: 404 };
+        return renderIt('/404', '', 404);
       } else {
         return null;
       }
@@ -518,8 +499,6 @@ export function unstable_defineRouter(fns: {
     renderRsc,
     renderHtml,
     rscPath2pathname,
-    unstable_generatePrefetchCode,
-    unstable_collectClientModules,
   }) =>
     createAsyncIterable(async (): Promise<Tasks> => {
       const tasks: Tasks = [];
@@ -531,27 +510,20 @@ export function unstable_defineRouter(fns: {
           tasks.push(async () => ({
             type: 'file',
             pathname,
-            body: handleApi(pathname, {
-              url: new URL(pathname, 'http://localhost:3000'),
-              body: null,
-              headers: {},
-              method: 'GET',
-            }).then(({ body }) => body || stringToStream('')),
+            body: handleApi(
+              new Request(new URL(pathname, 'http://localhost:3000')),
+            ).then((res) => res.body || stringToStream('')),
           }));
         }
       }
 
-      const path2moduleIds: Record<string, string[]> = {};
-      const moduleIdsForPrefetch = new WeakMap<PathSpec, Set<string>>();
       // FIXME this approach keeps all entries in memory during the loop
       const entriesCache = new Map<string, Record<string, unknown>>();
       await Promise.all(
-        pathConfig.map(async ({ pathSpec, pathname, pattern, specs }) => {
+        pathConfig.map(async ({ pathname, specs }) => {
           if (specs.isApi) {
             return;
           }
-          const moduleIds = new Set<string>();
-          moduleIdsForPrefetch.set(pathSpec, moduleIds);
           if (!pathname) {
             return;
           }
@@ -559,77 +531,46 @@ export function unstable_defineRouter(fns: {
           const entries = await getEntries(rscPath, undefined, {});
           if (entries) {
             entriesCache.set(pathname, entries);
-            path2moduleIds[pattern] =
-              await unstable_collectClientModules(entries);
             if (specs.isStatic) {
               tasks.push(async () => ({
                 type: 'file',
                 pathname: rscPath2pathname(rscPath),
-                body: renderRsc(entries, {
-                  moduleIdCallback: (id) => moduleIds.add(id),
-                }),
+                body: renderRsc(entries),
               }));
             }
           }
         }),
       );
 
-      const getRouterPrefetchCode = () => `
-globalThis.__WAKU_ROUTER_PREFETCH__ = (path) => {
-  const path2ids = ${JSON.stringify(path2moduleIds)};
-  const pattern = Object.keys(path2ids).find((key) => new RegExp(key).test(path));
-  if (pattern && path2ids[pattern]) {
-    for (const id of path2ids[pattern] || []) {
-      import(id);
-    }
-  }
-};`;
-
-      for (const { pathSpec, pathname, specs } of pathConfig) {
+      for (const { pathname, specs } of pathConfig) {
         if (specs.isApi) {
           continue;
         }
-        tasks.push(async () => {
-          if (specs.noSsr) {
-            if (!pathname) {
-              throw new Error('Pathname is required for noSsr routes on build');
-            }
-            return {
-              type: 'defaultHtml',
-              pathname,
-            };
+        if (specs.noSsr) {
+          if (!pathname) {
+            throw new Error('Pathname is required for noSsr routes on build');
           }
-          const moduleIds = moduleIdsForPrefetch.get(pathSpec)!;
-          if (pathname) {
+          tasks.push(async () => ({
+            type: 'defaultHtml',
+            pathname,
+          }));
+        } else if (pathname) {
+          const entries = entriesCache.get(pathname);
+          if (specs.isStatic && entries) {
             const rscPath = encodeRoutePath(pathname);
-            const code =
-              unstable_generatePrefetchCode([rscPath], moduleIds) +
-              getRouterPrefetchCode();
-            const entries = entriesCache.get(pathname);
-            if (specs.isStatic && entries) {
-              const html = createElement(INTERNAL_ServerRouter, {
-                route: { path: pathname, query: '', hash: '' },
-                httpstatus: specs.is404 ? 404 : 200,
-              });
-              return {
-                type: 'file',
-                pathname,
-                body: renderHtml(entries, html, {
-                  rscPath,
-                  htmlHead: `<script type="module" async>${code}</script>`,
-                }).then(({ body }) => body),
-              };
-            }
+            const html = createElement(INTERNAL_ServerRouter, {
+              route: { path: pathname, query: '', hash: '' },
+              httpstatus: specs.is404 ? 404 : 200,
+            });
+            tasks.push(async () => ({
+              type: 'file',
+              pathname,
+              body: renderHtml(entries, html, {
+                rscPath,
+              }).then((res) => res.body || ''),
+            }));
           }
-          const code =
-            unstable_generatePrefetchCode([], moduleIds) +
-            getRouterPrefetchCode();
-          return {
-            type: 'htmlHead',
-            pathSpec,
-            head: `<script type="module" async>${code}</script>`,
-          };
-        });
+        }
       }
 
       await unstable_setPlatformData(

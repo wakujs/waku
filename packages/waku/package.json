@@ -30,14 +30,6 @@
       "types": "./dist/middleware/*.d.ts",
       "default": "./dist/middleware/*.js"
     },
-    "./unstable_internals": {
-      "types": "./dist/unstable_internals.d.ts",
-      "default": "./dist/unstable_internals.js"
-    },
-    "./unstable_hono": {
-      "types": "./dist/unstable_hono.d.ts",
-      "default": "./dist/unstable_hono.js"
-    },
     "./client": {
       "types": "./dist/client.d.ts",
       "default": "./dist/client.js"
@@ -88,7 +80,7 @@
   "dependencies": {
     "@hono/node-server": "1.18.1",
     "@swc/core": "1.13.3",
-    "@vitejs/plugin-react": "5.0.0",
+    "@vitejs/plugin-react": "5.0.1",
     "@vitejs/plugin-rsc": "0.4.19",
     "dotenv": "17.2.1",
     "hono": "4.9.0",

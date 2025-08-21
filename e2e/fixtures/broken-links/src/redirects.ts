@@ -9,14 +9,16 @@ const redirects = {
 };
 
 const redirectsMiddleware: Middleware = () => async (ctx, next) => {
-  if (ctx.req.url.pathname in redirects) {
-    const pathname = ctx.req.url.pathname as keyof typeof redirects;
-    const url = new URL(ctx.req.url);
+  const url = new URL(ctx.req.url);
+  if (url.pathname in redirects) {
+    const pathname = url.pathname as keyof typeof redirects;
     url.pathname = redirects[pathname];
-    ctx.res.status = 302;
-    ctx.res.headers = {
-      Location: url.toString(),
-    };
+    ctx.res = new Response(null, {
+      status: 302,
+      headers: {
+        location: url.toString(),
+      },
+    });
     return;
   }
   return await next();
