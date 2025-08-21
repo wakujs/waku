@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { SyncOptions, SyncResult } from 'execa';
-import { execaCommandSync } from 'execa';
+import { execaCommandSync, execa } from 'execa';
 import {
   afterEach,
   beforeAll,
@@ -82,6 +82,20 @@ describe('create-waku CLI with args', () => {
     const { stdout } = run(['--project-name', projectName, '--choose']);
     expect(stdout).toContain('Choose a starter template');
   });
+
+  test('choosing an option chooses that option', async () => {
+    const cmd = execa({
+      cwd: import.meta.dirname, timeout: 2000, reject: false
+    })`node ${CLI_PATH} --project-name ${projectName} --choose --skip-install`
+    cmd.stdin.write("k\r\n")
+    await cmd
+    const packageJsonPath = path.join(genPath, "package.json")
+    expect(fs.existsSync(packageJsonPath)).toBe(true)
+    const packageJsonContent = JSON.parse(fs.readFileSync(packageJsonPath).toString())
+    const dependencies = Object.keys(packageJsonContent.dependencies || {})
+    expect(dependencies).toContain("jotai")
+    expect(dependencies).toContain("waku-jotai")
+  }, 15000)
 
   test('asks to overwrite non-empty target directory', () => {
     createNonEmptyDir();
