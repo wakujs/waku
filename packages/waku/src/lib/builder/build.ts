@@ -55,7 +55,7 @@ export const emitStaticFile = (
   rootDir: string,
   config: Pick<ConfigDev, 'distDir'>,
   pathname: string,
-  body: Promise<ReadableStream> | string,
+  bodyPromise: Promise<ReadableStream | string>,
 ) => {
   const destFile = joinPath(
     rootDir,
@@ -73,11 +73,12 @@ export const emitStaticFile = (
   }
   runTask(async () => {
     await mkdir(joinPath(destFile, '..'), { recursive: true });
+    const body = await bodyPromise;
     if (typeof body === 'string') {
       await writeFile(destFile, body);
     } else {
       await pipeline(
-        Readable.fromWeb((await body) as never),
+        Readable.fromWeb(body as never),
         createWriteStream(destFile),
       );
     }
