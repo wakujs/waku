@@ -1661,12 +1661,6 @@ importers:
       hono:
         specifier: 4.9.0
         version: 4.9.0
-      html-react-parser:
-        specifier: 5.2.6
-        version: 5.2.6(@types/react@19.1.10)(react@19.1.1)
-      rollup:
-        specifier: 4.45.3
-        version: 4.45.3
       rsc-html-stream:
         specifier: 0.0.7
         version: 0.0.7
@@ -4477,19 +4471,6 @@ packages:
     resolution: {integrity: sha512-35mSku4ZXK0vfCuHEDAwt55dg2jNajHZ1odvF+8SSr82EsZY4QmXfuWso8oEd8zRhVObSN18aM0CjSdoBX7zIw==}
     engines: {node: '>=0.10.0'}
 
-  dom-serializer@2.0.0:
-    resolution: {integrity: sha512-wIkAryiqt/nV5EQKqQpo3SToSOV9J0DnbJqwK7Wv/Trc92zIAYZ4FlMu+JPFW1DfGFt81ZTCGgDEabffXeLyJg==}
-
-  domelementtype@2.3.0:
-    resolution: {integrity: sha512-OLETBj6w0OsagBwdXnPdN0cnMfF9opN69co+7ZrbfPGrdpPVNBUj02spi6B1N7wChLQiPn4CSH/zJvXw56gmHw==}
-
-  domhandler@5.0.3:
-    resolution: {integrity: sha512-cgwlv/1iFQiFnU96XXgROh8xTeetsnJiDsTc7TYCLFd9+/WNkIqPTxiM/8pSd8VIrhXGTf1Ny1q1hquVqDJB5w==}
-    engines: {node: '>= 4'}
-
-  domutils@3.2.2:
-    resolution: {integrity: sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==}
-
   dot-prop@9.0.0:
     resolution: {integrity: sha512-1gxPBJpI/pcjQhKgIU91II6Wkay+dLcN3M6rf2uwP8hRur3HtQXjVrdAK3sjC0piaEuxzMwjXChcETiJl47lAQ==}
     engines: {node: '>=18'}
@@ -4537,10 +4518,6 @@ packages:
 
   entities@4.5.0:
     resolution: {integrity: sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw==}
-    engines: {node: '>=0.12'}
-
-  entities@6.0.1:
-    resolution: {integrity: sha512-aN97NXWF6AWBTahfVOIrB/NShkzi5H7F9r1s9mD3cDj4Ko5f2qhhVoYMibXF7GlLveb/D2ioWay8lxI97Ven3g==}
     engines: {node: '>=0.12'}
 
   env-paths@3.0.0:
@@ -5140,23 +5117,8 @@ packages:
     resolution: {integrity: sha512-puUZAUKT5m8Zzvs72XWy3HtvVbTWljRE66cP60bxJzAqf2DgICo7lYTY2IHUmLnNpjYvw5bvmoHvPc0QO2a62w==}
     engines: {node: ^16.14.0 || >=18.0.0}
 
-  html-dom-parser@5.1.1:
-    resolution: {integrity: sha512-+o4Y4Z0CLuyemeccvGN4bAO20aauB2N9tFEAep5x4OW34kV4PTarBHm6RL02afYt2BMKcr0D2Agep8S3nJPIBg==}
-
-  html-react-parser@5.2.6:
-    resolution: {integrity: sha512-qcpPWLaSvqXi+TndiHbCa+z8qt0tVzjMwFGFBAa41ggC+ZA5BHaMIeMJla9g3VSp4SmiZb9qyQbmbpHYpIfPOg==}
-    peerDependencies:
-      '@types/react': 0.14 || 15 || 16 || 17 || 18 || 19
-      react: 0.14 || 15 || 16 || 17 || 18 || 19
-    peerDependenciesMeta:
-      '@types/react':
-        optional: true
-
   html-void-elements@3.0.0:
     resolution: {integrity: sha512-bEqo66MRXsUGxWHV5IP0PUiAWwoEjba4VCzg0LjFJBpchPaTfyfCKTG6bc5F8ucKec3q5y6qOdGyYTSBEvhCrg==}
-
-  htmlparser2@10.0.0:
-    resolution: {integrity: sha512-TwAZM+zE5Tq3lrEHvOlvwgj1XLWQCtaaibSN11Q+gGBAS7Y1uZSWwXXRe4iF6OXnaq1riyQAPFOBtYc77Mxq0g==}
 
   http-cache-semantics@4.2.0:
     resolution: {integrity: sha512-dTxcvPXqPvXBQpq5dUr6mEMJX4oIEFv6bwom3FDwKRDsuIjjJGANqhBuoAn9c1RQJIdAKav33ED65E2ys+87QQ==}
@@ -6398,9 +6360,6 @@ packages:
 
   react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
-
-  react-property@2.0.2:
-    resolution: {integrity: sha512-+PbtI3VuDV0l6CleQMsx2gtK0JZbZKbpdu5ynr+lbsuvtmgbNcS3VM0tuY2QjFNOcWxvXeHjDpy42RO+4U2rug==}
 
   react-refresh@0.17.0:
     resolution: {integrity: sha512-z6F7K9bV85EfseRCp2bzrpyQ0Gkw1uLoCel9XBVWPg/TjRj94SkJzUTGfOa4bs7iJvBWtQG0Wq7wnI0syw3EBQ==}
@@ -10413,24 +10372,6 @@ snapshots:
     dependencies:
       esutils: 2.0.3
 
-  dom-serializer@2.0.0:
-    dependencies:
-      domelementtype: 2.3.0
-      domhandler: 5.0.3
-      entities: 4.5.0
-
-  domelementtype@2.3.0: {}
-
-  domhandler@5.0.3:
-    dependencies:
-      domelementtype: 2.3.0
-
-  domutils@3.2.2:
-    dependencies:
-      dom-serializer: 2.0.0
-      domelementtype: 2.3.0
-      domhandler: 5.0.3
-
   dot-prop@9.0.0:
     dependencies:
       type-fest: 4.41.0
@@ -10469,8 +10410,6 @@ snapshots:
       tapable: 2.2.2
 
   entities@4.5.0: {}
-
-  entities@6.0.1: {}
 
   env-paths@3.0.0: {}
 
@@ -11366,29 +11305,7 @@ snapshots:
     dependencies:
       lru-cache: 10.4.3
 
-  html-dom-parser@5.1.1:
-    dependencies:
-      domhandler: 5.0.3
-      htmlparser2: 10.0.0
-
-  html-react-parser@5.2.6(@types/react@19.1.10)(react@19.1.1):
-    dependencies:
-      domhandler: 5.0.3
-      html-dom-parser: 5.1.1
-      react: 19.1.1
-      react-property: 2.0.2
-      style-to-js: 1.1.17
-    optionalDependencies:
-      '@types/react': 19.1.10
-
   html-void-elements@3.0.0: {}
-
-  htmlparser2@10.0.0:
-    dependencies:
-      domelementtype: 2.3.0
-      domhandler: 5.0.3
-      domutils: 3.2.2
-      entities: 6.0.1
 
   http-cache-semantics@4.2.0: {}
 
@@ -12643,8 +12560,6 @@ snapshots:
       react: 19.1.1
 
   react-is@16.13.1: {}
-
-  react-property@2.0.2: {}
 
   react-refresh@0.17.0: {}
 
