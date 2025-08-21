@@ -1,23 +1,23 @@
+import type { Config } from '../../config.js';
+import type { unstable_fsRouter } from '../../router/fs-router.js';
 import { EXTENSIONS } from '../builder/constants.js';
-import { filePathToFileURL } from '../utils/path.js';
 
-export const getManagedEntries = (
-  filePath: string,
-  srcDir: string,
-  options: { pagesDir: string; apiDir: string; slicesDir: string },
-) => `
+export const getManagedServerEntry = (config: Required<Config>) => {
+  const globBase = `/${config.srcDir}/${config.pagesDir}/`;
+  const globPattern = `${globBase}**/*.{${EXTENSIONS.map((ext) => ext.slice(1)).join(',')}}`;
+  const fsRouterOptions: Parameters<typeof unstable_fsRouter>[1] = {
+    apiDir: config.apiDir,
+    slicesDir: config.slicesDir,
+  };
+  return `
 import { unstable_fsRouter as fsRouter } from 'waku/router/server';
-
-export default fsRouter(
-  '${filePathToFileURL(filePath)}',
-  (file) => import.meta.glob('/${srcDir}/pages/**/*.{${EXTENSIONS.map((ext) =>
-    ext.replace(/^\./, ''),
-  ).join(',')}}')[\`/${srcDir}/pages/\${file}\`]?.(),
-  { pagesDir: '${options.pagesDir}', apiDir: '${options.apiDir}', slicesDir: '${options.slicesDir}' },
-);
+const glob = import.meta.glob(${JSON.stringify(globPattern)}, { base: ${JSON.stringify(globBase)} });
+export default fsRouter(glob, ${JSON.stringify(fsRouterOptions)});
 `;
+};
 
-export const getManagedMain = () => `
+export const getManagedClientEntry = () => {
+  return `
 import { StrictMode, createElement } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { Router } from 'waku/router/client';
@@ -30,3 +30,4 @@ if (globalThis.__WAKU_HYDRATE__) {
   createRoot(document).render(rootElement);
 }
 `;
+};
