@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@vitejs/plugin-rsc': https://pkg.pr.new/@vitejs/plugin-rsc@721
+  '@vitejs/plugin-rsc': https://pkg.pr.new/@vitejs/plugin-rsc@17d2c2d
   vite: npm:rolldown-vite@7.1.2
   rollup: 4.45.3
 
@@ -1655,8 +1655,8 @@ importers:
         specifier: 5.0.1
         version: 5.0.1(rolldown-vite@7.1.2(@types/node@24.2.1)(esbuild@0.25.8)(jiti@2.5.1)(terser@5.43.1)(tsx@4.19.4)(yaml@2.8.1))
       '@vitejs/plugin-rsc':
-        specifier: https://pkg.pr.new/@vitejs/plugin-rsc@721
-        version: https://pkg.pr.new/@vitejs/plugin-rsc@721(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(rolldown-vite@7.1.2(@types/node@24.2.1)(esbuild@0.25.8)(jiti@2.5.1)(terser@5.43.1)(tsx@4.19.4)(yaml@2.8.1))
+        specifier: https://pkg.pr.new/@vitejs/plugin-rsc@17d2c2d
+        version: https://pkg.pr.new/@vitejs/plugin-rsc@17d2c2d(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(rolldown-vite@7.1.2(@types/node@24.2.1)(esbuild@0.25.8)(jiti@2.5.1)(terser@5.43.1)(tsx@4.19.4)(yaml@2.8.1))
       dotenv:
         specifier: 17.2.1
         version: 17.2.1
@@ -3725,9 +3725,9 @@ packages:
     peerDependencies:
       vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0
 
-  '@vitejs/plugin-rsc@https://pkg.pr.new/@vitejs/plugin-rsc@721':
-    resolution: {tarball: https://pkg.pr.new/@vitejs/plugin-rsc@721}
-    version: 0.4.20
+  '@vitejs/plugin-rsc@https://pkg.pr.new/@vitejs/plugin-rsc@17d2c2d':
+    resolution: {tarball: https://pkg.pr.new/@vitejs/plugin-rsc@17d2c2d}
+    version: 0.4.21
     peerDependencies:
       react: '*'
       react-dom: '*'
@@ -9612,7 +9612,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vitejs/plugin-rsc@https://pkg.pr.new/@vitejs/plugin-rsc@721(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(rolldown-vite@7.1.2(@types/node@24.2.1)(esbuild@0.25.8)(jiti@2.5.1)(terser@5.43.1)(tsx@4.19.4)(yaml@2.8.1))':
+  '@vitejs/plugin-rsc@https://pkg.pr.new/@vitejs/plugin-rsc@17d2c2d(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(rolldown-vite@7.1.2(@types/node@24.2.1)(esbuild@0.25.8)(jiti@2.5.1)(terser@5.43.1)(tsx@4.19.4)(yaml@2.8.1))':
     dependencies:
       '@remix-run/node-fetch-server': 0.8.0
       es-module-lexer: 1.7.0
