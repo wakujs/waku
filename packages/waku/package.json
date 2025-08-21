@@ -84,8 +84,6 @@
     "@vitejs/plugin-rsc": "0.4.19",
     "dotenv": "17.2.1",
     "hono": "4.9.0",
-    "html-react-parser": "5.2.6",
-    "rollup": "4.46.2",
     "rsc-html-stream": "0.0.7",
     "vite": "7.1.2"
   },
