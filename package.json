@@ -49,5 +49,11 @@
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.40.0",
     "waku": "workspace:*"
+  },
+  "pnpm": {
+    "overrides": {
+      "@vitejs/plugin-rsc": "https://pkg.pr.new/@vitejs/plugin-rsc@bffc82e",
+      "vite": "npm:rolldown-vite@latest"
+    }
   }
 }
