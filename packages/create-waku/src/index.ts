@@ -155,7 +155,9 @@ async function doPrompts() {
         },
         templateName: () => {
           if (!values.choose || values.template || values.example) {
-            return Promise.resolve(values.template || values.example || templateNames[0]);
+            return Promise.resolve(
+              values.template || values.example || templateNames[0],
+            );
           }
           return p.select({
             message: 'Choose a starter template',
@@ -276,6 +278,7 @@ async function init() {
 
 init()
   .then(notifyUpdate)
+  .then(() => process.exit(0))
   .catch((e) => {
     console.log(e);
   });
