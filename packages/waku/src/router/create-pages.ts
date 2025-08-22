@@ -762,11 +762,16 @@ export const createPages = <
         },
       );
 
-      return (
-        [...routeConfigs, ...apiConfigs]
-          // Sort routes by priority: "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
-          .sort((configA, configB) => routePriorityComparator(configA, configB))
-      );
+      const sliceConfigs = Array.from(sliceIdMap).map(([id, { isStatic }]) => ({
+        type: 'slice' as const,
+        id,
+        isStatic,
+      }));
+
+      const pathConfigs = [...routeConfigs, ...apiConfigs]
+        // Sort routes by priority: "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
+        .sort((configA, configB) => routePriorityComparator(configA, configB));
+      return [...pathConfigs, ...sliceConfigs];
     },
     handleRoute: async (path, { query }) => {
       await configure();
@@ -890,15 +895,6 @@ export const createPages = <
         );
       }
       return handler(req);
-    },
-    getSliceConfig: async (sliceId) => {
-      await configure();
-      const slice = sliceIdMap.get(sliceId);
-      if (!slice) {
-        throw new Error('Slice not found: ' + sliceId);
-      }
-      const { isStatic } = slice;
-      return { isStatic };
     },
     handleSlice: async (sliceId) => {
       await configure();
