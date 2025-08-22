@@ -316,6 +316,7 @@ test.describe(`create-pages`, () => {
       ).getSeconds();
 
     await page.goto(`http://localhost:${port}/nested-layouts`);
+    await waitForHydration(page);
     await expect(
       page.getByRole('heading', { name: 'Dynamic Layout' }),
     ).toBeVisible();
