@@ -51,6 +51,7 @@ test.describe(`ssr-redirect`, () => {
 
   test('navigation in server action', async ({ page }) => {
     await page.goto(`http://localhost:${port}/action`);
+    await waitForHydration(page);
     await expect(page.getByRole('heading')).toHaveText('Action Page');
     await page.click('text=Redirect Action');
     await expect(page.getByRole('heading')).toHaveText('Destination Page');

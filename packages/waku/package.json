@@ -81,9 +81,9 @@
     "@hono/node-server": "1.19.0",
     "@swc/core": "1.13.4",
     "@vitejs/plugin-react": "5.0.1",
-    "@vitejs/plugin-rsc": "0.4.21",
+    "@vitejs/plugin-rsc": "0.4.22",
     "dotenv": "17.2.1",
-    "hono": "4.9.2",
+    "hono": "4.9.4",
     "rsc-html-stream": "0.0.7",
     "vite": "7.1.3"
   },
