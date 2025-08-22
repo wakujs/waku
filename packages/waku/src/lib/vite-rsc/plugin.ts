@@ -213,7 +213,13 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
             noExternal: env.command === 'build' ? true : [PKG_NAME],
           },
           optimizeDeps: {
-            exclude: [PKG_NAME, 'waku/minimal/client', 'waku/router/client'],
+            exclude: [
+              PKG_NAME,
+              'waku/minimal/client',
+              'waku/router/client',
+              // https://github.com/vitejs/vite-plugin-react/issues/759
+              'waku-jotai',
+            ],
           },
         };
       },
