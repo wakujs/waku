@@ -768,7 +768,9 @@ describe('createPages pages and layouts', () => {
         isStatic: true,
       },
     ]);
-    expect(await getSliceConfig('slice001')).toEqual({ isStatic: true });
+    expect(await getSliceConfig()).toEqual([
+      { id: 'slice001', isStatic: true },
+    ]);
   });
 
   it('creates a simple dynamic page with slices', async () => {
@@ -801,7 +803,9 @@ describe('createPages pages and layouts', () => {
         isStatic: false,
       },
     ]);
-    expect(await getSliceConfig('slice001')).toEqual({ isStatic: true });
+    expect(await getSliceConfig()).toEqual([
+      { id: 'slice001', isStatic: true },
+    ]);
   });
 
   it('creates a wildcard page with slices', async () => {
@@ -837,7 +841,9 @@ describe('createPages pages and layouts', () => {
         isStatic: false,
       },
     ]);
-    expect(await getSliceConfig('slice001')).toEqual({ isStatic: true });
+    expect(await getSliceConfig()).toEqual([
+      { id: 'slice001', isStatic: true },
+    ]);
   });
 
   it('creates a nested static page', async () => {

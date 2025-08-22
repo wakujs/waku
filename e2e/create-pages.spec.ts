@@ -415,6 +415,10 @@ test.describe(`create-pages STATIC`, () => {
   });
 
   test('slices with render=static', async ({ page }) => {
+    await page.route(/.*\/RSC\/.*/, async (route) => {
+      await new Promise((r) => setTimeout(r, 100));
+      await route.continue();
+    });
     await page.goto(`http://localhost:${port}/static-slices`);
     await waitForHydration(page);
     await expect(page.getByTestId('slice001-loading')).toBeVisible();

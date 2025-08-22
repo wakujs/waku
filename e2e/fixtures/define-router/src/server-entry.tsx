@@ -143,14 +143,11 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
       status: 404,
     });
   },
-  getSliceConfig: async (sliceId) => {
-    if (sliceId === 'slice001') {
-      return { isStatic: true };
-    }
-    if (sliceId === 'slice002') {
-      return { isStatic: false };
-    }
-    return null;
+  getSliceConfig: async () => {
+    return [
+      { id: 'slice001', isStatic: true },
+      { id: 'slice002', isStatic: false },
+    ];
   },
   handleSlice: async (sliceId) => {
     if (sliceId === 'slice001') {

@@ -891,14 +891,12 @@ export const createPages = <
       }
       return handler(req);
     },
-    getSliceConfig: async (sliceId) => {
+    getSliceConfig: async () => {
       await configure();
-      const slice = sliceIdMap.get(sliceId);
-      if (!slice) {
-        throw new Error('Slice not found: ' + sliceId);
-      }
-      const { isStatic } = slice;
-      return { isStatic };
+      return Array.from(sliceIdMap).map(([id, { isStatic }]) => ({
+        id,
+        isStatic,
+      }));
     },
     handleSlice: async (sliceId) => {
       await configure();

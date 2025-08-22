@@ -10,6 +10,7 @@ import { unstable_defineEntries as defineEntries } from '../minimal/server.js';
 import {
   encodeRoutePath,
   decodeRoutePath,
+  encodeSliceId,
   decodeSliceId,
   ROUTE_ID,
   IS_STATIC_ID,
@@ -170,10 +171,12 @@ export function unstable_defineRouter(fns: {
     slices?: string[];
   }>;
   handleApi?: (req: Request) => Promise<Response>;
-  // TODO: Not sure if these Slice APIs are well designed. Let's revisit.
-  getSliceConfig?: (sliceId: string) => Promise<{
-    isStatic?: boolean;
-  } | null>;
+  getSliceConfig?: () => Promise<
+    Iterable<{
+      id: string;
+      isStatic?: boolean;
+    }>
+  >;
   handleSlice?: (sliceId: string) => Promise<{
     element: ReactNode;
   }>;
@@ -192,7 +195,7 @@ export function unstable_defineRouter(fns: {
       isApi?: true;
     };
   }[];
-  let cachedPathConfig: MyPathConfig | undefined;
+  let cachedMyPathConfig: MyPathConfig | undefined;
   const getMyPathConfig = async (): Promise<MyPathConfig> => {
     const pathConfig = await unstable_getPlatformData(
       'defineRouterPathConfigs',
@@ -200,8 +203,8 @@ export function unstable_defineRouter(fns: {
     if (pathConfig) {
       return pathConfig as MyPathConfig;
     }
-    if (!cachedPathConfig) {
-      cachedPathConfig = Array.from(await fns.getConfig()).map((item) => {
+    if (!cachedMyPathConfig) {
+      cachedMyPathConfig = Array.from(await fns.getConfig()).map((item) => {
         switch (item.type) {
           case 'route': {
             const is404 =
@@ -255,7 +258,23 @@ export function unstable_defineRouter(fns: {
         }
       });
     }
-    return cachedPathConfig;
+    return cachedMyPathConfig;
+  };
+  let cachedMySliceConfig: Record<string, { isStatic?: boolean }> | undefined;
+  const getMySliceConfig = async () => {
+    const sliceConfig = await unstable_getPlatformData(
+      'defineRouterSliceConfigs',
+    );
+    if (sliceConfig) {
+      return sliceConfig as NonNullable<typeof cachedMySliceConfig>;
+    }
+    if (!cachedMySliceConfig) {
+      cachedMySliceConfig = {};
+      for (const { id, ...rest } of (await fns.getSliceConfig?.()) || []) {
+        cachedMySliceConfig[id] = rest;
+      }
+    }
+    return cachedMySliceConfig;
   };
   const getPathConfigItem = async (pathname: string) => {
     const pathConfig = await getMyPathConfig();
@@ -309,7 +328,7 @@ export function unstable_defineRouter(fns: {
     const sliceConfigMap = new Map<string, { isStatic?: boolean }>();
     await Promise.all(
       slices.map(async (sliceId) => {
-        const sliceConfig = await fns.getSliceConfig?.(sliceId);
+        const sliceConfig = (await getMySliceConfig())[sliceId];
         if (sliceConfig) {
           sliceConfigMap.set(sliceId, sliceConfig);
         }
@@ -384,7 +403,7 @@ export function unstable_defineRouter(fns: {
           return null;
         }
         const [sliceConfig, { element }] = await Promise.all([
-          fns.getSliceConfig?.(sliceId),
+          getMySliceConfig().then((sliceConfig) => sliceConfig[sliceId]),
           fns.handleSlice(sliceId),
         ]);
         return renderRsc({
@@ -503,6 +522,7 @@ export function unstable_defineRouter(fns: {
     createAsyncIterable(async (): Promise<Tasks> => {
       const tasks: Tasks = [];
       const pathConfig = await getMyPathConfig();
+      const sliceConfig = await getMySliceConfig();
 
       for (const { pathname, specs } of pathConfig) {
         const { handleApi } = fns;
@@ -578,6 +598,40 @@ export function unstable_defineRouter(fns: {
         pathConfig,
         true,
       );
+
+      await Promise.all(
+        Object.entries(sliceConfig).map(async ([sliceId, sliceConfig]) => {
+          if (!sliceConfig.isStatic) {
+            return;
+          }
+          if (!fns.handleSlice) {
+            return;
+          }
+          const { element } = await fns.handleSlice(sliceId);
+          const body = renderRsc({
+            [SLICE_SLOT_ID_PREFIX + sliceId]: element,
+            ...(sliceConfig?.isStatic
+              ? {
+                  // FIXME: hard-coded for now
+                  [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + sliceId]: true,
+                }
+              : {}),
+          });
+          const rscPath = encodeSliceId(sliceId);
+          tasks.push(async () => ({
+            type: 'file',
+            pathname: rscPath2pathname(rscPath),
+            body,
+          }));
+        }),
+      );
+
+      await unstable_setPlatformData(
+        'defineRouterSliceConfigs',
+        sliceConfig,
+        true,
+      );
+
       return tasks;
     });
 
