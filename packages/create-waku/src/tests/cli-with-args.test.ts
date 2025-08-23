@@ -263,6 +263,7 @@ describe('create-waku CLI with args', () => {
         {
           cwd: import.meta.dirname,
           reject: false,
+          timeout: 500, // FIXME we should avoid this timeout hack
         },
       );
       // We input 'j' (vimspeak for down) x times depending on the template's index

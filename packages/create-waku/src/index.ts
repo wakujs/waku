@@ -1,6 +1,5 @@
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import fsPromises from 'node:fs/promises';
+import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -227,7 +226,7 @@ async function init() {
   // doPrompts would exit if the dir exists and overwrite is false
   fse.emptyDirSync(root);
   if (!existsSync(root)) {
-    await fsPromises.mkdir(root, { recursive: true });
+    mkdirSync(root, { recursive: true });
   }
 
   if (exampleOption) {
