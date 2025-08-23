@@ -167,6 +167,7 @@ test.describe(`broken-links/dynamic-not-found`, async () => {
 
   test('access sync page with client navigation', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
     await expect(page.getByRole('heading')).toHaveText('Index');
     await page.click("a[href='/dynamic-not-found/sync']");
     await expect(page.getByRole('heading')).toHaveText('Custom not found');
