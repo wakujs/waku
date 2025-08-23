@@ -278,7 +278,6 @@ async function init() {
 
 init()
   .then(notifyUpdate)
-  .then(() => process.exit(0))
   .catch((e) => {
     console.log(e);
   });
