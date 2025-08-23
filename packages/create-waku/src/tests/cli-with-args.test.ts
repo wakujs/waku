@@ -263,13 +263,14 @@ describe('create-waku CLI with args', () => {
         {
           cwd: import.meta.dirname,
           reject: false,
-          timeout: 500, // FIXME we should avoid this timeout hack
         },
       );
       // We input 'j' (vimspeak for down) x times depending on the template's index
       // \r\n simulates enter
       const keyStrokes = new Array(index).fill('j').join('');
       cmd.stdin.write(`${keyStrokes}\r\n`);
+      // close stdin otherwise the process will hang and test will timeout
+      cmd.stdin.end();
       await cmd;
       const packageJsonPath = path.join(genPath, 'package.json');
       expect(fs.existsSync(packageJsonPath)).toBe(true);
