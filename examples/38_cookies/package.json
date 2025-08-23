@@ -10,15 +10,15 @@
   },
   "dependencies": {
     "cookie": "1.0.2",
-    "hono": "4.9.0",
+    "hono": "4.9.4",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "react-server-dom-webpack": "19.1.1",
-    "waku": "0.25.0"
+    "waku": "0.26.0-alpha.1"
   },
   "devDependencies": {
     "@types/cookie": "1.0.0",
-    "@types/node": "24.2.1",
+    "@types/node": "24.3.0",
     "@types/react": "19.1.10",
     "@types/react-dom": "19.1.7",
     "typescript": "5.9.2"

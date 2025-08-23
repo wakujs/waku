@@ -307,46 +307,6 @@ test.describe(`create-pages`, () => {
     ).not.toBeVisible();
   });
 
-  test('all page parts show', async ({ page }) => {
-    await page.goto(`http://localhost:${port}/page-parts`);
-    await expect(
-      page.getByRole('heading', { name: 'Static Page Part' }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole('heading', { name: 'Dynamic Page Part' }),
-    ).toBeVisible();
-  });
-
-  test('static page part', async ({ page }) => {
-    await page.goto(`http://localhost:${port}/page-parts`);
-    await waitForHydration(page);
-    const staticPageTime = (
-      await page
-        .getByRole('heading', { name: 'Static Page Part' })
-        .textContent()
-    )?.split('Part ')[1];
-    expect(staticPageTime).toBeTruthy();
-    await page.click("a[href='/']");
-    await page.waitForTimeout(100);
-    await page.click("a[href='/page-parts']");
-    await expect(
-      page.getByRole('heading', { name: 'Static Page Part' }),
-    ).toBeVisible();
-    const newStaticPageTime = (
-      await page
-        .getByRole('heading', { name: 'Static Page Part' })
-        .textContent()
-    )?.split('Part ')[1];
-    expect(newStaticPageTime).toBe(staticPageTime);
-    const dynamicPageTime = (
-      await page
-        .getByRole('heading', { name: 'Dynamic Page Part' })
-        .textContent()
-    )?.split('Part ')[1];
-    expect(dynamicPageTime).toBeTruthy();
-    expect(dynamicPageTime).not.toBe(staticPageTime);
-  });
-
   test('group layout static + dynamic', async ({ page }) => {
     const whatTime = async (selector: string) =>
       new Date(
@@ -356,6 +316,7 @@ test.describe(`create-pages`, () => {
       ).getSeconds();
 
     await page.goto(`http://localhost:${port}/nested-layouts`);
+    await waitForHydration(page);
     await expect(
       page.getByRole('heading', { name: 'Dynamic Layout' }),
     ).toBeVisible();
@@ -387,18 +348,10 @@ test.describe(`create-pages`, () => {
     ).toBeVisible();
   });
 
-  test('slices basic', async ({ page }) => {
+  test('slices with render=dynamic', async ({ page }) => {
     await page.goto(`http://localhost:${port}/slices`);
     await waitForHydration(page);
-    const sliceText = await page.getByTestId('slice001').textContent();
-    expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
-    const sliceText2 = await page.getByTestId('slice002').textContent();
-    expect(sliceText2?.startsWith('Slice 002')).toBeTruthy();
-  });
-
-  test('slices with static page part', async ({ page }) => {
-    await page.goto(`http://localhost:${port}/slices`);
-    await waitForHydration(page);
+    // basic test
     const staticSliceText = await page.getByTestId('slice001').textContent();
     expect(staticSliceText?.startsWith('Slice 001')).toBeTruthy();
     const dynamicSliceText = await page.getByTestId('slice002').textContent();
@@ -408,6 +361,7 @@ test.describe(`create-pages`, () => {
     await page.waitForTimeout(1000);
     await page.getByRole('link', { name: 'Slices' }).click();
 
+    // test dynamic and static slices behavior after soft navigation
     const staticSliceText2 = await page.getByTestId('slice001').textContent();
     expect(staticSliceText2).toBe(staticSliceText);
     const dynamicSliceText2 = await page.getByTestId('slice002').textContent();
@@ -422,5 +376,54 @@ test.describe(`create-pages`, () => {
     await page.goto(`http://localhost:${port}/slices`);
     await expect(page.getByTestId('slice003-loading')).toBeVisible();
     await expect(page.getByTestId('slice003')).toHaveText('Slice 003');
+  });
+});
+
+test.describe(`create-pages STATIC`, () => {
+  test.skip(
+    ({ mode }) => mode !== 'PRD',
+    'static tests are only relevant in production mode',
+  );
+
+  let port: number;
+  let stopApp: (() => Promise<void>) | undefined;
+  test.beforeAll(async () => {
+    ({ port, stopApp } = await startApp('STATIC'));
+  });
+  test.afterAll(async () => {
+    await stopApp?.();
+  });
+
+  test('no ssr', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/no-ssr`);
+    await expect(
+      page.getByRole('heading', { name: 'No SSR', exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Only client component', exact: true }),
+    ).toBeVisible();
+  });
+
+  test('no ssr in no js environment', async ({ browser }) => {
+    const context = await browser.newContext({
+      javaScriptEnabled: false,
+    });
+    const page = await context.newPage();
+    await page.goto(`http://localhost:${port}/no-ssr`);
+    await expect(page.getByText('Not Found')).not.toBeVisible();
+    await page.close();
+    await context.close();
+  });
+
+  test('slices with render=static', async ({ page }) => {
+    await page.route(/.*\/RSC\/.*/, async (route) => {
+      await new Promise((r) => setTimeout(r, 100));
+      await route.continue();
+    });
+    await page.goto(`http://localhost:${port}/static-slices`);
+    await waitForHydration(page);
+    await expect(page.getByTestId('slice001-loading')).toBeVisible();
+    const sliceText = await page.getByTestId('slice001').textContent();
+    expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
   });
 });

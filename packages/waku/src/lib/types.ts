@@ -1,24 +1,14 @@
 import type { ReactNode } from 'react';
 
-import type { Middleware } from '../config.js';
-import type { ConfigPrd } from '../lib/config.js';
-import type { PathSpec } from '../lib/utils/path.js';
-
 type Elements = Record<string, unknown>;
 
-type RenderRsc<Opts = unknown> = (
-  elements: Record<string, unknown>,
-  options?: Opts,
-) => Promise<ReadableStream>;
+type RenderRsc = (elements: Record<string, unknown>) => Promise<ReadableStream>;
 
-type RenderHtml<Opts = unknown> = (
+type RenderHtml = (
   elements: Elements,
   html: ReactNode,
-  options: { rscPath: string; actionResult?: unknown } & Opts,
-) => Promise<{
-  body: ReadableStream & { allReady: Promise<void> };
-  headers: Record<'content-type', string>;
-}>;
+  options: { rscPath: string; actionResult?: unknown; status?: number },
+) => Promise<Response>;
 
 // This API is still unstable
 export type HandleRequest = (
@@ -36,70 +26,36 @@ export type HandleRequest = (
       }
     | { type: 'custom'; pathname: string }
   ) & {
-    req: HandlerReq;
+    req: Request;
   },
   utils: {
     renderRsc: RenderRsc;
     renderHtml: RenderHtml;
   },
-) => Promise<ReadableStream | HandlerRes | 'fallback' | null | undefined>;
+) => Promise<ReadableStream | Response | 'fallback' | null | undefined>;
 
 // needs better name (it's not just config)
 type BuildConfig =
   | {
       type: 'file';
       pathname: string;
-      body: Promise<ReadableStream>;
-    }
-  | {
-      type: 'htmlHead';
-      pathSpec: PathSpec;
-      head?: string;
+      body: Promise<ReadableStream | string>;
     }
   | {
       type: 'defaultHtml';
       pathname: string;
-      head?: string;
     };
 
 // This API is still unstable
 export type HandleBuild = (utils: {
-  renderRsc: RenderRsc<{ moduleIdCallback?: (id: string) => void }>;
-  renderHtml: RenderHtml<{ htmlHead?: string }>;
+  renderRsc: RenderRsc;
+  renderHtml: RenderHtml;
   rscPath2pathname: (rscPath: string) => string;
-  unstable_generatePrefetchCode: (
-    rscPaths: Iterable<string>,
-    moduleIds: Iterable<string>,
-  ) => string;
-  unstable_collectClientModules: (elements: Elements) => Promise<string[]>;
 }) => AsyncIterable<BuildConfig> | null;
 
-export type EntriesDev = {
+export type ServerEntries = {
   default: {
     handleRequest: HandleRequest;
     handleBuild: HandleBuild;
   };
-};
-
-export type EntriesPrd = EntriesDev & {
-  configPrd: ConfigPrd;
-  loadMiddleware: () => Promise<{ default: Middleware }[]>;
-  loadModule: (id: string) => Promise<unknown>;
-  defaultHtmlHead: string;
-  dynamicHtmlPaths: [pathSpec: PathSpec, htmlHead: string][];
-  publicIndexHtml: string;
-  loadPlatformData?: (key: string) => Promise<unknown>;
-};
-
-export type HandlerReq = {
-  body: ReadableStream | null;
-  url: URL;
-  method: string;
-  headers: Readonly<Record<string, string>>;
-};
-
-export type HandlerRes = {
-  body?: ReadableStream;
-  headers?: Record<string, string | string[]>;
-  status?: number;
 };
