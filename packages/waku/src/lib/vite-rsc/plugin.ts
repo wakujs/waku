@@ -96,6 +96,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
       keepUseCientProxy: true,
       ignoredPackageWarnings: [/.*/],
       useBuildAppHook: true,
+      clientChunks: meta => meta.serverChunk,
     }),
     {
       name: 'rsc:waku',
