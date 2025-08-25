@@ -34,6 +34,7 @@ export default defineConfig({
               build: {
                 // build `ssr` inside `rsc` directory so that
                 // wrangler can deploy self-contained `dist/rsc`
+                // TODO: waku can do this by default
                 outDir: './dist/rsc/ssr',
               },
             };
@@ -49,7 +50,8 @@ export default defineConfig({
         },
       },
     },
-    // https://github.com/vitejs/vite-plugin-react/pull/780
+    // empty buildApp to disable cloudflare's buildApp
+    // https://github.com/cloudflare/workers-sdk/blob/19e2aab1d68594c7289d0aa16474544919fd5b9b/packages/vite-plugin-cloudflare/src/index.ts#L183-L186
     builder: {
       buildApp: async () => {},
     },
