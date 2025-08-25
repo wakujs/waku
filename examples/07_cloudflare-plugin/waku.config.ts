@@ -1,5 +1,6 @@
 import { defineConfig } from 'waku/config';
 import { cloudflare } from '@cloudflare/vite-plugin';
+import { ssgPolyfillPlugin } from './ssg-polyfill';
 
 export default defineConfig({
   vite: {
@@ -41,6 +42,7 @@ export default defineConfig({
           }
         },
       },
+      ssgPolyfillPlugin(),
     ],
     environments: {
       rsc: {
