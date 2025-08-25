@@ -5,6 +5,7 @@ export default defineConfig({
   vite: {
     plugins: [
       cloudflare({
+        persistState: true,
         viteEnvironment: {
           name: 'rsc',
         },
