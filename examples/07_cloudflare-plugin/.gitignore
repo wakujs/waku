@@ -6,4 +6,3 @@ dist
 .DS_Store
 *.pem
 .wrangler
-worker-configuration.d.ts
