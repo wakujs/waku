@@ -28,8 +28,7 @@ export function ssgPolyfillPlugin(): Plugin[] {
 
 async function registerPolyfill() {
   const platformProxy = await getPlatformProxy();
-  // @ts-ignore
-  globalThis.__polyfill_platform_proxy = platformProxy;
+  (globalThis as any).__polyfill_platform_proxy = platformProxy;
 
   const hooks = registerHooks({
     resolve: (specifier, context, nextResolve) => {
