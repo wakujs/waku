@@ -99,7 +99,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
       // enable ssr environment proxy for cloudflare
       loadModuleDevProxy: extraPlugins
         .flat()
-        .some((p) => p && 'name' in p && p.name === 'vite-plugin-cloudflare')
+        .some((p) => p && 'name' in p && p.name === 'vite-plugin-cloudflare'),
     }),
     {
       name: 'rsc:waku',
