@@ -5,9 +5,8 @@ import { env } from 'cloudflare:workers';
 export default async function HomePage() {
   return (
     <div>
-      <h3>Waku + Cloudflare</h3>
-      <ServerCounter />
       <Counter />
+      <ServerCounter />
     </div>
   );
 }

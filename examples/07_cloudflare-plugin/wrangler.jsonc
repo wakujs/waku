@@ -10,4 +10,7 @@
       "id": "xxxx",
     },
   ],
+  "vars": {
+    "MY_VAR": "my-value",
+  },
 }
