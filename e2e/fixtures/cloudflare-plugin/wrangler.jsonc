@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "waku-project",
+  "main": "./src/worker.ts",
+  "compatibility_date": "2025-04-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "kv_namespaces": [
+    {
+      "binding": "MY_KV",
+      "id": "xxxx",
+    },
+  ],
+  "vars": {
+    "MY_VAR": "my-value",
+  },
+}
