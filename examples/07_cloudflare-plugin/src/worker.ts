@@ -6,4 +6,10 @@ export default {
   },
 } satisfies ExportedHandler;
 
-// TODO: handleBuild
+// TODO
+// export { handleBuild } from 'waku/lib/vite-entries/entry.server.edge'
+export function handleBuild() {
+  return {
+    buildConfigs: (async function* () {})(),
+  };
+}
