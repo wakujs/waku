@@ -5,6 +5,7 @@ import { env } from 'cloudflare:workers';
 export default async function HomePage() {
   return (
     <div>
+      <h4>Dynamic</h4>
       <Counter />
       <ServerCounter />
     </div>
