@@ -106,7 +106,7 @@ importers:
         specifier: 19.1.1
         version: 19.1.1(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(webpack@5.99.9)
       waku:
-        specifier: 0.26.0-alpha.2
+        specifier: 0.26.0
         version: link:../../../packages/waku
       wrangler:
         specifier: 4.32.0
