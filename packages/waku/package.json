@@ -38,6 +38,7 @@
       "types": "./dist/server.d.ts",
       "default": "./dist/server.js"
     },
+    "./lib/vite-entries/*": "./dist/lib/vite-entries/*.js",
     "./minimal/client": {
       "types": "./dist/minimal/client.d.ts",
       "default": "./dist/minimal/client.js"
