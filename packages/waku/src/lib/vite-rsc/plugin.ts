@@ -197,6 +197,9 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
 
         environmentConfig.build ??= {};
         environmentConfig.build.outDir = `${config.distDir}/${name}`;
+        if (name === 'ssr') {
+          environmentConfig.build.outDir = `${config.distDir}/rsc/ssr`;
+        }
         if (name === 'client') {
           environmentConfig.build.outDir = `${config.distDir}/${DIST_PUBLIC}`;
           if (flags['experimental-partial']) {
