@@ -7,5 +7,9 @@ export const Counter = () => {
 
   const handleIncrement = () => setCount((c) => c + 1);
 
-  return <button onClick={handleIncrement}>Client counter: {count}</button>;
+  return (
+    <button data-testid="client-counter" onClick={handleIncrement}>
+      Client counter: {count}
+    </button>
+  );
 };

@@ -6,7 +6,7 @@ export default async function HomePage() {
     <div>
       <h4>Static</h4>
       <Counter />
-      <pre>MY_VAR = {env.MY_VAR}</pre>
+      <pre data-testid="vars">MY_VAR = {env.MY_VAR}</pre>
     </div>
   );
 }

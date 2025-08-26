@@ -7,12 +7,14 @@
     "cf-typegen": "wrangler types",
     "dev": "waku dev",
     "build": "waku build",
-    "start": "wrangler dev"
+    "start": "wrangler dev",
+    "start:static": "serve dist/public -p 8080"
   },
   "dependencies": {
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "react-server-dom-webpack": "19.1.1",
+    "serve": "^14.2.4",
     "waku": "0.26.0",
     "wrangler": "4.32.0"
   },

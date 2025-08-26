@@ -22,7 +22,7 @@ async function ServerCounter() {
         unstable_rerenderRoute('/');
       }}
     >
-      <button>Server counter: {count}</button>
+      <button data-testid="server-counter">Server counter: {count}</button>
     </form>
   );
 }
