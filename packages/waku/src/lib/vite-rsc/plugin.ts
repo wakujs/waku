@@ -203,10 +203,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
             environmentConfig.build.emptyOutDir = false;
           }
         }
-        // top-level-await in packages/waku/src/lib/middleware/context.ts
-        if (name !== 'client') {
-          environmentConfig.build.target ??= 'esnext';
-        }
 
         return {
           resolve: {
