@@ -7,10 +7,20 @@ const startApp = prepareNormalSetup('cloudflare-plugin');
 
 // clear persisted state
 test.beforeAll(() => {
-  rmSync('./e2e/fixtures/cloudflare-plugin/.wrangler', {
-    recursive: true,
-    force: true,
-  });
+  try {
+    rmSync('./e2e/fixtures/cloudflare-plugin/.wrangler', {
+      recursive: true,
+      force: true,
+    });
+  } catch (e) {
+    // skip windows ci error
+    // Error: EPERM, Permission denied: \\?\D:\a\waku\waku\e2e\fixtures\cloudflare-plugin\.wrangler '\\?\D:\a\waku\waku\e2e\fixtures\cloudflare-plugin\.wrangler'
+    if (process.platform === 'win32') {
+      console.error(e);
+      return;
+    }
+    throw e;
+  }
 });
 
 test.describe(`cloudflare-plugin`, () => {
