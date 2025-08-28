@@ -20,16 +20,19 @@ export default defineConfig({
             return {
               build: {
                 rollupOptions: {
+                  // override Waku's default entry
                   input: {
                     index: './src/index.ts',
                   },
-                  preserveEntrySignatures: 'exports-only',
+                  // will be fixed by https://github.com/cloudflare/workers-sdk/issues/10213
+                  preserveEntrySignatures: 'strict',
                 },
               },
             };
           }
           if (name === 'ssr') {
             return {
+              // resolve process.env.NODE_ENV branch in react code
               keepProcessEnv: false,
             };
           }
