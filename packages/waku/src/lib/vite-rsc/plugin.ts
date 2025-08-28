@@ -239,13 +239,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
           });
         };
       },
-      async configurePreviewServer(server) {
-        const { getRequestListener } = await import('@hono/node-server');
-        const module = await import(
-          pathToFileURL(path.resolve('./dist/rsc/index.js')).href
-        );
-        server.middlewares.use(getRequestListener(module.default));
-      },
     },
     {
       name: 'rsc:waku:user-entries',
