@@ -79,7 +79,7 @@ export async function cli(
     const distDir = rscPluginOptions.config?.distDir ?? 'dist';
     const entry: typeof import('../vite-entries/entry.server.js') =
       await import(
-        pathToFileURL(path.resolve(distDir, 'rsc', 'index.js')).href
+        pathToFileURL(path.resolve(distDir, 'server', 'index.js')).href
       );
     await startServer(port);
     function startServer(port: number) {

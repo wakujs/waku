@@ -54,7 +54,7 @@ async function build({
 }) {
   writeFileSync(
     path.join(opts.distDir, SERVE_JS),
-    `export { handler } from './rsc/index.js';\n`,
+    `export { handler } from './server/index.js';\n`,
   );
   writeFileSync(
     path.join(opts.distDir, 'package.json'),

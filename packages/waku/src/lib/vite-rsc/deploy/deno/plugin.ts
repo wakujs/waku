@@ -47,5 +47,8 @@ async function build({
   config: ResolvedConfig;
   opts: Required<Config>;
 }) {
-  writeFileSync(path.join(opts.distDir, SERVE_JS), `import './rsc/deno.js';\n`);
+  writeFileSync(
+    path.join(opts.distDir, SERVE_JS),
+    `import './server/deno.js';\n`,
+  );
 }
