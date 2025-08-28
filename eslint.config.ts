@@ -10,6 +10,9 @@ export default tseslint.config(
     ignores: [
       '**/dist/',
       '**/.cache/',
+      '**/.wrangler/',
+      '**/pages.gen.ts',
+      '**/worker-configuration.d.ts',
       'packages/create-waku/template/',
       'examples/07_cloudflare/.wrangler/',
     ],
@@ -70,6 +73,7 @@ export default tseslint.config(
       'packages/waku/src/lib/vite-entries/*',
       'packages/waku/src/lib/vite-rsc/**/*',
       'packages/create-waku/cli.js',
+      'e2e/fixtures/cloudflare-plugin/**/*',
       'examples/41_path-alias/**/*.tsx',
     ],
     rules: {
