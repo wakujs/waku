@@ -198,15 +198,17 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
 
         environmentConfig.build ??= {};
         environmentConfig.build.outDir = `${config.distDir}/${name}`;
+        if (name === 'rsc') {
+          environmentConfig.build.outDir = `${config.distDir}/server`;
+        }
+        if (name === 'ssr') {
+          environmentConfig.build.outDir = `${config.distDir}/server/ssr`;
+        }
         if (name === 'client') {
           environmentConfig.build.outDir = `${config.distDir}/${DIST_PUBLIC}`;
           if (flags['experimental-partial']) {
             environmentConfig.build.emptyOutDir = false;
           }
-        }
-        // top-level-await in packages/waku/src/lib/middleware/context.ts
-        if (name !== 'client') {
-          environmentConfig.build.target ??= 'esnext';
         }
 
         return {

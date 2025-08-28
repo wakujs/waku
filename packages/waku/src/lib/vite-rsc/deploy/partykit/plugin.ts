@@ -70,7 +70,10 @@ async function build({
 }) {
   const rootDir = config.root;
 
-  writeFileSync(path.join(opts.distDir, SERVE_JS), `import './rsc/index.js';`);
+  writeFileSync(
+    path.join(opts.distDir, SERVE_JS),
+    `import './server/index.js';`,
+  );
 
   const partykitJsonFile = path.join(rootDir, 'partykit.json');
   if (!existsSync(partykitJsonFile)) {
