@@ -21,8 +21,7 @@ export default defineConfig({
               build: {
                 rollupOptions: {
                   input: {
-                    worker: './src/worker.ts',
-                    index: './src/worker.ts',
+                    index: './src/index.ts',
                   },
                   preserveEntrySignatures: 'exports-only',
                 },
@@ -32,12 +31,6 @@ export default defineConfig({
           if (name === 'ssr') {
             return {
               keepProcessEnv: false,
-              build: {
-                // build `ssr` inside `rsc` directory so that
-                // wrangler can deploy self-contained `dist/rsc`
-                // TODO: waku can do this by default
-                outDir: './dist/rsc/ssr',
-              },
             };
           }
         },
