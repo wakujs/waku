@@ -84,7 +84,7 @@ async function build({
 
   writeFileSync(
     path.join(outDir, SERVE_JS),
-    `export { default } from './rsc/index.js';\n`,
+    `export { default } from './server/index.js';\n`,
   );
 
   separatePublicAssetsFromFunctions({

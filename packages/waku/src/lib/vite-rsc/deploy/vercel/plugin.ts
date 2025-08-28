@@ -70,7 +70,7 @@ async function build({
     });
     writeFileSync(
       path.join(rootDir, opts.distDir, SERVE_JS),
-      `export { default } from './rsc/index.js';\n`,
+      `export { default } from './server/index.js';\n`,
     );
     cpSync(
       path.join(rootDir, opts.distDir),
