@@ -67,7 +67,7 @@ async function build({
       path.join(functionsDir, 'serve.js'),
       `\
 globalThis.__WAKU_NOT_FOUND_HTML__ = ${JSON.stringify(notFoundHtml)};
-export { default } from '../${opts.distDir}/rsc/index.js';
+export { default } from '../${opts.distDir}/server/index.js';
 export const config = {
   preferStatic: true,
   path: ['/', '/*'],
