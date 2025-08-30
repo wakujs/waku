@@ -673,7 +673,7 @@ export const getConfig = async () => {
 
 ### Global styles
 
-Install any required dev dependencies (e.g., `npm i -D tailwindcss @tailwindcss/postcss postcss`) and set up any required configuration (e.g., `postcss.config.js`). Then create your global stylesheet (e.g., `./src/styles.css`) and import it into the root layout.
+Install any required dev dependencies (e.g., `npm i -D tailwindcss @tailwindcss/vite`) and set up any required configuration (e.g., `waku.config.ts`). Then create your global stylesheet (e.g., `./src/styles.css`) and import it into the root layout.
 
 ```tsx
 // ./src/pages/_layout.tsx
@@ -696,12 +696,17 @@ export const getConfig = async () => {
 ```
 
 ```js
-// ./postcss.config.js
-export default {
-  plugins: {
-    '@tailwindcss/postcss': {},
-  },
-};
+// ./waku.config.ts
+import { defineConfig } from "waku/config"
+import tailwindcss from '@tailwindcss/vite'
+
+export default defineConfig({
+  vite: {
+    plugins: [
+      tailwindcss(),
+    ]
+  }
+});
 ```
 
 ## Static assets
