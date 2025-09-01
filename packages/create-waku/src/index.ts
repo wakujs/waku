@@ -1,6 +1,5 @@
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import fsPromises from 'node:fs/promises';
+import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -155,7 +154,9 @@ async function doPrompts() {
         },
         templateName: () => {
           if (!values.choose || values.template || values.example) {
-            return Promise.resolve(values.template || values.example);
+            return Promise.resolve(
+              values.template || values.example || templateNames[0],
+            );
           }
           return p.select({
             message: 'Choose a starter template',
@@ -172,7 +173,6 @@ async function doPrompts() {
     return {
       ...results,
       packageName: results.packageName || toValidPackageName(targetDir),
-      templateName: values.template ?? templateNames[0]!,
       targetDir,
     };
   } catch (err) {
@@ -226,7 +226,7 @@ async function init() {
   // doPrompts would exit if the dir exists and overwrite is false
   fse.emptyDirSync(root);
   if (!existsSync(root)) {
-    await fsPromises.mkdir(root, { recursive: true });
+    mkdirSync(root, { recursive: true });
   }
 
   if (exampleOption) {

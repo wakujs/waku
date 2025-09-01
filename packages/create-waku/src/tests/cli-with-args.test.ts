@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { SyncOptions, SyncResult } from 'execa';
-import { execaCommandSync } from 'execa';
+import type { SyncOptions, SyncResult, Options, ResultPromise } from 'execa';
+import { execaCommandSync, execaCommand } from 'execa';
 import {
   afterEach,
   beforeAll,
@@ -21,23 +21,46 @@ const genPathWithSubfolder = path.join(
   projectName,
 );
 
+const printErrors = (command: string, stdout: any, stderr: any) => {
+  console.error('======= command');
+  console.error(command);
+  console.error('======= stdout');
+  console.error(stdout);
+  console.error('======= stderr');
+  console.error(stderr);
+  console.error('=======');
+};
+
 const run = <SO extends SyncOptions>(
   args: string[],
   options?: SO,
 ): SyncResult<SO> => {
   const command = `node ${CLI_PATH} ${args.join(' ')}`;
   const result = execaCommandSync(command, options);
-  onTestFailed(() => {
-    console.error('======= command');
-    console.error(command);
-    console.error('======= stdout');
-    console.error(result.stdout);
-    console.error('======= stderr');
-    console.error(result.stderr);
-    console.error('=======');
-  });
+  onTestFailed(() => printErrors(command, result.stdout, result.stderr));
   // @ts-expect-error relies on exactOptionalPropertyTypes being false
   return result;
+};
+
+const runAsync = <Opts extends Options>(
+  args: string[],
+  options?: Opts,
+): ResultPromise<Opts> => {
+  const command = `node ${CLI_PATH} ${args.join(' ')}`;
+  const childProcess = execaCommand(command, options);
+  const stdoutLines: string[] = [];
+  const stderrLines: string[] = [];
+  childProcess.stdout?.on('data', (chunk) =>
+    stdoutLines.push(chunk.toString()),
+  );
+  childProcess.stderr?.on('data', (chunk) =>
+    stderrLines.push(chunk.toString()),
+  );
+  onTestFailed(() =>
+    printErrors(command, stdoutLines.join('\n'), stderrLines.join('\n')),
+  );
+  // @ts-expect-error relies on exactOptionalPropertyTypes being false
+  return childProcess;
 };
 
 // Helper to create a non-empty directory
@@ -59,6 +82,47 @@ const clearAnyPreviousFolders = () => {
     fs.rmSync(genPathWithSubfolder, { recursive: true, force: true });
   }
 };
+
+const readDependencies = (filePath: string): string[] => {
+  const packageJson = JSON.parse(fs.readFileSync(filePath).toString());
+  return Object.keys(packageJson.dependencies || {});
+};
+
+// the index of the template determines how many times to press "down" to select it
+type TemplateCaseArgs = { name: string; index: number; dependencies: string[] };
+
+const templateChooseCases = (() => {
+  // grab the current list of templates
+  const templatesRootPath = path.join(import.meta.dirname, '../../template');
+  const templates = fs.readdirSync(templatesRootPath);
+
+  const seenDependecies: Set<string>[] = [];
+
+  const cases: TemplateCaseArgs[] = [];
+
+  // for each template, get the dependencies from the package.json
+  // TODO there might be a better way to determine what template was actually chosen
+  templates.forEach((templateName, templateIndex) => {
+    const filePath = path.join(templatesRootPath, templateName, 'package.json');
+    const dependencies = readDependencies(filePath);
+    // filter templates so that only unique dependency combinations are tested
+    for (const seen of seenDependecies) {
+      if (
+        dependencies.length === seen.size &&
+        dependencies.every((item) => seen.has(item))
+      ) {
+        return;
+      }
+    }
+    seenDependecies.push(new Set(dependencies));
+    cases.push({
+      name: templateName,
+      index: templateIndex,
+      dependencies: dependencies,
+    });
+  });
+  return cases;
+})();
 
 describe('create-waku CLI with args', () => {
   beforeAll(() => clearAnyPreviousFolders());
@@ -189,4 +253,29 @@ describe('create-waku CLI with args', () => {
 
     expect(hasCompletionMessage).toBe(true);
   });
+
+  test.each(templateChooseCases)(
+    'interactively choosing template #$index: $name',
+    // this tests the --choose option is used when picking a template
+    async ({ dependencies, index }: TemplateCaseArgs) => {
+      const cmd = runAsync(
+        ['--project-name', projectName, '--choose', '--skip-install'],
+        {
+          cwd: import.meta.dirname,
+          reject: false,
+        },
+      );
+      // We input 'j' (vimspeak for down) x times depending on the template's index
+      // \r\n simulates enter
+      const keyStrokes = new Array(index).fill('j').join('');
+      cmd.stdin.write(`${keyStrokes}\r\n`);
+      // close stdin otherwise the process will hang and test will timeout
+      cmd.stdin.end();
+      await cmd;
+      const packageJsonPath = path.join(genPath, 'package.json');
+      expect(fs.existsSync(packageJsonPath)).toBe(true);
+      const actualDependencies = readDependencies(packageJsonPath);
+      expect(new Set(actualDependencies)).toEqual(new Set(dependencies));
+    },
+  );
 });

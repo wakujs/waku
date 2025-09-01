@@ -1,0 +1,32 @@
+---
+slug: removing-deprecated-features-and-refining-the-core
+title: Removing Deprecated Features and Refining the Core
+description: This release removes old features and simplifies the core for future updates.
+author: daishi
+release: v0.26
+date: 2025/08/25
+---
+
+Waku v0.26 has been released. This is a quiet release, focused on removing deprecated features. While it doesn't introduce new features, it's an important step for us as we get closer to a v1 alpha release.
+
+### Deprecated Features Removed
+
+In this release, we have removed several old features:
+
+- **Page Parts**: The Page Parts API, introduced in v0.23, has been removed. As announced in our [v0.25 release post](/blog/rethinking-fine-grained-components), Slice Components are the new, more flexible way to achieve fine-grained component rendering.
+
+- **Legacy CLI and `unstable_viteConfigs`**: We have removed the old CLI and the `unstable_viteConfigs` option. With our [migration to `@vitejs/plugin-rsc` in v0.24](/blog/migration-to-vite-plugin-rsc), all Vite configuration should now be done through the `vite` property in `waku.config.ts`. This provides a more unified and powerful way thanks to Vite's Environment API.
+
+### Internal API Changes
+
+We've also introduced some breaking changes to improve our internal APIs.
+
+- **Standard Request/Response**: Middleware context `ctx.req` and `ctx.res` now use the standard `Request` and `Response` objects. This aligns Waku with web standards and improves interoperability.
+
+- **`unstable_fsRouter` Refactor**: The file-system router has been refactored to be independent of the file system internally. This may open up some possibilities for cloud adapters.
+
+### What's Next?
+
+We are working on another internal change before reaching v1-alpha. We hope that we are not far from a v1 alpha release, and your feedback is important to make it happen.
+
+As always, we'd love for you to try out the new release and share your thoughts in our [GitHub discussions](https://github.com/wakujs/waku/discussions) or on our [Discord server](https://discord.gg/MrQdmzd).

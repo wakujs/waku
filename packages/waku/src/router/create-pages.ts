@@ -208,13 +208,6 @@ export type CreateApi = <Path extends string>(
       },
 ) => void;
 
-export type CreatePagePart = <const Path extends string>(params: {
-  path: Path;
-  render: 'static' | 'dynamic';
-  order: number;
-  component: FunctionComponent<{ children: ReactNode }>;
-}) => typeof params;
-
 export type CreateSlice = <ID extends string>(slice: {
   render: 'static' | 'dynamic';
   id: ID;
@@ -310,12 +303,6 @@ export const createPages = <
     createLayout: CreateLayout;
     createRoot: CreateRoot;
     createApi: CreateApi;
-    /**
-     * Page Part pages will be dynamic when any part is dynamic.
-     * If all parts are static, the page will be static.
-     * @deprecated to be replaced by createSlice
-     */
-    createPagePart: CreatePagePart;
     createSlice: CreateSlice;
   }) => Promise<AllPages>,
 ) => {
@@ -328,8 +315,6 @@ export const createPages = <
     string,
     { literalSpec: PathSpec; originalSpec?: PathSpec }
   >();
-  const pagePartRenderModeMap = new Map<string, 'static' | 'dynamic'>();
-  const staticPagePartRoutes = new Set<string>();
   const dynamicPagePathMap = new Map<string, [PathSpec, ComponentEntry]>();
   const wildcardPagePathMap = new Map<string, [PathSpec, ComponentEntry]>();
   const dynamicLayoutPathMap = new Map<string, [PathSpec, ComponentEntry]>();
@@ -355,10 +340,7 @@ export const createPages = <
 
   /** helper to find dynamic path when slugs are used */
   const getPageRoutePath: (path: string) => string | undefined = (path) => {
-    if (
-      staticComponentMap.has(joinPath(path, 'page').slice(1)) ||
-      staticPagePartRoutes.has(path)
-    ) {
+    if (staticComponentMap.has(joinPath(path, 'page').slice(1))) {
       return path;
     }
     const allPaths = [
@@ -613,66 +595,6 @@ export const createPages = <
     });
   };
 
-  const createPagePart: CreatePagePart = (params) => {
-    if (params.path.endsWith('[path]')) {
-      throw new Error(
-        'Page part file cannot be named [path]. This will conflict with the path prop of the page component.',
-      );
-    }
-    if (configured) {
-      throw new Error('createPagePart no longer available');
-    }
-    const pagePartRenderMode = pagePartRenderModeMap.get(params.path);
-    if (!pagePartRenderMode) {
-      pagePartRenderModeMap.set(params.path, params.render);
-    } else if (params.render === 'dynamic' && pagePartRenderMode === 'static') {
-      pagePartRenderModeMap.set(params.path, 'dynamic');
-    }
-    const pathSpec = parsePathWithSlug(params.path);
-    const { numWildcards } = getSlugsAndWildcards(pathSpec);
-    const pagePathMap =
-      numWildcards === 0 ? dynamicPagePathMap : wildcardPagePathMap;
-    if (
-      pagePathMap.has(params.path) &&
-      !Array.isArray(pagePathMap.get(params.path)?.[1])
-    ) {
-      throw new Error(
-        `Duplicated path: ${params.path}. Tip: createPagePart cannot be used with createPage. Only one at a time is allowed.`,
-      );
-    }
-    if (params.render === 'static') {
-      const id =
-        joinPath(params.path, 'page').replace(/^\//, '') + ':' + params.order;
-      registerStaticComponent(id, params.component);
-    }
-
-    if (!pagePathMap.has(params.path)) {
-      const pathComponents: ComponentList = [];
-      pathComponents[params.order] = {
-        component: params.component,
-        render: params.render,
-      };
-      pagePathMap.set(params.path, [pathSpec, pathComponents]);
-    } else {
-      const pageComponents = pagePathMap.get(params.path)?.[1];
-      if (Array.isArray(pageComponents)) {
-        if (pageComponents[params.order]) {
-          throw new Error(
-            'Duplicated pagePartComponent order: ' + params.order,
-          );
-        }
-        pageComponents[params.order] = {
-          render: params.render,
-          component: params.component,
-        };
-      }
-    }
-    return params as Exclude<
-      typeof params,
-      { path: never } | { render: never }
-    >;
-  };
-
   let ready: Promise<AllPages | void> | undefined;
   const configure = async () => {
     if (!configured && !ready) {
@@ -681,31 +603,9 @@ export const createPages = <
         createLayout,
         createRoot,
         createApi,
-        createPagePart,
         createSlice,
       });
       await ready;
-
-      // check for page parts pages that can be made static
-      for (const [path, renderMode] of pagePartRenderModeMap) {
-        if (renderMode === 'dynamic') {
-          continue;
-        }
-        staticPagePartRoutes.add(path);
-        const pathSpec = parsePathWithSlug(path);
-        const { numWildcards } = getSlugsAndWildcards(pathSpec);
-        const pagePathMap =
-          numWildcards === 0 ? dynamicPagePathMap : wildcardPagePathMap;
-
-        pagePathMap.delete(path);
-        const pagePath = getGrouplessPath(path);
-        staticPathMap.set(pagePath, {
-          literalSpec: pathSpec,
-        });
-        if (path !== pagePath) {
-          groupPathLookup.set(pagePath, pagePath);
-        }
-      }
 
       configured = true;
     }
@@ -862,11 +762,16 @@ export const createPages = <
         },
       );
 
-      return (
-        [...routeConfigs, ...apiConfigs]
-          // Sort routes by priority: "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
-          .sort((configA, configB) => routePriorityComparator(configA, configB))
-      );
+      const sliceConfigs = Array.from(sliceIdMap).map(([id, { isStatic }]) => ({
+        type: 'slice' as const,
+        id,
+        isStatic,
+      }));
+
+      const pathConfigs = [...routeConfigs, ...apiConfigs]
+        // Sort routes by priority: "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
+        .sort((configA, configB) => routePriorityComparator(configA, configB));
+      return [...pathConfigs, ...sliceConfigs];
     },
     handleRoute: async (path, { query }) => {
       await configure();
@@ -881,7 +786,7 @@ export const createPages = <
         staticComponentMap.get(joinPath(routePath, 'page').slice(1)) ??
         dynamicPagePathMap.get(routePath)?.[1] ??
         wildcardPagePathMap.get(routePath)?.[1];
-      if (!pageComponent && staticPagePartRoutes.has(routePath)) {
+      if (!pageComponent) {
         pageComponent = [];
         for (const [name, v] of staticComponentMap.entries()) {
           if (name.startsWith(joinPath(routePath, 'page').slice(1))) {
@@ -974,36 +879,22 @@ export const createPages = <
         slices: slicePathMap.get(routePath) || [],
       };
     },
-    handleApi: async (path, { url, ...options }) => {
+    handleApi: async (req) => {
       await configure();
-      const routePath = getApiRoutePath(path, options.method);
+      const path = new URL(req.url).pathname;
+      const method = req.method;
+      const routePath = getApiRoutePath(path, method);
       if (!routePath) {
         throw new Error('API Route not found: ' + path);
       }
       const { handlers } = apiPathMap.get(routePath)!;
-      const req = new Request(url, options);
-      const handler = handlers[options.method as Method] ?? handlers.all;
+      const handler = handlers[method as Method] ?? handlers.all;
       if (!handler) {
         throw new Error(
-          'API method not found: ' + options.method + 'for path: ' + path,
+          'API method not found: ' + method + 'for path: ' + path,
         );
       }
-      const res = await handler(req);
-
-      return {
-        ...(res.body ? { body: res.body } : {}),
-        headers: Object.fromEntries(res.headers.entries()),
-        status: res.status,
-      };
-    },
-    getSliceConfig: async (sliceId) => {
-      await configure();
-      const slice = sliceIdMap.get(sliceId);
-      if (!slice) {
-        throw new Error('Slice not found: ' + sliceId);
-      }
-      const { isStatic } = slice;
-      return { isStatic };
+      return handler(req);
     },
     handleSlice: async (sliceId) => {
       await configure();

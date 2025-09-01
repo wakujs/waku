@@ -13,24 +13,20 @@ npm install -D @vitejs/plugin-react babel-plugin-react-compiler
 ```ts
 // waku.config.ts
 import { defineConfig } from 'waku/config';
-import react from '@vitejs/plugin-react';
+import react from '@vitejs/plugin-react'; // make sure v5.0.1 or above is installed
 
 const ReactCompilerConfig = {};
 
-const getConfig = () => ({
-  plugins: [
-    react({
-      babel: {
-        plugins: [['babel-plugin-react-compiler', ReactCompilerConfig]],
-      },
-    }),
-  ],
-});
-
 export default defineConfig({
-  unstable_viteConfigs: {
-    'dev-main': getConfig,
-    'build-client': getConfig,
+  vite: {
+    plugins: [
+      // cf. https://github.com/vitejs/vite-plugin-react/pull/537
+      react({
+        babel: {
+          plugins: ['babel-plugin-react-compiler', ReactCompilerConfig],
+        },
+      }),
+    ],
   },
 });
 ```
