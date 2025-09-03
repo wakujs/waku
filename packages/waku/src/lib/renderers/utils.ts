@@ -63,37 +63,3 @@ export const decodeFuncId = (encoded: string) => {
   }
   return file + '#' + name;
 };
-
-export const generatePrefetchCode = (
-  basePrefix: string,
-  rscPaths: Iterable<string>,
-  moduleIds: Iterable<string>,
-) => {
-  const rscPathArray = Array.from(rscPaths);
-  let code = '';
-  if (rscPathArray.length) {
-    code += `
-globalThis.__WAKU_PREFETCHED__ = {
-${rscPathArray
-  .map((rscPath) => {
-    const url = basePrefix + encodeRscPath(rscPath);
-    return `  '${rscPath}': fetch('${url}'),`;
-  })
-  .join('\n')}
-};`;
-  }
-  for (const moduleId of moduleIds) {
-    code += `
-import('${moduleId}');`;
-  }
-  return code;
-};
-
-export const deepFreeze = (x: unknown): void => {
-  if (typeof x === 'object' && x !== null) {
-    Object.freeze(x);
-    for (const value of Object.values(x)) {
-      deepFreeze(value);
-    }
-  }
-};
