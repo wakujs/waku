@@ -614,6 +614,113 @@ export const getConfig = async () => {
 };
 ```
 
+### Slices
+
+Slices are reusable components that are defined in the `src/pages/_slices` directory. They allow you to compose pages by assembling components like normal React components while specifying alternate rendering patterns.
+
+#### Creating slices
+
+Slices are created by placing files in the `src/pages/_slices` directory. The slice ID corresponds to the filename, and nested slices use the full path as the ID.
+
+```
+ src/pages
+ ├── _slices
+ │   ├── one.tsx
+ │   ├── two.tsx
+ │   └── nested
+ │       └── three.tsx
+ └── some-page.tsx
+```
+
+Each slice file exports a default React component and a `getConfig` function that specifies the render method.
+
+```tsx
+// ./src/pages/_slices/one.tsx
+
+// Create slice component
+export default function SliceOne() {
+  return <p>🍕</p>;
+}
+
+export const getConfig = () => {
+  return {
+    render: 'static', // default is 'static'
+  };
+};
+```
+
+```tsx
+// ./src/pages/_slices/nested/three.tsx
+
+// Create nested slice component
+export default function SliceThree() {
+  return <p>🍰</p>;
+}
+
+export const getConfig = () => {
+  return {
+    render: 'dynamic',
+  };
+};
+```
+
+#### Using slices
+
+Slices are used in pages and layouts by importing the `Slice` component from Waku and specifying the slice ID. The `slices` array in the page's `getConfig` must include all slice IDs used on that page.
+
+```tsx
+// ./src/pages/some-page.tsx
+import { Slice } from 'waku';
+
+// Create page with slices
+export default function SomePage() {
+  return (
+    <div>
+      <Slice id="one" />
+      <Slice id="two" />
+      <Slice id="nested/three" />
+    </div>
+  );
+}
+
+export const getConfig = () => {
+  return {
+    render: 'static',
+    slices: ['one', 'two', 'nested/three'],
+  };
+};
+```
+
+#### Lazy slices
+
+Lazy slices allow components to be requested independently from the page they are used on, similar to Astro's server islands feature. This is useful for components that will be dynamically rendered on otherwise static pages.
+
+Lazy slices are marked with the `lazy` prop and can include a `fallback` component to display while loading.
+
+```tsx
+// ./src/pages/some-page.tsx
+import { Slice } from 'waku';
+
+// Create page with lazy slice
+export default function SomePage() {
+  return (
+    <div>
+      <Slice id="one" />
+      <Slice id="two" lazy fallback={<p>Two is loading...</p>} />
+    </div>
+  );
+}
+
+export const getConfig = () => {
+  return {
+    render: 'static',
+    slices: ['one'], // Note: 'two' is lazy, so it is not included
+  };
+};
+```
+
+This allows you to have a `dynamic` slice component while keeping the rest of the page static.
+
 ## Navigation
 
 ### Link
