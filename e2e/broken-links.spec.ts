@@ -18,6 +18,7 @@ test.describe(`broken-links: normal server`, async () => {
     test('existing page', async ({ page }) => {
       // Go to an existing page
       await page.goto(`http://localhost:${port}/exists`);
+      await waitForHydration(page);
       // The page renders its header
       await expect(page.getByRole('heading')).toHaveText('Existing page');
       // The page URL is correct
@@ -30,6 +31,7 @@ test.describe(`broken-links: normal server`, async () => {
     test('missing page', async ({ page }) => {
       // Navigate to a non-existing page
       await page.goto(`http://localhost:${port}/broken`);
+      await waitForHydration(page);
       // The page renders the custom 404.tsx
       await expect(page.getByRole('heading')).toHaveText('Custom not found');
       await expect(page).toHaveTitle('Custom Not Found Title');
@@ -56,6 +58,7 @@ test.describe(`broken-links: normal server`, async () => {
     test('broken redirect', async ({ page }) => {
       // Navigate to a page that redirects to a non-existing page
       await page.goto(`http://localhost:${port}/broken-redirect`);
+      await waitForHydration(page);
       // The page renders the custom 404.tsx
       await expect(page.getByRole('heading')).toHaveText('Custom not found');
       await expect(page).toHaveTitle('Custom Not Found Title');
@@ -167,6 +170,7 @@ test.describe(`broken-links/dynamic-not-found`, async () => {
 
   test('access sync page with client navigation', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
     await expect(page.getByRole('heading')).toHaveText('Index');
     await page.click("a[href='/dynamic-not-found/sync']");
     await expect(page.getByRole('heading')).toHaveText('Custom not found');
@@ -175,6 +179,7 @@ test.describe(`broken-links/dynamic-not-found`, async () => {
 
   test('access async page with client navigation', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
     await expect(page.getByRole('heading')).toHaveText('Index');
     await page.click("a[href='/dynamic-not-found/async']");
     await expect(page.getByRole('heading')).toHaveText('Custom not found');

@@ -2,8 +2,6 @@
 import { unstable_fsRouter as fsRouter } from 'waku/router/server';
 
 export default fsRouter(
-  import.meta.url,
-  (file: string) =>
-    import.meta.glob('./pages/**/*.{tsx,ts}')[`./pages/${file}`]?.(),
-  { pagesDir: 'pages', apiDir: 'api', slicesDir: '_slices' },
+  import.meta.glob('/src/pages/**/*.{tsx,ts}', { base: '/src/pages' }),
+  { apiDir: 'api', slicesDir: '_slices' },
 );

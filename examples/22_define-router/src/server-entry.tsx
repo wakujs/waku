@@ -216,37 +216,35 @@ export default defineRouter({
     }
     throw new Error('renderRoute: No such path:' + path);
   },
-  handleApi: async (path) => {
+  handleApi: async (req): Promise<Response> => {
+    const path = new URL(req.url).pathname;
     if (path === '/api/hi.txt') {
       const hiTxt = await readFile('./private/hi.txt');
-
-      return {
-        status: 200,
-        body: new ReadableStream({
+      return new Response(
+        new ReadableStream({
           start(controller) {
             controller.enqueue(hiTxt);
             controller.close();
           },
         }),
-      };
+      );
     } else if (path === '/api/hi') {
-      return {
-        status: 200,
-        body: new ReadableStream({
+      return new Response(
+        new ReadableStream({
           start(controller) {
             controller.enqueue(new TextEncoder().encode('hello world!'));
             controller.close();
           },
         }),
-      };
+      );
     } else if (path === '/api/empty') {
-      return {
+      return new Response(null, {
         status: 200,
-      };
+      });
     } else {
-      return {
+      return new Response(null, {
         status: 404,
-      };
+      });
     }
   },
 });

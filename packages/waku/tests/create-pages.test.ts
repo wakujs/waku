@@ -521,12 +521,10 @@ function injectedFunctions() {
   assert(defineRouterMock.mock.calls[0]?.[0].getConfig);
   assert(defineRouterMock.mock.calls[0]?.[0].handleRoute);
   assert(defineRouterMock.mock.calls[0]?.[0].handleApi);
-  assert(defineRouterMock.mock.calls[0]?.[0].getSliceConfig);
   return {
     getConfig: defineRouterMock.mock.calls[0][0].getConfig,
     handleRoute: defineRouterMock.mock.calls[0][0].handleRoute,
     handleApi: defineRouterMock.mock.calls[0][0].handleApi,
-    getSliceConfig: defineRouterMock.mock.calls[0][0].getSliceConfig,
   };
 }
 
@@ -616,17 +614,11 @@ describe('createPages pages and layouts', () => {
         isStatic: true,
       },
     ]);
-    const res = await handleApi('/test', {
-      url: new URL('http://localhost:3000/test'),
-      method: 'GET',
-      headers: {},
-      body: null,
-    });
-    expect(res.headers).toEqual({
-      'content-type': 'text/plain;charset=UTF-8',
-    });
-    const respParsed = new Response(res.body);
-    const text = await respParsed.text();
+    const res = await handleApi(
+      new Request(new URL('http://localhost:3000/test')),
+    );
+    expect(res.headers.get('content-type')).toEqual('text/plain;charset=UTF-8');
+    const text = await res.text();
     expect(text).toEqual('Hello World');
     expect(res.status).toEqual(200);
   });
@@ -654,17 +646,11 @@ describe('createPages pages and layouts', () => {
         isStatic: false,
       },
     ]);
-    const res = await handleApi('/test/foo', {
-      url: new URL('http://localhost:3000/test/foo'),
-      method: 'GET',
-      headers: {},
-      body: null,
-    });
-    expect(res.headers).toEqual({
-      'content-type': 'text/plain;charset=UTF-8',
-    });
-    const respParsed = new Response(res.body);
-    const text = await respParsed.text();
+    const res = await handleApi(
+      new Request(new URL('http://localhost:3000/test/foo')),
+    );
+    expect(res.headers.get('content-type')).toEqual('text/plain;charset=UTF-8');
+    const text = await res.text();
     expect(text).toEqual('Hello World');
     expect(res.status).toEqual(200);
   });
@@ -766,7 +752,7 @@ describe('createPages pages and layouts', () => {
         id: 'slice001',
       }),
     ]);
-    const { getConfig, getSliceConfig } = injectedFunctions();
+    const { getConfig } = injectedFunctions();
     expect(await getConfig()).toEqual([
       {
         type: 'route',
@@ -779,8 +765,8 @@ describe('createPages pages and layouts', () => {
         path: [],
         isStatic: true,
       },
+      { type: 'slice', id: 'slice001', isStatic: true },
     ]);
-    expect(await getSliceConfig('slice001')).toEqual({ isStatic: true });
   });
 
   it('creates a simple dynamic page with slices', async () => {
@@ -799,7 +785,7 @@ describe('createPages pages and layouts', () => {
         id: 'slice001',
       }),
     ]);
-    const { getConfig, getSliceConfig } = injectedFunctions();
+    const { getConfig } = injectedFunctions();
     expect(await getConfig()).toEqual([
       {
         type: 'route',
@@ -812,8 +798,8 @@ describe('createPages pages and layouts', () => {
         path: [],
         isStatic: false,
       },
+      { type: 'slice', id: 'slice001', isStatic: true },
     ]);
-    expect(await getSliceConfig('slice001')).toEqual({ isStatic: true });
   });
 
   it('creates a wildcard page with slices', async () => {
@@ -832,7 +818,7 @@ describe('createPages pages and layouts', () => {
         id: 'slice001',
       }),
     ]);
-    const { getConfig, getSliceConfig } = injectedFunctions();
+    const { getConfig } = injectedFunctions();
     expect(await getConfig()).toEqual([
       {
         type: 'route',
@@ -848,8 +834,8 @@ describe('createPages pages and layouts', () => {
         ],
         isStatic: false,
       },
+      { type: 'slice', id: 'slice001', isStatic: true },
     ]);
-    expect(await getSliceConfig('slice001')).toEqual({ isStatic: true });
   });
 
   it('creates a nested static page', async () => {
@@ -1850,17 +1836,11 @@ describe('createPages api', () => {
         isStatic: true,
       },
     ]);
-    const res = await handleApi('/test', {
-      url: new URL('http://localhost:3000/test'),
-      method: 'GET',
-      headers: {},
-      body: null,
-    });
-    expect(res.headers).toEqual({
-      'content-type': 'text/plain;charset=UTF-8',
-    });
-    const respParsed = new Response(res.body);
-    const text = await respParsed.text();
+    const res = await handleApi(
+      new Request(new URL('http://localhost:3000/test')),
+    );
+    expect(res.headers.get('content-type')).toEqual('text/plain;charset=UTF-8');
+    const text = await res.text();
     expect(text).toEqual('Hello World');
     expect(res.status).toEqual(200);
   });
@@ -1888,17 +1868,11 @@ describe('createPages api', () => {
         isStatic: false,
       },
     ]);
-    const res = await handleApi('/test/foo', {
-      url: new URL('http://localhost:3000/test/foo'),
-      method: 'GET',
-      headers: {},
-      body: null,
-    });
-    expect(res.headers).toEqual({
-      'content-type': 'text/plain;charset=UTF-8',
-    });
-    const respParsed = new Response(res.body);
-    const text = await respParsed.text();
+    const res = await handleApi(
+      new Request(new URL('http://localhost:3000/test/foo')),
+    );
+    expect(res.headers.get('content-type')).toEqual('text/plain;charset=UTF-8');
+    const text = await res.text();
     expect(text).toEqual('Hello World foo');
     expect(res.status).toEqual(200);
   });
