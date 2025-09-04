@@ -837,13 +837,11 @@ export const createPages = <
           dynamicLayoutPathMap.get(segment)?.[1] ??
           staticComponentMap.get(joinPath(segment, 'layout').slice(1)); // feels like a hack
 
-        const isDynamic = dynamicLayoutPathMap.has(segment);
-
         if (layout && !Array.isArray(layout)) {
           const id = 'layout:' + segment;
           result[id] = createElement(
             layout,
-            isDynamic ? { path } : null,
+            { path: routePath },
             createElement(Children),
           );
         } else {
