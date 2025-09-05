@@ -12,12 +12,12 @@
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "react-server-dom-webpack": "19.1.1",
-    "waku": "0.25.0"
+    "waku": "0.26.0"
   },
   "devDependencies": {
     "@types/react": "19.1.10",
     "@types/react-dom": "19.1.7",
     "typescript": "5.9.2",
-    "vite": "7.1.2"
+    "vite": "7.1.3"
   }
 }

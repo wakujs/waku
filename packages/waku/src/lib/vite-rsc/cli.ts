@@ -4,6 +4,7 @@ import type { Flags, RscPluginOptions } from './plugin.js';
 import type { Config } from '../../config.js';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 async function loadConfig(): Promise<Config | undefined> {
   let config: Config | undefined;
@@ -74,12 +75,32 @@ export async function cli(
     await builder.buildApp();
   } else if (cmd === 'start') {
     const port = parseInt(flags.port || '8080', 10);
-    const server = await vite.preview({
-      configFile: false,
-      plugins: [rscPlugin(rscPluginOptions)],
-      preview: { port },
-    });
-    const url = server.resolvedUrls!['local'];
-    console.log(`ready: Listening on ${url}`);
+    const { serve } = await import('@hono/node-server');
+    const distDir = rscPluginOptions.config?.distDir ?? 'dist';
+    const entry: typeof import('../vite-entries/entry.server.js') =
+      await import(
+        pathToFileURL(path.resolve(distDir, 'server', 'index.js')).href
+      );
+    await startServer(port);
+    function startServer(port: number) {
+      return new Promise<void>((resolve, reject) => {
+        const server = serve({ fetch: entry.default, port }, () => {
+          console.log(`ready: Listening on http://localhost:${port}/`);
+          resolve();
+        });
+        server.on('error', (err: NodeJS.ErrnoException) => {
+          if (err.code === 'EADDRINUSE') {
+            console.log(
+              `warn: Port ${port} is in use, trying ${port + 1} instead.`,
+            );
+            startServer(port + 1)
+              .then(resolve)
+              .catch(reject);
+          } else {
+            console.error(`Failed to start server: ${err.message}`);
+          }
+        });
+      });
+    }
   }
 }

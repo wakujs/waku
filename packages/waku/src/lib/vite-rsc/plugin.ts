@@ -13,10 +13,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {
+  getManagedClientEntry,
+  getManagedServerEntry,
+} from '../utils/managed.js';
 import type { Config } from '../../config.js';
 import { INTERNAL_setAllEnv, unstable_getBuildOptions } from '../../server.js';
 import { emitStaticFile, waitForTasks } from '../builder/build.js';
-import { getManagedEntries, getManagedMain } from '../utils/managed.js';
 import { deployVercelPlugin } from './deploy/vercel/plugin.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import {
@@ -30,7 +33,7 @@ import { deployCloudflarePlugin } from './deploy/cloudflare/plugin.js';
 import { deployPartykitPlugin } from './deploy/partykit/plugin.js';
 import { deployDenoPlugin } from './deploy/deno/plugin.js';
 import { deployAwsLambdaPlugin } from './deploy/aws-lambda/plugin.js';
-import { filePathToFileURL, joinPath } from '../utils/path.js';
+import { joinPath } from '../utils/path.js';
 
 const PKG_NAME = 'waku';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -74,7 +77,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
   };
   const flags = rscPluginOptions?.flags ?? {};
   let privatePath: string;
-  let customServerEntry: string | undefined;
 
   const extraPlugins = [...(config.vite?.plugins ?? [])];
   // add react plugin automatically if users didn't include it on their own (e.g. swc, oxc, babel react compiler)
@@ -94,6 +96,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
       keepUseCientProxy: true,
       ignoredPackageWarnings: [/.*/],
       useBuildAppHook: true,
+      clientChunks: (meta) => meta.serverChunk,
     }),
     {
       name: 'rsc:waku',
@@ -195,15 +198,17 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
 
         environmentConfig.build ??= {};
         environmentConfig.build.outDir = `${config.distDir}/${name}`;
+        if (name === 'rsc') {
+          environmentConfig.build.outDir = `${config.distDir}/server`;
+        }
+        if (name === 'ssr') {
+          environmentConfig.build.outDir = `${config.distDir}/server/ssr`;
+        }
         if (name === 'client') {
           environmentConfig.build.outDir = `${config.distDir}/${DIST_PUBLIC}`;
           if (flags['experimental-partial']) {
             environmentConfig.build.emptyOutDir = false;
           }
-        }
-        // top-level-await in packages/waku/src/lib/middleware/context.ts
-        if (name !== 'client') {
-          environmentConfig.build.target ??= 'esnext';
         }
 
         return {
@@ -234,13 +239,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
           });
         };
       },
-      async configurePreviewServer(server) {
-        const { getRequestListener } = await import('@hono/node-server');
-        const module = await import(
-          pathToFileURL(path.resolve('./dist/rsc/index.js')).href
-        );
-        server.middlewares.use(getRequestListener(module.default));
-      },
     },
     {
       name: 'rsc:waku:user-entries',
@@ -255,7 +253,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
             undefined,
             options,
           );
-          customServerEntry = resolved?.id;
           return resolved ? resolved : '\0' + source;
         }
         if (source === 'virtual:vite-rsc-waku/client-entry') {
@@ -277,32 +274,10 @@ if (import.meta.hot) {
 `;
         }
         if (id === '\0virtual:vite-rsc-waku/server-entry-inner') {
-          return getManagedEntries(
-            joinPath(
-              this.environment.config.root,
-              config.srcDir,
-              'server-entry.js',
-            ),
-            'src',
-            {
-              pagesDir: config.pagesDir,
-              apiDir: config.apiDir,
-              slicesDir: config.slicesDir,
-            },
-          );
+          return getManagedServerEntry(config);
         }
         if (id === '\0virtual:vite-rsc-waku/client-entry') {
-          return getManagedMain();
-        }
-      },
-      transform(code, id) {
-        // rewrite `fsRouter(import.meta.url, ...)` in custom server entry
-        // e.g. examples/11_fs-router/src/server-entry.tsx
-        // TODO: rework fsRouter to entirely avoid fs access on runtime
-        if (id === customServerEntry && code.includes('fsRouter')) {
-          const replacement = JSON.stringify(filePathToFileURL(id));
-          code = code.replaceAll(/\bimport\.meta\.url\b/g, () => replacement);
-          return code;
+          return getManagedClientEntry();
         }
       },
     },
@@ -433,7 +408,7 @@ if (import.meta.hot) {
           // run `handleBuild`
           INTERNAL_setAllEnv(process.env as any);
           unstable_getBuildOptions().unstable_phase = 'emitStaticFiles';
-          const { buildConfigs, fallbackHtml } = await entry.handleBuild();
+          const { buildConfigs, getFallbackHtml } = await entry.handleBuild();
           for await (const buildConfig of buildConfigs || []) {
             if (buildConfig.type === 'file') {
               emitStaticFile(
@@ -447,7 +422,7 @@ if (import.meta.hot) {
                 viteConfig.root,
                 { distDir: config.distDir },
                 buildConfig.pathname,
-                fallbackHtml,
+                getFallbackHtml(),
               );
             }
           }

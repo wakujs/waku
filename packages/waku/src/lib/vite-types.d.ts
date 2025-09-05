@@ -4,7 +4,7 @@
 type HonoEnhancer = <Hono>(fn: (app: Hono) => Hono) => (app: Hono) => Hono;
 
 declare module 'virtual:vite-rsc-waku/server-entry' {
-  const default_: import('./types.ts').EntriesDev['default'];
+  const default_: import('./types.ts').ServerEntries['default'];
   export default default_;
 }
 

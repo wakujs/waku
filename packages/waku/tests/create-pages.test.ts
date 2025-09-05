@@ -521,12 +521,10 @@ function injectedFunctions() {
   assert(defineRouterMock.mock.calls[0]?.[0].getConfig);
   assert(defineRouterMock.mock.calls[0]?.[0].handleRoute);
   assert(defineRouterMock.mock.calls[0]?.[0].handleApi);
-  assert(defineRouterMock.mock.calls[0]?.[0].getSliceConfig);
   return {
     getConfig: defineRouterMock.mock.calls[0][0].getConfig,
     handleRoute: defineRouterMock.mock.calls[0][0].handleRoute,
     handleApi: defineRouterMock.mock.calls[0][0].handleApi,
-    getSliceConfig: defineRouterMock.mock.calls[0][0].getSliceConfig,
   };
 }
 
@@ -754,7 +752,7 @@ describe('createPages pages and layouts', () => {
         id: 'slice001',
       }),
     ]);
-    const { getConfig, getSliceConfig } = injectedFunctions();
+    const { getConfig } = injectedFunctions();
     expect(await getConfig()).toEqual([
       {
         type: 'route',
@@ -767,8 +765,8 @@ describe('createPages pages and layouts', () => {
         path: [],
         isStatic: true,
       },
+      { type: 'slice', id: 'slice001', isStatic: true },
     ]);
-    expect(await getSliceConfig('slice001')).toEqual({ isStatic: true });
   });
 
   it('creates a simple dynamic page with slices', async () => {
@@ -787,7 +785,7 @@ describe('createPages pages and layouts', () => {
         id: 'slice001',
       }),
     ]);
-    const { getConfig, getSliceConfig } = injectedFunctions();
+    const { getConfig } = injectedFunctions();
     expect(await getConfig()).toEqual([
       {
         type: 'route',
@@ -800,8 +798,8 @@ describe('createPages pages and layouts', () => {
         path: [],
         isStatic: false,
       },
+      { type: 'slice', id: 'slice001', isStatic: true },
     ]);
-    expect(await getSliceConfig('slice001')).toEqual({ isStatic: true });
   });
 
   it('creates a wildcard page with slices', async () => {
@@ -820,7 +818,7 @@ describe('createPages pages and layouts', () => {
         id: 'slice001',
       }),
     ]);
-    const { getConfig, getSliceConfig } = injectedFunctions();
+    const { getConfig } = injectedFunctions();
     expect(await getConfig()).toEqual([
       {
         type: 'route',
@@ -836,8 +834,8 @@ describe('createPages pages and layouts', () => {
         ],
         isStatic: false,
       },
+      { type: 'slice', id: 'slice001', isStatic: true },
     ]);
-    expect(await getSliceConfig('slice001')).toEqual({ isStatic: true });
   });
 
   it('creates a nested static page', async () => {

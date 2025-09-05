@@ -326,6 +326,21 @@ const pages: ReturnType<typeof createPages> = createPages(
       ),
     }),
 
+    createPage({
+      render: 'static',
+      path: '/static-slices',
+      component: () => (
+        <>
+          <h2>Slices</h2>
+          <Slice
+            id="slice001"
+            lazy
+            fallback={<p data-testid="slice001-loading">Loading...</p>}
+          />
+        </>
+      ),
+    }),
+
     createSlice({
       render: 'static',
       component: Slice001,

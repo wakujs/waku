@@ -1,5 +1,5 @@
-import type { EntriesDev } from '../lib/types.js';
+import type { ServerEntries } from '../lib/types.js';
 
-export function unstable_defineEntries(fns: EntriesDev['default']) {
+export function unstable_defineEntries(fns: ServerEntries['default']) {
   return fns;
 }
