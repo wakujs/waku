@@ -390,10 +390,10 @@ if (import.meta.hot) {
           const entry: typeof import('../vite-entries/entry.server.js') =
             await import(pathToFileURL(entryPath).href);
 
-          // run `handleBuild`
+          // run `processBuild`
           INTERNAL_setAllEnv(process.env as any);
           unstable_getBuildOptions().unstable_phase = 'emitStaticFiles';
-          const { buildConfigs, getFallbackHtml } = await entry.handleBuild();
+          const { buildConfigs, getFallbackHtml } = await entry.processBuild();
           for await (const buildConfig of buildConfigs || []) {
             if (buildConfig.type === 'file') {
               emitStaticFile(
