@@ -280,17 +280,6 @@ if (import.meta.hot) {
     createVirtualPlugin('vite-rsc-waku/middlewares', async function () {
       const ids: string[] = [];
       for (const file of config.middleware) {
-        // dev-server logic is all handled by `@vitejs/plugin-rsc`, so skipped.
-        if (file === 'waku/middleware/dev-server') {
-          continue;
-        }
-
-        // new `handler` is exported from `waku/vite-rsc/middleware/handler.js`
-        if (file === 'waku/middleware/handler') {
-          ids.push(path.join(__dirname, 'middleware/handler.js'));
-          continue;
-        }
-
         // resolve local files
         let id = file;
         if (file[0] === '.') {

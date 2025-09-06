@@ -86,4 +86,5 @@ export type MiddlewareOptions = {
   unstable_onError: Set<ErrorCallback>;
 };
 
+/** @deprecated This will be removed soon. */
 export type Middleware = (options: MiddlewareOptions) => Handler;

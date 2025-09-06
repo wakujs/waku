@@ -1,7 +1,9 @@
-import type { HandlerContext, MiddlewareOptions } from '../types.js';
-import { middlewares } from 'virtual:vite-rsc-waku/middlewares';
 import type { MiddlewareHandler } from 'hono';
+import { middlewares } from 'virtual:vite-rsc-waku/middlewares';
 import { isBuild } from 'virtual:vite-rsc-waku/config';
+import type { HandlerContext, MiddlewareOptions } from '../types.js';
+import { contextMiddleware } from '../context.js';
+import { handlerMiddleware } from './handler.js';
 
 // cf. packages/waku/src/lib/hono/engine.ts
 export function createHonoHandler(): MiddlewareHandler {
@@ -20,7 +22,9 @@ export function createHonoHandler(): MiddlewareHandler {
     };
   }
 
-  const handlers = middlewares.map((m) => m(middlwareOptions));
+  const handlers = [contextMiddleware, ...middlewares, handlerMiddleware].map(
+    (m) => m(middlwareOptions),
+  );
 
   return async (c, next) => {
     const ctx: HandlerContext = {
