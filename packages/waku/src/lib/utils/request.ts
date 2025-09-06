@@ -1,8 +1,7 @@
 import type { ReactFormState } from 'react-dom/client';
 import { decodeFuncId, decodeRscPath } from '../renderers/utils.js';
-import type { HandlerContext } from '../middleware/types.js';
 import type { ConfigDev } from '../config/types.js';
-import type { HandleRequest } from '../types.js';
+import type { HandleRequest, HandlerContext } from '../types.js';
 
 type HandleRequestInput = Parameters<HandleRequest>[0];
 

@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import type { ReactNode } from 'react';
-import { getContextData } from 'waku/middleware/context';
+import { unstable_getContextData as getContextData } from 'waku/server';
 
 import { ClientLayout } from '../components/client-layout.js';
 

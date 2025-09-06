@@ -1,12 +1,7 @@
 import { defineConfig } from 'waku/config';
 
 export default defineConfig({
-  middleware: [
-    'waku/middleware/context',
-    'waku/middleware/dev-server',
-    './src/middleware/validator.js',
-    'waku/middleware/handler',
-  ],
+  middleware: ['./src/middleware/validator.js'],
   /**
    * Base path for HTTP requests to indicate RSC requests.
    * Defaults to "RSC".

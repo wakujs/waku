@@ -5,6 +5,7 @@ import {
   unstable_getPlatformData,
   unstable_setPlatformData,
   unstable_createAsyncIterable as createAsyncIterable,
+  unstable_getContext as getContext,
 } from '../server.js';
 import { unstable_defineEntries as defineEntries } from '../minimal/server.js';
 import {
@@ -20,7 +21,6 @@ import {
 import { getPathMapping, path2regexp } from '../lib/utils/path.js';
 import type { PathSpec } from '../lib/utils/path.js';
 import { INTERNAL_ServerRouter } from './client.js';
-import { getContext } from '../middleware/context.js';
 import { stringToStream } from '../lib/utils/stream.js';
 import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
 

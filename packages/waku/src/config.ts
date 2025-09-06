@@ -1,8 +1,6 @@
 import type { UserConfig } from 'vite';
-import type { Middleware } from './lib/middleware/types.js';
-import type { BuiltinMiddleware } from './lib/config/types.js';
 
-export type { Middleware };
+export type { Middleware } from './lib/types.js';
 
 export interface Config {
   /**
@@ -50,14 +48,10 @@ export interface Config {
   rscBase?: string;
   /**
    * Middleware to use
-   * Defaults to:
-   * [
-   *   'waku/middleware/context',
-   *   'waku/middleware/dev-server',
-   *   'waku/middleware/handler',
-   * ]
+   * Defaults to: []
+   * @deprecated This will be removed soon.
    */
-  middleware?: (BuiltinMiddleware | (string & {}))[];
+  middleware?: (string & {})[];
   /**
    * Enhancer for Hono
    * Defaults to `undefined`

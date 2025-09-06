@@ -1,4 +1,8 @@
-import { getContext } from './middleware/context.js';
+import { getContext } from './lib/context.js';
+export {
+  getContext as unstable_getContext,
+  getContextData as unstable_getContextData,
+} from './lib/context.js';
 
 export * as unstable_builderConstants from './lib/builder/constants.js';
 

@@ -1,6 +1,6 @@
 'use server';
 
-import { getContext } from 'waku/middleware/context';
+import { unstable_getContext as getContext } from 'waku/server';
 
 export const greet = async (name: string) => {
   await Promise.resolve();
