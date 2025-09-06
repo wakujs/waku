@@ -60,21 +60,19 @@ export type ServerEntries = {
   };
 };
 
-export type ClonableModuleNode = { url: string; file: string };
-
 export type HandlerContext = {
   req: Request;
   res?: Response;
   readonly data: Record<string, unknown>;
 };
 
-export type Handler = (
+type Handler = (
   ctx: HandlerContext,
   next: () => Promise<void>,
 ) => Promise<void>;
 
 // This is highly experimental
-export type ErrorCallback = (
+type ErrorCallback = (
   err: unknown,
   ctx: HandlerContext,
   origin: 'handler' | 'rsc' | 'html',
