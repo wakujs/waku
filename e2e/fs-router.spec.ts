@@ -66,7 +66,7 @@ test.describe(`fs-router`, async () => {
     const errors: string[] = [];
     page.on('pageerror', (err) => errors.push(err.message));
     await page.goto(`http://localhost:${port}/foo`);
-    await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
     expect(messages.join('\n')).not.toContain('hydration-mismatch');
     expect(errors.join('\n')).not.toContain('Minified React error #418');
   });
