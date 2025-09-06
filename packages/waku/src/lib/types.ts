@@ -71,17 +71,9 @@ type Handler = (
   next: () => Promise<void>,
 ) => Promise<void>;
 
-// This is highly experimental
-type ErrorCallback = (
-  err: unknown,
-  ctx: HandlerContext,
-  origin: 'handler' | 'rsc' | 'html',
-) => void;
-
 export type MiddlewareOptions = {
   cmd: 'dev' | 'start';
   env: Record<string, string>;
-  unstable_onError: Set<ErrorCallback>;
 };
 
 /** @deprecated This will be removed soon. */

@@ -12,13 +12,11 @@ export function createHonoHandler(): MiddlewareHandler {
     middlwareOptions = {
       cmd: 'dev',
       env: {},
-      unstable_onError: new Set(),
     };
   } else {
     middlwareOptions = {
       cmd: 'start',
       env: {},
-      unstable_onError: new Set(),
     };
   }
 
