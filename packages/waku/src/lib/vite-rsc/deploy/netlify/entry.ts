@@ -21,4 +21,4 @@ const app = honoEnhancer(createApp)(new Hono());
 export default async (request: Request, context: unknown) =>
   app.fetch(request, { context });
 
-export { processBuild } from '../../build.js';
+export { handleBuild } from '../../build.js';

@@ -5,7 +5,7 @@ import { joinPath } from '../utils/path.js';
 import { config } from 'virtual:vite-rsc-waku/config';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 
-export async function processBuild() {
+export async function handleBuild() {
   const renderUtils = createRenderUtils(
     undefined,
     renderToReadableStream,

@@ -35,4 +35,4 @@ export default {
   },
 };
 
-export { processBuild } from '../../build.js';
+export { handleBuild } from '../../build.js';

@@ -16,7 +16,7 @@ import { createRenderUtils } from '../utils/render.js';
 
 type HandleRequestOutput = Awaited<ReturnType<HandleRequest>>;
 
-async function processRequest(ctx: HandlerContext) {
+async function handleRequest(ctx: HandlerContext) {
   await import('virtual:vite-rsc-waku/set-platform-data');
 
   const { input, temporaryReferences } = await getInput(
@@ -76,4 +76,4 @@ function loadSsrEntryModule() {
   );
 }
 
-export const handlerMiddleware: Middleware = () => processRequest;
+export const handlerMiddleware: Middleware = () => handleRequest;
