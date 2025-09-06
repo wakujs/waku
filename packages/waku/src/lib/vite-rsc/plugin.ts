@@ -66,11 +66,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
     slicesDir: '_slices',
     privateDir: 'private',
     rscBase: 'RSC',
-    middleware: [
-      'waku/middleware/context',
-      'waku/middleware/dev-server',
-      'waku/middleware/handler',
-    ],
+    middleware: [],
     unstable_honoEnhancer: undefined,
     vite: undefined,
     ...rscPluginOptions?.config,

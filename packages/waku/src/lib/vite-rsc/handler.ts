@@ -8,9 +8,8 @@ import {
 } from '@vitejs/plugin-rsc/rsc';
 import { stringToStream } from '../utils/stream.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
-import type { HandlerContext } from '../middleware/types.js';
 import { config } from 'virtual:vite-rsc-waku/config';
-import type { HandleRequest } from '../types.js';
+import type { HandleRequest, HandlerContext } from '../types.js';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 import { getInput } from '../utils/request.js';
 import { createRenderUtils } from '../utils/render.js';

@@ -1,4 +1,4 @@
-import type { Middleware } from '../../../config.js';
+import type { Middleware } from '../../types.js';
 import { handleRequest } from '../handler.js';
 
 const handler: Middleware = () => handleRequest;
