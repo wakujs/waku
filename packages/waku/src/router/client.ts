@@ -74,13 +74,21 @@ const parseRoute = (url: URL): RouteProps => {
   };
 };
 
-const parseRouteFromLocation = (): RouteProps => {
+const getHttpStatusFromMeta = (): string | undefined => {
   const httpStatusMeta = document.querySelector('meta[name="httpstatus"]');
   if (
     httpStatusMeta &&
     'content' in httpStatusMeta &&
-    httpStatusMeta.content === '404'
+    typeof httpStatusMeta.content === 'string'
   ) {
+    return httpStatusMeta.content;
+  }
+  return undefined;
+};
+
+const parseRouteFromLocation = (): RouteProps => {
+  const httpStatus = getHttpStatusFromMeta();
+  if (httpStatus === '404') {
     return { path: '/404', query: '', hash: '' };
   }
   return parseRoute(new URL(window.location.href));
@@ -630,7 +638,7 @@ const InnerRouter = ({
   httpStatus,
 }: {
   initialRoute: RouteProps;
-  httpStatus: number | undefined;
+  httpStatus: string | undefined;
 }) => {
   if (import.meta.env.WAKU_HOT_RELOAD) {
     const refetchRoute = () => {
@@ -933,13 +941,7 @@ export function Router({
 }) {
   const initialRscPath = encodeRoutePath(initialRoute.path);
   const initialRscParams = createRscParams(initialRoute.query);
-  const httpStatusMeta = document.querySelector('meta[name="httpstatus"]');
-  const httpStatus =
-    httpStatusMeta &&
-    'content' in httpStatusMeta &&
-    typeof httpStatusMeta.content === 'string'
-      ? parseInt(httpStatusMeta.content, 10)
-      : undefined;
+  const httpStatus = getHttpStatusFromMeta();
   return createElement(
     Root as FunctionComponent<Omit<ComponentProps<typeof Root>, 'children'>>,
     {
