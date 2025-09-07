@@ -22,11 +22,14 @@ export function encodeRoutePath(path: string): string {
   if (!path.startsWith('/')) {
     throw new Error('Path must start with `/`: ' + path);
   }
+  if (path.length > 1 && path.endsWith('/')) {
+    throw new Error('Path must not end with `/`: ' + path);
+  }
   if (path === '/') {
     return ROUTE_PREFIX + '/_root';
   }
-  if (path.endsWith('/')) {
-    throw new Error('Path must not end with `/`: ' + path);
+  if (path.startsWith('/_')) {
+    return ROUTE_PREFIX + '/__' + path.slice(2);
   }
   return ROUTE_PREFIX + path;
 }
@@ -37,6 +40,9 @@ export function decodeRoutePath(rscPath: string): string {
   }
   if (rscPath === ROUTE_PREFIX + '/_root') {
     return '/';
+  }
+  if (rscPath.startsWith(ROUTE_PREFIX + '/__')) {
+    return '/_' + rscPath.slice(ROUTE_PREFIX.length + 3);
   }
   return rscPath.slice(ROUTE_PREFIX.length);
 }

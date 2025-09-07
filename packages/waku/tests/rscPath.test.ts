@@ -81,3 +81,9 @@ describe('decodeRoutePath', () => {
     expect(() => decodeRoutePath('foo')).toThrow();
   });
 });
+
+describe('encodeRoutePath & decodeRoutePath', () => {
+  test('escape _ prefix', () => {
+    expect(decodeRoutePath(encodeRoutePath('/_root'))).toBe('/_root');
+  });
+});
