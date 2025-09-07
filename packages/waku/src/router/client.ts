@@ -625,7 +625,13 @@ const handleScroll = () => {
   });
 };
 
-const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
+const InnerRouter = ({
+  initialRoute,
+  httpStatus,
+}: {
+  initialRoute: RouteProps;
+  httpStatus: number | undefined;
+}) => {
   if (import.meta.env.WAKU_HOT_RELOAD) {
     const refetchRoute = () => {
       staticPathSetRef.current.clear();
@@ -902,6 +908,7 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
   const rootElement = createElement(
     Slot,
     { id: 'root' },
+    createElement('meta', { name: 'httpstatus', content: httpStatus }),
     createElement(CustomErrorHandler, { has404 }, routeElement),
   );
   return createElement(
@@ -926,13 +933,20 @@ export function Router({
 }) {
   const initialRscPath = encodeRoutePath(initialRoute.path);
   const initialRscParams = createRscParams(initialRoute.query);
+  const httpStatusMeta = document.querySelector('meta[name="httpstatus"]');
+  const httpStatus =
+    httpStatusMeta &&
+    'content' in httpStatusMeta &&
+    typeof httpStatusMeta.content === 'string'
+      ? parseInt(httpStatusMeta.content, 10)
+      : undefined;
   return createElement(
     Root as FunctionComponent<Omit<ComponentProps<typeof Root>, 'children'>>,
     {
       initialRscPath,
       initialRscParams,
     },
-    createElement(InnerRouter, { initialRoute }),
+    createElement(InnerRouter, { initialRoute, httpStatus }),
   );
 }
 
