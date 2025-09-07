@@ -191,7 +191,7 @@ export const fetchRsc = (
   rscParams?: unknown,
   fetchCache = defaultFetchCache,
 ): Promise<Elements> => {
-  if (import.meta.env.WAKU_HOT_RELOAD) {
+  if (import.meta.hot) {
     const refetchRsc = () => {
       delete fetchCache[ENTRY];
       const data = fetchRsc(rscPath, rscParams, fetchCache);
