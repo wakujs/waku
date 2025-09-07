@@ -640,7 +640,7 @@ const InnerRouter = ({
   initialRoute: RouteProps;
   httpStatus: string | undefined;
 }) => {
-  if (import.meta.env.WAKU_HOT_RELOAD) {
+  if (import.meta.hot) {
     const refetchRoute = () => {
       staticPathSetRef.current.clear();
       cachedIdSetRef.current.clear();
