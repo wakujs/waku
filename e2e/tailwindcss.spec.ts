@@ -4,7 +4,7 @@ import { test, prepareNormalSetup } from './utils.js';
 
 const startApp = prepareNormalSetup('tailwindcss');
 
-test.describe(`rsc-asset`, () => {
+test.describe(`tailwindcss`, () => {
   let port: number;
   let stopApp: (() => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {
