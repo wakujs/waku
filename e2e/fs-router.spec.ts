@@ -140,6 +140,18 @@ test.describe(`fs-router`, async () => {
     await expect(page.getByTestId('slice002')).toHaveText('Slice 002');
   });
 
+  test('segment route in group route', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/page-with-segment/introducing-waku`);
+    const heading = page.getByRole('heading', { name: 'introducing-waku' });
+    await expect(heading).toBeVisible();
+  });
+
+  test('segment route', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/page-with-segment/article/introducing-waku`);
+    const heading = page.getByRole('heading', { name: 'introducing-waku' });
+    await expect(heading).toBeVisible();
+  });
+
   test('css split', async ({ page }) => {
     // each ssr-ed page includes split css
     await page.goto(`http://localhost:${port}/css-split/page1`);
