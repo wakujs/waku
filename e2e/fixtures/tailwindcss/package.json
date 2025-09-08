@@ -1,0 +1,24 @@
+{
+  "name": "waku-e2e-tailwindcss",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "waku dev",
+    "build": "waku build",
+    "start": "waku start"
+  },
+  "dependencies": {
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "react-server-dom-webpack": "19.1.1",
+    "waku": "0.26.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.1.12",
+    "@types/react": "19.1.10",
+    "@types/react-dom": "19.1.7",
+    "tailwindcss": "4.1.12",
+    "typescript": "5.9.2"
+  }
+}
