@@ -105,6 +105,7 @@ test.describe(`useRouter`, async () => {
   test.describe('updates hashes', () => {
     test(`on dynamic pages`, async ({ page }) => {
       await page.goto(`http://localhost:${port}/dynamic`);
+      await waitForHydration(page);
       await page.click('text=Increment hash');
       await expect(page.getByTestId('hash')).toHaveText('Hash: 1');
       await page.click('text=Increment hash (push)');
@@ -113,6 +114,7 @@ test.describe(`useRouter`, async () => {
 
     test(`on static pages`, async ({ page }) => {
       await page.goto(`http://localhost:${port}/static`);
+      await waitForHydration(page);
       await page.click('text=Increment hash');
       await expect(page.getByTestId('hash')).toHaveText('Hash: 1');
       await page.click('text=Increment hash (push)');
