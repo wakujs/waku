@@ -21,35 +21,37 @@ import { HomePage } from './templates/home-page';
 import { Root } from './components/root';
 import { Slice } from './components/slice';
 
-const pages = createPages(async ({ createPage, createLayout, createRoot, createSlice }) => [
-  // Create root component
-  // not required, but supported for customizing `<html>`, `<head>`, and `<body>` tags
-  createRoot({
-    render: 'static',
-    component: Root,
-  }),
+const pages = createPages(
+  async ({ createPage, createLayout, createRoot, createSlice }) => [
+    // Create root component
+    // not required, but supported for customizing `<html>`, `<head>`, and `<body>` tags
+    createRoot({
+      render: 'static',
+      component: Root,
+    }),
 
-  // Create root layout
-  createLayout({
-    render: 'static',
-    path: '/',
-    component: RootLayout,
-  }),
+    // Create root layout
+    createLayout({
+      render: 'static',
+      path: '/',
+      component: RootLayout,
+    }),
 
-  // Create home page
-  createPage({
-    render: 'dynamic',
-    path: '/',
-    component: HomePage,
-  }),
+    // Create home page
+    createPage({
+      render: 'dynamic',
+      path: '/',
+      component: HomePage,
+    }),
 
-  // Create slice
-  createSlice({
-    render: 'static',
-    component: Slice,
-    id: 'slice-1',
-  }),
-]);
+    // Create slice
+    createSlice({
+      render: 'static',
+      component: Slice,
+      id: 'slice-1',
+    }),
+  ],
+);
 
 export default pages;
 ```
