@@ -104,7 +104,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
     }),
     {
       name: 'rsc:waku',
-      async config(_config, env) {
+      async config(_config) {
         let viteRscConfig: UserConfig = {
           define: {
             'import.meta.env.WAKU_CONFIG_BASE_PATH': JSON.stringify(
@@ -112,9 +112,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
             ),
             'import.meta.env.WAKU_CONFIG_RSC_BASE': JSON.stringify(
               config.rscBase,
-            ),
-            'import.meta.env.WAKU_HOT_RELOAD': JSON.stringify(
-              env.command === 'serve',
             ),
             // packages/waku/src/lib/plugins/vite-plugin-rsc-env.ts
             // CLI has loaded dotenv already at this point
