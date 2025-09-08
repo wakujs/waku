@@ -35,8 +35,6 @@ export default defineConfig({
                   input: {
                     index: './src/index.ts',
                   },
-                  // will be fixed by https://github.com/cloudflare/workers-sdk/issues/10213
-                  preserveEntrySignatures: 'strict',
                 },
               },
             };
