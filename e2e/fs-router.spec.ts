@@ -153,13 +153,17 @@ test.describe(`fs-router`, async () => {
   });
 
   test('segment route in group route', async ({ page }) => {
-    await page.goto(`http://localhost:${port}/page-with-segment/introducing-waku`);
+    await page.goto(
+      `http://localhost:${port}/page-with-segment/introducing-waku`,
+    );
     const heading = page.getByRole('heading', { name: 'introducing-waku' });
     await expect(heading).toBeVisible();
   });
 
   test('segment route', async ({ page }) => {
-    await page.goto(`http://localhost:${port}/page-with-segment/article/introducing-waku`);
+    await page.goto(
+      `http://localhost:${port}/page-with-segment/article/introducing-waku`,
+    );
     const heading = page.getByRole('heading', { name: 'introducing-waku' });
     await expect(heading).toBeVisible();
   });

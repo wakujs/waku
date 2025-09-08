@@ -501,7 +501,10 @@ export const createPages = <
         if (pagePath !== definedPath) {
           groupPathLookup.set(pagePath, definedPath);
         }
-        const id = joinPath(...pathItems.filter((part) => !part.startsWith('(')), 'page');
+        const id = joinPath(
+          ...pathItems.filter((part) => !part.startsWith('(')),
+          'page',
+        );
         const WrappedComponent = (props: Record<string, unknown>) =>
           createElement(page.component as any, { ...props, ...mapping });
         registerStaticComponent(id, WrappedComponent);

@@ -80,10 +80,14 @@ const HomeLayout = ({ children }: { children: ReactNode }) => (
         <Link to="/css-split">Css split</Link>
       </li>
       <li>
-        <Link to="/page-with-segment/introducing-waku">Page with Segment / Introducing Waku</Link>
+        <Link to="/page-with-segment/introducing-waku">
+          Page with Segment / Introducing Waku
+        </Link>
       </li>
       <li>
-        <Link to="/page-with-segment/article/introducing-waku">Page with Segment / Article / Introducing Waku</Link>
+        <Link to="/page-with-segment/article/introducing-waku">
+          Page with Segment / Article / Introducing Waku
+        </Link>
       </li>
     </ul>
     {children}
