@@ -250,6 +250,13 @@ declare module 'waku/router' {
 
         await updateGeneratedFile();
       });
+      server.watcher.on('unlink', async (file) => {
+        if (!outputFile || outputFile.endsWith(file)) {
+          return;
+        }
+
+        await updateGeneratedFile();
+      });
 
       void updateGeneratedFile();
     },
