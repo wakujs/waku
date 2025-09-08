@@ -74,13 +74,21 @@ const parseRoute = (url: URL): RouteProps => {
   };
 };
 
-const parseRouteFromLocation = (): RouteProps => {
+const getHttpStatusFromMeta = (): string | undefined => {
   const httpStatusMeta = document.querySelector('meta[name="httpstatus"]');
   if (
     httpStatusMeta &&
     'content' in httpStatusMeta &&
-    httpStatusMeta.content === '404'
+    typeof httpStatusMeta.content === 'string'
   ) {
+    return httpStatusMeta.content;
+  }
+  return undefined;
+};
+
+const parseRouteFromLocation = (): RouteProps => {
+  const httpStatus = getHttpStatusFromMeta();
+  if (httpStatus === '404') {
     return { path: '/404', query: '', hash: '' };
   }
   return parseRoute(new URL(window.location.href));
@@ -625,7 +633,13 @@ const handleScroll = () => {
   });
 };
 
-const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
+const InnerRouter = ({
+  initialRoute,
+  httpStatus,
+}: {
+  initialRoute: RouteProps;
+  httpStatus: string | undefined;
+}) => {
   if (import.meta.hot) {
     const refetchRoute = () => {
       staticPathSetRef.current.clear();
@@ -902,6 +916,7 @@ const InnerRouter = ({ initialRoute }: { initialRoute: RouteProps }) => {
   const rootElement = createElement(
     Slot,
     { id: 'root' },
+    createElement('meta', { name: 'httpstatus', content: httpStatus }),
     createElement(CustomErrorHandler, { has404 }, routeElement),
   );
   return createElement(
@@ -926,13 +941,14 @@ export function Router({
 }) {
   const initialRscPath = encodeRoutePath(initialRoute.path);
   const initialRscParams = createRscParams(initialRoute.query);
+  const httpStatus = getHttpStatusFromMeta();
   return createElement(
     Root as FunctionComponent<Omit<ComponentProps<typeof Root>, 'children'>>,
     {
       initialRscPath,
       initialRscParams,
     },
-    createElement(InnerRouter, { initialRoute }),
+    createElement(InnerRouter, { initialRoute, httpStatus }),
   );
 }
 
