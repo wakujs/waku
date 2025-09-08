@@ -60,6 +60,18 @@ test.describe(`fs-router`, async () => {
     expect(errors.join('\n')).not.toContain('Minified React error #418');
   });
 
+  test('check hydration error with useId', async ({ page }) => {
+    const messages: string[] = [];
+    page.on('console', (msg) => messages.push(msg.text()));
+    const errors: string[] = [];
+    page.on('pageerror', (err) => errors.push(err.message));
+    await page.goto(`http://localhost:${port}/foo`);
+    await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
+    await waitForHydration(page);
+    expect(messages.join('\n')).not.toContain('hydration-mismatch');
+    expect(errors.join('\n')).not.toContain('Minified React error #418');
+  });
+
   test('api hi', async () => {
     const res = await fetch(`http://localhost:${port}/api/hi`);
     expect(res.status).toBe(200);
