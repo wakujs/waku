@@ -96,10 +96,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
       keepUseCientProxy: true,
       ignoredPackageWarnings: [/.*/],
       useBuildAppHook: true,
-      // enable ssr environment proxy for cloudflare
-      loadModuleDevProxy: extraPlugins
-        .flat()
-        .some((p) => p && 'name' in p && p.name === 'vite-plugin-cloudflare'),
       clientChunks: (meta) => meta.serverChunk,
     }),
     {

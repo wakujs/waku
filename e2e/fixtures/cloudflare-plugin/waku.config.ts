@@ -12,8 +12,19 @@ export default defineConfig({
         },
       }),
       {
-        name: 'waku-override',
-        apply: 'build',
+        name: 'waku-override-pre',
+        config() {
+          // override rsc plugin option
+          // https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-rsc#vitejsplugin-rsc-1
+          return {
+            rsc: {
+              loadModuleDevProxy: true,
+            },
+          } as any;
+        },
+      },
+      {
+        name: 'waku-override-post',
         enforce: 'post',
         configEnvironment(name, _config, _env) {
           if (name === 'rsc') {
