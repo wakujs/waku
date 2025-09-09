@@ -1,4 +1,5 @@
 import { defineConfig } from 'waku/config';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   unstable_honoEnhancer: './waku.hono-enhancer',
@@ -9,6 +10,7 @@ export default defineConfig({
     'waku/middleware/handler',
   ],
   vite: {
+    plugins: [tailwindcss()],
     optimizeDeps: {
       exclude: ['sqlite'],
     },
