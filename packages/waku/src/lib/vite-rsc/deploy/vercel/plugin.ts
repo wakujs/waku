@@ -53,6 +53,7 @@ async function build({
 }) {
   const rootDir = config.root;
   const publicDir = config.environments.client!.build.outDir;
+  const assetsDir = config.environments.client!.build.assetsDir;
   const outputDir = path.resolve('.vercel', 'output');
   cpSync(publicDir, path.join(outputDir, 'static'), { recursive: true });
 
@@ -100,7 +101,7 @@ async function build({
   }
   const routes = [
     {
-      src: `^${opts.basePath}assets/(.*)$`,
+      src: `^${opts.basePath}${assetsDir}/(.*)$`,
       headers: {
         'cache-control': 'public, immutable, max-age=31536000',
       },
