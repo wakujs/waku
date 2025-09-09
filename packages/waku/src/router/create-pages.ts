@@ -815,21 +815,18 @@ export const createPages = <
           throw new Error('Invalid layout ' + layout);
         }
 
-        let id: string;
-        if (layout.isDynamic) {
-          id = `layout:${layout.path}`;
-          // dynamic layout shares all context that is available for pages
-          result[id] = createElement(comp, pageProps, createElement(Children));
-        } else {
-          const trimmed = trimMapping(layout.spec, fullMapping);
-
-          id = `layout:${trimmed.segment}`;
-          result[id] = createElement(
-            comp,
-            trimmed.mapping,
-            createElement(Children),
-          );
-        }
+        const trimmed = trimMapping(layout.spec, fullMapping);
+        const id = `layout:${layout.path}(${trimmed.segment})`;
+        result[id] = createElement(
+          comp,
+          layout.isDynamic
+            ? {
+                path,
+                ...trimmed.mapping,
+              }
+            : trimmed.mapping,
+          createElement(Children),
+        );
 
         layouts.push({
           component: Slot,
