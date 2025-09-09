@@ -383,7 +383,7 @@ export function unstable_defineRouter(fns: {
       }
     }
     entries[ROUTE_ID] = [decodedPathname, query];
-    entries[IS_STATIC_ID] = !!pathConfigItem.specs.isStatic;
+    entries[IS_STATIC_ID] = pathConfigItem.specs.isStatic;
     sliceConfigMap.forEach(({ isStatic }, sliceId) => {
       if (isStatic) {
         // FIXME: hard-coded for now

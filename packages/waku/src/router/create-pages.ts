@@ -817,7 +817,7 @@ export const createPages = <
 
         let id: string;
         if (layout.isDynamic) {
-          id = `layout:${layout.path}(${routePath})`;
+          id = `layout:${layout.path}`;
           // dynamic layout shares all context that is available for pages
           result[id] = createElement(comp, pageProps, createElement(Children));
         } else {
@@ -913,7 +913,7 @@ function countSlugsAndWildcards(pathSpec: PathSpec) {
 }
 
 /**
- * trim mapping to the ones in the given path
+ * trim mapping to only allow the properties referenced in the given path
  */
 function trimMapping(
   pathSpec: PathSpec,
