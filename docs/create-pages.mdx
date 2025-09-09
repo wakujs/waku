@@ -8,7 +8,7 @@ description: The low-level routing API.
 
 The entry point for programmatic routing in Waku projects is `./src/server-entry.tsx`. Export the `createPages` function to create your layouts and pages.
 
-`createLayout`, `createPage`, and `createRoot` accept a configuration object to specify the route path, React component, and render method. Waku currently supports two options: `'static'` for static prerendering (SSG) or `'dynamic'` for server-side rendering (SSR).
+`createLayout`, `createPage`, `createRoot`, and `createSlice` accept a configuration object to specify the route path, React component, and render method. Waku currently supports two options: `'static'` for static prerendering (SSG) or `'dynamic'` for server-side rendering (SSR).
 
 For example, you can statically prerender a global header and footer in the root layout at build time, but dynamically render the rest of a home page at request time for personalized user experiences.
 
@@ -19,29 +19,39 @@ import { createPages } from 'waku';
 import { RootLayout } from './templates/root-layout';
 import { HomePage } from './templates/home-page';
 import { Root } from './components/root';
+import { Slice } from './components/slice';
 
-const pages = createPages(async ({ createPage, createLayout, createRoot }) => [
-  // Create root component
-  // not required, but supported for customizing `<html>`, `<head>`, and `<body>` tags
-  createRoot({
-    render: 'static',
-    component: Root,
-  }),
+const pages = createPages(
+  async ({ createPage, createLayout, createRoot, createSlice }) => [
+    // Create root component
+    // not required, but supported for customizing `<html>`, `<head>`, and `<body>` tags
+    createRoot({
+      render: 'static',
+      component: Root,
+    }),
 
-  // Create root layout
-  createLayout({
-    render: 'static',
-    path: '/',
-    component: RootLayout,
-  }),
+    // Create root layout
+    createLayout({
+      render: 'static',
+      path: '/',
+      component: RootLayout,
+    }),
 
-  // Create home page
-  createPage({
-    render: 'dynamic',
-    path: '/',
-    component: HomePage,
-  }),
-]);
+    // Create home page
+    createPage({
+      render: 'dynamic',
+      path: '/',
+      component: HomePage,
+    }),
+
+    // Create slice
+    createSlice({
+      render: 'static',
+      component: Slice,
+      id: 'slice-1',
+    }),
+  ],
+);
 
 export default pages;
 ```
@@ -397,3 +407,21 @@ if (globalThis.__WAKU_HYDRATE__) {
 ```
 
 You can omit `./src/client-entry.tsx` unless you need to modify it.
+
+### Slices
+
+Slice components are isolated components that can be rendered `static` or `dynamic` in their own right. This allows for patterns like adding `static` components wherever they'll compose nicely inside your `dynamic` or `static` layouts & pages. Or, a slice can be marked as `lazy` to be requested indepently from the rest of a particular page's components.
+
+```tsx
+// ./src/components/slice.tsx
+
+export const Slice = () => {
+  return (
+    <div>
+      <h2>Slice</h2>
+    </div>
+  );
+};
+```
+
+Add this with `createSlice` function inside `createPages`.
