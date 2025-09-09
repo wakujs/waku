@@ -1,0 +1,29 @@
+{
+  "name": "cloudflare-plugin",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "cf-typegen": "wrangler types",
+    "dev": "waku dev",
+    "build": "waku build",
+    "start": "wrangler dev",
+    "start:static": "serve dist/public -p 8080"
+  },
+  "dependencies": {
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "react-server-dom-webpack": "19.1.1",
+    "serve": "^14.2.4",
+    "waku": "0.26.0",
+    "wrangler": "^4.34.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.12.3",
+    "@types/node": "24.3.0",
+    "@types/react": "19.1.10",
+    "@types/react-dom": "19.1.7",
+    "typescript": "5.9.2",
+    "vite": "7.1.3"
+  }
+}
