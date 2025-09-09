@@ -98,16 +98,23 @@ async function build({
       JSON.stringify({ type: 'module' }, null, 2),
     );
   }
-
-  const routes = serverless
-    ? [
-        { handle: 'filesystem' },
-        {
-          src: opts.basePath + '(.*)',
-          dest: opts.basePath + opts.rscBase + '/',
-        },
-      ]
-    : undefined;
+  const routes = [
+    {
+      src: `^${opts.basePath}assets/(.*)$`,
+      headers: {
+        'cache-control': 'public, immutable, max-age=31536000',
+      },
+    },
+    ...(serverless
+      ? [
+          { handle: 'filesystem' },
+          {
+            src: opts.basePath + '(.*)',
+            dest: opts.basePath + opts.rscBase + '/',
+          },
+        ]
+      : []),
+  ];
   const configJson = { version: 3, routes };
   mkdirSync(outputDir, { recursive: true });
   writeFileSync(
