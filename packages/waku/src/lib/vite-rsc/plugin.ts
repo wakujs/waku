@@ -33,7 +33,7 @@ import { deployCloudflarePlugin } from './deploy/cloudflare/plugin.js';
 import { deployPartykitPlugin } from './deploy/partykit/plugin.js';
 import { deployDenoPlugin } from './deploy/deno/plugin.js';
 import { deployAwsLambdaPlugin } from './deploy/aws-lambda/plugin.js';
-import { joinPath } from '../utils/path.js';
+import { joinPath, withoutTrialSlash } from '../utils/path.js';
 
 const PKG_NAME = 'waku';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -58,7 +58,7 @@ export type Flags = {
 
 export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
   const config: Required<Config> = {
-    basePath: '/',
+    basePath: rscPluginOptions?.config?.basePath ? withoutTrialSlash(rscPluginOptions?.config?.basePath): '/',
     srcDir: 'src',
     distDir: 'dist',
     pagesDir: 'pages',

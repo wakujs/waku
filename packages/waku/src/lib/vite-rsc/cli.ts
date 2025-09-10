@@ -25,6 +25,7 @@ async function startDevServer(
     configFile: false,
     plugins: [rscPlugin(rscPluginOptions)],
     server: { port },
+    base: rscPluginOptions.config?.basePath ?? '/'
   });
   await server.listen();
   const url = server.resolvedUrls!['local'];
