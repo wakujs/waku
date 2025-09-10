@@ -79,7 +79,7 @@ const parseRoute = (url: URL, basePath: string): RouteProps => {
   };
 };
 
-const parseRouteFromLocation = (basePath: string): RouteProps => {
+const getHttpStatusFromMeta = (): string | undefined => {
   const httpStatusMeta = document.querySelector('meta[name="httpstatus"]');
   if (
     httpStatusMeta &&
@@ -141,6 +141,7 @@ const RouterContext = createContext<{
     (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
   >;
   fetchingSlices: Set<SliceId>;
+  basePath: string;
 } | null>(null);
 
 export function useRouter() {
@@ -149,7 +150,7 @@ export function useRouter() {
     throw new Error('Missing Router');
   }
 
-  const { route, changeRoute, prefetchRoute } = router;
+  const { route, changeRoute, prefetchRoute, basePath } = router;
   const push = useCallback(
     async (
       to: InferredPaths,
@@ -166,7 +167,7 @@ export function useRouter() {
       const url = new URL(to, window.location.href);
       const currentPath = window.location.pathname;
       const newPath = url.pathname !== currentPath;
-      await changeRoute(parseRoute(url), {
+      await changeRoute(parseRoute(url, basePath), {
         shouldScroll: options?.scroll ?? newPath,
       });
       if (window.location.pathname === currentPath) {
@@ -198,7 +199,7 @@ export function useRouter() {
       const url = new URL(to, window.location.href);
       const currentPath = window.location.pathname;
       const newPath = url.pathname !== currentPath;
-      await changeRoute(parseRoute(url), {
+      await changeRoute(parseRoute(url, basePath), {
         shouldScroll: options?.scroll ?? newPath,
       });
       if (window.location.pathname === currentPath) {
@@ -209,7 +210,7 @@ export function useRouter() {
   );
   const reload = useCallback(async () => {
     const url = new URL(window.location.href);
-    await changeRoute(parseRoute(url), { shouldScroll: true });
+    await changeRoute(parseRoute(url, basePath), { shouldScroll: true });
   }, [changeRoute]);
   const back = useCallback(() => {
     // FIXME is this correct?
@@ -222,7 +223,7 @@ export function useRouter() {
   const prefetch = useCallback(
     (to: string) => {
       const url = new URL(to, window.location.href);
-      prefetchRoute(parseRoute(url));
+      prefetchRoute(parseRoute(url, basePath));
     },
     [prefetchRoute],
   );
@@ -303,6 +304,7 @@ export function Link({
   ...props
 }: LinkProps): ReactElement {
   const router = useContext(RouterContext);
+
   const changeRoute = router
     ? router.changeRoute
     : () => {
@@ -328,7 +330,7 @@ export function Link({
             if (entry.isIntersecting) {
               const url = new URL(to, window.location.href);
               if (router && url.href !== window.location.href) {
-                const route = parseRoute(url);
+                const route = parseRoute(url, router.basePath);
                 router.prefetchRoute(route);
               }
             }
@@ -347,7 +349,7 @@ export function Link({
   const internalOnClick = () => {
     const url = new URL(to, window.location.href);
     if (url.href !== window.location.href) {
-      const route = parseRoute(url);
+      const route = parseRoute(url, router!.basePath);
       prefetchRoute(route);
       startTransitionFn(async () => {
         const currentPath = window.location.pathname;
@@ -386,7 +388,7 @@ export function Link({
     ? (event: MouseEvent<HTMLAnchorElement>) => {
         const url = new URL(to, window.location.href);
         if (url.href !== window.location.href) {
-          const route = parseRoute(url);
+          const route = parseRoute(url, router!.basePath);
           prefetchRoute(route);
         }
         props.onMouseEnter?.(event);
@@ -451,11 +453,11 @@ const NotFound = ({
   if (!router) {
     throw new Error('Missing Router');
   }
-  const { changeRoute } = router;
+  const { changeRoute, basePath } = router;
   useEffect(() => {
     if (has404) {
       const url = new URL('/404', window.location.href);
-      changeRoute(parseRoute(url), { shouldScroll: true })
+      changeRoute(parseRoute(url, basePath), { shouldScroll: true })
         .then(() => {
           // HACK: This timeout is required for canary-ci to work
           // FIXME: As we understand it, we should have a proper solution.
@@ -486,7 +488,7 @@ const Redirect = ({
   if (!router) {
     throw new Error('Missing Router');
   }
-  const { changeRoute } = router;
+  const { changeRoute, basePath } = router;
   useEffect(() => {
     // ensure single re-fetch per server redirection error on StrictMode
     // https://github.com/wakujs/waku/pull/1512
@@ -503,7 +505,7 @@ const Redirect = ({
     }
     const currentPath = window.location.pathname;
     const newPath = url.pathname !== currentPath;
-    changeRoute(parseRoute(url), { shouldScroll: newPath })
+    changeRoute(parseRoute(url, basePath), { shouldScroll: newPath })
       .then(() => {
         // FIXME: As we understand it, we should have a proper solution.
         setTimeout(() => {
@@ -641,9 +643,11 @@ const handleScroll = () => {
 const InnerRouter = ({
   initialRoute,
   httpStatus,
+  basePath
 }: {
   initialRoute: RouteProps;
   httpStatus: string | undefined;
+  basePath: string
 }) => {
   if (import.meta.hot) {
     const refetchRoute = () => {
@@ -864,7 +868,7 @@ const InnerRouter = ({
 
   useEffect(() => {
     const callback = () => {
-      const route = parseRoute(new URL(window.location.href));
+      const route = parseRoute(new URL(window.location.href), basePath);
       changeRoute(route, { shouldScroll: true }).catch((err) => {
         console.log('Error while navigating back:', err);
       });
@@ -873,7 +877,7 @@ const InnerRouter = ({
     return () => {
       window.removeEventListener('popstate', callback);
     };
-  }, [changeRoute]);
+  }, [changeRoute, basePath]);
 
   useEffect(() => {
     const callback = (path: string, query: string) => {
@@ -882,7 +886,7 @@ const InnerRouter = ({
         url.pathname = path;
         url.search = query;
         url.hash = '';
-        changeRoute(parseRoute(url), {
+        changeRoute(parseRoute(url, basePath), {
           skipRefetch: true,
           shouldScroll: false,
         })
@@ -912,7 +916,7 @@ const InnerRouter = ({
     return () => {
       locationListeners.delete(callback);
     };
-  }, [changeRoute, locationListeners]);
+  }, [changeRoute, locationListeners, basePath]);
 
   const routeElement =
     err !== null
@@ -933,6 +937,7 @@ const InnerRouter = ({
         prefetchRoute,
         routeChangeEvents,
         fetchingSlices: useRef(new Set<SliceId>()).current,
+        basePath,
       },
     },
     rootElement,
@@ -956,7 +961,7 @@ export function Router({
       initialRscPath,
       initialRscParams,
     },
-    createElement(InnerRouter, { initialRoute, httpStatus }),
+    createElement(InnerRouter, { initialRoute, httpStatus, basePath }),
   );
 }
 
@@ -998,6 +1003,7 @@ export function INTERNAL_ServerRouter({
           prefetchRoute: notAvailableInServer('prefetchRoute'),
           routeChangeEvents: MOCK_ROUTE_CHANGE_LISTENER,
           fetchingSlices: new Set<SliceId>(),
+          basePath: ''
         },
       },
       rootElement,
