@@ -5,22 +5,22 @@ import { isBuild } from 'virtual:vite-rsc-waku/config';
 
 // cf. packages/waku/src/lib/hono/engine.ts
 export function createHonoHandler(): MiddlewareHandler {
-  let middlwareOptions: MiddlewareOptions;
+  let middlewareOptions: MiddlewareOptions;
   if (!isBuild) {
-    middlwareOptions = {
+    middlewareOptions = {
       cmd: 'dev',
       env: {},
       unstable_onError: new Set(),
     };
   } else {
-    middlwareOptions = {
+    middlewareOptions = {
       cmd: 'start',
       env: {},
       unstable_onError: new Set(),
     };
   }
 
-  const handlers = middlewares.map((m) => m(middlwareOptions));
+  const handlers = middlewares.map((m) => m(middlewareOptions));
 
   return async (c, next) => {
     const ctx: HandlerContext = {
