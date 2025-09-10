@@ -22,6 +22,7 @@ export async function getInput(
   loadServerAction: (id: string) => Promise<unknown>,
 ) {
   const url = new URL(ctx.req.url);
+  // TODO: 
   const rscPathPrefix = config.basePath + config.rscBase + '/';
   let rscPath: string | undefined;
   let temporaryReferences: unknown | undefined;
@@ -87,9 +88,10 @@ export async function getInput(
     }
   } else {
     // SSR
+    const pathname = url.pathname.startsWith(config.basePath) ? url.pathname.slice(config.basePath.length) + '/' : url.pathname;
     input = {
       type: 'custom',
-      pathname: decodeURI(url.pathname),
+      pathname,
       req: ctx.req,
     };
   }
