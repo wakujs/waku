@@ -2,7 +2,7 @@ import { expect } from '@playwright/test';
 
 import { test, waitForHydration, prepareNormalSetup } from './utils.js';
 
-const startApp = prepareNormalSetup('waku-jotai');
+const startApp = prepareNormalSetup('waku-jotai-integration');
 
 test.describe('waku-jotai', async () => {
   let port: number;

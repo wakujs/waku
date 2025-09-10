@@ -2177,6 +2177,79 @@ describe('createPages - grouped paths', () => {
     await expect(getConfig).rejects.toThrowError('Duplicated path: /test');
   });
 
+  it('supports grouped path with slug', async () => {
+    const TestPage = () => null;
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'static',
+        path: '/(group)/[slug]',
+        staticPaths: ['x', 'y'],
+        component: TestPage,
+      }),
+      createPage({
+        render: 'static',
+        path: '/(group)/z',
+        component: TestPage,
+      }),
+    ]);
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
+      {
+        type: 'route',
+        elements: { 'page:/x': { isStatic: true } },
+        rootElement: { isStatic: true },
+        routeElement: { isStatic: true },
+        noSsr: false,
+        path: [{ type: 'literal', name: 'x' }],
+        pathPattern: [
+          { type: 'literal', name: '(group)' },
+          { type: 'group', name: 'slug' },
+        ],
+        isStatic: true,
+      },
+      {
+        type: 'route',
+        elements: { 'page:/y': { isStatic: true } },
+        rootElement: { isStatic: true },
+        routeElement: { isStatic: true },
+        path: [{ type: 'literal', name: 'y' }],
+        noSsr: false,
+        pathPattern: [
+          { type: 'literal', name: '(group)' },
+          { type: 'group', name: 'slug' },
+        ],
+        isStatic: true,
+      },
+      {
+        type: 'route',
+        elements: { 'page:/z': { isStatic: true } },
+        rootElement: { isStatic: true },
+        routeElement: { isStatic: true },
+        noSsr: false,
+        path: [{ type: 'literal', name: 'z' }],
+        isStatic: true,
+      },
+    ]);
+
+    const routeX = await handleRoute('/x', { query: '?skip=[]' });
+    expect(routeX).toBeDefined();
+    expect(routeX.rootElement).toBeDefined();
+    expect(routeX.routeElement).toBeDefined();
+    expect(Object.keys(routeX.elements)).toEqual(['page:/x']);
+
+    const routeY = await handleRoute('/y', { query: '?skip=[]' });
+    expect(routeY).toBeDefined();
+    expect(routeY.rootElement).toBeDefined();
+    expect(routeY.routeElement).toBeDefined();
+    expect(Object.keys(routeY.elements)).toEqual(['page:/y']);
+
+    const routeZ = await handleRoute('/z', { query: '?skip=[]' });
+    expect(routeZ).toBeDefined();
+    expect(routeZ.rootElement).toBeDefined();
+    expect(routeZ.routeElement).toBeDefined();
+    expect(Object.keys(routeZ.elements)).toEqual(['page:/z']);
+  });
+
   it('supports grouped path with layout', async () => {
     const TestPage = () => null;
     const TestHomePage = () => null;
