@@ -4,6 +4,9 @@ import {
   parsePathWithSlug,
   path2regexp,
   getPathMapping,
+  withTrialSlash,
+  withoutTrialSlash,
+  withoutBase,
 } from '../src/lib/utils/path.js';
 
 function matchPath(path: string, input: string) {
@@ -83,5 +86,32 @@ describe('getPathMapping', () => {
     const pathSpec = parsePathWithSlug('/prefix/[...path]');
     expect(getPathMapping(pathSpec, '/prefix')).toBe(null);
     expect(getPathMapping(pathSpec, '/prefix/foo')).toEqual({ path: ['foo'] });
+  });
+});
+
+describe('withTrialSlash', () => {
+  test('adds a trailing slash if not present', () => {
+    expect(withTrialSlash('/foo/bar')).toBe('/foo/bar/');
+    expect(withTrialSlash('/foo/bar/')).toBe('/foo/bar/');
+    expect(withTrialSlash('/')).toBe('/');
+  });
+});
+
+describe('withoutTrialSlash', () => {
+  test('removes a trailing slash if present', () => {
+    expect(withoutTrialSlash('/foo/bar/')).toBe('/foo/bar');
+    expect(withoutTrialSlash('/foo/bar')).toBe('/foo/bar');
+    expect(withoutTrialSlash('/')).toBe('/');
+  });
+});
+
+describe('withoutBase', () => {
+  test('removes the base path if present', () => {
+    expect(withoutBase('/base/foo/bar', '/base',)).toBe('/foo/bar');
+    expect(withoutBase('/base/foo/bar/', '/base',)).toBe('/foo/bar/');
+    expect(withoutBase('/foo/bar', '/base',)).toBe('/foo/bar');
+    expect(withoutBase('/base', '/base',)).toBe('/');
+    expect(withoutBase('/base/', '/base',)).toBe('/');
+    expect(withoutBase('/', '/base',)).toBe('/');
   });
 });

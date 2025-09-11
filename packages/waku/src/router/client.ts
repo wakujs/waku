@@ -45,6 +45,7 @@ import {
 import type { RouteProps } from './common.js';
 import type { RouteConfig } from './base-types.js';
 import { getErrorInfo } from '../lib/utils/custom-errors.js';
+import { withoutBase, withoutTrialSlash } from '../lib/utils/path.js';
 
 type AllowPathDecorators<Path extends string> = Path extends unknown
   ? Path | `${Path}?${string}` | `${Path}#${string}`
@@ -57,12 +58,16 @@ type InferredPaths = RouteConfig extends {
   : string;
 
 const normalizeRoutePath = (path: string) => {
+  const basePath = import.meta.env.WAKU_CONFIG_BASE_PATH as string;
+  const routePath = withoutBase(path, basePath)
+
   for (const suffix of ['/', '/index.html']) {
-    if (path.endsWith(suffix)) {
-      return path.slice(0, -suffix.length) || '/';
+    if (routePath.endsWith(suffix)) {
+      return routePath.slice(0, -suffix.length) || '/';
     }
   }
-  return path;
+
+  return routePath;
 };
 
 const parseRoute = (url: URL): RouteProps => {
@@ -136,6 +141,7 @@ const RouterContext = createContext<{
     (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
   >;
   fetchingSlices: Set<SliceId>;
+  basePath: string
 } | null>(null);
 
 export function useRouter() {
@@ -286,7 +292,7 @@ export type LinkProps = {
 } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'>;
 
 export function Link({
-  to,
+  to: rawTo,
   children,
   scroll,
   unstable_pending,
@@ -298,6 +304,7 @@ export function Link({
   ...props
 }: LinkProps): ReactElement {
   const router = useContext(RouterContext);
+  const to = withoutTrialSlash(`${router?.basePath}${rawTo}`)
   const changeRoute = router
     ? router.changeRoute
     : () => {
@@ -928,6 +935,7 @@ const InnerRouter = ({
         prefetchRoute,
         routeChangeEvents,
         fetchingSlices: useRef(new Set<SliceId>()).current,
+        basePath: import.meta.env.WAKU_CONFIG_BASE_PATH
       },
     },
     rootElement,
@@ -990,6 +998,7 @@ export function INTERNAL_ServerRouter({
           prefetchRoute: notAvailableInServer('prefetchRoute'),
           routeChangeEvents: MOCK_ROUTE_CHANGE_LISTENER,
           fetchingSlices: new Set<SliceId>(),
+          basePath: import.meta.env.WAKU_CONFIG_BASE_PATH,
         },
       },
       rootElement,
