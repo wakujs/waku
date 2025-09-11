@@ -30,7 +30,7 @@ const DEFAULT_HTML_HEAD = [
   createElement('meta', { name: 'generator', content: 'Waku' }),
 ];
 
-const BASE_RSC_PATH = `${withTrialSlash(import.meta.env?.WAKU_CONFIG_BASE_PATH)}${
+const BASE_RSC_PATH = `${import.meta.env?.WAKU_CONFIG_BASE_PATH && withTrialSlash(import.meta.env?.WAKU_CONFIG_BASE_PATH)}${
   import.meta.env?.WAKU_CONFIG_RSC_BASE
 }/`;
 

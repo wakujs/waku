@@ -512,15 +512,8 @@ vi.mock('../src/router/define-router.js', () => ({
   unstable_defineRouter: vi.fn(),
 }));
 
-declare global {
-  interface ImportMeta {
-    env: Record<string, string>;
-  }
-}
-
 beforeEach(() => {
   vi.resetAllMocks();
-  import.meta.env.WAKU_CONFIG_BASE_PATH = '/'
 });
 
 function injectedFunctions() {
