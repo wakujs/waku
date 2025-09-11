@@ -292,6 +292,7 @@ export type LinkProps = {
 } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'>;
 
 export function Link({
+  to: rawTo,
   children,
   scroll,
   unstable_pending,
@@ -303,7 +304,7 @@ export function Link({
   ...props
 }: LinkProps): ReactElement {
   const router = useContext(RouterContext);
-  const to = withoutTrialSlash(`${router?.basePath}${props.to}`)
+  const to = withoutTrialSlash(`${router?.basePath}${rawTo}`)
   const changeRoute = router
     ? router.changeRoute
     : () => {
