@@ -16,6 +16,7 @@ import RSDWClient from 'react-server-dom-webpack/client';
 
 import { createCustomError } from '../lib/utils/custom-errors.js';
 import { encodeRscPath, encodeFuncId } from '../lib/renderers/utils.js';
+import { withTrialSlash } from '../lib/utils/path.js';
 
 const { createFromFetch, encodeReply, createTemporaryReferenceSet } =
   RSDWClient;
@@ -29,7 +30,7 @@ const DEFAULT_HTML_HEAD = [
   createElement('meta', { name: 'generator', content: 'Waku' }),
 ];
 
-const BASE_RSC_PATH = `${import.meta.env?.WAKU_CONFIG_BASE_PATH}${
+const BASE_RSC_PATH = `${withTrialSlash(import.meta.env?.WAKU_CONFIG_BASE_PATH)}${
   import.meta.env?.WAKU_CONFIG_RSC_BASE
 }/`;
 

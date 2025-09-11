@@ -45,7 +45,7 @@ import {
 import type { RouteProps } from './common.js';
 import type { RouteConfig } from './base-types.js';
 import { getErrorInfo } from '../lib/utils/custom-errors.js';
-import { withoutTrialSlash } from '../lib/utils/path.js';
+import { withoutBase, withoutTrialSlash } from '../lib/utils/path.js';
 
 type AllowPathDecorators<Path extends string> = Path extends unknown
   ? Path | `${Path}?${string}` | `${Path}#${string}`
@@ -58,20 +58,16 @@ type InferredPaths = RouteConfig extends {
   : string;
 
 const normalizeRoutePath = (path: string) => {
-  let _path = path;
-
-  const basePath = import.meta.env.WAKU_CONFIG_BASE_PATH;
-  if (_path.startsWith(basePath)) {
-    _path =_path.slice(basePath.length) || '/';
-  }
+  const basePath = import.meta.env.WAKU_CONFIG_BASE_PATH as string;
+  const routePath = withoutBase(path, basePath)
 
   for (const suffix of ['/', '/index.html']) {
-    if (_path.endsWith(suffix)) {
-      return _path.slice(0, -suffix.length) || '/';
+    if (routePath.endsWith(suffix)) {
+      return routePath.slice(0, -suffix.length) || '/';
     }
   }
 
-  return _path;
+  return routePath;
 };
 
 const parseRoute = (url: URL): RouteProps => {

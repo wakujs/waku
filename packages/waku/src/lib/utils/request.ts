@@ -3,6 +3,7 @@ import { decodeFuncId, decodeRscPath } from '../renderers/utils.js';
 import type { HandlerContext } from '../middleware/types.js';
 import type { ConfigDev } from '../config/types.js';
 import type { HandleRequest } from '../types.js';
+import { withoutBase, withTrialSlash } from './path.js';
 
 type HandleRequestInput = Parameters<HandleRequest>[0];
 
@@ -22,8 +23,7 @@ export async function getInput(
   loadServerAction: (id: string) => Promise<unknown>,
 ) {
   const url = new URL(ctx.req.url);
-  // TODO: 
-  const rscPathPrefix = config.basePath + config.rscBase + '/';
+  const rscPathPrefix = `${withTrialSlash(config.basePath)}${config.rscBase}/`;
   let rscPath: string | undefined;
   let temporaryReferences: unknown | undefined;
   let input: HandleRequestInput;
@@ -88,10 +88,9 @@ export async function getInput(
     }
   } else {
     // SSR
-    const pathname = url.pathname.startsWith(config.basePath) ? url.pathname.slice(config.basePath.length) + '/' : url.pathname;
     input = {
       type: 'custom',
-      pathname,
+      pathname: withoutBase(url.pathname, config.basePath),
       req: ctx.req,
     };
   }
