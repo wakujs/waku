@@ -223,7 +223,7 @@ export function withTrialSlash(s: string) {
 }
 
 export function withoutTrialSlash(s: string) {
-  return s.at(-1) === '/' ? s.slice(0, -1) : s;
+  return s !== '/' && s.at(-1) === '/' ? s.slice(0, -1) : s;
 }
 
 export function withoutBase(s: string, basePath: string) {

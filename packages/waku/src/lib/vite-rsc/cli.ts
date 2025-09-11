@@ -86,7 +86,7 @@ export async function cli(
     function startServer(port: number) {
       return new Promise<void>((resolve, reject) => {
         const server = serve({ fetch: entry.default, port }, () => {
-          console.log(`ready: Listening on http://localhost:${port}/`);
+          console.log(`ready: Listening on http://localhost:${port}${rscPluginOptions.config?.basePath ?? '/'}`);
           resolve();
         });
         server.on('error', (err: NodeJS.ErrnoException) => {
