@@ -59,3 +59,25 @@ export type ServerEntries = {
     handleBuild: HandleBuild;
   };
 };
+
+/** @deprecated This will be removed soon. */
+export type HandlerContext = {
+  req: Request;
+  res?: Response;
+  readonly data: Record<string, unknown>;
+};
+
+/** @deprecated This will be removed soon. */
+type Handler = (
+  ctx: HandlerContext,
+  next: () => Promise<void>,
+) => Promise<void>;
+
+/** @deprecated This will be removed soon. */
+export type MiddlewareOptions = {
+  cmd: 'dev' | 'start';
+  env: Record<string, string>;
+};
+
+/** @deprecated This will be removed soon. */
+export type Middleware = (options: MiddlewareOptions) => Handler;
