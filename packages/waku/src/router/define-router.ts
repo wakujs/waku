@@ -139,31 +139,30 @@ type SlotId = string;
 const ROUTE_SLOT_ID_PREFIX = 'route:';
 const SLICE_SLOT_ID_PREFIX = 'slice:';
 
+export type RouterConfig =
+  | {
+      type: 'route';
+      path: PathSpec;
+      isStatic: boolean;
+      pathPattern?: PathSpec;
+      rootElement: { isStatic?: boolean };
+      routeElement: { isStatic?: boolean };
+      elements: Record<SlotId, { isStatic?: boolean }>;
+      noSsr?: boolean;
+    }
+  | {
+      type: 'api';
+      path: PathSpec;
+      isStatic: boolean;
+    }
+  | {
+      type: 'slice';
+      id: string;
+      isStatic: boolean;
+    };
+
 export function unstable_defineRouter(fns: {
-  getConfig: () => Promise<
-    Iterable<
-      | {
-          type: 'route';
-          path: PathSpec;
-          isStatic: boolean;
-          pathPattern?: PathSpec;
-          rootElement: { isStatic?: boolean };
-          routeElement: { isStatic?: boolean };
-          elements: Record<SlotId, { isStatic?: boolean }>;
-          noSsr?: boolean;
-        }
-      | {
-          type: 'api';
-          path: PathSpec;
-          isStatic: boolean;
-        }
-      | {
-          type: 'slice';
-          id: string;
-          isStatic: boolean;
-        }
-    >
-  >;
+  getConfig: () => Promise<Iterable<RouterConfig>>;
   handleRoute: (
     path: string,
     options: {

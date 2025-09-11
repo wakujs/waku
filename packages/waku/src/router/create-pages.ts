@@ -1,7 +1,7 @@
 import { createElement, Fragment } from 'react';
 import type { FunctionComponent, ReactNode } from 'react';
 
-import { unstable_defineRouter } from './define-router.js';
+import { type RouterConfig, unstable_defineRouter } from './define-router.js';
 import type { RouteProps } from './common.js';
 import {
   joinPath,
@@ -262,6 +262,13 @@ type ComponentList = {
 }[];
 
 type ComponentEntry = FunctionComponent<any> | ComponentList;
+
+interface LayoutInfo {
+  path: string;
+  spec: PathSpec;
+  component: ComponentEntry | FunctionComponent<any>;
+  isDynamic: boolean;
+}
 
 const routePriorityComparator = (
   a: {
@@ -613,12 +620,7 @@ export const createPages = <
   };
 
   const getLayouts = (spec: PathSpec) => {
-    const layoutInfos: {
-      path: string;
-      spec: PathSpec;
-      component: ComponentEntry | FunctionComponent<any>;
-      isDynamic: boolean;
-    }[] = [];
+    const layoutInfos: LayoutInfo[] = [];
 
     for (let i = -1; i < spec.length; i++) {
       const subSpec = spec.slice(0, i + 1);
@@ -647,16 +649,8 @@ export const createPages = <
   const definedRouter = unstable_defineRouter({
     getConfig: async () => {
       await configure();
-      const routeConfigs: {
-        type: 'route';
-        path: PathSpec;
-        isStatic: boolean;
-        pathPattern?: PathSpec;
-        rootElement: { isStatic?: boolean };
-        routeElement: { isStatic?: boolean };
-        elements: Record<string, { isStatic?: boolean }>;
-        noSsr: boolean;
-      }[] = [];
+      const pathConfigs: Extract<RouterConfig, { type: 'route' | 'api' }>[] =
+        [];
       const rootIsStatic = !rootItem || rootItem.render === 'static';
       for (const [path, { literalSpec, originalSpec }] of staticPathMap) {
         const noSsr = noSsrSet.has(literalSpec);
@@ -670,7 +664,7 @@ export const createPages = <
           };
         }
 
-        routeConfigs.push({
+        pathConfigs.push({
           type: 'route',
           path: literalSpec.filter((part) => !part.name?.startsWith('(')),
           isStatic:
@@ -709,7 +703,7 @@ export const createPages = <
         } else {
           elements[`page:${path}`] = { isStatic: false };
         }
-        routeConfigs.push({
+        pathConfigs.push({
           type: 'route',
           isStatic:
             rootIsStatic &&
@@ -722,26 +716,28 @@ export const createPages = <
           noSsr,
         });
       }
-      const apiConfigs = Array.from(apiPathMap.values()).map(
-        ({ pathSpec, render }) => {
-          return {
-            type: 'api' as const,
-            path: pathSpec,
-            isStatic: render === 'static',
-          };
-        },
+
+      for (const { render, pathSpec } of apiPathMap.values()) {
+        pathConfigs.push({
+          type: 'api',
+          path: pathSpec,
+          isStatic: render === 'static',
+        });
+      }
+
+      // Sort routes by priority: "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
+      const configs: RouterConfig[] = pathConfigs.sort((configA, configB) =>
+        routePriorityComparator(configA, configB),
       );
+      for (const [id, { isStatic }] of sliceIdMap) {
+        configs.push({
+          type: 'slice',
+          id,
+          isStatic,
+        });
+      }
 
-      const sliceConfigs = Array.from(sliceIdMap).map(([id, { isStatic }]) => ({
-        type: 'slice' as const,
-        id,
-        isStatic,
-      }));
-
-      const pathConfigs = [...routeConfigs, ...apiConfigs]
-        // Sort routes by priority: "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
-        .sort((configA, configB) => routePriorityComparator(configA, configB));
-      return [...pathConfigs, ...sliceConfigs];
+      return configs;
     },
     handleRoute: async (path, { query }) => {
       await configure();
