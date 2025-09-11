@@ -7,7 +7,7 @@ import {
   unstable_createAsyncIterable as createAsyncIterable,
   unstable_getContext as getContext,
 } from '../server.js';
-import { unstable_defineEntries as defineEntries } from '../minimal/server.js';
+import { unstable_defineServer as defineServer } from '../minimal/server.js';
 import {
   encodeRoutePath,
   decodeRoutePath,
@@ -396,8 +396,8 @@ export function unstable_defineRouter(fns: {
     return entries;
   };
 
-  type HandleRequest = Parameters<typeof defineEntries>[0]['handleRequest'];
-  type HandleBuild = Parameters<typeof defineEntries>[0]['handleBuild'];
+  type HandleRequest = Parameters<typeof defineServer>[0]['handleRequest'];
+  type HandleBuild = Parameters<typeof defineServer>[0]['handleBuild'];
   type BuildConfig =
     NonNullable<ReturnType<HandleBuild>> extends AsyncIterable<infer T>
       ? T
@@ -653,5 +653,5 @@ export function unstable_defineRouter(fns: {
       return tasks;
     });
 
-  return defineEntries({ handleRequest, handleBuild });
+  return defineServer({ handleRequest, handleBuild });
 }

@@ -1,10 +1,10 @@
-import { unstable_defineEntries as defineEntries } from 'waku/minimal/server';
+import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { Slot } from 'waku/minimal/client';
 
 import App from './components/App.js';
 import TestApp from './components/test-app.js';
 
-const entries: ReturnType<typeof defineEntries> = defineEntries({
+const entries: ReturnType<typeof defineServer> = defineServer({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
       if (input.rscPath === 'test') {

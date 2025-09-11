@@ -1,6 +1,6 @@
-import { unstable_defineEntries as defineEntries } from 'waku/minimal/server';
+import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 
-export default defineEntries({
+export default defineServer({
   handleRequest: async (input, { renderRsc }) => {
     if (input.type === 'function') {
       const value = await input.fn(...input.args);
