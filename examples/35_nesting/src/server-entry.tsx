@@ -1,4 +1,4 @@
-import { unstable_defineEntries as defineEntries } from 'waku/minimal/server';
+import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { Slot } from 'waku/minimal/client';
 import { unstable_createAsyncIterable as createAsyncIterable } from 'waku/server';
 
@@ -6,7 +6,7 @@ import App from './components/App';
 import InnerApp from './components/InnerApp';
 import AppWithoutSsr from './components/AppWithoutSsr';
 
-export default defineEntries({
+export default defineServer({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
       const params = new URLSearchParams(

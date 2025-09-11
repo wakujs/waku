@@ -1,11 +1,11 @@
-import { unstable_defineEntries as defineEntries } from 'waku/minimal/server';
+import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { Children, Slot } from 'waku/minimal/client';
 import { unstable_createAsyncIterable as createAsyncIterable } from 'waku/server';
 
 import App from './components/App';
 import Dynamic from './components/Dynamic';
 
-export default defineEntries({
+export default defineServer({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
       if (input.rscPath === '') {

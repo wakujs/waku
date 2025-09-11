@@ -24,8 +24,7 @@ type RenderHtml = (
   options: { rscPath: string; actionResult?: unknown; status?: number },
 ) => Promise<Response>;
 
-// This API is still unstable
-export type HandleRequest = (
+export type Unstable_HandleRequest = (
   input: (
     | { type: 'component'; rscPath: string; rscParams: unknown }
     | {
@@ -60,18 +59,16 @@ type BuildConfig =
       pathname: string;
     };
 
-// This API is still unstable
-export type HandleBuild = (utils: {
+export type Unstable_HandleBuild = (utils: {
   renderRsc: RenderRsc;
   renderHtml: RenderHtml;
   rscPath2pathname: (rscPath: string) => string;
 }) => AsyncIterable<BuildConfig> | null;
 
-/** @deprecated This will be removed soon. */
-export type ServerEntries = {
+export type Unstable_ServerEntry = {
   default: {
-    handleRequest: HandleRequest;
-    handleBuild: HandleBuild;
+    handleRequest: Unstable_HandleRequest;
+    handleBuild: Unstable_HandleBuild;
   };
 };
 

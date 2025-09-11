@@ -9,7 +9,11 @@ import {
 import { stringToStream } from '../utils/stream.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
 import { config } from 'virtual:vite-rsc-waku/config';
-import type { HandleRequest, HandlerContext, Middleware } from '../types.js';
+import type {
+  Unstable_HandleRequest as HandleRequest,
+  HandlerContext,
+  Middleware,
+} from '../types.js';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 import { getInput } from '../utils/request.js';
 import { createRenderUtils } from '../utils/render.js';
