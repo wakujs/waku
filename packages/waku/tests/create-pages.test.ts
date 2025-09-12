@@ -2,7 +2,7 @@ import { expect, vi, describe, it, beforeEach, assert } from 'vitest';
 import type { MockedFunction } from 'vitest';
 import {
   createPages,
-  pathMappingWithoutGroups,
+  getGrouplessPathSpec,
 } from '../src/router/create-pages.js';
 import type {
   CreateApi,
@@ -23,7 +23,7 @@ import { expectType } from 'ts-expect';
 import type { TypeEqual } from 'ts-expect';
 import type { PathsForPages } from '../src/router/base-types.js';
 import type { GetSlugs } from '../src/router/create-pages-utils/inferred-path-types.js';
-import { parsePathWithSlug } from '../src/lib/utils/path.js';
+import { getPathMapping, parsePathWithSlug } from '../src/lib/utils/path.js';
 
 function Fake() {
   return null;
@@ -2255,19 +2255,40 @@ describe('createPages - grouped paths', () => {
   });
 });
 
-describe('pathMappingWithoutGroups', () => {
+describe('getGrouplessPathSpec', () => {
   it('handles paths with pathless groups', () => {
-    const pathSpec = parsePathWithSlug('/(foo)/bar');
-    expect(pathMappingWithoutGroups(pathSpec, '/bar')).toEqual({});
-    expect(pathMappingWithoutGroups(pathSpec, '/(foo)/bar')).toEqual(null);
+    const pathSpec = getGrouplessPathSpec(parsePathWithSlug('/(foo)/bar'));
+    expect(pathSpec).toMatchInlineSnapshot(`
+      [
+        {
+          "name": "bar",
+          "type": "literal",
+        },
+      ]
+    `);
+    expect(getPathMapping(pathSpec, '/bar')).toEqual({});
+    expect(getPathMapping(pathSpec, '/(foo)/bar')).toEqual(null);
   });
 
   it('handles paths with pathless groups and groups', () => {
-    const pathSpec = parsePathWithSlug('/(foo)/bar/[id]');
-    expect(pathMappingWithoutGroups(pathSpec, '/bar/123')).toEqual({
+    const pathSpec = getGrouplessPathSpec(parsePathWithSlug('/(foo)/bar/[id]'));
+
+    expect(pathSpec).toMatchInlineSnapshot(`
+      [
+        {
+          "name": "bar",
+          "type": "literal",
+        },
+        {
+          "name": "id",
+          "type": "group",
+        },
+      ]
+    `);
+    expect(getPathMapping(pathSpec, '/bar/123')).toEqual({
       id: '123',
     });
-    expect(pathMappingWithoutGroups(pathSpec, '/(foo)/bar/123')).toEqual(null);
-    expect(pathMappingWithoutGroups(pathSpec, '/(foo)/bar/[id]')).toEqual(null);
+    expect(getPathMapping(pathSpec, '/(foo)/bar/123')).toEqual(null);
+    expect(getPathMapping(pathSpec, '/(foo)/bar/[id]')).toEqual(null);
   });
 });
