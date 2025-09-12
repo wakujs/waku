@@ -51,7 +51,6 @@ export async function renderHTML(
     bootstrapScriptContent:
       getBootstrapPreamble({ rscPath: options?.rscPath || '' }) +
       bootstrapScriptContent,
-    nonce: options?.nonce,
     onError: (e: unknown) => {
       if (
         e &&
@@ -63,7 +62,8 @@ export async function renderHTML(
       }
       console.error('[SSR Error]', captureOwnerStack?.() || '', '\n', e);
     },
-    formState: options?.formState,
+    ...(options?.nonce ? { nonce: options.nonce } : {}),
+    ...(options?.formState ? { formState: options.formState } : {}),
   });
 
   let responseStream: ReadableStream<Uint8Array> = htmlStream;

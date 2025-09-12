@@ -101,31 +101,3 @@ declare module 'react-server-dom-webpack/client.edge' {
     options: Options<T>,
   ): Promise<T>;
 }
-
-declare module 'react-dom/server.edge' {
-  type Options = {
-    identifierPrefix?: string;
-    namespaceURI?: string;
-    nonce?: string | undefined;
-    bootstrapScriptContent?: string;
-    bootstrapScripts?: Array<string | BootstrapScriptDescriptor>;
-    bootstrapModules?: Array<string | BootstrapScriptDescriptor>;
-    progressiveChunkSize?: number;
-    signal?: AbortSignal;
-    onError?: (error: unknown, errorInfo: ErrorInfo) => string | void;
-    onPostpone?: (reason: string, postponeInfo: PostponeInfo) => void;
-    unstable_externalRuntimeSrc?: string | BootstrapScriptDescriptor;
-    importMap?: ImportMap;
-    formState?: ReactFormState | undefined;
-    onHeaders?: (headers: Headers) => void;
-    maxHeadersLength?: number;
-  };
-
-  export interface ReactDOMServerReadableStream extends ReadableStream {
-    allReady: Promise<void>;
-  }
-  export function renderToReadableStream(
-    children: ReactNode,
-    options?: Options,
-  ): Promise<ReactDOMServerReadableStream>;
-}
