@@ -25,4 +25,4 @@ const app = honoEnhancer(createApp)(new Hono());
 
 export default getRequestListener(app.fetch);
 
-export { handleBuild } from '../../build.js';
+export { processBuild } from '../../build.js';

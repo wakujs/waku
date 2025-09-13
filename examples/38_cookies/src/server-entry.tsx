@@ -24,5 +24,5 @@ export default defineServer({
       );
     }
   },
-  handleBuild: () => null,
+  handleBuild: async () => {},
 });

@@ -47,23 +47,16 @@ export type Unstable_HandleRequest = (
   },
 ) => Promise<ReadableStream | Response | 'fallback' | null | undefined>;
 
-// needs better name (it's not just config)
-type BuildConfig =
-  | {
-      type: 'file';
-      pathname: string;
-      body: Promise<ReadableStream | string>;
-    }
-  | {
-      type: 'defaultHtml';
-      pathname: string;
-    };
-
 export type Unstable_HandleBuild = (utils: {
   renderRsc: RenderRsc;
   renderHtml: RenderHtml;
   rscPath2pathname: (rscPath: string) => string;
-}) => AsyncIterable<BuildConfig> | null;
+  generateFile: (
+    pathname: string,
+    body: Promise<ReadableStream | string>,
+  ) => Promise<void>;
+  generateDefaultHtml: (pathname: string) => Promise<void>;
+}) => Promise<void>;
 
 export type Unstable_ServerEntry = {
   default: {

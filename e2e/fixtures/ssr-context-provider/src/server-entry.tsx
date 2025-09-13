@@ -16,7 +16,7 @@ const entries: ReturnType<typeof defineServer> = defineServer({
       return renderHtml({ App: <App /> }, <Slot id="App" />, { rscPath: '' });
     }
   },
-  handleBuild: () => null,
+  handleBuild: async () => {},
 });
 
 export default entries;

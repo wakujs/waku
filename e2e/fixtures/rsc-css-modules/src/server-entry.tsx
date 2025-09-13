@@ -13,7 +13,7 @@ const entries: ReturnType<typeof defineServer> = defineServer({
     }
     return 'fallback';
   },
-  handleBuild: () => null,
+  handleBuild: async () => {},
 });
 
 export default entries;

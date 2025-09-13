@@ -27,5 +27,5 @@ export default defineServer({
       return stringToStream('world');
     }
   },
-  handleBuild: () => null,
+  handleBuild: async () => {},
 });

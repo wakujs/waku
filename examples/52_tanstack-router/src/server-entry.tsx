@@ -8,5 +8,5 @@ export default defineServer({
     }
     return 'fallback';
   },
-  handleBuild: () => null,
+  handleBuild: async () => {},
 });
