@@ -84,7 +84,7 @@ export async function cli(
     await startServer(port);
     function startServer(port: number) {
       return new Promise<void>((resolve, reject) => {
-        const server = serve({ fetch: entry.default, port }, () => {
+        const server = serve({ fetch: entry.fetch, port }, () => {
           console.log(`ready: Listening on http://localhost:${port}/`);
           resolve();
         });

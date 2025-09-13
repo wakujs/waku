@@ -55,6 +55,7 @@ export interface Config {
   /**
    * Enhancer for Hono
    * Defaults to `undefined`
+   * @deprecated This will be removed soon.
    */
   unstable_honoEnhancer?: string | undefined;
   /**

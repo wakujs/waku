@@ -1,10 +1,18 @@
 import { Hono } from 'hono';
-import { createHonoHandler } from '../../engine.js';
-import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
+import serverEntry from 'virtual:vite-rsc-waku/server-entry';
+import { config, isBuild } from 'virtual:vite-rsc-waku/config';
+import { rscMiddleware } from '../../../engine.js';
 import { INTERNAL_setAllEnv } from '../../../../server.js';
 
-function createApp(app: Hono) {
-  app.use(createHonoHandler());
+function createApp() {
+  const app = new Hono();
+  app.use(
+    rscMiddleware({
+      handleRequest: serverEntry.handleRequest,
+      config,
+      isBuild,
+    }),
+  );
   app.notFound(async (c) => {
     const assetsFetcher = (c.env as any).ASSETS;
     const url = new URL(c.req.raw.url);
@@ -29,7 +37,7 @@ export default {
   async onFetch(request: Request, env: any, ctx: any) {
     if (!app) {
       INTERNAL_setAllEnv(env);
-      app = honoEnhancer(createApp)(new Hono());
+      app = createApp();
     }
     return app.fetch(request, env, ctx);
   },

@@ -1,5 +1,6 @@
 import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { Slot } from 'waku/minimal/client';
+import { unstable_engine as engine } from 'waku/server';
 
 import App from './components/App';
 import InnerApp from './components/InnerApp';
@@ -53,4 +54,5 @@ export default defineServer({
     await generateDefaultHtml('/');
     await generateDefaultHtml('/no-ssr');
   },
+  createFetch: engine.createFetch,
 });

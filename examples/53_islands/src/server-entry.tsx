@@ -1,5 +1,6 @@
 import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { Children, Slot } from 'waku/minimal/client';
+import { unstable_engine as engine } from 'waku/server';
 
 import App from './components/App';
 import Dynamic from './components/Dynamic';
@@ -46,4 +47,5 @@ export default defineServer({
       }).then((res) => res.body || ''),
     );
   },
+  createFetch: engine.createFetch,
 });

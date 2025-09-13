@@ -1,7 +1,11 @@
 import fsPromises from 'node:fs/promises';
 import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { Slot } from 'waku/minimal/client';
-import { unstable_getContextData as getContextData } from 'waku/server';
+import {
+  unstable_getContextData as getContextData,
+  unstable_engine as engine,
+} from 'waku/server';
+
 import App from './components/App';
 
 export default defineServer({
@@ -25,4 +29,5 @@ export default defineServer({
     }
   },
   handleBuild: async () => {},
+  createFetch: engine.createFetch,
 });

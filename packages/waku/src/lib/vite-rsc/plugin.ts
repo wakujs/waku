@@ -44,7 +44,6 @@ export type RscPluginOptions = {
 };
 
 export type Flags = {
-  'experimental-compress'?: boolean | undefined;
   'experimental-partial'?: boolean | undefined;
   'with-vercel'?: boolean | undefined;
   'with-vercel-static'?: boolean | undefined;
@@ -225,7 +224,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
           server.middlewares.use(async (req, res, next) => {
             try {
               const mod = await environment.runner.import(entryId);
-              await getRequestListener(mod.default)(req, res);
+              await getRequestListener(mod.fetch)(req, res);
             } catch (e) {
               next(e);
             }
