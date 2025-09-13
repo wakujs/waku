@@ -4,10 +4,9 @@ import type { ReactNode } from 'react';
 import {
   unstable_getPlatformData,
   unstable_setPlatformData,
-  unstable_createAsyncIterable as createAsyncIterable,
   unstable_getContext as getContext,
 } from '../server.js';
-import { unstable_defineEntries as defineEntries } from '../minimal/server.js';
+import { unstable_defineServer as defineServer } from '../minimal/server.js';
 import {
   encodeRoutePath,
   decodeRoutePath,
@@ -396,12 +395,8 @@ export function unstable_defineRouter(fns: {
     return entries;
   };
 
-  type HandleRequest = Parameters<typeof defineEntries>[0]['handleRequest'];
-  type HandleBuild = Parameters<typeof defineEntries>[0]['handleBuild'];
-  type BuildConfig =
-    NonNullable<ReturnType<HandleBuild>> extends AsyncIterable<infer T>
-      ? T
-      : never;
+  type HandleRequest = Parameters<typeof defineServer>[0]['handleRequest'];
+  type HandleBuild = Parameters<typeof defineServer>[0]['handleBuild'];
 
   const handleRequest: HandleRequest = async (
     input,
@@ -533,125 +528,110 @@ export function unstable_defineRouter(fns: {
     }
   };
 
-  type Tasks = Array<() => Promise<BuildConfig>>;
-  const handleBuild: HandleBuild = ({
+  const handleBuild: HandleBuild = async ({
     renderRsc,
     renderHtml,
     rscPath2pathname,
-  }) =>
-    createAsyncIterable(async (): Promise<Tasks> => {
-      const tasks: Tasks = [];
-      const myConfig = await getMyConfig();
+    generateFile,
+    generateDefaultHtml,
+  }) => {
+    const myConfig = await getMyConfig();
 
-      for (const item of myConfig) {
-        const { handleApi } = fns;
-        if (
-          item.type === 'api' &&
-          item.pathname &&
-          item.specs.isStatic &&
-          handleApi
-        ) {
-          const pathname = item.pathname;
-          tasks.push(async () => ({
-            type: 'file',
-            pathname,
-            body: handleApi(
-              new Request(new URL(pathname, 'http://localhost:3000')),
-            ).then((res) => res.body || stringToStream('')),
-          }));
-        }
+    for (const item of myConfig) {
+      const { handleApi } = fns;
+      if (
+        item.type === 'api' &&
+        item.pathname &&
+        item.specs.isStatic &&
+        handleApi
+      ) {
+        const pathname = item.pathname;
+        await generateFile(
+          pathname,
+          handleApi(
+            new Request(new URL(pathname, 'http://localhost:3000')),
+          ).then((res) => res.body || stringToStream('')),
+        );
       }
+    }
 
-      // FIXME this approach keeps all entries in memory during the loop
-      const entriesCache = new Map<string, Record<string, unknown>>();
-      await Promise.all(
-        myConfig.map(async (item) => {
-          if (item.type !== 'route') {
-            return;
-          }
-          if (!item.pathname) {
-            return;
-          }
-          const rscPath = encodeRoutePath(item.pathname);
-          const entries = await getEntries(rscPath, undefined, {});
-          if (entries) {
-            entriesCache.set(item.pathname, entries);
-            if (item.specs.isStatic) {
-              tasks.push(async () => ({
-                type: 'file',
-                pathname: rscPath2pathname(rscPath),
-                body: renderRsc(entries),
-              }));
-            }
-          }
-        }),
-      );
-
-      for (const item of myConfig) {
+    // FIXME this approach keeps all entries in memory during the loop
+    const entriesCache = new Map<string, Record<string, unknown>>();
+    await Promise.all(
+      myConfig.map(async (item) => {
         if (item.type !== 'route') {
-          continue;
+          return;
         }
-        const { pathname, specs } = item;
-        if (specs.noSsr) {
-          if (!pathname) {
-            throw new Error('Pathname is required for noSsr routes on build');
+        if (!item.pathname) {
+          return;
+        }
+        const rscPath = encodeRoutePath(item.pathname);
+        const entries = await getEntries(rscPath, undefined, {});
+        if (entries) {
+          entriesCache.set(item.pathname, entries);
+          if (item.specs.isStatic) {
+            await generateFile(rscPath2pathname(rscPath), renderRsc(entries));
           }
-          tasks.push(async () => ({
-            type: 'defaultHtml',
+        }
+      }),
+    );
+
+    for (const item of myConfig) {
+      if (item.type !== 'route') {
+        continue;
+      }
+      const { pathname, specs } = item;
+      if (specs.noSsr) {
+        if (!pathname) {
+          throw new Error('Pathname is required for noSsr routes on build');
+        }
+        await generateDefaultHtml(pathname);
+      } else if (pathname) {
+        const entries = entriesCache.get(pathname);
+        if (specs.isStatic && entries) {
+          const rscPath = encodeRoutePath(pathname);
+          const html = createElement(INTERNAL_ServerRouter, {
+            route: { path: pathname, query: '', hash: '' },
+            httpstatus: specs.is404 ? 404 : 200,
+          });
+          await generateFile(
             pathname,
-          }));
-        } else if (pathname) {
-          const entries = entriesCache.get(pathname);
-          if (specs.isStatic && entries) {
-            const rscPath = encodeRoutePath(pathname);
-            const html = createElement(INTERNAL_ServerRouter, {
-              route: { path: pathname, query: '', hash: '' },
-              httpstatus: specs.is404 ? 404 : 200,
-            });
-            tasks.push(async () => ({
-              type: 'file',
-              pathname,
-              body: renderHtml(entries, html, {
-                rscPath,
-              }).then((res) => res.body || ''),
-            }));
-          }
+            renderHtml(entries, html, {
+              rscPath,
+            }).then((res) => res.body || ''),
+          );
         }
       }
+    }
 
-      await Promise.all(
-        myConfig.map(async (item) => {
-          if (item.type !== 'slice') {
-            return;
-          }
-          if (!item.specs.isStatic) {
-            return;
-          }
-          if (!fns.handleSlice) {
-            return;
-          }
-          const { element } = await fns.handleSlice(item.id);
-          const body = renderRsc({
-            [SLICE_SLOT_ID_PREFIX + item.id]: element,
-            ...(item.specs.isStatic
-              ? {
-                  // FIXME: hard-coded for now
-                  [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + item.id]: true,
-                }
-              : {}),
-          });
-          const rscPath = encodeSliceId(item.id);
-          tasks.push(async () => ({
-            type: 'file',
-            pathname: rscPath2pathname(rscPath),
-            body,
-          }));
-        }),
-      );
+    await Promise.all(
+      myConfig.map(async (item) => {
+        if (item.type !== 'slice') {
+          return;
+        }
+        if (!item.specs.isStatic) {
+          return;
+        }
+        if (!fns.handleSlice) {
+          return;
+        }
+        const { element } = await fns.handleSlice(item.id);
+        const body = renderRsc({
+          [SLICE_SLOT_ID_PREFIX + item.id]: element,
+          ...(item.specs.isStatic
+            ? {
+                // FIXME: hard-coded for now
+                [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + item.id]: true,
+              }
+            : {}),
+        });
+        const rscPath = encodeSliceId(item.id);
+        await generateFile(rscPath2pathname(rscPath), body);
+      }),
+    );
 
-      await unstable_setPlatformData('defineRouterMyConfig', myConfig, true);
-      return tasks;
-    });
+    await unstable_setPlatformData('defineRouterMyConfig', myConfig, true);
+  };
 
-  return defineEntries({ handleRequest, handleBuild });
+  return defineServer({ handleRequest, handleBuild });
 }

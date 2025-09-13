@@ -1,23 +1,26 @@
 import { renderToReadableStream } from '@vitejs/plugin-rsc/rsc';
+import type { ResolvedConfig as ViteConfig } from 'vite';
 import { createRenderUtils } from '../utils/render.js';
 import { encodeRscPath } from '../renderers/utils.js';
 import { joinPath } from '../utils/path.js';
-import { config } from 'virtual:vite-rsc-waku/config';
+import type { Config } from '../../config.js';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 
-export async function handleBuild() {
+export async function processBuild(
+  viteConfig: Pick<ViteConfig, 'root'>,
+  config: Pick<Required<Config>, 'distDir' | 'rscBase'>,
+  emitStaticFile: (
+    rootDir: string,
+    config: Pick<Required<Config>, 'distDir'>,
+    pathname: string,
+    bodyPromise: Promise<ReadableStream | string>,
+  ) => void,
+) {
   const renderUtils = createRenderUtils(
     undefined,
     renderToReadableStream,
     loadSsrEntryModule,
   );
-
-  const buildConfigs = serverEntry.handleBuild({
-    renderRsc: renderUtils.renderRsc,
-    renderHtml: renderUtils.renderHtml,
-    rscPath2pathname: (rscPath) =>
-      joinPath(config.rscBase, encodeRscPath(rscPath)),
-  });
 
   let fallbackHtml: string | undefined;
   const getFallbackHtml = async () => {
@@ -28,7 +31,31 @@ export async function handleBuild() {
     return fallbackHtml;
   };
 
-  return { buildConfigs, getFallbackHtml };
+  await serverEntry.handleBuild({
+    renderRsc: renderUtils.renderRsc,
+    renderHtml: renderUtils.renderHtml,
+    rscPath2pathname: (rscPath) =>
+      joinPath(config.rscBase, encodeRscPath(rscPath)),
+    generateFile: async (
+      pathname: string,
+      body: Promise<ReadableStream | string>,
+    ) => {
+      emitStaticFile(
+        viteConfig.root,
+        { distDir: config.distDir },
+        pathname,
+        body,
+      );
+    },
+    generateDefaultHtml: async (pathname: string) => {
+      emitStaticFile(
+        viteConfig.root,
+        { distDir: config.distDir },
+        pathname,
+        getFallbackHtml(),
+      );
+    },
+  });
 }
 
 function loadSsrEntryModule() {

@@ -1,10 +1,10 @@
-import { unstable_defineEntries as defineEntries } from 'waku/minimal/server';
+import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { Slot } from 'waku/minimal/client';
 
 import Layout from './components/layout';
 import App from './components/app';
 
-export default defineEntries({
+export default defineServer({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
       return renderRsc({
@@ -29,5 +29,5 @@ export default defineEntries({
       );
     }
   },
-  handleBuild: () => null,
+  handleBuild: async () => {},
 });

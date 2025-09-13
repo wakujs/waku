@@ -390,24 +390,7 @@ if (import.meta.hot) {
           // run `handleBuild`
           INTERNAL_setAllEnv(process.env as any);
           unstable_getBuildOptions().unstable_phase = 'emitStaticFiles';
-          const { buildConfigs, getFallbackHtml } = await entry.handleBuild();
-          for await (const buildConfig of buildConfigs || []) {
-            if (buildConfig.type === 'file') {
-              emitStaticFile(
-                viteConfig.root,
-                { distDir: config.distDir },
-                buildConfig.pathname,
-                buildConfig.body,
-              );
-            } else if (buildConfig.type === 'defaultHtml') {
-              emitStaticFile(
-                viteConfig.root,
-                { distDir: config.distDir },
-                buildConfig.pathname,
-                getFallbackHtml(),
-              );
-            }
-          }
+          await entry.processBuild(viteConfig, config, emitStaticFile);
           await waitForTasks();
 
           // save platform data

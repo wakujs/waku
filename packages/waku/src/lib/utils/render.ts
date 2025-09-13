@@ -1,5 +1,5 @@
 import type { ReactFormState } from 'react-dom/client';
-import type { HandleRequest } from '../types.js';
+import type { Unstable_HandleRequest as HandleRequest } from '../types.js';
 
 type RenderUtils = Parameters<HandleRequest>[1];
 type RenderHTML = (

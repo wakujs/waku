@@ -9,14 +9,18 @@ import {
 import { stringToStream } from '../utils/stream.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
 import { config } from 'virtual:vite-rsc-waku/config';
-import type { HandleRequest, HandlerContext, Middleware } from '../types.js';
+import type {
+  Unstable_HandleRequest as HandleRequest,
+  HandlerContext,
+  Middleware,
+} from '../types.js';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 import { getInput } from '../utils/request.js';
 import { createRenderUtils } from '../utils/render.js';
 
 type HandleRequestOutput = Awaited<ReturnType<HandleRequest>>;
 
-async function handleRequest(ctx: HandlerContext) {
+async function processRequest(ctx: HandlerContext) {
   await import('virtual:vite-rsc-waku/set-platform-data');
 
   const { input, temporaryReferences } = await getInput(
@@ -76,4 +80,4 @@ function loadSsrEntryModule() {
   );
 }
 
-export const handlerMiddleware: Middleware = () => handleRequest;
+export const handlerMiddleware: Middleware = () => processRequest;
