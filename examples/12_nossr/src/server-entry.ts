@@ -2,6 +2,7 @@
 
 import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { unstable_fsRouter as fsRouter } from 'waku/router/server';
+import { unstable_engine as engine } from 'waku/server';
 
 const router = fsRouter(
   import.meta.glob('/src/pages/**/*.tsx', { base: '/src/pages' }),
@@ -18,4 +19,5 @@ export default defineServer({
   handleBuild: (utils) => {
     return router.handleBuild(utils);
   },
+  createFetch: engine.createFetch,
 });

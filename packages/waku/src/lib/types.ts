@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import type { Config } from '../config.js';
+
 type Elements = Record<string, unknown>;
 
 type RenderRsc = (elements: Record<string, unknown>) => Promise<ReadableStream>;
@@ -44,10 +46,21 @@ export type Unstable_HandleBuild = (utils: {
   generateDefaultHtml: (pathname: string) => Promise<void>;
 }) => Promise<void>;
 
+export type Unstable_MiddlewareArgs = {
+  processRequest: (req: Request) => Promise<Response | null>;
+  config: Omit<Required<Config>, 'vite'>;
+  isBuild: boolean;
+};
+
+export type Unstable_CreateFetch = (
+  args: Unstable_MiddlewareArgs,
+) => (req: Request) => Promise<Response>;
+
 export type Unstable_ServerEntry = {
   default: {
     handleRequest: Unstable_HandleRequest;
     handleBuild: Unstable_HandleBuild;
+    createFetch: Unstable_CreateFetch;
   };
 };
 

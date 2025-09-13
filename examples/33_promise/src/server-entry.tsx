@@ -1,5 +1,6 @@
 import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { Children, Slot } from 'waku/minimal/client';
+import { unstable_engine as engine } from 'waku/server';
 
 import App from './components/App';
 
@@ -31,4 +32,5 @@ export default defineServer({
     }
   },
   handleBuild: async () => {},
+  createFetch: engine.createFetch,
 });
