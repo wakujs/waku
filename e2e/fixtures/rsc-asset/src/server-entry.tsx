@@ -12,7 +12,7 @@ const entries: ReturnType<typeof defineServer> = defineServer({
       return renderRsc({ _value: value });
     }
   },
-  handleBuild: () => null,
+  handleBuild: async () => {},
 });
 
 export default entries;

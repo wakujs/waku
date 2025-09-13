@@ -1,6 +1,5 @@
 import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { Slot } from 'waku/minimal/client';
-import { unstable_createAsyncIterable as createAsyncIterable } from 'waku/server';
 
 import App from './components/App';
 import InnerApp from './components/InnerApp';
@@ -32,31 +31,26 @@ export default defineServer({
       );
     }
   },
-  handleBuild: ({ renderRsc, rscPath2pathname }) =>
-    createAsyncIterable(async () => {
-      const tasks = [
-        async () => ({
-          type: 'file' as const,
-          pathname: rscPath2pathname(''),
-          body: renderRsc({
-            App: <App name="Waku" />,
-            InnerApp: <InnerApp count={0} />,
-          }),
-        }),
-        ...[1, 2, 3, 4, 5].map((count) => async () => ({
-          type: 'file' as const,
-          pathname: rscPath2pathname(`InnerApp=${count}`),
-          body: renderRsc({ App: <App name="Waku" /> }),
-        })),
-        async () => ({
-          type: 'defaultHtml' as const,
-          pathname: '/',
-        }),
-        async () => ({
-          type: 'defaultHtml' as const,
-          pathname: '/no-ssr',
-        }),
-      ];
-      return tasks;
-    }),
+  handleBuild: async ({
+    renderRsc,
+    rscPath2pathname,
+    generateFile,
+    generateDefaultHtml,
+  }) => {
+    await generateFile(
+      rscPath2pathname(''),
+      renderRsc({
+        App: <App name="Waku" />,
+        InnerApp: <InnerApp count={0} />,
+      }),
+    );
+    for (const count of [1, 2, 3, 4, 5]) {
+      await generateFile(
+        rscPath2pathname(`InnerApp=${count}`),
+        renderRsc({ App: <App name="Waku" /> }),
+      );
+    }
+    await generateDefaultHtml('/');
+    await generateDefaultHtml('/no-ssr');
+  },
 });

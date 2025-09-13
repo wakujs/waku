@@ -29,7 +29,7 @@ const entries: ReturnType<typeof defineServer> = defineServer({
       }
     }
   },
-  handleBuild: () => null,
+  handleBuild: async () => {},
 });
 
 export default entries;

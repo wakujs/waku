@@ -9,7 +9,7 @@ import {
   createWriteStream,
 } from '../utils/node-fs.js';
 import { DIST_PUBLIC } from './constants.js';
-import type { ConfigDev } from '../config/types.js';
+import type { Config } from '../../config.js';
 
 const createTaskRunner = (limit: number) => {
   let running = 0;
@@ -53,7 +53,7 @@ export { waitForTasks };
 // This is exported for vite-rsc. https://github.com/wakujs/waku/pull/1493
 export const emitStaticFile = (
   rootDir: string,
-  config: Pick<ConfigDev, 'distDir'>,
+  config: Pick<Required<Config>, 'distDir'>,
   pathname: string,
   bodyPromise: Promise<ReadableStream | string>,
 ) => {
