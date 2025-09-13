@@ -3,10 +3,7 @@ import fs from 'node:fs';
 import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
 import { serveStatic } from '@hono/node-server/serve-static';
-import type {
-  Unstable_MiddlewareArgs as MiddlewareArgs,
-  Unstable_CreateFetch as CreateFetch,
-} from './types.js';
+import type { Unstable_MiddlewareArgs as MiddlewareArgs } from './types.js';
 import { runWithContext } from './context.js';
 import { DIST_PUBLIC } from './builder/constants.js';
 import { INTERNAL_setAllEnv } from '../server.js';
@@ -50,19 +47,19 @@ export function notFoundMiddleware(args: MiddlewareArgs): MiddlewareHandler {
   };
 }
 
-export const createFetch: CreateFetch = (
+export function createFetch(
   args: MiddlewareArgs,
+  app = new Hono(),
   middlewares = [
     contextMiddleware,
     staticMiddleware,
     rscMiddleware,
     notFoundMiddleware,
   ],
-) => {
-  const app = new Hono();
+) {
   INTERNAL_setAllEnv(process.env as any);
   for (const m of middlewares) {
     app.use(m(args));
   }
-  return async (req) => app.fetch(req);
-};
+  return async (req: Request) => app.fetch(req);
+}
