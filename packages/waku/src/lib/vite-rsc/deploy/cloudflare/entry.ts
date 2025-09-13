@@ -1,18 +1,12 @@
 import { Hono } from 'hono';
-import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import { rscMiddleware } from '../../../engine.js';
+import { processRequest } from '../../handler.js';
 import { INTERNAL_setAllEnv } from '../../../../server.js';
 
 function createApp() {
   const app = new Hono();
-  app.use(
-    rscMiddleware({
-      handleRequest: serverEntry.handleRequest,
-      config,
-      isBuild,
-    }),
-  );
+  app.use(rscMiddleware({ processRequest, config, isBuild }));
   app.notFound(async (c) => {
     const assetsFetcher = (c.env as any).ASSETS;
     const url = new URL(c.req.raw.url);

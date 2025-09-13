@@ -47,7 +47,7 @@ export type Unstable_HandleBuild = (utils: {
 }) => Promise<void>;
 
 export type Unstable_MiddlewareArgs = {
-  handleRequest: Unstable_HandleRequest;
+  processRequest: (req: Request) => Promise<Response | null>;
   config: Omit<Required<Config>, 'vite'>;
   isBuild: boolean;
 };

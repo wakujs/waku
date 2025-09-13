@@ -8,7 +8,6 @@ import type {
   Unstable_CreateFetch as CreateFetch,
 } from './types.js';
 import { runWithContext } from './context.js';
-import { processRequest } from './vite-rsc/handler.js';
 import { DIST_PUBLIC } from './builder/constants.js';
 import { INTERNAL_setAllEnv } from '../server.js';
 
@@ -28,10 +27,10 @@ export function staticMiddleware(args: MiddlewareArgs): MiddlewareHandler {
 }
 
 export function rscMiddleware(args: MiddlewareArgs): MiddlewareHandler {
-  const { handleRequest } = args;
+  const { processRequest } = args;
   return async (c, next) => {
     const req = c.req.raw;
-    const res = await processRequest(req, handleRequest);
+    const res = await processRequest(req);
     if (res) {
       c.res = res;
       return;

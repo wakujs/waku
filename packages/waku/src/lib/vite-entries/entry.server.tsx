@@ -1,8 +1,9 @@
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
+import { processRequest } from '../vite-rsc/handler.js';
 
 export const fetch = serverEntry.createFetch({
-  handleRequest: serverEntry.handleRequest,
+  processRequest,
   config,
   isBuild,
 });

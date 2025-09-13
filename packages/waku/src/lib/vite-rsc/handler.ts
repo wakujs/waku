@@ -10,15 +10,13 @@ import { stringToStream } from '../utils/stream.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
 import { config } from 'virtual:vite-rsc-waku/config';
 import type { Unstable_HandleRequest as HandleRequest } from '../types.js';
+import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 import { getInput } from '../utils/request.js';
 import { createRenderUtils } from '../utils/render.js';
 
 type HandleRequestOutput = Awaited<ReturnType<HandleRequest>>;
 
-export async function processRequest(
-  req: Request,
-  handleRequest: HandleRequest,
-): Promise<Response | null> {
+export async function processRequest(req: Request): Promise<Response | null> {
   await import('virtual:vite-rsc-waku/set-platform-data');
 
   const temporaryReferences = createTemporaryReferenceSet();
@@ -41,7 +39,7 @@ export async function processRequest(
 
   let res: HandleRequestOutput;
   try {
-    res = await handleRequest(input, renderUtils);
+    res = await serverEntry.handleRequest(input, renderUtils);
   } catch (e) {
     const info = getErrorInfo(e);
     const status = info?.status || 500;

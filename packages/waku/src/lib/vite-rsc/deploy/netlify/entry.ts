@@ -1,14 +1,12 @@
 import { Hono } from 'hono';
-import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import { rscMiddleware } from '../../../engine.js';
+import { processRequest } from '../../handler.js';
 import { INTERNAL_setAllEnv } from '../../../../server.js';
 
 const app = new Hono();
 INTERNAL_setAllEnv(process.env as any);
-app.use(
-  rscMiddleware({ handleRequest: serverEntry.handleRequest, config, isBuild }),
-);
+app.use(rscMiddleware({ processRequest, config, isBuild }));
 app.notFound((c) => {
   const notFoundHtml = (globalThis as any).__WAKU_NOT_FOUND_HTML__;
   if (typeof notFoundHtml === 'string') {
