@@ -47,18 +47,6 @@ export interface Config {
    */
   rscBase?: string;
   /**
-   * Middleware to use
-   * Defaults to: []
-   * @deprecated This will be removed soon.
-   */
-  middleware?: (string & {})[];
-  /**
-   * Enhancer for Hono
-   * Defaults to `undefined`
-   * @deprecated This will be removed soon.
-   */
-  unstable_honoEnhancer?: string | undefined;
-  /**
    * Vite configuration options.
    * See https://vite.dev/guide/api-environment-plugins.html#environment-api-for-plugins
    * for how to configure or enable plugins per environment.

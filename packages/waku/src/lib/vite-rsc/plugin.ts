@@ -65,8 +65,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
     slicesDir: '_slices',
     privateDir: 'private',
     rscBase: 'RSC',
-    middleware: [],
-    unstable_honoEnhancer: undefined,
     vite: undefined,
     ...rscPluginOptions?.config,
   };
@@ -273,47 +271,6 @@ if (import.meta.hot) {
         }
       },
     },
-    createVirtualPlugin('vite-rsc-waku/middlewares', async function () {
-      const ids: string[] = [];
-      for (const file of config.middleware) {
-        // resolve local files
-        let id = file;
-        if (file[0] === '.') {
-          const resolved = await this.resolve(file);
-          if (resolved) {
-            id = resolved.id;
-          } else {
-            this.error(`failed to resolve custom middleware '${file}'`);
-          }
-        }
-        ids.push(id);
-      }
-
-      let code = '';
-      ids.forEach((file, i) => {
-        code += `import __m_${i} from ${JSON.stringify(file)};\n`;
-      });
-      code += `export const middlewares = [`;
-      code += ids.map((_, i) => `__m_${i}`).join(',\n');
-      code += `];\n`;
-      return code;
-    }),
-    createVirtualPlugin('vite-rsc-waku/hono-enhancer', async function () {
-      if (!config?.unstable_honoEnhancer) {
-        return `export const honoEnhancer = (app) => app;`;
-      }
-      let id = config.unstable_honoEnhancer;
-      if (id[0] === '.') {
-        const resolved = await this.resolve(id);
-        if (resolved) {
-          id = resolved.id;
-        }
-      }
-      return `
-        import __m from ${JSON.stringify(id)};
-        export const honoEnhancer = __m;
-      `;
-    }),
     createVirtualPlugin('vite-rsc-waku/config', async function () {
       return `
         export const config = ${JSON.stringify({ ...config, vite: undefined })};
