@@ -8,7 +8,7 @@ type Context = {
 
 const contextStorage = new AsyncLocalStorage<Context>();
 
-export const context: Middleware = () => {
+export const contextMiddleware: Middleware = () => {
   return async (ctx, next) => {
     const context: Context = {
       req: ctx.req,
