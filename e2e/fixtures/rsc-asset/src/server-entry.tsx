@@ -1,8 +1,8 @@
-import { unstable_defineEntries as defineEntries } from 'waku/minimal/server';
+import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 
 import App from './components/App.js';
 
-const entries: ReturnType<typeof defineEntries> = defineEntries({
+const entries: ReturnType<typeof defineServer> = defineServer({
   handleRequest: async (input, { renderRsc }) => {
     if (input.type === 'component') {
       return renderRsc({ App: <App name={input.rscPath || 'Waku'} /> });
@@ -12,7 +12,7 @@ const entries: ReturnType<typeof defineEntries> = defineEntries({
       return renderRsc({ _value: value });
     }
   },
-  handleBuild: () => null,
+  handleBuild: async () => {},
 });
 
 export default entries;
