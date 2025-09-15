@@ -16,10 +16,10 @@ import { INTERNAL_setAllEnv } from '../../../../server.js';
 declare let Deno: any;
 
 const defaultCreateApp: CreateApp = (args, baseApp) => {
-  const app: Hono = (baseApp as unknown as Hono | undefined) || new Hono();
+  const app = baseApp instanceof Hono ? (baseApp as Hono) : new Hono();
   app.use(contextMiddleware());
   app.use(rscMiddleware(args));
-  return app as unknown as NonNullable<typeof baseApp>;
+  return app;
 };
 
 const createApp = serverEntry.createApp || defaultCreateApp;

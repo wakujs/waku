@@ -34,7 +34,7 @@ export default defineServer({
   },
   handleBuild: async () => {},
   createApp: (args, baseApp) => {
-    const app: Hono = (baseApp as unknown as Hono | undefined) || new Hono();
+    const app = baseApp instanceof Hono ? (baseApp as Hono) : new Hono();
     app.use(contextStorage());
     app.use(honoMiddleware.contextMiddleware());
     app.use(cookieMiddleware());
@@ -42,7 +42,7 @@ export default defineServer({
     app.use(honoMiddleware.staticMiddleware(args));
     app.use(honoMiddleware.rscMiddleware(args));
     app.use(honoMiddleware.notFoundMiddleware(args));
-    return app as unknown as NonNullable<typeof baseApp>;
+    return app;
   },
 });
 

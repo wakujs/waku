@@ -13,7 +13,7 @@ export default defineServer({
     { apiDir: 'api', slicesDir: '_slices' },
   ),
   createApp: (args, baseApp) => {
-    const app: Hono = (baseApp as unknown as Hono | undefined) || new Hono();
+    const app = baseApp instanceof Hono ? (baseApp as Hono) : new Hono();
     app.use(contextStorage());
     app.use(honoMiddleware.contextMiddleware());
     app.use(cloudflareMiddleware());
@@ -36,9 +36,9 @@ export default defineServer({
           const devHandler = await handlerPromise;
           return devHandler(req, app);
         },
-      } as unknown as NonNullable<typeof baseApp>;
+      };
     }
-    return app as unknown as NonNullable<typeof baseApp>;
+    return app;
   },
 });
 

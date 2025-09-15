@@ -52,14 +52,12 @@ export type Unstable_CreateAppArgs = {
   isBuild: boolean;
 };
 
-export type Unstable_CreateApp = <
-  App extends {
-    fetch: (req: Request) => Response | Promise<Response>;
-  },
->(
+export type Unstable_CreateApp = (
   args: Unstable_CreateAppArgs,
-  app?: App,
-) => App;
+  baseApp?: unknown,
+) => {
+  fetch: (req: Request) => Response | Promise<Response>;
+};
 
 export type Unstable_ServerEntry = {
   default: {

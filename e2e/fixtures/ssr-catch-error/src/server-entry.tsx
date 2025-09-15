@@ -12,12 +12,12 @@ export default defineServer({
     { apiDir: 'api', slicesDir: '_slices' },
   ),
   createApp: (args, baseApp) => {
-    const app: Hono = (baseApp as unknown as Hono | undefined) || new Hono();
+    const app = baseApp instanceof Hono ? (baseApp as Hono) : new Hono();
     app.use(honoMiddleware.contextMiddleware());
     app.use(validatorMiddleware());
     app.use(honoMiddleware.staticMiddleware(args));
     app.use(honoMiddleware.rscMiddleware(args));
     app.use(honoMiddleware.notFoundMiddleware(args));
-    return app as unknown as NonNullable<typeof baseApp>;
+    return app;
   },
 });
