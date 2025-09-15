@@ -1,12 +1,30 @@
 import { Hono } from 'hono';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
+import serverEntry from 'virtual:vite-rsc-waku/server-entry';
+import type { Unstable_CreateApp as CreateApp } from '../../../types.js';
 import { rscMiddleware } from '../../../hono/middleware.js';
 import { processRequest } from '../../handler.js';
 import { INTERNAL_setAllEnv } from '../../../../server.js';
 
+const defaultCreateApp: CreateApp = (args, baseApp) => {
+  const app: Hono = (baseApp as unknown as Hono | undefined) || new Hono();
+  app.use(rscMiddleware(args));
+  return app as unknown as NonNullable<typeof baseApp>;
+};
+
+const createApp = serverEntry.createApp || defaultCreateApp;
+
 const app = new Hono();
 INTERNAL_setAllEnv(process.env as any);
-app.use(rscMiddleware({ processRequest, config, isBuild }));
+createApp(
+  {
+    processRequest,
+    config,
+    isBuild,
+    deployAdapter: 'netlify',
+  },
+  app,
+);
 app.notFound((c) => {
   const notFoundHtml = (globalThis as any).__WAKU_NOT_FOUND_HTML__;
   if (typeof notFoundHtml === 'string') {

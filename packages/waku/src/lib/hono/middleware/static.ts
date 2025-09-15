@@ -1,11 +1,11 @@
 import path from 'node:path';
 import type { MiddlewareHandler } from 'hono';
 import { serveStatic } from '@hono/node-server/serve-static';
-import type { Unstable_CreateFetchArgs as CreateFetchArgs } from '../../types.js';
+import type { Unstable_CreateAppArgs as CreateAppArgs } from '../../types.js';
 import { DIST_PUBLIC } from '../../builder/constants.js';
 
 export default function staticMiddleware(
-  args: CreateFetchArgs,
+  args: CreateAppArgs,
 ): MiddlewareHandler {
   const { config, isBuild } = args;
   if (isBuild) {

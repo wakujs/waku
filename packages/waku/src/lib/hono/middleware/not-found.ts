@@ -1,11 +1,11 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import type { MiddlewareHandler } from 'hono';
-import type { Unstable_CreateFetchArgs as CreateFetchArgs } from '../../types.js';
+import type { Unstable_CreateAppArgs as CreateAppArgs } from '../../types.js';
 import { DIST_PUBLIC } from '../../builder/constants.js';
 
 export default function notFoundMiddleware(
-  args: CreateFetchArgs,
+  args: CreateAppArgs,
 ): MiddlewareHandler {
   const { config } = args;
   return async (c) => {

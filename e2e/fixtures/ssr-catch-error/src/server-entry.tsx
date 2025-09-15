@@ -11,13 +11,13 @@ export default defineServer({
     import.meta.glob('/src/pages/**/*.{tsx,ts}', { base: '/src/pages' }),
     { apiDir: 'api', slicesDir: '_slices' },
   ),
-  createFetch: (args) => {
-    const app = new Hono();
+  createApp: (args, baseApp) => {
+    const app: Hono = (baseApp as unknown as Hono | undefined) || new Hono();
     app.use(honoMiddleware.contextMiddleware());
     app.use(validatorMiddleware());
     app.use(honoMiddleware.staticMiddleware(args));
     app.use(honoMiddleware.rscMiddleware(args));
     app.use(honoMiddleware.notFoundMiddleware(args));
-    return async (req) => app.fetch(req);
+    return app as unknown as NonNullable<typeof baseApp>;
   },
 });

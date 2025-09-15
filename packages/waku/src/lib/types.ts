@@ -46,20 +46,26 @@ export type Unstable_HandleBuild = (utils: {
   generateDefaultHtml: (pathname: string) => Promise<void>;
 }) => Promise<void>;
 
-export type Unstable_CreateFetchArgs = {
+export type Unstable_CreateAppArgs = {
   processRequest: (req: Request) => Promise<Response | null>;
   config: Omit<Required<Config>, 'vite'>;
   isBuild: boolean;
+  deployAdapter: string | undefined;
 };
 
-export type Unstable_CreateFetch = (
-  args: Unstable_CreateFetchArgs,
-) => (req: Request) => Promise<Response>;
+export type Unstable_CreateApp = <
+  App extends {
+    fetch: (req: Request) => Response | Promise<Response>;
+  },
+>(
+  args: Unstable_CreateAppArgs,
+  app?: App,
+) => App;
 
 export type Unstable_ServerEntry = {
   default: {
     handleRequest: Unstable_HandleRequest;
     handleBuild: Unstable_HandleBuild;
-    createFetch?: Unstable_CreateFetch;
+    createApp?: Unstable_CreateApp;
   };
 };

@@ -12,8 +12,8 @@ export default defineServer({
     import.meta.glob('/src/pages/**/*.{tsx,ts}', { base: '/src/pages' }),
     { apiDir: 'api', slicesDir: '_slices' },
   ),
-  createFetch: (args) => {
-    const app = new Hono();
+  createApp: (args, baseApp) => {
+    const app: Hono = (baseApp as unknown as Hono | undefined) || new Hono();
     app.use(contextStorage());
     app.use(honoMiddleware.contextMiddleware());
     app.use(cloudflareMiddleware());
@@ -31,12 +31,14 @@ export default defineServer({
             },
           }),
       );
-      return async (req) => {
-        const devHandler = await handlerPromise;
-        return devHandler(req, app);
-      };
+      return {
+        fetch: async (req: Request) => {
+          const devHandler = await handlerPromise;
+          return devHandler(req, app);
+        },
+      } as unknown as NonNullable<typeof baseApp>;
     }
-    return async (req) => app.fetch(req);
+    return app as unknown as NonNullable<typeof baseApp>;
   },
 });
 

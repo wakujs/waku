@@ -1,6 +1,8 @@
 import { getRequestListener } from '@hono/node-server';
 import { Hono } from 'hono';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
+import serverEntry from 'virtual:vite-rsc-waku/server-entry';
+import type { Unstable_CreateApp as CreateApp } from '../../../types.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import { DIST_PUBLIC } from '../../../builder/constants.js';
@@ -8,9 +10,25 @@ import { rscMiddleware } from '../../../hono/middleware.js';
 import { processRequest } from '../../handler.js';
 import { INTERNAL_setAllEnv } from '../../../../server.js';
 
+const defaultCreateApp: CreateApp = (args, baseApp) => {
+  const app: Hono = (baseApp as unknown as Hono | undefined) || new Hono();
+  app.use(rscMiddleware(args));
+  return app as unknown as NonNullable<typeof baseApp>;
+};
+
+const createApp = serverEntry.createApp || defaultCreateApp;
+
 const app = new Hono();
 INTERNAL_setAllEnv(process.env as any);
-app.use(rscMiddleware({ processRequest, config, isBuild }));
+createApp(
+  {
+    processRequest,
+    config,
+    isBuild,
+    deployAdapter: 'vercel',
+  },
+  app,
+);
 app.notFound((c) => {
   const file = path.join(config.distDir, DIST_PUBLIC, '404.html');
   if (fs.existsSync(file)) {

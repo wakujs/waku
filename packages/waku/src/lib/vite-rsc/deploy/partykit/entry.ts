@@ -1,12 +1,30 @@
 import { Hono } from 'hono';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
+import serverEntry from 'virtual:vite-rsc-waku/server-entry';
+import type { Unstable_CreateApp as CreateApp } from '../../../types.js';
 import { rscMiddleware } from '../../../hono/middleware.js';
 import { processRequest } from '../../handler.js';
 import { INTERNAL_setAllEnv } from '../../../../server.js';
 
-function createApp() {
+const defaultCreateApp: CreateApp = (args, baseApp) => {
+  const app: Hono = (baseApp as unknown as Hono | undefined) || new Hono();
+  app.use(rscMiddleware(args));
+  return app as unknown as NonNullable<typeof baseApp>;
+};
+
+const createApp = serverEntry.createApp || defaultCreateApp;
+
+function initializeApp() {
   const app = new Hono();
-  app.use(rscMiddleware({ processRequest, config, isBuild }));
+  createApp(
+    {
+      processRequest,
+      config,
+      isBuild,
+      deployAdapter: 'partykit',
+    },
+    app,
+  );
   app.notFound(async (c) => {
     const assetsFetcher = (c.env as any).ASSETS;
     const url = new URL(c.req.raw.url);
@@ -31,7 +49,7 @@ export default {
   async onFetch(request: Request, env: any, ctx: any) {
     if (!app) {
       INTERNAL_setAllEnv(env);
-      app = createApp();
+      app = initializeApp();
     }
     return app.fetch(request, env, ctx);
   },

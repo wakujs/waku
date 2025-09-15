@@ -221,7 +221,8 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
         return () => {
           server.middlewares.use(async (req, res, next) => {
             try {
-              const mod = await environment.runner.import(entryId);
+              const mod: typeof import('../vite-entries/entry.server.js') =
+                await environment.runner.import(entryId);
               await getRequestListener(mod.fetch)(req, res);
             } catch (e) {
               next(e);
