@@ -1,7 +1,5 @@
 import type { UserConfig } from 'vite';
 
-export type { Middleware } from './lib/types.js';
-
 export interface Config {
   /**
    * The base path for serve HTTP.

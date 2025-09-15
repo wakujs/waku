@@ -15,14 +15,12 @@ export default defineServer({
   createFetch: (args) => {
     const app = new Hono();
     app.use(contextStorage());
-    const fetchFn = engine.createFetch(args, app, [
-      engine.contextMiddleware,
-      cloudflareMiddleware,
-      engine.staticMiddleware,
-      engine.rscMiddleware,
-      engine.notFoundMiddleware,
-    ]);
+    app.use(engine.contextMiddleware());
+    app.use(cloudflareMiddleware());
+    // app.use(engine.staticMiddleware(args));
+    app.use(engine.rscMiddleware(args));
     if (import.meta.env && !import.meta.env.PROD) {
+      app.use(engine.notFoundMiddleware(args));
       const handlerPromise = import('./waku.cloudflare-dev-server').then(
         ({ cloudflareDevServer }) =>
           cloudflareDevServer({
@@ -33,12 +31,12 @@ export default defineServer({
             },
           }),
       );
-      return async (req: Request) => {
+      return async (req) => {
         const devHandler = await handlerPromise;
         return devHandler(req, app);
       };
     }
-    return fetchFn;
+    return async (req) => app.fetch(req);
   },
 });
 

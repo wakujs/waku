@@ -46,14 +46,14 @@ export type Unstable_HandleBuild = (utils: {
   generateDefaultHtml: (pathname: string) => Promise<void>;
 }) => Promise<void>;
 
-export type Unstable_MiddlewareArgs = {
+export type Unstable_CreateFetchArgs = {
   processRequest: (req: Request) => Promise<Response | null>;
   config: Omit<Required<Config>, 'vite'>;
   isBuild: boolean;
 };
 
 export type Unstable_CreateFetch = (
-  args: Unstable_MiddlewareArgs,
+  args: Unstable_CreateFetchArgs,
 ) => (req: Request) => Promise<Response>;
 
 export type Unstable_ServerEntry = {
@@ -63,25 +63,3 @@ export type Unstable_ServerEntry = {
     createFetch: Unstable_CreateFetch;
   };
 };
-
-/** @deprecated This will be removed soon. */
-export type HandlerContext = {
-  req: Request;
-  res?: Response;
-  readonly data: Record<string, unknown>;
-};
-
-/** @deprecated This will be removed soon. */
-type Handler = (
-  ctx: HandlerContext,
-  next: () => Promise<void>,
-) => Promise<void>;
-
-/** @deprecated This will be removed soon. */
-export type MiddlewareOptions = {
-  cmd: 'dev' | 'start';
-  env: Record<string, string>;
-};
-
-/** @deprecated This will be removed soon. */
-export type Middleware = (options: MiddlewareOptions) => Handler;

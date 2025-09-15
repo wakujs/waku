@@ -36,14 +36,13 @@ export default defineServer({
   createFetch: (args) => {
     const app = new Hono();
     app.use(contextStorage());
-    return engine.createFetch(args, app, [
-      engine.contextMiddleware,
-      cookieMiddleware,
-      noopMiddleware,
-      engine.staticMiddleware,
-      engine.rscMiddleware,
-      engine.notFoundMiddleware,
-    ]);
+    app.use(engine.contextMiddleware());
+    app.use(cookieMiddleware());
+    app.use(noopMiddleware());
+    app.use(engine.staticMiddleware(args));
+    app.use(engine.rscMiddleware(args));
+    app.use(engine.notFoundMiddleware(args));
+    return async (req) => app.fetch(req);
   },
 });
 
