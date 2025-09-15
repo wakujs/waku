@@ -21,15 +21,7 @@ const createApp = serverEntry.createApp || defaultCreateApp;
 
 const app = new Hono();
 INTERNAL_setAllEnv(process.env as any);
-createApp(
-  {
-    processRequest,
-    config,
-    isBuild,
-    deployAdapter: 'vercel',
-  },
-  app,
-);
+createApp({ processRequest, config, isBuild }, app);
 app.notFound((c) => {
   const file = path.join(config.distDir, DIST_PUBLIC, '404.html');
   if (fs.existsSync(file)) {

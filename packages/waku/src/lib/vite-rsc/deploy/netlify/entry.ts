@@ -17,15 +17,7 @@ const createApp = serverEntry.createApp || defaultCreateApp;
 
 const app = new Hono();
 INTERNAL_setAllEnv(process.env as any);
-createApp(
-  {
-    processRequest,
-    config,
-    isBuild,
-    deployAdapter: 'netlify',
-  },
-  app,
-);
+createApp({ processRequest, config, isBuild }, app);
 app.notFound((c) => {
   const notFoundHtml = (globalThis as any).__WAKU_NOT_FOUND_HTML__;
   if (typeof notFoundHtml === 'string') {

@@ -10,7 +10,6 @@ export const { fetch } = (serverEntry.createApp || createApp)({
   processRequest,
   config,
   isBuild,
-  deployAdapter: undefined,
 });
 
 export { processBuild } from '../vite-rsc/build.js';

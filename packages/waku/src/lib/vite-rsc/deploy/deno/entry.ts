@@ -27,15 +27,7 @@ const createApp = serverEntry.createApp || defaultCreateApp;
 const app = new Hono();
 INTERNAL_setAllEnv(Deno.env.toObject());
 app.use(serveStatic({ root: path.join(config.distDir, DIST_PUBLIC) }));
-createApp(
-  {
-    processRequest,
-    config,
-    isBuild,
-    deployAdapter: 'deno',
-  },
-  app,
-);
+createApp({ processRequest, config, isBuild }, app);
 app.notFound(async (c: any) => {
   const file = config.distDir + '/' + DIST_PUBLIC + '/404.html';
   try {

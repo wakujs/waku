@@ -23,15 +23,7 @@ const createApp = serverEntry.createApp || defaultCreateApp;
 const app = new Hono();
 INTERNAL_setAllEnv(process.env as any);
 app.use(serveStatic({ root: path.join(config.distDir, DIST_PUBLIC) }));
-createApp(
-  {
-    processRequest,
-    config,
-    isBuild,
-    deployAdapter: 'aws-lambda',
-  },
-  app,
-);
+createApp({ processRequest, config, isBuild }, app);
 app.notFound((c) => {
   const file = path.join(config.distDir, DIST_PUBLIC, '404.html');
   if (fs.existsSync(file)) {

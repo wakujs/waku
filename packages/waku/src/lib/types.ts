@@ -50,7 +50,6 @@ export type Unstable_CreateAppArgs = {
   processRequest: (req: Request) => Promise<Response | null>;
   config: Omit<Required<Config>, 'vite'>;
   isBuild: boolean;
-  deployAdapter: string | undefined;
 };
 
 export type Unstable_CreateApp = <

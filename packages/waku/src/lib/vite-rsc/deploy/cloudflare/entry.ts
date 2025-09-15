@@ -17,15 +17,7 @@ const createApp = serverEntry.createApp || defaultCreateApp;
 
 function initializeApp() {
   const app = new Hono();
-  createApp(
-    {
-      processRequest,
-      config,
-      isBuild,
-      deployAdapter: 'cloudflare',
-    },
-    app,
-  );
+  createApp({ processRequest, config, isBuild }, app);
   app.notFound(async (c) => {
     const assetsFetcher = (c.env as any).ASSETS;
     const url = new URL(c.req.raw.url);
