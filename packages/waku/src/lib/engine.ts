@@ -46,18 +46,11 @@ export function notFoundMiddleware(args: MiddlewareArgs): MiddlewareHandler {
   };
 }
 
-export function createFetch(
-  args: MiddlewareArgs,
-  app = new Hono(),
-  middlewares = [
-    contextMiddleware,
-    staticMiddleware,
-    rscMiddleware,
-    notFoundMiddleware,
-  ],
-) {
-  for (const m of middlewares) {
-    app.use(m(args));
-  }
+export function createFetch(args: MiddlewareArgs) {
+  const app = new Hono();
+  app.use(contextMiddleware(args));
+  app.use(staticMiddleware(args));
+  app.use(rscMiddleware(args));
+  app.use(notFoundMiddleware(args));
   return async (req: Request) => app.fetch(req);
 }
