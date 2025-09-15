@@ -7,7 +7,7 @@ type Context = {
 
 const contextStorage = new AsyncLocalStorage<Context>();
 
-export function runWithContext<T>(req: Request, next: () => T): T {
+export function INTERNAL_runWithContext<T>(req: Request, next: () => T): T {
   const context: Context = {
     req,
     data: {},

@@ -4,14 +4,14 @@ import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
 import { serveStatic } from '@hono/node-server/serve-static';
 import type { Unstable_MiddlewareArgs as MiddlewareArgs } from './types.js';
-import { runWithContext } from './context.js';
+import { INTERNAL_runWithContext } from './context.js';
 import { DIST_PUBLIC } from './builder/constants.js';
 import { INTERNAL_setAllEnv } from '../server.js';
 
 export function contextMiddleware(_args: MiddlewareArgs): MiddlewareHandler {
   return (c, next) => {
     const req = c.req.raw;
-    return runWithContext(req, next);
+    return INTERNAL_runWithContext(req, next);
   };
 }
 
