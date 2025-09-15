@@ -8,10 +8,10 @@ import {
 } from './middleware.js';
 
 export function createApp(args: CreateAppArgs, app = new Hono()) {
-  app.use(contextMiddleware());
   if (!args.deployAdapter) {
     app.use(staticMiddleware(args));
   }
+  app.use(contextMiddleware());
   app.use(rscMiddleware(args));
   if (!args.deployAdapter) {
     app.use(notFoundMiddleware(args));

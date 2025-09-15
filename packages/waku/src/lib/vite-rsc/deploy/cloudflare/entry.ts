@@ -2,12 +2,13 @@ import { Hono } from 'hono';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 import type { Unstable_CreateApp as CreateApp } from '../../../types.js';
-import { rscMiddleware } from '../../../hono/middleware.js';
+import { contextMiddleware, rscMiddleware } from '../../../hono/middleware.js';
 import { processRequest } from '../../handler.js';
 import { INTERNAL_setAllEnv } from '../../../../server.js';
 
 const defaultCreateApp: CreateApp = (args, baseApp) => {
   const app: Hono = (baseApp as unknown as Hono | undefined) || new Hono();
+  app.use(contextMiddleware());
   app.use(rscMiddleware(args));
   return app as unknown as NonNullable<typeof baseApp>;
 };
