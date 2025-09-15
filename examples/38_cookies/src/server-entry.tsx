@@ -1,4 +1,6 @@
 import fsPromises from 'node:fs/promises';
+import { Hono } from 'hono';
+import { contextStorage, getContext } from 'hono/context-storage';
 import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { Slot } from 'waku/minimal/client';
 import {
@@ -7,6 +9,8 @@ import {
 } from 'waku/server';
 
 import App from './components/App';
+import cookieMiddleware from './middleware/cookie';
+import noopMiddleware from './middleware/noop';
 
 export default defineServer({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
@@ -29,5 +33,19 @@ export default defineServer({
     }
   },
   handleBuild: async () => {},
-  createFetch: engine.createFetch,
+  createFetch: (args) => {
+    const app = new Hono();
+    app.use(contextStorage());
+    return engine.createFetch(args, app, [
+      engine.contextMiddleware,
+      cookieMiddleware,
+      noopMiddleware,
+      engine.staticMiddleware,
+      engine.rscMiddleware,
+      engine.notFoundMiddleware,
+    ]);
+  },
 });
+
+export const getHonoContext = ((globalThis as any).__WAKU_GET_HONO_CONTEXT__ ||=
+  getContext);

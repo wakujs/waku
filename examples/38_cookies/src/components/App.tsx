@@ -1,7 +1,7 @@
 import { Suspense, cache } from 'react';
 import { unstable_getContextData as getContextData } from 'waku/server';
 
-import { getHonoContext } from '../hono-enhancer';
+import { getHonoContext } from '../server-entry';
 import { Counter } from './Counter';
 
 const cachedFn = cache(() => Date.now());
