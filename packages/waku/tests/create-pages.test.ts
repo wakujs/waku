@@ -1,9 +1,6 @@
 import { expect, vi, describe, it, beforeEach, assert } from 'vitest';
 import type { MockedFunction } from 'vitest';
-import {
-  createPages,
-  getGrouplessPathSpec,
-} from '../src/router/create-pages.js';
+import { createPages } from '../src/router/create-pages.js';
 import type {
   CreateApi,
   CreateLayout,
@@ -23,7 +20,6 @@ import { expectType } from 'ts-expect';
 import type { TypeEqual } from 'ts-expect';
 import type { PathsForPages } from '../src/router/base-types.js';
 import type { GetSlugs } from '../src/router/create-pages-utils/inferred-path-types.js';
-import { getPathMapping, parsePathWithSlug } from '../src/lib/utils/path.js';
 
 function Fake() {
   return null;
@@ -2177,6 +2173,79 @@ describe('createPages - grouped paths', () => {
     await expect(getConfig).rejects.toThrowError('Duplicated path: /test');
   });
 
+  it('supports grouped path with slug', async () => {
+    const TestPage = () => null;
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'static',
+        path: '/(group)/[slug]',
+        staticPaths: ['x', 'y'],
+        component: TestPage,
+      }),
+      createPage({
+        render: 'static',
+        path: '/(group)/z',
+        component: TestPage,
+      }),
+    ]);
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
+      {
+        type: 'route',
+        elements: { 'page:/x': { isStatic: true } },
+        rootElement: { isStatic: true },
+        routeElement: { isStatic: true },
+        noSsr: false,
+        path: [{ type: 'literal', name: 'x' }],
+        pathPattern: [
+          { type: 'literal', name: '(group)' },
+          { type: 'group', name: 'slug' },
+        ],
+        isStatic: true,
+      },
+      {
+        type: 'route',
+        elements: { 'page:/y': { isStatic: true } },
+        rootElement: { isStatic: true },
+        routeElement: { isStatic: true },
+        path: [{ type: 'literal', name: 'y' }],
+        noSsr: false,
+        pathPattern: [
+          { type: 'literal', name: '(group)' },
+          { type: 'group', name: 'slug' },
+        ],
+        isStatic: true,
+      },
+      {
+        type: 'route',
+        elements: { 'page:/z': { isStatic: true } },
+        rootElement: { isStatic: true },
+        routeElement: { isStatic: true },
+        noSsr: false,
+        path: [{ type: 'literal', name: 'z' }],
+        isStatic: true,
+      },
+    ]);
+
+    const routeX = await handleRoute('/x', { query: '?skip=[]' });
+    expect(routeX).toBeDefined();
+    expect(routeX.rootElement).toBeDefined();
+    expect(routeX.routeElement).toBeDefined();
+    expect(Object.keys(routeX.elements)).toEqual(['page:/x']);
+
+    const routeY = await handleRoute('/y', { query: '?skip=[]' });
+    expect(routeY).toBeDefined();
+    expect(routeY.rootElement).toBeDefined();
+    expect(routeY.routeElement).toBeDefined();
+    expect(Object.keys(routeY.elements)).toEqual(['page:/y']);
+
+    const routeZ = await handleRoute('/z', { query: '?skip=[]' });
+    expect(routeZ).toBeDefined();
+    expect(routeZ.rootElement).toBeDefined();
+    expect(routeZ.routeElement).toBeDefined();
+    expect(Object.keys(routeZ.elements)).toEqual(['page:/z']);
+  });
+
   it('supports grouped path with layout', async () => {
     const TestPage = () => null;
     const TestHomePage = () => null;
@@ -2252,43 +2321,5 @@ describe('createPages - grouped paths', () => {
       'layout:/',
       'layout:/(group)',
     ]);
-  });
-});
-
-describe('getGrouplessPathSpec', () => {
-  it('handles paths with pathless groups', () => {
-    const pathSpec = getGrouplessPathSpec(parsePathWithSlug('/(foo)/bar'));
-    expect(pathSpec).toMatchInlineSnapshot(`
-      [
-        {
-          "name": "bar",
-          "type": "literal",
-        },
-      ]
-    `);
-    expect(getPathMapping(pathSpec, '/bar')).toEqual({});
-    expect(getPathMapping(pathSpec, '/(foo)/bar')).toEqual(null);
-  });
-
-  it('handles paths with pathless groups and groups', () => {
-    const pathSpec = getGrouplessPathSpec(parsePathWithSlug('/(foo)/bar/[id]'));
-
-    expect(pathSpec).toMatchInlineSnapshot(`
-      [
-        {
-          "name": "bar",
-          "type": "literal",
-        },
-        {
-          "name": "id",
-          "type": "group",
-        },
-      ]
-    `);
-    expect(getPathMapping(pathSpec, '/bar/123')).toEqual({
-      id: '123',
-    });
-    expect(getPathMapping(pathSpec, '/(foo)/bar/123')).toEqual(null);
-    expect(getPathMapping(pathSpec, '/(foo)/bar/[id]')).toEqual(null);
   });
 });

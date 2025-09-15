@@ -6,6 +6,7 @@ import {
   parsePathWithSlug,
   getPathMapping,
   parseExactPath,
+  pathSpecAsString,
 } from '../lib/utils/path.js';
 import { getGrouplessPath } from '../lib/utils/create-pages.js';
 import type { PathSpec } from '../lib/utils/path.js';
@@ -262,6 +263,8 @@ interface PageInfo {
   component: FunctionComponent<any>;
   layouts: LayoutInfo[];
   isDynamic: boolean;
+
+  isExactPath: boolean;
 }
 
 interface LayoutInfo {
@@ -324,6 +327,7 @@ export const createPages = <
   const groupPathLookup = new Map<string, string>();
   const pagePathMap = new Map<string, PageInfo>();
   // static path and its linked static page
+  // pages with exact path have no static path to populate, hence won't be stored here
   const staticPagePathMap = new Map<
     string,
     {
@@ -354,22 +358,6 @@ export const createPages = <
   >();
   let rootItem: RootItem | undefined = undefined;
   const noSsrSet = new WeakSet<PathSpec>();
-
-  /** helper to find dynamic path when slugs are used */
-  const getPageRoutePath: (path: string) => string | undefined = (path) => {
-    const staticPath = staticPagePathMap.get(path);
-    if (staticPath) {
-      return staticPath.originalPath;
-    }
-
-    for (const p of pagePathMap.keys()) {
-      const grouplessSpec = getGrouplessPathSpec(parsePathWithSlug(p));
-
-      if (getPathMapping(grouplessSpec, path)) {
-        return p;
-      }
-    }
-  };
 
   const getApiRoutePath: (
     path: string,
@@ -439,15 +427,10 @@ export const createPages = <
     }
 
     // generate static path map
-    if (page.render === 'static') {
+    if (page.render === 'static' && !page.exactPath) {
       const { numSlugs, numWildcards } = countSlugsAndWildcards(spec);
 
-      if (page.exactPath) {
-        staticPagePathMap.set(page.path, {
-          literalSpec: spec,
-          originalPath: page.path,
-        });
-      } else if (numSlugs === 0 && numWildcards === 0) {
+      if (numSlugs === 0 && numWildcards === 0) {
         const grouplessPath = getGrouplessPath(page.path);
 
         staticPagePathMap.set(grouplessPath, {
@@ -493,6 +476,7 @@ export const createPages = <
       spec,
       component: page.component,
       isDynamic: page.render === 'dynamic',
+      isExactPath: page.exactPath ?? false,
       layouts: [],
     });
     if (page.slices?.length) {
@@ -633,12 +617,29 @@ export const createPages = <
       const pathConfigs: Extract<RouterConfig, { type: 'route' | 'api' }>[] =
         [];
       const rootIsStatic = !rootItem || rootItem.render === 'static';
+      const pageEntries: {
+        path: string;
+        page: PageInfo;
+        staticPathSpec?: PathSpec;
+      }[] = [];
 
-      function createPageConfig(
-        path: string,
-        page: PageInfo,
-        staticPathSpec?: PathSpec,
-      ): Extract<RouterConfig, { type: 'route' }> {
+      for (const [path, { literalSpec, originalPath }] of staticPagePathMap) {
+        pageEntries.push({
+          path,
+          page: pagePathMap.get(originalPath)!,
+          staticPathSpec: literalSpec,
+        });
+      }
+      for (const [path, page] of pagePathMap) {
+        if (
+          page.isExactPath ||
+          (page.isDynamic && !staticPagePathMap.has(getGrouplessPath(path)))
+        ) {
+          pageEntries.push({ path, page });
+        }
+      }
+
+      for (const { page, path, staticPathSpec } of pageEntries) {
         const noSsr =
           noSsrSet.has(page.spec) ||
           (staticPathSpec !== undefined && noSsrSet.has(staticPathSpec));
@@ -650,8 +651,12 @@ export const createPages = <
           };
         }
 
+        const needPathPattern =
+          staticPathSpec &&
+          pathSpecAsString(page.spec) !== pathSpecAsString(staticPathSpec);
+
         elements[`page:${path}`] = { isStatic: !page.isDynamic };
-        return {
+        pathConfigs.push({
           type: 'route',
           isStatic:
             rootIsStatic &&
@@ -660,19 +665,12 @@ export const createPages = <
           path: getGrouplessPathSpec(staticPathSpec ?? page.spec),
           rootElement: { isStatic: rootIsStatic },
           routeElement: { isStatic: true },
+          ...(needPathPattern && {
+            pathPattern: page.spec,
+          }),
           elements,
           noSsr,
-        };
-      }
-
-      for (const [path, { literalSpec, originalPath }] of staticPagePathMap) {
-        pathConfigs.push(
-          createPageConfig(path, pagePathMap.get(originalPath)!, literalSpec),
-        );
-      }
-
-      for (const [path, page] of pagePathMap) {
-        pathConfigs.push(createPageConfig(path, page));
+        });
       }
 
       for (const { render, pathSpec } of apiPathMap.values()) {
@@ -699,15 +697,27 @@ export const createPages = <
     },
     handleRoute: async (path, { query }) => {
       await configure();
+      let page: PageInfo | undefined;
+      let routePath: string | undefined;
+      const staticInfo = staticPagePathMap.get(path);
+      if (staticInfo) {
+        routePath = path;
+        page = pagePathMap.get(staticInfo.originalPath)!;
+      } else {
+        for (const [p, info] of pagePathMap) {
+          const isMatch = info.isExactPath
+            ? p === path
+            : getPathMapping(getGrouplessPathSpec(parsePathWithSlug(p)), path);
 
-      // path without slugs
-      const routePath = getPageRoutePath(path);
-      if (!routePath) {
-        throw new Error('Route not found: ' + path);
+          if (isMatch) {
+            routePath = p;
+            page = info;
+            break;
+          }
+        }
       }
 
-      const page = pagePathMap.get(routePath);
-      if (!page) {
+      if (!page || !routePath) {
         throw new Error('Page not found: ' + path);
       }
 
@@ -719,8 +729,8 @@ export const createPages = <
         getGrouplessPathSpec(page.spec),
         encodeURI(path),
       );
-      const id = `page:${routePath}`;
-      elements[id] = createElement(
+      const pageId = `page:${routePath}`;
+      elements[pageId] = createElement(
         page.component,
         {
           ...fullMapping,
@@ -731,8 +741,8 @@ export const createPages = <
       );
       slots.push(
         createElement(Slot, {
-          id,
-          key: id,
+          id: pageId,
+          key: pageId,
         }),
       );
 
