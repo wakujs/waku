@@ -6,7 +6,6 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import type { Unstable_MiddlewareArgs as MiddlewareArgs } from './types.js';
 import { INTERNAL_runWithContext } from './context.js';
 import { DIST_PUBLIC } from './builder/constants.js';
-import { INTERNAL_setAllEnv } from '../server.js';
 
 export function contextMiddleware(_args: MiddlewareArgs): MiddlewareHandler {
   return (c, next) => {
@@ -57,7 +56,6 @@ export function createFetch(
     notFoundMiddleware,
   ],
 ) {
-  INTERNAL_setAllEnv(process.env as any);
   for (const m of middlewares) {
     app.use(m(args));
   }
