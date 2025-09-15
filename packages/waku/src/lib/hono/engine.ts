@@ -1,16 +1,10 @@
 import { Hono } from 'hono';
-import type { Unstable_CreateAppArgs as CreateAppArgs } from '../types.js';
-import {
-  contextMiddleware,
-  staticMiddleware,
-  rscMiddleware,
-  notFoundMiddleware,
-} from './middleware.js';
+import type { Unstable_CreateApp as CreateApp } from '../types.js';
+import { contextMiddleware, rscMiddleware } from './middleware.js';
 
-export function createApp(args: CreateAppArgs, app = new Hono()) {
-  app.use(staticMiddleware(args));
+export const createApp: CreateApp = (args, baseApp) => {
+  const app = baseApp instanceof Hono ? (baseApp as Hono) : new Hono();
   app.use(contextMiddleware());
   app.use(rscMiddleware(args));
-  app.use(notFoundMiddleware(args));
   return app;
-}
+};

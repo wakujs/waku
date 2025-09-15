@@ -17,10 +17,8 @@ export default defineServer({
     app.use(contextStorage());
     app.use(honoMiddleware.contextMiddleware());
     app.use(cloudflareMiddleware());
-    // app.use(honoMiddleware.staticMiddleware(args));
     app.use(honoMiddleware.rscMiddleware(args));
     if (import.meta.env && !import.meta.env.PROD) {
-      app.use(honoMiddleware.notFoundMiddleware(args));
       const handlerPromise = import('./waku.cloudflare-dev-server').then(
         ({ cloudflareDevServer }) =>
           cloudflareDevServer({

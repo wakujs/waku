@@ -39,9 +39,7 @@ export default defineServer({
     app.use(honoMiddleware.contextMiddleware());
     app.use(cookieMiddleware());
     app.use(noopMiddleware());
-    app.use(honoMiddleware.staticMiddleware(args));
     app.use(honoMiddleware.rscMiddleware(args));
-    app.use(honoMiddleware.notFoundMiddleware(args));
     return app;
   },
 });
