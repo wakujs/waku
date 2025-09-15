@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { contextStorage, getContext } from 'hono/context-storage';
 import { unstable_fsRouter as fsRouter } from 'waku/router/server';
 import { unstable_defineServer as defineServer } from 'waku/minimal/server';
-import { unstable_engine as engine } from 'waku/server';
+import { unstable_honoMiddleware as honoMiddleware } from 'waku/server';
 
 import cloudflareMiddleware from './middleware/cloudflare';
 
@@ -15,12 +15,12 @@ export default defineServer({
   createFetch: (args) => {
     const app = new Hono();
     app.use(contextStorage());
-    app.use(engine.contextMiddleware());
+    app.use(honoMiddleware.contextMiddleware());
     app.use(cloudflareMiddleware());
-    // app.use(engine.staticMiddleware(args));
-    app.use(engine.rscMiddleware(args));
+    // app.use(honoMiddleware.staticMiddleware(args));
+    app.use(honoMiddleware.rscMiddleware(args));
     if (import.meta.env && !import.meta.env.PROD) {
-      app.use(engine.notFoundMiddleware(args));
+      app.use(honoMiddleware.notFoundMiddleware(args));
       const handlerPromise = import('./waku.cloudflare-dev-server').then(
         ({ cloudflareDevServer }) =>
           cloudflareDevServer({

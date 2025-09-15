@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
-import { rscMiddleware } from '../../../hono/engine.js';
+import { rscMiddleware } from '../../../hono/middleware.js';
 import { processRequest } from '../../handler.js';
 import { INTERNAL_setAllEnv } from '../../../../server.js';
 

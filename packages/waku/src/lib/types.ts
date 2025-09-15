@@ -60,6 +60,6 @@ export type Unstable_ServerEntry = {
   default: {
     handleRequest: Unstable_HandleRequest;
     handleBuild: Unstable_HandleBuild;
-    createFetch: Unstable_CreateFetch;
+    createFetch?: Unstable_CreateFetch;
   };
 };

@@ -5,7 +5,7 @@ import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { Slot } from 'waku/minimal/client';
 import {
   unstable_getContextData as getContextData,
-  unstable_engine as engine,
+  unstable_honoMiddleware as honoMiddleware,
 } from 'waku/server';
 
 import App from './components/App';
@@ -36,12 +36,12 @@ export default defineServer({
   createFetch: (args) => {
     const app = new Hono();
     app.use(contextStorage());
-    app.use(engine.contextMiddleware());
+    app.use(honoMiddleware.contextMiddleware());
     app.use(cookieMiddleware());
     app.use(noopMiddleware());
-    app.use(engine.staticMiddleware(args));
-    app.use(engine.rscMiddleware(args));
-    app.use(engine.notFoundMiddleware(args));
+    app.use(honoMiddleware.staticMiddleware(args));
+    app.use(honoMiddleware.rscMiddleware(args));
+    app.use(honoMiddleware.notFoundMiddleware(args));
     return async (req) => app.fetch(req);
   },
 });

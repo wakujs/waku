@@ -1,16 +1,11 @@
 import { Hono } from 'hono';
 import type { Unstable_CreateFetchArgs as CreateFetchArgs } from '../types.js';
-import contextMiddleware from './middleware/context.js';
-import staticMiddleware from './middleware/static.js';
-import rscMiddleware from './middleware/rsc.js';
-import notFoundMiddleware from './middleware/not-found.js';
-
-export {
+import {
   contextMiddleware,
   staticMiddleware,
   rscMiddleware,
   notFoundMiddleware,
-};
+} from './middleware.js';
 
 export function createFetch(args: CreateFetchArgs) {
   const app = new Hono();

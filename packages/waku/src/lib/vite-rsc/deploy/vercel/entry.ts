@@ -4,7 +4,7 @@ import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import path from 'node:path';
 import fs from 'node:fs';
 import { DIST_PUBLIC } from '../../../builder/constants.js';
-import { rscMiddleware } from '../../../hono/engine.js';
+import { rscMiddleware } from '../../../hono/middleware.js';
 import { processRequest } from '../../handler.js';
 import { INTERNAL_setAllEnv } from '../../../../server.js';
 

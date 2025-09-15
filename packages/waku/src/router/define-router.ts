@@ -5,7 +5,6 @@ import {
   unstable_getPlatformData,
   unstable_setPlatformData,
   unstable_getContext as getContext,
-  unstable_engine as engine,
 } from '../server.js';
 import { unstable_defineServer as defineServer } from '../minimal/server.js';
 import {
@@ -637,6 +636,5 @@ export function unstable_defineRouter(fns: {
   return defineServer({
     handleRequest,
     handleBuild,
-    createFetch: engine.createFetch,
   });
 }

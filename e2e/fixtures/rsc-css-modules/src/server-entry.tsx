@@ -1,5 +1,4 @@
 import { unstable_defineServer as defineServer } from 'waku/minimal/server';
-import { unstable_engine as engine } from 'waku/server';
 
 import App from './components/App.js';
 
@@ -15,7 +14,6 @@ const entries: ReturnType<typeof defineServer> = defineServer({
     return 'fallback';
   },
   handleBuild: async () => {},
-  createFetch: engine.createFetch,
 });
 
 export default entries;

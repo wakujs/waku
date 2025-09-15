@@ -1,5 +1,4 @@
 import { unstable_defineServer as defineServer } from 'waku/minimal/server';
-import { unstable_engine as engine } from 'waku/server';
 
 export default defineServer({
   handleRequest: async (input, { renderRsc }) => {
@@ -10,5 +9,4 @@ export default defineServer({
     return 'fallback';
   },
   handleBuild: async () => {},
-  createFetch: engine.createFetch,
 });
