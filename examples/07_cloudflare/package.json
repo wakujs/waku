@@ -10,21 +10,21 @@
     "start": "wrangler dev"
   },
   "dependencies": {
-    "hono": "4.9.4",
+    "hono": "4.9.6",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "react-server-dom-webpack": "19.1.1",
-    "waku": "0.26.0",
-    "wrangler": "4.32.0"
+    "waku": "0.26.1",
+    "wrangler": "4.35.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.1.12",
-    "@types/node": "24.3.0",
-    "@types/react": "19.1.10",
-    "@types/react-dom": "19.1.7",
-    "miniflare": "4.20250816.1",
-    "tailwindcss": "4.1.12",
+    "@tailwindcss/vite": "4.1.13",
+    "@types/node": "24.3.1",
+    "@types/react": "19.1.12",
+    "@types/react-dom": "19.1.9",
+    "miniflare": "4.20250906.0",
+    "tailwindcss": "4.1.13",
     "typescript": "5.9.2",
-    "vite": "7.1.3"
+    "vite": "7.1.5"
   }
 }

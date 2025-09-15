@@ -1,11 +1,10 @@
-import { unstable_defineEntries as defineEntries } from 'waku/minimal/server';
+import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { Children, Slot } from 'waku/minimal/client';
-import { unstable_createAsyncIterable as createAsyncIterable } from 'waku/server';
 
 import App from './components/App';
 import Dynamic from './components/Dynamic';
 
-export default defineEntries({
+export default defineServer({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
       if (input.rscPath === '') {
@@ -30,22 +29,21 @@ export default defineEntries({
       });
     }
   },
-  handleBuild: ({ renderRsc, renderHtml, rscPath2pathname }) =>
-    createAsyncIterable(async () => {
-      const tasks = [
-        async () => ({
-          type: 'file' as const,
-          pathname: rscPath2pathname(''),
-          body: renderRsc({ App: <App name="Waku" /> }),
-        }),
-        async () => ({
-          type: 'file' as const,
-          pathname: '/',
-          body: renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
-            rscPath: '',
-          }).then((res) => res.body || ''),
-        }),
-      ];
-      return tasks;
-    }),
+  handleBuild: async ({
+    renderRsc,
+    renderHtml,
+    rscPath2pathname,
+    generateFile,
+  }) => {
+    await generateFile(
+      rscPath2pathname(''),
+      renderRsc({ App: <App name="Waku" /> }),
+    );
+    await generateFile(
+      '/',
+      renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
+        rscPath: '',
+      }).then((res) => res.body || ''),
+    );
+  },
 });

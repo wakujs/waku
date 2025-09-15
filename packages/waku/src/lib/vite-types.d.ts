@@ -4,15 +4,11 @@
 type HonoEnhancer = <Hono>(fn: (app: Hono) => Hono) => (app: Hono) => Hono;
 
 declare module 'virtual:vite-rsc-waku/server-entry' {
-  const default_: import('./types.ts').ServerEntries['default'];
+  const default_: import('./types.ts').Unstable_ServerEntry['default'];
   export default default_;
 }
 
 declare module 'virtual:vite-rsc-waku/client-entry' {}
-
-declare module 'react-dom/server.edge' {
-  export * from 'react-dom/server';
-}
 
 declare module 'virtual:vite-rsc-waku/set-platform-data' {}
 

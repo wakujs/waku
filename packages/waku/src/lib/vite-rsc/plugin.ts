@@ -66,11 +66,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
     slicesDir: '_slices',
     privateDir: 'private',
     rscBase: 'RSC',
-    middleware: [
-      'waku/middleware/context',
-      'waku/middleware/dev-server',
-      'waku/middleware/handler',
-    ],
+    middleware: [],
     unstable_honoEnhancer: undefined,
     vite: undefined,
     ...rscPluginOptions?.config,
@@ -281,17 +277,6 @@ if (import.meta.hot) {
     createVirtualPlugin('vite-rsc-waku/middlewares', async function () {
       const ids: string[] = [];
       for (const file of config.middleware) {
-        // dev-server logic is all handled by `@vitejs/plugin-rsc`, so skipped.
-        if (file === 'waku/middleware/dev-server') {
-          continue;
-        }
-
-        // new `handler` is exported from `waku/vite-rsc/middleware/handler.js`
-        if (file === 'waku/middleware/handler') {
-          ids.push(path.join(__dirname, 'middleware/handler.js'));
-          continue;
-        }
-
         // resolve local files
         let id = file;
         if (file[0] === '.') {
@@ -405,24 +390,7 @@ if (import.meta.hot) {
           // run `handleBuild`
           INTERNAL_setAllEnv(process.env as any);
           unstable_getBuildOptions().unstable_phase = 'emitStaticFiles';
-          const { buildConfigs, getFallbackHtml } = await entry.handleBuild();
-          for await (const buildConfig of buildConfigs || []) {
-            if (buildConfig.type === 'file') {
-              emitStaticFile(
-                viteConfig.root,
-                { distDir: config.distDir },
-                buildConfig.pathname,
-                buildConfig.body,
-              );
-            } else if (buildConfig.type === 'defaultHtml') {
-              emitStaticFile(
-                viteConfig.root,
-                { distDir: config.distDir },
-                buildConfig.pathname,
-                getFallbackHtml(),
-              );
-            }
-          }
+          await entry.processBuild(viteConfig, config, emitStaticFile);
           await waitForTasks();
 
           // save platform data
