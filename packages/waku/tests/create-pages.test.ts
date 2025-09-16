@@ -2345,8 +2345,13 @@ describe('createPages - static layouts', () => {
         staticPaths: ['hello-world', 'test'],
       }),
       createPage({
+        render: 'dynamic',
+        path: '/(group)/[slug]/dynamic',
+        component: TestPage,
+      }),
+      createPage({
         render: 'static',
-        path: '/(group)',
+        path: '/',
         component: TestHomePage,
       }),
     ]);
@@ -2354,6 +2359,38 @@ describe('createPages - static layouts', () => {
     const { getConfig, handleRoute } = injectedFunctions();
     expect(await getConfig()).toMatchInlineSnapshot(`
       [
+        {
+          "elements": {
+            "layout:/": {
+              "isStatic": true,
+            },
+            "layout:/(group)/[slug]": {
+              "isStatic": true,
+            },
+            "page:/(group)/[slug]/dynamic": {
+              "isStatic": false,
+            },
+          },
+          "isStatic": false,
+          "noSsr": false,
+          "path": [
+            {
+              "name": "slug",
+              "type": "group",
+            },
+            {
+              "name": "dynamic",
+              "type": "literal",
+            },
+          ],
+          "rootElement": {
+            "isStatic": true,
+          },
+          "routeElement": {
+            "isStatic": true,
+          },
+          "type": "route",
+        },
         {
           "elements": {
             "layout:/": {
@@ -2466,6 +2503,12 @@ describe('createPages - static layouts', () => {
         "layout:/(group)/slug=hello-world",
       ]
     `);
+
+    await expect(() =>
+      handleRoute('/unknown/dynamic', {
+        query: '?skip=[]',
+      }),
+    ).rejects.toThrowErrorMatchingInlineSnapshot(`[Error: Static layout not found for page: /unknown/dynamic]`);
   });
 
   it('error on inconsistent static paths between pages and layouts', async () => {
@@ -2499,8 +2542,8 @@ describe('createPages - static layouts', () => {
     ]);
 
     const { getConfig } = injectedFunctions();
-    await expect(() =>
-      getConfig(),
-    ).rejects.toThrowErrorMatchingInlineSnapshot(`[Error: inconsistent static paths between layout /(group)/[slug] and page /extra-one]`);
+    await expect(() => getConfig()).rejects.toThrowErrorMatchingInlineSnapshot(
+      `[Error: inconsistent static paths between layout /(group)/[slug] and page /extra-one]`,
+    );
   });
 });
