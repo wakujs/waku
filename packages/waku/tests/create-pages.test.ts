@@ -2323,3 +2323,184 @@ describe('createPages - grouped paths', () => {
     ]);
   });
 });
+
+describe('createPages - static layouts', () => {
+  it('supports static paths', async () => {
+    const TestPage = () => null;
+    const TestHomePage = () => null;
+    const TestLayout = ({ children }: PropsWithChildren) => children;
+    const TestRootLayout = ({ children }: PropsWithChildren) => children;
+    createPages(async ({ createPage, createLayout }) => [
+      createLayout({ render: 'static', path: '/', component: TestRootLayout }),
+      createLayout({
+        render: 'static',
+        path: '/(group)/[slug]',
+        component: TestLayout,
+        staticPaths: ['hello-world', 'test'],
+      }),
+      createPage({
+        render: 'static',
+        path: '/(group)/[slug]',
+        component: TestPage,
+        staticPaths: ['hello-world', 'test'],
+      }),
+      createPage({
+        render: 'static',
+        path: '/(group)',
+        component: TestHomePage,
+      }),
+    ]);
+
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toMatchInlineSnapshot(`
+      [
+        {
+          "elements": {
+            "layout:/": {
+              "isStatic": true,
+            },
+            "layout:/(group)/[slug]": {
+              "isStatic": true,
+            },
+            "page:/hello-world": {
+              "isStatic": true,
+            },
+          },
+          "isStatic": true,
+          "noSsr": false,
+          "path": [
+            {
+              "name": "hello-world",
+              "type": "literal",
+            },
+          ],
+          "pathPattern": [
+            {
+              "name": "(group)",
+              "type": "literal",
+            },
+            {
+              "name": "slug",
+              "type": "group",
+            },
+          ],
+          "rootElement": {
+            "isStatic": true,
+          },
+          "routeElement": {
+            "isStatic": true,
+          },
+          "type": "route",
+        },
+        {
+          "elements": {
+            "layout:/": {
+              "isStatic": true,
+            },
+            "layout:/(group)/[slug]": {
+              "isStatic": true,
+            },
+            "page:/test": {
+              "isStatic": true,
+            },
+          },
+          "isStatic": true,
+          "noSsr": false,
+          "path": [
+            {
+              "name": "test",
+              "type": "literal",
+            },
+          ],
+          "pathPattern": [
+            {
+              "name": "(group)",
+              "type": "literal",
+            },
+            {
+              "name": "slug",
+              "type": "group",
+            },
+          ],
+          "rootElement": {
+            "isStatic": true,
+          },
+          "routeElement": {
+            "isStatic": true,
+          },
+          "type": "route",
+        },
+        {
+          "elements": {
+            "layout:/": {
+              "isStatic": true,
+            },
+            "page:/": {
+              "isStatic": true,
+            },
+          },
+          "isStatic": true,
+          "noSsr": false,
+          "path": [],
+          "rootElement": {
+            "isStatic": true,
+          },
+          "routeElement": {
+            "isStatic": true,
+          },
+          "type": "route",
+        },
+      ]
+    `);
+
+    const route = await handleRoute('/hello-world', {
+      query: '?skip=[]',
+    });
+    expect(route).toBeDefined();
+    expect(route.rootElement).toBeDefined();
+    expect(route.routeElement).toBeDefined();
+    expect(Object.keys(route.elements)).toMatchInlineSnapshot(`
+      [
+        "page:/hello-world",
+        "layout:/",
+        "layout:/(group)/slug=hello-world",
+      ]
+    `);
+  });
+
+  it('error on inconsistent static paths between pages and layouts', async () => {
+    const TestPage = () => null;
+    const TestHomePage = () => null;
+    const TestLayout = ({ children }: PropsWithChildren) => children;
+    const TestRootLayout = ({ children }: PropsWithChildren) => children;
+    createPages(async ({ createPage, createLayout }) => [
+      createLayout({
+        render: 'static',
+        path: '/',
+        component: TestRootLayout,
+      }),
+      createLayout({
+        render: 'static',
+        path: '/(group)/[slug]',
+        component: TestLayout,
+        staticPaths: ['hello-world', 'test'],
+      }),
+      createPage({
+        render: 'static',
+        path: '/(group)/[slug]',
+        component: TestPage,
+        staticPaths: ['hello-world', 'test', 'extra-one'],
+      }),
+      createPage({
+        render: 'static',
+        path: '/(group)',
+        component: TestHomePage,
+      }),
+    ]);
+
+    const { getConfig } = injectedFunctions();
+    await expect(() =>
+      getConfig(),
+    ).rejects.toThrowErrorMatchingInlineSnapshot(`[Error: inconsistent static paths between layout /(group)/[slug] and page /extra-one]`);
+  });
+});

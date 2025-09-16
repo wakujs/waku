@@ -259,12 +259,14 @@ const createNestedElements = (
 };
 
 interface PageInfo {
+  path: string;
   spec: PathSpec;
   component: FunctionComponent<any>;
+  /**
+   * Layouts, order from the lowest level to the nearest layout
+   */
   layouts: LayoutInfo[];
   isDynamic: boolean;
-
-  isExactPath: boolean;
 }
 
 interface LayoutInfo {
@@ -273,8 +275,8 @@ interface LayoutInfo {
   component: FunctionComponent<any>;
   isDynamic: boolean;
 
+  staticSlotIds?: Set<string>;
   staticPaths?: string[][] | undefined;
-  staticSlotIds: string[];
 }
 
 const routePriorityComparator = (
@@ -322,22 +324,15 @@ export const createPages = <
 ) => {
   let configured = false;
 
-  // layout lookups retain (group) path and pathMaps store without group
-  // paths are stored without groups to easily detect duplicates
-  const groupPathLookup = new Map<string, string>();
-  const pagePathMap = new Map<string, PageInfo>();
+  const dynamicPagePathMap = new Map<string, PageInfo>();
   // static path and its linked static page
-  // pages with exact path have no static path to populate, hence won't be stored here
   const staticPagePathMap = new Map<
     string,
     {
       literalSpec: PathSpec;
-      // use this path to find the corresponding page in `pagePathMap`
-      originalPath: string;
+      page: PageInfo;
     }
   >();
-  // static layouts grouped by slot id
-  const staticLayoutMap = new Map<string, LayoutInfo>();
   // layouts that's yet to be attached to pages
   const unattachedLayouts = new Map<string, LayoutInfo>();
   const apiPathMap = new Map<
@@ -380,16 +375,6 @@ export const createPages = <
     }
   };
 
-  const pagePathExists = (path: string) => {
-    for (const pathKey of apiPathMap.keys()) {
-      const [_m, p] = pathKey.split(' ');
-      if (p === path) {
-        return true;
-      }
-    }
-    return staticPagePathMap.has(path) || pagePathMap.has(path);
-  };
-
   const isAllElementsStatic = (
     elements: Record<string, { isStatic?: boolean }>,
   ) => Object.values(elements).every((element) => element.isStatic);
@@ -399,24 +384,22 @@ export const createPages = <
       (sliceId) => sliceIdMap.get(sliceId)?.isStatic,
     );
 
-  const registerGrouplessPath = (grouplessPath: string, path: string) => {
-    if (grouplessPath === path) {
-      return;
+  const checkDuplicatePath = (path: string) => {
+    for (const pathKey of apiPathMap.keys()) {
+      const [_m, p] = pathKey.split(' ', 2);
+      if (p === path) {
+        throw new Error(`Duplicated path: ${path}`);
+      }
     }
 
-    if (groupPathLookup.has(grouplessPath)) {
+    if (staticPagePathMap.has(path) || dynamicPagePathMap.has(path)) {
       throw new Error(`Duplicated path: ${path}`);
     }
-
-    groupPathLookup.set(grouplessPath, path);
   };
 
   const createPage: CreatePage = (page) => {
     if (configured) {
       throw new Error('createPage no longer available');
-    }
-    if (pagePathExists(page.path)) {
-      throw new Error(`Duplicated path: ${page.path}`);
     }
 
     const spec = page.exactPath
@@ -426,18 +409,26 @@ export const createPages = <
       noSsrSet.add(spec);
     }
 
+    const info: PageInfo = {
+      path: page.path,
+      spec,
+      component: page.component,
+      isDynamic: page.render === 'dynamic',
+      layouts: [],
+    };
+
     // generate static path map
-    if (page.render === 'static' && !page.exactPath) {
+    if (page.render === 'static') {
       const { numSlugs, numWildcards } = countSlugsAndWildcards(spec);
 
       if (numSlugs === 0 && numWildcards === 0) {
-        const grouplessPath = getGrouplessPath(page.path);
+        const path = getGrouplessPath(page.path);
 
-        staticPagePathMap.set(grouplessPath, {
+        checkDuplicatePath(path);
+        staticPagePathMap.set(path, {
           literalSpec: spec,
-          originalPath: page.path,
+          page: info,
         });
-        registerGrouplessPath(grouplessPath, page.path);
       } else if ('staticPaths' in page) {
         const staticPaths = normalizeStaticPaths(page.staticPaths);
 
@@ -458,27 +449,23 @@ export const createPages = <
             }
           }
 
-          staticPagePathMap.set(getGrouplessPath('/' + pathItems.join('/')), {
+          const path = getGrouplessPath('/' + pathItems.join('/'));
+          checkDuplicatePath(path);
+          staticPagePathMap.set(path, {
             literalSpec: pathItems.map((name) => ({ type: 'literal', name })),
-            originalPath: page.path,
+            page: info,
           });
         }
-
-        registerGrouplessPath(getGrouplessPath(page.path), page.path);
       } else {
         throw new Error(
           `Missing 'staticPaths' in a static page: ${page.path}.`,
         );
       }
+    } else {
+      checkDuplicatePath(page.path);
+      dynamicPagePathMap.set(page.path, info);
     }
 
-    pagePathMap.set(page.path, {
-      spec,
-      component: page.component,
-      isDynamic: page.render === 'dynamic',
-      isExactPath: page.exactPath ?? false,
-      layouts: [],
-    });
     if (page.slices?.length) {
       slicePathMap.set(page.path, page.slices);
     }
@@ -500,7 +487,6 @@ export const createPages = <
       spec: pathSpec,
       component: layout.component,
       isDynamic: layout.render === 'dynamic',
-      staticSlotIds: [],
       staticPaths:
         layout.render === 'static' && layout.staticPaths
           ? normalizeStaticPaths(layout.staticPaths)
@@ -578,33 +564,51 @@ export const createPages = <
 
   function attachLayouts() {
     for (const layout of unattachedLayouts.values()) {
-      // TODO: check if `staticPaths` in child pages are consistent with layout's
-      for (const [path, page] of pagePathMap) {
-        if (
-          layout.path === '/' ||
-          layout.path === path ||
-          path.startsWith(layout.path + '/')
-        ) {
+      const staticSubPages: string[] = [];
+
+      for (const page of dynamicPagePathMap.values()) {
+        if (isChildOfLayout(page, layout)) {
           page.layouts.push(layout);
         }
       }
 
-      if (!layout.staticPaths) {
+      for (const [staticPath, { page }] of staticPagePathMap) {
+        if (isChildOfLayout(page, layout)) {
+          page.layouts.push(layout);
+          staticSubPages.push(staticPath);
+        }
+      }
+
+      if (!layout.staticPaths || layout.isDynamic) {
         continue;
       }
 
       const spec = parsePathWithSlug(layout.path);
+      layout.staticSlotIds ??= new Set();
       for (const staticPath of layout.staticPaths) {
         const mapping = getMappingFromStaticPath(spec, staticPath, true);
         const id = getLayoutSlotId(layout, mapping);
 
-        layout.staticSlotIds.push(id);
-        staticLayoutMap.set(id, layout);
+        layout.staticSlotIds.add(id);
+      }
+
+      const grouplessSpec = getGrouplessPathSpec(layout.spec);
+      for (const staticPath of staticSubPages) {
+        const mapping = getPathMapping(grouplessSpec, staticPath);
+        const id = getLayoutSlotId(layout, mapping);
+
+        if (!layout.staticSlotIds.has(id)) {
+          throw new Error(
+            `inconsistent static paths between layout ${layout.path} and page ${staticPath}`,
+          );
+        }
       }
     }
 
-    for (const page of pagePathMap.values()) {
-      // ensure the order is correct, from the lowest to nearest layout
+    for (const page of dynamicPagePathMap.values()) {
+      page.layouts.sort((a, b) => a.path.length - b.path.length);
+    }
+    for (const { page } of staticPagePathMap.values()) {
       page.layouts.sort((a, b) => a.path.length - b.path.length);
     }
 
@@ -623,20 +627,15 @@ export const createPages = <
         staticPathSpec?: PathSpec;
       }[] = [];
 
-      for (const [path, { literalSpec, originalPath }] of staticPagePathMap) {
+      for (const [path, { literalSpec, page }] of staticPagePathMap) {
         pageEntries.push({
           path,
-          page: pagePathMap.get(originalPath)!,
+          page,
           staticPathSpec: literalSpec,
         });
       }
-      for (const [path, page] of pagePathMap) {
-        if (
-          page.isExactPath ||
-          (page.isDynamic && !staticPagePathMap.has(getGrouplessPath(path)))
-        ) {
-          pageEntries.push({ path, page });
-        }
+      for (const [path, page] of dynamicPagePathMap) {
+        pageEntries.push({ path, page });
       }
 
       for (const { page, path, staticPathSpec } of pageEntries) {
@@ -652,8 +651,7 @@ export const createPages = <
         }
 
         const needPathPattern =
-          staticPathSpec &&
-          pathSpecAsString(page.spec) !== pathSpecAsString(staticPathSpec);
+          staticPathSpec && page.path !== pathSpecAsString(staticPathSpec);
 
         elements[`page:${path}`] = { isStatic: !page.isDynamic };
         pathConfigs.push({
@@ -702,12 +700,10 @@ export const createPages = <
       const staticInfo = staticPagePathMap.get(path);
       if (staticInfo) {
         routePath = path;
-        page = pagePathMap.get(staticInfo.originalPath)!;
+        page = staticInfo.page;
       } else {
-        for (const [p, info] of pagePathMap) {
-          const isMatch = info.isExactPath
-            ? p === path
-            : getPathMapping(getGrouplessPathSpec(parsePathWithSlug(p)), path);
+        for (const [p, info] of dynamicPagePathMap) {
+          const isMatch = getPathMapping(getGrouplessPathSpec(info.spec), path);
 
           if (isMatch) {
             routePath = p;
@@ -753,6 +749,10 @@ export const createPages = <
       for (const layout of page.layouts) {
         const comp = layout.component;
         const id = getLayoutSlotId(layout, fullMapping);
+        if (layout.staticSlotIds && !layout.staticSlotIds.has(id)) {
+          throw new Error('Static layout not found for page: ' + path);
+        }
+
         elements[id] = createElement(
           comp,
           trimMapping(layout.spec, fullMapping),
@@ -908,5 +908,13 @@ function trimMapping(
 export function getGrouplessPathSpec(pathSpec: PathSpec) {
   return pathSpec.filter(
     (part) => !(part.type === 'literal' && part.name.startsWith('(')),
+  );
+}
+
+function isChildOfLayout(page: PageInfo, layout: LayoutInfo) {
+  return (
+    layout.path === '/' ||
+    layout.path === page.path ||
+    page.path.startsWith(layout.path + '/')
   );
 }
