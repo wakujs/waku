@@ -2396,7 +2396,10 @@ describe('createPages - static layouts', () => {
             "layout:/": {
               "isStatic": true,
             },
-            "layout:/(group)/[slug]": {
+            "layout:/(group)/slug=hello-world": {
+              "isStatic": true,
+            },
+            "layout:/(group)/slug=test": {
               "isStatic": true,
             },
             "page:/hello-world": {
@@ -2434,7 +2437,10 @@ describe('createPages - static layouts', () => {
             "layout:/": {
               "isStatic": true,
             },
-            "layout:/(group)/[slug]": {
+            "layout:/(group)/slug=hello-world": {
+              "isStatic": true,
+            },
+            "layout:/(group)/slug=test": {
               "isStatic": true,
             },
             "page:/test": {

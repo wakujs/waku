@@ -265,7 +265,7 @@ interface PageInfo {
   /**
    * Layouts, order from the lowest level to the nearest layout
    */
-  layouts: LayoutInfo[];
+  layouts: (LayoutInfo & { slotId: string })[];
   isDynamic: boolean;
 }
 
@@ -275,7 +275,7 @@ interface LayoutInfo {
   component: FunctionComponent<any>;
   isDynamic: boolean;
 
-  staticSlotIds?: Set<string>;
+  staticSlotIds: Set<string>;
   staticPaths?: string[][] | undefined;
 }
 
@@ -487,6 +487,7 @@ export const createPages = <
       spec: pathSpec,
       component: layout.component,
       isDynamic: layout.render === 'dynamic',
+      staticSlotIds: new Set(),
       staticPaths:
         layout.render === 'static' && layout.staticPaths
           ? normalizeStaticPaths(layout.staticPaths)
@@ -564,44 +565,57 @@ export const createPages = <
 
   function attachLayouts() {
     for (const layout of unattachedLayouts.values()) {
-      const staticSubPages: string[] = [];
+      const { numWildcards, numSlugs } = countSlugsAndWildcards(layout.spec);
+      const generalSlotId = `layout:${layout.path}`;
 
       for (const page of dynamicPagePathMap.values()) {
         if (isChildOfLayout(page, layout)) {
-          page.layouts.push(layout);
+          page.layouts.push({ ...layout, slotId: generalSlotId });
         }
       }
 
-      for (const [staticPath, { page }] of staticPagePathMap) {
-        if (isChildOfLayout(page, layout)) {
-          page.layouts.push(layout);
-          staticSubPages.push(staticPath);
+      if (layout.isDynamic || (numWildcards === 0 && numSlugs === 0)) {
+        for (const { page } of staticPagePathMap.values()) {
+          if (isChildOfLayout(page, layout)) {
+            page.layouts.push({ ...layout, slotId: generalSlotId });
+          }
         }
-      }
 
-      if (!layout.staticPaths || layout.isDynamic) {
+        if (!layout.isDynamic) {
+          layout.staticSlotIds.add(generalSlotId);
+        }
+
         continue;
       }
 
-      const spec = parsePathWithSlug(layout.path);
-      layout.staticSlotIds ??= new Set();
-      for (const staticPath of layout.staticPaths) {
-        const mapping = getMappingFromStaticPath(spec, staticPath, true);
-        const id = getLayoutSlotId(layout, mapping);
+      if (!layout.staticPaths) {
+        // TODO: it is actually possible to generate layout static paths automatically, maybe re-consider it?
+        throw new Error(
+          `Missing 'staticPaths' in a static layout: ${layout.path}.`,
+        );
+      }
 
-        layout.staticSlotIds.add(id);
+      for (const staticPath of layout.staticPaths) {
+        const mapping = getMappingFromStaticPath(layout.spec, staticPath, true);
+        layout.staticSlotIds.add(getLayoutSlotId(layout, mapping));
       }
 
       const grouplessSpec = getGrouplessPathSpec(layout.spec);
-      for (const staticPath of staticSubPages) {
-        const mapping = getPathMapping(grouplessSpec, staticPath);
-        const id = getLayoutSlotId(layout, mapping);
+      for (const [staticPath, { page }] of staticPagePathMap) {
+        if (!isChildOfLayout(page, layout)) {
+          continue;
+        }
 
-        if (!layout.staticSlotIds.has(id)) {
+        const mapping = getPathMapping(grouplessSpec, staticPath);
+        const slotId = getLayoutSlotId(layout, mapping);
+
+        if (!layout.staticSlotIds.has(slotId)) {
           throw new Error(
             `inconsistent static paths between layout ${layout.path} and page ${staticPath}`,
           );
         }
+
+        page.layouts.push({ ...layout, slotId });
       }
     }
 
@@ -643,9 +657,8 @@ export const createPages = <
           noSsrSet.has(page.spec) ||
           (staticPathSpec !== undefined && noSsrSet.has(staticPathSpec));
         const elements: Record<string, { isStatic: boolean }> = {};
-        // TODO: need to update slot ID for `getConfig()`?
         for (const layout of page.layouts) {
-          elements[`layout:${layout.path}`] = {
+          elements[layout.slotId] = {
             isStatic: !layout.isDynamic,
           };
         }
@@ -749,7 +762,7 @@ export const createPages = <
       for (const layout of page.layouts) {
         const comp = layout.component;
         const id = getLayoutSlotId(layout, fullMapping);
-        if (layout.staticSlotIds && !layout.staticSlotIds.has(id)) {
+        if (!layout.isDynamic && !layout.staticSlotIds.has(id)) {
           throw new Error('Static layout not found for page: ' + path);
         }
 
