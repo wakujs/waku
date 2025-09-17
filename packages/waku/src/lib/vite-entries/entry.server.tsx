@@ -13,9 +13,9 @@ const createApp = serverEntry.createApp || defaultCreateApp;
 
 const app = new Hono();
 app.use(staticMiddleware(args));
-createApp(args, app);
+const newApp = createApp(args);
 app.use(notFoundMiddleware(args));
 
-export const fetch = app.fetch;
+export const fetch = newApp.fetch;
 
 export { processBuild } from '../vite-rsc/build.js';
