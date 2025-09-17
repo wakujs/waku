@@ -16,7 +16,7 @@
     "e2e-prd": "playwright test --project=chromium-prd",
     "website:dev": "pnpm -F waku-website dev",
     "website:build": "VITE_EXPERIMENTAL_WAKU_ROUTER=true pnpm -F waku-website build",
-    "website:vercel": "pnpm run compile && pnpm run website:build --with-vercel-static && mv packages/website/.vercel/output .vercel/",
+    "website:vercel": "pnpm run compile && pnpm run website:build && mv packages/website/.vercel/output .vercel/",
     "website:prd": "pnpm run website:build && pnpm -F waku-website start"
   },
   "prettier": {
