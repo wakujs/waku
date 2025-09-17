@@ -34,5 +34,3 @@ export default {
     return app.fetch(request, env, ctx);
   },
 };
-
-export { processBuild } from '../../build.js';
