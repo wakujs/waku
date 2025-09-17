@@ -1,7 +1,4 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm run website:vercel",
-  "outputDirectory": "packages/website/dist/public",
   "redirects": [
     {
       "source": "/discord",
