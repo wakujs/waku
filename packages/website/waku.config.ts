@@ -20,10 +20,10 @@ export default defineConfig({
               // https://vercel.com/docs/build-output-api/configuration#routing-rule-example
               routes: [
                 {
-                  src: '/redirect',
+                  src: '/discord',
                   status: 308,
                   headers: {
-                    Location: 'https://example.com/',
+                    Location: 'https://discord.gg/MrQdmzd',
                   },
                 },
                 {
