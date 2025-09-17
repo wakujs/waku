@@ -1,4 +1,8 @@
-import { getContext } from './middleware/context.js';
+import { getContext } from './lib/context.js';
+export {
+  getContext as unstable_getContext,
+  getContextData as unstable_getContextData,
+} from './lib/context.js';
 
 export * as unstable_builderConstants from './lib/builder/constants.js';
 
@@ -95,30 +99,4 @@ type BuildOptions = {
 // TODO tentative name
 export function unstable_getBuildOptions(): BuildOptions {
   return ((globalThis as any).__WAKU_BUILD_OPTIONS__ ||= {});
-}
-
-export function unstable_createAsyncIterable<T extends () => unknown>(
-  create: () => Promise<Iterable<T>>,
-): AsyncIterable<Awaited<ReturnType<T>>>;
-
-export function unstable_createAsyncIterable<T extends () => unknown>(
-  create: () => Promise<Iterable<T>>,
-) {
-  return {
-    [Symbol.asyncIterator]: () => {
-      let tasks: T[] | undefined;
-      return {
-        next: async () => {
-          if (!tasks) {
-            tasks = Array.from(await create());
-          }
-          const task = tasks.shift();
-          if (task) {
-            return { value: await task() };
-          }
-          return { done: true, value: undefined };
-        },
-      };
-    },
-  };
 }

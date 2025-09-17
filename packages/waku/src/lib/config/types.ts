@@ -1,10 +1,7 @@
 import type { Config } from '../../config.js';
 
-export type BuiltinMiddleware =
-  | 'waku/middleware/context'
-  | 'waku/middleware/dev-server'
-  | 'waku/middleware/handler';
-
+/** @deprecated Use `Config` instead. */
 export type ConfigDev = Required<Config>;
 
+/** @deprecated Use `Config` instead. */
 export type ConfigPrd = Pick<Required<Config>, 'basePath' | 'rscBase'>;

@@ -26,10 +26,6 @@
       "types": "./dist/config.d.ts",
       "default": "./dist/config.js"
     },
-    "./middleware/*": {
-      "types": "./dist/middleware/*.d.ts",
-      "default": "./dist/middleware/*.js"
-    },
     "./client": {
       "types": "./dist/client.d.ts",
       "default": "./dist/client.js"

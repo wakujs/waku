@@ -10,8 +10,7 @@ type RenderHtml = (
   options: { rscPath: string; actionResult?: unknown; status?: number },
 ) => Promise<Response>;
 
-// This API is still unstable
-export type HandleRequest = (
+export type Unstable_HandleRequest = (
   input: (
     | { type: 'component'; rscPath: string; rscParams: unknown }
     | {
@@ -34,28 +33,42 @@ export type HandleRequest = (
   },
 ) => Promise<ReadableStream | Response | 'fallback' | null | undefined>;
 
-// needs better name (it's not just config)
-type BuildConfig =
-  | {
-      type: 'file';
-      pathname: string;
-      body: Promise<ReadableStream | string>;
-    }
-  | {
-      type: 'defaultHtml';
-      pathname: string;
-    };
-
-// This API is still unstable
-export type HandleBuild = (utils: {
+export type Unstable_HandleBuild = (utils: {
   renderRsc: RenderRsc;
   renderHtml: RenderHtml;
   rscPath2pathname: (rscPath: string) => string;
-}) => AsyncIterable<BuildConfig> | null;
+  generateFile: (
+    pathname: string,
+    body: Promise<ReadableStream | string>,
+  ) => Promise<void>;
+  generateDefaultHtml: (pathname: string) => Promise<void>;
+}) => Promise<void>;
 
-export type ServerEntries = {
+export type Unstable_ServerEntry = {
   default: {
-    handleRequest: HandleRequest;
-    handleBuild: HandleBuild;
+    handleRequest: Unstable_HandleRequest;
+    handleBuild: Unstable_HandleBuild;
   };
 };
+
+/** @deprecated This will be removed soon. */
+export type HandlerContext = {
+  req: Request;
+  res?: Response;
+  readonly data: Record<string, unknown>;
+};
+
+/** @deprecated This will be removed soon. */
+type Handler = (
+  ctx: HandlerContext,
+  next: () => Promise<void>,
+) => Promise<void>;
+
+/** @deprecated This will be removed soon. */
+export type MiddlewareOptions = {
+  cmd: 'dev' | 'start';
+  env: Record<string, string>;
+};
+
+/** @deprecated This will be removed soon. */
+export type Middleware = (options: MiddlewareOptions) => Handler;
