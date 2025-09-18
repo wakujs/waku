@@ -13,7 +13,7 @@ const createApp = serverEntry.createApp || defaultCreateApp;
 
 const app = new Hono();
 app.use(staticMiddleware(args));
-const newApp = createApp(args);
+const newApp = createApp(args, app);
 app.use(notFoundMiddleware(args));
 
 export const fetch = newApp.fetch;
