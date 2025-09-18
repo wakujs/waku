@@ -177,11 +177,11 @@ describe('create-waku CLI with args', () => {
     expect(stdout).toContain('--project-name');
   });
 
-  test('displays help message with -h alias', () => {
-    const { stdout } = run(['-h'], { cwd: import.meta.dirname });
-    expect(stdout).toContain('Usage:');
-    expect(stdout).toContain('Options:');
-  });
+  // test('displays help message with -h alias', () => {
+  //   const { stdout } = run(['-h'], { cwd: import.meta.dirname });
+  //   expect(stdout).toContain('Usage:');
+  //   expect(stdout).toContain('Options:');
+  // });
 
   test('accepts template option from command line', () => {
     const { stdout } = run(

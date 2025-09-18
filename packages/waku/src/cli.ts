@@ -48,13 +48,16 @@ const { values, positionals } = parseArgs({
       type: 'string',
       short: 'p',
     },
+    host: {
+      type: 'string',
+      short: 'h'
+    },
     version: {
       type: 'boolean',
       short: 'v',
     },
     help: {
-      type: 'boolean',
-      short: 'h',
+      type: 'boolean'
     },
   },
 });
@@ -93,7 +96,8 @@ Options:
   --with-deno           Output for Deno on build
   --with-aws-lambda     Output for AWS Lambda on build
   -p, --port            Port number for the server
+  -h, --host            Hostname to bind (e.g. 0.0.0.0)
   -v, --version         Display the version number
-  -h, --help            Display this help message
+      --help            Display this help message
 `);
 }

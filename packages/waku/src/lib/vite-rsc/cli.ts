@@ -19,17 +19,20 @@ async function loadConfig(): Promise<Config | undefined> {
 
 async function startDevServer(
   port: number,
+  host: string | undefined,
   rscPluginOptions: RscPluginOptions,
 ) {
   const server = await vite.createServer({
     configFile: false,
     plugins: [rscPlugin(rscPluginOptions)],
-    server: { port },
+    server: { port, host },
   });
   await server.listen();
-  const url = server.resolvedUrls!['local'];
-  port = Number(url[0]?.match(/:(\d+)/)?.[1]) || port;
-  console.log(`ready: Listening on ${url}`);
+  const kind = host && (host === '0.0.0.0' || host === '::')
+    ? 'network' : 'local';
+  const urls = server.resolvedUrls?.[kind] ?? [];
+  const shown = urls[0] ?? `http://${host ?? '127.0.0.1'}:${port}/`;
+  console.log(`ready: Listening on ${shown}`);
   const watcher = server.watcher;
   watcher.on('change', handleConfigChange);
   watcher.on('unlink', handleConfigChange);
@@ -44,7 +47,7 @@ async function startDevServer(
     ) {
       console.log(`Waku configuration file changed, restarting server...`);
       await server.close();
-      await startDevServer(port, {
+      await startDevServer(port, host, {
         ...rscPluginOptions,
         config: await loadConfig(),
       });
@@ -54,7 +57,7 @@ async function startDevServer(
 
 export async function cli(
   cmd: 'dev' | 'build' | 'start',
-  flags: { port?: string } & Flags,
+  flags: { port?: string; host?: string } & Flags,
 ) {
   // set NODE_ENV before runnerImport https://github.com/vitejs/vite/issues/20299
   process.env.NODE_ENV ??= cmd === 'dev' ? 'development' : 'production';
@@ -66,7 +69,8 @@ export async function cli(
 
   if (cmd === 'dev') {
     const port = parseInt(flags.port || '3000', 10);
-    await startDevServer(port, rscPluginOptions);
+    const host = flags.host || process.env.HOST;
+    await startDevServer(port, host, rscPluginOptions);
   } else if (cmd === 'build') {
     const builder = await vite.createBuilder({
       configFile: false,
@@ -75,17 +79,18 @@ export async function cli(
     await builder.buildApp();
   } else if (cmd === 'start') {
     const port = parseInt(flags.port || '8080', 10);
+    const host = flags.host || process.env.HOST || '127.0.0.1';
     const { serve } = await import('@hono/node-server');
     const distDir = rscPluginOptions.config?.distDir ?? 'dist';
     const entry: typeof import('../vite-entries/entry.server.js') =
       await import(
         pathToFileURL(path.resolve(distDir, 'server', 'index.js')).href
       );
-    await startServer(port);
-    function startServer(port: number) {
+    await startServer(port, host);
+    function startServer(port: number, host: string) {
       return new Promise<void>((resolve, reject) => {
-        const server = serve({ fetch: entry.default, port }, () => {
-          console.log(`ready: Listening on http://localhost:${port}/`);
+        const server = serve({ fetch: entry.default, port, hostname: host }, () => {
+          console.log(`ready: Listening on http://${host}:${port}/`);
           resolve();
         });
         server.on('error', (err: NodeJS.ErrnoException) => {
@@ -93,7 +98,7 @@ export async function cli(
             console.log(
               `warn: Port ${port} is in use, trying ${port + 1} instead.`,
             );
-            startServer(port + 1)
+            startServer(port + 1, host)
               .then(resolve)
               .catch(reject);
           } else {
