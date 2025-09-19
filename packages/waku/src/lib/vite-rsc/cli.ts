@@ -69,7 +69,7 @@ export async function cli(
 
   if (cmd === 'dev') {
     const port = parseInt(flags.port || '3000', 10);
-    const host = flags.host || process.env.HOST;
+    const host = flags.host;
     await startDevServer(port, host, rscPluginOptions);
   } else if (cmd === 'build') {
     const builder = await vite.createBuilder({
@@ -79,7 +79,7 @@ export async function cli(
     await builder.buildApp();
   } else if (cmd === 'start') {
     const port = parseInt(flags.port || '8080', 10);
-    const host = flags.host || process.env.HOST || '127.0.0.1';
+    const host = flags.host;
     const { serve } = await import('@hono/node-server');
     const distDir = rscPluginOptions.config?.distDir ?? 'dist';
     const entry: typeof import('../vite-entries/entry.server.js') =
@@ -87,10 +87,11 @@ export async function cli(
         pathToFileURL(path.resolve(distDir, 'server', 'index.js')).href
       );
     await startServer(port, host);
-    function startServer(port: number, host: string) {
+    function startServer(port: number, host?: string) {
       return new Promise<void>((resolve, reject) => {
         const server = serve({ fetch: entry.default, port, hostname: host }, () => {
-          console.log(`ready: Listening on http://${host}:${port}/`);
+          const shownHost = host ?? '127.0.0.1';
+          console.log(`ready: Listening on http://${shownHost}:${port}/`);
           resolve();
         });
         server.on('error', (err: NodeJS.ErrnoException) => {
