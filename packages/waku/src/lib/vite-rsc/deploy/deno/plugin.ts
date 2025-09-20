@@ -20,7 +20,7 @@ export function deployDenoPlugin(deployOptions: {
             build: {
               rollupOptions: {
                 input: {
-                  deno: SERVER_ENTRY,
+                  index: SERVER_ENTRY,
                 },
                 external: [/^jsr:/],
               },
@@ -49,6 +49,6 @@ async function build({
 }) {
   writeFileSync(
     path.join(opts.distDir, SERVE_JS),
-    `import './server/deno.js';\n`,
+    `import './server/index.js';\n`,
   );
 }

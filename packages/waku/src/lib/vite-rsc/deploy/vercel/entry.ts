@@ -24,5 +24,3 @@ function createApp(app: Hono) {
 const app = honoEnhancer(createApp)(new Hono());
 
 export default getRequestListener(app.fetch);
-
-export { processBuild } from '../../build.js';

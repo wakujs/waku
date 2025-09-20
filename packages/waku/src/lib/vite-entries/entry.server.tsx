@@ -31,5 +31,3 @@ function createApp(app: Hono) {
 const app = honoEnhancer(createApp)(new Hono());
 
 export default app.fetch;
-
-export { processBuild } from '../vite-rsc/build.js';

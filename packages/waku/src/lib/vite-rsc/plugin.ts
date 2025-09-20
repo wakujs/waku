@@ -157,6 +157,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
                       __dirname,
                       '../vite-entries/entry.server.js',
                     ),
+                    build: path.join(__dirname, '../vite-rsc/build.js'),
                   },
                 },
               },
@@ -382,10 +383,11 @@ if (import.meta.hot) {
           const viteConfig = builder.config;
           const entryPath = path.join(
             viteConfig.environments.rsc!.build.outDir,
-            'index.js',
+            'build.js',
           );
-          const entry: typeof import('../vite-entries/entry.server.js') =
-            await import(pathToFileURL(entryPath).href);
+          const entry: typeof import('../vite-rsc/build.js') = await import(
+            pathToFileURL(entryPath).href
+          );
 
           // run `handleBuild`
           INTERNAL_setAllEnv(process.env as any);
