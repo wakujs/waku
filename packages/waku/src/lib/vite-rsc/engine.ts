@@ -7,21 +7,21 @@ import { handlerMiddleware } from './handler.js';
 
 // cf. packages/waku/src/lib/hono/engine.ts
 export function createHonoHandler(): MiddlewareHandler {
-  let middlwareOptions: MiddlewareOptions;
+  let middlewareOptions: MiddlewareOptions;
   if (!isBuild) {
-    middlwareOptions = {
+    middlewareOptions = {
       cmd: 'dev',
       env: {},
     };
   } else {
-    middlwareOptions = {
+    middlewareOptions = {
       cmd: 'start',
       env: {},
     };
   }
 
   const handlers = [contextMiddleware, ...middlewares, handlerMiddleware].map(
-    (m) => m(middlwareOptions),
+    (m) => m(middlewareOptions),
   );
 
   return async (c, next) => {

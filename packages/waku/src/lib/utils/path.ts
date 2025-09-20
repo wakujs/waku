@@ -217,3 +217,18 @@ export const getPathMapping = (
   }
   return mapping;
 };
+
+export function withTrialSlash(s: string) {
+  return s.at(-1) === '/' ? s : `${s}/`;
+}
+
+export function withoutTrialSlash(s: string) {
+  return s !== '/' && s.at(-1) === '/' ? s.slice(0, -1) : s;
+}
+
+export function withoutBase(s: string, basePath: string) {
+  if (s === basePath) {
+    return '/'
+  }
+  return s.startsWith(basePath) ? `${s.slice(basePath.length)}` : s;
+}

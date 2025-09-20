@@ -1,6 +1,7 @@
 import type { ReactFormState } from 'react-dom/client';
 import { decodeFuncId, decodeRscPath } from '../renderers/utils.js';
 import type { ConfigDev } from '../config/types.js';
+import { withoutBase, withTrialSlash } from './path.js';
 import type {
   Unstable_HandleRequest as HandleRequest,
   HandlerContext,
@@ -24,7 +25,7 @@ export async function getInput(
   loadServerAction: (id: string) => Promise<unknown>,
 ) {
   const url = new URL(ctx.req.url);
-  const rscPathPrefix = config.basePath + config.rscBase + '/';
+  const rscPathPrefix = `${withTrialSlash(config.basePath)}${config.rscBase}/`;
   let rscPath: string | undefined;
   let temporaryReferences: unknown | undefined;
   let input: HandleRequestInput;
@@ -91,7 +92,7 @@ export async function getInput(
     // SSR
     input = {
       type: 'custom',
-      pathname: decodeURI(url.pathname),
+      pathname: withoutBase(url.pathname, config.basePath),
       req: ctx.req,
     };
   }
