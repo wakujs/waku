@@ -27,5 +27,3 @@ app.notFound((c) => {
 export const handler: any = import.meta.env.WAKU_AWS_LAMBDA_STREAMING
   ? honoAwsLambda.streamHandle(app)
   : honoAwsLambda.handle(app);
-
-export { processBuild } from '../../build.js';

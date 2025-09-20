@@ -20,5 +20,3 @@ app.notFound((c) => {
 
 export default async (request: Request, context: unknown) =>
   app.fetch(request, { context });
-
-export { processBuild } from '../../build.js';

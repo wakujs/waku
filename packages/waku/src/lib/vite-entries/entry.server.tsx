@@ -17,5 +17,3 @@ const newApp = createApp(args, app);
 app.use(notFoundMiddleware(args));
 
 export const fetch = newApp.fetch;
-
-export { processBuild } from '../vite-rsc/build.js';

@@ -23,5 +23,3 @@ app.notFound((c) => {
 });
 
 export default getRequestListener(app.fetch);
-
-export { processBuild } from '../../build.js';
