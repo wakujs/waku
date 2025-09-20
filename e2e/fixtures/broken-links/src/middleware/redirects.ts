@@ -1,4 +1,4 @@
-import type { Middleware } from 'waku/config';
+import type { MiddlewareHandler } from 'hono';
 
 // BASE_RSC_PATH + encodeRscPath(rscPath)
 const redirects = {
@@ -8,12 +8,12 @@ const redirects = {
   '/RSC/R/broken-redirect.txt': '/RSC/R/broken.txt',
 };
 
-const redirectsMiddleware: Middleware = () => async (ctx, next) => {
-  const url = new URL(ctx.req.url);
+const redirectsMiddleware = (): MiddlewareHandler => async (c, next) => {
+  const url = new URL(c.req.raw.url);
   if (url.pathname in redirects) {
     const pathname = url.pathname as keyof typeof redirects;
     url.pathname = redirects[pathname];
-    ctx.res = new Response(null, {
+    c.res = new Response(null, {
       status: 302,
       headers: {
         location: url.toString(),

@@ -1,7 +1,5 @@
 import type { UserConfig } from 'vite';
 
-export type { Middleware } from './lib/types.js';
-
 export interface Config {
   /**
    * The base path for serve HTTP.
@@ -46,17 +44,6 @@ export interface Config {
    * Defaults to "RSC".
    */
   rscBase?: string;
-  /**
-   * Middleware to use
-   * Defaults to: []
-   * @deprecated This will be removed soon.
-   */
-  middleware?: (string & {})[];
-  /**
-   * Enhancer for Hono
-   * Defaults to `undefined`
-   */
-  unstable_honoEnhancer?: string | undefined;
   /**
    * Vite configuration options.
    * See https://vite.dev/guide/api-environment-plugins.html#environment-api-for-plugins

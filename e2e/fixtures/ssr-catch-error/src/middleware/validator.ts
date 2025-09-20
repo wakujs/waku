@@ -1,17 +1,19 @@
-import type { Middleware } from 'waku/config';
+import type { MiddlewareHandler } from 'hono';
+import { unstable_getContextData as getContextData } from 'waku/server';
 import wakuConfig from '../../waku.config.js';
 
 const { rscBase } = wakuConfig;
 
-const validateMiddleware: Middleware = () => {
-  return async (ctx, next) => {
-    const url = new URL(ctx.req.url);
+const validateMiddleware = (): MiddlewareHandler => {
+  return async (c, next) => {
+    const data = getContextData();
+    const url = new URL(c.req.raw.url);
     if (url.pathname === '/invalid') {
-      ctx.res = new Response('Unauthorized', { status: 401 });
+      c.res = new Response('Unauthorized', { status: 401 });
       return;
     }
     if (url.pathname.startsWith(`/${rscBase}/R/invalid`)) {
-      ctx.data.unauthorized = true;
+      data.unauthorized = true;
     }
     await next();
   };

@@ -1,5 +1,6 @@
 import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { Slot } from 'waku/minimal/client';
+
 import App from './components/App.js';
 
 const entries: ReturnType<typeof defineServer> = defineServer({
