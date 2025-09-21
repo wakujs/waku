@@ -1,6 +1,7 @@
 {
   "version": 3,
   "routes": [
+    {},
     {
       "src": "/discord",
       "status": 307,
