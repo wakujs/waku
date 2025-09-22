@@ -22,6 +22,9 @@
       "react-server": "./dist/main.react-server.js",
       "default": "./dist/main.js"
     },
+    "./types": {
+      "types": "./types.d.ts"
+    },
     "./config": {
       "types": "./dist/config.d.ts",
       "default": "./dist/config.js"
@@ -59,6 +62,7 @@
     "waku": "./cli.js"
   },
   "files": [
+    "types.d.ts",
     "dist"
   ],
   "scripts": {
