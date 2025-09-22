@@ -125,7 +125,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
   const fixtureDir = fileURLToPath(
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
-  let built = false
+  let built = false;
   const startApp = async (mode: 'DEV' | 'PRD' | 'STATIC') => {
     if (mode !== 'DEV' && !built) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
