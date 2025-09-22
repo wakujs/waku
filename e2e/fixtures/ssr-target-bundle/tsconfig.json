@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "types": ["waku/types"],
     "strict": true,
     "target": "esnext",
     "noEmit": true,

@@ -1,4 +1,4 @@
-/// <reference types="vite/client" />
+/// <reference types="waku/types" />
 
 import { defineConfig } from 'waku/config';
 

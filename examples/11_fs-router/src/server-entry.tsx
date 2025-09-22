@@ -1,4 +1,4 @@
-/// <reference types="vite/client" />
+/// <reference types="waku/types" />
 import { unstable_fsRouter as fsRouter } from 'waku/router/server';
 
 export default fsRouter(
