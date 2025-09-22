@@ -71,6 +71,10 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
     vite: undefined,
     ...rscPluginOptions?.config,
   };
+  // ensure trailing slash
+  if (!config.basePath.endsWith("/")) {
+    config.basePath += "/";
+  }
   const flags = rscPluginOptions?.flags ?? {};
   let privatePath: string;
 
@@ -98,6 +102,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
       name: 'rsc:waku',
       async config(_config) {
         let viteRscConfig: UserConfig = {
+          base: config.basePath,
           define: {
             'import.meta.env.WAKU_CONFIG_BASE_PATH': JSON.stringify(
               config.basePath,
