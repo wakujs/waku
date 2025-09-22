@@ -72,8 +72,8 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
     ...rscPluginOptions?.config,
   };
   // ensure trailing slash
-  if (!config.basePath.endsWith("/")) {
-    config.basePath += "/";
+  if (!config.basePath.endsWith('/')) {
+    config.basePath += '/';
   }
   const flags = rscPluginOptions?.flags ?? {};
   let privatePath: string;
