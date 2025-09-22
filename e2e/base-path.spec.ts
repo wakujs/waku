@@ -9,7 +9,7 @@ test.describe(`base-path`, () => {
   let stopApp: (() => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode, {
-      cmd: mode === 'DEV' ? 'pnpm dev' : 'pnpm start-static',
+      cmd: mode === 'DEV' ? undefined : 'pnpm start-static',
     }));
   });
   test.afterAll(async () => {
