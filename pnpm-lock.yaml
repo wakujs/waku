@@ -734,9 +734,6 @@ importers:
       '@types/react-dom':
         specifier: 19.1.9
         version: 19.1.9(@types/react@19.1.12)
-      serve:
-        specifier: ^14.2.5
-        version: 14.2.5
       tailwindcss:
         specifier: 4.1.13
         version: 4.1.13
