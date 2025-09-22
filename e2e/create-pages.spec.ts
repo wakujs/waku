@@ -4,10 +4,10 @@ import {
   test,
   FETCH_ERROR_MESSAGES,
   waitForHydration,
-  prepareStandaloneSetup,
+  prepareNormalSetup,
 } from './utils.js';
 
-const startApp = prepareStandaloneSetup('create-pages');
+const startApp = prepareNormalSetup('create-pages');
 
 test.describe(`create-pages`, () => {
   let port: number;

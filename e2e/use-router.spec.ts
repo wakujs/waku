@@ -1,8 +1,8 @@
 import { expect } from '@playwright/test';
 
-import { test, waitForHydration, prepareStandaloneSetup } from './utils.js';
+import { test, waitForHydration, prepareNormalSetup } from './utils.js';
 
-const startApp = prepareStandaloneSetup('use-router');
+const startApp = prepareNormalSetup('use-router');
 
 test.describe(`useRouter`, async () => {
   let port: number;
