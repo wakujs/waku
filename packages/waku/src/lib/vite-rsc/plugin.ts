@@ -230,8 +230,8 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
         return () => {
           server.middlewares.use(async (req, res, next) => {
             try {
-              // NOTE: Vite already strips `base` from `req.url`
-              // TODO: do the same for `waku start`
+              // Restore Vite's automatically stripped base
+              req.url = req.originalUrl;
               const mod = await environment.runner.import(entryId);
               await getRequestListener(mod.default)(req, res);
             } catch (e) {

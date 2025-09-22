@@ -24,7 +24,10 @@ export async function getInput(
   loadServerAction: (id: string) => Promise<unknown>,
 ) {
   const url = new URL(ctx.req.url);
-  const rscPathPrefix = config.basePath + config.rscBase + '/';
+  if (url.pathname.startsWith(config.basePath)) {
+    url.pathname = url.pathname.slice(config.basePath.length - 1);
+  }
+  const rscPathPrefix = "/" + config.rscBase + '/';
   let rscPath: string | undefined;
   let temporaryReferences: unknown | undefined;
   let input: HandleRequestInput;

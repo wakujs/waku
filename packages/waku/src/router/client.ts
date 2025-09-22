@@ -299,6 +299,7 @@ export function Link({
   ref: refProp,
   ...props
 }: LinkProps): ReactElement {
+  to = import.meta.env.WAKU_CONFIG_BASE_PATH.slice(0, -1) + to;
   const router = useContext(RouterContext);
   const changeRoute = router
     ? router.changeRoute
