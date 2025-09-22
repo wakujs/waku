@@ -19,6 +19,7 @@ export default async function RootLayout({
         </li>
       </ul>
       <Hydrated />
+      <div className="test-style">test-style</div>
       {children}
     </div>
   );

@@ -126,7 +126,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
   let builtMode: undefined | 'PRD' | 'STATIC';
-  const startApp = async (mode: 'DEV' | 'PRD' | 'STATIC') => {
+  const startApp = async (mode: 'DEV' | 'PRD' | 'STATIC', options?: { cmd: string }) => {
     if (mode !== 'DEV' && builtMode !== mode) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
       execSync(`node ${waku} build`, { cwd: fixtureDir });
@@ -143,6 +143,9 @@ export const prepareNormalSetup = (fixtureName: string) => {
       case 'STATIC':
         cmd = `pnpm serve dist/public`;
         break;
+    }
+    if (options?.cmd) {
+      cmd = options.cmd
     }
     const cp = exec(cmd, { cwd: fixtureDir });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
