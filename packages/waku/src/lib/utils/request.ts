@@ -27,7 +27,7 @@ export async function getInput(
   if (url.pathname.startsWith(config.basePath)) {
     url.pathname = url.pathname.slice(config.basePath.length - 1);
   }
-  const rscPathPrefix = "/" + config.rscBase + '/';
+  const rscPathPrefix = '/' + config.rscBase + '/';
   let rscPath: string | undefined;
   let temporaryReferences: unknown | undefined;
   let input: HandleRequestInput;

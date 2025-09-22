@@ -1,7 +1,7 @@
-import http from 'node:http'
-import serveHandler from 'serve-handler'
+import http from 'node:http';
+import serveHandler from 'serve-handler';
 
-const base = "/custom-base/";
+const base = '/custom-base/';
 
 const server = http.createServer((req, res) => {
   if (req.url.startsWith(base)) {
