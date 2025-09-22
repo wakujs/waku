@@ -57,6 +57,8 @@ type InferredPaths = RouteConfig extends {
   : string;
 
 const normalizeRoutePath = (path: string) => {
+  path = "/" + path.slice(import.meta.env.WAKU_CONFIG_BASE_PATH.length)
+
   for (const suffix of ['/', '/index.html']) {
     if (path.endsWith(suffix)) {
       return path.slice(0, -suffix.length) || '/';
