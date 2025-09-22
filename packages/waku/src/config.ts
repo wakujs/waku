@@ -1,6 +1,6 @@
 import type { UserConfig, Plugin } from 'vite';
 
-export type { Plugin as VitePlugin }
+export type { Plugin as VitePlugin };
 
 export type { Middleware } from './lib/types.js';
 
