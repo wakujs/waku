@@ -7,7 +7,7 @@
     "dev": "waku dev",
     "build": "waku build",
     "start": "waku start",
-    "start-static": "rm -rf dist/.tmp && mkdir -p dist/.tmp/custom/base && cp -rf dist/public/. dist/.tmp/custom/base/ && serve dist/.tmp"
+    "start-static": "node ./setup-static.js && serve dist/.tmp"
   },
   "dependencies": {
     "react": "19.1.1",
