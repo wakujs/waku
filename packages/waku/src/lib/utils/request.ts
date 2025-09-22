@@ -5,6 +5,7 @@ import type {
   Unstable_HandleRequest as HandleRequest,
   HandlerContext,
 } from '../types.js';
+import { removeBase } from './path.js';
 
 type HandleRequestInput = Parameters<HandleRequest>[0];
 
@@ -25,7 +26,7 @@ export async function getInput(
 ) {
   const url = new URL(ctx.req.url);
   if (url.pathname.startsWith(config.basePath)) {
-    url.pathname = url.pathname.slice(config.basePath.length - 1);
+    url.pathname = removeBase(url.pathname, config.basePath);
   }
   const rscPathPrefix = '/' + config.rscBase + '/';
   let rscPath: string | undefined;
