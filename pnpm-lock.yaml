@@ -709,6 +709,9 @@ importers:
       '@types/react-dom':
         specifier: 19.1.9
         version: 19.1.9(@types/react@19.1.12)
+      serve-handler:
+        specifier: ^6.1.6
+        version: 6.1.6
       tailwindcss:
         specifier: 4.1.13
         version: 4.1.13
@@ -9510,7 +9513,7 @@ snapshots:
     dependencies:
       ansi-align: 3.0.1
       camelcase: 7.0.1
-      chalk: 5.0.1
+      chalk: 5.6.2
       cli-boxes: 3.0.0
       string-width: 5.1.2
       type-fest: 2.19.0
