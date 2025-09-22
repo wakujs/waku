@@ -5,6 +5,7 @@ export default async function HomePage() {
     <div>
       <h4>Home page</h4>
       <Counter />
+      <div>Rendered at {new Date().toISOString()}</div>
     </div>
   );
 }

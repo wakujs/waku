@@ -15,7 +15,18 @@ function createApp(app: Hono) {
     app.use(compress());
   }
   if (isBuild) {
-    app.use(serveStatic({ root: path.join(config.distDir, DIST_PUBLIC) }));
+    const root = path.join(config.distDir, DIST_PUBLIC);
+    if (config.basePath !== '/') {
+      app.use(
+        `${config.basePath}*`,
+        serveStatic({
+          root,
+          rewriteRequestPath: (path) => path.slice(config.basePath.length - 1),
+        }),
+      );
+    } else {
+      app.use(serveStatic({ root }));
+    }
   }
   app.use(createHonoHandler());
   app.notFound((c) => {
