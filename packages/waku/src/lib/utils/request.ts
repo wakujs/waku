@@ -25,9 +25,7 @@ export async function getInput(
   loadServerAction: (id: string) => Promise<unknown>,
 ) {
   const url = new URL(ctx.req.url);
-  if (url.pathname.startsWith(config.basePath)) {
-    url.pathname = removeBase(url.pathname, config.basePath);
-  }
+  url.pathname = removeBase(url.pathname, config.basePath);
   const rscPathPrefix = '/' + config.rscBase + '/';
   let rscPath: string | undefined;
   let temporaryReferences: unknown | undefined;
