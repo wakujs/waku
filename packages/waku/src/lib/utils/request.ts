@@ -2,6 +2,7 @@ import type { ReactFormState } from 'react-dom/client';
 import { decodeFuncId, decodeRscPath } from '../renderers/utils.js';
 import type { Config } from '../../config.js';
 import type { Unstable_HandleRequest as HandleRequest } from '../types.js';
+import { removeBase } from './path.js';
 
 type HandleRequestInput = Parameters<HandleRequest>[0];
 
@@ -21,7 +22,8 @@ export async function getInput(
   loadServerAction: (id: string) => Promise<unknown>,
 ) {
   const url = new URL(req.url);
-  const rscPathPrefix = config.basePath + config.rscBase + '/';
+  url.pathname = removeBase(url.pathname, config.basePath);
+  const rscPathPrefix = '/' + config.rscBase + '/';
   let rscPath: string | undefined;
   let input: HandleRequestInput;
   if (url.pathname.startsWith(rscPathPrefix)) {

@@ -12,7 +12,12 @@ const args = { processRequest, config, isBuild };
 const createApp = serverEntry.createApp || defaultCreateApp;
 
 const app = new Hono();
-app.use(staticMiddleware(args));
+if (config.basePath !== '/') {
+  // handle `/(base)/(request)` as `./dist/public/(request)`
+  app.use(`${config.basePath}*`, staticMiddleware(args));
+} else {
+  app.use(staticMiddleware(args));
+}
 const newApp = createApp(args, app);
 app.use(notFoundMiddleware(args));
 
