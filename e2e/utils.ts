@@ -125,15 +125,12 @@ export const prepareNormalSetup = (fixtureName: string) => {
   const fixtureDir = fileURLToPath(
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
-  let builtMode: undefined | 'PRD' | 'STATIC';
-  const startApp = async (
-    mode: 'DEV' | 'PRD' | 'STATIC',
-    options?: { cmd?: string | undefined; rebuild?: boolean },
-  ) => {
-    if (mode !== 'DEV' && builtMode !== mode && options?.rebuild !== false) {
+  let built = false;
+  const startApp = async (mode: 'DEV' | 'PRD' | 'STATIC', options?: { cmd?: string | undefined; }) => {
+    if (mode !== 'DEV' && !built) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
       execSync(`node ${waku} build`, { cwd: fixtureDir });
-      builtMode = mode;
+      built = true;
     }
     let cmd: string;
     switch (mode) {
@@ -154,7 +151,6 @@ export const prepareNormalSetup = (fixtureName: string) => {
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     const port = await findWakuPort(cp);
     const stopApp = async () => {
-      builtMode = undefined;
       await terminate(cp.pid!);
     };
     return { port, stopApp, fixtureDir };
