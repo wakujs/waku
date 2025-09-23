@@ -126,7 +126,10 @@ export const prepareNormalSetup = (fixtureName: string) => {
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
   let built = false;
-  const startApp = async (mode: 'DEV' | 'PRD' | 'STATIC', options?: { cmd?: string | undefined; }) => {
+  const startApp = async (
+    mode: 'DEV' | 'PRD' | 'STATIC',
+    options?: { cmd?: string | undefined },
+  ) => {
     if (mode !== 'DEV' && !built) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
       execSync(`node ${waku} build`, { cwd: fixtureDir });

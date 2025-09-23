@@ -22,7 +22,6 @@ test.describe(`base-path`, () => {
       await stopApp?.();
       ({ port, stopApp } = await startApp(mode, {
         cmd: 'pnpm start-static',
-        rebuild: false,
       }));
       await basicTest(page, `http://localhost:${port}/custom/base/`);
     }
