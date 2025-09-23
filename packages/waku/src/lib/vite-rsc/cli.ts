@@ -28,11 +28,10 @@ async function startDevServer(
     server: { port, host },
   });
   await server.listen();
-  const kind = host && (host === '0.0.0.0' || host === '::')
-    ? 'network' : 'local';
-  const urls = server.resolvedUrls?.[kind] ?? [];
-  const shown = urls[0] ?? `http://${host ?? '127.0.0.1'}:${port}/`;
-  console.log(`ready: Listening on ${shown}`);
+  const url =
+    server.resolvedUrls?.network?.[0] ??
+    server.resolvedUrls?.local?.[0]
+  console.log(`ready: Listening on ${url}`);
   const watcher = server.watcher;
   watcher.on('change', handleConfigChange);
   watcher.on('unlink', handleConfigChange);
