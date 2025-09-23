@@ -17,6 +17,7 @@ function createApp(app: Hono) {
   if (isBuild) {
     const root = path.join(config.distDir, DIST_PUBLIC);
     if (config.basePath !== '/') {
+      // handle `/(base)/(request)` as `./dist/public/(request)`
       app.use(
         `${config.basePath}*`,
         serveStatic({
