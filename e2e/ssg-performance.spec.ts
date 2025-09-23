@@ -1,8 +1,8 @@
 import { expect } from '@playwright/test';
 
-import { test, prepareStandaloneSetup } from './utils.js';
+import { test, prepareNormalSetup } from './utils.js';
 
-const startApp = prepareStandaloneSetup('ssg-performance');
+const startApp = prepareNormalSetup('ssg-performance');
 
 test.skip(
   ({ browserName }) => browserName !== 'chromium',
