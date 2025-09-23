@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, rmSync } from 'fs';
+import { cpSync, mkdirSync, rmSync } from 'node:fs';
 
 rmSync('dist/.tmp', { recursive: true, force: true });
 mkdirSync('dist/.tmp/custom', { recursive: true });
