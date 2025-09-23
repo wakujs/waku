@@ -1,8 +1,8 @@
 import { expect } from '@playwright/test';
 
-import { test, prepareStandaloneSetup } from './utils.js';
+import { test, prepareNormalSetup } from './utils.js';
 
-const startApp = prepareStandaloneSetup('wildcard-api-routes');
+const startApp = prepareNormalSetup('wildcard-api-routes');
 
 test.describe(`wildcard api routes`, async () => {
   let port: number;
