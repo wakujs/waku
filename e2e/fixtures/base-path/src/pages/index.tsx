@@ -5,7 +5,8 @@ export default async function HomePage() {
     <div>
       <h4>Home page</h4>
       <Counter />
-      <div>Rendered at {new Date().toISOString()}</div>
+      <div>renderd at {new Date().toISOString()}</div>
+      <div>argv: {JSON.stringify(process.argv.slice(2))}</div>
     </div>
   );
 }

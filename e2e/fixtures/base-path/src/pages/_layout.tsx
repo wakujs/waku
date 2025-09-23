@@ -15,7 +15,10 @@ export default async function RootLayout({
           <Link to="/">Home</Link>
         </li>
         <li>
-          <Link to="/about">About</Link>
+          <Link to="/static">Static</Link>
+        </li>
+        <li>
+          <Link to="/dynamic">Dynamic</Link>
         </li>
       </ul>
       <Hydrated />

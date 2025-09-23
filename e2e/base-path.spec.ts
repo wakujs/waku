@@ -44,11 +44,15 @@ async function basicTest(page: Page, baseUrl: string) {
   );
 
   // client side navigation
-  await page.getByRole('link', { name: 'About' }).click();
-  await page.waitForURL(`${baseUrl}about`);
-  await expect(page.getByRole('heading', { name: 'About page' })).toBeVisible();
+  await page.getByRole('link', { name: 'Static' }).click();
+  await page.waitForURL(`${baseUrl}static`);
+  await expect(
+    page.getByRole('heading', { name: 'Static page' }),
+  ).toBeVisible();
 
   // ssr
-  await page.goto(`${baseUrl}about`);
-  await expect(page.getByRole('heading', { name: 'About page' })).toBeVisible();
+  await page.goto(`${baseUrl}static`);
+  await expect(
+    page.getByRole('heading', { name: 'Static page' }),
+  ).toBeVisible();
 }
