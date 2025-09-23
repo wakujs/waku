@@ -217,3 +217,18 @@ export const getPathMapping = (
   }
   return mapping;
 };
+
+// `base` is assumed to have a trailing slash
+export function removeBase(url: string, base: string) {
+  if (base !== '/' && url.startsWith(base)) {
+    return url.slice(base.length - 1);
+  }
+  return url;
+}
+
+export function addBase(url: string, base: string) {
+  if (base !== '/' && url.startsWith('/')) {
+    return base.slice(0, -1) + url;
+  }
+  return url;
+}
