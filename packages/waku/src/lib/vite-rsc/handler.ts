@@ -8,11 +8,12 @@ import {
 } from '@vitejs/plugin-rsc/rsc';
 import { stringToStream } from '../utils/stream.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
-import { config } from 'virtual:vite-rsc-waku/config';
+import { config, globSrcPages } from 'virtual:vite-rsc-waku/config';
 import type { Unstable_HandleRequest as HandleRequest } from '../types.js';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 import { getInput } from '../utils/request.js';
 import { createRenderUtils } from '../utils/render.js';
+import type { Config } from '../../config.js';
 
 type HandleRequestOutput = Awaited<ReturnType<HandleRequest>>;
 
@@ -79,3 +80,8 @@ function loadSsrEntryModule() {
     'index',
   );
 }
+
+export const getConfig = (): Omit<Required<Config>, 'vite'> => config;
+export const getModulesInSrcPages = (): {
+  [file: string]: () => Promise<unknown>;
+} => globSrcPages;

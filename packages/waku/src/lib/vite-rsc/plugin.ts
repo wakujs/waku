@@ -26,6 +26,7 @@ import {
   DIST_PUBLIC,
   SRC_CLIENT_ENTRY,
   SRC_SERVER_ENTRY,
+  EXTENSIONS,
 } from '../builder/constants.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
 import { deployNetlifyPlugin } from './deploy/netlify/plugin.js';
@@ -266,7 +267,7 @@ if (import.meta.hot) {
 `;
         }
         if (id === '\0virtual:vite-rsc-waku/server-entry-inner') {
-          return getManagedServerEntry(config);
+          return getManagedServerEntry();
         }
         if (id === '\0virtual:vite-rsc-waku/client-entry') {
           return getManagedClientEntry();
@@ -274,10 +275,13 @@ if (import.meta.hot) {
       },
     },
     createVirtualPlugin('vite-rsc-waku/config', async function () {
+      const globBase = `/${config.srcDir}/${config.pagesDir}/`;
+      const globPattern = `${globBase}**/*.{${EXTENSIONS.map((ext) => ext.slice(1)).join(',')}}`;
       return `
         export const config = ${JSON.stringify({ ...config, vite: undefined })};
         export const flags = ${JSON.stringify(flags)};
         export const isBuild = ${JSON.stringify(this.environment.mode === 'build')};
+        export const globSrcPages = import.meta.glob(${JSON.stringify(globPattern)}, { base: ${JSON.stringify(globBase)} });
       `;
     }),
     {

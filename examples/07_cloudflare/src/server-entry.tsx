@@ -8,10 +8,7 @@ import { unstable_honoMiddleware as honoMiddleware } from 'waku/server';
 import cloudflareMiddleware from './middleware/cloudflare';
 
 export default defineServer({
-  ...fsRouter(
-    import.meta.glob('/src/pages/**/*.{tsx,ts}', { base: '/src/pages' }),
-    { apiDir: 'api', slicesDir: '_slices' },
-  ),
+  ...fsRouter(),
   createApp: (args, baseApp) => {
     const app = baseApp instanceof Hono ? (baseApp as Hono) : new Hono();
     app.use(contextStorage());

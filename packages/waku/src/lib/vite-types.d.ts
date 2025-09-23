@@ -14,6 +14,7 @@ declare module 'virtual:vite-rsc-waku/config' {
   export const flags: import('./vite-rsc/plugin.ts').Flags;
   export const config: Omit<Required<import('../config.ts').Config>, 'vite'>;
   export const isBuild: boolean;
+  export const globSrcPages: Record<string, () => Promise<unknown>>;
 }
 
 declare module 'virtual:vite-rsc-waku/fallback-html' {
