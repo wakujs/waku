@@ -9,7 +9,10 @@ export default function staticMiddleware(
 ): MiddlewareHandler {
   const { config, isBuild } = args;
   if (isBuild) {
-    return serveStatic({ root: path.join(config.distDir, DIST_PUBLIC) });
+    return serveStatic({
+      root: path.join(config.distDir, DIST_PUBLIC),
+      rewriteRequestPath: (path) => path.slice(config.basePath.length - 1),
+    });
   }
   return (_c, next) => next();
 }
