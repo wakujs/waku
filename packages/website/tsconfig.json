@@ -7,7 +7,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "types": ["node", "vite/client"]
+    "types": ["node", "waku/types"]
   },
   "include": ["src", "src/theme.json"],
   "references": [
