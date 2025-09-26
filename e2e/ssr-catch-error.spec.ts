@@ -1,8 +1,8 @@
 import { expect } from '@playwright/test';
 
-import { test, prepareStandaloneSetup, waitForHydration } from './utils.js';
+import { test, waitForHydration, prepareNormalSetup } from './utils.js';
 
-const startApp = prepareStandaloneSetup('ssr-catch-error');
+const startApp = prepareNormalSetup('ssr-catch-error');
 
 test.describe(`ssr-catch-error`, () => {
   let port: number;

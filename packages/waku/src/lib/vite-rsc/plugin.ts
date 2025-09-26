@@ -19,7 +19,7 @@ import {
 } from '../utils/managed.js';
 import type { Config } from '../../config.js';
 import { INTERNAL_setAllEnv, unstable_getBuildOptions } from '../../server.js';
-import { emitStaticFile, waitForTasks } from '../builder/build.js';
+import { emitFileInTask, waitForTasks } from '../builder/build.js';
 import { deployVercelPlugin } from './deploy/vercel/plugin.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import {
@@ -71,6 +71,10 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
     vite: undefined,
     ...rscPluginOptions?.config,
   };
+  // ensure trailing slash
+  if (!config.basePath.endsWith('/')) {
+    config.basePath += '/';
+  }
   const flags = rscPluginOptions?.flags ?? {};
   let privatePath: string;
 
@@ -98,6 +102,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
       name: 'rsc:waku',
       async config(_config) {
         let viteRscConfig: UserConfig = {
+          base: config.basePath,
           define: {
             'import.meta.env.WAKU_CONFIG_BASE_PATH': JSON.stringify(
               config.basePath,
@@ -225,6 +230,8 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
         return () => {
           server.middlewares.use(async (req, res, next) => {
             try {
+              // Restore Vite's automatically stripped base
+              req.url = req.originalUrl;
               const mod = await environment.runner.import(entryId);
               await getRequestListener(mod.default)(req, res);
             } catch (e) {
@@ -392,7 +399,7 @@ if (import.meta.hot) {
           // run `handleBuild`
           INTERNAL_setAllEnv(process.env as any);
           unstable_getBuildOptions().unstable_phase = 'emitStaticFiles';
-          await entry.processBuild(viteConfig, config, emitStaticFile);
+          await entry.processBuild(viteConfig, config, emitFileInTask);
           await waitForTasks();
 
           // save platform data

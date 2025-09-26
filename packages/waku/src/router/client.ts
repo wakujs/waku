@@ -45,6 +45,7 @@ import {
 import type { RouteProps } from './common.js';
 import type { RouteConfig } from './base-types.js';
 import { getErrorInfo } from '../lib/utils/custom-errors.js';
+import { addBase, removeBase } from '../lib/utils/path.js';
 
 type AllowPathDecorators<Path extends string> = Path extends unknown
   ? Path | `${Path}?${string}` | `${Path}#${string}`
@@ -57,6 +58,7 @@ type InferredPaths = RouteConfig extends {
   : string;
 
 const normalizeRoutePath = (path: string) => {
+  path = removeBase(path, import.meta.env.WAKU_CONFIG_BASE_PATH);
   for (const suffix of ['/', '/index.html']) {
     if (path.endsWith(suffix)) {
       return path.slice(0, -suffix.length) || '/';
@@ -297,6 +299,7 @@ export function Link({
   ref: refProp,
   ...props
 }: LinkProps): ReactElement {
+  to = addBase(to, import.meta.env.WAKU_CONFIG_BASE_PATH);
   const router = useContext(RouterContext);
   const changeRoute = router
     ? router.changeRoute
