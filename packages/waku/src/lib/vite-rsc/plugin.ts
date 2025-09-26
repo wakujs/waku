@@ -18,7 +18,6 @@ import {
   getManagedServerEntry,
 } from '../utils/managed.js';
 import type { Config } from '../../config.js';
-import { deployVercelPlugin } from './deploy/vercel/plugin.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import {
   DIST_PUBLIC,
@@ -27,11 +26,6 @@ import {
   EXTENSIONS,
 } from '../builder/constants.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
-import { deployNetlifyPlugin } from './deploy/netlify/plugin.js';
-import { deployCloudflarePlugin } from './deploy/cloudflare/plugin.js';
-import { deployPartykitPlugin } from './deploy/partykit/plugin.js';
-import { deployDenoPlugin } from './deploy/deno/plugin.js';
-import { deployAwsLambdaPlugin } from './deploy/aws-lambda/plugin.js';
 import { joinPath } from '../utils/path.js';
 
 const PKG_NAME = 'waku';
@@ -44,14 +38,6 @@ export type RscPluginOptions = {
 
 export type Flags = {
   'experimental-partial'?: boolean | undefined;
-  'with-vercel'?: boolean | undefined;
-  'with-vercel-static'?: boolean | undefined;
-  'with-netlify'?: boolean | undefined;
-  'with-netlify-static'?: boolean | undefined;
-  'with-cloudflare'?: boolean | undefined;
-  'with-partykit'?: boolean | undefined;
-  'with-deno'?: boolean | undefined;
-  'with-aws-lambda'?: boolean | undefined;
 };
 
 export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
@@ -282,7 +268,7 @@ if (import.meta.hot) {
         }
       },
     },
-    createVirtualPlugin(config, flags),
+    createVirtualPlugin(config),
     {
       // rewrite `react-server-dom-webpack` in `waku/minimal/client`
       name: 'rsc:waku:patch-webpack',
@@ -388,32 +374,6 @@ if (import.meta.hot) {
     },
     rscIndexPlugin(),
     fsRouterTypegenPlugin({ srcDir: config.srcDir }),
-    !!(
-      flags['with-vercel'] ||
-      flags['with-vercel-static'] ||
-      process.env.VERCEL
-    ) &&
-      deployVercelPlugin({
-        config,
-        serverless: !flags['with-vercel-static'],
-      }),
-    !!(
-      flags['with-netlify'] ||
-      flags['with-netlify-static'] ||
-      process.env.NETLIFY
-    ) &&
-      deployNetlifyPlugin({
-        config,
-        serverless: !flags['with-netlify-static'],
-      }),
-    !!flags['with-cloudflare'] && deployCloudflarePlugin({ config }),
-    !!flags['with-partykit'] && deployPartykitPlugin({ config }),
-    !!flags['with-deno'] && deployDenoPlugin({ config }),
-    !!flags['with-aws-lambda'] &&
-      deployAwsLambdaPlugin({
-        config,
-        streaming: process.env.DEPLOY_AWS_LAMBDA_STREAMING === 'true',
-      }),
   ];
 }
 
@@ -491,7 +451,7 @@ function normalizeRelativePath(s: string) {
   return s[0] === '.' ? s : './' + s;
 }
 
-function createVirtualPlugin(config: Required<Config>, flags: Flags) {
+function createVirtualPlugin(config: Required<Config>) {
   const name = 'virtual:vite-rsc-waku/config';
   let rootDir: string;
   return {
@@ -509,7 +469,6 @@ function createVirtualPlugin(config: Required<Config>, flags: Flags) {
         return `
         export const rootDir = ${JSON.stringify(rootDir)};
         export const config = ${JSON.stringify({ ...config, vite: undefined })};
-        export const flags = ${JSON.stringify(flags)};
         export const isBuild = ${JSON.stringify(this.environment.mode === 'build')};
         export const globSrcPages = import.meta.glob(${JSON.stringify(globPattern)}, { base: ${JSON.stringify(globBase)} });
       `;

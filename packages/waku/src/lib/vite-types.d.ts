@@ -13,7 +13,6 @@ declare module 'virtual:vite-rsc-waku/set-platform-data' {}
 declare module 'virtual:vite-rsc-waku/config' {
   export const rootDir: string;
   export const config: Omit<Required<import('../config.ts').Config>, 'vite'>;
-  export const flags: import('./vite-rsc/plugin.ts').Flags;
   export const isBuild: boolean;
   export const globSrcPages: Record<string, () => Promise<unknown>>;
 }

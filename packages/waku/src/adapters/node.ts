@@ -40,7 +40,7 @@ const runner = (
   };
 };
 
-export default function (
+export function nodeAdapter(
   args: {
     handleRequest: HandleRequest;
     handleBuild: HandleBuild;
