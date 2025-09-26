@@ -1,6 +1,7 @@
 import type { RouteProps } from '../common.js';
 import type { PathWithoutSlug } from '../create-pages.js';
 import type { Join, ReplaceAll, Split, Prettify } from '../util-types.js';
+import type { ReactNode } from 'react';
 
 type ReadOnlyStringTupleList = readonly (readonly string[])[];
 
@@ -192,6 +193,12 @@ type SlugTypes<Path extends string> =
 export type PropsForPages<Path extends string> = Prettify<
   Omit<RouteProps<ReplaceAll<Path, `[${string}]`, string>>, 'hash'> &
     SlugTypes<Path>
+>;
+
+export type PropsForLayouts<Path extends string> = Prettify<
+  SlugTypes<Path> & {
+    children: ReactNode;
+  }
 >;
 
 type GetResponseType<Response extends { render: string }> =
