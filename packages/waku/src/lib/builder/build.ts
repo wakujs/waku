@@ -1,15 +1,13 @@
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
-import { joinPath, extname } from '../utils/path.js';
+import { joinPath } from '../utils/path.js';
 import {
   existsSync,
   mkdir,
   writeFile,
   createWriteStream,
 } from '../utils/node-fs.js';
-import { DIST_PUBLIC } from './constants.js';
-import type { Config } from '../../config.js';
 
 const createTaskRunner = (limit: number) => {
   let running = 0;
@@ -47,28 +45,16 @@ const createTaskRunner = (limit: number) => {
 const WRITE_FILE_BATCH_SIZE = 2500;
 const { runTask, waitForTasks } = createTaskRunner(WRITE_FILE_BATCH_SIZE);
 
-// This is exported for vite-rsc. https://github.com/wakujs/waku/pull/1493
 export { waitForTasks };
 
-// This is exported for vite-rsc. https://github.com/wakujs/waku/pull/1493
-export const emitStaticFile = (
+export const emitFileInTask = (
   rootDir: string,
-  config: Pick<Required<Config>, 'distDir'>,
-  pathname: string,
+  filePath: string,
   bodyPromise: Promise<ReadableStream | string>,
 ) => {
-  const destFile = joinPath(
-    rootDir,
-    config.distDir,
-    DIST_PUBLIC,
-    extname(pathname)
-      ? pathname
-      : pathname === '/404'
-        ? '404.html' // HACK special treatment for 404, better way?
-        : pathname + '/index.html',
-  );
+  const destFile = joinPath(rootDir, filePath);
   if (!destFile.startsWith(rootDir)) {
-    throw new Error('Invalid pathname: ' + pathname);
+    throw new Error('Invalid filePath: ' + filePath);
   }
   // In partial mode, skip if the file already exists.
   if (existsSync(destFile)) {
