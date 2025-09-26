@@ -2,17 +2,17 @@ import { renderToReadableStream } from '@vitejs/plugin-rsc/rsc';
 import type { ResolvedConfig as ViteConfig } from 'vite';
 import { createRenderUtils } from '../utils/render.js';
 import { encodeRscPath } from '../renderers/utils.js';
-import { joinPath } from '../utils/path.js';
+import { joinPath, extname } from '../utils/path.js';
 import type { Config } from '../../config.js';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
+import { DIST_PUBLIC } from '../builder/constants.js';
 
 export async function processBuild(
   viteConfig: Pick<ViteConfig, 'root'>,
   config: Pick<Required<Config>, 'distDir' | 'rscBase'>,
-  emitStaticFile: (
+  emitFileInTask: (
     rootDir: string,
-    config: Pick<Required<Config>, 'distDir'>,
-    pathname: string,
+    filePath: string,
     bodyPromise: Promise<ReadableStream | string>,
   ) => void,
 ) {
@@ -40,20 +40,28 @@ export async function processBuild(
       pathname: string,
       body: Promise<ReadableStream | string>,
     ) => {
-      emitStaticFile(
-        viteConfig.root,
-        { distDir: config.distDir },
-        pathname,
-        body,
+      const filePath = joinPath(
+        config.distDir,
+        DIST_PUBLIC,
+        extname(pathname)
+          ? pathname
+          : pathname === '/404'
+            ? '404.html' // HACK special treatment for 404, better way?
+            : pathname + '/index.html',
       );
+      emitFileInTask(viteConfig.root, filePath, body);
     },
     generateDefaultHtml: async (pathname: string) => {
-      emitStaticFile(
-        viteConfig.root,
-        { distDir: config.distDir },
-        pathname,
-        getFallbackHtml(),
+      const filePath = joinPath(
+        config.distDir,
+        DIST_PUBLIC,
+        extname(pathname)
+          ? pathname
+          : pathname === '/404'
+            ? '404.html' // HACK special treatment for 404, better way?
+            : pathname + '/index.html',
       );
+      emitFileInTask(viteConfig.root, filePath, getFallbackHtml());
     },
   });
 }

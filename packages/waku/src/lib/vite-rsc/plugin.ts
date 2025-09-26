@@ -19,7 +19,7 @@ import {
 } from '../utils/managed.js';
 import type { Config } from '../../config.js';
 import { INTERNAL_setAllEnv, unstable_getBuildOptions } from '../../server.js';
-import { emitStaticFile, waitForTasks } from '../builder/build.js';
+import { emitFileInTask, waitForTasks } from '../builder/build.js';
 import { deployVercelPlugin } from './deploy/vercel/plugin.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import {
@@ -360,7 +360,7 @@ if (import.meta.hot) {
           // run `handleBuild`
           INTERNAL_setAllEnv(process.env as any);
           unstable_getBuildOptions().unstable_phase = 'emitStaticFiles';
-          await entry.processBuild(viteConfig, config, emitStaticFile);
+          await entry.processBuild(viteConfig, config, emitFileInTask);
           await waitForTasks();
 
           // save platform data
