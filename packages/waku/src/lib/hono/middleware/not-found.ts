@@ -1,13 +1,11 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import type { MiddlewareHandler } from 'hono';
-import type { Unstable_CreateAppArgs as CreateAppArgs } from '../../types.js';
 import { DIST_PUBLIC } from '../../builder/constants.js';
+import { getConfig } from '../../vite-rsc/handler.js';
 
-export default function notFoundMiddleware(
-  args: CreateAppArgs,
-): MiddlewareHandler {
-  const { config } = args;
+export default function notFoundMiddleware(): MiddlewareHandler {
+  const config = getConfig();
   return async (c) => {
     const file = path.join(config.distDir, DIST_PUBLIC, '404.html');
     if (fs.existsSync(file)) {

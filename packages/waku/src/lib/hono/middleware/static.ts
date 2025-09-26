@@ -1,13 +1,12 @@
 import path from 'node:path';
 import type { MiddlewareHandler } from 'hono';
 import { serveStatic } from '@hono/node-server/serve-static';
-import type { Unstable_CreateAppArgs as CreateAppArgs } from '../../types.js';
 import { DIST_PUBLIC } from '../../builder/constants.js';
+import { getConfig, getIsBuild } from '../../vite-rsc/handler.js';
 
-export default function staticMiddleware(
-  args: CreateAppArgs,
-): MiddlewareHandler {
-  const { config, isBuild } = args;
+export default function staticMiddleware(): MiddlewareHandler {
+  const config = getConfig();
+  const isBuild = getIsBuild();
   if (isBuild) {
     return serveStatic({
       root: path.join(config.distDir, DIST_PUBLIC),

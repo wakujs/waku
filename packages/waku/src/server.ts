@@ -3,8 +3,6 @@ export {
   getContext as unstable_getContext,
   getContextData as unstable_getContextData,
 } from './lib/context.js';
-export * as unstable_builderConstants from './lib/builder/constants.js';
-export * as unstable_honoMiddleware from './lib/hono/middleware.js';
 
 // The use of `globalThis` in this file is more or less a hack.
 // It should be revisited with a better solution.
@@ -74,29 +72,4 @@ export async function unstable_getPlatformData<T>(
 
 export function unstable_getHeaders(): Readonly<Record<string, string>> {
   return Object.fromEntries(getContext().req.headers.entries());
-}
-
-type BuildOptions = {
-  deploy?:
-    | 'vercel-static'
-    | 'vercel-serverless'
-    | 'netlify-static'
-    | 'netlify-functions'
-    | 'cloudflare'
-    | 'partykit'
-    | 'deno'
-    | 'aws-lambda'
-    | undefined;
-  unstable_phase?:
-    | 'analyzeEntries'
-    | 'buildServerBundle'
-    | 'buildSsrBundle'
-    | 'buildClientBundle'
-    | 'buildDeploy'
-    | 'emitStaticFiles';
-};
-
-// TODO tentative name
-export function unstable_getBuildOptions(): BuildOptions {
-  return ((globalThis as any).__WAKU_BUILD_OPTIONS__ ||= {});
 }

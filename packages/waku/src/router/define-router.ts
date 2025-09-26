@@ -6,7 +6,6 @@ import {
   unstable_setPlatformData,
   unstable_getContext as getContext,
 } from '../server.js';
-import { unstable_defineServer as defineServer } from '../minimal/server.js';
 import {
   encodeRoutePath,
   decodeRoutePath,
@@ -22,6 +21,10 @@ import type { PathSpec } from '../lib/utils/path.js';
 import { INTERNAL_ServerRouter } from './client.js';
 import { stringToStream } from '../lib/utils/stream.js';
 import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
+import type {
+  Unstable_HandleRequest as HandleRequest,
+  Unstable_HandleBuild as HandleBuild,
+} from '../lib/types.js';
 
 const isStringArray = (x: unknown): x is string[] =>
   Array.isArray(x) && x.every((y) => typeof y === 'string');
@@ -395,9 +398,6 @@ export function unstable_defineRouter(fns: {
     return entries;
   };
 
-  type HandleRequest = Parameters<typeof defineServer>[0]['handleRequest'];
-  type HandleBuild = Parameters<typeof defineServer>[0]['handleBuild'];
-
   const handleRequest: HandleRequest = async (
     input,
     { renderRsc, renderHtml },
@@ -633,8 +633,8 @@ export function unstable_defineRouter(fns: {
     await unstable_setPlatformData('defineRouterMyConfig', myConfig, true);
   };
 
-  return defineServer({
+  return {
     handleRequest,
     handleBuild,
-  });
+  };
 }

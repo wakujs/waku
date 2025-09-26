@@ -38,6 +38,10 @@
       "types": "./dist/server-utils.d.ts",
       "default": "./dist/server-utils.js"
     },
+    "./adapters/*": {
+      "types": "./dist/adapters/*.d.ts",
+      "default": "./dist/adapters/*.js"
+    },
     "./minimal/client": {
       "types": "./dist/minimal/client.d.ts",
       "default": "./dist/minimal/client.js"

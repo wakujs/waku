@@ -18,8 +18,6 @@ import {
   getManagedServerEntry,
 } from '../utils/managed.js';
 import type { Config } from '../../config.js';
-import { INTERNAL_setAllEnv, unstable_getBuildOptions } from '../../server.js';
-import { emitFileInTask, waitForTasks } from '../builder/build.js';
 import { deployVercelPlugin } from './deploy/vercel/plugin.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import {
@@ -160,7 +158,10 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
                       __dirname,
                       '../vite-entries/entry.server.js',
                     ),
-                    build: path.join(__dirname, '../vite-rsc/build.js'),
+                    build: path.join(
+                      __dirname,
+                      '../vite-entries/entry.build.js',
+                    ),
                   },
                 },
               },
@@ -281,16 +282,7 @@ if (import.meta.hot) {
         }
       },
     },
-    createVirtualPlugin('vite-rsc-waku/config', async function () {
-      const globBase = `/${config.srcDir}/${config.pagesDir}/`;
-      const globPattern = `${globBase}**/*.{${EXTENSIONS.map((ext) => ext.slice(1)).join(',')}}`;
-      return `
-        export const config = ${JSON.stringify({ ...config, vite: undefined })};
-        export const flags = ${JSON.stringify(flags)};
-        export const isBuild = ${JSON.stringify(this.environment.mode === 'build')};
-        export const globSrcPages = import.meta.glob(${JSON.stringify(globPattern)}, { base: ${JSON.stringify(globBase)} });
-      `;
-    }),
+    createVirtualPlugin(config, flags),
     {
       // rewrite `react-server-dom-webpack` in `waku/minimal/client`
       name: 'rsc:waku:patch-webpack',
@@ -344,24 +336,16 @@ if (import.meta.hot) {
           );
         }
       },
-      // cf. packages/waku/src/lib/builder/build.ts
       buildApp: {
         async handler(builder) {
-          // import server entry
           const viteConfig = builder.config;
           const entryPath = path.join(
             viteConfig.environments.rsc!.build.outDir,
             'build.js',
           );
-          const entry: typeof import('../vite-rsc/build.js') = await import(
-            pathToFileURL(entryPath).href
-          );
-
-          // run `handleBuild`
-          INTERNAL_setAllEnv(process.env as any);
-          unstable_getBuildOptions().unstable_phase = 'emitStaticFiles';
-          await entry.processBuild(viteConfig, config, emitFileInTask);
-          await waitForTasks();
+          const entry: typeof import('../vite-entries/entry.build.js') =
+            await import(pathToFileURL(entryPath).href);
+          await entry.runBuild();
 
           // save platform data
           const platformDataCode = `globalThis.__WAKU_SERVER_PLATFORM_DATA__ = ${JSON.stringify((globalThis as any).__WAKU_SERVER_PLATFORM_DATA__ ?? {}, null, 2)}\n`;
@@ -507,16 +491,28 @@ function normalizeRelativePath(s: string) {
   return s[0] === '.' ? s : './' + s;
 }
 
-function createVirtualPlugin(name: string, load: Plugin['load']) {
-  name = 'virtual:' + name;
+function createVirtualPlugin(config: Required<Config>, flags: Flags) {
+  const name = 'virtual:vite-rsc-waku/config';
+  let rootDir: string;
   return {
     name: `waku:virtual-${name}`,
+    configResolved(viteConfig) {
+      rootDir = viteConfig.root;
+    },
     resolveId(source, _importer, _options) {
       return source === name ? '\0' + name : undefined;
     },
-    load(id, options) {
+    load(id) {
       if (id === '\0' + name) {
-        return (load as any).apply(this, [id, options]);
+        const globBase = `/${config.srcDir}/${config.pagesDir}/`;
+        const globPattern = `${globBase}**/*.{${EXTENSIONS.map((ext) => ext.slice(1)).join(',')}}`;
+        return `
+        export const rootDir = ${JSON.stringify(rootDir)};
+        export const config = ${JSON.stringify({ ...config, vite: undefined })};
+        export const flags = ${JSON.stringify(flags)};
+        export const isBuild = ${JSON.stringify(this.environment.mode === 'build')};
+        export const globSrcPages = import.meta.glob(${JSON.stringify(globPattern)}, { base: ${JSON.stringify(globBase)} });
+      `;
       }
     },
   } satisfies Plugin;
