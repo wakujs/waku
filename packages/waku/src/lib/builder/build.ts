@@ -67,6 +67,9 @@ export const emitStaticFile = (
         ? '404.html' // HACK special treatment for 404, better way?
         : pathname + '/index.html',
   );
+  if (!destFile.startsWith(rootDir)) {
+    throw new Error('Invalid pathname: ' + pathname);
+  }
   // In partial mode, skip if the file already exists.
   if (existsSync(destFile)) {
     return;
