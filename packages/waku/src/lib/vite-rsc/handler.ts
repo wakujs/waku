@@ -8,12 +8,7 @@ import {
 } from '@vitejs/plugin-rsc/rsc';
 import { stringToStream } from '../utils/stream.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
-import {
-  rootDir,
-  config,
-  isBuild,
-  globSrcPages,
-} from 'virtual:vite-rsc-waku/config';
+import { rootDir, config, isBuild } from 'virtual:vite-rsc-waku/config';
 import type {
   Unstable_HandleRequest as HandleRequest,
   Unstable_HandleBuild as HandleBuild,
@@ -23,7 +18,6 @@ import type {
 } from '../types.js';
 import { getInput } from '../utils/request.js';
 import { createRenderUtils } from '../utils/render.js';
-import type { Config } from '../../config.js';
 import { encodeRscPath } from '../renderers/utils.js';
 import { joinPath, extname } from '../utils/path.js';
 import { DIST_PUBLIC } from '../builder/constants.js';
@@ -161,8 +155,4 @@ export const createServerEntry =
     return fn({ processRequest, processBuild });
   };
 
-export const getConfig = (): Omit<Required<Config>, 'vite'> => config;
 export const getIsBuild = (): boolean => isBuild;
-export const getModulesInSrcPages = (): {
-  [file: string]: () => Promise<unknown>;
-} => globSrcPages;

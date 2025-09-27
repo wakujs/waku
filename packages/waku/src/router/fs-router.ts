@@ -1,9 +1,5 @@
 import type { FunctionComponent, ReactNode } from 'react';
 
-import {
-  unstable_getConfig as getConfig,
-  unstable_getModulesInSrcPages as getModulesInSrcPages,
-} from '../server-utils.js';
 import { createPages, METHODS } from './create-pages.js';
 import type { Method } from './create-pages.js';
 import { isIgnoredPath } from '../lib/utils/fs-router.js';
@@ -17,9 +13,9 @@ export function unstable_fsRouter(
    *     "foo/index.tsx": () => ...,
    *   }
    * This mapping can be created by Vite's import.meta.glob, e.g.
-   *   import.meta.glob("/src/pages/**\/*.tsx", { base: "/src/pages" })
+   *   import.meta.glob("./**\/*.{tsx,ts}", { base: "./pages" })
    */
-  pages = getModulesInSrcPages(),
+  pages: { [file: string]: () => Promise<unknown> },
   options: {
     /**
      * e.g. `"api"` will detect pages in `src/pages/api`. Or, if `options.pagesDir`
@@ -28,7 +24,10 @@ export function unstable_fsRouter(
     apiDir: string;
     /** e.g. `"_slices"` will detect slices in `src/pages/_slices`. */
     slicesDir: string;
-  } = getConfig(),
+  } = {
+    apiDir: 'api',
+    slicesDir: '_slices',
+  },
 ) {
   return createPages(
     async ({

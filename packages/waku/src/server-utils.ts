@@ -2,9 +2,7 @@
 
 export {
   createServerEntry as unstable_createServerEntry,
-  getConfig as unstable_getConfig,
   getIsBuild as unstable_getIsBuild,
-  getModulesInSrcPages as unstable_getModulesInSrcPages,
 } from './lib/vite-rsc/handler.js';
 
 export * as unstable_builderConstants from './lib/builder/constants.js';

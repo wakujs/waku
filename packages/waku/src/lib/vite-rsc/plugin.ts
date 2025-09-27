@@ -23,7 +23,6 @@ import {
   DIST_PUBLIC,
   SRC_CLIENT_ENTRY,
   SRC_SERVER_ENTRY,
-  EXTENSIONS,
 } from '../builder/constants.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
 import { joinPath } from '../utils/path.js';
@@ -45,9 +44,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
     basePath: '/',
     srcDir: 'src',
     distDir: 'dist',
-    pagesDir: 'pages',
-    apiDir: 'api',
-    slicesDir: '_slices',
     privateDir: 'private',
     rscBase: 'RSC',
     vite: undefined,
@@ -123,7 +119,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
                 entries: [
                   `${config.srcDir}/${SRC_CLIENT_ENTRY}.*`,
                   `${config.srcDir}/${SRC_SERVER_ENTRY}.*`,
-                  `${config.srcDir}/${config.pagesDir}/**/*.*`,
                 ],
               },
             },
@@ -232,7 +227,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
       // resolve user entries and fallbacks to "managed mode" if not found.
       async resolveId(source, _importer, options) {
         if (source === 'virtual:vite-rsc-waku/server-entry') {
-          return `\0` + source;
+          return '\0' + source;
         }
         if (source === 'virtual:vite-rsc-waku/server-entry-inner') {
           const resolved = await this.resolve(
@@ -261,7 +256,7 @@ if (import.meta.hot) {
 `;
         }
         if (id === '\0virtual:vite-rsc-waku/server-entry-inner') {
-          return getManagedServerEntry();
+          return getManagedServerEntry(config);
         }
         if (id === '\0virtual:vite-rsc-waku/client-entry') {
           return getManagedClientEntry();
@@ -464,13 +459,10 @@ function createVirtualPlugin(config: Required<Config>) {
     },
     load(id) {
       if (id === '\0' + name) {
-        const globBase = `/${config.srcDir}/${config.pagesDir}/`;
-        const globPattern = `${globBase}**/*.{${EXTENSIONS.map((ext) => ext.slice(1)).join(',')}}`;
         return `
         export const rootDir = ${JSON.stringify(rootDir)};
         export const config = ${JSON.stringify({ ...config, vite: undefined })};
         export const isBuild = ${JSON.stringify(this.environment.mode === 'build')};
-        export const globSrcPages = import.meta.glob(${JSON.stringify(globPattern)}, { base: ${JSON.stringify(globBase)} });
       `;
       }
     },
