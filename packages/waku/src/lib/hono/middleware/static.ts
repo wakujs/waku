@@ -2,7 +2,7 @@ import path from 'node:path';
 import type { MiddlewareHandler } from 'hono';
 import { serveStatic } from '@hono/node-server/serve-static';
 import type { Unstable_CreateAppArgs as CreateAppArgs } from '../../types.js';
-import { DIST_PUBLIC } from '../../builder/constants.js';
+import { DIST_PUBLIC } from '../../constants.js';
 
 export default function staticMiddleware(
   args: CreateAppArgs,
