@@ -8,6 +8,7 @@ import {
 } from '@vitejs/plugin-rsc/rsc';
 import { stringToStream } from '../utils/stream.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
+import type { Config } from '../../config.js';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import type { Unstable_HandleRequest as HandleRequest } from '../types.js';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
@@ -80,4 +81,5 @@ function loadSsrEntryModule() {
   );
 }
 
+export const getConfig = (): Omit<Required<Config>, 'vite'> => config;
 export const getIsBuild = (): boolean => isBuild;
