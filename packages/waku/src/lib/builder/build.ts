@@ -1,5 +1,3 @@
-// TODO(daishi) rename this file and move it as necessary.
-
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
