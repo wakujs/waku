@@ -2,7 +2,7 @@ import { type Plugin, type ResolvedConfig } from 'vite';
 import type { Config } from '../../../../config.js';
 import path from 'node:path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { DIST_PUBLIC } from '../../../builder/constants.js';
+import { DIST_PUBLIC } from '../../../constants.js';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
