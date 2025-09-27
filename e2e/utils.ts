@@ -53,9 +53,9 @@ export async function findWakuPort(cp: ChildProcess): Promise<number> {
 
 // Upstream doesn't support ES module
 //  Related: https://github.com/dwyl/terminate/pull/85
-export const terminate = async (pid: number) => {
-  await fkill(pid, {
-    forceAfterTimeout: 5000,
+export const terminate = async (port: number) => {
+  await fkill(`:${port}`, {
+    force: true,
   });
 };
 
@@ -154,7 +154,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     const port = await findWakuPort(cp);
     const stopApp = async () => {
-      await terminate(cp.pid!);
+      await terminate(port);
     };
     return { port, stopApp, fixtureDir };
   };
@@ -326,7 +326,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     const port = await findWakuPort(cp);
     const stopApp = async () => {
       builtModeMap.delete(packageManager);
-      await terminate(cp.pid!);
+      await terminate(port);
     };
     return { port, stopApp, standaloneDir };
   };
