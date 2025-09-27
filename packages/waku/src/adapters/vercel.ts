@@ -8,6 +8,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { Hono } from 'hono';
+import { getRequestListener } from '@hono/node-server';
 import type { MiddlewareHandler } from 'hono';
 import { DIST_PUBLIC, DIST_ASSETS } from '../lib/constants.js';
 
@@ -56,6 +57,7 @@ export const vercelAdapter = createServerEntry(
         await processBuild();
         await build({ serverless: !options?.static });
       },
+      listener: getRequestListener(app.fetch),
     };
   },
 );
@@ -130,8 +132,7 @@ async function build({ serverless }: { serverless: boolean }) {
 }
 
 const serveCode = `
-import { getRequestListener } from '@hono/node-server';
-import * as server from './server/index.js';
+import { serverEntry } from './server/index.js';
 
-export default getRequestListener(server.fetch);
+export default serverEntry.listener;
 `;
