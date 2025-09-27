@@ -4,9 +4,7 @@ import type { MiddlewareHandler } from 'hono';
 import type { Unstable_CreateAppArgs as CreateAppArgs } from '../../types.js';
 import { DIST_PUBLIC } from '../../constants.js';
 
-export function notFoundMiddleware(
-  args: CreateAppArgs,
-): MiddlewareHandler {
+export function notFoundMiddleware(args: CreateAppArgs): MiddlewareHandler {
   const { config } = args;
   return async (c) => {
     const file = path.join(config.distDir, DIST_PUBLIC, '404.html');
