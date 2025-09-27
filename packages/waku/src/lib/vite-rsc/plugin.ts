@@ -321,21 +321,22 @@ if (import.meta.hot) {
       },
       buildApp: {
         async handler(builder) {
-          // save platform data before calling entry.runBuild()
+          const viteConfig = builder.config;
+          const entryPath = path.join(
+            viteConfig.environments.rsc!.build.outDir,
+            'build.js',
+          );
+          const entry: typeof import('../vite-entries/entry.build.js') =
+            await import(pathToFileURL(entryPath).href);
+          await entry.runBuild();
+
+          // save platform data
           const platformDataCode = `globalThis.__WAKU_SERVER_PLATFORM_DATA__ = ${JSON.stringify((globalThis as any).__WAKU_SERVER_PLATFORM_DATA__ ?? {}, null, 2)}\n`;
           const platformDataFile = path.join(
             builder.config.environments.rsc!.build.outDir,
             '__waku_set_platform_data.js',
           );
           fs.writeFileSync(platformDataFile, platformDataCode);
-
-          const entryPath = path.join(
-            builder.config.environments.rsc!.build.outDir,
-            'build.js',
-          );
-          const entry: typeof import('../vite-entries/entry.build.js') =
-            await import(pathToFileURL(entryPath).href);
-          await entry.runBuild();
         },
       },
     },
