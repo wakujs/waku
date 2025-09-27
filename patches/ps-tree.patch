@@ -1,0 +1,16 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+deleted file mode 100644
+index ced6e2c3834910b6ce18d2fa668430781c832cbf..0000000000000000000000000000000000000000
+diff --git a/index.js b/index.js
+index 8db8b3e9d0b49d832c3abcd6458a7ab763695663..62475ec1b7746b2126e6943ef55a1783a29a014a 100755
+--- a/index.js
++++ b/index.js
+@@ -42,7 +42,7 @@ module.exports = function childrenOfPid(pid, callback) {
+   var processLister;
+   if (process.platform === 'win32') {
+     // See also: https://github.com/nodejs/node-v0.x-archive/issues/2318
+-    processLister = spawn('wmic.exe', ['PROCESS', 'GET', 'Name,ProcessId,ParentProcessId,Status']);
++    processLister = spawn('powershell.exe', ['-Command', 'Get-WmiObject Win32_Process | Select-Object Name,ProcessId,ParentProcessId,Status | ConvertTo-Csv -NoTypeInformation'])
+   } else {
+     processLister = spawn('ps', ['-A', '-o', 'ppid,pid,stat,comm']);
+   }
