@@ -8,10 +8,6 @@ import {
   notFoundMiddleware,
 } from '../lib/hono/middleware.js';
 import { createServerEntry, getConfig } from '../lib/vite-rsc/handler.js';
-import type {
-  Unstable_HandleRequest as HandleRequest,
-  Unstable_HandleBuild as HandleBuild,
-} from '../lib/types.js';
 
 const config = getConfig();
 
@@ -40,22 +36,20 @@ const runner = (
   };
 };
 
-export function nodeAdapter(
-  args: {
-    handleRequest: HandleRequest;
-    handleBuild: HandleBuild;
-  },
-  {
-    middlewareFns = [] as (() => MiddlewareHandler)[],
-    middlewareModules = {} as Record<
-      string,
-      () => Promise<{
-        default: () => MiddlewareHandler;
-      }>
-    >,
-  },
-) {
-  const fn = createServerEntry(({ processRequest, processBuild }) => {
+export const nodeAdapter = createServerEntry(
+  (
+    { processRequest, processBuild },
+    options?: {
+      middlewareFns?: (() => MiddlewareHandler)[];
+      middlewareModules?: Record<
+        string,
+        () => Promise<{
+          default: () => MiddlewareHandler;
+        }>
+      >;
+    },
+  ) => {
+    const { middlewareFns = [], middlewareModules = {} } = options || {};
     const app = new Hono();
     app.use(`${config.basePath}*`, staticMiddleware());
     app.use(contextMiddleware());
@@ -69,6 +63,5 @@ export function nodeAdapter(
       fetch: app.fetch,
       build: processBuild,
     };
-  });
-  return fn(args);
-}
+  },
+);

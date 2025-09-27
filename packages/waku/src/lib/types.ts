@@ -56,3 +56,19 @@ export type Unstable_ProcessRequest = (
 ) => Promise<Response | null>;
 
 export type Unstable_ProcessBuild = () => Promise<void>;
+
+export type Unstable_CreateServerEntry = <Options>(
+  fn: (
+    args: {
+      processRequest: Unstable_ProcessRequest;
+      processBuild: Unstable_ProcessBuild;
+    },
+    options?: Options,
+  ) => Unstable_ServerEntry['default'],
+) => (
+  args: {
+    handleRequest: Unstable_HandleRequest;
+    handleBuild: Unstable_HandleBuild;
+  },
+  options?: Options,
+) => Unstable_ServerEntry['default'];

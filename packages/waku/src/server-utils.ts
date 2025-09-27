@@ -2,6 +2,7 @@
 
 export {
   createServerEntry as unstable_createServerEntry,
+  getConfig as unstable_getConfig,
   getIsBuild as unstable_getIsBuild,
 } from './lib/vite-rsc/handler.js';
 

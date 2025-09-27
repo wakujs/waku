@@ -9,12 +9,13 @@ import {
 import { stringToStream } from '../utils/stream.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
 import { rootDir, config, isBuild } from 'virtual:vite-rsc-waku/config';
+import type { Config } from '../../config.js';
 import type {
   Unstable_HandleRequest as HandleRequest,
   Unstable_HandleBuild as HandleBuild,
-  Unstable_ServerEntry as ServerEntry,
   Unstable_ProcessRequest as ProcessRequest,
   Unstable_ProcessBuild as ProcessBuild,
+  Unstable_CreateServerEntry as CreateServerEntry,
 } from '../types.js';
 import { getInput } from '../utils/request.js';
 import { createRenderUtils } from '../utils/render.js';
@@ -32,7 +33,7 @@ function loadSsrEntryModule() {
   );
 }
 
-const getProcessRequest =
+const toProcessRequest =
   (handleRequest: HandleRequest): ProcessRequest =>
   async (req) => {
     await import('virtual:vite-rsc-waku/set-platform-data');
@@ -89,7 +90,7 @@ const getProcessRequest =
     return null;
   };
 
-const getProcessBuild =
+const toProcessBuild =
   (handleBuild: HandleBuild): ProcessBuild =>
   async () => {
     const renderUtils = createRenderUtils(
@@ -142,17 +143,11 @@ const getProcessBuild =
     });
   };
 
-export const createServerEntry =
-  (
-    fn: (args: {
-      processRequest: ProcessRequest;
-      processBuild: ProcessBuild;
-    }) => ServerEntry['default'],
-  ) =>
-  (args: { handleRequest: HandleRequest; handleBuild: HandleBuild }) => {
-    const processRequest = getProcessRequest(args.handleRequest);
-    const processBuild = getProcessBuild(args.handleBuild);
-    return fn({ processRequest, processBuild });
-  };
+export const createServerEntry: CreateServerEntry = (fn) => (args, options) => {
+  const processRequest = toProcessRequest(args.handleRequest);
+  const processBuild = toProcessBuild(args.handleBuild);
+  return fn({ processRequest, processBuild }, options);
+};
 
+export const getConfig = (): Omit<Required<Config>, 'vite'> => config;
 export const getIsBuild = (): boolean => isBuild;
