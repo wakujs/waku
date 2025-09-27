@@ -23,7 +23,8 @@ import {
   DIST_PUBLIC,
   SRC_CLIENT_ENTRY,
   SRC_SERVER_ENTRY,
-} from '../builder/constants.js';
+  SRC_PAGES,
+} from '../constants.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
 import { joinPath } from '../utils/path.js';
 
@@ -119,6 +120,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
                 entries: [
                   `${config.srcDir}/${SRC_CLIENT_ENTRY}.*`,
                   `${config.srcDir}/${SRC_SERVER_ENTRY}.*`,
+                  `${config.srcDir}/${SRC_PAGES}/**/*.*`,
                 ],
               },
             },

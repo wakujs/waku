@@ -7,7 +7,7 @@ import { serveStatic } from 'jsr:@hono/hono/deno';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 import path from 'node:path';
-import { DIST_PUBLIC } from '../../../builder/constants.js';
+import { DIST_PUBLIC } from '../../../constants.js';
 import { createApp as defaultCreateApp } from '../../../hono/engine.js';
 import { processRequest } from '../../handler.js';
 import { INTERNAL_setAllEnv } from '../../../../server.js';

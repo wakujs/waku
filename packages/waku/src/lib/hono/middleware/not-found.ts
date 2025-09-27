@@ -1,7 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import type { MiddlewareHandler } from 'hono';
-import { DIST_PUBLIC } from '../../builder/constants.js';
+import { DIST_PUBLIC } from '../../constants.js';
 import { getConfig } from '../../vite-rsc/handler.js';
 
 export default function notFoundMiddleware(): MiddlewareHandler {

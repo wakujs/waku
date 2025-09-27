@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { MiddlewareHandler } from 'hono';
 import { serveStatic } from '@hono/node-server/serve-static';
-import { DIST_PUBLIC } from '../../builder/constants.js';
+import { DIST_PUBLIC } from '../../constants.js';
 import { getConfig, getIsBuild } from '../../vite-rsc/handler.js';
 
 export default function staticMiddleware(): MiddlewareHandler {

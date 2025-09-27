@@ -17,10 +17,7 @@ export function unstable_fsRouter(
    */
   pages: { [file: string]: () => Promise<unknown> },
   options: {
-    /**
-     * e.g. `"api"` will detect pages in `src/pages/api`. Or, if `options.pagesDir`
-     * is `"foo"`, then it will detect pages in `src/foo/api`.
-     */
+    /** e.g. `"api"` will detect pages in `src/pages/api`. */
     apiDir: string;
     /** e.g. `"_slices"` will detect slices in `src/pages/_slices`. */
     slicesDir: string;

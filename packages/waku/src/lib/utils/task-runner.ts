@@ -1,13 +1,8 @@
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
-import { joinPath } from '../utils/path.js';
-import {
-  existsSync,
-  mkdir,
-  writeFile,
-  createWriteStream,
-} from '../utils/node-fs.js';
+import { joinPath } from './path.js';
+import { existsSync, mkdir, writeFile, createWriteStream } from './node-fs.js';
 
 const createTaskRunner = (limit: number) => {
   let running = 0;
