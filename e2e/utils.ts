@@ -1,4 +1,4 @@
-import { execSync, exec, spawnSync } from 'node:child_process';
+import { execSync, exec } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import {
@@ -17,6 +17,7 @@ import { expect, test as basicTest } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
 import { error, info } from '@actions/core';
 import { stripVTControlCharacters } from 'node:util';
+import fkill from 'fkill';
 
 export const FETCH_ERROR_MESSAGES = {
   chromium: 'Failed to fetch',
@@ -50,9 +51,13 @@ export async function findWakuPort(cp: ChildProcess): Promise<number> {
   });
 }
 
-export const terminate = (port: number) => {
-  spawnSync('npx', ['kill-port', `${port}`]);
-}
+// Upstream doesn't support ES module
+//  Related: https://github.com/dwyl/terminate/pull/85
+export const terminate = async (pid: number) => {
+  await fkill(pid, {
+    forceAfterTimeout: 5000,
+  });
+};
 
 const unexpectedErrors: RegExp[] = [
   /^You did not run Node.js with the `--conditions react-server` flag/,
@@ -149,7 +154,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     const port = await findWakuPort(cp);
     const stopApp = async () => {
-      terminate(port);
+      await terminate(cp.pid!);
     };
     return { port, stopApp, fixtureDir };
   };
@@ -321,7 +326,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     const port = await findWakuPort(cp);
     const stopApp = async () => {
       builtModeMap.delete(packageManager);
-      terminate(port);
+      await terminate(cp.pid!);
     };
     return { port, stopApp, standaloneDir };
   };
