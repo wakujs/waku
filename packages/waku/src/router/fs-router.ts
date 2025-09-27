@@ -13,7 +13,7 @@ export function unstable_fsRouter(
    *     "foo/index.tsx": () => ...,
    *   }
    * This mapping can be created by Vite's import.meta.glob, e.g.
-   *   import.meta.glob("./pages/**\/*.tsx", { base: "./pages" })
+   *   import.meta.glob("./**\/*.{tsx,ts}", { base: "./pages" })
    */
   pages: { [file: string]: () => Promise<unknown> },
   options: {
