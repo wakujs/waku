@@ -4,7 +4,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import type { Unstable_CreateAppArgs as CreateAppArgs } from '../../types.js';
 import { DIST_PUBLIC } from '../../constants.js';
 
-export default function staticMiddleware(
+export function staticMiddleware(
   args: CreateAppArgs,
 ): MiddlewareHandler {
   const { config, isBuild } = args;

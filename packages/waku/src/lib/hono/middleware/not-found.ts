@@ -4,7 +4,7 @@ import type { MiddlewareHandler } from 'hono';
 import type { Unstable_CreateAppArgs as CreateAppArgs } from '../../types.js';
 import { DIST_PUBLIC } from '../../constants.js';
 
-export default function notFoundMiddleware(
+export function notFoundMiddleware(
   args: CreateAppArgs,
 ): MiddlewareHandler {
   const { config } = args;
