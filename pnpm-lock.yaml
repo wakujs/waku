@@ -4,11 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-patchedDependencies:
-  ps-tree:
-    hash: 53510d3582abd269db85f6d55e7c01499580a4f9924555978c3aac56cc607344
-    path: patches/ps-tree.patch
-
 importers:
 
   .:
@@ -12087,7 +12082,7 @@ snapshots:
 
   property-information@7.1.0: {}
 
-  ps-tree@1.2.0(patch_hash=53510d3582abd269db85f6d55e7c01499580a4f9924555978c3aac56cc607344):
+  ps-tree@1.2.0:
     dependencies:
       event-stream: 3.3.4
 
@@ -12824,7 +12819,7 @@ snapshots:
 
   terminate@2.8.0:
     dependencies:
-      ps-tree: 1.2.0(patch_hash=53510d3582abd269db85f6d55e7c01499580a4f9924555978c3aac56cc607344)
+      ps-tree: 1.2.0
 
   terser-webpack-plugin@5.3.14(@swc/core@1.13.5(@swc/helpers@0.5.17))(webpack@5.99.9(@swc/core@1.13.5(@swc/helpers@0.5.17))):
     dependencies:
