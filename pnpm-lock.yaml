@@ -1748,6 +1748,9 @@ importers:
       react-server-dom-webpack:
         specifier: 19.1.1
         version: 19.1.1(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(webpack@5.99.9)
+      shiki:
+        specifier: ^3.12.2
+        version: 3.12.2
       waku:
         specifier: workspace:*
         version: link:../waku
@@ -1767,9 +1770,6 @@ importers:
       prettier-plugin-tailwindcss:
         specifier: ^0.6.14
         version: 0.6.14(prettier@3.6.2)
-      shiki:
-        specifier: ^3.12.2
-        version: 3.12.2
       tailwindcss:
         specifier: 4.1.13
         version: 4.1.13
