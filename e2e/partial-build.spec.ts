@@ -34,9 +34,7 @@ test.describe(`partial builds`, () => {
     expect(await page.getByTestId('title').textContent()).toBe('a');
   });
   test.afterEach(async () => {
-    if (cp?.pid) {
-      await terminate(cp.pid);
-    }
+    terminate(port);
   });
 
   test('does not change pages that already exist', async () => {

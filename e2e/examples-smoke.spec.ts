@@ -99,9 +99,7 @@ for (const cwd of examples) {
         });
 
         test.afterAll(async () => {
-          if (cp?.pid) {
-            await terminate(cp.pid);
-          }
+          terminate(port);
         });
 
         test('check title', async ({ page }) => {

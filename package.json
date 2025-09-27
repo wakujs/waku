@@ -43,9 +43,9 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "6.0.0-rc.1",
     "eslint-plugin-unicorn": "^61.0.2",
+    "kill-port": "^2.0.1",
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.6.14",
-    "terminate": "^2.8.0",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.43.0",
     "waku": "workspace:*"

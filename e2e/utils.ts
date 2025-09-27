@@ -1,4 +1,4 @@
-import { execSync, exec } from 'node:child_process';
+import { execSync, exec, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import {
@@ -50,14 +50,9 @@ export async function findWakuPort(cp: ChildProcess): Promise<number> {
   });
 }
 
-// Upstream doesn't support ES module
-//  Related: https://github.com/dwyl/terminate/pull/85
-export const terminate = createRequire(import.meta.url)(
-  // use terminate instead of cp.kill,
-  //  because cp.kill will not kill the child process of the child process
-  //  to avoid the zombie process
-  'terminate/promise',
-) as (pid: number) => Promise<void>;
+export const terminate = (port: number) => {
+  spawnSync('npx', ['kill-port', `${port}`]);
+}
 
 const unexpectedErrors: RegExp[] = [
   /^You did not run Node.js with the `--conditions react-server` flag/,
@@ -154,7 +149,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     const port = await findWakuPort(cp);
     const stopApp = async () => {
-      await terminate(cp.pid!);
+      terminate(port);
     };
     return { port, stopApp, fixtureDir };
   };
@@ -326,7 +321,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     const port = await findWakuPort(cp);
     const stopApp = async () => {
       builtModeMap.delete(packageManager);
-      await terminate(cp.pid!);
+      terminate(port);
     };
     return { port, stopApp, standaloneDir };
   };
