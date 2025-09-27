@@ -1,5 +1,4 @@
-/* eslint-disable */
-
+/*
 // @ts-expect-error deno
 import { Hono } from 'jsr:@hono/hono';
 // @ts-expect-error deno
@@ -33,3 +32,4 @@ app.notFound(async (c: any) => {
 });
 
 Deno.serve(app.fetch);
+*/

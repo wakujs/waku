@@ -11,30 +11,6 @@ const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
   allowPositionals: true,
   options: {
-    'with-vercel': {
-      type: 'boolean',
-    },
-    'with-vercel-static': {
-      type: 'boolean',
-    },
-    'with-netlify': {
-      type: 'boolean',
-    },
-    'with-netlify-static': {
-      type: 'boolean',
-    },
-    'with-cloudflare': {
-      type: 'boolean',
-    },
-    'with-partykit': {
-      type: 'boolean',
-    },
-    'with-deno': {
-      type: 'boolean',
-    },
-    'with-aws-lambda': {
-      type: 'boolean',
-    },
     'experimental-partial': {
       type: 'boolean',
     },
