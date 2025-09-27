@@ -1,7 +1,7 @@
 import type { MiddlewareHandler } from 'hono';
 import type { Unstable_ProcessRequest as ProcessRequest } from '../../types.js';
 
-export default function rscMiddleware(args: {
+export function rscMiddleware(args: {
   processRequest: ProcessRequest;
 }): MiddlewareHandler {
   const { processRequest } = args;

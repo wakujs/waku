@@ -4,7 +4,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { DIST_PUBLIC } from '../../constants.js';
 import { getConfig, getIsBuild } from '../../vite-rsc/handler.js';
 
-export default function staticMiddleware(): MiddlewareHandler {
+export function staticMiddleware(): MiddlewareHandler {
   const config = getConfig();
   const isBuild = getIsBuild();
   if (isBuild) {

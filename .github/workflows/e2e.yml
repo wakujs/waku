@@ -71,16 +71,16 @@ jobs:
       matrix:
         shared: [1, 2, 3, 4]
         shardTotal: [4]
-        os: [ubuntu-latest, windows-2022, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         version: [24.0.0, 22.12.0, 20.19.0]
         exclude:
           - os: macos-latest
             version: 20.19.0
-          - os: windows-2022
+          - os: windows-latest
             version: 20.19.0
           - os: macos-latest
             version: 22.12.0
-          - os: windows-2022
+          - os: windows-latest
             version: 22.12.0
 
     runs-on: ${{ matrix.os }}

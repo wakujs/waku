@@ -4,7 +4,7 @@ import type { MiddlewareHandler } from 'hono';
 import { DIST_PUBLIC } from '../../constants.js';
 import { getConfig } from '../../vite-rsc/handler.js';
 
-export default function notFoundMiddleware(): MiddlewareHandler {
+export function notFoundMiddleware(): MiddlewareHandler {
   const config = getConfig();
   return async (c) => {
     const file = path.join(config.distDir, DIST_PUBLIC, '404.html');

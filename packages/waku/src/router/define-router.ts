@@ -633,8 +633,5 @@ export function unstable_defineRouter(fns: {
     await unstable_setPlatformData('defineRouterMyConfig', myConfig, true);
   };
 
-  return defineHandlers({
-    handleRequest,
-    handleBuild,
-  });
+  return defineHandlers({ handleRequest, handleBuild });
 }
