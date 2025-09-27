@@ -5,7 +5,7 @@ import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
 import { config } from 'virtual:vite-rsc-waku/config';
 import path from 'node:path';
 import fs from 'node:fs';
-import { DIST_PUBLIC } from '../../../builder/constants.js';
+import { DIST_PUBLIC } from '../../../constants.js';
 import { INTERNAL_setAllEnv } from '../../../../server.js';
 
 function createApp(app: Hono) {
