@@ -1,6 +1,6 @@
 import { unstable_getBuildOptions } from 'waku/server';
 import { getEnv as getWakuEnv } from 'waku';
-import { getHonoContext } from '../../waku.hono-enhancer';
+import { getHonoContext } from '../server-entry';
 
 export function isBuild() {
   return !!unstable_getBuildOptions().unstable_phase;

@@ -8,25 +8,24 @@ import {
 } from '@vitejs/plugin-rsc/rsc';
 import { stringToStream } from '../utils/stream.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
-import { config } from 'virtual:vite-rsc-waku/config';
-import type {
-  Unstable_HandleRequest as HandleRequest,
-  HandlerContext,
-  Middleware,
-} from '../types.js';
+import type { Config } from '../../config.js';
+import { config, isBuild } from 'virtual:vite-rsc-waku/config';
+import type { Unstable_HandleRequest as HandleRequest } from '../types.js';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 import { getInput } from '../utils/request.js';
 import { createRenderUtils } from '../utils/render.js';
 
 type HandleRequestOutput = Awaited<ReturnType<HandleRequest>>;
 
-async function processRequest(ctx: HandlerContext) {
+export async function processRequest(req: Request): Promise<Response | null> {
   await import('virtual:vite-rsc-waku/set-platform-data');
 
-  const { input, temporaryReferences } = await getInput(
-    ctx,
+  const temporaryReferences = createTemporaryReferenceSet();
+
+  const input = await getInput(
+    req,
     config,
-    createTemporaryReferenceSet,
+    temporaryReferences,
     decodeReply,
     decodeAction,
     decodeFormState,
@@ -52,23 +51,25 @@ async function processRequest(ctx: HandlerContext) {
     if (info?.location) {
       headers.location = info.location;
     }
-    ctx.res = new Response(body, { status, headers });
+    return new Response(body, { status, headers });
   }
 
   if (res instanceof ReadableStream) {
-    ctx.res = new Response(res);
+    return new Response(res);
   } else if (res && res !== 'fallback') {
-    ctx.res = res;
+    return res;
   }
 
   // fallback index html like packages/waku/src/lib/plugins/vite-plugin-rsc-index.ts
-  const url = new URL(ctx.req.url);
-  if (res === 'fallback' || (!ctx.res && url.pathname === '/')) {
+  const url = new URL(req.url);
+  if (res === 'fallback' || (!res && url.pathname === '/')) {
     const { renderHtmlFallback } = await loadSsrEntryModule();
     const htmlFallbackStream = await renderHtmlFallback();
     const headers = { 'content-type': 'text/html; charset=utf-8' };
-    ctx.res = new Response(htmlFallbackStream, { headers });
+    return new Response(htmlFallbackStream, { headers });
   }
+
+  return null;
 }
 
 function loadSsrEntryModule() {
@@ -80,4 +81,5 @@ function loadSsrEntryModule() {
   );
 }
 
-export const handlerMiddleware: Middleware = () => processRequest;
+export const getConfig = (): Omit<Required<Config>, 'vite'> => config;
+export const getIsBuild = (): boolean => isBuild;

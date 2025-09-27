@@ -1,7 +1,7 @@
 import { Link } from 'waku';
 import { Suspense } from 'react';
 import { Counter } from '../components/counter';
-import { getHonoContext } from '../../waku.hono-enhancer';
+import { getHonoContext } from '../server-entry';
 import { getEnv, isBuild } from '../lib/waku';
 
 export default async function HomePage() {

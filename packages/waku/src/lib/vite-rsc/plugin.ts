@@ -26,6 +26,7 @@ import {
   DIST_PUBLIC,
   SRC_CLIENT_ENTRY,
   SRC_SERVER_ENTRY,
+  SRC_PAGES,
 } from '../constants.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
 import { deployNetlifyPlugin } from './deploy/netlify/plugin.js';
@@ -44,7 +45,6 @@ export type RscPluginOptions = {
 };
 
 export type Flags = {
-  'experimental-compress'?: boolean | undefined;
   'experimental-partial'?: boolean | undefined;
   'with-vercel'?: boolean | undefined;
   'with-vercel-static'?: boolean | undefined;
@@ -61,13 +61,8 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
     basePath: '/',
     srcDir: 'src',
     distDir: 'dist',
-    pagesDir: 'pages',
-    apiDir: 'api',
-    slicesDir: '_slices',
     privateDir: 'private',
     rscBase: 'RSC',
-    middleware: [],
-    unstable_honoEnhancer: undefined,
     vite: undefined,
     ...rscPluginOptions?.config,
   };
@@ -141,7 +136,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
                 entries: [
                   `${config.srcDir}/${SRC_CLIENT_ENTRY}.*`,
                   `${config.srcDir}/${SRC_SERVER_ENTRY}.*`,
-                  `${config.srcDir}/${config.pagesDir}/**/*.*`,
+                  `${config.srcDir}/${SRC_PAGES}/**/*.*`,
                 ],
               },
             },
@@ -232,8 +227,9 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
             try {
               // Restore Vite's automatically stripped base
               req.url = req.originalUrl;
-              const mod = await environment.runner.import(entryId);
-              await getRequestListener(mod.default)(req, res);
+              const mod: typeof import('../vite-entries/entry.server.js') =
+                await environment.runner.import(entryId);
+              await getRequestListener(mod.fetch)(req, res);
             } catch (e) {
               next(e);
             }
@@ -246,7 +242,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
       // resolve user entries and fallbacks to "managed mode" if not found.
       async resolveId(source, _importer, options) {
         if (source === 'virtual:vite-rsc-waku/server-entry') {
-          return `\0` + source;
+          return '\0' + source;
         }
         if (source === 'virtual:vite-rsc-waku/server-entry-inner') {
           const resolved = await this.resolve(
@@ -282,47 +278,6 @@ if (import.meta.hot) {
         }
       },
     },
-    createVirtualPlugin('vite-rsc-waku/middlewares', async function () {
-      const ids: string[] = [];
-      for (const file of config.middleware) {
-        // resolve local files
-        let id = file;
-        if (file[0] === '.') {
-          const resolved = await this.resolve(file);
-          if (resolved) {
-            id = resolved.id;
-          } else {
-            this.error(`failed to resolve custom middleware '${file}'`);
-          }
-        }
-        ids.push(id);
-      }
-
-      let code = '';
-      ids.forEach((file, i) => {
-        code += `import __m_${i} from ${JSON.stringify(file)};\n`;
-      });
-      code += `export const middlewares = [`;
-      code += ids.map((_, i) => `__m_${i}`).join(',\n');
-      code += `];\n`;
-      return code;
-    }),
-    createVirtualPlugin('vite-rsc-waku/hono-enhancer', async function () {
-      if (!config?.unstable_honoEnhancer) {
-        return `export const honoEnhancer = (app) => app;`;
-      }
-      let id = config.unstable_honoEnhancer;
-      if (id[0] === '.') {
-        const resolved = await this.resolve(id);
-        if (resolved) {
-          id = resolved.id;
-        }
-      }
-      return `
-        import __m from ${JSON.stringify(id)};
-        export const honoEnhancer = __m;
-      `;
-    }),
     createVirtualPlugin('vite-rsc-waku/config', async function () {
       return `
         export const config = ${JSON.stringify({ ...config, vite: undefined })};
