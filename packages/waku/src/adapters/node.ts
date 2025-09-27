@@ -6,7 +6,7 @@ import {
   rscMiddleware,
   staticMiddleware,
   notFoundMiddleware,
-  middlewareRunner
+  middlewareRunner,
 } from '../lib/hono/middleware.js';
 import { createServerEntry, getConfig } from '../lib/vite-rsc/handler.js';
 

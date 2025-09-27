@@ -1,3 +1,4 @@
+/*
 import { Hono } from 'hono';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
@@ -20,3 +21,4 @@ app.notFound((c) => {
 
 export default async (request: Request, context: unknown) =>
   app.fetch(request, { context });
+*/

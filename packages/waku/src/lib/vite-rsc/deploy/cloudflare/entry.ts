@@ -1,3 +1,4 @@
+/*
 import { Hono } from 'hono';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
@@ -39,3 +40,4 @@ export default {
     return app.fetch(request, env, ctx);
   },
 };
+*/

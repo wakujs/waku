@@ -1,3 +1,4 @@
+/*
 import { Hono } from 'hono';
 import * as honoAwsLambda from 'hono/aws-lambda';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
@@ -27,3 +28,4 @@ app.notFound((c) => {
 export const handler: any = import.meta.env.WAKU_AWS_LAMBDA_STREAMING
   ? honoAwsLambda.streamHandle(app)
   : honoAwsLambda.handle(app);
+*/
