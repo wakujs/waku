@@ -1,13 +1,11 @@
 import type { Plugin } from 'vite';
 import { readdir, writeFile } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
-import { SRC_SERVER_ENTRY, EXTENSIONS } from '../constants.js';
+import { SRC_SERVER_ENTRY, SRC_PAGES, EXTENSIONS } from '../constants.js';
 import { joinPath } from '../utils/path.js';
 import { isIgnoredPath } from '../utils/fs-router.js';
 import { getGrouplessPath } from '../utils/create-pages.js';
 import * as swc from '@swc/core';
-
-const SRC_PAGES = 'pages';
 
 // https://tc39.es/ecma262/multipage/ecmascript-language-lexical-grammar.html#sec-names-and-keywords
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#identifiers
