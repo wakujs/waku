@@ -19,10 +19,10 @@ import type {
 } from '../types.js';
 import { getInput } from '../utils/request.js';
 import { createRenderUtils } from '../utils/render.js';
-import { encodeRscPath } from '../renderers/utils.js';
+import { encodeRscPath } from '../utils/rsc-path.js';
 import { joinPath, extname } from '../utils/path.js';
-import { DIST_PUBLIC } from '../builder/constants.js';
-import { emitFileInTask } from '../builder/build.js';
+import { DIST_PUBLIC } from '../constants.js';
+import { emitFileInTask } from '../utils/task-runner.js';
 
 function loadSsrEntryModule() {
   // This is an API to communicate between two server environments `rsc` and `ssr`.
