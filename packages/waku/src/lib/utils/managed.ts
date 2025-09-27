@@ -1,5 +1,5 @@
 import type { Config } from '../../config.js';
-import { EXTENSIONS } from '../builder/constants.js';
+import { EXTENSIONS } from '../constants.js';
 
 export const getManagedServerEntry = (config: Required<Config>) => {
   const globBase = `/${config.srcDir}/pages`;

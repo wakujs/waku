@@ -3,7 +3,7 @@ import { captureOwnerStack, use, type ReactNode } from 'react';
 import type { ReactFormState } from 'react-dom/client';
 import { renderToReadableStream } from 'react-dom/server.edge';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
-import { fakeFetchCode } from '../renderers/html.js';
+import { getBootstrapPreamble } from '../utils/ssr.js';
 import { injectRSCPayload } from 'rsc-html-stream/server';
 import fallbackHtml from 'virtual:vite-rsc-waku/fallback-html';
 
@@ -78,16 +78,6 @@ export async function renderHTML(
 // https://github.com/facebook/react/issues/33937
 function HtmlNodeWrapper(props: { children: ReactNode }) {
   return props.children;
-}
-
-// cf. packages/waku/src/lib/renderers/html.ts `parseHtmlHead`
-function getBootstrapPreamble(options: { rscPath: string }) {
-  return `
-    globalThis.__WAKU_HYDRATE__ = true;
-    globalThis.__WAKU_PREFETCHED__ = {
-      ${JSON.stringify(options.rscPath)}: ${fakeFetchCode}
-    };
-  `;
 }
 
 export async function renderHtmlFallback() {

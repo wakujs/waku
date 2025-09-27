@@ -16,7 +16,7 @@ import {
   rmSync,
 } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { DIST_PUBLIC } from '../../../builder/constants.js';
+import { DIST_PUBLIC } from '../../../constants.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const SERVER_ENTRY = path.join(__dirname, 'entry.js');

@@ -19,14 +19,14 @@ import {
 } from '../utils/managed.js';
 import type { Config } from '../../config.js';
 import { INTERNAL_setAllEnv, unstable_getBuildOptions } from '../../server.js';
-import { emitFileInTask, waitForTasks } from '../builder/build.js';
+import { emitFileInTask, waitForTasks } from '../utils/task-runner.js';
 import { deployVercelPlugin } from './deploy/vercel/plugin.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import {
   DIST_PUBLIC,
   SRC_CLIENT_ENTRY,
   SRC_SERVER_ENTRY,
-} from '../builder/constants.js';
+} from '../constants.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
 import { deployNetlifyPlugin } from './deploy/netlify/plugin.js';
 import { deployCloudflarePlugin } from './deploy/cloudflare/plugin.js';

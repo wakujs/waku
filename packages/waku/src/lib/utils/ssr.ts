@@ -1,5 +1,4 @@
-// This is exported for vite-rsc. https://github.com/wakujs/waku/pull/1493
-export const fakeFetchCode = `
+const fakeFetchCode = `
 Promise.resolve(new Response(new ReadableStream({
   start(c) {
     const d = (self.__FLIGHT_DATA ||= []);
@@ -18,3 +17,12 @@ Promise.resolve(new Response(new ReadableStream({
   .split('\n')
   .map((line) => line.trim())
   .join('');
+
+export function getBootstrapPreamble(options: { rscPath: string }) {
+  return `
+    globalThis.__WAKU_HYDRATE__ = true;
+    globalThis.__WAKU_PREFETCHED__ = {
+      ${JSON.stringify(options.rscPath)}: ${fakeFetchCode}
+    };
+  `;
+}
