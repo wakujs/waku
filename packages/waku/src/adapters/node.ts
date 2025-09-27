@@ -6,35 +6,11 @@ import {
   rscMiddleware,
   staticMiddleware,
   notFoundMiddleware,
+  middlewareRunner
 } from '../lib/hono/middleware.js';
 import { createServerEntry, getConfig } from '../lib/vite-rsc/handler.js';
 
 const config = getConfig();
-
-const runner = (
-  middlewareModules: Record<
-    string,
-    () => Promise<{
-      default: () => MiddlewareHandler;
-    }>
-  >,
-): MiddlewareHandler => {
-  let handlers: MiddlewareHandler[] | undefined;
-  return async (c, next) => {
-    if (!handlers) {
-      handlers = await Promise.all(
-        Object.values(middlewareModules).map((m) =>
-          m().then((mod) => mod.default()),
-        ),
-      );
-    }
-    const run = async (index: number) => {
-      await handlers![index]?.(c, () => run(index + 1));
-    };
-    await run(0);
-    await next();
-  };
-};
 
 export const nodeAdapter = createServerEntry(
   (
@@ -56,7 +32,7 @@ export const nodeAdapter = createServerEntry(
     for (const middlewareFn of middlewareFns) {
       app.use(middlewareFn());
     }
-    app.use(runner(middlewareModules));
+    app.use(middlewareRunner(middlewareModules));
     app.use(rscMiddleware({ processRequest }));
     app.use(notFoundMiddleware());
     return {
