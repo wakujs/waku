@@ -7,7 +7,7 @@ import { unstable_honoMiddleware as honoMiddleware } from 'waku/server';
 import redirectsMiddleware from './middleware/redirects';
 
 export default defineServer({
-  ...fsRouter(),
+  ...fsRouter(import.meta.glob('./pages/**/*.tsx', { base: './pages/' })),
   createApp: (args, baseApp) => {
     const app = baseApp instanceof Hono ? (baseApp as Hono) : new Hono();
     app.use(honoMiddleware.contextMiddleware());
