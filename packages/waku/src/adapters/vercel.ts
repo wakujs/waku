@@ -53,16 +53,14 @@ export const vercelAdapter = createServerEntry(
     });
     return {
       fetch: app.fetch,
-      build: async () => {
-        await processBuild();
-        await build({ serverless: !options?.static });
-      },
+      build: processBuild,
+      postBuild: () => buildVercel({ serverless: !options?.static }),
       listener: getRequestListener(app.fetch),
     };
   },
 );
 
-async function build({ serverless }: { serverless: boolean }) {
+async function buildVercel({ serverless }: { serverless: boolean }) {
   const publicDir = path.resolve(config.distDir, DIST_PUBLIC);
   const outputDir = path.resolve('.vercel', 'output');
   cpSync(publicDir, path.join(outputDir, 'static'), { recursive: true });

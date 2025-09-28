@@ -48,6 +48,8 @@ export type Unstable_ServerEntry = {
   default: {
     fetch: (req: Request) => Response | Promise<Response>;
     build: () => Promise<void>;
+    // TODO remove this once we solve savePlatformData timing issue
+    postBuild?: () => Promise<void>;
   };
 };
 
@@ -59,14 +61,14 @@ export type Unstable_ProcessBuild = () => Promise<void>;
 
 export type Unstable_CreateServerEntry = <Options>(
   fn: (
-    args: {
+    fns: {
       processRequest: Unstable_ProcessRequest;
       processBuild: Unstable_ProcessBuild;
     },
     options?: Options,
   ) => Unstable_ServerEntry['default'],
 ) => (
-  args: {
+  fns: {
     handleRequest: Unstable_HandleRequest;
     handleBuild: Unstable_HandleBuild;
   },

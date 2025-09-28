@@ -145,11 +145,13 @@ const toProcessBuild =
     await waitForTasks();
   };
 
-export const createServerEntry: CreateServerEntry = (fn) => (args, options) => {
-  const processRequest = toProcessRequest(args.handleRequest);
-  const processBuild = toProcessBuild(args.handleBuild);
-  return fn({ processRequest, processBuild }, options);
-};
+export const createServerEntry: CreateServerEntry =
+  (fn) =>
+  ({ handleRequest, handleBuild }, options) => {
+    const processRequest = toProcessRequest(handleRequest);
+    const processBuild = toProcessBuild(handleBuild);
+    return fn({ processRequest, processBuild }, options);
+  };
 
 export const getConfig = (): Omit<Required<Config>, 'vite'> => config;
 export const getIsBuild = (): boolean => isBuild;
