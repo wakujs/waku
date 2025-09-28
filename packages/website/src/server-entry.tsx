@@ -4,5 +4,5 @@ import { vercelAdapter } from 'waku/adapters/vercel';
 
 export default vercelAdapter(
   fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
-  { static: false },
+  { static: true },
 );
