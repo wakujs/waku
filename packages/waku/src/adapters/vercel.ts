@@ -17,14 +17,13 @@ import {
   rscMiddleware,
   middlewareRunner,
 } from '../lib/hono/middleware.js';
-import { createServerEntry, getConfig } from '../lib/vite-rsc/handler.js';
+import { createServerEntry } from '../lib/vite-rsc/handler.js';
 
 const SERVE_JS = 'serve-vercel.js';
-const config = getConfig();
 
 export const vercelAdapter = createServerEntry(
   (
-    { processRequest, processBuild },
+    { processRequest, processBuild, config },
     options?: {
       static?: boolean;
       middlewareFns?: (() => MiddlewareHandler)[];
@@ -54,45 +53,50 @@ export const vercelAdapter = createServerEntry(
     return {
       fetch: app.fetch,
       build: processBuild,
-      postBuild: () => buildVercel({ serverless: !options?.static }),
+      postBuild: () => buildVercel({ ...config, serverless: !options?.static }),
       listener: getRequestListener(app.fetch),
     };
   },
 );
 
-async function buildVercel({ serverless }: { serverless: boolean }) {
-  const publicDir = path.resolve(config.distDir, DIST_PUBLIC);
+async function buildVercel({
+  serverless,
+  distDir,
+  rscBase,
+  privateDir,
+  basePath,
+}: {
+  serverless: boolean;
+  distDir: string;
+  rscBase: string;
+  privateDir: string;
+  basePath: string;
+}) {
+  const publicDir = path.resolve(distDir, DIST_PUBLIC);
   const outputDir = path.resolve('.vercel', 'output');
   cpSync(publicDir, path.join(outputDir, 'static'), { recursive: true });
 
   if (serverless) {
     // for serverless function
     // TODO(waku): can use `@vercel/nft` to packaging with native dependencies
-    const serverlessDir = path.join(
-      outputDir,
-      'functions',
-      config.rscBase + '.func',
-    );
+    const serverlessDir = path.join(outputDir, 'functions', rscBase + '.func');
     rmSync(serverlessDir, { recursive: true, force: true });
-    mkdirSync(path.join(serverlessDir, config.distDir), {
+    mkdirSync(path.join(serverlessDir, distDir), {
       recursive: true,
     });
-    writeFileSync(path.resolve(config.distDir, SERVE_JS), serveCode);
-    cpSync(
-      path.resolve(config.distDir),
-      path.join(serverlessDir, config.distDir),
-      { recursive: true },
-    );
-    if (existsSync(path.resolve(config.privateDir))) {
-      cpSync(
-        path.resolve(config.privateDir),
-        path.join(serverlessDir, config.privateDir),
-        { recursive: true, dereference: true },
-      );
+    writeFileSync(path.resolve(distDir, SERVE_JS), serveCode);
+    cpSync(path.resolve(distDir), path.join(serverlessDir, distDir), {
+      recursive: true,
+    });
+    if (existsSync(path.resolve(privateDir))) {
+      cpSync(path.resolve(privateDir), path.join(serverlessDir, privateDir), {
+        recursive: true,
+        dereference: true,
+      });
     }
     const vcConfigJson = {
       runtime: 'nodejs22.x',
-      handler: `${config.distDir}/${SERVE_JS}`,
+      handler: `${distDir}/${SERVE_JS}`,
       launcherType: 'Nodejs',
     };
     writeFileSync(
@@ -106,7 +110,7 @@ async function buildVercel({ serverless }: { serverless: boolean }) {
   }
   const routes = [
     {
-      src: `^${config.basePath}${DIST_ASSETS}/(.*)$`,
+      src: `^${basePath}${DIST_ASSETS}/(.*)$`,
       headers: {
         'cache-control': 'public, immutable, max-age=31536000',
       },
@@ -115,8 +119,8 @@ async function buildVercel({ serverless }: { serverless: boolean }) {
       ? [
           { handle: 'filesystem' },
           {
-            src: config.basePath + '(.*)',
-            dest: config.basePath + config.rscBase + '/',
+            src: basePath + '(.*)',
+            dest: basePath + rscBase + '/',
           },
         ]
       : []),

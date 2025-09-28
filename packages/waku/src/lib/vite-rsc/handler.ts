@@ -9,7 +9,6 @@ import {
 import { stringToStream } from '../utils/stream.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
 import { rootDir, config, isBuild } from 'virtual:vite-rsc-waku/config';
-import type { Config } from '../../config.js';
 import type {
   Unstable_HandleRequest as HandleRequest,
   Unstable_HandleBuild as HandleBuild,
@@ -150,8 +149,5 @@ export const createServerEntry: CreateServerEntry =
   ({ handleRequest, handleBuild }, options) => {
     const processRequest = toProcessRequest(handleRequest);
     const processBuild = toProcessBuild(handleBuild);
-    return fn({ processRequest, processBuild }, options);
+    return fn({ processRequest, processBuild, config, isBuild }, options);
   };
-
-export const getConfig = (): Omit<Required<Config>, 'vite'> => config;
-export const getIsBuild = (): boolean => isBuild;

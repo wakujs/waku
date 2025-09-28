@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import type { Config } from '../config.js';
+
 type Elements = Record<string, unknown>;
 
 type RenderRsc = (elements: Record<string, unknown>) => Promise<ReadableStream>;
@@ -61,14 +63,16 @@ export type Unstable_ProcessBuild = () => Promise<void>;
 
 export type Unstable_CreateServerEntry = <Options>(
   fn: (
-    fns: {
+    args: {
       processRequest: Unstable_ProcessRequest;
       processBuild: Unstable_ProcessBuild;
+      config: Omit<Required<Config>, 'vite'>;
+      isBuild: boolean;
     },
     options?: Options,
   ) => Unstable_ServerEntry['default'],
 ) => (
-  fns: {
+  args: {
     handleRequest: Unstable_HandleRequest;
     handleBuild: Unstable_HandleBuild;
   },

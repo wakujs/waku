@@ -1,20 +1,20 @@
+import path from 'node:path';
+import fs from 'node:fs';
 import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
+import { serveStatic } from '@hono/node-server/serve-static';
 
+import { DIST_PUBLIC } from '../lib/constants.js';
 import {
   contextMiddleware,
   rscMiddleware,
-  staticMiddleware,
-  notFoundMiddleware,
   middlewareRunner,
 } from '../lib/hono/middleware.js';
-import { createServerEntry, getConfig } from '../lib/vite-rsc/handler.js';
-
-const config = getConfig();
+import { createServerEntry } from '../lib/vite-rsc/handler.js';
 
 export const nodeAdapter = createServerEntry(
   (
-    { processRequest, processBuild },
+    { processRequest, processBuild, config, isBuild },
     options?: {
       middlewareFns?: (() => MiddlewareHandler)[];
       middlewareModules?: Record<
@@ -27,17 +27,39 @@ export const nodeAdapter = createServerEntry(
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
     const app = new Hono();
-    app.use(`${config.basePath}*`, staticMiddleware());
+    if (isBuild) {
+      app.use(
+        `${config.basePath}*`,
+        serveStatic({
+          root: path.join(config.distDir, DIST_PUBLIC),
+          rewriteRequestPath: (path) => path.slice(config.basePath.length - 1),
+        }),
+      );
+    }
     app.use(contextMiddleware());
     for (const middlewareFn of middlewareFns) {
       app.use(middlewareFn());
     }
     app.use(middlewareRunner(middlewareModules));
     app.use(rscMiddleware({ processRequest }));
-    app.use(notFoundMiddleware());
+    app.use(notFoundMiddleware(config));
     return {
       fetch: app.fetch,
       build: processBuild,
     };
   },
 );
+
+function notFoundMiddleware({
+  distDir,
+}: {
+  distDir: string;
+}): MiddlewareHandler {
+  return async (c) => {
+    const file = path.join(distDir, DIST_PUBLIC, '404.html');
+    if (fs.existsSync(file)) {
+      return c.html(fs.readFileSync(file, 'utf8'), 404);
+    }
+    return c.text('404 Not Found', 404);
+  };
+}
