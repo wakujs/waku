@@ -34,9 +34,9 @@
       "types": "./dist/server.d.ts",
       "default": "./dist/server.js"
     },
-    "./server-utils": {
-      "types": "./dist/server-utils.d.ts",
-      "default": "./dist/server-utils.js"
+    "./internals": {
+      "types": "./dist/internals.d.ts",
+      "default": "./dist/internals.js"
     },
     "./adapters/*": {
       "types": "./dist/adapters/*.d.ts",
