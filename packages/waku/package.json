@@ -34,10 +34,6 @@
       "types": "./dist/server.d.ts",
       "default": "./dist/server.js"
     },
-    "./server-utils": {
-      "types": "./dist/server-utils.d.ts",
-      "default": "./dist/server-utils.js"
-    },
     "./minimal/client": {
       "types": "./dist/minimal/client.d.ts",
       "default": "./dist/minimal/client.js"
