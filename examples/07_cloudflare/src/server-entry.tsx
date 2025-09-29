@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { contextStorage, getContext } from 'hono/context-storage';
 import { unstable_fsRouter as fsRouter } from 'waku/router/server';
 import { unstable_defineServer as defineServer } from 'waku/minimal/server';
-import { unstable_honoMiddleware as honoMiddleware } from 'waku/server';
+import { unstable_honoMiddleware as honoMiddleware } from 'waku/internals';
 
 import cloudflareMiddleware from './middleware/cloudflare';
 
