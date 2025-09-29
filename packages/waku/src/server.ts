@@ -21,20 +21,6 @@ export function getEnv(key: string): string | undefined {
 /**
  * This is an internal function and not for public use.
  */
-export function INTERNAL_iterateSerializablePlatformData(): Iterable<
-  [string, unknown]
-> {
-  const platformData: Record<string, [unknown, boolean]> = ((
-    globalThis as any
-  ).__WAKU_SERVER_PLATFORM_DATA__ ||= {});
-  return Object.entries(platformData).flatMap(([key, [data, serializable]]) =>
-    serializable ? [[key, data]] : [],
-  );
-}
-
-/**
- * This is an internal function and not for public use.
- */
 export function INTERNAL_setPlatformDataLoader(
   loader: (key: string) => Promise<unknown>,
 ): void {
