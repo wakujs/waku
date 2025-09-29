@@ -3,10 +3,8 @@ import { Hono } from 'hono';
 import { contextStorage, getContext } from 'hono/context-storage';
 import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { Slot } from 'waku/minimal/client';
-import {
-  unstable_getContextData as getContextData,
-  unstable_honoMiddleware as honoMiddleware,
-} from 'waku/server';
+import { unstable_getContextData as getContextData } from 'waku/server';
+import { unstable_honoMiddleware as honoMiddleware } from 'waku/internals';
 
 import App from './components/App';
 import cookieMiddleware from './middleware/cookie';

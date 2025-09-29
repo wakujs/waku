@@ -34,6 +34,10 @@
       "types": "./dist/server.d.ts",
       "default": "./dist/server.js"
     },
+    "./internals": {
+      "types": "./dist/internals.d.ts",
+      "default": "./dist/internals.js"
+    },
     "./minimal/client": {
       "types": "./dist/minimal/client.d.ts",
       "default": "./dist/minimal/client.js"
