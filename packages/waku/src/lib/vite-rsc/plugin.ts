@@ -211,15 +211,14 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
         const environment = server.environments.rsc! as RunnableDevEnvironment;
         const entryId = (environment.config.build.rollupOptions.input as any)
           .index;
-        const mod: typeof import('../vite-entries/entry.server.js') =
-          await environment.runner.import(entryId);
-        const listener = getRequestListener(mod.runFetch);
         return () => {
           server.middlewares.use(async (req, res, next) => {
             try {
               // Restore Vite's automatically stripped base
               req.url = req.originalUrl;
-              await listener(req, res);
+              const mod: typeof import('../vite-entries/entry.server.js') =
+                await environment.runner.import(entryId);
+              await getRequestListener(mod.runFetch)(req, res);
             } catch (e) {
               next(e);
             }
