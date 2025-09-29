@@ -34,7 +34,7 @@ const commandsCloudflare = [
     command: `node ${waku} dev`,
   },
   {
-    build: `build --with-cloudflare`,
+    build: `build`,
     command: 'npx wrangler dev',
   },
 ];

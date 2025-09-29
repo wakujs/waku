@@ -56,11 +56,6 @@ Commands:
   start       Start the production server
 
 Options:
-  --with-vercel         Output for Vercel on build
-  --with-netlify        Output for Netlify on build
-  --with-cloudflare     Output for Cloudflare on build
-  --with-deno           Output for Deno on build
-  --with-aws-lambda     Output for AWS Lambda on build
   -p, --port            Port number for the server
   -v, --version         Display the version number
   -h, --help            Display this help message
