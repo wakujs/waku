@@ -6,6 +6,7 @@ import {
   loadServerAction,
   renderToReadableStream,
 } from '@vitejs/plugin-rsc/rsc';
+import { INTERNAL_setAllEnv } from '../../server.js';
 import { stringToStream } from '../utils/stream.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
 import { rootDir, config, isBuild } from 'virtual:vite-rsc-waku/config';
@@ -14,7 +15,7 @@ import type {
   Unstable_HandleBuild as HandleBuild,
   Unstable_ProcessRequest as ProcessRequest,
   Unstable_ProcessBuild as ProcessBuild,
-  Unstable_CreateServerEntry as CreateServerEntry,
+  Unstable_CreateServerEntryAdapter as CreateServerEntryAdapter,
 } from '../types.js';
 import { getInput } from '../utils/request.js';
 import { createRenderUtils } from '../utils/render.js';
@@ -144,10 +145,19 @@ const toProcessBuild =
     await waitForTasks();
   };
 
-export const createServerEntry: CreateServerEntry =
+export const createServerEntryAdapter: CreateServerEntryAdapter =
   (fn) =>
   ({ handleRequest, handleBuild }, options) => {
     const processRequest = toProcessRequest(handleRequest);
     const processBuild = toProcessBuild(handleBuild);
-    return fn({ processRequest, processBuild, config, isBuild }, options);
+    return fn(
+      {
+        processRequest,
+        processBuild,
+        setAllEnv: INTERNAL_setAllEnv,
+        config,
+        isBuild,
+      },
+      options,
+    );
   };

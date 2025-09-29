@@ -13,6 +13,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { INTERNAL_setAllEnv } from '../../server.js';
 import {
   getManagedClientEntry,
   getManagedServerEntry,
@@ -205,20 +206,20 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
         privatePath = joinPath(viteConfig.root, config.privateDir);
       },
       async configureServer(server) {
+        INTERNAL_setAllEnv(process.env as any);
         const { getRequestListener } = await import('@hono/node-server');
         const environment = server.environments.rsc! as RunnableDevEnvironment;
         const entryId = (environment.config.build.rollupOptions.input as any)
           .index;
+        const mod: typeof import('../vite-entries/entry.server.js') =
+          await environment.runner.import(entryId);
+        const listener = getRequestListener(mod.runFetch);
         return () => {
           server.middlewares.use(async (req, res, next) => {
             try {
               // Restore Vite's automatically stripped base
               req.url = req.originalUrl;
-              const mod: typeof import('../vite-entries/entry.server.js') =
-                await environment.runner.import(entryId);
-              await getRequestListener((req, ...args) =>
-                mod.runFetch(process.env, req, ...(args as unknown as never[])),
-              )(req, res);
+              await listener(req, res);
             } catch (e) {
               next(e);
             }

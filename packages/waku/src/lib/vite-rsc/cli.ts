@@ -1,10 +1,11 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import * as vite from 'vite';
 import { rscPlugin } from './plugin.js';
 import type { Flags, RscPluginOptions } from './plugin.js';
 import type { Config } from '../../config.js';
-import { existsSync } from 'node:fs';
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { INTERNAL_setAllEnv } from '../../server.js';
 
 async function loadConfig(): Promise<Config | undefined> {
   let config: Config | undefined;
@@ -83,6 +84,7 @@ export async function cli(
       );
     await startServer(port);
     function startServer(port: number) {
+      INTERNAL_setAllEnv(process.env as any);
       return new Promise<void>((resolve, reject) => {
         const server = serve(
           {

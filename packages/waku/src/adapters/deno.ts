@@ -2,7 +2,7 @@ import path from 'node:path';
 import { writeFileSync } from 'node:fs';
 import type { MiddlewareHandler } from 'hono';
 import {
-  unstable_createServerEntry as createServerEntry,
+  unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_constants as constants,
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
@@ -11,15 +11,16 @@ const DO_NOT_BUNDLE = '';
 const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 const {
+  __WAKU_DENO_ADAPTER_ENV__: denoEnv,
   __WAKU_DENO_ADAPTER_HONO__: Hono = (await import(DO_NOT_BUNDLE + 'hono'))
     .Hono,
   __WAKU_DENO_ADAPTER_SERVE_STATIC__: serveStatic,
   __WAKU_DENO_ADAPTER_NOT_FOUND_FN__: notFoundFn,
 } = globalThis as any;
 
-export const denoAdapter = createServerEntry(
+export const denoAdapter = createServerEntryAdapter(
   (
-    { processRequest, processBuild, config },
+    { processRequest, processBuild, setAllEnv, config },
     options?: {
       middlewareFns?: (() => MiddlewareHandler)[];
       middlewareModules?: Record<
@@ -31,6 +32,9 @@ export const denoAdapter = createServerEntry(
     },
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
+    if (denoEnv) {
+      setAllEnv(denoEnv);
+    }
     const app = new Hono();
     if (serveStatic) {
       app.use(serveStatic({ root: path.join(config.distDir, DIST_PUBLIC) }));
@@ -58,6 +62,7 @@ async function buildDeno({ distDir }: { distDir: string }) {
 import { Hono } from 'jsr:@hono/hono';
 import { serveStatic } from 'jsr:@hono/hono/deno';
 
+globalThis.__WAKU_DENO_ADAPTER_ENV__ = Deno.env.toObject();
 globalThis.__WAKU_DENO_ADAPTER_HONO__ = Hono;
 globalThis.__WAKU_DENO_ADAPTER_SERVE_STATIC__ = serveStatic;
 globalThis.__WAKU_DENO_ADAPTER_NOT_FOUND_FN__ = async (c) => {
@@ -72,11 +77,9 @@ globalThis.__WAKU_DENO_ADAPTER_NOT_FOUND_FN__ = async (c) => {
   return c.text('404 Not Found', 404);
 };
 
-const env = Deno.env.toObject();
-
 import { runFetch } from './server/index.js';
 
-Deno.serve((req, ...args) => runFetch(env, req, ...args));
+Deno.serve(runFetch);
 `;
   writeFileSync(path.join(distDir, SERVE_JS), serveCode);
 }

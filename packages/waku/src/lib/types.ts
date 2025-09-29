@@ -48,7 +48,7 @@ export type Unstable_HandleBuild = (utils: {
 
 export type Unstable_ServerEntry = {
   default: {
-    fetch: (req: Request, ...args: never[]) => Response | Promise<Response>;
+    fetch: (req: Request, ...args: any[]) => Response | Promise<Response>;
     build: () => Promise<void>;
     // TODO remove this once we solve savePlatformData timing issue
     postBuild?: () => Promise<void>;
@@ -61,11 +61,13 @@ export type Unstable_ProcessRequest = (
 
 export type Unstable_ProcessBuild = () => Promise<void>;
 
-export type Unstable_CreateServerEntry = <Options>(
+export type Unstable_CreateServerEntryAdapter = <Options>(
   fn: (
     args: {
       processRequest: Unstable_ProcessRequest;
       processBuild: Unstable_ProcessBuild;
+      // TODO let's look for a better way later
+      setAllEnv: (env: Readonly<Record<string, string>>) => void;
       config: Omit<Required<Config>, 'vite'>;
       isBuild: boolean;
     },

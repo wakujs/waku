@@ -11,7 +11,7 @@ import { Hono } from 'hono';
 import { getRequestListener } from '@hono/node-server';
 import type { MiddlewareHandler } from 'hono';
 import {
-  unstable_createServerEntry as createServerEntry,
+  unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_constants as constants,
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
@@ -19,9 +19,9 @@ import {
 const { DIST_PUBLIC, DIST_ASSETS } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
-export const vercelAdapter = createServerEntry(
+export const vercelAdapter = createServerEntryAdapter(
   (
-    { processRequest, processBuild, config },
+    { processRequest, processBuild, setAllEnv, config },
     options?: {
       static?: boolean;
       middlewareFns?: (() => MiddlewareHandler)[];
@@ -34,6 +34,7 @@ export const vercelAdapter = createServerEntry(
     },
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
+    setAllEnv(process.env as any);
     const app = new Hono();
     app.use(contextMiddleware());
     for (const middlewareFn of middlewareFns) {
