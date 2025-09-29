@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { unstable_defineRouter as defineRouter } from 'waku/router/server';
 import { Slot, Children } from 'waku/minimal/client';
+import { nodeAdapter } from 'waku/adapters/node';
 
 import Layout from './routes/layout.js';
 import Page from './routes/page.js';
@@ -164,4 +165,4 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
   },
 });
 
-export default router;
+export default nodeAdapter(router);

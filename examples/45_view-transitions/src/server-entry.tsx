@@ -1,5 +1,6 @@
 import { createPages } from 'waku/router/server';
 import type { PathsForPages } from 'waku/router';
+import { nodeAdapter } from 'waku/adapters/node';
 
 import HomePage from './components/HomePage';
 import AboutPage from './components/AboutPage';
@@ -31,4 +32,4 @@ declare module 'waku/router' {
   }
 }
 
-export default pages;
+export default nodeAdapter(pages);
