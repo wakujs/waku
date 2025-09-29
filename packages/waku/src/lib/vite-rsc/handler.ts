@@ -22,7 +22,7 @@ import { createRenderUtils } from '../utils/render.js';
 import { encodeRscPath } from '../utils/rsc-path.js';
 import { joinPath, extname } from '../utils/path.js';
 import { DIST_PUBLIC } from '../constants.js';
-import { emitFileInTask, waitForTasks } from '../utils/task-runner.js';
+import { createTaskRunner, emitFileInTask } from '../utils/task-runner.js';
 
 function loadSsrEntryModule() {
   // This is an API to communicate between two server environments `rsc` and `ssr`.
@@ -108,6 +108,8 @@ const toProcessBuild =
       return fallbackHtml;
     };
 
+    const { runTask, waitForTasks } = createTaskRunner();
+
     await handleBuild({
       renderRsc: renderUtils.renderRsc,
       renderHtml: renderUtils.renderHtml,
@@ -126,7 +128,7 @@ const toProcessBuild =
               ? '404.html' // HACK special treatment for 404, better way?
               : pathname + '/index.html',
         );
-        emitFileInTask(rootDir, filePath, body);
+        await emitFileInTask(runTask, rootDir, filePath, body);
       },
       generateDefaultHtml: async (pathname: string) => {
         const filePath = joinPath(
@@ -138,7 +140,7 @@ const toProcessBuild =
               ? '404.html' // HACK special treatment for 404, better way?
               : pathname + '/index.html',
         );
-        emitFileInTask(rootDir, filePath, getFallbackHtml());
+        await emitFileInTask(runTask, rootDir, filePath, getFallbackHtml());
       },
     });
 

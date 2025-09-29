@@ -69,7 +69,7 @@ import { serverEntry, runFetch } from './server/index.js';
 
 export default {
   fetch: (request, env, ctx) => {
-    serveEntry.setAllEnv(env);
+    serverEntry.setAllEnv(env);
     return runFetch(request, env, ctx);
   },
 };
