@@ -45,10 +45,6 @@ const buildPlatformTarget = [
     clearDirOrFile: ['dist', 'wrangler.toml'],
   },
   {
-    platform: '--with-partykit',
-    clearDirOrFile: ['dist', 'partykit.json'],
-  },
-  {
     platform: '--with-deno',
     clearDirOrFile: ['dist'],
   },
