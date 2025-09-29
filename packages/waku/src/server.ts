@@ -58,7 +58,6 @@ type BuildOptions = {
     | 'netlify-static'
     | 'netlify-functions'
     | 'cloudflare'
-    | 'partykit'
     | 'deno'
     | 'aws-lambda'
     | undefined;

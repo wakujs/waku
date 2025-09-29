@@ -31,7 +31,6 @@ import {
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
 import { deployNetlifyPlugin } from './deploy/netlify/plugin.js';
 import { deployCloudflarePlugin } from './deploy/cloudflare/plugin.js';
-import { deployPartykitPlugin } from './deploy/partykit/plugin.js';
 import { deployDenoPlugin } from './deploy/deno/plugin.js';
 import { deployAwsLambdaPlugin } from './deploy/aws-lambda/plugin.js';
 import { joinPath } from '../utils/path.js';
@@ -51,7 +50,6 @@ export type Flags = {
   'with-netlify'?: boolean | undefined;
   'with-netlify-static'?: boolean | undefined;
   'with-cloudflare'?: boolean | undefined;
-  'with-partykit'?: boolean | undefined;
   'with-deno'?: boolean | undefined;
   'with-aws-lambda'?: boolean | undefined;
 };
@@ -417,7 +415,6 @@ if (import.meta.hot) {
         serverless: !flags['with-netlify-static'],
       }),
     !!flags['with-cloudflare'] && deployCloudflarePlugin({ config }),
-    !!flags['with-partykit'] && deployPartykitPlugin({ config }),
     !!flags['with-deno'] && deployDenoPlugin({ config }),
     !!flags['with-aws-lambda'] &&
       deployAwsLambdaPlugin({
