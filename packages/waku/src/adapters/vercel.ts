@@ -52,7 +52,7 @@ export const vercelAdapter = createServerEntry(
       fetch: app.fetch,
       build: processBuild,
       postBuild: () => buildVercel({ ...config, serverless: !options?.static }),
-      listener: getRequestListener(app.fetch),
+      getRequestListener,
     };
   },
 );
@@ -72,9 +72,10 @@ async function buildVercel({
 }) {
   const SERVE_JS = 'serve-vercel.js';
   const serveCode = `
-import { serverEntry } from './server/index.js';
+import { serverEntry, runFetch } from './server/index.js';
 
-export default serverEntry.listener;
+export default serverEntry.getRequestListener((req, ...args) =>
+  runFetch(process.env, req, ...args));
 `;
   const publicDir = path.resolve(distDir, DIST_PUBLIC);
   const outputDir = path.resolve('.vercel', 'output');

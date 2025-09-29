@@ -216,7 +216,9 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
               req.url = req.originalUrl;
               const mod: typeof import('../vite-entries/entry.server.js') =
                 await environment.runner.import(entryId);
-              await getRequestListener(mod.fetch)(req, res);
+              await getRequestListener((req, ...args) =>
+                mod.runFetch(process.env, req, ...(args as unknown as never[])),
+              )(req, res);
             } catch (e) {
               next(e);
             }

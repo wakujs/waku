@@ -48,7 +48,7 @@ export type Unstable_HandleBuild = (utils: {
 
 export type Unstable_ServerEntry = {
   default: {
-    fetch: (req: Request) => Response | Promise<Response>;
+    fetch: (req: Request, ...args: never[]) => Response | Promise<Response>;
     build: () => Promise<void>;
     // TODO remove this once we solve savePlatformData timing issue
     postBuild?: () => Promise<void>;
