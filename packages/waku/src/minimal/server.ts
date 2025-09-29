@@ -11,6 +11,6 @@ export function unstable_defineHandlers(handlers: {
   return handlers;
 }
 
-export function unstable_defineServer(fns: ServerEntry['default']) {
+export function unstable_defineServerEntry(fns: ServerEntry['default']) {
   return fns;
 }

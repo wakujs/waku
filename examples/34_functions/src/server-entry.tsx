@@ -1,10 +1,10 @@
-import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { Slot } from 'waku/minimal/client';
+import { nodeAdapter } from 'waku/adapters/node';
 
 import App from './components2/App';
 import { runWithRerender } from './als';
 
-export default defineServer({
+export default nodeAdapter({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
       return renderRsc({ App: <App name={input.rscPath || 'Waku'} /> });

@@ -1,9 +1,8 @@
-import { unstable_getBuildOptions } from 'waku/server';
 import { getEnv as getWakuEnv } from 'waku';
 import { getHonoContext } from '../server-entry';
 
 export function isBuild() {
-  return !!unstable_getBuildOptions().unstable_phase;
+  return !!(globalThis as any).__WAKU_IS_BUILD__;
 }
 
 export function getEnv(key: string): string | undefined {

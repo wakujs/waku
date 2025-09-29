@@ -1,6 +1,6 @@
-import { unstable_defineServer as defineServer } from 'waku/minimal/server';
+import { nodeAdapter } from 'waku/adapters/node';
 
-export default defineServer({
+export default nodeAdapter({
   handleRequest: async (input, { renderRsc }) => {
     if (input.type === 'function') {
       const value = await input.fn(...input.args);

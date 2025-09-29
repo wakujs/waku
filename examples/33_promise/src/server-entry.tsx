@@ -1,9 +1,9 @@
-import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { Children, Slot } from 'waku/minimal/client';
+import { nodeAdapter } from 'waku/adapters/node';
 
 import App from './components/App';
 
-export default defineServer({
+export default nodeAdapter({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
       return renderRsc({

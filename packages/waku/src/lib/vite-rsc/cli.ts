@@ -86,17 +86,10 @@ export async function cli(
     function startServer(port: number) {
       INTERNAL_setAllEnv(process.env as any);
       return new Promise<void>((resolve, reject) => {
-        const server = serve(
-          {
-            fetch: (req, ...args) =>
-              entry.runFetch(process.env, req, ...(args as unknown as never[])),
-            port,
-          },
-          () => {
-            console.log(`ready: Listening on http://localhost:${port}/`);
-            resolve();
-          },
-        );
+        const server = serve({ fetch: entry.runFetch, port }, () => {
+          console.log(`ready: Listening on http://localhost:${port}/`);
+          resolve();
+        });
         server.on('error', (err: NodeJS.ErrnoException) => {
           if (err.code === 'EADDRINUSE') {
             console.log(
