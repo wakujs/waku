@@ -7,7 +7,7 @@
     "cf-typegen": "wrangler types",
     "dev": "waku dev",
     "build": "waku build",
-    "start": "wrangler dev"
+    "start": "NODE_ENV=production wrangler dev"
   },
   "dependencies": {
     "hono": "4.9.6",
