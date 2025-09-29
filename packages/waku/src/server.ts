@@ -18,15 +18,6 @@ export function getEnv(key: string): string | undefined {
   return (globalThis as any).__WAKU_SERVER_ENV__?.[key];
 }
 
-/**
- * This is an internal function and not for public use.
- */
-export function INTERNAL_setPlatformDataLoader(
-  loader: (key: string) => Promise<unknown>,
-): void {
-  (globalThis as any).__WAKU_SERVER_PLATFORM_DATA_LOADER__ = loader;
-}
-
 export async function unstable_setPlatformData<T>(
   key: string,
   data: T,
