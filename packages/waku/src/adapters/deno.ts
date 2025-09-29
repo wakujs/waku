@@ -12,8 +12,9 @@ const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 const {
   __WAKU_DENO_ADAPTER_ENV__: denoEnv,
-  __WAKU_DENO_ADAPTER_HONO__: Hono = (await import(DO_NOT_BUNDLE + 'hono'))
-    .Hono,
+  __WAKU_DENO_ADAPTER_HONO__: Hono = (
+    await import(/* @vite-ignore */ DO_NOT_BUNDLE + 'hono')
+  ).Hono,
   __WAKU_DENO_ADAPTER_SERVE_STATIC__: serveStatic,
   __WAKU_DENO_ADAPTER_NOT_FOUND_FN__: notFoundFn,
 } = globalThis as any;

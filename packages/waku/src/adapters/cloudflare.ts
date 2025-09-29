@@ -58,10 +58,14 @@ const DO_NOT_BUNDLE = '';
 
 async function buildCloudflare({ distDir }: { distDir: string }) {
   const [path, fs, os, crypto] = await Promise.all([
-    import(DO_NOT_BUNDLE + 'node:path').then((m) => m.default),
-    import(DO_NOT_BUNDLE + 'node:fs').then((m) => m.default),
-    import(DO_NOT_BUNDLE + 'node:os').then((m) => m.default),
-    import(DO_NOT_BUNDLE + 'node:crypto').then((m) => m.default),
+    import(/* @vite-ignore */ DO_NOT_BUNDLE + 'node:path').then(
+      (m) => m.default,
+    ),
+    import(/* @vite-ignore */ DO_NOT_BUNDLE + 'node:fs').then((m) => m.default),
+    import(/* @vite-ignore */ DO_NOT_BUNDLE + 'node:os').then((m) => m.default),
+    import(/* @vite-ignore */ DO_NOT_BUNDLE + 'node:crypto').then(
+      (m) => m.default,
+    ),
   ]);
   const SERVE_JS = 'serve-cloudflare.js';
   const serveCode = `

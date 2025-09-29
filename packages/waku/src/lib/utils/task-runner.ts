@@ -50,10 +50,10 @@ export const emitFileInTask = async (
     { existsSync, createWriteStream },
     { mkdir, writeFile },
   ] = await Promise.all([
-    import(DO_NOT_BUNDLE + 'node:stream'),
-    import(DO_NOT_BUNDLE + 'node:stream/promises'),
-    import(DO_NOT_BUNDLE + 'node:fs'),
-    import(DO_NOT_BUNDLE + 'node:fs/promises'),
+    import(/* @vite-ignore */ DO_NOT_BUNDLE + 'node:stream'),
+    import(/* @vite-ignore */ DO_NOT_BUNDLE + 'node:stream/promises'),
+    import(/* @vite-ignore */ DO_NOT_BUNDLE + 'node:fs'),
+    import(/* @vite-ignore */ DO_NOT_BUNDLE + 'node:fs/promises'),
   ]);
   const destFile = joinPath(rootDir, filePath);
   if (!destFile.startsWith(rootDir)) {
