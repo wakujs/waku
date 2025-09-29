@@ -1,18 +1,10 @@
 /// <reference types="vite/client" />
-import { Hono } from 'hono';
 import { unstable_fsRouter as fsRouter } from 'waku/router/server';
-import { unstable_defineServer as defineServer } from 'waku/minimal/server';
-import { unstable_honoMiddleware as honoMiddleware } from 'waku/internals';
+import { nodeAdapter } from 'waku/adapters/node';
 
 import validatorMiddleware from './middleware/validator';
 
-export default defineServer({
-  ...fsRouter(import.meta.glob('./**/*.tsx', { base: './pages' })),
-  createApp: (args, baseApp) => {
-    const app = baseApp instanceof Hono ? (baseApp as Hono) : new Hono();
-    app.use(honoMiddleware.contextMiddleware());
-    app.use(validatorMiddleware());
-    app.use(honoMiddleware.rscMiddleware(args));
-    return app;
-  },
-});
+export default nodeAdapter(
+  fsRouter(import.meta.glob('./**/*.tsx', { base: './pages' })),
+  { middlewareFns: [validatorMiddleware] },
+);

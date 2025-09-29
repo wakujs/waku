@@ -1,8 +1,8 @@
-import { unstable_defineServer as defineServer } from 'waku/minimal/server';
+import { nodeAdapter } from 'waku/adapters/node';
 
 import App from './components/App.js';
 
-const entries: ReturnType<typeof defineServer> = defineServer({
+export default nodeAdapter({
   handleRequest: async (input, { renderRsc }) => {
     if (input.type === 'component') {
       return renderRsc({
@@ -17,5 +17,3 @@ const entries: ReturnType<typeof defineServer> = defineServer({
   },
   handleBuild: async () => {},
 });
-
-export default entries;
