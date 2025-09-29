@@ -10,16 +10,14 @@ import {
 import { Hono } from 'hono';
 import { getRequestListener } from '@hono/node-server';
 import type { MiddlewareHandler } from 'hono';
-import { DIST_PUBLIC, DIST_ASSETS } from '../lib/constants.js';
-
 import {
-  contextMiddleware,
-  rscMiddleware,
-  middlewareRunner,
-} from '../lib/hono/middleware.js';
-import { createServerEntry } from '../lib/vite-rsc/handler.js';
+  unstable_createServerEntry as createServerEntry,
+  unstable_constants as constants,
+  unstable_honoMiddleware as honoMiddleware,
+} from 'waku/internals';
 
-const SERVE_JS = 'serve-vercel.js';
+const { DIST_PUBLIC, DIST_ASSETS } = constants;
+const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 export const vercelAdapter = createServerEntry(
   (
@@ -60,18 +58,24 @@ export const vercelAdapter = createServerEntry(
 );
 
 async function buildVercel({
-  serverless,
   distDir,
   rscBase,
   privateDir,
   basePath,
+  serverless,
 }: {
-  serverless: boolean;
   distDir: string;
   rscBase: string;
   privateDir: string;
   basePath: string;
+  serverless: boolean;
 }) {
+  const SERVE_JS = 'serve-vercel.js';
+  const serveCode = `
+import { serverEntry } from './server/index.js';
+
+export default serverEntry.listener;
+`;
   const publicDir = path.resolve(distDir, DIST_PUBLIC);
   const outputDir = path.resolve('.vercel', 'output');
   cpSync(publicDir, path.join(outputDir, 'static'), { recursive: true });
@@ -132,9 +136,3 @@ async function buildVercel({
     JSON.stringify(configJson, null, 2),
   );
 }
-
-const serveCode = `
-import { serverEntry } from './server/index.js';
-
-export default serverEntry.listener;
-`;

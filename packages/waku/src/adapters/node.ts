@@ -3,14 +3,14 @@ import fs from 'node:fs';
 import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
 import { serveStatic } from '@hono/node-server/serve-static';
-
-import { DIST_PUBLIC } from '../lib/constants.js';
 import {
-  contextMiddleware,
-  rscMiddleware,
-  middlewareRunner,
-} from '../lib/hono/middleware.js';
-import { createServerEntry } from '../lib/vite-rsc/handler.js';
+  unstable_createServerEntry as createServerEntry,
+  unstable_constants as constants,
+  unstable_honoMiddleware as honoMiddleware,
+} from 'waku/internals';
+
+const { DIST_PUBLIC } = constants;
+const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 export const nodeAdapter = createServerEntry(
   (
