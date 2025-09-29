@@ -11,7 +11,7 @@ const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 export const cloudflareAdapter = createServerEntryAdapter(
   (
-    { processRequest, processBuild, setAllEnv, config, isBuild },
+    { processRequest, processBuild, setAllEnv, config },
     options?: {
       middlewareFns?: (() => MiddlewareHandler)[];
       middlewareModules?: Record<
@@ -23,8 +23,6 @@ export const cloudflareAdapter = createServerEntryAdapter(
     },
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
-    // FIXME temporary solution, let's remove this later
-    (globalThis as any).__WAKU_IS_BUILD__ = isBuild;
     const app = new Hono();
     app.use(contextMiddleware());
     for (const middlewareFn of middlewareFns) {
