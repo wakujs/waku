@@ -89,7 +89,7 @@ export const config = {
       netlifyTomlFile,
       `\
 [build]
-  command = "npm run build -- --with-netlify"
+  command = "npm run build"
   publish = "${distDir}/${DIST_PUBLIC}"
 [functions]
   included_files = ["${privateDir}/**"]
