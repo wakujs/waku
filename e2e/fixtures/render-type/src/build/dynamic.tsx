@@ -10,10 +10,7 @@ export default async function Dynamic() {
       <div>
         phase =
         <span data-testid="phase">
-          {/*
-            FIXME How can we do the test?
-            String(!!unstable_getBuildOptions().unstable_phase)
-          */}
+          {String((globalThis as any).__WAKU_IS_BUILD__ === true)}
         </span>
       </div>
       <div>

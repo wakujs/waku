@@ -108,9 +108,9 @@ test.describe('render type', () => {
 
     test('unstable_phase', async ({ page }) => {
       await page.goto(`http://localhost:${port}/build/static`);
-      //await expect(page.getByTestId('phase')).toHaveText('true');
+      await expect(page.getByTestId('phase')).toHaveText('true');
       await page.goto(`http://localhost:${port}/build/dynamic`);
-      //await expect(page.getByTestId('phase')).toHaveText('false');
+      await expect(page.getByTestId('phase')).toHaveText('false');
       await expect(page.getByTestId('platform-data')).toHaveText('ok');
     });
 
