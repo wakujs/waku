@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { writeFileSync } from 'node:fs';
+import { Hono as HonoForDevAndBuild } from 'hono';
 import type { MiddlewareHandler } from 'hono';
 import {
   unstable_createServerEntryAdapter as createServerEntryAdapter,
@@ -7,14 +8,11 @@ import {
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
 
-const DO_NOT_BUNDLE = '';
 const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 const {
   __WAKU_DENO_ADAPTER_ENV__: denoEnv,
-  __WAKU_DENO_ADAPTER_HONO__: Hono = (
-    await import(/* @vite-ignore */ DO_NOT_BUNDLE + 'hono')
-  ).Hono,
+  __WAKU_DENO_ADAPTER_HONO__: Hono = HonoForDevAndBuild,
   __WAKU_DENO_ADAPTER_SERVE_STATIC__: serveStatic,
   __WAKU_DENO_ADAPTER_NOT_FOUND_FN__: notFoundFn,
 } = globalThis as any;
