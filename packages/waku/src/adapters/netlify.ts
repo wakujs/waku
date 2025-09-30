@@ -74,8 +74,8 @@ async function buildNetlify({
       path.join(functionsDir, 'serve.js'),
       `\
 globalThis.__WAKU_NOT_FOUND_HTML__ = ${JSON.stringify(notFoundHtml)};
-export { serverEntry } from '../${distDir}/server/index.js';
-export default async (request, context) => serverEntry.fetch(request, { context }),
+import { serverEntry } from '../${distDir}/server/index.js';
+export default async (request, context) => serverEntry.fetch(request, { context });
 export const config = {
   preferStatic: true,
   path: ['/', '/*'],
