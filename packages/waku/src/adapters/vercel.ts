@@ -14,6 +14,7 @@ import {
   unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_constants as constants,
   unstable_honoMiddleware as honoMiddleware,
+  unstable_getIsBuild as getIsBuild,
 } from 'waku/internals';
 
 const { DIST_PUBLIC, DIST_ASSETS } = constants;
@@ -71,6 +72,10 @@ async function buildVercel({
   basePath: string;
   serverless: boolean;
 }) {
+  // Can we use import.meta.env.WAKU_IS_BUILD instead?
+  if (!getIsBuild()) {
+    return;
+  }
   const SERVE_JS = 'serve-vercel.js';
   const serveCode = `
 import { serverEntry } from './server/index.js';

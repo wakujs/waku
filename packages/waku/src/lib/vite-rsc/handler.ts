@@ -163,3 +163,5 @@ export const createServerEntryAdapter: CreateServerEntryAdapter =
       options,
     );
   };
+
+export const getIsBuild = (): boolean => isBuild;
