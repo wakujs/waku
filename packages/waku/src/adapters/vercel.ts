@@ -71,9 +71,6 @@ async function buildVercel({
   basePath: string;
   serverless: boolean;
 }) {
-  if (!import.meta.env.WAKU_IS_BUILD) {
-    return;
-  }
   const SERVE_JS = 'serve-vercel.js';
   const serveCode = `
 import { serverEntry } from './server/index.js';

@@ -267,34 +267,6 @@ if (import.meta.hot) {
         }
       },
     },
-    {
-      // FIXME this naming isn't great
-      name: 'rsc:waku:user-entries-for-build',
-      async config(viteConfig) {
-        viteConfig = mergeConfig(viteConfig, {
-          define: {
-            'import.meta.env.WAKU_IS_BUILD': JSON.stringify(true),
-          },
-        });
-        return viteConfig;
-      },
-      // resolve user entries and fallbacks to "managed mode" if not found.
-      async resolveId(source, _importer, options) {
-        if (source === 'virtual:vite-rsc-waku/server-entry-for-build') {
-          const resolved = await this.resolve(
-            `/${config.srcDir}/${SRC_SERVER_ENTRY}`,
-            undefined,
-            options,
-          );
-          return resolved ? resolved : '\0' + source;
-        }
-      },
-      load(id) {
-        if (id === '\0virtual:vite-rsc-waku/server-entry-for-build') {
-          return getManagedServerEntry(config);
-        }
-      },
-    },
     createVirtualPlugin(config),
     {
       // rewrite `react-server-dom-webpack` in `waku/minimal/client`

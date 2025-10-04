@@ -6,11 +6,6 @@ declare module 'virtual:vite-rsc-waku/server-entry' {
   export default default_;
 }
 
-declare module 'virtual:vite-rsc-waku/server-entry-for-build' {
-  const default_: import('./types.ts').Unstable_ServerEntry['default'];
-  export default default_;
-}
-
 declare module 'virtual:vite-rsc-waku/client-entry' {}
 
 declare module 'virtual:vite-rsc-waku/set-platform-data' {}
