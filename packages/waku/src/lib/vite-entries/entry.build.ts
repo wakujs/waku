@@ -1,5 +1,5 @@
 import { INTERNAL_setAllEnv } from '../../server.js';
-import serverEntry from 'virtual:vite-rsc-waku/server-entry';
+import serverEntry from 'virtual:vite-rsc-waku/server-entry-for-build';
 
 export async function runBuild({
   savePlatformData,
