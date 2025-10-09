@@ -95,14 +95,6 @@ jobs:
           cache: ${{ !inputs.react_version && 'pnpm' || '' }}
       - if: ${{ inputs.react_version }}
         run: pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
-      # overrides canary/experimental build from https://github.com/vitejs/vite-plugin-react/pull/524
-      - if: ${{ inputs.react_version == 'canary' || inputs.react_version == 'experimental' }}
-        run: |
-          COMMIT_SHA=$(gh api repos/vitejs/vite-plugin-react/pulls/524 --jq '.head.sha')
-          pnpm -r update "@vitejs/plugin-rsc@https://pkg.pr.new/vitejs/vite-plugin-react/@vitejs/plugin-rsc-${{ inputs.react_version }}@$COMMIT_SHA"
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
       - run: pnpm install
       - uses: actions/download-artifact@v4
         with:
