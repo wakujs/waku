@@ -1,5 +1,3 @@
-/// <reference types="vite/client" />
-
 interface Reference {}
 
 type ImportManifestEntry = {

@@ -1,6 +1,3 @@
-/// <reference types="vite/client" />
-/// <reference types="@vitejs/plugin-rsc/types" />
-
 type HonoEnhancer = <Hono>(fn: (app: Hono) => Hono) => (app: Hono) => Hono;
 
 declare module 'virtual:vite-rsc-waku/server-entry' {
