@@ -328,6 +328,13 @@ if (import.meta.hot) {
         export const isBuild = ${JSON.stringify(this.environment.mode === 'build')};
       `;
     }),
+    createVirtualPlugin('vite-rsc-waku/404', async function () {
+      const notFoundHtmlPath = path.resolve(DIST_PUBLIC, '404.html');
+      if (!fs.existsSync(notFoundHtmlPath)) {
+        return `export default undefined`;
+      }
+      return `export { default } from ${JSON.stringify(notFoundHtmlPath + "?raw")}`;
+    }),
     {
       // rewrite `react-server-dom-webpack` in `waku/minimal/client`
       name: 'rsc:waku:patch-webpack',
