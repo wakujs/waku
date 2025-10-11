@@ -1,11 +1,11 @@
 import { renderToReadableStream } from '@vitejs/plugin-rsc/rsc';
 import type { ResolvedConfig as ViteConfig } from 'vite';
 import { createRenderUtils } from '../utils/render.js';
-import { encodeRscPath } from '../renderers/utils.js';
+import { encodeRscPath } from '../utils/rsc-path.js';
 import { joinPath, extname } from '../utils/path.js';
 import type { Config } from '../../config.js';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
-import { DIST_PUBLIC } from '../builder/constants.js';
+import { DIST_PUBLIC } from '../constants.js';
 
 export async function processBuild(
   viteConfig: Pick<ViteConfig, 'root'>,

@@ -26,9 +26,6 @@ const { values, positionals } = parseArgs({
     'with-cloudflare': {
       type: 'boolean',
     },
-    'with-partykit': {
-      type: 'boolean',
-    },
     'with-deno': {
       type: 'boolean',
     },
@@ -92,7 +89,6 @@ Options:
   --with-vercel         Output for Vercel on build
   --with-netlify        Output for Netlify on build
   --with-cloudflare     Output for Cloudflare on build
-  --with-partykit       Output for PartyKit on build
   --with-deno           Output for Deno on build
   --with-aws-lambda     Output for AWS Lambda on build
   -p, --port            Port number for the server

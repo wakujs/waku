@@ -1426,13 +1426,6 @@ npm run build -- --with-cloudflare
 npx wrangler dev # or deploy
 ```
 
-### PartyKit (experimental)
-
-```sh
-npm run build -- --with-partykit
-npx partykit dev # or deploy
-```
-
 ### Deno Deploy (experimental)
 
 ```sh

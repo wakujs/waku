@@ -1,6 +1,6 @@
 import type { Config } from '../../config.js';
 import type { unstable_fsRouter } from '../../router/fs-router.js';
-import { EXTENSIONS } from '../builder/constants.js';
+import { EXTENSIONS } from '../constants.js';
 
 export const getManagedServerEntry = (config: Required<Config>) => {
   const globBase = `/${config.srcDir}/${config.pagesDir}/`;

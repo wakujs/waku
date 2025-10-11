@@ -1,5 +1,5 @@
 import type { ReactFormState } from 'react-dom/client';
-import { decodeFuncId, decodeRscPath } from '../renderers/utils.js';
+import { decodeFuncId, decodeRscPath } from '../utils/rsc-path.js';
 import type { ConfigDev } from '../config/types.js';
 import type {
   Unstable_HandleRequest as HandleRequest,

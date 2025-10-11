@@ -71,16 +71,16 @@ jobs:
       matrix:
         shared: [1, 2, 3, 4]
         shardTotal: [4]
-        os: [ubuntu-latest, windows-2022, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         version: [24.0.0, 22.12.0, 20.19.0]
         exclude:
           - os: macos-latest
             version: 20.19.0
-          - os: windows-2022
+          - os: windows-latest
             version: 20.19.0
           - os: macos-latest
             version: 22.12.0
-          - os: windows-2022
+          - os: windows-latest
             version: 22.12.0
 
     runs-on: ${{ matrix.os }}
@@ -95,14 +95,6 @@ jobs:
           cache: ${{ !inputs.react_version && 'pnpm' || '' }}
       - if: ${{ inputs.react_version }}
         run: pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
-      # overrides canary/experimental build from https://github.com/vitejs/vite-plugin-react/pull/524
-      - if: ${{ inputs.react_version == 'canary' || inputs.react_version == 'experimental' }}
-        run: |
-          COMMIT_SHA=$(gh api repos/vitejs/vite-plugin-react/pulls/524 --jq '.head.sha')
-          pnpm -r update "@vitejs/plugin-rsc@https://pkg.pr.new/vitejs/vite-plugin-react/@vitejs/plugin-rsc-${{ inputs.react_version }}@$COMMIT_SHA"
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
       - run: pnpm install
       - uses: actions/download-artifact@v4
         with:
