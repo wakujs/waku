@@ -25,7 +25,7 @@ async function startDevServer(
   const server = await vite.createServer({
     configFile: false,
     plugins: [rscPlugin(rscPluginOptions)],
-    server: host ? { port, host } : { port },
+    server: host ? { host, port } : { port },
   });
   await server.listen();
   const url =
