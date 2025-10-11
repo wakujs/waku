@@ -41,6 +41,10 @@ const { values, positionals } = parseArgs({
     'experimental-legacy-cli': {
       type: 'boolean',
     },
+    host: {
+      type: 'string',
+      short: 'h',
+    },
     port: {
       type: 'string',
       short: 'p',
@@ -51,7 +55,6 @@ const { values, positionals } = parseArgs({
     },
     help: {
       type: 'boolean',
-      short: 'h',
     },
   },
 });
@@ -88,8 +91,9 @@ Options:
   --with-cloudflare     Output for Cloudflare on build
   --with-deno           Output for Deno on build
   --with-aws-lambda     Output for AWS Lambda on build
+  -h, --host            Hostname to bind (e.g. 0.0.0.0)
   -p, --port            Port number for the server
   -v, --version         Display the version number
-  -h, --help            Display this help message
+      --help            Display this help message
 `);
 }

@@ -193,7 +193,7 @@ Options:
   --example             Specify an example use as a template
   --project-name        Specify a project name
   --skip-install        Skip installation of dependencies
-  -h, --help            Display this help message
+  --help                Display this help message
 `);
 }
 
