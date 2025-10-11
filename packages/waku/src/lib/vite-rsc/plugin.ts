@@ -142,15 +142,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
                       __dirname,
                       '../vite-entries/entry.server.js',
                     ),
-                  },
-                },
-              },
-            },
-            rsc_build: {
-              build: {
-                rollupOptions: {
-                  input: {
-                    index: path.join(
+                    build: path.join(
                       __dirname,
                       '../vite-entries/entry.build.js',
                     ),
@@ -190,9 +182,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
         environmentConfig.build.outDir = `${config.distDir}/${name}`;
         if (name === 'rsc') {
           environmentConfig.build.outDir = `${config.distDir}/server`;
-        }
-        if (name === 'rsc_build') {
-          environmentConfig.build.outDir = `${config.distDir}/server/build`;
         }
         if (name === 'ssr') {
           environmentConfig.build.outDir = `${config.distDir}/server/ssr`;
@@ -346,8 +335,8 @@ if (import.meta.hot) {
           };
 
           const entryPath = path.join(
-            viteConfig.environments.rsc_build!.build.outDir,
-            'index.js',
+            viteConfig.environments.rsc!.build.outDir,
+            'build.js',
           );
           const entry: typeof import('../vite-entries/entry.build.js') =
             await import(pathToFileURL(entryPath).href);
