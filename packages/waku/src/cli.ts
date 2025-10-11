@@ -91,8 +91,8 @@ Options:
   --with-cloudflare     Output for Cloudflare on build
   --with-deno           Output for Deno on build
   --with-aws-lambda     Output for AWS Lambda on build
-  -p, --port            Port number for the server
   -h, --host            Hostname to bind (e.g. 0.0.0.0)
+  -p, --port            Port number for the server
   -v, --version         Display the version number
       --help            Display this help message
 `);
