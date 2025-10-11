@@ -248,6 +248,8 @@ function useSharedRef<T>(
       if (isRefCallback) {
         cleanup = ref(node);
       } else if (ref) {
+        // TODO is this a false positive?
+        // eslint-disable-next-line react-hooks/immutability
         ref.current = node;
       }
       return () => {
