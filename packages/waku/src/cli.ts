@@ -41,13 +41,13 @@ const { values, positionals } = parseArgs({
     'experimental-legacy-cli': {
       type: 'boolean',
     },
-    port: {
-      type: 'string',
-      short: 'p',
-    },
     host: {
       type: 'string',
       short: 'h',
+    },
+    port: {
+      type: 'string',
+      short: 'p',
     },
     version: {
       type: 'boolean',

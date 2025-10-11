@@ -18,8 +18,8 @@ async function loadConfig(): Promise<Config | undefined> {
 }
 
 async function startDevServer(
-  port: number,
   host: string | undefined,
+  port: number,
   rscPluginOptions: RscPluginOptions,
 ) {
   const server = await vite.createServer({
@@ -45,7 +45,7 @@ async function startDevServer(
     ) {
       console.log(`Waku configuration file changed, restarting server...`);
       await server.close();
-      await startDevServer(port, host, {
+      await startDevServer(host, port, {
         ...rscPluginOptions,
         config: await loadConfig(),
       });
@@ -55,7 +55,7 @@ async function startDevServer(
 
 export async function cli(
   cmd: 'dev' | 'build' | 'start',
-  flags: { port?: string; host?: string } & Flags,
+  flags: { host?: string; port?: string } & Flags,
 ) {
   // set NODE_ENV before runnerImport https://github.com/vitejs/vite/issues/20299
   process.env.NODE_ENV ??= cmd === 'dev' ? 'development' : 'production';
@@ -66,9 +66,9 @@ export async function cli(
   };
 
   if (cmd === 'dev') {
-    const port = parseInt(flags.port || '3000', 10);
     const host = flags.host;
-    await startDevServer(port, host, rscPluginOptions);
+    const port = parseInt(flags.port || '3000', 10);
+    await startDevServer(host, port, rscPluginOptions);
   } else if (cmd === 'build') {
     const builder = await vite.createBuilder({
       configFile: false,
@@ -76,22 +76,27 @@ export async function cli(
     });
     await builder.buildApp();
   } else if (cmd === 'start') {
-    const port = parseInt(flags.port || '8080', 10);
     const host = flags.host;
+    const port = parseInt(flags.port || '8080', 10);
     const { serve } = await import('@hono/node-server');
     const distDir = rscPluginOptions.config?.distDir ?? 'dist';
     const entry: typeof import('../vite-entries/entry.server.js') =
       await import(
         pathToFileURL(path.resolve(distDir, 'server', 'index.js')).href
       );
-    await startServer(port, host);
-    function startServer(port: number, host?: string) {
+    await startServer(host, port);
+    function startServer(host: string | undefined, port: number) {
       return new Promise<void>((resolve, reject) => {
         const server = serve(
-          { fetch: entry.default, port, ...(host ? { hostname: host } : {}) },
-          () => {
-            const shownHost = host ?? '127.0.0.1';
-            console.log(`ready: Listening on http://${shownHost}:${port}/`);
+          {
+            fetch: entry.default,
+            ...(host ? { hostname: host } : {}),
+            port,
+          },
+          (info) => {
+            console.log(
+              `ready: Listening on port ${info.port} (${info.family} host ${info.address})`,
+            );
             resolve();
           },
         );
@@ -100,7 +105,7 @@ export async function cli(
             console.log(
               `warn: Port ${port} is in use, trying ${port + 1} instead.`,
             );
-            startServer(port + 1, host)
+            startServer(host, port + 1)
               .then(resolve)
               .catch(reject);
           } else {
