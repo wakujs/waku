@@ -15,11 +15,11 @@
     "waku": "0.26.1"
   },
   "devDependencies": {
-    "@types/react": "19.1.12",
-    "@types/react-dom": "19.1.9",
-    "rollup": "4.50.1",
-    "typescript": "5.9.2",
-    "vite": "7.1.5",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.1",
+    "rollup": "4.52.4",
+    "typescript": "5.9.3",
+    "vite": "7.1.9",
     "vite-tsconfig-paths": "5.1.4"
   }
 }
