@@ -25,12 +25,11 @@ async function startDevServer(
   const server = await vite.createServer({
     configFile: false,
     plugins: [rscPlugin(rscPluginOptions)],
-    server: { port, host },
+    server: host ? { port, host } : { port },
   });
   await server.listen();
   const url =
-    server.resolvedUrls?.network?.[0] ??
-    server.resolvedUrls?.local?.[0]
+    server.resolvedUrls?.network?.[0] ?? server.resolvedUrls?.local?.[0];
   console.log(`ready: Listening on ${url}`);
   const watcher = server.watcher;
   watcher.on('change', handleConfigChange);
@@ -88,11 +87,14 @@ export async function cli(
     await startServer(port, host);
     function startServer(port: number, host?: string) {
       return new Promise<void>((resolve, reject) => {
-        const server = serve({ fetch: entry.default, port, hostname: host }, () => {
-          const shownHost = host ?? '127.0.0.1';
-          console.log(`ready: Listening on http://${shownHost}:${port}/`);
-          resolve();
-        });
+        const server = serve(
+          { fetch: entry.default, port, ...(host ? { hostname: host } : {}) },
+          () => {
+            const shownHost = host ?? '127.0.0.1';
+            console.log(`ready: Listening on http://${shownHost}:${port}/`);
+            resolve();
+          },
+        );
         server.on('error', (err: NodeJS.ErrnoException) => {
           if (err.code === 'EADDRINUSE') {
             console.log(

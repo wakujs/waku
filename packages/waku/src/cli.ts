@@ -47,14 +47,14 @@ const { values, positionals } = parseArgs({
     },
     host: {
       type: 'string',
-      short: 'h'
+      short: 'h',
     },
     version: {
       type: 'boolean',
       short: 'v',
     },
     help: {
-      type: 'boolean'
+      type: 'boolean',
     },
   },
 });
