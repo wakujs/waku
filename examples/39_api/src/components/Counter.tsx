@@ -6,7 +6,10 @@ export const Counter = () => {
   const [count, setCount] = useState(0);
   const [promise, setPromise] = useState<Promise<unknown>>();
   useEffect(() => {
-    setPromise(fetch('/api/hello').then((res) => res.text()));
+    const timer = setTimeout(() => {
+      setPromise(fetch('/api/hello').then((res) => res.text()));
+    });
+    return () => clearTimeout(timer);
   }, []);
   return (
     <div style={{ border: '3px blue dashed', margin: '1em', padding: '1em' }}>

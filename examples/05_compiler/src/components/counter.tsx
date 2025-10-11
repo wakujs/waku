@@ -3,7 +3,10 @@
 import { useState } from 'react';
 
 const Hello = () => {
-  return <p suppressHydrationWarning>Hello (now={Date.now()})</p>;
+  // TODO is there a more reasonable way?
+  // eslint-disable-next-line react-hooks/purity
+  const now = Date.now();
+  return <p suppressHydrationWarning>Hello (now={now})</p>;
 };
 
 export const Counter = () => {
