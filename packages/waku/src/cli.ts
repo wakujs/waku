@@ -14,6 +14,10 @@ const { values, positionals } = parseArgs({
     'experimental-partial': {
       type: 'boolean',
     },
+    host: {
+      type: 'string',
+      short: 'h',
+    },
     port: {
       type: 'string',
       short: 'p',
@@ -24,7 +28,6 @@ const { values, positionals } = parseArgs({
     },
     help: {
       type: 'boolean',
-      short: 'h',
     },
   },
 });
@@ -56,8 +59,9 @@ Commands:
   start       Start the production server
 
 Options:
+  -h, --host            Hostname to bind (e.g. 0.0.0.0)
   -p, --port            Port number for the server
   -v, --version         Display the version number
-  -h, --help            Display this help message
+      --help            Display this help message
 `);
 }

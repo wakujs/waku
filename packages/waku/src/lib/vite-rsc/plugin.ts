@@ -74,7 +74,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
     rsc({
       serverHandler: false,
       keepUseCientProxy: true,
-      ignoredPackageWarnings: [/.*/],
       useBuildAppHook: true,
       clientChunks: (meta) => meta.serverChunk,
     }),
