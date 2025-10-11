@@ -11,9 +11,9 @@
   "dependencies": {
     "@ai-sdk/rsc": "^1.0.68",
     "ai": "^5.0.68",
-    "react": "19.1.1",
-    "react-dom": "19.1.1",
-    "react-server-dom-webpack": "19.1.1",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "react-server-dom-webpack": "19.2.0",
     "waku": "latest"
   },
   "devDependencies": {
