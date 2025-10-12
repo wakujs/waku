@@ -1,5 +1,5 @@
-import { unstable_getBuildOptions } from 'waku/server';
 import { getEnv as getWakuEnv } from 'waku';
+import { unstable_getBuildOptions } from 'waku/server';
 import { getHonoContext } from '../server-entry';
 
 export function isBuild() {

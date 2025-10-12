@@ -1,10 +1,10 @@
-import * as vite from 'vite';
-import { rscPlugin } from './plugin.js';
-import type { Flags, RscPluginOptions } from './plugin.js';
-import type { Config } from '../../config.js';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import * as vite from 'vite';
+import type { Config } from '../../config.js';
+import { rscPlugin } from './plugin.js';
+import type { Flags, RscPluginOptions } from './plugin.js';
 
 async function loadConfig(): Promise<Config | undefined> {
   let config: Config | undefined;
@@ -58,7 +58,13 @@ export async function cli(
   flags: { host?: string; port?: string } & Flags,
 ) {
   // set NODE_ENV before runnerImport https://github.com/vitejs/vite/issues/20299
-  process.env.NODE_ENV ??= cmd === 'dev' ? 'development' : 'production';
+  const nodeEnv = cmd === 'dev' ? 'development' : 'production';
+  if (process.env.NODE_ENV && process.env.NODE_ENV !== nodeEnv) {
+    console.warn(
+      `Warning: NODE_ENV is set to '${process.env.NODE_ENV}', but overriding it to '${nodeEnv}'.`,
+    );
+  }
+  process.env.NODE_ENV = nodeEnv;
 
   const rscPluginOptions: RscPluginOptions = {
     flags,

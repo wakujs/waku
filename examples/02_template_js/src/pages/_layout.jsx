@@ -1,7 +1,7 @@
 import '../styles.css';
 
-import { Header } from '../components/header';
 import { Footer } from '../components/footer';
+import { Header } from '../components/header';
 
 export default async function RootLayout({ children }) {
   const data = await getData();

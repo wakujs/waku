@@ -1,8 +1,8 @@
-import { execSync, exec, ChildProcess } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import { findWakuPort, terminate, test } from './utils.js';
-import { expect } from '@playwright/test';
 import { rmSync, statSync } from 'fs';
+import { ChildProcess, exec, execSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { expect } from '@playwright/test';
+import { findWakuPort, terminate, test } from './utils.js';
 
 const cwd = fileURLToPath(new URL('./fixtures/partial-build', import.meta.url));
 
@@ -31,7 +31,7 @@ test.describe(`partial builds`, () => {
     cp = exec(`node ${waku} start`, { cwd });
     port = await findWakuPort(cp);
     await page.goto(`http://localhost:${port}/page/a`);
-    expect(await page.getByTestId('title').textContent()).toBe('a');
+    await expect(page.getByTestId('title')).toHaveText('a');
   });
   test.afterEach(async () => {
     await terminate(port);
@@ -56,7 +56,7 @@ test.describe(`partial builds`, () => {
       env: { ...process.env, PAGES: 'a,b' },
     });
     await page.goto(`http://localhost:${port}/page/b`);
-    expect(await page.getByTestId('title').textContent()).toBe('b');
+    await expect(page.getByTestId('title')).toHaveText('b');
   });
 
   test('does not delete old pages', async ({ page }) => {
@@ -65,8 +65,8 @@ test.describe(`partial builds`, () => {
       env: { ...process.env, PAGES: 'c' },
     });
     await page.goto(`http://localhost:${port}/page/a`);
-    expect(await page.getByTestId('title').textContent()).toBe('a');
+    await expect(page.getByTestId('title')).toHaveText('a');
     await page.goto(`http://localhost:${port}/page/c`);
-    expect(await page.getByTestId('title').textContent()).toBe('c');
+    await expect(page.getByTestId('title')).toHaveText('c');
   });
 });

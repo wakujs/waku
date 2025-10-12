@@ -1,7 +1,6 @@
 'use client';
 
 import { useId, useState } from 'react';
-
 import { Link } from 'waku/router/client';
 
 export const Counter = () => {

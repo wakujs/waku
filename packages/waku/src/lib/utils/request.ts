@@ -1,7 +1,7 @@
 import type { ReactFormState } from 'react-dom/client';
-import { decodeFuncId, decodeRscPath } from '../utils/rsc-path.js';
 import type { Config } from '../../config.js';
 import type { Unstable_HandleRequest as HandleRequest } from '../types.js';
+import { decodeFuncId, decodeRscPath } from '../utils/rsc-path.js';
 import { removeBase } from './path.js';
 
 type HandleRequestInput = Parameters<HandleRequest>[0];

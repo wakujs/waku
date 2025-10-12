@@ -1,6 +1,6 @@
-import path from 'node:path';
 import fs from 'node:fs';
 import fsPromises from 'node:fs/promises';
+import path from 'node:path';
 
 const filePathToOsPath = (filePath: string) =>
   path.sep === '/' ? filePath : filePath.replace(/\//g, '\\');

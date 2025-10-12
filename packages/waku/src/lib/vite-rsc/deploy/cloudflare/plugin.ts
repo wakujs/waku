@@ -1,21 +1,21 @@
+import { randomBytes } from 'node:crypto';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   type EnvironmentOptions,
   type Plugin,
   type ResolvedConfig,
 } from 'vite';
 import type { Config } from '../../../../config.js';
-import os from 'node:os';
-import path from 'node:path';
-import { randomBytes } from 'node:crypto';
-import {
-  existsSync,
-  writeFileSync,
-  copyFileSync,
-  mkdirSync,
-  readdirSync,
-  rmSync,
-} from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { DIST_PUBLIC } from '../../../constants.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));

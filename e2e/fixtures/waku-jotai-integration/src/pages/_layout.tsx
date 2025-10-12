@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-
 import { RouterProvider } from 'waku-jotai/router';
 
 type RootLayoutProps = { children: ReactNode };

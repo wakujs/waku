@@ -1,6 +1,5 @@
 import { expect } from '@playwright/test';
-
-import { test, prepareNormalSetup } from './utils.js';
+import { prepareNormalSetup, test } from './utils.js';
 
 const startApp = prepareNormalSetup('ssg-performance');
 

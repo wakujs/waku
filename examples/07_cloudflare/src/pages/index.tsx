@@ -1,8 +1,8 @@
-import { Link } from 'waku';
 import { Suspense } from 'react';
+import { Link } from 'waku';
 import { Counter } from '../components/counter';
-import { getHonoContext } from '../server-entry';
 import { getEnv, isBuild } from '../lib/waku';
+import { getHonoContext } from '../server-entry';
 
 export default async function HomePage() {
   const data = await getData();

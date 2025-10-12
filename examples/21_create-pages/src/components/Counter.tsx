@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from 'react';
 import { Link, useRouter } from 'waku/router/client';
-
 import { jump } from './funcs';
 
 export const Counter = () => {

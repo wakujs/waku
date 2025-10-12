@@ -1,6 +1,8 @@
 'use client';
 
 import {
+  Component,
+  Fragment,
   createContext,
   createElement,
   startTransition,
@@ -11,41 +13,38 @@ import {
   useRef,
   useState,
   useTransition,
-  Fragment,
-  Component,
 } from 'react';
 import type {
+  AnchorHTMLAttributes,
   ComponentProps,
   FunctionComponent,
-  ReactNode,
-  AnchorHTMLAttributes,
-  ReactElement,
   MouseEvent,
-  TransitionFunction,
-  RefObject,
+  ReactElement,
+  ReactNode,
   Ref,
+  RefObject,
+  TransitionFunction,
 } from 'react';
-
-import {
-  prefetchRsc,
-  Root,
-  Slot,
-  useElementsPromise_UNSTABLE as useElementsPromise,
-  useRefetch,
-  useEnhanceFetchRscInternal_UNSTABLE as useEnhanceFetchRscInternal,
-} from '../minimal/client.js';
-import {
-  encodeRoutePath,
-  encodeSliceId,
-  ROUTE_ID,
-  IS_STATIC_ID,
-  HAS404_ID,
-  SKIP_HEADER,
-} from './common.js';
-import type { RouteProps } from './common.js';
-import type { RouteConfig } from './base-types.js';
 import { getErrorInfo } from '../lib/utils/custom-errors.js';
 import { addBase, removeBase } from '../lib/utils/path.js';
+import {
+  Root,
+  Slot,
+  prefetchRsc,
+  useElementsPromise_UNSTABLE as useElementsPromise,
+  useEnhanceFetchRscInternal_UNSTABLE as useEnhanceFetchRscInternal,
+  useRefetch,
+} from '../minimal/client.js';
+import type { RouteConfig } from './base-types.js';
+import {
+  HAS404_ID,
+  IS_STATIC_ID,
+  ROUTE_ID,
+  SKIP_HEADER,
+  encodeRoutePath,
+  encodeSliceId,
+} from './common.js';
+import type { RouteProps } from './common.js';
 
 type AllowPathDecorators<Path extends string> = Path extends unknown
   ? Path | `${Path}?${string}` | `${Path}#${string}`

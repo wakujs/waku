@@ -1,5 +1,4 @@
 import { Link } from 'waku';
-
 import styles from './header.module.css';
 
 export const Header = () => {

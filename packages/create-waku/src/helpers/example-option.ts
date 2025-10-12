@@ -1,8 +1,8 @@
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { ReadableStream } from 'stream/web';
-import * as tar from 'tar';
 import pc from 'picocolors';
+import * as tar from 'tar';
 
 type RepoInfo = {
   username: string | undefined;

@@ -1,8 +1,8 @@
-import { type Plugin, type ResolvedConfig } from 'vite';
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { rmSync, cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import type { Config } from '../../../../config.js';
 import { fileURLToPath } from 'node:url';
+import { type Plugin, type ResolvedConfig } from 'vite';
+import type { Config } from '../../../../config.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const SERVER_ENTRY = path.join(__dirname, 'entry.js');

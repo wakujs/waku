@@ -1,6 +1,6 @@
 import '../styles.css';
-import { Link } from 'waku';
 import type { ReactNode } from 'react';
+import { Link } from 'waku';
 import { Hydrated } from '../components/hydrated';
 
 export default async function RootLayout({

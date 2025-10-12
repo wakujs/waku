@@ -1,7 +1,6 @@
 'use client';
 
 import { useContext, useEffect, useState } from 'react';
-
 import { Context } from './context-provider.js';
 
 export const ContextConsumer = () => {

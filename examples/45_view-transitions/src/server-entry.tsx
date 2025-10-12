@@ -1,8 +1,7 @@
-import { createPages } from 'waku/router/server';
 import type { PathsForPages } from 'waku/router';
-
-import HomePage from './components/HomePage';
+import { createPages } from 'waku/router/server';
 import AboutPage from './components/AboutPage';
+import HomePage from './components/HomePage';
 import RootLayout from './components/RootLayout';
 
 const pages = createPages(async ({ createPage, createLayout }) => [

@@ -1,9 +1,9 @@
-import { test, describe, expect } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import {
   extname,
+  getPathMapping,
   parsePathWithSlug,
   path2regexp,
-  getPathMapping,
 } from '../src/lib/utils/path.js';
 
 function matchPath(path: string, input: string) {

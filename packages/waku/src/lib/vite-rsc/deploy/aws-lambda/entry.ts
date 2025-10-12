@@ -1,14 +1,14 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import * as honoAwsLambda from 'hono/aws-lambda';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
-import { serveStatic } from '@hono/node-server/serve-static';
-import path from 'node:path';
-import fs from 'node:fs';
+import { INTERNAL_setAllEnv } from '../../../../server.js';
 import { DIST_PUBLIC } from '../../../constants.js';
 import { createApp as defaultCreateApp } from '../../../hono/engine.js';
 import { processRequest } from '../../handler.js';
-import { INTERNAL_setAllEnv } from '../../../../server.js';
 
 const createApp = serverEntry.createApp || defaultCreateApp;
 

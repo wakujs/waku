@@ -1,24 +1,23 @@
-import { createElement, Fragment } from 'react';
+import { Fragment, createElement } from 'react';
 import type { FunctionComponent, ReactNode } from 'react';
-
-import { unstable_defineRouter } from './define-router.js';
-import type { RouteProps } from './common.js';
-import {
-  joinPath,
-  parsePathWithSlug,
-  getPathMapping,
-  pathSpecAsString,
-  parseExactPath,
-} from '../lib/utils/path.js';
 import { getGrouplessPath } from '../lib/utils/create-pages.js';
+import {
+  getPathMapping,
+  joinPath,
+  parseExactPath,
+  parsePathWithSlug,
+  pathSpecAsString,
+} from '../lib/utils/path.js';
 import type { PathSpec } from '../lib/utils/path.js';
+import { Children, Slot } from '../minimal/client.js';
+import { ErrorBoundary } from '../router/client.js';
+import type { RouteProps } from './common.js';
 import type {
   AnyPage,
   GetSlugs,
   PropsForPages,
 } from './create-pages-utils/inferred-path-types.js';
-import { Children, Slot } from '../minimal/client.js';
-import { ErrorBoundary } from '../router/client.js';
+import { unstable_defineRouter } from './define-router.js';
 
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods
 export const METHODS = [

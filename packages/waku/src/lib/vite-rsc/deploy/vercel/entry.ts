@@ -1,13 +1,13 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { getRequestListener } from '@hono/node-server';
 import { Hono } from 'hono';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
-import path from 'node:path';
-import fs from 'node:fs';
+import { INTERNAL_setAllEnv } from '../../../../server.js';
 import { DIST_PUBLIC } from '../../../constants.js';
 import { createApp as defaultCreateApp } from '../../../hono/engine.js';
 import { processRequest } from '../../handler.js';
-import { INTERNAL_setAllEnv } from '../../../../server.js';
 
 const createApp = serverEntry.createApp || defaultCreateApp;
 
