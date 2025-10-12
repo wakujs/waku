@@ -1,6 +1,6 @@
+import tailwindcss from '@tailwindcss/vite';
 import type { PluginOption } from 'vite';
 import { defineConfig } from 'waku/config';
-import tailwindcss from '@tailwindcss/vite';
 
 function buildMode(): PluginOption {
   return {

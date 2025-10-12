@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-
 import type { Config } from '../config.js';
 
 type Elements = Record<string, unknown>;

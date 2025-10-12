@@ -4,14 +4,14 @@
  *
  * If you want to run a specific example, you can use VSCode Playwright extension.
  */
-import { expect } from '@playwright/test';
-import { execSync, exec, ChildProcess } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { ChildProcess, exec, execSync } from 'node:child_process';
 import { readdirSync, rmSync } from 'node:fs';
-import { basename } from 'node:path';
-import { findWakuPort, terminate, test } from './utils.js';
-import { error, info } from '@actions/core';
 import os from 'node:os';
+import { basename } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { error, info } from '@actions/core';
+import { expect } from '@playwright/test';
+import { findWakuPort, terminate, test } from './utils.js';
 
 const examplesDir = fileURLToPath(new URL('../examples', import.meta.url));
 

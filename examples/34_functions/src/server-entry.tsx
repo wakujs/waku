@@ -1,8 +1,7 @@
-import { Slot } from 'waku/minimal/client';
 import { nodeAdapter } from 'waku/adapters/node';
-
-import App from './components2/App';
+import { Slot } from 'waku/minimal/client';
 import { runWithRerender } from './als';
+import App from './components2/App';
 
 export default nodeAdapter({
   handleRequest: async (input, { renderRsc, renderHtml }) => {

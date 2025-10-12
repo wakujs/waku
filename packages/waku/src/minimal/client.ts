@@ -13,9 +13,8 @@ import {
 } from 'react';
 import type { ReactNode } from 'react';
 import RSDWClient from 'react-server-dom-webpack/client';
-
 import { createCustomError } from '../lib/utils/custom-errors.js';
-import { encodeRscPath, encodeFuncId } from '../lib/utils/rsc-path.js';
+import { encodeFuncId, encodeRscPath } from '../lib/utils/rsc-path.js';
 
 const { createFromFetch, encodeReply, createTemporaryReferenceSet } =
   RSDWClient;

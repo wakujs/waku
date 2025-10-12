@@ -1,11 +1,10 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { compileMDX } from 'next-mdx-remote/rsc';
-
-import { Page } from '../../components/page';
 import { Meta } from '../../components/meta';
+import { Page } from '../../components/page';
+import { PostList, PostListContainer } from '../../components/post-list';
 import { getAuthor } from '../../lib/get-author';
 import type { BlogFrontmatter } from '../../types';
-import { PostList, PostListContainer } from '../../components/post-list';
 
 export default async function BlogIndexPage() {
   const articles = await getArticles();

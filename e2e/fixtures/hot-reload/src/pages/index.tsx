@@ -1,5 +1,4 @@
 import { Link } from 'waku';
-
 import { Counter } from '../components/counter.js';
 
 export default async function HomePage() {

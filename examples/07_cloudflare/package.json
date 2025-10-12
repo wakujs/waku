@@ -10,7 +10,7 @@
     "start": "NODE_ENV=production wrangler dev"
   },
   "dependencies": {
-    "hono": "4.9.10",
+    "hono": "4.9.11",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-server-dom-webpack": "19.2.0",
@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.1.14",
-    "@types/node": "24.7.1",
+    "@types/node": "24.7.2",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.1",
     "miniflare": "4.20251008.0",

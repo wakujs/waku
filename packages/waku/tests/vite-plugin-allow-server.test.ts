@@ -1,6 +1,6 @@
+import * as swc from '@swc/core';
 import { expect, test } from 'vitest';
 import { allowServerPlugin } from '../src/lib/vite-plugins/allow-server.js';
-import * as swc from '@swc/core';
 
 const compileTsx = (code: string) =>
   swc.transformSync(code, {

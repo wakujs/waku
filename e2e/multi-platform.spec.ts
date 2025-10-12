@@ -1,17 +1,16 @@
 import { execSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import {
-  existsSync,
   cpSync,
+  existsSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { expect } from '@playwright/test';
-
-import { test, makeTempDir } from './utils.js';
 import { getManagedServerEntry } from '../packages/waku/dist/lib/utils/managed.js';
+import { makeTempDir, test } from './utils.js';
 
 const dryRunList = [
   // without server-entry.tsx

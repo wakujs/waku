@@ -1,6 +1,5 @@
 import { Suspense, cache } from 'react';
 import { unstable_getContextData as getContextData } from 'waku/server';
-
 import { getHonoContext } from '../server-entry';
 import { Counter } from './Counter';
 

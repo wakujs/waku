@@ -1,20 +1,16 @@
+import { readFile } from 'node:fs/promises';
 import { createPages } from 'waku';
-import type { PathsForPages } from 'waku/router';
 import { nodeAdapter } from 'waku/adapters/node';
-
+import type { PathsForPages } from 'waku/router';
 import FooPage from './components/FooPage';
 import HomeLayout from './components/HomeLayout';
 import HomePage from './components/HomePage';
-import BarPage from './components/BarPage';
 import NestedBazPage from './components/NestedBazPage';
+import NestedLayout from './components/NestedLayout';
 import NestedQuxPage from './components/NestedQuxPage';
 import Root from './components/Root';
-import NestedLayout from './components/NestedLayout';
-import { DeeplyNestedLayout } from './components/DeeplyNestedLayout';
-import { readFile } from 'node:fs/promises';
-import DynamicSlice from './components/DynamicSlice';
-import StaticSlice from './components/StaticSlice';
 import SlicePage from './components/SlicePage';
+import StaticSlice from './components/StaticSlice';
 
 const pages = createPages(
   async ({ createPage, createLayout, createRoot, createApi, createSlice }) => [

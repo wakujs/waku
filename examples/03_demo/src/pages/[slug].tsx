@@ -1,6 +1,5 @@
 import { Link } from 'waku';
 import type { PageProps } from 'waku/router';
-
 import { getPokemonPaths } from '../lib';
 import { pokemon } from '../lib/pokemon';
 

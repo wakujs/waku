@@ -1,8 +1,7 @@
-import { createPages } from 'waku/router/server';
 import { nodeAdapter } from 'waku/adapters/node';
-
-import { RootLayout } from './templates/root-layout';
+import { createPages } from 'waku/router/server';
 import { HomePage } from './templates/home-page';
+import { RootLayout } from './templates/root-layout';
 
 export default nodeAdapter(
   createPages(async ({ createPage, createLayout }) => [

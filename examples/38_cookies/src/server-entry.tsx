@@ -1,9 +1,8 @@
 import fsPromises from 'node:fs/promises';
 import { contextStorage, getContext } from 'hono/context-storage';
+import { nodeAdapter } from 'waku/adapters/node';
 import { Slot } from 'waku/minimal/client';
 import { unstable_getContextData as getContextData } from 'waku/server';
-import { nodeAdapter } from 'waku/adapters/node';
-
 import App from './components/App';
 import cookieMiddleware from './middleware/cookie';
 import noopMiddleware from './middleware/noop';

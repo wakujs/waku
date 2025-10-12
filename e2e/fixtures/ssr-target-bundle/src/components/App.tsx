@@ -1,7 +1,7 @@
-import { Textarea } from './Textarea.js';
 import SampleImage from './image-not-inlined.jpg'; // build.assetsInlineLimit - default 4096 Bytes
 import SampleJsonPrivate from './json-private-not-inlined.json'; // build.assetsInlineLimit - default 4096 Bytes
 import SampleJsonPublic from './json-public-linked-not-inlined.json?url'; // build.assetsInlineLimit - default 4096 Bytes
+import { Textarea } from './Textarea.js';
 
 const App = async ({ name }: { name: string }) => {
   const data = await getData();

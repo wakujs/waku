@@ -1,4 +1,4 @@
-import { SRC_PAGES, EXTENSIONS } from '../constants.js';
+import { EXTENSIONS, SRC_PAGES } from '../constants.js';
 
 export const getManagedServerEntry = (config: { srcDir: string }) => {
   const globBase = `/${config.srcDir}/${SRC_PAGES}`;

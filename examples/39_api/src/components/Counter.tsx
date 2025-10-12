@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, use, useState, useEffect } from 'react';
+import { Suspense, use, useEffect, useState } from 'react';
 
 export const Counter = () => {
   const [count, setCount] = useState(0);

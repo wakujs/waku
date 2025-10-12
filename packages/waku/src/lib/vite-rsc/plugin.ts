@@ -1,33 +1,14 @@
-import {
-  mergeConfig,
-  normalizePath,
-  type RunnableDevEnvironment,
-  type Plugin,
-  type PluginOption,
-  type UserConfig,
-  type ViteDevServer,
-} from 'vite';
-import react from '@vitejs/plugin-react';
-import rsc from '@vitejs/plugin-rsc';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import path from 'node:path';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import type { Config } from '../../config.js';
 import { INTERNAL_setAllEnv } from '../../server.js';
 import {
   getManagedClientEntry,
   getManagedServerEntry,
 } from '../utils/managed.js';
-import type { Config } from '../../config.js';
-import { allowServerPlugin } from '../vite-plugins/allow-server.js';
-import {
-  DIST_PUBLIC,
-  SRC_CLIENT_ENTRY,
-  SRC_SERVER_ENTRY,
-  SRC_PAGES,
-} from '../constants.js';
-import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
 import { joinPath } from '../utils/path.js';
+import { allowServerPlugin } from '../vite-plugins/allow-server.js';
+import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
 
 const PKG_NAME = 'waku';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));

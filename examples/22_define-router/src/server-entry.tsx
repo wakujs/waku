@@ -1,14 +1,11 @@
-import { unstable_defineRouter as defineRouter } from 'waku/router/server';
-import { Slot, Children } from 'waku/minimal/client';
+import { readFile } from 'node:fs/promises';
 import { nodeAdapter } from 'waku/adapters/node';
-
-import Root from './components/Root';
+import { Children, Slot } from 'waku/minimal/client';
+import { unstable_defineRouter as defineRouter } from 'waku/router/server';
 import HomeLayout from './components/HomeLayout';
 import HomePage from './components/HomePage';
-import FooPage from './components/FooPage';
-import BarPage from './components/BarPage';
 import NestedBazPage from './components/NestedBazPage';
-import { readFile } from 'node:fs/promises';
+import Root from './components/Root';
 
 export default nodeAdapter(
   defineRouter({

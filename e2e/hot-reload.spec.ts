@@ -1,8 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect } from '@playwright/test';
-
-import { test, prepareStandaloneSetup, waitForHydration } from './utils.js';
+import { prepareStandaloneSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareStandaloneSetup('hot-reload');
 

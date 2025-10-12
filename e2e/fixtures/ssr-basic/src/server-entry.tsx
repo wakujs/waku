@@ -1,6 +1,5 @@
-import { Slot } from 'waku/minimal/client';
 import { nodeAdapter } from 'waku/adapters/node';
-
+import { Slot } from 'waku/minimal/client';
 import App from './components/App.js';
 import TestApp from './components/test-app.js';
 

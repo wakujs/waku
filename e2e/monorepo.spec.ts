@@ -1,6 +1,5 @@
 import { expect } from '@playwright/test';
-
-import { test, prepareStandaloneSetup } from './utils.js';
+import { prepareStandaloneSetup, test } from './utils.js';
 
 const startApp = prepareStandaloneSetup('monorepo');
 

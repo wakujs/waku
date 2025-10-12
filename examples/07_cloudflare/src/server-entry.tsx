@@ -1,8 +1,7 @@
 /// <reference types="vite/client" />
 import { contextStorage, getContext } from 'hono/context-storage';
-import { unstable_fsRouter as fsRouter } from 'waku/router/server';
 import { cloudflareAdapter } from 'waku/adapters/cloudflare';
-
+import { unstable_fsRouter as fsRouter } from 'waku/router/server';
 import cloudflareMiddleware from './middleware/cloudflare';
 
 const patchFetch = (fetch: (req: Request) => Response | Promise<Response>) => {

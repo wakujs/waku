@@ -1,8 +1,7 @@
 import { Balancer } from 'react-wrap-balancer';
-
-import Counter from './Counter';
-import { greet, getCounter, increment } from './funcs';
 import ButtonServer from './ButtonServer';
+import Counter from './Counter';
+import { getCounter, greet, increment } from './funcs';
 
 const App = ({ name }: { name: string }) => {
   return (

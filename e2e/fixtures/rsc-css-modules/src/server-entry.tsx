@@ -1,5 +1,4 @@
 import { nodeAdapter } from 'waku/adapters/node';
-
 import App from './components/App.js';
 
 export default nodeAdapter({

@@ -1,6 +1,5 @@
 import { expect } from '@playwright/test';
-
-import { test, prepareNormalSetup, waitForHydration } from './utils.js';
+import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('define-router');
 
@@ -30,19 +29,21 @@ test.describe(`define-router`, () => {
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
     await expect(page.getByTestId('home-title')).toHaveText('Home');
-    const sliceText = await page.getByTestId('slice001').textContent();
-    expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
+    const sliceText = (await page
+      .getByTestId('slice001')
+      .textContent()) as string;
+    expect(sliceText.startsWith('Slice 001')).toBeTruthy();
     await page.click("a[href='/bar1']");
     await expect(page.getByTestId('bar1-title')).toHaveText('Bar1');
-    const sliceText2 = await page.getByTestId('slice001').textContent();
-    expect(sliceText2).toBe(sliceText);
-    const randomText = await page.getByTestId('bar1-random').textContent();
+    const sliceText2 = page.getByTestId('slice001');
+    await expect(sliceText2).toHaveText(sliceText);
+    const randomText = (await page
+      .getByTestId('bar1-random')
+      .textContent()) as string;
     await page.reload();
     await expect(page.getByTestId('bar1-title')).toHaveText('Bar1');
     if (mode === 'PRD') {
-      expect(await page.getByTestId('bar1-random').textContent()).not.toBe(
-        randomText,
-      );
+      await expect(page.getByTestId('bar1-random')).not.toHaveText(randomText);
     }
   });
 
@@ -50,19 +51,21 @@ test.describe(`define-router`, () => {
     await page.goto(`http://localhost:${port}/bar2`);
     await waitForHydration(page);
     await expect(page.getByTestId('bar2-title')).toHaveText('Bar2');
-    const randomText = await page.getByTestId('bar2-random').textContent();
-    const sliceText = await page.getByTestId('slice002').textContent();
-    expect(sliceText?.startsWith('Slice 002')).toBeTruthy();
+    const randomText = (await page
+      .getByTestId('bar2-random')
+      .textContent()) as string;
+    const sliceText = (await page
+      .getByTestId('slice002')
+      .textContent()) as string;
+    expect(sliceText.startsWith('Slice 002')).toBeTruthy();
     await page.click("a[href='/']");
     await expect(page.getByTestId('home-title')).toHaveText('Home');
     await page.click("a[href='/bar2']");
     await expect(page.getByTestId('bar2-title')).toHaveText('Bar2');
-    const sliceText2 = await page.getByTestId('slice002').textContent();
-    expect(sliceText2).not.toBe(sliceText);
+    const sliceText2 = page.getByTestId('slice002');
+    await expect(sliceText2).not.toHaveText(sliceText);
     if (mode === 'PRD') {
-      expect(await page.getByTestId('bar2-random').textContent()).toBe(
-        randomText,
-      );
+      await expect(page.getByTestId('bar2-random')).toHaveText(randomText);
     }
   });
 
@@ -70,19 +73,21 @@ test.describe(`define-router`, () => {
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
     await expect(page.getByTestId('home-title')).toHaveText('Home');
-    const sliceText = await page.getByTestId('slice001').textContent();
-    expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
+    const sliceText = (await page
+      .getByTestId('slice001')
+      .textContent()) as string;
+    expect(sliceText.startsWith('Slice 001')).toBeTruthy();
     await page.click("a[href='/baz1']");
     await expect(page.getByTestId('baz1-title')).toHaveText('Baz1');
-    const randomText = await page.getByTestId('baz1-random').textContent();
-    const sliceText2 = await page.getByTestId('slice001').textContent();
-    expect(sliceText2).toBe(sliceText);
+    const randomText = (await page
+      .getByTestId('baz1-random')
+      .textContent()) as string;
+    const sliceText2 = page.getByTestId('slice001');
+    await expect(sliceText2).toHaveText(sliceText);
     await page.reload();
     await expect(page.getByTestId('baz1-title')).toHaveText('Baz1');
     if (mode === 'PRD') {
-      expect(await page.getByTestId('baz1-random').textContent()).not.toBe(
-        randomText,
-      );
+      await expect(page.getByTestId('baz1-random')).not.toHaveText(randomText);
     }
   });
 
@@ -90,20 +95,22 @@ test.describe(`define-router`, () => {
     await page.goto(`http://localhost:${port}/baz2`);
     await waitForHydration(page);
     await expect(page.getByTestId('baz2-title')).toHaveText('Baz2');
-    const randomText = await page.getByTestId('baz2-random').textContent();
-    const sliceText = await page.getByTestId('slice002').textContent();
-    expect(sliceText?.startsWith('Slice 002')).toBeTruthy();
+    const randomText = (await page
+      .getByTestId('baz2-random')
+      .textContent()) as string;
+    const sliceText = (await page
+      .getByTestId('slice002')
+      .textContent()) as string;
+    expect(sliceText.startsWith('Slice 002')).toBeTruthy();
     await page.click("a[href='/']");
     await expect(page.getByTestId('home-title')).toHaveText('Home');
     await page.click("a[href='/baz2']");
     await expect(page.getByTestId('baz2-title')).toHaveText('Baz2');
     await page.waitForTimeout(100); // need to wait to refetch the slice
-    const sliceText2 = await page.getByTestId('slice002').textContent();
-    expect(sliceText2).not.toBe(sliceText);
+    const sliceText2 = page.getByTestId('slice002');
+    await expect(sliceText2).not.toHaveText(sliceText);
     if (mode === 'PRD') {
-      expect(await page.getByTestId('baz2-random').textContent()).toBe(
-        randomText,
-      );
+      await expect(page.getByTestId('baz2-random')).toHaveText(randomText);
     }
   });
 

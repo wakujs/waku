@@ -1,8 +1,7 @@
 import type { FunctionComponent, ReactNode } from 'react';
-
-import { createPages, METHODS } from './create-pages.js';
-import type { Method } from './create-pages.js';
 import { isIgnoredPath } from '../lib/utils/fs-router.js';
+import { METHODS, createPages } from './create-pages.js';
+import type { Method } from './create-pages.js';
 
 export function unstable_fsRouter(
   /**

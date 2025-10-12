@@ -1,9 +1,8 @@
-import { Slot } from 'waku/minimal/client';
 import { nodeAdapter } from 'waku/adapters/node';
-
+import { Slot } from 'waku/minimal/client';
 import App from './components/App';
-import InnerApp from './components/InnerApp';
 import AppWithoutSsr from './components/AppWithoutSsr';
+import InnerApp from './components/InnerApp';
 
 export default nodeAdapter({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
