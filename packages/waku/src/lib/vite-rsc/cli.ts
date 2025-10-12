@@ -1,10 +1,10 @@
-import * as vite from 'vite';
-import { rscPlugin } from './plugin.js';
-import type { Flags, RscPluginOptions } from './plugin.js';
-import type { Config } from '../../config.js';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import * as vite from 'vite';
+import type { Config } from '../../config.js';
+import { rscPlugin } from './plugin.js';
+import type { Flags, RscPluginOptions } from './plugin.js';
 
 async function loadConfig(): Promise<Config | undefined> {
   let config: Config | undefined;

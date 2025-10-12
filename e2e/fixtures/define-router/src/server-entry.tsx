@@ -1,16 +1,15 @@
 import { readFile } from 'node:fs/promises';
+import { Children, Slot } from 'waku/minimal/client';
 import { unstable_defineRouter as defineRouter } from 'waku/router/server';
-import { Slot, Children } from 'waku/minimal/client';
-
-import Layout from './routes/layout.js';
-import Page from './routes/page.js';
-import FooPage from './routes/foo/page.js';
+import { Slice001 } from './components/slice001.js';
+import { Slice002 } from './components/slice002.js';
 import Bar1Page from './routes/bar1/page.js';
 import Bar2Page from './routes/bar2/page.js';
 import Baz1Page from './routes/baz1/page.js';
 import Baz2Page from './routes/baz2/page.js';
-import { Slice001 } from './components/slice001.js';
-import { Slice002 } from './components/slice002.js';
+import FooPage from './routes/foo/page.js';
+import Layout from './routes/layout.js';
+import Page from './routes/page.js';
 
 const STATIC_PATHS = ['/', '/foo', '/baz2'];
 const STATIC_PAGES = ['/', '/foo', '/bar2', '/baz2'];

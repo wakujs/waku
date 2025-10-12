@@ -1,11 +1,10 @@
 import { compileMDX } from 'next-mdx-remote/rsc';
-
-import { Page } from '../components/page';
-import { Meta } from '../components/meta';
-import { components } from '../components/mdx';
-import { Start } from '../components/start';
 import { AllSponsors } from '../components/all-sponsors';
 import { Destination } from '../components/destination';
+import { components } from '../components/mdx';
+import { Meta } from '../components/meta';
+import { Page } from '../components/page';
+import { Start } from '../components/start';
 import { loadReadme } from '../lib/load-readme';
 
 export default async function HomePage() {

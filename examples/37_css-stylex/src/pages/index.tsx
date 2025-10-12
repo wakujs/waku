@@ -1,6 +1,6 @@
 import '../index.css';
-import { Counter } from '../components/counter';
 import * as stylex from '@stylexjs/stylex';
+import { Counter } from '../components/counter';
 
 const styles = stylex.create({
   server: {

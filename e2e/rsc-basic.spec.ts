@@ -1,6 +1,5 @@
 import { expect } from '@playwright/test';
-
-import { test, prepareNormalSetup, FETCH_ERROR_MESSAGES } from './utils.js';
+import { FETCH_ERROR_MESSAGES, prepareNormalSetup, test } from './utils.js';
 
 const startApp = prepareNormalSetup('rsc-basic');
 

@@ -1,6 +1,5 @@
-import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { Children, Slot } from 'waku/minimal/client';
-
+import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import App from './components/App';
 import Dynamic from './components/Dynamic';
 

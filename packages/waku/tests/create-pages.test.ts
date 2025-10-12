@@ -1,5 +1,11 @@
-import { expect, vi, describe, it, beforeEach, assert } from 'vitest';
+import type { PropsWithChildren } from 'react';
+import { expectType } from 'ts-expect';
+import type { TypeEqual } from 'ts-expect';
+import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockedFunction } from 'vitest';
+import { parsePathWithSlug } from '../src/lib/utils/path.js';
+import type { PathsForPages } from '../src/router/base-types.js';
+import type { GetSlugs } from '../src/router/create-pages-utils/inferred-path-types.js';
 import {
   createPages,
   pathMappingWithoutGroups,
@@ -12,18 +18,12 @@ import type {
   HasSlugInPath,
   HasWildcardInPath,
   IsValidPathInSlugPath,
-  PathWithoutSlug,
   PathWithSlug,
   PathWithWildcard,
+  PathWithoutSlug,
   StaticSlugRoutePathsTuple,
 } from '../src/router/create-pages.js';
 import { unstable_defineRouter } from '../src/router/define-router.js';
-import type { PropsWithChildren } from 'react';
-import { expectType } from 'ts-expect';
-import type { TypeEqual } from 'ts-expect';
-import type { PathsForPages } from '../src/router/base-types.js';
-import type { GetSlugs } from '../src/router/create-pages-utils/inferred-path-types.js';
-import { parsePathWithSlug } from '../src/lib/utils/path.js';
 
 function Fake() {
   return null;

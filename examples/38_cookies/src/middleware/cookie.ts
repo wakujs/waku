@@ -1,5 +1,4 @@
 import * as cookie from 'cookie';
-
 import type { Middleware } from 'waku/config';
 
 // XXX we would probably like to extend config.

@@ -1,8 +1,7 @@
 'use client';
 
-import { useCallback, useState, Suspense } from 'react';
+import { Suspense, useCallback, useState } from 'react';
 import type { ReactNode } from 'react';
-
 import { getData } from './actions.js';
 
 export type CounterProps = {

@@ -1,10 +1,10 @@
 import eslint from '@eslint/js';
 import { defineConfig } from 'eslint/config';
-import tseslint from 'typescript-eslint';
 import importPlugin from 'eslint-plugin-import';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import unicorn from 'eslint-plugin-unicorn';
+import tseslint from 'typescript-eslint';
 
 export default defineConfig(
   {
@@ -54,6 +54,36 @@ export default defineConfig(
       ],
       'react/prop-types': 'off',
       curly: ['error', 'all'],
+      'sort-imports': [
+        'error',
+        {
+          ignoreDeclarationSort: true,
+        },
+      ],
+      'import/order': [
+        'error',
+        {
+          alphabetize: { order: 'asc', caseInsensitive: true },
+          groups: [
+            'builtin',
+            'external',
+            'internal',
+            'parent',
+            'sibling',
+            'index',
+            'object',
+          ],
+          'newlines-between': 'never',
+          pathGroups: [
+            {
+              pattern: 'react',
+              group: 'builtin',
+              position: 'before',
+            },
+          ],
+          pathGroupsExcludedImportTypes: ['builtin'],
+        },
+      ],
       'unicorn/prefer-string-slice': 'error',
       'no-restricted-syntax': [
         'error',

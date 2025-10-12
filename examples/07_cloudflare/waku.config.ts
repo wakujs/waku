@@ -1,5 +1,5 @@
-import { defineConfig } from 'waku/config';
 import tailwindcss from '@tailwindcss/vite';
+import { defineConfig } from 'waku/config';
 
 export default defineConfig({
   unstable_honoEnhancer: './waku.hono-enhancer',

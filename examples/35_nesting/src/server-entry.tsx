@@ -1,9 +1,8 @@
-import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { Slot } from 'waku/minimal/client';
-
+import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import App from './components/App';
-import InnerApp from './components/InnerApp';
 import AppWithoutSsr from './components/AppWithoutSsr';
+import InnerApp from './components/InnerApp';
 
 export default defineServer({
   handleRequest: async (input, { renderRsc, renderHtml }) => {

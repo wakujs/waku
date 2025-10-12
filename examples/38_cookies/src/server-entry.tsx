@@ -1,6 +1,6 @@
 import fsPromises from 'node:fs/promises';
-import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { Slot } from 'waku/minimal/client';
+import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { unstable_getContextData as getContextData } from 'waku/server';
 import App from './components/App';
 

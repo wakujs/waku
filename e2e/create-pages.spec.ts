@@ -1,10 +1,9 @@
 import { expect } from '@playwright/test';
-
 import {
-  test,
   FETCH_ERROR_MESSAGES,
-  waitForHydration,
   prepareNormalSetup,
+  test,
+  waitForHydration,
 } from './utils.js';
 
 const startApp = prepareNormalSetup('create-pages');

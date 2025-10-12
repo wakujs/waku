@@ -1,6 +1,5 @@
 import { expect } from '@playwright/test';
-
-import { test, waitForHydration, prepareNormalSetup } from './utils.js';
+import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('use-router');
 

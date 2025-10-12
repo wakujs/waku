@@ -1,8 +1,8 @@
-import { execSync, exec, ChildProcess } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import { findWakuPort, terminate, test } from './utils.js';
-import { expect } from '@playwright/test';
 import { rmSync, statSync } from 'fs';
+import { ChildProcess, exec, execSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { expect } from '@playwright/test';
+import { findWakuPort, terminate, test } from './utils.js';
 
 const cwd = fileURLToPath(new URL('./fixtures/partial-build', import.meta.url));
 

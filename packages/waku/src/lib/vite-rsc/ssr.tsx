@@ -1,11 +1,11 @@
+import { type ReactNode, captureOwnerStack, use } from 'react';
 import { createFromReadableStream } from '@vitejs/plugin-rsc/ssr';
-import { captureOwnerStack, use, type ReactNode } from 'react';
 import type { ReactFormState } from 'react-dom/client';
 import { renderToReadableStream } from 'react-dom/server.edge';
-import { INTERNAL_ServerRoot } from '../../minimal/client.js';
-import { getBootstrapPreamble } from '../utils/ssr.js';
 import { injectRSCPayload } from 'rsc-html-stream/server';
 import fallbackHtml from 'virtual:vite-rsc-waku/fallback-html';
+import { INTERNAL_ServerRoot } from '../../minimal/client.js';
+import { getBootstrapPreamble } from '../utils/ssr.js';
 
 type RscElementsPayload = Record<string, unknown>;
 type RscHtmlPayload = ReactNode;

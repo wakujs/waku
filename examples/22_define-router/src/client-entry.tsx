@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
-import { Router, ErrorBoundary } from 'waku/router/client';
+import { ErrorBoundary, Router } from 'waku/router/client';
 
 const rootElement = (
   <StrictMode>

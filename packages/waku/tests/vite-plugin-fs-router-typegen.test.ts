@@ -1,12 +1,12 @@
+import { writeFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import type { FSWatcher, ResolvedConfig, ViteDevServer } from 'vite';
 import { describe, expect, test, vi } from 'vitest';
 import {
   fsRouterTypegenPlugin,
   getImportModuleNames,
   toIdentifier,
 } from '../src/lib/vite-plugins/fs-router-typegen.js';
-import { fileURLToPath } from 'node:url';
-import type { ViteDevServer, FSWatcher, ResolvedConfig } from 'vite';
-import { writeFile } from 'node:fs/promises';
 
 const root = fileURLToPath(new URL('./fixtures', import.meta.url));
 

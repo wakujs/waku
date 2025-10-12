@@ -1,5 +1,4 @@
 import { atom } from 'jotai/vanilla';
-
 import { getStore } from 'waku-jotai/router';
 import { Counter, countAtom } from '../components/counter.js';
 

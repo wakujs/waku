@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react';
-
-import { Menu } from '../components/menu';
-import { Fade } from '../components/fade';
 import { Credits } from '../components/credits';
+import { Fade } from '../components/fade';
+import { Menu } from '../components/menu';
 import { Scroll } from '../components/scroll';
 import { Navigation } from './navigation';
 
