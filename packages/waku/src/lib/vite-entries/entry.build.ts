@@ -9,5 +9,9 @@ export async function runBuild({
   INTERNAL_setAllEnv(process.env as any);
   await serverEntry.build();
   await savePlatformData();
-  await serverEntry.postBuild?.();
+  if (serverEntry.postBuild) {
+    const [modulePath, ...args] = serverEntry.postBuild;
+    const mod = await import(modulePath);
+    mod.default(...args);
+  }
 }

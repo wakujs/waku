@@ -50,8 +50,7 @@ export type Unstable_ServerEntry = {
   default: {
     fetch: (req: Request, ...args: any[]) => Response | Promise<Response>;
     build: () => Promise<void>;
-    // TODO remove this once we solve savePlatformData timing issue
-    postBuild?: () => Promise<void>;
+    postBuild?: [modulePath: string, ...args: unknown[]];
   };
 };
 
