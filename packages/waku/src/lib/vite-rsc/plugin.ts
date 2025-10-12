@@ -18,8 +18,8 @@ import { INTERNAL_setAllEnv, unstable_getBuildOptions } from '../../server.js';
 import {
   DIST_PUBLIC,
   SRC_CLIENT_ENTRY,
-  SRC_SERVER_ENTRY,
   SRC_PAGES,
+  SRC_SERVER_ENTRY,
 } from '../constants.js';
 import {
   getManagedClientEntry,

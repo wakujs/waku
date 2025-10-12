@@ -1,9 +1,8 @@
 /// <reference types="vite/client" />
 import { Hono } from 'hono';
-import { unstable_fsRouter as fsRouter } from 'waku/router/server';
-import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { unstable_honoMiddleware as honoMiddleware } from 'waku/internals';
-
+import { unstable_defineServer as defineServer } from 'waku/minimal/server';
+import { unstable_fsRouter as fsRouter } from 'waku/router/server';
 import redirectsMiddleware from './middleware/redirects';
 
 export default defineServer({

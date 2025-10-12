@@ -1,8 +1,8 @@
-import path from 'node:path';
 import fs from 'node:fs';
+import path from 'node:path';
 import type { MiddlewareHandler } from 'hono';
-import type { Unstable_CreateAppArgs as CreateAppArgs } from '../../types.js';
 import { DIST_PUBLIC } from '../../constants.js';
+import type { Unstable_CreateAppArgs as CreateAppArgs } from '../../types.js';
 
 export function notFoundMiddleware(args: CreateAppArgs): MiddlewareHandler {
   const { config } = args;

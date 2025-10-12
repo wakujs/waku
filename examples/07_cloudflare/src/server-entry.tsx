@@ -1,10 +1,9 @@
 /// <reference types="vite/client" />
 import { Hono } from 'hono';
 import { contextStorage, getContext } from 'hono/context-storage';
-import { unstable_fsRouter as fsRouter } from 'waku/router/server';
-import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { unstable_honoMiddleware as honoMiddleware } from 'waku/internals';
-
+import { unstable_defineServer as defineServer } from 'waku/minimal/server';
+import { unstable_fsRouter as fsRouter } from 'waku/router/server';
 import cloudflareMiddleware from './middleware/cloudflare';
 
 export default defineServer({
