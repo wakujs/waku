@@ -1,5 +1,6 @@
 import { nodeAdapter } from 'waku/adapters/node';
 import type { PathsForPages } from 'waku/router';
+import { createPages } from 'waku/router/server';
 import BarLayout from './components/BarLayout';
 import BarPage from './components/BarPage';
 import FooLayout from './components/FooLayout';

@@ -1,5 +1,6 @@
 import { nodeAdapter } from 'waku/adapters/node';
 import type { PathsForPages } from 'waku/router';
+import { createPages } from 'waku/router/server';
 import AboutPage from './components/AboutPage';
 import HomePage from './components/HomePage';
 import RootLayout from './components/RootLayout';
