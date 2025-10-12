@@ -87,7 +87,7 @@ test.describe(`create-pages`, () => {
     await expect(page.getByRole('heading', { level: 2 })).toBeVisible();
     await expect(
       page.getByRole('heading', { level: 2, name: 'Foo' }),
-    ).not.toBeVisible();
+    ).toBeHidden();
   });
 
   test('jump with setState', async ({ page }) => {
@@ -191,7 +191,7 @@ test.describe(`create-pages`, () => {
     await page.click("a[href='/long-suspense/3']");
     await expect(
       page.getByRole('heading', { name: 'Long Suspense Page 2' }),
-    ).not.toBeVisible();
+    ).toBeHidden();
     await expect(page.getByTestId('long-suspense')).toHaveText('Loading...');
     await expect(page.getByTestId('long-suspense-pending')).toHaveCount(0);
     await expect(
@@ -303,7 +303,7 @@ test.describe(`create-pages`, () => {
     ).toBeVisible();
     await expect(
       page.getByRole('heading', { name: '/test Layout' }),
-    ).not.toBeVisible();
+    ).toBeHidden();
   });
 
   test('group layout static + dynamic', async ({ page }) => {
@@ -351,20 +351,24 @@ test.describe(`create-pages`, () => {
     await page.goto(`http://localhost:${port}/slices`);
     await waitForHydration(page);
     // basic test
-    const staticSliceText = await page.getByTestId('slice001').textContent();
-    expect(staticSliceText?.startsWith('Slice 001')).toBeTruthy();
-    const dynamicSliceText = await page.getByTestId('slice002').textContent();
-    expect(dynamicSliceText?.startsWith('Slice 002')).toBeTruthy();
+    const staticSliceText = (await page
+      .getByTestId('slice001')
+      .textContent()) as string;
+    expect(staticSliceText.startsWith('Slice 001')).toBeTruthy();
+    const dynamicSliceText = (await page
+      .getByTestId('slice002')
+      .textContent()) as string;
+    expect(dynamicSliceText.startsWith('Slice 002')).toBeTruthy();
 
     await page.getByRole('link', { name: 'Home' }).click();
     await page.waitForTimeout(1000);
     await page.getByRole('link', { name: 'Slices' }).click();
 
     // test dynamic and static slices behavior after soft navigation
-    const staticSliceText2 = await page.getByTestId('slice001').textContent();
-    expect(staticSliceText2).toBe(staticSliceText);
-    const dynamicSliceText2 = await page.getByTestId('slice002').textContent();
-    expect(dynamicSliceText2).not.toBe(dynamicSliceText);
+    const staticSliceText2 = page.getByTestId('slice001');
+    await expect(staticSliceText2).toHaveText(staticSliceText);
+    const dynamicSliceText2 = page.getByTestId('slice002');
+    await expect(dynamicSliceText2).not.toHaveText(dynamicSliceText);
   });
 
   test('slices with lazy', async ({ page }) => {
@@ -409,7 +413,7 @@ test.describe(`create-pages STATIC`, () => {
     });
     const page = await context.newPage();
     await page.goto(`http://localhost:${port}/no-ssr`);
-    await expect(page.getByText('Not Found')).not.toBeVisible();
+    await expect(page.getByText('Not Found')).toBeHidden();
     await page.close();
     await context.close();
   });

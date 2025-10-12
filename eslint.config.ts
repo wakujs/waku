@@ -1,6 +1,7 @@
 import eslint from '@eslint/js';
 import { defineConfig } from 'eslint/config';
 import importPlugin from 'eslint-plugin-import';
+import playwright from 'eslint-plugin-playwright';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import unicorn from 'eslint-plugin-unicorn';
@@ -94,6 +95,10 @@ export default defineConfig(
         },
       ],
     },
+  },
+  {
+    ...playwright.configs['flat/recommended'],
+    files: ['e2e/**'],
   },
   {
     files: [

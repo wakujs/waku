@@ -3,7 +3,7 @@ import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('broken-links');
 
-test.describe(`broken-links: normal server`, async () => {
+test.describe('broken-links: normal server', () => {
   let port: number;
   let stopApp: (() => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {
@@ -145,7 +145,7 @@ test.describe('broken-links: static server', () => {
   });
 });
 
-test.describe(`broken-links/dynamic-not-found`, async () => {
+test.describe('broken-links/dynamic-not-found', () => {
   let port: number;
   let stopApp: (() => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {

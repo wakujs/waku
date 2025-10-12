@@ -81,7 +81,7 @@ test.describe(`ssr-basic`, () => {
     await expect(page.getByTestId('resolved-promise')).toHaveText('test');
   });
 
-  test('test env', async ({ page }) => {
+  test('env', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
 
     const testEnvServer = page.getByTestId('test-env-server');

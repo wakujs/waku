@@ -3,7 +3,7 @@ import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('use-router');
 
-test.describe(`useRouter`, async () => {
+test.describe('useRouter', () => {
   let port: number;
   let stopApp: (() => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {
