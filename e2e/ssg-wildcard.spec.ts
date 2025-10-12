@@ -1,10 +1,9 @@
 import { expect } from '@playwright/test';
-
-import { test, prepareNormalSetup } from './utils.js';
+import { prepareNormalSetup, test } from './utils.js';
 
 const startApp = prepareNormalSetup('ssg-wildcard');
 
-test.describe(`ssg wildcard`, async () => {
+test.describe('ssg wildcard', () => {
   let port: number;
   let stopApp: (() => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {

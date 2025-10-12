@@ -1,10 +1,9 @@
 import { execSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { cpSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { expect } from '@playwright/test';
-
-import { test, makeTempDir } from './utils.js';
+import { makeTempDir, test } from './utils.js';
 
 const dryRunList = [
   // without server-entry.tsx

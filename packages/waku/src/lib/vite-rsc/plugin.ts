@@ -1,38 +1,38 @@
-import {
-  mergeConfig,
-  normalizePath,
-  type RunnableDevEnvironment,
-  type Plugin,
-  type PluginOption,
-  type UserConfig,
-  type ViteDevServer,
-} from 'vite';
-import react from '@vitejs/plugin-react';
-import rsc from '@vitejs/plugin-rsc';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import path from 'node:path';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import react from '@vitejs/plugin-react';
+import rsc from '@vitejs/plugin-rsc';
 import {
-  getManagedClientEntry,
-  getManagedServerEntry,
-} from '../utils/managed.js';
+  type Plugin,
+  type PluginOption,
+  type RunnableDevEnvironment,
+  type UserConfig,
+  type ViteDevServer,
+  mergeConfig,
+  normalizePath,
+} from 'vite';
 import type { Config } from '../../config.js';
 import { INTERNAL_setAllEnv, unstable_getBuildOptions } from '../../server.js';
-import { emitFileInTask, waitForTasks } from '../utils/task-runner.js';
-import { deployVercelPlugin } from './deploy/vercel/plugin.js';
-import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import {
   DIST_PUBLIC,
   SRC_CLIENT_ENTRY,
   SRC_SERVER_ENTRY,
 } from '../constants.js';
+import {
+  getManagedClientEntry,
+  getManagedServerEntry,
+} from '../utils/managed.js';
+import { joinPath } from '../utils/path.js';
+import { emitFileInTask, waitForTasks } from '../utils/task-runner.js';
+import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
-import { deployNetlifyPlugin } from './deploy/netlify/plugin.js';
+import { deployAwsLambdaPlugin } from './deploy/aws-lambda/plugin.js';
 import { deployCloudflarePlugin } from './deploy/cloudflare/plugin.js';
 import { deployDenoPlugin } from './deploy/deno/plugin.js';
-import { deployAwsLambdaPlugin } from './deploy/aws-lambda/plugin.js';
-import { joinPath } from '../utils/path.js';
+import { deployNetlifyPlugin } from './deploy/netlify/plugin.js';
+import { deployVercelPlugin } from './deploy/vercel/plugin.js';
 
 const PKG_NAME = 'waku';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));

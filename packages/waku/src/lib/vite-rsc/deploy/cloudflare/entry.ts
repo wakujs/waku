@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
-import { createHonoHandler } from '../../engine.js';
 import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
 import { INTERNAL_setAllEnv } from '../../../../server.js';
+import { createHonoHandler } from '../../engine.js';
 
 function createApp(app: Hono) {
   app.use(createHonoHandler());

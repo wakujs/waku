@@ -1,11 +1,11 @@
-import type { Plugin } from 'vite';
-import { readdir, writeFile } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
-import { SRC_SERVER_ENTRY, EXTENSIONS } from '../constants.js';
-import { joinPath } from '../utils/path.js';
-import { isIgnoredPath } from '../utils/fs-router.js';
-import { getGrouplessPath } from '../utils/create-pages.js';
+import { readdir, writeFile } from 'node:fs/promises';
 import * as swc from '@swc/core';
+import type { Plugin } from 'vite';
+import { EXTENSIONS, SRC_SERVER_ENTRY } from '../constants.js';
+import { getGrouplessPath } from '../utils/create-pages.js';
+import { isIgnoredPath } from '../utils/fs-router.js';
+import { joinPath } from '../utils/path.js';
 
 const SRC_PAGES = 'pages';
 

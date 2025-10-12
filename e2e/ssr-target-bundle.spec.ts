@@ -1,8 +1,7 @@
-import { expect } from '@playwright/test';
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
-
-import { test, prepareNormalSetup, waitForHydration } from './utils.js';
+import { expect } from '@playwright/test';
+import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('ssr-target-bundle');
 

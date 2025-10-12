@@ -1,7 +1,7 @@
 'use client';
 
-import { useActions } from 'ai/rsc';
 import { useEffect } from 'react';
+import { useActions } from 'ai/rsc';
 
 export const ClientActionsConsumer = () => {
   const actions = useActions();

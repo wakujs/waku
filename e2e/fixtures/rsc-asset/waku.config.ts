@@ -1,9 +1,9 @@
 /// <reference types="vite/client" />
 
-import { defineConfig } from 'waku/config';
-import type { Plugin } from 'vite';
-import path from 'node:path';
 import fs from 'node:fs';
+import path from 'node:path';
+import type { Plugin } from 'vite';
+import { defineConfig } from 'waku/config';
 
 export default defineConfig({
   vite: {

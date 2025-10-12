@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { SyncOptions, SyncResult, Options, ResultPromise } from 'execa';
-import { execaCommandSync, execaCommand } from 'execa';
+import type { Options, ResultPromise, SyncOptions, SyncResult } from 'execa';
+import { execaCommand, execaCommandSync } from 'execa';
 import {
   afterEach,
   beforeAll,

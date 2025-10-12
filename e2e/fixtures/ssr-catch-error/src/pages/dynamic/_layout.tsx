@@ -1,4 +1,4 @@
-import { Suspense, type ReactNode } from 'react';
+import { type ReactNode, Suspense } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import ThrowsComponent from '../../components/server/throws.js';
 

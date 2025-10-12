@@ -1,6 +1,5 @@
-import { expect, type Page } from '@playwright/test';
-
-import { test, prepareNormalSetup, waitForHydration } from './utils.js';
+import { type Page, expect } from '@playwright/test';
+import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('base-path');
 

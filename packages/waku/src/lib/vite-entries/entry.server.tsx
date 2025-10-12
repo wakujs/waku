@@ -1,13 +1,13 @@
-import { Hono } from 'hono';
-import { createHonoHandler } from '../vite-rsc/engine.js';
-import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
-import { flags, config, isBuild } from 'virtual:vite-rsc-waku/config';
-import { compress } from 'hono/compress';
-import { serveStatic } from '@hono/node-server/serve-static';
-import path from 'node:path';
 import fs from 'node:fs';
-import { DIST_PUBLIC } from '../constants.js';
+import path from 'node:path';
+import { serveStatic } from '@hono/node-server/serve-static';
+import { Hono } from 'hono';
+import { compress } from 'hono/compress';
+import { config, flags, isBuild } from 'virtual:vite-rsc-waku/config';
+import { honoEnhancer } from 'virtual:vite-rsc-waku/hono-enhancer';
 import { INTERNAL_setAllEnv } from '../../server.js';
+import { DIST_PUBLIC } from '../constants.js';
+import { createHonoHandler } from '../vite-rsc/engine.js';
 
 function createApp(app: Hono) {
   INTERNAL_setAllEnv(process.env as any);

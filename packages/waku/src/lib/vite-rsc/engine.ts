@@ -1,8 +1,8 @@
 import type { MiddlewareHandler } from 'hono';
-import { middlewares } from 'virtual:vite-rsc-waku/middlewares';
 import { isBuild } from 'virtual:vite-rsc-waku/config';
-import type { HandlerContext, MiddlewareOptions } from '../types.js';
+import { middlewares } from 'virtual:vite-rsc-waku/middlewares';
 import { contextMiddleware } from '../context.js';
+import type { HandlerContext, MiddlewareOptions } from '../types.js';
 import { handlerMiddleware } from './handler.js';
 
 // cf. packages/waku/src/lib/hono/engine.ts

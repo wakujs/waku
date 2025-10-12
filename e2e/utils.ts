@@ -1,22 +1,22 @@
-import { execSync, exec } from 'node:child_process';
-import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
+import { exec, execSync } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import {
-  existsSync,
   cpSync,
-  rmSync,
+  existsSync,
   mkdtempSync,
-  readdirSync,
   readFileSync,
+  readdirSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import type { ChildProcess } from 'node:child_process';
-import { expect, test as basicTest } from '@playwright/test';
-import type { ConsoleMessage, Page } from '@playwright/test';
-import { error, info } from '@actions/core';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { stripVTControlCharacters } from 'node:util';
+import { error, info } from '@actions/core';
+import { test as basicTest, expect } from '@playwright/test';
+import type { ConsoleMessage, Page } from '@playwright/test';
 import fkill from 'fkill';
 
 export const FETCH_ERROR_MESSAGES = {

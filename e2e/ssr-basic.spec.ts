@@ -1,6 +1,5 @@
 import { expect } from '@playwright/test';
-
-import { test, prepareNormalSetup } from './utils.js';
+import { prepareNormalSetup, test } from './utils.js';
 
 const startApp = prepareNormalSetup('ssr-basic');
 
@@ -82,7 +81,7 @@ test.describe(`ssr-basic`, () => {
     await expect(page.getByTestId('resolved-promise')).toHaveText('test');
   });
 
-  test('test env', async ({ page }) => {
+  test('env', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
 
     const testEnvServer = page.getByTestId('test-env-server');
