@@ -35,7 +35,7 @@ const commandsCloudflare = [
   },
   {
     build: `build`,
-    command: 'NODE_ENV=production npx wrangler dev',
+    command: 'npx wrangler dev',
   },
 ];
 

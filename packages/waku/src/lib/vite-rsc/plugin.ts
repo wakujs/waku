@@ -1,7 +1,26 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import react from '@vitejs/plugin-react';
+import rsc from '@vitejs/plugin-rsc';
+import {
+  type Plugin,
+  type PluginOption,
+  type RunnableDevEnvironment,
+  type UserConfig,
+  type ViteDevServer,
+  mergeConfig,
+  normalizePath,
+} from 'vite';
 import type { Config } from '../../config.js';
 import { INTERNAL_setAllEnv } from '../../server.js';
+import {
+  DIST_PUBLIC,
+  SRC_CLIENT_ENTRY,
+  SRC_PAGES,
+  SRC_SERVER_ENTRY,
+} from '../constants.js';
 import {
   getManagedClientEntry,
   getManagedServerEntry,

@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises';
 import { nodeAdapter } from 'waku/adapters/node';
 import { Children, Slot } from 'waku/minimal/client';
 import { unstable_defineRouter as defineRouter } from 'waku/router/server';
+import { Slice001 } from './components/slice001.js';
+import { Slice002 } from './components/slice002.js';
 import Bar1Page from './routes/bar1/page.js';
 import Bar2Page from './routes/bar2/page.js';
 import Baz1Page from './routes/baz1/page.js';

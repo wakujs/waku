@@ -1,12 +1,12 @@
-import path from 'node:path';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { Hono } from 'hono';
+import path from 'node:path';
 import { serveStatic } from '@hono/node-server/serve-static';
-import * as honoAwsLambda from 'hono/aws-lambda';
+import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
+import * as honoAwsLambda from 'hono/aws-lambda';
 import {
-  unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_constants as constants,
+  unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
 

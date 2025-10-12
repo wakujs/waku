@@ -1,5 +1,5 @@
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { rmSync, cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 
 export default async function postBuild({
   distDir,

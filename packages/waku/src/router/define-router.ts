@@ -1,5 +1,6 @@
 import { createElement } from 'react';
 import type { ReactNode } from 'react';
+import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
 import { getPathMapping, path2regexp } from '../lib/utils/path.js';
 import type { PathSpec } from '../lib/utils/path.js';
 import { stringToStream } from '../lib/utils/stream.js';

@@ -1,10 +1,10 @@
-import path from 'node:path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
 import {
-  unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_constants as constants,
+  unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
 

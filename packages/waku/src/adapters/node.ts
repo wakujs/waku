@@ -1,11 +1,11 @@
-import path from 'node:path';
 import fs from 'node:fs';
+import path from 'node:path';
+import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
-import { serveStatic } from '@hono/node-server/serve-static';
 import {
-  unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_constants as constants,
+  unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
 

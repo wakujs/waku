@@ -1,6 +1,6 @@
 import type {
-  Unstable_HandleRequest as HandleRequest,
   Unstable_HandleBuild as HandleBuild,
+  Unstable_HandleRequest as HandleRequest,
   Unstable_ServerEntry as ServerEntry,
 } from '../lib/types.js';
 

@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
-import { unstable_fsRouter as fsRouter } from 'waku/router/server';
 import { nodeAdapter } from 'waku/adapters/node';
+import { unstable_fsRouter as fsRouter } from 'waku/router/server';
 
 const router = fsRouter(import.meta.glob('./**/*.tsx', { base: './pages' }));
 
