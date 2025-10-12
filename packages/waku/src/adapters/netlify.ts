@@ -1,5 +1,3 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
 import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
 import {
@@ -41,60 +39,18 @@ export const netlifyAdapter = createServerEntryAdapter(
       }
       return c.text('404 Not Found', 404);
     });
+    const postBuildArg: Parameters<
+      typeof import('./netlify-post-build.js').default
+    >[0] = {
+      distDir: config.distDir,
+      privateDir: config.privateDir,
+      DIST_PUBLIC,
+      serverless: !options?.static,
+    };
     return {
       fetch: app.fetch,
       build: processBuild,
-      postBuild: () =>
-        buildNetlify({ ...config, serverless: !options?.static }),
+      postBuild: ['waku/adapters/netlify-post-build', postBuildArg],
     };
   },
 );
-
-async function buildNetlify({
-  distDir,
-  privateDir,
-  serverless,
-}: {
-  distDir: string;
-  privateDir: string;
-  serverless: boolean;
-}) {
-  const publicDir = path.resolve(distDir, DIST_PUBLIC);
-
-  if (serverless) {
-    const functionsDir = path.resolve('netlify-functions');
-    mkdirSync(functionsDir, {
-      recursive: true,
-    });
-    const notFoundFile = path.join(publicDir, '404.html');
-    const notFoundHtml = existsSync(notFoundFile)
-      ? readFileSync(notFoundFile, 'utf8')
-      : null;
-    writeFileSync(
-      path.join(functionsDir, 'serve.js'),
-      `\
-globalThis.__WAKU_NOT_FOUND_HTML__ = ${JSON.stringify(notFoundHtml)};
-import { serverEntry } from '../${distDir}/server/index.js';
-export default async (request, context) => serverEntry.fetch(request, { context });
-export const config = {
-  preferStatic: true,
-  path: ['/', '/*'],
-};
-`,
-    );
-  }
-  const netlifyTomlFile = path.resolve('netlify.toml');
-  if (!existsSync(netlifyTomlFile)) {
-    writeFileSync(
-      netlifyTomlFile,
-      `\
-[build]
-  command = "npm run build"
-  publish = "${distDir}/${DIST_PUBLIC}"
-[functions]
-  included_files = ["${privateDir}/**"]
-  directory = "netlify-functions"
-`,
-    );
-  }
-}

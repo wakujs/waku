@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
@@ -46,27 +46,18 @@ export const awsLambdaAdapter = createServerEntryAdapter(
       }
       return c.text('404 Not Found', 404);
     });
+    const postBuildArg: Parameters<
+      typeof import('./aws-lambda-post-build.js').default
+    >[0] = {
+      distDir: config.distDir,
+    };
     return {
       fetch: app.fetch,
       build: processBuild,
-      postBuild: () => buildAwsLambda({ ...config }),
+      postBuild: ['waku/adapters/aws-lambda-post-build', postBuildArg],
       handler: options?.streaming
         ? honoAwsLambda.streamHandle(app)
         : honoAwsLambda.handle(app),
     };
   },
 );
-
-async function buildAwsLambda({ distDir }: { distDir: string }) {
-  const SERVE_JS = 'serve-aws-lambda.js';
-  const serveCode = `
-import { serverEntry } from './server/index.js';
-
-export const handler = serverEntry.handler;
-`;
-  writeFileSync(path.join(distDir, SERVE_JS), serveCode);
-  writeFileSync(
-    path.join(distDir, 'package.json'),
-    JSON.stringify({ type: 'module' }, null, 2),
-  );
-}
