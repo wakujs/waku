@@ -83,6 +83,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
         let viteRscConfig: UserConfig = {
           base: config.basePath,
           define: {
+            'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
             'import.meta.env.WAKU_CONFIG_BASE_PATH': JSON.stringify(
               config.basePath,
             ),
