@@ -28,9 +28,9 @@ globalThis.__WAKU_DENO_ADAPTER_NOT_FOUND_FN__ = async (c) => {
   return c.text('404 Not Found', 404);
 };
 
-import { runFetch } from './server/index.js';
-
-Deno.serve(runFetch);
+import('./server/index.js').then(({ runFetch }) => {
+  Deno.serve(runFetch);
+});
 `;
   writeFileSync(path.join(distDir, SERVE_JS), serveCode);
 }
