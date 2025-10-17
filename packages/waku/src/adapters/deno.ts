@@ -1,4 +1,5 @@
 import path from 'node:path';
+// FIXME hopefully we should avoid bundling this
 import { Hono as HonoForDevAndBuild } from 'hono';
 import type { MiddlewareHandler } from 'hono';
 import {
@@ -9,12 +10,6 @@ import {
 
 const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
-const {
-  __WAKU_DENO_ADAPTER_ENV__: denoEnv,
-  __WAKU_DENO_ADAPTER_HONO__: Hono = HonoForDevAndBuild,
-  __WAKU_DENO_ADAPTER_SERVE_STATIC__: serveStatic,
-  __WAKU_DENO_ADAPTER_NOT_FOUND_FN__: notFoundFn,
-} = globalThis as any;
 
 export const denoAdapter = createServerEntryAdapter(
   (
@@ -30,6 +25,12 @@ export const denoAdapter = createServerEntryAdapter(
     },
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
+    const {
+      __WAKU_DENO_ADAPTER_ENV__: denoEnv,
+      __WAKU_DENO_ADAPTER_HONO__: Hono = HonoForDevAndBuild,
+      __WAKU_DENO_ADAPTER_SERVE_STATIC__: serveStatic,
+      __WAKU_DENO_ADAPTER_NOT_FOUND_FN__: notFoundFn,
+    } = globalThis as any;
     if (denoEnv) {
       setAllEnv(denoEnv);
     }
