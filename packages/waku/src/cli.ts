@@ -55,19 +55,21 @@ const { values, positionals } = parseArgs({
 
 const cmd = positionals[0];
 
-if (values.version) {
-  const { version } = require('../package.json');
-  console.log(version);
-} else if (values.help) {
-  displayUsage();
-} else if (cmd === 'dev' || cmd === 'build' || cmd === 'start') {
-  const { cli } = await import('./lib/vite-rsc/cli.js');
-  await cli(cmd, values);
-} else {
-  if (cmd) {
-    console.error('Unknown command:', cmd);
+async function run()  {
+  if (values.version) {
+    const { version } = require('../package.json');
+    console.log(version);
+  } else if (values.help) {
+    displayUsage();
+  } else if (cmd === 'dev' || cmd === 'build' || cmd === 'start') {
+    const { cli } = await import('./lib/vite-rsc/cli.js');
+    await cli(cmd, values);
+  } else {
+    if (cmd) {
+      console.error('Unknown command:', cmd);
+    }
+    displayUsage();
   }
-  displayUsage();
 }
 
 function displayUsage() {
@@ -91,3 +93,8 @@ Options:
       --help            Display this help message
 `);
 }
+
+run().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
