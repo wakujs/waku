@@ -27,8 +27,8 @@ export default async function postBuild({
       path.join(functionsDir, 'serve.js'),
       `\
 globalThis.__WAKU_NOT_FOUND_HTML__ = ${JSON.stringify(notFoundHtml)};
-import { serverEntry } from '../${distDir}/server/index.js';
-export default async (request, context) => serverEntry.fetch(request, { context });
+import { runFetch } from '../${distDir}/server/index.js';
+export default async (request, context) => runFetch(request, { context });
 export const config = {
   preferStatic: true,
   path: ['/', '/*'],
