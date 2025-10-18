@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { Config } from '../config.js';
 
 type Elements = Record<string, unknown>;
 
@@ -44,31 +45,23 @@ export type Unstable_HandleBuild = (utils: {
   generateDefaultHtml: (pathname: string) => Promise<void>;
 }) => Promise<void>;
 
+export type Unstable_CreateAppArgs = {
+  processRequest: (req: Request) => Promise<Response | null>;
+  config: Omit<Required<Config>, 'vite'>;
+  isBuild: boolean;
+};
+
+export type Unstable_CreateApp = (
+  args: Unstable_CreateAppArgs,
+  baseApp?: unknown,
+) => {
+  fetch: (req: Request) => Response | Promise<Response>;
+};
+
 export type Unstable_ServerEntry = {
   default: {
     handleRequest: Unstable_HandleRequest;
     handleBuild: Unstable_HandleBuild;
+    createApp?: Unstable_CreateApp;
   };
 };
-
-/** @deprecated This will be removed soon. */
-export type HandlerContext = {
-  req: Request;
-  res?: Response;
-  readonly data: Record<string, unknown>;
-};
-
-/** @deprecated This will be removed soon. */
-type Handler = (
-  ctx: HandlerContext,
-  next: () => Promise<void>,
-) => Promise<void>;
-
-/** @deprecated This will be removed soon. */
-export type MiddlewareOptions = {
-  cmd: 'dev' | 'start';
-  env: Record<string, string>;
-};
-
-/** @deprecated This will be removed soon. */
-export type Middleware = (options: MiddlewareOptions) => Handler;

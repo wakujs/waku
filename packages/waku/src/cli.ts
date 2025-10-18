@@ -35,12 +35,6 @@ const { values, positionals } = parseArgs({
     'experimental-partial': {
       type: 'boolean',
     },
-    'experimental-compress': {
-      type: 'boolean',
-    },
-    'experimental-legacy-cli': {
-      type: 'boolean',
-    },
     host: {
       type: 'string',
       short: 'h',

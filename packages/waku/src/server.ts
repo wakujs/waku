@@ -4,8 +4,6 @@ export {
   getContextData as unstable_getContextData,
 } from './lib/context.js';
 
-export * as unstable_constants from './lib/constants.js';
-
 // The use of `globalThis` in this file is more or less a hack.
 // It should be revisited with a better solution.
 
@@ -18,29 +16,6 @@ export function INTERNAL_setAllEnv(newEnv: Readonly<Record<string, string>>) {
 
 export function getEnv(key: string): string | undefined {
   return (globalThis as any).__WAKU_SERVER_ENV__?.[key];
-}
-
-/**
- * This is an internal function and not for public use.
- */
-export function INTERNAL_iterateSerializablePlatformData(): Iterable<
-  [string, unknown]
-> {
-  const platformData: Record<string, [unknown, boolean]> = ((
-    globalThis as any
-  ).__WAKU_SERVER_PLATFORM_DATA__ ||= {});
-  return Object.entries(platformData).flatMap(([key, [data, serializable]]) =>
-    serializable ? [[key, data]] : [],
-  );
-}
-
-/**
- * This is an internal function and not for public use.
- */
-export function INTERNAL_setPlatformDataLoader(
-  loader: (key: string) => Promise<unknown>,
-): void {
-  (globalThis as any).__WAKU_SERVER_PLATFORM_DATA_LOADER__ = loader;
 }
 
 export async function unstable_setPlatformData<T>(

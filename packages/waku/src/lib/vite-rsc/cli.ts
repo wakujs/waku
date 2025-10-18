@@ -95,7 +95,7 @@ export async function cli(
       return new Promise<void>((resolve, reject) => {
         const server = serve(
           {
-            fetch: entry.default,
+            fetch: entry.fetch,
             ...(host ? { hostname: host } : {}),
             port,
           },

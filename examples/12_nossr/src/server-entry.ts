@@ -3,10 +3,7 @@
 import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import { unstable_fsRouter as fsRouter } from 'waku/router/server';
 
-const router = fsRouter(
-  import.meta.glob('/src/pages/**/*.tsx', { base: '/src/pages' }),
-  { apiDir: 'api', slicesDir: '_slices' },
-);
+const router = fsRouter(import.meta.glob('./**/*.tsx', { base: './pages' }));
 
 export default defineServer({
   handleRequest: async (input, utils) => {
