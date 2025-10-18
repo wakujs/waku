@@ -5,9 +5,9 @@ export const getManagedServerEntry = (config: { srcDir: string }) => {
   const globPattern = `${globBase}/**/*.{${EXTENSIONS.map((ext) => ext.slice(1)).join(',')}}`;
   return `
 import { unstable_fsRouter as fsRouter } from 'waku/router/server';
-import { nodeAdapter } from 'waku/adapters/node';
+import { managedAdapter } from 'waku/adapters/managed';
 
-export default nodeAdapter(fsRouter(
+export default managedAdapter(fsRouter(
   import.meta.glob(
     ${JSON.stringify(globPattern)},
     { base: ${JSON.stringify(globBase)} }
