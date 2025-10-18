@@ -36,6 +36,7 @@ export const createTaskRunner = (limit = WRITE_FILE_BATCH_SIZE) => {
   return { runTask, waitForTasks };
 };
 
+// FIXME Not happy with this hack. There should be a better way.
 const DO_NOT_BUNDLE = '';
 
 export const emitFileInTask = async (
