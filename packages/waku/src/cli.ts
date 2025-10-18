@@ -55,7 +55,7 @@ const { values, positionals } = parseArgs({
 
 const cmd = positionals[0];
 
-async function run()  {
+async function run() {
   if (values.version) {
     const { version } = require('../package.json');
     console.log(version);
