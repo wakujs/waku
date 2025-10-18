@@ -6,6 +6,7 @@ function buildMode(): PluginOption {
   return {
     name: 'build-mode',
     load() {
+      // FIXME this hack seems fragile.
       (globalThis as any).__WAKU_IS_BUILD__ = this.environment.mode === 'build';
     },
   };
