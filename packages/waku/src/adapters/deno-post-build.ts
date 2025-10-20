@@ -13,7 +13,6 @@ export default async function postBuild({
 import { Hono } from 'jsr:@hono/hono';
 import { serveStatic } from 'jsr:@hono/hono/deno';
 
-const env = Deno.env.toObject();
 globalThis.__WAKU_DENO_ADAPTER_HONO__ = Hono;
 globalThis.__WAKU_DENO_ADAPTER_SERVE_STATIC__ = serveStatic;
 globalThis.__WAKU_DENO_ADAPTER_NOT_FOUND_FN__ = async (c) => {
@@ -28,9 +27,10 @@ globalThis.__WAKU_DENO_ADAPTER_NOT_FOUND_FN__ = async (c) => {
   return c.text('404 Not Found', 404);
 };
 
-import('./server/index.js').then(({ INTERNAL_runFetch }) => {
-  Deno.serve((req, ...args) => INTERNAL_runFetch(env, req, ...args));
-});
+const { INTERNAL_runFetch } = await import('./server/index.js');
+
+const env = Deno.env.toObject();
+Deno.serve((req, ...args) => INTERNAL_runFetch(env, req, ...args));
 `;
   writeFileSync(path.join(distDir, SERVE_JS), serveCode);
 }
