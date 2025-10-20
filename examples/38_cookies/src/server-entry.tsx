@@ -1,13 +1,13 @@
 import fsPromises from 'node:fs/promises';
 import { contextStorage, getContext } from 'hono/context-storage';
-import { nodeAdapter } from 'waku/adapters/node';
+import adapter from 'waku/adapters/default';
 import { Slot } from 'waku/minimal/client';
 import { unstable_getContextData as getContextData } from 'waku/server';
 import App from './components/App';
 import cookieMiddleware from './middleware/cookie';
 import noopMiddleware from './middleware/noop';
 
-export default nodeAdapter(
+export default adapter(
   {
     handleRequest: async (input, { renderRsc, renderHtml }) => {
       const data = getContextData() as { count?: number };

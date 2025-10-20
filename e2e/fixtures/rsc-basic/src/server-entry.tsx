@@ -1,7 +1,7 @@
-import { nodeAdapter } from 'waku/adapters/node';
+import adapter from 'waku/adapters/default';
 import App from './components/App.js';
 
-export default nodeAdapter({
+export default adapter({
   handleRequest: async (input, { renderRsc }) => {
     if (input.type === 'component') {
       return renderRsc({

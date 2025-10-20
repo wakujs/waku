@@ -13,7 +13,7 @@ import {
 const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
-export const awsLambdaAdapter = createServerEntryAdapter(
+export default createServerEntryAdapter(
   (
     { processRequest, processBuild, config, isBuild },
     options?: {

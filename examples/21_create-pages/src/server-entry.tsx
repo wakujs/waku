@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { createPages } from 'waku';
-import { nodeAdapter } from 'waku/adapters/node';
+import adapter from 'waku/adapters/default';
 import type { PathsForPages } from 'waku/router';
 import BarPage from './components/BarPage';
 import { DeeplyNestedLayout } from './components/DeeplyNestedLayout';
@@ -189,4 +189,4 @@ declare module 'waku/router' {
   }
 }
 
-export default nodeAdapter(pages);
+export default adapter(pages);

@@ -12,7 +12,7 @@ import {
 const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
-export const nodeAdapter = createServerEntryAdapter(
+export default createServerEntryAdapter(
   (
     { processRequest, processBuild, config, isBuild },
     options?: {

@@ -11,7 +11,7 @@ import {
 const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
-export const denoAdapter = createServerEntryAdapter(
+export default createServerEntryAdapter(
   (
     { processRequest, processBuild, config },
     options?: {

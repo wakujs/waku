@@ -9,7 +9,7 @@ import {
 const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
-export const netlifyAdapter = createServerEntryAdapter(
+export default createServerEntryAdapter(
   (
     { processRequest, processBuild, config },
     options?: {
