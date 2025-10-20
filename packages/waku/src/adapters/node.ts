@@ -42,7 +42,9 @@ export const nodeAdapter = createServerEntryAdapter(
     }
     app.use(middlewareRunner(middlewareModules));
     app.use(rscMiddleware({ processRequest }));
-    app.use(notFoundMiddleware(config));
+    if (isBuild) {
+      app.use(notFoundMiddleware(config));
+    }
     return {
       fetch: app.fetch,
       build: processBuild,
