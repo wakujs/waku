@@ -36,16 +36,14 @@ export default nodeAdapter({
     generateFile,
     generateDefaultHtml,
   }) => {
-    await generateFile(
-      rscPath2pathname(''),
+    await generateFile(rscPath2pathname(''), () =>
       renderRsc({
         App: <App name="Waku" />,
         InnerApp: <InnerApp count={0} />,
       }),
     );
     for (const count of [1, 2, 3, 4, 5]) {
-      await generateFile(
-        rscPath2pathname(`InnerApp=${count}`),
+      await generateFile(rscPath2pathname(`InnerApp=${count}`), () =>
         renderRsc({ App: <App name="Waku" /> }),
       );
     }

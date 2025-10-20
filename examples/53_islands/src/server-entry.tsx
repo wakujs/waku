@@ -34,12 +34,10 @@ export default nodeAdapter({
     rscPath2pathname,
     generateFile,
   }) => {
-    await generateFile(
-      rscPath2pathname(''),
+    await generateFile(rscPath2pathname(''), () =>
       renderRsc({ App: <App name="Waku" /> }),
     );
-    await generateFile(
-      '/',
+    await generateFile('/', () =>
       renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
         rscPath: '',
       }).then((res) => res.body || ''),

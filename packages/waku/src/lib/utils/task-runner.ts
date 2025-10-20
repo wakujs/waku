@@ -20,9 +20,6 @@ export const createTaskRunner = (limit = WRITE_FILE_BATCH_SIZE) => {
       waiting.shift()?.();
     }
   };
-  const runTask = (task: () => Promise<void>) => {
-    scheduleTask(task).catch(() => {});
-  };
   const waitForTasks = async () => {
     if (running > 0) {
       await new Promise<void>((resolve) => waiting.push(resolve));
@@ -33,17 +30,17 @@ export const createTaskRunner = (limit = WRITE_FILE_BATCH_SIZE) => {
       throw errors[0];
     }
   };
-  return { runTask, waitForTasks };
+  return { scheduleTask, waitForTasks };
 };
 
 // FIXME Not happy with this hack. There should be a better way.
 const DO_NOT_BUNDLE = '';
 
 export const emitFileInTask = async (
-  runTask: (task: () => Promise<void>) => void,
+  scheduleTask: (task: () => Promise<void>) => Promise<void>,
   rootDir: string,
   filePath: string,
-  bodyPromise: Promise<ReadableStream | string>,
+  renderBody: () => Promise<ReadableStream | string>,
 ) => {
   const [
     { Readable },
@@ -64,9 +61,9 @@ export const emitFileInTask = async (
   if (existsSync(destFile)) {
     return;
   }
-  runTask(async () => {
+  await scheduleTask(async () => {
     await mkdir(joinPath(destFile, '..'), { recursive: true });
-    const body = await bodyPromise;
+    const body = await renderBody();
     if (typeof body === 'string') {
       await writeFile(destFile, body);
     } else {
