@@ -64,8 +64,6 @@ export type Unstable_CreateServerEntryAdapter = <Options>(
     args: {
       processRequest: Unstable_ProcessRequest;
       processBuild: Unstable_ProcessBuild;
-      // TODO let's look for a better way later
-      setAllEnv: (env: Readonly<Record<string, string>>) => void;
       config: Omit<Required<Config>, 'vite'>;
       isBuild: boolean;
     },

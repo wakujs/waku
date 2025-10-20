@@ -11,10 +11,12 @@ import {
 
 const { DIST_PUBLIC, DIST_ASSETS } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
+(global as any).__WAKU_HONO_NODE_SERVER_GET_REQUEST_LISTENER__ =
+  getRequestListener;
 
 export const vercelAdapter = createServerEntryAdapter(
   (
-    { processRequest, processBuild, setAllEnv, config },
+    { processRequest, processBuild, config },
     options?: {
       static?: boolean;
       middlewareFns?: (() => MiddlewareHandler)[];
@@ -27,7 +29,6 @@ export const vercelAdapter = createServerEntryAdapter(
     },
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
-    setAllEnv(process.env as any);
     const app = new Hono();
     app.use(contextMiddleware());
     for (const middlewareFn of middlewareFns) {
@@ -57,7 +58,6 @@ export const vercelAdapter = createServerEntryAdapter(
       fetch: app.fetch,
       build: processBuild,
       postBuild: ['waku/adapters/vercel-post-build', postBuildArg],
-      listener: getRequestListener(app.fetch),
     };
   },
 );

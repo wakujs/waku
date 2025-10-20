@@ -12,13 +12,10 @@ export default async function postBuild({
 }) {
   const SERVE_JS = 'serve-cloudflare.js';
   const serveCode = `
-import { serverEntry, runFetch } from './server/index.js';
+import { INTERNAL_runFetch } from './server/index.js';
 
 export default {
-  fetch: (request, env, ctx) => {
-    serverEntry.setAllEnv(env);
-    return runFetch(request, env, ctx);
-  },
+  fetch: (request, env, ctx) => INTERNAL_runFetch(env, request, env, ctx),
 };
 `;
   const outDir = path.resolve(distDir);

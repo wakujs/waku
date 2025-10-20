@@ -14,7 +14,6 @@ import {
   normalizePath,
 } from 'vite';
 import type { Config } from '../../config.js';
-import { INTERNAL_setAllEnv } from '../../server.js';
 import {
   DIST_PUBLIC,
   SRC_CLIENT_ENTRY,
@@ -206,7 +205,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
         privatePath = joinPath(viteConfig.root, config.privateDir);
       },
       async configureServer(server) {
-        INTERNAL_setAllEnv(process.env as any);
         const { getRequestListener } = await import('@hono/node-server');
         const environment = server.environments.rsc! as RunnableDevEnvironment;
         const entryId = (environment.config.build.rollupOptions.input as any)
@@ -218,7 +216,9 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
               req.url = req.originalUrl;
               const mod: typeof import('../vite-entries/entry.server.js') =
                 await environment.runner.import(entryId);
-              await getRequestListener(mod.runFetch)(req, res);
+              await getRequestListener((req, ...args) =>
+                mod.INTERNAL_runFetch(process.env as any, req, ...args),
+              )(req, res);
             } catch (e) {
               next(e);
             }
@@ -340,7 +340,7 @@ if (import.meta.hot) {
           );
           const entry: typeof import('../vite-entries/entry.build.js') =
             await import(pathToFileURL(entryPath).href);
-          await entry.runBuild({ savePlatformData });
+          await entry.INTERNAL_runBuild({ savePlatformData });
         },
       },
     },

@@ -14,7 +14,7 @@ const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 export const nodeAdapter = createServerEntryAdapter(
   (
-    { processRequest, processBuild, setAllEnv, config, isBuild },
+    { processRequest, processBuild, config, isBuild },
     options?: {
       middlewareFns?: (() => MiddlewareHandler)[];
       middlewareModules?: Record<
@@ -26,7 +26,6 @@ export const nodeAdapter = createServerEntryAdapter(
     },
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
-    setAllEnv(process.env as any);
     const app = new Hono();
     if (isBuild) {
       app.use(

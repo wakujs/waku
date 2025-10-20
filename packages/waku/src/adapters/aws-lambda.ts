@@ -15,7 +15,7 @@ const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 export const awsLambdaAdapter = createServerEntryAdapter(
   (
-    { processRequest, processBuild, setAllEnv, config, isBuild },
+    { processRequest, processBuild, config, isBuild },
     options?: {
       streaming?: boolean;
       middlewareFns?: (() => MiddlewareHandler)[];
@@ -28,7 +28,6 @@ export const awsLambdaAdapter = createServerEntryAdapter(
     },
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
-    setAllEnv(process.env as any);
     const app = new Hono();
     if (isBuild) {
       app.use(serveStatic({ root: path.join(config.distDir, DIST_PUBLIC) }));
@@ -51,13 +50,13 @@ export const awsLambdaAdapter = createServerEntryAdapter(
     >[0] = {
       distDir: config.distDir,
     };
+    (globalThis as any).__WAKU_AWS_LAMBDA_HANDLE__ = options?.streaming
+      ? honoAwsLambda.streamHandle
+      : honoAwsLambda.handle;
     return {
       fetch: app.fetch,
       build: processBuild,
       postBuild: ['waku/adapters/aws-lambda-post-build', postBuildArg],
-      handler: options?.streaming
-        ? honoAwsLambda.streamHandle(app)
-        : honoAwsLambda.handle(app),
     };
   },
 );

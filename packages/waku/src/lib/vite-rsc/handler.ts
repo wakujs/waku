@@ -7,7 +7,6 @@ import {
   renderToReadableStream,
 } from '@vitejs/plugin-rsc/rsc';
 import { config, isBuild, rootDir } from 'virtual:vite-rsc-waku/config';
-import { INTERNAL_setAllEnv } from '../../server.js';
 import { DIST_PUBLIC } from '../constants.js';
 import type {
   Unstable_CreateServerEntryAdapter as CreateServerEntryAdapter,
@@ -156,7 +155,6 @@ export const createServerEntryAdapter: CreateServerEntryAdapter =
       {
         processRequest,
         processBuild,
-        setAllEnv: INTERNAL_setAllEnv,
         config,
         isBuild,
       },

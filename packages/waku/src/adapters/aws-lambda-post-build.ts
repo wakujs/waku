@@ -4,9 +4,13 @@ import path from 'node:path';
 export default async function postBuild({ distDir }: { distDir: string }) {
   const SERVE_JS = 'serve-aws-lambda.js';
   const serveCode = `
-import { serverEntry } from './server/index.js';
+import { INTERNAL_runFetch } from './server/index.js';
 
-export const handler = serverEntry.handler;
+const handle = globalThis.__WAKU_AWS_LAMBDA_HANDLE__;
+
+export const handler = handle({
+  fetch: (req, ...args) => INTERNAL_runFetch(process.env, req, ...args),
+});
 `;
   writeFileSync(path.join(distDir, SERVE_JS), serveCode);
   writeFileSync(

@@ -11,7 +11,7 @@ const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 export const cloudflareAdapter = createServerEntryAdapter(
   (
-    { processRequest, processBuild, setAllEnv, config },
+    { processRequest, processBuild, config },
     options?: {
       middlewareFns?: (() => MiddlewareHandler)[];
       middlewareModules?: Record<
@@ -55,7 +55,6 @@ export const cloudflareAdapter = createServerEntryAdapter(
       fetch: app.fetch,
       build: processBuild,
       postBuild: ['waku/adapters/cloudflare-post-build', postBuildArg],
-      setAllEnv,
     };
   },
 );

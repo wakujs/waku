@@ -13,7 +13,7 @@ const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 export const denoAdapter = createServerEntryAdapter(
   (
-    { processRequest, processBuild, setAllEnv, config },
+    { processRequest, processBuild, config },
     options?: {
       middlewareFns?: (() => MiddlewareHandler)[];
       middlewareModules?: Record<
@@ -26,14 +26,10 @@ export const denoAdapter = createServerEntryAdapter(
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
     const {
-      __WAKU_DENO_ADAPTER_ENV__: denoEnv,
       __WAKU_DENO_ADAPTER_HONO__: Hono = HonoForDevAndBuild,
       __WAKU_DENO_ADAPTER_SERVE_STATIC__: serveStatic,
       __WAKU_DENO_ADAPTER_NOT_FOUND_FN__: notFoundFn,
     } = globalThis as any;
-    if (denoEnv) {
-      setAllEnv(denoEnv);
-    }
     const app = new Hono();
     if (serveStatic) {
       app.use(serveStatic({ root: path.join(config.distDir, DIST_PUBLIC) }));

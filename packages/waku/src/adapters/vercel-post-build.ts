@@ -20,9 +20,13 @@ export default async function postBuild({
 }) {
   const SERVE_JS = 'serve-vercel.js';
   const serveCode = `
-import { serverEntry } from './server/index.js';
+import { INTERNAL_runFetch } from './server/index.js';
 
-export default serverEntry.listener;
+const getRequestListener = globalThis.__WAKU_HONO_NODE_SERVER_GET_REQUEST_LISTENER__;
+
+export default getRequestListener(
+  (req, ...args) => INTERNAL_runFetch(process.env, req, ...args)
+);
 `;
   const publicDir = path.resolve(distDir, DIST_PUBLIC);
   const outputDir = path.resolve('.vercel', 'output');

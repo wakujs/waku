@@ -11,7 +11,7 @@ const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 export const netlifyAdapter = createServerEntryAdapter(
   (
-    { processRequest, processBuild, setAllEnv, config },
+    { processRequest, processBuild, config },
     options?: {
       static?: boolean;
       middlewareFns?: (() => MiddlewareHandler)[];
@@ -24,7 +24,6 @@ export const netlifyAdapter = createServerEntryAdapter(
     },
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
-    setAllEnv(process.env as any);
     const app = new Hono();
     app.use(contextMiddleware());
     for (const middlewareFn of middlewareFns) {

@@ -3,7 +3,6 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as vite from 'vite';
 import type { Config } from '../../config.js';
-import { INTERNAL_setAllEnv } from '../../server.js';
 import { rscPlugin } from './plugin.js';
 import type { Flags, RscPluginOptions } from './plugin.js';
 
@@ -93,11 +92,11 @@ export async function cli(
       );
     await startServer(host, port);
     function startServer(host: string | undefined, port: number) {
-      INTERNAL_setAllEnv(process.env as any);
       return new Promise<void>((resolve, reject) => {
         const server = serve(
           {
-            fetch: entry.runFetch,
+            fetch: (req, ...args) =>
+              entry.INTERNAL_runFetch(process.env as any, req, ...args),
             ...(host ? { hostname: host } : {}),
             port,
           },
