@@ -20,9 +20,8 @@ export default async function postBuild({
 }) {
   const SERVE_JS = 'serve-vercel.js';
   const serveCode = `
+import { getRequestListener } from '@hono/node-server';
 import { INTERNAL_runFetch } from './server/index.js';
-
-const getRequestListener = globalThis.__WAKU_HONO_NODE_SERVER_GET_REQUEST_LISTENER__;
 
 export default getRequestListener(
   (req, ...args) => INTERNAL_runFetch(process.env, req, ...args)

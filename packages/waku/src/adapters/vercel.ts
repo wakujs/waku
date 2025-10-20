@@ -1,6 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { getRequestListener } from '@hono/node-server';
 import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
 import {
@@ -11,8 +10,6 @@ import {
 
 const { DIST_PUBLIC, DIST_ASSETS } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
-(global as any).__WAKU_HONO_NODE_SERVER_GET_REQUEST_LISTENER__ =
-  getRequestListener;
 
 export const vercelAdapter = createServerEntryAdapter(
   (
