@@ -43,6 +43,7 @@ export type Unstable_HandleBuild = (utils: {
     body: Promise<ReadableStream | string>,
   ) => Promise<void>;
   generateDefaultHtml: (pathname: string) => Promise<void>;
+  emitBuildMetadata: (key: string, value: any) => void;
 }) => Promise<void>;
 
 export type Unstable_CreateAppArgs = {

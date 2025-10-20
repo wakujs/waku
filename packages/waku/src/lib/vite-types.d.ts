@@ -8,7 +8,9 @@ declare module 'virtual:vite-rsc-waku/server-entry' {
 
 declare module 'virtual:vite-rsc-waku/client-entry' {}
 
-declare module 'virtual:vite-rsc-waku/set-platform-data' {}
+declare module 'virtual:vite-rsc-waku/set-platform-data' {
+  export const buildMetadata: Record<string, any>;
+}
 
 declare module 'virtual:vite-rsc-waku/config' {
   export const flags: import('./vite-rsc/plugin.ts').Flags;

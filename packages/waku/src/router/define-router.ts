@@ -21,6 +21,7 @@ import {
   encodeRoutePath,
   encodeSliceId,
 } from './common.js';
+import { buildMetadata } from 'virtual:vite-rsc-waku/set-platform-data'
 
 const isStringArray = (x: unknown): x is string[] =>
   Array.isArray(x) && x.every((y) => typeof y === 'string');
@@ -212,7 +213,8 @@ export function unstable_defineRouter(fns: {
   )[];
   let cachedMyConfig: MyConfig | undefined;
   const getMyConfig = async (): Promise<MyConfig> => {
-    const myConfig = await unstable_getPlatformData('defineRouterMyConfig');
+    // const myConfig = await unstable_getPlatformData('defineRouterMyConfig');
+    const myConfig = buildMetadata['defineRouterMyConfig'];
     if (myConfig) {
       return myConfig as MyConfig;
     }
@@ -533,6 +535,7 @@ export function unstable_defineRouter(fns: {
     rscPath2pathname,
     generateFile,
     generateDefaultHtml,
+    emitBuildMetadata,
   }) => {
     const myConfig = await getMyConfig();
 
@@ -629,7 +632,8 @@ export function unstable_defineRouter(fns: {
       }),
     );
 
-    await unstable_setPlatformData('defineRouterMyConfig', myConfig, true);
+    // await unstable_setPlatformData('defineRouterMyConfig', myConfig, true);
+    emitBuildMetadata('defineRouterMyConfig', myConfig);
   };
 
   return defineServer({ handleRequest, handleBuild });

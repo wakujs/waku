@@ -329,6 +329,11 @@ if (import.meta.hot) {
               '__waku_set_platform_data.js',
             ),
           );
+          this.emitFile({
+            type: 'asset',
+            fileName: '__waku_set_platform_data.js',
+            source: `export const buildMetadata = {};\n`,
+          })
           return code.replaceAll(
             'virtual:vite-rsc-waku/set-platform-data',
             () => replacement,
@@ -351,11 +356,15 @@ if (import.meta.hot) {
           // run `handleBuild`
           INTERNAL_setAllEnv(process.env as any);
           unstable_getBuildOptions().unstable_phase = 'emitStaticFiles';
-          await entry.processBuild(viteConfig, config, emitFileInTask);
+          const buildMetadata: Record<string, any> = {};
+          function emitBuildMetadata(key: string, value: any) {
+            buildMetadata[key] = value;
+          }
+          await entry.processBuild(viteConfig, config, emitFileInTask, emitBuildMetadata);
           await waitForTasks();
 
           // save platform data
-          const platformDataCode = `globalThis.__WAKU_SERVER_PLATFORM_DATA__ = ${JSON.stringify((globalThis as any).__WAKU_SERVER_PLATFORM_DATA__ ?? {}, null, 2)}\n`;
+          const platformDataCode = `export const buildMetadata = ${JSON.stringify(buildMetadata, null, 2)};`;
           const platformDataFile = path.join(
             builder.config.environments.rsc!.build.outDir,
             '__waku_set_platform_data.js',
