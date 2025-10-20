@@ -15,6 +15,7 @@ export async function processBuild(
     filePath: string,
     bodyPromise: Promise<ReadableStream | string>,
   ) => void,
+  emitBuildMetadata: (key: string, value: any) => void,
 ) {
   const renderUtils = createRenderUtils(
     undefined,
@@ -63,6 +64,7 @@ export async function processBuild(
       );
       emitFileInTask(viteConfig.root, filePath, getFallbackHtml());
     },
+    emitBuildMetadata,
   });
 }
 
