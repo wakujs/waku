@@ -1,9 +1,7 @@
-import netlifyAdapter from './netlify.js';
-import nodeAdapter from './node.js';
-import vercelAdapter from './vercel.js';
-
-export default process.env.VERCEL
-  ? vercelAdapter
+const adapterModule = process.env.VERCEL
+  ? 'waku/adapters/vercel'
   : process.env.NETLIFY
-    ? netlifyAdapter
-    : nodeAdapter;
+    ? 'waku/adapters/netlify'
+    : 'waku/adapters/node';
+
+export default (await import(adapterModule)).default;
