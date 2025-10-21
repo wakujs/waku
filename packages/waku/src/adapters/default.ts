@@ -1,13 +1,9 @@
 import type { Unstable_CreateServerEntryAdapter as CreateServerEntryAdapter } from '../lib/types.js';
-
-const adapterModule = process.env.VERCEL
-  ? 'waku/adapters/vercel'
-  : process.env.NETLIFY
-    ? 'waku/adapters/netlify'
-    : 'waku/adapters/node';
+// HACK relying on vite is only for this adapter
+import { getConfigAdapter } from '../lib/vite-rsc/handler.js';
 
 const adapter: ReturnType<CreateServerEntryAdapter> = (
-  await import(adapterModule)
+  await import(getConfigAdapter())
 ).default;
 
 export default adapter;

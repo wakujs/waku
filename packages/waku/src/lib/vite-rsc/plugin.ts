@@ -47,6 +47,11 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
     distDir: 'dist',
     privateDir: 'private',
     rscBase: 'RSC',
+    adapter: process.env.VERCEL
+      ? 'waku/adapters/vercel'
+      : process.env.NETLIFY
+        ? 'waku/adapters/netlify'
+        : 'waku/adapters/node',
     vite: undefined,
     ...rscPluginOptions?.config,
   };
@@ -267,7 +272,7 @@ if (import.meta.hot) {
         }
       },
     },
-    createVirtualPlugin(config),
+    createVirtualConfigPlugin(config),
     {
       // rewrite `react-server-dom-webpack` in `waku/minimal/client`
       name: 'rsc:waku:patch-webpack',
@@ -452,7 +457,7 @@ function normalizeRelativePath(s: string) {
   return s[0] === '.' ? s : './' + s;
 }
 
-function createVirtualPlugin(config: Required<Config>) {
+function createVirtualConfigPlugin(config: Required<Config>) {
   const name = 'virtual:vite-rsc-waku/config';
   let rootDir: string;
   return {
