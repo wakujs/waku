@@ -40,9 +40,7 @@ test.describe(`create-pages`, () => {
 
   test('dynamic', async ({ page }) => {
     await page.goto(`http://localhost:${port}/dynamic`);
-    await expect(page.getByRole('navigation')).toHaveText(
-      'Current path: /dynamic',
-    );
+    await expect(page.getByRole('navigation')).toHaveText('Dynamic Layout');
     await expect(
       page.getByRole('heading', { name: 'Dynamic Page' }),
     ).toBeVisible();
