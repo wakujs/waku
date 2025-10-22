@@ -107,7 +107,11 @@ const toProcessBuild =
       return fallbackHtml;
     };
 
-    const { scheduleTask, waitForTasks } = createTaskRunner();
+    const RENDER_BATCH_SIZE = 2500;
+    const WRITE_BATCH_SIZE = 16;
+
+    const renderRunner = createTaskRunner(RENDER_BATCH_SIZE);
+    const writeRunner = createTaskRunner(WRITE_BATCH_SIZE);
 
     await handleBuild({
       renderRsc: renderUtils.renderRsc,
@@ -127,7 +131,13 @@ const toProcessBuild =
               ? '404.html' // HACK special treatment for 404, better way?
               : pathname + '/index.html',
         );
-        await emitFileInTask(scheduleTask, rootDir, filePath, renderBody);
+        await emitFileInTask(
+          renderRunner.scheduleTask,
+          writeRunner.scheduleTask,
+          rootDir,
+          filePath,
+          renderBody,
+        );
       },
       generateDefaultHtml: async (pathname: string) => {
         const filePath = joinPath(
@@ -139,11 +149,18 @@ const toProcessBuild =
               ? '404.html' // HACK special treatment for 404, better way?
               : pathname + '/index.html',
         );
-        await emitFileInTask(scheduleTask, rootDir, filePath, getFallbackHtml);
+        await emitFileInTask(
+          renderRunner.scheduleTask,
+          writeRunner.scheduleTask,
+          rootDir,
+          filePath,
+          getFallbackHtml,
+        );
       },
     });
 
-    await waitForTasks();
+    await renderRunner.waitForTasks();
+    await writeRunner.waitForTasks();
   };
 
 export const createServerEntryAdapter: CreateServerEntryAdapter =

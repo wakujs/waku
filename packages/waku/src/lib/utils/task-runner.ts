@@ -1,8 +1,6 @@
 import { joinPath } from './path.js';
 
-const WRITE_FILE_BATCH_SIZE = 2500;
-
-export const createTaskRunner = (limit = WRITE_FILE_BATCH_SIZE) => {
+export const createTaskRunner = (limit: number) => {
   let running = 0;
   const waiting: (() => void)[] = [];
   const errors: unknown[] = [];
@@ -37,7 +35,8 @@ export const createTaskRunner = (limit = WRITE_FILE_BATCH_SIZE) => {
 const DO_NOT_BUNDLE = '';
 
 export const emitFileInTask = async (
-  scheduleTask: (task: () => Promise<void>) => Promise<void>,
+  scheduleTaskForRender: (task: () => Promise<void>) => Promise<void>,
+  scheduleTaskForWrite: (task: () => Promise<void>) => Promise<void>,
   rootDir: string,
   filePath: string,
   renderBody: () => Promise<ReadableStream | string>,
@@ -61,16 +60,18 @@ export const emitFileInTask = async (
   if (existsSync(destFile)) {
     return;
   }
-  await scheduleTask(async () => {
-    await mkdir(joinPath(destFile, '..'), { recursive: true });
+  await scheduleTaskForRender(async () => {
     const body = await renderBody();
-    if (typeof body === 'string') {
-      await writeFile(destFile, body);
-    } else {
-      await pipeline(
-        Readable.fromWeb(body as never),
-        createWriteStream(destFile),
-      );
-    }
+    await scheduleTaskForWrite(async () => {
+      await mkdir(joinPath(destFile, '..'), { recursive: true });
+      if (typeof body === 'string') {
+        await writeFile(destFile, body);
+      } else {
+        await pipeline(
+          Readable.fromWeb(body as never),
+          createWriteStream(destFile),
+        );
+      }
+    });
   });
 };
