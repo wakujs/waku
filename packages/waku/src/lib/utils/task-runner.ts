@@ -1,8 +1,6 @@
 import { joinPath } from './path.js';
 
-const WRITE_FILE_BATCH_SIZE = 2500;
-
-export const createTaskRunner = (limit = WRITE_FILE_BATCH_SIZE) => {
+export const createTaskRunner = (limit: number) => {
   let running = 0;
   const waiting: (() => void)[] = [];
   const errors: unknown[] = [];
@@ -11,17 +9,14 @@ export const createTaskRunner = (limit = WRITE_FILE_BATCH_SIZE) => {
       await new Promise<void>((resolve) => waiting.push(resolve));
     }
     running++;
-    try {
-      await task();
-    } catch (err) {
-      errors.push(err);
-    } finally {
-      running--;
-      waiting.shift()?.();
-    }
-  };
-  const runTask = (task: () => Promise<void>) => {
-    scheduleTask(task).catch(() => {});
+    task()
+      .catch((err) => {
+        errors.push(err);
+      })
+      .finally(() => {
+        running--;
+        waiting.shift()?.();
+      });
   };
   const waitForTasks = async () => {
     if (running > 0) {
@@ -33,17 +28,18 @@ export const createTaskRunner = (limit = WRITE_FILE_BATCH_SIZE) => {
       throw errors[0];
     }
   };
-  return { runTask, waitForTasks };
+  return { scheduleTask, waitForTasks };
 };
 
 // FIXME Not happy with this hack. There should be a better way.
 const DO_NOT_BUNDLE = '';
 
 export const emitFileInTask = async (
-  runTask: (task: () => Promise<void>) => void,
+  scheduleTaskForRender: (task: () => Promise<void>) => Promise<void>,
+  scheduleTaskForWrite: (task: () => Promise<void>) => Promise<void>,
   rootDir: string,
   filePath: string,
-  bodyPromise: Promise<ReadableStream | string>,
+  renderBody: () => Promise<ReadableStream | string>,
 ) => {
   const [
     { Readable },
@@ -64,16 +60,18 @@ export const emitFileInTask = async (
   if (existsSync(destFile)) {
     return;
   }
-  runTask(async () => {
-    await mkdir(joinPath(destFile, '..'), { recursive: true });
-    const body = await bodyPromise;
-    if (typeof body === 'string') {
-      await writeFile(destFile, body);
-    } else {
-      await pipeline(
-        Readable.fromWeb(body as never),
-        createWriteStream(destFile),
-      );
-    }
+  await scheduleTaskForRender(async () => {
+    const body = await renderBody();
+    await scheduleTaskForWrite(async () => {
+      await mkdir(joinPath(destFile, '..'), { recursive: true });
+      if (typeof body === 'string') {
+        await writeFile(destFile, body);
+      } else {
+        await pipeline(
+          Readable.fromWeb(body as never),
+          createWriteStream(destFile),
+        );
+      }
+    });
   });
 };

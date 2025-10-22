@@ -545,8 +545,7 @@ export function unstable_defineRouter(fns: {
         handleApi
       ) {
         const pathname = item.pathname;
-        await generateFile(
-          pathname,
+        await generateFile(pathname, () =>
           handleApi(
             new Request(new URL(pathname, 'http://localhost:3000')),
           ).then((res) => res.body || stringToStream('')),
@@ -569,7 +568,9 @@ export function unstable_defineRouter(fns: {
         if (entries) {
           entriesCache.set(item.pathname, entries);
           if (item.specs.isStatic) {
-            await generateFile(rscPath2pathname(rscPath), renderRsc(entries));
+            await generateFile(rscPath2pathname(rscPath), () =>
+              renderRsc(entries),
+            );
           }
         }
       }),
@@ -593,8 +594,7 @@ export function unstable_defineRouter(fns: {
             route: { path: pathname, query: '', hash: '' },
             httpstatus: specs.is404 ? 404 : 200,
           });
-          await generateFile(
-            pathname,
+          await generateFile(pathname, () =>
             renderHtml(entries, html, {
               rscPath,
             }).then((res) => res.body || ''),
@@ -615,17 +615,18 @@ export function unstable_defineRouter(fns: {
           return;
         }
         const { element } = await fns.handleSlice(item.id);
-        const body = renderRsc({
-          [SLICE_SLOT_ID_PREFIX + item.id]: element,
-          ...(item.specs.isStatic
-            ? {
-                // FIXME: hard-coded for now
-                [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + item.id]: true,
-              }
-            : {}),
-        });
         const rscPath = encodeSliceId(item.id);
-        await generateFile(rscPath2pathname(rscPath), body);
+        await generateFile(rscPath2pathname(rscPath), () =>
+          renderRsc({
+            [SLICE_SLOT_ID_PREFIX + item.id]: element,
+            ...(item.specs.isStatic
+              ? {
+                  // FIXME: hard-coded for now
+                  [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + item.id]: true,
+                }
+              : {}),
+          }),
+        );
       }),
     );
 
