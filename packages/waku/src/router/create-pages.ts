@@ -11,7 +11,6 @@ import {
 import type { PathSpec } from '../lib/utils/path.js';
 import { Children, Slot } from '../minimal/client.js';
 import { ErrorBoundary } from '../router/client.js';
-import type { RouteProps } from './common.js';
 import type {
   AnyPage,
   GetSlugs,
@@ -175,9 +174,7 @@ export type CreateLayout = <Path extends string>(
     | {
         render: 'dynamic';
         path: Path;
-        component: FunctionComponent<
-          Pick<RouteProps, 'path'> & { children: ReactNode }
-        >;
+        component: FunctionComponent<{ children: ReactNode }>;
       }
     | {
         render: 'static';
@@ -836,15 +833,9 @@ export const createPages = <
           dynamicLayoutPathMap.get(segment)?.[1] ??
           staticComponentMap.get(joinPath(segment, 'layout').slice(1)); // feels like a hack
 
-        const isDynamic = dynamicLayoutPathMap.has(segment);
-
         if (layout && !Array.isArray(layout)) {
           const id = 'layout:' + segment;
-          result[id] = createElement(
-            layout,
-            isDynamic ? { path } : null,
-            createElement(Children),
-          );
+          result[id] = createElement(layout, null, createElement(Children));
         } else {
           throw new Error('Invalid layout ' + segment);
         }
