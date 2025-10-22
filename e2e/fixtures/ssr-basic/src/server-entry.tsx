@@ -1,9 +1,9 @@
+import adapter from 'waku/adapters/default';
 import { Slot } from 'waku/minimal/client';
-import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import App from './components/App.js';
 import TestApp from './components/test-app.js';
 
-const entries: ReturnType<typeof defineServer> = defineServer({
+export default adapter({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
       if (input.rscPath === 'test') {
@@ -30,5 +30,3 @@ const entries: ReturnType<typeof defineServer> = defineServer({
   },
   handleBuild: async () => {},
 });
-
-export default entries;

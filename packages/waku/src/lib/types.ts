@@ -45,23 +45,34 @@ export type Unstable_HandleBuild = (utils: {
   generateDefaultHtml: (pathname: string) => Promise<void>;
 }) => Promise<void>;
 
-export type Unstable_CreateAppArgs = {
-  processRequest: (req: Request) => Promise<Response | null>;
-  config: Omit<Required<Config>, 'vite'>;
-  isBuild: boolean;
-};
-
-export type Unstable_CreateApp = (
-  args: Unstable_CreateAppArgs,
-  baseApp?: unknown,
-) => {
-  fetch: (req: Request) => Response | Promise<Response>;
-};
-
 export type Unstable_ServerEntry = {
   default: {
-    handleRequest: Unstable_HandleRequest;
-    handleBuild: Unstable_HandleBuild;
-    createApp?: Unstable_CreateApp;
+    fetch: (req: Request, ...args: any[]) => Response | Promise<Response>;
+    build: () => Promise<void>;
+    postBuild?: [modulePath: string, ...args: unknown[]];
   };
 };
+
+export type Unstable_ProcessRequest = (
+  req: Request,
+) => Promise<Response | null>;
+
+export type Unstable_ProcessBuild = () => Promise<void>;
+
+export type Unstable_CreateServerEntryAdapter = <Options>(
+  fn: (
+    args: {
+      processRequest: Unstable_ProcessRequest;
+      processBuild: Unstable_ProcessBuild;
+      config: Omit<Required<Config>, 'vite'>;
+      isBuild: boolean;
+    },
+    options?: Options,
+  ) => Unstable_ServerEntry['default'],
+) => (
+  args: {
+    handleRequest: Unstable_HandleRequest;
+    handleBuild: Unstable_HandleBuild;
+  },
+  options?: Options,
+) => Unstable_ServerEntry['default'];

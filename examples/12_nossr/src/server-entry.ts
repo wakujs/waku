@@ -1,11 +1,11 @@
 /// <reference types="vite/client" />
 
-import { unstable_defineServer as defineServer } from 'waku/minimal/server';
+import adapter from 'waku/adapters/default';
 import { unstable_fsRouter as fsRouter } from 'waku/router/server';
 
 const router = fsRouter(import.meta.glob('./**/*.tsx', { base: './pages' }));
 
-export default defineServer({
+export default adapter({
   handleRequest: async (input, utils) => {
     if (input.type === 'custom') {
       return 'fallback'; // no ssr

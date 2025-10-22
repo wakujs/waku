@@ -1,7 +1,4 @@
-import {
-  unstable_getBuildOptions,
-  unstable_getPlatformData,
-} from 'waku/server';
+import { unstable_getPlatformData } from 'waku/server';
 
 export default async function Dynamic() {
   const platformData = await unstable_getPlatformData(
@@ -13,7 +10,7 @@ export default async function Dynamic() {
       <div>
         phase =
         <span data-testid="phase">
-          {String(!!unstable_getBuildOptions().unstable_phase)}
+          {String((globalThis as any).__WAKU_IS_BUILD__ === true)}
         </span>
       </div>
       <div>

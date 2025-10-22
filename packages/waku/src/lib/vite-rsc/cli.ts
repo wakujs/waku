@@ -95,7 +95,8 @@ export async function cli(
       return new Promise<void>((resolve, reject) => {
         const server = serve(
           {
-            fetch: entry.fetch,
+            fetch: (req, ...args) =>
+              entry.INTERNAL_runFetch(process.env as any, req, ...args),
             ...(host ? { hostname: host } : {}),
             port,
           },

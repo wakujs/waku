@@ -1,9 +1,9 @@
+import adapter from 'waku/adapters/default';
 import { Children, Slot } from 'waku/minimal/client';
-import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import App from './components/App';
 import Dynamic from './components/Dynamic';
 
-export default defineServer({
+export default adapter({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
       if (input.rscPath === '') {

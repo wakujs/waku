@@ -1,9 +1,8 @@
-import { Readable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
-import { createWriteStream, existsSync, mkdir, writeFile } from './node-fs.js';
 import { joinPath } from './path.js';
 
-const createTaskRunner = (limit: number) => {
+const WRITE_FILE_BATCH_SIZE = 2500;
+
+export const createTaskRunner = (limit = WRITE_FILE_BATCH_SIZE) => {
   let running = 0;
   const waiting: (() => void)[] = [];
   const errors: unknown[] = [];
@@ -36,16 +35,27 @@ const createTaskRunner = (limit: number) => {
   };
   return { runTask, waitForTasks };
 };
-const WRITE_FILE_BATCH_SIZE = 2500;
-const { runTask, waitForTasks } = createTaskRunner(WRITE_FILE_BATCH_SIZE);
 
-export { waitForTasks };
+// FIXME Not happy with this hack. There should be a better way.
+const DO_NOT_BUNDLE = '';
 
-export const emitFileInTask = (
+export const emitFileInTask = async (
+  runTask: (task: () => Promise<void>) => void,
   rootDir: string,
   filePath: string,
   bodyPromise: Promise<ReadableStream | string>,
 ) => {
+  const [
+    { Readable },
+    { pipeline },
+    { existsSync, createWriteStream },
+    { mkdir, writeFile },
+  ] = await Promise.all([
+    import(/* @vite-ignore */ DO_NOT_BUNDLE + 'node:stream'),
+    import(/* @vite-ignore */ DO_NOT_BUNDLE + 'node:stream/promises'),
+    import(/* @vite-ignore */ DO_NOT_BUNDLE + 'node:fs'),
+    import(/* @vite-ignore */ DO_NOT_BUNDLE + 'node:fs/promises'),
+  ]);
   const destFile = joinPath(rootDir, filePath);
   if (!destFile.startsWith(rootDir)) {
     throw new Error('Invalid filePath: ' + filePath);

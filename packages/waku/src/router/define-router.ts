@@ -4,7 +4,7 @@ import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
 import { getPathMapping, path2regexp } from '../lib/utils/path.js';
 import type { PathSpec } from '../lib/utils/path.js';
 import { stringToStream } from '../lib/utils/stream.js';
-import { unstable_defineServer as defineServer } from '../minimal/server.js';
+import { unstable_defineHandlers as defineHandlers } from '../minimal/server.js';
 import {
   unstable_getContext as getContext,
   unstable_getPlatformData,
@@ -394,8 +394,8 @@ export function unstable_defineRouter(fns: {
     return entries;
   };
 
-  type HandleRequest = Parameters<typeof defineServer>[0]['handleRequest'];
-  type HandleBuild = Parameters<typeof defineServer>[0]['handleBuild'];
+  type HandleRequest = Parameters<typeof defineHandlers>[0]['handleRequest'];
+  type HandleBuild = Parameters<typeof defineHandlers>[0]['handleBuild'];
 
   const handleRequest: HandleRequest = async (
     input,
@@ -632,5 +632,5 @@ export function unstable_defineRouter(fns: {
     await unstable_setPlatformData('defineRouterMyConfig', myConfig, true);
   };
 
-  return defineServer({ handleRequest, handleBuild });
+  return defineHandlers({ handleRequest, handleBuild });
 }

@@ -29,6 +29,11 @@ export interface Config {
    */
   rscBase?: string;
   /**
+   * Adapter module name
+   * Defaults to "waku/adapters/node" or other platform-specific adapters based on environment variables.
+   */
+  adapter?: string;
+  /**
    * Vite configuration options.
    * See https://vite.dev/guide/api-environment-plugins.html#environment-api-for-plugins
    * for how to configure or enable plugins per environment.

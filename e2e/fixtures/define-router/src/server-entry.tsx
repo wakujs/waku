@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import adapter from 'waku/adapters/default';
 import { Children, Slot } from 'waku/minimal/client';
 import { unstable_defineRouter as defineRouter } from 'waku/router/server';
 import { Slice001 } from './components/slice001.js';
@@ -163,4 +164,4 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
   },
 });
 
-export default router;
+export default adapter(router);
