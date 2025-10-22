@@ -161,5 +161,3 @@ export const createServerEntryAdapter: CreateServerEntryAdapter =
       options,
     );
   };
-
-export const getConfigAdapter = () => config.adapter;

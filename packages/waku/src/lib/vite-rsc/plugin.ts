@@ -20,6 +20,7 @@ import {
   SRC_PAGES,
   SRC_SERVER_ENTRY,
 } from '../constants.js';
+import { getDefaultAdapter } from '../utils/default-adapter.js';
 import {
   getManagedClientEntry,
   getManagedServerEntry,
@@ -47,11 +48,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
     distDir: 'dist',
     privateDir: 'private',
     rscBase: 'RSC',
-    adapter: process.env.VERCEL
-      ? 'waku/adapters/vercel'
-      : process.env.NETLIFY
-        ? 'waku/adapters/netlify'
-        : 'waku/adapters/node',
+    adapter: getDefaultAdapter(),
     vite: undefined,
     ...rscPluginOptions?.config,
   };
@@ -273,6 +270,7 @@ if (import.meta.hot) {
       },
     },
     createVirtualConfigPlugin(config),
+    createVirtualAdapterPlugin(config),
     {
       // rewrite `react-server-dom-webpack` in `waku/minimal/client`
       name: 'rsc:waku:patch-webpack',
@@ -476,6 +474,16 @@ function createVirtualConfigPlugin(config: Required<Config>) {
         export const isBuild = ${JSON.stringify(this.environment.mode === 'build')};
       `;
       }
+    },
+  } satisfies Plugin;
+}
+
+function createVirtualAdapterPlugin(config: Required<Config>) {
+  const name = 'waku/adapters/default';
+  return {
+    name: `waku:virtual-${name}`,
+    resolveId(source, _importer, _options) {
+      return source === name ? this.resolve(config.adapter) : undefined;
     },
   } satisfies Plugin;
 }
