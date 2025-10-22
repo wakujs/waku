@@ -11,14 +11,14 @@ export const createTaskRunner = (limit = WRITE_FILE_BATCH_SIZE) => {
       await new Promise<void>((resolve) => waiting.push(resolve));
     }
     running++;
-    try {
-      await task();
-    } catch (err) {
-      errors.push(err);
-    } finally {
-      running--;
-      waiting.shift()?.();
-    }
+    task()
+      .catch((err) => {
+        errors.push(err);
+      })
+      .finally(() => {
+        running--;
+        waiting.shift()?.();
+      });
   };
   const waitForTasks = async () => {
     if (running > 0) {
