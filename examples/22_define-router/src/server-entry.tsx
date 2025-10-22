@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { nodeAdapter } from 'waku/adapters/node';
+import adapter from 'waku/adapters/default';
 import { Children, Slot } from 'waku/minimal/client';
 import { unstable_defineRouter as defineRouter } from 'waku/router/server';
 import BarPage from './components/BarPage';
@@ -9,7 +9,7 @@ import HomePage from './components/HomePage';
 import NestedBazPage from './components/NestedBazPage';
 import Root from './components/Root';
 
-export default nodeAdapter(
+export default adapter(
   defineRouter({
     getConfig: async () => [
       {

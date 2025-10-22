@@ -1,4 +1,4 @@
-import { nodeAdapter } from 'waku/adapters/node';
+import adapter from 'waku/adapters/default';
 import { createPages } from 'waku/router/server';
 import BuildDynamic from './build/dynamic.js';
 import BuildStatic from './build/static.js';
@@ -50,4 +50,4 @@ const pages: ReturnType<typeof createPages> = createPages(
   ],
 );
 
-export default nodeAdapter(pages);
+export default adapter(pages);

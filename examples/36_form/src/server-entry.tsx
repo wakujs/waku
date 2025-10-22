@@ -1,9 +1,9 @@
-import { nodeAdapter } from 'waku/adapters/node';
+import adapter from 'waku/adapters/default';
 import { Slot } from 'waku/minimal/client';
 import { runWithRerender } from './als';
 import App from './components/App';
 
-export default nodeAdapter({
+export default adapter({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
       return renderRsc({ App: <App name={input.rscPath || 'Waku'} /> });

@@ -9,7 +9,7 @@ import {
 const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
-export const cloudflareAdapter = createServerEntryAdapter(
+export default createServerEntryAdapter(
   (
     { processRequest, processBuild, config },
     options?: {

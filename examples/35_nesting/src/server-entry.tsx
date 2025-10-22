@@ -1,10 +1,10 @@
-import { nodeAdapter } from 'waku/adapters/node';
+import adapter from 'waku/adapters/default';
 import { Slot } from 'waku/minimal/client';
 import App from './components/App';
 import AppWithoutSsr from './components/AppWithoutSsr';
 import InnerApp from './components/InnerApp';
 
-export default nodeAdapter({
+export default adapter({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
       const params = new URLSearchParams(

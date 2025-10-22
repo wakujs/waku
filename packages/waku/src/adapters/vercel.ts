@@ -14,7 +14,7 @@ const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 (global as any).__WAKU_HONO_NODE_SERVER_GET_REQUEST_LISTENER__ =
   getRequestListener;
 
-export const vercelAdapter = createServerEntryAdapter(
+export default createServerEntryAdapter(
   (
     { processRequest, processBuild, config },
     options?: {

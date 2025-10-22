@@ -1,6 +1,6 @@
-import { nodeAdapter } from 'waku/adapters/node';
+import adapter from 'waku/adapters/default';
 
-export default nodeAdapter({
+export default adapter({
   handleRequest: async (input, { renderRsc }) => {
     if (input.type === 'function') {
       const value = await input.fn(...input.args);

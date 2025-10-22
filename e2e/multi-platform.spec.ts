@@ -52,9 +52,6 @@ const buildPlatformTarget = [
   },
 ];
 
-const toCamelCase = (str: string) =>
-  str.replace(/-([a-z])/g, (g) => g[1]!.toUpperCase());
-
 const changeAdapter = (file: string, adapter: string) => {
   let content = '';
   if (existsSync(file)) {
@@ -64,8 +61,8 @@ const changeAdapter = (file: string, adapter: string) => {
     content = getManagedServerEntry({ srcDir: 'src' });
   }
   content = content.replace(
-    /^import { nodeAdapter } from '.*?';/,
-    `import { ${toCamelCase(adapter)}Adapter as nodeAdapter } from 'waku/adapters/${adapter}';`,
+    /^import adapter from 'waku\/adapters\/default';/,
+    `import adapter from 'waku/adapters/${adapter}';`,
   );
   writeFileSync(file, content);
 };

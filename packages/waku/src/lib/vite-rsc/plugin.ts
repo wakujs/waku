@@ -20,6 +20,7 @@ import {
   SRC_PAGES,
   SRC_SERVER_ENTRY,
 } from '../constants.js';
+import { getDefaultAdapter } from '../utils/default-adapter.js';
 import {
   getManagedClientEntry,
   getManagedServerEntry,
@@ -47,6 +48,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
     distDir: 'dist',
     privateDir: 'private',
     rscBase: 'RSC',
+    adapter: getDefaultAdapter(),
     vite: undefined,
     ...rscPluginOptions?.config,
   };
@@ -267,7 +269,8 @@ if (import.meta.hot) {
         }
       },
     },
-    createVirtualPlugin(config),
+    createVirtualConfigPlugin(config),
+    createVirtualAdapterPlugin(config),
     {
       // rewrite `react-server-dom-webpack` in `waku/minimal/client`
       name: 'rsc:waku:patch-webpack',
@@ -452,7 +455,7 @@ function normalizeRelativePath(s: string) {
   return s[0] === '.' ? s : './' + s;
 }
 
-function createVirtualPlugin(config: Required<Config>) {
+function createVirtualConfigPlugin(config: Required<Config>) {
   const name = 'virtual:vite-rsc-waku/config';
   let rootDir: string;
   return {
@@ -471,6 +474,16 @@ function createVirtualPlugin(config: Required<Config>) {
         export const isBuild = ${JSON.stringify(this.environment.mode === 'build')};
       `;
       }
+    },
+  } satisfies Plugin;
+}
+
+function createVirtualAdapterPlugin(config: Required<Config>) {
+  const name = 'waku/adapters/default';
+  return {
+    name: `waku:virtual-${name}`,
+    resolveId(source, _importer, _options) {
+      return source === name ? this.resolve(config.adapter) : undefined;
     },
   } satisfies Plugin;
 }
