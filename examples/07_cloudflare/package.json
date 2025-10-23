@@ -15,15 +15,15 @@
     "react-dom": "19.2.0",
     "react-server-dom-webpack": "19.2.0",
     "waku": "0.26.1",
-    "wrangler": "4.44.0"
+    "wrangler": "4.42.2"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.1.15",
+    "@tailwindcss/vite": "4.1.14",
     "@types/node": "24.9.1",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
-    "miniflare": "4.20251011.0",
-    "tailwindcss": "4.1.15",
+    "miniflare": "4.20251008.0",
+    "tailwindcss": "4.1.14",
     "typescript": "5.9.3",
     "vite": "7.1.9"
   }
