@@ -10,16 +10,16 @@
   },
   "dependencies": {
     "cookie": "1.0.2",
-    "hono": "4.10.2",
+    "hono": "4.9.11",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-server-dom-webpack": "19.2.0",
     "waku": "0.26.1"
   },
   "devDependencies": {
-    "@types/node": "24.9.1",
+    "@types/node": "24.7.2",
     "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
+    "@types/react-dom": "19.2.1",
     "typescript": "5.9.3"
   }
 }
