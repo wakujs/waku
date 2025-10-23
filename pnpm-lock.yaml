@@ -97,8 +97,8 @@ importers:
   e2e/fixtures/broken-links:
     dependencies:
       hono:
-        specifier: 4.9.11
-        version: 4.9.11
+        specifier: 4.10.2
+        version: 4.10.2
       react:
         specifier: 19.2.0
         version: 19.2.0
@@ -473,8 +473,8 @@ importers:
   e2e/fixtures/ssr-catch-error:
     dependencies:
       hono:
-        specifier: 4.9.11
-        version: 4.9.11
+        specifier: 4.10.2
+        version: 4.10.2
       react:
         specifier: 19.2.0
         version: 19.2.0
@@ -908,8 +908,8 @@ importers:
   examples/07_cloudflare:
     dependencies:
       hono:
-        specifier: 4.9.11
-        version: 4.9.11
+        specifier: 4.10.2
+        version: 4.10.2
       react:
         specifier: 19.2.0
         version: 19.2.0
@@ -1357,8 +1357,8 @@ importers:
         specifier: 1.0.2
         version: 1.0.2
       hono:
-        specifier: 4.9.11
-        version: 4.9.11
+        specifier: 4.10.2
+        version: 4.10.2
       react:
         specifier: 19.2.0
         version: 19.2.0
@@ -1680,7 +1680,7 @@ importers:
     dependencies:
       '@hono/node-server':
         specifier: 1.19.5
-        version: 1.19.5(hono@4.9.11)
+        version: 1.19.5(hono@4.10.2)
       '@swc/core':
         specifier: 1.13.5
         version: 1.13.5(@swc/helpers@0.5.17)
@@ -1694,8 +1694,8 @@ importers:
         specifier: 17.2.3
         version: 17.2.3
       hono:
-        specifier: 4.9.11
-        version: 4.9.11
+        specifier: 4.10.2
+        version: 4.10.2
       rsc-html-stream:
         specifier: 0.0.7
         version: 0.0.7
@@ -5206,8 +5206,8 @@ packages:
   hermes-parser@0.25.1:
     resolution: {integrity: sha512-6pEjquH3rqaI6cYAXYPcz9MS4rY6R4ngRgrgfDshRptUZIc3lw0MCIJIGDj9++mfySOuPTHB4nrSW99BCvOPIA==}
 
-  hono@4.9.11:
-    resolution: {integrity: sha512-MyJ4xop3boTyXl8bJBh4i20AAZTLM3AXUJphyrUb0CpgTKYb1N703z53XiKUKchGUpcPqiiYkiLOXA3kqK3icA==}
+  hono@4.10.2:
+    resolution: {integrity: sha512-p6fyzl+mQo6uhESLxbF5WlBOAJMDh36PljwlKtP5V1v09NxlqGru3ShK+4wKhSuhuYf8qxMmrivHOa/M7q0sMg==}
     engines: {node: '>=16.9.0'}
 
   hosted-git-info@7.0.2:
@@ -8233,9 +8233,9 @@ snapshots:
 
   '@fastify/busboy@3.2.0': {}
 
-  '@hono/node-server@1.19.5(hono@4.9.11)':
+  '@hono/node-server@1.19.5(hono@4.10.2)':
     dependencies:
-      hono: 4.9.11
+      hono: 4.10.2
 
   '@humanfs/core@0.19.1': {}
 
@@ -11352,7 +11352,7 @@ snapshots:
     dependencies:
       hermes-estree: 0.25.1
 
-  hono@4.9.11: {}
+  hono@4.10.2: {}
 
   hosted-git-info@7.0.2:
     dependencies:
