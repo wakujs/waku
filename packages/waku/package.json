@@ -88,7 +88,7 @@
     "vite": "7.1.9"
   },
   "devDependencies": {
-    "@netlify/functions": "^4.3.0",
+    "@netlify/functions": "^5.0.0",
     "@swc/cli": "^0.7.8",
     "react": "19.2.0",
     "react-dom": "19.2.0",

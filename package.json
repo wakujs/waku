@@ -31,13 +31,13 @@
   },
   "devDependencies": {
     "@actions/core": "^1.11.1",
-    "@eslint/js": "^9.37.0",
-    "@playwright/test": "^1.56.0",
+    "@eslint/js": "^9.38.0",
+    "@playwright/test": "^1.56.1",
     "@types/babel__core": "^7.20.5",
     "@types/node": "^24.9.1",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
-    "eslint": "^9.37.0",
+    "eslint": "^9.38.0",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-playwright": "^2.2.2",
@@ -46,9 +46,9 @@
     "eslint-plugin-unicorn": "^61.0.2",
     "fkill": "^9.0.0",
     "prettier": "^3.6.2",
-    "prettier-plugin-tailwindcss": "^0.6.14",
+    "prettier-plugin-tailwindcss": "^0.7.1",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.46.0",
+    "typescript-eslint": "^8.46.2",
     "waku": "workspace:*"
   }
 }
