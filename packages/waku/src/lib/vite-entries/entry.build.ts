@@ -14,10 +14,9 @@ export async function INTERNAL_runBuild({
   await savePlatformData();
   if (serverEntry.postBuild) {
     const [modulePath, ...args] = serverEntry.postBuild;
-    const moduleId =
-      modulePath.startsWith('./') || modulePath.startsWith('../')
-        ? filePathToFileURL(joinPath(rootDir, modulePath))
-        : modulePath;
+    const moduleId = modulePath.startsWith('./')
+      ? filePathToFileURL(joinPath(rootDir, modulePath))
+      : modulePath;
     const mod = await import(moduleId);
     mod.default(...args);
   }

@@ -13,6 +13,11 @@ declare global {
   }
 }
 
+function joinPath(path1: string, path2: string) {
+  const p = path.posix.join(path1, path2);
+  return p.startsWith('/') ? p : './' + p;
+}
+
 const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
@@ -45,7 +50,7 @@ export default createServerEntryAdapter(
       }
       return c.text('404 Not Found', 404);
     });
-    const postBuildScript = path.posix.join(
+    const postBuildScript = joinPath(
       import.meta.__WAKU_ORIGINAL_PATH__,
       '../lib/netlify-post-build.js',
     );

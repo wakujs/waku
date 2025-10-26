@@ -491,6 +491,14 @@ function createVirtualAdapterPlugin(config: Required<Config>) {
   } satisfies Plugin;
 }
 
+function relativePath(pathFrom: string, pathTo: string) {
+  let relPath = path.posix.relative(pathFrom, pathTo);
+  if (!relPath.startsWith('.')) {
+    relPath = './' + relPath;
+  }
+  return relPath;
+}
+
 function createPathMacroPlugin() {
   const token = 'import.meta.__WAKU_ORIGINAL_PATH__';
   let rootDir: string;
@@ -511,7 +519,7 @@ function createPathMacroPlugin() {
       if (!code.includes(token)) {
         return;
       }
-      const originalPath = path.posix.relative(rootDir, normalizedPath);
+      const originalPath = relativePath(rootDir, normalizedPath);
       const s = new MagicString(code);
       let idx = code.indexOf(token);
       if (idx === -1) {
