@@ -9,6 +9,12 @@ import {
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
 
+declare global {
+  interface ImportMeta {
+    readonly __WAKU_ORIGINAL_PATH__: string;
+  }
+}
+
 const { DIST_PUBLIC, DIST_ASSETS } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 (global as any).__WAKU_HONO_NODE_SERVER_GET_REQUEST_LISTENER__ =
@@ -43,8 +49,12 @@ export default createServerEntryAdapter(
       }
       return c.text('404 Not Found', 404);
     });
+    const postBuildScript = path.posix.join(
+      import.meta.__WAKU_ORIGINAL_PATH__,
+      '../lib/vercel-post-build.js',
+    );
     const postBuildArg: Parameters<
-      typeof import('./vercel-post-build.js').default
+      typeof import('./lib/vercel-post-build.js').default
     >[0] = {
       distDir: config.distDir,
       rscBase: config.rscBase,
@@ -57,7 +67,7 @@ export default createServerEntryAdapter(
     return {
       fetch: app.fetch,
       build: processBuild,
-      postBuild: ['waku/adapters/vercel-post-build', postBuildArg],
+      postBuild: [postBuildScript, postBuildArg],
     };
   },
 );

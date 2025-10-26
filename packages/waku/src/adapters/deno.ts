@@ -43,8 +43,12 @@ export default createServerEntryAdapter(
     if (notFoundFn) {
       app.notFound(notFoundFn);
     }
+    const postBuildScript = path.posix.join(
+      import.meta.__WAKU_ORIGINAL_PATH__,
+      '../lib/deno-post-build.js',
+    );
     const postBuildArg: Parameters<
-      typeof import('./deno-post-build.js').default
+      typeof import('./lib/deno-post-build.js').default
     >[0] = {
       distDir: config.distDir,
       DIST_PUBLIC,
@@ -52,7 +56,7 @@ export default createServerEntryAdapter(
     return {
       fetch: app.fetch,
       build: processBuild,
-      postBuild: ['waku/adapters/deno-post-build', postBuildArg],
+      postBuild: [postBuildScript, postBuildArg],
     };
   },
 );

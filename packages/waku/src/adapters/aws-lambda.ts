@@ -10,6 +10,12 @@ import {
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
 
+declare global {
+  interface ImportMeta {
+    readonly __WAKU_ORIGINAL_PATH__: string;
+  }
+}
+
 const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
@@ -45,8 +51,12 @@ export default createServerEntryAdapter(
       }
       return c.text('404 Not Found', 404);
     });
+    const postBuildScript = path.posix.join(
+      import.meta.__WAKU_ORIGINAL_PATH__,
+      '../lib/aws-lambda-post-build.js',
+    );
     const postBuildArg: Parameters<
-      typeof import('./aws-lambda-post-build.js').default
+      typeof import('./lib/aws-lambda-post-build.js').default
     >[0] = {
       distDir: config.distDir,
     };
@@ -56,7 +66,7 @@ export default createServerEntryAdapter(
     return {
       fetch: app.fetch,
       build: processBuild,
-      postBuild: ['waku/adapters/aws-lambda-post-build', postBuildArg],
+      postBuild: [postBuildScript, postBuildArg],
     };
   },
 );

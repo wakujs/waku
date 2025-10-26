@@ -54,10 +54,10 @@ export default createServerEntryAdapter(
     });
     const postBuildScript = joinPath(
       import.meta.__WAKU_ORIGINAL_PATH__,
-      '../cloudflare-post-build.js',
+      '../lib/cloudflare-post-build.js',
     );
     const postBuildArg: Parameters<
-      typeof import('./cloudflare-post-build.js').default
+      typeof import('./lib/cloudflare-post-build.js').default
     >[0] = {
       distDir: config.distDir,
       DIST_PUBLIC,
