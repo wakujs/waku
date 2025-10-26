@@ -17,10 +17,10 @@
     "waku-jotai": "0.1.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.1.14",
+    "@tailwindcss/vite": "4.1.16",
     "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.1",
-    "tailwindcss": "4.1.14",
+    "@types/react-dom": "19.2.2",
+    "tailwindcss": "4.1.16",
     "typescript": "5.9.3"
   }
 }

@@ -7,3 +7,4 @@ packages:
 preferWorkspacePackages: true
 saveWorkspaceProtocol: true
 linkWorkspacePackages: true
+minimumReleaseAge: 1440
