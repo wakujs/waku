@@ -8,8 +8,6 @@ declare module 'virtual:vite-rsc-waku/server-entry' {
 
 declare module 'virtual:vite-rsc-waku/client-entry' {}
 
-declare module 'virtual:vite-rsc-waku/set-platform-data' {}
-
 declare module 'virtual:vite-rsc-waku/config' {
   export const rootDir: string;
   export const config: Omit<Required<import('../config.ts').Config>, 'vite'>;

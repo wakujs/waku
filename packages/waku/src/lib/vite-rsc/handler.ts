@@ -35,8 +35,6 @@ function loadSsrEntryModule() {
 const toProcessRequest =
   (handleRequest: HandleRequest): ProcessRequest =>
   async (req) => {
-    await import('virtual:vite-rsc-waku/set-platform-data');
-
     const temporaryReferences = createTemporaryReferenceSet();
 
     const input = await getInput(
