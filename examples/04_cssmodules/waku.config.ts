@@ -1,16 +1,12 @@
-import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'waku/config';
-
-const ReactCompilerConfig = {};
 
 export default defineConfig({
   vite: {
     plugins: [
-      tailwindcss(),
       react({
         babel: {
-          plugins: ['babel-plugin-react-compiler', ReactCompilerConfig],
+          plugins: ['babel-plugin-react-compiler'],
         },
       }),
     ],
