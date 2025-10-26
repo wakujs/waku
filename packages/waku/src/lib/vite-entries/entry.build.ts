@@ -1,12 +1,12 @@
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 import { INTERNAL_setAllEnv } from '../../server.js';
-import { filePathToFileURL } from '../utils/path.js';
-
-const WIN32_PATH_REGEXP = /^[a-zA-Z]:\//;
+import { filePathToFileURL, joinPath } from '../utils/path.js';
 
 export async function INTERNAL_runBuild({
+  rootDir,
   savePlatformData,
 }: {
+  rootDir: string;
   savePlatformData: () => Promise<void>;
 }) {
   INTERNAL_setAllEnv(process.env as any);
@@ -14,10 +14,9 @@ export async function INTERNAL_runBuild({
   await savePlatformData();
   if (serverEntry.postBuild) {
     const [modulePath, ...args] = serverEntry.postBuild;
-    const moduleId = modulePath.match(WIN32_PATH_REGEXP)
-      ? filePathToFileURL('/' + modulePath)
-      : modulePath.startsWith('/')
-        ? filePathToFileURL(modulePath)
+    const moduleId =
+      modulePath.startsWith('./') || modulePath.startsWith('../')
+        ? filePathToFileURL(joinPath(rootDir, modulePath))
         : modulePath;
     const mod = await import(moduleId);
     mod.default(...args);

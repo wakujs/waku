@@ -329,6 +329,7 @@ if (import.meta.hot) {
       buildApp: {
         async handler(builder) {
           const viteConfig = builder.config;
+          const rootDir = viteConfig.root;
 
           const savePlatformData = async () => {
             const platformDataCode = `globalThis.__WAKU_SERVER_PLATFORM_DATA__ = ${JSON.stringify((globalThis as any).__WAKU_SERVER_PLATFORM_DATA__ ?? {}, null, 2)}\n`;
@@ -345,7 +346,7 @@ if (import.meta.hot) {
           );
           const entry: typeof import('../vite-entries/entry.build.js') =
             await import(pathToFileURL(entryPath).href);
-          await entry.INTERNAL_runBuild({ savePlatformData });
+          await entry.INTERNAL_runBuild({ rootDir, savePlatformData });
         },
       },
     },
@@ -492,20 +493,25 @@ function createVirtualAdapterPlugin(config: Required<Config>) {
 
 function createPathMacroPlugin() {
   const token = 'import.meta.__WAKU_ORIGINAL_PATH__';
+  let rootDir: string;
   return {
     name: 'waku:path-macro',
     enforce: 'pre',
+    configResolved(viteConfig) {
+      rootDir = viteConfig.root;
+    },
     transform(code, id) {
       if (id.startsWith('\0') || id.includes('virtual:')) {
         return;
       }
-      const originalPath = id.split('?')[0]!;
-      if (!['.js', '.mjs', '.cjs'].includes(path.extname(originalPath))) {
+      const normalizedPath = id.split('?')[0]!;
+      if (!['.js', '.mjs', '.cjs'].includes(path.extname(normalizedPath))) {
         return;
       }
       if (!code.includes(token)) {
         return;
       }
+      const originalPath = path.posix.relative(rootDir, normalizedPath);
       const s = new MagicString(code);
       let idx = code.indexOf(token);
       if (idx === -1) {
