@@ -18,9 +18,9 @@
     "@tailwindcss/vite": "4.1.16",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
-    "rollup": "4.52.4",
+    "rollup": "4.52.5",
     "tailwindcss": "4.1.16",
     "typescript": "5.9.3",
-    "vite": "7.1.9"
+    "vite": "7.1.12"
   }
 }
