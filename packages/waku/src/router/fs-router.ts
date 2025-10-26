@@ -3,7 +3,7 @@ import { isIgnoredPath } from '../lib/utils/fs-router.js';
 import { METHODS, createPages } from './create-pages.js';
 import type { Method } from './create-pages.js';
 
-export function unstable_fsRouter(
+export function fsRouter(
   /**
    * A mapping from a file path to a route module, e.g.
    *   {
