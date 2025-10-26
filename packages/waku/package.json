@@ -38,6 +38,10 @@
       "types": "./dist/internals.d.ts",
       "default": "./dist/internals.js"
     },
+    "./adapters/*": {
+      "types": "./dist/adapters/*.d.ts",
+      "default": "./dist/adapters/*.js"
+    },
     "./minimal/client": {
       "types": "./dist/minimal/client.d.ts",
       "default": "./dist/minimal/client.js"
@@ -69,7 +73,7 @@
     "dev": "swc src -d dist -w --strip-leading-paths",
     "test": "vitest run",
     "test:watch": "vitest",
-    "compile": "rm -rf dist *.tsbuildinfo && pnpm run compile:code && pnpm run compile:types && cp ../../README.md .",
+    "compile": "rm -rf dist *.tsbuildinfo && pnpm run compile:code && pnpm run compile:types && cp src/adapters/default.d.ts dist/adapters && cp ../../README.md .",
     "compile:code": "swc src -d dist --strip-leading-paths",
     "compile:types": "tsc --project tsconfig.json"
   },
@@ -84,6 +88,7 @@
     "@vitejs/plugin-rsc": "0.5.1",
     "dotenv": "17.2.3",
     "hono": "4.10.3",
+    "magic-string": "0.30.21",
     "rsc-html-stream": "0.0.7",
     "vite": "7.1.12"
   },

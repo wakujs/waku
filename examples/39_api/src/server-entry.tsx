@@ -1,5 +1,5 @@
+import adapter from 'waku/adapters/default';
 import { Slot } from 'waku/minimal/client';
-import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import App from './components/App';
 
 const stringToStream = (str: string): ReadableStream => {
@@ -12,7 +12,7 @@ const stringToStream = (str: string): ReadableStream => {
   });
 };
 
-export default defineServer({
+export default adapter({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
       return renderRsc({ App: <App name={input.rscPath || 'Waku'} /> });

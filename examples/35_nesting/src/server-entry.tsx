@@ -1,10 +1,10 @@
+import adapter from 'waku/adapters/default';
 import { Slot } from 'waku/minimal/client';
-import { unstable_defineServer as defineServer } from 'waku/minimal/server';
 import App from './components/App';
 import AppWithoutSsr from './components/AppWithoutSsr';
 import InnerApp from './components/InnerApp';
 
-export default defineServer({
+export default adapter({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
       const params = new URLSearchParams(

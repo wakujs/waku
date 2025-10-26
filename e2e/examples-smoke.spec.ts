@@ -34,7 +34,7 @@ const commandsCloudflare = [
     command: `node ${waku} dev`,
   },
   {
-    build: `build --with-cloudflare`,
+    build: `build`,
     command: 'npx wrangler dev',
   },
 ];
@@ -54,7 +54,7 @@ for (const cwd of examples) {
     ? commandsCloudflare
     : commands;
   for (const { build, command } of exampleCommands) {
-    if (command === 'npx wrangler dev' && os.platform() === 'win32') {
+    if (command.endsWith('npx wrangler dev') && os.platform() === 'win32') {
       // FIXME npx wrangler dev doesn't work on Windows and we don't know why.
       continue;
     }

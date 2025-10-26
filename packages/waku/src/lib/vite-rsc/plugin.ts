@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import react from '@vitejs/plugin-react';
 import rsc from '@vitejs/plugin-rsc';
+import MagicString from 'magic-string';
 import {
   type Plugin,
   type PluginOption,
@@ -14,26 +15,20 @@ import {
   normalizePath,
 } from 'vite';
 import type { Config } from '../../config.js';
-import { INTERNAL_setAllEnv, unstable_getBuildOptions } from '../../server.js';
 import {
   DIST_PUBLIC,
   SRC_CLIENT_ENTRY,
   SRC_PAGES,
   SRC_SERVER_ENTRY,
 } from '../constants.js';
+import { getDefaultAdapter } from '../utils/default-adapter.js';
 import {
   getManagedClientEntry,
   getManagedServerEntry,
 } from '../utils/managed.js';
 import { joinPath } from '../utils/path.js';
-import { emitFileInTask, waitForTasks } from '../utils/task-runner.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
-import { deployAwsLambdaPlugin } from './deploy/aws-lambda/plugin.js';
-import { deployCloudflarePlugin } from './deploy/cloudflare/plugin.js';
-import { deployDenoPlugin } from './deploy/deno/plugin.js';
-import { deployNetlifyPlugin } from './deploy/netlify/plugin.js';
-import { deployVercelPlugin } from './deploy/vercel/plugin.js';
 
 const PKG_NAME = 'waku';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -45,13 +40,6 @@ export type RscPluginOptions = {
 
 export type Flags = {
   'experimental-partial'?: boolean | undefined;
-  'with-vercel'?: boolean | undefined;
-  'with-vercel-static'?: boolean | undefined;
-  'with-netlify'?: boolean | undefined;
-  'with-netlify-static'?: boolean | undefined;
-  'with-cloudflare'?: boolean | undefined;
-  'with-deno'?: boolean | undefined;
-  'with-aws-lambda'?: boolean | undefined;
 };
 
 export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
@@ -61,6 +49,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
     distDir: 'dist',
     privateDir: 'private',
     rscBase: 'RSC',
+    adapter: getDefaultAdapter(),
     vite: undefined,
     ...rscPluginOptions?.config,
   };
@@ -96,6 +85,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
         let viteRscConfig: UserConfig = {
           base: config.basePath,
           define: {
+            'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
             'import.meta.env.WAKU_CONFIG_BASE_PATH': JSON.stringify(
               config.basePath,
             ),
@@ -154,7 +144,10 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
                       __dirname,
                       '../vite-entries/entry.server.js',
                     ),
-                    build: path.join(__dirname, '../vite-rsc/build.js'),
+                    build: path.join(
+                      __dirname,
+                      '../vite-entries/entry.build.js',
+                    ),
                   },
                 },
               },
@@ -226,7 +219,9 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
               req.url = req.originalUrl;
               const mod: typeof import('../vite-entries/entry.server.js') =
                 await environment.runner.import(entryId);
-              await getRequestListener(mod.fetch)(req, res);
+              await getRequestListener((req, ...args) =>
+                mod.INTERNAL_runFetch(process.env as any, req, ...args),
+              )(req, res);
             } catch (e) {
               next(e);
             }
@@ -275,13 +270,9 @@ if (import.meta.hot) {
         }
       },
     },
-    createVirtualPlugin('vite-rsc-waku/config', async function () {
-      return `
-        export const config = ${JSON.stringify({ ...config, vite: undefined })};
-        export const flags = ${JSON.stringify(flags)};
-        export const isBuild = ${JSON.stringify(this.environment.mode === 'build')};
-      `;
-    }),
+    createVirtualConfigPlugin(config),
+    createVirtualAdapterPlugin(config),
+    createPathMacroPlugin(),
     {
       // rewrite `react-server-dom-webpack` in `waku/minimal/client`
       name: 'rsc:waku:patch-webpack',
@@ -335,32 +326,27 @@ if (import.meta.hot) {
           );
         }
       },
-      // cf. packages/waku/src/lib/builder/build.ts
       buildApp: {
         async handler(builder) {
-          // import server entry
           const viteConfig = builder.config;
+          const rootDir = viteConfig.root;
+
+          const savePlatformData = async () => {
+            const platformDataCode = `globalThis.__WAKU_SERVER_PLATFORM_DATA__ = ${JSON.stringify((globalThis as any).__WAKU_SERVER_PLATFORM_DATA__ ?? {}, null, 2)}\n`;
+            const platformDataFile = path.join(
+              builder.config.environments.rsc!.build.outDir,
+              '__waku_set_platform_data.js',
+            );
+            fs.writeFileSync(platformDataFile, platformDataCode);
+          };
+
           const entryPath = path.join(
             viteConfig.environments.rsc!.build.outDir,
             'build.js',
           );
-          const entry: typeof import('../vite-rsc/build.js') = await import(
-            pathToFileURL(entryPath).href
-          );
-
-          // run `handleBuild`
-          INTERNAL_setAllEnv(process.env as any);
-          unstable_getBuildOptions().unstable_phase = 'emitStaticFiles';
-          await entry.processBuild(viteConfig, config, emitFileInTask);
-          await waitForTasks();
-
-          // save platform data
-          const platformDataCode = `globalThis.__WAKU_SERVER_PLATFORM_DATA__ = ${JSON.stringify((globalThis as any).__WAKU_SERVER_PLATFORM_DATA__ ?? {}, null, 2)}\n`;
-          const platformDataFile = path.join(
-            builder.config.environments.rsc!.build.outDir,
-            '__waku_set_platform_data.js',
-          );
-          fs.writeFileSync(platformDataFile, platformDataCode);
+          const entry: typeof import('../vite-entries/entry.build.js') =
+            await import(pathToFileURL(entryPath).href);
+          await entry.INTERNAL_runBuild({ rootDir, savePlatformData });
         },
       },
     },
@@ -395,31 +381,6 @@ if (import.meta.hot) {
     },
     rscIndexPlugin(),
     fsRouterTypegenPlugin({ srcDir: config.srcDir }),
-    !!(
-      flags['with-vercel'] ||
-      flags['with-vercel-static'] ||
-      process.env.VERCEL
-    ) &&
-      deployVercelPlugin({
-        config,
-        serverless: !flags['with-vercel-static'],
-      }),
-    !!(
-      flags['with-netlify'] ||
-      flags['with-netlify-static'] ||
-      process.env.NETLIFY
-    ) &&
-      deployNetlifyPlugin({
-        config,
-        serverless: !flags['with-netlify-static'],
-      }),
-    !!flags['with-cloudflare'] && deployCloudflarePlugin({ config }),
-    !!flags['with-deno'] && deployDenoPlugin({ config }),
-    !!flags['with-aws-lambda'] &&
-      deployAwsLambdaPlugin({
-        config,
-        streaming: process.env.DEPLOY_AWS_LAMBDA_STREAMING === 'true',
-      }),
   ];
 }
 
@@ -497,17 +458,81 @@ function normalizeRelativePath(s: string) {
   return s[0] === '.' ? s : './' + s;
 }
 
-function createVirtualPlugin(name: string, load: Plugin['load']) {
-  name = 'virtual:' + name;
+function createVirtualConfigPlugin(config: Required<Config>) {
+  const name = 'virtual:vite-rsc-waku/config';
+  let rootDir: string;
   return {
     name: `waku:virtual-${name}`,
+    configResolved(viteConfig) {
+      rootDir = viteConfig.root;
+    },
     resolveId(source, _importer, _options) {
       return source === name ? '\0' + name : undefined;
     },
-    load(id, options) {
+    load(id) {
       if (id === '\0' + name) {
-        return (load as any).apply(this, [id, options]);
+        return `
+        export const rootDir = ${JSON.stringify(rootDir)};
+        export const config = ${JSON.stringify({ ...config, vite: undefined })};
+        export const isBuild = ${JSON.stringify(this.environment.mode === 'build')};
+      `;
       }
+    },
+  } satisfies Plugin;
+}
+
+function createVirtualAdapterPlugin(config: Required<Config>) {
+  const name = 'waku/adapters/default';
+  return {
+    name: `waku:virtual-${name}`,
+    resolveId(source, _importer, _options) {
+      return source === name ? this.resolve(config.adapter) : undefined;
+    },
+  } satisfies Plugin;
+}
+
+function relativePath(pathFrom: string, pathTo: string) {
+  let relPath = path.posix.relative(pathFrom, pathTo);
+  if (!relPath.startsWith('.')) {
+    relPath = './' + relPath;
+  }
+  return relPath;
+}
+
+function createPathMacroPlugin() {
+  const token = 'import.meta.__WAKU_ORIGINAL_PATH__';
+  let rootDir: string;
+  return {
+    name: 'waku:path-macro',
+    enforce: 'pre',
+    configResolved(viteConfig) {
+      rootDir = viteConfig.root;
+    },
+    transform(code, id) {
+      if (id.startsWith('\0') || id.includes('virtual:')) {
+        return;
+      }
+      const normalizedPath = id.split('?')[0]!;
+      if (!['.js', '.mjs', '.cjs'].includes(path.extname(normalizedPath))) {
+        return;
+      }
+      if (!code.includes(token)) {
+        return;
+      }
+      const originalPath = relativePath(rootDir, normalizedPath);
+      const s = new MagicString(code);
+      let idx = code.indexOf(token);
+      if (idx === -1) {
+        return;
+      }
+      while (idx !== -1) {
+        s.overwrite(idx, idx + token.length, JSON.stringify(originalPath));
+        idx = code.indexOf(token, idx + 1);
+      }
+      return {
+        code: s.toString(),
+        map: s.generateMap({ hires: true }),
+      };
     },
   } satisfies Plugin;
 }

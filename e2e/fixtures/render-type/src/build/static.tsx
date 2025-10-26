@@ -1,10 +1,7 @@
-import {
-  unstable_getBuildOptions,
-  unstable_setPlatformData,
-} from 'waku/server';
+import { unstable_setPlatformData } from 'waku/server';
 
 export default async function Static() {
-  if (unstable_getBuildOptions().unstable_phase) {
+  if ((globalThis as any).__WAKU_IS_BUILD__ === true) {
     await unstable_setPlatformData('test-custom-platform-data', 'ok', true);
   }
   return (
@@ -13,7 +10,7 @@ export default async function Static() {
       <div>
         phase ={' '}
         <span data-testid="phase">
-          {String(!!unstable_getBuildOptions().unstable_phase)}
+          {String((globalThis as any).__WAKU_IS_BUILD__ === true)}
         </span>
       </div>
     </div>

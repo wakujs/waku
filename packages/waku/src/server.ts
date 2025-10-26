@@ -50,27 +50,3 @@ export async function unstable_getPlatformData<T>(
 export function unstable_getHeaders(): Readonly<Record<string, string>> {
   return Object.fromEntries(getContext().req.headers.entries());
 }
-
-type BuildOptions = {
-  deploy?:
-    | 'vercel-static'
-    | 'vercel-serverless'
-    | 'netlify-static'
-    | 'netlify-functions'
-    | 'cloudflare'
-    | 'deno'
-    | 'aws-lambda'
-    | undefined;
-  unstable_phase?:
-    | 'analyzeEntries'
-    | 'buildServerBundle'
-    | 'buildSsrBundle'
-    | 'buildClientBundle'
-    | 'buildDeploy'
-    | 'emitStaticFiles';
-};
-
-// TODO tentative name
-export function unstable_getBuildOptions(): BuildOptions {
-  return ((globalThis as any).__WAKU_BUILD_OPTIONS__ ||= {});
-}

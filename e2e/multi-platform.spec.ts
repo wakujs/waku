@@ -1,8 +1,15 @@
 import { execSync } from 'node:child_process';
-import { cpSync, rmSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect } from '@playwright/test';
+import { getManagedServerEntry } from '../packages/waku/dist/lib/utils/managed.js';
 import { makeTempDir, test } from './utils.js';
 
 const dryRunList = [
@@ -24,34 +31,41 @@ const waku = fileURLToPath(
 
 const buildPlatformTarget = [
   {
-    platform: '--with-vercel',
+    adapter: 'vercel',
     clearDirOrFile: ['dist', '.vercel'],
   },
   {
-    platform: '--with-vercel-static',
-    clearDirOrFile: ['dist'],
-  },
-  {
-    platform: '--with-netlify',
+    adapter: 'netlify',
     clearDirOrFile: ['dist', 'netlify', 'netlify.toml'],
   },
   {
-    platform: '--with-netlify-static',
-    clearDirOrFile: ['dist'],
-  },
-  {
-    platform: '--with-cloudflare',
+    adapter: 'cloudflare',
     clearDirOrFile: ['dist', 'wrangler.toml'],
   },
   {
-    platform: '--with-deno',
+    adapter: 'deno',
     clearDirOrFile: ['dist'],
   },
   {
-    platform: '--with-aws-lambda',
+    adapter: 'aws-lambda',
     clearDirOrFile: ['dist'],
   },
 ];
+
+const changeAdapter = (file: string, adapter: string) => {
+  let content = '';
+  if (existsSync(file)) {
+    content = readFileSync(file, 'utf-8');
+  } else {
+    // managed mode
+    content = getManagedServerEntry({ srcDir: 'src' });
+  }
+  content = content.replace(
+    /^import adapter from 'waku\/adapters\/default';/,
+    `import adapter from 'waku/adapters/${adapter}';`,
+  );
+  writeFileSync(file, content);
+};
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -62,15 +76,16 @@ test.skip(
 
 test.describe(`multi platform builds`, () => {
   for (const { cwd, project } of dryRunList) {
-    for (const { platform, clearDirOrFile } of buildPlatformTarget) {
-      test(`build ${project} with ${platform} should not throw error`, async () => {
+    for (const { adapter, clearDirOrFile } of buildPlatformTarget) {
+      test(`build ${project} with ${adapter} should not throw error`, async () => {
         const temp = makeTempDir(project);
         cpSync(cwd, temp, { recursive: true });
+        changeAdapter(join(temp, 'src', 'server-entry.tsx'), adapter);
         for (const name of clearDirOrFile) {
           rmSync(join(temp, name), { recursive: true, force: true });
         }
         try {
-          execSync(`node ${waku} build ${platform}`, {
+          execSync(`node ${waku} build ${adapter}`, {
             cwd: temp,
             env: process.env,
           });
