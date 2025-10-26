@@ -17,8 +17,8 @@
   },
   "devDependencies": {
     "@babel/plugin-syntax-jsx": "^7.27.1",
-    "@babel/preset-typescript": "^7.27.1",
-    "@stylexjs/postcss-plugin": "^0.16.1",
+    "@babel/preset-typescript": "^7.28.5",
+    "@stylexjs/postcss-plugin": "^0.16.2",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "@vitejs/plugin-react": "5.0.4",
