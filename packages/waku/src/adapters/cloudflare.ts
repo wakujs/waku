@@ -5,12 +5,17 @@ import {
   unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
-import { joinPath } from '../lib/utils/path.js';
+import { joinPath as joinPathOrig } from '../lib/utils/path.js';
 
 declare global {
   interface ImportMeta {
     readonly __WAKU_ORIGINAL_PATH__: string;
   }
+}
+
+function joinPath(path1: string, path2: string) {
+  const p = joinPathOrig(path1, path2);
+  return p.startsWith('/') ? p : './' + p;
 }
 
 const { DIST_PUBLIC } = constants;
