@@ -4,7 +4,7 @@ export const getManagedServerEntry = (config: { srcDir: string }) => {
   const globBase = `/${config.srcDir}/${SRC_PAGES}`;
   const globPattern = `${globBase}/**/*.{${EXTENSIONS.map((ext) => ext.slice(1)).join(',')}}`;
   return `
-import { unstable_fsRouter as fsRouter } from 'waku/router/server';
+import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/default';
 
 export default adapter(fsRouter(

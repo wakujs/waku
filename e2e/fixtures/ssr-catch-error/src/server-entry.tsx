@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
+import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/default';
-import { unstable_fsRouter as fsRouter } from 'waku/router/server';
 import validatorMiddleware from './middleware/validator';
 
 export default adapter(
