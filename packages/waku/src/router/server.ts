@@ -7,4 +7,4 @@ export {
   unstable_redirect,
 } from './define-router.js';
 export { createPages } from './create-pages.js';
-export { unstable_fsRouter } from './fs-router.js';
+export { fsRouter } from './fs-router.js';
