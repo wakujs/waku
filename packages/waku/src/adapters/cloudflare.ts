@@ -5,6 +5,13 @@ import {
   unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
+import { joinPath } from '../lib/utils/path.js';
+
+declare global {
+  interface ImportMeta {
+    readonly __WAKU_ORIGINAL_PATH__: string;
+  }
+}
 
 const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
@@ -45,6 +52,10 @@ export default createServerEntryAdapter(
       }
       return c.text('404 Not Found', 404);
     });
+    const postBuildScript = joinPath(
+      import.meta.__WAKU_ORIGINAL_PATH__,
+      '../cloudflare-post-build.js',
+    );
     const postBuildArg: Parameters<
       typeof import('./cloudflare-post-build.js').default
     >[0] = {
@@ -54,7 +65,7 @@ export default createServerEntryAdapter(
     return {
       fetch: app.fetch,
       build: processBuild,
-      postBuild: ['waku/adapters/cloudflare-post-build', postBuildArg],
+      postBuild: [postBuildScript, postBuildArg],
     };
   },
 );

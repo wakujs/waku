@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import react from '@vitejs/plugin-react';
 import rsc from '@vitejs/plugin-rsc';
+import MagicString from 'magic-string';
 import {
   type Plugin,
   type PluginOption,
@@ -271,6 +272,7 @@ if (import.meta.hot) {
     },
     createVirtualConfigPlugin(config),
     createVirtualAdapterPlugin(config),
+    createPathMacroPlugin(),
     {
       // rewrite `react-server-dom-webpack` in `waku/minimal/client`
       name: 'rsc:waku:patch-webpack',
@@ -484,6 +486,39 @@ function createVirtualAdapterPlugin(config: Required<Config>) {
     name: `waku:virtual-${name}`,
     resolveId(source, _importer, _options) {
       return source === name ? this.resolve(config.adapter) : undefined;
+    },
+  } satisfies Plugin;
+}
+
+function createPathMacroPlugin() {
+  const token = 'import.meta.__WAKU_ORIGINAL_PATH__';
+  return {
+    name: 'waku:path-macro',
+    enforce: 'pre',
+    transform(code, id) {
+      if (id.startsWith('\0') || id.includes('virtual:')) {
+        return;
+      }
+      const originalPath = id.split('?')[0]!;
+      if (!['.js', '.mjs', '.cjs'].includes(path.extname(originalPath))) {
+        return;
+      }
+      if (!code.includes(token)) {
+        return;
+      }
+      const s = new MagicString(code);
+      let idx = code.indexOf(token);
+      if (idx === -1) {
+        return;
+      }
+      while (idx !== -1) {
+        s.overwrite(idx, idx + token.length, JSON.stringify(originalPath));
+        idx = code.indexOf(token, idx + 1);
+      }
+      return {
+        code: s.toString(),
+        map: s.generateMap({ hires: true }),
+      };
     },
   } satisfies Plugin;
 }

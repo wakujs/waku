@@ -88,6 +88,7 @@
     "@vitejs/plugin-rsc": "0.5.1",
     "dotenv": "17.2.3",
     "hono": "4.10.3",
+    "magic-string": "0.30.21",
     "rsc-html-stream": "0.0.7",
     "vite": "7.1.12"
   },
