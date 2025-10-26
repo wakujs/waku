@@ -80,8 +80,8 @@
   "dependencies": {
     "@hono/node-server": "1.19.5",
     "@swc/core": "1.13.5",
-    "@vitejs/plugin-react": "5.0.4",
-    "@vitejs/plugin-rsc": "0.5.0",
+    "@vitejs/plugin-react": "5.1.0",
+    "@vitejs/plugin-rsc": "0.5.1",
     "dotenv": "17.2.3",
     "hono": "4.10.3",
     "rsc-html-stream": "0.0.7",
