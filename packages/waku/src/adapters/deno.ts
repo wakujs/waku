@@ -8,6 +8,17 @@ import {
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
 
+declare global {
+  interface ImportMeta {
+    readonly __WAKU_ORIGINAL_PATH__: string;
+  }
+}
+
+function joinPath(path1: string, path2: string) {
+  const p = path.posix.join(path1, path2);
+  return p.startsWith('/') ? p : './' + p;
+}
+
 const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
@@ -43,8 +54,12 @@ export default createServerEntryAdapter(
     if (notFoundFn) {
       app.notFound(notFoundFn);
     }
+    const postBuildScript = joinPath(
+      import.meta.__WAKU_ORIGINAL_PATH__,
+      '../lib/deno-post-build.js',
+    );
     const postBuildArg: Parameters<
-      typeof import('./deno-post-build.js').default
+      typeof import('./lib/deno-post-build.js').default
     >[0] = {
       distDir: config.distDir,
       DIST_PUBLIC,
@@ -52,7 +67,7 @@ export default createServerEntryAdapter(
     return {
       fetch: app.fetch,
       build: processBuild,
-      postBuild: ['waku/adapters/deno-post-build', postBuildArg],
+      postBuild: [postBuildScript, postBuildArg],
     };
   },
 );

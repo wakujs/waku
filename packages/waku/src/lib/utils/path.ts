@@ -41,22 +41,19 @@ export const joinPath = (...paths: string[]) => {
   const items = ([] as string[]).concat(
     ...paths.map((path) => path.split('/')),
   );
-  let i = 0;
-  while (i < items.length) {
-    if (items[i] === '.' || items[i] === '') {
-      items.splice(i, 1);
-    } else if (items[i] === '..') {
-      if (i > 0) {
-        items.splice(i - 1, 2);
-        --i;
-      } else {
-        items.splice(i, 1);
+  const stack: string[] = [];
+  for (const item of items) {
+    if (item === '..') {
+      if (stack.length && stack[stack.length - 1] !== '..') {
+        stack.pop();
+      } else if (!isAbsolute) {
+        stack.push('..');
       }
-    } else {
-      ++i;
+    } else if (item && item !== '.') {
+      stack.push(item);
     }
   }
-  return (isAbsolute ? '/' : '') + items.join('/') || '.';
+  return (isAbsolute ? '/' : '') + stack.join('/') || '.';
 };
 
 export const extname = (filePath: string) => {

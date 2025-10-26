@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import react from '@vitejs/plugin-react';
 import rsc from '@vitejs/plugin-rsc';
+import MagicString from 'magic-string';
 import {
   type Plugin,
   type PluginOption,
@@ -271,6 +272,7 @@ if (import.meta.hot) {
     },
     createVirtualConfigPlugin(config),
     createVirtualAdapterPlugin(config),
+    createPathMacroPlugin(),
     {
       // rewrite `react-server-dom-webpack` in `waku/minimal/client`
       name: 'rsc:waku:patch-webpack',
@@ -327,6 +329,7 @@ if (import.meta.hot) {
       buildApp: {
         async handler(builder) {
           const viteConfig = builder.config;
+          const rootDir = viteConfig.root;
 
           const savePlatformData = async () => {
             const platformDataCode = `globalThis.__WAKU_SERVER_PLATFORM_DATA__ = ${JSON.stringify((globalThis as any).__WAKU_SERVER_PLATFORM_DATA__ ?? {}, null, 2)}\n`;
@@ -343,7 +346,7 @@ if (import.meta.hot) {
           );
           const entry: typeof import('../vite-entries/entry.build.js') =
             await import(pathToFileURL(entryPath).href);
-          await entry.INTERNAL_runBuild({ savePlatformData });
+          await entry.INTERNAL_runBuild({ rootDir, savePlatformData });
         },
       },
     },
@@ -484,6 +487,52 @@ function createVirtualAdapterPlugin(config: Required<Config>) {
     name: `waku:virtual-${name}`,
     resolveId(source, _importer, _options) {
       return source === name ? this.resolve(config.adapter) : undefined;
+    },
+  } satisfies Plugin;
+}
+
+function relativePath(pathFrom: string, pathTo: string) {
+  let relPath = path.posix.relative(pathFrom, pathTo);
+  if (!relPath.startsWith('.')) {
+    relPath = './' + relPath;
+  }
+  return relPath;
+}
+
+function createPathMacroPlugin() {
+  const token = 'import.meta.__WAKU_ORIGINAL_PATH__';
+  let rootDir: string;
+  return {
+    name: 'waku:path-macro',
+    enforce: 'pre',
+    configResolved(viteConfig) {
+      rootDir = viteConfig.root;
+    },
+    transform(code, id) {
+      if (id.startsWith('\0') || id.includes('virtual:')) {
+        return;
+      }
+      const normalizedPath = id.split('?')[0]!;
+      if (!['.js', '.mjs', '.cjs'].includes(path.extname(normalizedPath))) {
+        return;
+      }
+      if (!code.includes(token)) {
+        return;
+      }
+      const originalPath = relativePath(rootDir, normalizedPath);
+      const s = new MagicString(code);
+      let idx = code.indexOf(token);
+      if (idx === -1) {
+        return;
+      }
+      while (idx !== -1) {
+        s.overwrite(idx, idx + token.length, JSON.stringify(originalPath));
+        idx = code.indexOf(token, idx + 1);
+      }
+      return {
+        code: s.toString(),
+        map: s.generateMap({ hires: true }),
+      };
     },
   } satisfies Plugin;
 }
