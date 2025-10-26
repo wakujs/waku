@@ -18,35 +18,6 @@ export function getEnv(key: string): string | undefined {
   return (globalThis as any).__WAKU_SERVER_ENV__?.[key];
 }
 
-export async function unstable_setPlatformData<T>(
-  key: string,
-  data: T,
-  serializable: boolean,
-): Promise<void> {
-  const platformData: Record<string, [unknown, boolean]> = ((
-    globalThis as any
-  ).__WAKU_SERVER_PLATFORM_DATA__ ||= {});
-  platformData[key] = [data, serializable];
-}
-
-export async function unstable_getPlatformData<T>(
-  key: string,
-): Promise<T | undefined> {
-  const platformData: Record<string, [unknown, boolean]> = ((
-    globalThis as any
-  ).__WAKU_SERVER_PLATFORM_DATA__ ||= {});
-  const item = platformData[key];
-  if (item) {
-    return item[0] as T;
-  }
-  const loader: ((key: string) => Promise<unknown>) | undefined = (
-    globalThis as any
-  ).__WAKU_SERVER_PLATFORM_DATA_LOADER__;
-  if (loader) {
-    return loader(key) as T;
-  }
-}
-
 export function unstable_getHeaders(): Readonly<Record<string, string>> {
   return Object.fromEntries(getContext().req.headers.entries());
 }

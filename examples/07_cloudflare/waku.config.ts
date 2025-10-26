@@ -1,4 +1,5 @@
 import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
 import type { PluginOption } from 'vite';
 import { defineConfig } from 'waku/config';
 
@@ -14,7 +15,15 @@ function buildMode(): PluginOption {
 
 export default defineConfig({
   vite: {
-    plugins: [tailwindcss(), buildMode()],
+    plugins: [
+      tailwindcss(),
+      react({
+        babel: {
+          plugins: ['babel-plugin-react-compiler'],
+        },
+      }),
+      buildMode(),
+    ],
     optimizeDeps: {
       exclude: ['sqlite'],
     },

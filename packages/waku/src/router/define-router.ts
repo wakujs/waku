@@ -5,11 +5,7 @@ import { getPathMapping, path2regexp } from '../lib/utils/path.js';
 import type { PathSpec } from '../lib/utils/path.js';
 import { stringToStream } from '../lib/utils/stream.js';
 import { unstable_defineHandlers as defineHandlers } from '../minimal/server.js';
-import {
-  unstable_getContext as getContext,
-  unstable_getPlatformData,
-  unstable_setPlatformData,
-} from '../server.js';
+import { unstable_getContext as getContext } from '../server.js';
 import { INTERNAL_ServerRouter } from './client.js';
 import {
   HAS404_ID,
@@ -212,10 +208,6 @@ export function unstable_defineRouter(fns: {
   )[];
   let cachedMyConfig: MyConfig | undefined;
   const getMyConfig = async (): Promise<MyConfig> => {
-    const myConfig = await unstable_getPlatformData('defineRouterMyConfig');
-    if (myConfig) {
-      return myConfig as MyConfig;
-    }
     if (!cachedMyConfig) {
       cachedMyConfig = Array.from(await fns.getConfig()).map((item) => {
         switch (item.type) {
@@ -629,8 +621,6 @@ export function unstable_defineRouter(fns: {
         );
       }),
     );
-
-    await unstable_setPlatformData('defineRouterMyConfig', myConfig, true);
   };
 
   return defineHandlers({ handleRequest, handleBuild });
