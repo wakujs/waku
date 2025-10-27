@@ -1,0 +1,61 @@
+---
+slug: more-extensibility-and-deploy-adapters
+title: More Extensibility and Deploy Adapters
+description: Introducing a new adapter system for improved extensibility and easier deployments.
+author: daishi
+release: v0.27
+date: 2025/10/27
+---
+
+One of our goals is to grow the ecosystem around Waku. To achieve this, we've made some low-level API changes that offer more flexibility and extensibility for community libraries.
+
+These are technically breaking changes, but the migration path is straightforward. Let me briefly explain the benefits of this change and then how to migrate.
+
+### What's Changed
+
+Previously, deploy adapters were built-in, which limited control over them without touching framework internals.
+
+Now, deploy adapters (or just "adapters") are separate libraries. The framework simply delegates tasks to them. This makes customizing adapters much easier, and they are directly callable by app developers. For example, the Vercel adapter now accepts a `static` option and emits a static build.
+
+We also used to have Waku's "middleware," which was server-framework agnostic. New adapters are responsible for this capability. Our current adapters use Hono and accept custom Hono middleware, eliminating the need for the old Waku middleware.
+
+### Migration Guide
+
+Despite the significant internal rewrite, the public API surface is largely unchanged, except for how deploy adapters are handled.
+
+If you previously used a `server-entry.tsx` file with `createPages`, you need to change it:
+
+```diff
+  import { createPages } from 'waku';
++ import adapter from 'waku/adapters/default';
+
+- export default createPages(...);
++ export default adapter(createPages(...));
+```
+
+If you use the fs-router (by not having a `server-entry.tsx` file) and want to use a custom adapter, you now need to create a `server-entry.tsx` file:
+
+```tsx
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/cloudflare';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+);
+```
+
+Alternatively, if you are fine with the default fs-router behavior and don't need adapter options, you can configure the custom adapter in `waku.config.ts`:
+
+```ts
+import { defineConfig } from 'waku/config';
+
+export default defineConfig({
+  adapter: 'waku/adapters/cloudflare',
+});
+```
+
+### What's Next?
+
+We are almost ready for the v1-alpha release. Stay tuned! Keep an eye on the [v1 Roadmap](https://github.com/wakujs/waku/issues/24) for upcoming changes.
+
+Please try out the new release and share your feedback in our [GitHub discussions](https://github.com/wakujs/waku/discussions) or on our [Discord server](https://discord.gg/MrQdmzd).
