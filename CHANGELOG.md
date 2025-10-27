@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.27.0] - 2025-10-27
+
+### Added
+
+- Breaking: New adapter system
+
 ## [0.26.1] - 2025-09-10
 
 ### Changed
