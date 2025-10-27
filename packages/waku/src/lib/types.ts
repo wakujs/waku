@@ -40,7 +40,8 @@ export type Unstable_HandleBuild = (utils: {
   rscPath2pathname: (rscPath: string) => string;
   generateFile: (
     pathname: string,
-    body: Promise<ReadableStream | string>,
+    req: Request,
+    renderBody: () => Promise<ReadableStream | string>,
   ) => Promise<void>;
   generateDefaultHtml: (pathname: string) => Promise<void>;
 }) => Promise<void>;

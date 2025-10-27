@@ -8,6 +8,7 @@ import {
 } from '@vitejs/plugin-rsc/rsc';
 import { config, isBuild, rootDir } from 'virtual:vite-rsc-waku/config';
 import { DIST_PUBLIC } from '../constants.js';
+import { INTERNAL_runWithContext } from '../context.js';
 import type {
   Unstable_CreateServerEntryAdapter as CreateServerEntryAdapter,
   Unstable_HandleBuild as HandleBuild,
@@ -114,7 +115,8 @@ const toProcessBuild =
         joinPath(config.rscBase, encodeRscPath(rscPath)),
       generateFile: async (
         pathname: string,
-        body: Promise<ReadableStream | string>,
+        req: Request,
+        renderBody: () => Promise<ReadableStream | string>,
       ) => {
         const filePath = joinPath(
           config.distDir,
@@ -125,7 +127,9 @@ const toProcessBuild =
               ? '404.html' // HACK special treatment for 404, better way?
               : pathname + '/index.html',
         );
-        await emitFileInTask(runTask, rootDir, filePath, body);
+        await INTERNAL_runWithContext(req, async () => {
+          await emitFileInTask(runTask, rootDir, filePath, renderBody());
+        });
       },
       generateDefaultHtml: async (pathname: string) => {
         const filePath = joinPath(

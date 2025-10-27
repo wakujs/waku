@@ -38,15 +38,18 @@ export default adapter({
   }) => {
     await generateFile(
       rscPath2pathname(''),
-      renderRsc({
-        App: <App name="Waku" />,
-        InnerApp: <InnerApp count={0} />,
-      }),
+      new Request(new URL('http://localhost:3000/')),
+      () =>
+        renderRsc({
+          App: <App name="Waku" />,
+          InnerApp: <InnerApp count={0} />,
+        }),
     );
     for (const count of [1, 2, 3, 4, 5]) {
       await generateFile(
         rscPath2pathname(`InnerApp=${count}`),
-        renderRsc({ App: <App name="Waku" /> }),
+        new Request(new URL('http://localhost:3000/')),
+        () => renderRsc({ App: <App name="Waku" /> }),
       );
     }
     await generateDefaultHtml('/');
