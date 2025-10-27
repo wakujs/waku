@@ -1384,63 +1384,105 @@ vercel
 
 #### Pure SSG
 
-Adding the `--with-vercel-static` flag to the build script will produce static sites without serverless functions.
+For adavanced users who want to avoid deploying functions, use the server entry file with vercel adapter and specify `static` option.
 
-```json
-{
-  "scripts": {
-    "build": "waku build --with-vercel-static"
-  }
-}
+`./src/server-entry.ts`:
+
+```ts
+/// <reference types="vite/client" />
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/vercel';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  { static: true },
+);
 ```
-
-Note: When rendering in static mode, please be sure to return `render: 'static'` from each of your page files' `getConfig()`.
 
 ### Netlify
 
 Waku projects can be deployed to Netlify with the [Netlify CLI](https://docs.netlify.com/cli/get-started/).
 
 ```sh
-npm run build -- --with-netlify
+NETLIFY=1 npm run build
 netlify deploy
 ```
 
 #### Pure SSG
 
-Adding the `--with-netlify-static` flag to the build script will produce static sites without Netlify functions.
+For adavanced users who want to avoid deploying functions, use the server entry file with netlify adapter and specify `static` option.
 
-```json
-{
-  "scripts": {
-    "build": "waku build --with-netlify-static"
-  }
-}
+`./src/server-entry.ts`:
+
+```ts
+/// <reference types="vite/client" />
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/netlify';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  { static: true },
+);
 ```
-
-Note: When rendering in static mode, please be sure to return `render: 'static'` from each of your page files' `getConfig()`.
 
 ### Cloudflare (experimental)
 
+`./src/server-entry.ts`:
+
+```ts
+/// <reference types="vite/client" />
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/cloudflare';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+);
+```
+
 ```sh
-npm run build -- --with-cloudflare
+npm run build
 npx wrangler dev # or deploy
 ```
 
 ### Deno Deploy (experimental)
 
+`./src/server-entry.ts`:
+
+```ts
+/// <reference types="vite/client" />
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/deno';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+);
+```
+
 ```sh
-npm run build -- --with-deno
+npm run build
 deployctl deploy --prod dist/serve-deno.js --exclude node_modules
 ```
 
 ### AWS Lambda (experimental)
 
+`./src/server-entry.ts`:
+
+```ts
+/// <reference types="vite/client" />
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/aws-lambda';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  streaming: false, // optional, default is false
+);
+```
+
 ```sh
-npm run build -- --with-aws-lambda
+npm run build
 ```
 
 The handler entrypoint is `dist/serve-asw-lambda.js`: see [Hono AWS Lambda Deploy Docs](https://hono.dev/getting-started/aws-lambda#_3-deploy).
-Streaming can be activated by setting environment variable `DEPLOY_AWS_LAMBDA_STREAMING=true npm run build -- --with-aws-lambda`
 
 ## Community
 
