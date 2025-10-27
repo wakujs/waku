@@ -19,7 +19,7 @@ export function getContext() {
   const context = contextStorage.getStore();
   if (!context) {
     throw new Error(
-      'Context is not available. Make sure to use the context middleware. For now, Context is not available during the build time.',
+      'Context is not available. Make sure to use the context middleware.',
     );
   }
   return context;

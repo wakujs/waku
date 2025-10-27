@@ -36,13 +36,16 @@ export default adapter({
   }) => {
     await generateFile(
       rscPath2pathname(''),
-      renderRsc({ App: <App name="Waku" /> }),
+      new Request(new URL('http://localhost:3000/')),
+      () => renderRsc({ App: <App name="Waku" /> }),
     );
     await generateFile(
       '/',
-      renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
-        rscPath: '',
-      }).then((res) => res.body || ''),
+      new Request(new URL('http://localhost:3000/')),
+      () =>
+        renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
+          rscPath: '',
+        }).then((res) => res.body || ''),
     );
   },
 });

@@ -18,6 +18,7 @@ export function createRenderUtils(
   loadSsrEntryModule: () => Promise<{ renderHTML: RenderHTML }>,
 ): RenderUtils {
   const onError = (e: unknown) => {
+    console.error('Error during rendering:', e);
     if (
       e &&
       typeof e === 'object' &&
