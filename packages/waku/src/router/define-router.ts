@@ -537,10 +537,9 @@ export function unstable_defineRouter(fns: {
         handleApi
       ) {
         const pathname = item.pathname;
-        await generateFile(pathname, () =>
-          handleApi(
-            new Request(new URL(pathname, 'http://localhost:3000')),
-          ).then((res) => res.body || stringToStream('')),
+        const req = new Request(new URL(pathname, 'http://localhost:3000'));
+        await generateFile(pathname, req, () =>
+          handleApi(req).then((res) => res.body || stringToStream('')),
         );
       }
     }
@@ -552,15 +551,17 @@ export function unstable_defineRouter(fns: {
         if (item.type !== 'route') {
           return;
         }
-        if (!item.pathname) {
+        const pathname = item.pathname;
+        if (!pathname) {
           return;
         }
-        const rscPath = encodeRoutePath(item.pathname);
+        const req = new Request(new URL(pathname, 'http://localhost:3000'));
+        const rscPath = encodeRoutePath(pathname);
         const entries = await getEntries(rscPath, undefined, {});
         if (entries) {
-          entriesCache.set(item.pathname, entries);
+          entriesCache.set(pathname, entries);
           if (item.specs.isStatic) {
-            await generateFile(rscPath2pathname(rscPath), () =>
+            await generateFile(rscPath2pathname(rscPath), req, () =>
               renderRsc(entries),
             );
           }
@@ -579,6 +580,7 @@ export function unstable_defineRouter(fns: {
         }
         await generateDefaultHtml(pathname);
       } else if (pathname) {
+        const req = new Request(new URL(pathname, 'http://localhost:3000'));
         const entries = entriesCache.get(pathname);
         if (specs.isStatic && entries) {
           const rscPath = encodeRoutePath(pathname);
@@ -586,7 +588,7 @@ export function unstable_defineRouter(fns: {
             route: { path: pathname, query: '', hash: '' },
             httpstatus: specs.is404 ? 404 : 200,
           });
-          await generateFile(pathname, () =>
+          await generateFile(pathname, req, () =>
             renderHtml(entries, html, {
               rscPath,
             }).then((res) => res.body || ''),
@@ -608,7 +610,9 @@ export function unstable_defineRouter(fns: {
         }
         const { element } = await fns.handleSlice(item.id);
         const rscPath = encodeSliceId(item.id);
-        await generateFile(rscPath2pathname(rscPath), () =>
+        // dummy req for slice which is not determined at build time
+        const req = new Request(new URL('http://localhost:3000'));
+        await generateFile(rscPath2pathname(rscPath), req, () =>
           renderRsc({
             [SLICE_SLOT_ID_PREFIX + item.id]: element,
             ...(item.specs.isStatic
