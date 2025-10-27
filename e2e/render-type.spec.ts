@@ -26,6 +26,7 @@ test.describe('render type', () => {
     test('renders static content', async ({ page }) => {
       await page.goto(`http://localhost:${port}/server/static/static-echo`);
       await expect(page.getByTestId('echo')).toHaveText('static-echo');
+      await expect(page.getByTestId('req-url')).toHaveText(/\/static-echo$/);
     });
 
     test('does not hydrate server components', async ({ page }) => {
@@ -65,6 +66,7 @@ test.describe('render type', () => {
     test('renders dynamic content', async ({ page }) => {
       await page.goto(`http://localhost:${port}/server/dynamic/dynamic-echo`);
       await expect(page.getByTestId('echo')).toHaveText('dynamic-echo');
+      await expect(page.getByTestId('req-url')).toHaveText(/\/dynamic-echo$/);
     });
 
     test('does not hydrate server components', async ({ page }) => {
