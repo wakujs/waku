@@ -2,20 +2,20 @@ import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 export default async function postBuild({
+  assetsDir,
   distDir,
   rscBase,
   privateDir,
   basePath,
   DIST_PUBLIC,
-  DIST_ASSETS,
   serverless,
 }: {
+  assetsDir: string;
   distDir: string;
   rscBase: string;
   privateDir: string;
   basePath: string;
   DIST_PUBLIC: string;
-  DIST_ASSETS: string;
   serverless: boolean;
 }) {
   const SERVE_JS = 'serve-vercel.js';
@@ -66,7 +66,7 @@ export default getRequestListener(
   }
   const routes = [
     {
-      src: `^${basePath}${DIST_ASSETS}/(.*)$`,
+      src: `^${basePath}${assetsDir}/(.*)$`,
       headers: {
         'cache-control': 'public, immutable, max-age=31536000',
       },

@@ -20,7 +20,7 @@ function joinPath(path1: string, path2: string) {
   return p.startsWith('/') ? p : './' + p;
 }
 
-const { DIST_PUBLIC, DIST_ASSETS } = constants;
+const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 (global as any).__WAKU_HONO_NODE_SERVER_GET_REQUEST_LISTENER__ =
   getRequestListener;
@@ -30,6 +30,7 @@ export default createServerEntryAdapter(
     { processRequest, processBuild, config },
     options?: {
       static?: boolean;
+      assetsDir?: string;
       middlewareFns?: (() => MiddlewareHandler)[];
       middlewareModules?: Record<
         string,
@@ -61,12 +62,12 @@ export default createServerEntryAdapter(
     const postBuildArg: Parameters<
       typeof import('./lib/vercel-post-build.js').default
     >[0] = {
+      assetsDir: options?.assetsDir || 'assets',
       distDir: config.distDir,
       rscBase: config.rscBase,
       privateDir: config.privateDir,
       basePath: config.basePath,
       DIST_PUBLIC,
-      DIST_ASSETS,
       serverless: !options?.static,
     };
     return {
