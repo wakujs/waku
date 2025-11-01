@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import type { ReactNode } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
 import { getPathMapping, path2regexp } from '../lib/utils/path.js';
 import type { PathSpec } from '../lib/utils/path.js';
@@ -161,11 +161,14 @@ export function unstable_defineRouter(fns: {
   handleRoute: (
     path: string,
     options: {
-      query?: string;
+      cachedRootElement: ReactElement | undefined;
+      cachedRouteElement: ReactElement | undefined;
+      cachedElements: Record<SlotId, unknown>;
+      query: string | undefined;
     },
   ) => Promise<{
-    rootElement: ReactNode;
-    routeElement: ReactNode;
+    rootElement: ReactElement;
+    routeElement: ReactElement;
     elements: Record<SlotId, unknown>;
     slices?: string[];
   }>;
@@ -284,6 +287,8 @@ export function unstable_defineRouter(fns: {
     const myConfig = await getMyConfig();
     return myConfig.some(({ type, specs }) => type === 'route' && specs.is404);
   };
+  // TODO should we make it a Map to support falsy values?
+  const cachedElements: Record<SlotId, unknown> = {};
   const getEntries = async (
     rscPath: string,
     rscParams: unknown,
@@ -304,15 +309,19 @@ export function unstable_defineRouter(fns: {
     }
     const skipIdSet = new Set(isStringArray(skipParam) ? skipParam : []);
     const { query } = parseRscParams(rscParams);
+    const decodedPathname = decodeURI(pathname);
+    const routeId = ROUTE_SLOT_ID_PREFIX + decodedPathname;
     const {
       rootElement,
       routeElement,
       elements,
       slices = [],
-    } = await fns.handleRoute(
-      pathname,
-      pathConfigItem.specs.isStatic ? {} : { query },
-    );
+    } = await fns.handleRoute(pathname, {
+      cachedRootElement: cachedElements.root as ReactElement | undefined,
+      cachedRouteElement: cachedElements[routeId] as ReactElement | undefined,
+      cachedElements,
+      query: pathConfigItem.specs.isStatic ? undefined : query,
+    });
     if (
       Object.keys(elements).some(
         (id) =>
@@ -321,6 +330,14 @@ export function unstable_defineRouter(fns: {
       )
     ) {
       throw new Error('Element ID cannot start with "route:" or "slice:"');
+    }
+    if (pathConfigItem.type === 'route') {
+      if (pathConfigItem.specs.rootElementIsStatic) {
+        cachedElements.root ??= rootElement;
+      }
+      if (pathConfigItem.specs.routeElementIsStatic) {
+        cachedElements[routeId] ??= routeElement;
+      }
     }
     const sliceConfigMap = new Map<string, { isStatic?: boolean }>();
     await Promise.all(
@@ -345,17 +362,22 @@ export function unstable_defineRouter(fns: {
           if (!fns.handleSlice) {
             return null;
           }
+          const cachedSlice = cachedElements[id];
+          if (cachedSlice) {
+            return [id, cachedSlice];
+          }
           const { element } = await fns.handleSlice(sliceId);
+          if (isStatic) {
+            cachedElements[id] = element;
+          }
           return [id, element];
         }),
       )
     ).filter((ent): ent is NonNullable<typeof ent> => !!ent);
-    const entries = {
+    const entries: Record<SlotId, unknown> = {
       ...elements,
       ...Object.fromEntries(sliceElementEntries),
     };
-    const decodedPathname = decodeURI(pathname);
-    const routeId = ROUTE_SLOT_ID_PREFIX + decodedPathname;
     if (pathConfigItem.type === 'route') {
       for (const id of pathConfigItem.specs.staticElementIds || []) {
         if (skipIdSet.has(id)) {
