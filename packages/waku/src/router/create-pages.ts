@@ -1,5 +1,5 @@
 import { Fragment, createElement } from 'react';
-import type { FunctionComponent, ReactNode } from 'react';
+import type { FunctionComponent, ReactElement, ReactNode } from 'react';
 import { getGrouplessPath } from '../lib/utils/create-pages.js';
 import {
   getPathMapping,
@@ -243,14 +243,13 @@ const createNestedElements = (
     component: FunctionComponent<any>;
     props?: Record<string, unknown>;
   }[],
-  children: ReactNode,
-) => {
-  return elements.reduceRight<ReactNode>(
+  children: ReactElement,
+): ReactElement =>
+  elements.reduceRight(
     (result, element) =>
       createElement(element.component, element.props, result),
     children,
   );
-};
 
 type ComponentList = {
   render: 'static' | 'dynamic';
@@ -769,7 +768,10 @@ export const createPages = <
         .sort((configA, configB) => routePriorityComparator(configA, configB));
       return [...pathConfigs, ...sliceConfigs];
     },
-    handleRoute: async (path, { query }) => {
+    handleRoute: async (
+      path,
+      { cachedRootElement, cachedRouteElement, cachedElements, query },
+    ) => {
       await configure();
 
       // path without slugs
@@ -804,23 +806,32 @@ export const createPages = <
         encodeURI(path),
       );
       const result: Record<string, unknown> = {};
+      const setResult = (key: string, value: unknown) => {
+        result[key] = cachedElements[key] ?? value;
+      };
       if (Array.isArray(pageComponent)) {
         for (let i = 0; i < pageComponent.length; i++) {
           const comp = pageComponent[i];
           if (!comp) {
             continue;
           }
-          result[`page:${routePath}:${i}`] = createElement(comp.component, {
-            ...mapping,
-            ...(query ? { query } : {}),
-            path,
-          });
+          setResult(
+            `page:${routePath}:${i}`,
+            createElement(comp.component, {
+              ...mapping,
+              ...(query ? { query } : {}),
+              path,
+            }),
+          );
         }
       } else {
-        result[`page:${routePath}`] = createElement(
-          pageComponent,
-          { ...mapping, ...(query ? { query } : {}), path },
-          createElement(Children),
+        setResult(
+          `page:${routePath}`,
+          createElement(
+            pageComponent,
+            { ...mapping, ...(query ? { query } : {}), path },
+            createElement(Children),
+          ),
         );
       }
 
@@ -834,8 +845,10 @@ export const createPages = <
           staticComponentMap.get(joinPath(segment, 'layout').slice(1)); // feels like a hack
 
         if (layout && !Array.isArray(layout)) {
-          const id = 'layout:' + segment;
-          result[id] = createElement(layout, null, createElement(Children));
+          setResult(
+            `layout:${segment}`,
+            createElement(layout, null, createElement(Children)),
+          );
         } else {
           throw new Error('Invalid layout ' + segment);
         }
@@ -860,12 +873,16 @@ export const createPages = <
 
       return {
         elements: result,
-        rootElement: createElement(
-          rootItem ? rootItem.component : DefaultRoot,
-          null,
-          createElement(Children),
-        ),
-        routeElement: createNestedElements(layouts, finalPageChildren),
+        rootElement:
+          cachedRootElement ??
+          createElement(
+            rootItem ? rootItem.component : DefaultRoot,
+            null,
+            createElement(Children),
+          ),
+        routeElement:
+          cachedRouteElement ??
+          createNestedElements(layouts, finalPageChildren),
         slices: slicePathMap.get(routePath) || [],
       };
     },

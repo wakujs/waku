@@ -42,6 +42,8 @@ test.describe(`define-router`, () => {
       .textContent()) as string;
     await page.reload();
     await expect(page.getByTestId('bar1-title')).toHaveText('Bar1');
+    const sliceText3 = page.getByTestId('slice001');
+    await expect(sliceText3).toHaveText(sliceText);
     if (mode === 'PRD') {
       await expect(page.getByTestId('bar1-random')).not.toHaveText(randomText);
     }

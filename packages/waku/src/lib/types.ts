@@ -3,7 +3,9 @@ import type { Config } from '../config.js';
 
 type Elements = Record<string, unknown>;
 
-type RenderRsc = (elements: Record<string, unknown>) => Promise<ReadableStream>;
+type RenderRsc = (elements: Elements) => Promise<ReadableStream>;
+
+type ParseRsc = (rscStream: ReadableStream) => Promise<Elements>;
 
 type RenderHtml = (
   elements: Elements,
@@ -30,12 +32,14 @@ export type Unstable_HandleRequest = (
   },
   utils: {
     renderRsc: RenderRsc;
+    parseRsc: ParseRsc;
     renderHtml: RenderHtml;
   },
 ) => Promise<ReadableStream | Response | 'fallback' | null | undefined>;
 
 export type Unstable_HandleBuild = (utils: {
   renderRsc: RenderRsc;
+  parseRsc: ParseRsc;
   renderHtml: RenderHtml;
   rscPath2pathname: (rscPath: string) => string;
   generateFile: (

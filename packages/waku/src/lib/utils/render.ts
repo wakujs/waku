@@ -15,6 +15,10 @@ type RenderHTML = (
 export function createRenderUtils(
   temporaryReferences: unknown,
   renderToReadableStream: (data: unknown, options?: object) => ReadableStream,
+  createFromReadableStream: (
+    stream: ReadableStream,
+    options?: object,
+  ) => Promise<unknown>,
   loadSsrEntryModule: () => Promise<{ renderHTML: RenderHTML }>,
 ): RenderUtils {
   const onError = (e: unknown) => {
@@ -35,6 +39,11 @@ export function createRenderUtils(
         temporaryReferences,
         onError,
       });
+    },
+    async parseRsc(stream) {
+      return createFromReadableStream(stream, {}) as Promise<
+        Record<string, unknown>
+      >;
     },
     async renderHtml(
       elements,

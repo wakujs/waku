@@ -1,4 +1,5 @@
 import {
+  createFromReadableStream,
   createTemporaryReferenceSet,
   decodeAction,
   decodeFormState,
@@ -51,6 +52,7 @@ const toProcessRequest =
     const renderUtils = createRenderUtils(
       temporaryReferences,
       renderToReadableStream,
+      createFromReadableStream,
       loadSsrEntryModule,
     );
 
@@ -94,6 +96,7 @@ const toProcessBuild =
     const renderUtils = createRenderUtils(
       undefined,
       renderToReadableStream,
+      createFromReadableStream,
       loadSsrEntryModule,
     );
 
@@ -110,6 +113,7 @@ const toProcessBuild =
 
     await handleBuild({
       renderRsc: renderUtils.renderRsc,
+      parseRsc: renderUtils.parseRsc,
       renderHtml: renderUtils.renderHtml,
       rscPath2pathname: (rscPath) =>
         joinPath(config.rscBase, encodeRscPath(rscPath)),
