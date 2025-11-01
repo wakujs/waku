@@ -367,6 +367,11 @@ test.describe(`create-pages`, () => {
     await expect(staticSliceText2).toHaveText(staticSliceText);
     const dynamicSliceText2 = page.getByTestId('slice002');
     await expect(dynamicSliceText2).not.toHaveText(dynamicSliceText);
+
+    // test static slices behavior after hard navigation
+    await page.reload();
+    const staticSliceText3 = page.getByTestId('slice001');
+    await expect(staticSliceText3).toHaveText(staticSliceText);
   });
 
   test('slices with lazy', async ({ page }) => {
