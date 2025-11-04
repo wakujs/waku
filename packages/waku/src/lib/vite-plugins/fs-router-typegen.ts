@@ -73,16 +73,50 @@ export const fsRouterTypegenPlugin = (opts: { srcDir: string }): Plugin => {
       outputFile = joinPath(config.root, opts.srcDir, 'pages.gen.ts');
     },
     configureServer(server) {
-      if (
-        !entriesFilePossibilities ||
-        !pagesDir ||
-        !outputFile ||
-        entriesFilePossibilities.some((entriesFile) =>
-          existsSync(entriesFile),
-        ) ||
-        !existsSync(pagesDir)
-      ) {
+      if (!entriesFilePossibilities || !pagesDir || !outputFile) {
         return;
+      }
+
+      if (!existsSync(pagesDir)) {
+        return;
+      }
+
+      const existingServerEntry = entriesFilePossibilities.find((entriesFile) =>
+        existsSync(entriesFile),
+      );
+
+      if (existingServerEntry) {
+        try {
+          const file = swc.parseSync(
+            readFileSync(existingServerEntry, 'utf8'),
+            {
+              syntax: 'typescript',
+              tsx: true,
+            },
+          );
+
+          const usesCreatePages = file.body.some((node) => {
+            if (node.type === 'ImportDeclaration') {
+              if (node.source.value !== 'waku') {
+                return false;
+              }
+              return node.specifiers.some(
+                (specifier) =>
+                  specifier.type === 'ImportSpecifier' &&
+                  (specifier.imported?.value === 'createPages' ||
+                    (!specifier.imported &&
+                      specifier.local.value === 'createPages')),
+              );
+            }
+            return false;
+          });
+
+          if (usesCreatePages) {
+            return;
+          }
+        } catch {
+          // If we can't parse the file, assume managed mode and continue
+        }
       }
 
       // Recursively collect `.tsx` files in the given directory
