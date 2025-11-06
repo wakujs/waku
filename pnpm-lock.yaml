@@ -904,8 +904,8 @@ importers:
   examples/07_cloudflare:
     dependencies:
       '@hiogawa/node-loader-cloudflare':
-        specifier: https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@7bc9300
-        version: https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@7bc9300(miniflare@4.20251011.1)(wrangler@4.45.0)
+        specifier: https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@1c6876a
+        version: https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@1c6876a(miniflare@4.20251011.1)(wrangler@4.45.0)
       hono:
         specifier: 4.10.3
         version: 4.10.3
@@ -2398,8 +2398,8 @@ packages:
     resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
     engines: {node: '>=14'}
 
-  '@hiogawa/node-loader-cloudflare@https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@7bc9300':
-    resolution: {tarball: https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@7bc9300}
+  '@hiogawa/node-loader-cloudflare@https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@1c6876a':
+    resolution: {tarball: https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@1c6876a}
     version: 0.0.0
     peerDependencies:
       miniflare: '*'
@@ -7256,7 +7256,7 @@ snapshots:
 
   '@fastify/busboy@2.1.1': {}
 
-  '@hiogawa/node-loader-cloudflare@https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@7bc9300(miniflare@4.20251011.1)(wrangler@4.45.0)':
+  '@hiogawa/node-loader-cloudflare@https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@1c6876a(miniflare@4.20251011.1)(wrangler@4.45.0)':
     dependencies:
       wrangler: 4.45.0
     optionalDependencies:

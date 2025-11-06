@@ -10,7 +10,7 @@
     "start": "wrangler dev"
   },
   "dependencies": {
-    "@hiogawa/node-loader-cloudflare": "https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@7bc9300",
+    "@hiogawa/node-loader-cloudflare": "https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@1c6876a",
     "hono": "4.10.3",
     "react": "19.2.0",
     "react-dom": "19.2.0",

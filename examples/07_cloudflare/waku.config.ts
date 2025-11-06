@@ -29,8 +29,8 @@ export default defineConfig({
         build: true,
       }),
     ],
-    optimizeDeps: {
-      exclude: ['cloudflare:workers'],
-    },
+    // optimizeDeps: {
+    //   exclude: ['cloudflare:workers'],
+    // },
   },
 });
