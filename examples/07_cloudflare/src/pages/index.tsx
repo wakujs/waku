@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
+import { env, waitUntil } from 'cloudflare:workers'; // eslint-disable-line import/no-unresolved
 import { Link } from 'waku';
 import { Counter } from '../components/counter';
-import { env, waitUntil } from 'cloudflare:workers';
 
 export default async function HomePage() {
   const data = await getData();
