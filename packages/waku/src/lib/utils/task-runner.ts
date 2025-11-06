@@ -1,6 +1,4 @@
-const BATCH_SIZE = 2500;
-
-export const createTaskRunner = (limit = BATCH_SIZE) => {
+export const createTaskRunner = (limit: number) => {
   let running = 0;
   const waiting: (() => void)[] = [];
   const runTask = async <T>(task: () => Promise<T>): Promise<T> => {

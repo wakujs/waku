@@ -110,7 +110,8 @@ const toProcessBuild =
       return fallbackHtml;
     };
 
-    const { runTask } = createTaskRunner();
+    const RENDER_BATCH_SIZE = 2500;
+    const { runTask } = createTaskRunner(RENDER_BATCH_SIZE);
     const buildData = new Map<string, string>();
 
     await handleBuild({

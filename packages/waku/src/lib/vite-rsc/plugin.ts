@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import react from '@vitejs/plugin-react';
 import rsc from '@vitejs/plugin-rsc';
@@ -28,7 +31,7 @@ import {
   getManagedServerEntry,
 } from '../utils/managed.js';
 import { joinPath } from '../utils/path.js';
-import { streamToString } from '../utils/stream.js';
+import { createTaskRunner } from '../utils/task-runner.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
 
@@ -271,9 +274,9 @@ if (import.meta.hot) {
         }
       },
     },
-    createVirtualConfigPlugin(config),
-    createVirtualAdapterPlugin(config),
-    createPathMacroPlugin(),
+    virtualConfigPlugin(config),
+    virtualAdapterPlugin(config),
+    pathMacroPlugin(),
     {
       // rewrite `react-server-dom-webpack` in `waku/minimal/client`
       name: 'waku:patch-webpack',
@@ -295,7 +298,7 @@ if (import.meta.hot) {
         }
       },
     },
-    createBuildPlugin(),
+    buildPlugin(config),
     {
       name: 'waku:private-dir',
       load(id) {
@@ -396,7 +399,7 @@ function rscIndexPlugin(): Plugin {
   };
 }
 
-function createVirtualConfigPlugin(config: Required<Config>) {
+function virtualConfigPlugin(config: Required<Config>): Plugin {
   const configModule = 'virtual:vite-rsc-waku/config';
   let rootDir: string;
   return {
@@ -416,10 +419,10 @@ function createVirtualConfigPlugin(config: Required<Config>) {
       `;
       }
     },
-  } satisfies Plugin;
+  };
 }
 
-function createVirtualAdapterPlugin(config: Required<Config>) {
+function virtualAdapterPlugin(config: Required<Config>): Plugin {
   const adapterModule = 'waku/adapters/default';
   return {
     name: 'waku:virtual-adapter',
@@ -428,7 +431,7 @@ function createVirtualAdapterPlugin(config: Required<Config>) {
         ? this.resolve(config.adapter)
         : undefined;
     },
-  } satisfies Plugin;
+  };
 }
 
 function relativePath(pathFrom: string, pathTo: string) {
@@ -439,7 +442,7 @@ function relativePath(pathFrom: string, pathTo: string) {
   return relPath;
 }
 
-function createPathMacroPlugin() {
+function pathMacroPlugin(): Plugin {
   const token = 'import.meta.__WAKU_ORIGINAL_PATH__';
   let rootDir: string;
   return {
@@ -474,14 +477,13 @@ function createPathMacroPlugin() {
         map: s.generateMap({ hires: true }),
       };
     },
-  } satisfies Plugin;
+  };
 }
 
 const forceRelativePath = (s: string) => (s.startsWith('.') ? s : './' + s);
 
-function createBuildPlugin() {
+function buildPlugin({ distDir }: { distDir: string }): Plugin {
   const virtualModule = 'virtual:vite-rsc-waku/build-data';
-  const filesToEmit = new Map<string, Promise<ReadableStream | string>>();
   return {
     name: 'waku:build',
     resolveId(source, _importer, _options) {
@@ -508,11 +510,35 @@ function createBuildPlugin() {
       async handler(builder) {
         const viteConfig = builder.config;
         const rootDir = viteConfig.root;
+        const WRITE_BATCH_SIZE = 16;
+        const { runTask } = createTaskRunner(WRITE_BATCH_SIZE);
+        const tasks: Promise<void>[] = [];
         const emitFile = async (
           filePath: string,
           bodyPromise: Promise<ReadableStream | string>,
         ) => {
-          filesToEmit.set(filePath, bodyPromise);
+          const destFile = joinPath(rootDir, distDir, filePath);
+          if (!destFile.startsWith(rootDir)) {
+            throw new Error('Invalid filePath: ' + filePath);
+          }
+          // In partial mode, skip if the file already exists.
+          if (fs.existsSync(destFile)) {
+            return;
+          }
+          tasks.push(
+            runTask(async () => {
+              await mkdir(joinPath(destFile, '..'), { recursive: true });
+              const body = await bodyPromise;
+              if (typeof body === 'string') {
+                await writeFile(destFile, body);
+              } else {
+                await pipeline(
+                  Readable.fromWeb(body as never),
+                  fs.createWriteStream(destFile),
+                );
+              }
+            }),
+          );
         };
         const entryPath = path.join(
           viteConfig.environments.rsc!.build.outDir,
@@ -521,15 +547,8 @@ function createBuildPlugin() {
         const entry: typeof import('../vite-entries/entry.build.js') =
           await import(pathToFileURL(entryPath).href);
         await entry.INTERNAL_runBuild({ rootDir, emitFile });
+        await Promise.all(tasks);
       },
     },
-    async generateBundle() {
-      for (const [fileName, bodyPromise] of filesToEmit.entries()) {
-        const body = await bodyPromise;
-        const source =
-          typeof body === 'string' ? body : await streamToString(body);
-        this.emitFile({ type: 'asset', fileName, source });
-      }
-    },
-  } satisfies Plugin;
+  };
 }
