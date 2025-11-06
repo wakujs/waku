@@ -8,7 +8,7 @@ import {
 } from '@vitejs/plugin-rsc/rsc';
 import { buildData } from 'virtual:vite-rsc-waku/build-data';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
-import { BUILD_DATA_FILE, DIST_PUBLIC } from '../constants.js';
+import { BUILD_DATA_FILE, DIST_PUBLIC, DIST_SERVER } from '../constants.js';
 import { INTERNAL_runWithContext } from '../context.js';
 import type {
   Unstable_CreateServerEntryAdapter as CreateServerEntryAdapter,
@@ -152,7 +152,7 @@ const toProcessBuild =
     });
 
     await emitFile(
-      BUILD_DATA_FILE,
+      joinPath(DIST_SERVER, BUILD_DATA_FILE),
       Promise.resolve(
         `export const buildData = new Map(${JSON.stringify(Array.from(buildData))});`,
       ),

@@ -21,6 +21,7 @@ import type { Config } from '../../config.js';
 import {
   BUILD_DATA_FILE,
   DIST_PUBLIC,
+  DIST_SERVER,
   SRC_CLIENT_ENTRY,
   SRC_PAGES,
   SRC_SERVER_ENTRY,
@@ -187,10 +188,10 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
         environmentConfig.build ??= {};
         environmentConfig.build.outDir = `${config.distDir}/${name}`;
         if (name === 'rsc') {
-          environmentConfig.build.outDir = `${config.distDir}/server`;
+          environmentConfig.build.outDir = `${config.distDir}/${DIST_SERVER}`;
         }
         if (name === 'ssr') {
-          environmentConfig.build.outDir = `${config.distDir}/server/ssr`;
+          environmentConfig.build.outDir = `${config.distDir}/${DIST_SERVER}/ssr`;
         }
         if (name === 'client') {
           environmentConfig.build.outDir = `${config.distDir}/${DIST_PUBLIC}`;
@@ -484,20 +485,35 @@ const forceRelativePath = (s: string) => (s.startsWith('.') ? s : './' + s);
 
 function buildPlugin({ distDir }: { distDir: string }): Plugin {
   const virtualModule = 'virtual:vite-rsc-waku/build-data';
+  const dummySource = `
+export const buildData = new Map();
+`;
   return {
     name: 'waku:build',
     resolveId(source, _importer, _options) {
-      return source === virtualModule ? '\0' + virtualModule : undefined;
+      if (source === virtualModule) {
+        assert.equal(this.environment.name, 'rsc');
+        if (this.environment.mode === 'build') {
+          return { id: source, external: true, moduleSideEffects: true };
+        }
+        return '\0' + virtualModule;
+      }
     },
     load(id) {
       if (id === '\0' + virtualModule) {
-        return `
-        export const buildData = new Map();
-      `;
+        // no-op during dev
+        assert.equal(this.environment.mode, 'dev');
+        return dummySource;
       }
     },
     renderChunk(code, chunk) {
       if (code.includes(virtualModule)) {
+        assert.equal(this.environment.name, 'rsc');
+        this.emitFile({
+          type: 'asset',
+          fileName: BUILD_DATA_FILE,
+          source: dummySource,
+        });
         const replacement = forceRelativePath(
           normalizePath(
             path.relative(path.join(chunk.fileName, '..'), BUILD_DATA_FILE),
