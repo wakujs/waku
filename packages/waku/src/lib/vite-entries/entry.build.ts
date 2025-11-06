@@ -2,9 +2,18 @@ import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 import { INTERNAL_setAllEnv } from '../../server.js';
 import { filePathToFileURL, joinPath } from '../utils/path.js';
 
-export async function INTERNAL_runBuild({ rootDir }: { rootDir: string }) {
+export async function INTERNAL_runBuild({
+  rootDir,
+  emitFile,
+}: {
+  rootDir: string;
+  emitFile: (
+    filePath: string,
+    bodyPromise: Promise<ReadableStream | string>,
+  ) => Promise<void>;
+}) {
   INTERNAL_setAllEnv(process.env as any);
-  await serverEntry.build();
+  await serverEntry.build(emitFile);
   if (serverEntry.postBuild) {
     const [modulePath, ...args] = serverEntry.postBuild;
     const moduleId = modulePath.startsWith('./')

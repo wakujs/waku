@@ -31,6 +31,7 @@ export type Unstable_HandleRequest = (
   utils: {
     renderRsc: RenderRsc;
     renderHtml: RenderHtml;
+    loadBuildData: (key: string) => string | undefined;
   },
 ) => Promise<ReadableStream | Response | 'fallback' | null | undefined>;
 
@@ -38,6 +39,7 @@ export type Unstable_HandleBuild = (utils: {
   renderRsc: RenderRsc;
   renderHtml: RenderHtml;
   rscPath2pathname: (rscPath: string) => string;
+  saveBuildData: (key: string, value: string) => void;
   generateFile: (
     pathname: string,
     req: Request,
@@ -49,7 +51,12 @@ export type Unstable_HandleBuild = (utils: {
 export type Unstable_ServerEntry = {
   default: {
     fetch: (req: Request, ...args: any[]) => Response | Promise<Response>;
-    build: () => Promise<void>;
+    build: (
+      emitFile: (
+        filePath: string,
+        bodyPromise: Promise<ReadableStream | string>,
+      ) => Promise<void>,
+    ) => Promise<void>;
     postBuild?: [modulePath: string, ...args: unknown[]];
   };
 };
@@ -58,7 +65,12 @@ export type Unstable_ProcessRequest = (
   req: Request,
 ) => Promise<Response | null>;
 
-export type Unstable_ProcessBuild = () => Promise<void>;
+export type Unstable_ProcessBuild = (
+  emitFile: (
+    filePath: string,
+    bodyPromise: Promise<ReadableStream | string>,
+  ) => Promise<void>,
+) => Promise<void>;
 
 export type Unstable_CreateServerEntryAdapter = <Options>(
   fn: (

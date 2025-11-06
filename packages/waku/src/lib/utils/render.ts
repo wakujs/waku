@@ -16,7 +16,7 @@ export function createRenderUtils(
   temporaryReferences: unknown,
   renderToReadableStream: (data: unknown, options?: object) => ReadableStream,
   loadSsrEntryModule: () => Promise<{ renderHTML: RenderHTML }>,
-): RenderUtils {
+): Pick<RenderUtils, 'renderRsc' | 'renderHtml'> {
   const onError = (e: unknown) => {
     console.error('Error during rendering:', e);
     if (
