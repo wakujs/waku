@@ -18,7 +18,7 @@
     "wrangler": "4.45.0"
   },
   "devDependencies": {
-    "@hiogawa/node-loader-cloudflare": "https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/vite-plugin-import-attributes@4e9bfae",
+    "@hiogawa/node-loader-cloudflare": "https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@4e9bfae",
     "@tailwindcss/vite": "4.1.16",
     "@types/node": "24.9.1",
     "@types/react": "19.2.2",

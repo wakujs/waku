@@ -923,8 +923,8 @@ importers:
         version: 4.45.0
     devDependencies:
       '@hiogawa/node-loader-cloudflare':
-        specifier: https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/vite-plugin-import-attributes@4e9bfae
-        version: '@hiogawa/vite-plugin-import-attributes@https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/vite-plugin-import-attributes@4e9bfae(vite@7.1.12(@types/node@24.9.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.8.1))'
+        specifier: https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@4e9bfae
+        version: https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@4e9bfae(miniflare@4.20251011.1)(vite@7.1.12(@types/node@24.9.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.8.1))(wrangler@4.45.0)
       '@tailwindcss/vite':
         specifier: 4.1.16
         version: 4.1.16(vite@7.1.12(@types/node@24.9.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.8.1))
@@ -2398,11 +2398,18 @@ packages:
     resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
     engines: {node: '>=14'}
 
-  '@hiogawa/vite-plugin-import-attributes@https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/vite-plugin-import-attributes@4e9bfae':
-    resolution: {tarball: https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/vite-plugin-import-attributes@4e9bfae}
-    version: 0.0.0
+  '@hiogawa/node-loader-cloudflare@https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@4e9bfae':
+    resolution: {tarball: https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@4e9bfae}
+    version: 0.0.1
     peerDependencies:
+      miniflare: '*'
       vite: '*'
+      wrangler: '*'
+    peerDependenciesMeta:
+      miniflare:
+        optional: true
+      vite:
+        optional: true
 
   '@hono/node-server@1.19.5':
     resolution: {integrity: sha512-iBuhh+uaaggeAuf+TftcjZyWh2GEgZcVGXkNtskLVoWaXhnJtC5HLHrU8W1KHDoucqO1MswwglmkWLFyiDn4WQ==}
@@ -7252,10 +7259,11 @@ snapshots:
 
   '@fastify/busboy@2.1.1': {}
 
-  '@hiogawa/vite-plugin-import-attributes@https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/vite-plugin-import-attributes@4e9bfae(vite@7.1.12(@types/node@24.9.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.8.1))':
+  '@hiogawa/node-loader-cloudflare@https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@4e9bfae(miniflare@4.20251011.1)(vite@7.1.12(@types/node@24.9.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.8.1))(wrangler@4.45.0)':
     dependencies:
-      es-module-lexer: 1.7.0
-      magic-string: 0.30.21
+      wrangler: 4.45.0
+    optionalDependencies:
+      miniflare: 4.20251011.1
       vite: 7.1.12(@types/node@24.9.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.8.1)
 
   '@hono/node-server@1.19.5(hono@4.10.3)':
