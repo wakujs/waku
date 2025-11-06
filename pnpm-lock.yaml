@@ -903,9 +903,6 @@ importers:
 
   examples/07_cloudflare:
     dependencies:
-      '@hiogawa/node-loader-cloudflare':
-        specifier: 0.0.1
-        version: 0.0.1(miniflare@4.20251011.1)(wrangler@4.45.0)
       hono:
         specifier: 4.10.3
         version: 4.10.3
@@ -925,6 +922,9 @@ importers:
         specifier: 4.45.0
         version: 4.45.0
     devDependencies:
+      '@hiogawa/node-loader-cloudflare':
+        specifier: 0.0.2
+        version: 0.0.2(miniflare@4.20251011.1)(vite@7.1.12(@types/node@24.9.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.8.1))(wrangler@4.45.0)
       '@tailwindcss/vite':
         specifier: 4.1.16
         version: 4.1.16(vite@7.1.12(@types/node@24.9.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.8.1))
@@ -2398,13 +2398,16 @@ packages:
     resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
     engines: {node: '>=14'}
 
-  '@hiogawa/node-loader-cloudflare@0.0.1':
-    resolution: {integrity: sha512-4e0GukwSEw6L1sjOWTZ9WZC+//uSKISNXsb3dmMqiG6GCII82WRkIIY/Fu3CcHJBYOY26UIimnmLRH9bqlVpLg==}
+  '@hiogawa/node-loader-cloudflare@0.0.2':
+    resolution: {integrity: sha512-ly7gF+iQ8DFYV0dC9rKLA32KuncqQNVyQsgnZesGDE22N/jCvOnI2XWeyfpq8lOfTTygRitREQZQFOMbcIt9vQ==}
     peerDependencies:
       miniflare: '*'
+      vite: '*'
       wrangler: '*'
     peerDependenciesMeta:
       miniflare:
+        optional: true
+      vite:
         optional: true
 
   '@hono/node-server@1.19.5':
@@ -7205,11 +7208,12 @@ snapshots:
 
   '@fastify/busboy@2.1.1': {}
 
-  '@hiogawa/node-loader-cloudflare@0.0.1(miniflare@4.20251011.1)(wrangler@4.45.0)':
+  '@hiogawa/node-loader-cloudflare@0.0.2(miniflare@4.20251011.1)(vite@7.1.12(@types/node@24.9.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.8.1))(wrangler@4.45.0)':
     dependencies:
       wrangler: 4.45.0
     optionalDependencies:
       miniflare: 4.20251011.1
+      vite: 7.1.12(@types/node@24.9.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.8.1)
 
   '@hono/node-server@1.19.5(hono@4.10.3)':
     dependencies:
