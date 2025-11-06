@@ -3,7 +3,7 @@ import { Link } from 'waku';
 import { Counter } from '../components/counter';
 // import { getEnv, isBuild } from '../lib/waku';
 // import { getHonoContext } from '../server-entry';
-import { env, waitUntil } from "cloudflare:workers"
+import { env, waitUntil } from 'cloudflare:workers';
 
 export default async function HomePage() {
   const data = await getData();

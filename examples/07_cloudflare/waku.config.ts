@@ -1,7 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'waku/config';
-import nodeLoaderCloudflare from "@hiogawa/node-loader-cloudflare/vite"
+import nodeLoaderCloudflare from '@hiogawa/node-loader-cloudflare/vite';
 
 export default defineConfig({
   vite: {
@@ -13,14 +13,14 @@ export default defineConfig({
         },
       }),
       nodeLoaderCloudflare({
-        environments: ["rsc"],
+        environments: ['rsc'],
         build: true,
         // https://developers.cloudflare.com/workers/wrangler/api/#getplatformproxy
         getPlatformProxyOptions: {
           persist: {
             path: '.wrangler/state/v3',
-          }
-        }
+          },
+        },
       }),
     ],
   },
