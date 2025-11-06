@@ -1,8 +1,9 @@
 import { Suspense } from 'react';
 import { Link } from 'waku';
 import { Counter } from '../components/counter';
-import { getEnv, isBuild } from '../lib/waku';
-import { getHonoContext } from '../server-entry';
+// import { getEnv, isBuild } from '../lib/waku';
+// import { getHonoContext } from '../server-entry';
+import { env, waitUntil } from "cloudflare:workers"
 
 export default async function HomePage() {
   const data = await getData();
@@ -10,8 +11,19 @@ export default async function HomePage() {
   // Example: getting the Hono context object and invoking
   // waitUntil() on the Cloudflare executionCtx.
   // https://hono.dev/docs/api/context#executionctx
-  const c = getHonoContext();
-  c?.executionCtx?.waitUntil(
+  // const c = getHonoContext();
+  // c?.executionCtx?.waitUntil(
+  //   new Promise<void>((resolve) => {
+  //     setTimeout(() => {
+  //       console.log(
+  //         'Cloudflare waitUntil() promise resolved. The server response does not wait for this.',
+  //       );
+  //       resolve();
+  //     }, 1000);
+  //   }),
+  // );
+  // const c = getHonoContext();
+  waitUntil(
     new Promise<void>((resolve) => {
       setTimeout(() => {
         console.log(
@@ -22,8 +34,9 @@ export default async function HomePage() {
     }),
   );
 
-  const maxItemsEnv = getEnv('MAX_ITEMS');
-  const maxItems = maxItemsEnv ? Number.parseInt(maxItemsEnv) : undefined;
+  // const maxItemsEnv = getEnv('MAX_ITEMS');
+  // const maxItems = maxItemsEnv ? Number.parseInt(maxItemsEnv) : undefined;
+  const maxItems = env.MAX_ITEMS;
 
   return (
     <div>
@@ -44,10 +57,10 @@ export default async function HomePage() {
 
 // Example async server component
 const ServerMessage = async () => {
-  if (isBuild()) {
-    console.warn('Note: server components are awaited during build.');
-    return null;
-  }
+  // if (isBuild()) {
+  //   console.warn('Note: server components are awaited during build.');
+  //   return null;
+  // }
   await new Promise((resolve) => setTimeout(resolve, 2000));
   return <p>Hello from server!</p>;
 };

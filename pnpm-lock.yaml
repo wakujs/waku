@@ -903,6 +903,9 @@ importers:
 
   examples/07_cloudflare:
     dependencies:
+      '@hiogawa/node-loader-cloudflare':
+        specifier: https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@7bc9300
+        version: https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@7bc9300(miniflare@4.20251011.1)(wrangler@4.45.0)
       hono:
         specifier: 4.10.3
         version: 4.10.3
@@ -2394,6 +2397,16 @@ packages:
   '@fastify/busboy@2.1.1':
     resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
     engines: {node: '>=14'}
+
+  '@hiogawa/node-loader-cloudflare@https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@7bc9300':
+    resolution: {tarball: https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@7bc9300}
+    version: 0.0.0
+    peerDependencies:
+      miniflare: '*'
+      wrangler: '*'
+    peerDependenciesMeta:
+      miniflare:
+        optional: true
 
   '@hono/node-server@1.19.5':
     resolution: {integrity: sha512-iBuhh+uaaggeAuf+TftcjZyWh2GEgZcVGXkNtskLVoWaXhnJtC5HLHrU8W1KHDoucqO1MswwglmkWLFyiDn4WQ==}
@@ -7242,6 +7255,12 @@ snapshots:
       levn: 0.4.1
 
   '@fastify/busboy@2.1.1': {}
+
+  '@hiogawa/node-loader-cloudflare@https://pkg.pr.new/hi-ogawa/vite-plugins/@hiogawa/node-loader-cloudflare@7bc9300(miniflare@4.20251011.1)(wrangler@4.45.0)':
+    dependencies:
+      wrangler: 4.45.0
+    optionalDependencies:
+      miniflare: 4.20251011.1
 
   '@hono/node-server@1.19.5(hono@4.10.3)':
     dependencies:
