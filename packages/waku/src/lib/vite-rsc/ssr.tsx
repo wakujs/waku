@@ -69,18 +69,12 @@ export const renderHTML: RenderHTML = async (
   } catch (e) {
     const info = getErrorInfo(e);
     if (info?.location) {
+      // keep unstable_redirect error as http redirection
       throw e;
     }
     status = info?.status || 500;
     // SSR empty html and go full CSR on browser, which can revive RSC errors.
-    const ssrErrorRoot = (
-      <html lang="en">
-        <head>
-          <meta charSet="utf-8" />
-        </head>
-        <body></body>
-      </html>
-    );
+    const ssrErrorRoot = <html><body></body></html>;
     htmlStream = await renderToReadableStream(ssrErrorRoot, {
       bootstrapScriptContent:
         getBootstrapPreamble({ rscPath: options?.rscPath || '' }) +
