@@ -117,7 +117,7 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
     );
   });
 
-  test('skips type generation when server-entry uses createPages (non-managed mode)', async () => {
+  test('skips type generation when server-entry does not use fsRouter', async () => {
     vi.mocked(writeFile).mockClear();
 
     const plugin = fsRouterTypegenPlugin({

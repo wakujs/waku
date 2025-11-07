@@ -95,27 +95,28 @@ export const fsRouterTypegenPlugin = (opts: { srcDir: string }): Plugin => {
             },
           );
 
-          const usesCreatePages = file.body.some((node) => {
+          const usesFsRouter = file.body.some((node) => {
             if (node.type === 'ImportDeclaration') {
-              if (node.source.value !== 'waku') {
+              if (!node.source.value.startsWith('waku')) {
                 return false;
               }
               return node.specifiers.some(
                 (specifier) =>
                   specifier.type === 'ImportSpecifier' &&
-                  (specifier.imported?.value === 'createPages' ||
+                  (specifier.imported?.value === 'fsRouter' ||
                     (!specifier.imported &&
-                      specifier.local.value === 'createPages')),
+                      specifier.local.value === 'fsRouter')),
               );
             }
             return false;
           });
 
-          if (usesCreatePages) {
+          if (!usesFsRouter) {
             return;
           }
         } catch {
-          // If we can't parse the file, assume managed mode and continue
+          // If we can't parse the file, skip typegen
+          return;
         }
       }
 
