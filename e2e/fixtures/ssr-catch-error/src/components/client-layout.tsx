@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import type { FallbackProps } from 'react-error-boundary';
+import { Link } from 'waku';
 
 const FallbackComponent = ({ error, resetErrorBoundary }: FallbackProps) => {
   useEffect(() => {
@@ -23,8 +24,27 @@ const FallbackComponent = ({ error, resetErrorBoundary }: FallbackProps) => {
 
 export const ClientLayout = ({ children }: { children: ReactNode }) => {
   return (
-    <ErrorBoundary FallbackComponent={FallbackComponent}>
-      {children}
-    </ErrorBoundary>
+    <div>
+      <ul>
+        <li>
+          <Link to="/">Home</Link>
+        </li>
+        <li>
+          <Link to="/dynamic">Dynamic</Link>
+        </li>
+        <li>
+          <Link to="/invalid">Invalid page</Link>
+        </li>
+        <li>
+          <Link to="/suspense">Suspense</Link>
+        </li>
+        <li>
+          <Link to="/no-error">No Error</Link>
+        </li>
+      </ul>
+      <ErrorBoundary FallbackComponent={FallbackComponent}>
+        {children}
+      </ErrorBoundary>
+    </div>
   );
 };

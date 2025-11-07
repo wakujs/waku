@@ -13,6 +13,7 @@ test.describe(`ssr-catch-error`, () => {
     await stopApp?.();
   });
 
+  // TODO: test response status
   test('access top page', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
     await expect(page.getByText('Home Page')).toBeVisible();
