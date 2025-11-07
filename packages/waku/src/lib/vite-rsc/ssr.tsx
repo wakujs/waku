@@ -47,25 +47,45 @@ export async function renderHTML(
 
   // render html
   const bootstrapScriptContent = await loadBootstrapScriptContent();
-  const htmlStream = await renderToReadableStream(<SsrRoot />, {
-    bootstrapScriptContent:
-      getBootstrapPreamble({ rscPath: options?.rscPath || '' }) +
-      bootstrapScriptContent,
-    onError: (e: unknown) => {
-      if (
-        e &&
-        typeof e === 'object' &&
-        'digest' in e &&
-        typeof e.digest === 'string'
-      ) {
-        return e.digest;
-      }
-      console.error('[SSR Error]', captureOwnerStack?.() || '', '\n', e);
-    },
-    ...(options?.nonce ? { nonce: options.nonce } : {}),
-    ...(options?.formState ? { formState: options.formState } : {}),
-  });
-
+  let htmlStream: ReadableStream<Uint8Array>;
+  try {
+    htmlStream = await renderToReadableStream(<SsrRoot />, {
+      bootstrapScriptContent:
+        getBootstrapPreamble({ rscPath: options?.rscPath || '' }) +
+        bootstrapScriptContent,
+      onError: (e: unknown) => {
+        if (
+          e &&
+          typeof e === 'object' &&
+          'digest' in e &&
+          typeof e.digest === 'string'
+        ) {
+          return e.digest;
+        }
+        console.error('[SSR Error]', captureOwnerStack?.() || '', '\n', e);
+      },
+      ...(options?.nonce ? { nonce: options.nonce } : {}),
+      ...(options?.formState ? { formState: options.formState } : {}),
+    });
+  } catch (e) {
+    // SSR empty html and go full CSR on browser, which can revive RSC errors.
+    // TODO: http status
+    const ssrErrorRoot = (
+      <html lang="en">
+        <head>
+          <meta charSet="utf-8" />
+        </head>
+        <body></body>
+      </html>
+    );
+    htmlStream = await renderToReadableStream(ssrErrorRoot, {
+      bootstrapScriptContent:
+        getBootstrapPreamble({ rscPath: options?.rscPath || '' }) +
+        `globalThis.__WAKU_HYDRATE__ = false;` +
+        bootstrapScriptContent,
+      ...(options?.nonce ? { nonce: options.nonce } : {}),
+    });
+  }
   let responseStream: ReadableStream<Uint8Array> = htmlStream;
   responseStream = responseStream.pipeThrough(
     injectRSCPayload(stream2, options?.nonce ? { nonce: options?.nonce } : {}),

@@ -761,6 +761,9 @@ importers:
       babel-plugin-react-compiler:
         specifier: 1.0.0
         version: 1.0.0
+      react-error-boundary:
+        specifier: ^6.0.0
+        version: 6.0.0(react@19.2.0)
       tailwindcss:
         specifier: 4.1.16
         version: 4.1.16

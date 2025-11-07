@@ -1,4 +1,5 @@
 import { Link } from 'waku';
+import { ErrorBoundary } from "react-error-boundary"
 
 export default async function AboutPage() {
   const data = await getData();
@@ -11,8 +12,16 @@ export default async function AboutPage() {
       <Link to="/" className="mt-4 inline-block underline">
         Return home
       </Link>
+      <ErrorBoundary fallback={<h1>Something went wrong.</h1>}>
+        <ThrowComponent />
+      </ErrorBoundary>
     </div>
   );
+}
+
+function ThrowComponent() {
+  throw new Error("An error occurred in ThrowComponent");
+  return <div>unreachable</div>
 }
 
 const getData = async () => {
