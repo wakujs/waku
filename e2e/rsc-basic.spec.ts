@@ -164,4 +164,10 @@ test.describe(`rsc-basic`, () => {
     await expect(page.getByTestId('app-name')).toHaveText('Waku');
     await expect(page.getByTestId('some-config-foo')).toHaveText('value-1234');
   });
+
+  test('build data', async ({ page, mode }) => {
+    test.skip(mode === 'DEV', 'Build data is only available in build mode');
+    await page.goto(`http://localhost:${port}/`);
+    await expect(page.getByTestId('build-data')).toHaveText('build-data-value');
+  });
 });
