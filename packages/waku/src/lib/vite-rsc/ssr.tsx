@@ -49,6 +49,7 @@ export const renderHTML: RenderHTML = async (
   try {
     htmlStream = await renderToReadableStream(<SsrRoot />, {
       bootstrapScriptContent:
+        `globalThis.__WAKU_HYDRATE__ = false;` +
         getBootstrapPreamble({ rscPath: options?.rscPath || '' }) +
         bootstrapScriptContent,
       onError: (e: unknown) => {
@@ -83,7 +84,6 @@ export const renderHTML: RenderHTML = async (
     htmlStream = await renderToReadableStream(ssrErrorRoot, {
       bootstrapScriptContent:
         getBootstrapPreamble({ rscPath: options?.rscPath || '' }) +
-        `globalThis.__WAKU_HYDRATE__ = false;` +
         bootstrapScriptContent,
       ...(options?.nonce ? { nonce: options.nonce } : {}),
     });

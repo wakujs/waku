@@ -20,7 +20,6 @@ Promise.resolve(new Response(new ReadableStream({
 
 export function getBootstrapPreamble(options: { rscPath: string }) {
   return `
-    globalThis.__WAKU_HYDRATE__ = true;
     globalThis.__WAKU_PREFETCHED__ = {
       ${JSON.stringify(options.rscPath)}: ${fakeFetchCode}
     };
