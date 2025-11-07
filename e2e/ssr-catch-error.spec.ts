@@ -15,8 +15,7 @@ test.describe(`ssr-catch-error`, () => {
 
   test('access top page', async ({ page }) => {
     const res = await page.goto(`http://localhost:${port}/`);
-    // TODO: should be 500
-    expect(res?.status()).toBe(200);
+    expect(res?.status()).toBe(500);
     await expect(page.getByText('Home Page')).toBeVisible();
     await expect(page.getByText('Something went wrong')).toBeVisible();
   });

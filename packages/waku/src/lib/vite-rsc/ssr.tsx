@@ -1,10 +1,11 @@
 import { type ReactNode, captureOwnerStack, use } from 'react';
 import { createFromReadableStream } from '@vitejs/plugin-rsc/ssr';
-import type { ReactFormState } from 'react-dom/client';
 import { renderToReadableStream } from 'react-dom/server.edge';
 import { injectRSCPayload } from 'rsc-html-stream/server';
 import fallbackHtml from 'virtual:vite-rsc-waku/fallback-html';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
+import { getErrorInfo } from '../utils/custom-errors.js';
+import type { RenderHTML } from '../utils/render.js';
 import { getBootstrapPreamble } from '../utils/ssr.js';
 
 type RscElementsPayload = Record<string, unknown>;
@@ -15,15 +16,11 @@ type RscHtmlPayload = ReactNode;
 // These utilities are used by `rsc` environment through
 // `import.meta.viteRsc.loadModule` API.
 
-export async function renderHTML(
-  rscStream: ReadableStream<Uint8Array>,
-  rscHtmlStream: ReadableStream<Uint8Array>,
-  options?: {
-    rscPath?: string | undefined;
-    formState?: ReactFormState | undefined;
-    nonce?: string | undefined;
-  },
-): Promise<ReadableStream<Uint8Array>> {
+export const renderHTML: RenderHTML = async (
+  rscStream,
+  rscHtmlStream,
+  options,
+) => {
   const [stream1, stream2] = rscStream.tee();
 
   let elementsPromise: Promise<RscElementsPayload>;
@@ -48,6 +45,7 @@ export async function renderHTML(
   // render html
   const bootstrapScriptContent = await loadBootstrapScriptContent();
   let htmlStream: ReadableStream<Uint8Array>;
+  let status: number | undefined = undefined;
   try {
     htmlStream = await renderToReadableStream(<SsrRoot />, {
       bootstrapScriptContent:
@@ -68,8 +66,12 @@ export async function renderHTML(
       ...(options?.formState ? { formState: options.formState } : {}),
     });
   } catch (e) {
+    const info = getErrorInfo(e);
+    if (info?.location) {
+      throw e;
+    }
+    status = info?.status || 500;
     // SSR empty html and go full CSR on browser, which can revive RSC errors.
-    // TODO: http status
     const ssrErrorRoot = (
       <html lang="en">
         <head>
@@ -91,8 +93,8 @@ export async function renderHTML(
     injectRSCPayload(stream2, options?.nonce ? { nonce: options?.nonce } : {}),
   );
 
-  return responseStream;
-}
+  return { stream: responseStream, status };
+};
 
 // HACK: This is only for a workaround.
 // https://github.com/facebook/react/issues/33937
