@@ -526,6 +526,10 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
     },
     buildApp: {
       async handler(builder) {
+        const buildDataFile = joinPath(
+          builder.config.environments.rsc!.build.outDir,
+          BUILD_DATA_FILE,
+        );
         const viteConfig = builder.config;
         const rootDir = viteConfig.root;
         const WRITE_BATCH_SIZE = 16;
@@ -540,7 +544,11 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
             throw new Error('Invalid filePath: ' + filePath);
           }
           // In partial mode, skip if the file already exists.
-          if (fs.existsSync(destFile)) {
+          if (
+            fs.existsSync(destFile) &&
+            // HACK: This feels like too hacky and unmaintainable
+            destFile !== buildDataFile
+          ) {
             return;
           }
           tasks.push(
