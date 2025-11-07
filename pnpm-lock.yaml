@@ -69,7 +69,7 @@ importers:
         specifier: ^8.46.3
         version: 8.46.3(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3)
       waku:
-        specifier: workspace:^0.27.0
+        specifier: workspace:*
         version: link:packages/waku
 
   e2e/fixtures/base-path:
