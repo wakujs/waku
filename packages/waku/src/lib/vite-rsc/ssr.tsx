@@ -44,8 +44,8 @@ export const renderHTML: RenderHTML = async (
 
   // render html
   const bootstrapScriptContent = await loadBootstrapScriptContent();
-  let htmlStream: ReadableStream<Uint8Array>;
-  let status: number | undefined = undefined;
+  let htmlStream: ReadableStream;
+  let status: number | undefined;
   try {
     htmlStream = await renderToReadableStream(<SsrRoot />, {
       bootstrapScriptContent:
