@@ -13,11 +13,18 @@ test.describe(`ssr-catch-error`, () => {
     await stopApp?.();
   });
 
-  // TODO: test response status
   test('access top page', async ({ page }) => {
-    await page.goto(`http://localhost:${port}/`);
+    const res = await page.goto(`http://localhost:${port}/`);
+    // TODO: should be 500
+    expect(res?.status()).toBe(200);
     await expect(page.getByText('Home Page')).toBeVisible();
     await expect(page.getByText('Something went wrong')).toBeVisible();
+  });
+
+  test('error inside Suspense inside ErrorBoundary', async ({ page }) => {
+    const res = await page.goto(`http://localhost:${port}/suspense`);
+    expect(res?.status()).toBe(200);
+    await expect(page.getByText('ErrorBoundary fallback')).toBeVisible();
   });
 
   test('access dynamic server page', async ({ page }) => {

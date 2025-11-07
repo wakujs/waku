@@ -27,19 +27,19 @@ export const ClientLayout = ({ children }: { children: ReactNode }) => {
     <div>
       <ul>
         <li>
-          <Link to="/">Home</Link>
+          <Link to="/">/</Link>
         </li>
         <li>
-          <Link to="/dynamic">Dynamic</Link>
+          <Link to="/dynamic">/dynamic</Link>
         </li>
         <li>
           <Link to="/invalid">Invalid page</Link>
         </li>
         <li>
-          <Link to="/suspense">Suspense</Link>
+          <Link to="/suspense">/suspense</Link>
         </li>
         <li>
-          <Link to="/no-error">No Error</Link>
+          <Link to="/no-error">/no-error</Link>
         </li>
       </ul>
       <ErrorBoundary FallbackComponent={FallbackComponent}>
