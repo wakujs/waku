@@ -485,9 +485,7 @@ const forceRelativePath = (s: string) => (s.startsWith('.') ? s : './' + s);
 
 function buildPlugin({ distDir }: { distDir: string }): Plugin {
   const virtualModule = 'virtual:vite-rsc-waku/build-data';
-  const dummySource = `
-export const buildData = new Map();
-`;
+  const dummySource = 'export const buildData = new Map();';
   return {
     name: 'waku:build',
     resolveId(source, _importer, _options) {
@@ -506,14 +504,18 @@ export const buildData = new Map();
         return dummySource;
       }
     },
-    renderChunk(code, chunk) {
-      if (code.includes(virtualModule)) {
-        assert.equal(this.environment.name, 'rsc');
+    renderStart() {
+      if (this.environment.name === 'rsc') {
         this.emitFile({
           type: 'asset',
           fileName: BUILD_DATA_FILE,
           source: dummySource,
         });
+      }
+    },
+    renderChunk(code, chunk) {
+      if (code.includes(virtualModule)) {
+        assert.equal(this.environment.name, 'rsc');
         const replacement = forceRelativePath(
           normalizePath(
             path.relative(path.join(chunk.fileName, '..'), BUILD_DATA_FILE),
