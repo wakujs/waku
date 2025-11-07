@@ -74,7 +74,11 @@ export const renderHTML: RenderHTML = async (
     }
     status = info?.status || 500;
     // SSR empty html and go full CSR on browser, which can revive RSC errors.
-    const ssrErrorRoot = <html><body></body></html>;
+    const ssrErrorRoot = (
+      <html>
+        <body></body>
+      </html>
+    );
     htmlStream = await renderToReadableStream(ssrErrorRoot, {
       bootstrapScriptContent:
         getBootstrapPreamble({ rscPath: options?.rscPath || '' }) +
