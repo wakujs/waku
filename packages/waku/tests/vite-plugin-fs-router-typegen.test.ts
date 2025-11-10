@@ -10,14 +10,10 @@ import {
 
 const root = fileURLToPath(new URL('./fixtures', import.meta.url));
 
-vi.mock('prettier', () => {
-  return { format: (x: string) => x, resolveConfig: () => ({}) };
-});
-vi.mock('node:fs/promises', async (importOriginal) => {
+// https://vitest.dev/api/vi.html#vi-mock
+vi.mock(import('node:fs/promises'), async (importOriginal) => {
   const mod = await importOriginal();
   return {
-    // https://vitest.dev/api/vi.html#vi-mock
-    // @ts-expect-error - docs say this should be inferred...
     ...mod,
     writeFile: vi.fn(),
   };
