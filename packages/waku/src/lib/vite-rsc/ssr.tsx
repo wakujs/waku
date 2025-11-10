@@ -49,9 +49,10 @@ export const renderHtml: RenderHtml = async (
   try {
     htmlStream = await renderToReadableStream(<SsrRoot />, {
       bootstrapScriptContent:
-        `globalThis.__WAKU_HYDRATE__ = true;` +
-        getBootstrapPreamble({ rscPath: options?.rscPath || '' }) +
-        bootstrapScriptContent,
+        getBootstrapPreamble({
+          rscPath: options?.rscPath || '',
+          hydrate: true,
+        }) + bootstrapScriptContent,
       onError: (e: unknown) => {
         if (
           e &&
@@ -81,8 +82,10 @@ export const renderHtml: RenderHtml = async (
     );
     htmlStream = await renderToReadableStream(ssrErrorRoot, {
       bootstrapScriptContent:
-        getBootstrapPreamble({ rscPath: options?.rscPath || '' }) +
-        bootstrapScriptContent,
+        getBootstrapPreamble({
+          rscPath: options?.rscPath || '',
+          hydrate: false,
+        }) + bootstrapScriptContent,
       ...(options?.nonce ? { nonce: options.nonce } : {}),
     });
   }

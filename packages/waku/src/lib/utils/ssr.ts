@@ -18,8 +18,12 @@ Promise.resolve(new Response(new ReadableStream({
   .map((line) => line.trim())
   .join('');
 
-export function getBootstrapPreamble(options: { rscPath: string }) {
+export function getBootstrapPreamble(options: {
+  rscPath: string;
+  hydrate: boolean;
+}) {
   return `
+    ${options.hydrate ? 'globalThis.__WAKU_HYDRATE__ = true;' : ''}
     globalThis.__WAKU_PREFETCHED__ = {
       ${JSON.stringify(options.rscPath)}: ${fakeFetchCode}
     };
