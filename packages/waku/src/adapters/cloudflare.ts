@@ -44,7 +44,7 @@ export default createServerEntryAdapter(
       const assetsFetcher = (c.env as any).ASSETS;
       const url = new URL(c.req.raw.url);
       const errorHtmlUrl = url.origin + '/404.html';
-      const notFoundStaticAssetResponse = await assetsFetcher.fetch(
+      const notFoundStaticAssetResponse = await assetsFetcher?.fetch(
         new URL(errorHtmlUrl),
       );
       if (
