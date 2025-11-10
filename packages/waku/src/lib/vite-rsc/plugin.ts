@@ -521,6 +521,11 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           builder.config.environments.rsc!.build.outDir,
           BUILD_DATA_FILE,
         );
+        console.log('LOG--------------buildDataFile', {
+          outDir: builder.config.environments.rsc!.build.outDir,
+          BUILD_DATA_FILE,
+          buildDataFile,
+        });
         await writeFile(buildDataFile, dummySource);
         const viteConfig = builder.config;
         const rootDir = viteConfig.root;
@@ -532,6 +537,12 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           bodyPromise: Promise<ReadableStream | string>,
         ) => {
           const destFile = joinPath(rootDir, distDir, filePath);
+          console.log('LOG--------------emitFile', {
+            rootDir,
+            distDir,
+            filePath,
+            destFile,
+          });
           if (!destFile.startsWith(rootDir)) {
             throw new Error('Invalid filePath: ' + filePath);
           }
