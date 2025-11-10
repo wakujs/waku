@@ -33,11 +33,9 @@ export const renderHtml: RenderHtml = async (
     // https://github.com/facebook/react/pull/31799#discussion_r1886166075
     elementsPromise ??= createFromReadableStream<RscElementsPayload>(stream1);
     htmlPromise ??= createFromReadableStream<RscHtmlPayload>(rscHtmlStream);
-    // `HtmlNodeWrapper` is for a workaround.
-    // https://github.com/facebook/react/issues/33937
     return (
       <INTERNAL_ServerRoot elementsPromise={elementsPromise}>
-        <HtmlNodeWrapper>{use(htmlPromise)}</HtmlNodeWrapper>
+        {use(htmlPromise)}
       </INTERNAL_ServerRoot>
     );
   }
@@ -96,12 +94,6 @@ export const renderHtml: RenderHtml = async (
 
   return { stream: responseStream, status };
 };
-
-// HACK: This is only for a workaround.
-// https://github.com/facebook/react/issues/33937
-function HtmlNodeWrapper(props: { children: ReactNode }) {
-  return props.children;
-}
 
 export async function renderHtmlFallback() {
   const bootstrapScriptContent = await loadBootstrapScriptContent();
