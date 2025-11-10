@@ -36,8 +36,8 @@ export const GET = async (request: Request) => {
     <OgImageBlogPost title={result.frontmatter.title} />,
     {
       ...fontOptions,
-      width: 843,
-      height: 441,
+      width: 1200,
+      height: 630,
     },
   );
 };
