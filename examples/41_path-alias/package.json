@@ -17,9 +17,9 @@
   "devDependencies": {
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
-    "rollup": "4.52.5",
+    "rollup": "4.53.1",
     "typescript": "5.9.3",
-    "vite": "7.2.1",
+    "vite": "7.2.2",
     "vite-tsconfig-paths": "5.1.4"
   }
 }
