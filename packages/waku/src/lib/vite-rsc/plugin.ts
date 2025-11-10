@@ -504,15 +504,6 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
         return dummySource;
       }
     },
-    renderStart() {
-      if (this.environment.name === 'rsc') {
-        this.emitFile({
-          type: 'asset',
-          fileName: BUILD_DATA_FILE,
-          source: dummySource,
-        });
-      }
-    },
     renderChunk(code, chunk) {
       if (code.includes(virtualModule)) {
         assert.equal(this.environment.name, 'rsc');
@@ -530,6 +521,7 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           builder.config.environments.rsc!.build.outDir,
           BUILD_DATA_FILE,
         );
+        await writeFile(buildDataFile, dummySource);
         const viteConfig = builder.config;
         const rootDir = viteConfig.root;
         const WRITE_BATCH_SIZE = 16;
@@ -546,7 +538,7 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           // In partial mode, skip if the file already exists.
           if (
             fs.existsSync(destFile) &&
-            // HACK: This feels like too hacky and unmaintainable
+            // HACK: This feels a bit hacky
             destFile !== buildDataFile
           ) {
             return;
