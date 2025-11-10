@@ -6,21 +6,19 @@ import { components } from './mdx';
 import { Meta } from './meta';
 import { Page } from './page';
 
-export async function PostPage({
-  slug,
+export async function compilePost({
   folder,
+  slug,
 }: {
-  slug: string;
   folder: string;
+  slug: string;
 }) {
   const fileName = await getFileName(folder, slug);
-
   if (!fileName) {
-    return null;
+    return;
   }
-
-  const path = `${folder}/${fileName}`;
-  const source = readFileSync(path, 'utf8');
+  const filePath = `${folder}/${fileName}`;
+  const source = readFileSync(filePath, 'utf8');
   const mdx = await compileMDX({
     source,
     components,
@@ -44,6 +42,22 @@ export async function PostPage({
         year: 'numeric',
       })
     : undefined;
+  return { content, frontmatter, author, date };
+}
+
+export async function PostPage({
+  slug,
+  folder,
+}: {
+  slug: string;
+  folder: string;
+}) {
+  const compiled = await compilePost({ folder, slug });
+  if (!compiled) {
+    return null;
+  }
+
+  const { content, frontmatter, author, date } = compiled;
 
   return (
     <Page>

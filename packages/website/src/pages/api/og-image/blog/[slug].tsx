@@ -1,14 +1,33 @@
-import { getPostPaths } from '../../../../lib/get-file-name';
 import { ImageResponse } from '@vercel/og';
+import { compilePost } from '../../../../components/post-page';
+import { getPostPaths } from '../../../../lib/get-file-name';
 
-export const GET = async () => {
-  return new ImageResponse(<Root title="Waku" />, {
-    width: 843,
-    height: 441,
-  });
+export const GET = async (request: Request) => {
+  const url = new URL(request.url);
+  const slug = url.pathname.split('/').pop();
+  if (!slug) {
+    return notFound();
+  }
+
+  const result = await compilePost({ folder: './private/contents', slug });
+  if (!result) {
+    return notFound();
+  }
+
+  return new ImageResponse(
+    <OgImageBlogPost title={result.frontmatter.title} />,
+    {
+      width: 843,
+      height: 441,
+    },
+  );
 };
 
-function Root(props: { title: string }) {
+function notFound() {
+  return new Response('Not Found', { status: 404 });
+}
+
+function OgImageBlogPost(props: { title: string }) {
   return (
     <div
       style={{
@@ -43,6 +62,7 @@ export const getConfig = async () => {
 
   return {
     render: 'static',
+    // TODO: support staticPaths in API
     staticPaths: blogPaths,
   } as const;
 };
