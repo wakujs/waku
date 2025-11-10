@@ -1,7 +1,6 @@
 import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
 import {
-  unstable_constants as constants,
   unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
@@ -18,7 +17,6 @@ function joinPath(path1: string, path2: string) {
   return p.startsWith('/') ? p : './' + p;
 }
 
-const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 export default createServerEntryAdapter(
@@ -65,7 +63,6 @@ export default createServerEntryAdapter(
       typeof import('./lib/cloudflare-post-build.js').default
     >[0] = {
       distDir: config.distDir,
-      DIST_PUBLIC,
     };
     return {
       fetch: app.fetch,
