@@ -1,7 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { ImageResponse, type ImageResponseOptions } from '@vercel/og';
 import { compilePost } from '../../../../components/post-page';
 import { getPostPaths } from '../../../../lib/get-file-name';
-import { readFileSync } from 'node:fs';
 
 // partially based on
 // https://tangled.org/@danabra.mov/overreacted/blob/main/og/generateImage.js
@@ -10,10 +10,11 @@ let fontOptions: ImageResponseOptions;
 
 export const GET = async (request: Request) => {
   const url = new URL(request.url);
-  const slug = url.pathname.split('/').pop();
-  if (!slug) {
+  const filename = url.pathname.split('/').pop()!;
+  if (!filename.endsWith('.png')) {
     return notFound();
   }
+  const slug = filename.slice(0, -4);
 
   const result = await compilePost({ folder: './private/contents', slug });
   if (!result) {
@@ -97,7 +98,6 @@ export const getConfig = async () => {
 
   return {
     render: 'static',
-    // TODO: support staticPaths in API
-    staticPaths: blogPaths,
+    staticPaths: blogPaths.map((p) => `${p}.png`),
   } as const;
 };
