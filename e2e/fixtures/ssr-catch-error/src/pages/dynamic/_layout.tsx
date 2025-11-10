@@ -1,4 +1,4 @@
-import { type ReactNode, Suspense } from 'react';
+import type { ReactNode } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import ThrowsComponent from '../../components/server/throws.js';
 
@@ -11,10 +11,7 @@ export default async function DynamicLayout({
     <>
       {children}
       <ErrorBoundary fallback={<div>Something is wrong</div>}>
-        <Suspense fallback={<div>Loading layout...</div>}>
-          OK
-          <ThrowsComponent />
-        </Suspense>
+        <ThrowsComponent />
       </ErrorBoundary>
     </>
   );
