@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 // partially based on
 // https://tangled.org/@danabra.mov/overreacted/blob/main/og/generateImage.js
 
-let imageOptions: ImageResponseOptions;
+let fontOptions: ImageResponseOptions;
 
 export const GET = async (request: Request) => {
   const url = new URL(request.url);
@@ -20,7 +20,7 @@ export const GET = async (request: Request) => {
     return notFound();
   }
 
-  imageOptions ??= {
+  fontOptions ??= {
     fonts: [
       {
         name: 'Alegreya',
@@ -34,7 +34,7 @@ export const GET = async (request: Request) => {
   return new ImageResponse(
     <OgImageBlogPost title={result.frontmatter.title} />,
     {
-      ...imageOptions,
+      ...fontOptions,
       width: 843,
       height: 441,
     },
