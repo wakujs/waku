@@ -1,6 +1,12 @@
-import { ImageResponse } from '@vercel/og';
+import { ImageResponse, type ImageResponseOptions } from '@vercel/og';
 import { compilePost } from '../../../../components/post-page';
 import { getPostPaths } from '../../../../lib/get-file-name';
+import { readFileSync } from 'node:fs';
+
+// partially based on
+// https://tangled.org/@danabra.mov/overreacted/blob/main/og/generateImage.js
+
+let imageOptions: ImageResponseOptions;
 
 export const GET = async (request: Request) => {
   const url = new URL(request.url);
@@ -14,9 +20,21 @@ export const GET = async (request: Request) => {
     return notFound();
   }
 
+  imageOptions ??= {
+    fonts: [
+      {
+        name: 'Alegreya',
+        data: readFileSync(
+          'node_modules/@fontsource/alegreya/files/alegreya-latin-700-normal.woff',
+        ),
+      },
+    ],
+  };
+
   return new ImageResponse(
     <OgImageBlogPost title={result.frontmatter.title} />,
     {
+      ...imageOptions,
       width: 843,
       height: 441,
     },
@@ -27,31 +45,48 @@ function notFound() {
   return new Response('Not Found', { status: 404 });
 }
 
-function OgImageBlogPost(props: { title: string }) {
+function OgImageBlogPost({ title }: { title: string }) {
   return (
     <div
       style={{
-        position: 'relative',
+        fontFamily: 'Alegreya',
+        padding: 30,
         display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        color: '#171717',
-        backgroundColor: '#ffffff',
+        flexDirection: 'column',
         width: '100%',
         height: '100%',
+        backgroundColor: 'black',
+        color: 'white',
       }}
     >
       <div
         style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          fontSize: '48px',
-          fontWeight: '600',
+          display: 'flex',
+          fontSize: 40,
+          width: '100%',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingBottom: 10,
         }}
       >
-        {props.title}
+        <span
+          style={{
+            fontSize: 35,
+          }}
+        >
+          Waku ⛩️
+        </span>
+      </div>
+      <div
+        style={{
+          fontSize: 50,
+          display: 'flex',
+          alignItems: 'center',
+          flex: 1,
+          paddingBottom: 30,
+        }}
+      >
+        {title}
       </div>
     </div>
   );

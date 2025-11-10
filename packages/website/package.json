@@ -21,6 +21,9 @@
     "waku": "workspace:*"
   },
   "devDependencies": {
+    "@fontsource-variable/nunito": "^5.2.7",
+    "@fontsource/alegreya": "^5.2.8",
+    "@fontsource/nunito": "^5.2.7",
     "@tailwindcss/vite": "4.1.16",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",

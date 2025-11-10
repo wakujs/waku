@@ -1766,6 +1766,15 @@ importers:
         specifier: workspace:*
         version: link:../waku
     devDependencies:
+      '@fontsource-variable/nunito':
+        specifier: ^5.2.7
+        version: 5.2.7
+      '@fontsource/alegreya':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource/nunito':
+        specifier: ^5.2.7
+        version: 5.2.7
       '@tailwindcss/vite':
         specifier: 4.1.16
         version: 4.1.16(vite@7.1.12(@types/node@24.9.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.8.1))
@@ -2400,6 +2409,15 @@ packages:
   '@fastify/busboy@2.1.1':
     resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
     engines: {node: '>=14'}
+
+  '@fontsource-variable/nunito@5.2.7':
+    resolution: {integrity: sha512-2N8QhatkyKgSUbAGZO2FYLioxA32+RyI1EplVLawbpkGjUeui9Qg9VMrpkCaik1ydjFjfLV+kzQ0cGEsMrMenQ==}
+
+  '@fontsource/alegreya@5.2.8':
+    resolution: {integrity: sha512-/C4ShWmhyyaDZj9GfFvMaeGrt7pRupgoXdFd26Cg/y5m49UhhifbqBBRNwVhGCt5+wfjmakz7wBhFHJLH5c/mg==}
+
+  '@fontsource/nunito@5.2.7':
+    resolution: {integrity: sha512-pmtBq0H9ex9nk+RtJYEJOD9pag393iHETnl/PVKleF4i06cd0ttngK5ZCTgYb5eOqR3Xdlrjtev8m7bmgYprew==}
 
   '@hiogawa/node-loader-cloudflare@0.0.2':
     resolution: {integrity: sha512-ly7gF+iQ8DFYV0dC9rKLA32KuncqQNVyQsgnZesGDE22N/jCvOnI2XWeyfpq8lOfTTygRitREQZQFOMbcIt9vQ==}
@@ -7336,6 +7354,12 @@ snapshots:
       levn: 0.4.1
 
   '@fastify/busboy@2.1.1': {}
+
+  '@fontsource-variable/nunito@5.2.7': {}
+
+  '@fontsource/alegreya@5.2.8': {}
+
+  '@fontsource/nunito@5.2.7': {}
 
   '@hiogawa/node-loader-cloudflare@0.0.2(miniflare@4.20251011.1)(vite@7.1.12(@types/node@24.9.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.8.1))(wrangler@4.45.0)':
     dependencies:
