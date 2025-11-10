@@ -71,7 +71,7 @@ function OgImageBlogPost({ title }: { title: string }) {
       >
         <span
           style={{
-            fontSize: 35,
+            fontSize: 40,
           }}
         >
           Waku ⛩️
