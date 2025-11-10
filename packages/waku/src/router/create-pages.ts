@@ -192,6 +192,7 @@ export type CreateApi = <Path extends string>(
         path: Path;
         method: 'GET';
         handler: ApiHandler;
+        staticPaths?: string[] | undefined;
       }
     | {
         render: 'dynamic';
@@ -550,6 +551,8 @@ export const createPages = <
     }
     const pathSpec = parsePathWithSlug(options.path);
     if (options.render === 'static') {
+      // TODO
+      options.staticPaths;
       apiPathMap.set(options.path, {
         render: 'static',
         pathSpec,
