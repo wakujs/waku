@@ -51,7 +51,7 @@ function OgImageBlogPost({ title }: { title: string }) {
     <div
       style={{
         fontFamily: 'Alegreya',
-        padding: 30,
+        padding: 50,
         display: 'flex',
         flexDirection: 'column',
         width: '100%',
@@ -72,7 +72,7 @@ function OgImageBlogPost({ title }: { title: string }) {
       >
         <span
           style={{
-            fontSize: 40,
+            fontSize: 50,
           }}
         >
           Waku ⛩️
@@ -80,7 +80,7 @@ function OgImageBlogPost({ title }: { title: string }) {
       </div>
       <div
         style={{
-          fontSize: 50,
+          fontSize: 70,
           display: 'flex',
           alignItems: 'center',
           flex: 1,
