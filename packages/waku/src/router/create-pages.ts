@@ -45,6 +45,10 @@ export const pathMappingWithoutGroups: typeof getPathMapping = (
 const sanitizeSlug = (slug: string) =>
   slug.replace(/\./g, '').replace(/ /g, '-');
 
+// slug sanitization for API routes, which can keep preserve extension
+// e.g. [slug].ts with slug="test.png"
+const sanitizeSlugWithDot = (slug: string) => slug.replace(/ /g, '-');
+
 // createPages API (a wrapper around unstable_defineRouter)
 
 /** Assumes that the path is a part of a slug path. */
@@ -551,13 +555,53 @@ export const createPages = <
     }
     const pathSpec = parsePathWithSlug(options.path);
     if (options.render === 'static') {
-      // TODO
-      options.staticPaths;
-      apiPathMap.set(options.path, {
-        render: 'static',
-        pathSpec,
-        handlers: { GET: options.handler },
-      });
+      const { numSlugs, numWildcards } = getSlugsAndWildcards(pathSpec);
+      if (numSlugs > 0 && options.staticPaths) {
+        const staticPaths = (options.staticPaths as any).map((item: any) =>
+          (Array.isArray(item) ? item : [item]).map(sanitizeSlugWithDot),
+        );
+        for (const staticPath of staticPaths) {
+          if (staticPath.length !== numSlugs && numWildcards === 0) {
+            throw new Error('staticPaths does not match with slug pattern');
+          }
+          let slugIndex = 0;
+          const pathItems: string[] = [];
+          pathSpec.forEach(({ type, name }) => {
+            switch (type) {
+              case 'literal':
+                pathItems.push(name!);
+                break;
+              case 'wildcard':
+                staticPath.slice(slugIndex++).forEach((slug: string) => {
+                  pathItems.push(slug);
+                });
+                break;
+              case 'group':
+                pathItems.push(staticPath[slugIndex++]!);
+                break;
+            }
+          });
+          const definedPath = '/' + pathItems.join('/');
+          const literalSpec = pathItems.map((name) => ({
+            type: 'literal' as const,
+            name,
+          }));
+          if (apiPathMap.has(definedPath)) {
+            throw new Error(`Duplicated api path: ${definedPath}`);
+          }
+          apiPathMap.set(definedPath, {
+            render: 'static',
+            pathSpec: literalSpec,
+            handlers: { GET: options.handler },
+          });
+        }
+      } else {
+        apiPathMap.set(options.path, {
+          render: 'static',
+          pathSpec,
+          handlers: { GET: options.handler },
+        });
+      }
     } else {
       apiPathMap.set(options.path, {
         render: 'dynamic',
