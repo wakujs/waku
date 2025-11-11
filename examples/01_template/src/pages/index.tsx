@@ -4,6 +4,8 @@ import { Counter } from '../components/counter';
 export default async function HomePage() {
   const data = await getData();
 
+  throw new Error("boom!")
+
   return (
     <div>
       <title>{data.title}</title>
