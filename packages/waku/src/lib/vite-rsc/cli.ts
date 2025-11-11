@@ -106,9 +106,7 @@ export async function cli(
                 `ready: Listening on port ${info.port} (${info.family} host ${info.address})`,
               );
             } else {
-              console.log(
-                `ready: Listening on http://localhost:${port}/`,
-              );
+              console.log(`ready: Listening on http://localhost:${port}/`);
             }
             resolve();
           },
