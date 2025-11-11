@@ -410,10 +410,26 @@ const notAvailableInServer = (name: string) => () => {
 };
 
 function renderError(message: string) {
-  return createElement(
+  const h = createElement;
+  return h(
     'html',
     null,
-    createElement('body', null, createElement('h1', null, message)),
+    h('head', null, h('title', null, 'Unhandled Error')),
+    h(
+      'body',
+      {
+        style: {
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          placeContent: 'center',
+          placeItems: 'center',
+          fontSize: '16px',
+        },
+      },
+      h('h1', null, 'Caught an unexpected error'),
+      h('p', null, `Error: ${message}`),
+    ),
   );
 }
 
