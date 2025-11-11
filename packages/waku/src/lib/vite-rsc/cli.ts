@@ -101,9 +101,15 @@ export async function cli(
             port,
           },
           (info) => {
-            console.log(
-              `ready: Listening on port ${info.port} (${info.family} host ${info.address})`,
-            );
+            if (host) {
+              console.log(
+                `ready: Listening on port ${info.port} (${info.family} host ${info.address})`,
+              );
+            } else {
+              console.log(
+                `ready: Listening on http://localhost:${port}/`,
+              );
+            }
             resolve();
           },
         );
