@@ -546,7 +546,7 @@ export function unstable_defineRouter(fns: {
     }
 
     // FIXME this approach keeps all entries in memory during the loop
-    const entriesCache = new Map<string, Record<string, unknown>>();
+    // const entriesCache = new Map<string, Record<string, unknown>>();
     // const entriesStreamCache = new Map<string, ReadableStream>();
     await Promise.all(
       myConfig.map(async (item) => {
@@ -561,7 +561,7 @@ export function unstable_defineRouter(fns: {
         const rscPath = encodeRoutePath(pathname);
         const entries = await getEntries(rscPath, undefined, {});
         if (entries) {
-          entriesCache.set(pathname, entries);
+          // entriesCache.set(pathname, entries);
           if (item.specs.isStatic) {
             // TODO: better way to make these two sequential
             const entriesStreamPromise = (() => {
@@ -603,31 +603,32 @@ export function unstable_defineRouter(fns: {
           throw new Error('Pathname is required for noSsr routes on build');
         }
         await generateDefaultHtml(pathname);
-      } else if (pathname) {
-        // const req = new Request(new URL(pathname, 'http://localhost:3000'));
-        const entries = entriesCache.get(pathname);
-        if (specs.isStatic && entries) {
-          // const rscPath = encodeRoutePath(pathname);
-          // const html = createElement(INTERNAL_ServerRouter, {
-          //   route: { path: pathname, query: '', hash: '' },
-          //   httpstatus: specs.is404 ? 404 : 200,
-          // });
-          // const entriesStream = entriesStreamCache.get(pathname)
-          // if (entriesStream) {
-          //   await generateFile(pathname, req, () =>
-          //     renderHtmlWithStream(entriesStream, html, {
-          //       rscPath,
-          //     }).then((res) => res.body || ''),
-          //   );
-          // } else {
-          //   await generateFile(pathname, req, () =>
-          //     renderHtml(entries, html, {
-          //       rscPath,
-          //     }).then((res) => res.body || ''),
-          //   );
-          // }
-        }
       }
+      //  else if (pathname) {
+      //   // const req = new Request(new URL(pathname, 'http://localhost:3000'));
+      //   const entries = entriesCache.get(pathname);
+      //   if (specs.isStatic && entries) {
+      //     // const rscPath = encodeRoutePath(pathname);
+      //     // const html = createElement(INTERNAL_ServerRouter, {
+      //     //   route: { path: pathname, query: '', hash: '' },
+      //     //   httpstatus: specs.is404 ? 404 : 200,
+      //     // });
+      //     // const entriesStream = entriesStreamCache.get(pathname)
+      //     // if (entriesStream) {
+      //     //   await generateFile(pathname, req, () =>
+      //     //     renderHtmlWithStream(entriesStream, html, {
+      //     //       rscPath,
+      //     //     }).then((res) => res.body || ''),
+      //     //   );
+      //     // } else {
+      //     //   await generateFile(pathname, req, () =>
+      //     //     renderHtml(entries, html, {
+      //     //       rscPath,
+      //     //     }).then((res) => res.body || ''),
+      //     //   );
+      //     // }
+      //   }
+      // }
     }
 
     await Promise.all(
