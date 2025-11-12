@@ -8,8 +8,18 @@ type RenderRsc = (elements: Record<string, unknown>) => Promise<ReadableStream>;
 type RenderHtml = (
   elements: Elements,
   html: ReactNode,
-  options: { rscPath: string; actionResult?: unknown; status?: number },
+  options: { rscPath: string; actionResult?: any; status?: number },
 ) => Promise<Response>;
+
+export type RenderUtils = {
+  renderRsc: RenderRsc;
+  renderHtml: RenderHtml;
+  renderHtmlWithStream: (
+    elementsStream: ReadableStream,
+    html: ReactNode,
+    options: { rscPath: string; actionResult?: any; status?: number },
+  ) => Promise<Response>;
+};
 
 export type Unstable_HandleRequest = (
   input: (
@@ -28,23 +38,20 @@ export type Unstable_HandleRequest = (
   ) & {
     req: Request;
   },
-  utils: {
-    renderRsc: RenderRsc;
-    renderHtml: RenderHtml;
-  },
+  utils: RenderUtils,
 ) => Promise<ReadableStream | Response | 'fallback' | null | undefined>;
 
-export type Unstable_HandleBuild = (utils: {
-  renderRsc: RenderRsc;
-  renderHtml: RenderHtml;
-  rscPath2pathname: (rscPath: string) => string;
-  generateFile: (
-    pathname: string,
-    req: Request,
-    renderBody: () => Promise<ReadableStream | string>,
-  ) => Promise<void>;
-  generateDefaultHtml: (pathname: string) => Promise<void>;
-}) => Promise<void>;
+export type Unstable_HandleBuild = (
+  utils: RenderUtils & {
+    rscPath2pathname: (rscPath: string) => string;
+    generateFile: (
+      pathname: string,
+      req: Request,
+      renderBody: () => Promise<ReadableStream | string>,
+    ) => Promise<void>;
+    generateDefaultHtml: (pathname: string) => Promise<void>;
+  },
+) => Promise<void>;
 
 export type Unstable_ServerEntry = {
   default: {

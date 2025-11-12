@@ -109,8 +109,9 @@ const toProcessBuild =
     const { runTask, waitForTasks } = createTaskRunner();
 
     await handleBuild({
-      renderRsc: renderUtils.renderRsc,
-      renderHtml: renderUtils.renderHtml,
+      // renderRsc: renderUtils.renderRsc,
+      // renderHtml: renderUtils.renderHtml,
+      ...renderUtils,
       rscPath2pathname: (rscPath) =>
         joinPath(config.rscBase, encodeRscPath(rscPath)),
       generateFile: async (

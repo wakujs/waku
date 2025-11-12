@@ -521,7 +521,8 @@ export function unstable_defineRouter(fns: {
 
   const handleBuild: HandleBuild = async ({
     renderRsc,
-    renderHtml,
+    // renderHtml,
+    renderHtmlWithStream,
     rscPath2pathname,
     generateFile,
     generateDefaultHtml,
@@ -546,6 +547,7 @@ export function unstable_defineRouter(fns: {
 
     // FIXME this approach keeps all entries in memory during the loop
     const entriesCache = new Map<string, Record<string, unknown>>();
+    // const entriesStreamCache = new Map<string, ReadableStream>();
     await Promise.all(
       myConfig.map(async (item) => {
         if (item.type !== 'route') {
@@ -561,8 +563,22 @@ export function unstable_defineRouter(fns: {
         if (entries) {
           entriesCache.set(pathname, entries);
           if (item.specs.isStatic) {
-            await generateFile(rscPath2pathname(rscPath), req, () =>
-              renderRsc(entries),
+            let entriesStreamPromise = Promise.withResolvers<ReadableStream>();
+            await generateFile(rscPath2pathname(rscPath), req, async () => {
+              const stream = await renderRsc(entries);
+              const [stream1, stream2] = stream.tee();
+              entriesStreamPromise.resolve(stream2);
+              return stream1;
+            });
+            const html = createElement(INTERNAL_ServerRouter, {
+              route: { path: pathname, query: '', hash: '' },
+              httpstatus: item.specs.is404 ? 404 : 200,
+            });
+            const entriesStream = await entriesStreamPromise.promise;
+            await generateFile(pathname, req, () =>
+              renderHtmlWithStream(entriesStream, html, {
+                rscPath,
+              }).then((res) => res.body || ''),
             );
           }
         }
@@ -580,19 +596,28 @@ export function unstable_defineRouter(fns: {
         }
         await generateDefaultHtml(pathname);
       } else if (pathname) {
-        const req = new Request(new URL(pathname, 'http://localhost:3000'));
+        // const req = new Request(new URL(pathname, 'http://localhost:3000'));
         const entries = entriesCache.get(pathname);
         if (specs.isStatic && entries) {
-          const rscPath = encodeRoutePath(pathname);
-          const html = createElement(INTERNAL_ServerRouter, {
-            route: { path: pathname, query: '', hash: '' },
-            httpstatus: specs.is404 ? 404 : 200,
-          });
-          await generateFile(pathname, req, () =>
-            renderHtml(entries, html, {
-              rscPath,
-            }).then((res) => res.body || ''),
-          );
+          // const rscPath = encodeRoutePath(pathname);
+          // const html = createElement(INTERNAL_ServerRouter, {
+          //   route: { path: pathname, query: '', hash: '' },
+          //   httpstatus: specs.is404 ? 404 : 200,
+          // });
+          // const entriesStream = entriesStreamCache.get(pathname)
+          // if (entriesStream) {
+          //   await generateFile(pathname, req, () =>
+          //     renderHtmlWithStream(entriesStream, html, {
+          //       rscPath,
+          //     }).then((res) => res.body || ''),
+          //   );
+          // } else {
+          //   await generateFile(pathname, req, () =>
+          //     renderHtml(entries, html, {
+          //       rscPath,
+          //     }).then((res) => res.body || ''),
+          //   );
+          // }
         }
       }
     }
