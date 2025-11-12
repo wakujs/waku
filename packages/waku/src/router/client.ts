@@ -422,8 +422,6 @@ function renderError(message: string) {
       'body',
       {
         style: {
-          fontFamily:
-            'system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji"',
           height: '100vh',
           display: 'flex',
           flexDirection: 'column',
