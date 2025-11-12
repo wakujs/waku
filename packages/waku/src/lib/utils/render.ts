@@ -2,7 +2,7 @@ import type { ReactFormState } from 'react-dom/client';
 import type { Unstable_HandleRequest as HandleRequest } from '../types.js';
 
 type RenderUtils = Parameters<HandleRequest>[1];
-type RenderHTML = (
+export type RenderHtml = (
   rscStream: ReadableStream<Uint8Array>,
   rscHtmlStream: ReadableStream<Uint8Array>,
   options?: {
@@ -10,7 +10,7 @@ type RenderHTML = (
     formState?: ReactFormState | undefined;
     nonce?: string | undefined;
   },
-) => Promise<ReadableStream>;
+) => Promise<{ stream: ReadableStream; status: number | undefined }>;
 
 export function createRenderUtils(
   temporaryReferences: unknown,
@@ -19,8 +19,8 @@ export function createRenderUtils(
     stream: ReadableStream,
     options?: object,
   ) => Promise<unknown>,
-  loadSsrEntryModule: () => Promise<{ renderHTML: RenderHTML }>,
-): RenderUtils {
+  loadSsrEntryModule: () => Promise<{ renderHtml: RenderHtml }>,
+): Pick<RenderUtils, 'renderRsc' | 'parseRsc' | 'renderHtml'> {
   const onError = (e: unknown) => {
     console.error('Error during rendering:', e);
     if (
@@ -60,7 +60,7 @@ export function createRenderUtils(
         onError,
       });
 
-      const htmlStream = await ssrEntryModule.renderHTML(
+      const htmlResult = await ssrEntryModule.renderHtml(
         rscElementsStream,
         rscHtmlStream,
         {
@@ -68,8 +68,8 @@ export function createRenderUtils(
           rscPath: options?.rscPath,
         },
       );
-      return new Response(htmlStream, {
-        status: options?.status || 200,
+      return new Response(htmlResult.stream, {
+        status: htmlResult.status || options?.status || 200,
         headers: { 'content-type': 'text/html' },
       });
     },

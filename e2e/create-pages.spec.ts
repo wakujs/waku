@@ -151,9 +151,9 @@ test.describe(`create-pages`, () => {
     await stopApp?.();
     await page.click("a[href='/error']");
     // Default router client error boundary is reached
-    await expect(
-      page.getByRole('heading', { name: FETCH_ERROR_MESSAGES[browserName] }),
-    ).toBeVisible();
+    await expect(page.locator('p')).toContainText(
+      FETCH_ERROR_MESSAGES[browserName],
+    );
     ({ port, stopApp } = await startApp(mode));
   });
 
