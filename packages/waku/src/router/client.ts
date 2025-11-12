@@ -413,7 +413,27 @@ function renderError(message: string) {
   return createElement(
     'html',
     null,
-    createElement('body', null, createElement('h1', null, message)),
+    createElement(
+      'head',
+      null,
+      createElement('title', null, 'Unhandled Error'),
+    ),
+    createElement(
+      'body',
+      {
+        style: {
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          placeContent: 'center',
+          placeItems: 'center',
+          fontSize: '16px',
+          margin: 0,
+        },
+      },
+      createElement('h1', null, 'Caught an unexpected error'),
+      createElement('p', null, `Error: ${message}`),
+    ),
   );
 }
 
