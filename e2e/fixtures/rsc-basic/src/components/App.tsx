@@ -10,11 +10,11 @@ import { ServerThrows } from './ServerThrows/index.js';
 const App = ({
   name,
   params,
-  buildData,
+  metadata,
 }: {
   name: string;
   params: unknown;
-  buildData: string | undefined;
+  metadata: string | undefined;
 }) => {
   return (
     <html>
@@ -22,7 +22,7 @@ const App = ({
         <title>Waku example</title>
       </head>
       <body>
-        <p data-testid="build-data">{buildData}</p>
+        <p data-testid="build-metadata">{metadata}</p>
         <ServerBox>
           <p data-testid="app-name">{name}</p>
           <ClientCounter params={params} />

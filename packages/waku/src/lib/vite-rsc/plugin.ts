@@ -19,7 +19,7 @@ import {
 } from 'vite';
 import type { Config } from '../../config.js';
 import {
-  BUILD_DATA_FILE,
+  BUILD_METADATA_FILE,
   DIST_PUBLIC,
   DIST_SERVER,
   SRC_CLIENT_ENTRY,
@@ -485,7 +485,7 @@ const forceRelativePath = (s: string) => (s.startsWith('.') ? s : './' + s);
 
 function buildPlugin({ distDir }: { distDir: string }): Plugin {
   const virtualModule = 'virtual:vite-rsc-waku/build-data';
-  const dummySource = 'export const buildData = new Map();';
+  const dummySource = 'export const buildMetadata = new Map();';
   return {
     name: 'waku:build',
     resolveId(source, _importer, _options) {
@@ -509,7 +509,7 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
         assert.equal(this.environment.name, 'rsc');
         const replacement = forceRelativePath(
           normalizePath(
-            path.relative(path.join(chunk.fileName, '..'), BUILD_DATA_FILE),
+            path.relative(path.join(chunk.fileName, '..'), BUILD_METADATA_FILE),
           ),
         );
         return code.replaceAll(virtualModule, () => replacement);
@@ -519,13 +519,13 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
       async handler(builder) {
         const viteConfig = builder.config;
         const rootDir = viteConfig.root;
-        const buildDataFile = joinPath(
+        const buildMetadataFile = joinPath(
           rootDir,
           distDir,
           DIST_SERVER,
-          BUILD_DATA_FILE,
+          BUILD_METADATA_FILE,
         );
-        await writeFile(buildDataFile, dummySource);
+        await writeFile(buildMetadataFile, dummySource);
         const WRITE_BATCH_SIZE = 16;
         const { runTask } = createTaskRunner(WRITE_BATCH_SIZE);
         const tasks: Promise<void>[] = [];
@@ -541,7 +541,7 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           if (
             fs.existsSync(destFile) &&
             // HACK: This feels a bit hacky
-            destFile !== buildDataFile
+            destFile !== buildMetadataFile
           ) {
             return;
           }

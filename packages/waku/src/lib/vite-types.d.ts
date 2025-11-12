@@ -9,7 +9,7 @@ declare module 'virtual:vite-rsc-waku/server-entry' {
 declare module 'virtual:vite-rsc-waku/client-entry' {}
 
 declare module 'virtual:vite-rsc-waku/build-data' {
-  export const buildData: Map<string, string>;
+  export const buildMetadata: Map<string, string>;
 }
 
 declare module 'virtual:vite-rsc-waku/config' {

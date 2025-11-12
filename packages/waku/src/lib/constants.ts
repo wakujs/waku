@@ -7,4 +7,4 @@ export const SRC_PAGES = 'pages'; // only for managed mode
 // We may change this in the future
 export const DIST_PUBLIC = 'public';
 export const DIST_SERVER = 'server';
-export const BUILD_DATA_FILE = '__waku_build_data.js';
+export const BUILD_METADATA_FILE = '__waku_build_metadata.js';

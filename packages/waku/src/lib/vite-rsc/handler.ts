@@ -6,9 +6,9 @@ import {
   loadServerAction,
   renderToReadableStream,
 } from '@vitejs/plugin-rsc/rsc';
-import { buildData } from 'virtual:vite-rsc-waku/build-data';
+import { buildMetadata } from 'virtual:vite-rsc-waku/build-data';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
-import { BUILD_DATA_FILE, DIST_PUBLIC, DIST_SERVER } from '../constants.js';
+import { BUILD_METADATA_FILE, DIST_PUBLIC, DIST_SERVER } from '../constants.js';
 import { INTERNAL_runWithContext } from '../context.js';
 import type {
   Unstable_CreateServerEntryAdapter as CreateServerEntryAdapter,
@@ -59,7 +59,7 @@ const toProcessRequest =
     try {
       res = await handleRequest(input, {
         ...renderUtils,
-        loadBuildData: (key: string) => buildData.get(key),
+        loadBuildMetadata: (key: string) => buildMetadata.get(key),
       });
     } catch (e) {
       const info = getErrorInfo(e);
@@ -112,14 +112,14 @@ const toProcessBuild =
 
     const RENDER_BATCH_SIZE = 2500;
     const { runTask } = createTaskRunner(RENDER_BATCH_SIZE);
-    const buildData = new Map<string, string>();
+    const buildMetadata = new Map<string, string>();
 
     await handleBuild({
       ...renderUtils,
       rscPath2pathname: (rscPath) =>
         joinPath(config.rscBase, encodeRscPath(rscPath)),
-      saveBuildData: (key, value) => {
-        buildData.set(key, value);
+      saveBuildMetadata: (key, value) => {
+        buildMetadata.set(key, value);
       },
       generateFile: async (
         pathname: string,
@@ -152,9 +152,9 @@ const toProcessBuild =
     });
 
     await emitFile(
-      joinPath(DIST_SERVER, BUILD_DATA_FILE),
+      joinPath(DIST_SERVER, BUILD_METADATA_FILE),
       Promise.resolve(
-        `export const buildData = new Map(${JSON.stringify(Array.from(buildData))});`,
+        `export const buildMetadata = new Map(${JSON.stringify(Array.from(buildMetadata))});`,
       ),
     );
   };
