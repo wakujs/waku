@@ -1,4 +1,3 @@
-import { createElement } from 'react';
 import type { ReactNode } from 'react';
 import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
 import { getPathMapping, path2regexp } from '../lib/utils/path.js';
@@ -485,10 +484,12 @@ export function unstable_defineRouter(fns: {
         if (!entries) {
           return null;
         }
-        const html = createElement(INTERNAL_ServerRouter, {
-          route: { path: pathname, query, hash: '' },
-          httpstatus,
-        });
+        const html = (
+          <INTERNAL_ServerRouter
+            route={{ path: pathname, query, hash: '' }}
+            httpstatus={httpstatus}
+          />
+        );
         const actionResult =
           input.type === 'action' ? await input.fn() : undefined;
         return renderHtml(entries, html, {
@@ -584,10 +585,12 @@ export function unstable_defineRouter(fns: {
         const entries = entriesCache.get(pathname);
         if (specs.isStatic && entries) {
           const rscPath = encodeRoutePath(pathname);
-          const html = createElement(INTERNAL_ServerRouter, {
-            route: { path: pathname, query: '', hash: '' },
-            httpstatus: specs.is404 ? 404 : 200,
-          });
+          const html = (
+            <INTERNAL_ServerRouter
+              route={{ path: pathname, query: '', hash: '' }}
+              httpstatus={specs.is404 ? 404 : 200}
+            />
+          );
           await generateFile(pathname, req, () =>
             renderHtml(entries, html, {
               rscPath,
