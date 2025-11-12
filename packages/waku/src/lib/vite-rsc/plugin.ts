@@ -28,6 +28,7 @@ import {
 import { joinPath } from '../utils/path.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
+import pc from 'picocolors';
 
 const PKG_NAME = 'waku';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -303,9 +304,16 @@ if (import.meta.hot) {
             viteConfig.environments.rsc!.build.outDir,
             'build.js',
           );
+          console.log(pc.blue('[ssg] processing static generation...'));
+          const startTime = performance.now();
           const entry: typeof import('../vite-entries/entry.build.js') =
             await import(pathToFileURL(entryPath).href);
           await entry.INTERNAL_runBuild({ rootDir });
+          console.log(
+            pc.green(
+              `✓ finished in ${Math.ceil(performance.now() - startTime)}ms`,
+            ),
+          );
         },
       },
     },
