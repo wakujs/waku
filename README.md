@@ -806,9 +806,10 @@ Waku sets up a default error boundary at the root of your application. You can c
 When errors are thrown from server components or server functions, the errors are automatically replayed on browser. This allows the closest error boundaries to catch and handle these errors, even though they originated on the server.
 
 ```tsx
+// ./src/pages/index.tsx
 import { ErrorBoundary } from 'react-error-boundary';
 
-export default async function Page() {
+export default async function HomePage() {
   return (
     <>
       <ErrorBoundary fallback={<div>Caught server component error!</div>}>
@@ -834,7 +835,7 @@ const ThrowComponent = async () => {
 };
 ```
 
-<!-- TODO: Waku's default root error boundary is included in default "Root element", so when it's customized, users should add own error boundary there. -->
+If you customize the root element (see [Root element](#root-element)), you should add your own error boundary there, as Waku's default root error boundary is included in the default root element.
 
 ## Metadata
 
