@@ -801,15 +801,85 @@ export const Component = () => {
 
 ## Error handling
 
-TODO: 
+Waku sets up a default error boundary at the root of your application to handle routing errors such as 404s and redirects. You can customize error handling by adding your own error boundaries, just like in any React application.
 
-<!-- 
-cf. https://github.com/wakujs/waku/pull/1752
-mention
-- by default there is a global error boundary.
-- users can add own error boundary
-- server component error is handled 
--->
+### Server component errors
+
+When errors are thrown from server components or server functions, React automatically replays them on the client. This allows error boundaries to catch and handle these errors in the browser, even though they originated on the server. This is a React feature that may be unfamiliar if you're new to server components.
+
+```tsx
+// ./src/pages/index.tsx
+import { ErrorBoundary } from 'react-error-boundary';
+
+export default async function HomePage() {
+  return (
+    <div>
+      <h1>Home</h1>
+      <ErrorBoundary fallback={<div>Something went wrong</div>}>
+        <ServerComponent />
+      </ErrorBoundary>
+    </div>
+  );
+}
+
+const ServerComponent = async () => {
+  const data = await fetchData(); // Error thrown here will be caught by ErrorBoundary
+  return <div>{data}</div>;
+};
+```
+
+### Custom error boundaries
+
+You can add error boundaries anywhere in your component tree using React's error boundary pattern. We recommend using the [`react-error-boundary`](https://www.npmjs.com/package/react-error-boundary) library for a convenient API.
+
+```tsx
+// ./src/components/error-boundary.tsx
+'use client';
+
+import { ErrorBoundary } from 'react-error-boundary';
+import type { FallbackProps } from 'react-error-boundary';
+
+const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
+  return (
+    <div role="alert">
+      <h2>Something went wrong</h2>
+      <pre style={{ color: 'red' }}>{error.message}</pre>
+      <button onClick={resetErrorBoundary}>Try again</button>
+    </div>
+  );
+};
+
+export const MyErrorBoundary = ({ children }) => {
+  return (
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      {children}
+    </ErrorBoundary>
+  );
+};
+```
+
+```tsx
+// ./src/pages/_layout.tsx
+import '../styles.css';
+
+import { MyErrorBoundary } from '../components/error-boundary';
+
+export default async function RootLayout({ children }) {
+  return (
+    <MyErrorBoundary>
+      <main>{children}</main>
+    </MyErrorBoundary>
+  );
+}
+
+export const getConfig = async () => {
+  return {
+    render: 'static',
+  } as const;
+};
+```
+
+Note that error boundaries must be client components (marked with `'use client'`) as they use React lifecycle methods like `componentDidCatch`.
 
 ## Metadata
 
