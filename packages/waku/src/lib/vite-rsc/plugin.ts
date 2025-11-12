@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import react from '@vitejs/plugin-react';
 import rsc from '@vitejs/plugin-rsc';
 import MagicString from 'magic-string';
+import pc from 'picocolors';
 import {
   type Plugin,
   type PluginOption,
@@ -28,7 +29,6 @@ import {
 import { joinPath } from '../utils/path.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
-import pc from 'picocolors';
 
 const PKG_NAME = 'waku';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
