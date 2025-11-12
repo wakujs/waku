@@ -2,7 +2,6 @@
 
 import {
   createContext,
-  createElement,
   memo,
   startTransition,
   use,
@@ -20,12 +19,13 @@ const { createFromFetch, encodeReply, createTemporaryReferenceSet } =
   RSDWClient;
 
 const DEFAULT_HTML_HEAD = [
-  createElement('meta', { charSet: 'utf-8' }),
-  createElement('meta', {
-    name: 'viewport',
-    content: 'width=device-width, initial-scale=1',
-  }),
-  createElement('meta', { name: 'generator', content: 'Waku' }),
+  <meta charSet="utf-8" key="charset" />,
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+    key="viewport"
+  />,
+  <meta name="generator" content="Waku" key="generator" />,
 ];
 
 const BASE_RSC_PATH = `${import.meta.env?.WAKU_CONFIG_BASE_PATH}${
@@ -53,7 +53,7 @@ const checkStatus = async (
 type Elements = Record<string, unknown>;
 
 // TODO(daishi) do we still this?
-const getCached = <T>(c: () => T, m: WeakMap<object, T>, k: object): T =>
+const getCached = <T,>(c: () => T, m: WeakMap<object, T>, k: object): T =>
   (m.has(k) ? m : m.set(k, c())).get(k) as T;
 
 const cache1 = new WeakMap();
@@ -301,19 +301,15 @@ export const Root = ({
     },
     [fetchCache],
   );
-  return createElement(
-    EnhanceFetchRscInternalContext,
-    { value: enhanceFetchRscInternal },
-    createElement(
-      RefetchContext,
-      { value: refetch },
-      createElement(
-        ElementsContext,
-        { value: elements },
-        ...DEFAULT_HTML_HEAD,
-        children,
-      ),
-    ),
+  return (
+    <EnhanceFetchRscInternalContext value={enhanceFetchRscInternal}>
+      <RefetchContext value={refetch}>
+        <ElementsContext value={elements}>
+          {DEFAULT_HTML_HEAD}
+          {children}
+        </ElementsContext>
+      </RefetchContext>
+    </EnhanceFetchRscInternalContext>
   );
 };
 
@@ -363,13 +359,13 @@ export const Slot = ({
   if (!isValidElement) {
     throw new Error('Invalid element: ' + id);
   }
-  return createElement(
-    ChildrenContextProvider,
-    { value: children },
-    // See: https://github.com/wakujs/waku/pull/1545
-    // isolate potential `lazy + React.use` usage inside `element` in its own component
-    // https://github.com/facebook/react/issues/33937#issuecomment-3091349011
-    createElement(SlotElementWrapper, null, element as ReactNode),
+  return (
+    <ChildrenContextProvider value={children}>
+      {/* See: https://github.com/wakujs/waku/pull/1545 */}
+      {/* isolate potential `lazy + React.use` usage inside `element` in its own component */}
+      {/* https://github.com/facebook/react/issues/33937#issuecomment-3091349011 */}
+      <SlotElementWrapper>{element as ReactNode}</SlotElementWrapper>
+    </ChildrenContextProvider>
   );
 };
 
@@ -387,10 +383,9 @@ export const INTERNAL_ServerRoot = ({
 }: {
   elementsPromise: Promise<Elements>;
   children: ReactNode;
-}) =>
-  createElement(
-    ElementsContext,
-    { value: elementsPromise },
-    ...DEFAULT_HTML_HEAD,
-    children,
-  );
+}) => (
+  <ElementsContext value={elementsPromise}>
+    {DEFAULT_HTML_HEAD}
+    {children}
+  </ElementsContext>
+);
