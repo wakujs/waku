@@ -324,7 +324,7 @@ export const createPages = <
   const sliceIdMap = new Map<
     string,
     {
-      component: FunctionComponent<{ children: ReactNode }>;
+      component: FunctionComponent<any>;
       isStatic: boolean;
     }
   >();
@@ -817,7 +817,7 @@ export const createPages = <
         result[`page:${routePath}`] = createElement(
           pageComponent,
           { ...mapping, ...(query ? { query } : {}), path },
-          createElement(Children),
+          <Children />,
         );
       }
 
@@ -832,7 +832,7 @@ export const createPages = <
 
         if (layout && !Array.isArray(layout)) {
           const id = 'layout:' + segment;
-          result[id] = createElement(layout, null, createElement(Children));
+          result[id] = createElement(layout, null, <Children />);
         } else {
           throw new Error('Invalid layout ' + segment);
         }
@@ -889,8 +889,7 @@ export const createPages = <
       if (!slice) {
         throw new Error('Slice not found: ' + sliceId);
       }
-      const { component } = slice;
-      return { element: createElement(component) };
+      return { element: <slice.component /> };
     },
   });
 
