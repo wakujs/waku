@@ -563,7 +563,15 @@ export function unstable_defineRouter(fns: {
         if (entries) {
           entriesCache.set(pathname, entries);
           if (item.specs.isStatic) {
-            let entriesStreamPromise = Promise.withResolvers<ReadableStream>();
+            // TODO: better way to make these two sequential
+            const entriesStreamPromise = (() => {
+              let resolve, reject;
+              const promise = new Promise<ReadableStream>((res, rej) => {
+                resolve = res;
+                reject = rej;
+              });
+              return { promise, resolve: resolve!, reject: reject! };
+            })();
             await generateFile(rscPath2pathname(rscPath), req, async () => {
               const stream = await renderRsc(entries);
               const [stream1, stream2] = stream.tee();
