@@ -521,7 +521,7 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           builder.config.environments.rsc!.build.outDir,
           BUILD_DATA_FILE,
         );
-        console.log('LOG--------------buildDataFile', {
+        console.error('LOG--------------buildDataFile', {
           outDir: builder.config.environments.rsc!.build.outDir,
           BUILD_DATA_FILE,
           buildDataFile,
@@ -537,7 +537,7 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           bodyPromise: Promise<ReadableStream | string>,
         ) => {
           const destFile = joinPath(rootDir, distDir, filePath);
-          console.log('LOG--------------emitFile', {
+          console.error('LOG--------------emitFile', {
             rootDir,
             distDir,
             filePath,
