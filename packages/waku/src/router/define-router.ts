@@ -3,7 +3,7 @@ import type { ReactElement, ReactNode } from 'react';
 import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
 import { getPathMapping, path2regexp } from '../lib/utils/path.js';
 import type { PathSpec } from '../lib/utils/path.js';
-import { stringToStream } from '../lib/utils/stream.js';
+import { streamToString, stringToStream } from '../lib/utils/stream.js';
 import { unstable_defineHandlers as defineHandlers } from '../minimal/server.js';
 import { unstable_getContext as getContext } from '../server.js';
 import { INTERNAL_ServerRouter } from './client.js';
@@ -289,6 +289,7 @@ export function unstable_defineRouter(fns: {
   };
   // TODO should we make it a Map to support falsy values?
   const cachedElements: Record<SlotId, unknown> = {};
+  let cachedElementsInitialized = false;
   const setCachedElement = async (
     id: SlotId,
     element: unknown,
@@ -428,8 +429,25 @@ export function unstable_defineRouter(fns: {
 
   const handleRequest: HandleRequest = async (
     input,
-    { renderRsc, parseRsc, renderHtml },
+    { renderRsc, parseRsc, renderHtml, loadBuildMetadata },
   ): Promise<ReadableStream | Response | 'fallback' | null | undefined> => {
+    if (!cachedElementsInitialized) {
+      cachedElementsInitialized = true;
+      const cachedElementsMetadata = loadBuildMetadata(
+        'defineRouter:cachedElements',
+      );
+      if (cachedElementsMetadata) {
+        await Promise.all(
+          Object.entries(JSON.parse(cachedElementsMetadata)).map(
+            async ([id, str]) => {
+              cachedElements[id] = (
+                await parseRsc(stringToStream(str as string))
+              )[id];
+            },
+          ),
+        );
+      }
+    }
     const url = new URL(input.req.url);
     const headers = Object.fromEntries(input.req.headers.entries());
     if (input.type === 'component') {
@@ -579,6 +597,7 @@ export function unstable_defineRouter(fns: {
     parseRsc,
     renderHtml,
     rscPath2pathname,
+    saveBuildMetadata,
     generateFile,
     generateDefaultHtml,
   }) => {
@@ -686,6 +705,20 @@ export function unstable_defineRouter(fns: {
           }),
         );
       }),
+    );
+
+    saveBuildMetadata(
+      'defineRouter:cachedElements',
+      JSON.stringify(
+        Object.fromEntries(
+          await Promise.all(
+            Object.entries(cachedElements).map(async ([id, element]) => [
+              id,
+              await streamToString(await renderRsc({ [id]: element })),
+            ]),
+          ),
+        ),
+      ),
     );
   };
 
