@@ -799,6 +799,18 @@ export const Component = () => {
 };
 ```
 
+## Error handling
+
+TODO: 
+
+<!-- 
+cf. https://github.com/wakujs/waku/pull/1752
+mention
+- by default there is a global error boundary.
+- users can add own error boundary
+- server component error is handled 
+-->
+
 ## Metadata
 
 Waku automatically hoists any title, meta, and link tags to the document head. That means adding meta tags is as simple as adding them to any of your layout or page components.
