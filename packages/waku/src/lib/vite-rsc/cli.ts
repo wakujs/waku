@@ -100,9 +100,9 @@ export async function cli(
             ...(host ? { hostname: host } : {}),
             port,
           },
-          (info) => {
+          () => {
             console.log(
-              `ready: Listening on port ${info.port} (${info.family} host ${info.address})`,
+              `ready: Listening on http://${host || 'localhost'}:${port}/`,
             );
             resolve();
           },
