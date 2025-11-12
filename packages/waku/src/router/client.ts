@@ -419,12 +419,15 @@ function renderError(message: string) {
       'body',
       {
         style: {
+          fontFamily:
+            'system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji"',
           height: '100vh',
           display: 'flex',
           flexDirection: 'column',
           placeContent: 'center',
           placeItems: 'center',
           fontSize: '16px',
+          margin: 0,
         },
       },
       h('h1', null, 'Caught an unexpected error'),
