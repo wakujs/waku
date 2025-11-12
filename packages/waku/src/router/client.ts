@@ -410,12 +410,15 @@ const notAvailableInServer = (name: string) => () => {
 };
 
 function renderError(message: string) {
-  const h = createElement;
-  return h(
+  return createElement(
     'html',
     null,
-    h('head', null, h('title', null, 'Unhandled Error')),
-    h(
+    createElement(
+      'head',
+      null,
+      createElement('title', null, 'Unhandled Error'),
+    ),
+    createElement(
       'body',
       {
         style: {
@@ -430,8 +433,8 @@ function renderError(message: string) {
           margin: 0,
         },
       },
-      h('h1', null, 'Caught an unexpected error'),
-      h('p', null, `Error: ${message}`),
+      createElement('h1', null, 'Caught an unexpected error'),
+      createElement('p', null, `Error: ${message}`),
     ),
   );
 }
