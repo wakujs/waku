@@ -230,7 +230,7 @@ export function useRouter() {
   };
 }
 
-function useSharedRef<T,>(
+function useSharedRef<T>(
   ref: Ref<T | null> | undefined,
 ): [RefObject<T | null>, (node: T | null) => void | (() => void)] {
   const managedRef = useRef<T>(null);
@@ -388,7 +388,13 @@ export function Link({
       }
     : props.onMouseEnter;
   const ele = (
-    <a {...props} href={to} onClick={onClick} onMouseEnter={onMouseEnter} ref={setRef}>
+    <a
+      {...props}
+      href={to}
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      ref={setRef}
+    >
       {children}
     </a>
   );
@@ -956,10 +962,7 @@ export function Router({
   const initialRscParams = createRscParams(initialRoute.query);
   const httpStatus = getHttpStatusFromMeta();
   return (
-    <Root
-      initialRscPath={initialRscPath}
-      initialRscParams={initialRscParams}
-    >
+    <Root initialRscPath={initialRscPath} initialRscParams={initialRscParams}>
       <InnerRouter initialRoute={initialRoute} httpStatus={httpStatus} />
     </Root>
   );
