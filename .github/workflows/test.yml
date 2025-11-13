@@ -37,6 +37,8 @@ jobs:
           pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
       - run: pnpm install
       - run: pnpm run compile
-      - run: pnpm test
+      - if: ${{ matrix.version == '24.0.0' }}
+        run: pnpm test-lint
+      - run: pnpm test-unit
         env:
           VITE_EXPERIMENTAL_WAKU_ROUTER: true
