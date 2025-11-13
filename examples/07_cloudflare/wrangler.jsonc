@@ -1,6 +1,6 @@
 {
   "name": "waku-project",
-  "main": "./dist/worker/serve-cloudflare.js",
+  "main": "./dist/server/serve-cloudflare.js",
   // https://developers.cloudflare.com/workers/platform/compatibility-dates
   "compatibility_date": "2024-11-11",
   // nodejs_als is required for Waku server-side request context
@@ -9,7 +9,7 @@
   // https://developers.cloudflare.com/workers/static-assets/binding/
   "assets": {
     "binding": "ASSETS",
-    "directory": "./dist/assets",
+    "directory": "./dist/public",
     "html_handling": "drop-trailing-slash",
     "not_found_handling": "404-page",
   },

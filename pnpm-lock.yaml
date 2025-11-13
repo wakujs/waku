@@ -1707,6 +1707,9 @@ importers:
       magic-string:
         specifier: 0.30.21
         version: 0.30.21
+      picocolors:
+        specifier: ^1.1.1
+        version: 1.1.1
       rsc-html-stream:
         specifier: 0.0.7
         version: 0.0.7
