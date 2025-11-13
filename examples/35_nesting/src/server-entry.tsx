@@ -24,7 +24,10 @@ export default adapter({
     }
     if (input.type === 'custom' && input.pathname === '/') {
       return renderHtml(
-        { App: <App name="Waku" />, InnerApp: <InnerApp count={0} /> },
+        await renderRsc({
+          App: <App name="Waku" />,
+          InnerApp: <InnerApp count={0} />,
+        }),
         <Slot id="App" />,
         { rscPath: '' },
       );

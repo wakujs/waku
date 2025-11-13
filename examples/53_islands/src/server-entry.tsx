@@ -23,9 +23,13 @@ export default adapter({
       throw new Error('Unexpected rscPath: ' + input.rscPath);
     }
     if (input.type === 'custom' && input.pathname === '/') {
-      return renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
-        rscPath: '',
-      });
+      return renderHtml(
+        await renderRsc({ App: <App name="Waku" /> }),
+        <Slot id="App" />,
+        {
+          rscPath: '',
+        },
+      );
     }
   },
   handleBuild: async ({
@@ -42,10 +46,14 @@ export default adapter({
     await generateFile(
       '/',
       new Request(new URL('http://localhost:3000/')),
-      () =>
-        renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
-          rscPath: '',
-        }).then((res) => res.body || ''),
+      async () =>
+        renderHtml(
+          await renderRsc({ App: <App name="Waku" /> }),
+          <Slot id="App" />,
+          {
+            rscPath: '',
+          },
+        ).then((res) => res.body || ''),
     );
   },
 });

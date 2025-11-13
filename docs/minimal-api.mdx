@@ -21,7 +21,11 @@ const handlers = defineHandlers({
       return renderRsc({ App: <App name={input.rscPath || 'Waku'} /> });
     }
     if (input.type === 'custom' && input.pathname === '/') {
-      return renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, '');
+      return renderHtml(
+        await renderRsc({ App: <App name="Waku" /> }),
+        <Slot id="App" />,
+        '',
+      );
     }
   },
   handleBuild: () => null,
@@ -56,9 +60,13 @@ It has to return AsyncIterable of build instructions.
         async () => ({
           type: 'file' as const,
           pathname: '/',
-          body: renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
-            rscPath: '',
-          }).then((res) => res.body || ''),
+          body: renderHtml(
+            await renderRsc({ App: <App name="Waku" /> }),
+            <Slot id="App" />,
+            {
+              rscPath: '',
+            },
+          ).then((res) => res.body || ''),
         }),
       ];
       return tasks;
