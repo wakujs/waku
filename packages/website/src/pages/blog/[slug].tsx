@@ -1,4 +1,3 @@
-import { getMetadataBaseUrl } from '../../components/meta';
 import { PostPage } from '../../components/post-page';
 import { getPostPaths } from '../../lib/get-file-name';
 
@@ -7,13 +6,7 @@ type BlogArticlePageProps = {
 };
 
 export default async function BlogArticlePage({ slug }: BlogArticlePageProps) {
-  return (
-    <PostPage
-      slug={slug}
-      folder="./private/contents"
-      ogImageUrl={`${getMetadataBaseUrl()}/api/og-image/blog/${slug}.png`}
-    />
-  );
+  return <PostPage slug={slug} folder="./private/contents" />;
 }
 
 export const getConfig = async () => {

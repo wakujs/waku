@@ -21,11 +21,9 @@
     "waku": "workspace:*"
   },
   "devDependencies": {
-    "@fontsource/alegreya": "^5.2.8",
     "@tailwindcss/vite": "4.1.17",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
-    "@vercel/og": "^0.8.5",
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.7.1",
     "shiki": "^3.15.0",
