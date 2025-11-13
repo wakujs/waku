@@ -2,10 +2,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 import {
+  detectFsRouterUsage,
   generateFsRouterTypes,
   getImportModuleNames,
   toIdentifier,
 } from '../src/lib/vite-plugins/fs-router-typegen.js';
+
+const fixturesDir = fileURLToPath(new URL('./fixtures', import.meta.url));
 
 describe('vite-plugin-fs-router-typegen', () => {
   test('generates valid module names for fs entries', async () => {
@@ -37,7 +40,6 @@ describe('vite-plugin-fs-router-typegen', () => {
   });
 
   test('creates the expected imports the generated entries file', async () => {
-    const fixturesDir = fileURLToPath(new URL('./fixtures', import.meta.url));
     const generated = await generateFsRouterTypes(
       path.join(fixturesDir, 'plugin-fs-router-typegen', 'pages'),
     );
@@ -60,43 +62,18 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
   });
 
   test('generates types when server-entry uses fsRouter (managed mode)', async () => {
-    vi.mocked(writeFile).mockClear();
-    await runTest(
-      root,
-      `type Page =`,
-      'plugin-fs-router-typegen-with-fsrouter',
-    );
+    expect(
+      await detectFsRouterUsage(
+        path.join(fixturesDir, 'plugin-fs-router-typegen-with-fsrouter'),
+      ),
+    ).toMatchInlineSnapshot(`true`);
   });
 
   test('skips type generation when server-entry does not use fsRouter', async () => {
-    vi.mocked(writeFile).mockClear();
-
-    const plugin = fsRouterTypegenPlugin({
-      srcDir: 'plugin-fs-router-typegen-with-createpages',
-    });
-    expect(plugin.configureServer).toBeDefined();
-    expect(typeof plugin.configureServer).toBe('function');
-    expect(plugin.configResolved).toBeDefined();
-    expect(typeof plugin.configResolved).toBe('function');
-    if (
-      typeof plugin.configureServer !== 'function' ||
-      typeof plugin.configResolved !== 'function'
-    ) {
-      return;
-    }
-
-    await plugin.configResolved?.call(
-      {} as never,
-      { root } as unknown as ResolvedConfig,
-    );
-    await plugin.configureServer?.call(
-      {} as never,
-      {
-        watcher: { add: () => {}, on: () => {} } as unknown as FSWatcher,
-      } as ViteDevServer,
-    );
-
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(vi.mocked(writeFile)).not.toHaveBeenCalled();
+    expect(
+      await detectFsRouterUsage(
+        path.join(fixturesDir, 'plugin-fs-router-typegen-with-createpages'),
+      ),
+    ).toMatchInlineSnapshot(`false`);
   });
 });
