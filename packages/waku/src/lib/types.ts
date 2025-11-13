@@ -11,14 +11,16 @@ type RenderHtml = (
   options: { rscPath: string; actionResult?: any; status?: number },
 ) => Promise<Response>;
 
+type RenderHtmlWithStream = (
+  elementsStream: ReadableStream,
+  html: ReactNode,
+  options: { rscPath: string; actionResult?: any; status?: number },
+) => Promise<Response>;
+
 export type RenderUtils = {
   renderRsc: RenderRsc;
   renderHtml: RenderHtml;
-  renderHtmlWithStream: (
-    elementsStream: ReadableStream,
-    html: ReactNode,
-    options: { rscPath: string; actionResult?: any; status?: number },
-  ) => Promise<Response>;
+  renderHtmlWithStream: RenderHtmlWithStream;
 };
 
 export type Unstable_HandleRequest = (
