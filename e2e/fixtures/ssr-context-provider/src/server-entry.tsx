@@ -12,11 +12,9 @@ export default adapter({
       return renderRsc({ _value: value });
     }
     if (input.type === 'custom' && input.pathname === '/') {
-      return renderHtml(
-        await renderRsc({ App: <App /> }),
-        <Slot id="App" />,
-        { rscPath: '' },
-      );
+      return renderHtml(await renderRsc({ App: <App /> }), <Slot id="App" />, {
+        rscPath: '',
+      });
     }
   },
   handleBuild: async () => {},
