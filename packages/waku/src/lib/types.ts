@@ -8,7 +8,7 @@ type RenderRsc = (elements: Elements) => Promise<ReadableStream>;
 type ParseRsc = (rscStream: ReadableStream) => Promise<Elements>;
 
 type RenderHtml = (
-  elements: Elements,
+  elementsStream: ReadableStream,
   html: ReactNode,
   options: { rscPath: string; actionResult?: unknown; status?: number },
 ) => Promise<Response>;
