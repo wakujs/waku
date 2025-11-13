@@ -70,6 +70,7 @@ export function fsRouter(
               );
             }
             createApi({
+              ...config,
               path: pathItems.join('/'),
               render: 'static',
               method: 'GET',

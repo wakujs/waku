@@ -227,6 +227,18 @@ const pages: ReturnType<typeof createPages> = createPages(
       },
     }),
 
+    createApi({
+      path: '/api/static-paths/[name]',
+      render: 'static',
+      method: 'GET',
+      staticPaths: ['foo', 'bar.json'],
+      handler: async (request) => {
+        const url = new URL(request.url);
+        const name = url.pathname.split('/').pop()!;
+        return Response.json({ name });
+      },
+    }),
+
     createPage({
       render: 'static',
       path: '/exact/[slug]/[...wild]',

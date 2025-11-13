@@ -12,6 +12,7 @@ export default defineConfig(
     ignores: [
       '**/dist/',
       '**/.cache/',
+      '**/.vercel/',
       '**/pages.gen.ts',
       'packages/create-waku/template/',
       'examples/07_cloudflare/.wrangler/',
