@@ -26,9 +26,14 @@ on:
       react_version:
         required: true
         type: string
+  workflow_dispatch:
+    inputs:
+      react_version:
+        required: true
+        type: string
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.react_version }}
   cancel-in-progress: true
 
 jobs:
