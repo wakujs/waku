@@ -354,6 +354,13 @@ export function unstable_defineRouter(fns: {
       if (pathConfigItem.specs.routeElementIsStatic) {
         await setCachedElement(routeId, routeElement, renderRsc, parseRsc);
       }
+      await Promise.all(
+        Object.entries(elements).map(async ([id, element]) => {
+          if (pathConfigItem.specs.staticElementIds.includes(id)) {
+            await setCachedElement(id, element, renderRsc, parseRsc);
+          }
+        }),
+      );
     }
     const sliceConfigMap = new Map<string, { isStatic?: boolean }>();
     await Promise.all(
