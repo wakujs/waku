@@ -268,6 +268,7 @@ export function unstable_defineRouter(fns: {
             throw new Error('Unknown config type');
         }
       });
+      publicRouterConfig = cachedMyConfig;
     }
     return cachedMyConfig;
   };
@@ -628,4 +629,13 @@ export function unstable_defineRouter(fns: {
   };
 
   return defineHandlers({ handleRequest, handleBuild });
+}
+
+let publicRouterConfig: any | undefined;
+
+export function unstable_getRouterConfig() {
+  if (!publicRouterConfig) {
+    throw new Error('Router config is not initialized yet');
+  }
+  return publicRouterConfig;
 }
