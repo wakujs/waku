@@ -196,7 +196,7 @@ export type CreateApi = <Path extends string>(
         path: Path;
         method: 'GET';
         handler: ApiHandler;
-        staticPaths?: string[] | undefined;
+        staticPaths?: (string | string[])[] | undefined;
       }
     | {
         render: 'dynamic';
@@ -557,7 +557,7 @@ export const createPages = <
     if (options.render === 'static') {
       const { numSlugs, numWildcards } = getSlugsAndWildcards(pathSpec);
       if (numSlugs > 0 && options.staticPaths) {
-        const staticPaths = (options.staticPaths as any).map((item: any) =>
+        const staticPaths = options.staticPaths.map((item) =>
           (Array.isArray(item) ? item : [item]).map(sanitizeSlugWithDot),
         );
         for (const staticPath of staticPaths) {
