@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import react from '@vitejs/plugin-react';
 import rsc from '@vitejs/plugin-rsc';
 import MagicString from 'magic-string';
+import pc from 'picocolors';
 import {
   type Plugin,
   type PluginOption,
@@ -564,10 +565,17 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           viteConfig.environments.rsc!.build.outDir,
           'build.js',
         );
+        console.log(pc.blue('[ssg] processing static generation...'));
+        const startTime = performance.now();
         const entry: typeof import('../vite-entries/entry.build.js') =
           await import(pathToFileURL(entryPath).href);
         await entry.INTERNAL_runBuild({ rootDir, emitFile });
         await Promise.all(tasks);
+        console.log(
+          pc.green(
+            `✓ finished in ${Math.ceil(performance.now() - startTime)}ms`,
+          ),
+        );
       },
     },
   };

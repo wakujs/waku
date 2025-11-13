@@ -1,12 +1,10 @@
 import type { ReactNode } from 'react';
 import type { Config } from '../config.js';
 
-type Elements = Record<string, unknown>;
-
 type RenderRsc = (elements: Record<string, unknown>) => Promise<ReadableStream>;
 
 type RenderHtml = (
-  elements: Elements,
+  elementsStream: ReadableStream,
   html: ReactNode,
   options: { rscPath: string; actionResult?: unknown; status?: number },
 ) => Promise<Response>;

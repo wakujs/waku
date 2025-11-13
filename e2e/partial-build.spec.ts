@@ -1,8 +1,11 @@
 import { rmSync, statSync } from 'fs';
-import { ChildProcess, exec, execSync } from 'node:child_process';
+import { ChildProcess, exec } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { expect } from '@playwright/test';
 import { findWakuPort, terminate, test } from './utils.js';
+
+const execAsync = promisify(exec);
 
 const cwd = fileURLToPath(new URL('./fixtures/partial-build', import.meta.url));
 
@@ -24,7 +27,7 @@ test.describe(`partial builds`, () => {
   let port: number;
   test.beforeEach(async ({ page }) => {
     rmSync(`${cwd}/dist`, { recursive: true, force: true });
-    execSync(`node ${waku} build`, {
+    await execAsync(`node ${waku} build`, {
       cwd,
       env: { ...process.env, PAGES: 'a' },
     });
@@ -40,7 +43,7 @@ test.describe(`partial builds`, () => {
   test('does not change pages that already exist', async () => {
     const htmlBefore = statSync(`${cwd}/dist/public/page/a/index.html`);
     const rscBefore = statSync(`${cwd}/dist/public/RSC/R/page/a.txt`);
-    execSync(`node ${waku} build --experimental-partial`, {
+    await execAsync(`node ${waku} build --experimental-partial`, {
       cwd,
       env: { ...process.env, PAGES: 'a,b' },
     });
@@ -51,7 +54,7 @@ test.describe(`partial builds`, () => {
   });
 
   test('adds new pages', async ({ page }) => {
-    execSync(`node ${waku} build --experimental-partial`, {
+    await execAsync(`node ${waku} build --experimental-partial`, {
       cwd,
       env: { ...process.env, PAGES: 'a,b' },
     });
@@ -60,7 +63,7 @@ test.describe(`partial builds`, () => {
   });
 
   test('does not delete old pages', async ({ page }) => {
-    execSync(`node ${waku} build --experimental-partial`, {
+    await execAsync(`node ${waku} build --experimental-partial`, {
       cwd,
       env: { ...process.env, PAGES: 'c' },
     });
