@@ -361,17 +361,10 @@ export const Slot = ({
   }
   return (
     <ChildrenContextProvider value={children}>
-      {/* See: https://github.com/wakujs/waku/pull/1545 */}
-      {/* isolate potential `lazy + React.use` usage inside `element` in its own component */}
-      {/* https://github.com/facebook/react/issues/33937#issuecomment-3091349011 */}
-      <SlotElementWrapper>{element as ReactNode}</SlotElementWrapper>
+      {element as ReactNode}
     </ChildrenContextProvider>
   );
 };
-
-// HACK: This is only for a workaround.
-// https://github.com/facebook/react/issues/33937
-const SlotElementWrapper = (props: { children: ReactNode }) => props.children;
 
 /**
  * ServerRoot for SSR

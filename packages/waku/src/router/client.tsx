@@ -424,8 +424,22 @@ const notAvailableInServer = (name: string) => () => {
 function renderError(message: string) {
   return (
     <html>
-      <body>
-        <h1>{message}</h1>
+      <head>
+        <title>Unhandled Error</title>
+      </head>
+      <body
+        style={{
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          placeContent: 'center',
+          placeItems: 'center',
+          fontSize: '16px',
+          margin: 0,
+        }}
+      >
+        <h1>Caught an unexpected error</h1>
+        <p>Error: {message}</p>
       </body>
     </html>
   );
