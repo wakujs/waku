@@ -16,7 +16,6 @@ export default async function AboutPage() {
 }
 
 const getData = async () => {
-  console.log('🔶 Fetching about page data...');
   const data = {
     title: 'About',
     headline: 'About Waku',
