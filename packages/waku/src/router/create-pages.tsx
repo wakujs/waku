@@ -1,4 +1,4 @@
-import { Fragment, createElement } from 'react';
+import { createElement } from 'react';
 import type { FunctionComponent, ReactNode } from 'react';
 import { getGrouplessPath } from '../lib/utils/create-pages.js';
 import {
@@ -226,17 +226,14 @@ export type CreateRoot = (root: RootItem) => void;
  *   </html>
  * ```
  */
-const DefaultRoot = ({ children }: { children: ReactNode }) =>
-  createElement(
-    ErrorBoundary,
-    null,
-    createElement(
-      'html',
-      null,
-      createElement('head', null),
-      createElement('body', null, children),
-    ),
-  );
+const DefaultRoot = ({ children }: { children: ReactNode }) => (
+  <ErrorBoundary>
+    <html>
+      <head />
+      <body>{children}</body>
+    </html>
+  </ErrorBoundary>
+);
 
 const createNestedElements = (
   elements: {
@@ -327,7 +324,7 @@ export const createPages = <
   const sliceIdMap = new Map<
     string,
     {
-      component: FunctionComponent<{ children: ReactNode }>;
+      component: FunctionComponent<any>;
       isStatic: boolean;
     }
   >();
@@ -820,7 +817,7 @@ export const createPages = <
         result[`page:${routePath}`] = createElement(
           pageComponent,
           { ...mapping, ...(query ? { query } : {}), path },
-          createElement(Children),
+          <Children />,
         );
       }
 
@@ -835,7 +832,7 @@ export const createPages = <
 
         if (layout && !Array.isArray(layout)) {
           const id = 'layout:' + segment;
-          result[id] = createElement(layout, null, createElement(Children));
+          result[id] = createElement(layout, null, <Children />);
         } else {
           throw new Error('Invalid layout ' + segment);
         }
@@ -845,25 +842,25 @@ export const createPages = <
         component: Slot,
         props: { id: `layout:${lPath}` },
       }));
-      const finalPageChildren = Array.isArray(pageComponent)
-        ? createElement(
-            Fragment,
-            null,
-            pageComponent.map((_comp, order) =>
-              createElement(Slot, {
-                id: `page:${routePath}:${order}`,
-                key: `page:${routePath}:${order}`,
-              }),
-            ),
-          )
-        : createElement(Slot, { id: `page:${routePath}` });
+      const finalPageChildren = Array.isArray(pageComponent) ? (
+        <>
+          {pageComponent.map((_comp, order) => (
+            <Slot
+              id={`page:${routePath}:${order}`}
+              key={`page:${routePath}:${order}`}
+            />
+          ))}
+        </>
+      ) : (
+        <Slot id={`page:${routePath}`} />
+      );
 
       return {
         elements: result,
         rootElement: createElement(
           rootItem ? rootItem.component : DefaultRoot,
           null,
-          createElement(Children),
+          <Children />,
         ),
         routeElement: createNestedElements(layouts, finalPageChildren),
         slices: slicePathMap.get(routePath) || [],
@@ -892,8 +889,7 @@ export const createPages = <
       if (!slice) {
         throw new Error('Slice not found: ' + sliceId);
       }
-      const { component } = slice;
-      return { element: createElement(component) };
+      return { element: <slice.component /> };
     },
   });
 
