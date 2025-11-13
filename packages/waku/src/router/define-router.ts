@@ -558,7 +558,7 @@ export function unstable_defineRouter(fns: {
         const entries = await getEntries(rscPath, undefined, {});
         if (entries) {
           if (item.specs.isStatic) {
-            // TODO: better way to make these two sequential
+            // enforce RSC -> HTML generation sequential
             const entriesStreamPromise = (() => {
               let resolve, reject;
               const promise = new Promise<ReadableStream>((res, rej) => {
