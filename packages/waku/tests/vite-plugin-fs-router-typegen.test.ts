@@ -58,4 +58,45 @@ import type { getConfig as File_OneTwoThree_2_getConfig } from './pages/one_two_
 import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_two_three';`,
     );
   });
+
+  test('generates types when server-entry uses fsRouter (managed mode)', async () => {
+    vi.mocked(writeFile).mockClear();
+    await runTest(
+      root,
+      `type Page =`,
+      'plugin-fs-router-typegen-with-fsrouter',
+    );
+  });
+
+  test('skips type generation when server-entry does not use fsRouter', async () => {
+    vi.mocked(writeFile).mockClear();
+
+    const plugin = fsRouterTypegenPlugin({
+      srcDir: 'plugin-fs-router-typegen-with-createpages',
+    });
+    expect(plugin.configureServer).toBeDefined();
+    expect(typeof plugin.configureServer).toBe('function');
+    expect(plugin.configResolved).toBeDefined();
+    expect(typeof plugin.configResolved).toBe('function');
+    if (
+      typeof plugin.configureServer !== 'function' ||
+      typeof plugin.configResolved !== 'function'
+    ) {
+      return;
+    }
+
+    await plugin.configResolved?.call(
+      {} as never,
+      { root } as unknown as ResolvedConfig,
+    );
+    await plugin.configureServer?.call(
+      {} as never,
+      {
+        watcher: { add: () => {}, on: () => {} } as unknown as FSWatcher,
+      } as ViteDevServer,
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(vi.mocked(writeFile)).not.toHaveBeenCalled();
+  });
 });

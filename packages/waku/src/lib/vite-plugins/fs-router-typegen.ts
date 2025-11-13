@@ -64,9 +64,6 @@ export const fsRouterTypegenPlugin = (opts: { srcDir: string }): Plugin => {
     configureServer(server) {
       const srcDir = joinPath(server.config.root, opts.srcDir);
       const pagesDir = joinPath(srcDir, SRC_PAGES);
-      const entriesFilePossibilities = EXTENSIONS.map((ext) =>
-        joinPath(srcDir, SRC_SERVER_ENTRY + ext),
-      );
 
       const outputFile = joinPath(srcDir, 'pages.gen.ts');
       const updateGeneratedFile = async (file: string | undefined) => {
@@ -75,12 +72,7 @@ export const fsRouterTypegenPlugin = (opts: { srcDir: string }): Plugin => {
           return;
         }
         // skip when the entries file exists or pages dir does not exist
-        if (
-          !existsSync(pagesDir) ||
-          entriesFilePossibilities.some((entriesFile) =>
-            existsSync(entriesFile),
-          )
-        ) {
+        if (!existsSync(pagesDir) || !(await detectFsRouterUsage(srcDir))) {
           return;
         }
         const generation = await generateFsRouterTypes(pagesDir);
@@ -104,6 +96,42 @@ export const fsRouterTypegenPlugin = (opts: { srcDir: string }): Plugin => {
     },
   };
 };
+
+export async function detectFsRouterUsage(srcDir: string): Promise<boolean> {
+  const existingServerEntry = EXTENSIONS.map((ext) =>
+    joinPath(srcDir, SRC_SERVER_ENTRY + ext),
+  ).find((entriesFile) => existsSync(entriesFile));
+
+  // managed mode if no entry
+  if (!existingServerEntry) {
+    return true;
+  }
+
+  try {
+    const file = swc.parseSync(readFileSync(existingServerEntry, 'utf8'), {
+      syntax: 'typescript',
+      tsx: true,
+    });
+
+    const usesFsRouter = file.body.some((node) => {
+      if (node.type === 'ImportDeclaration') {
+        if (!node.source.value.startsWith('waku')) {
+          return false;
+        }
+        return node.specifiers.some(
+          (specifier) =>
+            specifier.type === 'ImportSpecifier' &&
+            (specifier.imported?.value === 'fsRouter' ||
+              (!specifier.imported && specifier.local.value === 'fsRouter')),
+        );
+      }
+      return false;
+    });
+    return usesFsRouter;
+  } catch {
+    return false;
+  }
+}
 
 export async function generateFsRouterTypes(pagesDir: string) {
   // Recursively collect `.tsx` files in the given directory
