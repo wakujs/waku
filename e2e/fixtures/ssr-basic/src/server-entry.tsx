@@ -17,14 +17,22 @@ export default adapter({
     }
     if (input.type === 'custom') {
       if (input.pathname === '/') {
-        return renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
-          rscPath: '',
-        });
+        return renderHtml(
+          await renderRsc({ App: <App name="Waku" /> }),
+          <Slot id="App" />,
+          {
+            rscPath: '',
+          },
+        );
       }
       if (input.pathname === '/test') {
-        return renderHtml({ TestApp: <TestApp /> }, <Slot id="TestApp" />, {
-          rscPath: 'test',
-        });
+        return renderHtml(
+          await renderRsc({ TestApp: <TestApp /> }),
+          <Slot id="TestApp" />,
+          {
+            rscPath: 'test',
+          },
+        );
       }
     }
   },

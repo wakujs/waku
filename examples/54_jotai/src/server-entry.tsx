@@ -11,7 +11,7 @@ export default adapter({
     }
     if (input.type === 'custom' && input.pathname === '/') {
       return renderHtml(
-        { App: <App name="Waku" rscParams={undefined} /> },
+        await renderRsc({ App: <App name="Waku" rscParams={undefined} /> }),
         <Slot id="App" />,
         { rscPath: '' },
       );

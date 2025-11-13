@@ -492,7 +492,7 @@ export function unstable_defineRouter(fns: {
         );
         const actionResult =
           input.type === 'action' ? await input.fn() : undefined;
-        return renderHtml(entries, html, {
+        return renderHtml(await renderRsc(entries), html, {
           rscPath,
           actionResult,
           status: httpstatus,
@@ -591,8 +591,8 @@ export function unstable_defineRouter(fns: {
               httpstatus={specs.is404 ? 404 : 200}
             />
           );
-          await generateFile(pathname, req, () =>
-            renderHtml(entries, html, {
+          await generateFile(pathname, req, async () =>
+            renderHtml(await renderRsc(entries), html, {
               rscPath,
             }).then((res) => res.body || ''),
           );
