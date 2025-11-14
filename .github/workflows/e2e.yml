@@ -68,25 +68,41 @@ jobs:
           if-no-files-found: error
 
   e2e:
-    name: E2E on ${{ matrix.os }} (Node ${{ matrix.version }}) - (${{ matrix.shared }}/4)${{ inputs.react_version && format(' with react@{0}', inputs.react_version) || '' }}
+    name: E2E on ${{ matrix.os }} (Node ${{ matrix.version }}) - ${{ matrix.browser }}${{ inputs.react_version && format(' with react@{0}', inputs.react_version) || '' }}
     needs:
       - build
     strategy:
       fail-fast: false
       matrix:
-        shared: [1, 2, 3, 4]
-        shardTotal: [4]
+        # shared: [1, 2, 3, 4]
+        # shardTotal: [4]
+        # os: [ubuntu-latest, windows-latest, macos-latest]
+        # version: [24.0.0, 22.12.0, 20.19.0]
+        # exclude:
+        #   - os: macos-latest
+        #     version: 20.19.0
+        #   - os: windows-latest
+        #     version: 20.19.0
+        #   - os: macos-latest
+        #     version: 22.12.0
+        #   - os: windows-latest
+        #     version: 22.12.0
+
+        # latest Node LTS + Chrome for each OS
         os: [ubuntu-latest, windows-latest, macos-latest]
-        version: [24.0.0, 22.12.0, 20.19.0]
-        exclude:
+        version: [24]
+        browser: [chromium]
+        include:
+          # all Node LTS + Chrome + Linux
+          - os: ubuntu-latest
+            version: 22
+          - os: ubuntu-latest
+            version: 20
+          # extra browsers
+          - os: ubuntu-latest
+            browser: firefox
           - os: macos-latest
-            version: 20.19.0
-          - os: windows-latest
-            version: 20.19.0
-          - os: macos-latest
-            version: 22.12.0
-          - os: windows-latest
-            version: 22.12.0
+            browser: webkit
 
     runs-on: ${{ matrix.os }}
     steps:
