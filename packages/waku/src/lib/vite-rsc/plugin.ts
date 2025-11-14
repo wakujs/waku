@@ -28,6 +28,7 @@ import {
   SRC_SERVER_ENTRY,
 } from '../constants.js';
 import { getDefaultAdapter } from '../utils/default-adapter.js';
+import { limitConcurrency } from '../utils/limit-concurrency.js';
 import {
   getManagedClientEntry,
   getManagedServerEntry,
@@ -35,7 +36,6 @@ import {
 import { joinPath } from '../utils/path.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
-import { limitConcurrency } from '../utils/limit-concurrency.js';
 
 const PKG_NAME = 'waku';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));

@@ -1,7 +1,7 @@
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 import { INTERNAL_setAllEnv } from '../../server.js';
-import { filePathToFileURL, joinPath } from '../utils/path.js';
 import type { Unstable_EmitFile } from '../types.js';
+import { filePathToFileURL, joinPath } from '../utils/path.js';
 
 export async function INTERNAL_runBuild({
   rootDir,
