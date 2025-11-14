@@ -13,3 +13,4 @@ minimumReleaseAgeExclude:
   - 'react'
   - 'react-dom'
   - 'react-server-dom-webpack'
+  - 'scheduler'
