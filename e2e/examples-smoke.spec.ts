@@ -4,14 +4,17 @@
  *
  * If you want to run a specific example, you can use VSCode Playwright extension.
  */
-import { ChildProcess, exec, execSync } from 'node:child_process';
+import { ChildProcess, exec } from 'node:child_process';
 import { readdirSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import { basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { error, info } from '@actions/core';
 import { expect } from '@playwright/test';
 import { findWakuPort, terminate, test } from './utils.js';
+
+const execAsync = promisify(exec);
 
 const examplesDir = fileURLToPath(new URL('../examples', import.meta.url));
 
@@ -69,7 +72,7 @@ for (const cwd of examples) {
 
         test.beforeAll(async () => {
           if (build) {
-            execSync(`node ${waku} ${build}`, { cwd });
+            await execAsync(`node ${waku} ${build}`, { cwd });
           }
           cp = exec(`${command}`, { cwd });
           cp.stdout?.on('data', (data) => {

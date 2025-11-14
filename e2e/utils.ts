@@ -1,4 +1,4 @@
-import { exec, execSync } from 'node:child_process';
+import { exec } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import {
   cpSync,
@@ -13,11 +13,13 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { stripVTControlCharacters } from 'node:util';
+import { promisify, stripVTControlCharacters } from 'node:util';
 import { error, info } from '@actions/core';
 import { test as basicTest, expect } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
 import fkill from 'fkill';
+
+const execAsync = promisify(exec);
 
 export const FETCH_ERROR_MESSAGES = {
   chromium: 'Failed to fetch',
@@ -132,7 +134,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
   ) => {
     if (mode !== 'DEV' && !built) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
-      execSync(`node ${waku} build`, { cwd: fixtureDir });
+      await execAsync(`node ${waku} build`, { cwd: fixtureDir });
       built = true;
     }
     let cmd: string;
@@ -240,9 +242,8 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         },
         recursive: true,
       });
-      execSync(`pnpm pack --pack-destination ${standaloneDir}`, {
+      await execAsync(`pnpm pack --pack-destination ${standaloneDir}`, {
         cwd: wakuDir,
-        stdio: ['ignore', 'ignore', 'inherit'],
       });
       const wakuPackageTgz = join(standaloneDir, `waku-${version}.tgz`);
       const rootPkg = JSON.parse(
@@ -295,9 +296,8 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       if (packageManager !== 'pnpm') {
         patchMonorepoPackageJson(standaloneDir);
       }
-      execSync(PACKAGE_INSTALL[packageManager], {
+      await execAsync(PACKAGE_INSTALL[packageManager], {
         cwd: standaloneDir,
-        stdio: 'inherit',
       });
     }
     const waku = join(wakuPackageDir(), './node_modules/waku/dist/cli.js');
@@ -306,7 +306,9 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         recursive: true,
         force: true,
       });
-      execSync(`node ${waku} build`, { cwd: join(standaloneDir, packageDir) });
+      await execAsync(`node ${waku} build`, {
+        cwd: join(standaloneDir, packageDir),
+      });
       builtModeMap.set(packageManager, mode);
     }
     let cmd: string;
