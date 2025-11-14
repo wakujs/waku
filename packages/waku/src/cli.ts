@@ -1,7 +1,10 @@
+import { version as reactVersion } from 'react';
 import { createRequire } from 'node:module';
 import process from 'node:process';
 import { parseArgs } from 'node:util';
 import * as dotenv from 'dotenv';
+
+console.error('------------Using React version:', reactVersion);
 
 const require = createRequire(new URL('.', import.meta.url));
 
