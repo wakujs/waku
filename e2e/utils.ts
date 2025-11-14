@@ -18,6 +18,7 @@ import { error, info } from '@actions/core';
 import { test as basicTest, expect } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
 import fkill from 'fkill';
+import treeKill from "tree-kill"
 
 const execAsync = promisify(exec);
 
@@ -156,7 +157,8 @@ export const prepareNormalSetup = (fixtureName: string) => {
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     const port = await findWakuPort(cp);
     const stopApp = async () => {
-      await terminate(port);
+      treeKill(cp.pid!);
+      // await terminate(port);
     };
     return { port, stopApp, fixtureDir };
   };
