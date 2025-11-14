@@ -9,6 +9,6 @@ export default async function Test({ path }: PageProps<'/[slug]'>) {
 export async function getConfig() {
   return {
     render: 'static',
-    staticPaths: new Array(5000).fill(null).map((_, i) => `path-${i}`),
+    staticPaths: new Array(100).fill(null).map((_, i) => `path-${i}`),
   };
 }

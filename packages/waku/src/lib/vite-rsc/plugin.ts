@@ -33,7 +33,6 @@ import {
   getManagedServerEntry,
 } from '../utils/managed.js';
 import { joinPath } from '../utils/path.js';
-import { createTaskRunner } from '../utils/task-runner.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
 import { limitConcurrency } from '../utils/limit-concurrency.js';
@@ -528,11 +527,8 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           BUILD_METADATA_FILE,
         );
         await writeFile(buildMetadataFile, dummySource);
-        // const WRITE_BATCH_SIZE = 100;
-        // const { runTask } = createTaskRunner(WRITE_BATCH_SIZE);
-
         // TODO: expose `ssgConcurrency: number` option
-        const runTask = limitConcurrency(2500);
+        const runTask = limitConcurrency(100);
         const tasks: Promise<void>[] = [];
         const emitFile = async (
           filePath: string,
