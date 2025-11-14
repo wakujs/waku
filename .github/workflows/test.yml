@@ -14,6 +14,11 @@ on:
       react_version:
         required: true
         type: string
+  workflow_dispatch:
+    inputs:
+      react_version:
+        required: true
+        type: string
 
 jobs:
   test:

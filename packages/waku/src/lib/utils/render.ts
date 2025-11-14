@@ -37,22 +37,18 @@ export function createRenderUtils(
       });
     },
     async renderHtml(
-      elements,
+      elementsStream,
       html,
       options?: { rscPath?: string; actionResult?: any; status?: number },
     ) {
       const ssrEntryModule = await loadSsrEntryModule();
-
-      const rscElementsStream = renderToReadableStream(elements, {
-        onError,
-      });
 
       const rscHtmlStream = renderToReadableStream(html, {
         onError,
       });
 
       const htmlResult = await ssrEntryModule.renderHtml(
-        rscElementsStream,
+        elementsStream,
         rscHtmlStream,
         {
           formState: options?.actionResult,
