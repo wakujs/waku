@@ -26,9 +26,14 @@ on:
       react_version:
         required: true
         type: string
+  workflow_dispatch:
+    inputs:
+      react_version:
+        required: true
+        type: string
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.react_version }}
   cancel-in-progress: true
 
 jobs:
@@ -44,7 +49,9 @@ jobs:
           node-version: 20
           cache: ${{ !inputs.react_version && 'pnpm' || '' }}
       - if: ${{ inputs.react_version }}
-        run: pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
+        run: |
+          yq eval -i '.overrides |= (.react = "${{ inputs.react_version }}" | .["react-dom"] = "${{ inputs.react_version }}" | .["react-server-dom-webpack"] = "${{ inputs.react_version }}")' pnpm-workspace.yaml
+          pnpm install --no-frozen-lockfile
       - run: pnpm install
       - run: pnpm run compile
       - uses: actions/upload-artifact@v4
@@ -93,8 +100,12 @@ jobs:
         with:
           node-version: ${{ matrix.version }}
           cache: ${{ !inputs.react_version && 'pnpm' || '' }}
+      - if: runner.os == 'Windows'
+        run: choco install yq -y
       - if: ${{ inputs.react_version }}
-        run: pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
+        run: |
+          yq eval -i '.overrides |= (.react = "${{ inputs.react_version }}" | .["react-dom"] = "${{ inputs.react_version }}" | .["react-server-dom-webpack"] = "${{ inputs.react_version }}")' pnpm-workspace.yaml
+          pnpm install --no-frozen-lockfile
       - run: pnpm install
       - uses: actions/download-artifact@v4
         with:

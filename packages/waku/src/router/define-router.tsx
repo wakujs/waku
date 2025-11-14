@@ -1,4 +1,3 @@
-import { createElement } from 'react';
 import type { ReactNode } from 'react';
 import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
 import { getPathMapping, path2regexp } from '../lib/utils/path.js';
@@ -485,13 +484,15 @@ export function unstable_defineRouter(fns: {
         if (!entries) {
           return null;
         }
-        const html = createElement(INTERNAL_ServerRouter, {
-          route: { path: pathname, query, hash: '' },
-          httpstatus,
-        });
+        const html = (
+          <INTERNAL_ServerRouter
+            route={{ path: pathname, query, hash: '' }}
+            httpstatus={httpstatus}
+          />
+        );
         const actionResult =
           input.type === 'action' ? await input.fn() : undefined;
-        return renderHtml(entries, html, {
+        return renderHtml(await renderRsc(entries), html, {
           rscPath,
           actionResult,
           status: httpstatus,
@@ -544,8 +545,6 @@ export function unstable_defineRouter(fns: {
       }
     }
 
-    // FIXME this approach keeps all entries in memory during the loop
-    const entriesCache = new Map<string, Record<string, unknown>>();
     await Promise.all(
       myConfig.map(async (item) => {
         if (item.type !== 'route') {
@@ -559,10 +558,33 @@ export function unstable_defineRouter(fns: {
         const rscPath = encodeRoutePath(pathname);
         const entries = await getEntries(rscPath, undefined, {});
         if (entries) {
-          entriesCache.set(pathname, entries);
           if (item.specs.isStatic) {
-            await generateFile(rscPath2pathname(rscPath), req, () =>
-              renderRsc(entries),
+            // enforce RSC -> HTML generation sequential
+            const entriesStreamPromise = (() => {
+              let resolve, reject;
+              const promise = new Promise<ReadableStream>((res, rej) => {
+                resolve = res;
+                reject = rej;
+              });
+              return { promise, resolve: resolve!, reject: reject! };
+            })();
+            await generateFile(rscPath2pathname(rscPath), req, async () => {
+              const stream = await renderRsc(entries);
+              const [stream1, stream2] = stream.tee();
+              entriesStreamPromise.resolve(stream2);
+              return stream1;
+            });
+            const html = (
+              <INTERNAL_ServerRouter
+                route={{ path: pathname, query: '', hash: '' }}
+                httpstatus={item.specs.is404 ? 404 : 200}
+              />
+            );
+            const entriesStream = await entriesStreamPromise.promise;
+            await generateFile(pathname, req, () =>
+              renderHtml(entriesStream, html, {
+                rscPath,
+              }).then((res) => res.body || ''),
             );
           }
         }
@@ -579,21 +601,6 @@ export function unstable_defineRouter(fns: {
           throw new Error('Pathname is required for noSsr routes on build');
         }
         await generateDefaultHtml(pathname);
-      } else if (pathname) {
-        const req = new Request(new URL(pathname, 'http://localhost:3000'));
-        const entries = entriesCache.get(pathname);
-        if (specs.isStatic && entries) {
-          const rscPath = encodeRoutePath(pathname);
-          const html = createElement(INTERNAL_ServerRouter, {
-            route: { path: pathname, query: '', hash: '' },
-            httpstatus: specs.is404 ? 404 : 200,
-          });
-          await generateFile(pathname, req, () =>
-            renderHtml(entries, html, {
-              rscPath,
-            }).then((res) => res.body || ''),
-          );
-        }
       }
     }
 

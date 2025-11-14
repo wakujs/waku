@@ -14,6 +14,11 @@ on:
       react_version:
         required: true
         type: string
+  workflow_dispatch:
+    inputs:
+      react_version:
+        required: true
+        type: string
 
 jobs:
   test:
@@ -34,7 +39,8 @@ jobs:
           cache: ${{ !inputs.react_version && 'pnpm' || '' }}
       - if: ${{ inputs.react_version }}
         run: |
-          pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
+          yq eval -i '.overrides |= (.react = "${{ inputs.react_version }}" | .["react-dom"] = "${{ inputs.react_version }}" | .["react-server-dom-webpack"] = "${{ inputs.react_version }}")' pnpm-workspace.yaml
+          pnpm install --no-frozen-lockfile
       - run: pnpm install
       - run: pnpm run compile
       - if: ${{ matrix.version == '24.0.0' }}
