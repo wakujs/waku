@@ -527,9 +527,15 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           BUILD_METADATA_FILE,
         );
         await writeFile(buildMetadataFile, dummySource);
+
         // TODO: expose `ssgConcurrency: number` option
         const runTask = limitConcurrency(100);
         const tasks: Promise<void>[] = [];
+
+        let taskCount = 0;
+        const tty = process.stdout.isTTY && !process.env.CI;
+        const throttleWrite = throttle((s: string) => writeLine(s));
+
         const emitFile = async (
           filePath: string,
           getData: () => Promise<ReadableStream | string>,
@@ -548,6 +554,12 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           }
           tasks.push(
             runTask(async () => {
+              taskCount++;
+              if (tty) {
+                throttleWrite(
+                  `generating a file (${taskCount}) ${pc.dim(filePath)}`,
+                );
+              }
               await mkdir(joinPath(destFile, '..'), { recursive: true });
               const body = await getData();
               if (typeof body === 'string') {
@@ -571,12 +583,42 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           await import(pathToFileURL(entryPath).href);
         await entry.INTERNAL_runBuild({ rootDir, emitFile });
         await Promise.all(tasks);
+        if (tty) {
+          clearLine();
+        }
         console.log(
           pc.green(
-            `✓ finished in ${Math.ceil(performance.now() - startTime)}ms`,
+            `✓ ${taskCount} file${taskCount !== 1 ? 's' : ''} generated in ${Math.ceil(performance.now() - startTime)}ms`,
           ),
         );
       },
     },
+  };
+}
+
+// copied from Vite
+// https://github.com/vitejs/vite/blob/fa3753a0f3a6c12659d8a68eefbd055c5ab90552/packages/vite/src/node/plugins/reporter.ts#L342
+function writeLine(output: string) {
+  clearLine();
+  if (output.length < process.stdout.columns) {
+    process.stdout.write(output);
+  } else {
+    process.stdout.write(output.substring(0, process.stdout.columns - 1));
+  }
+}
+
+function clearLine() {
+  process.stdout.clearLine(0);
+  process.stdout.cursorTo(0);
+}
+
+function throttle(fn: Function) {
+  let timerHandle: NodeJS.Timeout | null = null;
+  return (...args: any[]) => {
+    if (timerHandle) return;
+    fn(...args);
+    timerHandle = setTimeout(() => {
+      timerHandle = null;
+    }, 50);
   };
 }
