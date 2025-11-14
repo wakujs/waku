@@ -448,8 +448,13 @@ function createVirtualAdapterPlugin(config: Required<Config>) {
   return {
     name: `waku:virtual-${name}`,
     enforce: 'pre',
-    resolveId(source, _importer, _options) {
-      return source === name ? this.resolve(config.adapter) : undefined;
+    async resolveId(source, _importer, options) {
+      if (source === name) {
+        const resolved = await this.resolve(config.adapter, undefined, { ...options, skipSelf: true });
+        if (!resolved) {
+          return this.error(`Failed to resolve adapter package: ${config.adapter}`);
+        }
+      }
     },
   } satisfies Plugin;
 }
