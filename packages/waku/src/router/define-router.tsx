@@ -2,7 +2,11 @@ import type { ReactElement, ReactNode } from 'react';
 import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
 import { getPathMapping, path2regexp } from '../lib/utils/path.js';
 import type { PathSpec } from '../lib/utils/path.js';
-import { streamToString, stringToStream } from '../lib/utils/stream.js';
+import {
+  base64ToStream,
+  streamToBase64,
+  stringToStream,
+} from '../lib/utils/stream.js';
 import { unstable_defineHandlers as defineHandlers } from '../minimal/server.js';
 import { unstable_getContext as getContext } from '../server.js';
 import { INTERNAL_ServerRouter } from './client.js';
@@ -447,7 +451,7 @@ export function unstable_defineRouter(fns: {
           Object.entries(JSON.parse(cachedElementsMetadata)).map(
             async ([id, str]) => {
               cachedElements[id] = (
-                await parseRsc(stringToStream(str as string))
+                await parseRsc(base64ToStream(str as string))
               )[id];
             },
           ),
@@ -724,7 +728,7 @@ export function unstable_defineRouter(fns: {
           await Promise.all(
             Object.entries(cachedElements).map(async ([id, element]) => [
               id,
-              await streamToString(await renderRsc({ [id]: element })),
+              await streamToBase64(await renderRsc({ [id]: element })),
             ]),
           ),
         ),
