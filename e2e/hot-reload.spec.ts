@@ -23,7 +23,7 @@ test.afterAll(() => {
   for (const [file, content] of Object.entries(originalFiles)) {
     writeFileSync(file, content);
   }
-})
+});
 
 test.skip(
   ({ mode }) => mode !== 'DEV',
