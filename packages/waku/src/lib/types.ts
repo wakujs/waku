@@ -1,17 +1,9 @@
 import type { ReactNode } from 'react';
 import type { Config } from '../config.js';
 
-type Elements = Record<string, unknown>;
-
 type RenderRsc = (elements: Record<string, unknown>) => Promise<ReadableStream>;
 
 type RenderHtml = (
-  elements: Elements,
-  html: ReactNode,
-  options: { rscPath: string; actionResult?: any; status?: number },
-) => Promise<Response>;
-
-type RenderHtmlWithStream = (
   elementsStream: ReadableStream,
   html: ReactNode,
   options: { rscPath: string; actionResult?: any; status?: number },
@@ -20,7 +12,6 @@ type RenderHtmlWithStream = (
 export type RenderUtils = {
   renderRsc: RenderRsc;
   renderHtml: RenderHtml;
-  renderHtmlWithStream: RenderHtmlWithStream;
 };
 
 export type Unstable_HandleRequest = (

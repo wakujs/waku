@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { exec } from 'node:child_process';
 import {
   cpSync,
   existsSync,
@@ -8,9 +8,12 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { expect } from '@playwright/test';
 import { getManagedServerEntry } from '../packages/waku/dist/lib/utils/managed.js';
 import { makeTempDir, test } from './utils.js';
+
+const execAsync = promisify(exec);
 
 const dryRunList = [
   // without server-entry.tsx
@@ -85,7 +88,7 @@ test.describe(`multi platform builds`, () => {
           rmSync(join(temp, name), { recursive: true, force: true });
         }
         try {
-          execSync(`node ${waku} build ${adapter}`, {
+          await execAsync(`node ${waku} build ${adapter}`, {
             cwd: temp,
             env: process.env,
           });

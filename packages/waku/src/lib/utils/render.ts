@@ -35,13 +35,7 @@ export function createRenderUtils(
         onError,
       });
     },
-    async renderHtml(elements, html, options) {
-      const rscElementsStream = renderToReadableStream(elements, {
-        onError,
-      });
-      return renderUtils.renderHtmlWithStream(rscElementsStream, html, options);
-    },
-    async renderHtmlWithStream(rscElementsStream, html, options) {
+    async renderHtml(elementsStream, html, options) {
       const ssrEntryModule = await loadSsrEntryModule();
 
       const rscHtmlStream = renderToReadableStream(html, {
@@ -49,7 +43,7 @@ export function createRenderUtils(
       });
 
       const htmlResult = await ssrEntryModule.renderHtml(
-        rscElementsStream,
+        elementsStream,
         rscHtmlStream,
         {
           formState: options?.actionResult,
