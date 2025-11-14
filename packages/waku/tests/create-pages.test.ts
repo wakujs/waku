@@ -1,4 +1,3 @@
-import { version as reactVersion } from 'react';
 import type { PropsWithChildren } from 'react';
 import { expectType } from 'ts-expect';
 import type { TypeEqual } from 'ts-expect';
@@ -25,8 +24,6 @@ import type {
   StaticSlugRoutePathsTuple,
 } from '../src/router/create-pages.js';
 import { unstable_defineRouter } from '../src/router/define-router.js';
-
-console.error('React version used in tests:', reactVersion);
 
 function Fake() {
   return null;
