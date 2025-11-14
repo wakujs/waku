@@ -38,7 +38,12 @@ jobs:
           node-version: ${{ matrix.version }}
           cache: ${{ !inputs.react_version && 'pnpm' || '' }}
       - if: ${{ inputs.react_version }}
-        run: node scripts/react-overrides.js ${{ inputs.react_version }} && pnpm i --no-frozen-lockfile
+        run: |
+          sed -i "0,/overrides:/s//overrides:\
+            react: '${{ inputs.react_version }}'\
+            react-dom: '${{ inputs.react_version }}'\
+            react-server-dom-webpack: '${{ inputs.react_version }}'/" pnpm-workspace.yaml
+          pnpm install --no-frozen-lockfile
       - run: pnpm install
       - run: pnpm run compile
       - run: pnpm test
