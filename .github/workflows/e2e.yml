@@ -33,7 +33,7 @@ on:
         type: string
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.react_version }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.react_version }}
   cancel-in-progress: true
 
 jobs:
