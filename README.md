@@ -835,6 +835,9 @@ const ThrowComponent = async () => {
 };
 ```
 
+TODO: mention these are for handling "unexpected errors" for last resort. 
+TODO: mention on production, the error are obfuscated on client to avoid revealing server internal.
+
 If you customize the root element (see [Root element](#root-element)), you should add your own error boundary there, as Waku's default root error boundary is included in the default root element.
 
 ## Metadata
