@@ -128,7 +128,8 @@ jobs:
       - name: Install Playwright
         id: install-playwright
         uses: ./.github/actions/playwright
-      - run: pnpm exec playwright test --shard=${{ matrix.shared }}/${{ matrix.shardTotal }}
+      # - run: pnpm exec playwright test --shard=${{ matrix.shared }}/${{ matrix.shardTotal }}
+      - run: pnpm exec playwright test --project=${{ matrix.browser }}-prd --project=${{ matrix.browser }}-dev
         timeout-minutes: 30
         env:
           TEMP_DIR: ${{ runner.temp }}
@@ -136,14 +137,16 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.shared }}
+          # name: playwright-report-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.shared }}
+          name: playwright-report-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.browser }}
           path: test-results/
           retention-days: 30
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: output-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.shared }}
+          # name: output-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.shared }}
+          name: output-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.browser }}
           path: |
             **/dist
             **/node_modules/.vite
