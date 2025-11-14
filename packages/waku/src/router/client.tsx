@@ -2,9 +2,7 @@
 
 import {
   Component,
-  Fragment,
   createContext,
-  createElement,
   startTransition,
   use,
   useCallback,
@@ -16,8 +14,6 @@ import {
 } from 'react';
 import type {
   AnchorHTMLAttributes,
-  ComponentProps,
-  FunctionComponent,
   MouseEvent,
   ReactElement,
   ReactNode,
@@ -391,16 +387,32 @@ export function Link({
         props.onMouseEnter?.(event);
       }
     : props.onMouseEnter;
-  const ele = createElement(
-    'a',
-    { ...props, href: to, onClick, onMouseEnter, ref: setRef },
-    children,
+  const ele = (
+    <a
+      {...props}
+      href={to}
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      ref={setRef}
+    >
+      {children}
+    </a>
   );
   if (isPending && unstable_pending !== undefined) {
-    return createElement(Fragment, null, ele, unstable_pending);
+    return (
+      <>
+        {ele}
+        {unstable_pending}
+      </>
+    );
   }
   if (!isPending && unstable_notPending !== undefined) {
-    return createElement(Fragment, null, ele, unstable_notPending);
+    return (
+      <>
+        {ele}
+        {unstable_notPending}
+      </>
+    );
   }
   return ele;
 }
@@ -410,10 +422,26 @@ const notAvailableInServer = (name: string) => () => {
 };
 
 function renderError(message: string) {
-  return createElement(
-    'html',
-    null,
-    createElement('body', null, createElement('h1', null, message)),
+  return (
+    <html>
+      <head>
+        <title>Unhandled Error</title>
+      </head>
+      <body
+        style={{
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          placeContent: 'center',
+          placeItems: 'center',
+          fontSize: '16px',
+          margin: 0,
+        }}
+      >
+        <h1>Caught an unexpected error</h1>
+        <p>Error: {message}</p>
+      </body>
+    </html>
   );
 }
 
@@ -467,7 +495,7 @@ const NotFound = ({
         });
     }
   }, [has404, reset, changeRoute]);
-  return has404 ? null : createElement('h1', null, 'Not Found');
+  return has404 ? null : <h1>Not Found</h1>;
 };
 
 const Redirect = ({
@@ -549,18 +577,17 @@ class CustomErrorHandler extends Component<
     if (error !== null) {
       const info = getErrorInfo(error);
       if (info?.status === 404) {
-        return createElement(NotFound, {
-          has404: this.props.has404,
-          reset: this.reset,
-        });
+        return <NotFound has404={this.props.has404} reset={this.reset} />;
       }
       if (info?.location) {
-        return createElement(Redirect, {
-          error,
-          to: info.location,
-          reset: this.reset,
-          handledErrorSet: this.handledErrorSet,
-        });
+        return (
+          <Redirect
+            error={error}
+            to={info.location}
+            reset={this.reset}
+            handledErrorSet={this.handledErrorSet}
+          />
+        );
       }
       throw error;
     }
@@ -623,7 +650,7 @@ export function Slice({
     // FIXME the fallback doesn't show on refetch after the first one.
     return props.fallback;
   }
-  return createElement(Slot, { id: slotId }, children);
+  return <Slot id={slotId}>{children}</Slot>;
 }
 
 const handleScroll = () => {
@@ -914,27 +941,29 @@ const InnerRouter = ({
   }, [changeRoute, locationListeners]);
 
   const routeElement =
-    err !== null
-      ? createElement(ThrowError, { error: err })
-      : createElement(Slot, { id: getRouteSlotId(route.path) });
-  const rootElement = createElement(
-    Slot,
-    { id: 'root' },
-    createElement('meta', { name: 'httpstatus', content: httpStatus }),
-    createElement(CustomErrorHandler, { has404 }, routeElement),
+    err !== null ? (
+      <ThrowError error={err} />
+    ) : (
+      <Slot id={getRouteSlotId(route.path)} />
+    );
+  const rootElement = (
+    <Slot id="root">
+      <meta name="httpstatus" content={httpStatus} />
+      <CustomErrorHandler has404={has404}>{routeElement}</CustomErrorHandler>
+    </Slot>
   );
-  return createElement(
-    RouterContext,
-    {
-      value: {
+  return (
+    <RouterContext
+      value={{
         route,
         changeRoute,
         prefetchRoute,
         routeChangeEvents,
         fetchingSlices: useRef(new Set<SliceId>()).current,
-      },
-    },
-    rootElement,
+      }}
+    >
+      {rootElement}
+    </RouterContext>
   );
 };
 
@@ -946,13 +975,10 @@ export function Router({
   const initialRscPath = encodeRoutePath(initialRoute.path);
   const initialRscParams = createRscParams(initialRoute.query);
   const httpStatus = getHttpStatusFromMeta();
-  return createElement(
-    Root as FunctionComponent<Omit<ComponentProps<typeof Root>, 'children'>>,
-    {
-      initialRscPath,
-      initialRscParams,
-    },
-    createElement(InnerRouter, { initialRoute, httpStatus }),
+  return (
+    <Root initialRscPath={initialRscPath} initialRscParams={initialRscParams}>
+      <InnerRouter initialRoute={initialRoute} httpStatus={httpStatus} />
+    </Root>
   );
 }
 
@@ -975,28 +1001,26 @@ export function INTERNAL_ServerRouter({
   route: RouteProps;
   httpstatus: number;
 }) {
-  const routeElement = createElement(Slot, { id: getRouteSlotId(route.path) });
-  const rootElement = createElement(
-    Slot,
-    { id: 'root' },
-    createElement('meta', { name: 'httpstatus', content: `${httpstatus}` }),
-    routeElement,
+  const routeElement = <Slot id={getRouteSlotId(route.path)} />;
+  const rootElement = (
+    <Slot id="root">
+      <meta name="httpstatus" content={`${httpstatus}`} />
+      {routeElement}
+    </Slot>
   );
-  return createElement(
-    Fragment,
-    null,
-    createElement(
-      RouterContext,
-      {
-        value: {
+  return (
+    <>
+      <RouterContext
+        value={{
           route,
           changeRoute: notAvailableInServer('changeRoute'),
           prefetchRoute: notAvailableInServer('prefetchRoute'),
           routeChangeEvents: MOCK_ROUTE_CHANGE_LISTENER,
           fetchingSlices: new Set<SliceId>(),
-        },
-      },
-      rootElement,
-    ),
+        }}
+      >
+        {rootElement}
+      </RouterContext>
+    </>
   );
 }

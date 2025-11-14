@@ -12,9 +12,13 @@ export default adapter({
       return renderRsc({ _value: value });
     }
     if (input.type === 'custom' && input.pathname === '/') {
-      return renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
-        rscPath: '',
-      });
+      return renderHtml(
+        await renderRsc({ App: <App name="Waku" /> }),
+        <Slot id="App" />,
+        {
+          rscPath: '',
+        },
+      );
     }
   },
   handleBuild: async () => {},
