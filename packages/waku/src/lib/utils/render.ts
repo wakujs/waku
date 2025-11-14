@@ -1,6 +1,7 @@
 import type { ReactFormState } from 'react-dom/client';
-import type { RenderUtils } from '../types.js';
+import type { Unstable_HandleRequest as HandleRequest } from '../types.js';
 
+type RenderUtils = Parameters<HandleRequest>[1];
 export type RenderHtml = (
   rscStream: ReadableStream<Uint8Array>,
   rscHtmlStream: ReadableStream<Uint8Array>,
@@ -28,14 +29,18 @@ export function createRenderUtils(
     }
   };
 
-  const renderUtils: RenderUtils = {
+  return {
     async renderRsc(elements) {
       return renderToReadableStream(elements, {
         temporaryReferences,
         onError,
       });
     },
-    async renderHtml(elementsStream, html, options) {
+    async renderHtml(
+      elementsStream,
+      html,
+      options?: { rscPath?: string; actionResult?: any; status?: number },
+    ) {
       const ssrEntryModule = await loadSsrEntryModule();
 
       const rscHtmlStream = renderToReadableStream(html, {
@@ -56,6 +61,4 @@ export function createRenderUtils(
       });
     },
   };
-
-  return renderUtils;
 }
