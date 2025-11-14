@@ -47,6 +47,7 @@
     "fkill": "^9.0.0",
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.7.1",
+    "tree-kill": "^1.2.2",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.3",
     "waku": "workspace:*"
