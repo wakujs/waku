@@ -46,14 +46,13 @@ export type Unstable_HandleBuild = (utils: {
   generateDefaultHtml: (pathname: string) => Promise<void>;
 }) => Promise<void>;
 
+export type Unstable_EmitFile = (filePath: string, getData: () => Promise<ReadableStream | string>) => Promise<void>
+
 export type Unstable_ServerEntry = {
   default: {
     fetch: (req: Request, ...args: any[]) => Response | Promise<Response>;
     build: (
-      emitFile: (
-        filePath: string,
-        bodyPromise: Promise<ReadableStream | string>,
-      ) => Promise<void>,
+      emitFile: Unstable_EmitFile,
     ) => Promise<void>;
     postBuild?: [modulePath: string, ...args: unknown[]];
   };
@@ -64,10 +63,7 @@ export type Unstable_ProcessRequest = (
 ) => Promise<Response | null>;
 
 export type Unstable_ProcessBuild = (
-  emitFile: (
-    filePath: string,
-    bodyPromise: Promise<ReadableStream | string>,
-  ) => Promise<void>,
+  emitFile: Unstable_EmitFile,
 ) => Promise<void>;
 
 export type Unstable_CreateServerEntryAdapter = <Options>(
