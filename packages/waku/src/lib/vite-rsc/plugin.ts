@@ -548,7 +548,6 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           }
           tasks.push(
             runTask(async () => {
-              // console.log("🔶", filePath)
               await mkdir(joinPath(destFile, '..'), { recursive: true });
               const body = await getData();
               if (typeof body === 'string') {
@@ -559,7 +558,6 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
                   fs.createWriteStream(destFile),
                 );
               }
-              // console.log("✅", filePath)
             }),
           );
         };
