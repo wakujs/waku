@@ -153,7 +153,8 @@ const toProcessBuild =
 
     await emitFile(
       joinPath(DIST_SERVER, BUILD_METADATA_FILE),
-      async () => `export const buildMetadata = new Map(${JSON.stringify(Array.from(buildMetadata))});`
+      async () =>
+        `export const buildMetadata = new Map(${JSON.stringify(Array.from(buildMetadata))});`,
     );
   };
 

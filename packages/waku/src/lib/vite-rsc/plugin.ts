@@ -36,6 +36,7 @@ import { joinPath } from '../utils/path.js';
 import { createTaskRunner } from '../utils/task-runner.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
+import { limitConcurrency } from '../utils/limit-concurrency.js';
 
 const PKG_NAME = 'waku';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -527,8 +528,11 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           BUILD_METADATA_FILE,
         );
         await writeFile(buildMetadataFile, dummySource);
-        const WRITE_BATCH_SIZE = 100;
-        const { runTask } = createTaskRunner(WRITE_BATCH_SIZE);
+        // const WRITE_BATCH_SIZE = 100;
+        // const { runTask } = createTaskRunner(WRITE_BATCH_SIZE);
+
+        // TODO: expose `ssgConcurrency: number` option
+        const runTask = limitConcurrency(2500);
         const tasks: Promise<void>[] = [];
         const emitFile = async (
           filePath: string,
@@ -548,7 +552,7 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           }
           tasks.push(
             runTask(async () => {
-              console.log(destFile)
+              // console.log("🔶", filePath)
               await mkdir(joinPath(destFile, '..'), { recursive: true });
               const body = await getData();
               if (typeof body === 'string') {
@@ -559,6 +563,7 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
                   fs.createWriteStream(destFile),
                 );
               }
+              // console.log("✅", filePath)
             }),
           );
         };
