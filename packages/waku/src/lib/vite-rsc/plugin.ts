@@ -450,9 +450,14 @@ function createVirtualAdapterPlugin(config: Required<Config>) {
     enforce: 'pre',
     async resolveId(source, _importer, options) {
       if (source === name) {
-        const resolved = await this.resolve(config.adapter, undefined, { ...options, skipSelf: true });
+        const resolved = await this.resolve(config.adapter, undefined, {
+          ...options,
+          skipSelf: true,
+        });
         if (!resolved) {
-          return this.error(`Failed to resolve adapter package: ${config.adapter}`);
+          return this.error(
+            `Failed to resolve adapter package: ${config.adapter}`,
+          );
         }
       }
     },
