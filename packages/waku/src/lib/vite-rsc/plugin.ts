@@ -447,6 +447,7 @@ function createVirtualAdapterPlugin(config: Required<Config>) {
   const name = 'waku/adapters/default';
   return {
     name: `waku:virtual-${name}`,
+    enforce: 'pre',
     resolveId(source, _importer, _options) {
       return source === name ? this.resolve(config.adapter) : undefined;
     },
