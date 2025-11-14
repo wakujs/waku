@@ -835,9 +835,9 @@ const ThrowComponent = async () => {
 };
 ```
 
-Error boundaries are designed to handle **unexpected errors** as a last resort. They act as a safety net to prevent the entire application from crashing when something goes wrong. For expected error conditions (like validation failures or network issues), you should handle them explicitly in your application logic rather than relying on error boundaries.
+Error boundaries handle **unexpected errors** as a last resort safety net. For expected error conditions (like validation or network failures), handle them explicitly in your application logic.
 
-In production, errors from server components and server functions are automatically obfuscated on the client side to avoid revealing sensitive server internals. This means that detailed error messages and stack traces are only visible in development mode, helping to protect your application's security while still providing useful debugging information during development.
+In production, server errors are automatically obfuscated on the client to avoid revealing server internals. Detailed error messages and stack traces are only visible in development.
 
 If you customize the root element (see [Root element](#root-element)), you should add your own error boundary there, as Waku's default root error boundary is included in the default root element.
 
