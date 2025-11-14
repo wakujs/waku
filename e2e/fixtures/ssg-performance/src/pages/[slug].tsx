@@ -3,6 +3,7 @@ import { Path } from '../Path.js';
 
 export default async function Test({ path }: PageProps<'/[slug]'>) {
   await new Promise((resolve) =>
+    // eslint-disable-next-line react-hooks/purity
     setTimeout(resolve, 500 + 500 * Math.random()),
   );
   return <Path path={path} />;
