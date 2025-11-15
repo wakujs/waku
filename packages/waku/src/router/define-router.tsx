@@ -293,25 +293,16 @@ export function unstable_defineRouter(fns: {
   // TODO should we make it a Map to support falsy values?
   const cachedElements: Record<SlotId, unknown> = {};
   let cachedElementsInitialized = false;
-  const setCachedElement = async (
-    id: SlotId,
-    element: unknown,
-    renderRsc: (elements: Record<SlotId, unknown>) => Promise<ReadableStream>,
-    parseRsc: (rscStream: ReadableStream) => Promise<Record<SlotId, unknown>>,
-  ) => {
+  const setCachedElement = async (id: SlotId, element: unknown) => {
     if (cachedElements[id]) {
       return;
     }
-    cachedElements[id] = (await parseRsc(await renderRsc({ [id]: element })))[
-      id
-    ];
+    cachedElements[id] = element;
   };
   const getEntries = async (
     rscPath: string,
     rscParams: unknown,
     headers: Readonly<Record<string, string>>,
-    renderRsc: (elements: Record<SlotId, unknown>) => Promise<ReadableStream>,
-    parseRsc: (rscStream: ReadableStream) => Promise<Record<SlotId, unknown>>,
   ) => {
     setRscPath(rscPath);
     setRscParams(rscParams);
@@ -352,15 +343,15 @@ export function unstable_defineRouter(fns: {
     }
     if (pathConfigItem.type === 'route') {
       if (pathConfigItem.specs.rootElementIsStatic) {
-        await setCachedElement('root', rootElement, renderRsc, parseRsc);
+        await setCachedElement('root', rootElement);
       }
       if (pathConfigItem.specs.routeElementIsStatic) {
-        await setCachedElement(routeId, routeElement, renderRsc, parseRsc);
+        await setCachedElement(routeId, routeElement);
       }
       await Promise.all(
         Object.entries(elements).map(async ([id, element]) => {
           if (pathConfigItem.specs.staticElementIds.includes(id)) {
-            await setCachedElement(id, element, renderRsc, parseRsc);
+            await setCachedElement(id, element);
           }
         }),
       );
@@ -394,7 +385,7 @@ export function unstable_defineRouter(fns: {
           }
           const { element } = await fns.handleSlice(sliceId);
           if (isStatic) {
-            await setCachedElement(id, element, renderRsc, parseRsc);
+            await setCachedElement(id, element);
           }
           return [id, element];
         }),
@@ -487,13 +478,7 @@ export function unstable_defineRouter(fns: {
             : {}),
         });
       }
-      const entries = await getEntries(
-        input.rscPath,
-        input.rscParams,
-        headers,
-        renderRsc,
-        parseRsc,
-      );
+      const entries = await getEntries(input.rscPath, input.rscParams, headers);
       if (!entries) {
         return null;
       }
@@ -510,7 +495,7 @@ export function unstable_defineRouter(fns: {
         }
         elementsPromise = Promise.all([
           elementsPromise,
-          getEntries(rscPath, rscParams, headers, renderRsc, parseRsc),
+          getEntries(rscPath, rscParams, headers),
         ]).then(([oldElements, newElements]) => {
           if (newElements === null) {
             console.warn('getEntries returned null');
@@ -529,13 +514,7 @@ export function unstable_defineRouter(fns: {
         const info = getErrorInfo(e);
         if (info?.location) {
           const rscPath = encodeRoutePath(info.location);
-          const entries = await getEntries(
-            rscPath,
-            undefined,
-            headers,
-            renderRsc,
-            parseRsc,
-          );
+          const entries = await getEntries(rscPath, undefined, headers);
           if (!entries) {
             unstable_notFound();
           }
@@ -558,13 +537,7 @@ export function unstable_defineRouter(fns: {
       ) => {
         const rscPath = encodeRoutePath(pathname);
         const rscParams = new URLSearchParams({ query });
-        const entries = await getEntries(
-          rscPath,
-          rscParams,
-          headers,
-          renderRsc,
-          parseRsc,
-        );
+        const entries = await getEntries(rscPath, rscParams, headers);
         if (!entries) {
           return null;
         }
@@ -606,7 +579,6 @@ export function unstable_defineRouter(fns: {
 
   const handleBuild: HandleBuild = async ({
     renderRsc,
-    parseRsc,
     renderHtml,
     rscPath2pathname,
     saveBuildMetadata,
@@ -642,13 +614,7 @@ export function unstable_defineRouter(fns: {
         }
         const req = new Request(new URL(pathname, 'http://localhost:3000'));
         const rscPath = encodeRoutePath(pathname);
-        const entries = await getEntries(
-          rscPath,
-          undefined,
-          {},
-          renderRsc,
-          parseRsc,
-        );
+        const entries = await getEntries(rscPath, undefined, {});
         if (entries) {
           if (item.specs.isStatic) {
             // enforce RSC -> HTML generation sequential
