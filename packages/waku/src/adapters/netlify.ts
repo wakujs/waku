@@ -5,6 +5,7 @@ import {
   unstable_constants as constants,
   unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
+  unstable_notFoundMiddleware as notFoundMiddleware,
 } from 'waku/internals';
 
 declare global {
@@ -43,13 +44,7 @@ export default createServerEntryAdapter(
     }
     app.use(middlewareRunner(middlewareModules));
     app.use(rscMiddleware({ processRequest }));
-    app.notFound((c) => {
-      const notFoundHtml = (globalThis as any).__WAKU_NOT_FOUND_HTML__;
-      if (typeof notFoundHtml === 'string') {
-        return c.html(notFoundHtml, 404);
-      }
-      return c.text('404 Not Found', 404);
-    });
+    app.use(notFoundMiddleware());
     const postBuildScript = joinPath(
       import.meta.__WAKU_ORIGINAL_PATH__,
       '../lib/netlify-post-build.js',

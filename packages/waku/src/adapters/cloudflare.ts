@@ -3,6 +3,7 @@ import type { MiddlewareHandler } from 'hono';
 import {
   unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
+  unstable_notFoundMiddleware as notFoundMiddleware,
 } from 'waku/internals';
 import { joinPath as joinPathOrig } from '../lib/utils/path.js';
 
@@ -40,21 +41,7 @@ export default createServerEntryAdapter(
     }
     app.use(middlewareRunner(middlewareModules));
     app.use(rscMiddleware({ processRequest }));
-    app.notFound(async (c) => {
-      const assetsFetcher = (c.env as any).ASSETS;
-      const url = new URL(c.req.raw.url);
-      const errorHtmlUrl = url.origin + '/404.html';
-      const notFoundStaticAssetResponse = await assetsFetcher?.fetch(
-        new URL(errorHtmlUrl),
-      );
-      if (
-        notFoundStaticAssetResponse &&
-        notFoundStaticAssetResponse.status < 400
-      ) {
-        return c.body(notFoundStaticAssetResponse.body, 404);
-      }
-      return c.text('404 Not Found', 404);
-    });
+    app.use(notFoundMiddleware());
     const postBuildScript = joinPath(
       import.meta.__WAKU_ORIGINAL_PATH__,
       '../lib/cloudflare-post-build.js',

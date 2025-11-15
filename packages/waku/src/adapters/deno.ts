@@ -6,6 +6,7 @@ import {
   unstable_constants as constants,
   unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
+  unstable_notFoundMiddleware as notFoundMiddleware,
 } from 'waku/internals';
 
 declare global {
@@ -39,7 +40,6 @@ export default createServerEntryAdapter(
     const {
       __WAKU_DENO_ADAPTER_HONO__: Hono = HonoForDevAndBuild,
       __WAKU_DENO_ADAPTER_SERVE_STATIC__: serveStatic,
-      __WAKU_DENO_ADAPTER_NOT_FOUND_FN__: notFoundFn,
     } = globalThis as any;
     const app = new Hono();
     if (serveStatic) {
@@ -51,9 +51,7 @@ export default createServerEntryAdapter(
     }
     app.use(middlewareRunner(middlewareModules));
     app.use(rscMiddleware({ processRequest }));
-    if (notFoundFn) {
-      app.notFound(notFoundFn);
-    }
+    app.use(notFoundMiddleware());
     const postBuildScript = joinPath(
       import.meta.__WAKU_ORIGINAL_PATH__,
       '../lib/deno-post-build.js',
@@ -62,7 +60,6 @@ export default createServerEntryAdapter(
       typeof import('./lib/deno-post-build.js').default
     >[0] = {
       distDir: config.distDir,
-      DIST_PUBLIC,
     };
     return {
       fetch: app.fetch,

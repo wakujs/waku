@@ -6,7 +6,9 @@ import {
   loadServerAction,
   renderToReadableStream,
 } from '@vitejs/plugin-rsc/rsc';
+import type { MiddlewareHandler } from 'hono';
 import { config, isBuild, rootDir } from 'virtual:vite-rsc-waku/config';
+import notFoundHtml from 'virtual:vite-rsc-waku/not-found';
 import { DIST_PUBLIC } from '../constants.js';
 import { INTERNAL_runWithContext } from '../context.js';
 import type {
@@ -23,8 +25,6 @@ import { getInput } from '../utils/request.js';
 import { encodeRscPath } from '../utils/rsc-path.js';
 import { stringToStream } from '../utils/stream.js';
 import { createTaskRunner, emitFileInTask } from '../utils/task-runner.js';
-import notFoundHtml from 'virtual:vite-rsc-waku/not-found';
-import type { MiddlewareHandler } from 'hono';
 
 function loadSsrEntryModule() {
   // This is an API to communicate between two server environments `rsc` and `ssr`.
