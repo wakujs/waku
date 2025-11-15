@@ -27,6 +27,9 @@ test.describe(`create-pages`, () => {
         .getPropertyValue('background-color'),
     );
     expect(backgroundColor).toBe('rgb(254, 254, 254)');
+    await expect(page.getByTestId('home-layout-render-count')).toHaveCount(1);
+    await page.reload();
+    await expect(page.getByTestId('home-layout-render-count')).toHaveCount(1);
   });
 
   test('foo', async ({ page }) => {
