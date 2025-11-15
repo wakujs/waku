@@ -22,7 +22,7 @@ export default adapter(
       }
       if (input.type === 'custom' && input.pathname === '/') {
         return renderHtml(
-          { App: <App name={'Waku'} items={items} /> },
+          await renderRsc({ App: <App name={'Waku'} items={items} /> }),
           <Slot id="App" />,
           { rscPath: '' },
         );

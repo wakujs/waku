@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { prepareNormalSetup, test } from './utils.js';
+import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('render-type');
 
@@ -27,6 +27,13 @@ test.describe('render type', () => {
       await page.goto(`http://localhost:${port}/server/static/static-echo`);
       await expect(page.getByTestId('echo')).toHaveText('static-echo');
       await expect(page.getByTestId('req-url')).toHaveText(/\/static-echo$/);
+
+      // static page is evaluated only once
+      const htmlTimestamp = await page.getByTestId('timestamp').innerText();
+      await page.goto(`http://localhost:${port}`);
+      await waitForHydration(page);
+      await page.getByRole('link', { name: '/server/static' }).click();
+      await expect(page.getByTestId('timestamp')).toHaveText(htmlTimestamp);
     });
 
     test('does not hydrate server components', async ({ page }) => {
