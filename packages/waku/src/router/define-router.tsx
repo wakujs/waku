@@ -666,6 +666,7 @@ export function unstable_defineRouter(fns: {
     renderHtml,
     rscPath2pathname,
     saveBuildMetadata,
+    withRequest,
     generateFile,
     generateDefaultHtml,
   }) => {
@@ -679,28 +680,37 @@ export function unstable_defineRouter(fns: {
       id: SlotId,
     ): Promise<NonNullable<ReactNode> | undefined> =>
       cachedElementsForBuild.get(id);
-    const setCachedElement = async (
-      id: SlotId,
-      element: NonNullable<ReactNode>,
-    ) => {
-      if (!cachedElementsForBuild.has(id)) {
-        const teedStream = renderRsc({ [id]: element }).then((rscStream) =>
-          rscStream.tee(),
-        );
-        const stream1 = teedStream.then(([s1]) => s1);
-        const stream2 = teedStream.then(([, s2]) => s2);
-        cachedElementsForBuild.set(
-          id,
-          stream1.then(
-            (rscStream) =>
-              parseRsc(rscStream).then((parsed) => parsed[id]) as Promise<
-                NonNullable<ReactNode>
-              >,
-          ),
-        );
-        serializedCachedElements.set(id, await streamToBase64(await stream2));
-      }
-    };
+    const setCachedElement =
+      (req?: Request) =>
+      async (id: SlotId, element: NonNullable<ReactNode>) => {
+        if (!cachedElementsForBuild.has(id)) {
+          const fn = async () => {
+            const teedStream = renderRsc({ [id]: element }).then((rscStream) =>
+              rscStream.tee(),
+            );
+            const stream1 = teedStream.then(([s1]) => s1);
+            const stream2 = teedStream.then(([, s2]) => s2);
+            cachedElementsForBuild.set(
+              id,
+              stream1.then(
+                (rscStream) =>
+                  parseRsc(rscStream).then((parsed) => parsed[id]) as Promise<
+                    NonNullable<ReactNode>
+                  >,
+              ),
+            );
+            serializedCachedElements.set(
+              id,
+              await streamToBase64(await stream2),
+            );
+          };
+          if (req) {
+            await withRequest(req, fn);
+          } else {
+            await fn();
+          }
+        }
+      };
 
     for (const item of myConfig) {
       const { handleApi } = fns;
@@ -712,8 +722,10 @@ export function unstable_defineRouter(fns: {
       ) {
         const pathname = item.pathname;
         const req = new Request(new URL(pathname, 'http://localhost:3000'));
-        await generateFile(pathname, req, () =>
-          handleApi(req).then((res) => res.body || stringToStream('')),
+        await generateFile(pathname, () =>
+          withRequest(req, () =>
+            handleApi(req).then((res) => res.body || stringToStream('')),
+          ),
         );
       }
     }
@@ -734,7 +746,7 @@ export function unstable_defineRouter(fns: {
           undefined,
           {},
           getCachedElement,
-          setCachedElement,
+          setCachedElement(req),
         );
         if (entries) {
           for (const id of Object.keys(entries)) {
@@ -750,12 +762,14 @@ export function unstable_defineRouter(fns: {
               });
               return { promise, resolve: resolve!, reject: reject! };
             })();
-            await generateFile(rscPath2pathname(rscPath), req, async () => {
-              const stream = await renderRsc(entries);
-              const [stream1, stream2] = stream.tee();
-              entriesStreamPromise.resolve(stream2);
-              return stream1;
-            });
+            await generateFile(rscPath2pathname(rscPath), () =>
+              withRequest(req, async () => {
+                const stream = await renderRsc(entries);
+                const [stream1, stream2] = stream.tee();
+                entriesStreamPromise.resolve(stream2);
+                return stream1;
+              }),
+            );
             const html = (
               <INTERNAL_ServerRouter
                 route={{ path: pathname, query: '', hash: '' }}
@@ -763,10 +777,12 @@ export function unstable_defineRouter(fns: {
               />
             );
             const entriesStream = await entriesStreamPromise.promise;
-            await generateFile(pathname, req, () =>
-              renderHtml(entriesStream, html, {
-                rscPath,
-              }).then((res) => res.body || ''),
+            await generateFile(pathname, () =>
+              withRequest(req, () =>
+                renderHtml(entriesStream, html, {
+                  rscPath,
+                }).then((res) => res.body || ''),
+              ),
             );
           }
         }
@@ -798,7 +814,7 @@ export function unstable_defineRouter(fns: {
           item.id,
           true,
           getCachedElement,
-          setCachedElement,
+          setCachedElement(),
         );
         if (!slice) {
           return;
@@ -809,12 +825,14 @@ export function unstable_defineRouter(fns: {
         slice.element =
           (await getCachedElement(SLICE_SLOT_ID_PREFIX + item.id)) ??
           slice.element;
-        await generateFile(rscPath2pathname(rscPath), req, () =>
-          renderRsc({
-            [SLICE_SLOT_ID_PREFIX + item.id]: slice.element,
-            // FIXME: hard-coded for now
-            [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + item.id]: true,
-          }),
+        await generateFile(rscPath2pathname(rscPath), () =>
+          withRequest(req, () =>
+            renderRsc({
+              [SLICE_SLOT_ID_PREFIX + item.id]: slice.element,
+              // FIXME: hard-coded for now
+              [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + item.id]: true,
+            }),
+          ),
         );
       }),
     );

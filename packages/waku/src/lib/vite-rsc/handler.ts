@@ -126,9 +126,9 @@ const toProcessBuild =
       saveBuildMetadata: async (key, value) => {
         buildMetadata.set(key, value);
       },
+      withRequest: (req, fn) => INTERNAL_runWithContext(req, fn),
       generateFile: async (
         pathname: string,
-        req: Request,
         renderBody: () => Promise<ReadableStream | string>,
       ) => {
         const filePath = joinPath(
@@ -139,9 +139,7 @@ const toProcessBuild =
               ? '404.html' // HACK special treatment for 404, better way?
               : pathname + '/index.html',
         );
-        await INTERNAL_runWithContext(req, async () => {
-          await emitFile(filePath, runTask(renderBody));
-        });
+        await emitFile(filePath, runTask(renderBody));
       },
       generateDefaultHtml: async (pathname: string) => {
         const filePath = joinPath(
