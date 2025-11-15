@@ -59,7 +59,7 @@ const toProcessRequest =
     try {
       res = await handleRequest(input, {
         ...renderUtils,
-        loadBuildMetadata: (key: string) => buildMetadata.get(key),
+        loadBuildMetadata: async (key: string) => buildMetadata.get(key),
       });
     } catch (e) {
       const info = getErrorInfo(e);
@@ -118,7 +118,7 @@ const toProcessBuild =
       ...renderUtils,
       rscPath2pathname: (rscPath) =>
         joinPath(config.rscBase, encodeRscPath(rscPath)),
-      saveBuildMetadata: (key, value) => {
+      saveBuildMetadata: async (key, value) => {
         buildMetadata.set(key, value);
       },
       generateFile: async (
