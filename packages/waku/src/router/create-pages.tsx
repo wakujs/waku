@@ -765,10 +765,7 @@ export const createPages = <
         .sort((configA, configB) => routePriorityComparator(configA, configB));
       return [...pathConfigs, ...sliceConfigs];
     },
-    handleRoute: async (
-      path,
-      { cachedRootElement, cachedRouteElement, cachedElements, query },
-    ) => {
+    handleRoute: async (path, { getCachedElement, query }) => {
       await configure();
 
       // path without slugs
@@ -803,8 +800,8 @@ export const createPages = <
         encodeURI(path),
       );
       const result: Record<string, unknown> = {};
-      const setResult = (key: string, getValue: () => unknown) => {
-        result[key] = cachedElements[key] ?? getValue();
+      const setResult = async (key: string, getValue: () => unknown) => {
+        result[key] = (await getCachedElement(key)) ?? getValue();
       };
       if (Array.isArray(pageComponent)) {
         for (let i = 0; i < pageComponent.length; i++) {
@@ -812,7 +809,7 @@ export const createPages = <
           if (!comp) {
             continue;
           }
-          setResult(`page:${routePath}:${i}`, () =>
+          await setResult(`page:${routePath}:${i}`, () =>
             createElement(comp.component, {
               ...mapping,
               ...(query ? { query } : {}),
@@ -821,7 +818,7 @@ export const createPages = <
           );
         }
       } else {
-        setResult(`page:${routePath}`, () =>
+        await setResult(`page:${routePath}`, () =>
           createElement(
             pageComponent,
             { ...mapping, ...(query ? { query } : {}), path },
@@ -840,7 +837,7 @@ export const createPages = <
           staticComponentMap.get(joinPath(segment, 'layout').slice(1)); // feels like a hack
 
         if (layout && !Array.isArray(layout)) {
-          setResult(`layout:${segment}`, () =>
+          await setResult(`layout:${segment}`, () =>
             createElement(layout, null, <Children />),
           );
         } else {
@@ -868,14 +865,14 @@ export const createPages = <
       return {
         elements: result,
         rootElement:
-          cachedRootElement ??
+          (await getCachedElement('root')) ??
           createElement(
             rootItem ? rootItem.component : DefaultRoot,
             null,
             <Children />,
           ),
         routeElement:
-          cachedRouteElement ??
+          (await getCachedElement('route')) ??
           createNestedElements(layouts, finalPageChildren),
         slices: slicePathMap.get(routePath) || [],
       };
