@@ -555,9 +555,7 @@ describe('createPages pages and layouts', () => {
     ]);
 
     const route = await handleRoute('/test', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
@@ -590,9 +588,7 @@ describe('createPages pages and layouts', () => {
       },
     ]);
     const route = await handleRoute('/test', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
@@ -693,9 +689,7 @@ describe('createPages pages and layouts', () => {
       },
     ]);
     const route = await handleRoute('/test', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
@@ -737,9 +731,7 @@ describe('createPages pages and layouts', () => {
     ]);
 
     const route = await handleRoute('/test', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
@@ -877,9 +869,7 @@ describe('createPages pages and layouts', () => {
       },
     ]);
     const route = await handleRoute('/test/nested', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
@@ -921,9 +911,7 @@ describe('createPages pages and layouts', () => {
       },
     ]);
     const route = await handleRoute('/test/nested', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
@@ -963,9 +951,7 @@ describe('createPages pages and layouts', () => {
     ]);
 
     const route = await handleRoute('/test/nested', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
@@ -1031,9 +1017,7 @@ describe('createPages pages and layouts', () => {
       },
     ]);
     const route = await handleRoute('/test/y/z', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
@@ -1070,9 +1054,7 @@ describe('createPages pages and layouts', () => {
       },
     ]);
     const route = await handleRoute('/test/w/x', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
@@ -1114,9 +1096,7 @@ describe('createPages pages and layouts', () => {
       },
     ]);
     const route = await handleRoute('/test/a/b', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
@@ -1152,9 +1132,7 @@ describe('createPages pages and layouts', () => {
       },
     ]);
     const route = await handleRoute('/test/a/b', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
@@ -1189,9 +1167,7 @@ describe('createPages pages and layouts', () => {
 
     // Test index route
     const indexRoute = await handleRoute('/', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(indexRoute).toBeDefined();
@@ -1201,9 +1177,7 @@ describe('createPages pages and layouts', () => {
 
     // Test regular routes
     const regularRoute = await handleRoute('/foo/bar', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(regularRoute).toBeDefined();
@@ -1844,9 +1818,7 @@ describe('createPages pages and layouts', () => {
       },
     ]);
     const route = await handleRoute('/server/two/a/b', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     assert(route);
@@ -1946,9 +1918,7 @@ describe('createPages - exactPath', () => {
       },
     ]);
     const route = await handleRoute('/test', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
@@ -1982,9 +1952,7 @@ describe('createPages - exactPath', () => {
       },
     ]);
     const route = await handleRoute('/test', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
@@ -2021,9 +1989,7 @@ describe('createPages - exactPath', () => {
       },
     ]);
     const route = await handleRoute('/test/[slug]', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
@@ -2060,9 +2026,7 @@ describe('createPages - exactPath', () => {
       },
     ]);
     const route = await handleRoute('/test/[...wildcard]', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
@@ -2100,9 +2064,7 @@ describe('createPages - exactPath', () => {
       },
     ]);
     const route = await handleRoute('/test/[...wildcard]/[slug]', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
@@ -2142,9 +2104,7 @@ describe('createPages - exactPath', () => {
     ]);
     await expect(async () => {
       return handleRoute('/test/foo', {
-        cachedRootElement: undefined,
-        cachedRouteElement: undefined,
-        cachedElements: {},
+        getCachedElement: async () => undefined,
         query: '?skip=[]',
       });
     }).rejects.toThrowError();
@@ -2176,9 +2136,7 @@ describe('createPages - grouped paths', () => {
       },
     ]);
     const route = await handleRoute('/test', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
@@ -2214,9 +2172,7 @@ describe('createPages - grouped paths', () => {
       },
     ]);
     const route = await handleRoute('/test/foo', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
@@ -2298,9 +2254,7 @@ describe('createPages - grouped paths', () => {
     ]);
 
     const routeX = await handleRoute('/x', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(routeX).toBeDefined();
@@ -2309,9 +2263,7 @@ describe('createPages - grouped paths', () => {
     expect(Object.keys(routeX.elements)).toEqual(['page:/x']);
 
     const routeY = await handleRoute('/y', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(routeY).toBeDefined();
@@ -2320,9 +2272,7 @@ describe('createPages - grouped paths', () => {
     expect(Object.keys(routeY.elements)).toEqual(['page:/y']);
 
     const routeZ = await handleRoute('/z', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(routeZ).toBeDefined();
@@ -2384,9 +2334,7 @@ describe('createPages - grouped paths', () => {
       },
     ]);
     const route = await handleRoute('/test', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
@@ -2399,9 +2347,7 @@ describe('createPages - grouped paths', () => {
     ]);
 
     const route2 = await handleRoute('/', {
-      cachedRootElement: undefined,
-      cachedRouteElement: undefined,
-      cachedElements: {},
+      getCachedElement: async () => undefined,
       query: '?skip=[]',
     });
     expect(route2).toBeDefined();
