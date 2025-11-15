@@ -1,4 +1,3 @@
-import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { getRequestListener } from '@hono/node-server';
 import { Hono } from 'hono';
@@ -7,6 +6,7 @@ import {
   unstable_constants as constants,
   unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
+  unstable_notFoundMiddleware as notFoundMiddleware,
 } from 'waku/internals';
 
 declare global {
@@ -48,13 +48,7 @@ export default createServerEntryAdapter(
     }
     app.use(middlewareRunner(middlewareModules));
     app.use(rscMiddleware({ processRequest }));
-    app.notFound((c) => {
-      const file = path.join(config.distDir, DIST_PUBLIC, '404.html');
-      if (existsSync(file)) {
-        return c.html(readFileSync(file, 'utf8'), 404);
-      }
-      return c.text('404 Not Found', 404);
-    });
+    app.use(notFoundMiddleware());
     const postBuildScript = joinPath(
       import.meta.__WAKU_ORIGINAL_PATH__,
       '../lib/vercel-post-build.js',
