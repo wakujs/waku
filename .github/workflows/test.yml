@@ -43,6 +43,6 @@ jobs:
           pnpm install --no-frozen-lockfile
       - run: pnpm install
       - run: pnpm run compile
-      - run: pnpm test
+      - run: pnpm test:unit
         env:
           VITE_EXPERIMENTAL_WAKU_ROUTER: true
