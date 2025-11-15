@@ -75,7 +75,9 @@ const HomeLayout = ({ children }: { children: ReactNode }) => {
         </li>
       </ul>
       {children}
-      <h4 data-testid="home-layout-render-count">{renderCount}</h4>;
+      <h4 data-testid="home-layout-render-count">
+        Render Count: {renderCount}
+      </h4>
     </div>
   );
 };

@@ -27,9 +27,13 @@ test.describe(`create-pages`, () => {
         .getPropertyValue('background-color'),
     );
     expect(backgroundColor).toBe('rgb(254, 254, 254)');
-    await expect(page.getByTestId('home-layout-render-count')).toHaveCount(1);
+    await expect(page.getByTestId('home-layout-render-count')).toHaveText(
+      'Render Count: 1',
+    );
     await page.reload();
-    await expect(page.getByTestId('home-layout-render-count')).toHaveCount(1);
+    await expect(page.getByTestId('home-layout-render-count')).toHaveText(
+      'Render Count: 1',
+    );
   });
 
   test('foo', async ({ page }) => {
