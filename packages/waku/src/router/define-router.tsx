@@ -290,6 +290,28 @@ export function unstable_defineRouter(fns: {
     const myConfig = await getMyConfig();
     return myConfig.some(({ type, specs }) => type === 'route' && specs.is404);
   };
+  const getSlice = async (
+    sliceId: string,
+    isStatic: boolean,
+    // TODO make it lasy
+    cachedElements: Record<SlotId, unknown>,
+  ): Promise<{
+    element: ReactNode;
+  } | null> => {
+    const id = SLICE_SLOT_ID_PREFIX + sliceId;
+    if (!fns.handleSlice) {
+      return null;
+    }
+    const cachedSlice = cachedElements[id];
+    if (cachedSlice) {
+      return { element: cachedSlice as ReactNode };
+    }
+    const { element } = await fns.handleSlice(sliceId);
+    if (isStatic) {
+      cachedElements[id] ??= element;
+    }
+    return { element };
+  };
   const getEntries = async (
     rscPath: string,
     rscParams: unknown,
@@ -369,18 +391,11 @@ export function unstable_defineRouter(fns: {
           if (isStatic && skipIdSet.has(id)) {
             return null;
           }
-          if (!fns.handleSlice) {
+          const slice = await getSlice(sliceId, !!isStatic, cachedElements);
+          if (!slice) {
             return null;
           }
-          const cachedSlice = cachedElements[id];
-          if (cachedSlice) {
-            return [id, cachedSlice];
-          }
-          const { element } = await fns.handleSlice(sliceId);
-          if (isStatic) {
-            cachedElements[id] ??= element;
-          }
-          return [id, element];
+          return [id, slice.element];
         }),
       )
     ).filter((ent): ent is NonNullable<typeof ent> => !!ent);
@@ -428,7 +443,7 @@ export function unstable_defineRouter(fns: {
   ): Promise<ReadableStream | Response | 'fallback' | null | undefined> => {
     if (!cachedElementsForRequest) {
       cachedElementsForRequest = {};
-      const cachedElementsMetadata = loadBuildMetadata(
+      const cachedElementsMetadata = await loadBuildMetadata(
         'defineRouter:cachedElements',
       );
       if (cachedElementsMetadata) {
@@ -450,21 +465,24 @@ export function unstable_defineRouter(fns: {
       if (sliceId !== null) {
         // LIMITATION: This is a signle slice request.
         // Ideally, we should be able to respond with multiple slices in one request.
-        if (!fns.handleSlice) {
+        const sliceConfig = await getMyConfig().then((myConfig) =>
+          myConfig.find(
+            (item): item is typeof item & { type: 'slice' } =>
+              item.type === 'slice' && item.id === sliceId,
+          ),
+        );
+        const isStatic = !!sliceConfig?.specs.isStatic;
+        const slice = await getSlice(
+          sliceId,
+          isStatic,
+          cachedElementsForRequest,
+        );
+        if (!slice) {
           return null;
         }
-        const [sliceConfig, { element }] = await Promise.all([
-          getMyConfig().then((myConfig) =>
-            myConfig.find(
-              (item): item is typeof item & { type: 'slice' } =>
-                item.type === 'slice' && item.id === sliceId,
-            ),
-          ),
-          fns.handleSlice(sliceId),
-        ]);
         return renderRsc({
-          [SLICE_SLOT_ID_PREFIX + sliceId]: element,
-          ...(sliceConfig?.specs.isStatic
+          [SLICE_SLOT_ID_PREFIX + sliceId]: slice.element,
+          ...(isStatic
             ? {
                 // FIXME: hard-coded for now
                 [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + sliceId]: true,
@@ -588,6 +606,7 @@ export function unstable_defineRouter(fns: {
 
   const handleBuild: HandleBuild = async ({
     renderRsc,
+    parseRsc,
     renderHtml,
     rscPath2pathname,
     saveBuildMetadata,
@@ -596,6 +615,20 @@ export function unstable_defineRouter(fns: {
   }) => {
     const myConfig = await getMyConfig();
     const cachedElementsForBuild: Record<SlotId, unknown> = {};
+    const serializedCachedElements: Record<SlotId, string> = {};
+    const getCachedElement = async (id: SlotId): Promise<ReactNode> => {
+      const element = cachedElementsForBuild[id];
+      if (!element) {
+        return undefined;
+      }
+      if (!serializedCachedElements[id]) {
+        const rscStream = await renderRsc({ [id]: element });
+        serializedCachedElements[id] = await streamToBase64(rscStream);
+      }
+      return (await parseRsc(base64ToStream(serializedCachedElements[id]!)))[
+        id
+      ] as ReactNode;
+    };
 
     for (const item of myConfig) {
       const { handleApi } = fns;
@@ -631,6 +664,9 @@ export function unstable_defineRouter(fns: {
           cachedElementsForBuild,
         );
         if (entries) {
+          for (const id of Object.keys(entries)) {
+            entries[id] = (await getCachedElement(id)) ?? entries[id];
+          }
           if (item.specs.isStatic) {
             // enforce RSC -> HTML generation sequential
             const entriesStreamPromise = (() => {
@@ -685,28 +721,27 @@ export function unstable_defineRouter(fns: {
         if (!item.specs.isStatic) {
           return;
         }
-        if (!fns.handleSlice) {
+        const slice = await getSlice(item.id, true, cachedElementsForBuild);
+        if (!slice) {
           return;
         }
-        const { element } = await fns.handleSlice(item.id);
         const rscPath = encodeSliceId(item.id);
         // dummy req for slice which is not determined at build time
         const req = new Request(new URL('http://localhost:3000'));
+        slice.element =
+          (await getCachedElement(SLICE_SLOT_ID_PREFIX + item.id)) ??
+          slice.element;
         await generateFile(rscPath2pathname(rscPath), req, () =>
           renderRsc({
-            [SLICE_SLOT_ID_PREFIX + item.id]: element,
-            ...(item.specs.isStatic
-              ? {
-                  // FIXME: hard-coded for now
-                  [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + item.id]: true,
-                }
-              : {}),
+            [SLICE_SLOT_ID_PREFIX + item.id]: slice.element,
+            // FIXME: hard-coded for now
+            [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + item.id]: true,
           }),
         );
       }),
     );
 
-    saveBuildMetadata(
+    await saveBuildMetadata(
       'defineRouter:cachedElements',
       JSON.stringify(
         Object.fromEntries(
@@ -714,7 +749,8 @@ export function unstable_defineRouter(fns: {
             Object.entries(cachedElementsForBuild).map(
               async ([id, element]) => [
                 id,
-                await streamToBase64(await renderRsc({ [id]: element })),
+                serializedCachedElements[id] ??
+                  (await streamToBase64(await renderRsc({ [id]: element }))),
               ],
             ),
           ),
