@@ -41,12 +41,7 @@ const PKG_NAME = 'waku';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 export type RscPluginOptions = {
-  flags?: Flags | undefined;
   config?: Config | undefined;
-};
-
-export type Flags = {
-  'experimental-partial'?: boolean | undefined;
 };
 
 export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
@@ -64,7 +59,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
   if (!config.basePath.endsWith('/')) {
     config.basePath += '/';
   }
-  const flags = rscPluginOptions?.flags ?? {};
   let privatePath: string;
 
   const extraPlugins = [...(config.vite?.plugins ?? [])];
@@ -196,9 +190,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
         }
         if (name === 'client') {
           environmentConfig.build.outDir = `${config.distDir}/${DIST_PUBLIC}`;
-          if (flags['experimental-partial']) {
-            environmentConfig.build.emptyOutDir = false;
-          }
         }
 
         return {
