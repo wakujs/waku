@@ -518,12 +518,12 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           BUILD_METADATA_FILE,
         );
         await writeFile(buildMetadataFile, dummySource);
-        const WRITE_BATCH_SIZE = 4;
-        const { runTask } = createTaskRunner(WRITE_BATCH_SIZE);
+        const BATCH_SIZE = 100;
+        const { runTask } = createTaskRunner(BATCH_SIZE);
         const tasks: Promise<void>[] = [];
         const emitFile = async (
           filePath: string,
-          bodyPromise: Promise<ReadableStream | string>,
+          renderBody: () => Promise<ReadableStream | string>,
         ) => {
           const destFile = joinPath(rootDir, distDir, filePath);
           if (!destFile.startsWith(rootDir)) {
@@ -540,7 +540,7 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           tasks.push(
             runTask(async () => {
               await mkdir(joinPath(destFile, '..'), { recursive: true });
-              const body = await bodyPromise;
+              const body = await renderBody();
               if (typeof body === 'string') {
                 await writeFile(destFile, body);
               } else {

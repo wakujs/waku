@@ -52,7 +52,7 @@ export type Unstable_ServerEntry = {
     build: (
       emitFile: (
         filePath: string,
-        bodyPromise: Promise<ReadableStream | string>,
+        renderBody: () => Promise<ReadableStream | string>,
       ) => Promise<void>,
     ) => Promise<void>;
     postBuild?: [modulePath: string, ...args: unknown[]];
@@ -66,7 +66,7 @@ export type Unstable_ProcessRequest = (
 export type Unstable_ProcessBuild = (
   emitFile: (
     filePath: string,
-    bodyPromise: Promise<ReadableStream | string>,
+    renderBody: () => Promise<ReadableStream | string>,
   ) => Promise<void>,
 ) => Promise<void>;
 
