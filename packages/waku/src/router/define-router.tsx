@@ -312,9 +312,10 @@ export function unstable_defineRouter(fns: {
     if (cachedSlice) {
       return { element: cachedSlice as ReactNode };
     }
-    const { element } = await fns.handleSlice(sliceId);
+    let { element } = await fns.handleSlice(sliceId);
     if (isStatic && element) {
       await setCachedElement(id, element);
+      element = await getCachedElement(id)!;
     }
     return { element };
   };
@@ -348,10 +349,9 @@ export function unstable_defineRouter(fns: {
     const decodedPathname = decodeURI(pathname);
     const routeId = ROUTE_SLOT_ID_PREFIX + decodedPathname;
     const {
-      rootElement,
-      routeElement,
       elements,
       slices = [],
+      ...rest
     } = await fns.handleRoute(pathname, {
       getCachedElement: async (
         id,
@@ -367,18 +367,22 @@ export function unstable_defineRouter(fns: {
       },
       query: pathConfigItem.specs.isStatic ? undefined : query,
     });
+    let { rootElement, routeElement } = rest;
     Object.keys(elements).forEach(assertValidElementId);
     if (pathConfigItem.type === 'route') {
       if (pathConfigItem.specs.rootElementIsStatic) {
         await setCachedElement(ROOT_SLOT_ID, rootElement);
+        rootElement = (await getCachedElement(ROOT_SLOT_ID)) as ReactElement;
       }
       if (pathConfigItem.specs.routeElementIsStatic) {
         await setCachedElement(routeId, routeElement);
+        routeElement = (await getCachedElement(routeId)) as ReactElement;
       }
       await Promise.all(
         Object.entries(elements).map(async ([id, element]) => {
           if (pathConfigItem.specs.staticElementIds.includes(id) && element) {
             await setCachedElement(id, element as NonNullable<ReactNode>);
+            elements[id] = await getCachedElement(id)!;
           }
         }),
       );

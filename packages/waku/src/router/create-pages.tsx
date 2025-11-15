@@ -865,14 +865,14 @@ export const createPages = <
       return {
         elements: result,
         rootElement:
-          (await getCachedElement('root')) ??
+          ((await getCachedElement('root')) as ReactElement) ??
           createElement(
             rootItem ? rootItem.component : DefaultRoot,
             null,
             <Children />,
           ),
         routeElement:
-          (await getCachedElement('route')) ??
+          ((await getCachedElement('route')) as ReactElement) ??
           createNestedElements(layouts, finalPageChildren),
         slices: slicePathMap.get(routePath) || [],
       };
