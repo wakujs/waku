@@ -5,6 +5,7 @@ Promise.resolve(new Response(new ReadableStream({
     const t = new TextEncoder();
     const f = (s) => c.enqueue(typeof s === 'string' ? t.encode(s) : s);
     d.forEach(f);
+    d.length = 0;
     d.push = f;
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => c.close());
