@@ -527,7 +527,7 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           BUILD_METADATA_FILE,
         );
         await writeFile(buildMetadataFile, dummySource);
-        const WRITE_BATCH_SIZE = 16;
+        const WRITE_BATCH_SIZE = 4;
         const { runTask } = createTaskRunner(WRITE_BATCH_SIZE);
         const tasks: Promise<void>[] = [];
         const emitFile = async (
