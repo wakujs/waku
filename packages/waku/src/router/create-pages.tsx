@@ -803,8 +803,8 @@ export const createPages = <
         encodeURI(path),
       );
       const result: Record<string, unknown> = {};
-      const setResult = (key: string, value: unknown) => {
-        result[key] = cachedElements[key] ?? value;
+      const setResult = (key: string, getValue: () => unknown) => {
+        result[key] = cachedElements[key] ?? getValue();
       };
       if (Array.isArray(pageComponent)) {
         for (let i = 0; i < pageComponent.length; i++) {
@@ -812,8 +812,7 @@ export const createPages = <
           if (!comp) {
             continue;
           }
-          setResult(
-            `page:${routePath}:${i}`,
+          setResult(`page:${routePath}:${i}`, () =>
             createElement(comp.component, {
               ...mapping,
               ...(query ? { query } : {}),
@@ -822,8 +821,7 @@ export const createPages = <
           );
         }
       } else {
-        setResult(
-          `page:${routePath}`,
+        setResult(`page:${routePath}`, () =>
           createElement(
             pageComponent,
             { ...mapping, ...(query ? { query } : {}), path },
@@ -842,8 +840,7 @@ export const createPages = <
           staticComponentMap.get(joinPath(segment, 'layout').slice(1)); // feels like a hack
 
         if (layout && !Array.isArray(layout)) {
-          setResult(
-            `layout:${segment}`,
+          setResult(`layout:${segment}`, () =>
             createElement(layout, null, <Children />),
           );
         } else {

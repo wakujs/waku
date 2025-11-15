@@ -133,8 +133,19 @@ export function unstable_redirect(
 
 type SlotId = string;
 
+const ROOT_SLOT_ID = 'root';
 const ROUTE_SLOT_ID_PREFIX = 'route:';
 const SLICE_SLOT_ID_PREFIX = 'slice:';
+
+const assertValidElementId = (slotId: SlotId) => {
+  if (
+    slotId === ROOT_SLOT_ID ||
+    slotId.startsWith(ROUTE_SLOT_ID_PREFIX) ||
+    slotId.startsWith(SLICE_SLOT_ID_PREFIX)
+  ) {
+    throw new Error('Element ID cannot be "root", "route:*" or "slice:*"');
+  }
+};
 
 export function unstable_defineRouter(fns: {
   getConfig: () => Promise<
@@ -222,17 +233,7 @@ export function unstable_defineRouter(fns: {
               item.path.length === 1 &&
               item.path[0]!.type === 'literal' &&
               item.path[0]!.name === '404';
-            if (
-              Object.keys(item.elements).some(
-                (id) =>
-                  id.startsWith(ROUTE_SLOT_ID_PREFIX) ||
-                  id.startsWith(SLICE_SLOT_ID_PREFIX),
-              )
-            ) {
-              throw new Error(
-                'Element ID cannot start with "route:" or "slice:"',
-              );
-            }
+            Object.keys(item.elements).forEach(assertValidElementId);
             return {
               type: 'route',
               pathSpec: item.path,
@@ -342,23 +343,15 @@ export function unstable_defineRouter(fns: {
       elements,
       slices = [],
     } = await fns.handleRoute(pathname, {
-      cachedRootElement: cachedElements.root as ReactElement | undefined,
+      cachedRootElement: cachedElements[ROOT_SLOT_ID] as ReactElement | undefined,
       cachedRouteElement: cachedElements[routeId] as ReactElement | undefined,
       cachedElements,
       query: pathConfigItem.specs.isStatic ? undefined : query,
     });
-    if (
-      Object.keys(elements).some(
-        (id) =>
-          id.startsWith(ROUTE_SLOT_ID_PREFIX) ||
-          id.startsWith(SLICE_SLOT_ID_PREFIX),
-      )
-    ) {
-      throw new Error('Element ID cannot start with "route:" or "slice:"');
-    }
+    Object.keys(elements).forEach(assertValidElementId);
     if (pathConfigItem.type === 'route') {
       if (pathConfigItem.specs.rootElementIsStatic) {
-        cachedElements['root'] ??= rootElement;
+        cachedElements[ROOT_SLOT_ID] ??= rootElement;
       }
       if (pathConfigItem.specs.routeElementIsStatic) {
         cachedElements[routeId] ??= routeElement;
@@ -409,8 +402,8 @@ export function unstable_defineRouter(fns: {
           delete entries[id];
         }
       }
-      if (!pathConfigItem.specs.rootElementIsStatic || !skipIdSet.has('root')) {
-        entries.root = rootElement;
+      if (!pathConfigItem.specs.rootElementIsStatic || !skipIdSet.has(ROOT_SLOT_ID)) {
+        entries[ROOT_SLOT_ID] = rootElement;
       }
       if (
         !pathConfigItem.specs.routeElementIsStatic ||
