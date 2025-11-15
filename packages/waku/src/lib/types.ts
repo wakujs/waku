@@ -44,6 +44,7 @@ export type Unstable_HandleBuild = (utils: {
   renderHtml: RenderHtml;
   rscPath2pathname: (rscPath: string) => string;
   saveBuildMetadata: (key: string, value: string) => Promise<void>;
+  // TODO(daishi) not a big fan of this API
   withRequest: <T>(req: Request, fn: () => T) => T;
   generateFile: (
     pathname: string,
