@@ -518,7 +518,8 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           BUILD_METADATA_FILE,
         );
         await writeFile(buildMetadataFile, dummySource);
-        const BATCH_SIZE = 100;
+        // TODO reduce it from 500 to 100, adjusting the ssg-performance test
+        const BATCH_SIZE = 500;
         const { runTask } = createTaskRunner(BATCH_SIZE);
         const tasks: Promise<void>[] = [];
         const emitFile = async (
