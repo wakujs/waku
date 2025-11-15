@@ -34,7 +34,7 @@ export type Unstable_HandleRequest = (
     renderRsc: RenderRsc;
     parseRsc: ParseRsc;
     renderHtml: RenderHtml;
-    loadBuildMetadata: (key: string) => string | undefined;
+    loadBuildMetadata: (key: string) => Promise<string | undefined>;
   },
 ) => Promise<ReadableStream | Response | 'fallback' | null | undefined>;
 
@@ -43,7 +43,7 @@ export type Unstable_HandleBuild = (utils: {
   parseRsc: ParseRsc;
   renderHtml: RenderHtml;
   rscPath2pathname: (rscPath: string) => string;
-  saveBuildMetadata: (key: string, value: string) => void;
+  saveBuildMetadata: (key: string, value: string) => Promise<void>;
   generateFile: (
     pathname: string,
     req: Request,

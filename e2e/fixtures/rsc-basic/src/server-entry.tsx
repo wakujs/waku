@@ -12,7 +12,7 @@ export default adapter({
           <App
             name={input.rscPath || 'Waku'}
             params={input.rscParams}
-            metadata={loadBuildMetadata(BUILD_MATADATA_KEY) || 'Empty'}
+            metadata={(await loadBuildMetadata(BUILD_MATADATA_KEY)) || 'Empty'}
           />
         ),
       });
@@ -24,6 +24,6 @@ export default adapter({
     return 'fallback';
   },
   handleBuild: async ({ saveBuildMetadata }) => {
-    saveBuildMetadata(BUILD_MATADATA_KEY, BUILD_MATADATA_VALUE);
+    await saveBuildMetadata(BUILD_MATADATA_KEY, BUILD_MATADATA_VALUE);
   },
 });
