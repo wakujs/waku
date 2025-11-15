@@ -263,6 +263,7 @@ if (import.meta.hot) {
     },
     createVirtualConfigPlugin(config),
     createVirtualAdapterPlugin(config),
+    createVirtualNotFoundPlugin(),
     createPathMacroPlugin(),
     {
       // rewrite `react-server-dom-webpack` in `waku/minimal/client`
@@ -440,6 +441,27 @@ function createVirtualAdapterPlugin(config: Required<Config>) {
     name: `waku:virtual-${name}`,
     resolveId(source, _importer, _options) {
       return source === name ? this.resolve(config.adapter) : undefined;
+    },
+  } satisfies Plugin;
+}
+
+function createVirtualNotFoundPlugin() {
+  // This provides raw html `public/404.html` for SSR fallback.
+  // It's not used when router has 404 page.
+  const name = 'virtual:vite-rsc-waku/not-found';
+  return {
+    name: `waku:virtual-${name}`,
+    resolveId(source, _importer, _options) {
+      return source === name ? '\0' + name : undefined;
+    },
+    load(id) {
+      if (id === '\0' + name) {
+        const notFoundHtmlPath = path.resolve(DIST_PUBLIC, '404.html');
+        if (!fs.existsSync(notFoundHtmlPath)) {
+          return `export default undefined`;
+        }
+        return `export { default } from ${JSON.stringify(notFoundHtmlPath + '?raw')}`;
+      }
     },
   } satisfies Plugin;
 }
