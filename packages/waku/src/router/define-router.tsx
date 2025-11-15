@@ -290,19 +290,12 @@ export function unstable_defineRouter(fns: {
     const myConfig = await getMyConfig();
     return myConfig.some(({ type, specs }) => type === 'route' && specs.is404);
   };
-  // TODO should we make it a Map to support falsy values?
-  const cachedElements: Record<SlotId, unknown> = {};
-  let cachedElementsInitialized = false;
-  const setCachedElement = async (id: SlotId, element: unknown) => {
-    if (cachedElements[id]) {
-      return;
-    }
-    cachedElements[id] = element;
-  };
   const getEntries = async (
     rscPath: string,
     rscParams: unknown,
     headers: Readonly<Record<string, string>>,
+    // TODO make it lasy
+    cachedElements: Record<SlotId, unknown>,
   ) => {
     setRscPath(rscPath);
     setRscParams(rscParams);
@@ -343,15 +336,15 @@ export function unstable_defineRouter(fns: {
     }
     if (pathConfigItem.type === 'route') {
       if (pathConfigItem.specs.rootElementIsStatic) {
-        await setCachedElement('root', rootElement);
+        cachedElements['root'] ??= rootElement;
       }
       if (pathConfigItem.specs.routeElementIsStatic) {
-        await setCachedElement(routeId, routeElement);
+        cachedElements[routeId] ??= routeElement;
       }
       await Promise.all(
         Object.entries(elements).map(async ([id, element]) => {
           if (pathConfigItem.specs.staticElementIds.includes(id)) {
-            await setCachedElement(id, element);
+            cachedElements[id] ??= element;
           }
         }),
       );
@@ -385,7 +378,7 @@ export function unstable_defineRouter(fns: {
           }
           const { element } = await fns.handleSlice(sliceId);
           if (isStatic) {
-            await setCachedElement(id, element);
+            cachedElements[id] ??= element;
           }
           return [id, element];
         }),
@@ -428,12 +421,13 @@ export function unstable_defineRouter(fns: {
   type HandleRequest = Parameters<typeof defineHandlers>[0]['handleRequest'];
   type HandleBuild = Parameters<typeof defineHandlers>[0]['handleBuild'];
 
+  let cachedElementsForRequest: Record<SlotId, unknown> | undefined;
   const handleRequest: HandleRequest = async (
     input,
     { renderRsc, parseRsc, renderHtml, loadBuildMetadata },
   ): Promise<ReadableStream | Response | 'fallback' | null | undefined> => {
-    if (!cachedElementsInitialized) {
-      cachedElementsInitialized = true;
+    if (!cachedElementsForRequest) {
+      cachedElementsForRequest = {};
       const cachedElementsMetadata = loadBuildMetadata(
         'defineRouter:cachedElements',
       );
@@ -441,7 +435,7 @@ export function unstable_defineRouter(fns: {
         await Promise.all(
           Object.entries(JSON.parse(cachedElementsMetadata)).map(
             async ([id, str]) => {
-              cachedElements[id] = (
+              cachedElementsForRequest![id] = (
                 await parseRsc(base64ToStream(str as string))
               )[id];
             },
@@ -478,7 +472,12 @@ export function unstable_defineRouter(fns: {
             : {}),
         });
       }
-      const entries = await getEntries(input.rscPath, input.rscParams, headers);
+      const entries = await getEntries(
+        input.rscPath,
+        input.rscParams,
+        headers,
+        cachedElementsForRequest,
+      );
       if (!entries) {
         return null;
       }
@@ -495,7 +494,7 @@ export function unstable_defineRouter(fns: {
         }
         elementsPromise = Promise.all([
           elementsPromise,
-          getEntries(rscPath, rscParams, headers),
+          getEntries(rscPath, rscParams, headers, cachedElementsForRequest!),
         ]).then(([oldElements, newElements]) => {
           if (newElements === null) {
             console.warn('getEntries returned null');
@@ -514,7 +513,12 @@ export function unstable_defineRouter(fns: {
         const info = getErrorInfo(e);
         if (info?.location) {
           const rscPath = encodeRoutePath(info.location);
-          const entries = await getEntries(rscPath, undefined, headers);
+          const entries = await getEntries(
+            rscPath,
+            undefined,
+            headers,
+            cachedElementsForRequest,
+          );
           if (!entries) {
             unstable_notFound();
           }
@@ -537,7 +541,12 @@ export function unstable_defineRouter(fns: {
       ) => {
         const rscPath = encodeRoutePath(pathname);
         const rscParams = new URLSearchParams({ query });
-        const entries = await getEntries(rscPath, rscParams, headers);
+        const entries = await getEntries(
+          rscPath,
+          rscParams,
+          headers,
+          cachedElementsForRequest!,
+        );
         if (!entries) {
           return null;
         }
@@ -586,6 +595,7 @@ export function unstable_defineRouter(fns: {
     generateDefaultHtml,
   }) => {
     const myConfig = await getMyConfig();
+    const cachedElementsForBuild: Record<SlotId, unknown> = {};
 
     for (const item of myConfig) {
       const { handleApi } = fns;
@@ -614,7 +624,12 @@ export function unstable_defineRouter(fns: {
         }
         const req = new Request(new URL(pathname, 'http://localhost:3000'));
         const rscPath = encodeRoutePath(pathname);
-        const entries = await getEntries(rscPath, undefined, {});
+        const entries = await getEntries(
+          rscPath,
+          undefined,
+          {},
+          cachedElementsForBuild,
+        );
         if (entries) {
           if (item.specs.isStatic) {
             // enforce RSC -> HTML generation sequential
@@ -696,10 +711,12 @@ export function unstable_defineRouter(fns: {
       JSON.stringify(
         Object.fromEntries(
           await Promise.all(
-            Object.entries(cachedElements).map(async ([id, element]) => [
-              id,
-              await streamToBase64(await renderRsc({ [id]: element })),
-            ]),
+            Object.entries(cachedElementsForBuild).map(
+              async ([id, element]) => [
+                id,
+                await streamToBase64(await renderRsc({ [id]: element })),
+              ],
+            ),
           ),
         ),
       ),
