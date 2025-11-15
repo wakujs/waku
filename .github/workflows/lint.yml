@@ -1,4 +1,4 @@
-name: pkg-pr-new
+name: Lint
 
 on:
   push:
@@ -8,15 +8,17 @@ on:
   merge_group:
 
 jobs:
-  publish:
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || '' }}
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 'lts/*'
           cache: 'pnpm'
       - run: pnpm install
-      - run: pnpm run compile
-      - run: pnpm dlx pkg-pr-new publish packages/waku
+      - run: pnpm test:lint
