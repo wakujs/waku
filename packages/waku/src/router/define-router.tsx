@@ -460,7 +460,10 @@ export function unstable_defineRouter(fns: {
   type HandleRequest = Parameters<typeof defineHandlers>[0]['handleRequest'];
   type HandleBuild = Parameters<typeof defineHandlers>[0]['handleBuild'];
 
-  const cachedElementsForRequest = new Map<SlotId, NonNullable<ReactNode>>();
+  const cachedElementsForRequest = new Map<
+    SlotId,
+    Promise<NonNullable<ReactNode>>
+  >();
   let cachedElementsForRequestInitialized = false;
   const handleRequest: HandleRequest = async (
     input,
@@ -475,9 +478,12 @@ export function unstable_defineRouter(fns: {
       element: NonNullable<ReactNode>,
     ) => {
       if (!cachedElementsForRequest.has(id)) {
-        const rscStream = await renderRsc({ [id]: element });
-        const copied = (await parseRsc(rscStream))[id];
-        cachedElementsForRequest.set(id, copied as NonNullable<ReactNode>);
+        cachedElementsForRequest.set(
+          id,
+          renderRsc({ [id]: element }).then((rscStream) =>
+            parseRsc(rscStream).then((parsed) => parsed[id]),
+          ) as Promise<NonNullable<ReactNode>>,
+        );
       }
     };
     if (!cachedElementsForRequestInitialized) {
@@ -486,18 +492,15 @@ export function unstable_defineRouter(fns: {
         'defineRouter:cachedElements',
       );
       if (cachedElementsMetadata) {
-        await Promise.all(
-          Object.entries(JSON.parse(cachedElementsMetadata)).map(
-            async ([id, str]) => {
-              const element = (await parseRsc(base64ToStream(str as string)))[
-                id
-              ];
-              cachedElementsForRequest.set(
-                id,
-                element as NonNullable<ReactNode>,
-              );
-            },
-          ),
+        Object.entries(JSON.parse(cachedElementsMetadata)).forEach(
+          ([id, str]) => {
+            cachedElementsForRequest.set(
+              id,
+              parseRsc(base64ToStream(str as string)).then(
+                (parsed) => parsed[id],
+              ) as Promise<NonNullable<ReactNode>>,
+            );
+          },
         );
       }
     }
@@ -667,7 +670,10 @@ export function unstable_defineRouter(fns: {
     generateDefaultHtml,
   }) => {
     const myConfig = await getMyConfig();
-    const cachedElementsForBuild = new Map<SlotId, NonNullable<ReactNode>>();
+    const cachedElementsForBuild = new Map<
+      SlotId,
+      Promise<NonNullable<ReactNode>>
+    >();
     const serializedCachedElements = new Map<SlotId, string>();
     const getCachedElement = async (
       id: SlotId,
@@ -678,11 +684,21 @@ export function unstable_defineRouter(fns: {
       element: NonNullable<ReactNode>,
     ) => {
       if (!cachedElementsForBuild.has(id)) {
-        const rscStream = await renderRsc({ [id]: element });
-        const [stream1, stream2] = rscStream.tee();
-        serializedCachedElements.set(id, await streamToBase64(stream1));
-        const copied = (await parseRsc(stream2))[id];
-        cachedElementsForBuild.set(id, copied as NonNullable<ReactNode>);
+        const teedStream = renderRsc({ [id]: element }).then((rscStream) =>
+          rscStream.tee(),
+        );
+        const stream1 = teedStream.then(([s1]) => s1);
+        const stream2 = teedStream.then(([, s2]) => s2);
+        cachedElementsForBuild.set(
+          id,
+          stream1.then(
+            (rscStream) =>
+              parseRsc(rscStream).then((parsed) => parsed[id]) as Promise<
+                NonNullable<ReactNode>
+              >,
+          ),
+        );
+        serializedCachedElements.set(id, await streamToBase64(await stream2));
       }
     };
 
@@ -803,6 +819,7 @@ export function unstable_defineRouter(fns: {
       }),
     );
 
+    // TODO should we save serialized cached elements separately?
     await saveBuildMetadata(
       'defineRouter:cachedElements',
       JSON.stringify(Object.fromEntries(serializedCachedElements)),
