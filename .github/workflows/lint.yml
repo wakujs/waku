@@ -9,12 +9,9 @@ on:
 
 jobs:
   lint:
-    name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.ref || '' }}
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
