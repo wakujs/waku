@@ -23,6 +23,8 @@ import { getInput } from '../utils/request.js';
 import { encodeRscPath } from '../utils/rsc-path.js';
 import { stringToStream } from '../utils/stream.js';
 import { createTaskRunner, emitFileInTask } from '../utils/task-runner.js';
+import notFoundHtml from 'virtual:vite-rsc-waku/not-found';
+import type { MiddlewareHandler } from 'hono';
 
 function loadSsrEntryModule() {
   // This is an API to communicate between two server environments `rsc` and `ssr`.
@@ -163,3 +165,12 @@ export const createServerEntryAdapter: CreateServerEntryAdapter =
       options,
     );
   };
+
+export function notFoundMiddleware(): MiddlewareHandler {
+  return async (c) => {
+    if (notFoundHtml) {
+      return c.html(notFoundHtml, 404);
+    }
+    return c.text('404 Not Found', 404);
+  };
+}

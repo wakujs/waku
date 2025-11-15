@@ -1,4 +1,3 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
@@ -7,6 +6,7 @@ import {
   unstable_constants as constants,
   unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
+  unstable_notFoundMiddleware as notFoundMiddleware,
 } from 'waku/internals';
 
 const { DIST_PUBLIC } = constants;
@@ -42,26 +42,10 @@ export default createServerEntryAdapter(
     }
     app.use(middlewareRunner(middlewareModules));
     app.use(rscMiddleware({ processRequest }));
-    if (isBuild) {
-      app.use(notFoundMiddleware(config));
-    }
+    app.use(notFoundMiddleware());
     return {
       fetch: app.fetch,
       build: processBuild,
     };
   },
 );
-
-function notFoundMiddleware({
-  distDir,
-}: {
-  distDir: string;
-}): MiddlewareHandler {
-  return async (c) => {
-    const file = path.join(distDir, DIST_PUBLIC, '404.html');
-    if (fs.existsSync(file)) {
-      return c.html(fs.readFileSync(file, 'utf8'), 404);
-    }
-    return c.text('404 Not Found', 404);
-  };
-}
