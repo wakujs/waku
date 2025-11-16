@@ -6,7 +6,6 @@ import {
   loadServerAction,
   renderToReadableStream,
 } from '@vitejs/plugin-rsc/rsc';
-import type { MiddlewareHandler } from 'hono';
 import { buildMetadata } from 'virtual:vite-rsc-waku/build-data';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import notFoundHtml from 'virtual:vite-rsc-waku/not-found';
@@ -168,16 +167,8 @@ export const createServerEntryAdapter: CreateServerEntryAdapter =
         processBuild,
         config,
         isBuild,
+        notFoundHtml,
       },
       options,
     );
   };
-
-export function notFoundMiddleware(): MiddlewareHandler {
-  return async (c) => {
-    if (notFoundHtml) {
-      return c.html(notFoundHtml, 404);
-    }
-    return c.text('404 Not Found', 404);
-  };
-}

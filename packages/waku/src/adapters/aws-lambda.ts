@@ -7,7 +7,6 @@ import {
   unstable_constants as constants,
   unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
-  unstable_notFoundMiddleware as notFoundMiddleware,
 } from 'waku/internals';
 
 declare global {
@@ -26,7 +25,7 @@ const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 export default createServerEntryAdapter(
   (
-    { processRequest, processBuild, config, isBuild },
+    { processRequest, processBuild, config, isBuild, notFoundHtml },
     options?: {
       streaming?: boolean;
       middlewareFns?: (() => MiddlewareHandler)[];
@@ -40,6 +39,12 @@ export default createServerEntryAdapter(
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
     const app = new Hono();
+    app.notFound((c) => {
+      if (notFoundHtml) {
+        return c.html(notFoundHtml, 404);
+      }
+      return c.text('404 Not Found', 404);
+    });
     if (isBuild) {
       app.use(serveStatic({ root: path.join(config.distDir, DIST_PUBLIC) }));
     }
@@ -49,7 +54,6 @@ export default createServerEntryAdapter(
     }
     app.use(middlewareRunner(middlewareModules));
     app.use(rscMiddleware({ processRequest }));
-    app.use(notFoundMiddleware());
     const postBuildScript = joinPath(
       import.meta.__WAKU_ORIGINAL_PATH__,
       '../lib/aws-lambda-post-build.js',

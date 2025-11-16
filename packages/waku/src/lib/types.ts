@@ -76,6 +76,7 @@ export type Unstable_CreateServerEntryAdapter = <Options>(
       processBuild: Unstable_ProcessBuild;
       config: Omit<Required<Config>, 'vite'>;
       isBuild: boolean;
+      notFoundHtml: string;
     },
     options?: Options,
   ) => Unstable_ServerEntry['default'],
