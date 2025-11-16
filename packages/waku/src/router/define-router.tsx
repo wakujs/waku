@@ -2,11 +2,8 @@ import type { ReactNode } from 'react';
 import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
 import { getPathMapping, path2regexp } from '../lib/utils/path.js';
 import type { PathSpec } from '../lib/utils/path.js';
-import {
-  base64ToStream,
-  streamToBase64,
-  stringToStream,
-} from '../lib/utils/stream.js';
+import { base64ToStream, streamToBase64 } from '../lib/utils/stream.js';
+import { createTaskRunner } from '../lib/utils/task-runner.js';
 import { unstable_defineHandlers as defineHandlers } from '../minimal/server.js';
 import { unstable_getContext as getContext } from '../server.js';
 import { INTERNAL_ServerRouter } from './client.js';
@@ -635,113 +632,100 @@ export function unstable_defineRouter(fns: {
     const cachedElementsForBuild = new Map<SlotId, Promise<ReactNode>>();
     const serializedCachedElements = new Map<SlotId, string>();
     const getCachedElement = (id: SlotId) => cachedElementsForBuild.get(id);
-    const setCachedElement =
-      (req?: Request) => (id: SlotId, element: ReactNode) => {
-        const cached = cachedElementsForBuild.get(id);
-        if (cached) {
-          return cached;
-        }
-        const fn = async () => {
-          const teedStream = renderRsc({ [id]: element }).then((rscStream) =>
-            rscStream.tee(),
-          );
-          const stream1 = teedStream.then(([s1]) => s1);
-          const stream2 = teedStream.then(([, s2]) => s2);
-          const copied = stream1.then(
-            (rscStream) =>
-              parseRsc(rscStream).then(
-                (parsed) => parsed[id],
-              ) as Promise<ReactNode>,
-          );
-          cachedElementsForBuild.set(id, copied);
-          serializedCachedElements.set(id, await streamToBase64(await stream2));
-          return copied;
-        };
-        if (req) {
-          return withRequest(req, fn);
-        } else {
-          return fn();
-        }
-      };
+    const setCachedElement = async (id: SlotId, element: ReactNode) => {
+      const cached = cachedElementsForBuild.get(id);
+      if (cached) {
+        return cached;
+      }
+      const teedStream = renderRsc({ [id]: element }).then((rscStream) =>
+        rscStream.tee(),
+      );
+      const stream1 = teedStream.then(([s1]) => s1);
+      const stream2 = teedStream.then(([, s2]) => s2);
+      const copied = stream1.then(
+        (rscStream) =>
+          parseRsc(rscStream).then(
+            (parsed) => parsed[id],
+          ) as Promise<ReactNode>,
+      );
+      cachedElementsForBuild.set(id, copied);
+      serializedCachedElements.set(id, await streamToBase64(await stream2));
+      return copied;
+    };
 
+    // hard-coded concurrency limit
+    const { runTask, waitForTasks } = createTaskRunner(500);
+
+    // static api
     for (const item of myConfig) {
+      if (item.type !== 'api') {
+        continue;
+      }
+      if (!item.specs.isStatic) {
+        continue;
+      }
+      const pathname = item.pathname;
+      if (!pathname) {
+        continue;
+      }
       const { handleApi } = fns;
-      if (
-        item.type === 'api' &&
-        item.pathname &&
-        item.specs.isStatic &&
-        handleApi
-      ) {
-        const pathname = item.pathname;
+      if (handleApi) {
         const req = new Request(new URL(pathname, 'http://localhost:3000'));
-        await generateFile(pathname, () =>
-          withRequest(req, () =>
-            handleApi(req).then((res) => res.body || stringToStream('')),
-          ),
-        );
+        runTask(async () => {
+          await withRequest(req, async () => {
+            const res = await handleApi(req);
+            await generateFile(pathname, res.body || '');
+          });
+        });
       }
     }
 
-    await Promise.all(
-      myConfig.map(async (item) => {
-        if (item.type !== 'route') {
-          return;
-        }
-        const pathname = item.pathname;
-        if (!pathname) {
-          return;
-        }
-        const req = new Request(new URL(pathname, 'http://localhost:3000'));
-        const rscPath = encodeRoutePath(pathname);
-        const entries = await getEntriesForRoute(
-          rscPath,
-          undefined,
-          {},
-          getCachedElement,
-          setCachedElement(req),
-        );
-        if (entries) {
+    // static route
+    for (const item of myConfig) {
+      if (item.type !== 'route') {
+        continue;
+      }
+      if (!item.specs.isStatic) {
+        continue;
+      }
+      const pathname = item.pathname;
+      if (!pathname) {
+        continue;
+      }
+      const rscPath = encodeRoutePath(pathname);
+      const req = new Request(new URL(pathname, 'http://localhost:3000'));
+      runTask(async () => {
+        await withRequest(req, async () => {
+          const entries = await getEntriesForRoute(
+            rscPath,
+            undefined,
+            {},
+            getCachedElement,
+            setCachedElement,
+          );
+          if (!entries) {
+            return;
+          }
           for (const id of Object.keys(entries)) {
             const cached = getCachedElement(id);
             entries[id] = cached ? await cached : entries[id];
           }
-          if (item.specs.isStatic) {
-            // enforce RSC -> HTML generation sequential
-            const entriesStreamPromise = (() => {
-              let resolve, reject;
-              const promise = new Promise<ReadableStream>((res, rej) => {
-                resolve = res;
-                reject = rej;
-              });
-              return { promise, resolve: resolve!, reject: reject! };
-            })();
-            await generateFile(rscPath2pathname(rscPath), () =>
-              withRequest(req, async () => {
-                const stream = await renderRsc(entries);
-                const [stream1, stream2] = stream.tee();
-                entriesStreamPromise.resolve(stream2);
-                return stream1;
-              }),
-            );
-            const html = (
-              <INTERNAL_ServerRouter
-                route={{ path: pathname, query: '', hash: '' }}
-                httpstatus={item.specs.is404 ? 404 : 200}
-              />
-            );
-            const entriesStream = await entriesStreamPromise.promise;
-            await generateFile(pathname, () =>
-              withRequest(req, () =>
-                renderHtml(entriesStream, html, {
-                  rscPath,
-                }).then((res) => res.body || ''),
-              ),
-            );
-          }
-        }
-      }),
-    );
+          const stream = await renderRsc(entries);
+          const [stream1, stream2] = stream.tee();
+          await generateFile(rscPath2pathname(rscPath), stream1);
+          const html = (
+            <INTERNAL_ServerRouter
+              route={{ path: pathname, query: '', hash: '' }}
+              httpstatus={item.specs.is404 ? 404 : 200}
+            />
+          );
+          const res = await renderHtml(stream2, html, { rscPath });
+          await generateFile(pathname, res.body || '');
+        });
+      });
+    }
 
+    // default html
     for (const item of myConfig) {
       if (item.type !== 'route') {
         continue;
@@ -751,43 +735,45 @@ export function unstable_defineRouter(fns: {
         if (!pathname) {
           throw new Error('Pathname is required for noSsr routes on build');
         }
-        await generateDefaultHtml(pathname);
+        runTask(async () => {
+          await generateDefaultHtml(pathname);
+        });
       }
     }
 
-    await Promise.all(
-      myConfig.map(async (item) => {
-        if (item.type !== 'slice') {
-          return;
-        }
-        if (!item.specs.isStatic) {
-          return;
-        }
-        const slice = await getSlice(
-          item.id,
-          true,
-          getCachedElement,
-          setCachedElement(),
-        );
-        if (!slice) {
-          return;
-        }
-        const rscPath = encodeSliceId(item.id);
-        // dummy req for slice which is not determined at build time
-        const req = new Request(new URL('http://localhost:3000'));
-        const cached = getCachedElement(SLICE_SLOT_ID_PREFIX + item.id);
-        slice.element = cached ? await cached : slice.element;
-        await generateFile(rscPath2pathname(rscPath), () =>
-          withRequest(req, () =>
-            renderRsc({
-              [SLICE_SLOT_ID_PREFIX + item.id]: slice.element,
-              // FIXME: hard-coded for now
-              [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + item.id]: true,
-            }),
-          ),
-        );
-      }),
-    );
+    // static slice
+    for (const item of myConfig) {
+      if (item.type !== 'slice') {
+        continue;
+      }
+      if (!item.specs.isStatic) {
+        continue;
+      }
+      const rscPath = encodeSliceId(item.id);
+      // dummy req for slice which is not determined at build time
+      const req = new Request(new URL('http://localhost:3000'));
+      runTask(async () => {
+        await withRequest(req, async () => {
+          const slice = await getSlice(
+            item.id,
+            true,
+            getCachedElement,
+            setCachedElement,
+          );
+          if (!slice) {
+            return;
+          }
+          const body = await renderRsc({
+            [SLICE_SLOT_ID_PREFIX + item.id]: slice.element,
+            // FIXME: hard-coded for now
+            [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + item.id]: true,
+          });
+          await generateFile(rscPath2pathname(rscPath), body);
+        });
+      });
+    }
+
+    await waitForTasks();
 
     // TODO should we save serialized cached elements separately?
     await saveBuildMetadata(

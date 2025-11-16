@@ -33,7 +33,6 @@ import {
   getManagedServerEntry,
 } from '../utils/managed.js';
 import { joinPath } from '../utils/path.js';
-import { createTaskRunner } from '../utils/task-runner.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
 
@@ -540,12 +539,9 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           BUILD_METADATA_FILE,
         );
         await writeFile(buildMetadataFile, dummySource);
-        const BATCH_SIZE = 500;
-        const { runTask } = createTaskRunner(BATCH_SIZE);
-        const tasks: Promise<void>[] = [];
         const emitFile = async (
           filePath: string,
-          renderBody: () => Promise<ReadableStream | string>,
+          body: ReadableStream | string,
         ) => {
           const destFile = joinPath(rootDir, distDir, filePath);
           if (!destFile.startsWith(rootDir)) {
@@ -559,20 +555,15 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           ) {
             return;
           }
-          tasks.push(
-            runTask(async () => {
-              await mkdir(joinPath(destFile, '..'), { recursive: true });
-              const body = await renderBody();
-              if (typeof body === 'string') {
-                await writeFile(destFile, body);
-              } else {
-                await pipeline(
-                  Readable.fromWeb(body as never),
-                  fs.createWriteStream(destFile),
-                );
-              }
-            }),
-          );
+          await mkdir(joinPath(destFile, '..'), { recursive: true });
+          if (typeof body === 'string') {
+            await writeFile(destFile, body);
+          } else {
+            await pipeline(
+              Readable.fromWeb(body as never),
+              fs.createWriteStream(destFile),
+            );
+          }
         };
         const entryPath = path.join(
           viteConfig.environments.rsc!.build.outDir,
@@ -583,7 +574,6 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
         const entry: typeof import('../vite-entries/entry.build.js') =
           await import(pathToFileURL(entryPath).href);
         await entry.INTERNAL_runBuild({ rootDir, emitFile });
-        await Promise.all(tasks);
         console.log(
           pc.green(
             `✓ finished in ${Math.ceil(performance.now() - startTime)}ms`,
