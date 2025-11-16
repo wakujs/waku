@@ -125,10 +125,7 @@ const toProcessBuild =
         buildMetadata.set(key, value);
       },
       withRequest: (req, fn) => INTERNAL_runWithContext(req, fn),
-      generateFile: async (
-        pathname: string,
-        renderBody: () => Promise<ReadableStream | string>,
-      ) => {
+      generateFile: async (pathname: string, body: ReadableStream | string) => {
         const filePath = joinPath(
           DIST_PUBLIC,
           extname(pathname)
@@ -137,7 +134,7 @@ const toProcessBuild =
               ? '404.html' // HACK special treatment for 404, better way?
               : pathname + '/index.html',
         );
-        await emitFile(filePath, renderBody);
+        await emitFile(filePath, body);
       },
       generateDefaultHtml: async (pathname: string) => {
         const filePath = joinPath(
@@ -148,14 +145,13 @@ const toProcessBuild =
               ? '404.html' // HACK special treatment for 404, better way?
               : pathname + '/index.html',
         );
-        await emitFile(filePath, getFallbackHtml);
+        await emitFile(filePath, await getFallbackHtml());
       },
     });
 
     await emitFile(
       joinPath(DIST_SERVER, BUILD_METADATA_FILE),
-      async () =>
-        `export const buildMetadata = new Map(${JSON.stringify(Array.from(buildMetadata))});`,
+      `export const buildMetadata = new Map(${JSON.stringify(Array.from(buildMetadata))});`,
     );
   };
 

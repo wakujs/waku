@@ -19,7 +19,7 @@ export type Unstable_RenderHtml = (
 
 export type Unstable_EmitFile = (
   filePath: string,
-  renderBody: () => Promise<ReadableStream | string>,
+  body: ReadableStream | string,
 ) => Promise<void>;
 
 export type Unstable_HandleRequest = (
@@ -57,7 +57,7 @@ export type Unstable_HandleBuild = (utils: {
   withRequest: <T>(req: Request, fn: () => T) => T;
   generateFile: (
     pathname: string,
-    renderBody: () => Promise<ReadableStream | string>,
+    body: ReadableStream | string,
   ) => Promise<void>;
   generateDefaultHtml: (pathname: string) => Promise<void>;
 }) => Promise<void>;
