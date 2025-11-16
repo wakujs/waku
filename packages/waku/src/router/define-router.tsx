@@ -391,7 +391,7 @@ export function unstable_defineRouter(fns: {
             const cached = getCachedElement(id);
             entries[id] = cached
               ? await cached
-              : setCachedElement(routeId, renderers[id]?.());
+              : await setCachedElement(id, renderers[id]?.());
           }
         },
       ),
