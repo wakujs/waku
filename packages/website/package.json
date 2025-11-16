@@ -22,8 +22,8 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.1.17",
-    "@types/react": "^19.2.5",
-    "@types/react-dom": "^19.2.3",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.7.1",
     "shiki": "^3.15.0",

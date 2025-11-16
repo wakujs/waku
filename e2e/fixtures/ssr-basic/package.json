@@ -9,16 +9,16 @@
     "start": "waku start"
   },
   "dependencies": {
-    "@ai-sdk/rsc": "^1.0.94",
-    "ai": "^5.0.93",
+    "@ai-sdk/rsc": "^1.0.89",
+    "ai": "^5.0.89",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-server-dom-webpack": "19.2.0",
     "waku": "latest"
   },
   "devDependencies": {
-    "@types/react": "^19.2.5",
-    "@types/react-dom": "^19.2.3",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
     "typescript": "^5.9.3",
     "vite": "7.2.2"
   }
