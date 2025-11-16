@@ -24,7 +24,7 @@ const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 export default createServerEntryAdapter(
   (
-    { processRequest, processBuild, config },
+    { processRequest, processBuild, config, notFoundHtml },
     options?: {
       middlewareFns?: (() => MiddlewareHandler)[];
       middlewareModules?: Record<
@@ -39,9 +39,14 @@ export default createServerEntryAdapter(
     const {
       __WAKU_DENO_ADAPTER_HONO__: Hono = HonoForDevAndBuild,
       __WAKU_DENO_ADAPTER_SERVE_STATIC__: serveStatic,
-      __WAKU_DENO_ADAPTER_NOT_FOUND_FN__: notFoundFn,
     } = globalThis as any;
     const app = new Hono();
+    app.notFound((c: any) => {
+      if (notFoundHtml) {
+        return c.html(notFoundHtml, 404);
+      }
+      return c.text('404 Not Found', 404);
+    });
     if (serveStatic) {
       app.use(serveStatic({ root: path.join(config.distDir, DIST_PUBLIC) }));
     }
@@ -51,9 +56,6 @@ export default createServerEntryAdapter(
     }
     app.use(middlewareRunner(middlewareModules));
     app.use(rscMiddleware({ processRequest }));
-    if (notFoundFn) {
-      app.notFound(notFoundFn);
-    }
     const postBuildScript = joinPath(
       import.meta.__WAKU_ORIGINAL_PATH__,
       '../lib/deno-post-build.js',
@@ -62,7 +64,6 @@ export default createServerEntryAdapter(
       typeof import('./lib/deno-post-build.js').default
     >[0] = {
       distDir: config.distDir,
-      DIST_PUBLIC,
     };
     return {
       fetch: app.fetch,
