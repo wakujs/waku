@@ -9,6 +9,11 @@ type RenderHtml = (
   options: { rscPath: string; actionResult?: unknown; status?: number },
 ) => Promise<Response>;
 
+type EmitFile = (
+  filePath: string,
+  renderBody: () => Promise<ReadableStream | string>,
+) => Promise<void>;
+
 export type Unstable_HandleRequest = (
   input: (
     | { type: 'component'; rscPath: string; rscParams: unknown }
@@ -49,12 +54,7 @@ export type Unstable_HandleBuild = (utils: {
 export type Unstable_ServerEntry = {
   default: {
     fetch: (req: Request, ...args: any[]) => Response | Promise<Response>;
-    build: (
-      emitFile: (
-        filePath: string,
-        renderBody: () => Promise<ReadableStream | string>,
-      ) => Promise<void>,
-    ) => Promise<void>;
+    build: (emitFile: EmitFile) => Promise<void>;
     postBuild?: [modulePath: string, ...args: unknown[]];
   };
 };
@@ -63,12 +63,7 @@ export type Unstable_ProcessRequest = (
   req: Request,
 ) => Promise<Response | null>;
 
-export type Unstable_ProcessBuild = (
-  emitFile: (
-    filePath: string,
-    renderBody: () => Promise<ReadableStream | string>,
-  ) => Promise<void>,
-) => Promise<void>;
+export type Unstable_ProcessBuild = (emitFile: EmitFile) => Promise<void>;
 
 export type Unstable_CreateServerEntryAdapter = <Options>(
   fn: (
