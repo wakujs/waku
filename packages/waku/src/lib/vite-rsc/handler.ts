@@ -1,4 +1,5 @@
 import {
+  createFromReadableStream,
   createTemporaryReferenceSet,
   decodeAction,
   decodeFormState,
@@ -6,8 +7,10 @@ import {
   loadServerAction,
   renderToReadableStream,
 } from '@vitejs/plugin-rsc/rsc';
-import { config, isBuild, rootDir } from 'virtual:vite-rsc-waku/config';
-import { DIST_PUBLIC } from '../constants.js';
+import { buildMetadata } from 'virtual:vite-rsc-waku/build-data';
+import { config, isBuild } from 'virtual:vite-rsc-waku/config';
+import notFoundHtml from 'virtual:vite-rsc-waku/not-found';
+import { BUILD_METADATA_FILE, DIST_PUBLIC, DIST_SERVER } from '../constants.js';
 import { INTERNAL_runWithContext } from '../context.js';
 import type {
   Unstable_CreateServerEntryAdapter as CreateServerEntryAdapter,
@@ -22,7 +25,6 @@ import { createRenderUtils } from '../utils/render.js';
 import { getInput } from '../utils/request.js';
 import { encodeRscPath } from '../utils/rsc-path.js';
 import { stringToStream } from '../utils/stream.js';
-import { createTaskRunner, emitFileInTask } from '../utils/task-runner.js';
 
 function loadSsrEntryModule() {
   // This is an API to communicate between two server environments `rsc` and `ssr`.
@@ -56,12 +58,16 @@ const toProcessRequest =
     const renderUtils = createRenderUtils(
       temporaryReferences,
       renderToReadableStream,
+      createFromReadableStream,
       loadSsrEntryModule,
     );
 
     let res: Awaited<ReturnType<typeof handleRequest>>;
     try {
-      res = await handleRequest(input, renderUtils);
+      res = await handleRequest(input, {
+        ...renderUtils,
+        loadBuildMetadata: async (key: string) => buildMetadata.get(key),
+      });
     } catch (e) {
       const info = getErrorInfo(e);
       const status = info?.status || 500;
@@ -95,10 +101,11 @@ const toProcessRequest =
 
 const toProcessBuild =
   (handleBuild: HandleBuild): ProcessBuild =>
-  async () => {
+  async (emitFile) => {
     const renderUtils = createRenderUtils(
       undefined,
       renderToReadableStream,
+      createFromReadableStream,
       loadSsrEntryModule,
     );
 
@@ -111,20 +118,20 @@ const toProcessBuild =
       return fallbackHtml;
     };
 
-    const { runTask, waitForTasks } = createTaskRunner();
+    const buildMetadata = new Map<string, string>();
 
     await handleBuild({
       renderRsc: renderUtils.renderRsc,
+      parseRsc: renderUtils.parseRsc,
       renderHtml: renderUtils.renderHtml,
       rscPath2pathname: (rscPath) =>
         joinPath(config.rscBase, encodeRscPath(rscPath)),
-      generateFile: async (
-        pathname: string,
-        req: Request,
-        renderBody: () => Promise<ReadableStream | string>,
-      ) => {
+      saveBuildMetadata: async (key, value) => {
+        buildMetadata.set(key, value);
+      },
+      withRequest: (req, fn) => INTERNAL_runWithContext(req, fn),
+      generateFile: async (pathname: string, body: ReadableStream | string) => {
         const filePath = joinPath(
-          config.distDir,
           DIST_PUBLIC,
           isFile(pathname)
             ? pathname
@@ -132,13 +139,10 @@ const toProcessBuild =
               ? '404.html' // HACK special treatment for 404, better way?
               : pathname + '/index.html',
         );
-        await INTERNAL_runWithContext(req, async () => {
-          await emitFileInTask(runTask, rootDir, filePath, renderBody());
-        });
+        await emitFile(filePath, body);
       },
       generateDefaultHtml: async (pathname: string) => {
         const filePath = joinPath(
-          config.distDir,
           DIST_PUBLIC,
           isFile(pathname)
             ? pathname
@@ -146,11 +150,14 @@ const toProcessBuild =
               ? '404.html' // HACK special treatment for 404, better way?
               : pathname + '/index.html',
         );
-        await emitFileInTask(runTask, rootDir, filePath, getFallbackHtml());
+        await emitFile(filePath, await getFallbackHtml());
       },
     });
 
-    await waitForTasks();
+    await emitFile(
+      joinPath(DIST_SERVER, BUILD_METADATA_FILE),
+      `export const buildMetadata = new Map(${JSON.stringify(Array.from(buildMetadata))});`,
+    );
   };
 
 export const createServerEntryAdapter: CreateServerEntryAdapter =
@@ -164,6 +171,7 @@ export const createServerEntryAdapter: CreateServerEntryAdapter =
         processBuild,
         config,
         isBuild,
+        notFoundHtml,
       },
       options,
     );
