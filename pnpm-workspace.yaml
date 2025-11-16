@@ -14,3 +14,5 @@ minimumReleaseAgeExclude:
   - 'react-dom'
   - 'react-server-dom-webpack'
   - 'scheduler'
+overrides:
+  rollup: 4.53.1
