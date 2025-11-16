@@ -450,7 +450,14 @@ test.describe(`create-pages STATIC`, () => {
   });
 
   test('file structure - dots create directories with index.html', () => {
-    const distPath = join(process.cwd(), 'e2e', 'fixtures', 'create-pages', 'dist', 'public');
+    const distPath = join(
+      process.cwd(),
+      'e2e',
+      'fixtures',
+      'create-pages',
+      'dist',
+      'public',
+    );
 
     // v1.0.0 should be a directory with index.html, not a file
     const v100Path = join(distPath, 'docs', 'v1.0.0');
