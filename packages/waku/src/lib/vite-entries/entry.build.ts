@@ -9,7 +9,7 @@ export async function INTERNAL_runBuild({
   rootDir: string;
   emitFile: (
     filePath: string,
-    bodyPromise: Promise<ReadableStream | string>,
+    renderBody: () => Promise<ReadableStream | string>,
   ) => Promise<void>;
 }) {
   INTERNAL_setAllEnv(process.env as any);

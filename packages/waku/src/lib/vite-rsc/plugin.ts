@@ -41,12 +41,7 @@ const PKG_NAME = 'waku';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 export type RscPluginOptions = {
-  flags?: Flags | undefined;
   config?: Config | undefined;
-};
-
-export type Flags = {
-  'experimental-partial'?: boolean | undefined;
 };
 
 export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
@@ -64,7 +59,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
   if (!config.basePath.endsWith('/')) {
     config.basePath += '/';
   }
-  const flags = rscPluginOptions?.flags ?? {};
   let privatePath: string;
 
   const extraPlugins = [...(config.vite?.plugins ?? [])];
@@ -196,9 +190,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
         }
         if (name === 'client') {
           environmentConfig.build.outDir = `${config.distDir}/${DIST_PUBLIC}`;
-          if (flags['experimental-partial']) {
-            environmentConfig.build.emptyOutDir = false;
-          }
         }
 
         return {
@@ -527,12 +518,13 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           BUILD_METADATA_FILE,
         );
         await writeFile(buildMetadataFile, dummySource);
-        const WRITE_BATCH_SIZE = 4;
-        const { runTask } = createTaskRunner(WRITE_BATCH_SIZE);
+        // TODO reduce it from 500 to 100, adjusting the ssg-performance test
+        const BATCH_SIZE = 500;
+        const { runTask } = createTaskRunner(BATCH_SIZE);
         const tasks: Promise<void>[] = [];
         const emitFile = async (
           filePath: string,
-          bodyPromise: Promise<ReadableStream | string>,
+          renderBody: () => Promise<ReadableStream | string>,
         ) => {
           const destFile = joinPath(rootDir, distDir, filePath);
           if (!destFile.startsWith(rootDir)) {
@@ -549,7 +541,7 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           tasks.push(
             runTask(async () => {
               await mkdir(joinPath(destFile, '..'), { recursive: true });
-              const body = await bodyPromise;
+              const body = await renderBody();
               if (typeof body === 'string') {
                 await writeFile(destFile, body);
               } else {

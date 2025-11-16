@@ -24,7 +24,6 @@ import { createRenderUtils } from '../utils/render.js';
 import { getInput } from '../utils/request.js';
 import { encodeRscPath } from '../utils/rsc-path.js';
 import { stringToStream } from '../utils/stream.js';
-import { createTaskRunner } from '../utils/task-runner.js';
 
 function loadSsrEntryModule() {
   // This is an API to communicate between two server environments `rsc` and `ssr`.
@@ -113,8 +112,6 @@ const toProcessBuild =
       return fallbackHtml;
     };
 
-    const RENDER_BATCH_SIZE = 2500;
-    const { runTask } = createTaskRunner(RENDER_BATCH_SIZE);
     const buildMetadata = new Map<string, string>();
 
     await handleBuild({
@@ -139,7 +136,7 @@ const toProcessBuild =
               ? '404.html' // HACK special treatment for 404, better way?
               : pathname + '/index.html',
         );
-        await emitFile(filePath, runTask(renderBody));
+        await emitFile(filePath, renderBody);
       },
       generateDefaultHtml: async (pathname: string) => {
         const filePath = joinPath(
@@ -150,15 +147,14 @@ const toProcessBuild =
               ? '404.html' // HACK special treatment for 404, better way?
               : pathname + '/index.html',
         );
-        await emitFile(filePath, runTask(getFallbackHtml));
+        await emitFile(filePath, getFallbackHtml);
       },
     });
 
     await emitFile(
       joinPath(DIST_SERVER, BUILD_METADATA_FILE),
-      Promise.resolve(
+      async () =>
         `export const buildMetadata = new Map(${JSON.stringify(Array.from(buildMetadata))});`,
-      ),
     );
   };
 
