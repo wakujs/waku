@@ -1,8 +1,11 @@
 /// <reference types="vite/client" />
+
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/vercel';
 
-export default adapter(
+const handler: ReturnType<typeof adapter> = adapter(
   fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
   { static: true },
 );
+
+export default handler;

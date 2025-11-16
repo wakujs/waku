@@ -1,8 +1,5 @@
 import type { ReactFormState } from 'react-dom/client';
-import type { Unstable_HandleRequest as HandleRequest } from '../types.js';
-
-type RenderRsc = Parameters<HandleRequest>[1]['renderRsc'];
-type RenderHtml = Parameters<HandleRequest>[1]['renderHtml'];
+import type { Unstable_RenderHtml, Unstable_RenderRsc } from '../types.js';
 
 export type RenderHtmlStream = (
   rscStream: ReadableStream<Uint8Array>,
@@ -19,8 +16,8 @@ export function createRenderUtils(
   renderToReadableStream: (data: unknown, options?: object) => ReadableStream,
   loadSsrEntryModule: () => Promise<{ renderHtmlStream: RenderHtmlStream }>,
 ): {
-  renderRsc: RenderRsc;
-  renderHtml: RenderHtml;
+  renderRsc: Unstable_RenderRsc;
+  renderHtml: Unstable_RenderHtml;
 } {
   const onError = (e: unknown) => {
     console.error('Error during rendering:', e);

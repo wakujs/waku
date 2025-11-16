@@ -1,15 +1,17 @@
 import type { ReactNode } from 'react';
 import type { Config } from '../config.js';
 
-type RenderRsc = (elements: Record<string, unknown>) => Promise<ReadableStream>;
+export type Unstable_RenderRsc = (
+  elements: Record<string, unknown>,
+) => Promise<ReadableStream>;
 
-type RenderHtml = (
+export type Unstable_RenderHtml = (
   elementsStream: ReadableStream,
   html: ReactNode,
   options: { rscPath: string; actionResult?: unknown; status?: number },
 ) => Promise<Response>;
 
-type EmitFile = (
+export type Unstable_EmitFile = (
   filePath: string,
   renderBody: () => Promise<ReadableStream | string>,
 ) => Promise<void>;
@@ -32,15 +34,15 @@ export type Unstable_HandleRequest = (
     req: Request;
   },
   utils: {
-    renderRsc: RenderRsc;
-    renderHtml: RenderHtml;
+    renderRsc: Unstable_RenderRsc;
+    renderHtml: Unstable_RenderHtml;
     loadBuildMetadata: (key: string) => Promise<string | undefined>;
   },
 ) => Promise<ReadableStream | Response | 'fallback' | null | undefined>;
 
 export type Unstable_HandleBuild = (utils: {
-  renderRsc: RenderRsc;
-  renderHtml: RenderHtml;
+  renderRsc: Unstable_RenderRsc;
+  renderHtml: Unstable_RenderHtml;
   rscPath2pathname: (rscPath: string) => string;
   saveBuildMetadata: (key: string, value: string) => Promise<void>;
   generateFile: (
@@ -54,7 +56,7 @@ export type Unstable_HandleBuild = (utils: {
 export type Unstable_ServerEntry = {
   default: {
     fetch: (req: Request, ...args: any[]) => Response | Promise<Response>;
-    build: (emitFile: EmitFile) => Promise<void>;
+    build: (emitFile: Unstable_EmitFile) => Promise<void>;
     postBuild?: [modulePath: string, ...args: unknown[]];
   };
 };
@@ -63,7 +65,9 @@ export type Unstable_ProcessRequest = (
   req: Request,
 ) => Promise<Response | null>;
 
-export type Unstable_ProcessBuild = (emitFile: EmitFile) => Promise<void>;
+export type Unstable_ProcessBuild = (
+  emitFile: Unstable_EmitFile,
+) => Promise<void>;
 
 export type Unstable_CreateServerEntryAdapter = <Options>(
   fn: (
