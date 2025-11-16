@@ -2,7 +2,11 @@ import type { ReactNode } from 'react';
 import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
 import { getPathMapping, path2regexp } from '../lib/utils/path.js';
 import type { PathSpec } from '../lib/utils/path.js';
-import { stringToStream } from '../lib/utils/stream.js';
+import {
+  base64ToStream,
+  streamToBase64,
+  stringToStream,
+} from '../lib/utils/stream.js';
 import { unstable_defineHandlers as defineHandlers } from '../minimal/server.js';
 import { unstable_getContext as getContext } from '../server.js';
 import { INTERNAL_ServerRouter } from './client.js';
@@ -129,10 +133,22 @@ export function unstable_redirect(
 
 type SlotId = string;
 
+const ROOT_SLOT_ID = 'root';
 const ROUTE_SLOT_ID_PREFIX = 'route:';
 const SLICE_SLOT_ID_PREFIX = 'slice:';
 
+const assertNonReservedSlotId = (slotId: SlotId) => {
+  if (
+    slotId === ROOT_SLOT_ID ||
+    slotId.startsWith(ROUTE_SLOT_ID_PREFIX) ||
+    slotId.startsWith(SLICE_SLOT_ID_PREFIX)
+  ) {
+    throw new Error('Element ID cannot be "root", "route:*" or "slice:*"');
+  }
+};
+
 export function unstable_defineRouter(fns: {
+  // TODO consider combining all getConfig/handle* into one function
   getConfig: () => Promise<
     Iterable<
       | {
@@ -160,12 +176,13 @@ export function unstable_defineRouter(fns: {
   handleRoute: (
     path: string,
     options: {
-      query?: string;
+      query: string | undefined;
     },
   ) => Promise<{
-    rootElement: ReactNode;
-    routeElement: ReactNode;
-    elements: Record<SlotId, unknown>;
+    // TODO(daishi) will revisit later as these are not ideal
+    renderRoot: () => ReactNode;
+    renderRoute: () => ReactNode;
+    renderers: Record<SlotId, () => ReactNode>;
     slices?: string[];
   }>;
   handleApi?: (req: Request) => Promise<Response>;
@@ -182,7 +199,7 @@ export function unstable_defineRouter(fns: {
         specs: {
           rootElementIsStatic: boolean;
           routeElementIsStatic: boolean;
-          staticElementIds: SlotId[];
+          elementsIsStatic: Record<SlotId, boolean>;
           isStatic: boolean;
           noSsr: boolean;
           is404: boolean;
@@ -205,6 +222,7 @@ export function unstable_defineRouter(fns: {
         };
       }
   )[];
+
   let cachedMyConfig: MyConfig | undefined;
   const getMyConfig = async (): Promise<MyConfig> => {
     if (!cachedMyConfig) {
@@ -215,17 +233,7 @@ export function unstable_defineRouter(fns: {
               item.path.length === 1 &&
               item.path[0]!.type === 'literal' &&
               item.path[0]!.name === '404';
-            if (
-              Object.keys(item.elements).some(
-                (id) =>
-                  id.startsWith(ROUTE_SLOT_ID_PREFIX) ||
-                  id.startsWith(SLICE_SLOT_ID_PREFIX),
-              )
-            ) {
-              throw new Error(
-                'Element ID cannot start with "route:" or "slice:"',
-              );
-            }
+            Object.keys(item.elements).forEach(assertNonReservedSlotId);
             return {
               type: 'route',
               pathSpec: item.path,
@@ -234,8 +242,11 @@ export function unstable_defineRouter(fns: {
               specs: {
                 rootElementIsStatic: !!item.rootElement.isStatic,
                 routeElementIsStatic: !!item.routeElement.isStatic,
-                staticElementIds: Object.entries(item.elements).flatMap(
-                  ([id, { isStatic }]) => (isStatic ? [id] : []),
+                elementsIsStatic: Object.fromEntries(
+                  Object.entries(item.elements).map(([id, { isStatic }]) => [
+                    id,
+                    !!isStatic,
+                  ]),
                 ),
                 isStatic: item.isStatic,
                 noSsr: !!item.noSsr,
@@ -270,6 +281,7 @@ export function unstable_defineRouter(fns: {
     }
     return cachedMyConfig;
   };
+
   const getPathConfigItem = async (pathname: string) => {
     const myConfig = await getMyConfig();
     const found = myConfig.find(
@@ -279,20 +291,45 @@ export function unstable_defineRouter(fns: {
     );
     return found;
   };
+
   const has404 = async () => {
     const myConfig = await getMyConfig();
     return myConfig.some(({ type, specs }) => type === 'route' && specs.is404);
   };
-  const getEntries = async (
+
+  const getSlice = async (
+    sliceId: string,
+    isStatic: boolean,
+    getCachedElement: (id: SlotId) => Promise<ReactNode> | undefined,
+    setCachedElement: (id: SlotId, element: ReactNode) => Promise<ReactNode>,
+  ): Promise<{ element: ReactNode } | null> => {
+    const id = SLICE_SLOT_ID_PREFIX + sliceId;
+    if (!fns.handleSlice) {
+      return null;
+    }
+    const cached = getCachedElement(id);
+    if (cached) {
+      return { element: await cached };
+    }
+    let { element } = await fns.handleSlice(sliceId);
+    if (isStatic) {
+      element = await setCachedElement(id, element);
+    }
+    return { element };
+  };
+
+  const getEntriesForRoute = async (
     rscPath: string,
     rscParams: unknown,
     headers: Readonly<Record<string, string>>,
+    getCachedElement: (id: SlotId) => Promise<ReactNode> | undefined,
+    setCachedElement: (id: SlotId, element: ReactNode) => Promise<ReactNode>,
   ) => {
     setRscPath(rscPath);
     setRscParams(rscParams);
     const pathname = decodeRoutePath(rscPath);
     const pathConfigItem = await getPathConfigItem(pathname);
-    if (!pathConfigItem) {
+    if (pathConfigItem?.type !== 'route') {
       return null;
     }
     let skipParam: unknown;
@@ -303,74 +340,78 @@ export function unstable_defineRouter(fns: {
     }
     const skipIdSet = new Set(isStringArray(skipParam) ? skipParam : []);
     const { query } = parseRscParams(rscParams);
-    const {
-      rootElement,
-      routeElement,
-      elements,
-      slices = [],
-    } = await fns.handleRoute(
-      pathname,
-      pathConfigItem.specs.isStatic ? {} : { query },
-    );
-    if (
-      Object.keys(elements).some(
-        (id) =>
-          id.startsWith(ROUTE_SLOT_ID_PREFIX) ||
-          id.startsWith(SLICE_SLOT_ID_PREFIX),
-      )
-    ) {
-      throw new Error('Element ID cannot start with "route:" or "slice:"');
-    }
-    const sliceConfigMap = new Map<string, { isStatic?: boolean }>();
-    await Promise.all(
-      slices.map(async (sliceId) => {
-        const myConfig = await getMyConfig();
-        const sliceConfig = myConfig.find(
-          (item) => item.type === 'slice' && item.id === sliceId,
-        )?.specs;
-        if (sliceConfig) {
-          sliceConfigMap.set(sliceId, sliceConfig);
-        }
-      }),
-    );
-    const sliceElementEntries = (
-      await Promise.all(
-        slices.map(async (sliceId) => {
-          const id = SLICE_SLOT_ID_PREFIX + sliceId;
-          const { isStatic } = sliceConfigMap.get(sliceId) || {};
-          if (isStatic && skipIdSet.has(id)) {
-            return null;
-          }
-          if (!fns.handleSlice) {
-            return null;
-          }
-          const { element } = await fns.handleSlice(sliceId);
-          return [id, element];
-        }),
-      )
-    ).filter((ent): ent is NonNullable<typeof ent> => !!ent);
-    const entries = {
-      ...elements,
-      ...Object.fromEntries(sliceElementEntries),
-    };
     const decodedPathname = decodeURI(pathname);
     const routeId = ROUTE_SLOT_ID_PREFIX + decodedPathname;
-    if (pathConfigItem.type === 'route') {
-      for (const id of pathConfigItem.specs.staticElementIds || []) {
-        if (skipIdSet.has(id)) {
-          delete entries[id];
+    const {
+      renderRoot,
+      renderRoute,
+      renderers,
+      slices = [],
+    } = await fns.handleRoute(pathname, {
+      query: pathConfigItem.specs.isStatic ? undefined : query,
+    });
+    Object.keys(renderers).forEach(assertNonReservedSlotId);
+    const myConfig = await getMyConfig();
+    const sliceConfigMap = new Map<string, { isStatic?: boolean }>();
+    slices.forEach((sliceId) => {
+      const sliceConfig = myConfig.find(
+        (item) => item.type === 'slice' && item.id === sliceId,
+      )?.specs;
+      if (sliceConfig) {
+        sliceConfigMap.set(sliceId, sliceConfig);
+      }
+    });
+    const entries: Record<SlotId, unknown> = {};
+    await Promise.all([
+      (async () => {
+        if (!pathConfigItem.specs.rootElementIsStatic) {
+          entries[ROOT_SLOT_ID] = renderRoot();
+        } else if (!skipIdSet.has(ROOT_SLOT_ID)) {
+          const cached = getCachedElement(ROOT_SLOT_ID);
+          entries[ROOT_SLOT_ID] = cached
+            ? await cached
+            : await setCachedElement(ROOT_SLOT_ID, renderRoot());
         }
-      }
-      if (!pathConfigItem.specs.rootElementIsStatic || !skipIdSet.has('root')) {
-        entries.root = rootElement;
-      }
-      if (
-        !pathConfigItem.specs.routeElementIsStatic ||
-        !skipIdSet.has(routeId)
-      ) {
-        entries[routeId] = routeElement;
-      }
-    }
+      })(),
+      (async () => {
+        if (!pathConfigItem.specs.routeElementIsStatic) {
+          entries[routeId] = renderRoute();
+        } else if (!skipIdSet.has(routeId)) {
+          const cached = getCachedElement(routeId);
+          entries[routeId] = cached
+            ? await cached
+            : await setCachedElement(routeId, renderRoute());
+        }
+      })(),
+      ...Object.entries(pathConfigItem.specs.elementsIsStatic).map(
+        async ([id, isStatic]) => {
+          if (!isStatic) {
+            entries[id] = renderers[id]?.();
+          } else if (!skipIdSet.has(id)) {
+            const cached = getCachedElement(id);
+            entries[id] = cached
+              ? await cached
+              : await setCachedElement(id, renderers[id]?.());
+          }
+        },
+      ),
+      ...slices.map(async (sliceId) => {
+        const id = SLICE_SLOT_ID_PREFIX + sliceId;
+        const { isStatic } = sliceConfigMap.get(sliceId) || {};
+        if (isStatic && skipIdSet.has(id)) {
+          return null;
+        }
+        const slice = await getSlice(
+          sliceId,
+          !!isStatic,
+          getCachedElement,
+          setCachedElement,
+        );
+        if (slice) {
+          entries[id] = slice.element;
+        }
+      }),
+    ]);
     entries[ROUTE_ID] = [decodedPathname, query];
     entries[IS_STATIC_ID] = !!pathConfigItem.specs.isStatic;
     sliceConfigMap.forEach(({ isStatic }, sliceId) => {
@@ -388,10 +429,42 @@ export function unstable_defineRouter(fns: {
   type HandleRequest = Parameters<typeof defineHandlers>[0]['handleRequest'];
   type HandleBuild = Parameters<typeof defineHandlers>[0]['handleBuild'];
 
+  const cachedElementsForRequest = new Map<SlotId, Promise<ReactNode>>();
+  let cachedElementsForRequestInitialized = false;
   const handleRequest: HandleRequest = async (
     input,
-    { renderRsc, renderHtml },
+    { renderRsc, parseRsc, renderHtml, loadBuildMetadata },
   ): Promise<ReadableStream | Response | 'fallback' | null | undefined> => {
+    const getCachedElement = (id: SlotId) => cachedElementsForRequest.get(id);
+    const setCachedElement = (id: SlotId, element: ReactNode) => {
+      const cached = cachedElementsForRequest.get(id);
+      if (cached) {
+        return cached;
+      }
+      const copied = renderRsc({ [id]: element }).then((rscStream) =>
+        parseRsc(rscStream).then((parsed) => parsed[id]),
+      ) as Promise<ReactNode>;
+      cachedElementsForRequest.set(id, copied);
+      return copied;
+    };
+    if (!cachedElementsForRequestInitialized) {
+      cachedElementsForRequestInitialized = true;
+      const cachedElementsMetadata = await loadBuildMetadata(
+        'defineRouter:cachedElements',
+      );
+      if (cachedElementsMetadata) {
+        Object.entries(JSON.parse(cachedElementsMetadata)).forEach(
+          ([id, str]) => {
+            cachedElementsForRequest.set(
+              id,
+              parseRsc(base64ToStream(str as string)).then(
+                (parsed) => parsed[id],
+              ) as Promise<ReactNode>,
+            );
+          },
+        );
+      }
+    }
     const url = new URL(input.req.url);
     const headers = Object.fromEntries(input.req.headers.entries());
     if (input.type === 'component') {
@@ -399,21 +472,25 @@ export function unstable_defineRouter(fns: {
       if (sliceId !== null) {
         // LIMITATION: This is a signle slice request.
         // Ideally, we should be able to respond with multiple slices in one request.
-        if (!fns.handleSlice) {
+        const sliceConfig = await getMyConfig().then((myConfig) =>
+          myConfig.find(
+            (item): item is typeof item & { type: 'slice' } =>
+              item.type === 'slice' && item.id === sliceId,
+          ),
+        );
+        const isStatic = !!sliceConfig?.specs.isStatic;
+        const slice = await getSlice(
+          sliceId,
+          isStatic,
+          getCachedElement,
+          setCachedElement,
+        );
+        if (!slice) {
           return null;
         }
-        const [sliceConfig, { element }] = await Promise.all([
-          getMyConfig().then((myConfig) =>
-            myConfig.find(
-              (item): item is typeof item & { type: 'slice' } =>
-                item.type === 'slice' && item.id === sliceId,
-            ),
-          ),
-          fns.handleSlice(sliceId),
-        ]);
         return renderRsc({
-          [SLICE_SLOT_ID_PREFIX + sliceId]: element,
-          ...(sliceConfig?.specs.isStatic
+          [SLICE_SLOT_ID_PREFIX + sliceId]: slice.element,
+          ...(isStatic
             ? {
                 // FIXME: hard-coded for now
                 [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + sliceId]: true,
@@ -421,7 +498,13 @@ export function unstable_defineRouter(fns: {
             : {}),
         });
       }
-      const entries = await getEntries(input.rscPath, input.rscParams, headers);
+      const entries = await getEntriesForRoute(
+        input.rscPath,
+        input.rscParams,
+        headers,
+        getCachedElement,
+        setCachedElement,
+      );
       if (!entries) {
         return null;
       }
@@ -438,7 +521,13 @@ export function unstable_defineRouter(fns: {
         }
         elementsPromise = Promise.all([
           elementsPromise,
-          getEntries(rscPath, rscParams, headers),
+          getEntriesForRoute(
+            rscPath,
+            rscParams,
+            headers,
+            getCachedElement,
+            setCachedElement,
+          ),
         ]).then(([oldElements, newElements]) => {
           if (newElements === null) {
             console.warn('getEntries returned null');
@@ -457,7 +546,13 @@ export function unstable_defineRouter(fns: {
         const info = getErrorInfo(e);
         if (info?.location) {
           const rscPath = encodeRoutePath(info.location);
-          const entries = await getEntries(rscPath, undefined, headers);
+          const entries = await getEntriesForRoute(
+            rscPath,
+            undefined,
+            headers,
+            getCachedElement,
+            setCachedElement,
+          );
           if (!entries) {
             unstable_notFound();
           }
@@ -480,7 +575,13 @@ export function unstable_defineRouter(fns: {
       ) => {
         const rscPath = encodeRoutePath(pathname);
         const rscParams = new URLSearchParams({ query });
-        const entries = await getEntries(rscPath, rscParams, headers);
+        const entries = await getEntriesForRoute(
+          rscPath,
+          rscParams,
+          headers,
+          getCachedElement,
+          setCachedElement,
+        );
         if (!entries) {
           return null;
         }
@@ -522,12 +623,46 @@ export function unstable_defineRouter(fns: {
 
   const handleBuild: HandleBuild = async ({
     renderRsc,
+    parseRsc,
     renderHtml,
     rscPath2pathname,
+    saveBuildMetadata,
+    withRequest,
     generateFile,
     generateDefaultHtml,
   }) => {
     const myConfig = await getMyConfig();
+    const cachedElementsForBuild = new Map<SlotId, Promise<ReactNode>>();
+    const serializedCachedElements = new Map<SlotId, string>();
+    const getCachedElement = (id: SlotId) => cachedElementsForBuild.get(id);
+    const setCachedElement =
+      (req?: Request) => (id: SlotId, element: ReactNode) => {
+        const cached = cachedElementsForBuild.get(id);
+        if (cached) {
+          return cached;
+        }
+        const fn = async () => {
+          const teedStream = renderRsc({ [id]: element }).then((rscStream) =>
+            rscStream.tee(),
+          );
+          const stream1 = teedStream.then(([s1]) => s1);
+          const stream2 = teedStream.then(([, s2]) => s2);
+          const copied = stream1.then(
+            (rscStream) =>
+              parseRsc(rscStream).then(
+                (parsed) => parsed[id],
+              ) as Promise<ReactNode>,
+          );
+          cachedElementsForBuild.set(id, copied);
+          serializedCachedElements.set(id, await streamToBase64(await stream2));
+          return copied;
+        };
+        if (req) {
+          return withRequest(req, fn);
+        } else {
+          return fn();
+        }
+      };
 
     for (const item of myConfig) {
       const { handleApi } = fns;
@@ -539,8 +674,10 @@ export function unstable_defineRouter(fns: {
       ) {
         const pathname = item.pathname;
         const req = new Request(new URL(pathname, 'http://localhost:3000'));
-        await generateFile(pathname, req, () =>
-          handleApi(req).then((res) => res.body || stringToStream('')),
+        await generateFile(pathname, () =>
+          withRequest(req, () =>
+            handleApi(req).then((res) => res.body || stringToStream('')),
+          ),
         );
       }
     }
@@ -556,8 +693,18 @@ export function unstable_defineRouter(fns: {
         }
         const req = new Request(new URL(pathname, 'http://localhost:3000'));
         const rscPath = encodeRoutePath(pathname);
-        const entries = await getEntries(rscPath, undefined, {});
+        const entries = await getEntriesForRoute(
+          rscPath,
+          undefined,
+          {},
+          getCachedElement,
+          setCachedElement(req),
+        );
         if (entries) {
+          for (const id of Object.keys(entries)) {
+            const cached = getCachedElement(id);
+            entries[id] = cached ? await cached : entries[id];
+          }
           if (item.specs.isStatic) {
             // enforce RSC -> HTML generation sequential
             const entriesStreamPromise = (() => {
@@ -568,12 +715,14 @@ export function unstable_defineRouter(fns: {
               });
               return { promise, resolve: resolve!, reject: reject! };
             })();
-            await generateFile(rscPath2pathname(rscPath), req, async () => {
-              const stream = await renderRsc(entries);
-              const [stream1, stream2] = stream.tee();
-              entriesStreamPromise.resolve(stream2);
-              return stream1;
-            });
+            await generateFile(rscPath2pathname(rscPath), () =>
+              withRequest(req, async () => {
+                const stream = await renderRsc(entries);
+                const [stream1, stream2] = stream.tee();
+                entriesStreamPromise.resolve(stream2);
+                return stream1;
+              }),
+            );
             const html = (
               <INTERNAL_ServerRouter
                 route={{ path: pathname, query: '', hash: '' }}
@@ -581,10 +730,12 @@ export function unstable_defineRouter(fns: {
               />
             );
             const entriesStream = await entriesStreamPromise.promise;
-            await generateFile(pathname, req, () =>
-              renderHtml(entriesStream, html, {
-                rscPath,
-              }).then((res) => res.body || ''),
+            await generateFile(pathname, () =>
+              withRequest(req, () =>
+                renderHtml(entriesStream, html, {
+                  rscPath,
+                }).then((res) => res.body || ''),
+              ),
             );
           }
         }
@@ -612,25 +763,36 @@ export function unstable_defineRouter(fns: {
         if (!item.specs.isStatic) {
           return;
         }
-        if (!fns.handleSlice) {
+        const slice = await getSlice(
+          item.id,
+          true,
+          getCachedElement,
+          setCachedElement(),
+        );
+        if (!slice) {
           return;
         }
-        const { element } = await fns.handleSlice(item.id);
         const rscPath = encodeSliceId(item.id);
         // dummy req for slice which is not determined at build time
         const req = new Request(new URL('http://localhost:3000'));
-        await generateFile(rscPath2pathname(rscPath), req, () =>
-          renderRsc({
-            [SLICE_SLOT_ID_PREFIX + item.id]: element,
-            ...(item.specs.isStatic
-              ? {
-                  // FIXME: hard-coded for now
-                  [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + item.id]: true,
-                }
-              : {}),
-          }),
+        const cached = getCachedElement(SLICE_SLOT_ID_PREFIX + item.id);
+        slice.element = cached ? await cached : slice.element;
+        await generateFile(rscPath2pathname(rscPath), () =>
+          withRequest(req, () =>
+            renderRsc({
+              [SLICE_SLOT_ID_PREFIX + item.id]: slice.element,
+              // FIXME: hard-coded for now
+              [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + item.id]: true,
+            }),
+          ),
         );
       }),
+    );
+
+    // TODO should we save serialized cached elements separately?
+    await saveBuildMetadata(
+      'defineRouter:cachedElements',
+      JSON.stringify(Object.fromEntries(serializedCachedElements)),
     );
   };
 

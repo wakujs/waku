@@ -27,6 +27,13 @@ test.describe(`create-pages`, () => {
         .getPropertyValue('background-color'),
     );
     expect(backgroundColor).toBe('rgb(254, 254, 254)');
+    await expect(page.getByTestId('home-layout-render-count')).toHaveText(
+      'Render Count: 1',
+    );
+    await page.reload();
+    await expect(page.getByTestId('home-layout-render-count')).toHaveText(
+      'Render Count: 1',
+    );
   });
 
   test('foo', async ({ page }) => {
@@ -306,11 +313,9 @@ test.describe(`create-pages`, () => {
 
   test('group layout static + dynamic', async ({ page }) => {
     const whatTime = async (selector: string) =>
-      new Date(
-        (await page
-          .getByRole('heading', { name: selector })
-          .textContent())!.replace(selector + ' ', ''),
-      ).getSeconds();
+      (await page
+        .getByRole('heading', { name: selector })
+        .textContent())!.replace(selector + ' ', '');
 
     await page.goto(`http://localhost:${port}/nested-layouts`);
     await waitForHydration(page);
@@ -325,7 +330,7 @@ test.describe(`create-pages`, () => {
     ).toBeVisible();
     const dynamicTime = await whatTime('Dynamic Layout');
     const staticTime = await whatTime('Static Layout');
-    expect(dynamicTime).toEqual(staticTime);
+    expect(dynamicTime).not.toEqual(staticTime);
 
     await page.getByRole('link', { name: 'Home' }).click();
     await page.waitForTimeout(1000);
@@ -367,6 +372,11 @@ test.describe(`create-pages`, () => {
     await expect(staticSliceText2).toHaveText(staticSliceText);
     const dynamicSliceText2 = page.getByTestId('slice002');
     await expect(dynamicSliceText2).not.toHaveText(dynamicSliceText);
+
+    // test static slices behavior after hard navigation
+    await page.reload();
+    const staticSliceText3 = page.getByTestId('slice001');
+    await expect(staticSliceText3).toHaveText(staticSliceText);
   });
 
   test('slices with lazy', async ({ page }) => {

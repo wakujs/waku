@@ -1,4 +1,5 @@
 import {
+  createFromReadableStream,
   createTemporaryReferenceSet,
   decodeAction,
   decodeFormState,
@@ -52,6 +53,7 @@ const toProcessRequest =
     const renderUtils = createRenderUtils(
       temporaryReferences,
       renderToReadableStream,
+      createFromReadableStream,
       loadSsrEntryModule,
     );
 
@@ -98,6 +100,7 @@ const toProcessBuild =
     const renderUtils = createRenderUtils(
       undefined,
       renderToReadableStream,
+      createFromReadableStream,
       loadSsrEntryModule,
     );
 
@@ -113,15 +116,17 @@ const toProcessBuild =
     const buildMetadata = new Map<string, string>();
 
     await handleBuild({
-      ...renderUtils,
+      renderRsc: renderUtils.renderRsc,
+      parseRsc: renderUtils.parseRsc,
+      renderHtml: renderUtils.renderHtml,
       rscPath2pathname: (rscPath) =>
         joinPath(config.rscBase, encodeRscPath(rscPath)),
       saveBuildMetadata: async (key, value) => {
         buildMetadata.set(key, value);
       },
+      withRequest: (req, fn) => INTERNAL_runWithContext(req, fn),
       generateFile: async (
         pathname: string,
-        req: Request,
         renderBody: () => Promise<ReadableStream | string>,
       ) => {
         const filePath = joinPath(
@@ -132,9 +137,7 @@ const toProcessBuild =
               ? '404.html' // HACK special treatment for 404, better way?
               : pathname + '/index.html',
         );
-        await INTERNAL_runWithContext(req, async () => {
-          await emitFile(filePath, renderBody);
-        });
+        await emitFile(filePath, renderBody);
       },
       generateDefaultHtml: async (pathname: string) => {
         const filePath = joinPath(

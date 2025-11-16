@@ -1,9 +1,15 @@
 import type { ReactNode } from 'react';
 import type { Config } from '../config.js';
 
+type Elements = Record<string, unknown>;
+
 export type Unstable_RenderRsc = (
-  elements: Record<string, unknown>,
+  elements: Elements,
 ) => Promise<ReadableStream>;
+
+export type Unstable_ParseRsc = (
+  rscStream: ReadableStream,
+) => Promise<Elements>;
 
 export type Unstable_RenderHtml = (
   elementsStream: ReadableStream,
@@ -35,6 +41,7 @@ export type Unstable_HandleRequest = (
   },
   utils: {
     renderRsc: Unstable_RenderRsc;
+    parseRsc: Unstable_ParseRsc;
     renderHtml: Unstable_RenderHtml;
     loadBuildMetadata: (key: string) => Promise<string | undefined>;
   },
@@ -42,12 +49,14 @@ export type Unstable_HandleRequest = (
 
 export type Unstable_HandleBuild = (utils: {
   renderRsc: Unstable_RenderRsc;
+  parseRsc: Unstable_ParseRsc;
   renderHtml: Unstable_RenderHtml;
   rscPath2pathname: (rscPath: string) => string;
   saveBuildMetadata: (key: string, value: string) => Promise<void>;
+  // TODO(daishi) not a big fan of this API
+  withRequest: <T>(req: Request, fn: () => T) => T;
   generateFile: (
     pathname: string,
-    req: Request,
     renderBody: () => Promise<ReadableStream | string>,
   ) => Promise<void>;
   generateDefaultHtml: (pathname: string) => Promise<void>;

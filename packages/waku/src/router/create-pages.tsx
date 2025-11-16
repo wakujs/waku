@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import type { FunctionComponent, ReactNode } from 'react';
+import type { FunctionComponent, ReactElement, ReactNode } from 'react';
 import { getGrouplessPath } from '../lib/utils/create-pages.js';
 import {
   getPathMapping,
@@ -240,14 +240,13 @@ const createNestedElements = (
     component: FunctionComponent<any>;
     props?: Record<string, unknown>;
   }[],
-  children: ReactNode,
-) => {
-  return elements.reduceRight<ReactNode>(
+  children: ReactElement,
+): ReactElement =>
+  elements.reduceRight(
     (result, element) =>
       createElement(element.component, element.props, result),
     children,
   );
-};
 
 type ComponentList = {
   render: 'static' | 'dynamic';
@@ -800,25 +799,27 @@ export const createPages = <
         // ensure path is encoded for props of page component
         encodeURI(path),
       );
-      const result: Record<string, unknown> = {};
+      const renderers: Record<string, () => ReactNode> = {};
       if (Array.isArray(pageComponent)) {
         for (let i = 0; i < pageComponent.length; i++) {
           const comp = pageComponent[i];
           if (!comp) {
             continue;
           }
-          result[`page:${routePath}:${i}`] = createElement(comp.component, {
-            ...mapping,
-            ...(query ? { query } : {}),
-            path,
-          });
+          renderers[`page:${routePath}:${i}`] = () =>
+            createElement(comp.component, {
+              ...mapping,
+              ...(query ? { query } : {}),
+              path,
+            });
         }
       } else {
-        result[`page:${routePath}`] = createElement(
-          pageComponent,
-          { ...mapping, ...(query ? { query } : {}), path },
-          <Children />,
-        );
+        renderers[`page:${routePath}`] = () =>
+          createElement(
+            pageComponent,
+            { ...mapping, ...(query ? { query } : {}), path },
+            <Children />,
+          );
       }
 
       const layoutPaths = getLayouts(
@@ -831,8 +832,8 @@ export const createPages = <
           staticComponentMap.get(joinPath(segment, 'layout').slice(1)); // feels like a hack
 
         if (layout && !Array.isArray(layout)) {
-          const id = 'layout:' + segment;
-          result[id] = createElement(layout, null, <Children />);
+          renderers[`layout:${segment}`] = () =>
+            createElement(layout, null, <Children />);
         } else {
           throw new Error('Invalid layout ' + segment);
         }
@@ -856,13 +857,14 @@ export const createPages = <
       );
 
       return {
-        elements: result,
-        rootElement: createElement(
-          rootItem ? rootItem.component : DefaultRoot,
-          null,
-          <Children />,
-        ),
-        routeElement: createNestedElements(layouts, finalPageChildren),
+        renderRoot: () =>
+          createElement(
+            rootItem ? rootItem.component : DefaultRoot,
+            null,
+            <Children />,
+          ),
+        renderRoute: () => createNestedElements(layouts, finalPageChildren),
+        renderers,
         slices: slicePathMap.get(routePath) || [],
       };
     },

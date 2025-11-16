@@ -1,5 +1,9 @@
 import type { ReactFormState } from 'react-dom/client';
-import type { Unstable_RenderHtml, Unstable_RenderRsc } from '../types.js';
+import type {
+  Unstable_ParseRsc,
+  Unstable_RenderHtml,
+  Unstable_RenderRsc,
+} from '../types.js';
 
 export type RenderHtmlStream = (
   rscStream: ReadableStream<Uint8Array>,
@@ -14,9 +18,14 @@ export type RenderHtmlStream = (
 export function createRenderUtils(
   temporaryReferences: unknown,
   renderToReadableStream: (data: unknown, options?: object) => ReadableStream,
+  createFromReadableStream: (
+    stream: ReadableStream,
+    options?: object,
+  ) => Promise<unknown>,
   loadSsrEntryModule: () => Promise<{ renderHtmlStream: RenderHtmlStream }>,
 ): {
   renderRsc: Unstable_RenderRsc;
+  parseRsc: Unstable_ParseRsc;
   renderHtml: Unstable_RenderHtml;
 } {
   const onError = (e: unknown) => {
@@ -37,6 +46,11 @@ export function createRenderUtils(
         temporaryReferences,
         onError,
       });
+    },
+    async parseRsc(stream) {
+      return createFromReadableStream(stream, {}) as Promise<
+        Record<string, unknown>
+      >;
     },
     async renderHtml(
       elementsStream,
