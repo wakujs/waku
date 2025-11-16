@@ -7,7 +7,7 @@
     "dev": "waku dev",
     "build": "waku build",
     "start:dynamic": "waku start",
-    "start:static": "serve dist/public"
+    "start:static": "http-server dist/public"
   },
   "dependencies": {
     "react": "19.2.0",

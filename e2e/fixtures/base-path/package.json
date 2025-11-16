@@ -7,7 +7,7 @@
     "dev": "waku dev",
     "build": "waku build",
     "start": "waku start",
-    "start-static": "node ./setup-static.js && serve dist/.tmp"
+    "start-static": "node ./setup-static.js && http-server dist/.tmp"
   },
   "dependencies": {
     "react": "19.2.0",
