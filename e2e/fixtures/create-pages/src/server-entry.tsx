@@ -68,7 +68,7 @@ const pages: ReturnType<typeof createPages> = createPages(
     createPage({
       render: 'static',
       path: '/docs/[version]',
-      staticPaths: ['v1.0.0', 'v2.1.5', 'Mr. Mime'],
+      staticPaths: ['v1.0.0', 'v2.1.5', 'Mr.-Mime'],
       component: ({ version }) => (
         <>
           <h2>Docs</h2>
