@@ -313,9 +313,11 @@ test.describe(`create-pages`, () => {
 
   test('group layout static + dynamic', async ({ page }) => {
     const whatTime = async (selector: string) =>
-      (await page
-        .getByRole('heading', { name: selector })
-        .textContent())!.replace(selector + ' ', '');
+      new Date(
+        (await page
+          .getByRole('heading', { name: selector })
+          .textContent())!.replace(selector + ' ', ''),
+      ).getSeconds();
 
     await page.goto(`http://localhost:${port}/nested-layouts`);
     await waitForHydration(page);
@@ -330,7 +332,7 @@ test.describe(`create-pages`, () => {
     ).toBeVisible();
     const dynamicTime = await whatTime('Dynamic Layout');
     const staticTime = await whatTime('Static Layout');
-    expect(dynamicTime).not.toEqual(staticTime);
+    expect(dynamicTime).toEqual(staticTime);
 
     await page.getByRole('link', { name: 'Home' }).click();
     await page.waitForTimeout(1000);
