@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import react from '@vitejs/plugin-react';
 import rsc from '@vitejs/plugin-rsc';
@@ -13,10 +16,13 @@ import {
   type UserConfig,
   type ViteDevServer,
   mergeConfig,
+  normalizePath,
 } from 'vite';
 import type { Config } from '../../config.js';
 import {
+  BUILD_METADATA_FILE,
   DIST_PUBLIC,
+  DIST_SERVER,
   SRC_CLIENT_ENTRY,
   SRC_PAGES,
   SRC_SERVER_ENTRY,
@@ -27,6 +33,7 @@ import {
   getManagedServerEntry,
 } from '../utils/managed.js';
 import { joinPath } from '../utils/path.js';
+import { createTaskRunner } from '../utils/task-runner.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
 
@@ -74,7 +81,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
       clientChunks: (meta) => meta.serverChunk,
     }),
     {
-      name: 'rsc:waku',
+      name: 'waku:rsc',
       async config(_config) {
         let viteRscConfig: UserConfig = {
           base: config.basePath,
@@ -86,7 +93,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
             'import.meta.env.WAKU_CONFIG_RSC_BASE': JSON.stringify(
               config.rscBase,
             ),
-            // packages/waku/src/lib/plugins/vite-plugin-rsc-env.ts
             // CLI has loaded dotenv already at this point
             ...Object.fromEntries(
               Object.entries(process.env).flatMap(([k, v]) =>
@@ -177,10 +183,10 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
         environmentConfig.build ??= {};
         environmentConfig.build.outDir = `${config.distDir}/${name}`;
         if (name === 'rsc') {
-          environmentConfig.build.outDir = `${config.distDir}/server`;
+          environmentConfig.build.outDir = `${config.distDir}/${DIST_SERVER}`;
         }
         if (name === 'ssr') {
-          environmentConfig.build.outDir = `${config.distDir}/server/ssr`;
+          environmentConfig.build.outDir = `${config.distDir}/${DIST_SERVER}/ssr`;
         }
         if (name === 'client') {
           environmentConfig.build.outDir = `${config.distDir}/${DIST_PUBLIC}`;
@@ -221,7 +227,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
       },
     },
     {
-      name: 'rsc:waku:user-entries',
+      name: 'waku:user-entries',
       // resolve user entries and fallbacks to "managed mode" if not found.
       async resolveId(source, _importer, options) {
         if (source === 'virtual:vite-rsc-waku/server-entry') {
@@ -261,13 +267,13 @@ if (import.meta.hot) {
         }
       },
     },
-    createVirtualConfigPlugin(config),
-    createVirtualAdapterPlugin(config),
-    createVirtualNotFoundPlugin(),
-    createPathMacroPlugin(),
+    virtualConfigPlugin(config),
+    virtualAdapterPlugin(config),
+    virtualNotFoundPlugin(),
+    pathMacroPlugin(),
     {
       // rewrite `react-server-dom-webpack` in `waku/minimal/client`
-      name: 'rsc:waku:patch-webpack',
+      name: 'waku:patch-webpack',
       enforce: 'pre',
       resolveId(source, _importer, _options) {
         if (source === 'react-server-dom-webpack/client') {
@@ -286,32 +292,9 @@ if (import.meta.hot) {
         }
       },
     },
+    buildPlugin(config),
     {
-      name: 'rsc:waku:handle-build',
-      buildApp: {
-        async handler(builder) {
-          const viteConfig = builder.config;
-          const rootDir = viteConfig.root;
-          const entryPath = path.join(
-            viteConfig.environments.rsc!.build.outDir,
-            'build.js',
-          );
-          console.log(pc.blue('[ssg] processing static generation...'));
-          const startTime = performance.now();
-          const entry: typeof import('../vite-entries/entry.build.js') =
-            await import(pathToFileURL(entryPath).href);
-          await entry.INTERNAL_runBuild({ rootDir });
-          console.log(
-            pc.green(
-              `✓ finished in ${Math.ceil(performance.now() - startTime)}ms`,
-            ),
-          );
-        },
-      },
-    },
-    // packages/waku/src/lib/plugins/vite-plugin-rsc-private.ts
-    {
-      name: 'rsc:private-dir',
+      name: 'waku:private-dir',
       load(id) {
         if (this.environment.name === 'rsc') {
           return;
@@ -343,10 +326,8 @@ if (import.meta.hot) {
   ];
 }
 
-// packages/waku/src/lib/plugins/vite-plugin-rsc-index.ts
 function rscIndexPlugin(): Plugin {
   let server: ViteDevServer | undefined;
-
   return {
     name: 'waku:fallback-html',
     config() {
@@ -412,19 +393,19 @@ function rscIndexPlugin(): Plugin {
   };
 }
 
-function createVirtualConfigPlugin(config: Required<Config>) {
-  const name = 'virtual:vite-rsc-waku/config';
+function virtualConfigPlugin(config: Required<Config>): Plugin {
+  const configModule = 'virtual:vite-rsc-waku/config';
   let rootDir: string;
   return {
-    name: `waku:virtual-${name}`,
+    name: 'waku:virtual-config',
     configResolved(viteConfig) {
       rootDir = viteConfig.root;
     },
     resolveId(source, _importer, _options) {
-      return source === name ? '\0' + name : undefined;
+      return source === configModule ? '\0' + configModule : undefined;
     },
     load(id) {
-      if (id === '\0' + name) {
+      if (id === '\0' + configModule) {
         return `
         export const rootDir = ${JSON.stringify(rootDir)};
         export const config = ${JSON.stringify({ ...config, vite: undefined })};
@@ -432,20 +413,22 @@ function createVirtualConfigPlugin(config: Required<Config>) {
       `;
       }
     },
-  } satisfies Plugin;
+  };
 }
 
-function createVirtualAdapterPlugin(config: Required<Config>) {
-  const name = 'waku/adapters/default';
+function virtualAdapterPlugin(config: Required<Config>): Plugin {
+  const adapterModule = 'waku/adapters/default';
   return {
-    name: `waku:virtual-${name}`,
+    name: 'waku:virtual-adapter',
     resolveId(source, _importer, _options) {
-      return source === name ? this.resolve(config.adapter) : undefined;
+      return source === adapterModule
+        ? this.resolve(config.adapter)
+        : undefined;
     },
-  } satisfies Plugin;
+  };
 }
 
-function createVirtualNotFoundPlugin() {
+function virtualNotFoundPlugin() {
   // This provides raw html `public/404.html` for SSR fallback.
   // It's not used when router has 404 page.
   const name = 'virtual:vite-rsc-waku/not-found';
@@ -474,7 +457,7 @@ function relativePath(pathFrom: string, pathTo: string) {
   return relPath;
 }
 
-function createPathMacroPlugin() {
+function pathMacroPlugin(): Plugin {
   const token = 'import.meta.__WAKU_ORIGINAL_PATH__';
   let rootDir: string;
   return {
@@ -509,5 +492,104 @@ function createPathMacroPlugin() {
         map: s.generateMap({ hires: true }),
       };
     },
-  } satisfies Plugin;
+  };
+}
+
+const forceRelativePath = (s: string) => (s.startsWith('.') ? s : './' + s);
+
+function buildPlugin({ distDir }: { distDir: string }): Plugin {
+  const virtualModule = 'virtual:vite-rsc-waku/build-data';
+  const dummySource = 'export const buildMetadata = new Map();';
+  return {
+    name: 'waku:build',
+    resolveId(source, _importer, _options) {
+      if (source === virtualModule) {
+        assert.equal(this.environment.name, 'rsc');
+        if (this.environment.mode === 'build') {
+          return { id: source, external: true, moduleSideEffects: true };
+        }
+        return '\0' + virtualModule;
+      }
+    },
+    load(id) {
+      if (id === '\0' + virtualModule) {
+        // no-op during dev
+        assert.equal(this.environment.mode, 'dev');
+        return dummySource;
+      }
+    },
+    renderChunk(code, chunk) {
+      if (code.includes(virtualModule)) {
+        assert.equal(this.environment.name, 'rsc');
+        const replacement = forceRelativePath(
+          normalizePath(
+            path.relative(path.join(chunk.fileName, '..'), BUILD_METADATA_FILE),
+          ),
+        );
+        return code.replaceAll(virtualModule, () => replacement);
+      }
+    },
+    buildApp: {
+      async handler(builder) {
+        const viteConfig = builder.config;
+        const rootDir = viteConfig.root;
+        const buildMetadataFile = joinPath(
+          rootDir,
+          distDir,
+          DIST_SERVER,
+          BUILD_METADATA_FILE,
+        );
+        await writeFile(buildMetadataFile, dummySource);
+        const BATCH_SIZE = 500;
+        const { runTask } = createTaskRunner(BATCH_SIZE);
+        const tasks: Promise<void>[] = [];
+        const emitFile = async (
+          filePath: string,
+          renderBody: () => Promise<ReadableStream | string>,
+        ) => {
+          const destFile = joinPath(rootDir, distDir, filePath);
+          if (!destFile.startsWith(rootDir)) {
+            throw new Error('Invalid filePath: ' + filePath);
+          }
+          // In partial mode, skip if the file already exists.
+          if (
+            fs.existsSync(destFile) &&
+            // HACK: This feels a bit hacky
+            destFile !== buildMetadataFile
+          ) {
+            return;
+          }
+          tasks.push(
+            runTask(async () => {
+              await mkdir(joinPath(destFile, '..'), { recursive: true });
+              const body = await renderBody();
+              if (typeof body === 'string') {
+                await writeFile(destFile, body);
+              } else {
+                await pipeline(
+                  Readable.fromWeb(body as never),
+                  fs.createWriteStream(destFile),
+                );
+              }
+            }),
+          );
+        };
+        const entryPath = path.join(
+          viteConfig.environments.rsc!.build.outDir,
+          'build.js',
+        );
+        console.log(pc.blue('[ssg] processing static generation...'));
+        const startTime = performance.now();
+        const entry: typeof import('../vite-entries/entry.build.js') =
+          await import(pathToFileURL(entryPath).href);
+        await entry.INTERNAL_runBuild({ rootDir, emitFile });
+        await Promise.all(tasks);
+        console.log(
+          pc.green(
+            `✓ finished in ${Math.ceil(performance.now() - startTime)}ms`,
+          ),
+        );
+      },
+    },
+  };
 }
