@@ -765,7 +765,7 @@ export const createPages = <
         .sort((configA, configB) => routePriorityComparator(configA, configB));
       return [...pathConfigs, ...sliceConfigs];
     },
-    handleRoute: async (path, { getCachedElement, query }) => {
+    handleRoute: async (path, { query }) => {
       await configure();
 
       // path without slugs
@@ -799,32 +799,27 @@ export const createPages = <
         // ensure path is encoded for props of page component
         encodeURI(path),
       );
-      const result: Record<string, unknown> = {};
-      const setResult = async (key: string, getValue: () => unknown) => {
-        result[key] = (await getCachedElement(key)) ?? getValue();
-      };
+      const renderers: Record<string, () => ReactNode> = {};
       if (Array.isArray(pageComponent)) {
         for (let i = 0; i < pageComponent.length; i++) {
           const comp = pageComponent[i];
           if (!comp) {
             continue;
           }
-          await setResult(`page:${routePath}:${i}`, () =>
+          renderers[`page:${routePath}:${i}`] = () =>
             createElement(comp.component, {
               ...mapping,
               ...(query ? { query } : {}),
               path,
-            }),
-          );
+            });
         }
       } else {
-        await setResult(`page:${routePath}`, () =>
+        renderers[`page:${routePath}`] = () =>
           createElement(
             pageComponent,
             { ...mapping, ...(query ? { query } : {}), path },
             <Children />,
-          ),
-        );
+          );
       }
 
       const layoutPaths = getLayouts(
@@ -837,9 +832,8 @@ export const createPages = <
           staticComponentMap.get(joinPath(segment, 'layout').slice(1)); // feels like a hack
 
         if (layout && !Array.isArray(layout)) {
-          await setResult(`layout:${segment}`, () =>
-            createElement(layout, null, <Children />),
-          );
+          renderers[`layout:${segment}`] = () =>
+            createElement(layout, null, <Children />);
         } else {
           throw new Error('Invalid layout ' + segment);
         }
@@ -863,17 +857,14 @@ export const createPages = <
       );
 
       return {
-        elements: result,
-        rootElement:
-          ((await getCachedElement('root')) as ReactElement) ??
+        renderRoot: () =>
           createElement(
             rootItem ? rootItem.component : DefaultRoot,
             null,
             <Children />,
           ),
-        routeElement:
-          ((await getCachedElement('route')) as ReactElement) ??
-          createNestedElements(layouts, finalPageChildren),
+        renderRoute: () => createNestedElements(layouts, finalPageChildren),
+        renderers,
         slices: slicePathMap.get(routePath) || [],
       };
     },
