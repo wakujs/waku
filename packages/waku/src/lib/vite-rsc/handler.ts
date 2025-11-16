@@ -6,8 +6,9 @@ import {
   loadServerAction,
   renderToReadableStream,
 } from '@vitejs/plugin-rsc/rsc';
-import { config, isBuild, rootDir } from 'virtual:vite-rsc-waku/config';
-import { DIST_PUBLIC } from '../constants.js';
+import { buildMetadata } from 'virtual:vite-rsc-waku/build-data';
+import { config, isBuild } from 'virtual:vite-rsc-waku/config';
+import { BUILD_METADATA_FILE, DIST_PUBLIC, DIST_SERVER } from '../constants.js';
 import { INTERNAL_runWithContext } from '../context.js';
 import type {
   Unstable_CreateServerEntryAdapter as CreateServerEntryAdapter,
@@ -22,7 +23,6 @@ import { createRenderUtils } from '../utils/render.js';
 import { getInput } from '../utils/request.js';
 import { encodeRscPath } from '../utils/rsc-path.js';
 import { stringToStream } from '../utils/stream.js';
-import { createTaskRunner, emitFileInTask } from '../utils/task-runner.js';
 
 function loadSsrEntryModule() {
   // This is an API to communicate between two server environments `rsc` and `ssr`.
@@ -56,7 +56,10 @@ const toProcessRequest =
 
     let res: Awaited<ReturnType<typeof handleRequest>>;
     try {
-      res = await handleRequest(input, renderUtils);
+      res = await handleRequest(input, {
+        ...renderUtils,
+        loadBuildMetadata: async (key: string) => buildMetadata.get(key),
+      });
     } catch (e) {
       const info = getErrorInfo(e);
       const status = info?.status || 500;
@@ -90,7 +93,7 @@ const toProcessRequest =
 
 const toProcessBuild =
   (handleBuild: HandleBuild): ProcessBuild =>
-  async () => {
+  async (emitFile) => {
     const renderUtils = createRenderUtils(
       undefined,
       renderToReadableStream,
@@ -106,20 +109,21 @@ const toProcessBuild =
       return fallbackHtml;
     };
 
-    const { runTask, waitForTasks } = createTaskRunner();
+    const buildMetadata = new Map<string, string>();
 
     await handleBuild({
-      renderRsc: renderUtils.renderRsc,
-      renderHtml: renderUtils.renderHtml,
+      ...renderUtils,
       rscPath2pathname: (rscPath) =>
         joinPath(config.rscBase, encodeRscPath(rscPath)),
+      saveBuildMetadata: async (key, value) => {
+        buildMetadata.set(key, value);
+      },
       generateFile: async (
         pathname: string,
         req: Request,
         renderBody: () => Promise<ReadableStream | string>,
       ) => {
         const filePath = joinPath(
-          config.distDir,
           DIST_PUBLIC,
           extname(pathname)
             ? pathname
@@ -128,12 +132,11 @@ const toProcessBuild =
               : pathname + '/index.html',
         );
         await INTERNAL_runWithContext(req, async () => {
-          await emitFileInTask(runTask, rootDir, filePath, renderBody());
+          await emitFile(filePath, renderBody);
         });
       },
       generateDefaultHtml: async (pathname: string) => {
         const filePath = joinPath(
-          config.distDir,
           DIST_PUBLIC,
           extname(pathname)
             ? pathname
@@ -141,11 +144,15 @@ const toProcessBuild =
               ? '404.html' // HACK special treatment for 404, better way?
               : pathname + '/index.html',
         );
-        await emitFileInTask(runTask, rootDir, filePath, getFallbackHtml());
+        await emitFile(filePath, getFallbackHtml);
       },
     });
 
-    await waitForTasks();
+    await emitFile(
+      joinPath(DIST_SERVER, BUILD_METADATA_FILE),
+      async () =>
+        `export const buildMetadata = new Map(${JSON.stringify(Array.from(buildMetadata))});`,
+    );
   };
 
 export const createServerEntryAdapter: CreateServerEntryAdapter =

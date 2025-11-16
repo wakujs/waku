@@ -5,7 +5,7 @@ import { injectRSCPayload } from 'rsc-html-stream/server';
 import fallbackHtml from 'virtual:vite-rsc-waku/fallback-html';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
-import type { RenderHtml } from '../utils/render.js';
+import type { RenderHtmlStream } from '../utils/render.js';
 import { getBootstrapPreamble } from '../utils/ssr.js';
 
 type RscElementsPayload = Record<string, unknown>;
@@ -16,7 +16,7 @@ type RscHtmlPayload = ReactNode;
 // These utilities are used by `rsc` environment through
 // `import.meta.viteRsc.loadModule` API.
 
-export const renderHtml: RenderHtml = async (
+export const renderHtmlStream: RenderHtmlStream = async (
   rscStream,
   rscHtmlStream,
   options,
