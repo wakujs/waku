@@ -36,11 +36,11 @@ export async function findWakuPort(cp: ChildProcess): Promise<number> {
   return new Promise((resolve, reject) => {
     function listener(data: unknown) {
       const str = stripVTControlCharacters(`${data}`);
-      const match = str.match(/http:\/\/localhost:(\d+)|on port (\d+)/);
+      const match = str.match(/http:\/\/(localhost|127\.0\.0\.1):(\d+)|on port (\d+)/);
       if (match) {
         clearTimeout(timer);
         cp.stdout?.off('data', listener);
-        const port = match[1] || match[2]!;
+        const port = match[2] || match[3]!;
         info(`Waku server started at port ${port}`);
         resolve(parseInt(port, 10));
       }
