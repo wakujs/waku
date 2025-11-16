@@ -1,3 +1,5 @@
+import { existsSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { expect } from '@playwright/test';
 import {
   FETCH_ERROR_MESSAGES,
@@ -426,5 +428,46 @@ test.describe(`create-pages STATIC`, () => {
     await expect(page.getByTestId('slice001-loading')).toBeVisible();
     const sliceText = await page.getByTestId('slice001').textContent();
     expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
+  });
+
+  test('slugs with dots - version numbers', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/docs/v1.0.0`);
+    await expect(
+      page.getByRole('heading', { name: 'Version: v1.0.0' }),
+    ).toBeVisible();
+
+    await page.goto(`http://localhost:${port}/docs/v2.1.5`);
+    await expect(
+      page.getByRole('heading', { name: 'Version: v2.1.5' }),
+    ).toBeVisible();
+  });
+
+  test('slugs with spaces and dots', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/docs/Mr.-Mime`);
+    await expect(
+      page.getByRole('heading', { name: 'Version: Mr.-Mime' }),
+    ).toBeVisible();
+  });
+
+  test('file structure - dots create directories with index.html', () => {
+    const distPath = join(process.cwd(), 'e2e', 'fixtures', 'create-pages', 'dist', 'public');
+
+    // v1.0.0 should be a directory with index.html, not a file
+    const v100Path = join(distPath, 'docs', 'v1.0.0');
+    expect(existsSync(v100Path)).toBe(true);
+    expect(statSync(v100Path).isDirectory()).toBe(true);
+    expect(existsSync(join(v100Path, 'index.html'))).toBe(true);
+
+    // v2.1.5 should also be a directory with index.html
+    const v215Path = join(distPath, 'docs', 'v2.1.5');
+    expect(existsSync(v215Path)).toBe(true);
+    expect(statSync(v215Path).isDirectory()).toBe(true);
+    expect(existsSync(join(v215Path, 'index.html'))).toBe(true);
+
+    // Mr.-Mime should be a directory with index.html (space becomes hyphen)
+    const mrMimePath = join(distPath, 'docs', 'Mr.-Mime');
+    expect(existsSync(mrMimePath)).toBe(true);
+    expect(statSync(mrMimePath).isDirectory()).toBe(true);
+    expect(existsSync(join(mrMimePath, 'index.html'))).toBe(true);
   });
 });

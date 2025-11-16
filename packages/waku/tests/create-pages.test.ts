@@ -1263,6 +1263,82 @@ describe('createPages pages and layouts', () => {
     expect(Object.keys(route.elements)).toEqual(['page:/docs/v1.0.0']);
   });
 
+  it('creates a static page with slugs containing spaces (converts to hyphens)', async () => {
+    const TestPage = vi.fn();
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'static',
+        path: '/pokemon/[name]',
+        staticPaths: ['Mr. Mime', 'Porygon-Z', 'Type: Null'] as const,
+        component: TestPage,
+      }),
+    ]);
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
+      {
+        type: 'route',
+        elements: {
+          'page:/pokemon/Mr.-Mime': { isStatic: true },
+        },
+        rootElement: { isStatic: true },
+        routeElement: { isStatic: true },
+        noSsr: false,
+        path: [
+          { name: 'pokemon', type: 'literal' },
+          { name: 'Mr.-Mime', type: 'literal' },
+        ],
+        pathPattern: [
+          { name: 'pokemon', type: 'literal' },
+          { name: 'name', type: 'group' },
+        ],
+        isStatic: true,
+      },
+      {
+        type: 'route',
+        elements: {
+          'page:/pokemon/Porygon-Z': { isStatic: true },
+        },
+        rootElement: { isStatic: true },
+        routeElement: { isStatic: true },
+        noSsr: false,
+        path: [
+          { name: 'pokemon', type: 'literal' },
+          { name: 'Porygon-Z', type: 'literal' },
+        ],
+        pathPattern: [
+          { name: 'pokemon', type: 'literal' },
+          { name: 'name', type: 'group' },
+        ],
+        isStatic: true,
+      },
+      {
+        type: 'route',
+        elements: {
+          'page:/pokemon/Type:-Null': { isStatic: true },
+        },
+        rootElement: { isStatic: true },
+        routeElement: { isStatic: true },
+        noSsr: false,
+        path: [
+          { name: 'pokemon', type: 'literal' },
+          { name: 'Type:-Null', type: 'literal' },
+        ],
+        pathPattern: [
+          { name: 'pokemon', type: 'literal' },
+          { name: 'name', type: 'group' },
+        ],
+        isStatic: true,
+      },
+    ]);
+    const route = await handleRoute('/pokemon/Mr.-Mime', {
+      query: '?skip=[]',
+    });
+    expect(route).toBeDefined();
+    expect(route.rootElement).toBeDefined();
+    expect(route.routeElement).toBeDefined();
+    expect(Object.keys(route.elements)).toEqual(['page:/pokemon/Mr.-Mime']);
+  });
+
   it('allows to disable SSR on static and dynamic pages', async () => {
     createPages(async ({ createPage }) => [
       createPage({

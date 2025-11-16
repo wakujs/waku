@@ -33,6 +33,11 @@ function loadSsrEntryModule() {
   );
 }
 
+const isFile = (pathname: string) => {
+  const ext = extname(pathname);
+  return ext === '.html' || ext === '.txt' || ext === '.xml';
+};
+
 const toProcessRequest =
   (handleRequest: HandleRequest): ProcessRequest =>
   async (req) => {
@@ -121,7 +126,7 @@ const toProcessBuild =
         const filePath = joinPath(
           config.distDir,
           DIST_PUBLIC,
-          extname(pathname)
+          isFile(pathname)
             ? pathname
             : pathname === '/404'
               ? '404.html' // HACK special treatment for 404, better way?
@@ -135,7 +140,7 @@ const toProcessBuild =
         const filePath = joinPath(
           config.distDir,
           DIST_PUBLIC,
-          extname(pathname)
+          isFile(pathname)
             ? pathname
             : pathname === '/404'
               ? '404.html' // HACK special treatment for 404, better way?

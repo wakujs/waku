@@ -42,8 +42,7 @@ export const pathMappingWithoutGroups: typeof getPathMapping = (
   return getPathMapping(cleanPathSpec, pathname);
 };
 
-const sanitizeSlug = (slug: string) =>
-  slug.replace(/\./g, '').replace(/ /g, '-');
+const sanitizeSlug = (slug: string) => slug.replace(/ /g, '-');
 
 // createPages API (a wrapper around unstable_defineRouter)
 
