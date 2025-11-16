@@ -22,3 +22,8 @@ declare module 'virtual:vite-rsc-waku/fallback-html' {
   const default_: string;
   export default default_;
 }
+
+declare module 'virtual:vite-rsc-waku/not-found' {
+  const default_: string;
+  export default default_;
+}

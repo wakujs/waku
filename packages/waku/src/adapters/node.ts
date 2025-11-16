@@ -1,4 +1,3 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
@@ -14,7 +13,7 @@ const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 export default createServerEntryAdapter(
   (
-    { processRequest, processBuild, config, isBuild },
+    { processRequest, processBuild, config, isBuild, notFoundHtml },
     options?: {
       middlewareFns?: (() => MiddlewareHandler)[];
       middlewareModules?: Record<
@@ -27,6 +26,12 @@ export default createServerEntryAdapter(
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
     const app = new Hono();
+    app.notFound((c) => {
+      if (notFoundHtml) {
+        return c.html(notFoundHtml, 404);
+      }
+      return c.text('404 Not Found', 404);
+    });
     if (isBuild) {
       app.use(
         `${config.basePath}*`,
@@ -42,26 +47,9 @@ export default createServerEntryAdapter(
     }
     app.use(middlewareRunner(middlewareModules));
     app.use(rscMiddleware({ processRequest }));
-    if (isBuild) {
-      app.use(notFoundMiddleware(config));
-    }
     return {
       fetch: app.fetch,
       build: processBuild,
     };
   },
 );
-
-function notFoundMiddleware({
-  distDir,
-}: {
-  distDir: string;
-}): MiddlewareHandler {
-  return async (c) => {
-    const file = path.join(distDir, DIST_PUBLIC, '404.html');
-    if (fs.existsSync(file)) {
-      return c.html(fs.readFileSync(file, 'utf8'), 404);
-    }
-    return c.text('404 Not Found', 404);
-  };
-}
