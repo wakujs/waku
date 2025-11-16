@@ -1187,6 +1187,82 @@ describe('createPages pages and layouts', () => {
     );
   });
 
+  it('creates a static page with slugs containing dots (version numbers)', async () => {
+    const TestPage = vi.fn();
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'static',
+        path: '/docs/[version]',
+        staticPaths: ['v1.0.0', 'v1.1.0', 'v2.0.0'] as const,
+        component: TestPage,
+      }),
+    ]);
+    const { getConfig, handleRoute } = injectedFunctions();
+    expect(await getConfig()).toEqual([
+      {
+        type: 'route',
+        elements: {
+          'page:/docs/v1.0.0': { isStatic: true },
+        },
+        rootElement: { isStatic: true },
+        routeElement: { isStatic: true },
+        noSsr: false,
+        path: [
+          { name: 'docs', type: 'literal' },
+          { name: 'v1.0.0', type: 'literal' },
+        ],
+        pathPattern: [
+          { name: 'docs', type: 'literal' },
+          { name: 'version', type: 'group' },
+        ],
+        isStatic: true,
+      },
+      {
+        type: 'route',
+        elements: {
+          'page:/docs/v1.1.0': { isStatic: true },
+        },
+        rootElement: { isStatic: true },
+        routeElement: { isStatic: true },
+        noSsr: false,
+        path: [
+          { name: 'docs', type: 'literal' },
+          { name: 'v1.1.0', type: 'literal' },
+        ],
+        pathPattern: [
+          { name: 'docs', type: 'literal' },
+          { name: 'version', type: 'group' },
+        ],
+        isStatic: true,
+      },
+      {
+        type: 'route',
+        elements: {
+          'page:/docs/v2.0.0': { isStatic: true },
+        },
+        rootElement: { isStatic: true },
+        routeElement: { isStatic: true },
+        noSsr: false,
+        path: [
+          { name: 'docs', type: 'literal' },
+          { name: 'v2.0.0', type: 'literal' },
+        ],
+        pathPattern: [
+          { name: 'docs', type: 'literal' },
+          { name: 'version', type: 'group' },
+        ],
+        isStatic: true,
+      },
+    ]);
+    const route = await handleRoute('/docs/v1.0.0', {
+      query: '?skip=[]',
+    });
+    expect(route).toBeDefined();
+    expect(route.rootElement).toBeDefined();
+    expect(route.routeElement).toBeDefined();
+    expect(Object.keys(route.elements)).toEqual(['page:/docs/v1.0.0']);
+  });
+
   it('allows to disable SSR on static and dynamic pages', async () => {
     createPages(async ({ createPage }) => [
       createPage({
