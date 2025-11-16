@@ -146,7 +146,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
         cmd = `node ${waku} start`;
         break;
       case 'STATIC':
-        cmd = `pnpm serve dist/public`;
+        cmd = `pnpm http-server dist/public`;
         break;
     }
     if (options?.cmd) {
@@ -320,7 +320,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         cmd = `node ${waku} start`;
         break;
       case 'STATIC':
-        cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} dist/public`;
+        cmd = `node ${join(standaloneDir, './node_modules/http-server/bin/http-server')} dist/public`;
         break;
     }
     const cp = exec(cmd, { cwd: join(standaloneDir, packageDir) });
