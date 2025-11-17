@@ -516,6 +516,26 @@ export const getConfig = async () => {
 
 Group routes are especially powerful for organizing complex applications where different sections need different layouts, state management, or data requirements while maintaining clean URLs.
 
+#### Ignored routes
+
+The following directories are ignored by the router:
+
+- `_components`
+- `_hooks`
+
+All files inside there directories are excluded from routing.
+
+For instance, in the case below, `pages/about.tsx` is routed to `/about`, but files like `_components/header.tsx` are not routed anywhere.
+
+```
+pages/
+├── about.tsx
+├── _components/
+│   ├── header.tsx   // 👈🏼 ignored
+│   ├── footer.tsx   // 👈🏼 ignored
+│   ├── ...          // 👈🏼 ignored
+```
+
 ### Layouts
 
 Layouts are created with a special `_layout.tsx` file name and wrap the entire route and its descendents. They must accept a `children` prop of type `ReactNode`. While not required, you will typically want at least a root layout.
