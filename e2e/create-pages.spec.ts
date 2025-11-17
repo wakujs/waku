@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { statSync } from 'node:fs';
 import path from 'node:path';
 import { expect } from '@playwright/test';
 import {
@@ -276,7 +276,11 @@ test.describe(`create-pages`, () => {
 
   test('api empty', async ({ mode }) => {
     if (mode === 'PRD') {
-      existsSync(path.join(fixtureDir, 'dist', 'public', 'api', 'empty'));
+      expect(
+        statSync(
+          path.join(fixtureDir, 'dist', 'public', 'api', 'empty'),
+        ).isFile(),
+      ).toBe(true);
     }
     const res = await fetch(`http://localhost:${port}/api/empty`);
     expect(res.status).toBe(200);
