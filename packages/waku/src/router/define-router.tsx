@@ -623,6 +623,7 @@ export function unstable_defineRouter(fns: {
     parseRsc,
     renderHtml,
     rscPath2pathname,
+    htmlPath2pathname,
     saveBuildMetadata,
     withRequest,
     generateFile,
@@ -674,6 +675,7 @@ export function unstable_defineRouter(fns: {
         runTask(async () => {
           await withRequest(req, async () => {
             const res = await handleApi(req);
+            // API routes use pathname as-is - caller decides the exact file path
             await generateFile(pathname, res.body || '');
           });
         });
@@ -720,7 +722,7 @@ export function unstable_defineRouter(fns: {
             />
           );
           const res = await renderHtml(stream2, html, { rscPath });
-          await generateFile(pathname, res.body || '');
+          await generateFile(htmlPath2pathname(pathname), res.body || '');
         });
       });
     }
@@ -736,7 +738,7 @@ export function unstable_defineRouter(fns: {
           throw new Error('Pathname is required for noSsr routes on build');
         }
         runTask(async () => {
-          await generateDefaultHtml(pathname);
+          await generateDefaultHtml(htmlPath2pathname(pathname));
         });
       }
     }

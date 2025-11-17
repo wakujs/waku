@@ -20,7 +20,7 @@ import type {
   Unstable_ProcessRequest as ProcessRequest,
 } from '../types.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
-import { extname, joinPath } from '../utils/path.js';
+import { joinPath } from '../utils/path.js';
 import { createRenderUtils } from '../utils/render.js';
 import { getInput } from '../utils/request.js';
 import { encodeRscPath } from '../utils/rsc-path.js';
@@ -121,31 +121,17 @@ const toProcessBuild =
       renderHtml: renderUtils.renderHtml,
       rscPath2pathname: (rscPath) =>
         joinPath(config.rscBase, encodeRscPath(rscPath)),
+      htmlPath2pathname: (htmlPath) =>
+        htmlPath === '/404' ? '404.html' : htmlPath + '/index.html',
       saveBuildMetadata: async (key, value) => {
         buildMetadata.set(key, value);
       },
       withRequest: (req, fn) => INTERNAL_runWithContext(req, fn),
-      generateFile: async (pathname: string, body: ReadableStream | string) => {
-        const filePath = joinPath(
-          DIST_PUBLIC,
-          extname(pathname)
-            ? pathname
-            : pathname === '/404'
-              ? '404.html' // HACK special treatment for 404, better way?
-              : pathname + '/index.html',
-        );
-        await emitFile(filePath, body);
+      generateFile: async (filePath: string, body: ReadableStream | string) => {
+        await emitFile(joinPath(DIST_PUBLIC, filePath), body);
       },
-      generateDefaultHtml: async (pathname: string) => {
-        const filePath = joinPath(
-          DIST_PUBLIC,
-          extname(pathname)
-            ? pathname
-            : pathname === '/404'
-              ? '404.html' // HACK special treatment for 404, better way?
-              : pathname + '/index.html',
-        );
-        await emitFile(filePath, await getFallbackHtml());
+      generateDefaultHtml: async (filePath: string) => {
+        await emitFile(joinPath(DIST_PUBLIC, filePath), await getFallbackHtml());
       },
     });
 

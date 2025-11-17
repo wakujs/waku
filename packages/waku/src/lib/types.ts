@@ -52,14 +52,15 @@ export type Unstable_HandleBuild = (utils: {
   parseRsc: Unstable_ParseRsc;
   renderHtml: Unstable_RenderHtml;
   rscPath2pathname: (rscPath: string) => string;
+  htmlPath2pathname: (htmlPath: string) => string;
   saveBuildMetadata: (key: string, value: string) => Promise<void>;
   // TODO(daishi) not a big fan of this API
   withRequest: <T>(req: Request, fn: () => T) => T;
   generateFile: (
-    pathname: string,
+    filePath: string,
     body: ReadableStream | string,
   ) => Promise<void>;
-  generateDefaultHtml: (pathname: string) => Promise<void>;
+  generateDefaultHtml: (filePath: string) => Promise<void>;
 }) => Promise<void>;
 
 export type Unstable_ServerEntry = {
