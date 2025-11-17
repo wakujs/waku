@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import { getEnv } from 'waku/server';
 
 export default function Test({ title }: { title: string }) {
+  // HACK record render time for testing purpose
   fs.mkdirSync('dist/e2e/render', { recursive: true });
   fs.writeFileSync(`dist/e2e/render/${title}.txt`, new Date().toISOString());
 
