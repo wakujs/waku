@@ -16,8 +16,8 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.1.17",
-    "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
+    "@types/react": "19.2.5",
+    "@types/react-dom": "19.2.3",
     "rollup": "4.53.1",
     "tailwindcss": "4.1.17",
     "typescript": "5.9.3",

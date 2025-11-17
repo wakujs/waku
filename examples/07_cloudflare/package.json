@@ -20,9 +20,9 @@
   "devDependencies": {
     "@hiogawa/node-loader-cloudflare": "0.0.2",
     "@tailwindcss/vite": "4.1.17",
-    "@types/node": "24.10.0",
-    "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.5",
+    "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.0",
     "babel-plugin-react-compiler": "1.0.0",
     "miniflare": "4.20251105.0",
