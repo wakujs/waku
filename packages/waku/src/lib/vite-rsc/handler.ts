@@ -127,11 +127,14 @@ const toProcessBuild =
         buildMetadata.set(key, value);
       },
       withRequest: (req, fn) => INTERNAL_runWithContext(req, fn),
-      generateFile: async (filePath: string, body: ReadableStream | string) => {
-        await emitFile(joinPath(DIST_PUBLIC, filePath), body);
+      generateFile: async (pathname, body) => {
+        await emitFile(joinPath(DIST_PUBLIC, pathname), body);
       },
-      generateDefaultHtml: async (filePath: string) => {
-        await emitFile(joinPath(DIST_PUBLIC, filePath), await getFallbackHtml());
+      generateDefaultHtml: async (pathname) => {
+        await emitFile(
+          joinPath(DIST_PUBLIC, pathname),
+          await getFallbackHtml(),
+        );
       },
     });
 

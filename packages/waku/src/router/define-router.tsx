@@ -675,7 +675,6 @@ export function unstable_defineRouter(fns: {
         runTask(async () => {
           await withRequest(req, async () => {
             const res = await handleApi(req);
-            // API routes use pathname as-is - caller decides the exact file path
             await generateFile(pathname, res.body || '');
           });
         });
