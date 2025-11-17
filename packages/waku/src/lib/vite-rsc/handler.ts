@@ -121,18 +121,16 @@ const toProcessBuild =
       renderHtml: renderUtils.renderHtml,
       rscPath2pathname: (rscPath) =>
         joinPath(config.rscBase, encodeRscPath(rscPath)),
-      htmlPath2pathname: (htmlPath) =>
-        htmlPath === '/404' ? '404.html' : htmlPath + '/index.html',
       saveBuildMetadata: async (key, value) => {
         buildMetadata.set(key, value);
       },
       withRequest: (req, fn) => INTERNAL_runWithContext(req, fn),
-      generateFile: async (pathname, body) => {
-        await emitFile(joinPath(DIST_PUBLIC, pathname), body);
+      generateFile: async (fileName, body) => {
+        await emitFile(joinPath(DIST_PUBLIC, fileName), body);
       },
-      generateDefaultHtml: async (pathname) => {
+      generateDefaultHtml: async (fileName) => {
         await emitFile(
-          joinPath(DIST_PUBLIC, pathname),
+          joinPath(DIST_PUBLIC, fileName),
           await getFallbackHtml(),
         );
       },

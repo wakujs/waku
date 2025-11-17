@@ -426,6 +426,9 @@ export function unstable_defineRouter(fns: {
   type HandleRequest = Parameters<typeof defineHandlers>[0]['handleRequest'];
   type HandleBuild = Parameters<typeof defineHandlers>[0]['handleBuild'];
 
+  const htmlPath2pathname = (htmlPath: string): string =>
+    htmlPath === '/404' ? '404.html' : htmlPath + '/index.html';
+
   const cachedElementsForRequest = new Map<SlotId, Promise<ReactNode>>();
   let cachedElementsForRequestInitialized = false;
   const handleRequest: HandleRequest = async (
@@ -623,7 +626,6 @@ export function unstable_defineRouter(fns: {
     parseRsc,
     renderHtml,
     rscPath2pathname,
-    htmlPath2pathname,
     saveBuildMetadata,
     withRequest,
     generateFile,

@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { expect } from '@playwright/test';
 import {
   FETCH_ERROR_MESSAGES,
@@ -5,8 +7,6 @@ import {
   test,
   waitForHydration,
 } from './utils.js';
-import { existsSync } from 'node:fs';
-import path from 'node:path';
 
 const startApp = prepareNormalSetup('create-pages');
 
