@@ -4,7 +4,7 @@ import { getPokemonPaths } from '../lib';
 import { pokemon } from '../lib/pokemon';
 
 export default async function PokemonPage({ slug }: PageProps<'/[slug]'>) {
-  const pokemon = await getPokemon(slug);
+  const pokemon = await getPokemon(slug.replaceAll('-', ' '));
 
   if (!pokemon) {
     return null;
