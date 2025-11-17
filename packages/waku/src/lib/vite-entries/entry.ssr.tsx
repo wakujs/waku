@@ -1,1 +1,1 @@
-export { renderHtml, renderHtmlFallback } from '../vite-rsc/ssr.js';
+export { renderHtmlStream, renderHtmlFallback } from '../vite-rsc/ssr.js';

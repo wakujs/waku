@@ -15,63 +15,71 @@ const Pending = ({ isPending }: { isPending: boolean }) => (
   </span>
 );
 
-const HomeLayout = ({ children }: { children: ReactNode }) => (
-  <div>
-    <title>Waku</title>
-    <ul>
-      <li>
-        <Link
-          to="/"
-          unstable_pending={<Pending isPending />}
-          unstable_notPending={<Pending isPending={false} />}
-        >
-          Home
-        </Link>
-      </li>
-      <li>
-        <Link
-          to="/foo"
-          unstable_pending={<Pending isPending />}
-          unstable_notPending={<Pending isPending={false} />}
-        >
-          Foo
-        </Link>
-      </li>
-      <li>
-        <Link to="/bar" unstable_prefetchOnEnter>
-          Bar
-        </Link>
-      </li>
-      <li>
-        <Link to="/baz">Baz</Link>
-      </li>
-      <li>
-        <Link to="/nested/foo">Nested / Foo</Link>
-      </li>
-      <li>
-        <Link to="/nested/bar">Nested / Bar</Link>
-      </li>
-      <li>
-        <Link to="/nested/baz">Nested / Baz</Link>
-      </li>
-      <li>
-        <Link to="/nested/qux">Nested / Qux</Link>
-      </li>
-      <li>
-        <Link to="/error">Error</Link>
-      </li>
-      <li>
-        <Link to="/exact/[slug]/[...wild]">Exact Path</Link>
-      </li>
-      <li>
-        <Link to="/nested-layouts">Nested Layouts</Link>
-      </li>
-      <li>
-        <Link to="/slices">Slices</Link>
-      </li>
-    </ul>
-    {children}
-  </div>
-);
+let renderCount = 0;
+
+const HomeLayout = ({ children }: { children: ReactNode }) => {
+  ++renderCount;
+  return (
+    <div>
+      <title>Waku</title>
+      <ul>
+        <li>
+          <Link
+            to="/"
+            unstable_pending={<Pending isPending />}
+            unstable_notPending={<Pending isPending={false} />}
+          >
+            Home
+          </Link>
+        </li>
+        <li>
+          <Link
+            to="/foo"
+            unstable_pending={<Pending isPending />}
+            unstable_notPending={<Pending isPending={false} />}
+          >
+            Foo
+          </Link>
+        </li>
+        <li>
+          <Link to="/bar" unstable_prefetchOnEnter>
+            Bar
+          </Link>
+        </li>
+        <li>
+          <Link to="/baz">Baz</Link>
+        </li>
+        <li>
+          <Link to="/nested/foo">Nested / Foo</Link>
+        </li>
+        <li>
+          <Link to="/nested/bar">Nested / Bar</Link>
+        </li>
+        <li>
+          <Link to="/nested/baz">Nested / Baz</Link>
+        </li>
+        <li>
+          <Link to="/nested/qux">Nested / Qux</Link>
+        </li>
+        <li>
+          <Link to="/error">Error</Link>
+        </li>
+        <li>
+          <Link to="/exact/[slug]/[...wild]">Exact Path</Link>
+        </li>
+        <li>
+          <Link to="/nested-layouts">Nested Layouts</Link>
+        </li>
+        <li>
+          <Link to="/slices">Slices</Link>
+        </li>
+      </ul>
+      {children}
+      <h4 data-testid="home-layout-render-count">
+        Render Count: {renderCount}
+      </h4>
+    </div>
+  );
+};
 
 export default HomeLayout;
