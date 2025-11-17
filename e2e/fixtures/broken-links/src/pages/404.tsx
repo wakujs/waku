@@ -1,5 +1,4 @@
 import { Link } from 'waku';
-
 import { ClientTitle } from '../components/ClientTitle.js';
 
 export default function NotFound() {

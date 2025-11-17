@@ -1,12 +1,10 @@
-import { unstable_defineEntries as defineEntries } from 'waku/minimal/server';
+import adapter from 'waku/adapters/default';
 import { Slot } from 'waku/minimal/client';
-import { unstable_createAsyncIterable as createAsyncIterable } from 'waku/server';
-
 import App from './components/App';
-import InnerApp from './components/InnerApp';
 import AppWithoutSsr from './components/AppWithoutSsr';
+import InnerApp from './components/InnerApp';
 
-export default defineEntries({
+export default adapter({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
       const params = new URLSearchParams(
@@ -26,37 +24,42 @@ export default defineEntries({
     }
     if (input.type === 'custom' && input.pathname === '/') {
       return renderHtml(
-        { App: <App name="Waku" />, InnerApp: <InnerApp count={0} /> },
+        await renderRsc({
+          App: <App name="Waku" />,
+          InnerApp: <InnerApp count={0} />,
+        }),
         <Slot id="App" />,
         { rscPath: '' },
       );
     }
   },
-  handleBuild: ({ renderRsc, rscPath2pathname }) =>
-    createAsyncIterable(async () => {
-      const tasks = [
-        async () => ({
-          type: 'file' as const,
-          pathname: rscPath2pathname(''),
-          body: renderRsc({
-            App: <App name="Waku" />,
-            InnerApp: <InnerApp count={0} />,
-          }),
-        }),
-        ...[1, 2, 3, 4, 5].map((count) => async () => ({
-          type: 'file' as const,
-          pathname: rscPath2pathname(`InnerApp=${count}`),
-          body: renderRsc({ App: <App name="Waku" /> }),
-        })),
-        async () => ({
-          type: 'defaultHtml' as const,
-          pathname: '/',
-        }),
-        async () => ({
-          type: 'defaultHtml' as const,
-          pathname: '/no-ssr',
-        }),
-      ];
-      return tasks;
-    }),
+  handleBuild: async ({
+    renderRsc,
+    rscPath2pathname,
+    withRequest,
+    generateFile,
+    generateDefaultHtml,
+  }) => {
+    await withRequest(
+      new Request(new URL('http://localhost:3000/')),
+      async () => {
+        const body = await renderRsc({
+          App: <App name="Waku" />,
+          InnerApp: <InnerApp count={0} />,
+        });
+        await generateFile(rscPath2pathname(''), body);
+      },
+    );
+    for (const count of [1, 2, 3, 4, 5]) {
+      await withRequest(
+        new Request(new URL('http://localhost:3000/')),
+        async () => {
+          const body = await renderRsc({ App: <App name="Waku" /> });
+          await generateFile(rscPath2pathname(`InnerApp=${count}`), body);
+        },
+      );
+    }
+    await generateDefaultHtml('/');
+    await generateDefaultHtml('/no-ssr');
+  },
 });

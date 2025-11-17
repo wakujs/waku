@@ -1,11 +1,9 @@
-import { unstable_defineEntries as defineEntries } from 'waku/minimal/server';
+import adapter from 'waku/adapters/default';
 import { Children, Slot } from 'waku/minimal/client';
-import { unstable_createAsyncIterable as createAsyncIterable } from 'waku/server';
-
 import App from './components/App';
 import Dynamic from './components/Dynamic';
 
-export default defineEntries({
+export default adapter({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
       if (input.rscPath === '') {
@@ -25,27 +23,41 @@ export default defineEntries({
       throw new Error('Unexpected rscPath: ' + input.rscPath);
     }
     if (input.type === 'custom' && input.pathname === '/') {
-      return renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
-        rscPath: '',
-      });
+      return renderHtml(
+        await renderRsc({ App: <App name="Waku" /> }),
+        <Slot id="App" />,
+        {
+          rscPath: '',
+        },
+      );
     }
   },
-  handleBuild: ({ renderRsc, renderHtml, rscPath2pathname }) =>
-    createAsyncIterable(async () => {
-      const tasks = [
-        async () => ({
-          type: 'file' as const,
-          pathname: rscPath2pathname(''),
-          body: renderRsc({ App: <App name="Waku" /> }),
-        }),
-        async () => ({
-          type: 'file' as const,
-          pathname: '/',
-          body: renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
+  handleBuild: async ({
+    renderRsc,
+    renderHtml,
+    rscPath2pathname,
+    withRequest,
+    generateFile,
+  }) => {
+    await withRequest(
+      new Request(new URL('http://localhost:3000/')),
+      async () => {
+        const body = await renderRsc({ App: <App name="Waku" /> });
+        await generateFile(rscPath2pathname(''), body);
+      },
+    );
+    await withRequest(
+      new Request(new URL('http://localhost:3000/')),
+      async () => {
+        const res = await renderHtml(
+          await renderRsc({ App: <App name="Waku" /> }),
+          <Slot id="App" />,
+          {
             rscPath: '',
-          }).then((res) => res.body || ''),
-        }),
-      ];
-      return tasks;
-    }),
+          },
+        );
+        await generateFile('/', res.body || '');
+      },
+    );
+  },
 });

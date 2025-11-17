@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [0.27.1] - 2025-11-17
+
+### Changed
+
+- True static pages/layouts/slices
+- Bug fixes & some updates
+
+## [0.27.0] - 2025-10-27
+
+### Added
+
+- Breaking: New adapter system
+
 ## [0.26.1] - 2025-09-10
 
 ### Changed

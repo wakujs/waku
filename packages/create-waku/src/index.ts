@@ -3,9 +3,9 @@ import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import * as p from '@clack/prompts';
 import fse from 'fs-extra/esm';
 import pc from 'picocolors';
-import * as p from '@clack/prompts';
 import checkForUpdate from 'update-check';
 import {
   downloadAndExtract,
@@ -193,7 +193,7 @@ Options:
   --example             Specify an example use as a template
   --project-name        Specify a project name
   --skip-install        Skip installation of dependencies
-  -h, --help            Display this help message
+  --help                Display this help message
 `);
 }
 

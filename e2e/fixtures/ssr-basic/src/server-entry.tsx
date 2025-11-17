@@ -1,10 +1,9 @@
-import { unstable_defineEntries as defineEntries } from 'waku/minimal/server';
+import adapter from 'waku/adapters/default';
 import { Slot } from 'waku/minimal/client';
-
 import App from './components/App.js';
 import TestApp from './components/test-app.js';
 
-const entries: ReturnType<typeof defineEntries> = defineEntries({
+export default adapter({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
       if (input.rscPath === 'test') {
@@ -18,18 +17,24 @@ const entries: ReturnType<typeof defineEntries> = defineEntries({
     }
     if (input.type === 'custom') {
       if (input.pathname === '/') {
-        return renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
-          rscPath: '',
-        });
+        return renderHtml(
+          await renderRsc({ App: <App name="Waku" /> }),
+          <Slot id="App" />,
+          {
+            rscPath: '',
+          },
+        );
       }
       if (input.pathname === '/test') {
-        return renderHtml({ TestApp: <TestApp /> }, <Slot id="TestApp" />, {
-          rscPath: 'test',
-        });
+        return renderHtml(
+          await renderRsc({ TestApp: <TestApp /> }),
+          <Slot id="TestApp" />,
+          {
+            rscPath: 'test',
+          },
+        );
       }
     }
   },
-  handleBuild: () => null,
+  handleBuild: async () => {},
 });
-
-export default entries;

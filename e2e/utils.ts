@@ -1,22 +1,25 @@
-import { execSync, exec } from 'node:child_process';
-import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
+import { exec } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import {
-  existsSync,
   cpSync,
-  rmSync,
+  existsSync,
   mkdtempSync,
-  readdirSync,
   readFileSync,
+  readdirSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import type { ChildProcess } from 'node:child_process';
-import { expect, test as basicTest } from '@playwright/test';
-import type { ConsoleMessage, Page } from '@playwright/test';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { promisify, stripVTControlCharacters } from 'node:util';
 import { error, info } from '@actions/core';
-import { stripVTControlCharacters } from 'node:util';
+import { test as basicTest, expect } from '@playwright/test';
+import type { ConsoleMessage, Page } from '@playwright/test';
+import fkill from 'fkill';
+
+const execAsync = promisify(exec);
 
 export const FETCH_ERROR_MESSAGES = {
   chromium: 'Failed to fetch',
@@ -33,13 +36,13 @@ export async function findWakuPort(cp: ChildProcess): Promise<number> {
   return new Promise((resolve, reject) => {
     function listener(data: unknown) {
       const str = stripVTControlCharacters(`${data}`);
-      const match = str.match(/http:\/\/localhost:(\d+)/g);
+      const match = str.match(/http:\/\/localhost:(\d+)|on port (\d+)/);
       if (match) {
         clearTimeout(timer);
         cp.stdout?.off('data', listener);
-        const url = new URL(match[0]);
-        info(`Waku server started at ${url}`);
-        resolve(parseInt(url.port, 10));
+        const port = match[1] || match[2]!;
+        info(`Waku server started at port ${port}`);
+        resolve(parseInt(port, 10));
       }
     }
     cp.stdout?.on('data', listener);
@@ -52,12 +55,11 @@ export async function findWakuPort(cp: ChildProcess): Promise<number> {
 
 // Upstream doesn't support ES module
 //  Related: https://github.com/dwyl/terminate/pull/85
-export const terminate = createRequire(import.meta.url)(
-  // use terminate instead of cp.kill,
-  //  because cp.kill will not kill the child process of the child process
-  //  to avoid the zombie process
-  'terminate/promise',
-) as (pid: number) => Promise<void>;
+export const terminate = async (port: number) => {
+  await fkill(`:${port}`, {
+    force: true,
+  });
+};
 
 const unexpectedErrors: RegExp[] = [
   /^You did not run Node.js with the `--conditions react-server` flag/,
@@ -125,12 +127,15 @@ export const prepareNormalSetup = (fixtureName: string) => {
   const fixtureDir = fileURLToPath(
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
-  let builtMode: undefined | 'PRD' | 'STATIC';
-  const startApp = async (mode: 'DEV' | 'PRD' | 'STATIC') => {
-    if (mode !== 'DEV' && builtMode !== mode) {
+  let built = false;
+  const startApp = async (
+    mode: 'DEV' | 'PRD' | 'STATIC',
+    options?: { cmd?: string | undefined },
+  ) => {
+    if (mode !== 'DEV' && !built) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
-      execSync(`node ${waku} build`, { cwd: fixtureDir });
-      builtMode = mode;
+      await execAsync(`node ${waku} build`, { cwd: fixtureDir });
+      built = true;
     }
     let cmd: string;
     switch (mode) {
@@ -144,12 +149,14 @@ export const prepareNormalSetup = (fixtureName: string) => {
         cmd = `pnpm serve dist/public`;
         break;
     }
+    if (options?.cmd) {
+      cmd = options.cmd;
+    }
     const cp = exec(cmd, { cwd: fixtureDir });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     const port = await findWakuPort(cp);
     const stopApp = async () => {
-      builtMode = undefined;
-      await terminate(cp.pid!);
+      await terminate(port);
     };
     return { port, stopApp, fixtureDir };
   };
@@ -235,9 +242,8 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         },
         recursive: true,
       });
-      execSync(`pnpm pack --pack-destination ${standaloneDir}`, {
+      await execAsync(`pnpm pack --pack-destination ${standaloneDir}`, {
         cwd: wakuDir,
-        stdio: ['ignore', 'ignore', 'inherit'],
       });
       const wakuPackageTgz = join(standaloneDir, `waku-${version}.tgz`);
       const rootPkg = JSON.parse(
@@ -290,9 +296,8 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       if (packageManager !== 'pnpm') {
         patchMonorepoPackageJson(standaloneDir);
       }
-      execSync(PACKAGE_INSTALL[packageManager], {
+      await execAsync(PACKAGE_INSTALL[packageManager], {
         cwd: standaloneDir,
-        stdio: 'inherit',
       });
     }
     const waku = join(wakuPackageDir(), './node_modules/waku/dist/cli.js');
@@ -301,7 +306,9 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         recursive: true,
         force: true,
       });
-      execSync(`node ${waku} build`, { cwd: join(standaloneDir, packageDir) });
+      await execAsync(`node ${waku} build`, {
+        cwd: join(standaloneDir, packageDir),
+      });
       builtModeMap.set(packageManager, mode);
     }
     let cmd: string;
@@ -321,7 +328,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     const port = await findWakuPort(cp);
     const stopApp = async () => {
       builtModeMap.delete(packageManager);
-      await terminate(cp.pid!);
+      await terminate(port);
     };
     return { port, stopApp, standaloneDir };
   };

@@ -1,25 +1,25 @@
-import { createPages } from 'waku/router/server';
+import { readFile } from 'node:fs/promises';
+import { Slice } from 'waku';
+import adapter from 'waku/adapters/default';
 import type { PathsForPages } from 'waku/router';
-
+import { createPages } from 'waku/router/server';
+import { DeeplyNestedLayout } from './components/DeeplyNestedLayout.js';
+import DynamicLayout from './components/DynamicLayout.js';
+import ErrorPage from './components/ErrorPage.js';
 import FooPage from './components/FooPage.js';
 import HomeLayout from './components/HomeLayout.js';
-import DynamicLayout from './components/DynamicLayout.js';
 import HomePage from './components/HomePage.js';
-import NestedBazPage from './components/NestedBazPage.js';
-import NestedLayout from './components/NestedLayout.js';
-import { DeeplyNestedLayout } from './components/DeeplyNestedLayout.js';
-import ErrorPage from './components/ErrorPage.js';
 import {
+  LongSuspenseLayout,
   SlowComponent,
   StaticLongSuspenseLayout,
-  LongSuspenseLayout,
 } from './components/LongSuspenseLayout.js';
-import { readFile } from 'node:fs/promises';
+import NestedBazPage from './components/NestedBazPage.js';
+import NestedLayout from './components/NestedLayout.js';
 import NoSsr from './components/NoSsr.js';
 import { Slice001 } from './components/slice001.js';
 import { Slice002 } from './components/slice002.js';
 import { Slice003 } from './components/slice003.js';
-import { Slice } from 'waku';
 
 const pages: ReturnType<typeof createPages> = createPages(
   async ({ createPage, createLayout, createApi, createSlice }) => [
@@ -370,4 +370,4 @@ declare module 'waku/router' {
   }
 }
 
-export default pages;
+export default adapter(pages);

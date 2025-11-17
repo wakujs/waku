@@ -1,7 +1,7 @@
-import type { Middleware } from 'waku/config';
+import type { MiddlewareHandler } from 'hono';
 
-const noopMiddleware: Middleware = () => {
-  return async (_ctx, next) => {
+const noopMiddleware = (): MiddlewareHandler => {
+  return async (_c, next) => {
     await next();
   };
 };

@@ -1,7 +1,6 @@
 'use client';
 
-import { Suspense, useState, use } from 'react';
-
+import { Suspense, use, useState } from 'react';
 import { Hello } from './Hello';
 
 export const Counter = ({

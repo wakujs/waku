@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import cx from 'classnames';
-
 import { useInterval } from '../hooks';
 
 type SponsorsProps = {

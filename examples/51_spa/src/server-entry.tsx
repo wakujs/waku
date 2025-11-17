@@ -1,6 +1,6 @@
-import { unstable_defineEntries as defineEntries } from 'waku/minimal/server';
+import adapter from 'waku/adapters/default';
 
-export default defineEntries({
+export default adapter({
   handleRequest: async (input, { renderRsc }) => {
     if (input.type === 'function') {
       const value = await input.fn(...input.args);
@@ -8,5 +8,5 @@ export default defineEntries({
     }
     return 'fallback';
   },
-  handleBuild: () => null,
+  handleBuild: async () => {},
 });

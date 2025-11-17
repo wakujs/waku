@@ -1,7 +1,6 @@
 import { Link } from 'waku';
-import TestRouter from '../TestRouter.js';
-
 import { MyButton } from '../components/my-button.js';
+import TestRouter from '../TestRouter.js';
 
 const Page = () => (
   <>

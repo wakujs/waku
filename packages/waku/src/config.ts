@@ -1,14 +1,9 @@
 import type { UserConfig } from 'vite';
-import type { Middleware } from './lib/middleware/types.js';
-import type { BuiltinMiddleware } from './lib/config/types.js';
-
-export type { Middleware };
 
 export interface Config {
   /**
    * The base path for serve HTTP.
    * Defaults to  "/".
-   * TODO https://github.com/wakujs/waku/issues/698
    */
   basePath?: string;
   /**
@@ -23,46 +18,21 @@ export interface Config {
    */
   distDir?: string;
   /**
-   * The pages directory relative to srcDir.
-   * Defaults to "pages".
-   */
-  pagesDir?: string;
-  /**
-   * The api directory inside pagesDir.
-   * Defaults to "api".
-   */
-  apiDir?: string;
-  /**
-   * The slices directory inside pagesDir.
-   * Defaults to "_slices".
-   */
-  slicesDir?: string;
-  /**
    * The private directory relative to root.
    * This folder will contain files that should be read only on the server.
    * Defaults to  "private".
    */
   privateDir?: string;
   /**
-   * Bse path for HTTP requests to indicate RSC requests.
+   * Base path for HTTP requests to indicate RSC requests.
    * Defaults to "RSC".
    */
   rscBase?: string;
   /**
-   * Middleware to use
-   * Defaults to:
-   * [
-   *   'waku/middleware/context',
-   *   'waku/middleware/dev-server',
-   *   'waku/middleware/handler',
-   * ]
+   * Adapter module name
+   * Defaults to "waku/adapters/node" or other platform-specific adapters based on environment variables.
    */
-  middleware?: (BuiltinMiddleware | (string & {}))[];
-  /**
-   * Enhancer for Hono
-   * Defaults to `undefined`
-   */
-  unstable_honoEnhancer?: string | undefined;
+  adapter?: string;
   /**
    * Vite configuration options.
    * See https://vite.dev/guide/api-environment-plugins.html#environment-api-for-plugins

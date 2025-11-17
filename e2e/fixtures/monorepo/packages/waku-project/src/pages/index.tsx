@@ -1,11 +1,10 @@
-import { Link } from 'waku';
+// @ts-expect-error no types
+// eslint-disable-next-line import/no-unresolved
+import { ContextConsumer, ContextProvider } from 'context-library/entry-point';
 // @ts-expect-error no types
 // eslint-disable-next-line import/no-unresolved
 import { Hello } from 'dummy-library/entry-point';
-// @ts-expect-error no types
-// eslint-disable-next-line import/no-unresolved
-import { ContextProvider, ContextConsumer } from 'context-library/entry-point';
-
+import { Link } from 'waku';
 import { Counter } from '../components/counter';
 
 export default async function HomePage() {

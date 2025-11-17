@@ -1,10 +1,9 @@
-import { unstable_defineEntries as defineEntries } from 'waku/minimal/server';
+import adapter from 'waku/adapters/default';
 import { Slot } from 'waku/minimal/client';
-
-import Layout from './components/layout';
 import App from './components/app';
+import Layout from './components/layout';
 
-export default defineEntries({
+export default adapter({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
       return renderRsc({
@@ -17,17 +16,17 @@ export default defineEntries({
     }
     if (input.type === 'custom' && input.pathname === '/') {
       return renderHtml(
-        {
+        await renderRsc({
           App: (
             <Layout>
               <App name={'Waku'} />
             </Layout>
           ),
-        },
+        }),
         <Slot id="App" />,
         { rscPath: '' },
       );
     }
   },
-  handleBuild: () => null,
+  handleBuild: async () => {},
 });

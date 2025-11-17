@@ -1,15 +1,15 @@
 import type { ReactFormState } from 'react-dom/client';
-import { decodeFuncId, decodeRscPath } from '../renderers/utils.js';
-import type { HandlerContext } from '../middleware/types.js';
-import type { ConfigDev } from '../config/types.js';
-import type { HandleRequest } from '../types.js';
+import type { Config } from '../../config.js';
+import type { Unstable_HandleRequest as HandleRequest } from '../types.js';
+import { decodeFuncId, decodeRscPath } from '../utils/rsc-path.js';
+import { removeBase } from './path.js';
 
 type HandleRequestInput = Parameters<HandleRequest>[0];
 
 export async function getInput(
-  ctx: HandlerContext,
-  config: ConfigDev,
-  createTemporaryReferenceSet: () => unknown,
+  req: Request,
+  config: Omit<Required<Config>, 'vite'>,
+  temporaryReferences: unknown,
   decodeReply: (
     body: string | FormData,
     options?: unknown,
@@ -21,10 +21,10 @@ export async function getInput(
   ) => Promise<ReactFormState | undefined>,
   loadServerAction: (id: string) => Promise<unknown>,
 ) {
-  const url = new URL(ctx.req.url);
-  const rscPathPrefix = config.basePath + config.rscBase + '/';
+  const url = new URL(req.url);
+  url.pathname = removeBase(url.pathname, config.basePath);
+  const rscPathPrefix = '/' + config.rscBase + '/';
   let rscPath: string | undefined;
-  let temporaryReferences: unknown | undefined;
   let input: HandleRequestInput;
   if (url.pathname.startsWith(rscPathPrefix)) {
     rscPath = decodeRscPath(
@@ -33,21 +33,20 @@ export async function getInput(
     // server action: js
     const actionId = decodeFuncId(rscPath);
     if (actionId) {
-      const body = await getActionBody(ctx.req);
-      temporaryReferences = createTemporaryReferenceSet();
+      const body = await getActionBody(req);
       const args = await decodeReply(body, { temporaryReferences });
       const action = await loadServerAction(actionId);
       input = {
         type: 'function',
         fn: action as any,
         args,
-        req: ctx.req,
+        req,
       };
     } else {
       // client RSC request
       let rscParams: unknown = url.searchParams;
-      if (ctx.req.body) {
-        const body = await getActionBody(ctx.req);
+      if (req.body) {
+        const body = await getActionBody(req);
         rscParams = await decodeReply(body, {
           temporaryReferences,
         });
@@ -56,17 +55,17 @@ export async function getInput(
         type: 'component',
         rscPath,
         rscParams,
-        req: ctx.req,
+        req,
       };
     }
-  } else if (ctx.req.method === 'POST') {
-    const contentType = ctx.req.headers.get('content-type');
+  } else if (req.method === 'POST') {
+    const contentType = req.headers.get('content-type');
     if (
       typeof contentType === 'string' &&
       contentType.startsWith('multipart/form-data')
     ) {
       // server action: no js (progressive enhancement)
-      const formData = (await getActionBody(ctx.req)) as FormData;
+      const formData = (await getActionBody(req)) as FormData;
       const decodedAction = await decodeAction(formData);
       input = {
         type: 'action',
@@ -75,14 +74,14 @@ export async function getInput(
           return await decodeFormState(result, formData);
         },
         pathname: decodeURI(url.pathname),
-        req: ctx.req,
+        req,
       };
     } else {
       // POST API request
       input = {
         type: 'custom',
         pathname: decodeURI(url.pathname),
-        req: ctx.req,
+        req,
       };
     }
   } else {
@@ -90,10 +89,10 @@ export async function getInput(
     input = {
       type: 'custom',
       pathname: decodeURI(url.pathname),
-      req: ctx.req,
+      req,
     };
   }
-  return { input, temporaryReferences };
+  return input;
 }
 
 async function getActionBody(req: Request) {

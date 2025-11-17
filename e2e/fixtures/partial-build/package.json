@@ -7,18 +7,18 @@
     "dev": "waku dev",
     "build": "waku build",
     "start": "waku start",
-    "partial": "waku build --experimental-partial"
+    "partial": "waku build"
   },
   "dependencies": {
-    "react": "19.1.1",
-    "react-dom": "19.1.1",
-    "react-server-dom-webpack": "19.1.1",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "react-server-dom-webpack": "19.2.0",
     "serve": "^14.2.5",
     "waku": "latest"
   },
   "devDependencies": {
-    "@types/react": "^19.1.12",
-    "@types/react-dom": "^19.1.9",
-    "typescript": "^5.9.2"
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.9.3"
   }
 }

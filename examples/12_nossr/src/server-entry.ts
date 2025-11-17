@@ -1,14 +1,11 @@
 /// <reference types="vite/client" />
 
-import { unstable_defineEntries as defineEntries } from 'waku/minimal/server';
-import { unstable_fsRouter as fsRouter } from 'waku/router/server';
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/default';
 
-const router = fsRouter(
-  import.meta.glob('/src/pages/**/*.tsx', { base: '/src/pages' }),
-  { apiDir: 'api', slicesDir: '_slices' },
-);
+const router = fsRouter(import.meta.glob('./**/*.tsx', { base: './pages' }));
 
-export default defineEntries({
+export default adapter({
   handleRequest: async (input, utils) => {
     if (input.type === 'custom') {
       return 'fallback'; // no ssr

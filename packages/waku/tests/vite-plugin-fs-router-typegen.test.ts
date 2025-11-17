@@ -1,63 +1,14 @@
-import { describe, expect, test, vi } from 'vitest';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, test } from 'vitest';
 import {
-  fsRouterTypegenPlugin,
+  detectFsRouterUsage,
+  generateFsRouterTypes,
   getImportModuleNames,
   toIdentifier,
 } from '../src/lib/vite-plugins/fs-router-typegen.js';
-import { fileURLToPath } from 'node:url';
-import type { ViteDevServer, FSWatcher, ResolvedConfig } from 'vite';
-import { writeFile } from 'node:fs/promises';
 
-const root = fileURLToPath(new URL('./fixtures', import.meta.url));
-
-vi.mock('prettier', () => {
-  return { format: (x: string) => x, resolveConfig: () => ({}) };
-});
-vi.mock('node:fs/promises', async (importOriginal) => {
-  const mod = await importOriginal();
-  return {
-    // https://vitest.dev/api/vi.html#vi-mock
-    // @ts-expect-error - docs say this should be inferred...
-    ...mod,
-    writeFile: vi.fn(),
-  };
-});
-
-async function runTest(
-  root: string,
-  expectedEntriesGen: string,
-  srcDir = 'plugin-fs-router-typegen',
-) {
-  const plugin = fsRouterTypegenPlugin({
-    srcDir,
-  });
-  expect(plugin.configureServer).toBeDefined();
-  expect(typeof plugin.configureServer).toBe('function');
-  expect(plugin.configResolved).toBeDefined();
-  expect(typeof plugin.configResolved).toBe('function');
-  if (
-    typeof plugin.configureServer !== 'function' ||
-    typeof plugin.configResolved !== 'function'
-  ) {
-    return;
-  }
-  await plugin.configResolved?.call(
-    {} as never,
-    { root } as unknown as ResolvedConfig,
-  );
-  await plugin.configureServer?.call(
-    {} as never,
-    {
-      watcher: { add: () => {}, on: () => {} } as unknown as FSWatcher,
-    } as ViteDevServer,
-  );
-  await vi.waitFor(async () => {
-    if (vi.mocked(writeFile).mock.lastCall === undefined) {
-      throw new Error('writeFile not called');
-    }
-  });
-  expect(vi.mocked(writeFile).mock.lastCall?.[1]).toContain(expectedEntriesGen);
-}
+const fixturesDir = fileURLToPath(new URL('./fixtures', import.meta.url));
 
 describe('vite-plugin-fs-router-typegen', () => {
   test('generates valid module names for fs entries', async () => {
@@ -89,8 +40,10 @@ describe('vite-plugin-fs-router-typegen', () => {
   });
 
   test('creates the expected imports the generated entries file', async () => {
-    await runTest(
-      root,
+    const generated = await generateFsRouterTypes(
+      path.join(fixturesDir, 'plugin-fs-router-typegen', 'pages'),
+    );
+    expect(generated).toContain(
       `// prettier-ignore
 import type { getConfig as File_CategoryTagsIndex_getConfig } from './pages/[category]/[...tags]/index';
 // prettier-ignore
@@ -106,5 +59,21 @@ import type { getConfig as File_OneTwoThree_2_getConfig } from './pages/one_two_
 // prettier-ignore
 import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_two_three';`,
     );
+  });
+
+  test('generates types when server-entry uses fsRouter (managed mode)', async () => {
+    expect(
+      await detectFsRouterUsage(
+        path.join(fixturesDir, 'plugin-fs-router-typegen-with-fsrouter'),
+      ),
+    ).toMatchInlineSnapshot(`true`);
+  });
+
+  test('skips type generation when server-entry does not use fsRouter', async () => {
+    expect(
+      await detectFsRouterUsage(
+        path.join(fixturesDir, 'plugin-fs-router-typegen-with-createpages'),
+      ),
+    ).toMatchInlineSnapshot(`false`);
   });
 });

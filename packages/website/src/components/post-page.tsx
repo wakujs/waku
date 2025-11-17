@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { compileMDX } from 'next-mdx-remote/rsc';
+import { getAuthor } from '../lib/get-author';
 import { getFileName } from '../lib/get-file-name';
 import { components } from './mdx';
-import { getAuthor } from '../lib/get-author';
-import { Page } from './page';
 import { Meta } from './meta';
+import { Page } from './page';
 
 export async function PostPage({
   slug,

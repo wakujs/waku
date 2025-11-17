@@ -1,15 +1,18 @@
 import eslint from '@eslint/js';
-import tseslint from 'typescript-eslint';
+import { defineConfig } from 'eslint/config';
 import importPlugin from 'eslint-plugin-import';
+import playwright from 'eslint-plugin-playwright';
 import react from 'eslint-plugin-react';
-import * as reactHooks from 'eslint-plugin-react-hooks';
+import reactHooks from 'eslint-plugin-react-hooks';
 import unicorn from 'eslint-plugin-unicorn';
+import tseslint from 'typescript-eslint';
 
-export default tseslint.config(
+export default defineConfig(
   {
     ignores: [
       '**/dist/',
       '**/.cache/',
+      '**/pages.gen.ts',
       'packages/create-waku/template/',
       'examples/07_cloudflare/.wrangler/',
     ],
@@ -19,7 +22,7 @@ export default tseslint.config(
   importPlugin.flatConfigs.recommended,
   react.configs.flat.recommended,
   react.configs.flat['jsx-runtime'],
-  reactHooks.configs.recommended,
+  reactHooks.configs.flat.recommended,
   {
     files: ['**/*.{ts,tsx,js,jsx}'],
     settings: {
@@ -53,6 +56,36 @@ export default tseslint.config(
       ],
       'react/prop-types': 'off',
       curly: ['error', 'all'],
+      'sort-imports': [
+        'error',
+        {
+          ignoreDeclarationSort: true,
+        },
+      ],
+      'import/order': [
+        'error',
+        {
+          alphabetize: { order: 'asc', caseInsensitive: true },
+          groups: [
+            'builtin',
+            'external',
+            'internal',
+            'parent',
+            'sibling',
+            'index',
+            'object',
+          ],
+          'newlines-between': 'never',
+          pathGroups: [
+            {
+              pattern: 'react',
+              group: 'builtin',
+              position: 'before',
+            },
+          ],
+          pathGroupsExcludedImportTypes: ['builtin'],
+        },
+      ],
       'unicorn/prefer-string-slice': 'error',
       'no-restricted-syntax': [
         'error',
@@ -60,6 +93,21 @@ export default tseslint.config(
           selector: "TSQualifiedName[left.name='React']",
           message:
             'Import React types directly instead of using React.* namespace',
+        },
+      ],
+    },
+  },
+  {
+    ...playwright.configs['flat/recommended'],
+    files: ['e2e/**'],
+  },
+  {
+    files: ['e2e/**'],
+    rules: {
+      'playwright/no-skipped-test': [
+        'error',
+        {
+          allowConditional: true,
         },
       ],
     },

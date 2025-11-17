@@ -1,8 +1,8 @@
 'use client';
 
 import { useTransition } from 'react';
-import { unstable_allowServer as allowServer } from 'waku/client';
 import { atom, useAtom } from 'jotai';
+import { unstable_allowServer as allowServer } from 'waku/client';
 
 export const countAtom = allowServer(atom(1));
 

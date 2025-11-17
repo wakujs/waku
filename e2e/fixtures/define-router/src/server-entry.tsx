@@ -1,20 +1,21 @@
+import type { ReactNode } from 'react';
 import { readFile } from 'node:fs/promises';
+import adapter from 'waku/adapters/default';
+import { Children, Slot } from 'waku/minimal/client';
 import { unstable_defineRouter as defineRouter } from 'waku/router/server';
-import { Slot, Children } from 'waku/minimal/client';
-
-import Layout from './routes/layout.js';
-import Page from './routes/page.js';
-import FooPage from './routes/foo/page.js';
+import { Slice001 } from './components/slice001.js';
+import { Slice002 } from './components/slice002.js';
 import Bar1Page from './routes/bar1/page.js';
 import Bar2Page from './routes/bar2/page.js';
 import Baz1Page from './routes/baz1/page.js';
 import Baz2Page from './routes/baz2/page.js';
-import { Slice001 } from './components/slice001.js';
-import { Slice002 } from './components/slice002.js';
+import FooPage from './routes/foo/page.js';
+import Layout from './routes/layout.js';
+import Page from './routes/page.js';
 
 const STATIC_PATHS = ['/', '/foo', '/baz2'];
 const STATIC_PAGES = ['/', '/foo', '/bar2', '/baz2'];
-const PATH_PAGE: Record<string, unknown> = {
+const PATH_PAGE: Record<string, ReactNode> = {
   '/': <Page />,
   '/foo': <FooPage />,
   '/bar1': <Bar1Page />, // dynamic page + static slice
@@ -82,7 +83,7 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
       throw new Error('renderRoute: No such path:' + path);
     }
     return {
-      rootElement: (
+      renderRoot: () => (
         <html>
           <head>
             <title>Waku example</title>
@@ -92,18 +93,18 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
           </body>
         </html>
       ),
-      routeElement: (
+      renderRoute: () => (
         <Slot id="layout:/">
           <Slot id={`page:${path}`} />
         </Slot>
       ),
-      elements: {
-        'layout:/': (
+      renderers: {
+        'layout:/': () => (
           <Layout>
             <Children />
           </Layout>
         ),
-        [`page:${path}`]: PATH_PAGE[path],
+        [`page:${path}`]: () => PATH_PAGE[path],
       },
       ...(path === '/' ? { slices: ['slice001'] } : {}),
       ...(path === '/bar1' ? { slices: ['slice001'] } : {}),
@@ -164,4 +165,4 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
   },
 });
 
-export default router;
+export default adapter(router);

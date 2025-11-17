@@ -1,10 +1,9 @@
 'use client';
 
 import cx from 'classnames';
-import { Link } from 'waku';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-
-import { menuAtom, destinationAtom, scrolledAtom } from '../atoms';
+import { Link } from 'waku';
+import { destinationAtom, menuAtom, scrolledAtom } from '../atoms';
 import { Logo } from '../components/logo';
 import { Sponsors } from '../components/sponsors';
 import { scrollTo } from '../utils';

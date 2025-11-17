@@ -2,7 +2,6 @@
 
 import cx from 'classnames';
 import { useAtomValue } from 'jotai';
-
 import { scrolledAtom } from '../atoms';
 
 type FadeProps = {
