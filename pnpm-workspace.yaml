@@ -14,5 +14,3 @@ minimumReleaseAgeExclude:
   - 'react-dom'
   - 'react-server-dom-webpack'
   - 'scheduler'
-overrides:
-  esbuild: 0.25.4
