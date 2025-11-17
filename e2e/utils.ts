@@ -55,12 +55,56 @@ export async function findWakuPort(cp: ChildProcess): Promise<number> {
   });
 }
 
+// Helper to get all child PIDs recursively
+async function getChildPids(parentPid: number): Promise<number[]> {
+  try {
+    const { stdout } = await execAsync(`pgrep -P ${parentPid}`);
+    const childPids = stdout
+      .trim()
+      .split('\n')
+      .filter((pid) => pid)
+      .map((pid) => parseInt(pid, 10));
+
+    // Recursively get grandchildren
+    const grandchildPids = await Promise.all(
+      childPids.map((pid) => getChildPids(pid)),
+    );
+
+    return [...childPids, ...grandchildPids.flat()];
+  } catch {
+    // No children found or pgrep failed
+    return [];
+  }
+}
+
 // Upstream doesn't support ES module
 //  Related: https://github.com/dwyl/terminate/pull/85
-export const terminate = async (port: number) => {
-  await fkill(`:${port}`, {
-    force: true,
-  });
+export const terminate = async (cp: ChildProcess) => {
+  if (!cp.pid) {
+    return;
+  }
+
+  try {
+    // Get all child processes first
+    const childPids = await getChildPids(cp.pid);
+    const allPids = [cp.pid, ...childPids];
+
+    // Kill all processes (children first, then parent)
+    for (const pid of allPids.reverse()) {
+      try {
+        await fkill(pid, { force: true });
+      } catch {
+        // Process might already be dead
+      }
+    }
+  } catch {
+    // Fallback to just killing the parent
+    try {
+      cp.kill('SIGTERM');
+    } catch {
+      // Process might already be dead
+    }
+  }
 };
 
 const unexpectedErrors: RegExp[] = [
@@ -158,7 +202,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     const port = await findWakuPort(cp);
     const stopApp = async () => {
-      await terminate(port);
+      await terminate(cp);
     };
     return { port, stopApp, fixtureDir };
   };
@@ -330,7 +374,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     const port = await findWakuPort(cp);
     const stopApp = async () => {
       builtModeMap.delete(packageManager);
-      await terminate(port);
+      await terminate(cp);
     };
     return { port, stopApp, standaloneDir };
   };
