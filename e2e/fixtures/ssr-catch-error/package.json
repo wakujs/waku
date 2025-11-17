@@ -9,7 +9,7 @@
     "start": "waku start"
   },
   "dependencies": {
-    "hono": "4.10.4",
+    "hono": "4.10.6",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-error-boundary": "^6.0.0",
