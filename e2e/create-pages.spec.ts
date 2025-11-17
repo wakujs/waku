@@ -27,6 +27,13 @@ test.describe(`create-pages`, () => {
         .getPropertyValue('background-color'),
     );
     expect(backgroundColor).toBe('rgb(254, 254, 254)');
+    await expect(page.getByTestId('home-layout-render-count')).toHaveText(
+      'Render Count: 1',
+    );
+    await page.reload();
+    await expect(page.getByTestId('home-layout-render-count')).toHaveText(
+      'Render Count: 1',
+    );
   });
 
   test('foo', async ({ page }) => {
@@ -367,6 +374,11 @@ test.describe(`create-pages`, () => {
     await expect(staticSliceText2).toHaveText(staticSliceText);
     const dynamicSliceText2 = page.getByTestId('slice002');
     await expect(dynamicSliceText2).not.toHaveText(dynamicSliceText);
+
+    // test static slices behavior after hard navigation
+    await page.reload();
+    const staticSliceText3 = page.getByTestId('slice001');
+    await expect(staticSliceText3).toHaveText(staticSliceText);
   });
 
   test('slices with lazy', async ({ page }) => {
