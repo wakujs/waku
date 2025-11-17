@@ -7,7 +7,7 @@
     "dev": "waku dev",
     "build": "waku build",
     "start": "waku start",
-    "start-static": "node ./setup-static.js && http-server dist/.tmp"
+    "start-static": "node ./setup-static.js && serve dist/.tmp"
   },
   "dependencies": {
     "react": "19.2.0",
@@ -18,6 +18,6 @@
   "devDependencies": {
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
-    "http-server": "^14.1.1"
+    "serve": "^14.2.5"
   }
 }

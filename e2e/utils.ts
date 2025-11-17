@@ -36,13 +36,11 @@ export async function findWakuPort(cp: ChildProcess): Promise<number> {
   return new Promise((resolve, reject) => {
     function listener(data: unknown) {
       const str = stripVTControlCharacters(`${data}`);
-      const match = str.match(
-        /http:\/\/(localhost|127\.0\.0\.1):(\d+)|on port (\d+)/,
-      );
+      const match = str.match(/http:\/\/localhost:(\d+)|on port (\d+)/);
       if (match) {
         clearTimeout(timer);
         cp.stdout?.off('data', listener);
-        const port = match[2] || match[3]!;
+        const port = match[1] || match[2]!;
         info(`Waku server started at port ${port}`);
         resolve(parseInt(port, 10));
       }
@@ -55,56 +53,12 @@ export async function findWakuPort(cp: ChildProcess): Promise<number> {
   });
 }
 
-// Helper to get all child PIDs recursively
-async function getChildPids(parentPid: number): Promise<number[]> {
-  try {
-    const { stdout } = await execAsync(`pgrep -P ${parentPid}`);
-    const childPids = stdout
-      .trim()
-      .split('\n')
-      .filter((pid) => pid)
-      .map((pid) => parseInt(pid, 10));
-
-    // Recursively get grandchildren
-    const grandchildPids = await Promise.all(
-      childPids.map((pid) => getChildPids(pid)),
-    );
-
-    return [...childPids, ...grandchildPids.flat()];
-  } catch {
-    // No children found or pgrep failed
-    return [];
-  }
-}
-
 // Upstream doesn't support ES module
 //  Related: https://github.com/dwyl/terminate/pull/85
-export const terminate = async (cp: ChildProcess) => {
-  if (!cp.pid) {
-    return;
-  }
-
-  try {
-    // Get all child processes first
-    const childPids = await getChildPids(cp.pid);
-    const allPids = [cp.pid, ...childPids];
-
-    // Kill all processes (children first, then parent)
-    for (const pid of allPids.reverse()) {
-      try {
-        await fkill(pid, { force: true });
-      } catch {
-        // Process might already be dead
-      }
-    }
-  } catch {
-    // Fallback to just killing the parent
-    try {
-      cp.kill('SIGTERM');
-    } catch {
-      // Process might already be dead
-    }
-  }
+export const terminate = async (port: number) => {
+  await fkill(`:${port}`, {
+    force: true,
+  });
 };
 
 const unexpectedErrors: RegExp[] = [
@@ -192,7 +146,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
         cmd = `node ${waku} start`;
         break;
       case 'STATIC':
-        cmd = `pnpm http-server dist/public`;
+        cmd = `pnpm serve dist/public`;
         break;
     }
     if (options?.cmd) {
@@ -202,7 +156,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     const port = await findWakuPort(cp);
     const stopApp = async () => {
-      await terminate(cp);
+      await terminate(port);
     };
     return { port, stopApp, fixtureDir };
   };
@@ -366,7 +320,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         cmd = `node ${waku} start`;
         break;
       case 'STATIC':
-        cmd = `node ${join(standaloneDir, './node_modules/http-server/bin/http-server')} dist/public`;
+        cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} dist/public`;
         break;
     }
     const cp = exec(cmd, { cwd: join(standaloneDir, packageDir) });
@@ -374,7 +328,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     const port = await findWakuPort(cp);
     const stopApp = async () => {
       builtModeMap.delete(packageManager);
-      await terminate(cp);
+      await terminate(port);
     };
     return { port, stopApp, standaloneDir };
   };

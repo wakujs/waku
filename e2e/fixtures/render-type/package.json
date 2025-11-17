@@ -7,13 +7,13 @@
     "dev": "waku dev",
     "build": "waku build",
     "start:dynamic": "waku start",
-    "start:static": "http-server dist/public"
+    "start:static": "serve dist/public"
   },
   "dependencies": {
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-server-dom-webpack": "19.2.0",
-    "http-server": "^14.1.1",
+    "serve": "^14.2.5",
     "waku": "latest"
   },
   "devDependencies": {
