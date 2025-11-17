@@ -5,14 +5,17 @@ import {
   test,
   waitForHydration,
 } from './utils.js';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 
 const startApp = prepareNormalSetup('create-pages');
 
 test.describe(`create-pages`, () => {
   let port: number;
   let stopApp: (() => Promise<void>) | undefined;
+  let fixtureDir: string;
   test.beforeAll(async ({ mode }) => {
-    ({ port, stopApp } = await startApp(mode));
+    ({ port, stopApp, fixtureDir } = await startApp(mode));
   });
   test.afterAll(async () => {
     await stopApp?.();
@@ -271,7 +274,10 @@ test.describe(`create-pages`, () => {
     expect(await res.text()).toBe('hello from a text file!');
   });
 
-  test('api empty', async () => {
+  test('api empty', async ({ mode }) => {
+    if (mode === 'PRD') {
+      existsSync(path.join(fixtureDir, 'dist', 'public', 'api', 'empty'));
+    }
     const res = await fetch(`http://localhost:${port}/api/empty`);
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('');
