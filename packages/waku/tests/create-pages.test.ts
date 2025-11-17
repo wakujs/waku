@@ -1260,9 +1260,9 @@ describe('createPages pages and layouts', () => {
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
-    expect(route.rootElement).toBeDefined();
-    expect(route.routeElement).toBeDefined();
-    expect(Object.keys(route.elements)).toEqual(['page:/docs/v1.0.0']);
+    expect(route.renderRoot).toBeDefined();
+    expect(route.renderRoute).toBeDefined();
+    expect(Object.keys(route.renderers)).toEqual(['page:/docs/v1.0.0']);
   });
 
   it('creates a static page with slugs containing spaces (converts to hyphens)', async () => {
@@ -1336,9 +1336,9 @@ describe('createPages pages and layouts', () => {
       query: '?skip=[]',
     });
     expect(route).toBeDefined();
-    expect(route.rootElement).toBeDefined();
-    expect(route.routeElement).toBeDefined();
-    expect(Object.keys(route.elements)).toEqual(['page:/pokemon/Mr.-Mime']);
+    expect(route.renderRoot).toBeDefined();
+    expect(route.renderRoute).toBeDefined();
+    expect(Object.keys(route.renderers)).toEqual(['page:/pokemon/Mr.-Mime']);
   });
 
   it('allows to disable SSR on static and dynamic pages', async () => {
