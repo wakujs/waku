@@ -112,6 +112,9 @@ const pathSpec2pathname = (pathSpec: PathSpec) => {
   return '/' + pathSpec.map(({ name }) => name!).join('/');
 };
 
+const htmlPath2pathname = (htmlPath: string): string =>
+  htmlPath === '/404' ? '404.html' : htmlPath + '/index.html';
+
 export function unstable_rerenderRoute(pathname: string, query?: string) {
   const rscPath = encodeRoutePath(pathname);
   getRerender()(rscPath, query && new URLSearchParams({ query }));
@@ -425,9 +428,6 @@ export function unstable_defineRouter(fns: {
 
   type HandleRequest = Parameters<typeof defineHandlers>[0]['handleRequest'];
   type HandleBuild = Parameters<typeof defineHandlers>[0]['handleBuild'];
-
-  const htmlPath2pathname = (htmlPath: string): string =>
-    htmlPath === '/404' ? '404.html' : htmlPath + '/index.html';
 
   const cachedElementsForRequest = new Map<SlotId, Promise<ReactNode>>();
   let cachedElementsForRequestInitialized = false;
