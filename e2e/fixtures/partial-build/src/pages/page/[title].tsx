@@ -1,5 +1,5 @@
-import { getEnv } from 'waku/server';
 import fs from 'node:fs';
+import { getEnv } from 'waku/server';
 
 export default function Test({ title }: { title: string }) {
   fs.mkdirSync('dist/e2e/render', { recursive: true });
