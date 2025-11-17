@@ -112,6 +112,9 @@ const pathSpec2pathname = (pathSpec: PathSpec) => {
   return '/' + pathSpec.map(({ name }) => name!).join('/');
 };
 
+const htmlPath2pathname = (htmlPath: string): string =>
+  htmlPath === '/404' ? '404.html' : htmlPath + '/index.html';
+
 export function unstable_rerenderRoute(pathname: string, query?: string) {
   const rscPath = encodeRoutePath(pathname);
   getRerender()(rscPath, query && new URLSearchParams({ query }));
@@ -720,7 +723,7 @@ export function unstable_defineRouter(fns: {
             />
           );
           const res = await renderHtml(stream2, html, { rscPath });
-          await generateFile(pathname, res.body || '');
+          await generateFile(htmlPath2pathname(pathname), res.body || '');
         });
       });
     }
@@ -736,7 +739,7 @@ export function unstable_defineRouter(fns: {
           throw new Error('Pathname is required for noSsr routes on build');
         }
         runTask(async () => {
-          await generateDefaultHtml(pathname);
+          await generateDefaultHtml(htmlPath2pathname(pathname));
         });
       }
     }
