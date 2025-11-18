@@ -13,12 +13,12 @@
     "react-dom": "19.2.0",
     "react-server-dom-webpack": "19.2.0",
     "react-tweet": "^3.2.2",
-    "waku": "0.27.0"
+    "waku": "0.27.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.1.17",
-    "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
+    "@types/react": "19.2.5",
+    "@types/react-dom": "19.2.3",
     "tailwindcss": "4.1.17",
     "typescript": "5.9.3"
   }

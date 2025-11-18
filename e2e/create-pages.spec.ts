@@ -1,3 +1,5 @@
+import { statSync } from 'node:fs';
+import path from 'node:path';
 import { expect } from '@playwright/test';
 import {
   FETCH_ERROR_MESSAGES,
@@ -11,8 +13,9 @@ const startApp = prepareNormalSetup('create-pages');
 test.describe(`create-pages`, () => {
   let port: number;
   let stopApp: (() => Promise<void>) | undefined;
+  let fixtureDir: string;
   test.beforeAll(async ({ mode }) => {
-    ({ port, stopApp } = await startApp(mode));
+    ({ port, stopApp, fixtureDir } = await startApp(mode));
   });
   test.afterAll(async () => {
     await stopApp?.();
@@ -27,6 +30,13 @@ test.describe(`create-pages`, () => {
         .getPropertyValue('background-color'),
     );
     expect(backgroundColor).toBe('rgb(254, 254, 254)');
+    await expect(page.getByTestId('home-layout-render-count')).toHaveText(
+      'Render Count: 1',
+    );
+    await page.reload();
+    await expect(page.getByTestId('home-layout-render-count')).toHaveText(
+      'Render Count: 1',
+    );
   });
 
   test('foo', async ({ page }) => {
@@ -264,7 +274,14 @@ test.describe(`create-pages`, () => {
     expect(await res.text()).toBe('hello from a text file!');
   });
 
-  test('api empty', async () => {
+  test('api empty', async ({ mode }) => {
+    if (mode === 'PRD') {
+      expect(
+        statSync(
+          path.join(fixtureDir, 'dist', 'public', 'api', 'empty'),
+        ).isFile(),
+      ).toBe(true);
+    }
     const res = await fetch(`http://localhost:${port}/api/empty`);
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('');
@@ -367,6 +384,11 @@ test.describe(`create-pages`, () => {
     await expect(staticSliceText2).toHaveText(staticSliceText);
     const dynamicSliceText2 = page.getByTestId('slice002');
     await expect(dynamicSliceText2).not.toHaveText(dynamicSliceText);
+
+    // test static slices behavior after hard navigation
+    await page.reload();
+    const staticSliceText3 = page.getByTestId('slice001');
+    await expect(staticSliceText3).toHaveText(staticSliceText);
   });
 
   test('slices with lazy', async ({ page }) => {
