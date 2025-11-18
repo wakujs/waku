@@ -15,4 +15,4 @@ export async function INTERNAL_runFetch(
 // export standard-ish fetch handler entry point
 export default {
   fetch: serverEntry.fetch,
-}
+};

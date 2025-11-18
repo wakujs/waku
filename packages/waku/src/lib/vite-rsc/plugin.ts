@@ -432,7 +432,7 @@ function virtualAdapterPlugin(config: Required<Config>): Plugin {
           );
         }
       }
-    }
+    },
   };
 }
 
