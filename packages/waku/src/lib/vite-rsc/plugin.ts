@@ -33,6 +33,7 @@ import {
   getManagedServerEntry,
 } from '../utils/managed.js';
 import { joinPath } from '../utils/path.js';
+import { createProgressLogger } from '../utils/progress-logger.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
 
@@ -540,10 +541,7 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
         );
         await writeFile(buildMetadataFile, dummySource);
 
-        let fileCount = 0;
-        const showProgress = process.stdout.isTTY && !process.env.CI;
-        const throttleWrite = throttle((s: string) => writeLine(s));
-
+        const progress = createProgressLogger();
         const emitFile = async (
           filePath: string,
           body: ReadableStream | string,
@@ -560,12 +558,7 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           ) {
             return;
           }
-          fileCount++;
-          if (showProgress) {
-            throttleWrite(
-              `(${fileCount}) generating a file ${pc.dim(filePath)}`,
-            );
-          }
+          progress.update(`generating a file ${pc.dim(filePath)}`);
           await mkdir(joinPath(destFile, '..'), { recursive: true });
           if (typeof body === 'string') {
             await writeFile(destFile, body);
@@ -585,9 +578,8 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
         const entry: typeof import('../vite-entries/entry.build.js') =
           await import(pathToFileURL(entryPath).href);
         await entry.INTERNAL_runBuild({ rootDir, emitFile });
-        if (showProgress) {
-          clearLine();
-        }
+        progress.done();
+        const fileCount = progress.getCount();
         console.log(
           pc.green(
             `✓ ${fileCount} file${fileCount !== 1 ? 's' : ''} generated in ${Math.ceil(performance.now() - startTime)}ms`,
