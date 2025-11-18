@@ -20,7 +20,7 @@ import type {
   Unstable_ProcessRequest as ProcessRequest,
 } from '../types.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
-import { extname, joinPath } from '../utils/path.js';
+import { joinPath } from '../utils/path.js';
 import { createRenderUtils } from '../utils/render.js';
 import { getInput } from '../utils/request.js';
 import { encodeRscPath } from '../utils/rsc-path.js';
@@ -34,11 +34,6 @@ function loadSsrEntryModule() {
     'index',
   );
 }
-
-const isFile = (pathname: string) => {
-  const ext = extname(pathname);
-  return ext === '.html' || ext === '.txt' || ext === '.xml';
-};
 
 const toProcessRequest =
   (handleRequest: HandleRequest): ProcessRequest =>
@@ -130,27 +125,14 @@ const toProcessBuild =
         buildMetadata.set(key, value);
       },
       withRequest: (req, fn) => INTERNAL_runWithContext(req, fn),
-      generateFile: async (pathname: string, body: ReadableStream | string) => {
-        const filePath = joinPath(
-          DIST_PUBLIC,
-          isFile(pathname)
-            ? pathname
-            : pathname === '/404'
-              ? '404.html' // HACK special treatment for 404, better way?
-              : pathname + '/index.html',
-        );
-        await emitFile(filePath, body);
+      generateFile: async (fileName, body) => {
+        await emitFile(joinPath(DIST_PUBLIC, fileName), body);
       },
-      generateDefaultHtml: async (pathname: string) => {
-        const filePath = joinPath(
-          DIST_PUBLIC,
-          isFile(pathname)
-            ? pathname
-            : pathname === '/404'
-              ? '404.html' // HACK special treatment for 404, better way?
-              : pathname + '/index.html',
+      generateDefaultHtml: async (fileName) => {
+        await emitFile(
+          joinPath(DIST_PUBLIC, fileName),
+          await getFallbackHtml(),
         );
-        await emitFile(filePath, await getFallbackHtml());
       },
     });
 

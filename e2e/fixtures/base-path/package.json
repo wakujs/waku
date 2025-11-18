@@ -16,8 +16,8 @@
     "waku": "latest"
   },
   "devDependencies": {
-    "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
+    "@types/react": "19.2.5",
+    "@types/react-dom": "19.2.3",
     "serve": "^14.2.5"
   }
 }

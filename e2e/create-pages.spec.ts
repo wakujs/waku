@@ -1,3 +1,5 @@
+import { statSync } from 'node:fs';
+import path from 'node:path';
 import { expect } from '@playwright/test';
 import {
   FETCH_ERROR_MESSAGES,
@@ -11,8 +13,9 @@ const startApp = prepareNormalSetup('create-pages');
 test.describe(`create-pages`, () => {
   let port: number;
   let stopApp: (() => Promise<void>) | undefined;
+  let fixtureDir: string;
   test.beforeAll(async ({ mode }) => {
-    ({ port, stopApp } = await startApp(mode));
+    ({ port, stopApp, fixtureDir } = await startApp(mode));
   });
   test.afterAll(async () => {
     await stopApp?.();
@@ -271,7 +274,14 @@ test.describe(`create-pages`, () => {
     expect(await res.text()).toBe('hello from a text file!');
   });
 
-  test('api empty', async () => {
+  test('api empty', async ({ mode }) => {
+    if (mode === 'PRD') {
+      expect(
+        statSync(
+          path.join(fixtureDir, 'dist', 'public', 'api', 'empty'),
+        ).isFile(),
+      ).toBe(true);
+    }
     const res = await fetch(`http://localhost:${port}/api/empty`);
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('');

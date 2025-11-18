@@ -56,10 +56,10 @@ export type Unstable_HandleBuild = (utils: {
   // TODO(daishi) not a big fan of this API
   withRequest: <T>(req: Request, fn: () => T) => T;
   generateFile: (
-    pathname: string,
+    fileName: string,
     body: ReadableStream | string,
   ) => Promise<void>;
-  generateDefaultHtml: (pathname: string) => Promise<void>;
+  generateDefaultHtml: (fileName: string) => Promise<void>;
 }) => Promise<void>;
 
 export type Unstable_ServerEntry = {
