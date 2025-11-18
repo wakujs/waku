@@ -13,6 +13,8 @@ export default async function Test({ path }: PageProps<'/[slug]'>) {
 export async function getConfig() {
   return {
     render: 'static',
-    staticPaths: new Array(5000).fill(null).map((_, i) => `path-${i}`),
+    // concurrency of 500 creates 4 batches and each batch takes 1 second,
+    // so ssg takes at least 4 seconds in total.
+    staticPaths: new Array(2000).fill(null).map((_, i) => `path-${i}`),
   };
 }
