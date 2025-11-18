@@ -563,7 +563,7 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
           fileCount++;
           if (showProgress) {
             throttleWrite(
-              `(${fileCount}) generating a file  ${pc.dim(filePath)}`,
+              `(${fileCount}) generating a file ${pc.dim(filePath)}`,
             );
           }
           await mkdir(joinPath(destFile, '..'), { recursive: true });
