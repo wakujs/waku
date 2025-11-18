@@ -9,7 +9,7 @@ const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 export default createServerEntryAdapter(
   (
-    { processRequest, processBuild },
+    { processRequest, processBuild, notFoundHtml },
     options?: {
       middlewareFns?: (() => MiddlewareHandler)[];
       middlewareModules?: Record<
@@ -22,6 +22,12 @@ export default createServerEntryAdapter(
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
     const app = new Hono();
+    app.notFound((c) => {
+      if (notFoundHtml) {
+        return c.html(notFoundHtml, 404);
+      }
+      return c.text('404 Not Found', 404);
+    });
     app.use(contextMiddleware());
     for (const middlewareFn of middlewareFns) {
       app.use(middlewareFn());
