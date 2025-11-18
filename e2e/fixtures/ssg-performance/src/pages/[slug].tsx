@@ -2,7 +2,11 @@ import type { PageProps } from 'waku/router';
 import { Path } from '../Path.js';
 
 export default async function Test({ path }: PageProps<'/[slug]'>) {
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  await new Promise((resolve) =>
+    // use random to make progress more realistic
+    // eslint-disable-next-line react-hooks/purity
+    setTimeout(resolve, 1000 + 100 * Math.random()),
+  );
   return <Path path={path} />;
 }
 
