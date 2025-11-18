@@ -1,7 +1,24 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export default async function postBuild({ distDir }: { distDir: string }) {
+export default async function postBuild({
+  // TBD if we should use these
+  // assetsDir,
+  distDir,
+  // rscBase,
+  // privateDir,
+  // basePath,
+  DIST_PUBLIC,
+  serverless,
+}: {
+  assetsDir: string;
+  distDir: string;
+  rscBase: string;
+  privateDir: string;
+  basePath: string;
+  DIST_PUBLIC: string;
+  serverless: boolean;
+}) {
   const mainEntry = path.resolve(
     path.join(distDir, 'server', 'serve-cloudflare.js'),
   );
@@ -29,16 +46,20 @@ export default {
       `\
 {
   "name": "waku-project",
-  "main": ${JSON.stringify(forceRelativePath(path.relative(process.cwd(), mainEntry)))},
-  // https://developers.cloudflare.com/workers/platform/compatibility-dates
-  "compatibility_date": "2024-11-11",
+${
+  serverless
+    ? `"main": ${JSON.stringify(forceRelativePath(path.relative(process.cwd(), mainEntry)))},
+`
+    : ''
+}. // https://developers.cloudflare.com/workers/platform/compatibility-dates
+  "compatibility_date": "2025-11-17",
   // nodejs_als is required for Waku server-side request context
   // It can be removed if only building static pages
   "compatibility_flags": ["nodejs_als"],
   // https://developers.cloudflare.com/workers/static-assets/binding/
   "assets": {
     "binding": "ASSETS",
-    "directory": "./dist/public",
+    "directory": "./${distDir}/${DIST_PUBLIC}",
     "html_handling": "drop-trailing-slash",
     "not_found_handling": "404-page"
   }
