@@ -1546,6 +1546,30 @@ npm run build
 
 The handler entrypoint is `dist/serve-asw-lambda.js`: see [Hono AWS Lambda Deploy Docs](https://hono.dev/getting-started/aws-lambda#_3-deploy).
 
+
+### Edge
+
+`waku/adapters/edge` adapter provides a minimal server output without deployment target specific code. For example, you can use it with [Nitro](https://nitro.build/) to handle packaging for various deployment platforms. See https://github.com/hi-ogawa/waku-nitro-example for the example.
+
+```ts
+// [waku.config.ts]
+import { defineConfig } from "waku/config"
+import nitro from "@hiogawa/vite-plugin-nitro";
+
+export default defineConfig({
+  adapter: 'waku/adapters/edge',
+  vite: {
+    plugins: [
+      nitro({
+        server: {
+          environmentName: "rsc",
+        },
+      }),
+    ],
+  },
+});
+```
+
 ## Community
 
 Please join our friendly [GitHub discussions](https://github.com/wakujs/waku/discussions) or [Discord server](https://discord.gg/MrQdmzd) to participate in the Waku community. Hope to see you there!
