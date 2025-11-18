@@ -589,34 +589,3 @@ function buildPlugin({ distDir }: { distDir: string }): Plugin {
     },
   };
 }
-
-// copied from Vite
-// https://github.com/vitejs/vite/blob/fa3753a0f3a6c12659d8a68eefbd055c5ab90552/packages/vite/src/node/plugins/reporter.ts#L342
-function writeLine(output: string) {
-  clearLine();
-  if (output.length < process.stdout.columns) {
-    process.stdout.write(output);
-  } else {
-    process.stdout.write(
-      output.slice(0, Math.max(0, process.stdout.columns - 1)),
-    );
-  }
-}
-
-function clearLine() {
-  process.stdout.clearLine(0);
-  process.stdout.cursorTo(0);
-}
-
-function throttle(fn: (...args: any[]) => void) {
-  let timerHandle: NodeJS.Timeout | null = null;
-  return (...args: any[]) => {
-    if (timerHandle) {
-      return;
-    }
-    fn(...args);
-    timerHandle = setTimeout(() => {
-      timerHandle = null;
-    }, 50);
-  };
-}
