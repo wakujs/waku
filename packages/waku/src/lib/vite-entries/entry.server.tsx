@@ -14,5 +14,5 @@ export async function INTERNAL_runFetch(
 
 // export standard-ish fetch handler entry point
 export default {
-  fetch: (req: Request, ...args: any[]) => INTERNAL_runFetch({}, req, ...args),
+  fetch: serverEntry.fetch,
 }
