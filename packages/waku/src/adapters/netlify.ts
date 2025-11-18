@@ -23,7 +23,7 @@ const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 export default createServerEntryAdapter(
   (
-    { processRequest, processBuild, config },
+    { processRequest, processBuild, config, notFoundHtml },
     options?: {
       static?: boolean;
       middlewareFns?: (() => MiddlewareHandler)[];
@@ -37,19 +37,18 @@ export default createServerEntryAdapter(
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
     const app = new Hono();
+    app.notFound((c) => {
+      if (notFoundHtml) {
+        return c.html(notFoundHtml, 404);
+      }
+      return c.text('404 Not Found', 404);
+    });
     app.use(contextMiddleware());
     for (const middlewareFn of middlewareFns) {
       app.use(middlewareFn());
     }
     app.use(middlewareRunner(middlewareModules));
     app.use(rscMiddleware({ processRequest }));
-    app.notFound((c) => {
-      const notFoundHtml = (globalThis as any).__WAKU_NOT_FOUND_HTML__;
-      if (typeof notFoundHtml === 'string') {
-        return c.html(notFoundHtml, 404);
-      }
-      return c.text('404 Not Found', 404);
-    });
     const postBuildScript = joinPath(
       import.meta.__WAKU_ORIGINAL_PATH__,
       '../lib/netlify-post-build.js',

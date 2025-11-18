@@ -1,4 +1,3 @@
-import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { getRequestListener } from '@hono/node-server';
 import { Hono } from 'hono';
@@ -27,7 +26,7 @@ const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 export default createServerEntryAdapter(
   (
-    { processRequest, processBuild, config },
+    { processRequest, processBuild, config, notFoundHtml },
     options?: {
       static?: boolean;
       assetsDir?: string;
@@ -42,19 +41,18 @@ export default createServerEntryAdapter(
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
     const app = new Hono();
+    app.notFound((c) => {
+      if (notFoundHtml) {
+        return c.html(notFoundHtml, 404);
+      }
+      return c.text('404 Not Found', 404);
+    });
     app.use(contextMiddleware());
     for (const middlewareFn of middlewareFns) {
       app.use(middlewareFn());
     }
     app.use(middlewareRunner(middlewareModules));
     app.use(rscMiddleware({ processRequest }));
-    app.notFound((c) => {
-      const file = path.join(config.distDir, DIST_PUBLIC, '404.html');
-      if (existsSync(file)) {
-        return c.html(readFileSync(file, 'utf8'), 404);
-      }
-      return c.text('404 Not Found', 404);
-    });
     const postBuildScript = joinPath(
       import.meta.__WAKU_ORIGINAL_PATH__,
       '../lib/vercel-post-build.js',

@@ -11,9 +11,6 @@ const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
   allowPositionals: true,
   options: {
-    'experimental-partial': {
-      type: 'boolean',
-    },
     host: {
       type: 'string',
       short: 'h',
