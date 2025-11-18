@@ -21,7 +21,7 @@ const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 export default createServerEntryAdapter(
   (
-    { processRequest, processBuild, config },
+    { processRequest, processBuild, config, notFoundHtml },
     options?: {
       middlewareFns?: (() => MiddlewareHandler)[];
       middlewareModules?: Record<
@@ -34,27 +34,18 @@ export default createServerEntryAdapter(
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
     const app = new Hono();
+    app.notFound((c) => {
+      if (notFoundHtml) {
+        return c.html(notFoundHtml, 404);
+      }
+      return c.text('404 Not Found', 404);
+    });
     app.use(contextMiddleware());
     for (const middlewareFn of middlewareFns) {
       app.use(middlewareFn());
     }
     app.use(middlewareRunner(middlewareModules));
     app.use(rscMiddleware({ processRequest }));
-    app.notFound(async (c) => {
-      const assetsFetcher = (c.env as any).ASSETS;
-      const url = new URL(c.req.raw.url);
-      const errorHtmlUrl = url.origin + '/404.html';
-      const notFoundStaticAssetResponse = await assetsFetcher?.fetch(
-        new URL(errorHtmlUrl),
-      );
-      if (
-        notFoundStaticAssetResponse &&
-        notFoundStaticAssetResponse.status < 400
-      ) {
-        return c.body(notFoundStaticAssetResponse.body, 404);
-      }
-      return c.text('404 Not Found', 404);
-    });
     const postBuildScript = joinPath(
       import.meta.__WAKU_ORIGINAL_PATH__,
       '../lib/cloudflare-post-build.js',

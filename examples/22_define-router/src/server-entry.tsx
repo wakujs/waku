@@ -107,111 +107,111 @@ export default adapter(
     handleRoute: async (path) => {
       if (path === '/') {
         return {
-          rootElement: (
+          renderRoot: () => (
             <Root>
               <Children />
             </Root>
           ),
-          routeElement: (
+          renderRoute: () => (
             <Slot id="layout:/">
               <Slot id="page:/" />
             </Slot>
           ),
-          elements: {
-            'layout:/': (
+          renderers: {
+            'layout:/': () => (
               <HomeLayout>
                 <Children />
               </HomeLayout>
             ),
-            'page:/': <HomePage />,
+            'page:/': () => <HomePage />,
           },
         };
       }
       if (path === '/foo') {
         return {
-          rootElement: (
+          renderRoot: () => (
             <Root>
               <Children />
             </Root>
           ),
-          routeElement: (
+          renderRoute: () => (
             <Slot id="layout:/">
               <Slot id="page:/foo" />
             </Slot>
           ),
-          elements: {
-            'layout:/': (
+          renderers: {
+            'layout:/': () => (
               <HomeLayout>
                 <Children />
               </HomeLayout>
             ),
-            'page:/foo': <FooPage />,
+            'page:/foo': () => <FooPage />,
           },
         };
       }
       if (path === '/bar') {
         return {
-          rootElement: (
+          renderRoot: () => (
             <Root>
               <Children />
             </Root>
           ),
-          routeElement: (
+          renderRoute: () => (
             <Slot id="layout:/">
               <Slot id="page:/bar" />
             </Slot>
           ),
-          elements: {
-            'layout:/': (
+          renderers: {
+            'layout:/': () => (
               <HomeLayout>
                 <Children />
               </HomeLayout>
             ),
-            'page:/bar': <BarPage />,
+            'page:/bar': () => <BarPage />,
           },
         };
       }
       if (path === '/nested/baz') {
         return {
-          rootElement: (
+          renderRoot: () => (
             <Root>
               <Children />
             </Root>
           ),
-          routeElement: (
+          renderRoute: () => (
             <Slot id="layout:/">
               <Slot id="page:/nested/baz" />
             </Slot>
           ),
-          elements: {
-            'layout:/': (
+          renderers: {
+            'layout:/': () => (
               <HomeLayout>
                 <Children />
               </HomeLayout>
             ),
-            'page:/nested/baz': <NestedBazPage />,
+            'page:/nested/baz': () => <NestedBazPage />,
           },
         };
       }
       if (path.startsWith('/dynamic/')) {
         return {
-          rootElement: (
+          renderRoot: () => (
             <Root>
               <Children />
             </Root>
           ),
-          routeElement: (
+          renderRoute: () => (
             <Slot id="layout:/">
               <Slot id="page:/dynamic/[slug]" />
             </Slot>
           ),
-          elements: {
-            'layout:/': (
+          renderers: {
+            'layout:/': () => (
               <HomeLayout>
                 <Children />
               </HomeLayout>
             ),
-            'page:/dynamic/[slug]': <h3>{path}</h3>,
+            'page:/dynamic/[slug]': () => <h3>{path}</h3>,
           },
         };
       }
