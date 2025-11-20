@@ -24,10 +24,14 @@ export default adapter({
     ) {
       const actionResult =
         input.type === 'action' ? await input.fn() : undefined;
-      return renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
-        rscPath: '',
-        actionResult,
-      });
+      return renderHtml(
+        await renderRsc({ App: <App name="Waku" /> }),
+        <Slot id="App" />,
+        {
+          rscPath: '',
+          actionResult,
+        },
+      );
     }
   },
   handleBuild: async () => {},

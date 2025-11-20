@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 import * as vite from 'vite';
 import type { Config } from '../../config.js';
 import { rscPlugin } from './plugin.js';
-import type { Flags, RscPluginOptions } from './plugin.js';
+import type { RscPluginOptions } from './plugin.js';
 
 async function loadConfig(): Promise<Config | undefined> {
   let config: Config | undefined;
@@ -55,7 +55,7 @@ async function startDevServer(
 
 export async function cli(
   cmd: 'dev' | 'build' | 'start',
-  flags: { host?: string; port?: string } & Flags,
+  flags: { host?: string; port?: string },
 ) {
   // set NODE_ENV before runnerImport https://github.com/vitejs/vite/issues/20299
   const nodeEnv = cmd === 'dev' ? 'development' : 'production';
@@ -67,7 +67,6 @@ export async function cli(
   process.env.NODE_ENV = nodeEnv;
 
   const rscPluginOptions: RscPluginOptions = {
-    flags,
     config: await loadConfig(),
   };
 

@@ -359,6 +359,18 @@ const pages: ReturnType<typeof createPages> = createPages(
       id: 'slice001',
     }),
 
+    createPage({
+      render: 'static',
+      path: '/docs/[version]/read',
+      staticPaths: ['v1.0.0', 'v2.1.5', 'Mr.-Mime'],
+      component: ({ version }) => (
+        <>
+          <h2>Docs</h2>
+          <h3>Version: {version}</h3>
+        </>
+      ),
+    }),
+
     createSlice({
       render: 'dynamic',
       component: Slice002,

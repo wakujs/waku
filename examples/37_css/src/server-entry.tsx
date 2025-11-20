@@ -16,13 +16,13 @@ export default adapter({
     }
     if (input.type === 'custom' && input.pathname === '/') {
       return renderHtml(
-        {
+        await renderRsc({
           App: (
             <Layout>
               <App name={'Waku'} />
             </Layout>
           ),
-        },
+        }),
         <Slot id="App" />,
         { rscPath: '' },
       );

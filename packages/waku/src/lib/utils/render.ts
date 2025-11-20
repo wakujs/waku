@@ -1,8 +1,11 @@
 import type { ReactFormState } from 'react-dom/client';
-import type { Unstable_HandleRequest as HandleRequest } from '../types.js';
+import type {
+  Unstable_ParseRsc,
+  Unstable_RenderHtml,
+  Unstable_RenderRsc,
+} from '../types.js';
 
-type RenderUtils = Parameters<HandleRequest>[1];
-export type RenderHtml = (
+export type RenderHtmlStream = (
   rscStream: ReadableStream<Uint8Array>,
   rscHtmlStream: ReadableStream<Uint8Array>,
   options?: {
@@ -15,8 +18,16 @@ export type RenderHtml = (
 export function createRenderUtils(
   temporaryReferences: unknown,
   renderToReadableStream: (data: unknown, options?: object) => ReadableStream,
-  loadSsrEntryModule: () => Promise<{ renderHtml: RenderHtml }>,
-): RenderUtils {
+  createFromReadableStream: (
+    stream: ReadableStream,
+    options?: object,
+  ) => Promise<unknown>,
+  loadSsrEntryModule: () => Promise<{ renderHtmlStream: RenderHtmlStream }>,
+): {
+  renderRsc: Unstable_RenderRsc;
+  parseRsc: Unstable_ParseRsc;
+  renderHtml: Unstable_RenderHtml;
+} {
   const onError = (e: unknown) => {
     console.error('Error during rendering:', e);
     if (
@@ -36,23 +47,24 @@ export function createRenderUtils(
         onError,
       });
     },
+    async parseRsc(stream) {
+      return createFromReadableStream(stream, {}) as Promise<
+        Record<string, unknown>
+      >;
+    },
     async renderHtml(
-      elements,
+      elementsStream,
       html,
       options?: { rscPath?: string; actionResult?: any; status?: number },
     ) {
       const ssrEntryModule = await loadSsrEntryModule();
 
-      const rscElementsStream = renderToReadableStream(elements, {
-        onError,
-      });
-
       const rscHtmlStream = renderToReadableStream(html, {
         onError,
       });
 
-      const htmlResult = await ssrEntryModule.renderHtml(
-        rscElementsStream,
+      const htmlResult = await ssrEntryModule.renderHtmlStream(
+        elementsStream,
         rscHtmlStream,
         {
           formState: options?.actionResult,
