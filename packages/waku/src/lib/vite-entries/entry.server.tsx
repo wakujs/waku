@@ -11,8 +11,3 @@ export async function INTERNAL_runFetch(
   INTERNAL_setAllEnv(env);
   return serverEntry.fetch(req, ...args);
 }
-
-// export standard-ish fetch handler entry point
-export default {
-  fetch: serverEntry.fetch,
-};
