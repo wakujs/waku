@@ -44,10 +44,6 @@ export const pathMappingWithoutGroups: typeof getPathMapping = (
 
 const sanitizeSlug = (slug: string) => slug.replace(/ /g, '-');
 
-// slug sanitization for API routes, which can keep preserve extension
-// e.g. [slug].ts with slug="test.png"
-const sanitizeSlugWithDot = (slug: string) => slug.replace(/ /g, '-');
-
 // createPages API (a wrapper around unstable_defineRouter)
 
 /** Assumes that the path is a part of a slug path. */
@@ -536,7 +532,7 @@ export const createPages = <
       const { numSlugs, numWildcards } = getSlugsAndWildcards(pathSpec);
       if (numSlugs > 0 && options.staticPaths) {
         const staticPaths = options.staticPaths.map((item) =>
-          (Array.isArray(item) ? item : [item]).map(sanitizeSlugWithDot),
+          (Array.isArray(item) ? item : [item]).map(sanitizeSlug),
         );
         for (const staticPath of staticPaths) {
           if (staticPath.length !== numSlugs && numWildcards === 0) {
