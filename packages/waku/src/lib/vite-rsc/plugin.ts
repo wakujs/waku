@@ -420,10 +420,20 @@ function virtualAdapterPlugin(config: Required<Config>): Plugin {
   const adapterModule = 'waku/adapters/default';
   return {
     name: 'waku:virtual-adapter',
-    resolveId(source, _importer, _options) {
-      return source === adapterModule
-        ? this.resolve(config.adapter)
-        : undefined;
+    enforce: 'pre',
+    async resolveId(source, _importer, options) {
+      if (source === adapterModule) {
+        const resolved = await this.resolve(config.adapter, undefined, {
+          ...options,
+          skipSelf: true,
+        });
+        if (!resolved) {
+          return this.error(
+            `Failed to resolve adapter package: ${config.adapter}`,
+          );
+        }
+        return resolved;
+      }
     },
   };
 }
