@@ -432,6 +432,7 @@ function virtualAdapterPlugin(config: Required<Config>): Plugin {
             `Failed to resolve adapter package: ${config.adapter}`,
           );
         }
+        return resolved;
       }
     },
   };
