@@ -1553,19 +1553,9 @@ The handler entrypoint is `dist/serve-asw-lambda.js`: see [Hono AWS Lambda Deplo
 ```ts
 // [waku.config.ts]
 import { defineConfig } from 'waku/config';
-import nitro from '@hiogawa/vite-plugin-nitro';
 
 export default defineConfig({
   adapter: 'waku/adapters/edge',
-  vite: {
-    plugins: [
-      nitro({
-        server: {
-          environmentName: 'rsc',
-        },
-      }),
-    ],
-  },
 });
 ```
 
