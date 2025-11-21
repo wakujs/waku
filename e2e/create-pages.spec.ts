@@ -296,6 +296,21 @@ test.describe(`create-pages`, () => {
     expect(await res.text()).toBe('POST to hello world! from the test!');
   });
 
+  test('api static paths', async () => {
+    const res1 = await fetch(`http://localhost:${port}/api/static-paths/foo`);
+    expect(res1.status).toBe(200);
+    await expect(res1.json()).resolves.toEqual({ name: 'foo' });
+
+    const res2 = await fetch(
+      `http://localhost:${port}/api/static-paths/bar.json`,
+    );
+    expect(res2.status).toBe(200);
+    await expect(res2.json()).resolves.toEqual({ name: 'bar.json' });
+    // proper content-type on static server requires explicit extension
+    // depending on deployment platform
+    expect(res2.headers.get('content-type')).toContain('application/json');
+  });
+
   test('exactPath', async ({ page }) => {
     await page.goto(`http://localhost:${port}/exact/[slug]/[...wild]`);
     await expect(

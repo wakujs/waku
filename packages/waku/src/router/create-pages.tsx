@@ -191,6 +191,7 @@ export type CreateApi = <Path extends string>(
         path: Path;
         method: 'GET';
         handler: ApiHandler;
+        staticPaths?: (string | string[])[] | undefined;
       }
     | {
         render: 'dynamic';
@@ -463,27 +464,10 @@ export const createPages = <
         if (staticPath.length !== numSlugs && numWildcards === 0) {
           throw new Error('staticPaths does not match with slug pattern');
         }
-        const mapping: Record<string, string | string[]> = {};
-        let slugIndex = 0;
-        const pathItems: string[] = [];
-        pathSpec.forEach(({ type, name }) => {
-          switch (type) {
-            case 'literal':
-              pathItems.push(name!);
-              break;
-            case 'wildcard':
-              mapping[name!] = staticPath.slice(slugIndex);
-              staticPath.slice(slugIndex++).forEach((slug) => {
-                pathItems.push(slug);
-              });
-              break;
-            case 'group':
-              pathItems.push(staticPath[slugIndex++]!);
-              mapping[name!] = pathItems[pathItems.length - 1]!;
-              break;
-          }
-        });
-        const definedPath = '/' + pathItems.join('/');
+        const { definedPath, pathItems, mapping } = expandStaticPathSpec(
+          pathSpec,
+          staticPath,
+        );
         const pagePath = getGrouplessPath(definedPath);
         staticPathMap.set(pagePath, {
           literalSpec: pathItems.map((name) => ({ type: 'literal', name })),
@@ -545,11 +529,35 @@ export const createPages = <
     }
     const pathSpec = parsePathWithSlug(options.path);
     if (options.render === 'static') {
-      apiPathMap.set(options.path, {
-        render: 'static',
-        pathSpec,
-        handlers: { GET: options.handler },
-      });
+      const { numSlugs, numWildcards } = getSlugsAndWildcards(pathSpec);
+      if (numSlugs > 0 && options.staticPaths) {
+        const staticPaths = options.staticPaths.map((item) =>
+          (Array.isArray(item) ? item : [item]).map(sanitizeSlug),
+        );
+        for (const staticPath of staticPaths) {
+          if (staticPath.length !== numSlugs && numWildcards === 0) {
+            throw new Error('staticPaths does not match with slug pattern');
+          }
+          const { definedPath, pathItems } = expandStaticPathSpec(
+            pathSpec,
+            staticPath,
+          );
+          if (apiPathMap.has(definedPath)) {
+            throw new Error(`Duplicated api path: ${definedPath}`);
+          }
+          apiPathMap.set(definedPath, {
+            render: 'static',
+            pathSpec: pathItems.map((name) => ({ type: 'literal', name })),
+            handlers: { GET: options.handler },
+          });
+        }
+      } else {
+        apiPathMap.set(options.path, {
+          render: 'static',
+          pathSpec,
+          handlers: { GET: options.handler },
+        });
+      }
     } else {
       apiPathMap.set(options.path, {
         render: 'dynamic',
@@ -916,3 +924,32 @@ const getSlugsAndWildcards = (pathSpec: PathSpec) => {
   }
   return { numSlugs, numWildcards };
 };
+
+function expandStaticPathSpec(pathSpec: PathSpec, staticPath: string[]) {
+  const mapping: Record<string, string | string[]> = {};
+  let slugIndex = 0;
+  const pathItems: string[] = [];
+  pathSpec.forEach(({ type, name }) => {
+    switch (type) {
+      case 'literal':
+        pathItems.push(name!);
+        break;
+      case 'wildcard':
+        mapping[name!] = staticPath.slice(slugIndex);
+        staticPath.slice(slugIndex++).forEach((slug) => {
+          pathItems.push(slug);
+        });
+        break;
+      case 'group':
+        pathItems.push(staticPath[slugIndex++]!);
+        mapping[name!] = pathItems[pathItems.length - 1]!;
+        break;
+    }
+  });
+  const definedPath = '/' + pathItems.join('/');
+  return {
+    definedPath,
+    pathItems,
+    mapping,
+  };
+}
