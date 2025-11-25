@@ -9,11 +9,11 @@ export function ClickLink(
   const router = useRouter();
   return (
     <button
-      onClick={() => {
+      onClick={async () => {
         if (props.replace) {
-          router.replace(props.to);
+          await router.replace(props.to);
         } else {
-          router.push(props.to);
+          await router.push(props.to);
         }
       }}
     >
