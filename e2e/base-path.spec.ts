@@ -13,6 +13,28 @@ test.describe(`base-path`, () => {
     await stopApp?.();
   });
 
+  test('router', async ({ page }) => {
+    const baseUrl = `http://localhost:${port}/custom/base/`;
+    await page.goto(baseUrl);
+    await waitForHydration(page);
+
+    // push
+    await page.getByText('dynamic-push').click();
+    await page.waitForURL(`${baseUrl}dynamic`);
+    await expect(
+      page.getByRole('heading', { name: 'Dynamic page' }),
+    ).toBeVisible();
+
+    // replace
+    await page.goto(baseUrl);
+    await waitForHydration(page);
+    await page.getByText('dynamic-replace').click();
+    await page.waitForURL(`${baseUrl}dynamic`);
+    await expect(
+      page.getByRole('heading', { name: 'Dynamic page' }),
+    ).toBeVisible();
+  });
+
   test('basic', async ({ page, mode }) => {
     await basicTest(page, `http://localhost:${port}/custom/base/`);
 
