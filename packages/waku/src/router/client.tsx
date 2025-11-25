@@ -155,6 +155,7 @@ export function useRouter() {
         scroll?: boolean;
       },
     ) => {
+      to = addBase(to, import.meta.env.WAKU_CONFIG_BASE_PATH);
       const url = new URL(to, window.location.href);
       const currentPath = window.location.pathname;
       const newPath = url.pathname !== currentPath;
@@ -187,6 +188,7 @@ export function useRouter() {
         scroll?: boolean;
       },
     ) => {
+      to = addBase(to, import.meta.env.WAKU_CONFIG_BASE_PATH);
       const url = new URL(to, window.location.href);
       const currentPath = window.location.pathname;
       const newPath = url.pathname !== currentPath;
