@@ -22,7 +22,14 @@ export async function getInput(
   loadServerAction: (id: string) => Promise<unknown>,
 ) {
   const url = new URL(req.url);
-  url.pathname = removeBase(url.pathname, config.basePath);
+  // TODO:
+  // either mutate `Request` (this change).
+  // or adjust `handleApi(req)` to decide route based on pathname e.g. by `handleApi(path, req)`
+  // similar to `handleRoute(path)`
+  if (config.basePath !== '/' && url.pathname.startsWith(config.basePath)) {
+    url.pathname = removeBase(url.pathname, config.basePath);
+    req = new Request(url, req);
+  }
   const rscPathPrefix = '/' + config.rscBase + '/';
   let rscPath: string | undefined;
   let input: HandleRequestInput;
