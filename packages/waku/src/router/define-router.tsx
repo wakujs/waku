@@ -148,47 +148,45 @@ const assertNonReservedSlotId = (slotId: SlotId) => {
 };
 
 export function unstable_defineRouter(fns: {
-  // TODO consider combining all getConfig/handle* into one function
-  getConfig: () => Promise<
+  getConfigs: () => Promise<
     Iterable<
       | {
           type: 'route';
           path: PathSpec;
           isStatic: boolean;
           pathPattern?: PathSpec;
-          rootElement: { isStatic?: boolean };
-          routeElement: { isStatic?: boolean };
-          elements: Record<SlotId, { isStatic?: boolean }>;
+          rootElement: {
+            isStatic?: boolean;
+            renderer: (options: { query: string | undefined }) => ReactNode;
+          };
+          routeElement: {
+            isStatic?: boolean;
+            renderer: (options: { query: string | undefined }) => ReactNode;
+          };
+          elements: Record<
+            SlotId,
+            {
+              isStatic?: boolean;
+              renderer: (options: { query: string | undefined }) => ReactNode;
+            }
+          >;
           noSsr?: boolean;
+          slices?: string[];
         }
       | {
           type: 'api';
           path: PathSpec;
           isStatic: boolean;
+          handler: (req: Request) => Promise<Response>;
         }
       | {
           type: 'slice';
           id: string;
           isStatic: boolean;
+          renderer: () => Promise<ReactNode>;
         }
     >
   >;
-  handleRoute: (
-    path: string,
-    options: {
-      query: string | undefined;
-    },
-  ) => Promise<{
-    // TODO(daishi) will revisit later as these are not ideal
-    renderRoot: () => ReactNode;
-    renderRoute: () => ReactNode;
-    renderers: Record<SlotId, () => ReactNode>;
-    slices?: string[];
-  }>;
-  handleApi?: (req: Request) => Promise<Response>;
-  handleSlice?: (sliceId: string) => Promise<{
-    element: ReactNode;
-  }>;
 }) {
   type MyConfig = (
     | {
