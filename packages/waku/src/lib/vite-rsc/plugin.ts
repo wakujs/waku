@@ -51,7 +51,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
     distDir: 'dist',
     privateDir: 'private',
     rscBase: 'RSC',
-    adapter: getDefaultAdapter(),
+    unstable_adapter: getDefaultAdapter(),
     vite: undefined,
     ...rscPluginOptions?.config,
   };
@@ -423,13 +423,14 @@ function virtualAdapterPlugin(config: Required<Config>): Plugin {
     enforce: 'pre',
     async resolveId(source, _importer, options) {
       if (source === adapterModule) {
-        const resolved = await this.resolve(config.adapter, undefined, {
-          ...options,
-          skipSelf: true,
-        });
+        const resolved = await this.resolve(
+          config.unstable_adapter,
+          undefined,
+          { ...options, skipSelf: true },
+        );
         if (!resolved) {
           return this.error(
-            `Failed to resolve adapter package: ${config.adapter}`,
+            `Failed to resolve adapter package: ${config.unstable_adapter}`,
           );
         }
         return resolved;
