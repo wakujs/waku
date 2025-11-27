@@ -32,7 +32,7 @@ export interface Config {
    * Adapter module name
    * Defaults to "waku/adapters/node" or other platform-specific adapters based on environment variables.
    */
-  adapter?: string;
+  unstable_adapter?: string;
   /**
    * Vite configuration options.
    * See https://vite.dev/guide/api-environment-plugins.html#environment-api-for-plugins
