@@ -363,16 +363,7 @@ export function unstable_defineRouter(fns: {
     const options = {
       query: pathConfigItem.specs.isStatic ? undefined : query,
     };
-    const renderRoot = () => pathConfigItem.rootElement.renderer(options);
-    const renderRoute = () => pathConfigItem.routeElement.renderer(options);
-    const renderers: Record<SlotId, () => ReactNode> = Object.fromEntries(
-      Object.entries(pathConfigItem.elements).map(([id, { renderer }]) => [
-        id,
-        () => renderer(options),
-      ]),
-    );
     const slices = pathConfigItem.specs.slices;
-    Object.keys(renderers).forEach(assertNonReservedSlotId);
     const myConfig = await getMyConfig();
     const sliceConfigMap = new Map<
       string,
@@ -391,33 +382,40 @@ export function unstable_defineRouter(fns: {
     await Promise.all([
       (async () => {
         if (!pathConfigItem.specs.rootElementIsStatic) {
-          entries[ROOT_SLOT_ID] = renderRoot();
+          entries[ROOT_SLOT_ID] = pathConfigItem.rootElement.renderer(options);
         } else if (!skipIdSet.has(ROOT_SLOT_ID)) {
           const cached = getCachedElement(ROOT_SLOT_ID);
           entries[ROOT_SLOT_ID] = cached
             ? await cached
-            : await setCachedElement(ROOT_SLOT_ID, renderRoot());
+            : await setCachedElement(
+                ROOT_SLOT_ID,
+                pathConfigItem.rootElement.renderer(options),
+              );
         }
       })(),
       (async () => {
         if (!pathConfigItem.specs.routeElementIsStatic) {
-          entries[routeId] = renderRoute();
+          entries[routeId] = pathConfigItem.routeElement.renderer(options);
         } else if (!skipIdSet.has(routeId)) {
           const cached = getCachedElement(routeId);
           entries[routeId] = cached
             ? await cached
-            : await setCachedElement(routeId, renderRoute());
+            : await setCachedElement(
+                routeId,
+                pathConfigItem.routeElement.renderer(options),
+              );
         }
       })(),
       ...Object.entries(pathConfigItem.specs.elementsIsStatic).map(
         async ([id, isStatic]) => {
+          const renderer = pathConfigItem.elements[id]?.renderer;
           if (!isStatic) {
-            entries[id] = renderers[id]?.();
+            entries[id] = renderer?.(options);
           } else if (!skipIdSet.has(id)) {
             const cached = getCachedElement(id);
             entries[id] = cached
               ? await cached
-              : await setCachedElement(id, renderers[id]?.());
+              : await setCachedElement(id, renderer?.(options));
           }
         },
       ),
