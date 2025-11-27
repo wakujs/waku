@@ -565,7 +565,11 @@ export function unstable_defineRouter(fns: {
     }
     const pathConfigItem = await getPathConfigItem(input.pathname);
     if (pathConfigItem?.type === 'api' && fns.handleApi) {
-      return fns.handleApi(input.req);
+      const req = new Request(
+        new URL(input.pathname, input.req.url),
+        input.req,
+      );
+      return fns.handleApi(req);
     }
     if (input.type === 'action' || input.type === 'custom') {
       const renderIt = async (

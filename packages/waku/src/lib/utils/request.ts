@@ -22,10 +22,7 @@ export async function getInput(
   loadServerAction: (id: string) => Promise<unknown>,
 ) {
   const url = new URL(req.url);
-  if (config.basePath !== '/' && url.pathname.startsWith(config.basePath)) {
-    url.pathname = removeBase(url.pathname, config.basePath);
-    req = new Request(url, req);
-  }
+  url.pathname = removeBase(url.pathname, config.basePath);
   const rscPathPrefix = '/' + config.rscBase + '/';
   let rscPath: string | undefined;
   let input: HandleRequestInput;
