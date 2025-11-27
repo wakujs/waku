@@ -215,9 +215,14 @@ export const getPathMapping = (
   return mapping;
 };
 
-// `base` is assumed to have a trailing slash
 export function removeBase(url: string, base: string) {
-  if (base !== '/' && url.startsWith(base)) {
+  if (!base.endsWith('/')) {
+    throw new Error('basePath must end with /');
+  }
+  if (base !== '/') {
+    if (!url.startsWith(base)) {
+      throw new Error('pathname must start with basePath');
+    }
     return url.slice(base.length - 1);
   }
   return url;
