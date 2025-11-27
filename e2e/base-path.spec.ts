@@ -13,6 +13,37 @@ test.describe(`base-path`, () => {
     await stopApp?.();
   });
 
+  test('api', async ({ request }) => {
+    const baseUrl = `http://localhost:${port}/custom/base/`;
+
+    // get
+    const resGet = await request.get(`${baseUrl}api/hello`);
+    expect(resGet.ok()).toBe(true);
+    expect(await resGet.json()).toEqual({
+      ok: true,
+      request: {
+        handler: 'GET',
+        method: 'GET',
+        pathname: '/api/hello',
+      },
+    });
+
+    // post
+    const resPost = await request.post(`${baseUrl}api/hello`, {
+      data: 'hello',
+    });
+    expect(resPost.ok()).toBe(true);
+    expect(await resPost.json()).toEqual({
+      ok: true,
+      request: {
+        handler: 'POST',
+        method: 'POST',
+        pathname: '/api/hello',
+        text: 'hello',
+      },
+    });
+  });
+
   test('router', async ({ page }) => {
     const baseUrl = `http://localhost:${port}/custom/base/`;
     await page.goto(baseUrl);
