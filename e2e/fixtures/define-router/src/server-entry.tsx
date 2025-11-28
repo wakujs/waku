@@ -53,9 +53,9 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
         },
         routeElement: {
           isStatic: true,
-          renderer: (option) => (
+          renderer: () => (
             <Slot id="layout:/">
-              <Slot id={`page:${option.pathname}`} />
+              <Slot id={`page:${path}`} />
             </Slot>
           ),
         },
