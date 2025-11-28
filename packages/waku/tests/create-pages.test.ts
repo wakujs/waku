@@ -740,7 +740,12 @@ describe('createPages pages and layouts', () => {
         isStatic: true,
         slices: ['slice001'],
       },
-      { type: 'slice', id: 'slice001', isStatic: true },
+      {
+        type: 'slice',
+        id: 'slice001',
+        isStatic: true,
+        renderer: expect.any(Function),
+      },
     ]);
   });
 
@@ -774,7 +779,12 @@ describe('createPages pages and layouts', () => {
         isStatic: false,
         slices: ['slice001'],
       },
-      { type: 'slice', id: 'slice001', isStatic: true },
+      {
+        type: 'slice',
+        id: 'slice001',
+        isStatic: true,
+        renderer: expect.any(Function),
+      },
     ]);
   });
 
@@ -814,7 +824,12 @@ describe('createPages pages and layouts', () => {
         isStatic: false,
         slices: ['slice001'],
       },
-      { type: 'slice', id: 'slice001', isStatic: true },
+      {
+        type: 'slice',
+        id: 'slice001',
+        isStatic: true,
+        renderer: expect.any(Function),
+      },
     ]);
   });
 
@@ -2046,8 +2061,7 @@ describe('createPages - exactPath', () => {
       {
         type: 'route',
         elements: {
-          'page:/test': { isStatic: true },
-          renderer: expect.any(Function),
+          'page:/test': { isStatic: true, renderer: expect.any(Function) },
         },
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
@@ -2074,8 +2088,7 @@ describe('createPages - exactPath', () => {
       {
         type: 'route',
         elements: {
-          'page:/test': { isStatic: false },
-          renderer: expect.any(Function),
+          'page:/test': { isStatic: false, renderer: expect.any(Function) },
         },
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
@@ -2102,8 +2115,10 @@ describe('createPages - exactPath', () => {
       {
         type: 'route',
         elements: {
-          'page:/test/[slug]': { isStatic: true },
-          renderer: expect.any(Function),
+          'page:/test/[slug]': {
+            isStatic: true,
+            renderer: expect.any(Function),
+          },
         },
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
@@ -2133,8 +2148,10 @@ describe('createPages - exactPath', () => {
       {
         type: 'route',
         elements: {
-          'page:/test/[...wildcard]': { isStatic: true },
-          renderer: expect.any(Function),
+          'page:/test/[...wildcard]': {
+            isStatic: true,
+            renderer: expect.any(Function),
+          },
         },
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
@@ -2164,8 +2181,10 @@ describe('createPages - exactPath', () => {
       {
         type: 'route',
         elements: {
-          'page:/test/[...wildcard]/[slug]': { isStatic: true },
-          renderer: expect.any(Function),
+          'page:/test/[...wildcard]/[slug]': {
+            isStatic: true,
+            renderer: expect.any(Function),
+          },
         },
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
@@ -2196,8 +2215,10 @@ describe('createPages - exactPath', () => {
       {
         type: 'route',
         elements: {
-          'page:/test/[slug]': { isStatic: true },
-          renderer: expect.any(Function),
+          'page:/test/[slug]': {
+            isStatic: true,
+            renderer: expect.any(Function),
+          },
         },
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
@@ -2228,8 +2249,7 @@ describe('createPages - grouped paths', () => {
       {
         type: 'route',
         elements: {
-          'page:/test': { isStatic: true },
-          renderer: expect.any(Function),
+          'page:/test': { isStatic: true, renderer: expect.any(Function) },
         },
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
@@ -2255,8 +2275,7 @@ describe('createPages - grouped paths', () => {
       {
         type: 'route',
         elements: {
-          'page:/test/foo': { isStatic: true },
-          renderer: expect.any(Function),
+          'page:/test/foo': { isStatic: true, renderer: expect.any(Function) },
         },
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
@@ -2340,12 +2359,15 @@ describe('createPages - grouped paths', () => {
       },
       {
         type: 'route',
-        elements: { 'page:/z': { isStatic: true } },
-        rootElement: { isStatic: true },
-        routeElement: { isStatic: true },
+        elements: {
+          'page:/z': { isStatic: true, renderer: expect.any(Function) },
+        },
+        rootElement: { isStatic: true, renderer: expect.any(Function) },
+        routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
         path: [{ type: 'literal', name: 'z' }],
         isStatic: true,
+        slices: [],
       },
     ]);
   });
