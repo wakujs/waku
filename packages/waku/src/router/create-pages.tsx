@@ -374,14 +374,15 @@ export const createPages = <
     }
     const layoutMatchPath = groupPathLookup.get(path) ?? path;
     const pathSpec = parsePathWithSlug(layoutMatchPath);
-    const mapping = pathMappingWithoutGroups(
-      pathSpec,
-      // ensure path is encoded for props of page component
-      encodeURI(path),
-    );
+    const getMapping = (pathname: string) =>
+      pathMappingWithoutGroups(
+        pathSpec,
+        // ensure path is encoded for props of page component
+        encodeURI(pathname),
+      );
     const renderers: Record<
       string,
-      (options: { query: string | undefined }) => ReactNode
+      (option: { pathname: string; query: string | undefined }) => ReactNode
     > = {};
     if (Array.isArray(pageComponent)) {
       for (let i = 0; i < pageComponent.length; i++) {
@@ -389,21 +390,21 @@ export const createPages = <
         if (!comp) {
           continue;
         }
-        renderers[`page:${path}:${i}`] = (options) =>
+        renderers[`page:${path}:${i}`] = (option) =>
           createElement(comp.component, {
-            ...mapping,
-            ...(options.query ? { query: options.query } : {}),
-            path,
+            ...getMapping(option.pathname),
+            ...(option.query ? { query: option.query } : {}),
+            path: option.pathname,
           });
       }
     } else {
-      renderers[`page:${path}`] = (options) =>
+      renderers[`page:${path}`] = (option) =>
         createElement(
           pageComponent,
           {
-            ...mapping,
-            ...(options.query ? { query: options.query } : {}),
-            path,
+            ...getMapping(option.pathname),
+            ...(option.query ? { query: option.query } : {}),
+            path: option.pathname,
           },
           <Children />,
         );
@@ -699,7 +700,10 @@ export const createPages = <
       await configure();
       type ElementSpec = {
         isStatic: boolean;
-        renderer: (options: { query: string | undefined }) => ReactNode;
+        renderer: (options: {
+          pathname: string;
+          query: string | undefined;
+        }) => ReactNode;
       };
       const routeConfigs: {
         type: 'route';

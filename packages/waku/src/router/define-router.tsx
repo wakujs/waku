@@ -147,6 +147,8 @@ const assertNonReservedSlotId = (slotId: SlotId) => {
   }
 };
 
+type RendererOption = { pathname: string; query: string | undefined };
+
 export function unstable_defineRouter(fns: {
   getConfigs: () => Promise<
     Iterable<
@@ -157,17 +159,17 @@ export function unstable_defineRouter(fns: {
           pathPattern?: PathSpec;
           rootElement: {
             isStatic: boolean;
-            renderer: (options: { query: string | undefined }) => ReactNode;
+            renderer: (option: RendererOption) => ReactNode;
           };
           routeElement: {
             isStatic: boolean;
-            renderer: (options: { query: string | undefined }) => ReactNode;
+            renderer: (option: RendererOption) => ReactNode;
           };
           elements: Record<
             SlotId,
             {
               isStatic: boolean;
-              renderer: (options: { query: string | undefined }) => ReactNode;
+              renderer: (option: RendererOption) => ReactNode;
             }
           >;
           noSsr?: boolean;
@@ -205,16 +207,14 @@ export function unstable_defineRouter(fns: {
           slices: string[];
         };
         rootElement: {
-          renderer: (options: { query: string | undefined }) => ReactNode;
+          renderer: (option: RendererOption) => ReactNode;
         };
         routeElement: {
-          renderer: (options: { query: string | undefined }) => ReactNode;
+          renderer: (option: RendererOption) => ReactNode;
         };
         elements: Record<
           SlotId,
-          {
-            renderer: (options: { query: string | undefined }) => ReactNode;
-          }
+          { renderer: (option: RendererOption) => ReactNode }
         >;
       }
     | {
@@ -360,7 +360,8 @@ export function unstable_defineRouter(fns: {
     const { query } = parseRscParams(rscParams);
     const decodedPathname = decodeURI(pathname);
     const routeId = ROUTE_SLOT_ID_PREFIX + decodedPathname;
-    const options = {
+    const option: RendererOption = {
+      pathname: decodedPathname,
       query: pathConfigItem.specs.isStatic ? undefined : query,
     };
     const slices = pathConfigItem.specs.slices;
@@ -382,27 +383,27 @@ export function unstable_defineRouter(fns: {
     await Promise.all([
       (async () => {
         if (!pathConfigItem.specs.rootElementIsStatic) {
-          entries[ROOT_SLOT_ID] = pathConfigItem.rootElement.renderer(options);
+          entries[ROOT_SLOT_ID] = pathConfigItem.rootElement.renderer(option);
         } else if (!skipIdSet.has(ROOT_SLOT_ID)) {
           const cached = getCachedElement(ROOT_SLOT_ID);
           entries[ROOT_SLOT_ID] = cached
             ? await cached
             : await setCachedElement(
                 ROOT_SLOT_ID,
-                pathConfigItem.rootElement.renderer(options),
+                pathConfigItem.rootElement.renderer(option),
               );
         }
       })(),
       (async () => {
         if (!pathConfigItem.specs.routeElementIsStatic) {
-          entries[routeId] = pathConfigItem.routeElement.renderer(options);
+          entries[routeId] = pathConfigItem.routeElement.renderer(option);
         } else if (!skipIdSet.has(routeId)) {
           const cached = getCachedElement(routeId);
           entries[routeId] = cached
             ? await cached
             : await setCachedElement(
                 routeId,
-                pathConfigItem.routeElement.renderer(options),
+                pathConfigItem.routeElement.renderer(option),
               );
         }
       })(),
@@ -410,12 +411,12 @@ export function unstable_defineRouter(fns: {
         async ([id, isStatic]) => {
           const renderer = pathConfigItem.elements[id]?.renderer;
           if (!isStatic) {
-            entries[id] = renderer?.(options);
+            entries[id] = renderer?.(option);
           } else if (!skipIdSet.has(id)) {
             const cached = getCachedElement(id);
             entries[id] = cached
               ? await cached
-              : await setCachedElement(id, renderer?.(options));
+              : await setCachedElement(id, renderer?.(option));
           }
         },
       ),
