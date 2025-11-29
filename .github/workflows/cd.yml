@@ -22,6 +22,3 @@ jobs:
       - run: pnpm install
       - run: pnpm run compile
       - run: pnpm -r --filter='./packages/*' --no-git-checks publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
