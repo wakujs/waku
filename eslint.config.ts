@@ -12,6 +12,7 @@ export default defineConfig(
     ignores: [
       '**/dist/',
       '**/.cache/',
+      '**/.vercel/',
       '**/pages.gen.ts',
       'packages/create-waku/template/',
       'examples/07_cloudflare/.wrangler/',
@@ -100,6 +101,17 @@ export default defineConfig(
   {
     ...playwright.configs['flat/recommended'],
     files: ['e2e/**'],
+  },
+  {
+    files: ['e2e/**'],
+    rules: {
+      'playwright/no-skipped-test': [
+        'error',
+        {
+          allowConditional: true,
+        },
+      ],
+    },
   },
   {
     files: [

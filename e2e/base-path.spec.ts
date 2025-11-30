@@ -13,6 +13,59 @@ test.describe(`base-path`, () => {
     await stopApp?.();
   });
 
+  test('api', async ({ request }) => {
+    const baseUrl = `http://localhost:${port}/custom/base/`;
+
+    // get
+    const resGet = await request.get(`${baseUrl}api/hello`);
+    expect(resGet.ok()).toBe(true);
+    expect(await resGet.json()).toEqual({
+      ok: true,
+      request: {
+        handler: 'GET',
+        method: 'GET',
+        pathname: '/api/hello',
+      },
+    });
+
+    // post
+    const resPost = await request.post(`${baseUrl}api/hello`, {
+      data: 'hello',
+    });
+    expect(resPost.ok()).toBe(true);
+    expect(await resPost.json()).toEqual({
+      ok: true,
+      request: {
+        handler: 'POST',
+        method: 'POST',
+        pathname: '/api/hello',
+        text: 'hello',
+      },
+    });
+  });
+
+  test('router', async ({ page }) => {
+    const baseUrl = `http://localhost:${port}/custom/base/`;
+    await page.goto(baseUrl);
+    await waitForHydration(page);
+
+    // push
+    await page.getByText('dynamic-push').click();
+    await page.waitForURL(`${baseUrl}dynamic`);
+    await expect(
+      page.getByRole('heading', { name: 'Dynamic page' }),
+    ).toBeVisible();
+
+    // replace
+    await page.goto(baseUrl);
+    await waitForHydration(page);
+    await page.getByText('dynamic-replace').click();
+    await page.waitForURL(`${baseUrl}dynamic`);
+    await expect(
+      page.getByRole('heading', { name: 'Dynamic page' }),
+    ).toBeVisible();
+  });
+
   test('basic', async ({ page, mode }) => {
     await basicTest(page, `http://localhost:${port}/custom/base/`);
 

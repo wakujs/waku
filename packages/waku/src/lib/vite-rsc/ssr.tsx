@@ -5,7 +5,7 @@ import { injectRSCPayload } from 'rsc-html-stream/server';
 import fallbackHtml from 'virtual:vite-rsc-waku/fallback-html';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
-import type { RenderHtml } from '../utils/render.js';
+import type { RenderHtmlStream } from '../utils/render.js';
 import { getBootstrapPreamble } from '../utils/ssr.js';
 
 type RscElementsPayload = Record<string, unknown>;
@@ -16,7 +16,7 @@ type RscHtmlPayload = ReactNode;
 // These utilities are used by `rsc` environment through
 // `import.meta.viteRsc.loadModule` API.
 
-export const renderHtml: RenderHtml = async (
+export const renderHtmlStream: RenderHtmlStream = async (
   rscStream,
   rscHtmlStream,
   options,
@@ -33,11 +33,9 @@ export const renderHtml: RenderHtml = async (
     // https://github.com/facebook/react/pull/31799#discussion_r1886166075
     elementsPromise ??= createFromReadableStream<RscElementsPayload>(stream1);
     htmlPromise ??= createFromReadableStream<RscHtmlPayload>(rscHtmlStream);
-    // `HtmlNodeWrapper` is for a workaround.
-    // https://github.com/facebook/react/issues/33937
     return (
       <INTERNAL_ServerRoot elementsPromise={elementsPromise}>
-        <HtmlNodeWrapper>{use(htmlPromise)}</HtmlNodeWrapper>
+        {use(htmlPromise)}
       </INTERNAL_ServerRoot>
     );
   }
@@ -96,12 +94,6 @@ export const renderHtml: RenderHtml = async (
 
   return { stream: responseStream, status };
 };
-
-// HACK: This is only for a workaround.
-// https://github.com/facebook/react/issues/33937
-function HtmlNodeWrapper(props: { children: ReactNode }) {
-  return props.children;
-}
 
 export async function renderHtmlFallback() {
   const bootstrapScriptContent = await loadBootstrapScriptContent();
