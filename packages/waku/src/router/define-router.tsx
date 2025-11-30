@@ -719,6 +719,6 @@ export function unstable_defineRouter(fns: {
   };
 
   return Object.assign(defineHandlers({ handleRequest, handleBuild }), {
-    unstable_getRouterConfigs: getMyConfig().then((c) => c.configs),
+    unstable_getRouterConfigs: () => getMyConfig().then((c) => c.configs),
   });
 }
