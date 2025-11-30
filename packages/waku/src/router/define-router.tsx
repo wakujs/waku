@@ -312,13 +312,12 @@ export function unstable_defineRouter(fns: {
       pathname: decodedPathname,
       query: pathConfigItem.isStatic ? undefined : query,
     };
-    const slices = pathConfigItem.slices;
     const myConfig = await getMyConfig();
     const sliceConfigMap = new Map<
       string,
       { id: string; isStatic: boolean; renderer: () => Promise<ReactNode> }
     >();
-    slices.forEach((sliceId) => {
+    pathConfigItem.slices.forEach((sliceId) => {
       const sliceConfig = myConfig.configs.find(
         (item): item is typeof item & { type: 'slice' } =>
           item.type === 'slice' && item.id === sliceId,
@@ -355,18 +354,20 @@ export function unstable_defineRouter(fns: {
               );
         }
       })(),
-      ...Object.entries(pathConfigItem.elements).map(async ([id, isStatic]) => {
-        const renderer = pathConfigItem.elements[id]?.renderer;
-        if (!isStatic) {
-          entries[id] = renderer?.(option);
-        } else if (!skipIdSet.has(id)) {
-          const cached = getCachedElement(id);
-          entries[id] = cached
-            ? await cached
-            : await setCachedElement(id, renderer?.(option));
-        }
-      }),
-      ...slices.map(async (sliceId) => {
+      ...Object.entries(pathConfigItem.elements).map(
+        async ([id, { isStatic }]) => {
+          const renderer = pathConfigItem.elements[id]?.renderer;
+          if (!isStatic) {
+            entries[id] = renderer?.(option);
+          } else if (!skipIdSet.has(id)) {
+            const cached = getCachedElement(id);
+            entries[id] = cached
+              ? await cached
+              : await setCachedElement(id, renderer?.(option));
+          }
+        },
+      ),
+      ...pathConfigItem.slices.map(async (sliceId) => {
         const id = SLICE_SLOT_ID_PREFIX + sliceId;
         const sliceConfig = sliceConfigMap.get(sliceId);
         if (!sliceConfig) {
