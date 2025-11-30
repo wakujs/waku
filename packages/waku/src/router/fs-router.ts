@@ -1,7 +1,14 @@
 import type { FunctionComponent, ReactNode } from 'react';
+import type { ImportGlobFunction } from 'vite/types/importGlob.d.ts';
 import { isIgnoredPath } from '../lib/utils/fs-router.js';
 import { METHODS, createPages } from './create-pages.js';
 import type { Method } from './create-pages.js';
+
+declare global {
+  interface ImportMeta {
+    glob: ImportGlobFunction;
+  }
+}
 
 export function fsRouter(
   /**
