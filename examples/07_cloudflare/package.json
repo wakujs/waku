@@ -27,7 +27,6 @@
     "babel-plugin-react-compiler": "1.0.0",
     "miniflare": "4.20251125.0",
     "tailwindcss": "4.1.17",
-    "typescript": "5.9.3",
-    "vite": "7.2.4"
+    "typescript": "5.9.3"
   }
 }

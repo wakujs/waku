@@ -1,5 +1,3 @@
-/// <reference types="vite/client" />
-
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Plugin } from 'vite';
