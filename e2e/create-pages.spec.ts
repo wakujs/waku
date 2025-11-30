@@ -296,6 +296,21 @@ test.describe(`create-pages`, () => {
     expect(await res.text()).toBe('POST to hello world! from the test!');
   });
 
+  test('api static paths', async () => {
+    const res1 = await fetch(`http://localhost:${port}/api/static-paths/foo`);
+    expect(res1.status).toBe(200);
+    await expect(res1.json()).resolves.toEqual({ name: 'foo' });
+
+    const res2 = await fetch(
+      `http://localhost:${port}/api/static-paths/bar.json`,
+    );
+    expect(res2.status).toBe(200);
+    await expect(res2.json()).resolves.toEqual({ name: 'bar.json' });
+    // proper content-type on static server requires explicit extension
+    // depending on deployment platform
+    expect(res2.headers.get('content-type')).toContain('application/json');
+  });
+
   test('exactPath', async ({ page }) => {
     await page.goto(`http://localhost:${port}/exact/[slug]/[...wild]`);
     await expect(
@@ -400,6 +415,25 @@ test.describe(`create-pages`, () => {
     await expect(page.getByTestId('slice003-loading')).toBeVisible();
     await expect(page.getByTestId('slice003')).toHaveText('Slice 003');
   });
+
+  test('slugs with dots - version numbers', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/docs/v1.0.0/read`);
+    await expect(
+      page.getByRole('heading', { name: 'Version: v1.0.0' }),
+    ).toBeVisible();
+
+    await page.goto(`http://localhost:${port}/docs/v2.1.5/read`);
+    await expect(
+      page.getByRole('heading', { name: 'Version: v2.1.5' }),
+    ).toBeVisible();
+  });
+
+  test('slugs with spaces and dots', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/docs/Mr.-Mime/read`);
+    await expect(
+      page.getByRole('heading', { name: 'Version: Mr.-Mime' }),
+    ).toBeVisible();
+  });
 });
 
 test.describe(`create-pages STATIC`, () => {
@@ -448,5 +482,24 @@ test.describe(`create-pages STATIC`, () => {
     await expect(page.getByTestId('slice001-loading')).toBeVisible();
     const sliceText = await page.getByTestId('slice001').textContent();
     expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
+  });
+
+  test('slugs with dots - version numbers', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/docs/v1.0.0/read`);
+    await expect(
+      page.getByRole('heading', { name: 'Version: v1.0.0' }),
+    ).toBeVisible();
+
+    await page.goto(`http://localhost:${port}/docs/v2.1.5/read`);
+    await expect(
+      page.getByRole('heading', { name: 'Version: v2.1.5' }),
+    ).toBeVisible();
+  });
+
+  test('slugs with spaces and dots', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/docs/Mr.-Mime/read`);
+    await expect(
+      page.getByRole('heading', { name: 'Version: Mr.-Mime' }),
+    ).toBeVisible();
   });
 });

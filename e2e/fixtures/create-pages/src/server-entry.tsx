@@ -227,6 +227,18 @@ const pages: ReturnType<typeof createPages> = createPages(
       },
     }),
 
+    createApi({
+      path: '/api/static-paths/[name]',
+      render: 'static',
+      method: 'GET',
+      staticPaths: ['foo', 'bar.json'],
+      handler: async (request) => {
+        const url = new URL(request.url);
+        const name = url.pathname.split('/').pop()!;
+        return Response.json({ name });
+      },
+    }),
+
     createPage({
       render: 'static',
       path: '/exact/[slug]/[...wild]',
@@ -345,6 +357,18 @@ const pages: ReturnType<typeof createPages> = createPages(
       render: 'static',
       component: Slice001,
       id: 'slice001',
+    }),
+
+    createPage({
+      render: 'static',
+      path: '/docs/[version]/read',
+      staticPaths: ['v1.0.0', 'v2.1.5', 'Mr.-Mime'],
+      component: ({ version }) => (
+        <>
+          <h2>Docs</h2>
+          <h3>Version: {version}</h3>
+        </>
+      ),
     }),
 
     createSlice({

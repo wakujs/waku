@@ -2,6 +2,7 @@ import '../styles.css';
 import type { ReactNode } from 'react';
 import { Link } from 'waku';
 import { Hydrated } from '../components/hydrated';
+import { ClickLink } from '../components/router';
 
 export default async function RootLayout({
   children,
@@ -19,6 +20,14 @@ export default async function RootLayout({
         </li>
         <li>
           <Link to="/dynamic">Dynamic</Link>
+        </li>
+        <li>
+          <ClickLink to="/dynamic">dynamic-push</ClickLink>
+        </li>
+        <li>
+          <ClickLink to="/dynamic" replace>
+            dynamic-replace
+          </ClickLink>
         </li>
       </ul>
       <Hydrated />

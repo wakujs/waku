@@ -25,7 +25,7 @@ const PATH_PAGE: Record<string, ReactNode> = {
 };
 
 const router: ReturnType<typeof defineRouter> = defineRouter({
-  getConfig: async () => [
+  getConfigs: async () => [
     ...Object.keys(PATH_PAGE).map((path) => {
       return {
         type: 'route' as const,
@@ -35,11 +35,43 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
           .filter(Boolean)
           .map((name) => ({ type: 'literal', name }) as const),
         isStatic: STATIC_PATHS.includes(path),
-        rootElement: { isStatic: true },
-        routeElement: { isStatic: true },
+        ...(path === '/' ? { slices: ['slice001'] } : {}),
+        ...(path === '/bar1' ? { slices: ['slice001'] } : {}),
+        ...(path === '/bar2' ? { slices: ['slice002'] } : {}),
+        rootElement: {
+          isStatic: true,
+          renderer: () => (
+            <html>
+              <head>
+                <title>Waku example</title>
+              </head>
+              <body>
+                <Children />
+              </body>
+            </html>
+          ),
+        },
+        routeElement: {
+          isStatic: true,
+          renderer: () => (
+            <Slot id="layout:/">
+              <Slot id={`page:${path}`} />
+            </Slot>
+          ),
+        },
         elements: {
-          'layout:/': { isStatic: true },
-          [`page:${path}`]: { isStatic: STATIC_PAGES.includes(path) },
+          'layout:/': {
+            isStatic: true,
+            renderer: () => (
+              <Layout>
+                <Children />
+              </Layout>
+            ),
+          },
+          [`page:${path}`]: {
+            isStatic: STATIC_PAGES.includes(path),
+            renderer: () => PATH_PAGE[path],
+          },
         },
       };
     }),
@@ -50,6 +82,36 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
         { type: 'literal', name: 'hi' },
       ],
       isStatic: false,
+      handler: async (req) => {
+        if (req.method === 'GET') {
+          return new Response(
+            new ReadableStream({
+              start(controller) {
+                controller.enqueue(new TextEncoder().encode('hello world!'));
+                controller.close();
+              },
+            }),
+          );
+        }
+        if (req.method === 'POST') {
+          const bodyContent = await new Response(req.body).text();
+          return new Response(
+            new ReadableStream({
+              start(controller) {
+                controller.enqueue(
+                  new TextEncoder().encode(
+                    `POST to hello world! ${bodyContent}`,
+                  ),
+                );
+                controller.close();
+              },
+            }),
+          );
+        }
+        return new Response(null, {
+          status: 404,
+        });
+      },
     },
     {
       type: 'api',
@@ -58,6 +120,17 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
         { type: 'literal', name: 'hi.txt' },
       ],
       isStatic: false,
+      handler: async () => {
+        const hiTxt = await readFile('./private/hi.txt');
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(hiTxt);
+              controller.close();
+            },
+          }),
+        );
+      },
     },
     {
       type: 'api',
@@ -66,103 +139,25 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
         { type: 'literal', name: 'empty' },
       ],
       isStatic: true,
+      handler: async () => {
+        return new Response(null, {
+          status: 200,
+        });
+      },
     },
     {
       type: 'slice',
       id: 'slice001',
       isStatic: true,
+      renderer: async () => <Slice001 />,
     },
     {
       type: 'slice',
       id: 'slice002',
       isStatic: false,
+      renderer: async () => <Slice002 />,
     },
   ],
-  handleRoute: async (path) => {
-    if (!(path in PATH_PAGE)) {
-      throw new Error('renderRoute: No such path:' + path);
-    }
-    return {
-      renderRoot: () => (
-        <html>
-          <head>
-            <title>Waku example</title>
-          </head>
-          <body>
-            <Children />
-          </body>
-        </html>
-      ),
-      renderRoute: () => (
-        <Slot id="layout:/">
-          <Slot id={`page:${path}`} />
-        </Slot>
-      ),
-      renderers: {
-        'layout:/': () => (
-          <Layout>
-            <Children />
-          </Layout>
-        ),
-        [`page:${path}`]: () => PATH_PAGE[path],
-      },
-      ...(path === '/' ? { slices: ['slice001'] } : {}),
-      ...(path === '/bar1' ? { slices: ['slice001'] } : {}),
-      ...(path === '/bar2' ? { slices: ['slice002'] } : {}),
-    };
-  },
-  handleApi: async (req): Promise<Response> => {
-    const path = new URL(req.url).pathname;
-    if (path === '/api/hi.txt') {
-      const hiTxt = await readFile('./private/hi.txt');
-
-      return new Response(
-        new ReadableStream({
-          start(controller) {
-            controller.enqueue(hiTxt);
-            controller.close();
-          },
-        }),
-      );
-    } else if (path === '/api/hi' && req.method === 'GET') {
-      return new Response(
-        new ReadableStream({
-          start(controller) {
-            controller.enqueue(new TextEncoder().encode('hello world!'));
-            controller.close();
-          },
-        }),
-      );
-    } else if (path === '/api/hi' && req.method === 'POST') {
-      const bodyContent = await new Response(req.body).text();
-      return new Response(
-        new ReadableStream({
-          start(controller) {
-            controller.enqueue(
-              new TextEncoder().encode(`POST to hello world! ${bodyContent}`),
-            );
-            controller.close();
-          },
-        }),
-      );
-    } else if (path === '/api/empty') {
-      return new Response(null, {
-        status: 200,
-      });
-    }
-    return new Response(null, {
-      status: 404,
-    });
-  },
-  handleSlice: async (sliceId) => {
-    if (sliceId === 'slice001') {
-      return { element: <Slice001 /> };
-    }
-    if (sliceId === 'slice002') {
-      return { element: <Slice002 /> };
-    }
-    throw new Error('No such slice: ' + sliceId);
-  },
 });
 
 export default adapter(router);

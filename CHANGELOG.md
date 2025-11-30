@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [0.27.2] - 2025-11-30
+
+### Changed
+
+- Adapter system improvement
+- Router improvements
+
 ## [0.27.1] - 2025-11-17
 
 ### Changed
