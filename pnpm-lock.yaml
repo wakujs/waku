@@ -124,9 +124,6 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
-      vite:
-        specifier: 7.2.4
-        version: 7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.19.4)(yaml@2.8.1)
 
   e2e/fixtures/create-pages:
     dependencies:
@@ -469,9 +466,6 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
-      vite:
-        specifier: 7.2.4
-        version: 7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.19.4)(yaml@2.8.1)
 
   e2e/fixtures/ssr-catch-error:
     dependencies:
@@ -503,9 +497,6 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
-      vite:
-        specifier: 7.2.4
-        version: 7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.19.4)(yaml@2.8.1)
 
   e2e/fixtures/ssr-context-provider:
     dependencies:
@@ -612,9 +603,6 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
-      vite:
-        specifier: 7.2.4
-        version: 7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.19.4)(yaml@2.8.1)
 
   e2e/fixtures/tailwindcss:
     dependencies:
@@ -1020,9 +1008,6 @@ importers:
       typescript:
         specifier: 5.9.3
         version: 5.9.3
-      vite:
-        specifier: 7.2.4
-        version: 7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.19.4)(yaml@2.8.1)
 
   examples/12_nossr:
     dependencies:
@@ -1057,9 +1042,6 @@ importers:
       typescript:
         specifier: 5.9.3
         version: 5.9.3
-      vite:
-        specifier: 7.2.4
-        version: 7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.19.4)(yaml@2.8.1)
 
   examples/21_create-pages:
     dependencies:
@@ -1790,9 +1772,6 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
-      vite:
-        specifier: 7.2.4
-        version: 7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.19.4)(yaml@2.8.1)
 
 packages:
 
