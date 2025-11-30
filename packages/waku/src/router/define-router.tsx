@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
-import { getPathMapping, path2regexp } from '../lib/utils/path.js';
+import { getPathMapping } from '../lib/utils/path.js';
 import type { PathSpec } from '../lib/utils/path.js';
 import { base64ToStream, streamToBase64 } from '../lib/utils/stream.js';
 import { createTaskRunner } from '../lib/utils/task-runner.js';
@@ -105,6 +105,11 @@ const getRerender = (): Rerender => {
   ];
 };
 
+const is404 = (pathSpec: PathSpec) =>
+  pathSpec.length === 1 &&
+  pathSpec[0]!.type === 'literal' &&
+  pathSpec[0]!.name === '404';
+
 const pathSpec2pathname = (pathSpec: PathSpec) => {
   if (pathSpec.some(({ type }) => type !== 'literal')) {
     return undefined;
@@ -192,63 +197,24 @@ export function unstable_defineRouter(fns: {
 }) {
   // This is an internal type for caching
   type MyConfig = {
-    configs: (
-      | (RouteConfig & {
-          pathname: string | undefined;
-          pattern: string;
-          noSsr: boolean;
-          slices: string[];
-          is404: boolean;
-        })
-      | (ApiConfig & {
-          pathname: string | undefined;
-          pattern: string;
-        })
-      | SliceConfig
-    )[];
+    configs: (RouteConfig | ApiConfig | SliceConfig)[];
     has404: boolean;
   };
 
   let cachedMyConfig: MyConfig | undefined;
   const getMyConfig = async (): Promise<MyConfig> => {
     if (!cachedMyConfig) {
-      const configs = Array.from(await fns.getConfigs()).map((item) => {
-        switch (item.type) {
-          case 'route': {
-            const is404 =
-              item.path.length === 1 &&
-              item.path[0]!.type === 'literal' &&
-              item.path[0]!.name === '404';
-            Object.keys(item.elements).forEach(assertNonReservedSlotId);
-            return {
-              ...item,
-              pathname: pathSpec2pathname(item.path),
-              pattern: path2regexp(item.pathPattern || item.path),
-              noSsr: !!item.noSsr,
-              slices: item.slices || [],
-              is404,
-            };
+      const configs = Array.from(await fns.getConfigs());
+      let has404 = false;
+      configs.forEach((item) => {
+        if (item.type === 'route') {
+          Object.keys(item.elements).forEach(assertNonReservedSlotId);
+          if (!has404 && is404(item.path)) {
+            has404 = true;
           }
-          case 'api': {
-            return {
-              ...item,
-              pathname: pathSpec2pathname(item.path),
-              pattern: path2regexp(item.path),
-            };
-          }
-          case 'slice': {
-            return {
-              ...item,
-            };
-          }
-          default:
-            throw new Error('Unknown config type');
         }
       });
-      cachedMyConfig = {
-        configs,
-        has404: configs.some((item) => item.type === 'route' && item.is404),
-      };
+      cachedMyConfig = { configs, has404 };
     }
     return cachedMyConfig;
   };
@@ -313,11 +279,12 @@ export function unstable_defineRouter(fns: {
       query: pathConfigItem.isStatic ? undefined : query,
     };
     const myConfig = await getMyConfig();
+    const slices = pathConfigItem.slices || [];
     const sliceConfigMap = new Map<
       string,
       { id: string; isStatic: boolean; renderer: () => Promise<ReactNode> }
     >();
-    pathConfigItem.slices.forEach((sliceId) => {
+    slices.forEach((sliceId) => {
       const sliceConfig = myConfig.configs.find(
         (item): item is typeof item & { type: 'slice' } =>
           item.type === 'slice' && item.id === sliceId,
@@ -367,7 +334,7 @@ export function unstable_defineRouter(fns: {
           }
         },
       ),
-      ...pathConfigItem.slices.map(async (sliceId) => {
+      ...slices.map(async (sliceId) => {
         const id = SLICE_SLOT_ID_PREFIX + sliceId;
         const sliceConfig = sliceConfigMap.get(sliceId);
         if (!sliceConfig) {
@@ -640,7 +607,7 @@ export function unstable_defineRouter(fns: {
       if (!item.isStatic) {
         continue;
       }
-      const pathname = item.pathname;
+      const pathname = pathSpec2pathname(item.path);
       if (!pathname) {
         continue;
       }
@@ -661,7 +628,7 @@ export function unstable_defineRouter(fns: {
       if (!item.isStatic) {
         continue;
       }
-      const pathname = item.pathname;
+      const pathname = pathSpec2pathname(item.path);
       if (!pathname) {
         continue;
       }
@@ -689,7 +656,7 @@ export function unstable_defineRouter(fns: {
           const html = (
             <INTERNAL_ServerRouter
               route={{ path: pathname, query: '', hash: '' }}
-              httpstatus={item.is404 ? 404 : 200}
+              httpstatus={is404(item.path) ? 404 : 200}
             />
           );
           const res = await renderHtml(stream2, html, { rscPath });
@@ -703,8 +670,8 @@ export function unstable_defineRouter(fns: {
       if (item.type !== 'route') {
         continue;
       }
-      const { pathname, noSsr } = item;
-      if (noSsr) {
+      if (item.noSsr) {
+        const pathname = pathSpec2pathname(item.path);
         if (!pathname) {
           throw new Error('Pathname is required for noSsr routes on build');
         }
@@ -751,5 +718,7 @@ export function unstable_defineRouter(fns: {
     );
   };
 
-  return defineHandlers({ handleRequest, handleBuild });
+  return Object.assign(defineHandlers({ handleRequest, handleBuild }), {
+    unstable_getRouterConfigs: () => getMyConfig().then((c) => c.configs),
+  });
 }
