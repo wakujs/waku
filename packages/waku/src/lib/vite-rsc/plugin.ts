@@ -253,6 +253,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
       load(id) {
         if (id === '\0virtual:vite-rsc-waku/server-entry') {
           return `\
+export { default } from 'virtual:vite-rsc-waku/server-entry-inner';
 export * from 'virtual:vite-rsc-waku/server-entry-inner';
 if (import.meta.hot) {
   import.meta.hot.accept()
