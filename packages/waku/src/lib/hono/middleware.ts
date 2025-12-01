@@ -33,17 +33,18 @@ export function middlewareRunner(
     }>
   >,
 ): MiddlewareHandler {
-  let handlers: MiddlewareHandler[] | undefined;
+  let handlersPromise: Promise<MiddlewareHandler[]> | undefined;
   return async (c, next) => {
-    if (!handlers) {
-      handlers = await Promise.all(
+    if (!handlersPromise) {
+      handlersPromise = Promise.all(
         Object.values(middlewareModules).map((m) =>
           m().then((mod) => mod.default()),
         ),
       );
     }
+    const handlers = await handlersPromise;
     const run = async (index: number) => {
-      const handler = handlers![index];
+      const handler = handlers[index];
       if (handler) {
         await handler(c, () => run(index + 1));
       } else {
