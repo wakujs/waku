@@ -1,7 +1,10 @@
-/// <reference types="waku/types" />
-import { unstable_fsRouter as fsRouter } from 'waku/router/server';
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/default';
 
-export default fsRouter(
-  import.meta.glob('/src/pages/**/*.{tsx,ts}', { base: '/src/pages' }),
-  { apiDir: 'api', slicesDir: '_slices' },
+const router = fsRouter(
+  import.meta.glob('./**/*.{tsx,ts}', { base: './pages' }),
 );
+
+export const getRouterConfigs = () => router.unstable_getRouterConfigs();
+
+export default adapter(router);

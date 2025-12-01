@@ -8,23 +8,30 @@ description: The minimal Waku API for library authors.
 
 ### Server API
 
-To use React Server Components in Waku, you need to create an `server-entry.tsx` file in the project root directory and `defineEntries` to handle server requests.
+To use React Server Components in Waku, you need to create an `server-entry.tsx` file in the project root directory and `defineHandlers` to handle server requests.
 
 ```tsx
-import { unstable_defineEntries as defineEntries } from 'waku/minimal/server';
+import { unstable_defineHandlers as defineHandlers } from 'waku/minimal/server';
+import adapter from 'waku/adapters/default';
 import App from './components/App.js';
 
-export default defineEntries({
+const handlers = defineHandlers({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
       return renderRsc({ App: <App name={input.rscPath || 'Waku'} /> });
     }
     if (input.type === 'custom' && input.pathname === '/') {
-      return renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, '');
+      return renderHtml(
+        await renderRsc({ App: <App name="Waku" /> }),
+        <Slot id="App" />,
+        '',
+      );
     }
   },
   handleBuild: () => null,
 });
+
+export default adapter(handlers);
 ```
 
 Tips for experimenting:
@@ -53,9 +60,13 @@ It has to return AsyncIterable of build instructions.
         async () => ({
           type: 'file' as const,
           pathname: '/',
-          body: renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
-            rscPath: '',
-          }).then((res) => res.body || ''),
+          body: renderHtml(
+            await renderRsc({ App: <App name="Waku" /> }),
+            <Slot id="App" />,
+            {
+              rscPath: '',
+            },
+          ).then((res) => res.body || ''),
         }),
       ];
       return tasks;

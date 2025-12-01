@@ -4,14 +4,17 @@
  *
  * If you want to run a specific example, you can use VSCode Playwright extension.
  */
-import { expect } from '@playwright/test';
-import { execSync, exec, ChildProcess } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { ChildProcess, exec } from 'node:child_process';
 import { readdirSync, rmSync } from 'node:fs';
-import { basename } from 'node:path';
-import { findWakuPort, terminate, test } from './utils.js';
-import { error, info } from '@actions/core';
 import os from 'node:os';
+import { basename } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
+import { error, info } from '@actions/core';
+import { expect } from '@playwright/test';
+import { findWakuPort, terminate, test } from './utils.js';
+
+const execAsync = promisify(exec);
 
 const examplesDir = fileURLToPath(new URL('../examples', import.meta.url));
 
@@ -34,7 +37,7 @@ const commandsCloudflare = [
     command: `node ${waku} dev`,
   },
   {
-    build: `build --with-cloudflare`,
+    build: `build`,
     command: 'npx wrangler dev',
   },
 ];
@@ -54,7 +57,7 @@ for (const cwd of examples) {
     ? commandsCloudflare
     : commands;
   for (const { build, command } of exampleCommands) {
-    if (command === 'npx wrangler dev' && os.platform() === 'win32') {
+    if (command.endsWith('npx wrangler dev') && os.platform() === 'win32') {
       // FIXME npx wrangler dev doesn't work on Windows and we don't know why.
       continue;
     }
@@ -69,7 +72,7 @@ for (const cwd of examples) {
 
         test.beforeAll(async () => {
           if (build) {
-            execSync(`node ${waku} ${build}`, { cwd });
+            await execAsync(`node ${waku} ${build}`, { cwd });
           }
           cp = exec(`${command}`, { cwd });
           cp.stdout?.on('data', (data) => {
@@ -99,9 +102,7 @@ for (const cwd of examples) {
         });
 
         test.afterAll(async () => {
-          if (cp?.pid) {
-            await terminate(cp.pid);
-          }
+          await terminate(port);
         });
 
         test('check title', async ({ page }) => {

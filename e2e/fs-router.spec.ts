@@ -1,10 +1,9 @@
 import { expect } from '@playwright/test';
+import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
-import { test, prepareStandaloneSetup, waitForHydration } from './utils.js';
+const startApp = prepareNormalSetup('fs-router');
 
-const startApp = prepareStandaloneSetup('fs-router');
-
-test.describe(`fs-router`, async () => {
+test.describe('fs-router', () => {
   let port: number;
   let stopApp: (() => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {

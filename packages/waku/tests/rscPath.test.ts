@@ -1,11 +1,11 @@
-import { test, describe, expect } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import {
-  encodeRscPath,
+  decodeFuncId,
   decodeRscPath,
   encodeFuncId,
-  decodeFuncId,
-} from '../src/lib/renderers/utils.js';
-import { encodeRoutePath, decodeRoutePath } from '../src/router/common.js';
+  encodeRscPath,
+} from '../src/lib/utils/rsc-path.js';
+import { decodeRoutePath, encodeRoutePath } from '../src/router/common.js';
 
 describe('encodeRscPath', () => {
   test('encodes rscPath', () => {

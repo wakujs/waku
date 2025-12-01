@@ -1,11 +1,12 @@
+import { type ReactNode, captureOwnerStack, use } from 'react';
 import { createFromReadableStream } from '@vitejs/plugin-rsc/ssr';
-import { captureOwnerStack, use, type ReactNode } from 'react';
-import type { ReactFormState } from 'react-dom/client';
 import { renderToReadableStream } from 'react-dom/server.edge';
-import { INTERNAL_ServerRoot } from '../../minimal/client.js';
-import { fakeFetchCode } from '../renderers/html.js';
 import { injectRSCPayload } from 'rsc-html-stream/server';
 import fallbackHtml from 'virtual:vite-rsc-waku/fallback-html';
+import { INTERNAL_ServerRoot } from '../../minimal/client.js';
+import { getErrorInfo } from '../utils/custom-errors.js';
+import type { RenderHtmlStream } from '../utils/render.js';
+import { getBootstrapPreamble } from '../utils/ssr.js';
 
 type RscElementsPayload = Record<string, unknown>;
 type RscHtmlPayload = ReactNode;
@@ -15,15 +16,11 @@ type RscHtmlPayload = ReactNode;
 // These utilities are used by `rsc` environment through
 // `import.meta.viteRsc.loadModule` API.
 
-export async function renderHTML(
-  rscStream: ReadableStream<Uint8Array>,
-  rscHtmlStream: ReadableStream<Uint8Array>,
-  options?: {
-    rscPath?: string | undefined;
-    formState?: ReactFormState | undefined;
-    nonce?: string | undefined;
-  },
-): Promise<ReadableStream<Uint8Array>> {
+export const renderHtmlStream: RenderHtmlStream = async (
+  rscStream,
+  rscHtmlStream,
+  options,
+) => {
   const [stream1, stream2] = rscStream.tee();
 
   let elementsPromise: Promise<RscElementsPayload>;
@@ -36,59 +33,67 @@ export async function renderHTML(
     // https://github.com/facebook/react/pull/31799#discussion_r1886166075
     elementsPromise ??= createFromReadableStream<RscElementsPayload>(stream1);
     htmlPromise ??= createFromReadableStream<RscHtmlPayload>(rscHtmlStream);
-    // `HtmlNodeWrapper` is for a workaround.
-    // https://github.com/facebook/react/issues/33937
     return (
       <INTERNAL_ServerRoot elementsPromise={elementsPromise}>
-        <HtmlNodeWrapper>{use(htmlPromise)}</HtmlNodeWrapper>
+        {use(htmlPromise)}
       </INTERNAL_ServerRoot>
     );
   }
 
   // render html
   const bootstrapScriptContent = await loadBootstrapScriptContent();
-  const htmlStream = await renderToReadableStream(<SsrRoot />, {
-    bootstrapScriptContent:
-      getBootstrapPreamble({ rscPath: options?.rscPath || '' }) +
-      bootstrapScriptContent,
-    onError: (e: unknown) => {
-      if (
-        e &&
-        typeof e === 'object' &&
-        'digest' in e &&
-        typeof e.digest === 'string'
-      ) {
-        return e.digest;
-      }
-      console.error('[SSR Error]', captureOwnerStack?.() || '', '\n', e);
-    },
-    ...(options?.nonce ? { nonce: options.nonce } : {}),
-    ...(options?.formState ? { formState: options.formState } : {}),
-  });
-
+  let htmlStream: ReadableStream;
+  let status: number | undefined;
+  try {
+    htmlStream = await renderToReadableStream(<SsrRoot />, {
+      bootstrapScriptContent:
+        getBootstrapPreamble({
+          rscPath: options?.rscPath || '',
+          hydrate: true,
+        }) + bootstrapScriptContent,
+      onError: (e: unknown) => {
+        if (
+          e &&
+          typeof e === 'object' &&
+          'digest' in e &&
+          typeof e.digest === 'string'
+        ) {
+          return e.digest;
+        }
+        console.error('[SSR Error]', captureOwnerStack?.() || '', '\n', e);
+      },
+      ...(options?.nonce ? { nonce: options.nonce } : {}),
+      ...(options?.formState ? { formState: options.formState } : {}),
+    });
+  } catch (e) {
+    const info = getErrorInfo(e);
+    if (info?.location) {
+      // keep unstable_redirect error as http redirection
+      throw e;
+    }
+    status = info?.status || 500;
+    // SSR empty html and go full CSR on browser, which can revive RSC errors.
+    const ssrErrorRoot = (
+      <html>
+        <body></body>
+      </html>
+    );
+    htmlStream = await renderToReadableStream(ssrErrorRoot, {
+      bootstrapScriptContent:
+        getBootstrapPreamble({
+          rscPath: options?.rscPath || '',
+          hydrate: false,
+        }) + bootstrapScriptContent,
+      ...(options?.nonce ? { nonce: options.nonce } : {}),
+    });
+  }
   let responseStream: ReadableStream<Uint8Array> = htmlStream;
   responseStream = responseStream.pipeThrough(
     injectRSCPayload(stream2, options?.nonce ? { nonce: options?.nonce } : {}),
   );
 
-  return responseStream;
-}
-
-// HACK: This is only for a workaround.
-// https://github.com/facebook/react/issues/33937
-function HtmlNodeWrapper(props: { children: ReactNode }) {
-  return props.children;
-}
-
-// cf. packages/waku/src/lib/renderers/html.ts `parseHtmlHead`
-function getBootstrapPreamble(options: { rscPath: string }) {
-  return `
-    globalThis.__WAKU_HYDRATE__ = true;
-    globalThis.__WAKU_PREFETCHED__ = {
-      ${JSON.stringify(options.rscPath)}: ${fakeFetchCode}
-    };
-  `;
-}
+  return { stream: responseStream, status };
+};
 
 export async function renderHtmlFallback() {
   const bootstrapScriptContent = await loadBootstrapScriptContent();

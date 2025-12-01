@@ -1,14 +1,26 @@
 import type { ReactNode } from 'react';
+import type { Config } from '../config.js';
 
 type Elements = Record<string, unknown>;
 
-type RenderRsc = (elements: Record<string, unknown>) => Promise<ReadableStream>;
-
-type RenderHtml = (
+export type Unstable_RenderRsc = (
   elements: Elements,
+) => Promise<ReadableStream>;
+
+export type Unstable_ParseRsc = (
+  rscStream: ReadableStream,
+) => Promise<Elements>;
+
+export type Unstable_RenderHtml = (
+  elementsStream: ReadableStream,
   html: ReactNode,
   options: { rscPath: string; actionResult?: unknown; status?: number },
 ) => Promise<Response>;
+
+export type Unstable_EmitFile = (
+  filePath: string,
+  body: ReadableStream | string,
+) => Promise<void>;
 
 export type Unstable_HandleRequest = (
   input: (
@@ -28,47 +40,59 @@ export type Unstable_HandleRequest = (
     req: Request;
   },
   utils: {
-    renderRsc: RenderRsc;
-    renderHtml: RenderHtml;
+    renderRsc: Unstable_RenderRsc;
+    parseRsc: Unstable_ParseRsc;
+    renderHtml: Unstable_RenderHtml;
+    loadBuildMetadata: (key: string) => Promise<string | undefined>;
   },
 ) => Promise<ReadableStream | Response | 'fallback' | null | undefined>;
 
 export type Unstable_HandleBuild = (utils: {
-  renderRsc: RenderRsc;
-  renderHtml: RenderHtml;
+  renderRsc: Unstable_RenderRsc;
+  parseRsc: Unstable_ParseRsc;
+  renderHtml: Unstable_RenderHtml;
   rscPath2pathname: (rscPath: string) => string;
+  saveBuildMetadata: (key: string, value: string) => Promise<void>;
+  // TODO(daishi) not a big fan of this API
+  withRequest: <T>(req: Request, fn: () => T) => T;
   generateFile: (
-    pathname: string,
-    body: Promise<ReadableStream | string>,
+    fileName: string,
+    body: ReadableStream | string,
   ) => Promise<void>;
-  generateDefaultHtml: (pathname: string) => Promise<void>;
+  generateDefaultHtml: (fileName: string) => Promise<void>;
 }) => Promise<void>;
 
 export type Unstable_ServerEntry = {
   default: {
-    handleRequest: Unstable_HandleRequest;
-    handleBuild: Unstable_HandleBuild;
+    fetch: (req: Request, ...args: any[]) => Response | Promise<Response>;
+    build: (emitFile: Unstable_EmitFile) => Promise<void>;
+    postBuild?: [modulePath: string, ...args: unknown[]];
   };
 };
 
-/** @deprecated This will be removed soon. */
-export type HandlerContext = {
-  req: Request;
-  res?: Response;
-  readonly data: Record<string, unknown>;
-};
+export type Unstable_ProcessRequest = (
+  req: Request,
+) => Promise<Response | null>;
 
-/** @deprecated This will be removed soon. */
-type Handler = (
-  ctx: HandlerContext,
-  next: () => Promise<void>,
+export type Unstable_ProcessBuild = (
+  emitFile: Unstable_EmitFile,
 ) => Promise<void>;
 
-/** @deprecated This will be removed soon. */
-export type MiddlewareOptions = {
-  cmd: 'dev' | 'start';
-  env: Record<string, string>;
-};
-
-/** @deprecated This will be removed soon. */
-export type Middleware = (options: MiddlewareOptions) => Handler;
+export type Unstable_CreateServerEntryAdapter = <Options>(
+  fn: (
+    args: {
+      processRequest: Unstable_ProcessRequest;
+      processBuild: Unstable_ProcessBuild;
+      config: Omit<Required<Config>, 'vite'>;
+      isBuild: boolean;
+      notFoundHtml: string;
+    },
+    options?: Options,
+  ) => Unstable_ServerEntry['default'],
+) => (
+  args: {
+    handleRequest: Unstable_HandleRequest;
+    handleBuild: Unstable_HandleBuild;
+  },
+  options?: Options,
+) => Unstable_ServerEntry['default'];

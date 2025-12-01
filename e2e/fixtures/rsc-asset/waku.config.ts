@@ -1,8 +1,7 @@
-/// <reference types="waku/types" />
-
-import { defineConfig, VitePlugin } from 'waku/config';
-import path from 'node:path';
 import fs from 'node:fs';
+import path from 'node:path';
+import { defineConfig } from 'waku/config';
+import type { VitePlugin } from 'waku/config';
 
 export default defineConfig({
   vite: {

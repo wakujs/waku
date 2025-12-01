@@ -1,7 +1,5 @@
-import { Suspense } from 'react';
 import type { ReactNode } from 'react';
 import { unstable_getContextData as getContextData } from 'waku/server';
-
 import { ClientLayout } from '../components/client-layout.js';
 
 const CheckIfAccessDenied = ({ children }: { children: ReactNode }) => {
@@ -19,9 +17,7 @@ export default async function RootLayout({
 }) {
   return (
     <ClientLayout>
-      <Suspense fallback="Loading...">
-        <CheckIfAccessDenied>{children}</CheckIfAccessDenied>
-      </Suspense>
+      <CheckIfAccessDenied>{children}</CheckIfAccessDenied>
     </ClientLayout>
   );
 }

@@ -7,7 +7,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "types": ["node", "waku/types"]
+    "types": ["node"]
   },
   "include": ["src", "src/theme.json"],
   "references": [

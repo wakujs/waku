@@ -1,5 +1,5 @@
-import type { Plugin } from 'vite';
 import * as swc from '@swc/core';
+import type { Plugin } from 'vite';
 
 const createEmptySpan = (): swc.Span =>
   ({

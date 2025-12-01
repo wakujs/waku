@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRefetch } from 'waku/minimal/client';
 import { unstable_allowServer as allowServer } from 'waku/client';
-
+import { useRefetch } from 'waku/minimal/client';
 import { ClientBox } from './Box.js';
 
 export const ClientCounter = ({ params }: { params: unknown }) => {

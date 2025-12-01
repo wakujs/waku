@@ -6,24 +6,27 @@
   "scripts": {
     "cf-typegen": "wrangler types",
     "dev": "waku dev",
-    "build": "waku build --with-cloudflare",
+    "build": "waku build",
     "start": "wrangler dev"
   },
   "dependencies": {
-    "hono": "4.9.6",
-    "react": "19.1.1",
-    "react-dom": "19.1.1",
-    "react-server-dom-webpack": "19.1.1",
-    "waku": "0.26.1",
-    "wrangler": "4.35.0"
+    "hono": "4.10.7",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "react-server-dom-webpack": "19.2.0",
+    "waku": "0.27.2",
+    "wrangler": "4.51.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.1.13",
-    "@types/node": "24.3.1",
-    "@types/react": "19.1.12",
-    "@types/react-dom": "19.1.9",
-    "miniflare": "4.20250906.0",
-    "tailwindcss": "4.1.13",
-    "typescript": "5.9.2"
+    "@hiogawa/node-loader-cloudflare": "0.0.2",
+    "@tailwindcss/vite": "4.1.17",
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "5.1.1",
+    "babel-plugin-react-compiler": "1.0.0",
+    "miniflare": "4.20251125.0",
+    "tailwindcss": "4.1.17",
+    "typescript": "5.9.3"
   }
 }

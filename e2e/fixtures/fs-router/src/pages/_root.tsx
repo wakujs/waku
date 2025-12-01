@@ -1,14 +1,13 @@
 import type { ReactNode } from 'react';
 
 export default function Root({ children }: { children: ReactNode }) {
+  // TODO is there a more reasonable way?
+  // eslint-disable-next-line react-hooks/purity
+  const rand = Math.round(Math.random() * 100);
   return (
     <html>
       <head></head>
-      <body
-        data-dynamic-root={`Random Number ${Math.round(Math.random() * 100)}`}
-      >
-        {children}
-      </body>
+      <body data-dynamic-root={`Random Number ${rand}`}>{children}</body>
     </html>
   );
 }

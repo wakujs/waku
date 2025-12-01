@@ -1,6 +1,5 @@
 import { expect } from '@playwright/test';
-
-import { test, prepareNormalSetup, FETCH_ERROR_MESSAGES } from './utils.js';
+import { FETCH_ERROR_MESSAGES, prepareNormalSetup, test } from './utils.js';
 
 const startApp = prepareNormalSetup('rsc-basic');
 
@@ -164,5 +163,13 @@ test.describe(`rsc-basic`, () => {
     await page.goto(`http://localhost:${port}/`);
     await expect(page.getByTestId('app-name')).toHaveText('Waku');
     await expect(page.getByTestId('some-config-foo')).toHaveText('value-1234');
+  });
+
+  test('build metadata', async ({ page, mode }) => {
+    test.skip(mode === 'DEV', 'Build metadata is only available in build mode');
+    await page.goto(`http://localhost:${port}/`);
+    await expect(page.getByTestId('build-metadata')).toHaveText(
+      'metadata-value',
+    );
   });
 });

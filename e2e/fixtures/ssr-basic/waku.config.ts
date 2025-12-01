@@ -1,5 +1,3 @@
-/// <reference types="waku/types" />
-
 import { defineConfig } from 'waku/config';
 
 export default defineConfig({

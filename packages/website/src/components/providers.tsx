@@ -1,8 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { createStore, Provider } from 'jotai';
-
+import { Provider, createStore } from 'jotai';
 import { menuAtom, scrolledAtom } from '../atoms';
 
 type ProvidersProps = { children: ReactNode };

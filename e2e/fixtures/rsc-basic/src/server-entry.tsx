@@ -1,12 +1,20 @@
-import { unstable_defineServer as defineServer } from 'waku/minimal/server';
-
+import adapter from 'waku/adapters/default';
 import App from './components/App.js';
 
-const entries: ReturnType<typeof defineServer> = defineServer({
-  handleRequest: async (input, { renderRsc }) => {
+const BUILD_MATADATA_KEY = 'metadata-key';
+const BUILD_MATADATA_VALUE = 'metadata-value';
+
+export default adapter({
+  handleRequest: async (input, { renderRsc, loadBuildMetadata }) => {
     if (input.type === 'component') {
       return renderRsc({
-        App: <App name={input.rscPath || 'Waku'} params={input.rscParams} />,
+        App: (
+          <App
+            name={input.rscPath || 'Waku'}
+            params={input.rscParams}
+            metadata={(await loadBuildMetadata(BUILD_MATADATA_KEY)) || 'Empty'}
+          />
+        ),
       });
     }
     if (input.type === 'function') {
@@ -15,7 +23,7 @@ const entries: ReturnType<typeof defineServer> = defineServer({
     }
     return 'fallback';
   },
-  handleBuild: async () => {},
+  handleBuild: async ({ saveBuildMetadata }) => {
+    await saveBuildMetadata(BUILD_MATADATA_KEY, BUILD_MATADATA_VALUE);
+  },
 });
-
-export default entries;

@@ -10,24 +10,24 @@
     "start": "waku start"
   },
   "dependencies": {
-    "@sindresorhus/slugify": "^2.2.1",
+    "@sindresorhus/slugify": "^3.0.0",
     "classnames": "2.3.2",
-    "framer-motion": "^12.23.12",
-    "jotai": "^2.14.0",
+    "framer-motion": "^12.23.24",
+    "jotai": "^2.15.1",
     "next-mdx-remote": "^5.0.0",
-    "react": "19.1.1",
-    "react-dom": "19.1.1",
-    "react-server-dom-webpack": "19.1.1",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "react-server-dom-webpack": "19.2.0",
     "waku": "workspace:*"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.1.13",
-    "@types/react": "^19.1.12",
-    "@types/react-dom": "^19.1.9",
-    "prettier": "^3.6.2",
-    "prettier-plugin-tailwindcss": "^0.6.14",
-    "shiki": "^3.12.2",
-    "tailwindcss": "4.1.13",
-    "typescript": "^5.9.2"
+    "@tailwindcss/vite": "4.1.17",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "prettier": "^3.7.2",
+    "prettier-plugin-tailwindcss": "^0.7.1",
+    "shiki": "^3.17.0",
+    "tailwindcss": "4.1.17",
+    "typescript": "^5.9.3"
   }
 }

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-
 import { greet } from '../functions/greet';
 
 export const Counter = () => {

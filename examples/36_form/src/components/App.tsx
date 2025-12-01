@@ -1,7 +1,7 @@
 import { Counter } from './Counter';
 import { Form } from './Form';
-import { ServerForm } from './ServerForm';
 import { getMessage, greet, increment } from './funcs';
+import { ServerForm } from './ServerForm';
 
 const App = ({ name }: { name: string }) => {
   return (

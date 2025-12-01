@@ -6,11 +6,22 @@ description: How to integrate Waku with Cloudflare Workers and interact with Clo
 
 ## Setting Up and Building Waku For Cloudflare Workers
 
-Waku comes "out of the box" with a build flag for [Cloudflare Workers](https://developers.cloudflare.com/workers/).
+Waku comes "out of the box" with a custom adapter for [Cloudflare Workers](https://developers.cloudflare.com/workers/).
 
-To build a Waku app for Cloudflare Workers, simply run `waku build --with-cloudflare`. If you used `npx create waku` to create your project, use `npm run build -- --with-cloudflare` to run the build.
+To build a Waku app for Cloudflare Workers, simply create a server entry file like the following.
 
-The first time you run this, it will create a `wrangler.toml` file with minimal configuration for Cloudflare Workers. See [Cloudflare's documentation](https://developers.cloudflare.com/workers/wrangler/configuration/) for more information on configuring Cloudflare Workers and `wrangler.toml`.
+`./src/server-entry.ts`:
+
+```ts
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/cloudflare';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+);
+```
+
+The first time you run `npm run build`, it will create a `wrangler.toml` file with minimal configuration for Cloudflare Workers. See [Cloudflare's documentation](https://developers.cloudflare.com/workers/wrangler/configuration/) for more information on configuring Cloudflare Workers and `wrangler.toml`.
 
 You should npm install the latest version of Cloudflare's build tool, [`wrangler`](https://www.npmjs.com/package/wrangler) and their dev server [`miniflare`](https://www.npmjs.com/package/miniflare).
 
@@ -33,6 +44,8 @@ Note that the latest `nodejs_compat` mocks the Node `fs` module. Cloudflare does
 You can run `npx wrangler types` to generate a `worker-configuration.d.ts` file based on the settings in your `wrangler.toml`. This defines a global `Env` interface with your bindings. In the [Cloudflare example in the Waku GitHub repository](https://github.com/wakujs/waku/tree/main/examples/07_cloudflare), a package.json script is included to run this command and update the types: `pnpm run cf-typegen`. To ensure that your types are always up-to-date, make sure to run it after any changes to your `wrangler.toml` config file.
 
 ## Accessing Cloudflare Bindings, Execution Context, and Request/Response Objects
+
+FIXME: please rewrite this section for the latest version
 
 Using `unstable_honoEnhancer`, you can access Cloudflare bindings and execution context from the Hono context:
 

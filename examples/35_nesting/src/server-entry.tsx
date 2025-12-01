@@ -1,11 +1,10 @@
-import { unstable_defineServer as defineServer } from 'waku/minimal/server';
+import adapter from 'waku/adapters/default';
 import { Slot } from 'waku/minimal/client';
-
 import App from './components/App';
-import InnerApp from './components/InnerApp';
 import AppWithoutSsr from './components/AppWithoutSsr';
+import InnerApp from './components/InnerApp';
 
-export default defineServer({
+export default adapter({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
       const params = new URLSearchParams(
@@ -25,7 +24,10 @@ export default defineServer({
     }
     if (input.type === 'custom' && input.pathname === '/') {
       return renderHtml(
-        { App: <App name="Waku" />, InnerApp: <InnerApp count={0} /> },
+        await renderRsc({
+          App: <App name="Waku" />,
+          InnerApp: <InnerApp count={0} />,
+        }),
         <Slot id="App" />,
         { rscPath: '' },
       );
@@ -34,20 +36,27 @@ export default defineServer({
   handleBuild: async ({
     renderRsc,
     rscPath2pathname,
+    withRequest,
     generateFile,
     generateDefaultHtml,
   }) => {
-    await generateFile(
-      rscPath2pathname(''),
-      renderRsc({
-        App: <App name="Waku" />,
-        InnerApp: <InnerApp count={0} />,
-      }),
+    await withRequest(
+      new Request(new URL('http://localhost:3000/')),
+      async () => {
+        const body = await renderRsc({
+          App: <App name="Waku" />,
+          InnerApp: <InnerApp count={0} />,
+        });
+        await generateFile(rscPath2pathname(''), body);
+      },
     );
     for (const count of [1, 2, 3, 4, 5]) {
-      await generateFile(
-        rscPath2pathname(`InnerApp=${count}`),
-        renderRsc({ App: <App name="Waku" /> }),
+      await withRequest(
+        new Request(new URL('http://localhost:3000/')),
+        async () => {
+          const body = await renderRsc({ App: <App name="Waku" /> });
+          await generateFile(rscPath2pathname(`InnerApp=${count}`), body);
+        },
       );
     }
     await generateDefaultHtml('/');

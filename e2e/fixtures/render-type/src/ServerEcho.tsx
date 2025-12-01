@@ -1,5 +1,14 @@
+import { unstable_getContext as getContext } from 'waku/server';
 import { Echo } from './Echo.js';
 
 export function ServerEcho({ echo }: { echo: string }) {
-  return <Echo echo={echo} timestamp={Date.now()} />;
+  // TODO is there a more reasonable way?
+  // eslint-disable-next-line react-hooks/purity
+  const now = performance.now();
+  return (
+    <>
+      <Echo echo={echo} timestamp={now} />
+      <p data-testid="req-url">{getContext().req.url}</p>
+    </>
+  );
 }

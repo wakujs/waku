@@ -1,10 +1,9 @@
 import { expect } from '@playwright/test';
-
-import { test, waitForHydration, prepareNormalSetup } from './utils.js';
+import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('waku-jotai-integration');
 
-test.describe('waku-jotai', async () => {
+test.describe('waku-jotai', () => {
   let port: number;
   let stopApp: (() => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {

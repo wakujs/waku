@@ -1,14 +1,14 @@
+import adapter from 'waku/adapters/default';
 import { createPages } from 'waku/router/server';
-
-import { ServerEcho } from './ServerEcho.js';
-import { ClientEcho } from './ClientEcho.js';
-import BuildStatic from './build/static.js';
 import BuildDynamic from './build/dynamic.js';
+import BuildStatic from './build/static.js';
+import { ClientEcho } from './ClientEcho.js';
 import Root from './root.js';
+import { ServerEcho } from './ServerEcho.js';
 
 // This needs type annotations for the return type of createPages
 // @see https://github.com/microsoft/TypeScript/issues/42873#issuecomment-2065572017
-const router: ReturnType<typeof createPages> = createPages(
+const pages: ReturnType<typeof createPages> = createPages(
   async ({ createPage }) => [
     createPage({
       render: 'static',
@@ -50,4 +50,4 @@ const router: ReturnType<typeof createPages> = createPages(
   ],
 );
 
-export default router;
+export default adapter(pages);

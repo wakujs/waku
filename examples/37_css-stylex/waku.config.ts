@@ -1,9 +1,8 @@
 // based on
 // https://github.com/pawelblaszczyk5/vite-rsc-experiments/blob/4bc05095d9ec5dcb584af43a5704c4dceffd38b8/apps/stylex/vite.config.ts
 
-import { defineConfig } from 'waku/config';
-
 import react from '@vitejs/plugin-react';
+import { defineConfig } from 'waku/config';
 
 const babelConfig = {
   plugins: [

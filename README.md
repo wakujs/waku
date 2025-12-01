@@ -516,6 +516,26 @@ export const getConfig = async () => {
 
 Group routes are especially powerful for organizing complex applications where different sections need different layouts, state management, or data requirements while maintaining clean URLs.
 
+#### Ignored routes
+
+The following directories are ignored by the router:
+
+- `_components`
+- `_hooks`
+
+All files inside there directories are excluded from routing.
+
+For instance, in the case below, `pages/about.tsx` is routed to `/about`, but files like `_components/header.tsx` are not routed anywhere.
+
+```
+pages/
+├── about.tsx
+├── _components/
+│   ├── header.tsx   // 👈🏼 ignored
+│   ├── footer.tsx   // 👈🏼 ignored
+│   ├── ...          // 👈🏼 ignored
+```
+
 ### Layouts
 
 Layouts are created with a special `_layout.tsx` file name and wrap the entire route and its descendents. They must accept a `children` prop of type `ReactNode`. While not required, you will typically want at least a root layout.
@@ -798,6 +818,48 @@ export const Component = () => {
   );
 };
 ```
+
+## Error handling
+
+Waku sets up a default error boundary at the root of your application. You can customize error handling by adding your own error boundaries anywhere, for example with the [`react-error-boundary`](https://www.npmjs.com/package/react-error-boundary) library.
+
+When errors are thrown from server components or server functions, the errors are automatically replayed on browser. This allows the closest error boundaries to catch and handle these errors, even though they originated on the server.
+
+```tsx
+// ./src/pages/index.tsx
+import { ErrorBoundary } from 'react-error-boundary';
+
+export default async function HomePage() {
+  return (
+    <>
+      <ErrorBoundary fallback={<div>Caught server component error!</div>}>
+        <ThrowComponent />
+      </ErrorBoundary>
+      <ErrorBoundary fallback={<div>Caught server function error!</div>}>
+        <form
+          action={async () => {
+            'use server';
+            throw new Error('Oops!');
+          }}
+        >
+          <button>Crash</button>
+        </form>
+      </ErrorBoundary>
+    </>
+  );
+}
+
+const ThrowComponent = async () => {
+  throw new Error('Oops!');
+  return <>...</>;
+};
+```
+
+Error boundaries handle **unexpected errors** as a last resort safety net. For expected error conditions (like validation or network failures), handle them explicitly in your application logic.
+
+In production, server errors are automatically obfuscated on the client to avoid revealing server internals. Detailed error messages and stack traces are only visible in development.
+
+If you customize the root element (see [Root element](#root-element)), you should add your own error boundary there, as Waku's default root error boundary is included in the default root element.
 
 ## Metadata
 
@@ -1384,70 +1446,113 @@ vercel
 
 #### Pure SSG
 
-Adding the `--with-vercel-static` flag to the build script will produce static sites without serverless functions.
+For adavanced users who want to avoid deploying functions, use the server entry file with vercel adapter and specify `static` option.
 
-```json
-{
-  "scripts": {
-    "build": "waku build --with-vercel-static"
-  }
-}
+`./src/server-entry.ts`:
+
+```ts
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/vercel';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  { static: true },
+);
 ```
-
-Note: When rendering in static mode, please be sure to return `render: 'static'` from each of your page files' `getConfig()`.
 
 ### Netlify
 
 Waku projects can be deployed to Netlify with the [Netlify CLI](https://docs.netlify.com/cli/get-started/).
 
 ```sh
-npm run build -- --with-netlify
+NETLIFY=1 npm run build
 netlify deploy
 ```
 
 #### Pure SSG
 
-Adding the `--with-netlify-static` flag to the build script will produce static sites without Netlify functions.
+For adavanced users who want to avoid deploying functions, use the server entry file with netlify adapter and specify `static` option.
 
-```json
-{
-  "scripts": {
-    "build": "waku build --with-netlify-static"
-  }
-}
+`./src/server-entry.ts`:
+
+```ts
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/netlify';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  { static: true },
+);
 ```
-
-Note: When rendering in static mode, please be sure to return `render: 'static'` from each of your page files' `getConfig()`.
 
 ### Cloudflare (experimental)
 
-```sh
-npm run build -- --with-cloudflare
-npx wrangler dev # or deploy
+`./src/server-entry.ts`:
+
+```ts
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/cloudflare';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+);
 ```
 
-### PartyKit (experimental)
-
 ```sh
-npm run build -- --with-partykit
-npx partykit dev # or deploy
+npm run build
+npx wrangler dev # or deploy
 ```
 
 ### Deno Deploy (experimental)
 
+`./src/server-entry.ts`:
+
+```ts
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/deno';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+);
+```
+
 ```sh
-npm run build -- --with-deno
+npm run build
 deployctl deploy --prod dist/serve-deno.js --exclude node_modules
 ```
 
 ### AWS Lambda (experimental)
 
+`./src/server-entry.ts`:
+
+```ts
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/aws-lambda';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  streaming: false, // optional, default is false
+);
+```
+
 ```sh
-npm run build -- --with-aws-lambda
+npm run build
 ```
 
 The handler entrypoint is `dist/serve-asw-lambda.js`: see [Hono AWS Lambda Deploy Docs](https://hono.dev/getting-started/aws-lambda#_3-deploy).
-Streaming can be activated by setting environment variable `DEPLOY_AWS_LAMBDA_STREAMING=true npm run build -- --with-aws-lambda`
+
+### Edge
+
+`waku/adapters/edge` adapter provides a minimal server output without deployment target specific code. For example, you can use it with [Nitro](https://nitro.build/) to handle packaging for various deployment platforms. See https://github.com/hi-ogawa/waku-nitro-example for the example.
+
+```ts
+// [waku.config.ts]
+import { defineConfig } from 'waku/config';
+
+export default defineConfig({
+  adapter: 'waku/adapters/edge',
+});
+```
 
 ## Community
 

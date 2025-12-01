@@ -1,10 +1,11 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect } from '@playwright/test';
+import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
-import { test, prepareStandaloneSetup, waitForHydration } from './utils.js';
+const startApp = prepareNormalSetup('hot-reload');
 
-const startApp = prepareStandaloneSetup('hot-reload');
+const originalFiles: { [key: string]: string } = {};
 
 function modifyFile(
   standaloneDir: string,
@@ -12,9 +13,17 @@ function modifyFile(
   search: string,
   replace: string,
 ) {
-  const content = readFileSync(join(standaloneDir, file), 'utf-8');
-  writeFileSync(join(standaloneDir, file), content.replace(search, replace));
+  const filePath = join(standaloneDir, file);
+  const content = readFileSync(filePath, 'utf-8');
+  originalFiles[filePath] ??= content;
+  writeFileSync(filePath, content.replace(search, replace));
 }
+
+test.afterAll(() => {
+  for (const [file, content] of Object.entries(originalFiles)) {
+    writeFileSync(file, content);
+  }
+});
 
 test.skip(
   ({ mode }) => mode !== 'DEV',
@@ -26,7 +35,7 @@ test.describe('hot reload', () => {
   let stopApp: (() => Promise<void>) | undefined;
   let standaloneDir: string;
   test.beforeAll(async () => {
-    ({ port, stopApp, standaloneDir } = await startApp('DEV'));
+    ({ port, stopApp, fixtureDir: standaloneDir } = await startApp('DEV'));
   });
   test.afterAll(async () => {
     await stopApp?.();

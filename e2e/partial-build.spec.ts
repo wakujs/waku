@@ -1,8 +1,11 @@
-import { execSync, exec, ChildProcess } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import { findWakuPort, terminate, test } from './utils.js';
-import { expect } from '@playwright/test';
 import { rmSync, statSync } from 'fs';
+import { ChildProcess, exec } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
+import { expect } from '@playwright/test';
+import { findWakuPort, terminate, test } from './utils.js';
+
+const execAsync = promisify(exec);
 
 const cwd = fileURLToPath(new URL('./fixtures/partial-build', import.meta.url));
 
@@ -24,51 +27,54 @@ test.describe(`partial builds`, () => {
   let port: number;
   test.beforeEach(async ({ page }) => {
     rmSync(`${cwd}/dist`, { recursive: true, force: true });
-    execSync(`node ${waku} build`, {
+    await execAsync(`node ${waku} build`, {
       cwd,
       env: { ...process.env, PAGES: 'a' },
     });
     cp = exec(`node ${waku} start`, { cwd });
     port = await findWakuPort(cp);
     await page.goto(`http://localhost:${port}/page/a`);
-    expect(await page.getByTestId('title').textContent()).toBe('a');
+    await expect(page.getByTestId('title')).toHaveText('a');
   });
   test.afterEach(async () => {
-    if (cp?.pid) {
-      await terminate(cp.pid);
-    }
+    await terminate(port);
   });
 
   test('does not change pages that already exist', async () => {
     const htmlBefore = statSync(`${cwd}/dist/public/page/a/index.html`);
     const rscBefore = statSync(`${cwd}/dist/public/RSC/R/page/a.txt`);
-    execSync(`node ${waku} build --experimental-partial`, {
+    const renderBefore = statSync(`${cwd}/dist/e2e/render/a.txt`);
+    await execAsync(`node ${waku} build`, {
       cwd,
       env: { ...process.env, PAGES: 'a,b' },
     });
     const htmlAfter = statSync(`${cwd}/dist/public/page/a/index.html`);
     const rscAfter = statSync(`${cwd}/dist/public/RSC/R/page/a.txt`);
+    const renderAfter = statSync(`${cwd}/dist/e2e/render/a.txt`);
     expect(htmlBefore.mtimeMs).toBe(htmlAfter.mtimeMs);
     expect(rscBefore.mtimeMs).toBe(rscAfter.mtimeMs);
+
+    // TODO: each page render is not reused so "partial mode" is not effective anymore
+    expect(renderBefore.mtimeMs).toBeLessThan(renderAfter.mtimeMs);
   });
 
   test('adds new pages', async ({ page }) => {
-    execSync(`node ${waku} build --experimental-partial`, {
+    await execAsync(`node ${waku} build`, {
       cwd,
       env: { ...process.env, PAGES: 'a,b' },
     });
     await page.goto(`http://localhost:${port}/page/b`);
-    expect(await page.getByTestId('title').textContent()).toBe('b');
+    await expect(page.getByTestId('title')).toHaveText('b');
   });
 
   test('does not delete old pages', async ({ page }) => {
-    execSync(`node ${waku} build --experimental-partial`, {
+    await execAsync(`node ${waku} build`, {
       cwd,
       env: { ...process.env, PAGES: 'c' },
     });
     await page.goto(`http://localhost:${port}/page/a`);
-    expect(await page.getByTestId('title').textContent()).toBe('a');
+    await expect(page.getByTestId('title')).toHaveText('a');
     await page.goto(`http://localhost:${port}/page/c`);
-    expect(await page.getByTestId('title').textContent()).toBe('c');
+    await expect(page.getByTestId('title')).toHaveText('c');
   });
 });

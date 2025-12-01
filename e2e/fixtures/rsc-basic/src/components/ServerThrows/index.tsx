@@ -1,6 +1,6 @@
 import { ServerBox } from '../Box.js';
-import { Counter } from './Counter.js';
 import { throws } from './actions.js';
+import { Counter } from './Counter.js';
 
 export function ServerThrows() {
   return (

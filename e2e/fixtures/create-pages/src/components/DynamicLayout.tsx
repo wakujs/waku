@@ -1,15 +1,9 @@
 import type { ReactNode } from 'react';
 
-export default function DynamicLayout({
-  children,
-  path,
-}: {
-  children: ReactNode;
-  path: string;
-}) {
+export default function DynamicLayout({ children }: { children: ReactNode }) {
   return (
     <>
-      <nav>Current path: {path}</nav>
+      <nav>Dynamic Layout</nav>
       {children}
     </>
   );

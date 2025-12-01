@@ -1,9 +1,8 @@
 import '../styles.css';
 
 import type { ReactNode } from 'react';
-
-import { Providers } from '../components/providers';
 import { Analytics } from '../components/analytics';
+import { Providers } from '../components/providers';
 
 type RootLayoutProps = { children: ReactNode };
 
@@ -41,18 +40,22 @@ const Meta = () => {
       <link
         rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700;1,800;1,900&display=block"
+        precedence="font"
       />
       <link
         rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700;1,800;1,900&display=block"
+        precedence="font"
       />
       <link
         rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Inter&display=block"
+        precedence="font"
       />
       <link
         rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Fira+Code&display=block"
+        precedence="font"
       />
     </>
   );

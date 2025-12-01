@@ -1,7 +1,6 @@
 import { Link } from 'waku';
-
-import styles from './index.module.css';
 import { Counter } from '../components/counter';
+import styles from './index.module.css';
 
 export default async function HomePage() {
   const data = await getData();

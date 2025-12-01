@@ -1,10 +1,9 @@
-import { unstable_defineServer as defineServer } from 'waku/minimal/server';
+import adapter from 'waku/adapters/default';
 import { Slot } from 'waku/minimal/client';
-
-import App from './components/App';
 import { runWithRerender } from './als';
+import App from './components/App';
 
-export default defineServer({
+export default adapter({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
     if (input.type === 'component') {
       return renderRsc({ App: <App name={input.rscPath || 'Waku'} /> });
@@ -25,10 +24,14 @@ export default defineServer({
     ) {
       const actionResult =
         input.type === 'action' ? await input.fn() : undefined;
-      return renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
-        rscPath: '',
-        actionResult,
-      });
+      return renderHtml(
+        await renderRsc({ App: <App name="Waku" /> }),
+        <Slot id="App" />,
+        {
+          rscPath: '',
+          actionResult,
+        },
+      );
     }
   },
   handleBuild: async () => {},

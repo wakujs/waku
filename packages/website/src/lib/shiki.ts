@@ -1,5 +1,4 @@
 import { createHighlighter } from 'shiki';
-
 import theme from '../theme.json';
 
 const highlighter = createHighlighter({
