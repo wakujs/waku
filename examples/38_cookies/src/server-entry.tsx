@@ -4,8 +4,6 @@ import adapter from 'waku/adapters/default';
 import { Slot } from 'waku/minimal/client';
 import { unstable_getContextData as getContextData } from 'waku/server';
 import App from './components/App';
-import cookieMiddleware from './middleware/cookie';
-import noopMiddleware from './middleware/noop';
 
 export default adapter(
   {
@@ -31,7 +29,8 @@ export default adapter(
     handleBuild: async () => {},
   },
   {
-    middlewareFns: [contextStorage, cookieMiddleware, noopMiddleware],
+    middlewareFns: [contextStorage],
+    middlewareModules: import.meta.glob('./middleware/*.ts'),
   },
 );
 
