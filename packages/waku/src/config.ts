@@ -1,6 +1,6 @@
-import type { UserConfig, Plugin } from 'vite';
+import type { UserConfig } from 'vite';
 
-export type { Plugin as VitePlugin };
+export type { Plugin as VitePlugin } from 'vite';
 
 // HACK I don't know why this works.
 declare global {
