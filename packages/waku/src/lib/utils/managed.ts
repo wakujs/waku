@@ -3,16 +3,22 @@ import { EXTENSIONS, SRC_PAGES } from '../constants.js';
 export const getManagedServerEntry = (config: { srcDir: string }) => {
   const globBase = `/${config.srcDir}/${SRC_PAGES}`;
   const globPattern = `${globBase}/**/*.{${EXTENSIONS.map((ext) => ext.slice(1)).join(',')}}`;
+  const middlewareGlob = `/${config.srcDir}/middleware/*.{${EXTENSIONS.map((ext) => ext.slice(1)).join(',')}}`;
   return `
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/default';
 
-export default adapter(fsRouter(
-  import.meta.glob(
-    ${JSON.stringify(globPattern)},
-    { base: ${JSON.stringify(globBase)} }
-  )
-));
+export default adapter(
+  fsRouter(
+    import.meta.glob(
+      ${JSON.stringify(globPattern)},
+      { base: ${JSON.stringify(globBase)} }
+    )
+  ),
+  {
+    middlewareModules: import.meta.glob(${JSON.stringify(middlewareGlob)}),
+  },
+);
 `;
 };
 
