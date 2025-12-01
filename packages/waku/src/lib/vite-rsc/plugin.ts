@@ -248,10 +248,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
           return resolved ? resolved : '\0' + source;
         }
         if (source === 'virtual:vite-rsc-waku/platform-entry') {
-          // Keep the virtual wrapper module from being tree-shaken.
-          // Return an object with `moduleSideEffects: true` to signal
-          // rollup/vite to preserve named exports when bundling.
-          return { id: '\0' + source, moduleSideEffects: true } as any;
+          return '\0' + source;
         }
         if (source === 'virtual:vite-rsc-waku/platform-entry-inner') {
           const resolved = await this.resolve(
@@ -259,12 +256,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
             undefined,
             options,
           );
-          // If a user-provided platform entry exists, return it with
-          // `moduleSideEffects: true` so rollup does not tree-shake its
-          // named exports. Otherwise, fall back to the virtual module.
           return resolved ? resolved : '\0' + source;
-            // ? ({ id: resolved.id, moduleSideEffects: 'no-treeshake' })
-            // : '\0' + source;
         }
         if (source === 'virtual:vite-rsc-waku/client-entry') {
           const resolved = await this.resolve(
