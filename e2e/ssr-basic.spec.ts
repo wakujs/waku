@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { prepareNormalSetup, test } from './utils.js';
+import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('ssr-basic');
 
@@ -15,6 +15,7 @@ test.describe(`ssr-basic`, () => {
 
   test('increase counter', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
     await expect(page.getByTestId('app-name')).toHaveText('Waku');
     await expect(page.getByTestId('count')).toHaveText('0');
     await page.getByTestId('increment').click();
