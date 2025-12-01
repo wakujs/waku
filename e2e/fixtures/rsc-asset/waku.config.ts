@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { Plugin } from 'vite';
 import { defineConfig } from 'waku/config';
+import type { VitePlugin } from 'waku/config';
 
 export default defineConfig({
   vite: {
@@ -16,7 +16,7 @@ export default defineConfig({
 });
 
 // emit asset and rewrite `new URL("./xxx", import.meta.url)` syntax for build.
-function importMetaUrlServerPlugin(): Plugin {
+function importMetaUrlServerPlugin(): VitePlugin {
   // https://github.com/vitejs/vite/blob/0f56e1724162df76fffd5508148db118767ebe32/packages/vite/src/node/plugins/assetImportMetaUrl.ts#L51-L52
   const assetImportMetaUrlRE =
     /\bnew\s+URL\s*\(\s*('[^']+'|"[^"]+"|`[^`]+`)\s*,\s*import\.meta\.url\s*(?:,\s*)?\)/dg;
