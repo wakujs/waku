@@ -1,7 +1,0 @@
-import { fsRouter } from 'waku';
-import adapter from 'waku/adapters/default';
-
-export default adapter(
-  fsRouter(import.meta.glob('./**/*.tsx', { base: './pages' })),
-  { middlewareModules: import.meta.glob('./middleware/*.ts') },
-);
