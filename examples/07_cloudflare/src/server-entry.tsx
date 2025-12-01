@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 import { contextStorage } from 'hono/context-storage';
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/cloudflare';

@@ -1451,7 +1451,6 @@ For adavanced users who want to avoid deploying functions, use the server entry 
 `./src/server-entry.ts`:
 
 ```ts
-/// <reference types="vite/client" />
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/vercel';
 
@@ -1477,7 +1476,6 @@ For adavanced users who want to avoid deploying functions, use the server entry 
 `./src/server-entry.ts`:
 
 ```ts
-/// <reference types="vite/client" />
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/netlify';
 
@@ -1492,7 +1490,6 @@ export default adapter(
 `./src/server-entry.ts`:
 
 ```ts
-/// <reference types="vite/client" />
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/cloudflare';
 
@@ -1511,7 +1508,6 @@ npx wrangler dev # or deploy
 `./src/server-entry.ts`:
 
 ```ts
-/// <reference types="vite/client" />
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/deno';
 
@@ -1530,7 +1526,6 @@ deployctl deploy --prod dist/serve-deno.js --exclude node_modules
 `./src/server-entry.ts`:
 
 ```ts
-/// <reference types="vite/client" />
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/aws-lambda';
 

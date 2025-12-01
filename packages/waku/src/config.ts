@@ -1,5 +1,12 @@
 import type { UserConfig } from 'vite';
 
+// HACK I don't know why this works.
+declare global {
+  interface ImportMeta {
+    readonly env: ImportMetaEnv;
+  }
+}
+
 export interface Config {
   /**
    * The base path for serve HTTP.
