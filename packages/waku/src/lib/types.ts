@@ -67,7 +67,9 @@ export type Unstable_ServerEntry = {
     fetch: (req: Request, ...args: any[]) => Response | Promise<Response>;
     build: (emitFile: Unstable_EmitFile) => Promise<void>;
     postBuild?: [modulePath: string, ...args: unknown[]];
+    [someOtherProperty: string]: unknown;
   };
+  [someOtherExport: string]: unknown;
 };
 
 export type Unstable_ProcessRequest = (
