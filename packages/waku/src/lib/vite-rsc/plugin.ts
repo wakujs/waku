@@ -25,11 +25,13 @@ import {
   DIST_SERVER,
   SRC_CLIENT_ENTRY,
   SRC_PAGES,
+  SRC_PLATFORM_ENTRY,
   SRC_SERVER_ENTRY,
 } from '../constants.js';
 import { getDefaultAdapter } from '../utils/default-adapter.js';
 import {
   getManagedClientEntry,
+  getManagedPlatformEntry,
   getManagedServerEntry,
 } from '../utils/managed.js';
 import { joinPath } from '../utils/path.js';
@@ -148,6 +150,10 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
                       __dirname,
                       '../vite-entries/entry.build.js',
                     ),
+                    platform: path.join(
+                      __dirname,
+                      '../vite-entries/entry.platform.js',
+                    ),
                   },
                 },
               },
@@ -241,6 +247,25 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
           );
           return resolved ? resolved : '\0' + source;
         }
+        if (source === 'virtual:vite-rsc-waku/platform-entry') {
+          // Keep the virtual wrapper module from being tree-shaken.
+          // Return an object with `moduleSideEffects: true` to signal
+          // rollup/vite to preserve named exports when bundling.
+          return { id: '\0' + source, moduleSideEffects: true } as any;
+        }
+        if (source === 'virtual:vite-rsc-waku/platform-entry-inner') {
+          const resolved = await this.resolve(
+            `/${config.srcDir}/${SRC_PLATFORM_ENTRY}`,
+            undefined,
+            options,
+          );
+          // If a user-provided platform entry exists, return it with
+          // `moduleSideEffects: true` so rollup does not tree-shake its
+          // named exports. Otherwise, fall back to the virtual module.
+          return resolved ? resolved : '\0' + source;
+            // ? ({ id: resolved.id, moduleSideEffects: 'no-treeshake' })
+            // : '\0' + source;
+        }
         if (source === 'virtual:vite-rsc-waku/client-entry') {
           const resolved = await this.resolve(
             `/${config.srcDir}/${SRC_CLIENT_ENTRY}`,
@@ -264,6 +289,18 @@ if (import.meta.hot) {
         }
         if (id === '\0virtual:vite-rsc-waku/client-entry') {
           return getManagedClientEntry();
+        }
+        if (id === '\0virtual:vite-rsc-waku/platform-entry') {
+          return `\
+export { default } from 'virtual:vite-rsc-waku/platform-entry-inner';
+export * from 'virtual:vite-rsc-waku/platform-entry-inner';
+if (import.meta.hot) {
+  import.meta.hot.accept()
+}
+`;
+        }
+        if (id === '\0virtual:vite-rsc-waku/platform-entry-inner') {
+          return getManagedPlatformEntry();
         }
       },
     },

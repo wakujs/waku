@@ -26,8 +26,11 @@ export default async function postBuild({
     mainEntry,
     `\
 import { INTERNAL_runFetch } from './index.js';
+import handlers from './platform.js';
+export * from './platform.js';
 
 export default {
+  ...handlers,
   fetch: (request, env, ctx) => INTERNAL_runFetch(env, request, env, ctx),
 };
 `,

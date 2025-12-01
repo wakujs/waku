@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
+import { contextStorage } from 'hono/context-storage';
 import {
   unstable_constants as constants,
   unstable_createServerEntryAdapter as createServerEntryAdapter,
@@ -21,11 +22,44 @@ function joinPath(path1: string, path2: string) {
 const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
+function isWranglerDev(req: Request): boolean {
+  // This header seems to only be set for production cloudflare workers
+  return !req.headers.get('cf-visitor');
+}
+
+// Workaround https://github.com/cloudflare/workers-sdk/issues/6577
+export const cloudflareMiddleware = (): MiddlewareHandler => {
+  return async (c, next) => {
+    await next();
+    if (!import.meta.env?.PROD) {
+      return;
+    }
+    if (!isWranglerDev(c.req.raw)) {
+      return;
+    }
+    const contentType = c.res.headers.get('content-type');
+    if (
+      !contentType ||
+      contentType.includes('text/html') ||
+      contentType.includes('text/plain')
+    ) {
+      const headers = new Headers(c.res.headers);
+      headers.set('content-encoding', 'Identity');
+      c.res = new Response(c.res.body, {
+        status: c.res.status,
+        statusText: c.res.statusText,
+        headers: c.res.headers,
+      });
+    }
+  };
+};
+
 export default createServerEntryAdapter(
   (
     { processRequest, processBuild, config, notFoundHtml },
     options?: {
       static?: boolean;
+      assetsDir?: string;
       middlewareFns?: (() => MiddlewareHandler)[];
       middlewareModules?: Record<
         string,
@@ -44,6 +78,8 @@ export default createServerEntryAdapter(
       return c.text('404 Not Found', 404);
     });
     app.use(contextMiddleware());
+    app.use(contextStorage());
+    app.use(cloudflareMiddleware());
     for (const middlewareFn of middlewareFns) {
       app.use(middlewareFn());
     }
@@ -56,8 +92,11 @@ export default createServerEntryAdapter(
     const postBuildArg: Parameters<
       typeof import('./lib/cloudflare-post-build.js').default
     >[0] = {
+      assetsDir: options?.assetsDir || 'assets',
       distDir: config.distDir,
       privateDir: config.privateDir,
+      rscBase: config.rscBase,
+      basePath: config.basePath,
       DIST_PUBLIC,
       serverless: !options?.static,
     };

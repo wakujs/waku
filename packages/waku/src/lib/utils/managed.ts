@@ -31,3 +31,7 @@ if (globalThis.__WAKU_HYDRATE__) {
 }
 `;
 };
+
+export const getManagedPlatformEntry = () => {
+  return `export default {};`;
+};

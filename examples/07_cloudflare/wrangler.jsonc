@@ -13,7 +13,23 @@
     "html_handling": "drop-trailing-slash",
     "not_found_handling": "404-page",
   },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "MY_DURABLE_OBJECT",
+        "class_name": "MyDurableObject"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": [
+        "MyDurableObject"
+      ]
+    }
+  ],
   "vars": {
-    "MAX_ITEMS": 10,
+    "MAX_ITEMS": 10
   },
 }
