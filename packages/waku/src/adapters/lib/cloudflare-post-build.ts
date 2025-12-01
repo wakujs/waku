@@ -30,7 +30,7 @@ import handlers from './platform.js';
 export * from './platform.js';
 
 export default {
-  ...handlers,
+  ...(handlers ? handlers : {}),
   fetch: (request, env, ctx) => INTERNAL_runFetch(env, request, env, ctx),
 };
 `,
