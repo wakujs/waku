@@ -2,10 +2,11 @@ import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 import * as serverEntryExports from 'virtual:vite-rsc-waku/server-entry';
 import { INTERNAL_setAllEnv } from '../../server.js';
 
-export const unstable_serverEntryExports =
-  serverEntryExports as typeof serverEntryExports & {
-    [someOtherExport: string]: unknown;
-  };
+export { serverEntry as unstable_serverEntry };
+
+export const unstable_serverEntryExports = serverEntryExports as {
+  [someOtherExport: string]: unknown;
+};
 
 export async function INTERNAL_runFetch(
   env: Readonly<Record<string, string>>,
