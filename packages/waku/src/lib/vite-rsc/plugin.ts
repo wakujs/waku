@@ -21,7 +21,6 @@ import {
   getManagedClientEntry,
   getManagedServerEntry,
 } from '../utils/managed.js';
-import { joinPath } from '../utils/path.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import { buildMetadataPlugin } from '../vite-plugins/build-metadata.js';
 import { defaultAdapterPlugin } from '../vite-plugins/default-adapter.js';
@@ -29,6 +28,7 @@ import { fallbackHtmlPlugin } from '../vite-plugins/fallback-html.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
 import { notFoundPlugin } from '../vite-plugins/not-found.js';
 import { pathMacroPlugin } from '../vite-plugins/path-macro.js';
+import { privateDirPlugin } from '../vite-plugins/private-dir.js';
 import { virtualConfigPlugin } from '../vite-plugins/virtual-config.js';
 
 const PKG_NAME = 'waku';
@@ -53,7 +53,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
   if (!config.basePath.endsWith('/')) {
     config.basePath += '/';
   }
-  let privatePath: string;
 
   const extraPlugins = [...(config.vite?.plugins ?? [])];
   // add react plugin automatically if users didn't include it on their own (e.g. swc, oxc, babel react compiler)
@@ -195,9 +194,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
           },
         };
       },
-      configResolved(viteConfig) {
-        privatePath = joinPath(viteConfig.root, config.privateDir);
-      },
       async configureServer(server) {
         const { getRequestListener } = await import('@hono/node-server');
         const environment = server.environments.rsc! as RunnableDevEnvironment;
@@ -287,36 +283,8 @@ if (import.meta.hot) {
       },
     },
     buildMetadataPlugin(config),
-    {
-      name: 'waku:private-dir',
-      load(id) {
-        if (this.environment.name === 'rsc') {
-          return;
-        }
-        if (id.startsWith(privatePath)) {
-          throw new Error(
-            'Load private directory in client side is not allowed',
-          );
-        }
-      },
-      hotUpdate(ctx) {
-        if (
-          this.environment.name === 'rsc' &&
-          ctx.file.startsWith(privatePath)
-        ) {
-          ctx.server.environments.client.hot.send({
-            type: 'custom',
-            event: 'rsc:update',
-            data: {
-              type: 'waku:private',
-              file: ctx.file,
-            },
-          });
-        }
-      },
-    },
+    privateDirPlugin(config.privateDir),
     fallbackHtmlPlugin(),
     fsRouterTypegenPlugin({ srcDir: config.srcDir }),
   ];
 }
-
