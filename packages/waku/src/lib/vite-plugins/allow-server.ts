@@ -253,7 +253,7 @@ export const MyClientComp = () => { throw ... }
 
 export function allowServerPlugin(): Plugin {
   return {
-    name: 'waku:allow-server',
+    name: 'waku:vite-plugins:allow-server',
     transform(code) {
       if (this.environment.name !== 'rsc') {
         return;
