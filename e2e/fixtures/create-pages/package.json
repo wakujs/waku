@@ -10,10 +10,10 @@
     "start:static": "serve dist/public -p 8080"
   },
   "dependencies": {
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "react-error-boundary": "6.0.0",
-    "react-server-dom-webpack": "19.2.0",
+    "react": "~19.2.0",
+    "react-dom": "~19.2.0",
+    "react-error-boundary": "^6.0.0",
+    "react-server-dom-webpack": "~19.2.0",
     "serve": "^14.2.5",
     "waku": "latest"
   },
