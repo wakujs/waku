@@ -19,6 +19,14 @@ describe('vite-plugin-fs-router-typegen', () => {
     );
   });
 
+  test('normalizes identifiers with punctuation and leading numbers', async () => {
+    expect(toIdentifier('foo.bar.baz.tsx')).toBe('File_FooBarBaz');
+    expect(toIdentifier('123abc.tsx')).toBe('File_123abc');
+    expect(toIdentifier('__double__underscore__.tsx')).toBe(
+      'File_DoubleUnderscore',
+    );
+  });
+
   test('allows unicode characters in module names', async () => {
     expect(toIdentifier('/øné_two_three.tsx')).toBe('File_ØnéTwoThree');
   });
@@ -36,6 +44,16 @@ describe('vite-plugin-fs-router-typegen', () => {
       'one/two/three.tsx': 'File_OneTwoThree_1',
       'one_two_three.tsx': 'File_OneTwoThree_2',
       'one__two_three.tsx': 'File_OneTwoThree_3',
+    });
+  });
+
+  test('strips leading slashes when computing import module names', async () => {
+    expect(
+      getImportModuleNames(['/foo.tsx', '/foo.jsx', 'bar/baz.tsx']),
+    ).toEqual({
+      'foo.tsx': 'File_Foo',
+      'foo.jsx': 'File_Foo_1',
+      'bar/baz.tsx': 'File_BarBaz',
     });
   });
 
@@ -69,11 +87,67 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
     ).toMatchInlineSnapshot(`true`);
   });
 
+  test('generates types when no server-entry is present (managed fallback)', async () => {
+    expect(
+      await detectFsRouterUsage(
+        path.join(fixturesDir, 'plugin-fs-router-typegen'),
+      ),
+    ).toMatchInlineSnapshot(`true`);
+  });
+
+  test('detects fsRouter even when imported with an alias', async () => {
+    expect(
+      await detectFsRouterUsage(
+        path.join(fixturesDir, 'plugin-fs-router-typegen-with-fsrouter-alias'),
+      ),
+    ).toMatchInlineSnapshot(`true`);
+  });
+
   test('skips type generation when server-entry does not use fsRouter', async () => {
     expect(
       await detectFsRouterUsage(
         path.join(fixturesDir, 'plugin-fs-router-typegen-with-createpages'),
       ),
     ).toMatchInlineSnapshot(`false`);
+  });
+
+  test('returns undefined when there are no page files to scan', async () => {
+    expect(
+      await generateFsRouterTypes(
+        path.join(fixturesDir, 'plugin-fs-router-typegen-empty', 'pages'),
+      ),
+    ).toBeUndefined();
+  });
+
+  test('generates paths while skipping ignored/layout files and missing getConfig', async () => {
+    const generated = await generateFsRouterTypes(
+      path.join(fixturesDir, 'plugin-fs-router-typegen-complex', 'pages'),
+    );
+
+    expect(generated).toBeTruthy();
+    expect(generated).toContain(
+      `import type { getConfig as File_GroupLandingIndex_getConfig } from './pages/(group)/landing/index';`,
+    );
+    expect(generated).toContain(
+      `import type { getConfig as File_AdminDashboard_getConfig } from './pages/admin/dashboard';`,
+    );
+    expect(generated).toContain(
+      `import type { getConfig as File_DocsIndex_getConfig } from './pages/docs/index';`,
+    );
+    expect(generated).not.toContain('_layout');
+    expect(generated).not.toContain('_components');
+    expect(generated).toContain(
+      "| ({ path: '/landing' } & GetConfigResponse<typeof File_GroupLandingIndex_getConfig>)",
+    );
+    expect(generated).toContain(
+      "| ({ path: '/docs' } & GetConfigResponse<typeof File_DocsIndex_getConfig>)",
+    );
+    expect(generated).toContain(
+      "| ({ path: '/admin/dashboard' } & GetConfigResponse<typeof File_AdminDashboard_getConfig>)",
+    );
+    expect(generated).toContain(
+      "| { path: '/blog/[slug]'; render: 'dynamic' }",
+    );
+    expect(generated).toContain("declare module 'waku/router'");
   });
 });
