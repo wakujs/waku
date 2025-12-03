@@ -17,10 +17,6 @@ import {
   SRC_SERVER_ENTRY,
 } from '../constants.js';
 import { getDefaultAdapter } from '../utils/default-adapter.js';
-import {
-  getManagedClientEntry,
-  getManagedServerEntry,
-} from '../utils/managed.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import { buildMetadataPlugin } from '../vite-plugins/build-metadata.js';
 import { defaultAdapterPlugin } from '../vite-plugins/default-adapter.js';
@@ -30,6 +26,7 @@ import { notFoundPlugin } from '../vite-plugins/not-found.js';
 import { patchRsdwPlugin } from '../vite-plugins/patch-rsdw.js';
 import { pathMacroPlugin } from '../vite-plugins/path-macro.js';
 import { privateDirPlugin } from '../vite-plugins/private-dir.js';
+import { userEntriesPlugin } from '../vite-plugins/user-entries.js';
 import { virtualConfigPlugin } from '../vite-plugins/virtual-config.js';
 
 const PKG_NAME = 'waku';
@@ -217,47 +214,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
         };
       },
     },
-    {
-      name: 'waku:user-entries',
-      // resolve user entries and fallbacks to "managed mode" if not found.
-      async resolveId(source, _importer, options) {
-        if (source === 'virtual:vite-rsc-waku/server-entry') {
-          return '\0' + source;
-        }
-        if (source === 'virtual:vite-rsc-waku/server-entry-inner') {
-          const resolved = await this.resolve(
-            `/${config.srcDir}/${SRC_SERVER_ENTRY}`,
-            undefined,
-            options,
-          );
-          return resolved ? resolved : '\0' + source;
-        }
-        if (source === 'virtual:vite-rsc-waku/client-entry') {
-          const resolved = await this.resolve(
-            `/${config.srcDir}/${SRC_CLIENT_ENTRY}`,
-            undefined,
-            options,
-          );
-          return resolved ? resolved : '\0' + source;
-        }
-      },
-      load(id) {
-        if (id === '\0virtual:vite-rsc-waku/server-entry') {
-          return `\
-export { default } from 'virtual:vite-rsc-waku/server-entry-inner';
-if (import.meta.hot) {
-  import.meta.hot.accept()
-}
-`;
-        }
-        if (id === '\0virtual:vite-rsc-waku/server-entry-inner') {
-          return getManagedServerEntry(config);
-        }
-        if (id === '\0virtual:vite-rsc-waku/client-entry') {
-          return getManagedClientEntry();
-        }
-      },
-    },
+    userEntriesPlugin(config.srcDir),
     virtualConfigPlugin(config),
     defaultAdapterPlugin(config.unstable_adapter),
     notFoundPlugin(),
