@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "hono": "^4.10.0",
-    "react": "~19.2.0",
-    "react-dom": "~19.2.0",
-    "react-server-dom-webpack": "~19.2.0",
+    "react": "~19.2.1",
+    "react-dom": "~19.2.1",
+    "react-server-dom-webpack": "~19.2.1",
     "waku": "0.27.2",
     "wrangler": "^4.51.0"
   },
