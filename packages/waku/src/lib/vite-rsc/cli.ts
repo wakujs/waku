@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import net from 'node:net';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as vite from 'vite';
@@ -82,43 +83,35 @@ export async function cli(
     await builder.buildApp();
   } else if (cmd === 'start') {
     const host = flags.host;
-    const port = parseInt(flags.port || '8080', 10);
-    const { serve } = await import('@hono/node-server');
+    const port = await getFreePort(parseInt(flags.port || '8080', 10));
     const distDir = rscPluginOptions.config?.distDir ?? 'dist';
-    const entry: typeof import('../vite-entries/entry.server.js') =
-      await import(
-        pathToFileURL(path.resolve(distDir, 'server', 'index.js')).href
-      );
-    await startServer(host, port);
-    function startServer(host: string | undefined, port: number) {
-      return new Promise<void>((resolve, reject) => {
-        const server = serve(
-          {
-            fetch: (req, ...args) =>
-              entry.INTERNAL_runFetch(process.env as any, req, ...args),
-            ...(host ? { hostname: host } : {}),
-            port,
-          },
-          () => {
-            console.log(
-              `ready: Listening on http://${host || 'localhost'}:${port}/`,
-            );
-            resolve();
-          },
-        );
-        server.on('error', (err: NodeJS.ErrnoException) => {
-          if (err.code === 'EADDRINUSE') {
-            console.log(
-              `warn: Port ${port} is in use, trying ${port + 1} instead.`,
-            );
-            startServer(host, port + 1)
-              .then(resolve)
-              .catch(reject);
-          } else {
-            console.error(`Failed to start server: ${err.message}`);
-          }
-        });
+    const serveFileUrl = pathToFileURL(
+      path.resolve(distDir, 'serve-node.js'),
+    ).href;
+    if (host) {
+      process.env.HOST = host;
+    }
+    process.env.PORT = String(port);
+    await import(serveFileUrl);
+    console.log(`ready: Listening on http://${host || 'localhost'}:${port}/`);
+  }
+}
+
+async function getFreePort(startPort: number): Promise<number> {
+  for (let port = startPort; ; port++) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const srv = net
+          .createServer()
+          .once('error', reject)
+          .once('listening', () => srv.close(() => resolve()))
+          .listen(port);
       });
+      return port;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'EADDRINUSE') {
+        throw err;
+      }
     }
   }
 }
