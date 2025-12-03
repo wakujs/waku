@@ -28,6 +28,7 @@ import {
 import { joinPath } from '../utils/path.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import { buildMetadataPlugin } from '../vite-plugins/build-metadata.js';
+import { defaultAdapterPlugin } from '../vite-plugins/default-adapter.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
 import { notFoundPlugin } from '../vite-plugins/not-found.js';
 import { pathMacroPlugin } from '../vite-plugins/path-macro.js';
@@ -263,7 +264,7 @@ if (import.meta.hot) {
       },
     },
     virtualConfigPlugin(config),
-    virtualAdapterPlugin(config),
+    defaultAdapterPlugin(config.unstable_adapter),
     notFoundPlugin(),
     pathMacroPlugin(),
     {
@@ -406,29 +407,6 @@ function virtualConfigPlugin(config: Required<Config>): Plugin {
         export const config = ${JSON.stringify({ ...config, vite: undefined })};
         export const isBuild = ${JSON.stringify(this.environment.mode === 'build')};
       `;
-      }
-    },
-  };
-}
-
-function virtualAdapterPlugin(config: Required<Config>): Plugin {
-  const adapterModule = 'waku/adapters/default';
-  return {
-    name: 'waku:virtual-adapter',
-    enforce: 'pre',
-    async resolveId(source, _importer, options) {
-      if (source === adapterModule) {
-        const resolved = await this.resolve(
-          config.unstable_adapter,
-          undefined,
-          { ...options, skipSelf: true },
-        );
-        if (!resolved) {
-          return this.error(
-            `Failed to resolve adapter package: ${config.unstable_adapter}`,
-          );
-        }
-        return resolved;
       }
     },
   };
