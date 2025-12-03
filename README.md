@@ -1550,7 +1550,7 @@ The handler entrypoint is `dist/serve-asw-lambda.js`: see [Hono AWS Lambda Deplo
 import { defineConfig } from 'waku/config';
 
 export default defineConfig({
-  adapter: 'waku/adapters/edge',
+  unstable_adapter: 'waku/adapters/edge',
 });
 ```
 
