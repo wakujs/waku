@@ -27,6 +27,7 @@ import { defaultAdapterPlugin } from '../vite-plugins/default-adapter.js';
 import { fallbackHtmlPlugin } from '../vite-plugins/fallback-html.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
 import { notFoundPlugin } from '../vite-plugins/not-found.js';
+import { patchRsdwPlugin } from '../vite-plugins/patch-rsdw.js';
 import { pathMacroPlugin } from '../vite-plugins/path-macro.js';
 import { privateDirPlugin } from '../vite-plugins/private-dir.js';
 import { virtualConfigPlugin } from '../vite-plugins/virtual-config.js';
@@ -261,27 +262,7 @@ if (import.meta.hot) {
     defaultAdapterPlugin(config.unstable_adapter),
     notFoundPlugin(),
     pathMacroPlugin(),
-    {
-      // rewrite `react-server-dom-webpack` in `waku/minimal/client`
-      name: 'waku:patch-webpack',
-      enforce: 'pre',
-      resolveId(source, _importer, _options) {
-        if (source === 'react-server-dom-webpack/client') {
-          return '\0' + source;
-        }
-      },
-      load(id) {
-        if (id === '\0react-server-dom-webpack/client') {
-          if (this.environment.name === 'client') {
-            return `
-              import * as ReactClient from ${JSON.stringify(import.meta.resolve('@vitejs/plugin-rsc/browser'))};
-              export default ReactClient;
-            `;
-          }
-          return `export default {}`;
-        }
-      },
-    },
+    patchRsdwPlugin(),
     buildMetadataPlugin(config),
     privateDirPlugin(config.privateDir),
     fallbackHtmlPlugin(),
