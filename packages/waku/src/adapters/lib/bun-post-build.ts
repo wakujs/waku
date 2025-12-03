@@ -7,7 +7,7 @@ export default async function postBuild({ distDir }: { distDir: string }) {
 import { unstable_serverEntry } from './server/index.js';
 
 Bun.serve({
-  fetch: unstable_runFetch.fetch,
+  fetch: unstable_serverEntry.fetch,
 });
 `;
   writeFileSync(path.resolve(distDir, SERVE_JS), serveCode);
