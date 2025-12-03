@@ -237,11 +237,14 @@ importers:
   e2e/fixtures/monorepo:
     dependencies:
       react:
-        specifier: ~19.2.0
+        specifier: 19.2.0
         version: 19.2.0
       react-dom:
-        specifier: ~19.2.0
+        specifier: 19.2.0
         version: 19.2.0(react@19.2.0)
+      react-server-dom-webpack:
+        specifier: 19.2.0
+        version: 19.2.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
