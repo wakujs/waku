@@ -32,6 +32,7 @@ import { defaultAdapterPlugin } from '../vite-plugins/default-adapter.js';
 import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
 import { notFoundPlugin } from '../vite-plugins/not-found.js';
 import { pathMacroPlugin } from '../vite-plugins/path-macro.js';
+import { virtualConfigPlugin } from '../vite-plugins/virtual-config.js';
 
 const PKG_NAME = 'waku';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -384,29 +385,6 @@ function rscIndexPlugin(): Plugin {
           }
         }
         return `export default ${JSON.stringify(html)};`;
-      }
-    },
-  };
-}
-
-function virtualConfigPlugin(config: Required<Config>): Plugin {
-  const configModule = 'virtual:vite-rsc-waku/config';
-  let rootDir: string;
-  return {
-    name: 'waku:virtual-config',
-    configResolved(viteConfig) {
-      rootDir = viteConfig.root;
-    },
-    resolveId(source, _importer, _options) {
-      return source === configModule ? '\0' + configModule : undefined;
-    },
-    load(id) {
-      if (id === '\0' + configModule) {
-        return `
-        export const rootDir = ${JSON.stringify(rootDir)};
-        export const config = ${JSON.stringify({ ...config, vite: undefined })};
-        export const isBuild = ${JSON.stringify(this.environment.mode === 'build')};
-      `;
       }
     },
   };
