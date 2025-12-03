@@ -5,7 +5,7 @@ export function virtualConfigPlugin(config: Required<Config>): Plugin {
   const configModule = 'virtual:vite-rsc-waku/config';
   let rootDir: string;
   return {
-    name: 'waku:virtual-config',
+    name: 'waku:vite-plugins:virtual-config',
     configResolved(viteConfig) {
       rootDir = viteConfig.root;
     },

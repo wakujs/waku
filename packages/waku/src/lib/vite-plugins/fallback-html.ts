@@ -6,7 +6,7 @@ import type { Plugin, ViteDevServer } from 'vite';
 export function fallbackHtmlPlugin(): Plugin {
   let server: ViteDevServer | undefined;
   return {
-    name: 'waku:fallback-html',
+    name: 'waku:vite-plugins:fallback-html',
     config() {
       return {
         environments: {

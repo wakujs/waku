@@ -8,7 +8,7 @@ export function notFoundPlugin(): Plugin {
   // It's not used when router has 404 page.
   const name = 'virtual:vite-rsc-waku/not-found';
   return {
-    name: `waku:virtual-${name}`,
+    name: 'waku:vite-plugins:not-found',
     resolveId(source, _importer, _options) {
       return source === name ? '\0' + name : undefined;
     },

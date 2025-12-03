@@ -17,7 +17,7 @@ export function buildMetadataPlugin({ distDir }: { distDir: string }): Plugin {
   const virtualModule = 'virtual:vite-rsc-waku/build-metadata';
   const dummySource = 'export const buildMetadata = new Map();';
   return {
-    name: 'waku:build',
+    name: 'waku:vite-plugins:build-metadata',
     resolveId(source, _importer, _options) {
       if (source === virtualModule) {
         assert.equal(this.environment.name, 'rsc');

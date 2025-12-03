@@ -14,7 +14,7 @@ export function pathMacroPlugin(): Plugin {
   const token = 'import.meta.__WAKU_ORIGINAL_PATH__';
   let rootDir: string;
   return {
-    name: 'waku:path-macro',
+    name: 'waku:vite-plugins:path-macro',
     enforce: 'pre',
     configResolved(viteConfig) {
       rootDir = viteConfig.root;

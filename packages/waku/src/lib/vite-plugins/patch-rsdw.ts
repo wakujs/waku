@@ -3,7 +3,7 @@ import type { Plugin } from 'vite';
 export function patchRsdwPlugin(): Plugin {
   return {
     // rewrite `react-server-dom-webpack` in `waku/minimal/client`
-    name: 'waku:patch-webpack',
+    name: 'waku:vite-plugins:patch-rsdw',
     enforce: 'pre',
     resolveId(source, _importer, _options) {
       if (source === 'react-server-dom-webpack/client') {

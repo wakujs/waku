@@ -16,7 +16,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 export function mainPlugin(config: Required<Config>): Plugin {
   return {
-    name: 'waku:rsc',
+    name: 'waku:vite-plugins:main',
     async config(_config) {
       let viteRscConfig: UserConfig = {
         base: config.basePath,

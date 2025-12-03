@@ -3,7 +3,7 @@ import type { Plugin } from 'vite';
 export function defaultAdapterPlugin(adapterName: string): Plugin {
   const adapterModule = 'waku/adapters/default';
   return {
-    name: 'waku:virtual-adapter',
+    name: 'waku:vite-plugins:default-adapter',
     enforce: 'pre',
     async resolveId(source, _importer, options) {
       if (source === adapterModule) {

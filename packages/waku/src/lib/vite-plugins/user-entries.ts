@@ -7,7 +7,7 @@ import {
 
 export function userEntriesPlugin(srcDir: string): Plugin {
   return {
-    name: 'waku:user-entries',
+    name: 'waku:vite-plugins:user-entries',
     // resolve user entries and fallbacks to "managed mode" if not found.
     async resolveId(source, _importer, options) {
       if (source === 'virtual:vite-rsc-waku/server-entry') {
