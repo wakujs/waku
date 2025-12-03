@@ -59,7 +59,7 @@ export function getImportModuleNames(filePaths: string[]): {
 
 export const fsRouterTypegenPlugin = (opts: { srcDir: string }): Plugin => {
   return {
-    name: 'vite-plugin-fs-router-typegen',
+    name: 'waku:vite-plugins:fs-router-typegen',
     apply: 'serve',
     configureServer(server) {
       const srcDir = joinPath(server.config.root, opts.srcDir);
