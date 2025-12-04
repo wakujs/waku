@@ -1,20 +1,15 @@
-import * as swc from '@swc/core';
+import ts from 'typescript';
 import { expect, test } from 'vitest';
 import { allowServerPlugin } from '../src/lib/vite-plugins/allow-server.js';
 
 const compileTsx = (code: string) =>
-  swc.transformSync(code, {
-    jsc: {
-      parser: {
-        syntax: 'typescript',
-        tsx: true,
-      },
-      transform: {
-        react: { runtime: 'automatic' },
-      },
-      target: 'esnext',
+  ts.transpileModule(code, {
+    compilerOptions: {
+      module: ts.ModuleKind.ESNext,
+      target: ts.ScriptTarget.ES2022,
+      jsx: ts.JsxEmit.ReactJSX,
     },
-  }).code;
+  }).outputText;
 
 const runTransform = (code: string, environmentName = 'rsc') => {
   const plugin = allowServerPlugin() as any;
@@ -160,7 +155,7 @@ export const allowed = unstable_allowServer(impl);
 
   expect(output).toBeDefined();
   expect(output).not.toContain('./custom-allow');
-  expect(output).toContain('const impl = ()=>"ok";');
+  expect(output).toMatch(/const impl = \(\)\s*=>\s*"ok";?/);
   expect(output).toContain('export const allowed = impl;');
 });
 
@@ -174,7 +169,7 @@ export default unstable_allowServer(fn);
 
   expect(output).toBeDefined();
   expect(output).not.toContain('waku/client');
-  expect(output).not.toContain('fn = ()=>1');
+  expect(output).not.toMatch(/fn = \(\)\s*=>\s*1/);
   expect(output).toMatch(
     /export default \(\) => \{ throw new Error\('It is not possible to invoke a client function from the server: "default"'\) \};?/,
   );
