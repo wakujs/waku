@@ -1,8 +1,7 @@
 import path from 'node:path';
-import { serve } from '@hono/node-server';
-import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
+import { serveStatic } from 'hono/bun';
 import type { ImportGlobFunction } from 'vite/types/importGlob.d.ts';
 import {
   unstable_constants as constants,
@@ -58,10 +57,10 @@ export default createServerEntryAdapter(
     app.use(rscMiddleware({ processRequest }));
     const postBuildScript = joinPath(
       import.meta.__WAKU_ORIGINAL_PATH__,
-      '../lib/node-post-build.js',
+      '../lib/bun-post-build.js',
     );
     const postBuildArg: Parameters<
-      typeof import('./lib/node-post-build.js').default
+      typeof import('./lib/bun-post-build.js').default
     >[0] = {
       distDir: config.distDir,
     };
@@ -69,7 +68,6 @@ export default createServerEntryAdapter(
       fetch: app.fetch,
       build: processBuild,
       postBuild: [postBuildScript, postBuildArg],
-      serve,
     };
   },
 );
