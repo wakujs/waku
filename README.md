@@ -1543,7 +1543,7 @@ The handler entrypoint is `dist/serve-asw-lambda.js`: see [Hono AWS Lambda Deplo
 
 ### Edge
 
-`waku/adapters/edge` adapter provides a minimal server output without deployment target specific code. For example, you can use it with [Nitro](https://nitro.build/) to handle packaging for various deployment platforms. See https://github.com/hi-ogawa/waku-nitro-example for the example.
+`waku/adapters/edge` adapter provides a minimal server output without deployment target specific code. For example, you can use it with [Nitro](https://nitro.build/) to handle packaging for various deployment platforms. See [waku-nitro-example](https://github.com/hi-ogawa/waku-nitro-example) for the example.
 
 ```ts
 // [waku.config.ts]
