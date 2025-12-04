@@ -51,6 +51,16 @@ export const bad = unstable_allowServer(1, 2);
   ).toThrowError('allowServer should have exactly one argument');
 });
 
+test('throws when allowServer receives zero arguments', () => {
+  expect(() =>
+    runTransform(`\
+'use client';
+import { unstable_allowServer } from 'waku/client';
+export const bad = unstable_allowServer();
+`),
+  ).toThrowError('allowServer should have exactly one argument');
+});
+
 test('keeps only allowServer dependencies and removes allowServer imports', () => {
   const output = runTransform(`\
 'use client';
@@ -96,6 +106,77 @@ export { aliasSource as exposed };
   expect(output).toMatch(/export const result = aliasSource/);
   expect(output).toMatch(
     /export const exposed = \\(\\) => \\{ throw new Error\\('It is not possible to invoke a client function from the server: "exposed"'\\) \\};?/,
+  );
+});
+
+test('handles multiple allowServer exports with shared dependencies', () => {
+  const output = runTransform(`\
+'use client';
+import { unstable_allowServer as allowServer } from 'waku/client';
+
+const base = 1;
+function timesTwo(x: number) {
+  return x * 2 + base;
+}
+function wrapper(n: number) {
+  return timesTwo(n) + base;
+}
+
+const unused = 'drop me';
+export const first = allowServer(timesTwo);
+export const second = allowServer(wrapper);
+`);
+
+  expect(output).toBeDefined();
+  expect(output).toContain('const base = 1;');
+  expect(output).toMatch(/function timesTwo\\(x\\)/);
+  expect(output).toMatch(/function wrapper\\(n\\)/);
+  expect(output).toContain('export const first = timesTwo;');
+  expect(output).toContain('export const second = wrapper;');
+  expect(output).not.toContain('unused');
+});
+
+test('removes unused allowServer import when never invoked', () => {
+  const output = runTransform(`\
+'use client';
+import { unstable_allowServer } from 'waku/client';
+export const value = 1;
+`);
+
+  expect(output).toBeDefined();
+  expect(output).not.toContain('waku/client');
+  expect(output).toMatch(
+    /export const value = \\(\\) => \\{ throw new Error\\('It is not possible to invoke a client function from the server: "value"'\\) \\};?/,
+  );
+});
+
+test('does not require allowServer to come from waku/client', () => {
+  const output = runTransform(`\
+'use client';
+import { unstable_allowServer } from './custom-allow';
+const impl = () => "ok";
+export const allowed = unstable_allowServer(impl);
+`);
+
+  expect(output).toBeDefined();
+  expect(output).not.toContain('./custom-allow');
+  expect(output).toContain('const impl = () => "ok";');
+  expect(output).toContain('export const allowed = impl;');
+});
+
+test('handles default allowServer export', () => {
+  const output = runTransform(`\
+'use client';
+import { unstable_allowServer } from 'waku/client';
+const fn = () => 1;
+export default unstable_allowServer(fn);
+`);
+
+  expect(output).toBeDefined();
+  expect(output).not.toContain('waku/client');
+  expect(output).not.toContain('fn = () => 1');
+  expect(output).toMatch(
+    /export default \\(\\) => \\{ throw new Error\\('It is not possible to invoke a client function from the server: "default"'\\) \\};?/,
   );
 });
 
