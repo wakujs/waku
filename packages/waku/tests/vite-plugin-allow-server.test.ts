@@ -82,10 +82,10 @@ export const extra = 'client';
   expect(output).toContain(`from './helper'`);
   expect(output).not.toContain('waku/client');
   expect(output).toContain('const base = 1;');
-  expect(output).toMatch(/function getValue\\(x\\)/);
-  expect(output).toMatch(/export const allowed = getValue\\(unused\\)/);
+  expect(output).toMatch(/function getValue\(x\)/);
+  expect(output).toMatch(/export const allowed = getValue\(unused\)/);
   expect(output).toMatch(
-    /export const extra = \\(\\) => \\{ throw new Error\\('It is not possible to invoke a client function from the server: "extra"'\\) \\};?/,
+    /export const extra = \(\) => \{ throw new Error\('It is not possible to invoke a client function from the server: "extra"'\) \};?/,
   );
 });
 
@@ -105,7 +105,7 @@ export { aliasSource as exposed };
   expect(output).toMatch(/const aliasSource = value/);
   expect(output).toMatch(/export const result = aliasSource/);
   expect(output).toMatch(
-    /export const exposed = \\(\\) => \\{ throw new Error\\('It is not possible to invoke a client function from the server: "exposed"'\\) \\};?/,
+    /export const exposed = \(\) => \{ throw new Error\('It is not possible to invoke a client function from the server: "exposed"'\) \};?/,
   );
 });
 
@@ -129,8 +129,8 @@ export const second = allowServer(wrapper);
 
   expect(output).toBeDefined();
   expect(output).toContain('const base = 1;');
-  expect(output).toMatch(/function timesTwo\\(x\\)/);
-  expect(output).toMatch(/function wrapper\\(n\\)/);
+  expect(output).toMatch(/function timesTwo\(x\)/);
+  expect(output).toMatch(/function wrapper\(n\)/);
   expect(output).toContain('export const first = timesTwo;');
   expect(output).toContain('export const second = wrapper;');
   expect(output).not.toContain('unused');
@@ -146,7 +146,7 @@ export const value = 1;
   expect(output).toBeDefined();
   expect(output).not.toContain('waku/client');
   expect(output).toMatch(
-    /export const value = \\(\\) => \\{ throw new Error\\('It is not possible to invoke a client function from the server: "value"'\\) \\};?/,
+    /export const value = \(\) => \{ throw new Error\('It is not possible to invoke a client function from the server: "value"'\) \};?/,
   );
 });
 
@@ -160,7 +160,7 @@ export const allowed = unstable_allowServer(impl);
 
   expect(output).toBeDefined();
   expect(output).not.toContain('./custom-allow');
-  expect(output).toContain('const impl = () => "ok";');
+  expect(output).toContain('const impl = ()=>"ok";');
   expect(output).toContain('export const allowed = impl;');
 });
 
@@ -174,9 +174,9 @@ export default unstable_allowServer(fn);
 
   expect(output).toBeDefined();
   expect(output).not.toContain('waku/client');
-  expect(output).not.toContain('fn = () => 1');
+  expect(output).not.toContain('fn = ()=>1');
   expect(output).toMatch(
-    /export default \\(\\) => \\{ throw new Error\\('It is not possible to invoke a client function from the server: "default"'\\) \\};?/,
+    /export default \(\) => \{ throw new Error\('It is not possible to invoke a client function from the server: "default"'\) \};?/,
   );
 });
 
