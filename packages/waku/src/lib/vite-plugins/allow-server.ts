@@ -17,30 +17,7 @@ const createIdentifier = (value: string): swc.Identifier => ({
   span: createEmptySpan(),
 });
 
-const createStringLiteral = (value: string): swc.StringLiteral => ({
-  type: 'StringLiteral',
-  value,
-  span: createEmptySpan(),
-});
-
-const createCallExpression = (
-  callee: swc.Expression,
-  args: swc.Expression[],
-): swc.CallExpression => ({
-  type: 'CallExpression',
-  callee,
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-expect-error
-  ctxt: 0,
-  arguments: args.map((expression) => ({ expression })),
-  span: createEmptySpan(),
-});
-
-const transformExportedClientThings = (
-  mod: swc.Module,
-  getFuncId: () => string,
-  options?: { dceOnly?: boolean },
-): Set<string> => {
+const transformExportedClientThings = (mod: swc.Module): Set<string> => {
   const exportNames = new Set<string>();
   // HACK this doesn't cover all cases
   const allowServerItems = new Map<string, swc.Expression>();
@@ -199,16 +176,7 @@ const transformExportedClientThings = (
           {
             type: 'VariableDeclarator',
             id: createIdentifier(allowServerName),
-            init: options?.dceOnly
-              ? callExp
-              : createCallExpression(
-                  createIdentifier('__waku_registerClientReference'),
-                  [
-                    callExp,
-                    createStringLiteral(getFuncId()),
-                    createStringLiteral(allowServerName),
-                  ],
-                ),
+            init: callExp,
             definite: false,
             span: createEmptySpan(),
           },
@@ -267,9 +235,7 @@ export function allowServerPlugin(): Plugin {
         return;
       }
 
-      const exportNames = transformExportedClientThings(mod, () => '', {
-        dceOnly: true,
-      });
+      const exportNames = transformExportedClientThings(mod);
       let newCode = swc.printSync(mod).code;
       for (const name of exportNames) {
         const value = `() => { throw new Error('It is not possible to invoke a client function from the server: ${JSON.stringify(name)}') }`;
