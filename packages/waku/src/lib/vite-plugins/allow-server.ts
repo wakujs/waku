@@ -17,6 +17,15 @@ const createIdentifier = (value: string): swc.Identifier => ({
   span: createEmptySpan(),
 });
 
+const getDeclarationId = (
+  item: swc.ModuleItem,
+): swc.Identifier | undefined => {
+  if (item.type === 'FunctionDeclaration' || item.type === 'ClassDeclaration') {
+    return item.identifier;
+  }
+  return undefined;
+};
+
 const transformExportedClientThings = (mod: swc.Module): Set<string> => {
   const exportNames = new Set<string>();
   // HACK this doesn't cover all cases
@@ -47,18 +56,17 @@ const transformExportedClientThings = (mod: swc.Module): Set<string> => {
   // Pass 1: find allowServer identifier
   let allowServer = 'unstable_allowServer';
   for (const item of mod.body) {
-    if (item.type === 'ImportDeclaration') {
-      if (item.source.value === 'waku/client') {
-        for (const specifier of item.specifiers) {
-          if (specifier.type === 'ImportSpecifier') {
-            if (specifier.imported?.value === allowServer) {
-              allowServer = specifier.local.value;
-              break;
-            }
-          }
+    if (item.type === 'ImportDeclaration' && item.source.value === 'waku/client') {
+      for (const specifier of item.specifiers) {
+        if (
+          specifier.type === 'ImportSpecifier' &&
+          specifier.imported?.value === allowServer
+        ) {
+          allowServer = specifier.local.value;
+          break;
         }
-        break;
       }
+      break;
     }
   }
   // Pass 2: collect export names and allowServer names
@@ -93,9 +101,10 @@ const transformExportedClientThings = (mod: swc.Module): Set<string> => {
           exportNames.add(s.exported ? s.exported.value : s.orig.value);
         }
       }
-    } else if (item.type === 'ExportDefaultExpression') {
-      exportNames.add('default');
-    } else if (item.type === 'ExportDefaultDeclaration') {
+    } else if (
+      item.type === 'ExportDefaultExpression' ||
+      item.type === 'ExportDefaultDeclaration'
+    ) {
       exportNames.add('default');
     }
   }
@@ -113,12 +122,9 @@ const transformExportedClientThings = (mod: swc.Module): Set<string> => {
             findDependencies(d);
           }
         }
-      } else if (item.type === 'FunctionDeclaration') {
-        if (allowServerDependencies.has(item.identifier.value)) {
-          findDependencies(item);
-        }
-      } else if (item.type === 'ClassDeclaration') {
-        if (allowServerDependencies.has(item.identifier.value)) {
+      } else {
+        const declId = getDeclarationId(item);
+        if (declId && allowServerDependencies.has(declId.value)) {
           findDependencies(item);
         }
       }
@@ -149,15 +155,9 @@ const transformExportedClientThings = (mod: swc.Module): Set<string> => {
         continue;
       }
     }
-    if (item.type === 'FunctionDeclaration') {
-      if (allowServerDependencies.has(item.identifier.value)) {
-        continue;
-      }
-    }
-    if (item.type === 'ClassDeclaration') {
-      if (allowServerDependencies.has(item.identifier.value)) {
-        continue;
-      }
+    const declId = getDeclarationId(item);
+    if (declId && allowServerDependencies.has(declId.value)) {
+      continue;
     }
     mod.body.splice(i--, 1);
   }
