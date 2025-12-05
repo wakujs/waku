@@ -17,9 +17,7 @@ const createIdentifier = (value: string): swc.Identifier => ({
   span: createEmptySpan(),
 });
 
-const getDeclarationId = (
-  item: swc.ModuleItem,
-): swc.Identifier | undefined => {
+const getDeclarationId = (item: swc.ModuleItem): swc.Identifier | undefined => {
   if (item.type === 'FunctionDeclaration' || item.type === 'ClassDeclaration') {
     return item.identifier;
   }
@@ -56,7 +54,10 @@ const transformExportedClientThings = (mod: swc.Module): Set<string> => {
   // Pass 1: find allowServer identifier
   let allowServer = 'unstable_allowServer';
   for (const item of mod.body) {
-    if (item.type === 'ImportDeclaration' && item.source.value === 'waku/client') {
+    if (
+      item.type === 'ImportDeclaration' &&
+      item.source.value === 'waku/client'
+    ) {
       for (const specifier of item.specifiers) {
         if (
           specifier.type === 'ImportSpecifier' &&
