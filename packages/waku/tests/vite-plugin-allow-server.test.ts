@@ -11,53 +11,61 @@ const compileTsx = (code: string) =>
     },
   }).outputText;
 
-const runTransform = (code: string, environmentName = 'rsc') => {
-  const plugin = allowServerPlugin() as any;
+const runTransform = async (code: string, environmentName = 'rsc') => {
+  const plugin = allowServerPlugin();
   const context = {
     environment: {
       name: environmentName,
     },
   };
-  return plugin.transform.call(context, compileTsx(code)) as string | undefined;
+  if (!(typeof plugin.transform === 'function')) {
+    throw new Error('Plugin transform is not defined');
+  }
+  const output = await plugin.transform.call(
+    context as never,
+    compileTsx(code),
+    'dummy id',
+  );
+  return output;
 };
 
-test('skips transform outside RSC environment', () => {
-  const output = runTransform(
+test('skips transform outside RSC environment', async () => {
+  const output = await runTransform(
     `'use client';\nexport const value = 1;`,
     'client',
   );
   expect(output).toBeUndefined();
 });
 
-test('skips files without a use client directive even if the string exists', () => {
-  const output = runTransform(
+test('skips files without a use client directive even if the string exists', async () => {
+  const output = await runTransform(
     `const label = "use client";\nexport const value = label;`,
   );
   expect(output).toBeUndefined();
 });
 
-test('throws when allowServer receives an unexpected number of arguments', () => {
-  expect(() =>
+test('throws when allowServer receives an unexpected number of arguments', async () => {
+  await expect(
     runTransform(`\
 'use client';
 import { unstable_allowServer } from 'waku/client';
 export const bad = unstable_allowServer(1, 2);
 `),
-  ).toThrowError('allowServer should have exactly one argument');
+  ).rejects.toThrowError('allowServer should have exactly one argument');
 });
 
-test('throws when allowServer receives zero arguments', () => {
-  expect(() =>
+test('throws when allowServer receives zero arguments', async () => {
+  await expect(
     runTransform(`\
 'use client';
 import { unstable_allowServer } from 'waku/client';
 export const bad = unstable_allowServer();
 `),
-  ).toThrowError('allowServer should have exactly one argument');
+  ).rejects.toThrowError('allowServer should have exactly one argument');
 });
 
-test('keeps only allowServer dependencies and removes allowServer imports', () => {
-  const output = runTransform(`\
+test('keeps only allowServer dependencies and removes allowServer imports', async () => {
+  const output = await runTransform(`\
 'use client';
 
 import { helper } from './helper';
@@ -84,8 +92,8 @@ export const extra = 'client';
   );
 });
 
-test('supports allowServer aliasing and export specifiers', () => {
-  const output = runTransform(`\
+test('supports allowServer aliasing and export specifiers', async () => {
+  const output = await runTransform(`\
 'use client';
 import { unstable_allowServer as allow } from 'waku/client';
 
@@ -104,8 +112,8 @@ export { aliasSource as exposed };
   );
 });
 
-test('handles multiple allowServer exports with shared dependencies', () => {
-  const output = runTransform(`\
+test('handles multiple allowServer exports with shared dependencies', async () => {
+  const output = await runTransform(`\
 'use client';
 import { unstable_allowServer as allowServer } from 'waku/client';
 
@@ -131,8 +139,8 @@ export const second = allowServer(wrapper);
   expect(output).not.toContain('unused');
 });
 
-test('removes unused allowServer import when never invoked', () => {
-  const output = runTransform(`\
+test('removes unused allowServer import when never invoked', async () => {
+  const output = await runTransform(`\
 'use client';
 import { unstable_allowServer } from 'waku/client';
 export const value = 1;
@@ -145,8 +153,8 @@ export const value = 1;
   );
 });
 
-test('does not require allowServer to come from waku/client', () => {
-  const output = runTransform(`\
+test('does not require allowServer to come from waku/client', async () => {
+  const output = await runTransform(`\
 'use client';
 import { unstable_allowServer } from './custom-allow';
 const impl = () => "ok";
@@ -159,8 +167,8 @@ export const allowed = unstable_allowServer(impl);
   expect(output).toContain('export const allowed = impl;');
 });
 
-test('handles default allowServer export', () => {
-  const output = runTransform(`\
+test('handles default allowServer export', async () => {
+  const output = await runTransform(`\
 'use client';
 import { unstable_allowServer } from 'waku/client';
 const fn = () => 1;
@@ -175,8 +183,52 @@ export default unstable_allowServer(fn);
   );
 });
 
-test('transforms client modules and stubs non-allowServer exports', () => {
-  const output = runTransform(`\
+test('stubs default exports while preserving allowServer dependencies', async () => {
+  const output = await runTransform(`\
+'use client';
+import { unstable_allowServer } from 'waku/client';
+const runner = () => "ok";
+const other = 123;
+export default unstable_allowServer(runner);
+export const extra = other;
+`);
+
+  expect(output).toBeDefined();
+  expect(output).not.toContain('waku/client');
+  expect(output).not.toContain('runner');
+  expect(output).not.toContain('other');
+  expect(output).toMatch(
+    /throw new Error\('It is not possible to invoke a client function from the server: "default"'\)/,
+  );
+  expect(output).toMatch(
+    /throw new Error\('It is not possible to invoke a client function from the server: "extra"'\)/,
+  );
+});
+
+test('removes re-exports and stubs them while keeping allowServer deps', async () => {
+  const output = await runTransform(`\
+'use client';
+export { helper } from './helper';
+import { unstable_allowServer as allowServer } from 'waku/client';
+
+const base = 5;
+function build() { return base; }
+
+export const ok = allowServer(build);
+`);
+
+  expect(output).toBeDefined();
+  expect(output).not.toContain(`from './helper'`);
+  expect(output).toContain('const base = 5;');
+  expect(output).toMatch(/function build\(\)/);
+  expect(output).toContain('export const ok = build;');
+  expect(output).toMatch(
+    /export const helper = \(\) => \{ throw new Error\('It is not possible to invoke a client function from the server: "helper"'\) \};?/,
+  );
+});
+
+test('transforms client modules and stubs non-allowServer exports', async () => {
+  const output = await runTransform(`\
 'use client';
 
 import { Component, createContext, useContext, memo } from 'react';
