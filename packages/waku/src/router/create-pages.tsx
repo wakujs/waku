@@ -319,6 +319,8 @@ export const createPages = <
     }
   >();
   const staticComponentMap = new Map<string, FunctionComponent<any>>();
+  const getStaticLayout = (id: string) =>
+    staticComponentMap.get(joinPath(id, 'layout').slice(1));
   const slicePathMap = new Map<string, string[]>();
   const sliceIdMap = new Map<
     string,
@@ -352,26 +354,10 @@ export const createPages = <
     }
   };
 
-  // FIXME this should be refactored
-  const createRouteRenderers = (path: string) => {
-    let pageComponent =
-      staticComponentMap.get(joinPath(path, 'page').slice(1)) ??
-      dynamicPagePathMap.get(path)?.[1] ??
-      wildcardPagePathMap.get(path)?.[1];
-    if (!pageComponent) {
-      pageComponent = [];
-      for (const [name, v] of staticComponentMap.entries()) {
-        if (name.startsWith(joinPath(path, 'page').slice(1))) {
-          pageComponent.push({
-            component: v,
-            render: 'static',
-          });
-        }
-      }
-    }
-    if (!pageComponent) {
-      throw new Error('Page not found: ' + path);
-    }
+  const createRouteRenderers = (
+    path: string,
+    pageComponent: ComponentEntry,
+  ) => {
     const layoutMatchPath = groupPathLookup.get(path) ?? path;
     const pathSpec = parsePathWithSlug(layoutMatchPath);
     const getMapping = (pathname: string) =>
@@ -414,8 +400,7 @@ export const createPages = <
 
     for (const segment of layoutPaths) {
       const layout =
-        dynamicLayoutPathMap.get(segment)?.[1] ??
-        staticComponentMap.get(joinPath(segment, 'layout').slice(1)); // feels like a hack
+        dynamicLayoutPathMap.get(segment)?.[1] ?? getStaticLayout(segment);
 
       if (layout && !Array.isArray(layout)) {
         renderers[`layout:${segment}`] = () =>
@@ -690,8 +675,7 @@ export const createPages = <
 
     return pathSegments.filter(
       (segment) =>
-        dynamicLayoutPathMap.has(segment) ||
-        staticComponentMap.has(joinPath(segment, 'layout').slice(1)), // feels like a hack
+        dynamicLayoutPathMap.has(segment) || getStaticLayout(segment),
     );
   };
 
@@ -720,8 +704,13 @@ export const createPages = <
       for (const [path, { literalSpec, originalSpec }] of staticPathMap) {
         const noSsr = noSsrSet.has(literalSpec);
         const layoutPaths = getLayouts(originalSpec ?? literalSpec);
-        const { renderRoot, renderRoute, getRenderer } =
-          createRouteRenderers(path);
+        const pageComponent = staticComponentMap.get(
+          joinPath(path, 'page').slice(1),
+        )!;
+        const { renderRoot, renderRoute, getRenderer } = createRouteRenderers(
+          path,
+          pageComponent,
+        );
         const elements = {
           ...layoutPaths.reduce<Record<string, ElementSpec>>((acc, lPath) => {
             acc[`layout:${lPath}`] = {
@@ -754,8 +743,10 @@ export const createPages = <
       for (const [path, [pathSpec, components]] of dynamicPagePathMap) {
         const noSsr = noSsrSet.has(pathSpec);
         const layoutPaths = getLayouts(pathSpec);
-        const { renderRoot, renderRoute, getRenderer } =
-          createRouteRenderers(path);
+        const { renderRoot, renderRoute, getRenderer } = createRouteRenderers(
+          path,
+          components,
+        );
         const elements = {
           ...layoutPaths.reduce<Record<string, ElementSpec>>((acc, lPath) => {
             acc[`layout:${lPath}`] = {
@@ -798,8 +789,10 @@ export const createPages = <
       for (const [path, [pathSpec, components]] of wildcardPagePathMap) {
         const noSsr = noSsrSet.has(pathSpec);
         const layoutPaths = getLayouts(pathSpec);
-        const { renderRoot, renderRoute, getRenderer } =
-          createRouteRenderers(path);
+        const { renderRoot, renderRoute, getRenderer } = createRouteRenderers(
+          path,
+          components,
+        );
         const elements = {
           ...layoutPaths.reduce<Record<string, ElementSpec>>((acc, lPath) => {
             acc[`layout:${lPath}`] = {
