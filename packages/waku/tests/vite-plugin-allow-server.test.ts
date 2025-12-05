@@ -183,6 +183,50 @@ export default unstable_allowServer(fn);
   );
 });
 
+test('stubs default exports while preserving allowServer dependencies', async () => {
+  const output = await runTransform(`\
+'use client';
+import { unstable_allowServer } from 'waku/client';
+const runner = () => "ok";
+const other = 123;
+export default unstable_allowServer(runner);
+export const extra = other;
+`);
+
+  expect(output).toBeDefined();
+  expect(output).not.toContain('waku/client');
+  expect(output).not.toContain('runner');
+  expect(output).not.toContain('other');
+  expect(output).toMatch(
+    /throw new Error\('It is not possible to invoke a client function from the server: "default"'\)/,
+  );
+  expect(output).toMatch(
+    /throw new Error\('It is not possible to invoke a client function from the server: "extra"'\)/,
+  );
+});
+
+test('removes re-exports and stubs them while keeping allowServer deps', async () => {
+  const output = await runTransform(`\
+'use client';
+export { helper } from './helper';
+import { unstable_allowServer as allowServer } from 'waku/client';
+
+const base = 5;
+function build() { return base; }
+
+export const ok = allowServer(build);
+`);
+
+  expect(output).toBeDefined();
+  expect(output).not.toContain(`from './helper'`);
+  expect(output).toContain('const base = 5;');
+  expect(output).toMatch(/function build\(\)/);
+  expect(output).toContain('export const ok = build;');
+  expect(output).toMatch(
+    /export const helper = \(\) => \{ throw new Error\('It is not possible to invoke a client function from the server: "helper"'\) \};?/,
+  );
+});
+
 test('transforms client modules and stubs non-allowServer exports', async () => {
   const output = await runTransform(`\
 'use client';
