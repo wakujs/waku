@@ -23,7 +23,7 @@ const runTransform = async (code: string, environmentName = 'rsc') => {
   }
   const output = await plugin.transform.call(
     context as never,
-    compileTsx(code),
+    code,
     'dummy id',
   );
   return output;
@@ -71,7 +71,8 @@ export const bad = unstable_allowServer();
 });
 
 test('keeps only allowServer dependencies and removes allowServer imports', async () => {
-  const output = await runTransform(`\
+  const output = await runTransform(
+    compileTsx(`\
 'use client';
 
 import { helper } from './helper';
@@ -85,7 +86,8 @@ function getValue(x: number) {
 const unused = 123;
 export const allowed = allowServer(getValue(unused));
 export const extra = 'client';
-`);
+`),
+  );
 
   expect(output).toMatchInlineSnapshot(`
     ""use client";import { helper } from './helper';
@@ -121,7 +123,8 @@ export { aliasSource as exposed };
 });
 
 test('handles multiple allowServer exports with shared dependencies', async () => {
-  const output = await runTransform(`\
+  const output = await runTransform(
+    compileTsx(`\
 'use client';
 import { unstable_allowServer as allowServer } from 'waku/client';
 
@@ -136,7 +139,8 @@ function wrapper(n: number) {
 const unused = 'drop me';
 export const first = allowServer(timesTwo);
 export const second = allowServer(wrapper);
-`);
+`),
+  );
 
   expect(output).toMatchInlineSnapshot(`
     ""use client";const base = 1;
@@ -174,7 +178,7 @@ export const allowed = unstable_allowServer(impl);
 `);
 
   expect(output).toMatchInlineSnapshot(`
-    ""use client";const impl = ()=>"ok";
+    ""use client";const impl = () => "ok";
     export const allowed = impl;
     "
   `);
@@ -225,9 +229,7 @@ export const ok = allowServer(build);
 
   expect(output).toMatchInlineSnapshot(`
     ""use client";const base = 5;
-    function build() {
-        return base;
-    }
+    function build() { return base; }
     export const ok = build;
     export const helper = () => { throw new Error('It is not possible to invoke a client function from the server: "helper"') };
     "
@@ -247,7 +249,7 @@ export { local };
   `);
 });
 
-test.skip('stubs bare named exports even when backing value uses allowServer', async () => {
+test('stubs bare named exports even when backing value uses allowServer', async () => {
   const output = await runTransform(`\
 'use client';
 import { unstable_allowServer } from 'waku/client';
@@ -264,7 +266,8 @@ export { allowed };
 });
 
 test('transforms client modules and stubs non-allowServer exports', async () => {
-  const output = await runTransform(`\
+  const output = await runTransform(
+    compileTsx(`\
 'use client';
 
 import { Component, createContext, useContext, memo } from 'react';
@@ -311,7 +314,8 @@ export default function App() {
     </MyProvider>
   );
 }
-`);
+`),
+  );
 
   expect(output).toMatchInlineSnapshot(`
     ""use client";import { atom } from 'jotai/vanilla';
@@ -327,6 +331,19 @@ export default function App() {
     export const useMyContext = () => { throw new Error('It is not possible to invoke a client function from the server: "useMyContext"') };
     export const NAME = () => { throw new Error('It is not possible to invoke a client function from the server: "NAME"') };
     export default () => { throw new Error('It is not possible to invoke a client function from the server: "default"') };
+    "
+  `);
+});
+
+test('transforms with trailing comment without new lines', async () => {
+  const output = await runTransform(`\
+'use client';
+export const foo = 1;
+// some comment`);
+
+  expect(output).toMatchInlineSnapshot(`
+    ""use client";// some comment
+    export const foo = () => { throw new Error('It is not possible to invoke a client function from the server: "foo"') };
     "
   `);
 });
