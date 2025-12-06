@@ -44,13 +44,18 @@ const getLocalExportName = (specifier: estree.ExportSpecifier) =>
       ? specifier.local.value
       : null;
 
-const getExpressionFromArgument = (
-  arg: estree.Expression | estree.SpreadElement,
+const getExpressionFromArguments = (
+  args: (estree.Expression | estree.SpreadElement)[],
 ) => {
-  if (arg.type === 'SpreadElement') {
-    return isExpressionWithRange(arg.argument) ? arg.argument : null;
+  if (args.length !== 1) {
+    throw new Error('allowServer should have exactly one argument');
   }
-  return isExpressionWithRange(arg) ? arg : null;
+  const arg = args[0]!;
+  const argument = arg.type === 'SpreadElement' ? arg.argument : arg;
+  if (!isExpressionWithRange(argument)) {
+    throw new Error('allowServer should have exactly one argument');
+  }
+  return argument;
 };
 
 const isUseDirective = (stmt: estree.Node, directive: string) =>
@@ -58,12 +63,10 @@ const isUseDirective = (stmt: estree.Node, directive: string) =>
   stmt.expression.type === 'Literal' &&
   stmt.expression.value === directive;
 
-const getDeclarationId = (item: estree.Node) => {
-  if (item.type === 'FunctionDeclaration' || item.type === 'ClassDeclaration') {
-    return item.id && isIdentifierWithRange(item.id) ? item.id : undefined;
-  }
-  return null;
-};
+const getDeclarationId = (item: estree.Node) =>
+  (item.type === 'FunctionDeclaration' || item.type === 'ClassDeclaration') &&
+  isIdentifierWithRange(item.id) &&
+  item.id;
 
 const transformExportedClientThings = (mod: ProgramNode) => {
   const exportNames = new Set<string>();
@@ -84,14 +87,13 @@ const transformExportedClientThings = (mod: ProgramNode) => {
         allowServerDependencies.add(node.name);
       }
     }
-    for (const value of Object.values(node) as unknown[]) {
-      const values: unknown[] = Array.isArray(value) ? value : [value];
-      for (const v of values) {
+    Object.values(node).forEach((value: unknown) => {
+      (Array.isArray(value) ? value : [value]).forEach((v: unknown) => {
         if (isNode(v)) {
           findDependencies(v);
         }
-      }
-    }
+      });
+    });
   };
   // Pass 1: find allowServer identifier
   let allowServer = 'unstable_allowServer';
@@ -135,13 +137,7 @@ const transformExportedClientThings = (mod: ProgramNode) => {
               d.init.callee.type === 'Identifier' &&
               d.init.callee.name === allowServer
             ) {
-              if (d.init.arguments.length !== 1) {
-                throw new Error('allowServer should have exactly one argument');
-              }
-              const arg = getExpressionFromArgument(d.init.arguments[0]!);
-              if (!arg) {
-                throw new Error('allowServer should have exactly one argument');
-              }
+              const arg = getExpressionFromArguments(d.init.arguments);
               allowServerItems.set(d.id.name, arg);
               findDependencies(d.init);
             } else {
@@ -173,13 +169,7 @@ const transformExportedClientThings = (mod: ProgramNode) => {
           d.init.callee.type === 'Identifier' &&
           d.init.callee.name === allowServer
         ) {
-          if (d.init.arguments.length !== 1) {
-            throw new Error('allowServer should have exactly one argument');
-          }
-          const arg = getExpressionFromArgument(d.init.arguments[0]!);
-          if (!arg) {
-            throw new Error('allowServer should have exactly one argument');
-          }
+          const arg = getExpressionFromArguments(d.init.arguments);
           allowServerItems.set(d.id.name, arg);
           findDependencies(d.init);
         }
