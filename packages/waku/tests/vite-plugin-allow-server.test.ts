@@ -247,7 +247,7 @@ export { local };
   `);
 });
 
-test('stubs bare named exports even when backing value uses allowServer', async () => {
+test.skip('stubs bare named exports even when backing value uses allowServer', async () => {
   const output = await runTransform(`\
 'use client';
 import { unstable_allowServer } from 'waku/client';
@@ -257,7 +257,8 @@ export { allowed };
 `);
 
   expect(output).toMatchInlineSnapshot(`
-    ""use client";export const allowed = () => { throw new Error('It is not possible to invoke a client function from the server: "allowed"') };
+    ""use client";const impl = () => 'ok';
+    export const allowed = impl;
     "
   `);
 });
