@@ -83,7 +83,6 @@
   },
   "dependencies": {
     "@hono/node-server": "~1.19.0",
-    "@swc/core": "~1.15.3",
     "@vitejs/plugin-react": "~5.1.0",
     "@vitejs/plugin-rsc": "~0.5.4",
     "dotenv": "~17.2.3",

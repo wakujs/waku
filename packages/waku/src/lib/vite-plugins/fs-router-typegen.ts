@@ -1,7 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { readdir, writeFile } from 'node:fs/promises';
-import * as swc from '@swc/core';
+import type * as estree from 'estree';
+import MagicString from 'magic-string';
 import type { Plugin } from 'vite';
+import { parseAstAsync, transformWithEsbuild } from 'vite';
 import { EXTENSIONS, SRC_PAGES, SRC_SERVER_ENTRY } from '../constants.js';
 import { getGrouplessPath } from '../utils/create-pages.js';
 import { isIgnoredPath } from '../utils/fs-router.js';
@@ -57,6 +59,30 @@ export function getImportModuleNames(filePaths: string[]): {
   return moduleNames;
 }
 
+const parseModule = async (filePath: string) => {
+  const source = readFileSync(filePath, 'utf8');
+  const loader: 'jsx' | 'ts' | 'tsx' = filePath.endsWith('.tsx')
+    ? 'tsx'
+    : filePath.endsWith('.ts')
+      ? 'ts'
+      : 'jsx';
+  const transformed = await transformWithEsbuild(source, filePath, {
+    loader,
+    jsx: 'preserve',
+  });
+  return parseAstAsync(transformed.code, { jsx: true });
+};
+
+const getImportedName = (specifier: estree.ImportSpecifier) =>
+  specifier.imported.type === 'Identifier'
+    ? specifier.imported.name
+    : String(specifier.imported.value);
+
+const getExportedName = (specifier: estree.ExportSpecifier) =>
+  specifier.exported.type === 'Identifier'
+    ? specifier.exported.name
+    : String(specifier.exported.value);
+
 export const fsRouterTypegenPlugin = (opts: { srcDir: string }): Plugin => {
   return {
     name: 'waku:vite-plugins:fs-router-typegen',
@@ -108,24 +134,30 @@ export async function detectFsRouterUsage(srcDir: string): Promise<boolean> {
   }
 
   try {
-    const file = swc.parseSync(readFileSync(existingServerEntry, 'utf8'), {
-      syntax: 'typescript',
-      tsx: true,
-    });
-
+    const file = await parseModule(existingServerEntry);
     const usesFsRouter = file.body.some((node) => {
-      if (node.type === 'ImportDeclaration') {
-        if (!node.source.value.startsWith('waku')) {
+      if (node.type !== 'ImportDeclaration') {
+        return false;
+      }
+      if (
+        node.source.type !== 'Literal' ||
+        typeof node.source.value !== 'string' ||
+        !node.source.value.startsWith('waku')
+      ) {
+        return false;
+      }
+      return node.specifiers.some((specifier) => {
+        if (
+          specifier.type !== 'ImportSpecifier' ||
+          specifier.local.type !== 'Identifier'
+        ) {
           return false;
         }
-        return node.specifiers.some(
-          (specifier) =>
-            specifier.type === 'ImportSpecifier' &&
-            (specifier.imported?.value === 'fsRouter' ||
-              (!specifier.imported && specifier.local.value === 'fsRouter')),
+        return (
+          getImportedName(specifier) === 'fsRouter' ||
+          specifier.local.name === 'fsRouter'
         );
-      }
-      return false;
+      });
     });
     return usesFsRouter;
   } catch {
@@ -155,37 +187,36 @@ export async function generateFsRouterTypes(pagesDir: string) {
     return files;
   };
 
-  const fileExportsGetConfig = (filePath: string) => {
-    const file = swc.parseSync(readFileSync(pagesDir + filePath, 'utf8'), {
-      syntax: 'typescript',
-      tsx: true,
-    });
-
+  const fileExportsGetConfig = async (filePath: string) => {
+    const file = await parseModule(pagesDir + filePath);
     return file.body.some((node) => {
-      if (node.type === 'ExportNamedDeclaration') {
-        return node.specifiers.some(
-          (specifier) =>
-            specifier.type === 'ExportSpecifier' &&
-            !specifier.isTypeOnly &&
-            ((!specifier.exported && specifier.orig.value === 'getConfig') ||
-              specifier.exported?.value === 'getConfig'),
-        );
+      if (node.type !== 'ExportNamedDeclaration') {
+        return false;
       }
-
-      return (
-        node.type === 'ExportDeclaration' &&
-        ((node.declaration.type === 'VariableDeclaration' &&
-          node.declaration.declarations.some(
-            (decl) =>
-              decl.id.type === 'Identifier' && decl.id.value === 'getConfig',
-          )) ||
-          (node.declaration.type === 'FunctionDeclaration' &&
-            node.declaration.identifier.value === 'getConfig'))
+      if (
+        node.declaration?.type === 'VariableDeclaration' &&
+        node.declaration.declarations.some(
+          (decl) =>
+            decl.id.type === 'Identifier' && decl.id.name === 'getConfig',
+        )
+      ) {
+        return true;
+      }
+      if (
+        node.declaration?.type === 'FunctionDeclaration' &&
+        node.declaration.id?.name === 'getConfig'
+      ) {
+        return true;
+      }
+      return node.specifiers.some(
+        (specifier) =>
+          specifier.type === 'ExportSpecifier' &&
+          getExportedName(specifier) === 'getConfig',
       );
     });
   };
 
-  const generateFile = (filePaths: string[]): string | null => {
+  const generateFile = async (filePaths: string[]): Promise<string | null> => {
     const fileInfo: { path: string; src: string; hasGetConfig: boolean }[] = [];
     const moduleNames = getImportModuleNames(filePaths);
 
@@ -194,7 +225,7 @@ export async function generateFsRouterTypes(pagesDir: string) {
       const src = filePath.replace(/^\//, '');
       let hasGetConfig = false;
       try {
-        hasGetConfig = fileExportsGetConfig(filePath);
+        hasGetConfig = await fileExportsGetConfig(filePath);
       } catch {
         return null;
       }
@@ -220,32 +251,37 @@ export async function generateFsRouterTypes(pagesDir: string) {
       }
     }
 
-    let result = `// deno-fmt-ignore-file
+    const result = new MagicString(`\
+// deno-fmt-ignore-file
 // biome-ignore format: generated types do not need formatting
 // prettier-ignore
-import type { PathsForPages, GetConfigResponse } from 'waku/router';\n\n`;
+import type { PathsForPages, GetConfigResponse } from 'waku/router';
+
+`);
 
     for (const file of fileInfo) {
       const moduleName = moduleNames[file.src];
       if (file.hasGetConfig) {
-        result += `// prettier-ignore\nimport type { getConfig as ${moduleName}_getConfig } from './${SRC_PAGES}/${file.src.replace('.tsx', '')}';\n`;
+        result.append(
+          `// prettier-ignore\nimport type { getConfig as ${moduleName}_getConfig } from './${SRC_PAGES}/${file.src.replace('.tsx', '')}';\n`,
+        );
       }
     }
 
-    result += `\n// prettier-ignore\ntype Page =\n`;
+    result.append(`\n// prettier-ignore\ntype Page =\n`);
 
     for (const file of fileInfo) {
       const moduleName = moduleNames[file.src];
       if (file.hasGetConfig) {
-        result += `| ({ path: '${file.path}' } & GetConfigResponse<typeof ${moduleName}_getConfig>)\n`;
+        result.append(
+          `| ({ path: '${file.path}' } & GetConfigResponse<typeof ${moduleName}_getConfig>)\n`,
+        );
       } else {
-        result += `| { path: '${file.path}'; render: 'dynamic' }\n`;
+        result.append(`| { path: '${file.path}'; render: 'dynamic' }\n`);
       }
     }
 
-    result =
-      result.slice(0, -1) +
-      `;
+    result.append(`;
 
 // prettier-ignore
 declare module 'waku/router' {
@@ -256,15 +292,15 @@ declare module 'waku/router' {
     pages: Page;
   }
 }
-`;
+`);
 
-    return result;
+    return result.toString();
   };
 
   const files = await collectFiles(pagesDir);
   if (!files.length) {
     return;
   }
-  const generation = generateFile(files);
+  const generation = await generateFile(files);
   return generation;
 }
