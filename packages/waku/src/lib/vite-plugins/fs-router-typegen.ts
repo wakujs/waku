@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { readdir, writeFile } from 'node:fs/promises';
 import type * as estree from 'estree';
-import MagicString from 'magic-string';
 import type { Plugin } from 'vite';
 import { parseAstAsync, transformWithEsbuild } from 'vite';
 import { EXTENSIONS, SRC_PAGES, SRC_SERVER_ENTRY } from '../constants.js';
@@ -251,37 +250,33 @@ export async function generateFsRouterTypes(pagesDir: string) {
       }
     }
 
-    const result = new MagicString(`\
-// deno-fmt-ignore-file
+    let result = `// deno-fmt-ignore-file
 // biome-ignore format: generated types do not need formatting
 // prettier-ignore
-import type { PathsForPages, GetConfigResponse } from 'waku/router';
-
-`);
+import type { PathsForPages, GetConfigResponse } from 'waku/router';\n\n`;
 
     for (const file of fileInfo) {
       const moduleName = moduleNames[file.src];
       if (file.hasGetConfig) {
-        result.append(
-          `// prettier-ignore\nimport type { getConfig as ${moduleName}_getConfig } from './${SRC_PAGES}/${file.src.replace('.tsx', '')}';\n`,
-        );
+        result += `// prettier-ignore\nimport type { getConfig as ${moduleName}_getConfig } from './${SRC_PAGES}/${file.src.replace('.tsx', '')}';\n`;
       }
     }
 
-    result.append(`\n// prettier-ignore\ntype Page =`);
+    result += `\n// prettier-ignore\ntype Page =\n`;
+
     for (const file of fileInfo) {
       const moduleName = moduleNames[file.src];
       if (file.hasGetConfig) {
-        result.append(
-          `\n| ({ path: '${file.path}' } & GetConfigResponse<typeof ${moduleName}_getConfig>)`,
-        );
+        result += `| ({ path: '${file.path}' } & GetConfigResponse<typeof ${moduleName}_getConfig>)\n`;
       } else {
-        result.append(`\n| { path: '${file.path}'; render: 'dynamic' }`);
+        result += `| { path: '${file.path}'; render: 'dynamic' }\n`;
       }
     }
-    result.append(`;\n`);
 
-    result.append(`
+    result =
+      result.slice(0, -1) +
+      `;
+
 // prettier-ignore
 declare module 'waku/router' {
   interface RouteConfig {
@@ -291,9 +286,9 @@ declare module 'waku/router' {
     pages: Page;
   }
 }
-`);
+`;
 
-    return result.toString();
+    return result;
   };
 
   const files = await collectFiles(pagesDir);
