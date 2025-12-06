@@ -31,7 +31,10 @@ const runTransform = async (code: string, environmentName = 'rsc') => {
 
 test('skips transform outside RSC environment', async () => {
   const output = await runTransform(
-    `'use client';\nexport const value = 1;`,
+    `\
+'use client';
+export const value = 1;
+`,
     'client',
   );
   expect(output).toBeUndefined();
@@ -39,7 +42,10 @@ test('skips transform outside RSC environment', async () => {
 
 test('skips files without a use client directive even if the string exists', async () => {
   const output = await runTransform(
-    `const label = "use client";\nexport const value = label;`,
+    `\
+const label = "use client";
+export const value = label;
+`,
   );
   expect(output).toBeUndefined();
 });
@@ -81,20 +87,22 @@ export const allowed = allowServer(getValue(unused));
 export const extra = 'client';
 `);
 
-  expect(output).toBeDefined();
-  expect(output).toContain(`from './helper'`);
-  expect(output).not.toContain('waku/client');
-  expect(output).toContain('const base = 1;');
-  expect(output).toMatch(/function getValue\(x\)/);
-  expect(output).toMatch(/export const allowed = getValue\(unused\)/);
-  expect(output).toMatch(
-    /export const extra = \(\) => \{ throw new Error\('It is not possible to invoke a client function from the server: "extra"'\) \};?/,
-  );
+  expect(output).toMatchInlineSnapshot(`
+    ""use client";import { helper } from './helper';
+    const base = 1;
+    function getValue(x) {
+        return helper(x + base);
+    }
+    const unused = 123;
+    export const allowed = getValue(unused);
+    export const extra = () => { throw new Error('It is not possible to invoke a client function from the server: "extra"') };
+    "
+  `);
 });
 
 test('supports allowServer aliasing and export specifiers', async () => {
   const output = await runTransform(`\
-'use client';
+"use client";
 import { unstable_allowServer as allow } from 'waku/client';
 
 const value = 42;
@@ -103,13 +111,13 @@ export const result = allow(aliasSource);
 export { aliasSource as exposed };
 `);
 
-  expect(output).toBeDefined();
-  expect(output).not.toContain('waku/client');
-  expect(output).toMatch(/const aliasSource = value/);
-  expect(output).toMatch(/export const result = aliasSource/);
-  expect(output).toMatch(
-    /export const exposed = \(\) => \{ throw new Error\('It is not possible to invoke a client function from the server: "exposed"'\) \};?/,
-  );
+  expect(output).toMatchInlineSnapshot(`
+    ""use client";const value = 42;
+    const aliasSource = value;
+    export const result = aliasSource;
+    export const exposed = () => { throw new Error('It is not possible to invoke a client function from the server: "exposed"') };
+    "
+  `);
 });
 
 test('handles multiple allowServer exports with shared dependencies', async () => {
@@ -130,13 +138,18 @@ export const first = allowServer(timesTwo);
 export const second = allowServer(wrapper);
 `);
 
-  expect(output).toBeDefined();
-  expect(output).toContain('const base = 1;');
-  expect(output).toMatch(/function timesTwo\(x\)/);
-  expect(output).toMatch(/function wrapper\(n\)/);
-  expect(output).toContain('export const first = timesTwo;');
-  expect(output).toContain('export const second = wrapper;');
-  expect(output).not.toContain('unused');
+  expect(output).toMatchInlineSnapshot(`
+    ""use client";const base = 1;
+    function timesTwo(x) {
+        return x * 2 + base;
+    }
+    function wrapper(n) {
+        return timesTwo(n) + base;
+    }
+    export const first = timesTwo;
+    export const second = wrapper;
+    "
+  `);
 });
 
 test('removes unused allowServer import when never invoked', async () => {
@@ -146,11 +159,10 @@ import { unstable_allowServer } from 'waku/client';
 export const value = 1;
 `);
 
-  expect(output).toBeDefined();
-  expect(output).not.toContain('waku/client');
-  expect(output).toMatch(
-    /export const value = \(\) => \{ throw new Error\('It is not possible to invoke a client function from the server: "value"'\) \};?/,
-  );
+  expect(output).toMatchInlineSnapshot(`
+    ""use client";export const value = () => { throw new Error('It is not possible to invoke a client function from the server: "value"') };
+    "
+  `);
 });
 
 test('does not require allowServer to come from waku/client', async () => {
@@ -161,10 +173,11 @@ const impl = () => "ok";
 export const allowed = unstable_allowServer(impl);
 `);
 
-  expect(output).toBeDefined();
-  expect(output).not.toContain('./custom-allow');
-  expect(output).toMatch(/const impl = \(\)\s*=>\s*"ok";?/);
-  expect(output).toContain('export const allowed = impl;');
+  expect(output).toMatchInlineSnapshot(`
+    ""use client";const impl = ()=>"ok";
+    export const allowed = impl;
+    "
+  `);
 });
 
 test('handles default allowServer export', async () => {
@@ -175,12 +188,10 @@ const fn = () => 1;
 export default unstable_allowServer(fn);
 `);
 
-  expect(output).toBeDefined();
-  expect(output).not.toContain('waku/client');
-  expect(output).not.toMatch(/fn = \(\)\s*=>\s*1/);
-  expect(output).toMatch(
-    /export default \(\) => \{ throw new Error\('It is not possible to invoke a client function from the server: "default"'\) \};?/,
-  );
+  expect(output).toMatchInlineSnapshot(`
+    ""use client";export default () => { throw new Error('It is not possible to invoke a client function from the server: "default"') };
+    "
+  `);
 });
 
 test('stubs default exports while preserving allowServer dependencies', async () => {
@@ -193,16 +204,11 @@ export default unstable_allowServer(runner);
 export const extra = other;
 `);
 
-  expect(output).toBeDefined();
-  expect(output).not.toContain('waku/client');
-  expect(output).not.toContain('runner');
-  expect(output).not.toContain('other');
-  expect(output).toMatch(
-    /throw new Error\('It is not possible to invoke a client function from the server: "default"'\)/,
-  );
-  expect(output).toMatch(
-    /throw new Error\('It is not possible to invoke a client function from the server: "extra"'\)/,
-  );
+  expect(output).toMatchInlineSnapshot(`
+    ""use client";export default () => { throw new Error('It is not possible to invoke a client function from the server: "default"') };
+    export const extra = () => { throw new Error('It is not possible to invoke a client function from the server: "extra"') };
+    "
+  `);
 });
 
 test('removes re-exports and stubs them while keeping allowServer deps', async () => {
@@ -217,14 +223,43 @@ function build() { return base; }
 export const ok = allowServer(build);
 `);
 
-  expect(output).toBeDefined();
-  expect(output).not.toContain(`from './helper'`);
-  expect(output).toContain('const base = 5;');
-  expect(output).toMatch(/function build\(\)/);
-  expect(output).toContain('export const ok = build;');
-  expect(output).toMatch(
-    /export const helper = \(\) => \{ throw new Error\('It is not possible to invoke a client function from the server: "helper"'\) \};?/,
-  );
+  expect(output).toMatchInlineSnapshot(`
+    ""use client";const base = 5;
+    function build() {
+        return base;
+    }
+    export const ok = build;
+    export const helper = () => { throw new Error('It is not possible to invoke a client function from the server: "helper"') };
+    "
+  `);
+});
+
+test('stubs bare named exports that are not allowServer', async () => {
+  const output = await runTransform(`\
+'use client';
+const local = 1;
+export { local };
+`);
+
+  expect(output).toMatchInlineSnapshot(`
+    ""use client";export const local = () => { throw new Error('It is not possible to invoke a client function from the server: "local"') };
+    "
+  `);
+});
+
+test('stubs bare named exports even when backing value uses allowServer', async () => {
+  const output = await runTransform(`\
+'use client';
+import { unstable_allowServer } from 'waku/client';
+const impl = () => 'ok';
+const allowed = unstable_allowServer(impl);
+export { allowed };
+`);
+
+  expect(output).toMatchInlineSnapshot(`
+    ""use client";export const allowed = () => { throw new Error('It is not possible to invoke a client function from the server: "allowed"') };
+    "
+  `);
 });
 
 test('transforms client modules and stubs non-allowServer exports', async () => {
