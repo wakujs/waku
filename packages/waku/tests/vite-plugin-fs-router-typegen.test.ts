@@ -84,7 +84,7 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
       await detectFsRouterUsage(
         path.join(fixturesDir, 'plugin-fs-router-typegen-with-fsrouter'),
       ),
-    ).toMatchInlineSnapshot(`true`);
+    ).toBe(true);
   });
 
   test('generates types when no server-entry is present (managed fallback)', async () => {
@@ -92,7 +92,7 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
       await detectFsRouterUsage(
         path.join(fixturesDir, 'plugin-fs-router-typegen'),
       ),
-    ).toMatchInlineSnapshot(`true`);
+    ).toBe(true);
   });
 
   test('detects fsRouter even when imported with an alias', async () => {
@@ -100,7 +100,15 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
       await detectFsRouterUsage(
         path.join(fixturesDir, 'plugin-fs-router-typegen-with-fsrouter-alias'),
       ),
-    ).toMatchInlineSnapshot(`true`);
+    ).toBe(true);
+  });
+
+  test('does not detect fsRouter when imported from non-waku sources', async () => {
+    expect(
+      await detectFsRouterUsage(
+        path.join(fixturesDir, 'plugin-fs-router-typegen-with-fsrouter-fake'),
+      ),
+    ).toBe(false);
   });
 
   test('skips type generation when server-entry does not use fsRouter', async () => {

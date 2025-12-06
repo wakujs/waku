@@ -152,10 +152,7 @@ export async function detectFsRouterUsage(srcDir: string): Promise<boolean> {
         ) {
           return false;
         }
-        return (
-          getImportedName(specifier) === 'fsRouter' ||
-          specifier.local.name === 'fsRouter'
-        );
+        return getImportedName(specifier) === 'fsRouter';
       });
     });
     return usesFsRouter;
