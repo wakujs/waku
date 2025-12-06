@@ -268,21 +268,20 @@ import type { PathsForPages, GetConfigResponse } from 'waku/router';
       }
     }
 
-    result.append(`\n// prettier-ignore\ntype Page =\n`);
-
+    result.append(`\n// prettier-ignore\ntype Page =`);
     for (const file of fileInfo) {
       const moduleName = moduleNames[file.src];
       if (file.hasGetConfig) {
         result.append(
-          `| ({ path: '${file.path}' } & GetConfigResponse<typeof ${moduleName}_getConfig>)\n`,
+          `\n| ({ path: '${file.path}' } & GetConfigResponse<typeof ${moduleName}_getConfig>)`,
         );
       } else {
-        result.append(`| { path: '${file.path}'; render: 'dynamic' }\n`);
+        result.append(`\n| { path: '${file.path}'; render: 'dynamic' }`);
       }
     }
+    result.append(`;\n`);
 
-    result.append(`;
-
+    result.append(`
 // prettier-ignore
 declare module 'waku/router' {
   interface RouteConfig {
