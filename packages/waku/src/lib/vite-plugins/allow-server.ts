@@ -1,69 +1,129 @@
-import * as swc from '@swc/core';
+import type * as estree from 'estree';
+import MagicString from 'magic-string';
+import type { ProgramNode } from 'rollup';
 import type { Plugin } from 'vite';
+import { parseAstAsync } from 'vite';
 
-const createEmptySpan = (): swc.Span =>
-  ({
-    start: 0,
-    end: 0,
-  }) as swc.Span;
+type NodeWithRange = estree.Node & { start: number; end: number };
+type ExpressionWithRange = estree.Expression & { start: number; end: number };
 
-const createIdentifier = (value: string): swc.Identifier => ({
-  type: 'Identifier',
-  value,
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-expect-error
-  ctxt: 0,
-  optional: false,
-  span: createEmptySpan(),
-});
+const isNodeWithRange = (value: unknown): value is NodeWithRange =>
+  typeof (value as { type?: unknown })?.type === 'string' &&
+  typeof (value as { start?: unknown })?.start === 'number' &&
+  typeof (value as { end?: unknown })?.end === 'number';
 
-const getDeclarationId = (item: swc.ModuleItem): swc.Identifier | undefined => {
+const isIdentifierWithRange = (
+  node: estree.Node | null | undefined,
+): node is estree.Identifier & { start: number; end: number } =>
+  node?.type === 'Identifier' &&
+  typeof (node as { start?: unknown }).start === 'number' &&
+  typeof (node as { end?: unknown }).end === 'number';
+
+const isExpressionWithRange = (
+  node: estree.Node | null | undefined,
+): node is ExpressionWithRange =>
+  !!node &&
+  typeof (node as { start?: unknown }).start === 'number' &&
+  typeof (node as { end?: unknown }).end === 'number' &&
+  'type' in node &&
+  typeof (node as { type: unknown }).type === 'string';
+
+const getImportedName = (specifier: estree.ImportSpecifier): string =>
+  specifier.imported.type === 'Identifier'
+    ? specifier.imported.name
+    : String(specifier.imported.value);
+
+const getExportedName = (specifier: estree.ExportSpecifier): string =>
+  specifier.exported.type === 'Identifier'
+    ? specifier.exported.name
+    : String(specifier.exported.value);
+
+const getLocalExportName = (
+  specifier: estree.ExportSpecifier,
+): string | null =>
+  specifier.local.type === 'Identifier'
+    ? specifier.local.name
+    : typeof specifier.local.value === 'string'
+      ? specifier.local.value
+      : null;
+
+const getExpressionFromArgument = (
+  arg: estree.Expression | estree.SpreadElement,
+): ExpressionWithRange | null => {
+  if (arg.type === 'SpreadElement') {
+    return isExpressionWithRange(arg.argument) ? arg.argument : null;
+  }
+  return isExpressionWithRange(arg) ? arg : null;
+};
+
+const isUseDirective = (stmt: estree.Node, directive: string): boolean =>
+  stmt.type === 'ExpressionStatement' &&
+  stmt.expression.type === 'Literal' &&
+  stmt.expression.value === directive;
+
+const getDeclarationId = (
+  item: estree.Node,
+): (estree.Identifier & { start: number; end: number }) | undefined => {
   if (item.type === 'FunctionDeclaration' || item.type === 'ClassDeclaration') {
-    return item.identifier;
+    return item.id && isIdentifierWithRange(item.id) ? item.id : undefined;
   }
   return undefined;
 };
 
-const transformExportedClientThings = (mod: swc.Module): Set<string> => {
+const transformExportedClientThings = (
+  mod: ProgramNode,
+): {
+  allowServerDependencies: Set<string>;
+  allowServerItems: Map<string, ExpressionWithRange>;
+  exportNames: Set<string>;
+} => {
   const exportNames = new Set<string>();
   // HACK this doesn't cover all cases
-  const allowServerItems = new Map<string, swc.Expression>();
+  const allowServerItems = new Map<string, ExpressionWithRange>();
   const allowServerDependencies = new Set<string>();
-  const visited = new WeakSet<swc.Node>();
-  const findDependencies = (node: swc.Node) => {
+  const visited = new WeakSet<NodeWithRange>();
+  const findDependencies = (node: estree.Node) => {
+    if (!isNodeWithRange(node)) {
+      throw new Error('Expected NodeWithRange');
+    }
     if (visited.has(node)) {
       return;
     }
     visited.add(node);
     if (node.type === 'Identifier') {
-      const id = node as swc.Identifier;
-      if (!allowServerItems.has(id.value) && !exportNames.has(id.value)) {
-        allowServerDependencies.add(id.value);
+      if (!allowServerItems.has(node.name) && !exportNames.has(node.name)) {
+        allowServerDependencies.add(node.name);
       }
     }
-    Object.values(node).forEach((value) => {
-      (Array.isArray(value) ? value : [value]).forEach((v) => {
-        if (typeof v?.type === 'string') {
+    for (const value of Object.values(node) as unknown[]) {
+      const values: unknown[] = Array.isArray(value) ? value : [value];
+      for (const v of values) {
+        if (isNodeWithRange(v)) {
           findDependencies(v);
-        } else if (typeof v?.expression?.type === 'string') {
-          findDependencies(v.expression);
+        } else if (v) {
+          const { expression } = v as { expression?: unknown };
+          if (isNodeWithRange(expression)) {
+            findDependencies(expression);
+          }
         }
-      });
-    });
+      }
+    }
   };
   // Pass 1: find allowServer identifier
   let allowServer = 'unstable_allowServer';
   for (const item of mod.body) {
     if (
       item.type === 'ImportDeclaration' &&
+      item.source.type === 'Literal' &&
       item.source.value === 'waku/client'
     ) {
       for (const specifier of item.specifiers) {
         if (
           specifier.type === 'ImportSpecifier' &&
-          specifier.imported?.value === allowServer
+          specifier.imported.type === 'Identifier' &&
+          specifier.imported.name === allowServer
         ) {
-          allowServer = specifier.local.value;
+          allowServer = specifier.local.name;
           break;
         }
       }
@@ -72,41 +132,74 @@ const transformExportedClientThings = (mod: swc.Module): Set<string> => {
   }
   // Pass 2: collect export names and allowServer names
   for (const item of mod.body) {
-    if (item.type === 'ExportDeclaration') {
-      if (item.declaration.type === 'FunctionDeclaration') {
-        exportNames.add(item.declaration.identifier.value);
-      } else if (item.declaration.type === 'ClassDeclaration') {
-        exportNames.add(item.declaration.identifier.value);
-      } else if (item.declaration.type === 'VariableDeclaration') {
+    if (item.type === 'ExportNamedDeclaration') {
+      if (
+        item.declaration?.type === 'FunctionDeclaration' &&
+        item.declaration.id
+      ) {
+        exportNames.add(item.declaration.id.name);
+      } else if (
+        item.declaration?.type === 'ClassDeclaration' &&
+        item.declaration.id
+      ) {
+        exportNames.add(item.declaration.id.name);
+      } else if (item.declaration?.type === 'VariableDeclaration') {
         for (const d of item.declaration.declarations) {
-          if (d.id.type === 'Identifier') {
+          if (isIdentifierWithRange(d.id)) {
             if (
               d.init?.type === 'CallExpression' &&
               d.init.callee.type === 'Identifier' &&
-              d.init.callee.value === allowServer
+              d.init.callee.name === allowServer
             ) {
               if (d.init.arguments.length !== 1) {
                 throw new Error('allowServer should have exactly one argument');
               }
-              allowServerItems.set(d.id.value, d.init.arguments[0]!.expression);
+              const arg = getExpressionFromArgument(d.init.arguments[0]!);
+              if (!arg) {
+                throw new Error('allowServer should have exactly one argument');
+              }
+              allowServerItems.set(d.id.name, arg);
               findDependencies(d.init);
             } else {
-              exportNames.add(d.id.value);
+              exportNames.add(d.id.name);
             }
           }
         }
       }
-    } else if (item.type === 'ExportNamedDeclaration') {
       for (const s of item.specifiers) {
         if (s.type === 'ExportSpecifier') {
-          exportNames.add(s.exported ? s.exported.value : s.orig.value);
+          const localName = getLocalExportName(s);
+          if (localName && allowServerItems.has(localName)) {
+            continue;
+          }
+          exportNames.add(getExportedName(s));
         }
       }
-    } else if (
-      item.type === 'ExportDefaultExpression' ||
-      item.type === 'ExportDefaultDeclaration'
-    ) {
+    } else if (item.type === 'ExportDefaultDeclaration') {
       exportNames.add('default');
+    } else if (item.type === 'ExportAllDeclaration') {
+      if (item.exported?.type === 'Identifier') {
+        exportNames.add(item.exported.name);
+      }
+    } else if (item.type === 'VariableDeclaration') {
+      for (const d of item.declarations) {
+        if (
+          isIdentifierWithRange(d.id) &&
+          d.init?.type === 'CallExpression' &&
+          d.init.callee.type === 'Identifier' &&
+          d.init.callee.name === allowServer
+        ) {
+          if (d.init.arguments.length !== 1) {
+            throw new Error('allowServer should have exactly one argument');
+          }
+          const arg = getExpressionFromArgument(d.init.arguments[0]!);
+          if (!arg) {
+            throw new Error('allowServer should have exactly one argument');
+          }
+          allowServerItems.set(d.id.name, arg);
+          findDependencies(d.init);
+        }
+      }
     }
   }
   // Pass 3: collect dependencies
@@ -117,108 +210,60 @@ const transformExportedClientThings = (mod: swc.Module): Set<string> => {
       if (item.type === 'VariableDeclaration') {
         for (const d of item.declarations) {
           if (
-            d.id.type === 'Identifier' &&
-            allowServerDependencies.has(d.id.value)
+            isIdentifierWithRange(d.id) &&
+            allowServerDependencies.has(d.id.name)
           ) {
             findDependencies(d);
           }
         }
       } else {
         const declId = getDeclarationId(item);
-        if (declId && allowServerDependencies.has(declId.value)) {
+        if (declId && allowServerDependencies.has(declId.name)) {
           findDependencies(item);
         }
       }
     }
   } while (dependenciesSize < allowServerDependencies.size);
   allowServerDependencies.delete(allowServer);
-  // Pass 4: filter with dependencies
-  for (let i = 0; i < mod.body.length; ++i) {
-    const item = mod.body[i]!;
-    if (
-      item.type === 'ImportDeclaration' &&
-      item.specifiers.some(
-        (s) =>
-          s.type === 'ImportSpecifier' &&
-          allowServerDependencies.has(
-            s.imported ? s.imported.value : s.local.value,
-          ),
-      )
-    ) {
-      continue;
-    }
-    if (item.type === 'VariableDeclaration') {
-      item.declarations = item.declarations.filter(
-        (d) =>
-          d.id.type === 'Identifier' && allowServerDependencies.has(d.id.value),
-      );
-      if (item.declarations.length) {
-        continue;
-      }
-    }
-    const declId = getDeclarationId(item);
-    if (declId && allowServerDependencies.has(declId.value)) {
-      continue;
-    }
-    mod.body.splice(i--, 1);
-  }
-  // Pass 5: add allowServer exports
-  for (const [allowServerName, callExp] of allowServerItems) {
-    const stmt: swc.ExportDeclaration = {
-      type: 'ExportDeclaration',
-      declaration: {
-        type: 'VariableDeclaration',
-        kind: 'const',
-        declare: false,
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error
-        ctxt: 0,
-        declarations: [
-          {
-            type: 'VariableDeclarator',
-            id: createIdentifier(allowServerName),
-            init: callExp,
-            definite: false,
-            span: createEmptySpan(),
-          },
-        ],
-        span: createEmptySpan(),
-      },
-      span: createEmptySpan(),
-    };
-    mod.body.push(stmt);
-  }
-  return exportNames;
+  return { allowServerDependencies, allowServerItems, exportNames };
 };
 
-/*
-Apply dead code elimination to preserve only `allowServer` exports.
+function shouldKeepStatement(
+  stmt: estree.Node,
+  dependencies: Set<string>,
+): boolean {
+  if (stmt.type === 'ImportDeclaration') {
+    return stmt.specifiers.some(
+      (s) =>
+        s.type === 'ImportSpecifier' &&
+        (dependencies.has(getImportedName(s)) ||
+          dependencies.has(s.local.name)),
+    );
+  }
+  if (stmt.type === 'VariableDeclaration') {
+    return stmt.declarations.some(
+      (d) => isIdentifierWithRange(d.id) && dependencies.has(d.id.name),
+    );
+  }
+  const declId = getDeclarationId(stmt);
+  if (declId) {
+    return dependencies.has(declId.name);
+  }
+  return false;
+}
 
-
-=== Example input ===
-
-"use client"
-import { unstable_allowServer as allowServer } from 'waku/client';
-import { atom } from 'jotai/vanilla';
-import clientDep from "./client-dep" // 🗑️
-
-const local1 = 1;
-export const countAtom = allowServer(atom(local1));
-
-const local2 = 2; // 🗑️
-export const MyClientComp = () => <div>hey: {local2} {clientDep}</div> // 🗑️
-
-=== Example output ===
-
-"use client"
-import { atom } from 'jotai/vanilla';
-
-const local1 = 1;
-export const countAtom = atom(local1);
-
-export const MyClientComp = () => { throw ... }
-
-*/
+function hasDirective(mod: ProgramNode, directive: string): boolean {
+  for (const item of mod.body) {
+    if (
+      item.type === 'ExpressionStatement' &&
+      item.expression.type === 'Literal' &&
+      item.expression.value === directive
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
 
 export function allowServerPlugin(): Plugin {
   return {
@@ -231,32 +276,39 @@ export function allowServerPlugin(): Plugin {
         return;
       }
 
-      const mod = swc.parseSync(code);
+      const mod = await parseAstAsync(code, { jsx: true });
       if (!hasDirective(mod, 'use client')) {
         return;
       }
 
-      const exportNames = transformExportedClientThings(mod);
-      let newCode = swc.printSync(mod).code;
+      const { allowServerDependencies, allowServerItems, exportNames } =
+        transformExportedClientThings(mod);
+
+      const s = new MagicString(code);
+      for (const item of mod.body) {
+        if (!isNodeWithRange(item)) {
+          throw new Error('Expected NodeWithRange');
+        }
+        if (isUseDirective(item, 'use client')) {
+          s.remove(item.start, item.end);
+          continue;
+        }
+        if (shouldKeepStatement(item, allowServerDependencies)) {
+          continue;
+        }
+        s.remove(item.start, item.end);
+      }
+
+      for (const [allowServerName, callExp] of allowServerItems) {
+        const expressionSource = code.slice(callExp.start, callExp.end);
+        s.append(`export const ${allowServerName} = ${expressionSource};\n`);
+      }
+      let newCode = s.toString().trim().replace(/\n+/g, '\n') + '\n';
       for (const name of exportNames) {
         const value = `() => { throw new Error('It is not possible to invoke a client function from the server: ${JSON.stringify(name)}') }`;
         newCode += `export ${name === 'default' ? name : `const ${name} =`} ${value};\n`;
       }
-      return `"use client";` + newCode;
+      return `"use client";` + newCode.trimStart();
     },
   };
-}
-
-function hasDirective(mod: swc.Module, directive: string): boolean {
-  for (const item of mod.body) {
-    if (item.type === 'ExpressionStatement') {
-      if (
-        item.expression.type === 'StringLiteral' &&
-        item.expression.value === directive
-      ) {
-        return true;
-      }
-    }
-  }
-  return false;
 }
