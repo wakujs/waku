@@ -282,14 +282,14 @@ export function allowServerPlugin(): Plugin {
 
       for (const [allowServerName, callExp] of allowServerItems) {
         const expressionSource = code.slice(callExp.start, callExp.end);
-        s.append(`export const ${allowServerName} = ${expressionSource};\n`);
+        s.append(`\nexport const ${allowServerName} = ${expressionSource};`);
       }
       let newCode = s.toString().replace(/\n+/g, '\n');
       for (const name of exportNames) {
         const value = `() => { throw new Error('It is not possible to invoke a client function from the server: ${JSON.stringify(name)}') }`;
-        newCode += `export ${name === 'default' ? name : `const ${name} =`} ${value};\n`;
+        newCode += `\nexport ${name === 'default' ? name : `const ${name} =`} ${value};`;
       }
-      return `"use client";` + newCode.trimStart();
+      return '"use client";' + newCode.trim() + '\n';
     },
   };
 }
