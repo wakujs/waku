@@ -1693,9 +1693,6 @@ importers:
       react-server-dom-webpack:
         specifier: 19.2.1
         version: 19.2.1(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(webpack@5.99.9(@swc/core@1.15.3(@swc/helpers@0.5.17)))
-      rollup:
-        specifier: ^4.53.3
-        version: 4.53.3
       ts-expect:
         specifier: ^1.3.0
         version: 1.3.0

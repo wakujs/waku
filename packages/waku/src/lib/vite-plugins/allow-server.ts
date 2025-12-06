@@ -1,9 +1,9 @@
 import type * as estree from 'estree';
 import MagicString from 'magic-string';
-import type { ProgramNode } from 'rollup';
 import type { Plugin } from 'vite';
 import { parseAstAsync } from 'vite';
 
+type ProgramNode = Awaited<ReturnType<typeof parseAstAsync>>;
 type NodeWithRange = estree.Node & { start: number; end: number };
 type ExpressionWithRange = estree.Expression & { start: number; end: number };
 
@@ -13,20 +13,17 @@ const isNodeWithRange = (value: unknown): value is NodeWithRange =>
   typeof (value as { end?: unknown })?.end === 'number';
 
 const isIdentifierWithRange = (
-  node: estree.Node | null | undefined,
+  node: estree.Node,
 ): node is estree.Identifier & { start: number; end: number } =>
-  node?.type === 'Identifier' &&
+  node.type === 'Identifier' &&
   typeof (node as { start?: unknown }).start === 'number' &&
   typeof (node as { end?: unknown }).end === 'number';
 
 const isExpressionWithRange = (
-  node: estree.Node | null | undefined,
+  node: estree.Expression,
 ): node is ExpressionWithRange =>
-  !!node &&
   typeof (node as { start?: unknown }).start === 'number' &&
-  typeof (node as { end?: unknown }).end === 'number' &&
-  'type' in node &&
-  typeof (node as { type: unknown }).type === 'string';
+  typeof (node as { end?: unknown }).end === 'number';
 
 const getImportedName = (specifier: estree.ImportSpecifier): string =>
   specifier.imported.type === 'Identifier'
@@ -303,7 +300,7 @@ export function allowServerPlugin(): Plugin {
         const expressionSource = code.slice(callExp.start, callExp.end);
         s.append(`export const ${allowServerName} = ${expressionSource};\n`);
       }
-      let newCode = s.toString().trim().replace(/\n+/g, '\n') + '\n';
+      let newCode = s.toString().replace(/\n+/g, '\n');
       for (const name of exportNames) {
         const value = `() => { throw new Error('It is not possible to invoke a client function from the server: ${JSON.stringify(name)}') }`;
         newCode += `export ${name === 'default' ? name : `const ${name} =`} ${value};\n`;
