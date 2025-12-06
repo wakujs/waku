@@ -4,13 +4,15 @@ import type { Plugin } from 'vite';
 import { parseAstAsync } from 'vite';
 
 type ProgramNode = Awaited<ReturnType<typeof parseAstAsync>>;
-type NodeWithRange = estree.Node & { start: number; end: number };
-type ExpressionWithRange = estree.Expression & { start: number; end: number };
 
-const isNodeWithRange = (value: unknown): value is NodeWithRange =>
-  typeof (value as { type?: unknown })?.type === 'string' &&
-  typeof (value as { start?: unknown })?.start === 'number' &&
-  typeof (value as { end?: unknown })?.end === 'number';
+const isNode = (value: unknown): value is estree.Node =>
+  typeof (value as { type?: unknown })?.type === 'string'; // heuristic
+
+const isNodeWithRange = (
+  node: estree.Node,
+): node is estree.Node & { start: number; end: number } =>
+  typeof (node as { start?: unknown })?.start === 'number' &&
+  typeof (node as { end?: unknown })?.end === 'number';
 
 const isIdentifierWithRange = (
   node: estree.Node,
@@ -21,23 +23,21 @@ const isIdentifierWithRange = (
 
 const isExpressionWithRange = (
   node: estree.Expression,
-): node is ExpressionWithRange =>
+): node is estree.Expression & { start: number; end: number } =>
   typeof (node as { start?: unknown }).start === 'number' &&
   typeof (node as { end?: unknown }).end === 'number';
 
-const getImportedName = (specifier: estree.ImportSpecifier): string =>
+const getImportedName = (specifier: estree.ImportSpecifier) =>
   specifier.imported.type === 'Identifier'
     ? specifier.imported.name
     : String(specifier.imported.value);
 
-const getExportedName = (specifier: estree.ExportSpecifier): string =>
+const getExportedName = (specifier: estree.ExportSpecifier) =>
   specifier.exported.type === 'Identifier'
     ? specifier.exported.name
     : String(specifier.exported.value);
 
-const getLocalExportName = (
-  specifier: estree.ExportSpecifier,
-): string | null =>
+const getLocalExportName = (specifier: estree.ExportSpecifier) =>
   specifier.local.type === 'Identifier'
     ? specifier.local.name
     : typeof specifier.local.value === 'string'
@@ -46,43 +46,35 @@ const getLocalExportName = (
 
 const getExpressionFromArgument = (
   arg: estree.Expression | estree.SpreadElement,
-): ExpressionWithRange | null => {
+) => {
   if (arg.type === 'SpreadElement') {
     return isExpressionWithRange(arg.argument) ? arg.argument : null;
   }
   return isExpressionWithRange(arg) ? arg : null;
 };
 
-const isUseDirective = (stmt: estree.Node, directive: string): boolean =>
+const isUseDirective = (stmt: estree.Node, directive: string) =>
   stmt.type === 'ExpressionStatement' &&
   stmt.expression.type === 'Literal' &&
   stmt.expression.value === directive;
 
-const getDeclarationId = (
-  item: estree.Node,
-): (estree.Identifier & { start: number; end: number }) | undefined => {
+const getDeclarationId = (item: estree.Node) => {
   if (item.type === 'FunctionDeclaration' || item.type === 'ClassDeclaration') {
     return item.id && isIdentifierWithRange(item.id) ? item.id : undefined;
   }
-  return undefined;
+  return null;
 };
 
-const transformExportedClientThings = (
-  mod: ProgramNode,
-): {
-  allowServerDependencies: Set<string>;
-  allowServerItems: Map<string, ExpressionWithRange>;
-  exportNames: Set<string>;
-} => {
+const transformExportedClientThings = (mod: ProgramNode) => {
   const exportNames = new Set<string>();
   // HACK this doesn't cover all cases
-  const allowServerItems = new Map<string, ExpressionWithRange>();
+  const allowServerItems = new Map<
+    string,
+    estree.Expression & { start: number; end: number }
+  >();
   const allowServerDependencies = new Set<string>();
-  const visited = new WeakSet<NodeWithRange>();
+  const visited = new WeakSet<estree.Node>();
   const findDependencies = (node: estree.Node) => {
-    if (!isNodeWithRange(node)) {
-      throw new Error('Expected NodeWithRange');
-    }
     if (visited.has(node)) {
       return;
     }
@@ -95,13 +87,8 @@ const transformExportedClientThings = (
     for (const value of Object.values(node) as unknown[]) {
       const values: unknown[] = Array.isArray(value) ? value : [value];
       for (const v of values) {
-        if (isNodeWithRange(v)) {
+        if (isNode(v)) {
           findDependencies(v);
-        } else if (v) {
-          const { expression } = v as { expression?: unknown };
-          if (isNodeWithRange(expression)) {
-            findDependencies(expression);
-          }
         }
       }
     }
@@ -225,10 +212,7 @@ const transformExportedClientThings = (
   return { allowServerDependencies, allowServerItems, exportNames };
 };
 
-function shouldKeepStatement(
-  stmt: estree.Node,
-  dependencies: Set<string>,
-): boolean {
+const shouldKeepStatement = (stmt: estree.Node, dependencies: Set<string>) => {
   if (stmt.type === 'ImportDeclaration') {
     return stmt.specifiers.some(
       (s) =>
@@ -247,9 +231,9 @@ function shouldKeepStatement(
     return dependencies.has(declId.name);
   }
   return false;
-}
+};
 
-function hasDirective(mod: ProgramNode, directive: string): boolean {
+const hasDirective = (mod: ProgramNode, directive: string) => {
   for (const item of mod.body) {
     if (
       item.type === 'ExpressionStatement' &&
@@ -260,7 +244,7 @@ function hasDirective(mod: ProgramNode, directive: string): boolean {
     }
   }
   return false;
-}
+};
 
 export function allowServerPlugin(): Plugin {
   return {
