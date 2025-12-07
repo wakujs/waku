@@ -1,9 +1,19 @@
-import { type ReactNode, captureOwnerStack, use } from 'react';
+import {
+  type ReactElement,
+  type ReactNode,
+  captureOwnerStack,
+  use,
+} from 'react';
 import { createFromReadableStream } from '@vitejs/plugin-rsc/ssr';
 import { renderToReadableStream } from 'react-dom/server.edge';
 import { injectRSCPayload } from 'rsc-html-stream/server';
 import fallbackHtml from 'virtual:vite-rsc-waku/fallback-html';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
+import {
+  createServerInsertedHTML,
+  makeGetServerInsertedHTML,
+} from '../../server-html/server-inserted-html.js';
+import { createHeadInsertionTransformStream } from '../../server-html/stream-transforms.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
 import type { RenderHtmlStream } from '../utils/render.js';
 import { getBootstrapPreamble } from '../utils/ssr.js';
@@ -26,6 +36,10 @@ export const renderHtmlStream: RenderHtmlStream = async (
   let elementsPromise: Promise<RscElementsPayload>;
   let htmlPromise: Promise<RscHtmlPayload>;
 
+  // Create the server-inserted HTML provider and renderer
+  const { ServerInsertedHTMLProvider, renderServerInsertedHTML } =
+    createServerInsertedHTML();
+
   // deserialize RSC stream back to React VDOM
   function SsrRoot() {
     // RSC stream needs to be deserialized inside SSR component.
@@ -33,6 +47,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
     // https://github.com/facebook/react/pull/31799#discussion_r1886166075
     elementsPromise ??= createFromReadableStream<RscElementsPayload>(stream1);
     htmlPromise ??= createFromReadableStream<RscHtmlPayload>(rscHtmlStream);
+
     return (
       <INTERNAL_ServerRoot elementsPromise={elementsPromise}>
         {use(htmlPromise)}
@@ -40,12 +55,24 @@ export const renderHtmlStream: RenderHtmlStream = async (
     );
   }
 
-  // render html
+  let ssrElement: ReactElement = <SsrRoot />;
+
+  // Wrap with ServerInsertedHTMLProvider for CSS-in-JS support
+  ssrElement = (
+    <ServerInsertedHTMLProvider>{ssrElement}</ServerInsertedHTMLProvider>
+  );
+
   const bootstrapScriptContent = await loadBootstrapScriptContent();
   let htmlStream: ReadableStream;
   let status: number | undefined;
+
+  // Create the function to get server-inserted HTML
+  const getServerInsertedHTML = makeGetServerInsertedHTML(
+    renderServerInsertedHTML,
+  );
+
   try {
-    htmlStream = await renderToReadableStream(<SsrRoot />, {
+    htmlStream = await renderToReadableStream(ssrElement, {
       bootstrapScriptContent:
         getBootstrapPreamble({
           rscPath: options?.rscPath || '',
@@ -87,7 +114,15 @@ export const renderHtmlStream: RenderHtmlStream = async (
       ...(options?.nonce ? { nonce: options.nonce } : {}),
     });
   }
+
   let responseStream: ReadableStream<Uint8Array> = htmlStream;
+
+  // Inject server-inserted HTML (CSS-in-JS styles, etc.) before </head>
+  responseStream = responseStream.pipeThrough(
+    createHeadInsertionTransformStream(getServerInsertedHTML),
+  );
+
+  // Inject RSC payload into the HTML stream
   responseStream = responseStream.pipeThrough(
     injectRSCPayload(stream2, options?.nonce ? { nonce: options?.nonce } : {}),
   );

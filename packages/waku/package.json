@@ -61,6 +61,10 @@
     "./router/server": {
       "types": "./dist/router/server.d.ts",
       "default": "./dist/router/server.js"
+    },
+    "./server-html": {
+      "types": "./dist/server-html/client.d.ts",
+      "default": "./dist/server-html/client.js"
     }
   },
   "bin": {

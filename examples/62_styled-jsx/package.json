@@ -1,0 +1,24 @@
+{
+  "name": "62_styled-jsx",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "waku dev",
+    "build": "waku build",
+    "start": "waku start"
+  },
+  "dependencies": {
+    "react": "~19.2.1",
+    "react-dom": "~19.2.1",
+    "react-server-dom-webpack": "~19.2.1",
+    "styled-jsx": "^5.1.6",
+    "waku": "0.27.3"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.0",
+    "typescript": "^5.9.3"
+  }
+}
