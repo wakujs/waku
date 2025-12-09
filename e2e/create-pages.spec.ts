@@ -311,6 +311,25 @@ test.describe(`create-pages`, () => {
     expect(res2.headers.get('content-type')).toContain('application/json');
   });
 
+  test('api formData', async () => {
+    const formData = new FormData();
+    formData.append('test-string', 'value');
+    formData.append(
+      'test-file',
+      new File(['data'], 'test.txt', { type: 'text/plain' }),
+    );
+    const res = await fetch(`http://localhost:${port}/api/form-data`, {
+      method: 'POST',
+      body: formData,
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      keys: ['test-string', 'test-file'],
+      testString: 'value',
+      testFile: { name: 'test.txt', data: 'data' },
+    });
+  });
+
   test('exactPath', async ({ page }) => {
     await page.goto(`http://localhost:${port}/exact/[slug]/[...wild]`);
     await expect(
