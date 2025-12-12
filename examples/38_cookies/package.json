@@ -11,9 +11,9 @@
   "dependencies": {
     "cookie": "^1.1.1",
     "hono": "^4.10.0",
-    "react": "~19.2.1",
-    "react-dom": "~19.2.1",
-    "react-server-dom-webpack": "~19.2.1",
+    "react": "~19.2.3",
+    "react-dom": "~19.2.3",
+    "react-server-dom-webpack": "~19.2.3",
     "waku": "0.27.3"
   },
   "devDependencies": {
