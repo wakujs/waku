@@ -99,12 +99,6 @@ describe('removeBase', () => {
     expect(removeBase('/app/page', '/app/')).toBe('/page');
   });
 
-  test('throws error when base does not end with /', () => {
-    expect(() => removeBase('/foo/bar', '/custom/base')).toThrow(
-      'basePath must end with /',
-    );
-  });
-
   test('throws error when url does not start with base', () => {
     expect(() => removeBase('/other/path', '/custom/base/')).toThrow(
       'pathname must start with basePath',
