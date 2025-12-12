@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.27.4] - 2025-12-12
+
+### Changed
+
+- Some refactors and fixes
+
 ## [0.27.3] - 2025-12-04
 
 ### Changed
