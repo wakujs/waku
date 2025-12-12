@@ -170,6 +170,7 @@ test.describe('fs-router', () => {
   test('css split', async ({ page }) => {
     // each ssr-ed page includes split css
     await page.goto(`http://localhost:${port}/css-split/page1`);
+    await waitForHydration(page);
     await expect(page.getByText('css-split / page1 / index')).toHaveCSS(
       'color',
       'rgb(255, 0, 0)', // red

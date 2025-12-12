@@ -10,15 +10,15 @@
     "start:static": "serve dist/public -p 8080"
   },
   "dependencies": {
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "react-error-boundary": "6.0.0",
-    "react-server-dom-webpack": "19.2.0",
+    "react": "~19.2.3",
+    "react-dom": "~19.2.3",
+    "react-error-boundary": "^6.0.0",
+    "react-server-dom-webpack": "~19.2.3",
     "serve": "^14.2.5",
     "waku": "latest"
   },
   "devDependencies": {
-    "@types/react": "^19.2.5",
+    "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "server-only": "^0.0.1",
     "typescript": "^5.9.3"

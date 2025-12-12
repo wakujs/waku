@@ -98,6 +98,16 @@ export const components = {
       </ul>
     );
   },
+  ol: ({ children, ...rest }: any) => {
+    return (
+      <ol
+        className="mb-4 ml-4 list-decimal text-base font-normal leading-normal text-white/60 sm:text-lg lg:text-xl"
+        {...rest}
+      >
+        {children}
+      </ol>
+    );
+  },
   code: ({ children, ...rest }: any) => {
     return (
       <span

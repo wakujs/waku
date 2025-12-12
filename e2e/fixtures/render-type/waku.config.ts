@@ -1,7 +1,7 @@
-import type { Plugin } from 'vite';
 import { defineConfig } from 'waku/config';
+import type { VitePlugin } from 'waku/config';
 
-function buildMode(): Plugin {
+function buildMode(): VitePlugin {
   return {
     name: 'build-mode',
     load() {

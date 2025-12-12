@@ -1,9 +1,16 @@
 import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
+import type { ImportGlobFunction } from 'vite/types/importGlob.d.ts';
 import {
   unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
+
+declare global {
+  interface ImportMeta {
+    glob: ImportGlobFunction;
+  }
+}
 
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
@@ -12,12 +19,7 @@ export default createServerEntryAdapter(
     { processRequest, processBuild, notFoundHtml },
     options?: {
       middlewareFns?: (() => MiddlewareHandler)[];
-      middlewareModules?: Record<
-        string,
-        () => Promise<{
-          default: () => MiddlewareHandler;
-        }>
-      >;
+      middlewareModules?: Record<string, () => Promise<unknown>>;
     },
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
@@ -32,7 +34,7 @@ export default createServerEntryAdapter(
     for (const middlewareFn of middlewareFns) {
       app.use(middlewareFn());
     }
-    app.use(middlewareRunner(middlewareModules));
+    app.use(middlewareRunner(middlewareModules as never));
     app.use(rscMiddleware({ processRequest }));
     return {
       fetch: app.fetch,

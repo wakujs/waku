@@ -62,7 +62,13 @@ export async function getInput(
     const contentType = req.headers.get('content-type');
     if (
       typeof contentType === 'string' &&
-      contentType.startsWith('multipart/form-data')
+      contentType.startsWith('multipart/form-data') &&
+      // XXX This solution is very inefficient
+      // https://github.com/wakujs/waku/issues/1832
+      // TODO(daishi) Reconsider getInput API from scratch?
+      Array.from((await req.clone().formData()).keys()).some((key) =>
+        key.startsWith('$ACTION_'),
+      )
     ) {
       // server action: no js (progressive enhancement)
       const formData = (await getActionBody(req)) as FormData;

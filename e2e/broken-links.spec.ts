@@ -128,6 +128,7 @@ test.describe('broken-links: static server', () => {
 
     test('broken redirect', async ({ page }) => {
       await page.goto(`http://localhost:${port}`);
+      await waitForHydration(page);
       // Click on a link to a broken redirect
       await page.getByRole('link', { name: 'Broken redirect' }).click();
       // The page renders the custom 404.tsx

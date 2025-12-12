@@ -61,7 +61,7 @@ const changeAdapter = (file: string, adapter: string) => {
     content = readFileSync(file, 'utf-8');
   } else {
     // managed mode
-    content = getManagedServerEntry({ srcDir: 'src' });
+    content = getManagedServerEntry('src');
   }
   content = content.replace(
     /^import adapter from 'waku\/adapters\/default';/,
