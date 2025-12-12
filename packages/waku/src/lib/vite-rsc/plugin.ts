@@ -33,7 +33,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
   };
   // ensure trailing slash
   if (!config.basePath.endsWith('/')) {
-    config.basePath += '/';
+    throw new Error('basePath must end with /');
   }
 
   const extraPlugins = [...(config.vite?.plugins ?? [])];
