@@ -10,9 +10,9 @@
   },
   "dependencies": {
     "hono": "^4.10.0",
-    "react": "~19.2.1",
-    "react-dom": "~19.2.1",
-    "react-server-dom-webpack": "~19.2.1",
+    "react": "~19.2.3",
+    "react-dom": "~19.2.3",
+    "react-server-dom-webpack": "~19.2.3",
     "serve": "^14.2.5",
     "waku": "latest"
   },
