@@ -9,12 +9,12 @@
     "start": "waku start"
   },
   "dependencies": {
-    "jotai": "^2.15.2",
+    "jotai": "^2.16.0",
     "react": "~19.2.3",
     "react-dom": "~19.2.3",
     "react-server-dom-webpack": "~19.2.3",
     "waku": "0.27.3",
-    "waku-jotai": "^0.1.1"
+    "waku-jotai": "^0.2.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.17",
