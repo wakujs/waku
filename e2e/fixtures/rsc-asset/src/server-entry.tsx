@@ -2,12 +2,13 @@ import adapter from 'waku/adapters/default';
 import App from './components/App.js';
 
 export default adapter({
-  handleRequest: async (input, { renderRsc }) => {
-    if (input.type === 'component') {
-      return renderRsc({ App: <App name={input.rscPath || 'Waku'} /> });
+  handleRequest: async (input, { renderRsc, getRscInput }) => {
+    const rscInput = await getRscInput(input.req);
+    if (rscInput?.type === 'component') {
+      return renderRsc({ App: <App name={rscInput.rscPath || 'Waku'} /> });
     }
-    if (input.type === 'function') {
-      const value = await input.fn(...input.args);
+    if (rscInput?.type === 'function') {
+      const value = await rscInput.fn(...rscInput.args);
       return renderRsc({ _value: value });
     }
   },

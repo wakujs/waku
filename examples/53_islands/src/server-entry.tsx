@@ -4,14 +4,15 @@ import App from './components/App';
 import Dynamic from './components/Dynamic';
 
 export default adapter({
-  handleRequest: async (input, { renderRsc, renderHtml }) => {
-    if (input.type === 'component') {
-      if (input.rscPath === '') {
+  handleRequest: async (input, { renderRsc, renderHtml, getRscInput }) => {
+    const rscInput = await getRscInput(input.req);
+    if (rscInput?.type === 'component') {
+      if (rscInput.rscPath === '') {
         return renderRsc({
-          App: <App name={input.rscPath || 'Waku'} />,
+          App: <App name={rscInput.rscPath || 'Waku'} />,
         });
       }
-      if (input.rscPath === 'dynamic-slices') {
+      if (rscInput.rscPath === 'dynamic-slices') {
         return renderRsc({
           'slice:dynamic': (
             <Dynamic>
@@ -20,9 +21,9 @@ export default adapter({
           ),
         });
       }
-      throw new Error('Unexpected rscPath: ' + input.rscPath);
+      throw new Error('Unexpected rscPath: ' + rscInput.rscPath);
     }
-    if (input.type === 'custom' && input.pathname === '/') {
+    if (input.pathname === '/') {
       return renderHtml(
         await renderRsc({ App: <App name="Waku" /> }),
         <Slot id="App" />,

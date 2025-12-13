@@ -372,7 +372,7 @@ export function unstable_defineRouter(fns: {
   let cachedElementsForRequestInitialized = false;
   const handleRequest: HandleRequest = async (
     input,
-    { renderRsc, parseRsc, renderHtml, loadBuildMetadata },
+    { renderRsc, parseRsc, renderHtml, getRscInput, loadBuildMetadata },
   ): Promise<ReadableStream | Response | 'fallback' | null | undefined> => {
     const getCachedElement = (id: SlotId) => cachedElementsForRequest.get(id);
     const setCachedElement = (id: SlotId, element: ReactNode) => {
@@ -404,10 +404,18 @@ export function unstable_defineRouter(fns: {
         );
       }
     }
+    const pathConfigItem = await getPathConfigItem(input.pathname);
+    if (pathConfigItem?.type === 'api') {
+      const url = new URL(input.req.url);
+      url.pathname = input.pathname;
+      const req = new Request(url, input.req);
+      return pathConfigItem.handler(req);
+    }
     const url = new URL(input.req.url);
     const headers = Object.fromEntries(input.req.headers.entries());
-    if (input.type === 'component') {
-      const sliceId = decodeSliceId(input.rscPath);
+    const rscInput = await getRscInput(input.req);
+    if (rscInput?.type === 'component') {
+      const sliceId = decodeSliceId(rscInput.rscPath);
       if (sliceId !== null) {
         // LIMITATION: This is a signle slice request.
         // Ideally, we should be able to respond with multiple slices in one request.
@@ -436,8 +444,8 @@ export function unstable_defineRouter(fns: {
         });
       }
       const entries = await getEntriesForRoute(
-        input.rscPath,
-        input.rscParams,
+        rscInput.rscPath,
+        rscInput.rscParams,
         headers,
         getCachedElement,
         setCachedElement,
@@ -447,7 +455,7 @@ export function unstable_defineRouter(fns: {
       }
       return renderRsc(entries);
     }
-    if (input.type === 'function') {
+    if (rscInput?.type === 'function') {
       let elementsPromise: Promise<Record<string, unknown>> = Promise.resolve(
         {},
       );
@@ -477,7 +485,7 @@ export function unstable_defineRouter(fns: {
       };
       setRerender(rerender);
       try {
-        const value = await input.fn(...input.args);
+        const value = await rscInput.fn(...rscInput.args);
         return renderRsc({ ...(await elementsPromise), _value: value });
       } catch (e) {
         const info = getErrorInfo(e);
@@ -500,14 +508,7 @@ export function unstable_defineRouter(fns: {
         rendered = true;
       }
     }
-    const pathConfigItem = await getPathConfigItem(input.pathname);
-    if (pathConfigItem?.type === 'api') {
-      const url = new URL(input.req.url);
-      url.pathname = input.pathname;
-      const req = new Request(url, input.req);
-      return pathConfigItem.handler(req);
-    }
-    if (input.type === 'action' || input.type === 'custom') {
+    if (rscInput?.type === 'action' || !rscInput) {
       const renderIt = async (
         pathname: string,
         query: string,
@@ -532,7 +533,7 @@ export function unstable_defineRouter(fns: {
           />
         );
         const actionResult =
-          input.type === 'action' ? await input.fn() : undefined;
+          rscInput?.type === 'action' ? await rscInput.fn() : undefined;
         return renderHtml(await renderRsc(entries), html, {
           rscPath,
           actionResult,

@@ -1,12 +1,21 @@
 import type { ReactFormState } from 'react-dom/client';
 import type { Config } from '../../config.js';
-import type { Unstable_HandleRequest as HandleRequest } from '../types.js';
+import type { Unstable_GetRscInput as GetRscInput } from '../types.js';
 import { decodeFuncId, decodeRscPath } from '../utils/rsc-path.js';
 import { removeBase } from './path.js';
 
-type HandleRequestInput = Parameters<HandleRequest>[0];
+type RscInput = Awaited<ReturnType<GetRscInput>>;
 
-export async function getInput(
+export function getDecodedPathname(
+  req: Request,
+  config: Omit<Required<Config>, 'vite'>,
+) {
+  const url = new URL(req.url);
+  const pathname = removeBase(url.pathname, config.basePath);
+  return decodeURI(pathname);
+}
+
+export async function getRscInput(
   req: Request,
   config: Omit<Required<Config>, 'vite'>,
   temporaryReferences: unknown,
@@ -25,7 +34,7 @@ export async function getInput(
   url.pathname = removeBase(url.pathname, config.basePath);
   const rscPathPrefix = '/' + config.rscBase + '/';
   let rscPath: string | undefined;
-  let input: HandleRequestInput;
+  let input: RscInput = null;
   if (url.pathname.startsWith(rscPathPrefix)) {
     rscPath = decodeRscPath(
       decodeURI(url.pathname.slice(rscPathPrefix.length)),
@@ -38,9 +47,8 @@ export async function getInput(
       const action = await loadServerAction(actionId);
       input = {
         type: 'function',
-        fn: action as any,
+        fn: action as never,
         args,
-        req,
       };
     } else {
       // client RSC request
@@ -55,48 +63,25 @@ export async function getInput(
         type: 'component',
         rscPath,
         rscParams,
-        req,
       };
     }
   } else if (req.method === 'POST') {
     const contentType = req.headers.get('content-type');
     if (
       typeof contentType === 'string' &&
-      contentType.startsWith('multipart/form-data') &&
-      // XXX This solution is very inefficient
-      // https://github.com/wakujs/waku/issues/1832
-      // TODO(daishi) Reconsider getInput API from scratch?
-      Array.from((await req.clone().formData()).keys()).some((key) =>
-        key.startsWith('$ACTION_'),
-      )
+      contentType.startsWith('multipart/form-data')
     ) {
       // server action: no js (progressive enhancement)
-      const formData = (await getActionBody(req)) as FormData;
-      const decodedAction = await decodeAction(formData);
       input = {
         type: 'action',
         fn: async () => {
+          const formData = (await getActionBody(req)) as FormData;
+          const decodedAction = await decodeAction(formData);
           const result = await decodedAction();
           return await decodeFormState(result, formData);
         },
-        pathname: decodeURI(url.pathname),
-        req,
-      };
-    } else {
-      // POST API request
-      input = {
-        type: 'custom',
-        pathname: decodeURI(url.pathname),
-        req,
       };
     }
-  } else {
-    // SSR
-    input = {
-      type: 'custom',
-      pathname: decodeURI(url.pathname),
-      req,
-    };
   }
   return input;
 }

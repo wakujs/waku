@@ -5,20 +5,24 @@ const BUILD_MATADATA_KEY = 'metadata-key';
 const BUILD_MATADATA_VALUE = 'metadata-value';
 
 export default adapter({
-  handleRequest: async (input, { renderRsc, loadBuildMetadata }) => {
-    if (input.type === 'component') {
+  handleRequest: async (
+    input,
+    { renderRsc, getRscInput, loadBuildMetadata },
+  ) => {
+    const rscInput = await getRscInput(input.req);
+    if (rscInput?.type === 'component') {
       return renderRsc({
         App: (
           <App
-            name={input.rscPath || 'Waku'}
-            params={input.rscParams}
+            name={rscInput.rscPath || 'Waku'}
+            params={rscInput.rscParams}
             metadata={(await loadBuildMetadata(BUILD_MATADATA_KEY)) || 'Empty'}
           />
         ),
       });
     }
-    if (input.type === 'function') {
-      const value = await input.fn(...input.args);
+    if (rscInput?.type === 'function') {
+      const value = await rscInput.fn(...rscInput.args);
       return renderRsc({ _value: value });
     }
     return 'fallback';
