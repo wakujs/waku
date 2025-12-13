@@ -17,32 +17,35 @@ export type Unstable_RenderHtml = (
   options: { rscPath: string; actionResult?: unknown; status?: number },
 ) => Promise<Response>;
 
+export type Unstable_GetRscInput = (req: Request) => Promise<
+  | { type: 'component'; rscPath: string; rscParams: unknown }
+  | {
+      type: 'function';
+      fn: (...args: unknown[]) => Promise<unknown>;
+      args: unknown[];
+    }
+  | {
+      type: 'action';
+      fn: () => Promise<unknown>;
+    }
+  | null
+>;
+
 export type Unstable_EmitFile = (
   filePath: string,
   body: ReadableStream | string,
 ) => Promise<void>;
 
 export type Unstable_HandleRequest = (
-  input: (
-    | { type: 'component'; rscPath: string; rscParams: unknown }
-    | {
-        type: 'function';
-        fn: (...args: unknown[]) => Promise<unknown>;
-        args: unknown[];
-      }
-    | {
-        type: 'action';
-        fn: () => Promise<unknown>;
-        pathname: string;
-      }
-    | { type: 'custom'; pathname: string }
-  ) & {
+  input: {
+    pathname: string;
     req: Request;
   },
   utils: {
     renderRsc: Unstable_RenderRsc;
     parseRsc: Unstable_ParseRsc;
     renderHtml: Unstable_RenderHtml;
+    getRscInput: Unstable_GetRscInput;
     loadBuildMetadata: (key: string) => Promise<string | undefined>;
   },
 ) => Promise<ReadableStream | Response | 'fallback' | null | undefined>;
@@ -51,6 +54,7 @@ export type Unstable_HandleBuild = (utils: {
   renderRsc: Unstable_RenderRsc;
   parseRsc: Unstable_ParseRsc;
   renderHtml: Unstable_RenderHtml;
+  // TODO(daishi) not a big fan of this API
   rscPath2pathname: (rscPath: string) => string;
   saveBuildMetadata: (key: string, value: string) => Promise<void>;
   // TODO(daishi) not a big fan of this API

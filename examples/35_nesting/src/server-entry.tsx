@@ -5,10 +5,11 @@ import AppWithoutSsr from './components/AppWithoutSsr';
 import InnerApp from './components/InnerApp';
 
 export default adapter({
-  handleRequest: async (input, { renderRsc, renderHtml }) => {
-    if (input.type === 'component') {
+  handleRequest: async (input, { renderRsc, renderHtml, getRscInput }) => {
+    const rscInput = await getRscInput(input.req);
+    if (rscInput?.type === 'component') {
       const params = new URLSearchParams(
-        input.rscPath || 'App=Waku&InnerApp=0',
+        rscInput.rscPath || 'App=Waku&InnerApp=0',
       );
       const result: Record<string, unknown> = {};
       if (params.has('App')) {
@@ -22,7 +23,7 @@ export default adapter({
       }
       return renderRsc(result);
     }
-    if (input.type === 'custom' && input.pathname === '/') {
+    if (input.pathname === '/') {
       return renderHtml(
         await renderRsc({
           App: <App name="Waku" />,

@@ -3,17 +3,18 @@ import { Children, Slot } from 'waku/minimal/client';
 import App from './components/App';
 
 export default adapter({
-  handleRequest: async (input, { renderRsc, renderHtml }) => {
-    if (input.type === 'component') {
+  handleRequest: async (input, { renderRsc, renderHtml, getRscInput }) => {
+    const rscInput = await getRscInput(input.req);
+    if (rscInput?.type === 'component') {
       return renderRsc({
         App: (
-          <App name={input.rscPath || 'Waku'}>
+          <App name={rscInput.rscPath || 'Waku'}>
             <Children />
           </App>
         ),
       });
     }
-    if (input.type === 'custom' && input.pathname === '/') {
+    if (input.pathname === '/') {
       return renderHtml(
         await renderRsc({
           App: (
