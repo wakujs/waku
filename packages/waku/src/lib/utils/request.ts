@@ -23,6 +23,7 @@ export async function getInput(
 ) {
   const url = new URL(req.url);
   url.pathname = removeBase(url.pathname, config.basePath);
+  const pathname = decodeURI(url.pathname);
   const rscPathPrefix = '/' + config.rscBase + '/';
   let rscPath: string | undefined;
   let input: HandleRequestInput;
@@ -40,6 +41,7 @@ export async function getInput(
         type: 'function',
         fn: action as any,
         args,
+        pathname,
         req,
       };
     } else {
@@ -55,6 +57,7 @@ export async function getInput(
         type: 'component',
         rscPath,
         rscParams,
+        pathname,
         req,
       };
     }
@@ -62,31 +65,25 @@ export async function getInput(
     const contentType = req.headers.get('content-type');
     if (
       typeof contentType === 'string' &&
-      contentType.startsWith('multipart/form-data') &&
-      // XXX This solution is very inefficient
-      // https://github.com/wakujs/waku/issues/1832
-      // TODO(daishi) Reconsider getInput API from scratch?
-      Array.from((await req.clone().formData()).keys()).some((key) =>
-        key.startsWith('$ACTION_'),
-      )
+      contentType.startsWith('multipart/form-data')
     ) {
       // server action: no js (progressive enhancement)
-      const formData = (await getActionBody(req)) as FormData;
-      const decodedAction = await decodeAction(formData);
       input = {
         type: 'action',
         fn: async () => {
+          const formData = (await getActionBody(req)) as FormData;
+          const decodedAction = await decodeAction(formData);
           const result = await decodedAction();
           return await decodeFormState(result, formData);
         },
-        pathname: decodeURI(url.pathname),
+        pathname,
         req,
       };
     } else {
       // POST API request
       input = {
         type: 'custom',
-        pathname: decodeURI(url.pathname),
+        pathname,
         req,
       };
     }
@@ -94,7 +91,7 @@ export async function getInput(
     // SSR
     input = {
       type: 'custom',
-      pathname: decodeURI(url.pathname),
+      pathname,
       req,
     };
   }

@@ -33,10 +33,10 @@ export type Unstable_HandleRequest = (
     | {
         type: 'action';
         fn: () => Promise<unknown>;
-        pathname: string;
       }
-    | { type: 'custom'; pathname: string }
+    | { type: 'custom' }
   ) & {
+    pathname: string;
     req: Request;
   },
   utils: {
