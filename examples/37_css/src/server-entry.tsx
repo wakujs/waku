@@ -4,18 +4,17 @@ import App from './components/app';
 import Layout from './components/layout';
 
 export default adapter({
-  handleRequest: async (input, { renderRsc, renderHtml, getRscInput }) => {
-    const rscInput = await getRscInput(input.req);
-    if (rscInput?.type === 'component') {
+  handleRequest: async (input, { renderRsc, renderHtml }) => {
+    if (input.type === 'component') {
       return renderRsc({
         App: (
           <Layout>
-            <App name={rscInput.rscPath || 'Waku'} />
+            <App name={input.rscPath || 'Waku'} />
           </Layout>
         ),
       });
     }
-    if (input.pathname === '/') {
+    if (input.type === 'custom' && input.pathname === '/') {
       return renderHtml(
         await renderRsc({
           App: (

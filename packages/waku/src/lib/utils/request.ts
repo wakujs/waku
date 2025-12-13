@@ -1,21 +1,12 @@
 import type { ReactFormState } from 'react-dom/client';
 import type { Config } from '../../config.js';
-import type { Unstable_GetRscInput as GetRscInput } from '../types.js';
+import type { Unstable_HandleRequest as HandleRequest } from '../types.js';
 import { decodeFuncId, decodeRscPath } from '../utils/rsc-path.js';
 import { removeBase } from './path.js';
 
-type RscInput = Awaited<ReturnType<GetRscInput>>;
+type HandleRequestInput = Parameters<HandleRequest>[0];
 
-export function getDecodedPathname(
-  req: Request,
-  config: Omit<Required<Config>, 'vite'>,
-) {
-  const url = new URL(req.url);
-  const pathname = removeBase(url.pathname, config.basePath);
-  return decodeURI(pathname);
-}
-
-export async function getRscInput(
+export async function getInput(
   req: Request,
   config: Omit<Required<Config>, 'vite'>,
   temporaryReferences: unknown,
@@ -32,9 +23,10 @@ export async function getRscInput(
 ) {
   const url = new URL(req.url);
   url.pathname = removeBase(url.pathname, config.basePath);
+  const pathname = decodeURI(url.pathname);
   const rscPathPrefix = '/' + config.rscBase + '/';
   let rscPath: string | undefined;
-  let input: RscInput = null;
+  let input: HandleRequestInput;
   if (url.pathname.startsWith(rscPathPrefix)) {
     rscPath = decodeRscPath(
       decodeURI(url.pathname.slice(rscPathPrefix.length)),
@@ -47,8 +39,10 @@ export async function getRscInput(
       const action = await loadServerAction(actionId);
       input = {
         type: 'function',
-        fn: action as never,
+        fn: action as any,
         args,
+        pathname,
+        req,
       };
     } else {
       // client RSC request
@@ -63,6 +57,8 @@ export async function getRscInput(
         type: 'component',
         rscPath,
         rscParams,
+        pathname,
+        req,
       };
     }
   } else if (req.method === 'POST') {
@@ -80,8 +76,24 @@ export async function getRscInput(
           const result = await decodedAction();
           return await decodeFormState(result, formData);
         },
+        pathname,
+        req,
+      };
+    } else {
+      // POST API request
+      input = {
+        type: 'custom',
+        pathname,
+        req,
       };
     }
+  } else {
+    // SSR
+    input = {
+      type: 'custom',
+      pathname,
+      req,
+    };
   }
   return input;
 }

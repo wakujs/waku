@@ -22,7 +22,7 @@ import type {
 import { getErrorInfo } from '../utils/custom-errors.js';
 import { joinPath } from '../utils/path.js';
 import { createRenderUtils } from '../utils/render.js';
-import { getDecodedPathname, getRscInput } from '../utils/request.js';
+import { getInput } from '../utils/request.js';
 import { encodeRscPath } from '../utils/rsc-path.js';
 import { stringToStream } from '../utils/stream.js';
 
@@ -40,10 +40,15 @@ const toProcessRequest =
   async (req) => {
     const temporaryReferences = createTemporaryReferenceSet();
 
-    const input = {
-      pathname: getDecodedPathname(req, config),
+    const input = await getInput(
       req,
-    };
+      config,
+      temporaryReferences,
+      decodeReply,
+      decodeAction,
+      decodeFormState,
+      loadServerAction,
+    );
 
     const renderUtils = createRenderUtils(
       temporaryReferences,
@@ -56,16 +61,6 @@ const toProcessRequest =
     try {
       res = await handleRequest(input, {
         ...renderUtils,
-        getRscInput: (req) =>
-          getRscInput(
-            req,
-            config,
-            temporaryReferences,
-            decodeReply,
-            decodeAction,
-            decodeFormState,
-            loadServerAction,
-          ),
         loadBuildMetadata: async (key: string) => buildMetadata.get(key),
       });
     } catch (e) {

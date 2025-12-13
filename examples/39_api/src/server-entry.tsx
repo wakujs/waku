@@ -13,12 +13,11 @@ const stringToStream = (str: string): ReadableStream => {
 };
 
 export default adapter({
-  handleRequest: async (input, { renderRsc, renderHtml, getRscInput }) => {
-    const rscInput = await getRscInput(input.req);
-    if (rscInput?.type === 'component') {
-      return renderRsc({ App: <App name={rscInput.rscPath || 'Waku'} /> });
+  handleRequest: async (input, { renderRsc, renderHtml }) => {
+    if (input.type === 'component') {
+      return renderRsc({ App: <App name={input.rscPath || 'Waku'} /> });
     }
-    if (input.pathname === '/') {
+    if (input.type === 'custom' && input.pathname === '/') {
       return renderHtml(
         await renderRsc({ App: <App name="Waku" /> }),
         <Slot id="App" />,
@@ -27,7 +26,7 @@ export default adapter({
         },
       );
     }
-    if (input.pathname === '/api/hello') {
+    if (input.type === 'custom' && input.pathname === '/api/hello') {
       return stringToStream('world');
     }
   },

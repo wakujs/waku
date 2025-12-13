@@ -7,19 +7,18 @@ import App from './components/App';
 
 export default adapter(
   {
-    handleRequest: async (input, { renderRsc, renderHtml, getRscInput }) => {
-      const rscInput = await getRscInput(input.req);
+    handleRequest: async (input, { renderRsc, renderHtml }) => {
       const data = getContextData() as { count?: number };
       data.count = (data.count || 0) + 1;
       const items = JSON.parse(
         await fsPromises.readFile('./private/items.json', 'utf8'),
       );
-      if (rscInput?.type === 'component') {
+      if (input.type === 'component') {
         return renderRsc({
-          App: <App name={rscInput.rscPath || 'Waku'} items={items} />,
+          App: <App name={input.rscPath || 'Waku'} items={items} />,
         });
       }
-      if (input.pathname === '/') {
+      if (input.type === 'custom' && input.pathname === '/') {
         return renderHtml(
           await renderRsc({ App: <App name={'Waku'} items={items} /> }),
           <Slot id="App" />,

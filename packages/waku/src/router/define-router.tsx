@@ -372,7 +372,7 @@ export function unstable_defineRouter(fns: {
   let cachedElementsForRequestInitialized = false;
   const handleRequest: HandleRequest = async (
     input,
-    { renderRsc, parseRsc, renderHtml, getRscInput, loadBuildMetadata },
+    { renderRsc, parseRsc, renderHtml, loadBuildMetadata },
   ): Promise<ReadableStream | Response | 'fallback' | null | undefined> => {
     const getCachedElement = (id: SlotId) => cachedElementsForRequest.get(id);
     const setCachedElement = (id: SlotId, element: ReactNode) => {
@@ -413,9 +413,8 @@ export function unstable_defineRouter(fns: {
     }
     const url = new URL(input.req.url);
     const headers = Object.fromEntries(input.req.headers.entries());
-    const rscInput = await getRscInput(input.req);
-    if (rscInput?.type === 'component') {
-      const sliceId = decodeSliceId(rscInput.rscPath);
+    if (input.type === 'component') {
+      const sliceId = decodeSliceId(input.rscPath);
       if (sliceId !== null) {
         // LIMITATION: This is a signle slice request.
         // Ideally, we should be able to respond with multiple slices in one request.
@@ -444,8 +443,8 @@ export function unstable_defineRouter(fns: {
         });
       }
       const entries = await getEntriesForRoute(
-        rscInput.rscPath,
-        rscInput.rscParams,
+        input.rscPath,
+        input.rscParams,
         headers,
         getCachedElement,
         setCachedElement,
@@ -455,7 +454,7 @@ export function unstable_defineRouter(fns: {
       }
       return renderRsc(entries);
     }
-    if (rscInput?.type === 'function') {
+    if (input.type === 'function') {
       let elementsPromise: Promise<Record<string, unknown>> = Promise.resolve(
         {},
       );
@@ -485,7 +484,7 @@ export function unstable_defineRouter(fns: {
       };
       setRerender(rerender);
       try {
-        const value = await rscInput.fn(...rscInput.args);
+        const value = await input.fn(...input.args);
         return renderRsc({ ...(await elementsPromise), _value: value });
       } catch (e) {
         const info = getErrorInfo(e);
@@ -508,7 +507,7 @@ export function unstable_defineRouter(fns: {
         rendered = true;
       }
     }
-    if (rscInput?.type === 'action' || !rscInput) {
+    if (input.type === 'action' || input.type === 'custom') {
       const renderIt = async (
         pathname: string,
         query: string,
@@ -533,7 +532,7 @@ export function unstable_defineRouter(fns: {
           />
         );
         const actionResult =
-          rscInput?.type === 'action' ? await rscInput.fn() : undefined;
+          input.type === 'action' ? await input.fn() : undefined;
         return renderHtml(await renderRsc(entries), html, {
           rscPath,
           actionResult,
