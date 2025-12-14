@@ -4,6 +4,7 @@ import {
   getPathMapping,
   parsePathWithSlug,
   path2regexp,
+  removeBase,
 } from '../src/lib/utils/path.js';
 
 function matchPath(path: string, input: string) {
@@ -83,5 +84,24 @@ describe('getPathMapping', () => {
     const pathSpec = parsePathWithSlug('/prefix/[...path]');
     expect(getPathMapping(pathSpec, '/prefix')).toBe(null);
     expect(getPathMapping(pathSpec, '/prefix/foo')).toEqual({ path: ['foo'] });
+  });
+});
+
+describe('removeBase', () => {
+  test('returns url unchanged when base is /', () => {
+    expect(removeBase('/foo/bar', '/')).toBe('/foo/bar');
+    expect(removeBase('/', '/')).toBe('/');
+  });
+
+  test('removes base from url when url starts with base', () => {
+    expect(removeBase('/custom/base/foo', '/custom/base/')).toBe('/foo');
+    expect(removeBase('/custom/base/', '/custom/base/')).toBe('/');
+    expect(removeBase('/app/page', '/app/')).toBe('/page');
+  });
+
+  test('throws error when url does not start with base', () => {
+    expect(() => removeBase('/other/path', '/custom/base/')).toThrow(
+      'pathname must start with basePath',
+    );
   });
 });

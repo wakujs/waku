@@ -3,6 +3,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
 import * as honoAwsLambda from 'hono/aws-lambda';
+import type { ImportGlobFunction } from 'vite/types/importGlob.d.ts';
 import {
   unstable_constants as constants,
   unstable_createServerEntryAdapter as createServerEntryAdapter,
@@ -11,6 +12,7 @@ import {
 
 declare global {
   interface ImportMeta {
+    glob: ImportGlobFunction;
     readonly __WAKU_ORIGINAL_PATH__: string;
   }
 }
@@ -29,12 +31,7 @@ export default createServerEntryAdapter(
     options?: {
       streaming?: boolean;
       middlewareFns?: (() => MiddlewareHandler)[];
-      middlewareModules?: Record<
-        string,
-        () => Promise<{
-          default: () => MiddlewareHandler;
-        }>
-      >;
+      middlewareModules?: Record<string, () => Promise<unknown>>;
     },
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
@@ -52,7 +49,7 @@ export default createServerEntryAdapter(
     for (const middlewareFn of middlewareFns) {
       app.use(middlewareFn());
     }
-    app.use(middlewareRunner(middlewareModules));
+    app.use(middlewareRunner(middlewareModules as never));
     app.use(rscMiddleware({ processRequest }));
     const postBuildScript = joinPath(
       import.meta.__WAKU_ORIGINAL_PATH__,

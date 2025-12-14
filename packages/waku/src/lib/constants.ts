@@ -3,6 +3,7 @@ export const SRC_CLIENT_ENTRY = 'client-entry';
 export const SRC_SERVER_ENTRY = 'server-entry';
 export const SRC_PLATFORM_ENTRY = 'platform-entry';
 export const SRC_PAGES = 'pages'; // only for managed mode
+export const SRC_MIDDLEWARE = 'middleware'; // only for managed mode
 
 // Some file and dir names for dist
 // We may change this in the future

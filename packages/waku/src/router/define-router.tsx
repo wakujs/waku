@@ -404,6 +404,13 @@ export function unstable_defineRouter(fns: {
         );
       }
     }
+    const pathConfigItem = await getPathConfigItem(input.pathname);
+    if (pathConfigItem?.type === 'api') {
+      const url = new URL(input.req.url);
+      url.pathname = input.pathname;
+      const req = new Request(url, input.req);
+      return pathConfigItem.handler(req);
+    }
     const url = new URL(input.req.url);
     const headers = Object.fromEntries(input.req.headers.entries());
     if (input.type === 'component') {
@@ -499,13 +506,6 @@ export function unstable_defineRouter(fns: {
       } finally {
         rendered = true;
       }
-    }
-    const pathConfigItem = await getPathConfigItem(input.pathname);
-    if (pathConfigItem?.type === 'api') {
-      const url = new URL(input.req.url);
-      url.pathname = input.pathname;
-      const req = new Request(url, input.req);
-      return pathConfigItem.handler(req);
     }
     if (input.type === 'action' || input.type === 'custom') {
       const renderIt = async (

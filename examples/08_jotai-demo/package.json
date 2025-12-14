@@ -9,20 +9,20 @@
     "start": "waku start"
   },
   "dependencies": {
-    "jotai": "2.15.1",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "react-server-dom-webpack": "19.2.0",
-    "waku": "0.27.2",
-    "waku-jotai": "0.1.0"
+    "jotai": "^2.16.0",
+    "react": "~19.2.3",
+    "react-dom": "~19.2.3",
+    "react-server-dom-webpack": "~19.2.3",
+    "waku": "0.27.4",
+    "waku-jotai": "^0.2.1"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.1.17",
-    "@types/react": "19.2.7",
-    "@types/react-dom": "19.2.3",
-    "@vitejs/plugin-react": "5.1.1",
-    "babel-plugin-react-compiler": "1.0.0",
-    "tailwindcss": "4.1.17",
-    "typescript": "5.9.3"
+    "@tailwindcss/vite": "^4.1.17",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.0",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3"
   }
 }

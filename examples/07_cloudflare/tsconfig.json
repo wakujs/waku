@@ -12,7 +12,7 @@
     "skipLibCheck": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
-    "types": ["./worker-configuration.d.ts", "vite/client"],
+    "types": ["./worker-configuration.d.ts"],
     "jsx": "react-jsx"
   },
 }

@@ -7,7 +7,7 @@ import {
   loadServerAction,
   renderToReadableStream,
 } from '@vitejs/plugin-rsc/rsc';
-import { buildMetadata } from 'virtual:vite-rsc-waku/build-data';
+import { buildMetadata } from 'virtual:vite-rsc-waku/build-metadata';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import notFoundHtml from 'virtual:vite-rsc-waku/not-found';
 import { BUILD_METADATA_FILE, DIST_PUBLIC, DIST_SERVER } from '../constants.js';

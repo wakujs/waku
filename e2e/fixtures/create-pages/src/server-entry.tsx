@@ -239,6 +239,27 @@ const pages: ReturnType<typeof createPages> = createPages(
       },
     }),
 
+    createApi({
+      path: '/api/form-data',
+      render: 'dynamic',
+      handlers: {
+        POST: async (req) => {
+          const formData = await req.formData();
+          const keys = [...formData.keys()];
+          const testString = formData.get('test-string');
+          const testFile = formData.get('test-file') as File;
+          return Response.json({
+            keys,
+            testString,
+            testFile: {
+              name: testFile.name,
+              data: await testFile.text(),
+            },
+          });
+        },
+      },
+    }),
+
     createPage({
       render: 'static',
       path: '/exact/[slug]/[...wild]',

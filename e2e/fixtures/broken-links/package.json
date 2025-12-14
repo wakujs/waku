@@ -9,17 +9,16 @@
     "start": "waku start"
   },
   "dependencies": {
-    "hono": "4.10.7",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "react-server-dom-webpack": "19.2.0",
+    "hono": "^4.10.0",
+    "react": "~19.2.3",
+    "react-dom": "~19.2.3",
+    "react-server-dom-webpack": "~19.2.3",
     "serve": "^14.2.5",
     "waku": "latest"
   },
   "devDependencies": {
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
-    "typescript": "^5.9.3",
-    "vite": "7.2.4"
+    "typescript": "^5.9.3"
   }
 }
