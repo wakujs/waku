@@ -573,6 +573,37 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  e2e/fixtures/ssr-fs-routing:
+    dependencies:
+      hono:
+        specifier: ^4.10.0
+        version: 4.10.0
+      react:
+        specifier: ~19.2.3
+        version: 19.2.3
+      react-dom:
+        specifier: ~19.2.3
+        version: 19.2.3(react@19.2.3)
+      react-error-boundary:
+        specifier: ^6.0.0
+        version: 6.0.0(react@19.2.3)
+      react-server-dom-webpack:
+        specifier: ~19.2.3
+        version: 19.2.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack@5.99.9)
+      waku:
+        specifier: latest
+        version: link:../../../packages/waku
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.7
+        version: 19.2.7
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.7)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   e2e/fixtures/ssr-redirect:
     dependencies:
       react:
