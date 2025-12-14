@@ -97,15 +97,23 @@ export default createServerEntryAdapter(
 
     return {
       fetch: async (req: Request) => {
-        const { env, waitUntil, passThroughOnException } =
+        let cloudflareContext;
+        try {
           // @ts-expect-error - available when running in a Cloudflare environment
           // eslint-disable-next-line import/no-unresolved
-          await import('cloudflare:workers');
-        return app.fetch(req, env, {
-          waitUntil,
-          passThroughOnException,
-          props: undefined,
-        });
+          cloudflareContext = await import('cloudflare:workers');
+        } catch {
+          // Not in a Cloudflare environment
+        }
+        if (cloudflareContext) {
+          const { env, waitUntil, passThroughOnException } = cloudflareContext;
+          return app.fetch(req, env, {
+            waitUntil,
+            passThroughOnException,
+            props: undefined,
+          });
+        }
+        return app.fetch(req);
       },
       build: processBuild,
       postBuild: [postBuildScript, postBuildArg],
