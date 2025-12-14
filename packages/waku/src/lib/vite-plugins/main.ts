@@ -80,10 +80,6 @@ export function mainPlugin(config: Required<Config>): Plugin {
                     '../vite-entries/entry.server.js',
                   ),
                   build: path.join(__dirname, '../vite-entries/entry.build.js'),
-                  platform: path.join(
-                    __dirname,
-                    '../vite-entries/entry.platform.js',
-                  ),
                 },
               },
             },

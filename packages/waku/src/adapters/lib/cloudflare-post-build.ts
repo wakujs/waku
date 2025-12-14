@@ -25,8 +25,7 @@ export default async function postBuild({
   fs.writeFileSync(
     mainEntry,
     `\
-import { INTERNAL_runFetch, serverEntry } from './index.js';
-export * from './exports.js';
+import { INTERNAL_runFetch, unstable_serverEntry as serverEntry } from './index.js';
 
 export default {
   ...(serverEntry.handlers ? serverEntry.handlers : {}),
