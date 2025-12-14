@@ -1,7 +1,6 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useState } from 'react';
 import { ServerStyleSheet, StyleSheetManager } from 'styled-components';
 
 const serverStyleSheetStorage = (globalThis as any)
@@ -17,22 +16,19 @@ export function StyledComponentsRegistry({
 }: {
   children: ReactNode;
 }) {
-  // Only create stylesheet once with lazy initial state
-  const [styledComponentsStyleSheet] = useState(() => new ServerStyleSheet());
-
   // On the client, just render children directly
   if (typeof window !== 'undefined') {
     return <>{children}</>;
   }
 
   // On the server, wrap with StyleSheetManager to collect styles
-  const store = serverStyleSheetStorage.getStore();
+  const store = serverStyleSheetStorage?.getStore();
   if (!store) {
     throw new Error('sheetStorage is empty.');
   }
-  store.sheet = styledComponentsStyleSheet;
+  store.sheet ??= new ServerStyleSheet();
   return (
-    <StyleSheetManager sheet={styledComponentsStyleSheet.instance}>
+    <StyleSheetManager sheet={store.sheet.instance}>
       {children}
     </StyleSheetManager>
   );
