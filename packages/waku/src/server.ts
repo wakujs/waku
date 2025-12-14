@@ -1,5 +1,4 @@
 import { getContext } from './lib/context.js';
-
 export {
   getContext as unstable_getContext,
   getContextData as unstable_getContextData,

@@ -1,5 +1,5 @@
 {
-  "name": "60_styled-components",
+  "name": "styled-components",
   "version": "0.1.0",
   "type": "module",
   "private": true,
@@ -9,11 +9,11 @@
     "start": "waku start"
   },
   "dependencies": {
-    "react": "~19.2.1",
-    "react-dom": "~19.2.1",
-    "react-server-dom-webpack": "~19.2.1",
+    "react": "~19.2.3",
+    "react-dom": "~19.2.3",
+    "react-server-dom-webpack": "~19.2.3",
     "styled-components": "^6.1.19",
-    "waku": "0.27.3"
+    "waku": "latest"
   },
   "devDependencies": {
     "@types/react": "^19.2.7",
