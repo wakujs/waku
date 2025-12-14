@@ -1,20 +1,22 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { createRequire } from 'node:module';
 import { Readable } from 'node:stream';
 import type { ServerStyleSheet } from 'styled-components';
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/default';
 
-const sheetStorage = ((globalThis as any).__WAKU_STYLED_COMPONENTS_ALS__ ??=
-  new AsyncLocalStorage<{
-    sheet?: ServerStyleSheet;
-  }>());
+const serverStyleSheetStorage = new AsyncLocalStorage<{
+  sheet?: ServerStyleSheet;
+}>();
+(globalThis as any).__SERVER_STYLE_SHEET_STORAGE__ = serverStyleSheetStorage;
+globalThis.require = createRequire(import.meta.url);
 
 const router = fsRouter(import.meta.glob('./**/*.tsx', { base: './pages' }));
 
 export default adapter({
   handleRequest: async (input, utils) => {
     const store: { sheet?: ServerStyleSheet } = {};
-    return sheetStorage.run(store, async () => {
+    return serverStyleSheetStorage.run(store, async () => {
       const renderHtml: typeof utils.renderHtml = async (
         elementsStream,
         html,

@@ -4,7 +4,8 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { ServerStyleSheet, StyleSheetManager } from 'styled-components';
 
-const sheetStorage = (globalThis as any).__WAKU_STYLED_COMPONENTS_ALS__;
+const serverStyleSheetStorage = (globalThis as any)
+  .__SERVER_STYLE_SHEET_STORAGE__;
 
 /**
  * Styled-components registry for Waku SSR.
@@ -25,7 +26,7 @@ export function StyledComponentsRegistry({
   }
 
   // On the server, wrap with StyleSheetManager to collect styles
-  const store = sheetStorage.getStore();
+  const store = serverStyleSheetStorage.getStore();
   if (!store) {
     throw new Error('sheetStorage is empty.');
   }
