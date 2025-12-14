@@ -3,6 +3,6 @@ export const getDefaultAdapter = () =>
     ? 'waku/adapters/vercel'
     : process.env.NETLIFY
       ? 'waku/adapters/netlify'
-      : process.env.CLOUDFLARE
+      : process.env.WORKERS_CI
         ? 'waku/adapters/cloudflare'
         : 'waku/adapters/node';
