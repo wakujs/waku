@@ -1,8 +1,7 @@
 import type { Plugin } from 'vite';
-import { SRC_CLIENT_ENTRY, SRC_PLATFORM_ENTRY, SRC_SERVER_ENTRY } from '../constants.js';
+import { SRC_CLIENT_ENTRY, SRC_SERVER_ENTRY } from '../constants.js';
 import {
   getManagedClientEntry,
-  getManagedPlatformEntry,
   getManagedServerEntry,
 } from '../utils/managed.js';
 
@@ -17,17 +16,6 @@ export function userEntriesPlugin(srcDir: string): Plugin {
       if (source === 'virtual:vite-rsc-waku/server-entry-inner') {
         const resolved = await this.resolve(
           `/${srcDir}/${SRC_SERVER_ENTRY}`,
-          undefined,
-          options,
-        );
-        return resolved ? resolved : '\0' + source;
-      }
-      if (source === 'virtual:vite-rsc-waku/platform-entry') {
-        return '\0' + source;
-      }
-      if (source === 'virtual:vite-rsc-waku/platform-entry-inner') {
-        const resolved = await this.resolve(
-          `/${srcDir}/${SRC_PLATFORM_ENTRY}`,
           undefined,
           options,
         );
@@ -56,18 +44,6 @@ if (import.meta.hot) {
       }
       if (id === '\0virtual:vite-rsc-waku/client-entry') {
         return getManagedClientEntry();
-      }
-      if (id === '\0virtual:vite-rsc-waku/platform-entry') {
-          return `\
-export { default } from 'virtual:vite-rsc-waku/platform-entry-inner';
-export * from 'virtual:vite-rsc-waku/platform-entry-inner';
-if (import.meta.hot) {
-  import.meta.hot.accept()
-}
-`;
-      }
-      if (id === '\0virtual:vite-rsc-waku/platform-entry-inner') {
-        return getManagedPlatformEntry();
       }
     },
   };
