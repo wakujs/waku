@@ -8,7 +8,6 @@ const Button = styled.button`
   padding: 0.5rem 1rem;
   background: transparent;
   cursor: pointer;
-
   &:hover {
     background: rgba(255, 165, 0, 0.1);
   }
@@ -16,8 +15,5 @@ const Button = styled.button`
 
 export const Counter = () => {
   const [count, setCount] = useState(0);
-
-  return (
-    <Button onClick={() => setCount((c) => c + 1)}>Count: {count}</Button>
-  );
+  return <Button onClick={() => setCount((c) => c + 1)}>Count: {count}</Button>;
 };

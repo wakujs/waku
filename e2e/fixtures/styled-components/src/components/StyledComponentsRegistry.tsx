@@ -3,7 +3,11 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { ServerStyleSheet, StyleSheetManager } from 'styled-components';
-import { useServerInsertedHTML } from 'waku/server-html';
+
+const useServerInsertedHTML = (_callback: () => ReactNode): void => {
+  // TODO
+  return;
+};
 
 /**
  * Styled-components registry for Waku SSR.
