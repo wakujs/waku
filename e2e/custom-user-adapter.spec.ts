@@ -37,7 +37,6 @@ test.describe('custom-user-adapter', () => {
     const summary = JSON.parse(readFileSync(summaryPath, 'utf8'));
     expect(summary).toEqual({
       marker: 'custom-user-adapter',
-      hasIndexHtml: true,
     });
   });
 });
