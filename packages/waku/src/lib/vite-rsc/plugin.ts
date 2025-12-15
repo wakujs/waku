@@ -11,7 +11,6 @@ import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
 import { mainPlugin } from '../vite-plugins/main.js';
 import { notFoundPlugin } from '../vite-plugins/not-found.js';
 import { patchRsdwPlugin } from '../vite-plugins/patch-rsdw.js';
-import { pathMacroPlugin } from '../vite-plugins/path-macro.js';
 import { privateDirPlugin } from '../vite-plugins/private-dir.js';
 import { userEntriesPlugin } from '../vite-plugins/user-entries.js';
 import { virtualConfigPlugin } from '../vite-plugins/virtual-config.js';
@@ -60,7 +59,6 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
     virtualConfigPlugin(config),
     defaultAdapterPlugin(config.unstable_adapter),
     notFoundPlugin(),
-    pathMacroPlugin(),
     patchRsdwPlugin(),
     buildMetadataPlugin(config),
     privateDirPlugin(config.privateDir),
