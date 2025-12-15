@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { readFile } from 'node:fs/promises';
-import adapter from 'waku/adapters/default';
+// NOTE: I think we need one spec to use non-default adapter
+import adapter from 'waku/adapters/node';
 import { Children, Slot } from 'waku/minimal/client';
 import { unstable_defineRouter as defineRouter } from 'waku/router/server';
 import { Slice001 } from './components/slice001.js';
