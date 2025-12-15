@@ -9,7 +9,7 @@ export default async function postBuild({ distDir, marker }) {
   const serveCode = `
 import { createServer } from 'node:http';
 import { Readable } from 'node:stream';
-import { ReadableStream } from 'node:stream/web';
+import { pipeline } from 'node:stream/promises';
 import { INTERNAL_runFetch } from './server/index.js';
 
 const host = process.env.HOST;
@@ -19,13 +19,11 @@ function nodeRequestToWebRequest(req) {
   const url = new URL(req.url || '/', 'http://localhost');
   const headers = new Headers(req.headers);
   const method = req.method || 'GET';
-  const body =
-    method === 'GET' || method === 'HEAD' ? undefined : Readable.toWeb(req);
+  const body = method === 'GET' || method === 'HEAD' ? undefined : Readable.toWeb(req);
   return new Request(url, {
     method,
     headers,
-    body,
-    duplex: body ? 'half' : undefined,
+    ...(body ? { body, duplex: 'half' } : {}),
   });
 }
 
@@ -38,18 +36,7 @@ async function sendWebResponse(res, webRes) {
     res.end();
     return;
   }
-  const reader = webRes.body.getReader();
-  const stream = new ReadableStream({
-    async pull(ctrl) {
-      const { done, value } = await reader.read();
-      if (done) {
-        ctrl.close();
-        return;
-      }
-      ctrl.enqueue(value);
-    },
-  });
-  await Readable.fromWeb(stream).pipe(res);
+  await pipeline(Readable.fromWeb(webRes.body), res);
 }
 
 const server = createServer(async (req, res) => {
