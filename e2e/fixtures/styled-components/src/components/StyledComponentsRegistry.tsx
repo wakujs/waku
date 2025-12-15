@@ -16,20 +16,15 @@ export function StyledComponentsRegistry({
 }: {
   children: ReactNode;
 }) {
-  // On the client, just render children directly
-  if (typeof window !== 'undefined') {
-    return <>{children}</>;
+  let sheet: ServerStyleSheet | undefined;
+  if (import.meta.env.SSR) {
+    const store = serverStyleSheetStorage?.getStore();
+    if (!store) {
+      throw new Error('serverStyleSheetStorage is missing.');
+    }
+    sheet = store.sheet ??= new ServerStyleSheet();
   }
-
-  // On the server, wrap with StyleSheetManager to collect styles
-  const store = serverStyleSheetStorage?.getStore();
-  if (!store) {
-    throw new Error('sheetStorage is empty.');
-  }
-  store.sheet ??= new ServerStyleSheet();
   return (
-    <StyleSheetManager sheet={store.sheet.instance}>
-      {children}
-    </StyleSheetManager>
+    <StyleSheetManager sheet={sheet?.instance}>{children}</StyleSheetManager>
   );
 }
