@@ -8,8 +8,9 @@ function resolveModuleId(moduleId: string, rootDir: string) {
   if (moduleId.startsWith('file://')) {
     return moduleId;
   }
-  if (moduleId.startsWith('./')) {
-    return filePathToFileURL(joinPath(rootDir, moduleId));
+  if (moduleId.startsWith('/')) {
+    // treat as project-root relative (not filesystem root)
+    return filePathToFileURL(joinPath(rootDir, moduleId.slice(1)));
   }
   const require = createRequire(joinPath(rootDir, 'DUMMY.js'));
   const resolved = require.resolve(moduleId);
