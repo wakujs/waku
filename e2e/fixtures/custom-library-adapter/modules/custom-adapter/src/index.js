@@ -9,7 +9,7 @@ export default createServerEntryAdapter(
       },
       build: processBuild,
       postBuild: [
-        new URL('./post-build.js', import.meta.url).href,
+        'custom-adapter/post-build',
         { distDir: config.distDir, marker: 'custom-adapter-post-build' },
       ],
     };
