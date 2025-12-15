@@ -1,0 +1,23 @@
+{
+  "name": "60_styled-components",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "waku dev",
+    "build": "waku build",
+    "start": "waku start"
+  },
+  "dependencies": {
+    "react": "~19.2.1",
+    "react-dom": "~19.2.1",
+    "react-server-dom-webpack": "~19.2.1",
+    "styled-components": "^6.1.19",
+    "waku": "0.27.4"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.9.3"
+  }
+}
