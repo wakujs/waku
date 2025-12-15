@@ -10,4 +10,66 @@ export default async function postBuild({ distDir, marker }) {
   };
   const summaryPath = path.join(distDir, 'custom-user-adapter-post-build.json');
   writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
+
+  const SERVE_JS = 'serve-node.js';
+  const serveCode = `
+import { createServer } from 'node:http';
+import { Readable } from 'node:stream';
+import { ReadableStream } from 'node:stream/web';
+import { INTERNAL_runFetch } from './server/index.js';
+
+const host = process.env.HOST;
+const port = process.env.PORT;
+
+function nodeRequestToWebRequest(req) {
+  const url = new URL(req.url || '/', 'http://localhost');
+  const headers = new Headers(req.headers);
+  const method = req.method || 'GET';
+  const body =
+    method === 'GET' || method === 'HEAD' ? undefined : Readable.toWeb(req);
+  return new Request(url, {
+    method,
+    headers,
+    body,
+    duplex: body ? 'half' : undefined,
+  });
+}
+
+async function sendWebResponse(res, webRes) {
+  res.statusCode = webRes.status;
+  for (const [key, value] of webRes.headers.entries()) {
+    res.setHeader(key, value);
+  }
+  if (!webRes.body) {
+    res.end();
+    return;
+  }
+  const reader = webRes.body.getReader();
+  const stream = new ReadableStream({
+    async pull(ctrl) {
+      const { done, value } = await reader.read();
+      if (done) {
+        ctrl.close();
+        return;
+      }
+      ctrl.enqueue(value);
+    },
+  });
+  await Readable.fromWeb(stream).pipe(res);
+}
+
+const server = createServer(async (req, res) => {
+  try {
+    const webReq = nodeRequestToWebRequest(req);
+    const webRes = await INTERNAL_runFetch(process.env, webReq);
+    await sendWebResponse(res, webRes);
+  } catch (e) {
+    res.statusCode = 500;
+    res.end(String(e));
+  }
+});
+
+server.listen(port ? parseInt(port, 10) : undefined, host || undefined);
+`;
+  writeFileSync(path.resolve(distDir, SERVE_JS), serveCode);
 }
