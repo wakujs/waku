@@ -2,7 +2,7 @@
  * Request-scoped storage for server-inserted HTML using AsyncLocalStorage.
  */
 
-import { AsyncLocalStorage } from 'async_hooks';
+import { AsyncLocalStorage } from 'node:async_hooks';
 
 export type ServerInsertedHTMLStore = {
   callbacks: Array<() => string>;

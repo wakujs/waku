@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { getServerInsertedHTML, serverInsertedHTMLStorage } from './context';
 import { createHeadInsertionTransformStream } from './stream';
 
