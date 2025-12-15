@@ -1,10 +1,16 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import type { AsyncLocalStorage } from 'node:async_hooks';
 import { ServerStyleSheet, StyleSheetManager } from 'styled-components';
 
-const serverStyleSheetStorage = (globalThis as any)
-  .__SERVER_STYLE_SHEET_STORAGE__;
+const serverStyleSheetStorage = (
+  globalThis as {
+    __SERVER_STYLE_SHEET_STORAGE__?: AsyncLocalStorage<{
+      sheet?: ServerStyleSheet;
+    }>;
+  }
+).__SERVER_STYLE_SHEET_STORAGE__;
 
 /**
  * Styled-components registry for Waku SSR.
