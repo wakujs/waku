@@ -65,8 +65,10 @@ export type Unstable_HandleBuild = (utils: {
 export type Unstable_ServerEntry = {
   default: {
     fetch: (req: Request, ...args: any[]) => Response | Promise<Response>;
-    build: (emitFile: Unstable_EmitFile) => Promise<void>;
-    postBuild?: [modulePath: string, ...args: unknown[]];
+    build: (emitFile: Unstable_EmitFile, ...args: any[]) => Promise<void>;
+    buildOptions?: Record<string, unknown>;
+    buildEnhancers?: string[]; // enhancer module ids
+    [someOtherProperty: string]: unknown;
   };
 };
 
