@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export default async function postBuild({ distDir }: { distDir: string }) {
+export type BuildOptions = { distDir: string };
+
+async function postBuild({ distDir }: BuildOptions) {
   const mainEntry = path.resolve(
     path.join(distDir, 'server', 'serve-cloudflare.js'),
   );
@@ -46,6 +48,15 @@ export default {
 `,
     );
   }
+}
+
+export default async function buildEnhancer(
+  build: (emitFile: unknown, options: BuildOptions) => Promise<void>,
+): Promise<typeof build> {
+  return async (emitFile: unknown, options: BuildOptions) => {
+    await build(emitFile, options);
+    await postBuild(options);
+  };
 }
 
 const forceRelativePath = (s: string) => (s.startsWith('.') ? s : './' + s);

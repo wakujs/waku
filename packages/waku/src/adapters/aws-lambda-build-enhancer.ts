@@ -1,7 +1,9 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-export default async function postBuild({ distDir }: { distDir: string }) {
+export type BuildOptions = { distDir: string };
+
+async function postBuild({ distDir }: BuildOptions) {
   const SERVE_JS = 'serve-aws-lambda.js';
   const serveCode = `
 import { INTERNAL_runFetch } from './server/index.js';
@@ -17,4 +19,13 @@ export const handler = handle({
     path.join(distDir, 'package.json'),
     JSON.stringify({ type: 'module' }, null, 2),
   );
+}
+
+export default async function buildEnhancer(
+  build: (emitFile: unknown, options: BuildOptions) => Promise<void>,
+): Promise<typeof build> {
+  return async (emitFile: unknown, options: BuildOptions) => {
+    await build(emitFile, options);
+    await postBuild(options);
+  };
 }
