@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "waku dev",
     "build": "waku build",
-    "start:dynamic": "waku start",
+    "start": "waku start",
     "start:static": "serve dist/public"
   },
   "dependencies": {
