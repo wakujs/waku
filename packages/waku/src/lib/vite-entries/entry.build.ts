@@ -32,5 +32,5 @@ export async function INTERNAL_runBuild({
     const mod = await import(moduleId);
     build = await mod.default(build);
   }
-  await build(emitFile, serverEntry.buildOptions || {});
+  await build({ emitFile }, serverEntry.buildOptions || {});
 }

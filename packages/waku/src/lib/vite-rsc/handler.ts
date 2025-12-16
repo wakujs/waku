@@ -96,7 +96,7 @@ const toProcessRequest =
 
 const toProcessBuild =
   (handleBuild: HandleBuild): ProcessBuild =>
-  async (emitFile) => {
+  async ({ emitFile }) => {
     const renderUtils = createRenderUtils(
       undefined,
       renderToReadableStream,
