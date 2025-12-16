@@ -216,4 +216,23 @@ test.describe('fs-router', () => {
       'rgb(0, 0, 255)', // blue
     );
   });
+
+  test('subroute', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/subroute`);
+    await expect(page.getByRole('heading', { name: 'Subroute' })).toBeVisible();
+  });
+
+  test('subroute catch-all', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/subroute/test`);
+    await expect(
+      page.getByRole('heading', { name: 'Subroute Catch-All: test' }),
+    ).toBeVisible();
+
+    await page.goto(`http://localhost:${port}/subroute/test/deep/path`);
+    await expect(
+      page.getByRole('heading', {
+        name: 'Subroute Catch-All: test/deep/path',
+      }),
+    ).toBeVisible();
+  });
 });
