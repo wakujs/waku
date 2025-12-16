@@ -5,6 +5,7 @@ import {
   unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
+import type { BuildOptions } from './netlify-build-enhancer.js';
 
 const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
@@ -32,9 +33,7 @@ export default createServerEntryAdapter(
     }
     app.use(middlewareRunner(middlewareModules as never));
     app.use(rscMiddleware({ processRequest }));
-    const postBuildArg: Parameters<
-      typeof import('./netlify-post-build.js').default
-    >[0] = {
+    const buildOptions: BuildOptions = {
       distDir: config.distDir,
       privateDir: config.privateDir,
       DIST_PUBLIC,
@@ -43,7 +42,8 @@ export default createServerEntryAdapter(
     return {
       fetch: app.fetch,
       build: processBuild,
-      postBuild: ['waku/adapters/netlify-post-build', postBuildArg],
+      buildOptions,
+      buildEnhancers: ['waku/adapters/netlify-build-enhancer'],
     };
   },
 );

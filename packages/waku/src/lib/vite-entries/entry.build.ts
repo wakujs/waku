@@ -26,11 +26,11 @@ export async function INTERNAL_runBuild({
   emitFile: Unstable_EmitFile;
 }) {
   INTERNAL_setAllEnv(process.env as any);
-  await serverEntry.build(emitFile);
-  if (serverEntry.postBuild) {
-    const [modulePath, ...args] = serverEntry.postBuild;
-    const moduleId = resolveModuleId(modulePath, rootDir);
+  let build = serverEntry.build;
+  for (const enhancer of serverEntry.buildEnhancers || []) {
+    const moduleId = resolveModuleId(enhancer, rootDir);
     const mod = await import(moduleId);
-    mod.default(...args);
+    build = await mod.default(build);
   }
+  await build(emitFile, serverEntry.buildOptions || {});
 }

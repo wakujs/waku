@@ -4,6 +4,7 @@ import {
   unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
+import type { BuildOptions } from './cloudflare-build-enhancer.js';
 
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
@@ -29,15 +30,14 @@ export default createServerEntryAdapter(
     }
     app.use(middlewareRunner(middlewareModules as never));
     app.use(rscMiddleware({ processRequest }));
-    const postBuildArg: Parameters<
-      typeof import('./cloudflare-post-build.js').default
-    >[0] = {
+    const buildOptions: BuildOptions = {
       distDir: config.distDir,
     };
     return {
       fetch: app.fetch,
       build: processBuild,
-      postBuild: ['waku/adapters/cloudflare-post-build', postBuildArg],
+      buildOptions,
+      buildEnhancers: ['waku/adapters/cloudflare-build-enhancer'],
     };
   },
 );

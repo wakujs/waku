@@ -8,6 +8,7 @@ import {
   unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
+import type { BuildOptions } from './aws-lambda-build-enhancer.js';
 
 const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
@@ -38,9 +39,7 @@ export default createServerEntryAdapter(
     }
     app.use(middlewareRunner(middlewareModules as never));
     app.use(rscMiddleware({ processRequest }));
-    const postBuildArg: Parameters<
-      typeof import('./aws-lambda-post-build.js').default
-    >[0] = {
+    const buildOptions: BuildOptions = {
       distDir: config.distDir,
     };
     (globalThis as any).__WAKU_AWS_LAMBDA_HANDLE__ = options?.streaming
@@ -49,7 +48,8 @@ export default createServerEntryAdapter(
     return {
       fetch: app.fetch,
       build: processBuild,
-      postBuild: ['waku/adapters/aws-lambda-post-build', postBuildArg],
+      buildOptions,
+      buildEnhancers: ['waku/adapters/aws-lambda-build-enhancer'],
     };
   },
 );
