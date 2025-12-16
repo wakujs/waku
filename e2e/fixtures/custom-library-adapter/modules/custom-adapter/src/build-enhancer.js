@@ -1,8 +1,8 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-export default async function postBuild({ distDir, marker }) {
-  const summaryPath = path.join(distDir, 'custom-user-adapter-post-build.json');
+async function postBuild({ distDir, marker }) {
+  const summaryPath = path.join(distDir, 'custom-adapter-post-build.json');
   writeFileSync(summaryPath, JSON.stringify({ marker }, null, 2));
 
   const SERVE_JS = 'serve-node.js';
@@ -53,4 +53,11 @@ const server = createServer(async (req, res) => {
 server.listen(port ? parseInt(port, 10) : undefined, host || undefined);
 `;
   writeFileSync(path.resolve(distDir, SERVE_JS), serveCode);
+}
+
+export default async function buildEnhancer(build) {
+  return async (emitFile, options) => {
+    await build(emitFile, options);
+    await postBuild(options);
+  };
 }

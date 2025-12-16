@@ -5,7 +5,7 @@
   "private": true,
   "exports": {
     ".": "./src/index.js",
-    "./post-build": "./src/post-build.js"
+    "./build-enhancer": "./src/build-enhancer.js"
   },
   "peerDependencies": {
     "waku": "*"
