@@ -665,6 +665,9 @@ importers:
       react-server-dom-webpack:
         specifier: ~19.2.3
         version: 19.2.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack@5.99.9)
+      serve:
+        specifier: ^14.2.5
+        version: 14.2.5
       styled-components:
         specifier: ^6.1.19
         version: 6.1.19(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
