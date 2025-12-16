@@ -1127,6 +1127,42 @@ describe('createPages pages and layouts', () => {
     ]);
   });
 
+  it('root route comes before wildcard route in priority ordering', async () => {
+    const IndexPage = vi.fn();
+    const NotFoundPage = vi.fn();
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/[...notFound]',
+        component: NotFoundPage,
+      }),
+      createPage({
+        render: 'dynamic',
+        path: '/',
+        component: IndexPage,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = await getConfigs();
+    // Verify both routes exist
+    expect(configs).toHaveLength(2);
+    // Verify root route comes first (before wildcard route)
+    const rootRoute = Array.from(configs).find(
+      (config) => config.type === 'route' && config.path.length === 0,
+    );
+    const wildcardRoute = Array.from(configs).find(
+      (config) =>
+        config.type === 'route' &&
+        config.path.length === 1 &&
+        config.path[0]?.type === 'wildcard',
+    );
+    expect(rootRoute).toBeDefined();
+    expect(wildcardRoute).toBeDefined();
+    expect(Array.from(configs).indexOf(rootRoute!)).toBeLessThan(
+      Array.from(configs).indexOf(wildcardRoute!),
+    );
+  });
+
   it('fails if static paths do not match the slug pattern', async () => {
     createPages(async ({ createPage }) => [
       createPage({
