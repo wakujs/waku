@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.27.5] - 2025-12-17
+
+### Changed
+
+- Some improvements
+
 ## [0.27.4] - 2025-12-12
 
 ### Changed
