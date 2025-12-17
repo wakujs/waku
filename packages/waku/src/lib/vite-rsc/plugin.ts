@@ -27,6 +27,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
     privateDir: 'private',
     rscBase: 'RSC',
     unstable_adapter: getDefaultAdapter(),
+    unstable_renderHtmlEnhancer: undefined,
     vite: undefined,
     ...rscPluginOptions?.config,
   };
@@ -55,7 +56,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
       clientChunks: (meta) => meta.serverChunk,
     }),
     mainPlugin(config),
-    userEntriesPlugin(config.srcDir),
+    userEntriesPlugin(config),
     virtualConfigPlugin(config),
     defaultAdapterPlugin(config.unstable_adapter),
     notFoundPlugin(),

@@ -43,6 +43,10 @@ export interface Config {
    */
   unstable_adapter?: string;
   /**
+   * Module name for renderHtml enhancer
+   */
+  unstable_renderHtmlEnhancer?: string | undefined;
+  /**
    * Vite configuration options.
    * See https://vite.dev/guide/api-environment-plugins.html#environment-api-for-plugins
    * for how to configure or enable plugins per environment.

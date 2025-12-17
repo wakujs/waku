@@ -8,6 +8,12 @@ declare module 'virtual:vite-rsc-waku/server-entry' {
 
 declare module 'virtual:vite-rsc-waku/client-entry' {}
 
+declare module 'virtual:vite-rsc-waku/render-html-enhancer' {
+  import type { Unstable_RenderHtml as RenderHtml } from './types.ts';
+  const default_: ((fn: RenderHtml) => RenderHtml) | null;
+  export default default_;
+}
+
 declare module 'virtual:vite-rsc-waku/build-metadata' {
   export const buildMetadata: Map<string, string>;
 }
