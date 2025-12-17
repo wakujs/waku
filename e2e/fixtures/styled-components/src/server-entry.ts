@@ -1,22 +1,27 @@
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/default';
-import { injectRenderHtml } from './server-html/ssr';
 
 const router = fsRouter(
   import.meta.glob('./**/*.{tsx,ts}', { base: './pages' }),
 );
 
+async function getEnhancer() {
+  const mod: typeof import("./server-html/ssr") =
+        await import.meta.viteRsc.loadModule("ssr", "__server_html")
+  return mod.injectRenderHtml;
+}
+
 export default adapter({
-  handleRequest(input, utils) {
+  async handleRequest(input, utils) {
     return router.handleRequest(input, {
       ...utils,
-      renderHtml: injectRenderHtml(utils.renderHtml),
+      renderHtml: (await getEnhancer())(utils.renderHtml),
     });
   },
-  handleBuild(utils) {
+  async handleBuild(utils) {
     return router.handleBuild({
       ...utils,
-      renderHtml: injectRenderHtml(utils.renderHtml),
+      renderHtml: (await getEnhancer())(utils.renderHtml),
     });
   },
 });
