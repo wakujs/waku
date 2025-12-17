@@ -29,10 +29,9 @@ import { stringToStream } from '../utils/stream.js';
 function loadSsrEntryModule() {
   // This is an API to communicate between two server environments `rsc` and `ssr`.
   // https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-rsc/README.md#importmetaviterscloadmodule
-  return import.meta.viteRsc.loadModule<typeof import('./ssr.js')>(
-    'ssr',
-    'index',
-  );
+  return import.meta.viteRsc.loadModule<
+    typeof import('../vite-entries/entry.ssr.js')
+  >('ssr', 'index');
 }
 
 const toProcessRequest =
@@ -85,8 +84,8 @@ const toProcessRequest =
     // fallback index html like packages/waku/src/lib/plugins/vite-plugin-rsc-index.ts
     const url = new URL(req.url);
     if (res === 'fallback' || (!res && url.pathname === '/')) {
-      const { renderHtmlFallback } = await loadSsrEntryModule();
-      const htmlFallbackStream = await renderHtmlFallback();
+      const { INTERNAL_renderHtmlFallback } = await loadSsrEntryModule();
+      const htmlFallbackStream = await INTERNAL_renderHtmlFallback();
       const headers = { 'content-type': 'text/html; charset=utf-8' };
       return new Response(htmlFallbackStream, { headers });
     }
@@ -108,7 +107,7 @@ const toProcessBuild =
     const getFallbackHtml = async () => {
       if (!fallbackHtml) {
         const ssrEntryModule = await loadSsrEntryModule();
-        fallbackHtml = await ssrEntryModule.renderHtmlFallback();
+        fallbackHtml = await ssrEntryModule.INTERNAL_renderHtmlFallback();
       }
       return fallbackHtml;
     };
