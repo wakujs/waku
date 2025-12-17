@@ -1,3 +1,4 @@
+import type { ReactFormState } from 'react-dom/client';
 import type {
   Unstable_ParseRsc,
   Unstable_RenderHtml,
@@ -49,11 +50,7 @@ export function createRenderUtils(
         INTERNAL_enhanceRenderHtml: enhanceRenderHtml,
       } = await loadSsrEntryModule();
 
-      const renderHtmlFn: Unstable_RenderHtml = async (
-        elementsStream,
-        html,
-        options?: { rscPath?: string; actionResult?: any; status?: number },
-      ) => {
+      return enhanceRenderHtml(async () => {
         const rscHtmlStream = renderToReadableStream(html, {
           onError,
         });
@@ -61,7 +58,7 @@ export function createRenderUtils(
           elementsStream,
           rscHtmlStream,
           {
-            formState: options?.actionResult,
+            formState: options?.actionResult as ReactFormState | undefined,
             rscPath: options?.rscPath,
           },
         );
@@ -69,13 +66,7 @@ export function createRenderUtils(
           status: htmlResult.status || options?.status || 200,
           headers: { 'content-type': 'text/html' },
         });
-      };
-
-      return (await enhanceRenderHtml(renderHtmlFn))(
-        elementsStream,
-        html,
-        options,
-      );
+      });
     },
   };
 }

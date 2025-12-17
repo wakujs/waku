@@ -43,7 +43,7 @@ export interface Config {
    */
   unstable_adapter?: string;
   /**
-   * Module name for renderHtml enhancer
+   * Module name for render HTML enhancer
    */
   unstable_renderHtmlEnhancer?: string | undefined;
   /**

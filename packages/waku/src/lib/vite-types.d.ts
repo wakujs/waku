@@ -9,8 +9,9 @@ declare module 'virtual:vite-rsc-waku/server-entry' {
 declare module 'virtual:vite-rsc-waku/client-entry' {}
 
 declare module 'virtual:vite-rsc-waku/render-html-enhancer' {
-  import type { Unstable_RenderHtml as RenderHtml } from './types.ts';
-  const default_: ((fn: RenderHtml) => RenderHtml) | null;
+  const default_:
+    | ((render: () => Promise<Response>) => Promise<Response>)
+    | null;
   export default default_;
 }
 
