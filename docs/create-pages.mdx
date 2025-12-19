@@ -6,14 +6,14 @@ description: The low-level routing API.
 
 ## Routing (low-level API)
 
-The entry point for programmatic routing in Waku projects is `./src/server-entry.tsx`. Export the `createPages` function to create your layouts and pages.
+The entry point for programmatic routing in Waku projects is `./src/waku.server.tsx`. Export the `createPages` function to create your layouts and pages.
 
 `createLayout`, `createPage`, `createRoot`, and `createSlice` accept a configuration object to specify the route path, React component, and render method. Waku currently supports two options: `'static'` for static prerendering (SSG) or `'dynamic'` for server-side rendering (SSR).
 
 For example, you can statically prerender a global header and footer in the root layout at build time, but dynamically render the rest of a home page at request time for personalized user experiences.
 
 ```tsx
-// ./src/server-entry.tsx
+// ./src/waku.server.tsx
 import { createPages } from 'waku';
 
 import { RootLayout } from './templates/root-layout';
@@ -61,7 +61,7 @@ export default pages;
 Waku provides inference for the router paths when created pages are returned from the callback passed into `createPages`. The following example shows how a minimal example for how to setup the router paths type safety.
 
 ```tsx
-// ./src/server-entry.tsx
+// ./src/waku.server.tsx
 import { createPages } from 'waku';
 import type { PathsForPages } from 'waku/router';
 
@@ -120,7 +120,7 @@ export default function AboutPage({ path }: PageProps<'/about/[foo]'>) {
 Pages can be rendered as a single route (e.g., `/about`).
 
 ```tsx
-// ./src/server-entry.tsx
+// ./src/waku.server.tsx
 import { createPages } from 'waku';
 
 import { AboutPage } from './templates/about-page';
@@ -150,7 +150,7 @@ Pages can also render a segment route (e.g., `/blog/[slug]`). The rendered React
 **Note:** Slugs will be sanitized to replace spaces with `-`.
 
 ```tsx
-// ./src/server-entry.tsx
+// ./src/waku.server.tsx
 import { createPages } from 'waku';
 
 import { BlogArticlePage } from './templates/blog-article-page';
@@ -179,7 +179,7 @@ export default createPages(async ({ createPage }) => [
 Static paths (or other values) could also be generated programmatically.
 
 ```tsx
-// ./src/server-entry.tsx
+// ./src/waku.server.tsx
 import { createPages } from 'waku';
 
 import { getBlogPaths } from './lib/get-blog-paths';
@@ -204,7 +204,7 @@ export default createPages(async ({ createPage }) => {
 Routes can contain multiple segments (e.g., `/shop/[category]/[product]`).
 
 ```tsx
-// ./src/server-entry.tsx
+// ./src/waku.server.tsx
 import { createPages } from 'waku';
 
 import { ProductDetailPage } from './templates/product-detail-page';
@@ -223,7 +223,7 @@ export default createPages(async ({ createPage }) => [
 For static prerendering of nested segment routes, the `staticPaths` array is instead composed of ordered arrays.
 
 ```tsx
-// ./src/server-entry.tsx
+// ./src/waku.server.tsx
 import { createPages } from 'waku';
 
 import { ProductDetailPage } from './templates/product-detail-page';
@@ -250,7 +250,7 @@ Catch-all or "wildcard" routes (e.g., `/app/[...catchAll]`) have indefinite segm
 For example, the `/app/profile/settings` route would receive a `catchAll` prop with the value `['profile', 'settings']`. These values can then be used to determine what to render in the component.
 
 ```tsx
-// ./src/server-entry.tsx
+// ./src/waku.server.tsx
 import { createPages } from 'waku';
 
 import { DashboardPage } from './templates/dashboard-page';
@@ -275,7 +275,7 @@ Layouts wrap an entire route and its descendents. They must accept a `children` 
 The root layout rendered at `path: '/'` is especially useful. It can be used for setting global styles, global metadata, global providers, global data, and global components, such as a header and footer.
 
 ```tsx
-// ./src/server-entry.tsx
+// ./src/waku.server.tsx
 import { createPages } from 'waku';
 
 import { RootLayout } from './templates/root-layout';
@@ -329,7 +329,7 @@ export const Providers = ({ children }) => {
 Layouts are also helpful further down the tree. For example, you could add a layout at `path: '/blog'` to add a sidebar to both the blog index and all blog article pages.
 
 ```tsx
-// ./src/server-entry.tsx
+// ./src/waku.server.tsx
 import { createPages } from 'waku';
 
 import { BlogLayout } from './templates/blog-layout';
@@ -383,8 +383,8 @@ If you only need to customize `<head>`, you can rely on React's [Support for Doc
 
 ### Client entry point
 
-The file `./src/server-entry.tsx` is the entry point for the server.
-For the client, the entry point file is `./src/client-entry.tsx`.
+The file `./src/waku.server.tsx` is the entry point for the server.
+For the client, the entry point file is `./src/waku.client.tsx`.
 
 The default client entry file content is the following.
 
@@ -406,7 +406,7 @@ if (globalThis.__WAKU_HYDRATE__) {
 }
 ```
 
-You can omit `./src/client-entry.tsx` unless you need to modify it.
+You can omit `./src/waku.client.tsx` unless you need to modify it.
 
 ### Slices
 

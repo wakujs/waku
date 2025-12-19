@@ -1,4 +1,4 @@
-import { getRouterConfigs } from '../server-entry.js';
+import { getRouterConfigs } from '../waku.server.js';
 
 export default async function Debug() {
   const configs = await getRouterConfigs();
