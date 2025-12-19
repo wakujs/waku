@@ -49,7 +49,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
   return [
     ...extraPlugins,
     allowServerPlugin(), // apply `allowServer` DCE before "use client" transform
-    ssrLoaderPlugin(), // compile `unstable_loadSsrModule` hints before vite-rsc transforms
+    ssrLoaderPlugin(), // compile `loadSsrModule` hints
     rsc({
       serverHandler: false,
       keepUseCientProxy: true,
