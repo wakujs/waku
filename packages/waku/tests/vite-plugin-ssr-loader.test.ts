@@ -73,7 +73,7 @@ export async function load() {
     expect(transformed).toContain('import.meta.viteRsc.loadModule("ssr",');
 
     const entryName = extractEntryName(transformed);
-    expect(entryName).toMatch(/^waku_ssr_[a-f0-9]{12}/);
+    expect(entryName).toMatch(/^ssr_[a-f0-9]{12}/);
 
     const inputEntry = getSsrInputEntry(ssrEnvironmentConfig, entryName);
     expect(inputEntry.startsWith('virtual:vite-rsc-waku/ssr-loader-entry?')).toBe(

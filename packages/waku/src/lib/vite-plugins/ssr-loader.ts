@@ -9,7 +9,7 @@ type ProgramNode = Awaited<ReturnType<typeof parseAstAsync>>;
 const VIRTUAL_ENTRY_PREFIX = 'virtual:vite-rsc-waku/ssr-loader-entry';
 
 const toEntryName = (key: string) =>
-  `waku_ssr_${crypto.createHash('sha256').update(key).digest('hex').slice(0, 12)}`;
+  `ssr_${crypto.createHash('sha256').update(key).digest('hex').slice(0, 12)}`;
 
 const getOrCreateSsrInputMap = (ssrConfig: any) => {
   ssrConfig.build ??= {};
@@ -148,12 +148,9 @@ export function ssrLoaderPlugin(): Plugin {
       const query = id.slice(('\0' + VIRTUAL_ENTRY_PREFIX).length);
       const searchParams = new URLSearchParams(query);
       const entryName = searchParams.get('e');
-      if (!entryName) {
-        this.error('[waku] ssrLoaderPlugin invalid virtual entry id');
-      }
       const specifier = searchParams.get('s');
       const importer = searchParams.get('i');
-      if (!specifier || !importer) {
+      if (!entryName || !specifier || !importer) {
         this.error('[waku] ssrLoaderPlugin invalid virtual entry id');
       }
       // Resolve `specifier` relative to original caller module id.
