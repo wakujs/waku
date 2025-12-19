@@ -1,6 +1,9 @@
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/default';
-import { injectRenderHtml } from './server-html/ssr';
+import { unstable_loadSsrModule as loadSsrModule } from 'waku/server';
+
+const { injectRenderHtml } =
+  await loadSsrModule<typeof import('./server-html/ssr')>('./server-html/ssr');
 
 const router = fsRouter(
   import.meta.glob('./**/*.{tsx,ts}', { base: './pages' }),

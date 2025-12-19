@@ -3,6 +3,13 @@ export {
   getContext as unstable_getContext,
   getContextData as unstable_getContextData,
 } from './lib/context.js';
+/**
+ * Highly experimental API to load SSR modules.
+ * This is a compiler hint.
+ */
+export const unstable_loadSsrModule = <T>(_id: string): Promise<T> => {
+  throw new Error('This will be transfomed by the compiler.');
+}
 
 // The use of `globalThis` in this file is more or less a hack.
 // It should be revisited with a better solution.
