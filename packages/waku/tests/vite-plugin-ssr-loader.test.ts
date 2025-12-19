@@ -182,7 +182,9 @@ export async function load() {
     ]);
 
     expect(String(loadOutput)).toContain(
-      `export { default } from "/resolved/ssr-impl.ts";`,
+      `\
+import * as mod from "/resolved/ssr-impl.ts";
+export default mod.default;`,
     );
     expect(String(loadOutput)).toContain(
       `export * from "/resolved/ssr-impl.ts";`,
