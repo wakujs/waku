@@ -12,6 +12,7 @@ import { mainPlugin } from '../vite-plugins/main.js';
 import { notFoundPlugin } from '../vite-plugins/not-found.js';
 import { patchRsdwPlugin } from '../vite-plugins/patch-rsdw.js';
 import { privateDirPlugin } from '../vite-plugins/private-dir.js';
+import { ssrLoaderPlugin } from '../vite-plugins/ssr-loader.js';
 import { userEntriesPlugin } from '../vite-plugins/user-entries.js';
 import { virtualConfigPlugin } from '../vite-plugins/virtual-config.js';
 
@@ -48,6 +49,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
   return [
     ...extraPlugins,
     allowServerPlugin(), // apply `allowServer` DCE before "use client" transform
+    ssrLoaderPlugin(), // compile `unstable_loadSsrModule` hints before vite-rsc transforms
     rsc({
       serverHandler: false,
       keepUseCientProxy: true,
