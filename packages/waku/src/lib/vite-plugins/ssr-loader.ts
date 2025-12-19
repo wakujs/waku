@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import type * as estree from 'estree';
 import MagicString from 'magic-string';
 import type { Plugin } from 'vite';
@@ -5,7 +6,23 @@ import { parseAstAsync } from 'vite';
 
 type ProgramNode = Awaited<ReturnType<typeof parseAstAsync>>;
 
-const VIRTUAL_RUNTIME_ID = 'virtual:vite-rsc-waku/ssr-loader-runtime';
+const VIRTUAL_ENTRY_PREFIX = 'virtual:vite-rsc-waku/ssr-loader-entry';
+
+const toEntryName = (key: string) =>
+  `waku_ssr_${crypto.createHash('sha256').update(key).digest('hex').slice(0, 12)}`;
+
+const getOrCreateSsrInputMap = (ssrConfig: any) => {
+  ssrConfig.build ??= {};
+  ssrConfig.build.rollupOptions ??= {};
+  ssrConfig.build.rollupOptions.input ??= {};
+  const input = ssrConfig.build.rollupOptions.input;
+  if (typeof input === 'string' || Array.isArray(input)) {
+    throw new Error(
+      '[waku] ssrLoaderPlugin expects environments.ssr.build.rollupOptions.input to be an object',
+    );
+  }
+  return input as Record<string, string>;
+};
 
 const isNode = (value: unknown): value is estree.Node =>
   typeof (value as { type?: unknown })?.type === 'string'; // heuristic
@@ -67,46 +84,94 @@ const walk = (node: estree.Node, visit: (node: estree.Node) => void) => {
 };
 
 export function ssrLoaderPlugin(): Plugin {
+  const entryKeyToName = new Map<string, string>();
+  const entryNameToData = new Map<
+    string,
+    { specifier: string; importer: string }
+  >();
+  let ssrInputMap: Record<string, string> | null = null;
+
+  const ensureSsrEntry = (specifier: string, importer: string) => {
+    if (!ssrInputMap) {
+      throw new Error(
+        '[waku] ssrLoaderPlugin requires the `ssr` environment with `build.rollupOptions.input`',
+      );
+    }
+    const entryKey = `${importer}\n${specifier}`;
+    const existing = entryKeyToName.get(entryKey);
+    if (existing) {
+      return existing;
+    }
+
+    let entryName = toEntryName(entryKey);
+    for (let i = 0; i < 100; i++) {
+      const maybeName = i === 0 ? entryName : `${entryName}_${i}`;
+      const existingInput = ssrInputMap[maybeName];
+      if (!existingInput) {
+        entryName = maybeName;
+        break;
+      }
+      if (existingInput === `${VIRTUAL_ENTRY_PREFIX}?e=${maybeName}`) {
+        entryName = maybeName;
+        break;
+      }
+    }
+
+    ssrInputMap[entryName] ??= `${VIRTUAL_ENTRY_PREFIX}?e=${entryName}`;
+    entryKeyToName.set(entryKey, entryName);
+    entryNameToData.set(entryName, { specifier, importer });
+    return entryName;
+  };
+
   return {
     name: 'waku:vite-plugins:ssr-loader',
     resolveId(source) {
-      if (source === VIRTUAL_RUNTIME_ID) {
+      if (this.environment.name !== 'ssr') {
+        return;
+      }
+      if (source === VIRTUAL_ENTRY_PREFIX || source.startsWith(VIRTUAL_ENTRY_PREFIX + '?')) {
         return '\0' + source;
       }
     },
-    load(id) {
-      if (id !== '\0' + VIRTUAL_RUNTIME_ID) {
+    async load(id) {
+      if (this.environment.name !== 'ssr') {
         return;
       }
-      // Note: This relies on Vite's Environment API being exposed through
-      // `globalThis.__viteRscDevServer` (provided by @vitejs/plugin-rsc) in dev.
-      return `\
-export async function loadSsrModule(specifier, importer) {
-  const devServer = globalThis.__viteRscDevServer;
-  const environment = devServer?.environments?.ssr;
-  if (!environment?.runner || !environment?.pluginContainer) {
-    throw new Error('[waku] unstable_loadSsrModule is only available during Vite dev');
-  }
-  const resolved = await environment.pluginContainer.resolveId(specifier, importer);
-  if (!resolved) {
-    throw new Error('[waku] failed to resolve SSR module: ' + specifier);
-  }
-  return environment.runner.import(resolved.id);
-}
-`;
-    },
-    async transform(code, id) {
-      if (this.environment.name !== 'rsc') {
+      if (!id.startsWith('\0' + VIRTUAL_ENTRY_PREFIX)) {
         return;
       }
-      if (!code.includes('unstable_loadSsrModule')) {
-        return;
+      const u = new URL(id.slice(('\0' + VIRTUAL_ENTRY_PREFIX).length) || '', 'http://x');
+      const entryName = u.searchParams.get('e');
+      if (!entryName) {
+        this.error('[waku] ssrLoaderPlugin invalid virtual entry id');
       }
-      if (this.environment.mode === 'build') {
+      const data = entryNameToData.get(entryName);
+      if (!data) {
+        this.error(`[waku] ssrLoaderPlugin missing entry data for '${entryName}'`);
+      }
+      // Resolve `specifier` relative to original caller module id.
+      // This makes `unstable_loadSsrModule("./foo")` behave like dynamic import from the caller.
+      const resolved = await this.resolve(data.specifier, data.importer);
+      if (!resolved) {
         this.error(
-          '[waku] unstable_loadSsrModule is not supported in build yet (dev-only)',
+          `[waku] failed to resolve SSR module '${data.specifier}' from '${data.importer}'`,
         );
       }
+      return `\
+import * as __mod from ${JSON.stringify(resolved.id)};
+export default __mod;
+export * from ${JSON.stringify(resolved.id)};
+`;
+    },
+    configEnvironment(name, environmentConfig) {
+      if (name !== 'ssr') {
+        return;
+      }
+      ssrInputMap = getOrCreateSsrInputMap(environmentConfig);
+    },
+    async transform(code, id) {
+      if (this.environment.name !== 'rsc') return;
+      if (!code.includes('unstable_loadSsrModule')) return;
 
       const mod = await parseAstAsync(code, { jsx: true });
       const loadSsrModuleLocal = findImportedLocalName(
@@ -144,10 +209,12 @@ export async function loadSsrModule(specifier, importer) {
               '[waku] unstable_loadSsrModule argument must be a string literal',
             );
           }
+          const importer = id.replace(/[?#].*$/, '');
+          const entryName = ensureSsrEntry(source, importer);
           s.overwrite(
             node.start,
             node.end,
-            `import(${JSON.stringify(VIRTUAL_RUNTIME_ID)}).then((m) => m.loadSsrModule(${JSON.stringify(source)}, ${JSON.stringify(id)}))`,
+            `import.meta.viteRsc.loadModule("ssr", ${JSON.stringify(entryName)})`,
           );
           changed = true;
         }
