@@ -74,6 +74,48 @@ export async function load() {
     );
   });
 
+  test('supports importing unstable_loadSsrModule with an alias', async () => {
+    const plugin = ssrLoaderPlugin();
+    const ssrEnvironmentConfig: any = {};
+    if (typeof plugin.configEnvironment !== 'function') {
+      throw new Error('Plugin configEnvironment is not a function');
+    }
+    await plugin.configEnvironment.call(
+      {} as never,
+      'ssr',
+      ssrEnvironmentConfig,
+      {} as never,
+    );
+
+    const input = `\
+import { unstable_loadSsrModule as loadSsrModule } from 'waku/server';
+
+export async function load() {
+  return loadSsrModule('./ssr-impl');
+}
+`;
+
+    if (typeof plugin.transform !== 'function') {
+      throw new Error('Plugin transform is not a function');
+    }
+    const output = await plugin.transform.call(
+      createThrowingContext({ name: 'rsc', mode: 'dev' }) as never,
+      input,
+      '/src/routes/page.tsx',
+    );
+
+    expect(output).toBeTruthy();
+    const transformed = (output as any).code ?? String(output);
+    expect(transformed).toContain('import.meta.viteRsc.loadModule("ssr",');
+    expect(transformed).not.toContain('unstable_loadSsrModule(');
+    expect(transformed).not.toContain('loadSsrModule(');
+
+    const entryName = extractEntryName(transformed);
+    expect(ssrEnvironmentConfig.build?.rollupOptions?.input?.[entryName]).toBe(
+      `virtual:vite-rsc-waku/ssr-loader-entry?e=${entryName}`,
+    );
+  });
+
   test('creates an SSR virtual entry that resolves the specifier from the original caller', async () => {
     const plugin = ssrLoaderPlugin();
     const ssrEnvironmentConfig: any = {};
