@@ -166,8 +166,7 @@ export function ssrLoaderPlugin(): Plugin {
         );
       }
       return `\
-import * as __mod from ${JSON.stringify(resolved.id)};
-export default __mod;
+export { default } from ${JSON.stringify(resolved.id)};
 export * from ${JSON.stringify(resolved.id)};
 `;
     },

@@ -169,7 +169,7 @@ export async function load() {
     ]);
 
     expect(String(loadOutput)).toContain(
-      `import * as __mod from "/resolved/ssr-impl.ts";`,
+      `export { default } from "/resolved/ssr-impl.ts";`,
     );
     expect(String(loadOutput)).toContain(
       `export * from "/resolved/ssr-impl.ts";`,
