@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import type * as estree from 'estree';
 import MagicString from 'magic-string';
-import type { Plugin } from 'vite';
+import type { EnvironmentOptions, Plugin } from 'vite';
 import { parseAstAsync } from 'vite';
 
 type ProgramNode = Awaited<ReturnType<typeof parseAstAsync>>;
@@ -11,7 +11,7 @@ const VIRTUAL_ENTRY_PREFIX = 'virtual:vite-rsc-waku/ssr-loader-entry';
 const toEntryName = (key: string) =>
   `ssr_${crypto.createHash('sha256').update(key).digest('hex').slice(0, 12)}`;
 
-const getOrCreateSsrInputMap = (ssrConfig: any) => {
+const getOrCreateSsrInputMap = (ssrConfig: EnvironmentOptions) => {
   ssrConfig.build ??= {};
   ssrConfig.build.rollupOptions ??= {};
   ssrConfig.build.rollupOptions.input ??= {};
@@ -21,7 +21,7 @@ const getOrCreateSsrInputMap = (ssrConfig: any) => {
       '[waku] ssrLoaderPlugin expects environments.ssr.build.rollupOptions.input to be an object',
     );
   }
-  return input as Record<string, string>;
+  return input;
 };
 
 const isNode = (value: unknown): value is estree.Node =>
@@ -208,8 +208,7 @@ export * from ${JSON.stringify(resolved.id)};
             );
           }
           const arg = node.arguments[0]!;
-          const argument =
-            arg.type === 'SpreadElement' ? arg.argument : (arg as estree.Node);
+          const argument = arg.type === 'SpreadElement' ? arg.argument : arg;
           const source = getStringArgValue(argument);
           if (!source) {
             this.error(
