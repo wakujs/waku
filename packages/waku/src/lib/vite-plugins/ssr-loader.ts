@@ -129,7 +129,10 @@ export function ssrLoaderPlugin(): Plugin {
       if (this.environment.name !== 'ssr') {
         return;
       }
-      if (source === VIRTUAL_ENTRY_PREFIX || source.startsWith(VIRTUAL_ENTRY_PREFIX + '?')) {
+      if (
+        source === VIRTUAL_ENTRY_PREFIX ||
+        source.startsWith(VIRTUAL_ENTRY_PREFIX + '?')
+      ) {
         return '\0' + source;
       }
     },
@@ -140,14 +143,19 @@ export function ssrLoaderPlugin(): Plugin {
       if (!id.startsWith('\0' + VIRTUAL_ENTRY_PREFIX)) {
         return;
       }
-      const u = new URL(id.slice(('\0' + VIRTUAL_ENTRY_PREFIX).length) || '', 'http://x');
+      const u = new URL(
+        id.slice(('\0' + VIRTUAL_ENTRY_PREFIX).length) || '',
+        'http://x',
+      );
       const entryName = u.searchParams.get('e');
       if (!entryName) {
         this.error('[waku] ssrLoaderPlugin invalid virtual entry id');
       }
       const data = entryNameToData.get(entryName);
       if (!data) {
-        this.error(`[waku] ssrLoaderPlugin missing entry data for '${entryName}'`);
+        this.error(
+          `[waku] ssrLoaderPlugin missing entry data for '${entryName}'`,
+        );
       }
       // Resolve `specifier` relative to original caller module id.
       // This makes `unstable_loadSsrModule("./foo")` behave like dynamic import from the caller.
@@ -170,8 +178,12 @@ export * from ${JSON.stringify(resolved.id)};
       ssrInputMap = getOrCreateSsrInputMap(environmentConfig);
     },
     async transform(code, id) {
-      if (this.environment.name !== 'rsc') return;
-      if (!code.includes('unstable_loadSsrModule')) return;
+      if (this.environment.name !== 'rsc') {
+        return;
+      }
+      if (!code.includes('unstable_loadSsrModule')) {
+        return;
+      }
 
       const mod = await parseAstAsync(code, { jsx: true });
       const loadSsrModuleLocal = findImportedLocalName(
