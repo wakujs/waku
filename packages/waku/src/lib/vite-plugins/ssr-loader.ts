@@ -104,7 +104,7 @@ export function ssrLoaderPlugin(): Plugin {
         ['e', entryName],
         ['i', importer],
         ['s', specifier],
-      ]).toString()}`;
+      ])}`;
 
     let entryName = toEntryName(entryKey);
     for (let i = 0; i < 100; i++) {
