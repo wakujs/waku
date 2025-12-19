@@ -79,7 +79,7 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
     );
   });
 
-  test('generates types when server-entry uses fsRouter (managed mode)', async () => {
+  test('generates types when waku.server uses fsRouter (managed mode)', async () => {
     expect(
       await detectFsRouterUsage(
         path.join(fixturesDir, 'plugin-fs-router-typegen-with-fsrouter'),
@@ -87,7 +87,7 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
     ).toBe(true);
   });
 
-  test('generates types when no server-entry is present (managed fallback)', async () => {
+  test('generates types when no waku.server is present (managed fallback)', async () => {
     expect(
       await detectFsRouterUsage(
         path.join(fixturesDir, 'plugin-fs-router-typegen'),
@@ -111,7 +111,7 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
     ).toBe(false);
   });
 
-  test('skips type generation when server-entry does not use fsRouter', async () => {
+  test('skips type generation when waku.server does not use fsRouter', async () => {
     expect(
       await detectFsRouterUsage(
         path.join(fixturesDir, 'plugin-fs-router-typegen-with-createpages'),
