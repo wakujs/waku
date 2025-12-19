@@ -85,10 +85,6 @@ const walk = (node: estree.Node, visit: (node: estree.Node) => void) => {
 
 export function ssrLoaderPlugin(): Plugin {
   const entryKeyToName = new Map<string, string>();
-  const entryNameToData = new Map<
-    string,
-    { specifier: string; importer: string }
-  >();
   let ssrInputMap: Record<string, string> | null = null;
 
   const ensureSsrEntry = (specifier: string, importer: string) => {
@@ -103,6 +99,9 @@ export function ssrLoaderPlugin(): Plugin {
       return existing;
     }
 
+    const toVirtualId = (entryName: string) =>
+      `${VIRTUAL_ENTRY_PREFIX}?e=${encodeURIComponent(entryName)}&i=${encodeURIComponent(importer)}&s=${encodeURIComponent(specifier)}`;
+
     let entryName = toEntryName(entryKey);
     for (let i = 0; i < 100; i++) {
       const maybeName = i === 0 ? entryName : `${entryName}_${i}`;
@@ -111,15 +110,14 @@ export function ssrLoaderPlugin(): Plugin {
         entryName = maybeName;
         break;
       }
-      if (existingInput === `${VIRTUAL_ENTRY_PREFIX}?e=${maybeName}`) {
+      if (existingInput === toVirtualId(maybeName)) {
         entryName = maybeName;
         break;
       }
     }
 
-    ssrInputMap[entryName] ??= `${VIRTUAL_ENTRY_PREFIX}?e=${entryName}`;
+    ssrInputMap[entryName] ??= toVirtualId(entryName);
     entryKeyToName.set(entryKey, entryName);
-    entryNameToData.set(entryName, { specifier, importer });
     return entryName;
   };
 
@@ -151,18 +149,17 @@ export function ssrLoaderPlugin(): Plugin {
       if (!entryName) {
         this.error('[waku] ssrLoaderPlugin invalid virtual entry id');
       }
-      const data = entryNameToData.get(entryName);
-      if (!data) {
-        this.error(
-          `[waku] ssrLoaderPlugin missing entry data for '${entryName}'`,
-        );
+      const specifier = u.searchParams.get('s');
+      const importer = u.searchParams.get('i');
+      if (!specifier || !importer) {
+        this.error('[waku] ssrLoaderPlugin invalid virtual entry id');
       }
       // Resolve `specifier` relative to original caller module id.
       // This makes `unstable_loadSsrModule("./foo")` behave like dynamic import from the caller.
-      const resolved = await this.resolve(data.specifier, data.importer);
+      const resolved = await this.resolve(specifier, importer);
       if (!resolved) {
         this.error(
-          `[waku] failed to resolve SSR module '${data.specifier}' from '${data.importer}'`,
+          `[waku] failed to resolve SSR module '${specifier}' from '${importer}'`,
         );
       }
       return `\

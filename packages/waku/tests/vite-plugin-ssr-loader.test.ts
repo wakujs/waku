@@ -28,6 +28,12 @@ const extractEntryName = (code: string) => {
   return match![1]!;
 };
 
+const getSsrInputEntry = (ssrEnvironmentConfig: any, entryName: string) => {
+  const value = ssrEnvironmentConfig.build?.rollupOptions?.input?.[entryName];
+  expect(typeof value).toBe('string');
+  return value as string;
+};
+
 describe('vite-plugin-ssr-loader', () => {
   test('rewrites unstable_loadSsrModule to import.meta.viteRsc.loadModule and registers an SSR input entry', async () => {
     const plugin = ssrLoaderPlugin();
@@ -69,9 +75,14 @@ export async function load() {
     const entryName = extractEntryName(transformed);
     expect(entryName).toMatch(/^waku_ssr_[a-f0-9]{12}/);
 
-    expect(ssrEnvironmentConfig.build?.rollupOptions?.input?.[entryName]).toBe(
-      `virtual:vite-rsc-waku/ssr-loader-entry?e=${entryName}`,
+    const inputEntry = getSsrInputEntry(ssrEnvironmentConfig, entryName);
+    expect(inputEntry.startsWith('virtual:vite-rsc-waku/ssr-loader-entry?')).toBe(
+      true,
     );
+    const params = new URLSearchParams(inputEntry.split('?')[1]);
+    expect(params.get('e')).toBe(entryName);
+    expect(params.get('i')).toBe('/src/routes/page.tsx');
+    expect(params.get('s')).toBe('./ssr-impl');
   });
 
   test('supports importing unstable_loadSsrModule with an alias', async () => {
@@ -111,8 +122,9 @@ export async function load() {
     expect(transformed).not.toContain('loadSsrModule(');
 
     const entryName = extractEntryName(transformed);
-    expect(ssrEnvironmentConfig.build?.rollupOptions?.input?.[entryName]).toBe(
-      `virtual:vite-rsc-waku/ssr-loader-entry?e=${entryName}`,
+    const inputEntry = getSsrInputEntry(ssrEnvironmentConfig, entryName);
+    expect(inputEntry.startsWith('virtual:vite-rsc-waku/ssr-loader-entry?')).toBe(
+      true,
     );
   });
 
@@ -147,6 +159,7 @@ export async function load() {
     );
     const transformed = (output as any).code ?? String(output);
     const entryName = extractEntryName(transformed);
+    const inputEntry = getSsrInputEntry(ssrEnvironmentConfig, entryName);
 
     const resolveCalls: Array<{ specifier: string; importer: string }> = [];
 
@@ -161,7 +174,7 @@ export async function load() {
           return { id: '/resolved/ssr-impl.ts' };
         },
       } as never,
-      `\0virtual:vite-rsc-waku/ssr-loader-entry?e=${entryName}`,
+      `\0${inputEntry}`,
     );
 
     expect(resolveCalls).toEqual([
