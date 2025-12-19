@@ -100,7 +100,11 @@ export function ssrLoaderPlugin(): Plugin {
     }
 
     const toVirtualId = (entryName: string) =>
-      `${VIRTUAL_ENTRY_PREFIX}?e=${encodeURIComponent(entryName)}&i=${encodeURIComponent(importer)}&s=${encodeURIComponent(specifier)}`;
+      `${VIRTUAL_ENTRY_PREFIX}?${new URLSearchParams([
+        ['e', entryName],
+        ['i', importer],
+        ['s', specifier],
+      ]).toString()}`;
 
     let entryName = toEntryName(entryKey);
     for (let i = 0; i < 100; i++) {
@@ -141,16 +145,14 @@ export function ssrLoaderPlugin(): Plugin {
       if (!id.startsWith('\0' + VIRTUAL_ENTRY_PREFIX)) {
         return;
       }
-      const u = new URL(
-        id.slice(('\0' + VIRTUAL_ENTRY_PREFIX).length) || '',
-        'http://x',
-      );
-      const entryName = u.searchParams.get('e');
+      const query = id.slice(('\0' + VIRTUAL_ENTRY_PREFIX).length);
+      const searchParams = new URLSearchParams(query);
+      const entryName = searchParams.get('e');
       if (!entryName) {
         this.error('[waku] ssrLoaderPlugin invalid virtual entry id');
       }
-      const specifier = u.searchParams.get('s');
-      const importer = u.searchParams.get('i');
+      const specifier = searchParams.get('s');
+      const importer = searchParams.get('i');
       if (!specifier || !importer) {
         this.error('[waku] ssrLoaderPlugin invalid virtual entry id');
       }
