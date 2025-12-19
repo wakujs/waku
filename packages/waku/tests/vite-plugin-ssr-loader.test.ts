@@ -76,9 +76,9 @@ export async function load() {
     expect(entryName).toMatch(/^ssr_[a-f0-9]{12}/);
 
     const inputEntry = getSsrInputEntry(ssrEnvironmentConfig, entryName);
-    expect(inputEntry.startsWith('virtual:vite-rsc-waku/ssr-loader-entry?')).toBe(
-      true,
-    );
+    expect(
+      inputEntry.startsWith('virtual:vite-rsc-waku/ssr-loader-entry?'),
+    ).toBe(true);
     const params = new URLSearchParams(inputEntry.split('?')[1]);
     expect(params.get('e')).toBe(entryName);
     expect(params.get('i')).toBe('/src/routes/page.tsx');
@@ -123,9 +123,9 @@ export async function load() {
 
     const entryName = extractEntryName(transformed);
     const inputEntry = getSsrInputEntry(ssrEnvironmentConfig, entryName);
-    expect(inputEntry.startsWith('virtual:vite-rsc-waku/ssr-loader-entry?')).toBe(
-      true,
-    );
+    expect(
+      inputEntry.startsWith('virtual:vite-rsc-waku/ssr-loader-entry?'),
+    ).toBe(true);
   });
 
   test('creates an SSR virtual entry that resolves the specifier from the original caller', async () => {
