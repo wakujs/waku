@@ -34,7 +34,15 @@ describe('vite-plugin-ssr-loader', () => {
 
     // This is the mutable Vite environment config object that the plugin is expected to mutate.
     const ssrEnvironmentConfig: any = {};
-    plugin.configEnvironment?.('ssr', ssrEnvironmentConfig);
+    if (typeof plugin.configEnvironment !== 'function') {
+      throw new Error('Plugin configEnvironment is not a function');
+    }
+    await plugin.configEnvironment.call(
+      {} as never,
+      'ssr',
+      ssrEnvironmentConfig,
+      {} as never,
+    );
 
     const input = `\
 import { unstable_loadSsrModule } from 'waku/server';
@@ -45,7 +53,10 @@ export async function load() {
 }
 `;
 
-    const output = await plugin.transform?.call(
+    if (typeof plugin.transform !== 'function') {
+      throw new Error('Plugin transform is not a function');
+    }
+    const output = await plugin.transform.call(
       createThrowingContext({ name: 'rsc', mode: 'dev' }) as never,
       input,
       '/src/routes/page.tsx',
@@ -66,7 +77,15 @@ export async function load() {
   test('creates an SSR virtual entry that resolves the specifier from the original caller', async () => {
     const plugin = ssrLoaderPlugin();
     const ssrEnvironmentConfig: any = {};
-    plugin.configEnvironment?.('ssr', ssrEnvironmentConfig);
+    if (typeof plugin.configEnvironment !== 'function') {
+      throw new Error('Plugin configEnvironment is not a function');
+    }
+    await plugin.configEnvironment.call(
+      {} as never,
+      'ssr',
+      ssrEnvironmentConfig,
+      {} as never,
+    );
 
     const input = `\
 import { unstable_loadSsrModule } from 'waku/server';
@@ -75,7 +94,10 @@ export async function load() {
 }
 `;
 
-    const output = await plugin.transform?.call(
+    if (typeof plugin.transform !== 'function') {
+      throw new Error('Plugin transform is not a function');
+    }
+    const output = await plugin.transform.call(
       createThrowingContext({ name: 'rsc', mode: 'dev' }) as never,
       input,
       // use a query/hash to ensure the plugin strips it when tracking the importer
@@ -85,7 +107,11 @@ export async function load() {
     const entryName = extractEntryName(transformed);
 
     const resolveCalls: Array<{ specifier: string; importer: string }> = [];
-    const loadOutput = await plugin.load?.call(
+
+    if (typeof plugin.load !== 'function') {
+      throw new Error('Plugin load is not a function');
+    }
+    const loadOutput = await plugin.load.call(
       {
         ...createThrowingContext({ name: 'ssr', mode: 'dev' }),
         resolve: async (specifier: string, importer: string) => {
@@ -100,21 +126,36 @@ export async function load() {
       { specifier: './ssr-impl', importer: '/src/routes/page.tsx' },
     ]);
 
-    expect(String(loadOutput)).toContain(`import * as __mod from "/resolved/ssr-impl.ts";`);
-    expect(String(loadOutput)).toContain(`export * from "/resolved/ssr-impl.ts";`);
+    expect(String(loadOutput)).toContain(
+      `import * as __mod from "/resolved/ssr-impl.ts";`,
+    );
+    expect(String(loadOutput)).toContain(
+      `export * from "/resolved/ssr-impl.ts";`,
+    );
   });
 
   test('skips transform outside the rsc environment', async () => {
     const plugin = ssrLoaderPlugin();
     const ssrEnvironmentConfig: any = {};
-    plugin.configEnvironment?.('ssr', ssrEnvironmentConfig);
+    if (typeof plugin.configEnvironment !== 'function') {
+      throw new Error('Plugin configEnvironment is not a function');
+    }
+    await plugin.configEnvironment.call(
+      {} as never,
+      'ssr',
+      ssrEnvironmentConfig,
+      {} as never,
+    );
 
     const input = `\
 import { unstable_loadSsrModule } from 'waku/server';
 export const load = () => unstable_loadSsrModule('./ssr-impl');
 `;
 
-    const output = await plugin.transform?.call(
+    if (typeof plugin.transform !== 'function') {
+      throw new Error('Plugin transform is not a function');
+    }
+    const output = await plugin.transform.call(
       createThrowingContext({ name: 'client', mode: 'dev' }) as never,
       input,
       '/src/routes/page.tsx',
@@ -128,14 +169,25 @@ export const load = () => unstable_loadSsrModule('./ssr-impl');
   test('skips transform when unstable_loadSsrModule is not imported from waku/server', async () => {
     const plugin = ssrLoaderPlugin();
     const ssrEnvironmentConfig: any = {};
-    plugin.configEnvironment?.('ssr', ssrEnvironmentConfig);
+    if (typeof plugin.configEnvironment !== 'function') {
+      throw new Error('Plugin configEnvironment is not a function');
+    }
+    await plugin.configEnvironment.call(
+      {} as never,
+      'ssr',
+      ssrEnvironmentConfig,
+      {} as never,
+    );
 
     const input = `\
 import { unstable_loadSsrModule } from './local';
 export const load = () => unstable_loadSsrModule('./ssr-impl');
 `;
 
-    const output = await plugin.transform?.call(
+    if (typeof plugin.transform !== 'function') {
+      throw new Error('Plugin transform is not a function');
+    }
+    const output = await plugin.transform.call(
       createThrowingContext({ name: 'rsc', mode: 'dev' }) as never,
       input,
       '/src/routes/page.tsx',
@@ -149,10 +201,21 @@ export const load = () => unstable_loadSsrModule('./ssr-impl');
   test('throws if the argument is not a string literal', async () => {
     const plugin = ssrLoaderPlugin();
     const ssrEnvironmentConfig: any = {};
-    plugin.configEnvironment?.('ssr', ssrEnvironmentConfig);
+    if (typeof plugin.configEnvironment !== 'function') {
+      throw new Error('Plugin configEnvironment is not a function');
+    }
+    await plugin.configEnvironment.call(
+      {} as never,
+      'ssr',
+      ssrEnvironmentConfig,
+      {} as never,
+    );
 
+    if (typeof plugin.transform !== 'function') {
+      throw new Error('Plugin transform is not a function');
+    }
     await expect(
-      plugin.transform?.call(
+      plugin.transform.call(
         createThrowingContext({ name: 'rsc', mode: 'dev' }) as never,
         `\
 import { unstable_loadSsrModule } from 'waku/server';
