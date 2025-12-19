@@ -23,7 +23,7 @@ We also used to have Waku's "middleware," which was server-framework agnostic. N
 
 Despite the significant internal rewrite, the public API surface is largely unchanged, except for how deploy adapters are handled.
 
-If you previously used a `waku.server.tsx` file with `createPages`, you need to change it:
+If you previously used a `server-entry.tsx` file with `createPages`, you need to change it:
 
 ```diff
   import { createPages } from 'waku';
@@ -33,7 +33,7 @@ If you previously used a `waku.server.tsx` file with `createPages`, you need to 
 + export default adapter(createPages(...));
 ```
 
-If you use the fs-router (by not having a `waku.server.tsx` file) and want to use a custom adapter, you now need to create a `waku.server.tsx` file:
+If you use the fs-router (by not having a `server-entry.tsx` file) and want to use a custom adapter, you now need to create a `server-entry.tsx` file:
 
 ```tsx
 import { fsRouter } from 'waku';
