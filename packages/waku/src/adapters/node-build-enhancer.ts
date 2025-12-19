@@ -23,10 +23,10 @@ serve({
 }
 
 export default async function buildEnhancer(
-  build: (emitFile: unknown, options: BuildOptions) => Promise<void>,
+  build: (utils: unknown, options: BuildOptions) => Promise<void>,
 ): Promise<typeof build> {
-  return async (emitFile: unknown, options: BuildOptions) => {
-    await build(emitFile, options);
+  return async (utils: unknown, options: BuildOptions) => {
+    await build(utils, options);
     await postBuild(options);
   };
 }

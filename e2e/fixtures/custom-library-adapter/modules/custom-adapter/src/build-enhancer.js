@@ -56,8 +56,8 @@ server.listen(port ? parseInt(port, 10) : undefined, host || undefined);
 }
 
 export default async function buildEnhancer(build) {
-  return async (emitFile, options) => {
-    await build(emitFile, options);
+  return async (utils, options) => {
+    await build(utils, options);
     await postBuild(options);
   };
 }
