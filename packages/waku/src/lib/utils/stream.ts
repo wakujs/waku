@@ -53,12 +53,14 @@ export function batchReadableStream(
   input: ReadableStream<Uint8Array>,
 ): ReadableStream<Uint8Array> {
   const buffer: Uint8Array[] = [];
-  let scheduled = false;
-  let controller: TransformStreamDefaultController<Uint8Array> | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
 
-  const flush = () => {
-    scheduled = false;
-    if (controller && buffer.length) {
+  const flushBuffer = (
+    controller: TransformStreamDefaultController<Uint8Array>,
+  ): void => {
+    clearTimeout(timer);
+    timer = undefined;
+    if (buffer.length) {
       controller.enqueue(concatUint8Array(buffer));
       buffer.length = 0;
     }
@@ -66,19 +68,14 @@ export function batchReadableStream(
 
   return input.pipeThrough(
     new TransformStream({
-      start(c) {
-        controller = c;
-      },
-      transform(chunk) {
+      transform(chunk, controller) {
         buffer.push(chunk);
-        if (!scheduled) {
-          scheduled = true;
-          setTimeout(flush);
+        if (!timer) {
+          timer = setTimeout(() => flushBuffer(controller));
         }
       },
-      flush() {
-        flush();
-        controller = undefined;
+      flush(controller) {
+        flushBuffer(controller);
       },
     }),
   );
