@@ -34,3 +34,52 @@ export const base64ToStream = (base64: string): ReadableStream => {
   const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
   return new Blob([bytes]).stream();
 };
+
+function concatUint8Array(chunks: readonly Uint8Array[]): Uint8Array {
+  if (chunks.length === 1) {
+    return chunks[0]!;
+  }
+  const total = chunks.reduce((n, chunk) => n + chunk.byteLength, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return out;
+}
+
+export function batchReadableStream(
+  input: ReadableStream<Uint8Array>,
+): ReadableStream<Uint8Array> {
+  const buffer: Uint8Array[] = [];
+  let scheduled = false;
+  let controller: TransformStreamDefaultController<Uint8Array> | undefined;
+
+  const flush = () => {
+    scheduled = false;
+    if (controller && buffer.length) {
+      controller.enqueue(concatUint8Array(buffer));
+      buffer.length = 0;
+    }
+  };
+
+  return input.pipeThrough(
+    new TransformStream({
+      start(c) {
+        controller = c;
+      },
+      transform(chunk) {
+        buffer.push(chunk);
+        if (!scheduled) {
+          scheduled = true;
+          setTimeout(flush);
+        }
+      },
+      flush() {
+        flush();
+        controller = undefined;
+      },
+    }),
+  );
+}
