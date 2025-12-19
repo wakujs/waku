@@ -1,3 +1,4 @@
+import 'client-only';
 import type { ReactNode } from 'react';
 import { getServerInsertedHTML, serverInsertedHTMLStorage } from './context';
 import { createHeadInsertionTransformStream } from './stream';
