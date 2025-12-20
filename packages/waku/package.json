@@ -35,8 +35,12 @@
       "default": "./dist/server.js"
     },
     "./internals": {
-      "types": "./dist/internals.d.ts",
-      "default": "./dist/internals.js"
+      "types": "./dist/internals/index.d.ts",
+      "default": "./dist/internals/index.js"
+    },
+    "./internals/vite-plugins": {
+      "types": "./dist/internals/vite-plugins.d.ts",
+      "default": "./dist/internals/vite-plugins.js"
     },
     "./adapters/*": {
       "types": "./dist/adapters/*.d.ts",

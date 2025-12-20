@@ -1,0 +1,1 @@
+export { rscPlugin as unstable_rscPlugin, type RscPluginOptions as unstable_RscPluginOptions } from '../lib/vite-rsc/plugin.js'
