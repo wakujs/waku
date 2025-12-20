@@ -61,7 +61,12 @@ export function batchReadableStream(
     clearTimeout(timer);
     timer = undefined;
     if (buffer.length) {
-      controller.enqueue(concatUint8Array(buffer));
+      try {
+        controller.enqueue(concatUint8Array(buffer));
+      } catch {
+        // ignore errors
+        // ref: https://github.com/wakujs/waku/pull/1863#discussion_r2634546953
+      }
       buffer.length = 0;
     }
   };
