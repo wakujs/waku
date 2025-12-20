@@ -15,11 +15,7 @@ import { privateDirPlugin } from '../vite-plugins/private-dir.js';
 import { userEntriesPlugin } from '../vite-plugins/user-entries.js';
 import { virtualConfigPlugin } from '../vite-plugins/virtual-config.js';
 
-export type RscPluginOptions = {
-  config?: Config | undefined;
-};
-
-export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
+export function rscPlugin(loadedConfig?: Config | undefined): PluginOption {
   const config: Required<Config> = {
     basePath: '/',
     srcDir: 'src',
@@ -28,7 +24,7 @@ export function rscPlugin(rscPluginOptions?: RscPluginOptions): PluginOption {
     rscBase: 'RSC',
     unstable_adapter: getDefaultAdapter(),
     vite: undefined,
-    ...rscPluginOptions?.config,
+    ...loadedConfig,
   };
   // ensure trailing slash
   if (!config.basePath.endsWith('/')) {
