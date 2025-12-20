@@ -7,6 +7,7 @@ import fallbackHtml from 'virtual:vite-rsc-waku/fallback-html';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
 import { getBootstrapPreamble } from '../utils/ssr.js';
+import { batchReadableStream } from '../utils/stream.js';
 
 type RenderHtmlStream = (
   rscStream: ReadableStream<Uint8Array>,
@@ -99,7 +100,10 @@ export const renderHtmlStream: RenderHtmlStream = async (
   }
   let responseStream: ReadableStream<Uint8Array> = htmlStream;
   responseStream = responseStream.pipeThrough(
-    injectRSCPayload(stream2, options?.nonce ? { nonce: options?.nonce } : {}),
+    injectRSCPayload(
+      batchReadableStream(stream2),
+      options?.nonce ? { nonce: options?.nonce } : {},
+    ),
   );
 
   return { stream: responseStream, status };
