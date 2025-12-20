@@ -35,12 +35,12 @@
       "default": "./dist/server.js"
     },
     "./internals": {
-      "types": "./dist/internals/index.d.ts",
-      "default": "./dist/internals/index.js"
+      "types": "./dist/internals.d.ts",
+      "default": "./dist/internals.js"
     },
-    "./internals/vite-plugins": {
-      "types": "./dist/internals/vite-plugins.d.ts",
-      "default": "./dist/internals/vite-plugins.js"
+    "./internals/*": {
+      "types": "./dist/internals/*.d.ts",
+      "default": "./dist/internals/*.js"
     },
     "./adapters/*": {
       "types": "./dist/adapters/*.d.ts",
