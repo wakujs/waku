@@ -2,7 +2,6 @@ import react from '@vitejs/plugin-react';
 import rsc from '@vitejs/plugin-rsc';
 import type { PluginOption } from 'vite';
 import type { Config } from '../../config.js';
-import { getDefaultAdapter } from '../utils/default-adapter.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import { buildMetadataPlugin } from '../vite-plugins/build-metadata.js';
 import { defaultAdapterPlugin } from '../vite-plugins/default-adapter.js';
@@ -15,22 +14,7 @@ import { privateDirPlugin } from '../vite-plugins/private-dir.js';
 import { userEntriesPlugin } from '../vite-plugins/user-entries.js';
 import { virtualConfigPlugin } from '../vite-plugins/virtual-config.js';
 
-export function rscPlugin(loadedConfig?: Config | undefined): PluginOption {
-  const config: Required<Config> = {
-    basePath: '/',
-    srcDir: 'src',
-    distDir: 'dist',
-    privateDir: 'private',
-    rscBase: 'RSC',
-    unstable_adapter: getDefaultAdapter(),
-    vite: undefined,
-    ...loadedConfig,
-  };
-  // ensure trailing slash
-  if (!config.basePath.endsWith('/')) {
-    throw new Error('basePath must end with /');
-  }
-
+export function rscPlugin(config: Required<Config>): PluginOption {
   const extraPlugins = [...(config.vite?.plugins ?? [])];
   // add react plugin automatically if users didn't include it on their own (e.g. swc, oxc, babel react compiler)
   if (
@@ -53,12 +37,12 @@ export function rscPlugin(loadedConfig?: Config | undefined): PluginOption {
     mainPlugin(config),
     userEntriesPlugin(config),
     virtualConfigPlugin(config),
-    defaultAdapterPlugin(config.unstable_adapter),
+    defaultAdapterPlugin(config),
     notFoundPlugin(),
     patchRsdwPlugin(),
     buildMetadataPlugin(config),
-    privateDirPlugin(config.privateDir),
+    privateDirPlugin(config),
     fallbackHtmlPlugin(),
-    fsRouterTypegenPlugin({ srcDir: config.srcDir }),
+    fsRouterTypegenPlugin(config),
   ];
 }

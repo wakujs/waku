@@ -4,9 +4,10 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as vite from 'vite';
 import type { Config } from '../../config.js';
+import { resolveConfig } from '../utils/config.js';
 import { rscPlugin } from './plugin.js';
 
-async function loadConfig(): Promise<Config | undefined> {
+async function loadConfig(): Promise<Required<Config>> {
   let config: Config | undefined;
   if (existsSync('waku.config.ts') || existsSync('waku.config.js')) {
     const imported = await vite.runnerImport<{ default: Config }>(
@@ -14,13 +15,13 @@ async function loadConfig(): Promise<Config | undefined> {
     );
     config = imported.module.default;
   }
-  return config;
+  return resolveConfig(config);
 }
 
 async function startDevServer(
   host: string | undefined,
   port: number,
-  config: Config | undefined,
+  config: Required<Config>,
 ) {
   const server = await vite.createServer({
     configFile: false,

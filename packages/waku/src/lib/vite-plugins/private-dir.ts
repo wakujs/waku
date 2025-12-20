@@ -1,7 +1,11 @@
 import type { Plugin } from 'vite';
 import { joinPath } from '../utils/path.js';
 
-export function privateDirPlugin(privateDir: string): Plugin {
+export function privateDirPlugin({
+  privateDir,
+}: {
+  privateDir: string;
+}): Plugin {
   let privatePath: string;
   return {
     name: 'waku:vite-plugins:private-dir',
