@@ -5,6 +5,7 @@ import { getFileName } from '../lib/get-file-name';
 import { components } from './mdx';
 import { Meta } from './meta';
 import { Page } from './page';
+import { StarWaku } from './star-waku';
 
 export async function PostPage({
   slug,
@@ -55,19 +56,17 @@ export async function PostPage({
         <div className="mb-8 flex items-center gap-2 sm:gap-4">
           {frontmatter.release && (
             <div>
-              <div className="inline-block rounded-md bg-white px-2 py-1 text-[0.625rem] font-black tracking-wide text-black sm:text-xs">
+              <div className="inline-block rounded-md bg-white px-2 py-1 font-simple text-[0.625rem] font-bold text-black sm:text-xs">
                 <span className="hidden uppercase sm:inline">Waku</span>{' '}
                 {frontmatter.release}
               </div>
             </div>
           )}
           {date && (
-            <div className="font-simple text-[11px] uppercase tracking-[0.125em] text-gray-400">
-              {date}
-            </div>
+            <div className="font-label text-[11px] text-gray-400">{date}</div>
           )}
         </div>
-        <h1 className="font-serif text-3xl font-extrabold leading-none sm:text-6xl">
+        <h1 className="font-headline text-pretty text-3xl leading-none sm:text-6xl">
           {frontmatter.title}
         </h1>
         <h3 className="mt-2 text-lg font-normal leading-snug text-white/60 sm:mt-1 sm:text-xl sm:font-bold">
@@ -87,7 +86,7 @@ export async function PostPage({
                 className="absolute inset-0 h-full w-full object-cover"
               />
             </div>
-            <div className="font-simple text-[11px] uppercase tracking-[0.125em] text-gray-400 transition-colors duration-300 ease-in-out group-hover:text-white">
+            <div className="font-label text-[11px] text-gray-400 transition-colors duration-300 ease-in-out group-hover:text-white">
               by {author.name}
               <span className="hidden sm:inline">, </span>
               <br className="sm:hidden" />
@@ -101,14 +100,7 @@ export async function PostPage({
         {content}
       </div>
       <div className="relative z-10 mx-auto mb-8 mt-16 flex w-full max-w-[80ch] justify-center sm:mb-0 lg:mt-32 xl:-right-[calc(296px/2)] 2xl:right-auto">
-        <a
-          href="https://github.com/wakujs/waku"
-          target="_blank"
-          rel="noreferrer"
-          className="text-shadow inline-block! -rotate-[5deg] transform whitespace-nowrap text-center font-serif text-3xl font-extrabold leading-none text-white transition-colors duration-300 ease-in-out hover:text-primary sm:mr-4 sm:text-6xl"
-        >
-          star Waku on GitHub!
-        </a>
+        <StarWaku />
       </div>
     </Page>
   );

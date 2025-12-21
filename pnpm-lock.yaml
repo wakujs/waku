@@ -1810,6 +1810,9 @@ importers:
       react-server-dom-webpack:
         specifier: ~19.2.3
         version: 19.2.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack@5.99.9)
+      smartquotes:
+        specifier: ^2.3.2
+        version: 2.3.2
       waku:
         specifier: workspace:*
         version: link:../waku
@@ -6243,6 +6246,10 @@ packages:
   slash@3.0.0:
     resolution: {integrity: sha512-g9Q1haeby36OSStwb4ntCGGGaKsaVSjQ68fBxoQcutl5fS1vuY18H3wSt3jFyFtrkx+Kz0V1G85A4MyAdDMi2Q==}
     engines: {node: '>=8'}
+
+  smartquotes@2.3.2:
+    resolution: {integrity: sha512-0R6YJ5hLpDH4mZR7N5eZ12oCMLspvGOHL9A9SEm2e3b/CQmQidekW4SWSKEmor/3x6m3NCBBEqLzikcZC9VJNQ==}
+    engines: {node: '>=4.0.0'}
 
   solid-js@1.9.7:
     resolution: {integrity: sha512-/saTKi8iWEM233n5OSi1YHCCuh66ZIQ7aK2hsToPe4tqGm7qAejU1SwNuTPivbWAYq7SjuHVVYxxuZQNRbICiw==}
@@ -11668,6 +11675,8 @@ snapshots:
   sisteransi@1.0.5: {}
 
   slash@3.0.0: {}
+
+  smartquotes@2.3.2: {}
 
   solid-js@1.9.7:
     dependencies:

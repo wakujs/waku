@@ -1,17 +1,17 @@
 ---
 slug: introducing-pages-router
-title: Introducing “pages router”
+title: Introducing "pages router"
 description: Bringing a minimal API to the modern React server components era.
 author: sophia
 release: v0.20
 date: 2024/03/26
 ---
 
-Waku’s new file-based “pages router” provides a fast developer experience while supporting all the latest React features including [server components](https://github.com/reactjs/rfcs/blob/main/text/0188-server-components.md) and actions. Its minimal API is designed to accelerate the work of developers at startups and agencies building small to medium-sized React projects such as marketing websites, light ecommerce, and web applications.
+Waku's new file-based "pages router" provides a fast developer experience while supporting all the latest React features including [server components](https://github.com/reactjs/rfcs/blob/main/text/0188-server-components.md) and actions. Its minimal API is designed to accelerate the work of developers at startups and agencies building small to medium-sized React projects such as marketing websites, light ecommerce, and web applications.
 
 Making a Waku site is now as simple as making a few files and folders in the `./src/pages` directory: make `index.tsx` and `about.tsx` to create a home page and about page, then `blog/index.tsx` and `blog/[slug].tsx` to add a blog, and finally a special `_layout.tsx` to wrap the entire site with a global header and footer.
 
-If you’re not already familiar with server components, we recommend starting with our [documentation](https://waku.gg) instead, which includes all of the following material. Otherwise continue reading and we’ll take a closer look at the new Waku pages router API.
+If you're not already familiar with server components, we recommend starting with our [documentation](https://waku.gg) instead, which includes all of the following material. Otherwise continue reading and we'll take a closer look at the new Waku pages router API.
 
 ## File-based routing API
 
@@ -236,7 +236,7 @@ export const getConfig = async () => {
 
 #### Catch-all routes
 
-Catch-all or “wildcard” segment routes (e.g., `/app/[...catchAll]`) are marked with an ellipsis before the name and have indefinite segments.
+Catch-all or "wildcard" segment routes (e.g., `/app/[...catchAll]`) are marked with an ellipsis before the name and have indefinite segments.
 
 Wildcard routes receive a prop with segment values as an ordered array. For example, the `/app/profile/settings` route would receive a `catchAll` prop with the value `['profile', 'settings']`. These values can then be used to determine what to render in the component.
 
