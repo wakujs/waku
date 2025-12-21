@@ -9,7 +9,7 @@
     "start": "waku start"
   },
   "dependencies": {
-    "@stylexjs/stylex": "^0.17.3",
+    "@stylexjs/stylex": "^0.17.4",
     "react": "~19.2.3",
     "react-dom": "~19.2.3",
     "react-server-dom-webpack": "~19.2.3",
@@ -18,7 +18,7 @@
   "devDependencies": {
     "@babel/plugin-syntax-jsx": "^7.27.1",
     "@babel/preset-typescript": "^7.28.5",
-    "@stylexjs/postcss-plugin": "^0.17.3",
+    "@stylexjs/postcss-plugin": "^0.17.4",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.0",

@@ -15,17 +15,17 @@
     "react-dom": "~19.2.3",
     "react-server-dom-webpack": "~19.2.3",
     "waku": "0.27.5",
-    "wrangler": "^4.54.0"
+    "wrangler": "^4.56.0"
   },
   "devDependencies": {
     "@hiogawa/node-loader-cloudflare": "^0.0.2",
     "@tailwindcss/vite": "^4.1.18",
-    "@types/node": "^25.0.2",
+    "@types/node": "^25.0.3",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.0",
     "babel-plugin-react-compiler": "^1.0.0",
-    "miniflare": "^4.20251210.0",
+    "miniflare": "^4.20251217.0",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3"
   }
