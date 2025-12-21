@@ -1,6 +1,10 @@
 import type { Plugin } from 'vite';
 
-export function defaultAdapterPlugin(adapterName: string): Plugin {
+export function defaultAdapterPlugin({
+  unstable_adapter: adapterName,
+}: {
+  unstable_adapter: string;
+}): Plugin {
   const adapterModule = 'waku/adapters/default';
   return {
     name: 'waku:vite-plugins:default-adapter',
