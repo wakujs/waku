@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 
 export const loadReadme = (): string => {
-  const content = readFileSync('../README.md', 'utf8');
+  const content = readFileSync('../../README.md', 'utf8');
   return content.replace(/\r\n?/g, '\n');
 };
 
