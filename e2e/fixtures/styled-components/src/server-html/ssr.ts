@@ -1,5 +1,6 @@
 import 'client-only';
 import type { ReactNode } from 'react';
+import { unstable_defineHandlers as defineHandlers } from 'waku/minimal/server';
 import { getServerInsertedHTML, serverInsertedHTMLStorage } from './context';
 import { createHeadInsertionTransformStream } from './stream';
 
@@ -13,18 +14,13 @@ type RenderHtml = (
   },
 ) => Promise<Response>;
 
-export function injectRenderHtml(renderHtml: RenderHtml): RenderHtml {
+function injectRenderHtml(renderHtml: RenderHtml): RenderHtml {
   if (!import.meta.env.SSR) {
     return renderHtml;
   }
 
   return async (elementsStream, html, options) => {
     return serverInsertedHTMLStorage.run({ callbacks: [] }, async () => {
-      // Bridge for 'use client' components to register callbacks without importing Node.js built-ins
-      globalThis.__addServerInsertedHTML = (callback) => {
-        serverInsertedHTMLStorage.getStore()?.callbacks.push(callback);
-      };
-
       const response = await renderHtml(elementsStream, html, options);
 
       const body = response.body;
@@ -43,4 +39,21 @@ export function injectRenderHtml(renderHtml: RenderHtml): RenderHtml {
       });
     });
   };
+}
+
+export function cssInJs(handlers: ReturnType<typeof defineHandlers>) {
+  return defineHandlers({
+    handleRequest(input, utils) {
+      return handlers.handleRequest(input, {
+        ...utils,
+        renderHtml: injectRenderHtml(utils.renderHtml),
+      });
+    },
+    handleBuild(utils) {
+      return handlers.handleBuild({
+        ...utils,
+        renderHtml: injectRenderHtml(utils.renderHtml),
+      });
+    },
+  });
 }
