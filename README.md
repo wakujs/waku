@@ -539,10 +539,10 @@ pages/
 Import `PageProps` from `waku/router` for type-safe access to route parameters (as shown in the examples above). The type provides `path`, `query`, and all segment parameters:
 
 ```ts
-PageProps<'/blog/[slug]'>
+PageProps<'/blog/[slug]'>;
 // => { path: string; slug: string; query: string }
 
-PageProps<'/shop/[category]/[product]'>
+PageProps<'/shop/[category]/[product]'>;
 // => { path: string; category: string; product: string; query: string }
 ```
 
