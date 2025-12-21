@@ -7,9 +7,9 @@ release: v0.22
 date: 2025/04/02
 ---
 
-We’re excited to announce the release of Waku v0.22, which completes our major rearchitecture and introduces support for API routes. This milestone represents a significant step in evolving Waku into a complete yet minimal React framework designed for the server components era.
+We're excited to announce the release of Waku v0.22, which completes our major rearchitecture and introduces support for API routes. This milestone represents a significant step in evolving Waku into a complete yet minimal React framework designed for the server components era.
 
-With API routes you can now add public API endpoints to your Waku projects. While server actions introduced in the last release are perfect for internal operations, public API routes provide a clean interface for external services and clients to interact with your application. They’re great for form submissions, auth flows, LLM interactions, webhook receivers, REST/GraphQL endpoints, and much more.
+With API routes you can now add public API endpoints to your Waku projects. While server actions introduced in the last release are perfect for internal operations, public API routes provide a clean interface for external services and clients to interact with your application. They're great for form submissions, auth flows, LLM interactions, webhook receivers, REST/GraphQL endpoints, and much more.
 
 ## Working with API routes
 
@@ -106,7 +106,7 @@ export const ContactForm = () => {
 
 ### Configuring API routes
 
-API routes are dynamic by default, but if you’re using them to create a static resource such as an XML document, you can export a `getConfig` function that returns a config object with the render property set to `'static'`.
+API routes are dynamic by default, but if you're using them to create a static resource such as an XML document, you can export a `getConfig` function that returns a config object with the render property set to `'static'`.
 
 ```ts
 // ./src/pages/api/rss.xml.ts
@@ -168,6 +168,6 @@ const generateRSSFeed = (items) => {
 
 ## Spring is in the air
 
-We’re eager to see see how you’ll leverage API routes to create even more powerful and interactive Waku applications as we enter the next phase of its development.
+We're eager to see see how you'll leverage API routes to create even more powerful and interactive Waku applications as we enter the next phase of its development.
 
-Also we’d love to hear your feedback in our [GitHub discussions](https://github.com/wakujs/waku/discussions) and invite you to join us in our React community [Discord server](https://discord.gg/MrQdmzd). Your input helps us continue to grow and improve Waku with each release. Stay tuned for v0.23 soon!
+Also we'd love to hear your feedback in our [GitHub discussions](https://github.com/wakujs/waku/discussions) and invite you to join us in our React community [Discord server](https://discord.gg/MrQdmzd). Your input helps us continue to grow and improve Waku with each release. Stay tuned for v0.23 soon!

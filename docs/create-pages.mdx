@@ -15,6 +15,7 @@ For example, you can statically prerender a global header and footer in the root
 ```tsx
 // ./src/waku.server.tsx
 import { createPages } from 'waku';
+import adapter from 'waku/adapters/default';
 
 import { RootLayout } from './templates/root-layout';
 import { HomePage } from './templates/home-page';
@@ -24,7 +25,8 @@ import { Slice } from './components/slice';
 const pages = createPages(
   async ({ createPage, createLayout, createRoot, createSlice }) => [
     // Create root component
-    // not required, but supported for customizing `<html>`, `<head>`, and `<body>` tags
+    // not required, but supported for customizing
+    // `<html>`, `<head>`, and `<body>` tags
     createRoot({
       render: 'static',
       component: Root,
@@ -53,64 +55,7 @@ const pages = createPages(
   ],
 );
 
-export default pages;
-```
-
-### Router Paths Type Safety
-
-Waku provides inference for the router paths when created pages are returned from the callback passed into `createPages`. The following example shows how a minimal example for how to setup the router paths type safety.
-
-```tsx
-// ./src/waku.server.tsx
-import { createPages } from 'waku';
-import type { PathsForPages } from 'waku/router';
-
-import { HomePage } from './templates/home-page';
-
-const pages = createPages(async ({ createPage, createLayout }) => [
-  // Create root layout
-  createLayout({
-    render: 'static',
-    path: '/',
-    component: RootLayout,
-  }),
-
-  // Create home page
-  createPage({
-    render: 'dynamic',
-    path: '/',
-    component: HomePage,
-  }),
-]);
-
-declare module 'waku/router' {
-  interface RouteConfig {
-    paths: PathsForPages<typeof pages>;
-  }
-  interface CreatePagesConfig {
-    pages: typeof pages;
-  }
-}
-
-export default pages;
-```
-
-Once this is done, any `<Link />` component or hook from `waku/router` that uses paths in your app will use this type. In this case, the one valid use would be `<Link to="/" />`, but as you add more pages to the router, this type will grow to include them.
-
-Note: The file-based router paths will be supported in the future with some form of code-generation to get the types from your local page files.
-
-#### PageProps
-
-The above snippet will also provide types for the `PageProps` type. This will give type safety for the slugs in your pages.
-
-```tsx
-// ./src/pages/about.tsx
-import type { PageProps } from 'waku/router';
-
-// PageProps<'/about/[foo]'> => { path: `/about/${string}`; foo: string; query: string; }
-export default function AboutPage({ path }: PageProps<'/about/[foo]'>) {
-  return <>{/* ...*/}</>;
-}
+export default adapter(pages);
 ```
 
 ### Pages
@@ -122,11 +67,12 @@ Pages can be rendered as a single route (e.g., `/about`).
 ```tsx
 // ./src/waku.server.tsx
 import { createPages } from 'waku';
+import adapter from 'waku/adapters/default';
 
 import { AboutPage } from './templates/about-page';
 import { BlogIndexPage } from './templates/blog-index-page';
 
-export default createPages(async ({ createPage }) => [
+const pages = createPages(async ({ createPage }) => [
   // Create about page
   createPage({
     render: 'static',
@@ -141,6 +87,8 @@ export default createPages(async ({ createPage }) => [
     component: BlogIndexPage,
   }),
 ]);
+
+export default adapter(pages);
 ```
 
 #### Segment routes
@@ -152,11 +100,12 @@ Pages can also render a segment route (e.g., `/blog/[slug]`). The rendered React
 ```tsx
 // ./src/waku.server.tsx
 import { createPages } from 'waku';
+import adapter from 'waku/adapters/default';
 
 import { BlogArticlePage } from './templates/blog-article-page';
 import { ProductCategoryPage } from './templates/product-category-page';
 
-export default createPages(async ({ createPage }) => [
+const pages = createPages(async ({ createPage }) => [
   // Create blog article pages
   // `<BlogArticlePage>` receives `slug` prop
   createPage({
@@ -174,6 +123,8 @@ export default createPages(async ({ createPage }) => [
     component: ProductCategoryPage,
   }),
 ]);
+
+export default adapter(pages);
 ```
 
 Static paths (or other values) could also be generated programmatically.
@@ -181,11 +132,12 @@ Static paths (or other values) could also be generated programmatically.
 ```tsx
 // ./src/waku.server.tsx
 import { createPages } from 'waku';
+import adapter from 'waku/adapters/default';
 
 import { getBlogPaths } from './lib/get-blog-paths';
 import { BlogArticlePage } from './templates/blog-article-page';
 
-export default createPages(async ({ createPage }) => {
+const pages = createPages(async ({ createPage }) => {
   const blogPaths = await getBlogPaths();
 
   return [
@@ -197,6 +149,8 @@ export default createPages(async ({ createPage }) => {
     }),
   ];
 });
+
+export default adapter(pages);
 ```
 
 #### Nested segment routes
@@ -206,10 +160,11 @@ Routes can contain multiple segments (e.g., `/shop/[category]/[product]`).
 ```tsx
 // ./src/waku.server.tsx
 import { createPages } from 'waku';
+import adapter from 'waku/adapters/default';
 
 import { ProductDetailPage } from './templates/product-detail-page';
 
-export default createPages(async ({ createPage }) => [
+const pages = createPages(async ({ createPage }) => [
   // Create product detail pages
   // `<ProductDetailPage>` receives `category` and `product` props
   createPage({
@@ -218,6 +173,8 @@ export default createPages(async ({ createPage }) => [
     component: ProductDetailPage,
   }),
 ]);
+
+export default adapter(pages);
 ```
 
 For static prerendering of nested segment routes, the `staticPaths` array is instead composed of ordered arrays.
@@ -225,10 +182,11 @@ For static prerendering of nested segment routes, the `staticPaths` array is ins
 ```tsx
 // ./src/waku.server.tsx
 import { createPages } from 'waku';
+import adapter from 'waku/adapters/default';
 
 import { ProductDetailPage } from './templates/product-detail-page';
 
-export default createPages(async ({ createPage }) => [
+const pages = createPages(async ({ createPage }) => [
   // Create product detail pages
   // `<ProductDetailPage>` receives `category` and `product` props
   createPage({
@@ -241,6 +199,8 @@ export default createPages(async ({ createPage }) => [
     component: ProductDetailPage,
   }),
 ]);
+
+export default adapter(pages);
 ```
 
 #### Catch-all routes
@@ -252,18 +212,76 @@ For example, the `/app/profile/settings` route would receive a `catchAll` prop w
 ```tsx
 // ./src/waku.server.tsx
 import { createPages } from 'waku';
+import adapter from 'waku/adapters/default';
 
 import { DashboardPage } from './templates/dashboard-page';
 
-export default createPages(async ({ createPage }) => [
+const pages = createPages(async ({ createPage }) => [
   // Create account dashboard
   // `<DashboardPage>` receives `catchAll` prop (string[])
   createPage({
     render: 'dynamic',
     path: '/app/[...catchAll]',
     component: DashboardPage,
-  });
+  }),
 ]);
+
+export default adapter(pages);
+```
+
+### Router paths type safety
+
+Waku provides inference for the router paths when created pages are returned from the callback passed into `createPages`. The following example shows how to setup router paths type safety.
+
+```tsx
+// ./src/waku.server.tsx
+import { createPages } from 'waku';
+import adapter from 'waku/adapters/default';
+import type { PathsForPages } from 'waku/router';
+
+import { RootLayout } from './templates/root-layout';
+import { HomePage } from './templates/home-page';
+
+const pages = createPages(async ({ createPage, createLayout }) => [
+  createLayout({
+    render: 'static',
+    path: '/',
+    component: RootLayout,
+  }),
+
+  createPage({
+    render: 'dynamic',
+    path: '/',
+    component: HomePage,
+  }),
+]);
+
+declare module 'waku/router' {
+  interface RouteConfig {
+    paths: PathsForPages<typeof pages>;
+  }
+  interface CreatePagesConfig {
+    pages: typeof pages;
+  }
+}
+
+export default adapter(pages);
+```
+
+Once this is done, any `<Link />` component or hook from `waku/router` that uses paths in your app will use this type. In this case, the one valid use would be `<Link to="/" />`, but as you add more pages to the router, this type will grow to include them.
+
+#### PageProps
+
+The `PageProps` type gives you type safety for the path and slug parameters in your pages.
+
+```tsx
+// ./src/templates/about-page.tsx
+import type { PageProps } from 'waku/router';
+
+// PageProps<'/about/[foo]'> => { path: `/about/${string}`; foo: string; query: string; }
+export const AboutPage = ({ foo }: PageProps<'/about/[foo]'>) => {
+  return <>{/* ...*/}</>;
+};
 ```
 
 ### Layouts
@@ -277,10 +295,11 @@ The root layout rendered at `path: '/'` is especially useful. It can be used for
 ```tsx
 // ./src/waku.server.tsx
 import { createPages } from 'waku';
+import adapter from 'waku/adapters/default';
 
 import { RootLayout } from './templates/root-layout';
 
-export default createPages(async ({ createLayout }) => [
+const pages = createPages(async ({ createLayout }) => [
   // Add a global header and footer
   createLayout({
     render: 'static',
@@ -288,6 +307,8 @@ export default createPages(async ({ createLayout }) => [
     component: RootLayout,
   }),
 ]);
+
+export default adapter(pages);
 ```
 
 ```tsx
@@ -331,10 +352,11 @@ Layouts are also helpful further down the tree. For example, you could add a lay
 ```tsx
 // ./src/waku.server.tsx
 import { createPages } from 'waku';
+import adapter from 'waku/adapters/default';
 
 import { BlogLayout } from './templates/blog-layout';
 
-export default createPages(async ({ createLayout }) => [
+const pages = createPages(async ({ createLayout }) => [
   // Add a sidebar to the blog index and blog article pages
   createLayout({
     render: 'static',
@@ -342,6 +364,8 @@ export default createPages(async ({ createLayout }) => [
     component: BlogLayout,
   }),
 ]);
+
+export default adapter(pages);
 ```
 
 ```tsx
@@ -410,18 +434,149 @@ You can omit `./src/waku.client.tsx` unless you need to modify it.
 
 ### Slices
 
-Slice components are isolated components that can be rendered `static` or `dynamic` in their own right. This allows for patterns like adding `static` components wherever they'll compose nicely inside your `dynamic` or `static` layouts & pages. Or, a slice can be marked as `lazy` to be requested indepently from the rest of a particular page's components.
+Slices are reusable components that can be rendered `static` or `dynamic` in their own right. This allows for patterns like adding `static` components wherever they'll compose nicely inside your `dynamic` or `static` layouts & pages.
+
+#### Creating slices
+
+Slices are created with `createSlice` inside `createPages`. Each slice needs a unique `id`, a `component`, and a `render` mode.
 
 ```tsx
-// ./src/components/slice.tsx
+// ./src/waku.server.tsx
+import { createPages } from 'waku';
+import adapter from 'waku/adapters/default';
 
-export const Slice = () => {
+import { SliceOne } from './components/slice-one';
+import { SliceTwo } from './components/slice-two';
+
+const pages = createPages(async ({ createSlice }) => [
+  // Create static slice
+  createSlice({
+    render: 'static',
+    component: SliceOne,
+    id: 'one',
+  }),
+
+  // Create dynamic slice
+  createSlice({
+    render: 'dynamic',
+    component: SliceTwo,
+    id: 'two',
+  }),
+]);
+
+export default adapter(pages);
+```
+
+```tsx
+// ./src/components/slice-one.tsx
+
+export const SliceOne = () => {
+  return <p>Static slice content</p>;
+};
+```
+
+#### Using slices
+
+Slices are used in pages and layouts by importing the `Slice` component from Waku and specifying the slice ID. The `slices` array in the page's config must include all slice IDs used on that page.
+
+```tsx
+// ./src/templates/home-page.tsx
+import { Slice } from 'waku';
+
+export const HomePage = () => {
   return (
     <div>
-      <h2>Slice</h2>
+      <Slice id="one" />
+      <Slice id="two" />
     </div>
   );
 };
 ```
 
-Add this with `createSlice` function inside `createPages`.
+```tsx
+// ./src/waku.server.tsx
+import { createPages } from 'waku';
+import adapter from 'waku/adapters/default';
+
+import { HomePage } from './templates/home-page';
+import { SliceOne } from './components/slice-one';
+import { SliceTwo } from './components/slice-two';
+
+const pages = createPages(async ({ createPage, createSlice }) => [
+  createPage({
+    render: 'static',
+    path: '/',
+    component: HomePage,
+    slices: ['one', 'two'],
+  }),
+
+  createSlice({
+    render: 'static',
+    component: SliceOne,
+    id: 'one',
+  }),
+
+  createSlice({
+    render: 'dynamic',
+    component: SliceTwo,
+    id: 'two',
+  }),
+]);
+
+export default adapter(pages);
+```
+
+#### Lazy slices
+
+Lazy slices allow components to be requested independently from the page they are used on, similar to Astro's server islands feature. This is useful for components that will be dynamically rendered on otherwise static pages.
+
+Lazy slices are marked with the `lazy` prop and can include a `fallback` component to display while loading.
+
+```tsx
+// ./src/templates/home-page.tsx
+import { Slice } from 'waku';
+
+export const HomePage = () => {
+  return (
+    <div>
+      <Slice id="one" />
+      <Slice id="two" lazy fallback={<p>Loading...</p>} />
+    </div>
+  );
+};
+```
+
+```tsx
+// ./src/waku.server.tsx
+import { createPages } from 'waku';
+import adapter from 'waku/adapters/default';
+
+import { HomePage } from './templates/home-page';
+import { SliceOne } from './components/slice-one';
+import { SliceTwo } from './components/slice-two';
+
+const pages = createPages(async ({ createPage, createSlice }) => [
+  createPage({
+    render: 'static',
+    path: '/',
+    component: HomePage,
+    slices: ['one'], // Note: 'two' is lazy, so it is not included
+  }),
+
+  createSlice({
+    render: 'static',
+    component: SliceOne,
+    id: 'one',
+  }),
+
+  createSlice({
+    render: 'dynamic',
+    component: SliceTwo,
+    id: 'two',
+  }),
+]);
+
+export default adapter(pages);
+```
+
+This allows you to have a `dynamic` slice component while keeping the rest of the page static.

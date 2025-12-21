@@ -13,11 +13,9 @@ visit [waku.gg](https://waku.gg) or `npm create waku@latest`
 
 ## Introduction
 
-**Waku** _(wah-ku)_ or **わく** means “framework” in Japanese. As the minimal React framework, it’s designed to accelerate the work of developers at startups and agencies building small to medium-sized React projects. These include marketing websites, light ecommerce, and web applications.
+**Waku** _(wah-ku)_ or **わく** is the minimal React framework. It’s lightweight and designed for a fun developer experience, yet supports all the latest React 19 features like server components and actions. Built for marketing sites, headless commerce, and web apps. For large enterprise applications, you may prefer a heavier framework.
 
-We recommend other frameworks for heavy ecommerce or enterprise applications. Waku is a lightweight alternative bringing a fun developer experience to the server components era. Yes, let’s make React development fun again!
-
-> Waku is in rapid development and some features are currently missing. Please try it on non-production projects and report any issues you may encounter. Expect that there will be some breaking changes on the road towards a stable v1 release. Contributors are welcome.
+> Please try Waku on non-production projects and report any issues you find. Contributors are welcome.
 
 ## Getting started
 
@@ -534,6 +532,18 @@ pages/
 │   ├── header.tsx   // 👈🏼 ignored
 │   ├── footer.tsx   // 👈🏼 ignored
 │   ├── ...          // 👈🏼 ignored
+```
+
+### Router paths type safety
+
+Import `PageProps` from `waku/router` for type-safe access to route parameters (as shown in the examples above). The type provides `path`, `query`, and all segment parameters:
+
+```ts
+PageProps<'/blog/[slug]'>;
+// => { path: string; slug: string; query: string }
+
+PageProps<'/shop/[category]/[product]'>;
+// => { path: string; category: string; product: string; query: string }
 ```
 
 ### Layouts
@@ -1167,12 +1177,10 @@ API routes are dynamic by default, but if you’re using them to create a static
 // ./src/pages/api/rss.xml.ts
 
 export const GET = async () => {
-  const rssFeed = generateRSSFeed(items);
+  const rss = generateRSSFeed(); // your RSS generation logic
 
-  return new Response(rssFeed, {
-    headers: {
-      'Content-Type': 'application/rss+xml',
-    },
+  return new Response(rss, {
+    headers: { 'Content-Type': 'application/rss+xml' },
   });
 };
 
@@ -1180,44 +1188,6 @@ export const getConfig = async () => {
   return {
     render: 'static',
   } as const;
-};
-
-const items = [
-  {
-    title: `Announcing API routes`,
-    description: `Easily add public API endpoints to your Waku projects.`
-    pubDate: `Tue, 1 Apr 2025 00:00:00 GMT`,
-    link: `https://waku.gg/blog/api-routes`,
-  },
-  // ...
-];
-
-const generateRSSFeed = (items) => {
-  const itemsXML = items
-    .map(
-      (item) => `
-        <item>
-          <title>${item.title}</title>
-          <link>${item.link}</link>
-          <pubDate>${item.pubDate}</pubDate>
-          <description>${item.description}</description>
-        </item>
-      `,
-    )
-    .join('');
-
-  return `
-    <?xml version="1.0" encoding="UTF-8" ?>
-    <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
-    <channel>
-      <atom:link href="https://waku.gg/api/rss.xml" rel="self" type="application/rss+xml" />
-      <title>Waku</title>
-      <link>https://waku.gg</link>
-      <description>The minimal React framework</description>
-      ${itemsXML}
-    </channel>
-    </rss>
-  `;
 };
 ```
 
@@ -1412,27 +1382,7 @@ export const ClientComponent = () => {
 
 ### Node.js
 
-In Node.js environments, `process.env` may be used for compatibility.
-
-```tsx
-// server components can access both private and public variables
-export const ServerComponent = async () => {
-  const secretKey = process.env.SECRET_KEY;
-
-  return <>{/* ...*/}</>;
-};
-```
-
-```tsx
-// client components can only access public variables
-'use client';
-
-export const ClientComponent = () => {
-  const publicStatement = process.env.WAKU_PUBLIC_HELLO;
-
-  return <>{/* ...*/}</>;
-};
-```
+In Node.js environments, `process.env` may also be used.
 
 ## Deployment
 
