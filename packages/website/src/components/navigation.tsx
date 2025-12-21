@@ -1,9 +1,9 @@
 'use client';
 
 import cx from 'classnames';
-import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { useAtom, useSetAtom } from 'jotai';
 import { Link } from 'waku';
-import { destinationAtom, menuAtom, scrolledAtom } from '../atoms';
+import { destinationAtom, menuAtom } from '../atoms';
 import { Logo } from '../components/logo';
 import { Sponsors } from '../components/sponsors';
 import { scrollTo } from '../utils';
@@ -15,7 +15,6 @@ type NavigationProps = {
 
 export const Navigation = ({ isHome }: NavigationProps) => {
   const [isMenuOpen, setIsMenuOpen] = useAtom(menuAtom);
-  const hasScrolled = useAtomValue(scrolledAtom);
   const setDestination = useSetAtom(destinationAtom);
 
   return (
@@ -24,13 +23,10 @@ export const Navigation = ({ isHome }: NavigationProps) => {
         isMenuOpen
           ? 'pointer-events-auto opacity-100'
           : 'pointer-events-none opacity-0',
-        isHome && !hasScrolled
-          ? 'xl:pointer-events-none! xl:opacity-0!'
-          : 'xl:pointer-events-auto! xl:opacity-100!',
-        'xl:z-9999 fixed inset-0 z-90 shrink-0 flex-col overflow-clip border-gray-800 bg-gray-950 transition-opacity duration-300 ease-in-out xl:pointer-events-auto xl:bottom-auto xl:left-0 xl:right-auto xl:top-0 xl:h-screen xl:border-r 2xl:left-12 2xl:top-12 2xl:h-[calc(100vh-6rem)] 2xl:rounded-xl 2xl:border',
+        'xl:pointer-events-auto! xl:z-9999 fixed inset-0 z-90 shrink-0 flex-col overflow-clip border-gray-800 bg-gray-950 transition-opacity duration-300 ease-in-out xl:bottom-auto xl:left-0 xl:right-auto xl:top-0 xl:h-screen xl:border-r xl:opacity-100',
       )}
     >
-      <div className="overflow-y-auto! relative z-10 flex h-full max-h-full w-full shrink-0 flex-col items-center justify-start gap-8 p-8 pb-16 text-white md:justify-center md:p-8 xl:justify-start xl:gap-12 xl:p-12">
+      <div className="overflow-y-auto! 2xl:px-18 relative z-10 flex h-full max-h-full w-full shrink-0 flex-col items-center justify-start gap-8 p-8 pb-16 text-white md:justify-center xl:justify-start xl:gap-12 xl:p-12">
         <div className="flex w-full flex-col items-center justify-center">
           {isHome ? (
             <button
@@ -127,7 +123,7 @@ const DocLink = ({ link }: LinkProps) => {
   );
 };
 
-const linkClassNames = `block text-balance font-simple text-[11px] font-bold uppercase tracking-[0.125em] text-gray-500 transition duration-300 ease-in-out hover:text-white p-0.5 xl:p-0 whitespace-nowrap!`;
+const linkClassNames = `block text-balance font-label text-[11px] font-bold text-gray-500 transition duration-300 ease-in-out hover:text-white p-0.5 xl:p-0 whitespace-nowrap!`;
 
 export const MenuLink = ({ link }: LinkProps) => {
   const setIsMenuOpen = useSetAtom(menuAtom);
@@ -197,4 +193,5 @@ const links = [
   { to: 'https://github.com/wakujs/waku', icon: 'github', label: 'Repository' },
   { to: 'https://discord.gg/MrQdmzd', icon: 'discord', label: 'Community' },
   { to: 'https://x.com/wakujs', icon: 'twitter', label: 'Updates' },
+  { to: 'https://waku.gg/api/llms-full.txt', icon: 'robot', label: 'LLMs.txt' },
 ];

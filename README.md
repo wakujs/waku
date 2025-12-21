@@ -13,11 +13,9 @@ visit [waku.gg](https://waku.gg) or `npm create waku@latest`
 
 ## Introduction
 
-**Waku** _(wah-ku)_ or **わく** means “framework” in Japanese. As the minimal React framework, it’s designed to accelerate the work of developers at startups and agencies building small to medium-sized React projects. These include marketing websites, light ecommerce, and web applications.
+**Waku** _(wah-ku)_ or **わく** is the minimal React framework. It’s lightweight and designed for a fun developer experience, yet supports all the latest React 19 features like server components and actions. Built for marketing sites, headless commerce, and web apps. For large enterprise applications, you may prefer a heavier framework.
 
-We recommend other frameworks for heavy ecommerce or enterprise applications. Waku is a lightweight alternative bringing a fun developer experience to the server components era. Yes, let’s make React development fun again!
-
-> Waku is in rapid development and some features are currently missing. Please try it on non-production projects and report any issues you may encounter. Expect that there will be some breaking changes on the road towards a stable v1 release. Contributors are welcome.
+> Please try Waku on non-production projects and report any issues you find. Contributors are welcome.
 
 ## Getting started
 
@@ -534,6 +532,56 @@ pages/
 │   ├── header.tsx   // 👈🏼 ignored
 │   ├── footer.tsx   // 👈🏼 ignored
 │   ├── ...          // 👈🏼 ignored
+```
+
+### Router paths type safety
+
+Waku provides the `PageProps` type for type-safe access to route parameters in your page components.
+
+#### PageProps
+
+The `PageProps` type gives you type safety for the path and slug parameters in your pages.
+
+```tsx
+// ./src/pages/blog/[slug].tsx
+import type { PageProps } from 'waku/router';
+
+// PageProps<'/blog/[slug]'> => { path: `/blog/${string}`; slug: string; query: string; }
+export default async function BlogArticlePage({
+  slug,
+  path,
+  query,
+}: PageProps<'/blog/[slug]'>) {
+  return <>{/* ...*/}</>;
+}
+
+export const getConfig = async () => {
+  return {
+    render: 'static',
+    staticPaths: ['introducing-waku'],
+  } as const;
+};
+```
+
+For nested segments, all parameters are included:
+
+```tsx
+// ./src/pages/shop/[category]/[product].tsx
+import type { PageProps } from 'waku/router';
+
+// PageProps<'/shop/[category]/[product]'> => { path: string; category: string; product: string; query: string; }
+export default async function ProductDetailPage({
+  category,
+  product,
+}: PageProps<'/shop/[category]/[product]'>) {
+  return <>{/* ...*/}</>;
+}
+
+export const getConfig = async () => {
+  return {
+    render: 'dynamic',
+  } as const;
+};
 ```
 
 ### Layouts
