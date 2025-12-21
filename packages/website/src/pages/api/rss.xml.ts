@@ -1,5 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { compileMDX } from 'next-mdx-remote/rsc';
+import { getBlogContentsPath } from '../../lib/paths';
 
 type Item = {
   title: string;
@@ -36,7 +38,9 @@ const generateRSSFeed = (items: Item[]) => {
 
 export const GET = async () => {
   const blogFileNames: Array<string> = [];
-  readdirSync('./private/contents').forEach((fileName) => {
+  const contentsPath = getBlogContentsPath();
+  
+  readdirSync(contentsPath).forEach((fileName) => {
     if (fileName.endsWith('.mdx')) {
       blogFileNames.push(fileName);
     }
@@ -45,7 +49,7 @@ export const GET = async () => {
   const items: Item[] = [];
 
   for await (const fileName of blogFileNames) {
-    const path = `./private/contents/${fileName}`;
+    const path = join(contentsPath, fileName);
     const source = readFileSync(path, 'utf8');
     const mdx = await compileMDX({
       source,

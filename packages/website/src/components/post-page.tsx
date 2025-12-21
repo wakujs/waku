@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { compileMDX } from 'next-mdx-remote/rsc';
 import { getAuthor } from '../lib/get-author';
 import { getFileName } from '../lib/get-file-name';
@@ -19,7 +20,7 @@ export async function PostPage({
     return null;
   }
 
-  const path = `${folder}/${fileName}`;
+  const path = join(folder, fileName);
   const source = readFileSync(path, 'utf8');
   const mdx = await compileMDX({
     source,

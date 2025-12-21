@@ -1,9 +1,11 @@
 import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { compileMDX } from 'next-mdx-remote/rsc';
 import { Meta } from '../../components/meta';
 import { Page } from '../../components/page';
 import { PostList, PostListContainer } from '../../components/post-list';
 import { getAuthor } from '../../lib/get-author';
+import { getBlogContentsPath } from '../../lib/paths';
 import type { BlogFrontmatter } from '../../types';
 
 export default async function BlogIndexPage() {
@@ -31,14 +33,15 @@ const getArticles = async () => {
     release: string | undefined;
   }> = [];
 
-  readdirSync('./private/contents').forEach((fileName) => {
+  const contentsPath = getBlogContentsPath();
+  readdirSync(contentsPath).forEach((fileName) => {
     if (fileName.endsWith('.mdx')) {
       blogFileNames.push(fileName);
     }
   });
 
   for await (const fileName of blogFileNames) {
-    const path = `./private/contents/${fileName}`;
+    const path = join(contentsPath, fileName);
     const source = readFileSync(path, 'utf8');
     const mdx = await compileMDX({
       source,

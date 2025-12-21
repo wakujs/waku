@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
+import { getReadmePath } from './paths';
 
 export const loadReadme = (): string => {
-  const file = readFileSync('./private/README.md', 'utf8');
+  const file = readFileSync(getReadmePath(), 'utf8');
   return file;
 };

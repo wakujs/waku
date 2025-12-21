@@ -1,4 +1,5 @@
 import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { compileMDX } from 'next-mdx-remote/rsc';
 
 export const getFileName = async (folder: string, slug: string) => {
@@ -12,7 +13,7 @@ export const getFileName = async (folder: string, slug: string) => {
   });
 
   for await (const fileName of blogFileNames) {
-    const path = `${folder}/${fileName}`;
+    const path = join(folder, fileName);
     const source = readFileSync(path, 'utf8');
     const mdx = await compileMDX({
       source,
@@ -38,7 +39,7 @@ export const getPostPaths = async (folder: string) => {
   });
 
   for await (const fileName of blogFileNames) {
-    const path = `${folder}/${fileName}`;
+    const path = join(folder, fileName);
     const source = readFileSync(path, 'utf8');
     const mdx = await compileMDX({
       source,

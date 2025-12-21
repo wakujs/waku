@@ -1,4 +1,5 @@
 import { PostPage } from '../../components/post-page';
+import { getBlogContentsPath } from '../../lib/paths';
 import { getPostPaths } from '../../lib/get-file-name';
 
 type BlogArticlePageProps = {
@@ -6,11 +7,11 @@ type BlogArticlePageProps = {
 };
 
 export default async function BlogArticlePage({ slug }: BlogArticlePageProps) {
-  return <PostPage slug={slug} folder="./private/contents" />;
+  return <PostPage slug={slug} folder={getBlogContentsPath()} />;
 }
 
 export const getConfig = async () => {
-  const blogPaths = await getPostPaths('./private/contents');
+  const blogPaths = await getPostPaths(getBlogContentsPath());
 
   return {
     render: 'static',
