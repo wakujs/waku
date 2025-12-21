@@ -1,12 +1,11 @@
 import type { Plugin } from 'vite';
-import type { Config } from '../../config.js';
 import { SRC_CLIENT_ENTRY, SRC_SERVER_ENTRY } from '../constants.js';
 import {
   getManagedClientEntry,
   getManagedServerEntry,
 } from '../utils/managed.js';
 
-export function userEntriesPlugin(config: Required<Config>): Plugin {
+export function userEntriesPlugin({ srcDir }: { srcDir: string }): Plugin {
   return {
     name: 'waku:vite-plugins:user-entries',
     // resolve user entries and fallbacks to "managed mode" if not found.
@@ -16,7 +15,7 @@ export function userEntriesPlugin(config: Required<Config>): Plugin {
       }
       if (source === 'virtual:vite-rsc-waku/server-entry-inner') {
         const resolved = await this.resolve(
-          `/${config.srcDir}/${SRC_SERVER_ENTRY}`,
+          `/${srcDir}/${SRC_SERVER_ENTRY}`,
           undefined,
           options,
         );
@@ -24,7 +23,7 @@ export function userEntriesPlugin(config: Required<Config>): Plugin {
       }
       if (source === 'virtual:vite-rsc-waku/client-entry') {
         const resolved = await this.resolve(
-          `/${config.srcDir}/${SRC_CLIENT_ENTRY}`,
+          `/${srcDir}/${SRC_CLIENT_ENTRY}`,
           undefined,
           options,
         );
@@ -41,7 +40,7 @@ if (import.meta.hot) {
 `;
       }
       if (id === '\0virtual:vite-rsc-waku/server-entry-inner') {
-        return getManagedServerEntry(config.srcDir);
+        return getManagedServerEntry(srcDir);
       }
       if (id === '\0virtual:vite-rsc-waku/client-entry') {
         return getManagedClientEntry();
