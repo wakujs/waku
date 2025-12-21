@@ -39,7 +39,7 @@ const generateRSSFeed = (items: Item[]) => {
 export const GET = async () => {
   const blogFileNames: Array<string> = [];
   const contentsPath = getBlogContentsPath();
-  
+
   readdirSync(contentsPath).forEach((fileName) => {
     if (fileName.endsWith('.mdx')) {
       blogFileNames.push(fileName);
