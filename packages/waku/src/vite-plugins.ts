@@ -7,5 +7,6 @@ export { mainPlugin as unstable_mainPlugin } from './lib/vite-plugins/main.js';
 export { notFoundPlugin as unstable_notFoundPlugin } from './lib/vite-plugins/not-found.js';
 export { patchRsdwPlugin as unstable_patchRsdwPlugin } from './lib/vite-plugins/patch-rsdw.js';
 export { privateDirPlugin as unstable_privateDirPlugin } from './lib/vite-plugins/private-dir.js';
+export { ssrLoaderPlugin as unstable_ssrLoaderPlugin } from './lib/vite-plugins/ssr-loader.js';
 export { userEntriesPlugin as unstable_userEntriesPlugin } from './lib/vite-plugins/user-entries.js';
 export { virtualConfigPlugin as unstable_virtualConfigPlugin } from './lib/vite-plugins/virtual-config.js';
