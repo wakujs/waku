@@ -26,6 +26,7 @@ test.describe('fs-router', () => {
 
   test('foo', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
     await page.click("a[href='/foo']");
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
 
@@ -120,6 +121,7 @@ test.describe('fs-router', () => {
 
   test('alt click', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
     await page.click("a[href='/foo']", {
       button: 'right',
@@ -133,6 +135,7 @@ test.describe('fs-router', () => {
 
   test('encoded path', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
     await page.click("a[href='/nested/encoded%20path']");
     await expect(
       page.getByRole('heading', { name: 'Nested / encoded%20path' }),
@@ -176,6 +179,7 @@ test.describe('fs-router', () => {
       'rgb(255, 0, 0)', // red
     );
     await page.goto(`http://localhost:${port}/css-split/page1/nested`);
+    await waitForHydration(page);
     await expect(
       page.getByText('css-split / page1 / nested / index'),
     ).toHaveCSS(
@@ -183,11 +187,13 @@ test.describe('fs-router', () => {
       'rgb(255, 0, 0)', // red
     );
     await page.goto(`http://localhost:${port}/css-split/page2`);
+    await waitForHydration(page);
     await expect(page.getByText('css-split / page2 / index')).toHaveCSS(
       'color',
       'rgb(0, 0, 255)', // blue
     );
     await page.goto(`http://localhost:${port}/css-split/page2/nested`);
+    await waitForHydration(page);
     await expect(
       page.getByText('css-split / page2 / nested / index'),
     ).toHaveCSS(

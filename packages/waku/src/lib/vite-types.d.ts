@@ -13,7 +13,6 @@ declare module 'virtual:vite-rsc-waku/build-metadata' {
 }
 
 declare module 'virtual:vite-rsc-waku/config' {
-  export const rootDir: string;
   export const config: Omit<Required<import('../config.ts').Config>, 'vite'>;
   export const isBuild: boolean;
 }
