@@ -41,6 +41,7 @@ test.describe(`create-pages`, () => {
 
   test('foo', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
     await page.click("a[href='/foo']");
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
 
@@ -231,6 +232,7 @@ test.describe(`create-pages`, () => {
   // https://github.com/wakujs/waku/issues/1437
   test('static long suspense', async ({ page }) => {
     await page.goto(`http://localhost:${port}/static-long-suspense/4`);
+    await waitForHydration(page);
     // no loading state for static
     await expect(page.getByTestId('long-suspense')).toHaveCount(0);
     await expect(page.getByTestId('long-suspense-component')).toHaveCount(2);

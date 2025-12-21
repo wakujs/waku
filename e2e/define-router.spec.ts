@@ -15,6 +15,7 @@ test.describe(`define-router`, () => {
 
   test('home', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
     await expect(page.getByTestId('home-title')).toHaveText('Home');
     await page.click("a[href='/foo']");
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');

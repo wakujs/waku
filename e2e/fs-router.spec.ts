@@ -26,6 +26,7 @@ test.describe('fs-router', () => {
 
   test('foo', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
     await page.click("a[href='/foo']");
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
 
@@ -120,6 +121,7 @@ test.describe('fs-router', () => {
 
   test('alt click', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
     await page.click("a[href='/foo']", {
       button: 'right',
@@ -133,6 +135,7 @@ test.describe('fs-router', () => {
 
   test('encoded path', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
     await page.click("a[href='/nested/encoded%20path']");
     await expect(
       page.getByRole('heading', { name: 'Nested / encoded%20path' }),
