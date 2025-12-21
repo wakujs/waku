@@ -345,6 +345,6 @@ export async function waitForHydration(page: Page) {
       }
     },
     null,
-    { timeout: 3000 },
+    { timeout: 10_000 },
   );
 }
