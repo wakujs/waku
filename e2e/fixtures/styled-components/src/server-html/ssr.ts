@@ -1,18 +1,10 @@
 import 'client-only';
-import type { ReactNode } from 'react';
 import { unstable_defineHandlers as defineHandlers } from 'waku/minimal/server';
 import { getServerInsertedHTML, serverInsertedHTMLStorage } from './context';
 import { createHeadInsertionTransformStream } from './stream';
 
-type RenderHtml = (
-  elementsStream: ReadableStream,
-  html: ReactNode,
-  options: {
-    rscPath: string;
-    actionResult?: unknown;
-    status?: number;
-  },
-) => Promise<Response>;
+type Handlers = ReturnType<typeof defineHandlers>;
+type RenderHtml = Parameters<Handlers['handleRequest']>[1]['renderHtml'];
 
 function injectRenderHtml(renderHtml: RenderHtml): RenderHtml {
   if (!import.meta.env.SSR) {
@@ -41,7 +33,7 @@ function injectRenderHtml(renderHtml: RenderHtml): RenderHtml {
   };
 }
 
-export function cssInJs(handlers: ReturnType<typeof defineHandlers>) {
+export function cssInJs(handlers: Handlers) {
   return defineHandlers({
     handleRequest(input, utils) {
       return handlers.handleRequest(input, {
