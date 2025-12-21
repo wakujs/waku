@@ -536,52 +536,14 @@ pages/
 
 ### Router paths type safety
 
-Waku provides the `PageProps` type for type-safe access to route parameters in your page components.
+Import `PageProps` from `waku/router` for type-safe access to route parameters (as shown in the examples above). The type provides `path`, `query`, and all segment parameters:
 
-#### PageProps
+```ts
+PageProps<'/blog/[slug]'>
+// => { path: string; slug: string; query: string }
 
-The `PageProps` type gives you type safety for the path and slug parameters in your pages.
-
-```tsx
-// ./src/pages/blog/[slug].tsx
-import type { PageProps } from 'waku/router';
-
-// PageProps<'/blog/[slug]'> => { path: `/blog/${string}`; slug: string; query: string; }
-export default async function BlogArticlePage({
-  slug,
-  path,
-  query,
-}: PageProps<'/blog/[slug]'>) {
-  return <>{/* ...*/}</>;
-}
-
-export const getConfig = async () => {
-  return {
-    render: 'static',
-    staticPaths: ['introducing-waku'],
-  } as const;
-};
-```
-
-For nested segments, all parameters are included:
-
-```tsx
-// ./src/pages/shop/[category]/[product].tsx
-import type { PageProps } from 'waku/router';
-
-// PageProps<'/shop/[category]/[product]'> => { path: string; category: string; product: string; query: string; }
-export default async function ProductDetailPage({
-  category,
-  product,
-}: PageProps<'/shop/[category]/[product]'>) {
-  return <>{/* ...*/}</>;
-}
-
-export const getConfig = async () => {
-  return {
-    render: 'dynamic',
-  } as const;
-};
+PageProps<'/shop/[category]/[product]'>
+// => { path: string; category: string; product: string; query: string }
 ```
 
 ### Layouts
@@ -1215,12 +1177,10 @@ API routes are dynamic by default, but if you’re using them to create a static
 // ./src/pages/api/rss.xml.ts
 
 export const GET = async () => {
-  const rssFeed = generateRSSFeed(items);
+  const rss = generateRSSFeed(); // your RSS generation logic
 
-  return new Response(rssFeed, {
-    headers: {
-      'Content-Type': 'application/rss+xml',
-    },
+  return new Response(rss, {
+    headers: { 'Content-Type': 'application/rss+xml' },
   });
 };
 
@@ -1228,44 +1188,6 @@ export const getConfig = async () => {
   return {
     render: 'static',
   } as const;
-};
-
-const items = [
-  {
-    title: `Announcing API routes`,
-    description: `Easily add public API endpoints to your Waku projects.`
-    pubDate: `Tue, 1 Apr 2025 00:00:00 GMT`,
-    link: `https://waku.gg/blog/api-routes`,
-  },
-  // ...
-];
-
-const generateRSSFeed = (items) => {
-  const itemsXML = items
-    .map(
-      (item) => `
-        <item>
-          <title>${item.title}</title>
-          <link>${item.link}</link>
-          <pubDate>${item.pubDate}</pubDate>
-          <description>${item.description}</description>
-        </item>
-      `,
-    )
-    .join('');
-
-  return `
-    <?xml version="1.0" encoding="UTF-8" ?>
-    <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
-    <channel>
-      <atom:link href="https://waku.gg/api/rss.xml" rel="self" type="application/rss+xml" />
-      <title>Waku</title>
-      <link>https://waku.gg</link>
-      <description>The minimal React framework</description>
-      ${itemsXML}
-    </channel>
-    </rss>
-  `;
 };
 ```
 
@@ -1460,27 +1382,7 @@ export const ClientComponent = () => {
 
 ### Node.js
 
-In Node.js environments, `process.env` may be used for compatibility.
-
-```tsx
-// server components can access both private and public variables
-export const ServerComponent = async () => {
-  const secretKey = process.env.SECRET_KEY;
-
-  return <>{/* ...*/}</>;
-};
-```
-
-```tsx
-// client components can only access public variables
-'use client';
-
-export const ClientComponent = () => {
-  const publicStatement = process.env.WAKU_PUBLIC_HELLO;
-
-  return <>{/* ...*/}</>;
-};
-```
+In Node.js environments, `process.env` may also be used.
 
 ## Deployment
 
