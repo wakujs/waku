@@ -23,10 +23,10 @@ export const Navigation = ({ isHome }: NavigationProps) => {
         isMenuOpen
           ? 'pointer-events-auto opacity-100'
           : 'pointer-events-none opacity-0',
-        'xl:pointer-events-auto! xl:z-9999 fixed inset-0 z-90 shrink-0 flex-col overflow-clip border-gray-800 bg-gray-950 transition-opacity duration-300 ease-in-out xl:bottom-auto xl:left-0 xl:right-auto xl:top-0 xl:h-screen xl:border-r xl:opacity-100',
+        'xl:pointer-events-auto! xl:z-9999 fixed inset-0 z-90 flex shrink-0 flex-col overflow-clip border-gray-800 bg-gray-950 transition-opacity duration-300 ease-in-out xl:bottom-auto xl:left-0 xl:right-auto xl:top-0 xl:h-screen xl:border-r xl:opacity-100',
       )}
     >
-      <div className="overflow-y-auto! 2xl:px-18 relative z-10 flex h-full max-h-full w-full shrink-0 flex-col items-center justify-start gap-8 p-8 pb-16 text-white md:justify-center xl:justify-start xl:gap-12 xl:p-12">
+      <div className="2xl:px-18 relative z-10 flex min-h-0 w-full flex-1 flex-col items-center justify-start gap-8 overflow-y-auto p-8 pb-16 text-white xl:gap-12 xl:p-12">
         <div className="flex w-full flex-col items-center justify-center">
           {isHome ? (
             <button
