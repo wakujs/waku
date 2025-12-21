@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { prepareNormalSetup, test } from './utils.js';
+import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('tailwindcss');
 
@@ -15,6 +15,7 @@ test.describe(`tailwindcss`, () => {
 
   test('basic', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
     await expect(page.getByText('test-server')).toHaveCSS(
       'text-decoration-style',
       'dashed',
