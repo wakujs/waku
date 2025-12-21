@@ -176,6 +176,7 @@ test.describe('fs-router', () => {
       'rgb(255, 0, 0)', // red
     );
     await page.goto(`http://localhost:${port}/css-split/page1/nested`);
+    await waitForHydration(page);
     await expect(
       page.getByText('css-split / page1 / nested / index'),
     ).toHaveCSS(
@@ -183,11 +184,13 @@ test.describe('fs-router', () => {
       'rgb(255, 0, 0)', // red
     );
     await page.goto(`http://localhost:${port}/css-split/page2`);
+    await waitForHydration(page);
     await expect(page.getByText('css-split / page2 / index')).toHaveCSS(
       'color',
       'rgb(0, 0, 255)', // blue
     );
     await page.goto(`http://localhost:${port}/css-split/page2/nested`);
+    await waitForHydration(page);
     await expect(
       page.getByText('css-split / page2 / nested / index'),
     ).toHaveCSS(
