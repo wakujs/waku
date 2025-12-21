@@ -1,11 +1,11 @@
-import { readFileSync } from 'node:fs';
+import { loadCreatePages, loadReadme } from './load-docs';
 
 /**
  * Extracts file-based routing documentation from README.md
  * Returns content from "### Overview" through the end of the Routing section
  */
 export const loadRoutingFileBased = (): string => {
-  const readme = readFileSync('./private/README.md', 'utf8');
+  const readme = loadReadme();
   const routingSectionMatch = readme.match(
     /^## Routing\n([\s\S]*?)(?=^## [A-Z])/m,
   );
@@ -26,7 +26,7 @@ export const loadRoutingFileBased = (): string => {
  * Removes frontmatter and adjusts the main heading
  */
 export const loadRoutingConfigBased = (): string => {
-  const createPages = readFileSync('../../docs/create-pages.mdx', 'utf8');
+  const createPages = loadCreatePages();
   const withoutFrontmatter = createPages.replace(/^---[\s\S]*?---\n*/, '');
   const withoutMainHeading = withoutFrontmatter.replace(
     /^## Routing \(low-level API\)\n*/m,
@@ -40,7 +40,7 @@ export const loadRoutingConfigBased = (): string => {
  * Used to render Introduction, Getting started, and Rendering sections
  */
 export const loadBeforeRouting = (): string => {
-  const readme = readFileSync('./private/README.md', 'utf8');
+  const readme = loadReadme();
   const match = readme.match(/(^## Introduction[\s\S]*?)(?=^## Routing)/m);
   const content = match?.[1];
   if (!content) {
@@ -54,7 +54,7 @@ export const loadBeforeRouting = (): string => {
  * Used to render Navigation and all subsequent sections
  */
 export const loadAfterRouting = (): string => {
-  const readme = readFileSync('./private/README.md', 'utf8');
+  const readme = loadReadme();
   const match = readme.match(
     /^## Routing[\s\S]*?(^## (?!Routing)[A-Z][\s\S]*)/m,
   );
