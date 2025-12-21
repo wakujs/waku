@@ -38,9 +38,9 @@
       "types": "./dist/internals.d.ts",
       "default": "./dist/internals.js"
     },
-    "./internals/*": {
-      "types": "./dist/internals/*.d.ts",
-      "default": "./dist/internals/*.js"
+    "./vite-plugins": {
+      "types": "./dist/vite-plugins.d.ts",
+      "default": "./dist/vite-plugins.js"
     },
     "./adapters/*": {
       "types": "./dist/adapters/*.d.ts",
