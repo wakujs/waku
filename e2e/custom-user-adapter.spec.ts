@@ -7,7 +7,7 @@ const startApp = prepareNormalSetup('custom-user-adapter');
 
 test.describe('custom-user-adapter', () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
   let fixtureDir: string;
 
   test.beforeAll(async ({ mode }) => {
@@ -17,8 +17,11 @@ test.describe('custom-user-adapter', () => {
     ({ port, stopApp, fixtureDir } = await startApp(mode));
   });
 
-  test.afterAll(async () => {
-    await stopApp?.();
+  test.afterAll(async ({ mode }) => {
+    if (mode === 'DEV') {
+      return;
+    }
+    await stopApp();
   });
 
   test('runs post build from in-project adapter', async ({ page, mode }) => {

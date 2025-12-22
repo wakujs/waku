@@ -24,12 +24,12 @@ const defineTests = (getPort: () => number) => {
 
 test.describe('styled-components', () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp?.();
+    await stopApp();
   });
 
   defineTests(() => port);
@@ -42,12 +42,18 @@ test.describe('styled-components: static build', () => {
   );
 
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
-  test.beforeAll(async () => {
+  let stopApp: () => Promise<void>;
+  test.beforeAll(async ({ mode }) => {
+    if (mode !== 'PRD') {
+      return;
+    }
     ({ port, stopApp } = await startApp('STATIC'));
   });
-  test.afterAll(async () => {
-    await stopApp?.();
+  test.afterAll(async ({ mode }) => {
+    if (mode !== 'PRD') {
+      return;
+    }
+    await stopApp();
   });
 
   defineTests(() => port);

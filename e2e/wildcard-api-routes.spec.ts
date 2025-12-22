@@ -5,12 +5,12 @@ const startApp = prepareNormalSetup('wildcard-api-routes');
 
 test.describe('wildcard api routes', () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp?.();
+    await stopApp();
   });
 
   test('catch all route can match as index route', async ({ page }) => {

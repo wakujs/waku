@@ -5,12 +5,12 @@ const startApp = prepareNormalSetup('broken-links');
 
 test.describe('broken-links: normal server', () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp?.();
+    await stopApp();
   });
 
   test.describe('server side navigation', () => {
@@ -78,12 +78,12 @@ test.describe('broken-links: static server', () => {
 
   test.describe('client side navigation', () => {
     let port: number;
-    let stopApp: (() => Promise<void>) | undefined;
+    let stopApp: () => Promise<void>;
     test.beforeAll(async () => {
       ({ port, stopApp } = await startApp('STATIC'));
     });
     test.afterAll(async () => {
-      await stopApp?.();
+      await stopApp();
     });
 
     test('correct link', async ({ page }) => {
@@ -148,12 +148,12 @@ test.describe('broken-links: static server', () => {
 
 test.describe('broken-links/dynamic-not-found', () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp?.();
+    await stopApp();
   });
 
   test('access sync page directly', async ({ page }) => {

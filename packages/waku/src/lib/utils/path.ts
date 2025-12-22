@@ -219,7 +219,7 @@ export const getPathMapping = (
 export function removeBase(url: string, base: string) {
   if (base !== '/') {
     if (!url.startsWith(base)) {
-      throw new Error('pathname must start with basePath');
+      throw new Error('pathname must start with basePath: ' + url);
     }
     return url.slice(base.length - 1);
   }
