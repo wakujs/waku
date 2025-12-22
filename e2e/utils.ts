@@ -86,6 +86,7 @@ const ignoreErrors: RegExp[] = [
   /^(Error during rendering: )?Error: Not Found\s+at AsyncPage/,
   /^(Error during rendering: )?Error: Not Found\s+at info/,
   /^(Error during rendering: )?Error: Not Found\s+at createCustomError/,
+  /^(Error during rendering: )?Error: Redirect\s+at info/,
   /^(Error during rendering: )?Error: Redirect\s+at createCustomError/,
   // FIXME Is this too general and miss meaningful errors?
   /^(Error during rendering: )?\[Error: An error occurred in the Server Components render\./,
@@ -144,7 +145,6 @@ export const prepareNormalSetup = (fixtureName: string) => {
     mode: 'DEV' | 'PRD' | 'STATIC',
     options?: { cmd?: string | undefined },
   ) => {
-    const port = await getAvailablePort();
     if (mode !== 'DEV' && !built) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
       await execAsync(`node ${waku} build`, { cwd: fixtureDir });
@@ -165,9 +165,9 @@ export const prepareNormalSetup = (fixtureName: string) => {
     if (options?.cmd) {
       cmd = options.cmd;
     }
+    const port = await getAvailablePort();
     // Assuming all commands support -p for port
-    cmd += ` -p ${port}`;
-    const cp = exec(cmd, { cwd: fixtureDir });
+    const cp = exec(`${cmd} -p ${port}`, { cwd: fixtureDir });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     await waitForPortReady(port);
     const stopApp = async () => {
@@ -239,7 +239,6 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     packageManager: 'npm' | 'pnpm' | 'yarn' = 'pnpm',
     packageDir = '',
   ) => {
-    const port = await getAvailablePort();
     const wakuPackageDir = (): string => {
       if (!standaloneDir) {
         throw new Error('standaloneDir is not set');
@@ -330,16 +329,20 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     let cmd: string;
     switch (mode) {
       case 'DEV':
-        cmd = `node ${waku} dev -p ${port}`;
+        cmd = `node ${waku} dev`;
         break;
       case 'PRD':
-        cmd = `node ${waku} start -p ${port}`;
+        cmd = `node ${waku} start`;
         break;
       case 'STATIC':
-        cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} -l ${port} dist/public`;
+        cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')}`;
         break;
     }
-    const cp = exec(cmd, { cwd: join(standaloneDir, packageDir) });
+    const port = await getAvailablePort();
+    // Assuming all commands support -p for port
+    const cp = exec(`${cmd} -p ${port}`, {
+      cwd: join(standaloneDir, packageDir),
+    });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     await waitForPortReady(port);
     const stopApp = async () => {
