@@ -3,7 +3,7 @@ import { ChildProcess, exec } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { expect } from '@playwright/test';
-import { getAvailablePort, test } from './utils.js';
+import { getAvailablePort, test, waitForPortReady } from './utils.js';
 
 const execAsync = promisify(exec);
 
@@ -33,6 +33,7 @@ test.describe(`partial builds`, () => {
     });
     port = await getAvailablePort();
     cp = exec(`node ${waku} start -p ${port}`, { cwd });
+    await waitForPortReady(port);
     await page.goto(`http://localhost:${port}/page/a`);
     await expect(page.getByTestId('title')).toHaveText('a');
   });

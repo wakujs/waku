@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { error, info } from '@actions/core';
 import { expect } from '@playwright/test';
-import { getAvailablePort, test } from './utils.js';
+import { getAvailablePort, test, waitForPortReady } from './utils.js';
 
 const execAsync = promisify(exec);
 
@@ -87,6 +87,7 @@ for (const cwd of examples) {
             error(`stderr: ${data}`);
             console.error(`stderr: `, `${data}`);
           });
+          await waitForPortReady(port);
         });
 
         test.afterAll(async () => {

@@ -10,7 +10,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
-import { createServer } from 'node:net';
+import { createConnection, createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,6 +48,27 @@ export const getAvailablePort = async (): Promise<number> =>
       const { port } = address;
       server.close(() => resolve(port));
     });
+  });
+
+export const waitForPortReady = async (port: number): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const start = Date.now();
+    const tryConnect = () => {
+      const socket = createConnection({ host: '127.0.0.1', port });
+      socket.once('connect', () => {
+        socket.end();
+        resolve();
+      });
+      socket.once('error', () => {
+        socket.destroy();
+        if (Date.now() - start >= 10_000) {
+          reject(new Error(`Timeout while waiting for port ${port}`));
+          return;
+        }
+        setTimeout(tryConnect, 200);
+      });
+    };
+    tryConnect();
   });
 
 const unexpectedErrors: RegExp[] = [
@@ -146,6 +167,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     }
     const cp = exec(cmd, { cwd: fixtureDir });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
+    await waitForPortReady(port);
     const stopApp = async () => {
       cp.kill();
     };
@@ -317,6 +339,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     }
     const cp = exec(cmd, { cwd: join(standaloneDir, packageDir) });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
+    await waitForPortReady(port);
     const stopApp = async () => {
       builtModeMap.delete(packageManager);
       cp.kill();
