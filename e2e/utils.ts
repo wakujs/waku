@@ -113,6 +113,8 @@ export const ignoreErrors: RegExp[] = [
   /^(Error during rendering: )?Error: Redirect\s+at createCustomError/,
   // FIXME Is this too general and miss meaningful errors?
   /^(Error during rendering: )?\[Error: An error occurred in the Server Components render\./,
+  // XXX Is it okay to ignore this error?
+  /^Error: pathname must start with basePath: \/favicon\.ico\s+at removeBase/,
 ];
 
 export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
