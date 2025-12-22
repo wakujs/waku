@@ -64,11 +64,6 @@ for (const cwd of examples) {
     ? commandsCloudflare
     : commands;
   test.describe.serial(`smoke test on ${basename(cwd)}`, () => {
-    test.beforeAll('remove and build', async () => {
-      rmSync(`${cwd}/dist`, { recursive: true, force: true });
-      await execAsync(`node ${waku} build`, { cwd });
-    });
-
     for (const { commandMode, command } of exampleCommands) {
       if (command.includes('wrangler dev') && os.platform() === 'win32') {
         // FIXME npx wrangler dev doesn't work on Windows and we don't know why.
@@ -81,6 +76,10 @@ for (const cwd of examples) {
           let cp: ChildProcess;
 
           test.beforeAll(async () => {
+            if (commandMode === 'PRD') {
+              rmSync(`${cwd}/dist`, { recursive: true, force: true });
+              await execAsync(`node ${waku} build`, { cwd });
+            }
             port = await getAvailablePort();
             // --port option works for both waku and wrangler
             cp = exec(`${command} --port ${port}`, { cwd });
@@ -102,7 +101,7 @@ for (const cwd of examples) {
           });
 
           test.afterAll(async () => {
-            cp.kill();
+            cp.kill('SIGKILL');
           });
 
           test('check title', async ({ page }) => {

@@ -354,7 +354,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       if (force) {
         await fkill(`:${port}`, { force: true });
       } else {
-        cp.kill();
+        cp.kill('SIGKILL');
       }
     };
     return { port, stopApp, standaloneDir };
@@ -363,6 +363,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
 };
 
 export async function waitForHydration(page: Page) {
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForFunction(
     () => {
       const el = document.querySelector('body');

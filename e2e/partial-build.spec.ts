@@ -58,7 +58,7 @@ test.describe(`partial builds`, () => {
     await expect(page.getByTestId('title')).toHaveText('a');
   });
   test.afterEach(async () => {
-    cp.kill();
+    cp.kill('SIGKILL');
   });
 
   test('does not change pages that already exist', async () => {
