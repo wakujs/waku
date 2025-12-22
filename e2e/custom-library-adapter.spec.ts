@@ -7,7 +7,7 @@ const startApp = prepareStandaloneSetup('custom-library-adapter');
 
 test.describe('custom-library-adapter', () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
   let standaloneDir: string;
 
   test.beforeAll(async ({ mode }) => {
@@ -17,8 +17,11 @@ test.describe('custom-library-adapter', () => {
     ({ port, stopApp, standaloneDir } = await startApp(mode, 'pnpm'));
   });
 
-  test.afterAll(async () => {
-    await stopApp?.();
+  test.afterAll(async ({ mode }) => {
+    if (mode === 'DEV') {
+      return;
+    }
+    await stopApp();
   });
 
   test('runs post build from dependency adapter', async ({ page, mode }) => {

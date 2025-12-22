@@ -5,12 +5,12 @@ const startApp = prepareNormalSetup('ssg-wildcard');
 
 test.describe('ssg wildcard', () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp?.();
+    await stopApp();
   });
 
   test(`works`, async ({ page }) => {
