@@ -10,14 +10,14 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
+import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { promisify, stripVTControlCharacters } from 'node:util';
+import { promisify } from 'node:util';
 import { error, info } from '@actions/core';
 import { test as basicTest, expect } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
-import fkill from 'fkill';
 
 const execAsync = promisify(exec);
 
@@ -32,34 +32,23 @@ export type TestOptions = {
   page: Page;
 };
 
-export async function findWakuPort(cp: ChildProcess): Promise<number> {
-  return new Promise((resolve, reject) => {
-    function listener(data: unknown) {
-      const str = stripVTControlCharacters(`${data}`);
-      const match = str.match(/http:\/\/localhost:(\d+)|on port (\d+)/);
-      if (match) {
-        clearTimeout(timer);
-        cp.stdout?.off('data', listener);
-        const port = match[1] || match[2]!;
-        info(`Waku server started at port ${port}`);
-        resolve(parseInt(port, 10));
+export const getAvailablePort = async (): Promise<number> =>
+  new Promise((resolve, reject) => {
+    const server = createServer();
+    server.unref();
+    server.on('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      if (!address || typeof address === 'string') {
+        server.close(() => {
+          reject(new Error('Failed to acquire a free port'));
+        });
+        return;
       }
-    }
-    cp.stdout?.on('data', listener);
-    const timer = setTimeout(() => {
-      cp.stdout?.off('data', listener);
-      reject(new Error('Timeout while waiting for port'));
-    }, 10_000);
+      const { port } = address;
+      server.close(() => resolve(port));
+    });
   });
-}
-
-// Upstream doesn't support ES module
-//  Related: https://github.com/dwyl/terminate/pull/85
-export const terminate = async (port: number) => {
-  await fkill(`:${port}`, {
-    force: true,
-  });
-};
 
 const unexpectedErrors: RegExp[] = [
   /^You did not run Node.js with the `--conditions react-server` flag/,
@@ -134,6 +123,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     mode: 'DEV' | 'PRD' | 'STATIC',
     options?: { cmd?: string | undefined },
   ) => {
+    const port = await getAvailablePort();
     if (mode !== 'DEV' && !built) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
       await execAsync(`node ${waku} build`, { cwd: fixtureDir });
@@ -142,23 +132,22 @@ export const prepareNormalSetup = (fixtureName: string) => {
     let cmd: string;
     switch (mode) {
       case 'DEV':
-        cmd = `node ${waku} dev`;
+        cmd = `node ${waku} dev -p ${port}`;
         break;
       case 'PRD':
-        cmd = `node ${waku} start`;
+        cmd = `node ${waku} start -p ${port}`;
         break;
       case 'STATIC':
-        cmd = `pnpm serve dist/public`;
+        cmd = `pnpm serve -l ${port} dist/public`;
         break;
     }
     if (options?.cmd) {
-      cmd = options.cmd;
+      throw new Error('unsupported cmd option for normal setup');
     }
     const cp = exec(cmd, { cwd: fixtureDir });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
-    const port = await findWakuPort(cp);
     const stopApp = async () => {
-      await terminate(port);
+      cp.kill();
     };
     return { port, stopApp, fixtureDir };
   };
@@ -226,6 +215,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     packageManager: 'npm' | 'pnpm' | 'yarn' = 'pnpm',
     packageDir = '',
   ) => {
+    const port = await getAvailablePort();
     const wakuPackageDir = (): string => {
       if (!standaloneDir) {
         throw new Error('standaloneDir is not set');
@@ -316,21 +306,20 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     let cmd: string;
     switch (mode) {
       case 'DEV':
-        cmd = `node ${waku} dev`;
+        cmd = `node ${waku} dev -p ${port}`;
         break;
       case 'PRD':
-        cmd = `node ${waku} start`;
+        cmd = `node ${waku} start -p ${port}`;
         break;
       case 'STATIC':
-        cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} dist/public`;
+        cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} -l ${port} dist/public`;
         break;
     }
     const cp = exec(cmd, { cwd: join(standaloneDir, packageDir) });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
-    const port = await findWakuPort(cp);
     const stopApp = async () => {
       builtModeMap.delete(packageManager);
-      await terminate(port);
+      cp.kill();
     };
     return { port, stopApp, standaloneDir };
   };

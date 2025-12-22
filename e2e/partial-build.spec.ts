@@ -3,7 +3,7 @@ import { ChildProcess, exec } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { expect } from '@playwright/test';
-import { findWakuPort, terminate, test } from './utils.js';
+import { getAvailablePort, test } from './utils.js';
 
 const execAsync = promisify(exec);
 
@@ -23,21 +23,21 @@ test.skip(
 );
 
 test.describe(`partial builds`, () => {
-  let cp: ChildProcess | undefined;
   let port: number;
+  let cp: ChildProcess;
   test.beforeEach(async ({ page }) => {
     rmSync(`${cwd}/dist`, { recursive: true, force: true });
     await execAsync(`node ${waku} build`, {
       cwd,
       env: { ...process.env, PAGES: 'a' },
     });
-    cp = exec(`node ${waku} start`, { cwd });
-    port = await findWakuPort(cp);
+    port = await getAvailablePort();
+    cp = exec(`node ${waku} start -p ${port}`, { cwd });
     await page.goto(`http://localhost:${port}/page/a`);
     await expect(page.getByTestId('title')).toHaveText('a');
   });
   test.afterEach(async () => {
-    await terminate(port);
+    cp.kill();
   });
 
   test('does not change pages that already exist', async () => {
