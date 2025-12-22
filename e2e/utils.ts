@@ -50,6 +50,8 @@ export const getAvailablePort = async (): Promise<number> =>
     });
   });
 
+const PORT_WAIT_TIMEOUT_MS = 10_000;
+
 export const waitForPortReady = async (port: number): Promise<void> =>
   new Promise((resolve, reject) => {
     const start = Date.now();
@@ -61,11 +63,32 @@ export const waitForPortReady = async (port: number): Promise<void> =>
       });
       socket.once('error', () => {
         socket.destroy();
-        if (Date.now() - start >= 10_000) {
+        if (Date.now() - start >= PORT_WAIT_TIMEOUT_MS) {
           reject(new Error(`Timeout while waiting for port ${port}`));
           return;
         }
         setTimeout(tryConnect, 200);
+      });
+    };
+    tryConnect();
+  });
+
+export const waitForPortClosed = async (port: number): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const start = Date.now();
+    const tryConnect = () => {
+      if (Date.now() - start >= PORT_WAIT_TIMEOUT_MS) {
+        reject(new Error(`Timeout while waiting for port ${port} to close`));
+        return;
+      }
+      const socket = createConnection(port);
+      socket.once('connect', () => {
+        socket.end();
+        setTimeout(tryConnect, 200);
+      });
+      socket.once('error', () => {
+        socket.destroy();
+        resolve();
       });
     };
     tryConnect();
@@ -79,6 +102,7 @@ const unexpectedErrors: RegExp[] = [
 
 const ignoreErrors: RegExp[] = [
   /ExperimentalWarning: Custom ESM Loaders is an experimental feature and might change at any time/,
+  /npm warn Unknown env config "verify-deps-before-run"\. This will stop working in the next major version of npm\./,
   /^(Error during rendering: )?Error: Unexpected error\s+at ThrowsComponent/,
   /^(Error during rendering: )?Error: Something unexpected happened\s+at ErrorRender/,
   /^(Error during rendering: )?Error: 401 Unauthorized\s+at CheckIfAccessDenied/,
@@ -172,6 +196,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     await waitForPortReady(port);
     const stopApp = async () => {
       cp.kill();
+      await waitForPortClosed(port);
     };
     return { port, stopApp, fixtureDir };
   };
@@ -348,6 +373,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     const stopApp = async () => {
       builtModeMap.delete(packageManager);
       cp.kill();
+      await waitForPortClosed(port);
     };
     return { port, stopApp, standaloneDir };
   };

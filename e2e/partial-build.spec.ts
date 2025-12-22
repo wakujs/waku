@@ -3,7 +3,12 @@ import { ChildProcess, exec } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { expect } from '@playwright/test';
-import { getAvailablePort, test, waitForPortReady } from './utils.js';
+import {
+  getAvailablePort,
+  test,
+  waitForPortClosed,
+  waitForPortReady,
+} from './utils.js';
 
 const execAsync = promisify(exec);
 
@@ -39,6 +44,7 @@ test.describe(`partial builds`, () => {
   });
   test.afterEach(async () => {
     cp.kill();
+    await waitForPortClosed(port);
   });
 
   test('does not change pages that already exist', async () => {
