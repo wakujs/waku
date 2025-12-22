@@ -4,7 +4,6 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { error, info } from '@actions/core';
 import { expect } from '@playwright/test';
-import fkill from 'fkill';
 import {
   getAvailablePort,
   ignoreErrors,
@@ -59,7 +58,7 @@ test.describe(`partial builds`, () => {
     await expect(page.getByTestId('title')).toHaveText('a');
   });
   test.afterEach(async () => {
-    await fkill(`:${port}`, { force: true });
+    cp.kill();
   });
 
   test('does not change pages that already exist', async () => {
