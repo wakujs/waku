@@ -27,6 +27,20 @@ npm create waku@latest
 
 **Node.js version requirement:** `^24.0.0` or `^22.12.0` or `^20.19.0`
 
+## Development workflow
+
+#### Local development
+
+Run `waku dev` to start the local development server.
+
+#### Production build
+
+Run `waku build` to generate a production build.
+
+#### Production server
+
+Run `waku start` to serve the production build locally.
+
 ## Rendering
 
 While there’s a bit of a learning curve to modern React rendering, it introduces powerful new patterns of full-stack composability that are only possible with the advent of [server components](https://github.com/reactjs/rfcs/blob/main/text/0188-server-components.md).
@@ -1386,6 +1400,18 @@ In Node.js environments, `process.env` may also be used.
 
 ## Deployment
 
+### Node.js (default)
+
+After building, `waku start` runs the production server.
+
+If you need a standalone app (for example, for Docker),
+the build output lives in `dist`. It is the only folder you need to copy, then run `node dist/serve-node.js`.
+
+### Pure SSG
+
+The build output for SSG lives in `dist/public`. You can copy (or upload to any hosting service) the `dist/public` folder.
+With Pure SSG, dynamic features (like dynamic rendering, server actions, API routes) do not work.
+
 ### Vercel
 
 Waku projects can be deployed to Vercel with the [Vercel CLI](https://vercel.com/docs/cli) automatically.
@@ -1394,9 +1420,9 @@ Waku projects can be deployed to Vercel with the [Vercel CLI](https://vercel.com
 vercel
 ```
 
-#### Pure SSG
+#### Pure SSG with Vercel
 
-For adavanced users who want to avoid deploying functions, use the server entry file with vercel adapter and specify `static` option.
+For advanced users who want to avoid deploying functions, use the server entry file with the Vercel adapter and specify the `static` option.
 
 `./src/waku.server.ts`:
 
@@ -1419,9 +1445,9 @@ NETLIFY=1 npm run build
 netlify deploy
 ```
 
-#### Pure SSG
+#### Pure SSG with Netlify
 
-For adavanced users who want to avoid deploying functions, use the server entry file with netlify adapter and specify `static` option.
+For advanced users who want to avoid deploying functions, use the server entry file with the Netlify adapter and specify the `static` option.
 
 `./src/waku.server.ts`:
 
