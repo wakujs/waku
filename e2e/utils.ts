@@ -54,7 +54,7 @@ export const waitForPortReady = async (port: number): Promise<void> =>
   new Promise((resolve, reject) => {
     const start = Date.now();
     const tryConnect = () => {
-      const socket = createConnection({ host: '127.0.0.1', port });
+      const socket = createConnection(port);
       socket.once('connect', () => {
         socket.end();
         resolve();
@@ -153,18 +153,20 @@ export const prepareNormalSetup = (fixtureName: string) => {
     let cmd: string;
     switch (mode) {
       case 'DEV':
-        cmd = `node ${waku} dev -p ${port}`;
+        cmd = `node ${waku} dev`;
         break;
       case 'PRD':
-        cmd = `node ${waku} start -p ${port}`;
+        cmd = `node ${waku} start`;
         break;
       case 'STATIC':
-        cmd = `pnpm serve -l ${port} dist/public`;
+        cmd = `pnpm serve dist/public`;
         break;
     }
     if (options?.cmd) {
-      throw new Error('unsupported cmd option for normal setup');
+      cmd = options.cmd;
     }
+    // Assuming all commands support -p for port
+    cmd += ` -p ${port}`;
     const cp = exec(cmd, { cwd: fixtureDir });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     await waitForPortReady(port);
