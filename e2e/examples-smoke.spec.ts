@@ -15,6 +15,8 @@ import { expect } from '@playwright/test';
 import {
   getAvailablePort,
   ignoreErrors,
+  runShell,
+  terminate,
   test,
   waitForPortReady,
 } from './utils.js';
@@ -82,7 +84,7 @@ for (const cwd of examples) {
             }
             port = await getAvailablePort();
             // --port option works for both waku and wrangler
-            cp = exec(`${command} --port ${port}`, { cwd });
+            cp = runShell(`${command} --port ${port}`, cwd);
             cp.stdout?.on('data', (data) => {
               if (ignoreErrors.some((re) => re.test(`${data}`))) {
                 return;
@@ -101,7 +103,7 @@ for (const cwd of examples) {
           });
 
           test.afterAll(async () => {
-            cp.kill('SIGKILL');
+            await terminate(cp);
           });
 
           test('check title', async ({ page }) => {

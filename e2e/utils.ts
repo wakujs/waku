@@ -1,4 +1,4 @@
-import { exec } from 'node:child_process';
+import { exec, spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import {
   cpSync,
@@ -18,7 +18,6 @@ import { promisify } from 'node:util';
 import { error, info } from '@actions/core';
 import { test as basicTest, expect } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
-import fkill from 'fkill';
 
 const execAsync = promisify(exec);
 
@@ -73,6 +72,26 @@ export const waitForPortReady = async (port: number): Promise<void> =>
     };
     tryConnect();
   });
+
+export const runShell = (command: string, cwd: string): ChildProcess =>
+  spawn(command, {
+    cwd,
+    shell: true,
+    detached: process.platform !== 'win32',
+    windowsHide: true,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+export const terminate = async (cp: ChildProcess): Promise<void> => {
+  if (cp.exitCode !== null) {
+    return;
+  }
+  if (process.platform === 'win32') {
+    await execAsync(`taskkill /pid ${cp.pid} /t /f`);
+  } else if (cp.pid) {
+    process.kill(-cp.pid, 'SIGTERM');
+  }
+};
 
 const unexpectedErrors: RegExp[] = [
   /^You did not run Node.js with the `--conditions react-server` flag/,
@@ -171,11 +190,11 @@ export const prepareNormalSetup = (fixtureName: string) => {
     }
     const port = await getAvailablePort();
     // Assuming all commands support -p for port
-    const cp = exec(`${cmd} -p ${port}`, { cwd: fixtureDir });
+    const cp = runShell(`${cmd} -p ${port}`, fixtureDir);
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     await waitForPortReady(port);
     const stopApp = async () => {
-      await fkill(`:${port}`, { force: true });
+      await terminate(cp);
     };
     return { port, stopApp, fixtureDir };
   };
@@ -344,18 +363,12 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     }
     const port = await getAvailablePort();
     // Assuming all commands support -p for port
-    const cp = exec(`${cmd} -p ${port}`, {
-      cwd: join(standaloneDir, packageDir),
-    });
+    const cp = runShell(`${cmd} -p ${port}`, join(standaloneDir, packageDir));
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     await waitForPortReady(port);
-    const stopApp = async (force?: boolean) => {
+    const stopApp = async () => {
       builtModeMap.delete(packageManager);
-      if (force) {
-        await fkill(`:${port}`, { force: true });
-      } else {
-        cp.kill('SIGKILL');
-      }
+      await terminate(cp);
     };
     return { port, stopApp, standaloneDir };
   };

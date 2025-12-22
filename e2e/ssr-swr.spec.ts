@@ -5,12 +5,12 @@ const startApp = prepareNormalSetup('ssr-swr');
 
 test.describe(`ssr-swr`, () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp?.();
+    await stopApp();
   });
 
   test('increase counter', async ({ page }) => {

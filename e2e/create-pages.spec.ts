@@ -12,13 +12,13 @@ const startApp = prepareNormalSetup('create-pages');
 
 test.describe(`create-pages`, () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
   let fixtureDir: string;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp, fixtureDir } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp?.();
+    await stopApp();
   });
 
   test('home', async ({ page }) => {
@@ -147,7 +147,7 @@ test.describe(`create-pages`, () => {
     await expect(
       page.getByTestId('server-throws').getByTestId('throws-success'),
     ).toHaveText('init');
-    await stopApp?.();
+    await stopApp();
     await page.getByTestId('server-throws').getByTestId('success').click();
     await page.waitForTimeout(500); // need to wait?
     await expect(
@@ -159,7 +159,7 @@ test.describe(`create-pages`, () => {
   test('server page unreachable', async ({ page, mode, browserName }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await stopApp?.();
+    await stopApp();
     await page.click("a[href='/error']");
     // Default router client error boundary is reached
     await expect(page.locator('p')).toContainText(
@@ -464,12 +464,18 @@ test.describe(`create-pages STATIC`, () => {
   );
 
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
-  test.beforeAll(async () => {
+  let stopApp: () => Promise<void>;
+  test.beforeAll(async ({ mode }) => {
+    if (mode !== 'PRD') {
+      return;
+    }
     ({ port, stopApp } = await startApp('STATIC'));
   });
-  test.afterAll(async () => {
-    await stopApp?.();
+  test.afterAll(async ({ mode }) => {
+    if (mode !== 'PRD') {
+      return;
+    }
+    await stopApp();
   });
 
   test('no ssr', async ({ page }) => {

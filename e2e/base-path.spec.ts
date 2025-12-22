@@ -5,12 +5,12 @@ const startApp = prepareNormalSetup('base-path');
 
 test.describe(`base-path`, () => {
   let port: number;
-  let stopApp: ((force?: boolean) => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp?.();
+    await stopApp();
   });
 
   test('api', async ({ request }) => {
@@ -78,7 +78,7 @@ test.describe(`base-path`, () => {
     await basicTest(page, `http://localhost:${port}/custom/base/`);
 
     // test static
-    await stopApp?.(true);
+    await stopApp();
     ({ port, stopApp } = await startApp(mode, {
       cmd: 'pnpm start-static',
     }));

@@ -7,6 +7,8 @@ import { expect } from '@playwright/test';
 import {
   getAvailablePort,
   ignoreErrors,
+  runShell,
+  terminate,
   test,
   waitForPortReady,
 } from './utils.js';
@@ -38,7 +40,7 @@ test.describe(`partial builds`, () => {
       env: { ...process.env, PAGES: 'a' },
     });
     port = await getAvailablePort();
-    cp = exec(`node ${waku} start -p ${port}`, { cwd });
+    cp = runShell(`node ${waku} start -p ${port}`, cwd);
     cp.stdout?.on('data', (data) => {
       if (ignoreErrors.some((re) => re.test(`${data}`))) {
         return;
@@ -58,7 +60,7 @@ test.describe(`partial builds`, () => {
     await expect(page.getByTestId('title')).toHaveText('a');
   });
   test.afterEach(async () => {
-    cp.kill('SIGKILL');
+    await terminate(cp);
   });
 
   test('does not change pages that already exist', async () => {
