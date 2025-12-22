@@ -100,7 +100,7 @@ export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
   cp.stdout?.on('data', (data) => {
     const str = data.toString();
     expect(unexpectedErrors.some((re) => re.test(str))).toBeFalsy();
-    if (ignoreErrors?.some((re) => re.test(str))) {
+    if (ignoreErrors.some((re) => re.test(str))) {
       return;
     }
     info(`(${sourceFile}) stdout: ${str}`);
@@ -109,7 +109,7 @@ export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
   cp.stderr?.on('data', (data) => {
     const str = data.toString();
     expect(unexpectedErrors.some((re) => re.test(str))).toBeFalsy();
-    if (ignoreErrors?.some((re) => re.test(str))) {
+    if (ignoreErrors.some((re) => re.test(str))) {
       return;
     }
     error(`stderr: ${str}`, {
