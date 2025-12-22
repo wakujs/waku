@@ -349,9 +349,13 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     });
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     await waitForPortReady(port);
-    const stopApp = async () => {
+    const stopApp = async (force?: boolean) => {
       builtModeMap.delete(packageManager);
-      await fkill(`:${port}`, { force: true });
+      if (force) {
+        await fkill(`:${port}`, { force: true });
+      } else {
+        cp.kill();
+      }
     };
     return { port, stopApp, standaloneDir };
   };

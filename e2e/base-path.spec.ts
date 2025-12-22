@@ -5,7 +5,7 @@ const startApp = prepareNormalSetup('base-path');
 
 test.describe(`base-path`, () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: ((force?: boolean) => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
@@ -66,17 +66,23 @@ test.describe(`base-path`, () => {
     ).toBeVisible();
   });
 
-  test('basic', async ({ page, mode }) => {
+  // eslint-disable-next-line playwright/expect-expect
+  test('basic DEV', async ({ page, mode }) => {
+    test.skip(mode !== 'DEV');
+    await basicTest(page, `http://localhost:${port}/custom/base/`);
+  });
+
+  // eslint-disable-next-line playwright/expect-expect
+  test('basic PRD', async ({ page, mode }) => {
+    test.skip(mode !== 'PRD');
     await basicTest(page, `http://localhost:${port}/custom/base/`);
 
     // test static
-    if (mode === 'PRD') {
-      await stopApp?.();
-      ({ port, stopApp } = await startApp(mode, {
-        cmd: 'pnpm start-static',
-      }));
-      await basicTest(page, `http://localhost:${port}/custom/base/`);
-    }
+    await stopApp?.(true);
+    ({ port, stopApp } = await startApp(mode, {
+      cmd: 'pnpm start-static',
+    }));
+    await basicTest(page, `http://localhost:${port}/custom/base/`);
   });
 });
 

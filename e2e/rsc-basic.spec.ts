@@ -5,7 +5,7 @@ const startApp = prepareNormalSetup('rsc-basic');
 
 test.describe(`rsc-basic`, () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: ((force?: boolean) => Promise<void>) | undefined;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
@@ -151,7 +151,7 @@ test.describe(`rsc-basic`, () => {
     await expect(
       page.getByTestId('server-throws').getByTestId('throws-success'),
     ).toHaveText('init');
-    await stopApp?.();
+    await stopApp?.(true);
     await page.getByTestId('server-throws').getByTestId('success').click();
     await expect(
       page.getByTestId('server-throws').getByTestId('throws-error'),

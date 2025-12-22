@@ -12,7 +12,6 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { error, info } from '@actions/core';
 import { expect } from '@playwright/test';
-import fkill from 'fkill';
 import {
   getAvailablePort,
   ignoreErrors,
@@ -103,7 +102,7 @@ for (const cwd of examples) {
           });
 
           test.afterAll(async () => {
-            await fkill(`:${port}`, { force: true });
+            cp.kill();
           });
 
           test('check title', async ({ page }) => {
