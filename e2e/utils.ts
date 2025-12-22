@@ -69,14 +69,16 @@ const unexpectedErrors: RegExp[] = [
 
 const ignoreErrors: RegExp[] = [
   /ExperimentalWarning: Custom ESM Loaders is an experimental feature and might change at any time/,
-  /^Error: Unexpected error\s+at ThrowsComponent/,
-  /^Error: Something unexpected happened\s+at ErrorRender/,
-  /^Error: 401 Unauthorized\s+at CheckIfAccessDenied/,
-  /^Error: Not Found\s+at SyncPage/,
-  /^Error: Not Found\s+at AsyncPage/,
-  /^Error: Redirect\s+at createCustomError/,
+  /^(Error during rendering: )?Error: Unexpected error\s+at ThrowsComponent/,
+  /^(Error during rendering: )?Error: Something unexpected happened\s+at ErrorRender/,
+  /^(Error during rendering: )?Error: 401 Unauthorized\s+at CheckIfAccessDenied/,
+  /^(Error during rendering: )?Error: Not Found\s+at SyncPage/,
+  /^(Error during rendering: )?Error: Not Found\s+at AsyncPage/,
+  /^(Error during rendering: )?Error: Not Found\s+at info/,
+  /^(Error during rendering: )?Error: Not Found\s+at createCustomError/,
+  /^(Error during rendering: )?Error: Redirect\s+at createCustomError/,
   // FIXME Is this too general and miss meaningful errors?
-  /^\[Error: An error occurred in the Server Components render./,
+  /^(Error during rendering: )?\[Error: An error occurred in the Server Components render\./,
 ];
 
 export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
