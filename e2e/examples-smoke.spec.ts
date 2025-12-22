@@ -13,7 +13,12 @@ import { promisify } from 'node:util';
 import { error, info } from '@actions/core';
 import { expect } from '@playwright/test';
 import fkill from 'fkill';
-import { getAvailablePort, test, waitForPortReady } from './utils.js';
+import {
+  getAvailablePort,
+  ignoreErrors,
+  test,
+  waitForPortReady,
+} from './utils.js';
 
 const execAsync = promisify(exec);
 
@@ -81,10 +86,16 @@ for (const cwd of examples) {
             // --port option works for both waku and wrangler
             cp = exec(`${command} --port ${port}`, { cwd });
             cp.stdout?.on('data', (data) => {
+              if (ignoreErrors.some((re) => re.test(`${data}`))) {
+                return;
+              }
               info(`stdout: ${data}`);
               console.log(`stdout: `, `${data}`);
             });
             cp.stderr?.on('data', (data) => {
+              if (ignoreErrors.some((re) => re.test(`${data}`))) {
+                return;
+              }
               error(`stderr: ${data}`);
               console.error(`stderr: `, `${data}`);
             });

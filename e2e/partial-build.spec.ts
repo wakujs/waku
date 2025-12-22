@@ -1,10 +1,16 @@
 import { rmSync, statSync } from 'fs';
-import { exec } from 'node:child_process';
+import { ChildProcess, exec } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import { error, info } from '@actions/core';
 import { expect } from '@playwright/test';
 import fkill from 'fkill';
-import { getAvailablePort, test, waitForPortReady } from './utils.js';
+import {
+  getAvailablePort,
+  ignoreErrors,
+  test,
+  waitForPortReady,
+} from './utils.js';
 
 const execAsync = promisify(exec);
 
@@ -25,6 +31,7 @@ test.skip(
 
 test.describe(`partial builds`, () => {
   let port: number;
+  let cp: ChildProcess;
   test.beforeEach(async ({ page }) => {
     rmSync(`${cwd}/dist`, { recursive: true, force: true });
     await execAsync(`node ${waku} build`, {
@@ -32,7 +39,21 @@ test.describe(`partial builds`, () => {
       env: { ...process.env, PAGES: 'a' },
     });
     port = await getAvailablePort();
-    exec(`node ${waku} start -p ${port}`, { cwd });
+    cp = exec(`node ${waku} start -p ${port}`, { cwd });
+    cp.stdout?.on('data', (data) => {
+      if (ignoreErrors.some((re) => re.test(`${data}`))) {
+        return;
+      }
+      info(`stdout: ${data}`);
+      console.log(`stdout: `, `${data}`);
+    });
+    cp.stderr?.on('data', (data) => {
+      if (ignoreErrors.some((re) => re.test(`${data}`))) {
+        return;
+      }
+      error(`stderr: ${data}`);
+      console.error(`stderr: `, `${data}`);
+    });
     await waitForPortReady(port);
     await page.goto(`http://localhost:${port}/page/a`);
     await expect(page.getByTestId('title')).toHaveText('a');

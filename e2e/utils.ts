@@ -80,7 +80,7 @@ const unexpectedErrors: RegExp[] = [
   /^Warning: Expected server HTML to contain a matching/,
 ];
 
-const ignoreErrors: RegExp[] = [
+export const ignoreErrors: RegExp[] = [
   /ExperimentalWarning: Custom ESM Loaders is an experimental feature and might change at any time/,
   /npm warn Unknown env config "verify-deps-before-run"\. This will stop working in the next major version of npm\./,
   /^(Error during rendering: )?Error: Unexpected error\s+at ThrowsComponent/,
