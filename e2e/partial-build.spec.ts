@@ -1,14 +1,10 @@
 import { rmSync, statSync } from 'fs';
-import { ChildProcess, exec } from 'node:child_process';
+import { exec } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { expect } from '@playwright/test';
-import {
-  getAvailablePort,
-  test,
-  waitForPortClosed,
-  waitForPortReady,
-} from './utils.js';
+import fkill from 'fkill';
+import { getAvailablePort, test, waitForPortReady } from './utils.js';
 
 const execAsync = promisify(exec);
 
@@ -29,7 +25,6 @@ test.skip(
 
 test.describe(`partial builds`, () => {
   let port: number;
-  let cp: ChildProcess;
   test.beforeEach(async ({ page }) => {
     rmSync(`${cwd}/dist`, { recursive: true, force: true });
     await execAsync(`node ${waku} build`, {
@@ -37,14 +32,13 @@ test.describe(`partial builds`, () => {
       env: { ...process.env, PAGES: 'a' },
     });
     port = await getAvailablePort();
-    cp = exec(`node ${waku} start -p ${port}`, { cwd });
+    exec(`node ${waku} start -p ${port}`, { cwd });
     await waitForPortReady(port);
     await page.goto(`http://localhost:${port}/page/a`);
     await expect(page.getByTestId('title')).toHaveText('a');
   });
   test.afterEach(async () => {
-    cp.kill();
-    await waitForPortClosed(port);
+    await fkill(`:${port}`, { force: true });
   });
 
   test('does not change pages that already exist', async () => {

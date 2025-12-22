@@ -12,12 +12,8 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { error, info } from '@actions/core';
 import { expect } from '@playwright/test';
-import {
-  getAvailablePort,
-  test,
-  waitForPortClosed,
-  waitForPortReady,
-} from './utils.js';
+import fkill from 'fkill';
+import { getAvailablePort, test, waitForPortReady } from './utils.js';
 
 const execAsync = promisify(exec);
 
@@ -96,8 +92,7 @@ for (const cwd of examples) {
         });
 
         test.afterAll(async () => {
-          cp.kill();
-          await waitForPortClosed(port);
+          await fkill(`:${port}`, { force: true });
         });
 
         test('check title', async ({ page }) => {

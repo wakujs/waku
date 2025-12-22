@@ -18,6 +18,7 @@ import { promisify } from 'node:util';
 import { error, info } from '@actions/core';
 import { test as basicTest, expect } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
+import fkill from 'fkill';
 
 const execAsync = promisify(exec);
 
@@ -68,27 +69,6 @@ export const waitForPortReady = async (port: number): Promise<void> =>
           return;
         }
         setTimeout(tryConnect, 200);
-      });
-    };
-    tryConnect();
-  });
-
-export const waitForPortClosed = async (port: number): Promise<void> =>
-  new Promise((resolve, reject) => {
-    const start = Date.now();
-    const tryConnect = () => {
-      if (Date.now() - start >= PORT_WAIT_TIMEOUT_MS) {
-        reject(new Error(`Timeout while waiting for port ${port} to close`));
-        return;
-      }
-      const socket = createConnection(port);
-      socket.once('connect', () => {
-        socket.end();
-        setTimeout(tryConnect, 200);
-      });
-      socket.once('error', () => {
-        socket.destroy();
-        resolve();
       });
     };
     tryConnect();
@@ -195,8 +175,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     await waitForPortReady(port);
     const stopApp = async () => {
-      cp.kill();
-      await waitForPortClosed(port);
+      await fkill(`:${port}`, { force: true });
     };
     return { port, stopApp, fixtureDir };
   };
@@ -360,7 +339,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         cmd = `node ${waku} start`;
         break;
       case 'STATIC':
-        cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')}`;
+        cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} dist/public`;
         break;
     }
     const port = await getAvailablePort();
@@ -372,8 +351,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     await waitForPortReady(port);
     const stopApp = async () => {
       builtModeMap.delete(packageManager);
-      cp.kill();
-      await waitForPortClosed(port);
+      await fkill(`:${port}`, { force: true });
     };
     return { port, stopApp, standaloneDir };
   };
