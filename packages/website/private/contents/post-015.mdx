@@ -1,0 +1,28 @@
+---
+slug: waku-v1-alpha
+title: Waku 1.0 (alpha)
+description: Waku's public APIs are now marked as stable.
+author: sophia
+release: v1-alpha
+date: 2025/12/23
+---
+
+We're excited to announce the release of Waku 1.0-alpha!
+
+Our public API surface area is now stable as we shift focus towards bug fixes and compatibility. Moving forward we'll write release notes with each version and provide migration guides if needed.
+
+Waku shines for mostly-static sites with some dynamic routes (marketing sites, blogs, docs, light ecommerce). The simple per-route config makes it easy to go fully static or fully dynamic. Or even blend static and dynamic with layouts, slices, and pages each having their own rendering config.
+
+Our updated [home page](https://waku.gg) now also includes config-based routing examples for those who prefer a programmatic approach instead of file-based routing.
+
+We'd love for you to help us battle-test Waku! We invite you to try it on a side project over the holiday break. Let us know how it goes in our [GitHub discussions](https://github.com/wakujs/waku/discussions) or [Discord server](https://discord.gg/MrQdmzd). Your feedback will help us work towards v1-beta and v1-rc.
+
+Happy holidays! 🎄
+
+---
+
+## Release notes
+
+#### Breaking change
+
+We've renamed the entry files from `server-entry.ts(x)` and `client-entry.ts(x)` to `waku.server.ts(x)` and `waku.client.ts(x)`. This affects those who were using config-based routing or deployment adapters.

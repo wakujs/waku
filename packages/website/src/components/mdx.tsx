@@ -152,4 +152,7 @@ export const components = {
       </div>
     );
   },
+  hr: () => {
+    return <hr className="my-16 h-px border-0 bg-gray-800" />;
+  },
 };

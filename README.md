@@ -25,21 +25,13 @@ Start a new Waku project with the `create` command for your preferred package ma
 npm create waku@latest
 ```
 
+#### Commands
+
+- `waku dev` to start the local development server
+- `waku build` to generate a production build
+- `waku start` to serve the production build locally
+
 **Node.js version requirement:** `^24.0.0` or `^22.12.0` or `^20.19.0`
-
-## Development workflow
-
-#### Local development
-
-Run `waku dev` to start the local development server.
-
-#### Production build
-
-Run `waku build` to generate a production build.
-
-#### Production server
-
-Run `waku start` to serve the production build locally.
 
 ## Rendering
 
