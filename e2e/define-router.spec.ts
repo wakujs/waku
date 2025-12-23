@@ -5,12 +5,12 @@ const startApp = prepareNormalSetup('define-router');
 
 test.describe(`define-router`, () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp?.();
+    await stopApp();
   });
 
   test('home', async ({ page }) => {

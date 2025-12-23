@@ -12,6 +12,6 @@
     "react": "~19.2.3",
     "react-dom": "~19.2.3",
     "react-server-dom-webpack": "~19.2.3",
-    "waku": "0.27.5"
+    "waku": "1.0.0-alpha.0"
   }
 }

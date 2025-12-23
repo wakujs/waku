@@ -12,7 +12,14 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { error, info } from '@actions/core';
 import { expect } from '@playwright/test';
-import { findWakuPort, terminate, test } from './utils.js';
+import {
+  getAvailablePort,
+  ignoreErrors,
+  runShell,
+  terminate,
+  test,
+  waitForPortReady,
+} from './utils.js';
 
 const execAsync = promisify(exec);
 
@@ -24,23 +31,25 @@ const waku = fileURLToPath(
 
 const commands = [
   {
+    commandMode: 'DEV',
     command: `node ${waku} dev`,
   },
   {
-    build: `build`,
+    commandMode: 'PRD',
     command: `node ${waku} start`,
   },
-];
+] as const;
 
 const commandsCloudflare = [
   {
+    commandMode: 'DEV',
     command: `node ${waku} dev`,
   },
   {
-    build: `build`,
+    commandMode: 'PRD',
     command: 'npx wrangler dev',
   },
-];
+] as const;
 
 const examples = [
   ...readdirSync(examplesDir).map((example) =>
@@ -56,62 +65,55 @@ for (const cwd of examples) {
   const exampleCommands = cwd.includes('cloudflare')
     ? commandsCloudflare
     : commands;
-  for (const { build, command } of exampleCommands) {
-    if (command.endsWith('npx wrangler dev') && os.platform() === 'win32') {
-      // FIXME npx wrangler dev doesn't work on Windows and we don't know why.
-      continue;
-    }
-    test.describe(`smoke test in ${build ? 'PRD' : 'DEV'}`, () => {
-      test.skip(({ mode }) => mode !== (build ? 'PRD' : 'DEV'));
-      test.describe(`smoke test on ${basename(cwd)}: ${command}`, () => {
-        let cp: ChildProcess | undefined;
-        let port: number;
-        test.beforeAll('remove cache', async () => {
-          rmSync(`${cwd}/dist`, { recursive: true, force: true });
-        });
+  test.describe.serial(`smoke test on ${basename(cwd)}`, () => {
+    for (const { commandMode, command } of exampleCommands) {
+      if (command.includes('wrangler dev') && os.platform() === 'win32') {
+        // FIXME npx wrangler dev doesn't work on Windows and we don't know why.
+        continue;
+      }
+      test.describe(`smoke test in ${commandMode}`, () => {
+        test.skip(({ mode }) => mode !== commandMode);
+        test.describe(`command: ${command}`, () => {
+          let port: number;
+          let cp: ChildProcess;
 
-        test.beforeAll(async () => {
-          if (build) {
-            await execAsync(`node ${waku} ${build}`, { cwd });
-          }
-          cp = exec(`${command}`, { cwd });
-          cp.stdout?.on('data', (data) => {
-            info(`stdout: ${data}`);
-            console.log(`stdout: `, `${data}`);
-          });
-          cp.stderr?.on('data', (data) => {
-            if (
-              command === 'dev' &&
-              /WebSocket server error: Port is already in use/.test(`${data}`)
-            ) {
-              // ignore this error
-              return;
+          test.beforeAll(async () => {
+            if (commandMode === 'PRD') {
+              rmSync(`${cwd}/dist`, { recursive: true, force: true });
+              await execAsync(`node ${waku} build`, { cwd });
             }
-            if (
-              /Error: The render was aborted by the server without a reason\..*\/examples\/53_islands\//s.test(
-                `${data}`,
-              )
-            ) {
-              // ignore this error
-              return;
-            }
-            error(`stderr: ${data}`);
-            console.error(`stderr: `, `${data}`);
+            port = await getAvailablePort();
+            // --port option works for both waku and wrangler
+            cp = runShell(`${command} --port ${port}`, cwd);
+            cp.stdout?.on('data', (data) => {
+              if (ignoreErrors.some((re) => re.test(`${data}`))) {
+                return;
+              }
+              info(`stdout: ${data}`);
+              console.log(`stdout: `, `${data}`);
+            });
+            cp.stderr?.on('data', (data) => {
+              if (ignoreErrors.some((re) => re.test(`${data}`))) {
+                return;
+              }
+              error(`stderr: ${data}`);
+              console.error(`stderr: `, `${data}`);
+            });
+            await waitForPortReady(port);
           });
-          port = await findWakuPort(cp);
-        });
 
-        test.afterAll(async () => {
-          await terminate(port);
-        });
+          test.afterAll(async () => {
+            await terminate(cp);
+          });
 
-        test('check title', async ({ page }) => {
-          await page.goto(`http://localhost:${port}/`);
-          // title maybe doesn't ready yet
-          await page.waitForLoadState('load');
-          await expect.poll(() => page.title()).toMatch(/^Waku/);
+          test('check title', async ({ page }) => {
+            await page.goto(`http://localhost:${port}/`);
+            // title maybe doesn't ready yet
+            await page.waitForLoadState('load');
+            await expect.poll(() => page.title()).toMatch(/^Waku/);
+          });
         });
       });
-    });
-  }
+    }
+  });
 }
