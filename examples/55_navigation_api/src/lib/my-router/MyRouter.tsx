@@ -142,6 +142,9 @@ export function useRouter() {
   }
 
   const { route, changeRoute, prefetchRoute } = router;
+  /**
+   * @deprecated use window.navigation.navigate() instead
+   */
   const push = useCallback(
     async (
       to: InferredPaths,
@@ -175,6 +178,9 @@ export function useRouter() {
     },
     [changeRoute],
   );
+  /**
+   * @deprecated use window.navigation.navigate() instead
+   */
   const replace = useCallback(
     async (
       to: InferredPaths,
@@ -201,14 +207,23 @@ export function useRouter() {
     },
     [changeRoute],
   );
+  /**
+   * @deprecated use window.navigation.reload() instead
+   */
   const reload = useCallback(async () => {
     const url = new URL(window.location.href);
     await changeRoute(parseRoute(url), { shouldScroll: true });
   }, [changeRoute]);
+  /**
+   * @deprecated use window.navigation.back() instead
+   */
   const back = useCallback(() => {
     // FIXME is this correct?
     window.history.back();
   }, []);
+  /**
+   * @deprecated use window.navigation.forward() instead
+   */
   const forward = useCallback(() => {
     // FIXME is this correct?
     window.history.forward();
@@ -341,42 +356,9 @@ export function Link({
       };
     }
   }, [unstable_prefetchOnView, router, to, ref]);
-  const internalOnClick = () => {
-    const url = new URL(to, window.location.href);
-    if (url.href !== window.location.href) {
-      const route = parseRoute(url);
-      prefetchRoute(route);
-      startTransitionFn(async () => {
-        const currentPath = window.location.pathname;
-        const newPath = url.pathname !== currentPath;
-        try {
-          await changeRoute(route, {
-            shouldScroll: scroll ?? newPath,
-            unstable_startTransition: startTransitionFn,
-          });
-        } finally {
-          if (window.location.pathname === currentPath) {
-            // Update history if it wasn't already updated
-            window.history.pushState(
-              {
-                ...window.history.state,
-                waku_new_path: newPath,
-              },
-              '',
-              url,
-            );
-          }
-        }
-      });
-    }
-  };
   const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
     if (props.onClick) {
       props.onClick(event);
-    }
-    if (!event.defaultPrevented && !isAltClick(event)) {
-      event.preventDefault();
-      internalOnClick();
     }
   };
   const onMouseEnter = unstable_prefetchOnEnter
@@ -891,19 +873,6 @@ const InnerRouter = ({
   }, []);
 
   useEffect(() => {
-    const callback = () => {
-      const route = parseRoute(new URL(window.location.href));
-      changeRoute(route, { shouldScroll: true }).catch((err) => {
-        console.log('Error while navigating back:', err);
-      });
-    };
-    window.addEventListener('popstate', callback);
-    return () => {
-      window.removeEventListener('popstate', callback);
-    };
-  }, [changeRoute]);
-
-  useEffect(() => {
     const callback = (path: string, query: string) => {
       const fn = () => {
         const url = new URL(window.location.href);
@@ -941,6 +910,50 @@ const InnerRouter = ({
       locationListeners.delete(callback);
     };
   }, [changeRoute, locationListeners]);
+
+  // https://github.com/facebook/react/blob/main/fixtures/view-transition/src/components/App.js
+  useEffect(() => {
+    const callback = (event: NavigateEvent) => {
+      if (!event.canIntercept) {
+        return;
+      }
+      const url = new URL(event.destination.url);
+      const route = parseRoute(url);
+      const navigationType = event.navigationType;
+      const previousIndex = window.navigation.currentEntry.index;
+      event.intercept({
+        async precommitHandler() {
+          // startTransition(() => {
+          // addTransitionType('navigation-' + navigationType);
+          if (navigationType === 'traverse') {
+            // For traverse types it's useful to distinguish going back or forward.
+            const nextIndex = event.destination.index;
+            if (nextIndex > previousIndex) {
+              // addTransitionType('navigation-forward');
+            } else if (nextIndex < previousIndex) {
+              // addTransitionType('navigation-back');
+            }
+            await changeRoute(route, {
+              shouldScroll: false,
+            }).catch((err) => {
+              console.log('Error while navigating back:', err);
+            });
+          } else {
+            prefetchRoute(route);
+            await changeRoute(route, {
+              shouldScroll: false,
+            });
+          }
+          // });
+          return;
+        },
+      });
+    };
+    window.navigation.addEventListener('navigate', callback);
+    return () => {
+      window.navigation.removeEventListener('navigate', callback);
+    };
+  }, [changeRoute]);
 
   const routeElement =
     err !== null ? (
