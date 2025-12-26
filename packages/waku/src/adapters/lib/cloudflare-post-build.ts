@@ -29,7 +29,7 @@ import { INTERNAL_runFetch, unstable_serverEntry as serverEntry } from './index.
 
 export default {
   ...(serverEntry.handlers ? serverEntry.handlers : {}),
-  fetch: (request, env, ctx) => INTERNAL_runFetch(env, request, env, ctx),
+  fetch: (request, env, ...args) => INTERNAL_runFetch(env, request, env, ...args),
 };
 `,
   );

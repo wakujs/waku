@@ -10,8 +10,7 @@
   "assets": {
     "binding": "ASSETS",
     "directory": "./dist/public",
-    "html_handling": "drop-trailing-slash",
-    "not_found_handling": "404-page",
+    "html_handling": "drop-trailing-slash"
   },
   "vars": {
     "MAX_ITEMS": 10
