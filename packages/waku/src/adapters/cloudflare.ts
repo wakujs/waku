@@ -89,7 +89,7 @@ export default createServerEntryAdapter(
         }
         // Workaround https://github.com/cloudflare/workers-sdk/issues/6577
         if (import.meta.env?.PROD && isWranglerDev(req)) {
-          if ("then" in res) {
+          if ('then' in res) {
             res = res.then((res) => removeGzipEncoding(res));
           } else {
             res = removeGzipEncoding(res);

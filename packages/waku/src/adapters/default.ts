@@ -7,7 +7,6 @@ import netlifyAdapter from './netlify.js';
 import nodeAdapter from './node.js';
 import vercelAdapter from './vercel.js';
 
-
 declare global {
   interface ImportMeta {
     glob: ImportGlobFunction;
