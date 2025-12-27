@@ -8,7 +8,7 @@ description: How to integrate Waku with Cloudflare Workers and interact with Clo
 
 Waku comes "out of the box" with a custom adapter for [Cloudflare Workers](https://developers.cloudflare.com/workers/).
 
-To build a Waku app for Cloudflare Workers, simply create a server entry file like the following.
+To build a Waku app for Cloudflare Workers, simply set the `CLOUDFLARE` or `WORKERS_CI` environment variable to "1" and run `waku build`. Or you can use a `waku.server.ts` that imports from 'waku/adapters/cloudflare'.
 
 `./src/waku.server.ts`:
 
@@ -21,7 +21,7 @@ export default adapter(
 );
 ```
 
-The first time you run `npm run build`, it will create a `wrangler.toml` file with minimal configuration for Cloudflare Workers. See [Cloudflare's documentation](https://developers.cloudflare.com/workers/wrangler/configuration/) for more information on configuring Cloudflare Workers and `wrangler.toml`.
+The first time you run `npm run build`, it will create a `wrangler.jsonc` file with minimal configuration for Cloudflare Workers. See [Cloudflare's documentation](https://developers.cloudflare.com/workers/wrangler/configuration/) for more information on configuring Cloudflare Workers and `wrangler.jsonc`.
 
 You should npm install the latest version of Cloudflare's build tool, [`wrangler`](https://www.npmjs.com/package/wrangler) and their dev server [`miniflare`](https://www.npmjs.com/package/miniflare).
 
@@ -33,7 +33,7 @@ There is a [Cloudflare example in the Waku GitHub repository](https://github.com
 
 Cloudflare does not run NodeJS on their servers. Instead, they use their custom JavaScript runtime called [workerd](https://github.com/cloudflare/workerd).
 
-By default, workerd does not support built-in NodeJS APIs, but support can be added by editing the `compatibility_flags` in your `wrangler.toml` file. Cloudflare does not support all APIs, but the list is growing. For more information, see [Cloudflare's documentation on NodeJS APIs](https://developers.cloudflare.com/workers/runtime-apis/nodejs/) and [compatibility flags](https://developers.cloudflare.com/workers/configuration/compatibility-dates/#setting-compatibility-flags).
+By default, workerd does not support built-in NodeJS APIs, but support can be added by editing the `compatibility_flags` in your `wrangler.jsonc` file. Cloudflare does not support all APIs, but the list is growing. For more information, see [Cloudflare's documentation on NodeJS APIs](https://developers.cloudflare.com/workers/runtime-apis/nodejs/) and [compatibility flags](https://developers.cloudflare.com/workers/configuration/compatibility-dates/#setting-compatibility-flags).
 
 Waku attempts to stay minimal and compatible with [WinterCG servers](https://wintercg.org/). The Node AsyncLocalStorage API is currently used by Waku, so only the `nodejs_als` compatibility flag is added. If you experience errors in server-side dependencies due to missing NodeJS APIs, try changing this flag to `nodejs_compat` and rebuilding your project.
 
@@ -41,7 +41,7 @@ Note that the latest `nodejs_compat` mocks the Node `fs` module. Cloudflare does
 
 ## Setting Up TypeScript
 
-You can run `npx wrangler types` to generate a `worker-configuration.d.ts` file based on the settings in your `wrangler.toml`. This defines a global `Env` interface with your bindings. In the [Cloudflare example in the Waku GitHub repository](https://github.com/wakujs/waku/tree/main/examples/07_cloudflare), a package.json script is included to run this command and update the types: `pnpm run cf-typegen`. To ensure that your types are always up-to-date, make sure to run it after any changes to your `wrangler.toml` config file.
+You can run `npx wrangler types` to generate a `worker-configuration.d.ts` file based on the settings in your `wrangler.jsonc`. This defines a global `Env` interface with your bindings. In the [Cloudflare example in the Waku GitHub repository](https://github.com/wakujs/waku/tree/main/examples/07_cloudflare), a package.json script is included to run this command and update the types: `pnpm run cf-typegen`. To ensure that your types are always up-to-date, make sure to run it after any changes to your `wrangler.jsonc` config file.
 
 ## Accessing Cloudflare Bindings, Execution Context, and Request/Response Objects
 
@@ -83,7 +83,7 @@ Note that this is subject to change. Waku is still experimental and under heavy 
 
 When Waku builds for Cloudflare, it outputs the worker function assets into the dist/worker folder and outputs static assets into the dist/assets folder.
 
-A configuration in the `wrangler.toml` file tells Cloudflare to route requests to that assets folder first and then fallback to handle the request with the worker.
+A configuration in the `wrangler.jsonc` file tells Cloudflare to route requests to that assets folder first and then fallback to handle the request with the worker.
 
 You can also access static assets from your server-side worker code in a server component, server function or Waku middleware. For example, if you want to fetch HTML from static assets to render:
 
