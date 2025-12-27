@@ -4,10 +4,10 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as vite from 'vite';
 import type { Config } from '../../config.js';
+import { resolveConfig } from '../utils/config.js';
 import { rscPlugin } from './plugin.js';
-import type { RscPluginOptions } from './plugin.js';
 
-async function loadConfig(): Promise<Config | undefined> {
+async function loadConfig(): Promise<Required<Config>> {
   let config: Config | undefined;
   if (existsSync('waku.config.ts') || existsSync('waku.config.js')) {
     const imported = await vite.runnerImport<{ default: Config }>(
@@ -15,17 +15,17 @@ async function loadConfig(): Promise<Config | undefined> {
     );
     config = imported.module.default;
   }
-  return config;
+  return resolveConfig(config);
 }
 
 async function startDevServer(
   host: string | undefined,
   port: number,
-  rscPluginOptions: RscPluginOptions,
+  config: Required<Config>,
 ) {
   const server = await vite.createServer({
     configFile: false,
-    plugins: [rscPlugin(rscPluginOptions)],
+    plugins: [rscPlugin(config)],
     server: host ? { host, port } : { port },
   });
   await server.listen();
@@ -46,10 +46,8 @@ async function startDevServer(
     ) {
       console.log(`Waku configuration file changed, restarting server...`);
       await server.close();
-      await startDevServer(host, port, {
-        ...rscPluginOptions,
-        config: await loadConfig(),
-      });
+      const config = await loadConfig();
+      await startDevServer(host, port, config);
     }
   }
 }
@@ -67,24 +65,22 @@ export async function cli(
   }
   process.env.NODE_ENV = nodeEnv;
 
-  const rscPluginOptions: RscPluginOptions = {
-    config: await loadConfig(),
-  };
+  const config = await loadConfig();
 
   if (cmd === 'dev') {
     const host = flags.host;
     const port = parseInt(flags.port || '3000', 10);
-    await startDevServer(host, port, rscPluginOptions);
+    await startDevServer(host, port, config);
   } else if (cmd === 'build') {
     const builder = await vite.createBuilder({
       configFile: false,
-      plugins: [rscPlugin(rscPluginOptions)],
+      plugins: [rscPlugin(config)],
     });
     await builder.buildApp();
   } else if (cmd === 'start') {
     const host = flags.host;
     const port = await getFreePort(parseInt(flags.port || '8080', 10));
-    const distDir = rscPluginOptions.config?.distDir ?? 'dist';
+    const distDir = config?.distDir ?? 'dist';
     const serveFileUrl = pathToFileURL(
       path.resolve(distDir, 'serve-node.js'),
     ).href;

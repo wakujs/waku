@@ -6,6 +6,28 @@
   text-shadow: 0.03125em 0.03125em 0px black;
 }
 
+@utility font-headline {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+@utility font-label {
+  font-family: 'Inter', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.125em;
+}
+
+@utility font-badge {
+  font-weight: 900;
+  letter-spacing: 0.025em;
+}
+
+@utility font-waku {
+  font-family: 'Alegreya', serif;
+  font-weight: 800;
+}
+
 @layer base {
   :root {
     @apply bg-black;

@@ -8,12 +8,12 @@
     "start": "waku start"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.140.5",
-    "@tanstack/router-devtools": "^1.140.5",
+    "@tanstack/react-router": "^1.141.8",
+    "@tanstack/router-devtools": "^1.141.8",
     "react": "~19.2.3",
     "react-dom": "~19.2.3",
     "react-server-dom-webpack": "~19.2.3",
-    "waku": "0.27.4"
+    "waku": "1.0.0-alpha.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.7",

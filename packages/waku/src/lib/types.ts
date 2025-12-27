@@ -53,7 +53,6 @@ export type Unstable_HandleBuild = (utils: {
   renderHtml: Unstable_RenderHtml;
   rscPath2pathname: (rscPath: string) => string;
   saveBuildMetadata: (key: string, value: string) => Promise<void>;
-  // TODO(daishi) not a big fan of this API
   withRequest: <T>(req: Request, fn: () => T) => T;
   generateFile: (
     fileName: string,
@@ -65,8 +64,15 @@ export type Unstable_HandleBuild = (utils: {
 export type Unstable_ServerEntry = {
   default: {
     fetch: (req: Request, ...args: any[]) => Response | Promise<Response>;
-    build: (emitFile: Unstable_EmitFile) => Promise<void>;
-    postBuild?: [modulePath: string, ...args: unknown[]];
+    build: (
+      utils: {
+        emitFile: Unstable_EmitFile;
+      },
+      ...args: any[]
+    ) => Promise<void>;
+    buildOptions?: Record<string, unknown>;
+    buildEnhancers?: string[]; // enhancer module ids
+    [someOtherProperty: string]: unknown;
   };
 };
 
@@ -74,9 +80,9 @@ export type Unstable_ProcessRequest = (
   req: Request,
 ) => Promise<Response | null>;
 
-export type Unstable_ProcessBuild = (
-  emitFile: Unstable_EmitFile,
-) => Promise<void>;
+export type Unstable_ProcessBuild = (utils: {
+  emitFile: Unstable_EmitFile;
+}) => Promise<void>;
 
 export type Unstable_CreateServerEntryAdapter = <Options>(
   fn: (

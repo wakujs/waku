@@ -1,6 +1,13 @@
 # Change Log
 
-## [Unreleased]
+For the changes starting with v1.0.0-alpha.0, check out:
+<https://github.com/wakujs/waku/releases>
+
+## [0.27.5] - 2025-12-17
+
+### Changed
+
+- Some improvements
 
 ## [0.27.4] - 2025-12-12
 

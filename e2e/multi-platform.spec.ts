@@ -16,12 +16,12 @@ import { makeTempDir, test } from './utils.js';
 const execAsync = promisify(exec);
 
 const dryRunList = [
-  // without server-entry.tsx
+  // without waku.server.tsx
   {
     cwd: fileURLToPath(new URL('./fixtures/partial-build', import.meta.url)),
     project: 'partial-build',
   },
-  // with server-entry.tsx
+  // with waku.server.tsx
   {
     cwd: fileURLToPath(new URL('./fixtures/ssr-basic', import.meta.url)),
     project: 'ssr-basic',
@@ -83,7 +83,7 @@ test.describe(`multi platform builds`, () => {
       test(`build ${project} with ${adapter} should not throw error`, async () => {
         const temp = makeTempDir(project);
         cpSync(cwd, temp, { recursive: true });
-        changeAdapter(join(temp, 'src', 'server-entry.tsx'), adapter);
+        changeAdapter(join(temp, 'src', 'waku.server.tsx'), adapter);
         for (const name of clearDirOrFile) {
           rmSync(join(temp, name), { recursive: true, force: true });
         }

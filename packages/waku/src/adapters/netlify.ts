@@ -1,24 +1,11 @@
-import path from 'node:path';
 import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
-import type { ImportGlobFunction } from 'vite/types/importGlob.d.ts';
 import {
   unstable_constants as constants,
   unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
-
-declare global {
-  interface ImportMeta {
-    glob: ImportGlobFunction;
-    readonly __WAKU_ORIGINAL_PATH__: string;
-  }
-}
-
-function joinPath(path1: string, path2: string) {
-  const p = path.posix.join(path1, path2);
-  return p.startsWith('/') ? p : './' + p;
-}
+import type { BuildOptions } from './netlify-build-enhancer.js';
 
 const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
@@ -46,13 +33,7 @@ export default createServerEntryAdapter(
     }
     app.use(middlewareRunner(middlewareModules as never));
     app.use(rscMiddleware({ processRequest }));
-    const postBuildScript = joinPath(
-      import.meta.__WAKU_ORIGINAL_PATH__,
-      '../lib/netlify-post-build.js',
-    );
-    const postBuildArg: Parameters<
-      typeof import('./lib/netlify-post-build.js').default
-    >[0] = {
+    const buildOptions: BuildOptions = {
       distDir: config.distDir,
       privateDir: config.privateDir,
       DIST_PUBLIC,
@@ -61,7 +42,8 @@ export default createServerEntryAdapter(
     return {
       fetch: app.fetch,
       build: processBuild,
-      postBuild: [postBuildScript, postBuildArg],
+      buildOptions,
+      buildEnhancers: ['waku/adapters/netlify-build-enhancer'],
     };
   },
 );

@@ -272,6 +272,15 @@ const routePriorityComparator = (
   const aHasWildcard = aPath.at(-1)?.type === 'wildcard';
   const bHasWildcard = bPath.at(-1)?.type === 'wildcard';
 
+  // Special case: root route (length 0) should come before wildcard routes
+  // This ensures exact matches like "/" are checked before catch-all routes like "/[...notFound]"
+  if (aPathLength === 0 && bHasWildcard) {
+    return -1;
+  }
+  if (bPathLength === 0 && aHasWildcard) {
+    return 1;
+  }
+
   // Compare path lengths first (longer paths are more specific)
   if (aPathLength !== bPathLength) {
     return aPathLength > bPathLength ? -1 : 1;

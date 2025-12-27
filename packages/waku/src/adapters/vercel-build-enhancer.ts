@@ -1,15 +1,7 @@
 import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-export default async function postBuild({
-  assetsDir,
-  distDir,
-  rscBase,
-  privateDir,
-  basePath,
-  DIST_PUBLIC,
-  serverless,
-}: {
+export type BuildOptions = {
   assetsDir: string;
   distDir: string;
   rscBase: string;
@@ -17,7 +9,17 @@ export default async function postBuild({
   basePath: string;
   DIST_PUBLIC: string;
   serverless: boolean;
-}) {
+};
+
+async function postBuild({
+  assetsDir,
+  distDir,
+  rscBase,
+  privateDir,
+  basePath,
+  DIST_PUBLIC,
+  serverless,
+}: BuildOptions) {
   const SERVE_JS = 'serve-vercel.js';
   const serveCode = `
 import { INTERNAL_runFetch } from './server/index.js';
@@ -87,4 +89,13 @@ export default getRequestListener(
     path.join(outputDir, 'config.json'),
     JSON.stringify(configJson, null, 2),
   );
+}
+
+export default async function buildEnhancer(
+  build: (utils: unknown, options: BuildOptions) => Promise<void>,
+): Promise<typeof build> {
+  return async (utils: unknown, options: BuildOptions) => {
+    await build(utils, options);
+    await postBuild(options);
+  };
 }

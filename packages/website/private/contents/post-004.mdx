@@ -1,13 +1,13 @@
 ---
 slug: server-actions-are-here
 title: Server actions are here!
-description: Enjoy full support for React 19’s server actions API.
+description: Enjoy full support for React 19's server actions API.
 author: sophia
 release: v0.21
 date: 2024/08/20
 ---
 
-While Waku already had limited support for server actions, today’s v0.21 release brings full support for the React [server actions](https://react.dev/reference/rsc/server-actions) API. This includes inline server actions created in server components, server actions imported from separate files, and the invocation of server actions via `<form>` element `action` props.
+While Waku already had limited support for server actions, today's v0.21 release brings full support for the React [server actions](https://react.dev/reference/rsc/server-actions) API. This includes inline server actions created in server components, server actions imported from separate files, and the invocation of server actions via `<form>` element `action` props.
 
 Server actions allow you to define and securely execute server-side logic directly from your React components without the need for manually setting up API endpoints, sending `POST` requests to them with `fetch`, or managing pending states and errors.
 
@@ -154,12 +154,12 @@ export const ContactForm = ({ author = 'guest' }) => {
 
 Server actions integrate with many other React APIs such as the [`useTransition`](https://react.dev/reference/react/useTransition) hook for handling pending states, the [`useActionState`](https://react.dev/reference/react/useActionState) hook for accessing returned values, and the [`useOptimistic`](https://react.dev/reference/react/useOptimistic) hook for performing optimistic UI updates.
 
-See the talk [What’s new in React 19?](https://www.youtube.com/watch?v=AJOGzVygGcY) to learn more.
+See the talk [What's new in React 19?](https://www.youtube.com/watch?v=AJOGzVygGcY) to learn more.
 
 ## Summer of Waku
 
-We’re excited to see what you’ll build with Waku now that it fully supports server actions. Enjoy accelerated development of many common use cases such as form submissions, database operations, and much more!
+We're excited to see what you'll build with Waku now that it fully supports server actions. Enjoy accelerated development of many common use cases such as form submissions, database operations, and much more!
 
-As always your feedback in our [GitHub discussions](https://github.com/wakujs/waku/discussions) is much appreciated and you’re welcome to join us in our [Discord server](https://discord.gg/MrQdmzd) to share what you’re building.
+As always your feedback in our [GitHub discussions](https://github.com/wakujs/waku/discussions) is much appreciated and you're welcome to join us in our [Discord server](https://discord.gg/MrQdmzd) to share what you're building.
 
 Please stay tuned for our upcoming v0.22 release featuring API routes, which support even more complex or resource intensive server-side functionalities.

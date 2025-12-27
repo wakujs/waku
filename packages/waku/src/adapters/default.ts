@@ -17,7 +17,7 @@ declare global {
 export default process.env.VERCEL
   ? vercelAdapter
   : process.env.NETLIFY
-      ? netlifyAdapter
-      : process.env.CLOUDFLARE
-    ? cloudflareAdapter
-    : nodeAdapter;
+    ? netlifyAdapter
+    : process.env.CLOUDFLARE || process.env.WORKERS_CI
+      ? cloudflareAdapter
+      : nodeAdapter;

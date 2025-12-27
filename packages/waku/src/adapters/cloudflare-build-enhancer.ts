@@ -1,7 +1,17 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export default async function postBuild({
+export type BuildOptions = {
+  assetsDir: string;
+  distDir: string;
+  rscBase: string;
+  privateDir: string;
+  basePath: string;
+  DIST_PUBLIC: string;
+  serverless: boolean;
+};
+
+async function postBuild({
   // TBD if we should use these
   // assetsDir,
   distDir,
@@ -10,15 +20,7 @@ export default async function postBuild({
   // basePath,
   DIST_PUBLIC,
   serverless,
-}: {
-  assetsDir: string;
-  distDir: string;
-  rscBase: string;
-  privateDir: string;
-  basePath: string;
-  DIST_PUBLIC: string;
-  serverless: boolean;
-}) {
+}: BuildOptions) {
   const mainEntry = path.resolve(
     path.join(distDir, 'server', 'serve-cloudflare.js'),
   );
@@ -61,13 +63,21 @@ ${
   "assets": {
     "binding": "ASSETS",
     "directory": "./${distDir}/${DIST_PUBLIC}",
-    "html_handling": "drop-trailing-slash",
-    "not_found_handling": "404-page"
+    "html_handling": "drop-trailing-slash"
   }
 }
 `,
     );
   }
+}
+
+export default async function buildEnhancer(
+  build: (utils: unknown, options: BuildOptions) => Promise<void>,
+): Promise<typeof build> {
+  return async (utils: unknown, options: BuildOptions) => {
+    await build(utils, options);
+    await postBuild(options);
+  };
 }
 
 const forceRelativePath = (s: string) => (s.startsWith('.') ? s : './' + s);

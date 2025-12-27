@@ -15,7 +15,7 @@ export const Page = async ({ isHome = false, children }: PageProps) => {
     <>
       <Menu />
       <Background />
-      <Fade always={!isHome} />
+      <Fade always={true} />
       <Navigation isHome={isHome} />
       <Main>{children}</Main>
       <Credits />

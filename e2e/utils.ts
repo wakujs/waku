@@ -1,4 +1,4 @@
-import { exec } from 'node:child_process';
+import { exec, spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import {
   cpSync,
@@ -10,14 +10,14 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
+import { createConnection, createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { promisify, stripVTControlCharacters } from 'node:util';
+import { promisify } from 'node:util';
 import { error, info } from '@actions/core';
 import { test as basicTest, expect } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
-import fkill from 'fkill';
 
 const execAsync = promisify(exec);
 
@@ -32,33 +32,65 @@ export type TestOptions = {
   page: Page;
 };
 
-export async function findWakuPort(cp: ChildProcess): Promise<number> {
-  return new Promise((resolve, reject) => {
-    function listener(data: unknown) {
-      const str = stripVTControlCharacters(`${data}`);
-      const match = str.match(/http:\/\/localhost:(\d+)|on port (\d+)/);
-      if (match) {
-        clearTimeout(timer);
-        cp.stdout?.off('data', listener);
-        const port = match[1] || match[2]!;
-        info(`Waku server started at port ${port}`);
-        resolve(parseInt(port, 10));
+export const getAvailablePort = async (): Promise<number> =>
+  new Promise((resolve, reject) => {
+    const server = createServer();
+    server.unref();
+    server.on('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      if (!address || typeof address === 'string') {
+        server.close(() => {
+          reject(new Error('Failed to acquire a free port'));
+        });
+        return;
       }
-    }
-    cp.stdout?.on('data', listener);
-    const timer = setTimeout(() => {
-      cp.stdout?.off('data', listener);
-      reject(new Error('Timeout while waiting for port'));
-    }, 10_000);
+      const { port } = address;
+      server.close(() => resolve(port));
+    });
   });
-}
 
-// Upstream doesn't support ES module
-//  Related: https://github.com/dwyl/terminate/pull/85
-export const terminate = async (port: number) => {
-  await fkill(`:${port}`, {
-    force: true,
+const PORT_WAIT_TIMEOUT_MS = 10_000;
+
+export const waitForPortReady = async (port: number): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const start = Date.now();
+    const tryConnect = () => {
+      const socket = createConnection(port);
+      socket.once('connect', () => {
+        socket.end();
+        resolve();
+      });
+      socket.once('error', () => {
+        socket.destroy();
+        if (Date.now() - start >= PORT_WAIT_TIMEOUT_MS) {
+          reject(new Error(`Timeout while waiting for port ${port}`));
+          return;
+        }
+        setTimeout(tryConnect, 200);
+      });
+    };
+    tryConnect();
   });
+
+export const runShell = (command: string, cwd: string): ChildProcess =>
+  spawn(command, {
+    cwd,
+    shell: true,
+    detached: process.platform !== 'win32',
+    windowsHide: true,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+export const terminate = async (cp: ChildProcess): Promise<void> => {
+  if (cp.exitCode !== null) {
+    return;
+  }
+  if (process.platform === 'win32') {
+    await execAsync(`taskkill /pid ${cp.pid} /t /f`);
+  } else if (cp.pid) {
+    process.kill(-cp.pid, 'SIGTERM');
+  }
 };
 
 const unexpectedErrors: RegExp[] = [
@@ -67,23 +99,29 @@ const unexpectedErrors: RegExp[] = [
   /^Warning: Expected server HTML to contain a matching/,
 ];
 
-const ignoreErrors: RegExp[] = [
+export const ignoreErrors: RegExp[] = [
   /ExperimentalWarning: Custom ESM Loaders is an experimental feature and might change at any time/,
-  /^Error: Unexpected error\s+at ThrowsComponent/,
-  /^Error: Something unexpected happened\s+at ErrorRender/,
-  /^Error: 401 Unauthorized\s+at CheckIfAccessDenied/,
-  /^Error: Not Found\s+at SyncPage/,
-  /^Error: Not Found\s+at AsyncPage/,
-  /^Error: Redirect\s+at createCustomError/,
+  /npm warn Unknown env config "verify-deps-before-run"\. This will stop working in the next major version of npm\./,
+  /^(Error during rendering: )?Error: Unexpected error\s+at ThrowsComponent/,
+  /^(Error during rendering: )?Error: Something unexpected happened\s+at ErrorRender/,
+  /^(Error during rendering: )?Error: 401 Unauthorized\s+at CheckIfAccessDenied/,
+  /^(Error during rendering: )?Error: Not Found\s+at SyncPage/,
+  /^(Error during rendering: )?Error: Not Found\s+at AsyncPage/,
+  /^(Error during rendering: )?Error: Not Found\s+at info/,
+  /^(Error during rendering: )?Error: Not Found\s+at createCustomError/,
+  /^(Error during rendering: )?Error: Redirect\s+at info/,
+  /^(Error during rendering: )?Error: Redirect\s+at createCustomError/,
   // FIXME Is this too general and miss meaningful errors?
-  /^\[Error: An error occurred in the Server Components render./,
+  /^(Error during rendering: )?\[Error: An error occurred in the Server Components render\./,
+  // XXX Is it okay to ignore this error?
+  /^Error: pathname must start with basePath: \/favicon\.ico\s+at removeBase/,
 ];
 
 export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
   cp.stdout?.on('data', (data) => {
     const str = data.toString();
     expect(unexpectedErrors.some((re) => re.test(str))).toBeFalsy();
-    if (ignoreErrors?.some((re) => re.test(str))) {
+    if (ignoreErrors.some((re) => re.test(str))) {
       return;
     }
     info(`(${sourceFile}) stdout: ${str}`);
@@ -92,7 +130,7 @@ export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
   cp.stderr?.on('data', (data) => {
     const str = data.toString();
     expect(unexpectedErrors.some((re) => re.test(str))).toBeFalsy();
-    if (ignoreErrors?.some((re) => re.test(str))) {
+    if (ignoreErrors.some((re) => re.test(str))) {
       return;
     }
     error(`stderr: ${str}`, {
@@ -152,11 +190,13 @@ export const prepareNormalSetup = (fixtureName: string) => {
     if (options?.cmd) {
       cmd = options.cmd;
     }
-    const cp = exec(cmd, { cwd: fixtureDir });
+    const port = await getAvailablePort();
+    // Assuming all commands support -p for port
+    const cp = runShell(`${cmd} -p ${port}`, fixtureDir);
     debugChildProcess(cp, fileURLToPath(import.meta.url));
-    const port = await findWakuPort(cp);
+    await waitForPortReady(port);
     const stopApp = async () => {
-      await terminate(port);
+      await terminate(cp);
     };
     return { port, stopApp, fixtureDir };
   };
@@ -323,12 +363,14 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         cmd = `node ${join(standaloneDir, './node_modules/serve/build/main.js')} dist/public`;
         break;
     }
-    const cp = exec(cmd, { cwd: join(standaloneDir, packageDir) });
+    const port = await getAvailablePort();
+    // Assuming all commands support -p for port
+    const cp = runShell(`${cmd} -p ${port}`, join(standaloneDir, packageDir));
     debugChildProcess(cp, fileURLToPath(import.meta.url));
-    const port = await findWakuPort(cp);
+    await waitForPortReady(port);
     const stopApp = async () => {
       builtModeMap.delete(packageManager);
-      await terminate(port);
+      await terminate(cp);
     };
     return { port, stopApp, standaloneDir };
   };
@@ -336,6 +378,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
 };
 
 export async function waitForHydration(page: Page) {
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForFunction(
     () => {
       const el = document.querySelector('body');
@@ -345,6 +388,6 @@ export async function waitForHydration(page: Page) {
       }
     },
     null,
-    { timeout: 3000 },
+    { timeout: 10_000 },
   );
 }

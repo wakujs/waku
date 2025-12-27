@@ -12,13 +12,13 @@ const startApp = prepareNormalSetup('create-pages');
 
 test.describe(`create-pages`, () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
   let fixtureDir: string;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp, fixtureDir } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp?.();
+    await stopApp();
   });
 
   test('home', async ({ page }) => {
@@ -41,6 +41,7 @@ test.describe(`create-pages`, () => {
 
   test('foo', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
     await page.click("a[href='/foo']");
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
 
@@ -146,7 +147,7 @@ test.describe(`create-pages`, () => {
     await expect(
       page.getByTestId('server-throws').getByTestId('throws-success'),
     ).toHaveText('init');
-    await stopApp?.();
+    await stopApp();
     await page.getByTestId('server-throws').getByTestId('success').click();
     await page.waitForTimeout(500); // need to wait?
     await expect(
@@ -158,7 +159,7 @@ test.describe(`create-pages`, () => {
   test('server page unreachable', async ({ page, mode, browserName }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await stopApp?.();
+    await stopApp();
     await page.click("a[href='/error']");
     // Default router client error boundary is reached
     await expect(page.locator('p')).toContainText(
@@ -231,6 +232,7 @@ test.describe(`create-pages`, () => {
   // https://github.com/wakujs/waku/issues/1437
   test('static long suspense', async ({ page }) => {
     await page.goto(`http://localhost:${port}/static-long-suspense/4`);
+    await waitForHydration(page);
     // no loading state for static
     await expect(page.getByTestId('long-suspense')).toHaveCount(0);
     await expect(page.getByTestId('long-suspense-component')).toHaveCount(2);
@@ -462,12 +464,18 @@ test.describe(`create-pages STATIC`, () => {
   );
 
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
-  test.beforeAll(async () => {
+  let stopApp: () => Promise<void>;
+  test.beforeAll(async ({ mode }) => {
+    if (mode !== 'PRD') {
+      return;
+    }
     ({ port, stopApp } = await startApp('STATIC'));
   });
-  test.afterAll(async () => {
-    await stopApp?.();
+  test.afterAll(async ({ mode }) => {
+    if (mode !== 'PRD') {
+      return;
+    }
+    await stopApp();
   });
 
   test('no ssr', async ({ page }) => {
@@ -493,7 +501,7 @@ test.describe(`create-pages STATIC`, () => {
 
   test('slices with render=static', async ({ page }) => {
     await page.route(/.*\/RSC\/.*/, async (route) => {
-      await new Promise((r) => setTimeout(r, 100));
+      await new Promise((r) => setTimeout(r, 1000));
       await route.continue();
     });
     await page.goto(`http://localhost:${port}/static-slices`);

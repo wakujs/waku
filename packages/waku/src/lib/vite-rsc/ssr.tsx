@@ -1,12 +1,23 @@
 import { type ReactNode, captureOwnerStack, use } from 'react';
 import { createFromReadableStream } from '@vitejs/plugin-rsc/ssr';
+import type { ReactFormState } from 'react-dom/client';
 import { renderToReadableStream } from 'react-dom/server.edge';
 import { injectRSCPayload } from 'rsc-html-stream/server';
 import fallbackHtml from 'virtual:vite-rsc-waku/fallback-html';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
-import type { RenderHtmlStream } from '../utils/render.js';
 import { getBootstrapPreamble } from '../utils/ssr.js';
+import { batchReadableStream } from '../utils/stream.js';
+
+type RenderHtmlStream = (
+  rscStream: ReadableStream<Uint8Array>,
+  rscHtmlStream: ReadableStream<Uint8Array>,
+  options?: {
+    rscPath?: string | undefined;
+    formState?: ReactFormState | undefined;
+    nonce?: string | undefined;
+  },
+) => Promise<{ stream: ReadableStream; status: number | undefined }>;
 
 type RscElementsPayload = Record<string, unknown>;
 type RscHtmlPayload = ReactNode;
@@ -89,7 +100,10 @@ export const renderHtmlStream: RenderHtmlStream = async (
   }
   let responseStream: ReadableStream<Uint8Array> = htmlStream;
   responseStream = responseStream.pipeThrough(
-    injectRSCPayload(stream2, options?.nonce ? { nonce: options?.nonce } : {}),
+    injectRSCPayload(
+      batchReadableStream(stream2),
+      options?.nonce ? { nonce: options?.nonce } : {},
+    ),
   );
 
   return { stream: responseStream, status };

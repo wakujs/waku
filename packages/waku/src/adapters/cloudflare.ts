@@ -1,27 +1,14 @@
 import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
-import type { ImportGlobFunction } from 'vite/types/importGlob.d.ts';
 import {
   unstable_constants as constants,
   unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
-import { joinPath as joinPathOrig } from '../lib/utils/path.js';
-
-declare global {
-  interface ImportMeta {
-    glob: ImportGlobFunction;
-    readonly __WAKU_ORIGINAL_PATH__: string;
-  }
-}
-
-function joinPath(path1: string, path2: string) {
-  const p = joinPathOrig(path1, path2);
-  return p.startsWith('/') ? p : './' + p;
-}
+import type { BuildOptions } from './cloudflare-build-enhancer.js';
 
 const { DIST_PUBLIC } = constants;
-const { rscMiddleware, middlewareRunner } = honoMiddleware;
+const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 function isWranglerDev(req: Request): boolean {
   // This header seems to only be set for production cloudflare workers
@@ -73,19 +60,14 @@ export default createServerEntryAdapter(
       }
       return c.text('404 Not Found', 404);
     });
+    app.use(contextMiddleware());
     app.use(cloudflareMiddleware());
     for (const middlewareFn of middlewareFns) {
       app.use(middlewareFn());
     }
     app.use(middlewareRunner(middlewareModules as never));
     app.use(rscMiddleware({ processRequest }));
-    const postBuildScript = joinPath(
-      import.meta.__WAKU_ORIGINAL_PATH__,
-      '../lib/cloudflare-post-build.js',
-    );
-    const postBuildArg: Parameters<
-      typeof import('./lib/cloudflare-post-build.js').default
-    >[0] = {
+    const buildOptions: BuildOptions = {
       assetsDir: options?.assetsDir || 'assets',
       distDir: config.distDir,
       privateDir: config.privateDir,
@@ -116,7 +98,8 @@ export default createServerEntryAdapter(
         return app.fetch(req);
       },
       build: processBuild,
-      postBuild: [postBuildScript, postBuildArg],
+      buildOptions,
+      buildEnhancers: ['waku/adapters/cloudflare-build-enhancer'],
     };
   },
 );

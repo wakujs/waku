@@ -1,17 +1,19 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-export default async function postBuild({
-  distDir,
-  privateDir,
-  DIST_PUBLIC,
-  serverless,
-}: {
+export type BuildOptions = {
   distDir: string;
   privateDir: string;
   DIST_PUBLIC: string;
   serverless: boolean;
-}) {
+};
+
+async function postBuild({
+  distDir,
+  privateDir,
+  DIST_PUBLIC,
+  serverless,
+}: BuildOptions) {
   if (serverless) {
     const functionsDir = path.resolve('netlify-functions');
     mkdirSync(functionsDir, {
@@ -46,4 +48,13 @@ export const config = {
 `,
     );
   }
+}
+
+export default async function buildEnhancer(
+  build: (utils: unknown, options: BuildOptions) => Promise<void>,
+): Promise<typeof build> {
+  return async (utils: unknown, options: BuildOptions) => {
+    await build(utils, options);
+    await postBuild(options);
+  };
 }
