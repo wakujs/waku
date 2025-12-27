@@ -10,9 +10,17 @@ export default async function HomePage() {
       <h1 className="text-4xl font-bold tracking-tight">{data.headline}</h1>
       <p>{data.body}</p>
       <Counter />
-      <Link to="/about" className="mt-4 inline-block underline">
-        About page
-      </Link>
+      <div className="flex gap-2">
+        <Link to="/about" className="mt-4 inline-block underline">
+          About page
+        </Link>
+        <Link to="/long" className="mt-4 inline-block underline">
+          Long page
+        </Link>
+        <Link to="/long#seventy-five" className="mt-4 inline-block underline">
+          Long page 75%
+        </Link>
+      </div>
     </div>
   );
 }

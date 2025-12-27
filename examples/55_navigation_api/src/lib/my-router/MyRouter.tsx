@@ -914,11 +914,23 @@ const InnerRouter = ({
   // https://github.com/facebook/react/blob/main/fixtures/view-transition/src/components/App.js
   useEffect(() => {
     const callback = (event: NavigateEvent) => {
-      if (!event.canIntercept) {
+      if (
+        !event.canIntercept ||
+        // If this is just a hashChange,
+        // just let the browser handle scrolling to the content.
+        event.hashChange ||
+        // If this is a download,
+        // let the browser perform the download.
+        event.downloadRequest ||
+        // If this is a form submission,
+        // let that go to the server.
+        event.formData
+      ) {
         return;
       }
       const url = new URL(event.destination.url);
       const route = parseRoute(url);
+      console.log(event);
       const navigationType = event.navigationType;
       const previousIndex = window.navigation.currentEntry.index;
       event.intercept({
@@ -947,6 +959,7 @@ const InnerRouter = ({
           // });
           return;
         },
+        scroll: 'after-transition',
       });
     };
     window.navigation.addEventListener('navigate', callback);
