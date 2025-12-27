@@ -4,7 +4,6 @@ import { Router } from './lib/my-router/MyRouter';
 
 const rootElement = (
   <StrictMode>
-    {/* <h1 suppressHydrationWarning>Fooooo</h1> */}
     <Router />
   </StrictMode>
 );
