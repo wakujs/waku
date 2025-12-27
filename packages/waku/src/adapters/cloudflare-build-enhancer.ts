@@ -1,19 +1,28 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export type BuildOptions = { distDir: string };
+export type BuildOptions = {
+  assetsDir: string;
+  distDir: string;
+  rscBase: string;
+  privateDir: string;
+  basePath: string;
+  DIST_PUBLIC: string;
+  serverless: boolean;
+};
 
-async function postBuild({ distDir }: BuildOptions) {
+async function postBuild({ distDir, DIST_PUBLIC, serverless }: BuildOptions) {
   const mainEntry = path.resolve(
     path.join(distDir, 'server', 'serve-cloudflare.js'),
   );
   fs.writeFileSync(
     mainEntry,
     `\
-import { INTERNAL_runFetch } from './index.js';
+import { INTERNAL_runFetch, unstable_serverEntry as serverEntry } from './index.js';
 
 export default {
-  fetch: (request, env, ctx) => INTERNAL_runFetch(env, request, env, ctx),
+  ...(serverEntry.handlers ? serverEntry.handlers : {}),
+  fetch: (request, env, ...args) => INTERNAL_runFetch(env, request, env, ...args),
 };
 `,
   );
@@ -31,18 +40,25 @@ export default {
       `\
 {
   "name": "waku-project",
-  "main": ${JSON.stringify(forceRelativePath(path.relative(process.cwd(), mainEntry)))},
-  // https://developers.cloudflare.com/workers/platform/compatibility-dates
-  "compatibility_date": "2024-11-11",
+  ${
+    serverless
+      ? `"main": ${JSON.stringify(forceRelativePath(path.relative(process.cwd(), mainEntry)))},
   // nodejs_als is required for Waku server-side request context
   // It can be removed if only building static pages
   "compatibility_flags": ["nodejs_als"],
-  // https://developers.cloudflare.com/workers/static-assets/binding/
+  `
+      : ''
+  }// https://developers.cloudflare.com/workers/platform/compatibility-dates
+  "compatibility_date": "2025-11-17",
   "assets": {
+    ${
+      serverless
+        ? `// https://developers.cloudflare.com/workers/static-assets/binding/
     "binding": "ASSETS",
-    "directory": "./dist/public",
-    "html_handling": "drop-trailing-slash",
-    "not_found_handling": "404-page"
+    `
+        : ''
+    }"directory": "./${distDir}/${DIST_PUBLIC}",
+    "html_handling": "drop-trailing-slash"
   }
 }
 `,
