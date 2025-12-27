@@ -14,5 +14,5 @@
     "exactOptionalPropertyTypes": true,
     "types": ["./worker-configuration.d.ts"],
     "jsx": "react-jsx"
-  },
+  }
 }
