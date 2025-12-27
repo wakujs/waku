@@ -1,11 +1,11 @@
-/// <reference types="vite/client" />
-
 import { env, waitUntil } from 'cloudflare:workers'; // eslint-disable-line import/no-unresolved
+import { contextStorage } from 'hono/context-storage';
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/cloudflare';
 
 const adapterExports = adapter(
   fsRouter(import.meta.glob('./**/*.tsx', { base: './pages' })),
+  { middlewareFns: [contextStorage] },
 );
 
 export default {

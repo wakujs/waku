@@ -8,7 +8,7 @@ import {
 import type { BuildOptions } from './cloudflare-build-enhancer.js';
 
 const { DIST_PUBLIC } = constants;
-const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
+const { rscMiddleware, middlewareRunner } = honoMiddleware;
 
 function isWranglerDev(req: Request): boolean {
   // This header seems to only be set for production cloudflare workers
@@ -60,7 +60,6 @@ export default createServerEntryAdapter(
       }
       return c.text('404 Not Found', 404);
     });
-    app.use(contextMiddleware());
     app.use(cloudflareMiddleware());
     for (const middlewareFn of middlewareFns) {
       app.use(middlewareFn());
