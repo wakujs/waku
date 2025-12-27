@@ -15,32 +15,23 @@ function isWranglerDev(req: Request): boolean {
   return !req.headers.get('cf-visitor');
 }
 
-// Workaround https://github.com/cloudflare/workers-sdk/issues/6577
-export const cloudflareMiddleware = (): MiddlewareHandler => {
-  return async (c, next) => {
-    await next();
-    if (!import.meta.env?.PROD) {
-      return;
-    }
-    if (!isWranglerDev(c.req.raw)) {
-      return;
-    }
-    const contentType = c.res.headers.get('content-type');
-    if (
-      !contentType ||
-      contentType.includes('text/html') ||
-      contentType.includes('text/plain')
-    ) {
-      const headers = new Headers(c.res.headers);
-      headers.set('content-encoding', 'Identity');
-      c.res = new Response(c.res.body, {
-        status: c.res.status,
-        statusText: c.res.statusText,
-        headers: c.res.headers,
-      });
-    }
-  };
-};
+function removeGzipEncoding(res: Response): Response {
+  const contentType = res.headers.get('content-type');
+  if (
+    !contentType ||
+    contentType.includes('text/html') ||
+    contentType.includes('text/plain')
+  ) {
+    const headers = new Headers(res.headers);
+    headers.set('content-encoding', 'Identity');
+    return new Response(res.body, {
+      status: res.status,
+      statusText: res.statusText,
+      headers,
+    });
+  }
+  return res;
+}
 
 export default createServerEntryAdapter(
   (
@@ -60,7 +51,6 @@ export default createServerEntryAdapter(
       }
       return c.text('404 Not Found', 404);
     });
-    app.use(cloudflareMiddleware());
     for (const middlewareFn of middlewareFns) {
       app.use(middlewareFn());
     }
@@ -86,15 +76,26 @@ export default createServerEntryAdapter(
         } catch {
           // Not in a Cloudflare environment
         }
+        let res: Response | Promise<Response>;
         if (cloudflareContext) {
           const { env, waitUntil, passThroughOnException } = cloudflareContext;
-          return app.fetch(req, env, {
+          res = app.fetch(req, env, {
             waitUntil,
             passThroughOnException,
             props: undefined,
           });
+        } else {
+          res = app.fetch(req);
         }
-        return app.fetch(req);
+        // Workaround https://github.com/cloudflare/workers-sdk/issues/6577
+        if (import.meta.env?.PROD && isWranglerDev(req)) {
+          if ("then" in res) {
+            res = res.then((res) => removeGzipEncoding(res));
+          } else {
+            res = removeGzipEncoding(res);
+          }
+        }
+        return res;
       },
       build: processBuild,
       buildOptions,

@@ -43,18 +43,18 @@ export default {
   ${
     serverless
       ? `"main": ${JSON.stringify(forceRelativePath(path.relative(process.cwd(), mainEntry)))},
-  // https://developers.cloudflare.com/workers/platform/compatibility-dates
-  "compatibility_date": "2025-11-17",
   // nodejs_als is required for Waku server-side request context
   // It can be removed if only building static pages
   "compatibility_flags": ["nodejs_als"],
-  // https://developers.cloudflare.com/workers/static-assets/binding/
   `
       : ''
-  }"assets": {
+  }// https://developers.cloudflare.com/workers/platform/compatibility-dates
+  "compatibility_date": "2025-11-17",
+  "assets": {
     ${
       serverless
-        ? `"binding": "ASSETS",
+        ? `// https://developers.cloudflare.com/workers/static-assets/binding/
+    "binding": "ASSETS",
     `
         : ''
     }"directory": "./${distDir}/${DIST_PUBLIC}",
