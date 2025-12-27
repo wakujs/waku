@@ -1,4 +1,4 @@
-import { Link } from 'waku';
+import { Link } from '../lib/my-router/MyRouter.tsx';
 
 export const Header = () => {
   return (
