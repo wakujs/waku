@@ -93,7 +93,8 @@ const getData = async () => {
       }, 5000);
     }),
   );
-  const userId = req.url.searchParams.get('userId');
+  const url = new URL(req.url);
+  const userId = url.searchParams.get('userId');
   if (!userId) {
     return null;
   }
