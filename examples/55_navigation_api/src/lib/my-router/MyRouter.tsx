@@ -935,29 +935,31 @@ const InnerRouter = ({
       const previousIndex = window.navigation.currentEntry.index;
       event.intercept({
         async precommitHandler() {
-          // startTransition(() => {
-          // addTransitionType('navigation-' + navigationType);
-          if (navigationType === 'traverse') {
-            // For traverse types it's useful to distinguish going back or forward.
-            const nextIndex = event.destination.index;
-            if (nextIndex > previousIndex) {
-              // addTransitionType('navigation-forward');
-            } else if (nextIndex < previousIndex) {
-              // addTransitionType('navigation-back');
+          startTransition(async () => {
+            // addTransitionType('navigation-' + navigationType);
+            if (navigationType === 'traverse') {
+              // For traverse types it's useful to distinguish going back or forward.
+              const nextIndex = event.destination.index;
+              if (nextIndex > previousIndex) {
+                // addTransitionType('navigation-forward');
+              } else if (nextIndex < previousIndex) {
+                // addTransitionType('navigation-back');
+              }
+              await changeRoute(route, {
+                shouldScroll: false,
+                unstable_startTransition: startTransition,
+              }).catch((err) => {
+                console.log('Error while navigating back:', err);
+              });
+            } else {
+              prefetchRoute(route);
+              await changeRoute(route, {
+                shouldScroll: false,
+                unstable_startTransition: startTransition,
+              });
             }
-            await changeRoute(route, {
-              shouldScroll: false,
-            }).catch((err) => {
-              console.log('Error while navigating back:', err);
-            });
-          } else {
-            prefetchRoute(route);
-            await changeRoute(route, {
-              shouldScroll: false,
-            });
-            await flushAsync();
-          }
-          // });
+          });
+          await flushAsync();
           return;
         },
         scroll: 'after-transition',
