@@ -93,7 +93,7 @@ const getData = async () => {
       }, 5000);
     }),
   );
-  const userId = req.query('userId');
+  const userId = req.url.searchParams.get('userId');
   if (!userId) {
     return null;
   }
