@@ -82,10 +82,6 @@ Import from `cloudflare:workers` to access Cloudflare Workers bindings such as D
 import { env, waitUntil } from 'cloudflare:workers'; // eslint-disable-line import/no-unresolved
 
 const getData = async () => {
-  const c = getHonoContext<{ Bindings: Env }>();
-  if (!c) {
-    return null;
-  }
   waitUntil(
     new Promise<void>((resolve) => {
       console.log('Waiting for 5 seconds');
