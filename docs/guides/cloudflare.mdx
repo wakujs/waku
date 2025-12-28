@@ -34,7 +34,7 @@ export default {
   ...adapterExports,
   fetch: (req: Request): Response | Promise<Response> => {
     return adapterExports.fetch(req, env, { waitUntil });
-  }
+  },
 };
 ```
 
