@@ -955,6 +955,7 @@ const InnerRouter = ({
             await changeRoute(route, {
               shouldScroll: false,
             });
+            await flushAsync();
           }
           // });
           return;
@@ -967,6 +968,21 @@ const InnerRouter = ({
       window.navigation.removeEventListener('navigate', callback);
     };
   }, [changeRoute]);
+
+  // run after new route DOM mounted
+  useEffect(() => {
+    resolver.current?.(undefined);
+    resolver.current = null;
+  }, [route]);
+
+  const resolver = useRef(null as ((value: undefined) => void) | null);
+
+  async function flushAsync() {
+    const deferred = Promise.withResolvers();
+    resolver.current = deferred.resolve;
+    await deferred.promise;
+    return;
+  }
 
   const routeElement =
     err !== null ? (
