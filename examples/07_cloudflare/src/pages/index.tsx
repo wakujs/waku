@@ -2,9 +2,11 @@ import { Suspense } from 'react';
 import { env, waitUntil } from 'cloudflare:workers'; // eslint-disable-line import/no-unresolved
 import { Link } from 'waku';
 import { Counter } from '../components/counter';
+import { unstable_getContext as getContext } from 'waku/server';
 
 export default async function HomePage() {
   const data = await getData();
+  const { req } = getContext();
 
   // Example: invoking waitUntil() on the Cloudflare executionCtx.
   // https://hono.dev/docs/api/context#executionctx

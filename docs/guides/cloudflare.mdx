@@ -13,7 +13,7 @@ Create your project with `npm create waku@latest -- --template 07_cloudflare` to
 - `npm run dev`: start the development server
 - `npm run build`: build for Cloudflare Workers
 - `npx wrangler dev`: test your build locally
-- `npx wrangler deploy` deploy it to Cloudflare Workers.
+- `npx wrangler deploy`: deploy it to Cloudflare Workers.
 
 ## Building Waku For Cloudflare Workers
 
@@ -80,8 +80,10 @@ Import from `cloudflare:workers` to access Cloudflare Workers bindings such as D
 
 ```ts
 import { env, waitUntil } from 'cloudflare:workers'; // eslint-disable-line import/no-unresolved
+import { unstable_getContext as getContext } from 'waku/server';
 
 const getData = async () => {
+  const { req } = getContext();
   waitUntil(
     new Promise<void>((resolve) => {
       console.log('Waiting for 5 seconds');
@@ -91,7 +93,7 @@ const getData = async () => {
       }, 5000);
     }),
   );
-  const userId = c.req.query('userId');
+  const userId = req.query('userId');
   if (!userId) {
     return null;
   }
@@ -140,7 +142,7 @@ export default defineConfig({
 
 When Waku builds for Cloudflare, it outputs the worker function assets into the dist/server folder and outputs static assets into the dist/public folder.
 
-A configuration in the `wrangler.jsonc` file tells Cloudflare to route requests to that assets folder first and then fallback to handle the request with the worker.
+A configuration in the `wrangler.jsonc` file tells Cloudflare to route requests to that assets folder first and then fall back to handle the request with the worker.
 
 ```json
 {
