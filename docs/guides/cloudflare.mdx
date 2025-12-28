@@ -207,6 +207,18 @@ To do this, create a `wrangler.jsonc` file with the following content:
 }
 ```
 
+and a `src/waku.server.ts` file that uses the Cloudflare adapter with the `static: true` option:
+
+```ts
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/cloudflare';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.tsx', { base: './pages' })),
+  { static: true },
+);
+```
+
 You must also make sure that all of your pages and layouts are defined as static by exporting a getConfig function that specifies `render: 'static'`. For example, in `./src/pages/index.tsx`:
 
 ```ts
