@@ -1,4 +1,4 @@
-import { Link } from '../lib/my-router/MyRouter.tsx';
+import { Link } from '../lib/my-router/MyRouter';
 
 export default async function HomePage() {
   return (

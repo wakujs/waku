@@ -1,4 +1,4 @@
-import { Link } from '../lib/my-router/MyRouter.tsx';
+import { Link } from '../lib/my-router/MyRouter';
 
 export const Header = () => {
   return (
