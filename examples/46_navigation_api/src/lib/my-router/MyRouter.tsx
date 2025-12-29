@@ -21,8 +21,6 @@ import type {
   RefObject,
   TransitionFunction,
 } from 'react';
-import { getErrorInfo } from './custom-errors.js';
-import { addBase, removeBase } from './path.js';
 import {
   Root,
   Slot,
@@ -41,6 +39,8 @@ import {
   encodeSliceId,
 } from './common.js';
 import type { RouteProps } from './common.js';
+import { getErrorInfo } from './custom-errors.js';
+import { addBase, removeBase } from './path.js';
 
 type AllowPathDecorators<Path extends string> = Path extends unknown
   ? Path | `${Path}?${string}` | `${Path}#${string}`
@@ -90,10 +90,6 @@ const parseRouteFromLocation = (): RouteProps => {
   }
   return parseRoute(new URL(window.location.href));
 };
-
-const isAltClick = (event: MouseEvent<HTMLAnchorElement>) =>
-  event.button !== 0 ||
-  !!(event.metaKey || event.altKey || event.ctrlKey || event.shiftKey);
 
 let savedRscParams: [query: string, rscParams: URLSearchParams] | undefined;
 
@@ -304,32 +300,21 @@ export type LinkProps = {
 export function Link({
   to,
   children,
-  scroll,
   unstable_pending,
   unstable_notPending,
   unstable_prefetchOnEnter,
   unstable_prefetchOnView,
-  unstable_startTransition,
   ref: refProp,
   ...props
 }: LinkProps): ReactElement {
   to = addBase(to, import.meta.env.WAKU_CONFIG_BASE_PATH);
   const router = useContext(RouterContext);
-  const changeRoute = router
-    ? router.changeRoute
-    : () => {
-        throw new Error('Missing Router');
-      };
   const prefetchRoute = router
     ? router.prefetchRoute
     : () => {
         throw new Error('Missing Router');
       };
-  const [isPending, startTransition] = useTransition();
-  const startTransitionFn =
-    unstable_startTransition ||
-    ((unstable_pending || unstable_notPending) && startTransition) ||
-    ((fn: TransitionFunction) => fn());
+  const [isPending, _startTransition] = useTransition();
   const [ref, setRef] = useSharedRef<HTMLAnchorElement>(refProp);
 
   useEffect(() => {
@@ -655,6 +640,7 @@ const InnerRouter = ({
   initialRoute: RouteProps;
   httpStatus: string | undefined;
 }) => {
+  // @ts-expect-error type from vite is missing
   if (import.meta.hot) {
     const refetchRoute = () => {
       staticPathSetRef.current.clear();
@@ -664,15 +650,21 @@ const InnerRouter = ({
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       refetch(rscPath, rscParams);
     };
+    // @ts-expect-error type for globalThis is missing
     globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= [];
+    // @ts-expect-error type for globalThis is missing
     const index = globalThis.__WAKU_RSC_RELOAD_LISTENERS__.indexOf(
+      // @ts-expect-error type for globalThis is missing
       globalThis.__WAKU_REFETCH_ROUTE__!,
     );
     if (index !== -1) {
+      // @ts-expect-error type for globalThis is missing
       globalThis.__WAKU_RSC_RELOAD_LISTENERS__.splice(index, 1, refetchRoute);
     } else {
+      // @ts-expect-error type for globalThis is missing
       globalThis.__WAKU_RSC_RELOAD_LISTENERS__.unshift(refetchRoute);
     }
+    // @ts-expect-error type for globalThis is missing
     globalThis.__WAKU_REFETCH_ROUTE__ = refetchRoute;
   }
 
@@ -932,8 +924,10 @@ const InnerRouter = ({
       const route = parseRoute(url);
       console.log(event);
       const navigationType = event.navigationType;
+      // @ts-expect-error not supported yet
       const previousIndex = window.navigation.currentEntry.index;
       event.intercept({
+        // @ts-expect-error not supported yet
         async precommitHandler() {
           startTransition(async () => {
             // addTransitionType('navigation-' + navigationType);
@@ -969,7 +963,7 @@ const InnerRouter = ({
     return () => {
       window.navigation.removeEventListener('navigate', callback);
     };
-  }, [changeRoute]);
+  }, [changeRoute, prefetchRoute]);
 
   // run after new route DOM mounted
   useEffect(() => {

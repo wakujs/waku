@@ -1,6 +1,7 @@
 import type {
   PagePath,
   PropsForPages,
+  // @ts-expect-error type from inferred is missing
 } from './create-pages-utils/inferred-path-types.js';
 
 // PathsForPages collects the paths from the `createPages` result type
@@ -8,6 +9,7 @@ import type {
 export type {
   PathsForPages,
   GetConfigResponse,
+  // @ts-expect-error type from inferred is missing
 } from './create-pages-utils/inferred-path-types.js';
 
 export interface RouteConfig {

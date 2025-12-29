@@ -1,5 +1,5 @@
-import { Link } from '../lib/my-router/MyRouter.tsx';
 import { Counter } from '../components/counter';
+import { Link } from '../lib/my-router/MyRouter';
 
 export default async function HomePage() {
   const data = await getData();
