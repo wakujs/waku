@@ -39,7 +39,7 @@ export const fileURLToFilePath = (fileURL: string) => {
 export const joinPath = (...paths: string[]) => {
   const isAbsolute = paths[0]?.startsWith('/');
   const items = ([] as string[]).concat(
-    ...paths.map((path) => path.split('/'))
+    ...paths.map((path) => path.split('/')),
   );
   const stack: string[] = [];
   for (const item of items) {
@@ -149,7 +149,7 @@ export const pathSpecAsString = (path: PathSpec) => {
  */
 export const getPathMapping = (
   pathSpec: PathSpec,
-  pathname: string
+  pathname: string,
 ): Record<string, string | string[]> | null => {
   const actual = pathname.split('/').filter(Boolean);
   if (pathSpec.length > actual.length) {
@@ -209,7 +209,7 @@ export const getPathMapping = (
   if (wildcardName) {
     mapping[wildcardName] = actual.slice(
       wildcardStartIndex,
-      wildcardEndIndex + 1
+      wildcardEndIndex + 1,
     );
   }
   return mapping;
