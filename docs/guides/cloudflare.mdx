@@ -32,12 +32,12 @@ export default adapter(
 );
 ```
 
-> The Waku starter template for Cloudflare Workers includes an example `./src/waku.server.ts` file and sets the **`WORKERS_CI`** environment variable in the build script in `package.json`:
+> The Waku starter template for Cloudflare Workers includes an example `./src/waku.server.ts` file and sets the **`CLOUDFLARE`** environment variable in the build script in `package.json`:
 
 ```json
 {
   "scripts": {
-    "build": "WORKERS_CI=1 waku build"
+    "build": "CLOUDFLARE=1 waku build"
   }
 }
 ```
