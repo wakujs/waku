@@ -8,8 +8,6 @@ declare module 'virtual:vite-rsc-waku/server-entry' {
 
 declare module 'virtual:vite-rsc-waku/client-entry' {}
 
-declare module 'virtual:vite-rsc-waku/platform-entry' {}
-
 declare module 'virtual:vite-rsc-waku/build-metadata' {
   export const buildMetadata: Map<string, string>;
 }

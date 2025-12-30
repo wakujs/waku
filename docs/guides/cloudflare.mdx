@@ -19,25 +19,17 @@ Then use these commands:
 
 ## Building Waku For Cloudflare Workers
 
-To build a Waku app for Cloudflare Workers, simply set the `CLOUDFLARE` or `WORKERS_CI` environment variable to `1` and run `waku build`. Waku will use the default Cloudflare Workers adapter. You can also use a `waku.server.ts` that imports from 'waku/adapters/cloudflare'.
+To build a Waku app for Cloudflare Workers, simply set the `CLOUDFLARE` or `WORKERS_CI` environment variable to `1` and run `waku build`. Waku will use its adapter for Cloudflare Workers. Alternatively, you can import 'waku/adapters/cloudflare' in your `src/waku.server.ts` file.
 
 `./src/waku.server.ts`:
 
 ```ts
-import { env, waitUntil } from 'cloudflare:workers'; // eslint-disable-line import/no-unresolved
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/cloudflare';
 
-const adapterExports = adapter(
+export default adapter(
   fsRouter(import.meta.glob('./**/*.tsx', { base: './pages' })),
 );
-
-export default {
-  ...adapterExports,
-  fetch: (req: Request): Response | Promise<Response> => {
-    return adapterExports.fetch(req, env, { waitUntil });
-  },
-};
 ```
 
 > The Waku starter template for Cloudflare Workers includes an example `./src/waku.server.ts` file and sets the **`WORKERS_CI`** environment variable in the build script in `package.json`:
