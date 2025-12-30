@@ -554,7 +554,7 @@ PageProps<'/shop/[category]/[product]'>;
 
 ### Layouts
 
-Layouts are created with a special `_layout.tsx` file name and wrap the entire route and its descendents. They must accept a `children` prop of type `ReactNode`. While not required, you will typically want at least a root layout.
+Layouts are created with a special `_layout.tsx` file name and wrap the entire route and its descendants. They must accept a `children` prop of type `ReactNode`. While not required, you will typically want at least a root layout.
 
 #### Root layout
 
