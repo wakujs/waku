@@ -87,7 +87,7 @@ async function startDevServer(
   }
 }
 
-export async function cli(
+export async function runCommand(
   cmd: 'dev' | 'build' | 'start',
   flags: { host?: string; port?: string },
 ) {
