@@ -1,6 +1,7 @@
 export { allowServerPlugin as unstable_allowServerPlugin } from './lib/vite-plugins/allow-server.js';
 export { buildMetadataPlugin as unstable_buildMetadataPlugin } from './lib/vite-plugins/build-metadata.js';
 export { defaultAdapterPlugin as unstable_defaultAdapterPlugin } from './lib/vite-plugins/default-adapter.js';
+export { extraPlugins as unstable_extraPlugins } from './lib/vite-plugins/extra-plugins.js';
 export { fallbackHtmlPlugin as unstable_fallbackHtmlPlugin } from './lib/vite-plugins/fallback-html.js';
 export { fsRouterTypegenPlugin as unstable_fsRouterTypegenPlugin } from './lib/vite-plugins/fs-router-typegen.js';
 export { mainPlugin as unstable_mainPlugin } from './lib/vite-plugins/main.js';
