@@ -2,7 +2,6 @@
 
 import type { ReactNode } from 'react';
 import { ServerStyleSheet, StyleSheetManager } from 'styled-components';
-import { insertServerHTML } from '../server-html/client';
 
 export const StyledComponentsRegistry = ({
   children,
@@ -12,11 +11,15 @@ export const StyledComponentsRegistry = ({
   if (import.meta.env.SSR) {
     const sheet = new ServerStyleSheet();
 
-    insertServerHTML(() => {
-      const styles = sheet.getStyleTags();
-      sheet.instance.clearTag();
-      return styles;
-    });
+    import('../server-html/context')
+      .then(({ insertServerHTML }) => {
+        insertServerHTML(() => {
+          const styles = sheet.getStyleTags();
+          sheet.instance.clearTag();
+          return styles;
+        });
+      })
+      .catch(() => {});
 
     return (
       <StyleSheetManager sheet={sheet.instance}>{children}</StyleSheetManager>
