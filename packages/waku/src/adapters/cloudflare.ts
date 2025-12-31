@@ -38,6 +38,7 @@ export default createServerEntryAdapter(
     { processRequest, processBuild, config, notFoundHtml },
     options?: {
       static?: boolean;
+      handlers?: Record<string, unknown>;
       assetsDir?: string;
       middlewareFns?: (() => MiddlewareHandler)[];
       middlewareModules?: Record<string, () => Promise<unknown>>;
@@ -98,6 +99,7 @@ export default createServerEntryAdapter(
         }
         return res;
       },
+      handlers: options?.handlers,
       build: processBuild,
       buildOptions,
       buildEnhancers: ['waku/adapters/cloudflare-build-enhancer'],

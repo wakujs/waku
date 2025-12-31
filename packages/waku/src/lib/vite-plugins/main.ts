@@ -17,11 +17,6 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 export function mainPlugin(config: Required<Config>): Plugin {
   return {
     name: 'waku:vite-plugins:main',
-    resolveId(source) {
-      if (source === 'cloudflare:workers') {
-        return { id: source, external: true };
-      }
-    },
     async config(_config) {
       let viteRscConfig: UserConfig = {
         base: config.basePath,

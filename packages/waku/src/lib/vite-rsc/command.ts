@@ -8,6 +8,7 @@ import type { Config } from '../../config.js';
 import { resolveConfig } from '../utils/config.js';
 import { allowServerPlugin } from '../vite-plugins/allow-server.js';
 import { buildMetadataPlugin } from '../vite-plugins/build-metadata.js';
+import { cloudflarePlugin } from '../vite-plugins/cloudflare.js';
 import { defaultAdapterPlugin } from '../vite-plugins/default-adapter.js';
 import { extraPlugins } from '../vite-plugins/extra-plugins.js';
 import { fallbackHtmlPlugin } from '../vite-plugins/fallback-html.js';
@@ -34,6 +35,7 @@ function rscPlugins(config: Required<Config>) {
   return [
     extraPlugins(config),
     allowServerPlugin(), // apply `allowServer` DCE before "use client" transform
+    cloudflarePlugin(),
     rsc({
       serverHandler: false,
       keepUseCientProxy: true,

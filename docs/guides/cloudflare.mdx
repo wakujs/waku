@@ -68,7 +68,7 @@ Note that the latest `nodejs_compat` mocks the Node `fs` module. Cloudflare does
 
 You can run `npx wrangler types` to generate a `worker-configuration.d.ts` file based on the settings in your `wrangler.jsonc`. This defines a global `Env` interface with your bindings. In the [Cloudflare example in the Waku GitHub repository](https://github.com/wakujs/waku/tree/main/examples/07_cloudflare), a package.json script is included to run this command and update the types: `pnpm run cf-typegen`. To ensure that your types are always up-to-date, make sure to run it after any changes to your `wrangler.jsonc` config file.
 
-## Accessing Cloudflare Workers Bindings
+## Accessing Cloudflare Bindings, Execution Context, and Request/Response Objects
 
 Import from `cloudflare:workers` to access Cloudflare Workers bindings such as environment variables, D1 databases and KV namespaces. See [Cloudflare's documentation on Workers bindings](https://developers.cloudflare.com/workers/runtime-apis/bindings/) for more information.
 
@@ -133,6 +133,35 @@ export default defineConfig({
     ],
   },
 });
+```
+
+## Additional Handlers
+
+Waku supports defined additional [handlers](https://developers.cloudflare.com/workers/runtime-apis/handlers/) for your worker.
+Pass them to the adapter options in your waku.server.ts file:
+
+```ts
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/cloudflare';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.tsx', { base: './pages' })),
+  {
+    handlers: {
+      // Define additional Cloudflare Workers handlers here
+      // https://developers.cloudflare.com/workers/runtime-apis/handlers/
+      // async queue(
+      //   batch: MessageBatch,
+      //   _env: Env,
+      //   _ctx: ExecutionContext,
+      // ): Promise<void> {
+      //   for (const message of batch.messages) {
+      //     console.log('Received', message);
+      //   }
+      // },
+    } satisfies ExportedHandler<Env>,
+  },
+);
 ```
 
 ## Static vs. Dynamic Routing and Fetching Assets
