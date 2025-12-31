@@ -142,12 +142,12 @@ const toProcessBuild =
   };
 
 export const createServerEntryAdapter: CreateServerEntryAdapter =
-  (fn) =>
-  ({ handleRequest, handleBuild }, options) => {
-    const processRequest = toProcessRequest(handleRequest);
-    const processBuild = toProcessBuild(handleBuild);
+  (fn) => (handlers, options) => {
+    const processRequest = toProcessRequest(handlers.handleRequest);
+    const processBuild = toProcessBuild(handlers.handleBuild);
     return fn(
       {
+        handlers,
         processRequest,
         processBuild,
         config,
