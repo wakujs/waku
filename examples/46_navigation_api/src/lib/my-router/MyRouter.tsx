@@ -905,7 +905,7 @@ const InnerRouter = ({
 
   // https://github.com/facebook/react/blob/main/fixtures/view-transition/src/components/App.js
   useEffect(() => {
-    const callback = (event: NavigateEvent) => {
+    const callback = ((event: NavigateEvent) => {
       if (
         !event.canIntercept ||
         // If this is just a hashChange,
@@ -924,10 +924,8 @@ const InnerRouter = ({
       const route = parseRoute(url);
       console.log(event);
       const navigationType = event.navigationType;
-      // @ts-expect-error not supported yet
-      const previousIndex = window.navigation.currentEntry.index;
+      const previousIndex = window.navigation.currentEntry!.index;
       event.intercept({
-        // @ts-expect-error not supported yet
         async precommitHandler() {
           startTransition(async () => {
             // addTransitionType('navigation-' + navigationType);
@@ -958,7 +956,7 @@ const InnerRouter = ({
         },
         scroll: 'after-transition',
       });
-    };
+    }) as EventListener;
     window.navigation.addEventListener('navigate', callback);
     return () => {
       window.navigation.removeEventListener('navigate', callback);
