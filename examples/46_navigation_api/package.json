@@ -12,13 +12,13 @@
     "react": "~19.2.3",
     "react-dom": "~19.2.3",
     "react-server-dom-webpack": "~19.2.3",
-    "waku": "1.0.0-alpha.0"
+    "waku": "1.0.0-alpha.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.18",
-    "@types/dom-navigation": "^1.0.6",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@types/web": "^0.0.312",
     "@vitejs/plugin-react": "^5.1.0",
     "babel-plugin-react-compiler": "^1.0.0",
     "tailwindcss": "^4.1.18",
