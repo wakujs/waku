@@ -35,11 +35,21 @@ export default {
     !fs.existsSync(wranglerJsonFile) &&
     !fs.existsSync(wranglerJsoncFile)
   ) {
+    let projectName = 'waku-project';
+    try {
+      const packageJsonPath = path.resolve('package.json');
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+      if (packageJson.name && typeof packageJson.name === 'string') {
+        projectName = packageJson.name;
+      }
+    } catch {
+      // Fall back to default if package.json can't be read or parsed
+    }
     fs.writeFileSync(
       wranglerJsoncFile,
       `\
 {
-  "name": "waku-project",
+  "name": ${JSON.stringify(projectName)},
   ${
     serverless
       ? `"main": ${JSON.stringify(forceRelativePath(path.relative(process.cwd(), mainEntry)))},
