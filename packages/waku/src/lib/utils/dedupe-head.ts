@@ -1,3 +1,7 @@
+const HEAD_OPEN = '<head';
+const HEAD_CLOSE = '</head>';
+const TITLE_CLOSE = '</title>';
+
 type HeadTag = {
   start: number;
   end: number;
@@ -40,8 +44,8 @@ const findTagEnd = (html: string, start: number, tagName: string) => {
   }
   if (close === -1) return -1;
   if (tagName === 'title') {
-    const end = lower.indexOf('</title>', close);
-    return end === -1 ? -1 : end + 8;
+    const end = lower.indexOf(TITLE_CLOSE, close);
+    return end === -1 ? -1 : end + TITLE_CLOSE.length;
   }
   return close + 1;
 };
@@ -94,13 +98,13 @@ const extractHeadTags = (content: string): HeadTag[] => {
 export const dedupeHead = (head: string) => {
   const lower = head.toLowerCase();
 
-  const openStart = lower.indexOf('<head');
+  const openStart = lower.indexOf(HEAD_OPEN);
   if (openStart === -1) return head;
 
   const openEnd = head.indexOf('>', openStart);
   if (openEnd === -1) return head;
-  
-  const closeStart = lower.indexOf('</head>');
+
+  const closeStart = lower.indexOf(HEAD_CLOSE);
   if (closeStart === -1) return head;
 
   const content = head.slice(openEnd + 1, closeStart);
@@ -124,7 +128,7 @@ export const dedupeHead = (head: string) => {
   }
 
   result += content.slice(lastEnd);
-  result += '</head>';
+  result += HEAD_CLOSE;
   return result;
 };
 
@@ -148,11 +152,13 @@ export const dedupeHeadTags = (): TransformStream<Uint8Array, Uint8Array> => {
       }
 
       if (!seenOpen) {
-        const idx = buffer.toLowerCase().indexOf('<head');
+        const idx = buffer.toLowerCase().indexOf(HEAD_OPEN);
         if (idx === -1) {
-          if (buffer.length > 4) {
-            controller.enqueue(encoder.encode(buffer.slice(0, -4)));
-            buffer = buffer.slice(-4);
+          if (buffer.length > HEAD_OPEN.length - 1) {
+            controller.enqueue(
+              encoder.encode(buffer.slice(0, -(HEAD_OPEN.length - 1))),
+            );
+            buffer = buffer.slice(-(HEAD_OPEN.length - 1));
           }
           return;
         }
@@ -161,15 +167,15 @@ export const dedupeHeadTags = (): TransformStream<Uint8Array, Uint8Array> => {
         seenOpen = true;
       }
 
-      const closeIdx = buffer.toLowerCase().indexOf('</head>');
+      const closeIdx = buffer.toLowerCase().indexOf(HEAD_CLOSE);
       if (closeIdx === -1) {
         pending += buffer;
         buffer = '';
         return;
       }
 
-      pending += buffer.slice(0, closeIdx + 7);
-      const suffix = buffer.slice(closeIdx + 7);
+      pending += buffer.slice(0, closeIdx + HEAD_CLOSE.length);
+      const suffix = buffer.slice(closeIdx + HEAD_CLOSE.length);
       buffer = '';
 
       if (prefix) controller.enqueue(encoder.encode(prefix));
