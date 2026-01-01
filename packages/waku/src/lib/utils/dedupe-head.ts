@@ -20,9 +20,12 @@ export const parseAttributes = (html: string) => {
 const getMetaIdentity = (attrs: Record<string, string>) => {
   if ('charset' in attrs) return 'meta:charset';
   if (attrs['name']) return `meta:name:${attrs['name'].toLowerCase()}`;
-  if (attrs['property']) return `meta:property:${attrs['property'].toLowerCase()}`;
-  if (attrs['http-equiv']) return `meta:http-equiv:${attrs['http-equiv'].toLowerCase()}`;
-  if (attrs['itemprop']) return `meta:itemprop:${attrs['itemprop'].toLowerCase()}`;
+  if (attrs['property'])
+    return `meta:property:${attrs['property'].toLowerCase()}`;
+  if (attrs['http-equiv'])
+    return `meta:http-equiv:${attrs['http-equiv'].toLowerCase()}`;
+  if (attrs['itemprop'])
+    return `meta:itemprop:${attrs['itemprop'].toLowerCase()}`;
   return '';
 };
 

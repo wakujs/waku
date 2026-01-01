@@ -31,7 +31,7 @@ describe('dedupeHead', () => {
       "<head>
         <title>Page Title</title>
       </head>"
-    `)
+    `);
   });
 
   test('deduplicates meta name tags, keeping the last one', () => {
@@ -44,7 +44,7 @@ describe('dedupeHead', () => {
       "<head>
         <meta name="description" content="Page description">
       </head>"
-    `)
+    `);
   });
 
   test('deduplicates meta property tags (Open Graph), keeping the last one', () => {
@@ -57,7 +57,7 @@ describe('dedupeHead', () => {
       "<head>
         <meta property="og:title" content="Page OG Title">
       </head>"
-    `)
+    `);
   });
 
   test('deduplicates charset meta tag', () => {
@@ -70,7 +70,7 @@ describe('dedupeHead', () => {
       "<head>
         <meta charset="iso-8859-1">
       </head>"
-    `)
+    `);
   });
 
   test('deduplicates http-equiv meta tags', () => {
@@ -83,7 +83,7 @@ describe('dedupeHead', () => {
       "<head>
         <meta http-equiv="refresh" content="10">
       </head>"
-    `)
+    `);
   });
 
   test('deduplicates link tags with same rel and href', () => {
@@ -96,7 +96,7 @@ describe('dedupeHead', () => {
       "<head>
         <link rel="canonical" href="/page">
       </head>"
-    `)
+    `);
   });
 
   test('keeps link tags with same rel but different href', () => {
@@ -110,7 +110,7 @@ describe('dedupeHead', () => {
         <link rel="stylesheet" href="/style1.css">
         <link rel="stylesheet" href="/style2.css">
       </head>"
-    `)
+    `);
   });
 
   test('keeps meta tags with different names', () => {
@@ -126,7 +126,7 @@ describe('dedupeHead', () => {
         <meta name="keywords" content="key1, key2">
         <meta name="author" content="Author">
       </head>"
-    `)
+    `);
   });
 
   test('handles self-closing meta tags', () => {
@@ -139,7 +139,7 @@ describe('dedupeHead', () => {
       "<head>
         <meta name="description" content="Page" />
       </head>"
-    `)
+    `);
   });
 
   test('preserves non-head-tag content between tags', () => {
@@ -155,7 +155,7 @@ describe('dedupeHead', () => {
         <meta name="description" content="Page">
         <script>console.log('test')</script>
       </head>"
-    `)
+    `);
   });
 
   test('handles mixed case tag names', () => {
@@ -168,7 +168,7 @@ describe('dedupeHead', () => {
       "<HEAD>
         <meta name="description" content="Page">
       </head>"
-    `)
+    `);
   });
 
   test('complex scenario with DEFAULT_HTML_HEAD overrides', () => {
@@ -183,7 +183,7 @@ describe('dedupeHead', () => {
       <title>Page</title>
     </head>`;
     const result = dedupeHead(html);
-    
+
     expect(result).toMatchInlineSnapshot(`
       "<head>
         <meta charset="utf-8">
@@ -192,7 +192,7 @@ describe('dedupeHead', () => {
         <meta name="description" content="Page description">
         <title>Page</title>
       </head>"
-    `)
+    `);
   });
 });
 
@@ -200,24 +200,24 @@ describe('dedupeHeadTags', () => {
   async function transformHtml(html: string): Promise<string> {
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
-    
+
     const stream = new ReadableStream({
       start(controller) {
         controller.enqueue(encoder.encode(html));
         controller.close();
       },
     });
-    
+
     const transformedStream = stream.pipeThrough(dedupeHeadTags());
     const reader = transformedStream.getReader();
-    
+
     let result = '';
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       result += decoder.decode(value);
     }
-    
+
     return result;
   }
 
@@ -232,9 +232,9 @@ describe('dedupeHeadTags', () => {
 </head>
 <body>content</body>
 </html>`;
-    
+
     const result = await transformHtml(html);
-    
+
     expect(result).toMatchInlineSnapshot(`
       "<!DOCTYPE html>
       <html>
@@ -250,14 +250,14 @@ describe('dedupeHeadTags', () => {
   test('handles chunked input across head boundary', async () => {
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
-    
+
     const chunks = [
       '<!DOCTYPE html><html><he',
       'ad><title>Layout</title><tit',
       'le>Page</title></head><body>',
       'content</body></html>',
     ];
-    
+
     const stream = new ReadableStream({
       start(controller) {
         for (const chunk of chunks) {
@@ -266,18 +266,20 @@ describe('dedupeHeadTags', () => {
         controller.close();
       },
     });
-    
+
     const transformedStream = stream.pipeThrough(dedupeHeadTags());
     const reader = transformedStream.getReader();
-    
+
     let result = '';
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       result += decoder.decode(value);
     }
-    
-    expect(result).toMatchInlineSnapshot(`"<!DOCTYPE html><html><head><title>Page</title></head><body>content</body></html>"`)
+
+    expect(result).toMatchInlineSnapshot(
+      `"<!DOCTYPE html><html><head><title>Page</title></head><body>content</body></html>"`,
+    );
   });
 
   test('passes through HTML without head tag unchanged', async () => {
@@ -289,14 +291,18 @@ describe('dedupeHeadTags', () => {
 
 describe('parseAttributes', () => {
   test('parses double-quoted values', () => {
-    expect(parseAttributes('<meta name="description" content="hello world">')).toEqual({
+    expect(
+      parseAttributes('<meta name="description" content="hello world">'),
+    ).toEqual({
       name: 'description',
       content: 'hello world',
     });
   });
 
   test('parses single-quoted values', () => {
-    expect(parseAttributes("<meta name='description' content='hello world'>")).toEqual({
+    expect(
+      parseAttributes("<meta name='description' content='hello world'>"),
+    ).toEqual({
       name: 'description',
       content: 'hello world',
     });
@@ -336,9 +342,11 @@ describe('parseAttributes', () => {
   });
 
   test('handles values with special characters', () => {
-    expect(parseAttributes('<meta content="hello <world> & friends">')).toEqual({
-      content: 'hello <world> & friends',
-    });
+    expect(parseAttributes('<meta content="hello <world> & friends">')).toEqual(
+      {
+        content: 'hello <world> & friends',
+      },
+    );
   });
 
   test('handles empty values', () => {
@@ -356,7 +364,9 @@ describe('parseAttributes', () => {
   });
 
   test('handles self-closing tags', () => {
-    expect(parseAttributes('<meta name="description" content="test" />')).toEqual({
+    expect(
+      parseAttributes('<meta name="description" content="test" />'),
+    ).toEqual({
       name: 'description',
       content: 'test',
     });
