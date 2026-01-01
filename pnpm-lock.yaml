@@ -1762,6 +1762,9 @@ importers:
       '@types/estree':
         specifier: ^1.0.8
         version: 1.0.8
+      dedent:
+        specifier: ^1.7.1
+        version: 1.7.1
       react:
         specifier: 19.2.3
         version: 19.2.3

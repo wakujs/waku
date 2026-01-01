@@ -6,6 +6,7 @@ import { injectRSCPayload } from 'rsc-html-stream/server';
 import fallbackHtml from 'virtual:vite-rsc-waku/fallback-html';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
+import { dedupeHeadTags } from '../utils/dedupe-head.js';
 import { getBootstrapPreamble } from '../utils/ssr.js';
 import { batchReadableStream } from '../utils/stream.js';
 
@@ -105,6 +106,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
       options?.nonce ? { nonce: options?.nonce } : {},
     ),
   );
+  responseStream = responseStream.pipeThrough(dedupeHeadTags());
 
   return { stream: responseStream, status };
 };
