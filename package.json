@@ -29,6 +29,14 @@
     "tailwindConfig": "./packages/website/tailwind.config.js",
     "tailwindFunctions": [
       "cx"
+    ],
+    "overrides": [
+      {
+        "files": "**/*.jsonc",
+        "options": {
+          "trailingComma": "none"
+        }
+      }
     ]
   },
   "devDependencies": {

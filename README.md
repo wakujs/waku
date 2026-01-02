@@ -1453,7 +1453,16 @@ export default adapter(
 );
 ```
 
-### Cloudflare (experimental)
+### Cloudflare Workers
+
+Waku projects can be deployed to Cloudflare Workers with [Wrangler](https://developers.cloudflare.com/workers/wrangler/).
+
+```sh
+CLOUDFLARE=1 npm run build
+wrangler deploy
+```
+
+#### Pure SSG with Cloudflare Workers
 
 `./src/waku.server.ts`:
 
@@ -1463,12 +1472,8 @@ import adapter from 'waku/adapters/cloudflare';
 
 export default adapter(
   fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  { static: true },
 );
-```
-
-```sh
-npm run build
-npx wrangler dev # or deploy
 ```
 
 ### Deno Deploy (experimental)
