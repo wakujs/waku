@@ -6,7 +6,7 @@
   "scripts": {
     "cf-typegen": "wrangler types",
     "dev": "waku dev",
-    "build": "CLOUDFLARE=1 waku build",
+    "build": "waku build",
     "start": "wrangler dev"
   },
   "dependencies": {
