@@ -23,12 +23,12 @@ export function fsRouter(
    */
   pages: { [file: string]: () => Promise<unknown> },
   options: {
-    /** e.g. `"api"` will detect pages in `src/pages/api`. */
+    /** e.g. `"_api"` will detect pages in `src/pages/_api` and strip `_api` from the path. */
     apiDir: string;
     /** e.g. `"_slices"` will detect slices in `src/pages/_slices`. */
     slicesDir: string;
   } = {
-    apiDir: 'api',
+    apiDir: '_api',
     slicesDir: '_slices',
   },
 ) {
@@ -70,6 +70,8 @@ export function fsRouter(
             'Page file cannot be named [path]. This will conflict with the path prop of the page component.',
           );
         } else if (pathItems.at(0) === options.apiDir) {
+          // Strip the apiDir prefix from the path (e.g., _api/hello.txt -> hello.txt)
+          const apiPath = pathItems.slice(1).join('/');
           if (config?.render === 'static') {
             if (Object.keys(mod).length !== 2 || !mod.GET) {
               console.warn(
@@ -78,7 +80,7 @@ export function fsRouter(
             }
             createApi({
               ...config,
-              path: pathItems.join('/'),
+              path: apiPath,
               render: 'static',
               method: 'GET',
               handler: mod.GET!,
@@ -106,7 +108,7 @@ export function fsRouter(
               }),
             );
             createApi({
-              path: pathItems.join('/'),
+              path: apiPath,
               render: 'dynamic',
               handlers,
             });
