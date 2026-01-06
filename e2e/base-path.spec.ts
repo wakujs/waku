@@ -17,19 +17,19 @@ test.describe(`base-path`, () => {
     const baseUrl = `http://localhost:${port}/custom/base/`;
 
     // get
-    const resGet = await request.get(`${baseUrl}api/hello`);
+    const resGet = await request.get(`${baseUrl}hello`);
     expect(resGet.ok()).toBe(true);
     expect(await resGet.json()).toEqual({
       ok: true,
       request: {
         handler: 'GET',
         method: 'GET',
-        pathname: '/api/hello',
+        pathname: '/hello',
       },
     });
 
     // post
-    const resPost = await request.post(`${baseUrl}api/hello`, {
+    const resPost = await request.post(`${baseUrl}hello`, {
       data: 'hello',
     });
     expect(resPost.ok()).toBe(true);
@@ -38,7 +38,7 @@ test.describe(`base-path`, () => {
       request: {
         handler: 'POST',
         method: 'POST',
-        pathname: '/api/hello',
+        pathname: '/hello',
         text: 'hello',
       },
     });
