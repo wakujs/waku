@@ -50,7 +50,7 @@ export const getAvailablePort = async (): Promise<number> =>
     });
   });
 
-const PORT_WAIT_TIMEOUT_MS = 10_000;
+const PORT_WAIT_TIMEOUT_MS = 30_000;
 
 export const waitForPortReady = async (port: number): Promise<void> =>
   new Promise((resolve, reject) => {
