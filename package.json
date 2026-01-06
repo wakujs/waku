@@ -29,6 +29,14 @@
     "tailwindConfig": "./packages/website/tailwind.config.js",
     "tailwindFunctions": [
       "cx"
+    ],
+    "overrides": [
+      {
+        "files": "**/*.jsonc",
+        "options": {
+          "trailingComma": "none"
+        }
+      }
     ]
   },
   "devDependencies": {
@@ -49,7 +57,7 @@
     "prettier": "^3.7.4",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.50.0",
+    "typescript-eslint": "^8.51.0",
     "waku": "workspace:*"
   }
 }
