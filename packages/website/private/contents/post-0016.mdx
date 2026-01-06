@@ -83,7 +83,7 @@ The build is run by a NodeJS runtime, so you can use NodeJS APIs in any React Se
 
 You can interact with resources on the Cloudflare Developer Platform using [bindings](https://developers.cloudflare.com/workers/runtime-apis/bindings/).
 
-In previous pre-release versions of Waku, it was neccessary to access the bindings via the Hono server context. Now, you can simply import `env` and waitUntil`from a dynamic`'cloudflare:workers'` module.
+In previous pre-release versions of Waku, it was neccessary to access the bindings via the Hono server context. Now, you can simply import `env` and `waitUntil` from a dynamic`'cloudflare:workers'` module.
 
 If you use bindings in your React Server Components, they will not be available during development or build by default. You must install [@hiogawa/node-loader-cloudflare](https://github.com/hi-ogawa/vite-plugins/tree/main/packages/node-loader-cloudflare) to your project and add it to your Vite plugins in your Waku config. This Vite plugin simulates the Cloudflare Workers environment during development and build, giving you access to bindings like KV, D1, R2, assets, other workers and more:
 
