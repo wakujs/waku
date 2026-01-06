@@ -1,0 +1,150 @@
+---
+slug: cloudflare-workers-out-of-the-box
+title: Enhanced Cloudflare Workers adapter for Waku and React Server Components
+description: Deploy Waku apps to Cloudflare Workers with automatic adapter selection, static builds, and access to bindings.
+author: robmarscher
+release: v1.0.0-alpha.1
+date: 2026/01/05
+---
+
+We're excited to announce that Cloudflare Workers support is now out of the box in Waku! You can now deploy your Waku applications to Cloudflare Workers without any special templates or configuration. This release brings three major improvements: automatic adapter selection, static deployment support, and a new way to access bindings.
+
+### What's New
+
+**Automatic Adapter Selection**
+
+Cloudflare Workers is now part of the default Waku adapter. Simply set the `CLOUDFLARE` or `WORKERS_CI` environment variable and Waku will automatically use the Cloudflare adapter:
+
+```json
+{
+  "scripts": {
+    "build": "CLOUDFLARE=1 waku build"
+  }
+}
+```
+
+There is no need to explicitly import the adapter unless you want to customize its options.
+
+**Additional Handlers**
+
+Cloudflare Workers supports [multiple handler types](https://developers.cloudflare.com/workers/runtime-apis/handlers/) beyond just HTTP requests, including queue handlers, scheduled handlers, and more. You can now define these additional handlers directly in your `waku.server.ts` file:
+
+```tsx
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/cloudflare';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  {
+    handlers: {
+      async queue(batch, env, ctx) {
+        for (const message of batch.messages) {
+          console.log('Processing message:', message);
+        }
+      },
+      async scheduled(event, env, ctx) {
+        console.log('Scheduled event triggered');
+      },
+    } satisfies ExportedHandler<Env>,
+  },
+);
+```
+
+These handlers are automatically re-exported in the final build and deployed alongside your Waku application.
+
+**Static Deployment**
+
+For applications that don't need server-side rendering or server functions, you can now deploy completely static builds to Cloudflare's edge network without any worker invocations. This is perfect for blogs, documentation sites, and other static content:
+
+```tsx
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/cloudflare';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  { static: true },
+);
+```
+
+When you build with `static: true`, Waku generates a minimal `wrangler.jsonc` configuration that serves only static assets. Your pages and layouts should export `render: 'static'` to be included in the static build:
+
+```tsx
+export const getConfig = async () => {
+  return {
+    render: 'static',
+  } as const;
+};
+```
+
+This gives you the performance and global distribution of Cloudflare's CDN without the overhead of a worker.
+
+The build is run by a NodeJS runtime, so you can use NodeJS APIs in any React Server Components used to build the static output.
+
+### Using Bindings
+
+You can interact with resources on the Cloudflare Developer Platform using [bindings](https://developers.cloudflare.com/workers/runtime-apis/bindings/).
+
+In previous pre-release versions of Waku, it was neccessary to access the bindings via the Hono server context. Now, you can simply import `env` and waitUntil`from a dynamic`'cloudflare:workers'` module.
+
+If you use bindings in your React Server Components, they will not be available during development or build by default. You must install [@hiogawa/node-loader-cloudflare](https://github.com/hi-ogawa/vite-plugins/tree/main/packages/node-loader-cloudflare) to your project and add it to your Vite plugins in your Waku config. This Vite plugin simulates the Cloudflare Workers environment during development and build, giving you access to bindings like KV, D1, R2, assets, other workers and more:
+
+```ts
+import nodeLoaderCloudflare from '@hiogawa/node-loader-cloudflare/vite';
+import { defineConfig } from 'waku/config';
+
+export default defineConfig({
+  vite: {
+    plugins: [
+      nodeLoaderCloudflare({
+        environments: ['rsc'],
+        build: true,
+        getPlatformProxyOptions: {
+          persist: {
+            path: '.wrangler/state/v3',
+          },
+        },
+      }),
+    ],
+  },
+});
+```
+
+Here is an example of making a D1 database query from a function that could be called by your React Server Components or server functions.
+
+```ts
+import { env, waitUntil } from 'cloudflare:workers';
+import { unstable_getContext as getContext } from 'waku/server';
+
+const getData = async () => {
+  const userId = getContext().req.url.searchParams.get('userId');
+  const { results } = await env.DB.prepare('SELECT * FROM user WHERE id = ?')
+    .bind(userId)
+    .all();
+  return results;
+};
+```
+
+### Getting Started
+
+To quickly get started on a new full-featured Waku project with Cloudflare Workers support:
+
+```sh
+npm create waku@latest -- --template 07_cloudflare
+```
+
+This comes with `@hiogawa/node-loader-cloudflare` already installed and configured.
+
+Then run:
+
+- `npm run dev` - start the development server with Cloudflare bindings
+- `npm run build` - build for Cloudflare Workers
+- `npx wrangler dev` - test your build locally
+- `npx wrangler deploy` - deploy to Cloudflare Workers
+
+### What's Next?
+
+Read more in our [Cloudflare guide](/guides/cloudflare) and in Cloudflare Workers' [official documentation](https://developers.cloudflare.com/workers/).
+
+We're continuing to improve Cloudflare Workers support. In upcoming releases, we're continuing to explore integration with [@cloudflare/vite-plugin](https://www.npmjs.com/package/@cloudflare/vite-plugin) to provide even deeper integration with Cloudflare's platform features like Durable Objects.
+
+As always, we'd love to hear your feedback! Try out Cloudflare Workers deployment and let us know how it goes in our [GitHub discussions](https://github.com/wakujs/waku/discussions) or on our [Discord server](https://discord.gg/MrQdmzd).
