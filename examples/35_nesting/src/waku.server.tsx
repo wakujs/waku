@@ -59,7 +59,7 @@ export default adapter({
         },
       );
     }
-    await generateDefaultHtml('/');
-    await generateDefaultHtml('/no-ssr');
+    await generateDefaultHtml('index.html');
+    await generateDefaultHtml('no-ssr/index.html');
   },
 });
