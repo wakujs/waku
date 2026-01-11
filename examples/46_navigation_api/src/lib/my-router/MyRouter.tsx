@@ -394,7 +394,7 @@ const Redirect = ({
 
     const url = new URL(to, window.location.href);
     window.navigation
-      .navigate(url, { history: 'replace' })
+      .navigate(url, { history: 'push' })
       .committed?.then(() => {
         // FIXME
         // ssr-redirect > access sync page with client navigation
@@ -569,7 +569,7 @@ const InnerRouter = ({
         if (routeData) {
           const [path, _query] = routeData as [string, string];
           if (isStatic) {
-            staticPathSetRef.current.add(path);
+            staticPathSetRef.current.add(encodeURI(path));
           }
         }
         cachedIdSetRef.current = new Set(Object.keys(rest));
@@ -589,7 +589,9 @@ const InnerRouter = ({
         input: RequestInfo | URL,
         init: RequestInit = { signal: signalRef.current },
       ) => {
-        const skipStr = JSON.stringify(Array.from(cachedIdSetRef.current));
+        const skipStr = JSON.stringify(
+          Array.from(cachedIdSetRef.current).map((i) => encodeURI(i)),
+        );
         const headers = (init.headers ||= {});
         if (Array.isArray(headers)) {
           headers.push([SKIP_HEADER, skipStr]);
@@ -625,7 +627,7 @@ const InnerRouter = ({
                   (!isStatic && requestedRouteRef.current.query !== query)
                 ) {
                   // redirected
-                  window.navigation.navigate(path, { history: 'replace' });
+                  window.navigation.navigate(path, { history: 'push' });
                 }
               }
             })
@@ -818,7 +820,7 @@ const InnerRouter = ({
   useEffect(() => {
     resolver.current?.(undefined);
     resolver.current = null;
-  }, [route, customErrorHandlerRef.current?.state.error]);
+  }, [route]);
 
   const resolver = useRef<((value: undefined) => void) | null>(null);
 
