@@ -272,7 +272,6 @@ export async function generateFsRouterTypes(pagesDir: string) {
     }
 
     lines.push('', '// prettier-ignore', 'type Page =');
-
     for (const file of fileInfo) {
       const moduleName = moduleNames[file.src];
       if (file.hasGetConfig) {
@@ -283,9 +282,9 @@ export async function generateFsRouterTypes(pagesDir: string) {
         lines.push(`| { path: '${file.path}'; render: 'dynamic' }`);
       }
     }
+    lines[lines.length - 1] += ';';
 
     lines.push(
-      ';',
       '',
       '// prettier-ignore',
       "declare module 'waku/router' {",
