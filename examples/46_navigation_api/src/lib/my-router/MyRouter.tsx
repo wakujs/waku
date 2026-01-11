@@ -27,59 +27,31 @@ import {
   useEnhanceFetchRscInternal_UNSTABLE as useEnhanceFetchRscInternal,
   useRefetch,
 } from 'waku/minimal/client';
-import type { RouteConfig } from './base-types.js';
+import type {
+  Unstable_InferredPaths as InferredPaths,
+  Unstable_RouteProps as RouteProps,
+} from 'waku/router/client';
 import {
-  HAS404_ID,
-  IS_STATIC_ID,
-  ROUTE_ID,
-  SKIP_HEADER,
-  encodeRoutePath,
-  encodeSliceId,
-} from './common.js';
-import type { RouteProps } from './common.js';
-import { getErrorInfo } from './custom-errors.js';
-import { addBase, removeBase } from './path.js';
+  unstable_HAS404_ID as HAS404_ID,
+  unstable_IS_STATIC_ID as IS_STATIC_ID,
+  unstable_ROUTE_ID as ROUTE_ID,
+  unstable_SKIP_HEADER as SKIP_HEADER,
+  unstable_addBase as addBase,
+  unstable_encodeRoutePath as encodeRoutePath,
+  unstable_encodeSliceId as encodeSliceId,
+  unstable_getErrorInfo as getErrorInfo,
+  unstable_getHttpStatusFromMeta as getHttpStatusFromMeta,
+  unstable_parseRoute as parseRoute,
+} from 'waku/router/client';
 
-type AllowPathDecorators<Path extends string> = Path extends unknown
-  ? Path | `${Path}?${string}` | `${Path}#${string}`
-  : never;
-
-type InferredPaths = RouteConfig extends {
-  paths: infer UserPaths extends string;
+declare global {
+  interface ImportMeta {
+    hot?: unknown;
+  }
+  var __WAKU_RSC_RELOAD_LISTENERS__: (() => void)[] | undefined;
+  var __WAKU_REFETCH_RSC__: (() => void) | undefined;
+  var __WAKU_REFETCH_ROUTE__: (() => void) | undefined;
 }
-  ? AllowPathDecorators<UserPaths>
-  : string;
-
-const normalizeRoutePath = (path: string) => {
-  path = removeBase(path, import.meta.env.WAKU_CONFIG_BASE_PATH);
-  for (const suffix of ['/', '/index.html']) {
-    if (path.endsWith(suffix)) {
-      return path.slice(0, -suffix.length) || '/';
-    }
-  }
-  return path;
-};
-
-const parseRoute = (url: URL): RouteProps => {
-  const { pathname, searchParams, hash } = url;
-  return {
-    path: normalizeRoutePath(pathname),
-    query: searchParams.toString(),
-    hash,
-  };
-};
-
-const getHttpStatusFromMeta = (): string | undefined => {
-  const httpStatusMeta = document.querySelector('meta[name="httpstatus"]');
-  if (
-    httpStatusMeta &&
-    'content' in httpStatusMeta &&
-    typeof httpStatusMeta.content === 'string'
-  ) {
-    return httpStatusMeta.content;
-  }
-  return undefined;
-};
 
 const parseRouteFromLocation = (): RouteProps => {
   const httpStatus = getHttpStatusFromMeta();
@@ -521,7 +493,6 @@ const InnerRouter = ({
   initialRoute: RouteProps;
   httpStatus: string | undefined;
 }) => {
-  // @ts-expect-error type from vite is missing
   if (import.meta.hot) {
     const refetchRoute = () => {
       staticPathSetRef.current.clear();
@@ -531,21 +502,15 @@ const InnerRouter = ({
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       refetch(rscPath, rscParams);
     };
-    // @ts-expect-error type for globalThis is missing
     globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= [];
-    // @ts-expect-error type for globalThis is missing
     const index = globalThis.__WAKU_RSC_RELOAD_LISTENERS__.indexOf(
-      // @ts-expect-error type for globalThis is missing
       globalThis.__WAKU_REFETCH_ROUTE__!,
     );
     if (index !== -1) {
-      // @ts-expect-error type for globalThis is missing
       globalThis.__WAKU_RSC_RELOAD_LISTENERS__.splice(index, 1, refetchRoute);
     } else {
-      // @ts-expect-error type for globalThis is missing
       globalThis.__WAKU_RSC_RELOAD_LISTENERS__.unshift(refetchRoute);
     }
-    // @ts-expect-error type for globalThis is missing
     globalThis.__WAKU_REFETCH_ROUTE__ = refetchRoute;
   }
 
