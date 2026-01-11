@@ -12,6 +12,7 @@ import { mainPlugin } from './main.js';
 import { notFoundPlugin } from './not-found.js';
 import { patchRsdwPlugin } from './patch-rsdw.js';
 import { privateDirPlugin } from './private-dir.js';
+import { ssrLoaderPlugin } from './ssr-loader.js';
 import { userEntriesPlugin } from './user-entries.js';
 import { virtualConfigPlugin } from './virtual-config.js';
 
@@ -19,6 +20,7 @@ export function combinedPlugins(config: Required<Config>): PluginOption {
   return [
     extraPlugins(config),
     allowServerPlugin(), // apply `allowServer` DCE before "use client" transform
+    ssrLoaderPlugin(), // compile `loadSsrModule` hints
     cloudflarePlugin(),
     rsc({
       serverHandler: false,
