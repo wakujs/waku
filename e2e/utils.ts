@@ -27,6 +27,8 @@ export const FETCH_ERROR_MESSAGES = {
   webkit: 'Load failed',
 };
 
+const EXEC_TIMEOUT_MS = process.env.CI ? 60_000 : undefined;
+
 export type TestOptions = {
   mode: 'DEV' | 'PRD';
   page: Page;
@@ -276,15 +278,22 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     if (!standaloneDir) {
       standaloneDir = makeTempDir(fixtureName);
       standaloneDirMap.set(packageManager, standaloneDir);
+      const copyLabel = `[e2e] copy fixture (${fixtureName})`;
+      console.time(copyLabel);
       cpSync(fixtureDir, standaloneDir, {
         filter: (src) => {
           return !src.includes('node_modules') && !src.includes('dist');
         },
         recursive: true,
       });
+      console.timeEnd(copyLabel);
+      const packLabel = `[e2e] pack waku (${packageManager})`;
+      console.time(packLabel);
       await execAsync(`pnpm pack --pack-destination ${standaloneDir}`, {
         cwd: wakuDir,
+        timeout: EXEC_TIMEOUT_MS,
       });
+      console.timeEnd(packLabel);
       const wakuPackageTgz = join(standaloneDir, `waku-${version}.tgz`);
       const rootPkg = JSON.parse(
         readFileSync(
@@ -336,9 +345,13 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       if (packageManager !== 'pnpm') {
         patchMonorepoPackageJson(standaloneDir);
       }
+      const installLabel = `[e2e] install (${packageManager})`;
+      console.time(installLabel);
       await execAsync(PACKAGE_INSTALL[packageManager], {
         cwd: standaloneDir,
+        timeout: EXEC_TIMEOUT_MS,
       });
+      console.timeEnd(installLabel);
     }
     const waku = join(wakuPackageDir(), './node_modules/waku/dist/cli.js');
     if (mode !== 'DEV' && builtModeMap.get(packageManager) !== mode) {
@@ -346,9 +359,13 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         recursive: true,
         force: true,
       });
+      const buildLabel = `[e2e] build (${packageManager}, ${mode})`;
+      console.time(buildLabel);
       await execAsync(`node ${waku} build`, {
         cwd: join(standaloneDir, packageDir),
+        timeout: EXEC_TIMEOUT_MS,
       });
+      console.timeEnd(buildLabel);
       builtModeMap.set(packageManager, mode);
     }
     let cmd: string;
