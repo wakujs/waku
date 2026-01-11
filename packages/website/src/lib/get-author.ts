@@ -35,6 +35,13 @@ export const getAuthor = (author: string): Author => {
         avatar: 'https://github.com/hi-ogawa.png',
         url: 'https://github.com/hi-ogawa',
       };
+    case 'robmarscher':
+      return {
+        name: 'Rob Marscher',
+        biography: 'principal software engineer at 100x',
+        avatar: 'https://github.com/rmarscher.png',
+        url: 'https://robmarscher.com',
+      };
     default:
       return {
         name: ``,

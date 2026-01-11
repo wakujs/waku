@@ -15,7 +15,7 @@ export const Meta = ({ title, description }: MetaProps) => {
         rel="alternate"
         type="application/rss+xml"
         title="rss"
-        href="https://waku.gg/api/rss.xml"
+        href="https://waku.gg/rss.xml"
       />
     </>
   );

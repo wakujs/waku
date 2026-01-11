@@ -61,19 +61,23 @@ export type Unstable_HandleBuild = (utils: {
   generateDefaultHtml: (fileName: string) => Promise<void>;
 }) => Promise<void>;
 
+export type Unstable_Handlers = {
+  handleRequest: Unstable_HandleRequest;
+  handleBuild: Unstable_HandleBuild;
+  [someOtherProperty: string]: unknown;
+};
+
 export type Unstable_ServerEntry = {
-  default: {
-    fetch: (req: Request, ...args: any[]) => Response | Promise<Response>;
-    build: (
-      utils: {
-        emitFile: Unstable_EmitFile;
-      },
-      ...args: any[]
-    ) => Promise<void>;
-    buildOptions?: Record<string, unknown>;
-    buildEnhancers?: string[]; // enhancer module ids
-    [someOtherProperty: string]: unknown;
-  };
+  fetch: (req: Request, ...args: any[]) => Response | Promise<Response>;
+  build: (
+    utils: {
+      emitFile: Unstable_EmitFile;
+    },
+    ...args: any[]
+  ) => Promise<void>;
+  buildOptions?: Record<string, unknown>;
+  buildEnhancers?: string[]; // enhancer module ids
+  [someOtherProperty: string]: unknown;
 };
 
 export type Unstable_ProcessRequest = (
@@ -87,6 +91,7 @@ export type Unstable_ProcessBuild = (utils: {
 export type Unstable_CreateServerEntryAdapter = <Options>(
   fn: (
     args: {
+      handlers: Unstable_Handlers;
       processRequest: Unstable_ProcessRequest;
       processBuild: Unstable_ProcessBuild;
       config: Omit<Required<Config>, 'vite'>;
@@ -94,11 +99,5 @@ export type Unstable_CreateServerEntryAdapter = <Options>(
       notFoundHtml: string;
     },
     options?: Options,
-  ) => Unstable_ServerEntry['default'],
-) => (
-  args: {
-    handleRequest: Unstable_HandleRequest;
-    handleBuild: Unstable_HandleBuild;
-  },
-  options?: Options,
-) => Unstable_ServerEntry['default'];
+  ) => Unstable_ServerEntry,
+) => (handlers: Unstable_Handlers, options?: Options) => Unstable_ServerEntry;

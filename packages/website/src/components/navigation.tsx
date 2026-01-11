@@ -193,5 +193,5 @@ const links = [
   { to: 'https://github.com/wakujs/waku', icon: 'github', label: 'Repository' },
   { to: 'https://discord.gg/MrQdmzd', icon: 'discord', label: 'Community' },
   { to: 'https://x.com/wakujs', icon: 'twitter', label: 'Updates' },
-  { to: 'https://waku.gg/api/llms-full.txt', icon: 'robot', label: 'LLMs.txt' },
+  { to: 'https://waku.gg/llms.txt', icon: 'robot', label: 'LLMs.txt' },
 ];

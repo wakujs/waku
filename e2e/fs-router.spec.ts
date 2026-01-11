@@ -73,25 +73,25 @@ test.describe('fs-router', () => {
   });
 
   test('api hi', async () => {
-    const res = await fetch(`http://localhost:${port}/api/hi`);
+    const res = await fetch(`http://localhost:${port}/hi`);
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('Hello from API!');
   });
 
   test('api hi.txt', async () => {
-    const res = await fetch(`http://localhost:${port}/api/hi.txt`);
+    const res = await fetch(`http://localhost:${port}/hi.txt`);
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('hello from a text file!');
   });
 
   test('api empty', async () => {
-    const res = await fetch(`http://localhost:${port}/api/empty`);
+    const res = await fetch(`http://localhost:${port}/empty`);
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('');
   });
 
   test('api hi with POST', async () => {
-    const res = await fetch(`http://localhost:${port}/api/hi`, {
+    const res = await fetch(`http://localhost:${port}/hi`, {
       method: 'POST',
       body: 'from the test!',
     });
@@ -100,18 +100,27 @@ test.describe('fs-router', () => {
   });
 
   test('api has-default GET', async () => {
-    const res = await fetch(`http://localhost:${port}/api/has-default`);
+    const res = await fetch(`http://localhost:${port}/has-default`);
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('GET');
   });
 
   test('api has-default POST', async () => {
-    const res = await fetch(`http://localhost:${port}/api/has-default`, {
+    const res = await fetch(`http://localhost:${port}/has-default`, {
       method: 'POST',
       body: 'from the test!',
     });
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('default: POST');
+  });
+
+  test('api blog/rss.xml', async () => {
+    const res = await fetch(`http://localhost:${port}/blog/rss.xml`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Type')).toBe('application/xml');
+    const text = await res.text();
+    expect(text).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+    expect(text).toContain('<rss version="2.0">');
   });
 
   test('_components', async ({ page }) => {

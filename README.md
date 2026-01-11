@@ -554,7 +554,7 @@ PageProps<'/shop/[category]/[product]'>;
 
 ### Layouts
 
-Layouts are created with a special `_layout.tsx` file name and wrap the entire route and its descendents. They must accept a `children` prop of type `ReactNode`. While not required, you will typically want at least a root layout.
+Layouts are created with a special `_layout.tsx` file name and wrap the entire route and its descendants. They must accept a `children` prop of type `ReactNode`. While not required, you will typically want at least a root layout.
 
 #### Root layout
 
@@ -1074,10 +1074,10 @@ Data mutations can be performed via [server actions](https://react.dev/reference
 
 ### API endpoints
 
-Create API routes by making a new file in the special `./src/pages/api` directory and exporting one or more functions named after the HTTP methods that you want it to support: `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `CONNECT`, `OPTIONS`, `TRACE`, or `PATCH`. The name of the file determines the route it will be served from. Each function receives a standard [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) object and returns a standard [Response](https://developer.mozilla.org/en-US/docs/Web/API/Response) object.
+Create API routes by making a new file in the special `./src/pages/_api` directory and exporting one or more functions named after the HTTP methods that you want it to support: `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `CONNECT`, `OPTIONS`, `TRACE`, or `PATCH`. The name of the file determines the route it will be served from. Each function receives a standard [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) object and returns a standard [Response](https://developer.mozilla.org/en-US/docs/Web/API/Response) object.
 
 ```ts
-// ./src/pages/api/contact.ts
+// ./src/pages/_api/contact.ts
 import emailClient from 'some-email';
 
 const client = new emailClient(process.env.EMAIL_API_TOKEN!);
@@ -1107,7 +1107,7 @@ export const POST = async (request: Request): Promise<Response> => {
 Alternatively, you may export a default function as a "catch-all" handler that responds to all request methods.
 
 ```ts
-// ./src/pages/api/other-endpoint.ts
+// ./src/pages/_api/other-endpoint.ts
 export default function handler(request: Request): Response {
   return Response.json(
     { message: 'Default handler ' + request.method },
@@ -1118,7 +1118,7 @@ export default function handler(request: Request): Response {
 
 #### Calling API routes
 
-API routes are accessible at paths that match their file location. For example a file at `./src/pages/api/contact.ts` is available at `/api/contact`. You can call these endpoints from your client components using the standard [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) method.
+API routes are accessible at paths with the `_api` prefix stripped. For example a file at `./src/pages/_api/contact.ts` is available at `/contact`, and `./src/pages/_api/blog/rss.xml.ts` is available at `/blog/rss.xml`. You can call these endpoints from your client components using the standard [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) method.
 
 ```tsx
 'use client';
@@ -1134,7 +1134,7 @@ export const ContactForm = () => {
     setStatus('sending');
 
     try {
-      const response = await fetch('/api/contact', {
+      const response = await fetch('/contact', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1180,7 +1180,7 @@ export const ContactForm = () => {
 API routes are dynamic by default, but if you’re using them to create a static resource such as an XML document, you can export a `getConfig` function that returns a config object with the render property set to `'static'`.
 
 ```ts
-// ./src/pages/api/rss.xml.ts
+// ./src/pages/_api/blog/rss.xml.ts
 
 export const GET = async () => {
   const rss = generateRSSFeed(); // your RSS generation logic
@@ -1453,7 +1453,16 @@ export default adapter(
 );
 ```
 
-### Cloudflare (experimental)
+### Cloudflare Workers
+
+Waku projects can be deployed to Cloudflare Workers with [Wrangler](https://developers.cloudflare.com/workers/wrangler/).
+
+```sh
+CLOUDFLARE=1 npm run build
+wrangler deploy
+```
+
+#### Pure SSG with Cloudflare Workers
 
 `./src/waku.server.ts`:
 
@@ -1463,12 +1472,8 @@ import adapter from 'waku/adapters/cloudflare';
 
 export default adapter(
   fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  { static: true },
 );
-```
-
-```sh
-npm run build
-npx wrangler dev # or deploy
 ```
 
 ### Deno Deploy (experimental)

@@ -38,8 +38,8 @@ async function run() {
   } else if (values.help) {
     displayUsage();
   } else if (cmd === 'dev' || cmd === 'build' || cmd === 'start') {
-    const { cli } = await import('./lib/vite-rsc/cli.js');
-    await cli(cmd, values);
+    const { runCommand } = await import('./lib/vite-rsc/command.js');
+    await runCommand(cmd, values);
   } else {
     if (cmd) {
       console.error('Unknown command:', cmd);
