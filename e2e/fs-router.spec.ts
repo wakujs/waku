@@ -155,6 +155,21 @@ test.describe('fs-router', () => {
     ).toBeVisible();
   });
 
+  test('check hydration error with unicode page', async ({ page }) => {
+    const messages: string[] = [];
+    page.on('console', (msg) => messages.push(msg.text()));
+    const errors: string[] = [];
+    page.on('pageerror', (err) => errors.push(err.message));
+    await page.goto(`http://localhost:${port}/%E4%B8%AD%E6%96%87`);
+    await waitForHydration(page);
+    await expect(
+      page.getByRole('heading', { name: '/%E4%B8%AD%E6%96%87' }),
+    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: '/中文' })).toBeHidden();
+    expect(messages.join('\n')).not.toContain('hydration-mismatch');
+    expect(errors.join('\n')).not.toContain('Minified React error #418');
+  });
+
   test('slices', async ({ page }) => {
     await page.goto(`http://localhost:${port}/page-with-slices`);
     await waitForHydration(page);
