@@ -1026,3 +1026,27 @@ export function INTERNAL_ServerRouter({
     </>
   );
 }
+
+// Highly experimental to expose internal APIs
+// Subject to change without notice
+export type Unstable_RouteProps = RouteProps;
+export const unstable_HAS404_ID = HAS404_ID;
+export const unstable_IS_STATIC_ID = IS_STATIC_ID;
+export const unstable_ROUTE_ID = ROUTE_ID;
+export const unstable_SKIP_HEADER = SKIP_HEADER;
+export const unstable_encodeRoutePath = encodeRoutePath;
+export const unstable_encodeSliceId = encodeSliceId;
+export const unstable_getRouteSlotId = getRouteSlotId;
+export const unstable_getSliceSlotId = getSliceSlotId;
+export const unstable_getErrorInfo = getErrorInfo;
+export const unstable_addBase = addBase;
+export const unstable_removeBase = removeBase;
+export const unstable_RouterContext = RouterContext;
+export type Unstable_ChangeRoute = ChangeRoute;
+export type Unstable_ChangeRouteEvent = ChangeRouteEvent;
+export type Unstable_ChangeRouteCallback = ChangeRouteCallback;
+export type Unstable_PrefetchRoute = PrefetchRoute;
+export type Unstable_SliceId = SliceId;
+export type Unstable_InferredPaths = InferredPaths;
+export const unstable_parseRoute = parseRoute;
+export const unstable_getHttpStatusFromMeta = getHttpStatusFromMeta;
