@@ -109,7 +109,7 @@ export const ContactForm = () => {
 API routes are dynamic by default, but if you're using them to create a static resource such as an XML document, you can export a `getConfig` function that returns a config object with the render property set to `'static'`.
 
 ```ts
-// ./src/pages/api/rss.xml.ts
+// ./src/pages/_api/rss.xml.ts
 
 export const GET = async () => {
   const rssFeed = generateRSSFeed(items);
@@ -155,7 +155,7 @@ const generateRSSFeed = (items) => {
     <?xml version="1.0" encoding="UTF-8" ?>
     <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
     <channel>
-      <atom:link href="https://waku.gg/api/rss.xml" rel="self" type="application/rss+xml" />
+      <atom:link href="https://waku.gg/rss.xml" rel="self" type="application/rss+xml" />
       <title>Waku</title>
       <link>https://waku.gg</link>
       <description>The minimal React framework</description>

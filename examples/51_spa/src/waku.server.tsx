@@ -8,5 +8,7 @@ export default adapter({
     }
     return 'fallback';
   },
-  handleBuild: async () => {},
+  handleBuild: async ({ generateDefaultHtml }) => {
+    await generateDefaultHtml('index.html');
+  },
 });

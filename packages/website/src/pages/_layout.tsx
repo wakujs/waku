@@ -40,7 +40,7 @@ const Meta = () => {
       <link
         rel="alternate"
         type="text/plain"
-        href="/api/llms-full.txt"
+        href="/llms.txt"
         title="LLM Context"
       />
       <link rel="preconnect" href="https://fonts.googleapis.com" />
