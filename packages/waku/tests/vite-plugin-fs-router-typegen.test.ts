@@ -139,8 +139,8 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
     expect(generated).not.toContain('GetConfigResponse');
     expect(generated).not.toContain('_getConfig');
     expect(generated).not.toContain('\n\n\n');
-    expect(generated).toContain("| { path: '/'; render: 'dynamic' }");
-    expect(generated).toContain("| { path: '/about'; render: 'dynamic' }");
+    expect(generated).toContain("| { path: '/'; render: 'static' }");
+    expect(generated).toContain("| { path: '/about'; render: 'static' }");
   });
 
   test('generates paths while skipping ignored/layout files and missing getConfig', async () => {

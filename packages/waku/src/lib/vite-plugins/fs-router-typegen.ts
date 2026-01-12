@@ -279,7 +279,7 @@ export async function generateFsRouterTypes(pagesDir: string) {
           `| ({ path: '${file.path}' } & GetConfigResponse<typeof ${moduleName}_getConfig>)`,
         );
       } else {
-        lines.push(`| { path: '${file.path}'; render: 'dynamic' }`);
+        lines.push(`| { path: '${file.path}'; render: 'static' }`);
       }
     }
     lines[lines.length - 1] += ';';
