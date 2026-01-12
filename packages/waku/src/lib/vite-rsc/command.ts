@@ -2,23 +2,10 @@ import { existsSync } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import rsc from '@vitejs/plugin-rsc';
 import * as vite from 'vite';
 import type { Config } from '../../config.js';
 import { resolveConfig } from '../utils/config.js';
-import { allowServerPlugin } from '../vite-plugins/allow-server.js';
-import { buildMetadataPlugin } from '../vite-plugins/build-metadata.js';
-import { cloudflarePlugin } from '../vite-plugins/cloudflare.js';
-import { defaultAdapterPlugin } from '../vite-plugins/default-adapter.js';
-import { extraPlugins } from '../vite-plugins/extra-plugins.js';
-import { fallbackHtmlPlugin } from '../vite-plugins/fallback-html.js';
-import { fsRouterTypegenPlugin } from '../vite-plugins/fs-router-typegen.js';
-import { mainPlugin } from '../vite-plugins/main.js';
-import { notFoundPlugin } from '../vite-plugins/not-found.js';
-import { patchRsdwPlugin } from '../vite-plugins/patch-rsdw.js';
-import { privateDirPlugin } from '../vite-plugins/private-dir.js';
-import { userEntriesPlugin } from '../vite-plugins/user-entries.js';
-import { virtualConfigPlugin } from '../vite-plugins/virtual-config.js';
+import { combinedPlugins } from '../vite-plugins/combined-plugins.js';
 
 async function loadConfig(): Promise<Required<Config>> {
   let config: Config | undefined;
@@ -31,30 +18,6 @@ async function loadConfig(): Promise<Required<Config>> {
   return resolveConfig(config);
 }
 
-function rscPlugins(config: Required<Config>) {
-  return [
-    extraPlugins(config),
-    allowServerPlugin(), // apply `allowServer` DCE before "use client" transform
-    cloudflarePlugin(),
-    rsc({
-      serverHandler: false,
-      keepUseCientProxy: true,
-      useBuildAppHook: true,
-      clientChunks: (meta) => meta.serverChunk,
-    }),
-    mainPlugin(config),
-    userEntriesPlugin(config),
-    virtualConfigPlugin(config),
-    defaultAdapterPlugin(config),
-    notFoundPlugin(),
-    patchRsdwPlugin(),
-    buildMetadataPlugin(config),
-    privateDirPlugin(config),
-    fallbackHtmlPlugin(),
-    fsRouterTypegenPlugin(config),
-  ];
-}
-
 async function startDevServer(
   host: string | undefined,
   port: number,
@@ -62,7 +25,7 @@ async function startDevServer(
 ) {
   const server = await vite.createServer({
     configFile: false,
-    plugins: [rscPlugins(config)],
+    plugins: [combinedPlugins(config)],
     server: host ? { host, port } : { port },
   });
   await server.listen();
@@ -111,7 +74,7 @@ export async function runCommand(
   } else if (cmd === 'build') {
     const builder = await vite.createBuilder({
       configFile: false,
-      plugins: [rscPlugins(config)],
+      plugins: [combinedPlugins(config)],
     });
     await builder.buildApp();
   } else if (cmd === 'start') {
