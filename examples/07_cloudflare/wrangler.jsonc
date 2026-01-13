@@ -1,4 +1,5 @@
 {
+  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "waku-project",
   "main": "./dist/server/serve-cloudflare.js",
   // nodejs_als is required for Waku server-side request context
@@ -14,5 +15,12 @@
   },
   "vars": {
     "MAX_ITEMS": 10
-  }
+  },
+  "rules": [
+    {
+      "type": "ESModule",
+      "globs": ["**/*.js", "**/*.mjs"]
+    }
+  ],
+  "no_bundle": true
 }

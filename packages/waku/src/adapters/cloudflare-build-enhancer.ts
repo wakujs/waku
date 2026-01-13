@@ -49,6 +49,7 @@ export default {
       wranglerJsoncFile,
       `\
 {
+  "$schema": "node_modules/wrangler/config-schema.json",
   "name": ${JSON.stringify(projectName)},
   ${
     serverless
@@ -69,7 +70,14 @@ export default {
         : ''
     }"directory": "./${distDir}/${DIST_PUBLIC}",
     "html_handling": "drop-trailing-slash"
-  }
+  },
+  "rules": [
+    {
+      "type": "ESModule",
+      "globs": ["**/*.js", "**/*.mjs"],
+    },
+  ],
+  "no_bundle": true,
 }
 `,
     );

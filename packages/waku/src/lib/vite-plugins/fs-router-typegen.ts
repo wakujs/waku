@@ -247,43 +247,58 @@ export async function generateFsRouterTypes(pagesDir: string) {
       }
     }
 
-    let result = `// deno-fmt-ignore-file
-// biome-ignore format: generated types do not need formatting
-// prettier-ignore
-import type { PathsForPages, GetConfigResponse } from 'waku/router';\n\n`;
+    const hasAnyGetConfig = fileInfo.some((file) => file.hasGetConfig);
+    const lines: string[] = [
+      '// deno-fmt-ignore-file',
+      '// biome-ignore format: generated types do not need formatting',
+      '// prettier-ignore',
+      hasAnyGetConfig
+        ? "import type { PathsForPages, GetConfigResponse } from 'waku/router';"
+        : "import type { PathsForPages } from 'waku/router';",
+    ];
 
-    for (const file of fileInfo) {
-      const moduleName = moduleNames[file.src];
-      if (file.hasGetConfig) {
-        result += `// prettier-ignore\nimport type { getConfig as ${moduleName}_getConfig } from './${SRC_PAGES}/${file.src.replace('.tsx', '')}';\n`;
+    if (hasAnyGetConfig) {
+      lines.push('');
+      for (const file of fileInfo) {
+        if (!file.hasGetConfig) {
+          continue;
+        }
+        const moduleName = moduleNames[file.src];
+        lines.push(
+          `// prettier-ignore`,
+          `import type { getConfig as ${moduleName}_getConfig } from './${SRC_PAGES}/${file.src.replace('.tsx', '')}';`,
+        );
       }
     }
 
-    result += `\n// prettier-ignore\ntype Page =\n`;
-
+    lines.push('', '// prettier-ignore', 'type Page =');
     for (const file of fileInfo) {
       const moduleName = moduleNames[file.src];
       if (file.hasGetConfig) {
-        result += `| ({ path: '${file.path}' } & GetConfigResponse<typeof ${moduleName}_getConfig>)\n`;
+        lines.push(
+          `| ({ path: '${file.path}' } & GetConfigResponse<typeof ${moduleName}_getConfig>)`,
+        );
       } else {
-        result += `| { path: '${file.path}'; render: 'dynamic' }\n`;
+        lines.push(`| { path: '${file.path}'; render: 'static' }`);
       }
     }
+    lines[lines.length - 1] += ';';
 
-    result =
-      result.slice(0, -1) +
-      `;
+    lines.push(
+      '',
+      '// prettier-ignore',
+      "declare module 'waku/router' {",
+      '  interface RouteConfig {',
+      '    paths: PathsForPages<Page>;',
+      '  }',
+      '  interface CreatePagesConfig {',
+      '    pages: Page;',
+      '  }',
+      '}',
+      '',
+    );
 
-// prettier-ignore
-declare module 'waku/router' {
-  interface RouteConfig {
-    paths: PathsForPages<Page>;
-  }
-  interface CreatePagesConfig {
-    pages: Page;
-  }
-}
-`;
+    const result = lines.join('\n');
 
     return result;
   };

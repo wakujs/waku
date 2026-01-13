@@ -127,6 +127,22 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
     ).toBeUndefined();
   });
 
+  test('skips getConfig imports for pages without getConfig', async () => {
+    const generated = await generateFsRouterTypes(
+      path.join(
+        fixturesDir,
+        'plugin-fs-router-typegen-missing-getconfig',
+        'pages',
+      ),
+    );
+
+    expect(generated).not.toContain('GetConfigResponse');
+    expect(generated).not.toContain('_getConfig');
+    expect(generated).not.toContain('\n\n\n');
+    expect(generated).toContain("| { path: '/'; render: 'static' }");
+    expect(generated).toContain("| { path: '/about'; render: 'static' }");
+  });
+
   test('generates paths while skipping ignored/layout files and missing getConfig', async () => {
     const generated = await generateFsRouterTypes(
       path.join(fixturesDir, 'plugin-fs-router-typegen-complex', 'pages'),
@@ -153,9 +169,7 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
     expect(generated).toContain(
       "| ({ path: '/admin/dashboard' } & GetConfigResponse<typeof File_AdminDashboard_getConfig>)",
     );
-    expect(generated).toContain(
-      "| { path: '/blog/[slug]'; render: 'dynamic' }",
-    );
+    expect(generated).toContain("| { path: '/blog/[slug]'; render: 'static' }");
     expect(generated).toContain("declare module 'waku/router'");
   });
 });
