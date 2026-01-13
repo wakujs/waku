@@ -169,9 +169,7 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
     expect(generated).toContain(
       "| ({ path: '/admin/dashboard' } & GetConfigResponse<typeof File_AdminDashboard_getConfig>)",
     );
-    expect(generated).toContain(
-      "| { path: '/blog/[slug]'; render: 'static' }",
-    );
+    expect(generated).toContain("| { path: '/blog/[slug]'; render: 'static' }");
     expect(generated).toContain("declare module 'waku/router'");
   });
 });
