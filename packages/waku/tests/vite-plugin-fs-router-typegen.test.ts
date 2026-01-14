@@ -63,19 +63,19 @@ describe('vite-plugin-fs-router-typegen', () => {
     );
     expect(generated).toContain(
       `// prettier-ignore
-import type { getConfig as File_CategoryTagsIndex_getConfig } from './pages/[category]/[...tags]/index';
+import type { getConfig as File_CategoryTagsIndex_getConfig } from './pages/[category]/[...tags]/index.tsx';
 // prettier-ignore
-import type { getConfig as File_Root_getConfig } from './pages/_root';
+import type { getConfig as File_Root_getConfig } from './pages/_root.tsx';
 // prettier-ignore
-import type { getConfig as File_Index_getConfig } from './pages/index';
+import type { getConfig as File_Index_getConfig } from './pages/index.tsx';
 // prettier-ignore
-import type { getConfig as File_OneTwoThree_getConfig } from './pages/one-two-three';
+import type { getConfig as File_OneTwoThree_getConfig } from './pages/one-two-three.tsx';
 // prettier-ignore
-import type { getConfig as File_OneTwoThree_1_getConfig } from './pages/one__two_three';
+import type { getConfig as File_OneTwoThree_1_getConfig } from './pages/one__two_three.tsx';
 // prettier-ignore
-import type { getConfig as File_OneTwoThree_2_getConfig } from './pages/one_two_three';
+import type { getConfig as File_OneTwoThree_2_getConfig } from './pages/one_two_three.tsx';
 // prettier-ignore
-import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_two_three';`,
+import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_two_three.tsx';`,
     );
   });
 
@@ -150,13 +150,13 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
 
     expect(generated).toBeTruthy();
     expect(generated).toContain(
-      `import type { getConfig as File_GroupLandingIndex_getConfig } from './pages/(group)/landing/index';`,
+      `import type { getConfig as File_GroupLandingIndex_getConfig } from './pages/(group)/landing/index.tsx';`,
     );
     expect(generated).toContain(
-      `import type { getConfig as File_AdminDashboard_getConfig } from './pages/admin/dashboard';`,
+      `import type { getConfig as File_AdminDashboard_getConfig } from './pages/admin/dashboard.tsx';`,
     );
     expect(generated).toContain(
-      `import type { getConfig as File_DocsIndex_getConfig } from './pages/docs/index';`,
+      `import type { getConfig as File_DocsIndex_getConfig } from './pages/docs/index.tsx';`,
     );
     expect(generated).not.toContain('_layout');
     expect(generated).not.toContain('_components');
@@ -171,5 +171,19 @@ import type { getConfig as File_ØnéTwoThree_getConfig } from './pages/øné_tw
     );
     expect(generated).toContain("| { path: '/blog/[slug]'; render: 'static' }");
     expect(generated).toContain("declare module 'waku/router'");
+  });
+
+  test('handles wildcard routes with .tsx extension (Issue #1905)', async () => {
+    const generated = await generateFsRouterTypes(
+      path.join(fixturesDir, 'plugin-fs-router-typegen-wildcard-tsx', 'pages'),
+    );
+
+    expect(generated).toBeTruthy();
+    // Should preserve .tsx extension in imports to allow Vite to resolve correctly
+    expect(generated).toContain(
+      `import type { getConfig as File_ApiThingSlug_getConfig } from './pages/_api/thing/[...slug].tsx';`,
+    );
+    // Should generate correct path without extension (includes _api prefix)
+    expect(generated).toContain("| ({ path: '/_api/thing/[...slug]'");
   });
 });

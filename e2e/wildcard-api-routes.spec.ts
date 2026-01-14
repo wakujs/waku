@@ -54,4 +54,12 @@ test.describe('wildcard api routes', () => {
     const text2 = await response2.text();
     expect(text2).toBe('/api root catch-all');
   });
+
+  test('wildcard route with .tsx extension works', async ({ page }) => {
+    const response = await page.request.get(
+      `http://localhost:${port}/thing/foo/bar/baz`,
+    );
+    const text = await response.text();
+    expect(text).toBe('tsx API route');
+  });
 });
