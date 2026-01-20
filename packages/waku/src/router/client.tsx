@@ -669,11 +669,11 @@ const handleScroll = () => {
 const InnerRouter = ({
   initialRoute,
   httpStatus,
-  ignorePopState,
+  routeInterceptor = (route) => route,
 }: {
   initialRoute: RouteProps;
   httpStatus: string | undefined;
-  ignorePopState: ((route: RouteProps) => boolean) | undefined;
+  routeInterceptor: ((route: RouteProps) => RouteProps | false) | undefined;
 }) => {
   if (import.meta.hot) {
     const refetchRoute = () => {
@@ -894,8 +894,8 @@ const InnerRouter = ({
 
   useEffect(() => {
     const callback = () => {
-      const route = parseRoute(new URL(window.location.href));
-      if (ignorePopState?.(route)) {
+      const route = routeInterceptor(parseRoute(new URL(window.location.href)));
+      if (!route) {
         return;
       }
       changeRoute(route, { shouldScroll: true }).catch((err) => {
@@ -906,7 +906,7 @@ const InnerRouter = ({
     return () => {
       window.removeEventListener('popstate', callback);
     };
-  }, [changeRoute, ignorePopState]);
+  }, [changeRoute, routeInterceptor]);
 
   useEffect(() => {
     const callback = (path: string, query: string) => {
@@ -976,10 +976,10 @@ const InnerRouter = ({
 
 export function Router({
   initialRoute = parseRouteFromLocation(),
-  unstable_ignorePopState,
+  unstable_routeInterceptor,
 }: {
   initialRoute?: RouteProps;
-  unstable_ignorePopState?: (route: RouteProps) => boolean;
+  unstable_routeInterceptor?: (route: RouteProps) => RouteProps | false;
 }) {
   const initialRscPath = encodeRoutePath(initialRoute.path);
   const initialRscParams = createRscParams(initialRoute.query);
@@ -989,7 +989,7 @@ export function Router({
       <InnerRouter
         initialRoute={initialRoute}
         httpStatus={httpStatus}
-        ignorePopState={unstable_ignorePopState}
+        routeInterceptor={unstable_routeInterceptor}
       />
     </Root>
   );
