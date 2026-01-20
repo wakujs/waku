@@ -666,10 +666,12 @@ const handleScroll = () => {
   });
 };
 
+const defaultRouteInterceptor = (route: RouteProps) => route;
+
 const InnerRouter = ({
   initialRoute,
   httpStatus,
-  routeInterceptor = (route) => route,
+  routeInterceptor = defaultRouteInterceptor,
 }: {
   initialRoute: RouteProps;
   httpStatus: string | undefined;
