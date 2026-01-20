@@ -1,6 +1,6 @@
-import { Router } from './router';
+import type { ReactNode } from 'react';
 
-export const App = () => {
+export default function Root({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
@@ -19,9 +19,7 @@ export const App = () => {
       }`}
         </style>
       </head>
-      <body>
-        <Router />
-      </body>
+      <body>{children}</body>
     </html>
   );
-};
+}
