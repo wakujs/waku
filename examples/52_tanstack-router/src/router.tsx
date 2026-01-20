@@ -4,6 +4,7 @@ import {
   Link,
   Outlet,
   RouterProvider,
+  ClientOnly,
   createRootRoute,
   createRoute,
   createRouter,
@@ -61,5 +62,9 @@ declare module '@tanstack/react-router' {
 }
 
 export const Router = () => {
-  return <RouterProvider router={router} />;
+  return (
+    <ClientOnly>
+      <RouterProvider router={router} />
+    </ClientOnly>
+  );
 };
