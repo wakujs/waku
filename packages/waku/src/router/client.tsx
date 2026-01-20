@@ -669,9 +669,11 @@ const handleScroll = () => {
 const InnerRouter = ({
   initialRoute,
   httpStatus,
+  ignorePopState,
 }: {
   initialRoute: RouteProps;
   httpStatus: string | undefined;
+  ignorePopState: ((route: RouteProps) => boolean) | undefined;
 }) => {
   if (import.meta.hot) {
     const refetchRoute = () => {
@@ -893,6 +895,9 @@ const InnerRouter = ({
   useEffect(() => {
     const callback = () => {
       const route = parseRoute(new URL(window.location.href));
+      if (ignorePopState?.(route)) {
+        return;
+      }
       changeRoute(route, { shouldScroll: true }).catch((err) => {
         console.log('Error while navigating back:', err);
       });
@@ -901,7 +906,7 @@ const InnerRouter = ({
     return () => {
       window.removeEventListener('popstate', callback);
     };
-  }, [changeRoute]);
+  }, [changeRoute, ignorePopState]);
 
   useEffect(() => {
     const callback = (path: string, query: string) => {
@@ -971,15 +976,21 @@ const InnerRouter = ({
 
 export function Router({
   initialRoute = parseRouteFromLocation(),
+  unstable_ignorePopState,
 }: {
   initialRoute?: RouteProps;
+  unstable_ignorePopState?: (route: RouteProps) => boolean;
 }) {
   const initialRscPath = encodeRoutePath(initialRoute.path);
   const initialRscParams = createRscParams(initialRoute.query);
   const httpStatus = getHttpStatusFromMeta();
   return (
     <Root initialRscPath={initialRscPath} initialRscParams={initialRscParams}>
-      <InnerRouter initialRoute={initialRoute} httpStatus={httpStatus} />
+      <InnerRouter
+        initialRoute={initialRoute}
+        httpStatus={httpStatus}
+        ignorePopState={unstable_ignorePopState}
+      />
     </Root>
   );
 }
