@@ -1,15 +1,15 @@
 'use client';
 
 import {
+  ClientOnly,
   Link,
   Outlet,
   RouterProvider,
-  ClientOnly,
   createRootRoute,
   createRoute,
   createRouter,
 } from '@tanstack/react-router';
-import { TanStackRouterDevtools } from '@tanstack/router-devtools';
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { ServerTime } from './server-time';
 
 const rootRoute = createRootRoute({
