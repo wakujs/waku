@@ -1,71 +1,120 @@
-import type * as estree from 'estree';
 import MagicString from 'magic-string';
 import type { Plugin } from 'vite';
 import { parseAstAsync } from 'vite';
 
 type ProgramNode = Awaited<ReturnType<typeof parseAstAsync>>;
 
-const isNode = (value: unknown): value is estree.Node =>
+type BaseNode = { type: string };
+type Super = BaseNode & { type: 'Super' };
+type Identifier = BaseNode & { type: 'Identifier'; name: string };
+type Literal = BaseNode & { type: 'Literal'; value?: unknown };
+type ImportSpecifier = BaseNode & {
+  type: 'ImportSpecifier';
+  imported: Identifier | Literal;
+  local: Identifier;
+};
+type ExportSpecifier = BaseNode & {
+  type: 'ExportSpecifier';
+  local: Identifier | Literal;
+  exported: Identifier | Literal;
+};
+type ImportDeclaration = BaseNode & {
+  type: 'ImportDeclaration';
+  source: Literal;
+  specifiers: ImportSpecifier[];
+};
+type Expression = BaseNode & { value: unknown };
+type SpreadElement = BaseNode & { type: 'SpreadElement'; argument: Expression };
+type CallExpression = BaseNode & {
+  type: 'CallExpression';
+  callee: Expression | Super;
+  arguments: (Expression | SpreadElement)[];
+};
+type VariableDeclarator = BaseNode & { id: Identifier; init?: Expression };
+type VariableDeclaration = BaseNode & {
+  type: 'VariableDeclaration';
+  declarations: VariableDeclarator[];
+};
+type FunctionDeclaration = BaseNode & {
+  type: 'FunctionDeclaration';
+  id: Identifier;
+};
+type ClassDeclaration = BaseNode & { type: 'ClassDeclaration'; id: Identifier };
+type ExpressionStatement = BaseNode & {
+  type: 'ExpressionStatement';
+  expression: Expression;
+};
+
+const isNode = (value: unknown): value is BaseNode =>
   typeof (value as { type?: unknown })?.type === 'string'; // heuristic
 
 const isNodeWithRange = (
-  node: estree.Node,
-): node is estree.Node & { start: number; end: number } =>
+  node: BaseNode,
+): node is BaseNode & { start: number; end: number } =>
   typeof (node as { start?: unknown })?.start === 'number' &&
   typeof (node as { end?: unknown })?.end === 'number';
 
-const isIdentifierWithRange = (
-  node: estree.Node,
-): node is estree.Identifier & { start: number; end: number } =>
-  node.type === 'Identifier' &&
-  typeof (node as { start?: unknown }).start === 'number' &&
-  typeof (node as { end?: unknown }).end === 'number';
+const isIdentifier = (node: BaseNode): node is Identifier =>
+  node.type === 'Identifier';
 
-const isExpressionWithRange = (
-  node: estree.Expression,
-): node is estree.Expression & { start: number; end: number } =>
-  typeof (node as { start?: unknown }).start === 'number' &&
-  typeof (node as { end?: unknown }).end === 'number';
+const isSpreadElement = (node: BaseNode): node is SpreadElement =>
+  node.type === 'SpreadElement';
 
-const getImportedName = (specifier: estree.ImportSpecifier) =>
+const isCallExpression = (node: BaseNode): node is CallExpression =>
+  node.type === 'CallExpression';
+
+const isImportDeclaration = (node: BaseNode): node is ImportDeclaration =>
+  node.type === 'ImportDeclaration';
+
+const isVariableDeclaration = (node: BaseNode): node is VariableDeclaration =>
+  node.type === 'VariableDeclaration';
+
+const isExpressionStatement = (node: BaseNode): node is ExpressionStatement =>
+  node.type === 'ExpressionStatement';
+
+const isFunctionDeclaration = (node: BaseNode): node is FunctionDeclaration =>
+  node.type === 'FunctionDeclaration';
+
+const isClassDeclaration = (node: BaseNode): node is ClassDeclaration =>
+  node.type === 'ClassDeclaration';
+
+const getImportedName = (specifier: ImportSpecifier) =>
   specifier.imported.type === 'Identifier'
     ? specifier.imported.name
     : String(specifier.imported.value);
 
-const getExportedName = (specifier: estree.ExportSpecifier) =>
+const getExportedName = (specifier: ExportSpecifier) =>
   specifier.exported.type === 'Identifier'
     ? specifier.exported.name
     : String(specifier.exported.value);
 
-const getLocalExportName = (specifier: estree.ExportSpecifier) =>
+const getLocalExportName = (specifier: ExportSpecifier) =>
   specifier.local.type === 'Identifier'
     ? specifier.local.name
     : typeof specifier.local.value === 'string'
       ? specifier.local.value
       : null;
 
-const getExpressionFromArguments = (
-  args: (estree.Expression | estree.SpreadElement)[],
-) => {
+const getExpressionFromArguments = (args: (Expression | SpreadElement)[]) => {
   if (args.length !== 1) {
     throw new Error('allowServer should have exactly one argument');
   }
   const arg = args[0]!;
-  const argument = arg.type === 'SpreadElement' ? arg.argument : arg;
-  if (!isExpressionWithRange(argument)) {
-    throw new Error('allowServer should have exactly one argument');
+  const argument = isSpreadElement(arg) ? arg.argument : arg;
+  if (!isNodeWithRange(argument)) {
+    throw new Error('Missing range');
   }
   return argument;
 };
 
-const isUseDirective = (stmt: estree.Node, directive: string) =>
-  stmt.type === 'ExpressionStatement' &&
+const isUseDirective = (stmt: BaseNode, directive: string) =>
+  isExpressionStatement(stmt) &&
   stmt.expression.type === 'Literal' &&
   stmt.expression.value === directive;
 
-const getDeclarationId = (item: estree.Node) =>
-  (item.type === 'FunctionDeclaration' || item.type === 'ClassDeclaration') &&
-  isIdentifierWithRange(item.id) &&
+const getDeclarationId = (item: BaseNode) =>
+  (isFunctionDeclaration(item) || isClassDeclaration(item)) &&
+  isIdentifier(item.id) &&
   item.id;
 
 const transformExportedClientThings = (mod: ProgramNode) => {
@@ -73,16 +122,16 @@ const transformExportedClientThings = (mod: ProgramNode) => {
   // HACK this doesn't cover all cases
   const allowServerItems = new Map<
     string,
-    estree.Expression & { start: number; end: number }
+    Expression & { start: number; end: number }
   >();
   const allowServerDependencies = new Set<string>();
-  const visited = new WeakSet<estree.Node>();
-  const findDependencies = (node: estree.Node) => {
+  const visited = new WeakSet<BaseNode>();
+  const findDependencies = (node: BaseNode) => {
     if (visited.has(node)) {
       return;
     }
     visited.add(node);
-    if (node.type === 'Identifier') {
+    if (isIdentifier(node)) {
       if (!allowServerItems.has(node.name) && !exportNames.has(node.name)) {
         allowServerDependencies.add(node.name);
       }
@@ -99,7 +148,7 @@ const transformExportedClientThings = (mod: ProgramNode) => {
   let allowServer = 'unstable_allowServer';
   for (const item of mod.body) {
     if (
-      item.type === 'ImportDeclaration' &&
+      isImportDeclaration(item) &&
       item.source.type === 'Literal' &&
       item.source.value === 'waku/client'
     ) {
@@ -129,11 +178,12 @@ const transformExportedClientThings = (mod: ProgramNode) => {
         item.declaration.id
       ) {
         exportNames.add(item.declaration.id.name);
-      } else if (item.declaration?.type === 'VariableDeclaration') {
+      } else if (item.declaration && isVariableDeclaration(item.declaration)) {
         for (const d of item.declaration.declarations) {
-          if (isIdentifierWithRange(d.id)) {
+          if (isIdentifier(d.id)) {
             if (
-              d.init?.type === 'CallExpression' &&
+              d.init &&
+              isCallExpression(d.init) &&
               d.init.callee.type === 'Identifier' &&
               d.init.callee.name === allowServer
             ) {
@@ -161,11 +211,12 @@ const transformExportedClientThings = (mod: ProgramNode) => {
       if (item.exported?.type === 'Identifier') {
         exportNames.add(item.exported.name);
       }
-    } else if (item.type === 'VariableDeclaration') {
+    } else if (isVariableDeclaration(item)) {
       for (const d of item.declarations) {
         if (
-          isIdentifierWithRange(d.id) &&
-          d.init?.type === 'CallExpression' &&
+          isIdentifier(d.id) &&
+          d.init &&
+          isCallExpression(d.init) &&
           d.init.callee.type === 'Identifier' &&
           d.init.callee.name === allowServer
         ) {
@@ -181,12 +232,9 @@ const transformExportedClientThings = (mod: ProgramNode) => {
   do {
     dependenciesSize = allowServerDependencies.size;
     for (const item of mod.body) {
-      if (item.type === 'VariableDeclaration') {
+      if (isVariableDeclaration(item)) {
         for (const d of item.declarations) {
-          if (
-            isIdentifierWithRange(d.id) &&
-            allowServerDependencies.has(d.id.name)
-          ) {
+          if (isIdentifier(d.id) && allowServerDependencies.has(d.id.name)) {
             findDependencies(d);
           }
         }
@@ -202,8 +250,8 @@ const transformExportedClientThings = (mod: ProgramNode) => {
   return { allowServerDependencies, allowServerItems, exportNames };
 };
 
-const shouldKeepStatement = (stmt: estree.Node, dependencies: Set<string>) => {
-  if (stmt.type === 'ImportDeclaration') {
+const shouldKeepStatement = (stmt: BaseNode, dependencies: Set<string>) => {
+  if (isImportDeclaration(stmt)) {
     return stmt.specifiers.some(
       (s) =>
         s.type === 'ImportSpecifier' &&
@@ -211,9 +259,9 @@ const shouldKeepStatement = (stmt: estree.Node, dependencies: Set<string>) => {
           dependencies.has(s.local.name)),
     );
   }
-  if (stmt.type === 'VariableDeclaration') {
+  if (isVariableDeclaration(stmt)) {
     return stmt.declarations.some(
-      (d) => isIdentifierWithRange(d.id) && dependencies.has(d.id.name),
+      (d) => isIdentifier(d.id) && dependencies.has(d.id.name),
     );
   }
   const declId = getDeclarationId(stmt);

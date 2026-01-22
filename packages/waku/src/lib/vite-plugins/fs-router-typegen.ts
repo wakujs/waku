@@ -7,11 +7,11 @@ import { getGrouplessPath } from '../utils/create-pages.js';
 import { isIgnoredPath } from '../utils/fs-router.js';
 import { joinPath } from '../utils/path.js';
 
-type ImportSpecifierNode = {
+type ImportSpecifier = {
   type: 'ImportSpecifier';
   imported: { type: unknown; name?: unknown; value?: unknown };
 };
-type ExportSpecifierNode = {
+type ExportSpecifier = {
   type: 'ExportSpecifier';
   exported: { type: unknown; name?: unknown; value?: unknown };
 };
@@ -80,12 +80,12 @@ const parseModule = async (filePath: string) => {
   return parseAstAsync(transformed.code, { jsx: true });
 };
 
-const getImportedName = (specifier: ImportSpecifierNode) =>
+const getImportedName = (specifier: ImportSpecifier) =>
   specifier.imported.type === 'Identifier'
     ? specifier.imported.name
     : String(specifier.imported.value);
 
-const getExportedName = (specifier: ExportSpecifierNode) =>
+const getExportedName = (specifier: ExportSpecifier) =>
   specifier.exported.type === 'Identifier'
     ? specifier.exported.name
     : String(specifier.exported.value);
