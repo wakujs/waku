@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
-import { getPathMapping } from '../lib/utils/path.js';
+import { getPathMapping, path2regexp } from '../lib/utils/path.js';
 import type { PathSpec } from '../lib/utils/path.js';
 import { base64ToStream, streamToBase64 } from '../lib/utils/stream.js';
 import { createTaskRunner } from '../lib/utils/task-runner.js';
@@ -192,16 +192,29 @@ type SliceConfig = {
   renderer: () => Promise<ReactNode>;
 };
 
-const getRouterPrefetchCode = (path2moduleIds: Record<string, string[]>) => `
+const getRouterPrefetchCode = (path2moduleIds: Record<string, string[]>) => {
+  const moduleIdSet = new Set<string>();
+  Object.values(path2moduleIds).forEach((ids) =>
+    ids.forEach((id) => moduleIdSet.add(id)),
+  );
+  const ids = Array.from(moduleIdSet);
+  const path2idxs: Record<string, number[]> = {};
+  Object.entries(path2moduleIds).forEach(([path, ids]) => {
+    path2idxs[path] = ids.map((id) => ids.indexOf(id));
+  });
+  return `
 globalThis.__WAKU_ROUTER_PREFETCH__ = (path) => {
-  const path2ids = ${JSON.stringify(path2moduleIds)};
-  const pattern = Object.keys(path2ids).find((key) => new RegExp(key).test(path));
-  if (pattern && path2ids[pattern]) {
-    for (const id of path2ids[pattern] || []) {
-      import(id);
+  const ids = ${JSON.stringify(ids)};
+  const path2idxs = ${JSON.stringify(path2idxs)};
+  const pattern = Object.keys(path2idxs).find((key) => new RegExp(key).test(path));
+  if (pattern && path2idxs[pattern]) {
+    for (const idx of path2idxs[pattern] || []) {
+      import(ids[idx]);
     }
   }
-};`;
+};
+`;
+};
 
 export function unstable_defineRouter(fns: {
   getConfigs: () => Promise<Iterable<RouteConfig | ApiConfig | SliceConfig>>;
@@ -674,7 +687,8 @@ export function unstable_defineRouter(fns: {
           });
           const [stream1, stream2] = stream.tee();
           await generateFile(rscPath2pathname(rscPath), stream1);
-          path2moduleIds[pathname] = Array.from(moduleIds);
+          path2moduleIds[path2regexp(item.pathPattern || item.path)] =
+            Array.from(moduleIds);
           htmlRenderTasks.add(async () => {
             const html = (
               <>
