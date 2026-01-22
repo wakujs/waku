@@ -49,7 +49,7 @@ export function createRenderUtils(
             name: string;
             deps: { js: string[]; css: string[] };
           }) {
-            options?.unstable_moduleIdsCallback?.(metadata.deps.js);
+            options?.unstable_clientModuleCallback?.(metadata.deps.js);
           },
         },
       );

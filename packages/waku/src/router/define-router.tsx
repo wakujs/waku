@@ -669,7 +669,7 @@ export function unstable_defineRouter(fns: {
           }
           const moduleIds = new Set<string>();
           const stream = await renderRsc(entries, {
-            unstable_moduleIdsCallback: (ids) =>
+            unstable_clientModuleCallback: (ids) =>
               ids.forEach((id) => moduleIds.add(id)),
           });
           const [stream1, stream2] = stream.tee();
