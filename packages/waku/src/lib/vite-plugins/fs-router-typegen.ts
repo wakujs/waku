@@ -7,13 +7,15 @@ import { getGrouplessPath } from '../utils/create-pages.js';
 import { isIgnoredPath } from '../utils/fs-router.js';
 import { joinPath } from '../utils/path.js';
 
+type Identifier = { type: 'Identifier'; name: string };
+type Literal = { type: 'Literal'; value?: unknown };
 type ImportSpecifier = {
   type: 'ImportSpecifier';
-  imported: { type: unknown; name?: unknown; value?: unknown };
+  imported: Identifier | Literal;
 };
 type ExportSpecifier = {
   type: 'ExportSpecifier';
-  exported: { type: unknown; name?: unknown; value?: unknown };
+  exported: Identifier | Literal;
 };
 
 // https://tc39.es/ecma262/multipage/ecmascript-language-lexical-grammar.html#sec-names-and-keywords

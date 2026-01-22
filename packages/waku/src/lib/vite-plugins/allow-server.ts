@@ -4,7 +4,7 @@ import { parseAstAsync } from 'vite';
 
 type ProgramNode = Awaited<ReturnType<typeof parseAstAsync>>;
 
-type BaseNode = { type: string };
+type BaseNode = { type: string; start?: number; end?: number };
 type Super = BaseNode & { type: 'Super' };
 type Identifier = BaseNode & { type: 'Identifier'; name: string };
 type Literal = BaseNode & { type: 'Literal'; value?: unknown };
@@ -23,7 +23,7 @@ type ImportDeclaration = BaseNode & {
   source: Literal;
   specifiers: ImportSpecifier[];
 };
-type Expression = BaseNode & { value: unknown };
+type Expression = BaseNode;
 type SpreadElement = BaseNode & { type: 'SpreadElement'; argument: Expression };
 type CallExpression = BaseNode & {
   type: 'CallExpression';
@@ -56,6 +56,8 @@ const isNodeWithRange = (
 
 const isIdentifier = (node: BaseNode): node is Identifier =>
   node.type === 'Identifier';
+
+const isLiteral = (node: BaseNode): node is Literal => node.type === 'Literal';
 
 const isSpreadElement = (node: BaseNode): node is SpreadElement =>
   node.type === 'SpreadElement';
@@ -109,7 +111,7 @@ const getExpressionFromArguments = (args: (Expression | SpreadElement)[]) => {
 
 const isUseDirective = (stmt: BaseNode, directive: string) =>
   isExpressionStatement(stmt) &&
-  stmt.expression.type === 'Literal' &&
+  isLiteral(stmt.expression) &&
   stmt.expression.value === directive;
 
 const getDeclarationId = (item: BaseNode) =>
