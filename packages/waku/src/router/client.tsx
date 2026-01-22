@@ -666,12 +666,16 @@ const handleScroll = () => {
   });
 };
 
+const defaultRouteInterceptor = (route: RouteProps) => route;
+
 const InnerRouter = ({
   initialRoute,
   httpStatus,
+  routeInterceptor = defaultRouteInterceptor,
 }: {
   initialRoute: RouteProps;
   httpStatus: string | undefined;
+  routeInterceptor: ((route: RouteProps) => RouteProps | false) | undefined;
 }) => {
   if (import.meta.hot) {
     const refetchRoute = () => {
@@ -892,7 +896,10 @@ const InnerRouter = ({
 
   useEffect(() => {
     const callback = () => {
-      const route = parseRoute(new URL(window.location.href));
+      const route = routeInterceptor(parseRoute(new URL(window.location.href)));
+      if (!route) {
+        return;
+      }
       changeRoute(route, { shouldScroll: true }).catch((err) => {
         console.log('Error while navigating back:', err);
       });
@@ -901,7 +908,7 @@ const InnerRouter = ({
     return () => {
       window.removeEventListener('popstate', callback);
     };
-  }, [changeRoute]);
+  }, [changeRoute, routeInterceptor]);
 
   useEffect(() => {
     const callback = (path: string, query: string) => {
@@ -971,15 +978,21 @@ const InnerRouter = ({
 
 export function Router({
   initialRoute = parseRouteFromLocation(),
+  unstable_routeInterceptor,
 }: {
   initialRoute?: RouteProps;
+  unstable_routeInterceptor?: (route: RouteProps) => RouteProps | false;
 }) {
   const initialRscPath = encodeRoutePath(initialRoute.path);
   const initialRscParams = createRscParams(initialRoute.query);
   const httpStatus = getHttpStatusFromMeta();
   return (
     <Root initialRscPath={initialRscPath} initialRscParams={initialRscParams}>
-      <InnerRouter initialRoute={initialRoute} httpStatus={httpStatus} />
+      <InnerRouter
+        initialRoute={initialRoute}
+        httpStatus={httpStatus}
+        routeInterceptor={unstable_routeInterceptor}
+      />
     </Root>
   );
 }
