@@ -21,6 +21,7 @@ import type {
   RefObject,
   TransitionFunction,
 } from 'react';
+import { preloadModule } from 'react-dom';
 import { getErrorInfo } from '../lib/utils/custom-errors.js';
 import { addBase, removeBase } from '../lib/utils/path.js';
 import {
@@ -891,7 +892,13 @@ const InnerRouter = ({
     const rscPath = encodeRoutePath(route.path);
     const rscParams = createRscParams(route.query);
     prefetchRsc(rscPath, rscParams);
-    (globalThis as any).__WAKU_ROUTER_PREFETCH__?.(route.path);
+    for (const asset of (globalThis as any).__WAKU_ROUTER_PREFETCH__?.(
+      route.path,
+    ) ?? []) {
+      preloadModule(asset, {
+        as: 'script',
+      });
+    }
   }, []);
 
   useEffect(() => {

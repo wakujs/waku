@@ -208,9 +208,7 @@ globalThis.__WAKU_ROUTER_PREFETCH__ = (path) => {
   const path2idxs = ${JSON.stringify(path2idxs)};
   const pattern = Object.keys(path2idxs).find((key) => new RegExp(key).test(path));
   if (pattern && path2idxs[pattern]) {
-    for (const idx of path2idxs[pattern] || []) {
-      import(ids[idx]);
-    }
+    return (path2idxs[pattern] ?? []).map(idx => ids[idx]);
   }
 };
 `;
