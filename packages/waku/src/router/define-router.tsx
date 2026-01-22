@@ -203,13 +203,13 @@ const getRouterPrefetchCode = (path2moduleIds: Record<string, string[]>) => {
     path2idxs[path] = ids.map((id) => ids.indexOf(id));
   });
   return `
-globalThis.__WAKU_ROUTER_PREFETCH__ = (path) => {
+globalThis.__WAKU_ROUTER_PREFETCH__ = (path, callback) => {
   const ids = ${JSON.stringify(ids)};
   const path2idxs = ${JSON.stringify(path2idxs)};
   const pattern = Object.keys(path2idxs).find((key) => new RegExp(key).test(path));
   if (pattern && path2idxs[pattern]) {
     for (const idx of path2idxs[pattern] || []) {
-      import(ids[idx]);
+      callback(ids[idx]);
     }
   }
 };
