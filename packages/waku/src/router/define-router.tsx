@@ -192,6 +192,17 @@ type SliceConfig = {
   renderer: () => Promise<ReactNode>;
 };
 
+const getRouterPrefetchCode = (path2moduleIds: Record<string, string[]>) => `
+globalThis.__WAKU_ROUTER_PREFETCH__ = (path) => {
+  const path2ids = ${JSON.stringify(path2moduleIds)};
+  const pattern = Object.keys(path2ids).find((key) => new RegExp(key).test(path));
+  if (pattern && path2ids[pattern]) {
+    for (const id of path2ids[pattern] || []) {
+      import(id);
+    }
+  }
+};`;
+
 export function unstable_defineRouter(fns: {
   getConfigs: () => Promise<Iterable<RouteConfig | ApiConfig | SliceConfig>>;
 }) {
@@ -525,15 +536,18 @@ export function unstable_defineRouter(fns: {
         if (!entries) {
           return null;
         }
+        const elementsStream = await renderRsc(entries);
         const html = (
-          <INTERNAL_ServerRouter
-            route={{ path: pathname, query, hash: '' }}
-            httpstatus={httpstatus}
-          />
+          <>
+            <INTERNAL_ServerRouter
+              route={{ path: pathname, query, hash: '' }}
+              httpstatus={httpstatus}
+            />
+          </>
         );
         const actionResult =
           input.type === 'action' ? await input.fn() : undefined;
-        return renderHtml(await renderRsc(entries), html, {
+        return renderHtml(elementsStream, html, {
           rscPath,
           actionResult,
           status: httpstatus,
@@ -620,6 +634,9 @@ export function unstable_defineRouter(fns: {
       });
     }
 
+    const path2moduleIds: Record<string, string[]> = {};
+    const htmlRenderTasks = new Set<() => Promise<void>>();
+
     // static route
     for (const item of myConfig.configs) {
       if (item.type !== 'route') {
@@ -650,20 +667,34 @@ export function unstable_defineRouter(fns: {
             const cached = getCachedElement(id);
             entries[id] = cached ? await cached : entries[id];
           }
-          const stream = await renderRsc(entries);
+          const moduleIds = new Set<string>();
+          const stream = await renderRsc(entries, {
+            unstable_moduleIdsCallback: (ids) =>
+              ids.forEach((id) => moduleIds.add(id)),
+          });
+          path2moduleIds[pathname] = Array.from(moduleIds);
           const [stream1, stream2] = stream.tee();
           await generateFile(rscPath2pathname(rscPath), stream1);
-          const html = (
-            <INTERNAL_ServerRouter
-              route={{ path: pathname, query: '', hash: '' }}
-              httpstatus={is404(item.path) ? 404 : 200}
-            />
-          );
-          const res = await renderHtml(stream2, html, { rscPath });
-          await generateFile(htmlPath2pathname(pathname), res.body || '');
+          htmlRenderTasks.add(async () => {
+            const html = (
+              <>
+                <script type="module" async>
+                  {getRouterPrefetchCode(path2moduleIds)}
+                </script>
+                <INTERNAL_ServerRouter
+                  route={{ path: pathname, query: '', hash: '' }}
+                  httpstatus={is404(item.path) ? 404 : 200}
+                />
+              </>
+            );
+            const res = await renderHtml(stream2, html, { rscPath });
+            await generateFile(htmlPath2pathname(pathname), res.body || '');
+          });
         });
       });
     }
+    await waitForTasks();
+    htmlRenderTasks.forEach(runTask);
 
     // default html
     for (const item of myConfig.configs) {

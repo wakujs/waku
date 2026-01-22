@@ -88,7 +88,7 @@
   "dependencies": {
     "@hono/node-server": "^1.19.0",
     "@vitejs/plugin-react": "^5.1.0",
-    "@vitejs/plugin-rsc": "^0.5.9",
+    "@vitejs/plugin-rsc": "https://pkg.pr.new/@vitejs/plugin-rsc@454c742",
     "dotenv": "^17.2.3",
     "hono": "^4.10.0",
     "magic-string": "^0.30.21",

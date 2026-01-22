@@ -6,7 +6,11 @@ import type {
 
 export function createRenderUtils(
   temporaryReferences: unknown,
-  renderToReadableStream: (data: unknown, options?: object) => ReadableStream,
+  renderToReadableStream: (
+    data: unknown,
+    options?: object,
+    extraOptions?: object,
+  ) => ReadableStream,
   createFromReadableStream: (
     stream: ReadableStream,
     options?: object,
@@ -32,11 +36,23 @@ export function createRenderUtils(
   };
 
   return {
-    async renderRsc(elements) {
-      return renderToReadableStream(elements, {
-        temporaryReferences,
-        onError,
-      });
+    async renderRsc(elements, options) {
+      return renderToReadableStream(
+        elements,
+        {
+          temporaryReferences,
+          onError,
+        },
+        {
+          onClientReference(metadata: {
+            id: string;
+            name: string;
+            deps: { js: string[]; css: string[] };
+          }) {
+            options?.unstable_moduleIdsCallback?.(metadata.deps.js);
+          },
+        },
+      );
     },
     async parseRsc(stream) {
       return createFromReadableStream(stream, {}) as Promise<
