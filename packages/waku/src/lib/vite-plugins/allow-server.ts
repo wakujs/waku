@@ -24,11 +24,9 @@ type ExpressionStatement = BodyItem & {
   type: 'ExpressionStatement';
 };
 type Expression = ExpressionStatement['expression'];
-type AstNode = BodyItem | Expression | VariableDeclarator;
+type AstNode = BodyItem | Expression | VariableDeclarator; // not fully covered
 type CallExpression = Expression & { type: 'CallExpression' };
-type SpreadElement = CallExpression['arguments'][number] & {
-  type: 'SpreadElement';
-};
+type CallArguments = CallExpression['arguments'];
 
 const isNode = (value: unknown): value is AstNode =>
   typeof (value as { type?: unknown })?.type === 'string'; // heuristic
@@ -56,7 +54,7 @@ const getLocalExportName = (specifier: ExportSpecifier) =>
       ? specifier.local.value
       : null;
 
-const getExpressionFromArguments = (args: (Expression | SpreadElement)[]) => {
+const getExpressionFromArguments = (args: CallArguments) => {
   if (args.length !== 1) {
     throw new Error('allowServer should have exactly one argument');
   }
