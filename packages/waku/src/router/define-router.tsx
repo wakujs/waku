@@ -672,9 +672,9 @@ export function unstable_defineRouter(fns: {
             unstable_moduleIdsCallback: (ids) =>
               ids.forEach((id) => moduleIds.add(id)),
           });
-          path2moduleIds[pathname] = Array.from(moduleIds);
           const [stream1, stream2] = stream.tee();
           await generateFile(rscPath2pathname(rscPath), stream1);
+          path2moduleIds[pathname] = Array.from(moduleIds);
           htmlRenderTasks.add(async () => {
             const html = (
               <>
@@ -693,6 +693,7 @@ export function unstable_defineRouter(fns: {
         });
       });
     }
+    // HACK hopefully there is a better way than this
     await waitForTasks();
     htmlRenderTasks.forEach(runTask);
 
