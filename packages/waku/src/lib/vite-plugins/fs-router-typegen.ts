@@ -7,15 +7,18 @@ import { getGrouplessPath } from '../utils/create-pages.js';
 import { isIgnoredPath } from '../utils/fs-router.js';
 import { joinPath } from '../utils/path.js';
 
-type Identifier = { type: 'Identifier'; name: string };
-type Literal = { type: 'Literal'; value?: unknown };
-type ImportSpecifier = {
-  type: 'ImportSpecifier';
-  imported: Identifier | Literal;
+type ProgramNode = Awaited<ReturnType<typeof parseAstAsync>>;
+type ImportDeclaration = ProgramNode['body'][number] & {
+  type: 'ImportDeclaration';
 };
-type ExportSpecifier = {
+type ImportSpecifier = ImportDeclaration['specifiers'][number] & {
+  type: 'ImportSpecifier';
+};
+type ExportNamedDeclaration = ProgramNode['body'][number] & {
+  type: 'ExportNamedDeclaration';
+};
+type ExportSpecifier = ExportNamedDeclaration['specifiers'][number] & {
   type: 'ExportSpecifier';
-  exported: Identifier | Literal;
 };
 
 // https://tc39.es/ecma262/multipage/ecmascript-language-lexical-grammar.html#sec-names-and-keywords

@@ -3,82 +3,41 @@ import type { Plugin } from 'vite';
 import { parseAstAsync } from 'vite';
 
 type ProgramNode = Awaited<ReturnType<typeof parseAstAsync>>;
-
-type BaseNode = { type: string; start?: number; end?: number };
-type Super = BaseNode & { type: 'Super' };
-type Identifier = BaseNode & { type: 'Identifier'; name: string };
-type Literal = BaseNode & { type: 'Literal'; value?: unknown };
-type ImportSpecifier = BaseNode & {
-  type: 'ImportSpecifier';
-  imported: Identifier | Literal;
-  local: Identifier;
-};
-type ExportSpecifier = BaseNode & {
-  type: 'ExportSpecifier';
-  local: Identifier | Literal;
-  exported: Identifier | Literal;
-};
-type ImportDeclaration = BaseNode & {
-  type: 'ImportDeclaration';
-  source: Literal;
-  specifiers: ImportSpecifier[];
-};
-type Expression = BaseNode;
-type SpreadElement = BaseNode & { type: 'SpreadElement'; argument: Expression };
-type CallExpression = BaseNode & {
-  type: 'CallExpression';
-  callee: Expression | Super;
-  arguments: (Expression | SpreadElement)[];
-};
-type VariableDeclarator = BaseNode & { id: Identifier; init?: Expression };
-type VariableDeclaration = BaseNode & {
+type BodyItem = ProgramNode['body'][number];
+type VariableDeclaration = BodyItem & {
   type: 'VariableDeclaration';
-  declarations: VariableDeclarator[];
 };
-type FunctionDeclaration = BaseNode & {
-  type: 'FunctionDeclaration';
-  id: Identifier;
+type VariableDeclarator = VariableDeclaration['declarations'][number];
+type ImportDeclaration = BodyItem & {
+  type: 'ImportDeclaration';
 };
-type ClassDeclaration = BaseNode & { type: 'ClassDeclaration'; id: Identifier };
-type ExpressionStatement = BaseNode & {
+type ImportSpecifier = ImportDeclaration['specifiers'][number] & {
+  type: 'ImportSpecifier';
+};
+type ExportNamedDeclaration = BodyItem & {
+  type: 'ExportNamedDeclaration';
+};
+type ExportSpecifier = ExportNamedDeclaration['specifiers'][number] & {
+  type: 'ExportSpecifier';
+};
+type ExpressionStatement = BodyItem & {
   type: 'ExpressionStatement';
-  expression: Expression;
+};
+type Expression = ExpressionStatement['expression'];
+type AstNode = BodyItem | Expression | VariableDeclarator;
+type CallExpression = Expression & { type: 'CallExpression' };
+type SpreadElement = CallExpression['arguments'][number] & {
+  type: 'SpreadElement';
 };
 
-const isNode = (value: unknown): value is BaseNode =>
+const isNode = (value: unknown): value is AstNode =>
   typeof (value as { type?: unknown })?.type === 'string'; // heuristic
 
 const isNodeWithRange = (
-  node: BaseNode,
-): node is BaseNode & { start: number; end: number } =>
+  node: AstNode,
+): node is AstNode & { start: number; end: number } =>
   typeof (node as { start?: unknown })?.start === 'number' &&
   typeof (node as { end?: unknown })?.end === 'number';
-
-const isIdentifier = (node: BaseNode): node is Identifier =>
-  node.type === 'Identifier';
-
-const isLiteral = (node: BaseNode): node is Literal => node.type === 'Literal';
-
-const isSpreadElement = (node: BaseNode): node is SpreadElement =>
-  node.type === 'SpreadElement';
-
-const isCallExpression = (node: BaseNode): node is CallExpression =>
-  node.type === 'CallExpression';
-
-const isImportDeclaration = (node: BaseNode): node is ImportDeclaration =>
-  node.type === 'ImportDeclaration';
-
-const isVariableDeclaration = (node: BaseNode): node is VariableDeclaration =>
-  node.type === 'VariableDeclaration';
-
-const isExpressionStatement = (node: BaseNode): node is ExpressionStatement =>
-  node.type === 'ExpressionStatement';
-
-const isFunctionDeclaration = (node: BaseNode): node is FunctionDeclaration =>
-  node.type === 'FunctionDeclaration';
-
-const isClassDeclaration = (node: BaseNode): node is ClassDeclaration =>
-  node.type === 'ClassDeclaration';
 
 const getImportedName = (specifier: ImportSpecifier) =>
   specifier.imported.type === 'Identifier'
@@ -102,21 +61,21 @@ const getExpressionFromArguments = (args: (Expression | SpreadElement)[]) => {
     throw new Error('allowServer should have exactly one argument');
   }
   const arg = args[0]!;
-  const argument = isSpreadElement(arg) ? arg.argument : arg;
+  const argument = arg.type === 'SpreadElement' ? arg.argument : arg;
   if (!isNodeWithRange(argument)) {
     throw new Error('Missing range');
   }
   return argument;
 };
 
-const isUseDirective = (stmt: BaseNode, directive: string) =>
-  isExpressionStatement(stmt) &&
-  isLiteral(stmt.expression) &&
+const isUseDirective = (stmt: BodyItem, directive: string) =>
+  stmt.type === 'ExpressionStatement' &&
+  stmt.expression.type === 'Literal' &&
   stmt.expression.value === directive;
 
-const getDeclarationId = (item: BaseNode) =>
-  (isFunctionDeclaration(item) || isClassDeclaration(item)) &&
-  isIdentifier(item.id) &&
+const getDeclarationId = (item: BodyItem) =>
+  (item.type === 'FunctionDeclaration' || item.type === 'ClassDeclaration') &&
+  item.id.type === 'Identifier' &&
   item.id;
 
 const transformExportedClientThings = (mod: ProgramNode) => {
@@ -127,13 +86,13 @@ const transformExportedClientThings = (mod: ProgramNode) => {
     Expression & { start: number; end: number }
   >();
   const allowServerDependencies = new Set<string>();
-  const visited = new WeakSet<BaseNode>();
-  const findDependencies = (node: BaseNode) => {
+  const visited = new WeakSet<AstNode>();
+  const findDependencies = (node: AstNode) => {
     if (visited.has(node)) {
       return;
     }
     visited.add(node);
-    if (isIdentifier(node)) {
+    if (node.type === 'Identifier') {
       if (!allowServerItems.has(node.name) && !exportNames.has(node.name)) {
         allowServerDependencies.add(node.name);
       }
@@ -150,7 +109,7 @@ const transformExportedClientThings = (mod: ProgramNode) => {
   let allowServer = 'unstable_allowServer';
   for (const item of mod.body) {
     if (
-      isImportDeclaration(item) &&
+      item.type === 'ImportDeclaration' &&
       item.source.type === 'Literal' &&
       item.source.value === 'waku/client'
     ) {
@@ -180,12 +139,11 @@ const transformExportedClientThings = (mod: ProgramNode) => {
         item.declaration.id
       ) {
         exportNames.add(item.declaration.id.name);
-      } else if (item.declaration && isVariableDeclaration(item.declaration)) {
+      } else if (item.declaration?.type === 'VariableDeclaration') {
         for (const d of item.declaration.declarations) {
-          if (isIdentifier(d.id)) {
+          if (d.id.type === 'Identifier') {
             if (
-              d.init &&
-              isCallExpression(d.init) &&
+              d.init?.type === 'CallExpression' &&
               d.init.callee.type === 'Identifier' &&
               d.init.callee.name === allowServer
             ) {
@@ -213,12 +171,11 @@ const transformExportedClientThings = (mod: ProgramNode) => {
       if (item.exported?.type === 'Identifier') {
         exportNames.add(item.exported.name);
       }
-    } else if (isVariableDeclaration(item)) {
+    } else if (item.type === 'VariableDeclaration') {
       for (const d of item.declarations) {
         if (
-          isIdentifier(d.id) &&
-          d.init &&
-          isCallExpression(d.init) &&
+          d.id.type === 'Identifier' &&
+          d.init?.type === 'CallExpression' &&
           d.init.callee.type === 'Identifier' &&
           d.init.callee.name === allowServer
         ) {
@@ -234,9 +191,12 @@ const transformExportedClientThings = (mod: ProgramNode) => {
   do {
     dependenciesSize = allowServerDependencies.size;
     for (const item of mod.body) {
-      if (isVariableDeclaration(item)) {
+      if (item.type === 'VariableDeclaration') {
         for (const d of item.declarations) {
-          if (isIdentifier(d.id) && allowServerDependencies.has(d.id.name)) {
+          if (
+            d.id.type === 'Identifier' &&
+            allowServerDependencies.has(d.id.name)
+          ) {
             findDependencies(d);
           }
         }
@@ -252,8 +212,8 @@ const transformExportedClientThings = (mod: ProgramNode) => {
   return { allowServerDependencies, allowServerItems, exportNames };
 };
 
-const shouldKeepStatement = (stmt: BaseNode, dependencies: Set<string>) => {
-  if (isImportDeclaration(stmt)) {
+const shouldKeepStatement = (stmt: BodyItem, dependencies: Set<string>) => {
+  if (stmt.type === 'ImportDeclaration') {
     return stmt.specifiers.some(
       (s) =>
         s.type === 'ImportSpecifier' &&
@@ -261,9 +221,9 @@ const shouldKeepStatement = (stmt: BaseNode, dependencies: Set<string>) => {
           dependencies.has(s.local.name)),
     );
   }
-  if (isVariableDeclaration(stmt)) {
+  if (stmt.type === 'VariableDeclaration') {
     return stmt.declarations.some(
-      (d) => isIdentifier(d.id) && dependencies.has(d.id.name),
+      (d) => d.id.type === 'Identifier' && dependencies.has(d.id.name),
     );
   }
   const declId = getDeclarationId(stmt);
