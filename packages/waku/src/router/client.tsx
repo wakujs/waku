@@ -892,13 +892,9 @@ const InnerRouter = ({
     const rscPath = encodeRoutePath(route.path);
     const rscParams = createRscParams(route.query);
     prefetchRsc(rscPath, rscParams);
-    for (const asset of (globalThis as any).__WAKU_ROUTER_PREFETCH__?.(
-      route.path,
-    ) ?? []) {
-      preloadModule(asset, {
-        as: 'script',
-      });
-    }
+    (globalThis as any).__WAKU_ROUTER_PREFETCH__?.(route.path, (id: string) => {
+      preloadModule(id, { as: 'script' });
+    });
   }, []);
 
   useEffect(() => {
