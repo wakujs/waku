@@ -1,12 +1,25 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { readdir, writeFile } from 'node:fs/promises';
-import type * as estree from 'estree';
 import type { Plugin } from 'vite';
 import { parseAstAsync, transformWithEsbuild } from 'vite';
 import { EXTENSIONS, SRC_PAGES, SRC_SERVER_ENTRY } from '../constants.js';
 import { getGrouplessPath } from '../utils/create-pages.js';
 import { isIgnoredPath } from '../utils/fs-router.js';
 import { joinPath } from '../utils/path.js';
+
+type ProgramNode = Awaited<ReturnType<typeof parseAstAsync>>;
+type ImportDeclaration = ProgramNode['body'][number] & {
+  type: 'ImportDeclaration';
+};
+type ImportSpecifier = ImportDeclaration['specifiers'][number] & {
+  type: 'ImportSpecifier';
+};
+type ExportNamedDeclaration = ProgramNode['body'][number] & {
+  type: 'ExportNamedDeclaration';
+};
+type ExportSpecifier = ExportNamedDeclaration['specifiers'][number] & {
+  type: 'ExportSpecifier';
+};
 
 // https://tc39.es/ecma262/multipage/ecmascript-language-lexical-grammar.html#sec-names-and-keywords
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#identifiers
@@ -72,12 +85,12 @@ const parseModule = async (filePath: string) => {
   return parseAstAsync(transformed.code, { jsx: true });
 };
 
-const getImportedName = (specifier: estree.ImportSpecifier) =>
+const getImportedName = (specifier: ImportSpecifier) =>
   specifier.imported.type === 'Identifier'
     ? specifier.imported.name
     : String(specifier.imported.value);
 
-const getExportedName = (specifier: estree.ExportSpecifier) =>
+const getExportedName = (specifier: ExportSpecifier) =>
   specifier.exported.type === 'Identifier'
     ? specifier.exported.name
     : String(specifier.exported.value);
