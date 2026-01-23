@@ -394,6 +394,8 @@ export function unstable_defineRouter(fns: {
 
   const cachedElementsForRequest = new Map<SlotId, Promise<ReactNode>>();
   let cachedElementsForRequestInitialized = false;
+  let cachedPath2moduleIds: Record<string, string[]> | undefined;
+
   const handleRequest: HandleRequest = async (
     input,
     { renderRsc, parseRsc, renderHtml, loadBuildMetadata },
@@ -428,6 +430,15 @@ export function unstable_defineRouter(fns: {
         );
       }
     }
+    const getPath2moduleIds = async () => {
+      if (!cachedPath2moduleIds) {
+        cachedPath2moduleIds = JSON.parse(
+          (await loadBuildMetadata('defineRouter:path2moduleIds')) || '{}',
+        );
+      }
+      return cachedPath2moduleIds!;
+    };
+
     const pathConfigItem = await getPathConfigItem(input.pathname);
     if (pathConfigItem?.type === 'api') {
       const url = new URL(input.req.url);
@@ -435,6 +446,7 @@ export function unstable_defineRouter(fns: {
       const req = new Request(url, input.req);
       return pathConfigItem.handler(req);
     }
+
     const url = new URL(input.req.url);
     const headers = Object.fromEntries(input.req.headers.entries());
     if (input.type === 'component') {
@@ -478,6 +490,7 @@ export function unstable_defineRouter(fns: {
       }
       return renderRsc(entries);
     }
+
     if (input.type === 'function') {
       let elementsPromise: Promise<Record<string, unknown>> = Promise.resolve(
         {},
@@ -531,6 +544,7 @@ export function unstable_defineRouter(fns: {
         rendered = true;
       }
     }
+
     if (input.type === 'action' || input.type === 'custom') {
       const renderIt = async (
         pathname: string,
@@ -549,9 +563,12 @@ export function unstable_defineRouter(fns: {
         if (!entries) {
           return null;
         }
-        const elementsStream = await renderRsc(entries);
+        const path2moduleIds = await getPath2moduleIds();
         const html = (
           <>
+            <script type="module" async>
+              {getRouterPrefetchCode(path2moduleIds)}
+            </script>
             <INTERNAL_ServerRouter
               route={{ path: pathname, query, hash: '' }}
               httpstatus={httpstatus}
@@ -560,7 +577,7 @@ export function unstable_defineRouter(fns: {
         );
         const actionResult =
           input.type === 'action' ? await input.fn() : undefined;
-        return renderHtml(elementsStream, html, {
+        return renderHtml(await renderRsc(entries), html, {
           rscPath,
           actionResult,
           status: httpstatus,
@@ -761,6 +778,10 @@ export function unstable_defineRouter(fns: {
     await saveBuildMetadata(
       'defineRouter:cachedElements',
       JSON.stringify(Object.fromEntries(serializedCachedElements)),
+    );
+    await saveBuildMetadata(
+      'defineRouter:path2moduleIds',
+      JSON.stringify(path2moduleIds),
     );
   };
 
