@@ -1759,9 +1759,6 @@ importers:
       '@swc/cli':
         specifier: ^0.7.9
         version: 0.7.9(@swc/core@1.15.3(@swc/helpers@0.5.18))(chokidar@4.0.3)
-      '@types/estree':
-        specifier: ^1.0.8
-        version: 1.0.8
       react:
         specifier: 19.2.3
         version: 19.2.3
