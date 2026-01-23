@@ -2,8 +2,8 @@ import { EXTENSIONS, SRC_MIDDLEWARE, SRC_PAGES } from '../constants.js';
 
 export const getManagedServerEntry = (srcDir: string) => {
   const globBase = `/${srcDir}/${SRC_PAGES}`;
-  const globPattern = `${globBase}/**/*.{${EXTENSIONS.map((ext) => ext.slice(1)).join(',')}}`;
   const exts = EXTENSIONS.map((ext) => ext.slice(1)).join(',');
+  const globPattern = `${globBase}/**/*.{${exts}}`;
   const middlewareGlob = [`/${srcDir}/${SRC_MIDDLEWARE}/*.{${exts}}`, `!/${srcDir}/${SRC_MIDDLEWARE}/*.{test,spec}.{${exts}}`];
   return `
 import { fsRouter } from 'waku';
