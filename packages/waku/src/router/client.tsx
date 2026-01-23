@@ -961,6 +961,9 @@ const InnerRouter = ({
   const rootElement = (
     <Slot id="root">
       <meta name="httpstatus" content={httpStatus} />
+      <script type="module" async suppressHydrationWarning>
+        {''}
+      </script>
       <CustomErrorHandler has404={has404}>{routeElement}</CustomErrorHandler>
     </Slot>
   );
@@ -1015,14 +1018,19 @@ const MOCK_ROUTE_CHANGE_LISTENER: Record<
 export function INTERNAL_ServerRouter({
   route,
   httpstatus,
+  prefetchCode,
 }: {
   route: RouteProps;
   httpstatus: number;
+  prefetchCode: string;
 }) {
   const routeElement = <Slot id={getRouteSlotId(route.path)} />;
   const rootElement = (
     <Slot id="root">
       <meta name="httpstatus" content={`${httpstatus}`} />
+      <script type="module" async>
+        {prefetchCode}
+      </script>
       {routeElement}
     </Slot>
   );
