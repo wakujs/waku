@@ -16,6 +16,7 @@ type RenderHtmlStream = (
     rscPath?: string | undefined;
     formState?: ReactFormState | undefined;
     nonce?: string | undefined;
+    prefetchCode?: string | undefined;
   },
 ) => Promise<{ stream: ReadableStream; status: number | undefined }>;
 
@@ -53,6 +54,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
 
   // render html
   const bootstrapScriptContent = await loadBootstrapScriptContent();
+  const prefetchCode = options?.prefetchCode || '';
   let htmlStream: ReadableStream;
   let status: number | undefined;
   try {
@@ -61,7 +63,9 @@ export const renderHtmlStream: RenderHtmlStream = async (
         getBootstrapPreamble({
           rscPath: options?.rscPath || '',
           hydrate: true,
-        }) + bootstrapScriptContent,
+        }) +
+        prefetchCode +
+        bootstrapScriptContent,
       onError: (e: unknown) => {
         if (
           e &&
@@ -94,7 +98,9 @@ export const renderHtmlStream: RenderHtmlStream = async (
         getBootstrapPreamble({
           rscPath: options?.rscPath || '',
           hydrate: false,
-        }) + bootstrapScriptContent,
+        }) +
+        prefetchCode +
+        bootstrapScriptContent,
       ...(options?.nonce ? { nonce: options.nonce } : {}),
     });
   }

@@ -566,7 +566,6 @@ export function unstable_defineRouter(fns: {
           <INTERNAL_ServerRouter
             route={{ path: pathname, query, hash: '' }}
             httpstatus={httpstatus}
-            prefetchCode={getRouterPrefetchCode(path2moduleIds)}
           />
         );
         const actionResult =
@@ -575,6 +574,7 @@ export function unstable_defineRouter(fns: {
           rscPath,
           actionResult,
           status: httpstatus,
+          prefetchCode: getRouterPrefetchCode(path2moduleIds),
         });
       };
       const query = url.searchParams.toString();
@@ -705,10 +705,12 @@ export function unstable_defineRouter(fns: {
               <INTERNAL_ServerRouter
                 route={{ path: pathname, query: '', hash: '' }}
                 httpstatus={is404(item.path) ? 404 : 200}
-                prefetchCode={getRouterPrefetchCode(path2moduleIds)}
               />
             );
-            const res = await renderHtml(stream2, html, { rscPath });
+            const res = await renderHtml(stream2, html, {
+              rscPath,
+              prefetchCode: getRouterPrefetchCode(path2moduleIds),
+            });
             await generateFile(htmlPath2pathname(pathname), res.body || '');
           });
         });
