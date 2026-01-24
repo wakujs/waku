@@ -1,6 +1,6 @@
 import type { MiddlewareHandler } from 'hono';
 import { NONCE, secureHeaders } from 'hono/secure-headers';
-import { unstable_setNonce } from 'waku/router/server';
+import { unstable_getContext as getContext } from 'waku/server';
 
 const nonceMiddleware = (): MiddlewareHandler => {
   const secure = secureHeaders({
@@ -14,7 +14,8 @@ const nonceMiddleware = (): MiddlewareHandler => {
       // Bridge Hono's nonce to Waku
       const nonce = c.get('secureHeadersNonce');
       if (nonce) {
-        unstable_setNonce(nonce);
+        const context = getContext();
+        context.nonce = nonce;
       }
       await next();
     });

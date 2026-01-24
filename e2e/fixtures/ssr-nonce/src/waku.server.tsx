@@ -1,5 +1,6 @@
 import adapter from 'waku/adapters/default';
 import { Slot } from 'waku/minimal/client';
+import { unstable_getContext as getContext } from 'waku/server';
 import App from './components/App.js';
 
 // Fixed nonce for testing purposes
@@ -11,12 +12,13 @@ export default adapter({
       return renderRsc({ App: <App /> });
     }
     if (input.type === 'custom' && input.pathname === '/') {
+      const context = getContext();
+      context.nonce = TEST_NONCE;
       const response = await renderHtml(
         await renderRsc({ App: <App /> }),
         <Slot id="App" />,
         {
           rscPath: '',
-          nonce: TEST_NONCE,
         },
       );
 
