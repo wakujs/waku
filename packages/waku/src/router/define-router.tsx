@@ -533,10 +533,12 @@ export function unstable_defineRouter(fns: {
         );
         const actionResult =
           input.type === 'action' ? await input.fn() : undefined;
+        const nonce = headers['x-waku-nonce'];
         return renderHtml(await renderRsc(entries), html, {
           rscPath,
           actionResult,
           status: httpstatus,
+          ...(nonce ? { nonce } : {}),
         });
       };
       const query = url.searchParams.toString();

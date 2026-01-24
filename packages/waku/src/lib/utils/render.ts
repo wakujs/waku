@@ -46,7 +46,12 @@ export function createRenderUtils(
     async renderHtml(
       elementsStream,
       html,
-      options?: { rscPath?: string; actionResult?: any; status?: number },
+      options?: {
+        rscPath?: string;
+        actionResult?: any;
+        status?: number;
+        nonce?: string;
+      },
     ) {
       const { INTERNAL_renderHtmlStream: renderHtmlStream } =
         await loadSsrEntryModule();
@@ -57,6 +62,7 @@ export function createRenderUtils(
       const htmlResult = await renderHtmlStream(elementsStream, rscHtmlStream, {
         formState: options?.actionResult,
         rscPath: options?.rscPath,
+        nonce: options?.nonce,
       });
       return new Response(htmlResult.stream, {
         status: htmlResult.status || options?.status || 200,
