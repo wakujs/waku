@@ -1,0 +1,22 @@
+{
+  "name": "ssr-nonce-middleware",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "waku dev",
+    "build": "waku build",
+    "start": "waku start"
+  },
+  "dependencies": {
+    "react": "~19.2.3",
+    "react-dom": "~19.2.3",
+    "react-server-dom-webpack": "~19.2.3",
+    "waku": "latest"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.9.3"
+  }
+}
