@@ -93,9 +93,14 @@ export function unstable_setNonce(nonce: string): void {
 }
 
 export function unstable_getNonce(): string | undefined {
-  return (getContext() as unknown as Record<typeof NONCE_SYMBOL, string>)[
-    NONCE_SYMBOL
-  ];
+  try {
+    const context = getContext();
+    return (context as unknown as Record<typeof NONCE_SYMBOL, string>)[
+      NONCE_SYMBOL
+    ];
+  } catch {
+    return undefined;
+  }
 }
 
 const RERENDER_SYMBOL = Symbol('RERENDER');
