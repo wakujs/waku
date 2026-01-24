@@ -1,22 +1,11 @@
 import type { MiddlewareHandler } from 'hono';
-import { INTERNAL_runWithContext, getContext } from '../context.js';
+import { INTERNAL_runWithContext } from '../context.js';
 import type { Unstable_ProcessRequest as ProcessRequest } from '../types.js';
 
 export function contextMiddleware(): MiddlewareHandler {
   return (c, next) => {
     const req = c.req.raw;
     return INTERNAL_runWithContext(req, next);
-  };
-}
-
-export function nonceMiddleware(): MiddlewareHandler {
-  return (c, next) => {
-    const context = getContext();
-    const nonce = c.get('secureHeadersNonce');
-    if (typeof nonce === 'string') {
-      context.nonce = nonce;
-    }
-    return next();
   };
 }
 

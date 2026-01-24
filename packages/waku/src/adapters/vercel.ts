@@ -9,8 +9,7 @@ import {
 import type { BuildOptions } from './vercel-build-enhancer.js';
 
 const { DIST_PUBLIC } = constants;
-const { contextMiddleware, nonceMiddleware, rscMiddleware, middlewareRunner } =
-  honoMiddleware;
+const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 (global as any).__WAKU_HONO_NODE_SERVER_GET_REQUEST_LISTENER__ =
   getRequestListener;
 
@@ -37,7 +36,6 @@ export default createServerEntryAdapter(
       app.use(middlewareFn());
     }
     app.use(middlewareRunner(middlewareModules as never));
-    app.use(nonceMiddleware());
     app.use(rscMiddleware({ processRequest }));
     const buildOptions: BuildOptions = {
       assetsDir: options?.assetsDir || 'assets',

@@ -8,8 +8,7 @@ import {
 import type { BuildOptions } from './cloudflare-build-enhancer.js';
 
 const { DIST_PUBLIC } = constants;
-const { contextMiddleware, nonceMiddleware, rscMiddleware, middlewareRunner } =
-  honoMiddleware;
+const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 function isWranglerDev(req: Request): boolean {
   // This header seems to only be set for production cloudflare workers
@@ -58,7 +57,6 @@ export default createServerEntryAdapter(
       app.use(middlewareFn());
     }
     app.use(middlewareRunner(middlewareModules as never));
-    app.use(nonceMiddleware());
     app.use(rscMiddleware({ processRequest }));
     const buildOptions: BuildOptions = {
       assetsDir: options?.assetsDir || 'assets',

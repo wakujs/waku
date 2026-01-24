@@ -10,8 +10,7 @@ import {
 import type { BuildOptions } from './bun-build-enhancer.js';
 
 const { DIST_PUBLIC } = constants;
-const { contextMiddleware, nonceMiddleware, rscMiddleware, middlewareRunner } =
-  honoMiddleware;
+const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 export default createServerEntryAdapter(
   (
@@ -43,7 +42,6 @@ export default createServerEntryAdapter(
       app.use(middlewareFn());
     }
     app.use(middlewareRunner(middlewareModules as never));
-    app.use(nonceMiddleware());
     app.use(rscMiddleware({ processRequest }));
     const buildOptions: BuildOptions = {
       distDir: config.distDir,
