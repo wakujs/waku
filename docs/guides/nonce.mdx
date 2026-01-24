@@ -1,0 +1,101 @@
+---
+slug: nonce
+title: Configure nonce CSP
+description: Configure nonce Content Security Policy for inline script.
+---
+
+Waku relies on inline scripts for basic functionality: loading client entry module, streaming inital RSC workload, and prefetching assets on navigation.
+
+Inline script is also a source of [XSS attacks](https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/XSS). To mitigate this, a common practice is to set [`nonce` attribute](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/nonce) on `<script>`, together with proper [`Content-Security-Policy` response header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src).
+
+Since Waku v1.0.0-alpha.3, introduced in [PR#1922](https://github.com/wakujs/waku/pull/1922), Waku has built-in support with `nonce`.
+
+## Quick Start
+
+Waku has 2 ways to set `nonce`.
+
+### Hono Middleware
+
+Set up a middleware in `src/middleware/nonce.ts`:
+
+```ts
+import type { MiddlewareHandler } from 'hono';
+import { NONCE, secureHeaders } from 'hono/secure-headers';
+import { unstable_getContext as getContext } from 'waku/server';
+
+const nonceMiddleware = (): MiddlewareHandler => {
+  const secure = secureHeaders({
+    contentSecurityPolicy: {
+      scriptSrc: ["'self'", NONCE],
+    },
+  });
+
+  return async (c, next) => {
+    await secure(c, async () => {
+      // Bridge Hono's nonce to Waku
+      const nonce = c.get('secureHeadersNonce');
+      if (nonce) {
+        const context = getContext();
+        context.nonce = nonce;
+      }
+      await next();
+    });
+  };
+};
+
+export default nonceMiddleware;
+```
+
+Behind the scenes, hono generates the `nonce`, passes it to `Content-Security-Policy` headers (you can add more here) and stores it in `secureHeadersNonce` context. We need to pass it again to Waku context so Waku can apply it to its inline script.
+
+### Pass nonce in `waku.server.entry`
+
+If your adapter allows you to customize `handleRequest`, you can pass it manually:
+
+```tsx
+import adapter from 'waku/adapters/default';
+import { Slot } from 'waku/minimal/client';
+import App from './components/App.js';
+import { encodeBase64 } from 'hono/utils/encode';
+
+const generateNonce = () => {
+  const arrayBuffer = new Uint8Array(16);
+  crypto.getRandomValues(arrayBuffer);
+  return 'toBase64' in arrayBuffer ? arrayBuffer.toBase64() : encodeBase64(arrayBuffer.buffer);
+};
+
+const NONCE = generateNonce();
+
+export default adapter({
+  handleRequest: async (input, { renderRsc, renderHtml }) => {
+    if (input.type === 'component') {
+      return renderRsc({ App: <App /> });
+    }
+    if (input.type === 'custom' && input.pathname === '/') {
+      const response = await renderHtml(
+        await renderRsc({ App: <App /> }),
+        <Slot id="App" />,
+        {
+          rscPath: '',
+          nonce: NONCE,
+        },
+      );
+
+      // Set CSP header with the nonce
+      response.headers.set(
+        'Content-Security-Policy',
+        `script-src 'self' 'nonce-${NONCE}';`,
+      );
+
+      return response;
+    }
+  },
+  handleBuild: async () => {},
+});
+```
+
+## What's next
+
+In the case of SSG, a nonce is not secure because it must be randomly generated for every response. Since SSG produces static HTML, this is not possible. If your security requirements prioritize a nonce over static HTML benefits, consider disabling HTML pre-rendering.
+
+(Will we explore any alternative for case of SSG?)
