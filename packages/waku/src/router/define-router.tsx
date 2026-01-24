@@ -5,10 +5,7 @@ import type { PathSpec } from '../lib/utils/path.js';
 import { base64ToStream, streamToBase64 } from '../lib/utils/stream.js';
 import { createTaskRunner } from '../lib/utils/task-runner.js';
 import { unstable_defineHandlers as defineHandlers } from '../minimal/server.js';
-import {
-  unstable_getContext as getContext,
-  unstable_getContextData as getContextData,
-} from '../server.js';
+import { unstable_getContext as getContext } from '../server.js';
 import { INTERNAL_ServerRouter } from './client.js';
 import {
   HAS404_ID,
@@ -85,6 +82,20 @@ export function unstable_getRscParams(): unknown {
   } catch {
     return undefined;
   }
+}
+
+const NONCE_SYMBOL = Symbol('NONCE');
+
+export function unstable_setNonce(nonce: string): void {
+  (getContext() as unknown as Record<typeof NONCE_SYMBOL, string>)[
+    NONCE_SYMBOL
+  ] = nonce;
+}
+
+export function unstable_getNonce(): string | undefined {
+  return (getContext() as unknown as Record<typeof NONCE_SYMBOL, string>)[
+    NONCE_SYMBOL
+  ];
 }
 
 const RERENDER_SYMBOL = Symbol('RERENDER');
@@ -536,7 +547,7 @@ export function unstable_defineRouter(fns: {
         );
         const actionResult =
           input.type === 'action' ? await input.fn() : undefined;
-        const nonce = getContextData().nonce as string | undefined;
+        const nonce = unstable_getNonce();
         return renderHtml(await renderRsc(entries), html, {
           rscPath,
           actionResult,
