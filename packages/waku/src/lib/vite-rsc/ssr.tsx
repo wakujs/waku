@@ -13,10 +13,10 @@ type RenderHtmlStream = (
   rscStream: ReadableStream<Uint8Array>,
   rscHtmlStream: ReadableStream<Uint8Array>,
   options: {
-    rscPath?: string | undefined;
-    formState?: ReactFormState | undefined;
-    nonce?: string | undefined;
-    extraScriptContent?: string | undefined;
+    rscPath: string | undefined;
+    formState: ReactFormState | undefined;
+    nonce: string | undefined;
+    extraScriptContent: string | undefined;
   },
 ) => Promise<{ stream: ReadableStream; status: number | undefined }>;
 

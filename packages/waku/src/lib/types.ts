@@ -16,9 +16,8 @@ export type Unstable_RenderHtml = (
   html: ReactNode,
   options: {
     rscPath: string;
-    actionResult?: unknown;
+    formState?: unknown;
     status?: number;
-    nonce?: string;
     unstable_extraScriptContent?: string;
   },
 ) => Promise<Response>;
