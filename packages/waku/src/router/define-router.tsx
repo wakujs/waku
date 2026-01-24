@@ -550,12 +550,12 @@ export function unstable_defineRouter(fns: {
             httpstatus={httpstatus}
           />
         );
-        const actionResult =
+        const formState =
           input.type === 'action' ? await input.fn() : undefined;
         const nonce = unstable_getNonce();
         return renderHtml(await renderRsc(entries), html, {
           rscPath,
-          actionResult,
+          formState,
           status: httpstatus,
           ...(nonce ? { nonce } : {}),
         });
