@@ -1,5 +1,5 @@
 import type { MiddlewareHandler } from 'hono';
-import { INTERNAL_runWithContext } from '../context.js';
+import { getContextData, INTERNAL_runWithContext } from '../context.js';
 import type { Unstable_ProcessRequest as ProcessRequest } from '../types.js';
 
 export function contextMiddleware(): MiddlewareHandler {
@@ -15,6 +15,11 @@ export function rscMiddleware({
   processRequest: ProcessRequest;
 }): MiddlewareHandler {
   return async (c, next) => {
+    // Bridge nonce from Hono's secureHeaders middleware to Waku context
+    const nonce = c.get('secureHeadersNonce');
+    if (nonce) {
+      getContextData().nonce = nonce;
+    }
     const req = c.req.raw;
     const res = await processRequest(req);
     if (res) {

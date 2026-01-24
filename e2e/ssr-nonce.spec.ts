@@ -15,28 +15,34 @@ test.describe(`ssr-nonce`, () => {
     await stopApp();
   });
 
-  test('should have nonce attribute on script tags', async ({ page }) => {
-    const response = await page.goto(`http://localhost:${port}/`);
+  test('should have nonce in CSP header and raw HTML', async ({ request }) => {
+    const response = await request.get(`http://localhost:${port}/`);
+    const html = await response.text();
 
     // Check CSP header
-    const cspHeader = response?.headers()['content-security-policy'];
+    const cspHeader = response.headers()['content-security-policy'];
     expect(cspHeader).toContain(`'nonce-${TEST_NONCE}'`);
 
-    // Check that script tags have the nonce attribute
-    const scripts = await page.locator('script[nonce]').all();
-    expect(scripts.length).toBeGreaterThan(0);
-
-    for (const script of scripts) {
-      const nonce = await script.getAttribute('nonce');
-      expect(nonce).toBe(TEST_NONCE);
-    }
+    // Check raw HTML has script tags with nonce attribute
+    // (browser DOM hides nonce for security, so we check raw HTML)
+    expect(html).toContain(`nonce="${TEST_NONCE}"`);
   });
 
-  test('page renders correctly with nonce', async ({ page }) => {
+  test('page renders correctly without CSP violations', async ({ page }) => {
+    const cspViolations: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.text().includes('Content Security Policy')) {
+        cspViolations.push(msg.text());
+      }
+    });
+
     await page.goto(`http://localhost:${port}/`);
     await expect(page.getByTestId('title')).toHaveText('Nonce Test');
     await expect(page.getByTestId('message')).toHaveText(
       'Hello from SSR with nonce!',
     );
+
+    // No CSP violations should occur
+    expect(cspViolations).toHaveLength(0);
   });
 });
