@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 type Context = {
   readonly req: Request;
+  nonce: string | undefined;
   readonly data: Record<string, unknown>;
 };
 
@@ -10,6 +11,7 @@ const contextStorage = new AsyncLocalStorage<Context>();
 export function INTERNAL_runWithContext<T>(req: Request, next: () => T): T {
   const context: Context = {
     req,
+    nonce: undefined,
     data: {},
   };
   return contextStorage.run(context, next);

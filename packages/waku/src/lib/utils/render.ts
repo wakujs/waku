@@ -1,8 +1,18 @@
+import { getContext } from '../context.js';
 import type {
   Unstable_ParseRsc,
   Unstable_RenderHtml,
   Unstable_RenderRsc,
 } from '../types.js';
+
+const getNonce = () => {
+  try {
+    const context = getContext();
+    return context.nonce;
+  } catch {
+    return undefined;
+  }
+};
 
 export function createRenderUtils(
   temporaryReferences: unknown,
@@ -51,10 +61,10 @@ export function createRenderUtils(
         onError,
       });
       const htmlResult = await renderHtmlStream(elementsStream, rscHtmlStream, {
-        formState: options.formState as never,
         rscPath: options.rscPath,
+        formState: options.formState as never,
+        nonce: getNonce(),
         extraScriptContent: options.unstable_extraScriptContent,
-        nonce: undefined,
       });
       return new Response(htmlResult.stream, {
         status: htmlResult.status || options.status || 200,
