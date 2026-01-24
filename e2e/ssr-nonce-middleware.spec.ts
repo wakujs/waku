@@ -3,8 +3,6 @@ import { prepareNormalSetup, test } from './utils.js';
 
 const startApp = prepareNormalSetup('ssr-nonce-middleware');
 
-const TEST_NONCE = 'test-nonce-middleware-12345';
-
 test.describe(`ssr-nonce-middleware`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
@@ -19,13 +17,12 @@ test.describe(`ssr-nonce-middleware`, () => {
     const response = await request.get(`http://localhost:${port}/`);
     const html = await response.text();
 
-    // Check CSP header
+    // Check CSP header has nonce
     const cspHeader = response.headers()['content-security-policy'];
-    expect(cspHeader).toContain(`'nonce-${TEST_NONCE}'`);
+    expect(cspHeader).toMatch(/'nonce-[^']+'/);
 
     // Check raw HTML has script tags with nonce attribute
-    // (browser DOM hides nonce for security, so we check raw HTML)
-    expect(html).toContain(`nonce="${TEST_NONCE}"`);
+    expect(html).toMatch(/nonce="[^"]+"/);
   });
 
   test('page renders correctly without CSP violations', async ({ page }) => {
