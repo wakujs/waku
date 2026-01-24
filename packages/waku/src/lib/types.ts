@@ -14,7 +14,7 @@ export type Unstable_ParseRsc = (
 export type Unstable_RenderHtml = (
   elementsStream: ReadableStream,
   html: ReactNode,
-  options: { rscPath: string; actionResult?: unknown; status?: number },
+  options: { rscPath: string; formState?: unknown; status?: number },
 ) => Promise<Response>;
 
 export type Unstable_EmitFile = (
