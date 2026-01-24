@@ -1,5 +1,5 @@
 import type { MiddlewareHandler } from 'hono';
-import { secureHeaders, NONCE } from 'hono/secure-headers';
+import { NONCE, secureHeaders } from 'hono/secure-headers';
 import { unstable_setNonce } from 'waku/router/server';
 
 const nonceMiddleware = (): MiddlewareHandler => {
