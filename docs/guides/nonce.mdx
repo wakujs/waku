@@ -61,7 +61,9 @@ import { encodeBase64 } from 'hono/utils/encode';
 const generateNonce = () => {
   const arrayBuffer = new Uint8Array(16);
   crypto.getRandomValues(arrayBuffer);
-  return 'toBase64' in arrayBuffer ? arrayBuffer.toBase64() : encodeBase64(arrayBuffer.buffer);
+  return 'toBase64' in arrayBuffer
+    ? arrayBuffer.toBase64()
+    : encodeBase64(arrayBuffer.buffer);
 };
 
 const NONCE = generateNonce();
