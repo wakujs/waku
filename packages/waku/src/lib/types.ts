@@ -18,9 +18,8 @@ export type Unstable_RenderHtml = (
     rscPath: string;
     actionResult?: unknown;
     status?: number;
-    headers?: Record<string, string>;
     nonce?: string;
-    unstable_extraCode?: string;
+    unstable_extraScriptContent?: string;
   },
 ) => Promise<Response>;
 

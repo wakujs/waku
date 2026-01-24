@@ -16,7 +16,7 @@ type RenderHtmlStream = (
     rscPath?: string | undefined;
     formState?: ReactFormState | undefined;
     nonce?: string | undefined;
-    extraCode?: string | undefined;
+    extraScriptContent?: string | undefined;
   },
 ) => Promise<{ stream: ReadableStream; status: number | undefined }>;
 
@@ -64,7 +64,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
           hydrate: true,
         }) +
         bootstrapScriptContent +
-        (options.extraCode || ''),
+        (options.extraScriptContent || ''),
       onError: (e: unknown) => {
         if (
           e &&

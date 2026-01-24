@@ -54,11 +54,11 @@ export function createRenderUtils(
         formState: options.actionResult as never,
         rscPath: options.rscPath,
         nonce: options.nonce,
-        extraCode: options.unstable_extraCode,
+        extraScriptContent: options.unstable_extraScriptContent,
       });
       return new Response(htmlResult.stream, {
         status: htmlResult.status || options.status || 200,
-        headers: { 'content-type': 'text/html', ...options.headers },
+        headers: { 'content-type': 'text/html' },
       });
     },
   };
