@@ -51,9 +51,10 @@ export function createRenderUtils(
         onError,
       });
       const htmlResult = await renderHtmlStream(elementsStream, rscHtmlStream, {
-        formState: options.formState as never,
         rscPath: options.rscPath,
-        nonce: undefined,
+        formState: options.formState as never,
+        nonce: options.nonce,
+        extraScriptContent: options.unstable_extraScriptContent,
       });
       return new Response(htmlResult.stream, {
         status: htmlResult.status || options.status || 200,
