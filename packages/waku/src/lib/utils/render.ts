@@ -46,7 +46,14 @@ export function createRenderUtils(
     async renderHtml(
       elementsStream,
       html,
-      options?: { rscPath?: string; actionResult?: any; status?: number },
+      options: {
+        rscPath?: string;
+        actionResult?: any;
+        status?: number;
+        headers?: Record<string, string>;
+        nonce?: string;
+        unstable_extraCode?: string;
+      },
     ) {
       const { INTERNAL_renderHtmlStream: renderHtmlStream } =
         await loadSsrEntryModule();
@@ -55,12 +62,14 @@ export function createRenderUtils(
         onError,
       });
       const htmlResult = await renderHtmlStream(elementsStream, rscHtmlStream, {
-        formState: options?.actionResult,
-        rscPath: options?.rscPath,
+        formState: options.actionResult,
+        rscPath: options.rscPath,
+        nonce: options.nonce,
+        extraCode: options.unstable_extraCode,
       });
       return new Response(htmlResult.stream, {
-        status: htmlResult.status || options?.status || 200,
-        headers: { 'content-type': 'text/html' },
+        status: htmlResult.status || options.status || 200,
+        headers: { ...options.headers, 'content-type': 'text/html' },
       });
     },
   };
