@@ -18,6 +18,7 @@ export type Unstable_RenderHtml = (
     rscPath: string;
     formState?: unknown;
     status?: number;
+    nonce?: string;
     unstable_extraScriptContent?: string;
   },
 ) => Promise<Response>;

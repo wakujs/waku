@@ -84,6 +84,15 @@ export function unstable_getRscParams(): unknown {
   }
 }
 
+const getNonce = () => {
+  try {
+    const context = getContext();
+    return context.nonce;
+  } catch {
+    return undefined;
+  }
+};
+
 const RERENDER_SYMBOL = Symbol('RERENDER');
 type Rerender = (rscPath: string, rscParams?: unknown) => void;
 
@@ -533,10 +542,12 @@ export function unstable_defineRouter(fns: {
         );
         const formState =
           input.type === 'action' ? await input.fn() : undefined;
+        const nonce = getNonce();
         return renderHtml(await renderRsc(entries), html, {
           rscPath,
           formState,
           status: httpstatus,
+          ...(nonce ? { nonce } : {}),
         });
       };
       const query = url.searchParams.toString();
