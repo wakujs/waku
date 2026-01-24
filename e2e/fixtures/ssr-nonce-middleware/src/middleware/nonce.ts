@@ -5,7 +5,7 @@ import { unstable_setNonce } from 'waku/router/server';
 const nonceMiddleware = (): MiddlewareHandler => {
   const secure = secureHeaders({
     contentSecurityPolicy: {
-      scriptSrc: [NONCE],
+      scriptSrc: ["'self'", NONCE],
     },
   });
 

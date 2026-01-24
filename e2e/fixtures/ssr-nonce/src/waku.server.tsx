@@ -23,7 +23,7 @@ export default adapter({
       // Set CSP header with the nonce
       response.headers.set(
         'Content-Security-Policy',
-        `script-src 'nonce-${TEST_NONCE}' 'strict-dynamic';`,
+        `script-src 'self' 'nonce-${TEST_NONCE}';`,
       );
 
       return response;
