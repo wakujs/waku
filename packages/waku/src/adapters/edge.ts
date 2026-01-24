@@ -12,7 +12,8 @@ declare global {
   }
 }
 
-const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
+const { contextMiddleware, nonceMiddleware, rscMiddleware, middlewareRunner } =
+  honoMiddleware;
 
 export default createServerEntryAdapter(
   (
@@ -35,6 +36,7 @@ export default createServerEntryAdapter(
       app.use(middlewareFn());
     }
     app.use(middlewareRunner(middlewareModules as never));
+    app.use(nonceMiddleware());
     app.use(rscMiddleware({ processRequest }));
     return {
       fetch: app.fetch,
