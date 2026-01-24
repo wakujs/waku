@@ -69,7 +69,7 @@ export function createRenderUtils(
       });
       return new Response(htmlResult.stream, {
         status: htmlResult.status || options.status || 200,
-        headers: { ...options.headers, 'content-type': 'text/html' },
+        headers: { 'content-type': 'text/html', ...options.headers },
       });
     },
   };
