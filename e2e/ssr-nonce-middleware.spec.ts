@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { prepareNormalSetup, test } from './utils.js';
+import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('ssr-nonce-middleware');
 
@@ -34,6 +34,7 @@ test.describe(`ssr-nonce-middleware`, () => {
     });
 
     await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
     await expect(page.getByTestId('title')).toHaveText('Nonce Middleware Test');
     await expect(page.getByTestId('message')).toHaveText(
       'Hello from SSR with nonce via middleware!',
