@@ -97,7 +97,9 @@ export const renderHtmlStream: RenderHtmlStream = async (
         getBootstrapPreamble({
           rscPath: options.rscPath || '',
           hydrate: false,
-        }) + bootstrapScriptContent,
+        }) +
+        bootstrapScriptContent +
+        (options.extraScriptContent || ''),
       ...(options.nonce ? { nonce: options.nonce } : {}),
     });
   }
