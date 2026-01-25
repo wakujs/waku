@@ -1,22 +1,27 @@
 ---
-slug: nonce
-title: Configure nonce CSP
-description: Configure nonce Content Security Policy for inline script.
+slug: csp
+title: Configure CSP
+description: Configure Content Security Policy headers, nonce for inline script, and overall suggestions.
 ---
+
+[Content Security Policy](https://developer.mozilla.org/docs/Web/HTTP/CSP) (CSP)
+is important to guard your Waku application against various security threats such as cross-site scripting (XSS), clickjacking, and other code injection attacks.
+
+By using CSP, developers can specify which origins are permissible for content sources, scripts, stylesheets, images, fonts, objects, media (audio, video), iframes, and more.
+
+## Inline Script and nonce
 
 Waku relies on inline scripts for basic functionality: loading client entry module, streaming inital RSC workload, and prefetching assets on navigation.
 
-Inline script is also a source of [XSS attacks](https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/XSS). To mitigate this, a common practice is to set [`nonce` attribute](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/nonce) on `<script>`, together with proper [`Content-Security-Policy` response header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src).
+Inline script is also a source of [Cross-site scripting](https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/XSS) (XSS). To mitigate this, a common practice is to set [`nonce` attribute](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/nonce) on `<script>`, together with proper [`Content-Security-Policy` response header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src).
 
 Since Waku v1.0.0-alpha.3, introduced in [PR#1922](https://github.com/wakujs/waku/pull/1922), Waku has built-in support with `nonce`.
-
-## Quick Start
 
 Waku has 2 ways to set `nonce`.
 
 ### Hono Middleware
 
-Set up a middleware in `src/middleware/nonce.ts`:
+Hono provides a [middleware](https://hono.dev/docs/middleware/builtin/secure-headers) which simplifies the setup of security headers Set up a middleware in `src/middleware/nonce.ts`:
 
 ```ts
 import type { MiddlewareHandler } from 'hono';
@@ -96,8 +101,8 @@ export default adapter({
 });
 ```
 
-## What's next
+We set a minimal CSP header here. In practice, CSP should be as minimal or script as possible. We recommend hono middleware approach as it provides a [good default value](https://hono.dev/docs/middleware/builtin/secure-headers#supported-options).
+
+### Limitation
 
 In the case of SSG, a nonce is not secure because it must be randomly generated for every response. Since SSG produces static HTML, this is not possible. If your security requirements prioritize a nonce over static HTML benefits, consider disabling HTML pre-rendering.
-
-(Will we explore any alternative for case of SSG?)
