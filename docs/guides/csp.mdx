@@ -105,4 +105,4 @@ We set a minimal CSP header here. In practice, CSP should be as minimal or scrip
 
 ### Limitation
 
-In the case of SSG, a nonce is not secure because it must be randomly generated for every response. Since SSG produces static HTML, this is not possible. If your security requirements prioritize a nonce over static HTML benefits, consider disabling HTML pre-rendering.
+In the case of SSG, a nonce is not secure because it must be randomly generated for every response. Since SSG produces static HTML, this is not possible. If your security requirements prioritize a nonce over static HTML benefits, consider disabling HTML pre-rendering, or [intercept HTML stream](/guides/stream-intercept) if your host platform provide similar middleware (e.g. Netlify's Edge Function).
