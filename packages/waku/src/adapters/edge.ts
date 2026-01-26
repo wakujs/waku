@@ -1,5 +1,5 @@
-import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
+import { Hono } from 'hono/tiny';
 import type { ImportGlobFunction } from 'vite/types/importGlob.d.ts';
 import {
   unstable_createServerEntryAdapter as createServerEntryAdapter,
