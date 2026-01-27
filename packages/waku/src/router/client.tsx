@@ -66,7 +66,7 @@ const normalizeRoutePath = (path: string) => {
 const parseRoute = (url: URL): RouteProps => {
   const { pathname, searchParams, hash } = url;
   return {
-    path: normalizeRoutePath(pathname),
+    path: normalizeRoutePath(decodeURI(pathname)),
     query: searchParams.toString(),
     hash,
   };
