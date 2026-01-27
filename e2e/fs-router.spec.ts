@@ -6,9 +6,11 @@ const startApp = prepareNormalSetup('fs-router');
 test.describe('fs-router', () => {
   let port: number;
   let stopApp: () => Promise<void>;
+
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
+
   test.afterAll(async () => {
     await stopApp();
   });
@@ -153,6 +155,21 @@ test.describe('fs-router', () => {
     await expect(
       page.getByRole('heading', { name: 'Nested / encoded%20path' }),
     ).toBeVisible();
+  });
+
+  test('check hydration error with unicode page', async ({ page }) => {
+    const messages: string[] = [];
+    page.on('console', (msg) => messages.push(msg.text()));
+    const errors: string[] = [];
+    page.on('pageerror', (err) => errors.push(err.message));
+    await page.goto(`http://localhost:${port}/%ED%95%9C%EA%B8%80`);
+    await waitForHydration(page);
+    await expect(
+      page.getByRole('heading', { name: '/%ED%95%9C%EA%B8%80' }),
+    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: '/한글' })).toBeHidden();
+    expect(messages.join('\n')).not.toContain('hydration-mismatch');
+    expect(errors.join('\n')).not.toContain('Minified React error #418');
   });
 
   test('slices', async ({ page }) => {
