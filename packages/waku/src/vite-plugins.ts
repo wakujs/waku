@@ -1,3 +1,4 @@
+import * as dotenv from 'dotenv';
 import { defineConfig, type PluginOption } from 'vite';
 import type { Config } from './config.js';
 import { resolveConfig } from './lib/utils/config.js';
@@ -19,6 +20,9 @@ export { defineConfig };
  * ```
  */
 export default function waku(config?: Config): PluginOption {
+  // Load .env files (same as cli.ts does)
+  dotenv.config({ path: ['.env.local', '.env'] });
+
   const resolved = resolveConfig(config);
   return combinedPlugins(resolved);
 }
