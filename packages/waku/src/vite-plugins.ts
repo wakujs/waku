@@ -1,3 +1,28 @@
+import { defineConfig, type PluginOption } from 'vite';
+import type { Config } from './config.js';
+import { resolveConfig } from './lib/utils/config.js';
+import { combinedPlugins } from './lib/vite-plugins/combined-plugins.js';
+
+export { defineConfig };
+
+/**
+ * Waku Vite plugin.
+ *
+ * Usage in vite.config.ts:
+ * ```ts
+ * import { defineConfig } from 'vite'
+ * import waku from 'waku/vite-plugins'
+ *
+ * export default defineConfig({
+ *   plugins: [waku()],
+ * })
+ * ```
+ */
+export default function waku(config?: Config): PluginOption {
+  const resolved = resolveConfig(config);
+  return combinedPlugins(resolved);
+}
+
 export { allowServerPlugin as unstable_allowServerPlugin } from './lib/vite-plugins/allow-server.js';
 export { buildMetadataPlugin as unstable_buildMetadataPlugin } from './lib/vite-plugins/build-metadata.js';
 export { combinedPlugins as unstable_combinedPlugins } from './lib/vite-plugins/combined-plugins.js';

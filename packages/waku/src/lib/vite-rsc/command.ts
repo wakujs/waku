@@ -7,6 +7,16 @@ import type { Config } from '../../config.js';
 import { resolveConfig } from '../utils/config.js';
 import { combinedPlugins } from '../vite-plugins/combined-plugins.js';
 
+// TODO: async function combinedPlugins(): PluginOption { ...}
+// then load Config inside not from argument?
+// then basically, we can do
+// vite.createServer({})
+// no, inline config { plugins: [ ...] } need to be avoided? so we need to avoid configFile: false?
+// other way to pass config is through dummy configFile?
+// that was actually initial shape on my @vitejs/plugin-rsc integration.
+// what sveltekit/react-router does, is that let user have vite.config.ts and add explicitly
+// sveltekit/react-router plugin there, so vite can take over everything as usual.
+
 async function loadConfig(): Promise<Required<Config>> {
   let config: Config | undefined;
   if (existsSync('waku.config.ts') || existsSync('waku.config.js')) {
