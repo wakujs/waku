@@ -1,6 +1,6 @@
 import path from 'node:path';
-// FIXME hopefully we should avoid bundling this
 import type { MiddlewareHandler } from 'hono';
+// FIXME hopefully we should avoid bundling this
 import { Hono as HonoForDevAndBuild } from 'hono/tiny';
 import {
   unstable_constants as constants,
