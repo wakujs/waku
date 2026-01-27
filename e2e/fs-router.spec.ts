@@ -137,7 +137,7 @@ test.describe('fs-router', () => {
     });
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
     await page.click("a[href='/foo']", {
-      modifiers: ['Alt'],
+      modifiers: ['ControlOrMeta'],
     });
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
   });
