@@ -12,8 +12,8 @@
   "dependencies": {
     "@sindresorhus/slugify": "^3.0.0",
     "classnames": "2.3.2",
-    "framer-motion": "^12.26.1",
-    "jotai": "^2.16.1",
+    "framer-motion": "^12.29.2",
+    "jotai": "^2.16.2",
     "next-mdx-remote": "^5.0.0",
     "react": "~19.2.4",
     "react-dom": "~19.2.4",
@@ -23,9 +23,9 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.1.18",
-    "@types/react": "^19.2.8",
+    "@types/react": "^19.2.9",
     "@types/react-dom": "^19.2.3",
-    "prettier": "^3.7.4",
+    "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "shiki": "^3.21.0",
     "tailwindcss": "4.1.18",
