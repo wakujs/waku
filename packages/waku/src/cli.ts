@@ -1,11 +1,11 @@
 import { createRequire } from 'node:module';
 import process from 'node:process';
 import { parseArgs } from 'node:util';
-import * as dotenv from 'dotenv';
+import loadEnv from './lib/utils/env.js';
+
+loadEnv();
 
 const require = createRequire(new URL('.', import.meta.url));
-
-dotenv.config({ path: ['.env.local', '.env'], quiet: true });
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
