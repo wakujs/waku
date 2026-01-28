@@ -4,6 +4,7 @@ import path from 'node:path';
 export type BuildOptions = {
   distDir: string;
   privateDir: string;
+  rscBase: string;
   DIST_PUBLIC: string;
   serverless: boolean;
 };
@@ -11,6 +12,7 @@ export type BuildOptions = {
 async function postBuild({
   distDir,
   privateDir,
+  rscBase,
   DIST_PUBLIC,
   serverless,
 }: BuildOptions) {
@@ -29,7 +31,7 @@ export default async (request, context) =>
 
 export const config = {
   preferStatic: true,
-  path: ['/', '/*'],
+  path: ['/', '/*', '/${rscBase}/**/*'],
 };
 `,
     );
