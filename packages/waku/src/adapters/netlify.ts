@@ -36,6 +36,7 @@ export default createServerEntryAdapter(
     const buildOptions: BuildOptions = {
       distDir: config.distDir,
       privateDir: config.privateDir,
+      rscBase: config.rscBase,
       DIST_PUBLIC,
       serverless: !options?.static,
     };
