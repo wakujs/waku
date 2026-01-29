@@ -255,7 +255,10 @@ export function allowServerPlugin(): Plugin {
         return;
       }
 
-      const mod = await parseAstAsync(code, { jsx: true } as never);
+      const mod = await parseAstAsync(code, {
+        jsx: true,
+        lang: 'tsx',
+      } as never);
       if (!hasDirective(mod, 'use client')) {
         return;
       }
