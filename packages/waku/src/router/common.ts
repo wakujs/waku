@@ -1,8 +1,17 @@
+import type { ApiParams } from './create-pages-utils/inferred-path-types.js';
+
+export type { ApiParams };
+
 export type RouteProps<Path extends string = string> = {
   path: Path;
   query: string;
   hash: string;
 };
+
+/** A Request with typed route parameters extracted from the path pattern. */
+export interface TypedRequest<Path extends string> extends Request {
+  readonly params: ApiParams<Path>;
+}
 
 export function getComponentIds(path: string): readonly string[] {
   const pathItems = path.split('/').filter(Boolean);

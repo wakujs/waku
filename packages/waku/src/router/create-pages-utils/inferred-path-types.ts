@@ -189,6 +189,9 @@ type SlugTypes<Path extends string> =
       }
     : never;
 
+/** Extracts route parameters from an API path pattern. */
+export type ApiParams<Path extends string> = Prettify<SlugTypes<Path>>;
+
 export type PropsForPages<Path extends string> = Prettify<
   Omit<RouteProps<ReplaceAll<Path, `[${string}]`, string>>, 'hash'> &
     SlugTypes<Path>

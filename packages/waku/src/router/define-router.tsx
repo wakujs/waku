@@ -451,6 +451,12 @@ export function unstable_defineRouter(fns: {
       const url = new URL(input.req.url);
       url.pathname = input.pathname;
       const req = new Request(url, input.req);
+      const params = getPathMapping(pathConfigItem.path, input.pathname) ?? {};
+      Object.defineProperty(req, 'params', {
+        value: params,
+        writable: false,
+        enumerable: true,
+      });
       return pathConfigItem.handler(req);
     }
 
