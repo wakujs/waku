@@ -1,10 +1,7 @@
 import { expectType } from 'ts-expect';
 import type { TypeEqual } from 'ts-expect';
 import { describe, expect, it } from 'vitest';
-import {
-  getPathMapping,
-  parsePathWithSlug,
-} from '../src/lib/utils/path.js';
+import { getPathMapping, parsePathWithSlug } from '../src/lib/utils/path.js';
 import type { ApiParams, TypedRequest } from '../src/router/common.js';
 
 /**
@@ -132,9 +129,9 @@ describe('TypedRequest type tests', () => {
     };
 
     // Type check passes if this compiles
-    expectType<
-      (req: TypedRequest<'/users/[id]'>) => Promise<Response>
-    >(handler);
+    expectType<(req: TypedRequest<'/users/[id]'>) => Promise<Response>>(
+      handler,
+    );
   });
 
   it('is backwards compatible with plain Request handlers', () => {
@@ -156,7 +153,9 @@ describe('TypedRequest type tests', () => {
 
 describe('TypedRequest usage patterns', () => {
   it('works with destructuring in handler', () => {
-    const handler = async (req: TypedRequest<'/posts/[postId]/comments/[commentId]'>) => {
+    const handler = async (
+      req: TypedRequest<'/posts/[postId]/comments/[commentId]'>,
+    ) => {
       const { postId, commentId } = req.params;
       expectType<string>(postId);
       expectType<string>(commentId);
@@ -164,7 +163,9 @@ describe('TypedRequest usage patterns', () => {
     };
 
     expectType<
-      (req: TypedRequest<'/posts/[postId]/comments/[commentId]'>) => Promise<Response>
+      (
+        req: TypedRequest<'/posts/[postId]/comments/[commentId]'>,
+      ) => Promise<Response>
     >(handler);
   });
 
@@ -175,9 +176,9 @@ describe('TypedRequest usage patterns', () => {
       return new Response(`Segments: ${segments.join('/')}`);
     };
 
-    expectType<
-      (req: TypedRequest<'/api/[...segments]'>) => Promise<Response>
-    >(handler);
+    expectType<(req: TypedRequest<'/api/[...segments]'>) => Promise<Response>>(
+      handler,
+    );
   });
 
   it('allows accessing both Request properties and params', () => {
@@ -193,9 +194,9 @@ describe('TypedRequest usage patterns', () => {
       return new Response(JSON.stringify({ id, path: url.pathname }));
     };
 
-    expectType<
-      (req: TypedRequest<'/users/[id]'>) => Promise<Response>
-    >(handler);
+    expectType<(req: TypedRequest<'/users/[id]'>) => Promise<Response>>(
+      handler,
+    );
   });
 });
 
@@ -220,7 +221,10 @@ describe('Runtime params extraction', () => {
 
   it('extracts mixed slug and wildcard parameters', () => {
     const pathSpec = parsePathWithSlug('/users/[id]/files/[...path]');
-    const params = getPathMapping(pathSpec, '/users/user-1/files/docs/readme.md');
+    const params = getPathMapping(
+      pathSpec,
+      '/users/user-1/files/docs/readme.md',
+    );
     expect(params).toEqual({ id: 'user-1', path: ['docs', 'readme.md'] });
   });
 
