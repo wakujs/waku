@@ -142,7 +142,7 @@ test.describe('fs-router', () => {
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
   });
 
-  test('encoded path', async ({ page }) => {
+  test('encoded path - space - dynamic', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
     await page.click("a[href='/nested/encoded%20path']");
@@ -152,6 +152,53 @@ test.describe('fs-router', () => {
     await page.reload();
     await expect(
       page.getByRole('heading', { name: 'Nested / encoded%20path' }),
+    ).toBeVisible();
+  });
+
+  test('encoded path - space - static', async ({ page }) => {
+    await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
+    await page.click("a[href='/static-nested/encoded%20path']");
+    await expect(
+      page.getByRole('heading', { name: 'Nested / encoded%20path' }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(
+      page.getByRole('heading', { name: 'Nested / encoded%20path' }),
+    ).toBeVisible();
+  });
+
+  test('encoded path - unicode - dynamic', async ({ page }) => {
+    await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
+    await page.click("a[href='/nested/encoded%E6%B8%AC%E8%A9%A6path']");
+    await expect(
+      page.getByRole('heading', {
+        name: 'Nested / encoded%E6%B8%AC%E8%A9%A6path',
+      }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(
+      page.getByRole('heading', {
+        name: 'Nested / encoded%E6%B8%AC%E8%A9%A6path',
+      }),
+    ).toBeVisible();
+  });
+
+  test('encoded path - unicode - static', async ({ page }) => {
+    await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
+    await page.click("a[href='/static-nested/encoded%E6%B8%AC%E8%A9%A6path']");
+    await expect(
+      page.getByRole('heading', {
+        name: 'Nested / encoded%E6%B8%AC%E8%A9%A6path',
+      }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(
+      page.getByRole('heading', {
+        name: 'Nested / encoded%E6%B8%AC%E8%A9%A6path',
+      }),
     ).toBeVisible();
   });
 
