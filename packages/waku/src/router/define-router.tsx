@@ -303,10 +303,9 @@ export function unstable_defineRouter(fns: {
     }
     const skipIdSet = new Set(isStringArray(skipParam) ? skipParam : []);
     const { query } = parseRscParams(rscParams);
-    const decodedPathname = decodeURI(pathname);
-    const routeId = ROUTE_SLOT_ID_PREFIX + decodedPathname;
+    const routeId = ROUTE_SLOT_ID_PREFIX + pathname;
     const option: RendererOption = {
-      pathname: decodedPathname,
+      pathname,
       query: pathConfigItem.isStatic ? undefined : query,
     };
     const myConfig = await getMyConfig();
@@ -382,7 +381,7 @@ export function unstable_defineRouter(fns: {
         entries[id] = sliceElement;
       }),
     ]);
-    entries[ROUTE_ID] = [decodedPathname, query];
+    entries[ROUTE_ID] = [pathname, query];
     entries[IS_STATIC_ID] = pathConfigItem.isStatic;
     sliceConfigMap.forEach((sliceConfig, sliceId) => {
       if (sliceConfig.isStatic) {
