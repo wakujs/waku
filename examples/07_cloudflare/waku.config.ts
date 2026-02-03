@@ -10,14 +10,14 @@ export default defineConfig({
         build: {
           rollupOptions: {
             platform: 'neutral',
-          },
+          } as never,
         },
       },
       ssr: {
         build: {
           rollupOptions: {
             platform: 'neutral',
-          },
+          } as never,
         },
       },
     },
