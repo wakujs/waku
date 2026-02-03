@@ -361,8 +361,7 @@ export const createPages = <
   const createPathPropsMapper = (path: string) => {
     const layoutMatchPath = groupPathLookup.get(path) ?? path;
     const pathSpec = parsePathWithSlug(layoutMatchPath);
-    return (pathname: string) =>
-      pathMappingWithoutGroups(pathSpec, encodeURI(pathname));
+    return (pathname: string) => pathMappingWithoutGroups(pathSpec, pathname);
   };
 
   /** Builds the routeElement renderer from layouts and page slots */
