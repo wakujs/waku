@@ -5,6 +5,22 @@ import { defineConfig } from 'waku/config';
 
 export default defineConfig({
   vite: {
+    environments: {
+      rsc: {
+        build: {
+          rollupOptions: {
+            platform: 'neutral',
+          } as never,
+        },
+      },
+      ssr: {
+        build: {
+          rollupOptions: {
+            platform: 'neutral',
+          } as never,
+        },
+      },
+    },
     plugins: [
       tailwindcss(),
       react({
