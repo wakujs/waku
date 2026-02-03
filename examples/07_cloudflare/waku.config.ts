@@ -6,20 +6,20 @@ import { defineConfig } from 'waku/config';
 export default defineConfig({
   vite: {
     environments: {
-        rsc: {
-          build: {
-            rollupOptions: {
-              platform: 'neutral',
-            },
+      rsc: {
+        build: {
+          rollupOptions: {
+            platform: 'neutral',
           },
         },
-        ssr: {
-          build: {
-            rollupOptions: {
-              platform: 'neutral',
-            },
+      },
+      ssr: {
+        build: {
+          rollupOptions: {
+            platform: 'neutral',
           },
         },
+      },
     },
     plugins: [
       tailwindcss(),
