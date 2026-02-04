@@ -3,6 +3,7 @@ import type { PluginOption } from 'vite';
 import type { Config } from '../../config.js';
 import { allowServerPlugin } from './allow-server.js';
 import { buildMetadataPlugin } from './build-metadata.js';
+import { buildStaticFilesPlugin } from './build-static-files.js';
 import { cloudflarePlugin } from './cloudflare.js';
 import { defaultAdapterPlugin } from './default-adapter.js';
 import { extraPlugins } from './extra-plugins.js';
@@ -32,7 +33,8 @@ export function combinedPlugins(config: Required<Config>): PluginOption {
     defaultAdapterPlugin(config),
     notFoundPlugin(),
     patchRsdwPlugin(),
-    buildMetadataPlugin(config),
+    buildMetadataPlugin(),
+    buildStaticFilesPlugin(config),
     privateDirPlugin(config),
     fallbackHtmlPlugin(),
     fsRouterTypegenPlugin(config),
