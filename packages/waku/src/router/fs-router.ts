@@ -80,9 +80,7 @@ export function fsRouter(
         // workaround ends
 
         // Always use encoded URI paths
-        file = new URL(file, 'http://example.com').pathname;
-        // strip "./" prefix
-        file = file.replace(/^\//, '');
+        file = new URL(file, 'http://localhost:3000').pathname.slice(1);
         const config = await mod.getConfig?.();
         const pathItems = file
           .replace(/\.\w+$/, '')
