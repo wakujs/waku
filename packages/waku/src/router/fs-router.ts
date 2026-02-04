@@ -63,24 +63,20 @@ export function fsRouter(
           GET?: (req: Request) => Promise<Response>;
         };
 
-        // Temporary workaround for Vite issue with encoded URIs in file names
         try {
           const decodedFile = decodeURI(file);
           if (decodedFile !== file) {
-            console.warn(
-              `[waku] Using encoded URI in file name is currently not supported.
-       Upstream issue: https://github.com/vitejs/vite/issues/20799
-       Consider renaming the file:`,
-              decodedFile,
+            throw new Error(
+              `[waku] Using encoded URI in file name is not supported.
+       Consider renaming the file: ${decodedFile}`,
             );
           }
         } finally {
           // make eslint happy
         }
-        // workaround ends
 
         // Always use encoded URI paths
-        file = new URL(file, 'http://localhost:3000').pathname.slice(1);
+        file = new URL(file, 'http://localhost').pathname.slice(1);
         const config = await mod.getConfig?.();
         const pathItems = file
           .replace(/\.\w+$/, '')
