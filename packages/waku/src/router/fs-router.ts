@@ -62,6 +62,7 @@ export function fsRouter(
           }>;
           GET?: (req: Request) => Promise<Response>;
         };
+
         // Temporary workaround for Vite issue with encoded URIs in file names
         try {
           const decodedFile = decodeURI(file);
@@ -76,6 +77,8 @@ export function fsRouter(
         } finally {
           // make eslint happy
         }
+        // workaround ends
+
         // Always use encoded URI paths
         file = new URL(file, 'http://example.com').pathname;
         // strip "./" prefix
