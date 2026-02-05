@@ -66,7 +66,7 @@ export function fsRouter(
         try {
           const decodedFile = decodeURI(file);
           if (decodedFile !== file) {
-            throw new Error(
+            console.warn(
               `[waku] Using encoded URI in file name is not supported.
        Consider renaming the file: ${decodedFile}`,
             );
