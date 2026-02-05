@@ -63,18 +63,6 @@ export function fsRouter(
           GET?: (req: Request) => Promise<Response>;
         };
 
-        try {
-          const decodedFile = decodeURI(file);
-          if (decodedFile !== file) {
-            console.warn(
-              `[waku] Using encoded URI in file name is not supported.
-       Consider renaming the file: ${decodedFile}`,
-            );
-          }
-        } finally {
-          // make eslint happy
-        }
-
         // Use WHATWG URL encoding for the file path (different from RFC2396-based encoding)
         file = new URL(file, 'http://localhost:3000').pathname.slice(1);
         const config = await mod.getConfig?.();
