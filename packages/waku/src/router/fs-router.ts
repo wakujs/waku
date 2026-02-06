@@ -62,8 +62,9 @@ export function fsRouter(
           }>;
           GET?: (req: Request) => Promise<Response>;
         };
-        // strip "./" prefix
-        file = file.replace(/^\.\//, '');
+
+        // Use WHATWG URL encoding for the file path (different from RFC2396-based encoding)
+        file = new URL(file, 'http://localhost:3000').pathname.slice(1);
         const config = await mod.getConfig?.();
         const pathItems = file
           .replace(/\.\w+$/, '')
