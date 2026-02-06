@@ -2,7 +2,7 @@ import { expectType } from 'ts-expect';
 import type { TypeEqual } from 'ts-expect';
 import { describe, expect, it } from 'vitest';
 import { getPathMapping, parsePathWithSlug } from '../src/lib/utils/path.js';
-import type { ApiContext, ApiParams } from '../src/router/common.js';
+import type { ApiContext } from '../src/router/common.js';
 
 /**
  * Tests for ApiContext<Path> - typed API route parameters
@@ -15,44 +15,44 @@ import type { ApiContext, ApiParams } from '../src/router/common.js';
 
 describe('ApiParams type tests', () => {
   it('extracts single slug parameter', () => {
-    type Params = ApiParams<'/users/[id]'>;
+    type Params = ApiContext<'/users/[id]'>['params'];
     expectType<TypeEqual<Params, { id: string }>>(true);
   });
 
   it('extracts multiple slug parameters', () => {
-    type Params = ApiParams<'/users/[userId]/posts/[postId]'>;
+    type Params = ApiContext<'/users/[userId]/posts/[postId]'>['params'];
     expectType<TypeEqual<Params, { userId: string; postId: string }>>(true);
   });
 
   it('extracts wildcard parameter as string array', () => {
-    type Params = ApiParams<'/files/[...path]'>;
+    type Params = ApiContext<'/files/[...path]'>['params'];
     expectType<TypeEqual<Params, { path: string[] }>>(true);
   });
 
   it('extracts mixed slug and wildcard parameters', () => {
-    type Params = ApiParams<'/users/[id]/files/[...path]'>;
+    type Params = ApiContext<'/users/[id]/files/[...path]'>['params'];
     expectType<TypeEqual<Params, { id: string; path: string[] }>>(true);
   });
 
   it('returns empty object for paths without parameters', () => {
-    type Params = ApiParams<'/users'>;
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    type Params = ApiContext<'/users'>['params'];
+
     expectType<TypeEqual<Params, {}>>(true);
   });
 
   it('handles root path', () => {
-    type Params = ApiParams<'/'>;
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    type Params = ApiContext<'/'>['params'];
+
     expectType<TypeEqual<Params, {}>>(true);
   });
 
   it('handles nested paths with single parameter', () => {
-    type Params = ApiParams<'/api/v1/items/[itemId]'>;
+    type Params = ApiContext<'/api/v1/items/[itemId]'>['params'];
     expectType<TypeEqual<Params, { itemId: string }>>(true);
   });
 
   it('handles wildcard at root level', () => {
-    type Params = ApiParams<'/[...slug]'>;
+    type Params = ApiContext<'/[...slug]'>['params'];
     expectType<TypeEqual<Params, { slug: string[] }>>(true);
   });
 });
@@ -102,7 +102,7 @@ describe('ApiContext type tests', () => {
     expectType<Ctx['params']>({});
 
     type ParamsType = Ctx['params'];
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+
     expectType<TypeEqual<ParamsType, {}>>(true);
   });
 });
