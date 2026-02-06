@@ -1118,14 +1118,14 @@ export default function handler(request: Request): Response {
 
 #### Typed route parameters
 
-For API routes with dynamic segments (e.g., `./src/pages/_api/users/[id].ts`), you can use `TypedRequest` to get typed access to route parameters. The `params` property will be automatically typed based on the path pattern.
+For API routes with dynamic segments (e.g., `./src/pages/_api/users/[id].ts`), you can use `ApiContext` as the second parameter to get typed access to route parameters. The `params` property will be automatically typed based on the path pattern.
 
 ```ts
 // ./src/pages/_api/users/[id].ts
-import type { TypedRequest } from 'waku/router';
+import type { ApiContext } from 'waku/router';
 
-export async function GET(req: TypedRequest<'/users/[id]'>) {
-  const { id } = req.params; // id is typed as string
+export async function GET(_req: Request, { params }: ApiContext<'/users/[id]'>) {
+  const { id } = params; // id is typed as string
   return Response.json({ id, message: `Hello user ${id}` });
 }
 ```
@@ -1134,10 +1134,10 @@ This also works with multiple parameters and wildcard routes:
 
 ```ts
 // ./src/pages/_api/files/[...path].ts
-import type { TypedRequest } from 'waku/router';
+import type { ApiContext } from 'waku/router';
 
-export async function GET(req: TypedRequest<'/files/[...path]'>) {
-  const { path } = req.params; // path is typed as string[]
+export async function GET(_req: Request, { params }: ApiContext<'/files/[...path]'>) {
+  const { path } = params; // path is typed as string[]
   return Response.json({ segments: path });
 }
 ```

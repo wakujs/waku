@@ -191,7 +191,10 @@ type ApiConfig = {
   type: 'api';
   path: PathSpec;
   isStatic: boolean;
-  handler: (req: Request) => Promise<Response>;
+  handler: (
+    req: Request,
+    apiContext: { params: Record<string, string | string[]> },
+  ) => Promise<Response>;
 };
 
 type SliceConfig = {
@@ -452,12 +455,7 @@ export function unstable_defineRouter(fns: {
       url.pathname = input.pathname;
       const req = new Request(url, input.req);
       const params = getPathMapping(pathConfigItem.path, input.pathname) ?? {};
-      Object.defineProperty(req, 'params', {
-        value: params,
-        writable: false,
-        enumerable: true,
-      });
-      return pathConfigItem.handler(req);
+      return pathConfigItem.handler(req, { params });
     }
 
     const url = new URL(input.req.url);
@@ -669,7 +667,7 @@ export function unstable_defineRouter(fns: {
       const req = new Request(new URL(pathname, 'http://localhost:3000'));
       runTask(async () => {
         await withRequest(req, async () => {
-          const res = await item.handler(req);
+          const res = await item.handler(req, { params: {} });
           await generateFile(pathname, res.body || '');
         });
       });

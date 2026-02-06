@@ -2,13 +2,13 @@ import { expectType } from 'ts-expect';
 import type { TypeEqual } from 'ts-expect';
 import { describe, expect, it } from 'vitest';
 import { getPathMapping, parsePathWithSlug } from '../src/lib/utils/path.js';
-import type { ApiParams, TypedRequest } from '../src/router/common.js';
+import type { ApiContext, ApiParams } from '../src/router/common.js';
 
 /**
- * Tests for TypedRequest<Path> - typed API route parameters
+ * Tests for ApiContext<Path> - typed API route parameters
  *
- * TypedRequest extends the standard Request interface with a typed `params`
- * property that extracts route parameters from the path pattern.
+ * ApiContext provides a typed `params` property that extracts route parameters
+ * from the path pattern. It is passed as the second argument to API handlers.
  *
  * @see https://github.com/wakujs/waku/issues/1906
  */
@@ -57,58 +57,118 @@ describe('ApiParams type tests', () => {
   });
 });
 
-describe('TypedRequest type tests', () => {
-  it('extends Request with typed params for single slug', () => {
-    type Req = TypedRequest<'/users/[id]'>;
+describe('ApiContext type tests', () => {
+  it('has typed params for single slug', () => {
+    type Ctx = ApiContext<'/users/[id]'>;
 
     // Should have params property
-    expectType<Req['params']>({ id: 'test-id' });
+    expectType<Ctx['params']>({ id: 'test-id' });
 
     // Params should be correctly typed
-    type ParamsType = Req['params'];
+    type ParamsType = Ctx['params'];
     expectType<TypeEqual<ParamsType, { id: string }>>(true);
   });
 
-  it('extends Request with typed params for multiple slugs', () => {
-    type Req = TypedRequest<'/users/[userId]/posts/[postId]'>;
+  it('has typed params for multiple slugs', () => {
+    type Ctx = ApiContext<'/users/[userId]/posts/[postId]'>;
 
-    expectType<Req['params']>({ userId: 'user-1', postId: 'post-1' });
+    expectType<Ctx['params']>({ userId: 'user-1', postId: 'post-1' });
 
-    type ParamsType = Req['params'];
+    type ParamsType = Ctx['params'];
     expectType<TypeEqual<ParamsType, { userId: string; postId: string }>>(true);
   });
 
-  it('extends Request with typed params for wildcard', () => {
-    type Req = TypedRequest<'/files/[...path]'>;
+  it('has typed params for wildcard', () => {
+    type Ctx = ApiContext<'/files/[...path]'>;
 
-    expectType<Req['params']>({ path: ['folder', 'subfolder', 'file.txt'] });
+    expectType<Ctx['params']>({ path: ['folder', 'subfolder', 'file.txt'] });
 
-    type ParamsType = Req['params'];
+    type ParamsType = Ctx['params'];
     expectType<TypeEqual<ParamsType, { path: string[] }>>(true);
   });
 
-  it('extends Request with typed params for mixed slug and wildcard', () => {
-    type Req = TypedRequest<'/users/[id]/files/[...path]'>;
+  it('has typed params for mixed slug and wildcard', () => {
+    type Ctx = ApiContext<'/users/[id]/files/[...path]'>;
 
-    expectType<Req['params']>({ id: 'user-1', path: ['docs', 'readme.md'] });
+    expectType<Ctx['params']>({ id: 'user-1', path: ['docs', 'readme.md'] });
 
-    type ParamsType = Req['params'];
+    type ParamsType = Ctx['params'];
     expectType<TypeEqual<ParamsType, { id: string; path: string[] }>>(true);
   });
 
   it('has empty params object for paths without parameters', () => {
-    type Req = TypedRequest<'/users'>;
+    type Ctx = ApiContext<'/users'>;
 
-    expectType<Req['params']>({});
+    expectType<Ctx['params']>({});
 
-    type ParamsType = Req['params'];
+    type ParamsType = Ctx['params'];
     // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     expectType<TypeEqual<ParamsType, {}>>(true);
   });
+});
 
-  it('preserves Request methods and properties', () => {
-    // This test ensures TypedRequest extends Request properly
-    const handler = async (req: TypedRequest<'/users/[id]'>) => {
+describe('ApiContext usage patterns', () => {
+  it('works with destructuring in handler', () => {
+    const handler = async (
+      _req: Request,
+      { params }: ApiContext<'/posts/[postId]/comments/[commentId]'>,
+    ) => {
+      const { postId, commentId } = params;
+      expectType<string>(postId);
+      expectType<string>(commentId);
+      return new Response(`Post ${postId}, Comment ${commentId}`);
+    };
+
+    expectType<
+      (
+        req: Request,
+        ctx: ApiContext<'/posts/[postId]/comments/[commentId]'>,
+      ) => Promise<Response>
+    >(handler);
+  });
+
+  it('works with wildcard destructuring', () => {
+    const handler = async (
+      _req: Request,
+      { params }: ApiContext<'/api/[...segments]'>,
+    ) => {
+      const { segments } = params;
+      expectType<string[]>(segments);
+      return new Response(`Segments: ${segments.join('/')}`);
+    };
+
+    expectType<
+      (req: Request, ctx: ApiContext<'/api/[...segments]'>) => Promise<Response>
+    >(handler);
+  });
+
+  it('allows accessing both Request properties and params', () => {
+    const handler = async (
+      req: Request,
+      { params }: ApiContext<'/users/[id]'>,
+    ) => {
+      const url = new URL(req.url);
+      const { id } = params;
+      const authHeader = req.headers.get('Authorization');
+
+      expectType<string>(id);
+      expectType<URL>(url);
+      expectType<string | null>(authHeader);
+
+      return new Response(JSON.stringify({ id, path: url.pathname }));
+    };
+
+    expectType<
+      (req: Request, ctx: ApiContext<'/users/[id]'>) => Promise<Response>
+    >(handler);
+  });
+
+  it('keeps Request as a plain Request type', () => {
+    // The handler receives a standard Request, not a modified one
+    const handler = async (
+      req: Request,
+      { params }: ApiContext<'/users/[id]'>,
+    ) => {
       // Should have access to standard Request properties
       expectType<string>(req.url);
       expectType<string>(req.method);
@@ -121,82 +181,16 @@ describe('TypedRequest type tests', () => {
       expectType<Promise<unknown>>(req.json());
       expectType<Promise<ArrayBuffer>>(req.arrayBuffer());
 
-      // Should have typed params
-      const { id } = req.params;
+      // Params come from ApiContext, not from req
+      const { id } = params;
       expectType<string>(id);
 
       return new Response(`User: ${id}`);
     };
 
-    // Type check passes if this compiles
-    expectType<(req: TypedRequest<'/users/[id]'>) => Promise<Response>>(
-      handler,
-    );
-  });
-
-  it('is backwards compatible with plain Request handlers', () => {
-    // A handler that accepts TypedRequest should also work in contexts
-    // expecting a plain Request handler, since TypedRequest extends Request
-    const typedHandler = async (req: TypedRequest<'/users/[id]'>) => {
-      return new Response(`User: ${req.params.id}`);
-    };
-
-    // The handler function type should be assignable where Request is expected
-    // (params will just be ignored by code that doesn't know about it)
-    type HandlerFn = (req: Request) => Promise<Response>;
-
-    // This should compile - TypedRequest extends Request
-    const _fn: HandlerFn = typedHandler as HandlerFn;
-    expectType<HandlerFn>(_fn);
-  });
-});
-
-describe('TypedRequest usage patterns', () => {
-  it('works with destructuring in handler', () => {
-    const handler = async (
-      req: TypedRequest<'/posts/[postId]/comments/[commentId]'>,
-    ) => {
-      const { postId, commentId } = req.params;
-      expectType<string>(postId);
-      expectType<string>(commentId);
-      return new Response(`Post ${postId}, Comment ${commentId}`);
-    };
-
     expectType<
-      (
-        req: TypedRequest<'/posts/[postId]/comments/[commentId]'>,
-      ) => Promise<Response>
+      (req: Request, ctx: ApiContext<'/users/[id]'>) => Promise<Response>
     >(handler);
-  });
-
-  it('works with wildcard destructuring', () => {
-    const handler = async (req: TypedRequest<'/api/[...segments]'>) => {
-      const { segments } = req.params;
-      expectType<string[]>(segments);
-      return new Response(`Segments: ${segments.join('/')}`);
-    };
-
-    expectType<(req: TypedRequest<'/api/[...segments]'>) => Promise<Response>>(
-      handler,
-    );
-  });
-
-  it('allows accessing both Request properties and params', () => {
-    const handler = async (req: TypedRequest<'/users/[id]'>) => {
-      const url = new URL(req.url);
-      const { id } = req.params;
-      const authHeader = req.headers.get('Authorization');
-
-      expectType<string>(id);
-      expectType<URL>(url);
-      expectType<string | null>(authHeader);
-
-      return new Response(JSON.stringify({ id, path: url.pathname }));
-    };
-
-    expectType<(req: TypedRequest<'/users/[id]'>) => Promise<Response>>(
-      handler,
-    );
   });
 });
 

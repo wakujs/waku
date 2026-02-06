@@ -8,8 +8,8 @@ export type RouteProps<Path extends string = string> = {
   hash: string;
 };
 
-/** A Request with typed route parameters extracted from the path pattern. */
-export interface TypedRequest<Path extends string> extends Request {
+/** Context object passed to API route handlers with typed route parameters. */
+export interface ApiContext<Path extends string> {
   readonly params: ApiParams<Path>;
 }
 
