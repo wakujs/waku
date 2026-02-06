@@ -332,6 +332,22 @@ test.describe(`create-pages`, () => {
     });
   });
 
+  test('api handler receives params from apiContext', async () => {
+    const res = await fetch(`http://localhost:${port}/api/echo/123`);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ params: { id: '123' } });
+  });
+
+  test('api handler receives wildcard params from apiContext', async () => {
+    const res = await fetch(
+      `http://localhost:${port}/api/echo/books/fiction/scifi`,
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      params: { category: 'books', rest: ['fiction', 'scifi'] },
+    });
+  });
+
   test('exactPath', async ({ page }) => {
     await page.goto(`http://localhost:${port}/exact/[slug]/[...wild]`);
     await expect(

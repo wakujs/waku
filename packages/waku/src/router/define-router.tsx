@@ -7,6 +7,7 @@ import { createTaskRunner } from '../lib/utils/task-runner.js';
 import { unstable_defineHandlers as defineHandlers } from '../minimal/server.js';
 import { unstable_getContext as getContext } from '../server.js';
 import { INTERNAL_ServerRouter } from './client.js';
+import type { ApiHandler } from './common.js';
 import {
   HAS404_ID,
   IS_STATIC_ID,
@@ -191,10 +192,7 @@ type ApiConfig = {
   type: 'api';
   path: PathSpec;
   isStatic: boolean;
-  handler: (
-    req: Request,
-    apiContext: { params: Record<string, string | string[]> },
-  ) => Promise<Response>;
+  handler: ApiHandler;
 };
 
 type SliceConfig = {

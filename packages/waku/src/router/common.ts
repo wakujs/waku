@@ -11,6 +11,11 @@ export interface ApiContext<Path extends string> {
   readonly params: ApiParams<Path>;
 }
 
+export type ApiHandler = (
+  req: Request,
+  apiContext: { params: Record<string, string | string[]> },
+) => Promise<Response>;
+
 export function getComponentIds(path: string): readonly string[] {
   const pathItems = path.split('/').filter(Boolean);
   const idSet = new Set<string>();

@@ -11,6 +11,7 @@ import {
 import type { PathSpec } from '../lib/utils/path.js';
 import { Children, Slot } from '../minimal/client.js';
 import { ErrorBoundary } from '../router/client.js';
+import type { ApiHandler } from './common.js';
 import type {
   AnyPage,
   GetSlugs,
@@ -181,8 +182,6 @@ export type CreateLayout = <Path extends string>(
         component: FunctionComponent<{ children: ReactNode }>;
       },
 ) => void;
-
-type ApiHandler = (req: Request) => Promise<Response>;
 
 export type CreateApi = <Path extends string>(
   params:
@@ -850,7 +849,7 @@ export const createPages = <
             type: 'api' as const,
             path: pathSpec,
             isStatic: render === 'static',
-            handler: async (req: Request) => {
+            handler: async (req: Request, apiContext: Parameters<ApiHandler>[1]) => {
               const path = new URL(req.url).pathname;
               const method = req.method;
               const handler = handlers[method as Method] ?? handlers.all;
@@ -859,7 +858,7 @@ export const createPages = <
                   'API method not found: ' + method + 'for path: ' + path,
                 );
               }
-              return handler(req);
+              return handler(req, apiContext);
             },
           };
         },
