@@ -142,7 +142,7 @@ test.describe('fs-router', () => {
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
   });
 
-  test('encoded path', async ({ page }) => {
+  test('encoded path - space - dynamic', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
     await page.click("a[href='/nested/encoded%20path']");
@@ -153,6 +153,68 @@ test.describe('fs-router', () => {
     await expect(
       page.getByRole('heading', { name: 'Nested / encoded%20path' }),
     ).toBeVisible();
+  });
+
+  test('encoded path - space - static', async ({ page }) => {
+    await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
+    await page.click("a[href='/static-nested/encoded%20path']");
+    await expect(
+      page.getByRole('heading', { name: 'Nested / encoded%20path' }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(
+      page.getByRole('heading', { name: 'Nested / encoded%20path' }),
+    ).toBeVisible();
+  });
+
+  test('encoded path - unicode - dynamic', async ({ page }) => {
+    await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
+    await page.click("a[href='/nested/encoded%E6%B8%AC%E8%A9%A6path']");
+    await expect(
+      page.getByRole('heading', {
+        name: 'Nested / encoded%E6%B8%AC%E8%A9%A6path',
+      }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(
+      page.getByRole('heading', {
+        name: 'Nested / encoded%E6%B8%AC%E8%A9%A6path',
+      }),
+    ).toBeVisible();
+  });
+
+  test('encoded path - unicode - static', async ({ page }) => {
+    await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
+    await page.click("a[href='/static-nested/encoded%E6%B8%AC%E8%A9%A6path']");
+    await expect(
+      page.getByRole('heading', {
+        name: 'Nested / encoded%E6%B8%AC%E8%A9%A6path',
+      }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(
+      page.getByRole('heading', {
+        name: 'Nested / encoded%E6%B8%AC%E8%A9%A6path',
+      }),
+    ).toBeVisible();
+  });
+
+  test('check hydration error with unicode page', async ({ page }) => {
+    const messages: string[] = [];
+    page.on('console', (msg) => messages.push(msg.text()));
+    const errors: string[] = [];
+    page.on('pageerror', (err) => errors.push(err.message));
+    await page.goto(`http://localhost:${port}/%E4%B8%AD%E6%96%87`);
+    await waitForHydration(page);
+    await expect(
+      page.getByRole('heading', { name: '/%E4%B8%AD%E6%96%87' }),
+    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: '/中文' })).toBeHidden();
+    expect(messages.join('\n')).not.toContain('hydration-mismatch');
+    expect(errors.join('\n')).not.toContain('Minified React error #418');
   });
 
   test('slices', async ({ page }) => {

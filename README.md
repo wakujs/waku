@@ -1116,6 +1116,38 @@ export default function handler(request: Request): Response {
 }
 ```
 
+#### Typed route parameters
+
+For API routes with dynamic segments (e.g., `./src/pages/_api/users/[id].ts`), you can use `ApiContext` as the second parameter to get typed access to route parameters. The `params` property will be automatically typed based on the path pattern.
+
+```ts
+// ./src/pages/_api/users/[id].ts
+import type { ApiContext } from 'waku/router';
+
+export async function GET(
+  _req: Request,
+  { params }: ApiContext<'/users/[id]'>,
+) {
+  const { id } = params; // id is typed as string
+  return Response.json({ id, message: `Hello user ${id}` });
+}
+```
+
+This also works with multiple parameters and wildcard routes:
+
+```ts
+// ./src/pages/_api/files/[...path].ts
+import type { ApiContext } from 'waku/router';
+
+export async function GET(
+  _req: Request,
+  { params }: ApiContext<'/files/[...path]'>,
+) {
+  const { path } = params; // path is typed as string[]
+  return Response.json({ segments: path });
+}
+```
+
 #### Calling API routes
 
 API routes are accessible at paths with the `_api` prefix stripped. For example a file at `./src/pages/_api/contact.ts` is available at `/contact`, and `./src/pages/_api/blog/rss.xml.ts` is available at `/blog/rss.xml`. You can call these endpoints from your client components using the standard [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) method.
