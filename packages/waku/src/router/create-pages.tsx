@@ -849,7 +849,10 @@ export const createPages = <
             type: 'api' as const,
             path: pathSpec,
             isStatic: render === 'static',
-            handler: async (req: Request, apiContext: Parameters<ApiHandler>[1]) => {
+            handler: async (
+              req: Request,
+              apiContext: Parameters<ApiHandler>[1],
+            ) => {
               const path = new URL(req.url).pathname;
               const method = req.method;
               const handler = handlers[method as Method] ?? handlers.all;
