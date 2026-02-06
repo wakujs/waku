@@ -11,13 +11,13 @@ import {
 import type { PathSpec } from '../lib/utils/path.js';
 import { Children, Slot } from '../minimal/client.js';
 import { ErrorBoundary } from '../router/client.js';
-import type { ApiHandler } from './common.js';
 import type {
   AnyPage,
   GetSlugs,
   PropsForPages,
 } from './create-pages-utils/inferred-path-types.js';
 import { unstable_defineRouter } from './define-router.js';
+import type { ApiHandler } from './define-router.js';
 
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods
 export const METHODS = [

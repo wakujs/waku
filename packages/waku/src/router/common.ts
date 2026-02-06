@@ -1,20 +1,11 @@
-import type { ApiParams } from './create-pages-utils/inferred-path-types.js';
+// This is a common module for client.tsx and define-router.tsx
+// TODO(daishi): Rename this file to be more explicit.
 
 export type RouteProps<Path extends string = string> = {
   path: Path;
   query: string;
   hash: string;
 };
-
-/** Context object passed to API route handlers with typed route parameters. */
-export interface ApiContext<Path extends string> {
-  readonly params: ApiParams<Path>;
-}
-
-export type ApiHandler = (
-  req: Request,
-  apiContext: { params: Record<string, string | string[]> },
-) => Promise<Response>;
 
 export function getComponentIds(path: string): readonly string[] {
   const pathItems = path.split('/').filter(Boolean);

@@ -6,12 +6,10 @@ import type {
 // PathsForPages collects the paths from the `createPages` result type
 // GetConfigResponse is a helper for generating types with fs-router
 export type {
+  ApiContext,
   PathsForPages,
   GetConfigResponse,
 } from './create-pages-utils/inferred-path-types.js';
-
-// ApiContex for typed API route handlers
-export type { ApiContext } from './common.js';
 
 export interface RouteConfig {
   // routes to be overridden by users

@@ -7,7 +7,6 @@ import { createTaskRunner } from '../lib/utils/task-runner.js';
 import { unstable_defineHandlers as defineHandlers } from '../minimal/server.js';
 import { unstable_getContext as getContext } from '../server.js';
 import { INTERNAL_ServerRouter } from './client.js';
-import type { ApiHandler } from './common.js';
 import {
   HAS404_ID,
   IS_STATIC_ID,
@@ -18,6 +17,11 @@ import {
   encodeRoutePath,
   encodeSliceId,
 } from './common.js';
+
+export type ApiHandler = (
+  req: Request,
+  apiContext: { params: Record<string, string | string[]> },
+) => Promise<Response>;
 
 const isStringArray = (x: unknown): x is string[] =>
   Array.isArray(x) && x.every((y) => typeof y === 'string');

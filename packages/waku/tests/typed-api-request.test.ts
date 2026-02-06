@@ -2,7 +2,7 @@ import { expectType } from 'ts-expect';
 import type { TypeEqual } from 'ts-expect';
 import { describe, expect, it } from 'vitest';
 import { getPathMapping, parsePathWithSlug } from '../src/lib/utils/path.js';
-import type { ApiContext } from '../src/router/common.js';
+import type { ApiContext } from '../src/router/create-pages-utils/inferred-path-types.js';
 
 /**
  * Tests for ApiContext<Path> - typed API route parameters
