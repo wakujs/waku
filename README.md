@@ -1124,7 +1124,10 @@ For API routes with dynamic segments (e.g., `./src/pages/_api/users/[id].ts`), y
 // ./src/pages/_api/users/[id].ts
 import type { ApiContext } from 'waku/router';
 
-export async function GET(_req: Request, { params }: ApiContext<'/users/[id]'>) {
+export async function GET(
+  _req: Request,
+  { params }: ApiContext<'/users/[id]'>,
+) {
   const { id } = params; // id is typed as string
   return Response.json({ id, message: `Hello user ${id}` });
 }
@@ -1136,7 +1139,10 @@ This also works with multiple parameters and wildcard routes:
 // ./src/pages/_api/files/[...path].ts
 import type { ApiContext } from 'waku/router';
 
-export async function GET(_req: Request, { params }: ApiContext<'/files/[...path]'>) {
+export async function GET(
+  _req: Request,
+  { params }: ApiContext<'/files/[...path]'>,
+) {
   const { path } = params; // path is typed as string[]
   return Response.json({ segments: path });
 }
