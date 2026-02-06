@@ -1,7 +1,5 @@
 import type { ApiParams } from './create-pages-utils/inferred-path-types.js';
 
-export type { ApiParams };
-
 export type RouteProps<Path extends string = string> = {
   path: Path;
   query: string;

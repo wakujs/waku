@@ -10,8 +10,8 @@ export type {
   GetConfigResponse,
 } from './create-pages-utils/inferred-path-types.js';
 
-// ApiContext and ApiParams for typed API route handlers
-export type { ApiContext, ApiParams } from './common.js';
+// ApiContex for typed API route handlers
+export type { ApiContext } from './common.js';
 
 export interface RouteConfig {
   // routes to be overridden by users
