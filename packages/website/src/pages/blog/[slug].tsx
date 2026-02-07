@@ -11,7 +11,7 @@ export default async function BlogArticlePage({ slug }: BlogArticlePageProps) {
     <PostPage
       slug={slug}
       folder="./private/contents"
-      ogImageUrl={`${getMetadataBaseUrl()}/api/og-image/blog/${slug}.png`}
+      ogImageUrl={`${getMetadataBaseUrl()}/og-image/blog/${slug}.png`}
     />
   );
 }

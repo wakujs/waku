@@ -36,5 +36,10 @@ export function getMetadataBaseUrl() {
         : process.env.VERCEL_PROJECT_PRODUCTION_URL;
     return `https://${origin}`;
   }
-  return process.env.METADATA_BASE_URL ?? 'http://localhost:8080';
+  return (
+    process.env.METADATA_BASE_URL ??
+    (process.env.NODE_ENV === 'development'
+      ? 'http://localhost:3000'
+      : 'http://localhost:8080')
+  );
 }
