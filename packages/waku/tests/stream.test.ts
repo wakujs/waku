@@ -64,6 +64,42 @@ describe('streamToBase64/base64ToStream', () => {
     expect(output).toBe(input);
   });
 
+  test('handles full-range binary bytes', async () => {
+    const bytes = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) {
+      bytes[i] = i;
+    }
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(bytes);
+        controller.close();
+      },
+    });
+
+    const base64 = await streamToBase64(stream);
+    const decoded = concatUint8(await readAllChunks(base64ToStream(base64)));
+    expect(Array.from(decoded)).toEqual(Array.from(bytes));
+  });
+
+  test('handles binary data split across chunks', async () => {
+    const bytes = new Uint8Array(10);
+    for (let i = 0; i < bytes.length; i++) {
+      bytes[i] = i * 7;
+    }
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(bytes.slice(0, 4));
+        controller.enqueue(bytes.slice(4, 7));
+        controller.enqueue(bytes.slice(7));
+        controller.close();
+      },
+    });
+
+    const base64 = await streamToBase64(stream);
+    const decoded = concatUint8(await readAllChunks(base64ToStream(base64)));
+    expect(Array.from(decoded)).toEqual(Array.from(bytes));
+  });
+
   test('streamToBase64 throws on non-Uint8Array chunks', async () => {
     const stream = new ReadableStream({
       start(controller) {
