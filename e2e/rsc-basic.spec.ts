@@ -167,8 +167,11 @@ test.describe(`rsc-basic`, () => {
     await expect(page.getByTestId('some-config-foo')).toHaveText('value-1234');
   });
 
-  test('build metadata', async ({ page, mode }) => {
-    test.skip(mode === 'DEV', 'Build metadata is only available in build mode');
+  test('build metadata', async ({ page }) => {
+    test.skip(
+      ({ mode }) => mode !== 'PRD',
+      'Build metadata is only available in build mode',
+    );
     await page.goto(`http://localhost:${port}/`);
     await expect(page.getByTestId('build-metadata')).toHaveText(
       'metadata-value',

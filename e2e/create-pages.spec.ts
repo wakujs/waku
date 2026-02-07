@@ -94,6 +94,7 @@ test.describe(`create-pages`, () => {
     await page.click("a[href='/foo']");
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
     await page.click('text=Jump to random page');
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(500); // need to wait not to error
     await expect(page.getByRole('heading', { level: 2 })).toBeVisible();
     await expect(
@@ -151,7 +152,6 @@ test.describe(`create-pages`, () => {
     ).toHaveText('init');
     await stopApp();
     await page.getByTestId('server-throws').getByTestId('success').click();
-    await page.waitForTimeout(500); // need to wait?
     await expect(
       page.getByTestId('server-throws').getByTestId('throws-error'),
     ).toHaveText(FETCH_ERROR_MESSAGES[browserName]);
@@ -278,17 +278,19 @@ test.describe(`create-pages`, () => {
     expect(await res.text()).toBe('hello from a text file!');
   });
 
-  test('api empty', async ({ mode }) => {
-    if (mode === 'PRD') {
-      expect(
-        statSync(
-          path.join(fixtureDir, 'dist', 'public', 'api', 'empty'),
-        ).isFile(),
-      ).toBe(true);
-    }
+  test('api empty', async () => {
     const res = await fetch(`http://localhost:${port}/api/empty`);
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('');
+  });
+
+  test('api empty (PRD)', async () => {
+    test.skip(({ mode }) => mode !== 'PRD', 'PRD only test');
+    expect(
+      statSync(
+        path.join(fixtureDir, 'dist', 'public', 'api', 'empty'),
+      ).isFile(),
+    ).toBe(true);
   });
 
   test('api hi with POST', async () => {
@@ -399,6 +401,7 @@ test.describe(`create-pages`, () => {
     expect(Math.abs(dynamicTime - staticTime)).toBeLessThanOrEqual(1000);
 
     await page.getByRole('link', { name: 'Home' }).click();
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(1000);
     await page.getByRole('link', { name: 'Nested Layouts' }).click();
     const dynamicTime2 = await whatTime('Dynamic Layout');
@@ -430,6 +433,7 @@ test.describe(`create-pages`, () => {
     expect(dynamicSliceText.startsWith('Slice 002')).toBeTruthy();
 
     await page.getByRole('link', { name: 'Home' }).click();
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(1000);
     await page.getByRole('link', { name: 'Slices' }).click();
 
