@@ -1,7 +1,16 @@
 import type { FunctionComponent, ReactNode } from 'react';
+import type { ImportGlobFunction } from 'vite/types/importGlob.d.ts';
 import { isIgnoredPath } from '../lib/utils/fs-router.js';
 import { METHODS, createPages } from './create-pages.js';
 import type { Method } from './create-pages.js';
+
+declare global {
+  interface ImportMeta {
+    glob: ImportGlobFunction;
+  }
+}
+
+let didWarnAboutApiDirMigration = false;
 
 export function fsRouter(
   /**
@@ -16,15 +25,27 @@ export function fsRouter(
    */
   pages: { [file: string]: () => Promise<unknown> },
   options: {
-    /** e.g. `"api"` will detect pages in `src/pages/api`. */
+    /** e.g. `"_api"` will detect pages in `src/pages/_api` and strip `_api` from the path. */
     apiDir: string;
     /** e.g. `"_slices"` will detect slices in `src/pages/_slices`. */
     slicesDir: string;
   } = {
-    apiDir: 'api',
+    apiDir: '_api',
     slicesDir: '_slices',
   },
 ) {
+  if (
+    !didWarnAboutApiDirMigration &&
+    !(options as any).temporary_doNotWarnAboutApiDirMigration
+  ) {
+    didWarnAboutApiDirMigration = true;
+    // TODO: remove this warning after a few versions
+    if (Object.keys(pages).some((file) => file.startsWith('./api/'))) {
+      console.warn(
+        '[fsRouter] Migration required (v1.0.0-alpha.1): Move "./api/" to "./_api/". To preserve the old "/api/*" URL paths, move to "./_api/api/". See https://github.com/wakujs/waku/pull/1885',
+      );
+    }
+  }
   return createPages(
     async ({
       createPage,
@@ -41,8 +62,9 @@ export function fsRouter(
           }>;
           GET?: (req: Request) => Promise<Response>;
         };
-        // strip "./" prefix
-        file = file.replace(/^\.\//, '');
+
+        // Use WHATWG URL encoding for the file path (different from RFC2396-based encoding)
+        file = new URL(file, 'http://localhost:3000').pathname.slice(1);
         const config = await mod.getConfig?.();
         const pathItems = file
           .replace(/\.\w+$/, '')
@@ -63,6 +85,8 @@ export function fsRouter(
             'Page file cannot be named [path]. This will conflict with the path prop of the page component.',
           );
         } else if (pathItems.at(0) === options.apiDir) {
+          // Strip the apiDir prefix from the path (e.g., _api/hello.txt -> hello.txt)
+          const apiPath = pathItems.slice(1).join('/');
           if (config?.render === 'static') {
             if (Object.keys(mod).length !== 2 || !mod.GET) {
               console.warn(
@@ -71,7 +95,7 @@ export function fsRouter(
             }
             createApi({
               ...config,
-              path: pathItems.join('/'),
+              path: apiPath,
               render: 'static',
               method: 'GET',
               handler: mod.GET!,
@@ -99,7 +123,7 @@ export function fsRouter(
               }),
             );
             createApi({
-              path: pathItems.join('/'),
+              path: apiPath,
               render: 'dynamic',
               handlers,
             });

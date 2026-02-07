@@ -1,3 +1,5 @@
+import { statSync } from 'node:fs';
+import path from 'node:path';
 import { expect } from '@playwright/test';
 import {
   FETCH_ERROR_MESSAGES,
@@ -10,12 +12,13 @@ const startApp = prepareNormalSetup('create-pages');
 
 test.describe(`create-pages`, () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
+  let fixtureDir: string;
   test.beforeAll(async ({ mode }) => {
-    ({ port, stopApp } = await startApp(mode));
+    ({ port, stopApp, fixtureDir } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp?.();
+    await stopApp();
   });
 
   test('home', async ({ page }) => {
@@ -27,10 +30,18 @@ test.describe(`create-pages`, () => {
         .getPropertyValue('background-color'),
     );
     expect(backgroundColor).toBe('rgb(254, 254, 254)');
+    await expect(page.getByTestId('home-layout-render-count')).toHaveText(
+      'Render Count: 1',
+    );
+    await page.reload();
+    await expect(page.getByTestId('home-layout-render-count')).toHaveText(
+      'Render Count: 1',
+    );
   });
 
   test('foo', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
     await page.click("a[href='/foo']");
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
 
@@ -136,7 +147,7 @@ test.describe(`create-pages`, () => {
     await expect(
       page.getByTestId('server-throws').getByTestId('throws-success'),
     ).toHaveText('init');
-    await stopApp?.();
+    await stopApp();
     await page.getByTestId('server-throws').getByTestId('success').click();
     await page.waitForTimeout(500); // need to wait?
     await expect(
@@ -148,7 +159,7 @@ test.describe(`create-pages`, () => {
   test('server page unreachable', async ({ page, mode, browserName }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await stopApp?.();
+    await stopApp();
     await page.click("a[href='/error']");
     // Default router client error boundary is reached
     await expect(page.locator('p')).toContainText(
@@ -221,6 +232,7 @@ test.describe(`create-pages`, () => {
   // https://github.com/wakujs/waku/issues/1437
   test('static long suspense', async ({ page }) => {
     await page.goto(`http://localhost:${port}/static-long-suspense/4`);
+    await waitForHydration(page);
     // no loading state for static
     await expect(page.getByTestId('long-suspense')).toHaveCount(0);
     await expect(page.getByTestId('long-suspense-component')).toHaveCount(2);
@@ -264,7 +276,14 @@ test.describe(`create-pages`, () => {
     expect(await res.text()).toBe('hello from a text file!');
   });
 
-  test('api empty', async () => {
+  test('api empty', async ({ mode }) => {
+    if (mode === 'PRD') {
+      expect(
+        statSync(
+          path.join(fixtureDir, 'dist', 'public', 'api', 'empty'),
+        ).isFile(),
+      ).toBe(true);
+    }
     const res = await fetch(`http://localhost:${port}/api/empty`);
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('');
@@ -290,7 +309,43 @@ test.describe(`create-pages`, () => {
     expect(res2.status).toBe(200);
     await expect(res2.json()).resolves.toEqual({ name: 'bar.json' });
     // proper content-type on static server requires explicit extension
+    // depending on deployment platform
     expect(res2.headers.get('content-type')).toContain('application/json');
+  });
+
+  test('api formData', async () => {
+    const formData = new FormData();
+    formData.append('test-string', 'value');
+    formData.append(
+      'test-file',
+      new File(['data'], 'test.txt', { type: 'text/plain' }),
+    );
+    const res = await fetch(`http://localhost:${port}/api/form-data`, {
+      method: 'POST',
+      body: formData,
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      keys: ['test-string', 'test-file'],
+      testString: 'value',
+      testFile: { name: 'test.txt', data: 'data' },
+    });
+  });
+
+  test('api handler receives params from apiContext', async () => {
+    const res = await fetch(`http://localhost:${port}/api/echo/123`);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ params: { id: '123' } });
+  });
+
+  test('api handler receives wildcard params from apiContext', async () => {
+    const res = await fetch(
+      `http://localhost:${port}/api/echo/books/fiction/scifi`,
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      params: { category: 'books', rest: ['fiction', 'scifi'] },
+    });
   });
 
   test('exactPath', async ({ page }) => {
@@ -324,7 +379,7 @@ test.describe(`create-pages`, () => {
         (await page
           .getByRole('heading', { name: selector })
           .textContent())!.replace(selector + ' ', ''),
-      ).getSeconds();
+      ).getTime();
 
     await page.goto(`http://localhost:${port}/nested-layouts`);
     await waitForHydration(page);
@@ -339,7 +394,7 @@ test.describe(`create-pages`, () => {
     ).toBeVisible();
     const dynamicTime = await whatTime('Dynamic Layout');
     const staticTime = await whatTime('Static Layout');
-    expect(dynamicTime).toEqual(staticTime);
+    expect(Math.abs(dynamicTime - staticTime)).toBeLessThanOrEqual(1000);
 
     await page.getByRole('link', { name: 'Home' }).click();
     await page.waitForTimeout(1000);
@@ -381,6 +436,11 @@ test.describe(`create-pages`, () => {
     await expect(staticSliceText2).toHaveText(staticSliceText);
     const dynamicSliceText2 = page.getByTestId('slice002');
     await expect(dynamicSliceText2).not.toHaveText(dynamicSliceText);
+
+    // test static slices behavior after hard navigation
+    await page.reload();
+    const staticSliceText3 = page.getByTestId('slice001');
+    await expect(staticSliceText3).toHaveText(staticSliceText);
   });
 
   test('slices with lazy', async ({ page }) => {
@@ -392,6 +452,25 @@ test.describe(`create-pages`, () => {
     await expect(page.getByTestId('slice003-loading')).toBeVisible();
     await expect(page.getByTestId('slice003')).toHaveText('Slice 003');
   });
+
+  test('slugs with dots - version numbers', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/docs/v1.0.0/read`);
+    await expect(
+      page.getByRole('heading', { name: 'Version: v1.0.0' }),
+    ).toBeVisible();
+
+    await page.goto(`http://localhost:${port}/docs/v2.1.5/read`);
+    await expect(
+      page.getByRole('heading', { name: 'Version: v2.1.5' }),
+    ).toBeVisible();
+  });
+
+  test('slugs with spaces and dots', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/docs/Mr.-Mime/read`);
+    await expect(
+      page.getByRole('heading', { name: 'Version: Mr.-Mime' }),
+    ).toBeVisible();
+  });
 });
 
 test.describe(`create-pages STATIC`, () => {
@@ -401,12 +480,18 @@ test.describe(`create-pages STATIC`, () => {
   );
 
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
-  test.beforeAll(async () => {
+  let stopApp: () => Promise<void>;
+  test.beforeAll(async ({ mode }) => {
+    if (mode !== 'PRD') {
+      return;
+    }
     ({ port, stopApp } = await startApp('STATIC'));
   });
-  test.afterAll(async () => {
-    await stopApp?.();
+  test.afterAll(async ({ mode }) => {
+    if (mode !== 'PRD') {
+      return;
+    }
+    await stopApp();
   });
 
   test('no ssr', async ({ page }) => {
@@ -432,7 +517,7 @@ test.describe(`create-pages STATIC`, () => {
 
   test('slices with render=static', async ({ page }) => {
     await page.route(/.*\/RSC\/.*/, async (route) => {
-      await new Promise((r) => setTimeout(r, 100));
+      await new Promise((r) => setTimeout(r, 1000));
       await route.continue();
     });
     await page.goto(`http://localhost:${port}/static-slices`);
@@ -440,5 +525,24 @@ test.describe(`create-pages STATIC`, () => {
     await expect(page.getByTestId('slice001-loading')).toBeVisible();
     const sliceText = await page.getByTestId('slice001').textContent();
     expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
+  });
+
+  test('slugs with dots - version numbers', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/docs/v1.0.0/read`);
+    await expect(
+      page.getByRole('heading', { name: 'Version: v1.0.0' }),
+    ).toBeVisible();
+
+    await page.goto(`http://localhost:${port}/docs/v2.1.5/read`);
+    await expect(
+      page.getByRole('heading', { name: 'Version: v2.1.5' }),
+    ).toBeVisible();
+  });
+
+  test('slugs with spaces and dots', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/docs/Mr.-Mime/read`);
+    await expect(
+      page.getByRole('heading', { name: 'Version: Mr.-Mime' }),
+    ).toBeVisible();
   });
 });

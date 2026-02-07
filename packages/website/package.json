@@ -12,25 +12,25 @@
   "dependencies": {
     "@sindresorhus/slugify": "^3.0.0",
     "classnames": "2.3.2",
-    "framer-motion": "^12.23.24",
-    "jotai": "^2.15.1",
+    "framer-motion": "^12.29.2",
+    "jotai": "^2.16.2",
     "next-mdx-remote": "^5.0.0",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "react-server-dom-webpack": "19.2.0",
+    "react": "~19.2.4",
+    "react-dom": "~19.2.4",
+    "react-server-dom-webpack": "~19.2.4",
+    "smartquotes": "^2.3.2",
     "waku": "workspace:*"
   },
   "devDependencies": {
     "@fontsource/alegreya": "^5.2.8",
-    "@tailwindcss/vite": "4.1.17",
-    "@types/react": "^19.2.2",
-    "@types/react-dom": "^19.2.2",
-    "@vercel/og": "^0.8.5",
-    "prettier": "^3.6.2",
-    "prettier-plugin-tailwindcss": "^0.7.1",
-    "shiki": "^3.15.0",
-    "tailwindcss": "4.1.17",
-    "typescript": "^5.9.3",
-    "vite": "7.2.2"
+    "@tailwindcss/vite": "4.1.18",
+    "@types/react": "^19.2.9",
+    "@types/react-dom": "^19.2.3",
+    "@vercel/og": "^0.8.6",
+    "prettier": "^3.8.1",
+    "prettier-plugin-tailwindcss": "^0.7.2",
+    "shiki": "^3.21.0",
+    "tailwindcss": "4.1.18",
+    "typescript": "^5.9.3"
   }
 }

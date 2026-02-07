@@ -1,20 +1,21 @@
 import { expect } from '@playwright/test';
-import { prepareNormalSetup, test } from './utils.js';
+import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('ssr-basic');
 
 test.describe(`ssr-basic`, () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp?.();
+    await stopApp();
   });
 
   test('increase counter', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
     await expect(page.getByTestId('app-name')).toHaveText('Waku');
     await expect(page.getByTestId('count')).toHaveText('0');
     await page.getByTestId('increment').click();

@@ -1,6 +1,40 @@
 # Change Log
 
-## [Unreleased]
+For the changes starting with v1.0.0-alpha.0, check out:
+<https://github.com/wakujs/waku/releases>
+
+## [0.27.5] - 2025-12-17
+
+### Changed
+
+- Some improvements
+
+## [0.27.4] - 2025-12-12
+
+### Changed
+
+- Some refactors and fixes
+
+## [0.27.3] - 2025-12-04
+
+### Changed
+
+- Adapter improvements
+- Some other improvements
+
+## [0.27.2] - 2025-11-30
+
+### Changed
+
+- Adapter system improvement
+- Router improvements
+
+## [0.27.1] - 2025-11-17
+
+### Changed
+
+- True static pages/layouts/slices
+- Bug fixes & some updates
 
 ## [0.27.0] - 2025-10-27
 

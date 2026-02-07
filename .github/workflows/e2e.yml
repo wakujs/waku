@@ -26,25 +26,32 @@ on:
       react_version:
         required: true
         type: string
+  workflow_dispatch:
+    inputs:
+      react_version:
+        required: true
+        type: string
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.react_version }}
   cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || '' }}
       - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 'lts/*'
           cache: ${{ !inputs.react_version && 'pnpm' || '' }}
       - if: ${{ inputs.react_version }}
-        run: pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
+        run: |
+          yq eval -i '.overrides |= (.react = "${{ inputs.react_version }}" | .["react-dom"] = "${{ inputs.react_version }}" | .["react-server-dom-webpack"] = "${{ inputs.react_version }}")' pnpm-workspace.yaml
+          pnpm install --no-frozen-lockfile
       - run: pnpm install
       - run: pnpm run compile
       - uses: actions/upload-artifact@v4
@@ -93,8 +100,12 @@ jobs:
         with:
           node-version: ${{ matrix.version }}
           cache: ${{ !inputs.react_version && 'pnpm' || '' }}
+      - if: runner.os == 'Windows'
+        run: choco install yq -y
       - if: ${{ inputs.react_version }}
-        run: pnpm -r update react@${{ inputs.react_version }} react-dom@${{ inputs.react_version }} react-server-dom-webpack@${{ inputs.react_version }}
+        run: |
+          yq eval -i '.overrides |= (.react = "${{ inputs.react_version }}" | .["react-dom"] = "${{ inputs.react_version }}" | .["react-server-dom-webpack"] = "${{ inputs.react_version }}")' pnpm-workspace.yaml
+          pnpm install --no-frozen-lockfile
       - run: pnpm install
       - uses: actions/download-artifact@v4
         with:

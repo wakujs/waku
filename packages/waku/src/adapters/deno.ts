@@ -1,47 +1,37 @@
 import path from 'node:path';
-// FIXME hopefully we should avoid bundling this
-import { Hono as HonoForDevAndBuild } from 'hono';
 import type { MiddlewareHandler } from 'hono';
+// FIXME hopefully we should avoid bundling this
+import { Hono as HonoForDevAndBuild } from 'hono/tiny';
 import {
   unstable_constants as constants,
   unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
-
-declare global {
-  interface ImportMeta {
-    readonly __WAKU_ORIGINAL_PATH__: string;
-  }
-}
-
-function joinPath(path1: string, path2: string) {
-  const p = path.posix.join(path1, path2);
-  return p.startsWith('/') ? p : './' + p;
-}
+import type { BuildOptions } from './deno-build-enhancer.js';
 
 const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 export default createServerEntryAdapter(
   (
-    { processRequest, processBuild, config },
+    { processRequest, processBuild, config, notFoundHtml },
     options?: {
       middlewareFns?: (() => MiddlewareHandler)[];
-      middlewareModules?: Record<
-        string,
-        () => Promise<{
-          default: () => MiddlewareHandler;
-        }>
-      >;
+      middlewareModules?: Record<string, () => Promise<unknown>>;
     },
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
     const {
       __WAKU_DENO_ADAPTER_HONO__: Hono = HonoForDevAndBuild,
       __WAKU_DENO_ADAPTER_SERVE_STATIC__: serveStatic,
-      __WAKU_DENO_ADAPTER_NOT_FOUND_FN__: notFoundFn,
     } = globalThis as any;
     const app = new Hono();
+    app.notFound((c: any) => {
+      if (notFoundHtml) {
+        return c.html(notFoundHtml, 404);
+      }
+      return c.text('404 Not Found', 404);
+    });
     if (serveStatic) {
       app.use(serveStatic({ root: path.join(config.distDir, DIST_PUBLIC) }));
     }
@@ -49,25 +39,16 @@ export default createServerEntryAdapter(
     for (const middlewareFn of middlewareFns) {
       app.use(middlewareFn());
     }
-    app.use(middlewareRunner(middlewareModules));
+    app.use(middlewareRunner(middlewareModules as never));
     app.use(rscMiddleware({ processRequest }));
-    if (notFoundFn) {
-      app.notFound(notFoundFn);
-    }
-    const postBuildScript = joinPath(
-      import.meta.__WAKU_ORIGINAL_PATH__,
-      '../lib/deno-post-build.js',
-    );
-    const postBuildArg: Parameters<
-      typeof import('./lib/deno-post-build.js').default
-    >[0] = {
+    const buildOptions: BuildOptions = {
       distDir: config.distDir,
-      DIST_PUBLIC,
     };
     return {
       fetch: app.fetch,
       build: processBuild,
-      postBuild: [postBuildScript, postBuildArg],
+      buildOptions,
+      buildEnhancers: ['waku/adapters/deno-build-enhancer'],
     };
   },
 );

@@ -1,19 +1,26 @@
 {
+  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "waku-project",
   "main": "./dist/server/serve-cloudflare.js",
-  // https://developers.cloudflare.com/workers/platform/compatibility-dates
-  "compatibility_date": "2024-11-11",
   // nodejs_als is required for Waku server-side request context
   // It can be removed if only building static pages
   "compatibility_flags": ["nodejs_als"],
-  // https://developers.cloudflare.com/workers/static-assets/binding/
+  // https://developers.cloudflare.com/workers/platform/compatibility-dates
+  "compatibility_date": "2025-11-17",
   "assets": {
+    // https://developers.cloudflare.com/workers/static-assets/binding/
     "binding": "ASSETS",
     "directory": "./dist/public",
-    "html_handling": "drop-trailing-slash",
-    "not_found_handling": "404-page",
+    "html_handling": "drop-trailing-slash"
   },
   "vars": {
-    "MAX_ITEMS": 10,
+    "MAX_ITEMS": 10
   },
+  "rules": [
+    {
+      "type": "ESModule",
+      "globs": ["**/*.js", "**/*.mjs"]
+    }
+  ],
+  "no_bundle": true
 }

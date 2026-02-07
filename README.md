@@ -13,11 +13,9 @@ visit [waku.gg](https://waku.gg) or `npm create waku@latest`
 
 ## Introduction
 
-**Waku** _(wah-ku)_ or **わく** means “framework” in Japanese. As the minimal React framework, it’s designed to accelerate the work of developers at startups and agencies building small to medium-sized React projects. These include marketing websites, light ecommerce, and web applications.
+**Waku** _(wah-ku)_ or **わく** is the minimal React framework. It’s lightweight and designed for a fun developer experience, yet supports all the latest React 19 features like server components and actions. Built for marketing sites, headless commerce, and web apps. For large enterprise applications, you may prefer a heavier framework.
 
-We recommend other frameworks for heavy ecommerce or enterprise applications. Waku is a lightweight alternative bringing a fun developer experience to the server components era. Yes, let’s make React development fun again!
-
-> Waku is in rapid development and some features are currently missing. Please try it on non-production projects and report any issues you may encounter. Expect that there will be some breaking changes on the road towards a stable v1 release. Contributors are welcome.
+> Please try Waku on non-production projects and report any issues you find. Contributors are welcome.
 
 ## Getting started
 
@@ -26,6 +24,12 @@ Start a new Waku project with the `create` command for your preferred package ma
 ```sh
 npm create waku@latest
 ```
+
+#### Commands
+
+- `waku dev` to start the local development server
+- `waku build` to generate a production build
+- `waku start` to serve the production build locally
 
 **Node.js version requirement:** `^24.0.0` or `^22.12.0` or `^20.19.0`
 
@@ -516,9 +520,41 @@ export const getConfig = async () => {
 
 Group routes are especially powerful for organizing complex applications where different sections need different layouts, state management, or data requirements while maintaining clean URLs.
 
+#### Ignored routes
+
+The following directories are ignored by the router:
+
+- `_components`
+- `_hooks`
+
+All files inside there directories are excluded from routing.
+
+For instance, in the case below, `pages/about.tsx` is routed to `/about`, but files like `_components/header.tsx` are not routed anywhere.
+
+```
+pages/
+├── about.tsx
+├── _components/
+│   ├── header.tsx   // 👈🏼 ignored
+│   ├── footer.tsx   // 👈🏼 ignored
+│   ├── ...          // 👈🏼 ignored
+```
+
+### Router paths type safety
+
+Import `PageProps` from `waku/router` for type-safe access to route parameters (as shown in the examples above). The type provides `path`, `query`, and all segment parameters:
+
+```ts
+PageProps<'/blog/[slug]'>;
+// => { path: string; slug: string; query: string }
+
+PageProps<'/shop/[category]/[product]'>;
+// => { path: string; category: string; product: string; query: string }
+```
+
 ### Layouts
 
-Layouts are created with a special `_layout.tsx` file name and wrap the entire route and its descendents. They must accept a `children` prop of type `ReactNode`. While not required, you will typically want at least a root layout.
+Layouts are created with a special `_layout.tsx` file name and wrap the entire route and its descendants. They must accept a `children` prop of type `ReactNode`. While not required, you will typically want at least a root layout.
 
 #### Root layout
 
@@ -799,6 +835,48 @@ export const Component = () => {
 };
 ```
 
+## Error handling
+
+Waku sets up a default error boundary at the root of your application. You can customize error handling by adding your own error boundaries anywhere, for example with the [`react-error-boundary`](https://www.npmjs.com/package/react-error-boundary) library.
+
+When errors are thrown from server components or server functions, the errors are automatically replayed on browser. This allows the closest error boundaries to catch and handle these errors, even though they originated on the server.
+
+```tsx
+// ./src/pages/index.tsx
+import { ErrorBoundary } from 'react-error-boundary';
+
+export default async function HomePage() {
+  return (
+    <>
+      <ErrorBoundary fallback={<div>Caught server component error!</div>}>
+        <ThrowComponent />
+      </ErrorBoundary>
+      <ErrorBoundary fallback={<div>Caught server function error!</div>}>
+        <form
+          action={async () => {
+            'use server';
+            throw new Error('Oops!');
+          }}
+        >
+          <button>Crash</button>
+        </form>
+      </ErrorBoundary>
+    </>
+  );
+}
+
+const ThrowComponent = async () => {
+  throw new Error('Oops!');
+  return <>...</>;
+};
+```
+
+Error boundaries handle **unexpected errors** as a last resort safety net. For expected error conditions (like validation or network failures), handle them explicitly in your application logic.
+
+In production, server errors are automatically obfuscated on the client to avoid revealing server internals. Detailed error messages and stack traces are only visible in development.
+
+If you customize the root element (see [Root element](#root-element)), you should add your own error boundary there, as Waku's default root error boundary is included in the default root element.
+
 ## Metadata
 
 Waku automatically hoists any title, meta, and link tags to the document head. That means adding meta tags is as simple as adding them to any of your layout or page components.
@@ -996,10 +1074,10 @@ Data mutations can be performed via [server actions](https://react.dev/reference
 
 ### API endpoints
 
-Create API routes by making a new file in the special `./src/pages/api` directory and exporting one or more functions named after the HTTP methods that you want it to support: `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `CONNECT`, `OPTIONS`, `TRACE`, or `PATCH`. The name of the file determines the route it will be served from. Each function receives a standard [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) object and returns a standard [Response](https://developer.mozilla.org/en-US/docs/Web/API/Response) object.
+Create API routes by making a new file in the special `./src/pages/_api` directory and exporting one or more functions named after the HTTP methods that you want it to support: `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `CONNECT`, `OPTIONS`, `TRACE`, or `PATCH`. The name of the file determines the route it will be served from. Each function receives a standard [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) object and returns a standard [Response](https://developer.mozilla.org/en-US/docs/Web/API/Response) object.
 
 ```ts
-// ./src/pages/api/contact.ts
+// ./src/pages/_api/contact.ts
 import emailClient from 'some-email';
 
 const client = new emailClient(process.env.EMAIL_API_TOKEN!);
@@ -1029,7 +1107,7 @@ export const POST = async (request: Request): Promise<Response> => {
 Alternatively, you may export a default function as a "catch-all" handler that responds to all request methods.
 
 ```ts
-// ./src/pages/api/other-endpoint.ts
+// ./src/pages/_api/other-endpoint.ts
 export default function handler(request: Request): Response {
   return Response.json(
     { message: 'Default handler ' + request.method },
@@ -1038,9 +1116,41 @@ export default function handler(request: Request): Response {
 }
 ```
 
+#### Typed route parameters
+
+For API routes with dynamic segments (e.g., `./src/pages/_api/users/[id].ts`), you can use `ApiContext` as the second parameter to get typed access to route parameters. The `params` property will be automatically typed based on the path pattern.
+
+```ts
+// ./src/pages/_api/users/[id].ts
+import type { ApiContext } from 'waku/router';
+
+export async function GET(
+  _req: Request,
+  { params }: ApiContext<'/users/[id]'>,
+) {
+  const { id } = params; // id is typed as string
+  return Response.json({ id, message: `Hello user ${id}` });
+}
+```
+
+This also works with multiple parameters and wildcard routes:
+
+```ts
+// ./src/pages/_api/files/[...path].ts
+import type { ApiContext } from 'waku/router';
+
+export async function GET(
+  _req: Request,
+  { params }: ApiContext<'/files/[...path]'>,
+) {
+  const { path } = params; // path is typed as string[]
+  return Response.json({ segments: path });
+}
+```
+
 #### Calling API routes
 
-API routes are accessible at paths that match their file location. For example a file at `./src/pages/api/contact.ts` is available at `/api/contact`. You can call these endpoints from your client components using the standard [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) method.
+API routes are accessible at paths with the `_api` prefix stripped. For example a file at `./src/pages/_api/contact.ts` is available at `/contact`, and `./src/pages/_api/blog/rss.xml.ts` is available at `/blog/rss.xml`. You can call these endpoints from your client components using the standard [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) method.
 
 ```tsx
 'use client';
@@ -1056,7 +1166,7 @@ export const ContactForm = () => {
     setStatus('sending');
 
     try {
-      const response = await fetch('/api/contact', {
+      const response = await fetch('/contact', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1102,15 +1212,13 @@ export const ContactForm = () => {
 API routes are dynamic by default, but if you’re using them to create a static resource such as an XML document, you can export a `getConfig` function that returns a config object with the render property set to `'static'`.
 
 ```ts
-// ./src/pages/api/rss.xml.ts
+// ./src/pages/_api/blog/rss.xml.ts
 
 export const GET = async () => {
-  const rssFeed = generateRSSFeed(items);
+  const rss = generateRSSFeed(); // your RSS generation logic
 
-  return new Response(rssFeed, {
-    headers: {
-      'Content-Type': 'application/rss+xml',
-    },
+  return new Response(rss, {
+    headers: { 'Content-Type': 'application/rss+xml' },
   });
 };
 
@@ -1118,44 +1226,6 @@ export const getConfig = async () => {
   return {
     render: 'static',
   } as const;
-};
-
-const items = [
-  {
-    title: `Announcing API routes`,
-    description: `Easily add public API endpoints to your Waku projects.`
-    pubDate: `Tue, 1 Apr 2025 00:00:00 GMT`,
-    link: `https://waku.gg/blog/api-routes`,
-  },
-  // ...
-];
-
-const generateRSSFeed = (items) => {
-  const itemsXML = items
-    .map(
-      (item) => `
-        <item>
-          <title>${item.title}</title>
-          <link>${item.link}</link>
-          <pubDate>${item.pubDate}</pubDate>
-          <description>${item.description}</description>
-        </item>
-      `,
-    )
-    .join('');
-
-  return `
-    <?xml version="1.0" encoding="UTF-8" ?>
-    <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
-    <channel>
-      <atom:link href="https://waku.gg/api/rss.xml" rel="self" type="application/rss+xml" />
-      <title>Waku</title>
-      <link>https://waku.gg</link>
-      <description>The minimal React framework</description>
-      ${itemsXML}
-    </channel>
-    </rss>
-  `;
 };
 ```
 
@@ -1350,29 +1420,21 @@ export const ClientComponent = () => {
 
 ### Node.js
 
-In Node.js environments, `process.env` may be used for compatibility.
-
-```tsx
-// server components can access both private and public variables
-export const ServerComponent = async () => {
-  const secretKey = process.env.SECRET_KEY;
-
-  return <>{/* ...*/}</>;
-};
-```
-
-```tsx
-// client components can only access public variables
-'use client';
-
-export const ClientComponent = () => {
-  const publicStatement = process.env.WAKU_PUBLIC_HELLO;
-
-  return <>{/* ...*/}</>;
-};
-```
+In Node.js environments, `process.env` may also be used.
 
 ## Deployment
+
+### Node.js (default)
+
+After building, `waku start` runs the production server.
+
+If you need a standalone app (for example, for Docker),
+the build output lives in `dist`. It is the only folder you need to copy, then run `node dist/serve-node.js`.
+
+### Pure SSG
+
+The build output for SSG lives in `dist/public`. You can copy (or upload to any hosting service) the `dist/public` folder.
+With Pure SSG, dynamic features (like dynamic rendering, server actions, API routes) do not work.
 
 ### Vercel
 
@@ -1382,14 +1444,13 @@ Waku projects can be deployed to Vercel with the [Vercel CLI](https://vercel.com
 vercel
 ```
 
-#### Pure SSG
+#### Pure SSG with Vercel
 
-For adavanced users who want to avoid deploying functions, use the server entry file with vercel adapter and specify `static` option.
+For advanced users who want to avoid deploying functions, use the server entry file with the Vercel adapter and specify the `static` option.
 
-`./src/server-entry.ts`:
+`./src/waku.server.ts`:
 
 ```ts
-/// <reference types="vite/client" />
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/vercel';
 
@@ -1408,14 +1469,13 @@ NETLIFY=1 npm run build
 netlify deploy
 ```
 
-#### Pure SSG
+#### Pure SSG with Netlify
 
-For adavanced users who want to avoid deploying functions, use the server entry file with netlify adapter and specify `static` option.
+For advanced users who want to avoid deploying functions, use the server entry file with the Netlify adapter and specify the `static` option.
 
-`./src/server-entry.ts`:
+`./src/waku.server.ts`:
 
 ```ts
-/// <reference types="vite/client" />
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/netlify';
 
@@ -1425,31 +1485,34 @@ export default adapter(
 );
 ```
 
-### Cloudflare (experimental)
+### Cloudflare Workers
 
-`./src/server-entry.ts`:
+Waku projects can be deployed to Cloudflare Workers with [Wrangler](https://developers.cloudflare.com/workers/wrangler/).
+
+```sh
+CLOUDFLARE=1 npm run build
+wrangler deploy
+```
+
+#### Pure SSG with Cloudflare Workers
+
+`./src/waku.server.ts`:
 
 ```ts
-/// <reference types="vite/client" />
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/cloudflare';
 
 export default adapter(
   fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  { static: true },
 );
-```
-
-```sh
-npm run build
-npx wrangler dev # or deploy
 ```
 
 ### Deno Deploy (experimental)
 
-`./src/server-entry.ts`:
+`./src/waku.server.ts`:
 
 ```ts
-/// <reference types="vite/client" />
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/deno';
 
@@ -1463,12 +1526,28 @@ npm run build
 deployctl deploy --prod dist/serve-deno.js --exclude node_modules
 ```
 
-### AWS Lambda (experimental)
+### Bun (experimental)
 
-`./src/server-entry.ts`:
+`./src/waku.server.ts`:
 
 ```ts
-/// <reference types="vite/client" />
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/bun';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+);
+```
+
+```sh
+npm run build
+```
+
+### AWS Lambda (experimental)
+
+`./src/waku.server.ts`:
+
+```ts
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/aws-lambda';
 
@@ -1483,6 +1562,19 @@ npm run build
 ```
 
 The handler entrypoint is `dist/serve-asw-lambda.js`: see [Hono AWS Lambda Deploy Docs](https://hono.dev/getting-started/aws-lambda#_3-deploy).
+
+### Edge
+
+`waku/adapters/edge` adapter provides a minimal server output without deployment target specific code. For example, you can use it with [Nitro](https://nitro.build/) to handle packaging for various deployment platforms. See [waku-nitro-example](https://github.com/hi-ogawa/waku-nitro-example) for the example.
+
+```ts
+// [waku.config.ts]
+import { defineConfig } from 'waku/config';
+
+export default defineConfig({
+  unstable_adapter: 'waku/adapters/edge',
+});
+```
 
 ## Community
 

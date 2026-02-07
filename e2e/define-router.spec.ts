@@ -5,16 +5,17 @@ const startApp = prepareNormalSetup('define-router');
 
 test.describe(`define-router`, () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp?.();
+    await stopApp();
   });
 
   test('home', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
     await expect(page.getByTestId('home-title')).toHaveText('Home');
     await page.click("a[href='/foo']");
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');
@@ -42,6 +43,8 @@ test.describe(`define-router`, () => {
       .textContent()) as string;
     await page.reload();
     await expect(page.getByTestId('bar1-title')).toHaveText('Bar1');
+    const sliceText3 = page.getByTestId('slice001');
+    await expect(sliceText3).toHaveText(sliceText);
     if (mode === 'PRD') {
       await expect(page.getByTestId('bar1-random')).not.toHaveText(randomText);
     }

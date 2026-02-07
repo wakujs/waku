@@ -8,7 +8,7 @@ description: The minimal Waku API for library authors.
 
 ### Server API
 
-To use React Server Components in Waku, you need to create an `server-entry.tsx` file in the project root directory and `defineHandlers` to handle server requests.
+To use React Server Components in Waku, you need to create a `./src/waku.server.tsx` file and `defineHandlers` to handle server requests.
 
 ```tsx
 import { unstable_defineHandlers as defineHandlers } from 'waku/minimal/server';
@@ -21,7 +21,11 @@ const handlers = defineHandlers({
       return renderRsc({ App: <App name={input.rscPath || 'Waku'} /> });
     }
     if (input.type === 'custom' && input.pathname === '/') {
-      return renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, '');
+      return renderHtml(
+        await renderRsc({ App: <App name="Waku" /> }),
+        <Slot id="App" />,
+        '',
+      );
     }
   },
   handleBuild: () => null,
@@ -56,9 +60,13 @@ It has to return AsyncIterable of build instructions.
         async () => ({
           type: 'file' as const,
           pathname: '/',
-          body: renderHtml({ App: <App name="Waku" /> }, <Slot id="App" />, {
-            rscPath: '',
-          }).then((res) => res.body || ''),
+          body: renderHtml(
+            await renderRsc({ App: <App name="Waku" /> }),
+            <Slot id="App" />,
+            {
+              rscPath: '',
+            },
+          ).then((res) => res.body || ''),
         }),
       ];
       return tasks;
@@ -69,7 +77,7 @@ It has to return AsyncIterable of build instructions.
 
 To render a React Server Component on the client, you can use the `Root` and `Slot` components from `waku/client` with the RSC ID to create a wrapper component.
 
-This file should be `./src/client-entry.tsx`.
+This file should be `./src/waku.client.tsx`.
 
 ```tsx
 import { createRoot } from 'react-dom/client';

@@ -9,7 +9,7 @@ test.skip(!!process.env.ECOSYSTEM_CI);
 for (const packageManager of ['npm', 'pnpm', 'yarn'] as const) {
   test.describe(`${packageManager} monorepo`, () => {
     let port: number;
-    let stopApp: (() => Promise<void>) | undefined;
+    let stopApp: () => Promise<void>;
     test.beforeAll(async ({ mode }) => {
       ({ port, stopApp } = await startApp(
         mode,
@@ -18,7 +18,7 @@ for (const packageManager of ['npm', 'pnpm', 'yarn'] as const) {
       ));
     });
     test.afterAll(async () => {
-      await stopApp?.();
+      await stopApp();
     });
 
     test('renders the home page', async ({ page }) => {

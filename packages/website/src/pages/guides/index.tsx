@@ -1,12 +1,13 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { compileMDX } from 'next-mdx-remote/rsc';
+import { GuideList } from '../../components/guide-list';
 import { Meta } from '../../components/meta';
 import { Page } from '../../components/page';
-import { PostList, PostListContainer } from '../../components/post-list';
+import { PostListContainer } from '../../components/post-list';
 import type { BlogFrontmatter } from '../../types';
 
-export default async function BlogIndexPage() {
-  const articles = await getArticles();
+export default async function GuidesIndexPage() {
+  const guides = await getGuides();
 
   return (
     <Page>
@@ -15,20 +16,15 @@ export default async function BlogIndexPage() {
         description="The guides for working with Waku."
       />
       <PostListContainer>
-        <p className="bg-gray-950/90 mb-16 rounded-xl border border-gray-800 p-4 text-white sm:p-6 lg:p-12">
-          Our guides walk through hosting instructions, framework behavior,
-          developer tooling, and more! We will talk through unstable APIs here,
-          so you can help experiment with our new and fun features.
-        </p>
-        <PostList posts={articles} path="guides" />
+        <GuideList guides={guides} />
       </PostListContainer>
     </Page>
   );
 }
 
-const getArticles = async () => {
-  const blogFileNames: Array<string> = [];
-  const blogArticles: Array<{
+const getGuides = async () => {
+  const guideFileNames: Array<string> = [];
+  const guides: Array<{
     slug: string;
     title: string;
     description: string;
@@ -36,11 +32,11 @@ const getArticles = async () => {
 
   readdirSync('../../docs/guides/').forEach((fileName) => {
     if (fileName.endsWith('.mdx')) {
-      blogFileNames.push(fileName);
+      guideFileNames.push(fileName);
     }
   });
 
-  for await (const fileName of blogFileNames) {
+  for await (const fileName of guideFileNames) {
     const path = `../../docs/guides/${fileName}`;
     const source = readFileSync(path, 'utf8');
     const mdx = await compileMDX({
@@ -49,16 +45,14 @@ const getArticles = async () => {
     });
     const frontmatter = mdx.frontmatter as BlogFrontmatter;
 
-    const article = {
+    guides.push({
       slug: frontmatter.slug,
       title: frontmatter.title,
       description: frontmatter.description,
-    };
-
-    blogArticles.push(article);
+    });
   }
 
-  return blogArticles.sort((a, b) => a.slug.localeCompare(b.slug));
+  return guides.sort((a, b) => a.slug.localeCompare(b.slug));
 };
 
 export const getConfig = async () => {

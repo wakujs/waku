@@ -8,9 +8,11 @@
     "dev": "pnpm -r --filter='./packages/*' run dev",
     "compile": "pnpm -r --filter='./packages/*' run compile",
     "csb-install-FIXME": "pnpm install --no-frozen-lockfile",
-    "test": "prettier -c . && eslint . && tsc -b && pnpm -F 07_cloudflare cf-typegen && pnpm tsc-examples && pnpm run -r test",
+    "test": "pnpm run \"/^test:.*/\"",
+    "test:lint": "prettier -c . && eslint . && tsc -b && pnpm -F 07_cloudflare cf-typegen && pnpm run tsc-examples",
+    "test:unit": "pnpm run -r test",
     "test-vite-ecosystem-ci": "VITE_EXPERIMENTAL_WAKU_ROUTER=true pnpm run -r --filter='!create-waku' test && VITE_EXPERIMENTAL_WAKU_ROUTER=true playwright test --project=chromium-prd --project=chromium-dev",
-    "tsc-examples": "pnpm tsc -b ./examples/*/tsconfig.json ./e2e/fixtures/*/tsconfig.json ./e2e/fixtures/monorepo/packages/waku-project/tsconfig.json",
+    "tsc-examples": "tsc -b ./examples/*/tsconfig.json ./e2e/fixtures/*/tsconfig.json ./e2e/fixtures/monorepo/packages/waku-project/tsconfig.json",
     "e2e": "playwright test",
     "e2e-dev": "playwright test --project=chromium-dev",
     "e2e-prd": "playwright test --project=chromium-prd",
@@ -27,28 +29,35 @@
     "tailwindConfig": "./packages/website/tailwind.config.js",
     "tailwindFunctions": [
       "cx"
+    ],
+    "overrides": [
+      {
+        "files": "**/*.jsonc",
+        "options": {
+          "trailingComma": "none"
+        }
+      }
     ]
   },
   "devDependencies": {
-    "@actions/core": "^1.11.1",
-    "@eslint/js": "^9.39.1",
-    "@playwright/test": "^1.56.1",
+    "@actions/core": "^2.0.2",
+    "@eslint/js": "^9.39.2",
+    "@playwright/test": "^1.58.0",
     "@types/babel__core": "^7.20.5",
-    "@types/node": "^24.10.0",
-    "@types/react": "^19.2.2",
-    "@types/react-dom": "^19.2.2",
-    "eslint": "^9.39.1",
+    "@types/node": "^25.0.10",
+    "@types/react": "^19.2.9",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.2",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-playwright": "^2.3.0",
+    "eslint-plugin-playwright": "^2.5.1",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "7.0.1",
     "eslint-plugin-unicorn": "^62.0.0",
-    "fkill": "^9.0.0",
-    "prettier": "^3.6.2",
-    "prettier-plugin-tailwindcss": "^0.7.1",
+    "prettier": "^3.8.1",
+    "prettier-plugin-tailwindcss": "^0.7.2",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.46.3",
+    "typescript-eslint": "^8.53.1",
     "waku": "workspace:*"
   }
 }

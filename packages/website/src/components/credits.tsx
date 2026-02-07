@@ -5,7 +5,7 @@ export const Credits = () => {
 
   return (
     <>
-      <div className="pointer-events-none fixed bottom-0 right-0 z-100 origin-bottom-right scale-75 bg-transparent bg-[url('https://storage.googleapis.com/candycode/bg.png')] bg-[length:100%_100%] bg-no-repeat pl-[256px] pt-[96px] leading-none sm:scale-100">
+      <div className="scale-60 pointer-events-none fixed bottom-0 right-0 z-100 origin-bottom-right bg-transparent bg-[url('https://storage.googleapis.com/candycode/bg.png')] bg-[length:100%_100%] bg-no-repeat pl-[256px] pt-[96px] leading-none sm:scale-100">
         <a
           href="https://candycode.com/"
           target="_blank"

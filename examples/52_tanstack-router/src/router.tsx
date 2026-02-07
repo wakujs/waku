@@ -1,4 +1,7 @@
+'use client';
+
 import {
+  ClientOnly,
   Link,
   Outlet,
   RouterProvider,
@@ -6,7 +9,7 @@ import {
   createRoute,
   createRouter,
 } from '@tanstack/react-router';
-import { TanStackRouterDevtools } from '@tanstack/router-devtools';
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { ServerTime } from './server-time';
 
 const rootRoute = createRootRoute({
@@ -59,5 +62,9 @@ declare module '@tanstack/react-router' {
 }
 
 export const Router = () => {
-  return <RouterProvider router={router} />;
+  return (
+    <ClientOnly>
+      <RouterProvider router={router} />
+    </ClientOnly>
+  );
 };

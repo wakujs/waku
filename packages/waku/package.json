@@ -1,7 +1,7 @@
 {
   "name": "waku",
   "description": "⛩️ The minimal React framework",
-  "version": "0.27.0",
+  "version": "1.0.0-alpha.3",
   "type": "module",
   "author": "Daishi Kato",
   "homepage": "https://waku.gg",
@@ -37,6 +37,10 @@
     "./internals": {
       "types": "./dist/internals.d.ts",
       "default": "./dist/internals.js"
+    },
+    "./vite-plugins": {
+      "types": "./dist/vite-plugins.d.ts",
+      "default": "./dist/vite-plugins.js"
     },
     "./adapters/*": {
       "types": "./dist/adapters/*.d.ts",
@@ -82,28 +86,28 @@
     "node": "^24.0.0 || ^22.12.0 || ^20.19.0"
   },
   "dependencies": {
-    "@hono/node-server": "1.19.6",
-    "@swc/core": "1.15.1",
-    "@vitejs/plugin-react": "5.1.0",
-    "@vitejs/plugin-rsc": "0.5.1",
-    "dotenv": "17.2.3",
-    "hono": "4.10.4",
-    "magic-string": "0.30.21",
+    "@hono/node-server": "^1.19.0",
+    "@vitejs/plugin-react": "^5.1.0",
+    "@vitejs/plugin-rsc": "^0.5.19",
+    "dotenv": "^17.2.3",
+    "hono": "^4.10.0",
+    "magic-string": "^0.30.21",
     "picocolors": "^1.1.1",
-    "rsc-html-stream": "0.0.7",
-    "vite": "7.2.2"
+    "rsc-html-stream": "^0.0.7",
+    "vite": "^7.2.0"
   },
   "devDependencies": {
-    "@swc/cli": "^0.7.9",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "react-server-dom-webpack": "19.2.0",
+    "@swc/cli": "^0.7.10",
+    "react": "~19.2.4",
+    "react-dom": "~19.2.4",
+    "react-server-dom-webpack": "~19.2.4",
     "ts-expect": "^1.3.0",
-    "vitest": "^4.0.8"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   },
   "peerDependencies": {
-    "react": "~19.2.0",
-    "react-dom": "~19.2.0",
-    "react-server-dom-webpack": "~19.2.0"
+    "react": "~19.2.4",
+    "react-dom": "~19.2.4",
+    "react-server-dom-webpack": "~19.2.4"
   }
 }

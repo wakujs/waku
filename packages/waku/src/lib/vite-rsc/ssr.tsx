@@ -1,12 +1,24 @@
 import { type ReactNode, captureOwnerStack, use } from 'react';
 import { createFromReadableStream } from '@vitejs/plugin-rsc/ssr';
+import type { ReactFormState } from 'react-dom/client';
 import { renderToReadableStream } from 'react-dom/server.edge';
 import { injectRSCPayload } from 'rsc-html-stream/server';
 import fallbackHtml from 'virtual:vite-rsc-waku/fallback-html';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
-import type { RenderHtml } from '../utils/render.js';
 import { getBootstrapPreamble } from '../utils/ssr.js';
+import { batchReadableStream } from '../utils/stream.js';
+
+type RenderHtmlStream = (
+  rscStream: ReadableStream<Uint8Array>,
+  rscHtmlStream: ReadableStream<Uint8Array>,
+  options: {
+    rscPath: string | undefined;
+    formState: ReactFormState | undefined;
+    nonce: string | undefined;
+    extraScriptContent: string | undefined;
+  },
+) => Promise<{ stream: ReadableStream; status: number | undefined }>;
 
 type RscElementsPayload = Record<string, unknown>;
 type RscHtmlPayload = ReactNode;
@@ -16,7 +28,7 @@ type RscHtmlPayload = ReactNode;
 // These utilities are used by `rsc` environment through
 // `import.meta.viteRsc.loadModule` API.
 
-export const renderHtml: RenderHtml = async (
+export const renderHtmlStream: RenderHtmlStream = async (
   rscStream,
   rscHtmlStream,
   options,
@@ -48,9 +60,11 @@ export const renderHtml: RenderHtml = async (
     htmlStream = await renderToReadableStream(<SsrRoot />, {
       bootstrapScriptContent:
         getBootstrapPreamble({
-          rscPath: options?.rscPath || '',
+          rscPath: options.rscPath || '',
           hydrate: true,
-        }) + bootstrapScriptContent,
+        }) +
+        bootstrapScriptContent +
+        (options.extraScriptContent || ''),
       onError: (e: unknown) => {
         if (
           e &&
@@ -62,8 +76,8 @@ export const renderHtml: RenderHtml = async (
         }
         console.error('[SSR Error]', captureOwnerStack?.() || '', '\n', e);
       },
-      ...(options?.nonce ? { nonce: options.nonce } : {}),
-      ...(options?.formState ? { formState: options.formState } : {}),
+      ...(options.nonce ? { nonce: options.nonce } : {}),
+      ...(options.formState ? { formState: options.formState } : {}),
     });
   } catch (e) {
     const info = getErrorInfo(e);
@@ -81,15 +95,20 @@ export const renderHtml: RenderHtml = async (
     htmlStream = await renderToReadableStream(ssrErrorRoot, {
       bootstrapScriptContent:
         getBootstrapPreamble({
-          rscPath: options?.rscPath || '',
+          rscPath: options.rscPath || '',
           hydrate: false,
-        }) + bootstrapScriptContent,
-      ...(options?.nonce ? { nonce: options.nonce } : {}),
+        }) +
+        bootstrapScriptContent +
+        (options.extraScriptContent || ''),
+      ...(options.nonce ? { nonce: options.nonce } : {}),
     });
   }
   let responseStream: ReadableStream<Uint8Array> = htmlStream;
   responseStream = responseStream.pipeThrough(
-    injectRSCPayload(stream2, options?.nonce ? { nonce: options?.nonce } : {}),
+    injectRSCPayload(
+      batchReadableStream(stream2),
+      options.nonce ? { nonce: options.nonce } : {},
+    ),
   );
 
   return { stream: responseStream, status };

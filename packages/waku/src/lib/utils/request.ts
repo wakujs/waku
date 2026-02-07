@@ -22,14 +22,12 @@ export async function getInput(
   loadServerAction: (id: string) => Promise<unknown>,
 ) {
   const url = new URL(req.url);
-  url.pathname = removeBase(url.pathname, config.basePath);
+  const pathname = removeBase(url.pathname, config.basePath);
   const rscPathPrefix = '/' + config.rscBase + '/';
   let rscPath: string | undefined;
   let input: HandleRequestInput;
-  if (url.pathname.startsWith(rscPathPrefix)) {
-    rscPath = decodeRscPath(
-      decodeURI(url.pathname.slice(rscPathPrefix.length)),
-    );
+  if (pathname.startsWith(rscPathPrefix)) {
+    rscPath = decodeRscPath(pathname.slice(rscPathPrefix.length));
     // server action: js
     const actionId = decodeFuncId(rscPath);
     if (actionId) {
@@ -40,6 +38,7 @@ export async function getInput(
         type: 'function',
         fn: action as any,
         args,
+        pathname,
         req,
       };
     } else {
@@ -55,6 +54,7 @@ export async function getInput(
         type: 'component',
         rscPath,
         rscParams,
+        pathname,
         req,
       };
     }
@@ -65,22 +65,22 @@ export async function getInput(
       contentType.startsWith('multipart/form-data')
     ) {
       // server action: no js (progressive enhancement)
-      const formData = (await getActionBody(req)) as FormData;
-      const decodedAction = await decodeAction(formData);
       input = {
         type: 'action',
         fn: async () => {
+          const formData = (await getActionBody(req)) as FormData;
+          const decodedAction = await decodeAction(formData);
           const result = await decodedAction();
           return await decodeFormState(result, formData);
         },
-        pathname: decodeURI(url.pathname),
+        pathname,
         req,
       };
     } else {
       // POST API request
       input = {
         type: 'custom',
-        pathname: decodeURI(url.pathname),
+        pathname,
         req,
       };
     }
@@ -88,7 +88,7 @@ export async function getInput(
     // SSR
     input = {
       type: 'custom',
-      pathname: decodeURI(url.pathname),
+      pathname,
       req,
     };
   }

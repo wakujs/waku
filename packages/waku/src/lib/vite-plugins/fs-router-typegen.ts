@@ -1,11 +1,25 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { readdir, writeFile } from 'node:fs/promises';
-import * as swc from '@swc/core';
 import type { Plugin } from 'vite';
+import { parseAstAsync, transformWithEsbuild } from 'vite';
 import { EXTENSIONS, SRC_PAGES, SRC_SERVER_ENTRY } from '../constants.js';
 import { getGrouplessPath } from '../utils/create-pages.js';
 import { isIgnoredPath } from '../utils/fs-router.js';
 import { joinPath } from '../utils/path.js';
+
+type ProgramNode = Awaited<ReturnType<typeof parseAstAsync>>;
+type ImportDeclaration = ProgramNode['body'][number] & {
+  type: 'ImportDeclaration';
+};
+type ImportSpecifier = ImportDeclaration['specifiers'][number] & {
+  type: 'ImportSpecifier';
+};
+type ExportNamedDeclaration = ProgramNode['body'][number] & {
+  type: 'ExportNamedDeclaration';
+};
+type ExportSpecifier = ExportNamedDeclaration['specifiers'][number] & {
+  type: 'ExportSpecifier';
+};
 
 // https://tc39.es/ecma262/multipage/ecmascript-language-lexical-grammar.html#sec-names-and-keywords
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#identifiers
@@ -57,211 +71,49 @@ export function getImportModuleNames(filePaths: string[]): {
   return moduleNames;
 }
 
+const parseModule = async (filePath: string) => {
+  const source = readFileSync(filePath, 'utf8');
+  const loader: 'jsx' | 'ts' | 'tsx' = filePath.endsWith('.tsx')
+    ? 'tsx'
+    : filePath.endsWith('.ts')
+      ? 'ts'
+      : 'jsx';
+  const transformed = await transformWithEsbuild(source, filePath, {
+    loader,
+    jsx: 'preserve',
+  });
+  return parseAstAsync(transformed.code, { jsx: true, lang: 'tsx' } as never);
+};
+
+const getImportedName = (specifier: ImportSpecifier) =>
+  specifier.imported.type === 'Identifier'
+    ? specifier.imported.name
+    : String(specifier.imported.value);
+
+const getExportedName = (specifier: ExportSpecifier) =>
+  specifier.exported.type === 'Identifier'
+    ? specifier.exported.name
+    : String(specifier.exported.value);
+
 export const fsRouterTypegenPlugin = (opts: { srcDir: string }): Plugin => {
-  let entriesFilePossibilities: string[] | undefined;
-  let pagesDir: string | undefined;
-  let outputFile: string | undefined;
-
   return {
-    name: 'vite-plugin-fs-router-typegen',
+    name: 'waku:vite-plugins:fs-router-typegen',
     apply: 'serve',
-    async configResolved(config) {
-      pagesDir = joinPath(config.root, opts.srcDir, SRC_PAGES);
-      entriesFilePossibilities = EXTENSIONS.map((ext) =>
-        joinPath(config.root, opts.srcDir, SRC_SERVER_ENTRY + ext),
-      );
-      outputFile = joinPath(config.root, opts.srcDir, 'pages.gen.ts');
-    },
     configureServer(server) {
-      if (!entriesFilePossibilities || !pagesDir || !outputFile) {
-        return;
-      }
+      const srcDir = joinPath(server.config.root, opts.srcDir);
+      const pagesDir = joinPath(srcDir, SRC_PAGES);
 
-      if (!existsSync(pagesDir)) {
-        return;
-      }
-
-      const existingServerEntry = entriesFilePossibilities.find((entriesFile) =>
-        existsSync(entriesFile),
-      );
-
-      if (existingServerEntry) {
-        try {
-          const file = swc.parseSync(
-            readFileSync(existingServerEntry, 'utf8'),
-            {
-              syntax: 'typescript',
-              tsx: true,
-            },
-          );
-
-          const usesFsRouter = file.body.some((node) => {
-            if (node.type === 'ImportDeclaration') {
-              if (!node.source.value.startsWith('waku')) {
-                return false;
-              }
-              return node.specifiers.some(
-                (specifier) =>
-                  specifier.type === 'ImportSpecifier' &&
-                  (specifier.imported?.value === 'fsRouter' ||
-                    (!specifier.imported &&
-                      specifier.local.value === 'fsRouter')),
-              );
-            }
-            return false;
-          });
-
-          if (!usesFsRouter) {
-            return;
-          }
-        } catch {
-          // If we can't parse the file, skip typegen
+      const outputFile = joinPath(srcDir, 'pages.gen.ts');
+      const updateGeneratedFile = async (file: string | undefined) => {
+        // skip when the changed file is the generated file itself
+        if (file && outputFile.endsWith(file)) {
           return;
         }
-      }
-
-      // Recursively collect `.tsx` files in the given directory
-      const collectFiles = async (
-        dir: string,
-        files: string[] = [],
-      ): Promise<string[]> => {
-        // TODO revisit recursive option for readdir once more stable
-        // https://nodejs.org/docs/latest-v20.x/api/fs.html#direntparentpath
-        const entries = await readdir(dir, { withFileTypes: true });
-        for (const entry of entries) {
-          const fullPath = joinPath(dir, entry.name);
-          if (entry.isDirectory()) {
-            await collectFiles(fullPath, files);
-          } else {
-            if (entry.name.endsWith('.tsx')) {
-              files.push(pagesDir ? fullPath.slice(pagesDir.length) : fullPath);
-            }
-          }
-        }
-        return files;
-      };
-
-      const fileExportsGetConfig = (filePath: string) => {
-        if (!pagesDir) {
-          return false;
-        }
-        const file = swc.parseSync(readFileSync(pagesDir + filePath, 'utf8'), {
-          syntax: 'typescript',
-          tsx: true,
-        });
-
-        return file.body.some((node) => {
-          if (node.type === 'ExportNamedDeclaration') {
-            return node.specifiers.some(
-              (specifier) =>
-                specifier.type === 'ExportSpecifier' &&
-                !specifier.isTypeOnly &&
-                ((!specifier.exported &&
-                  specifier.orig.value === 'getConfig') ||
-                  specifier.exported?.value === 'getConfig'),
-            );
-          }
-
-          return (
-            node.type === 'ExportDeclaration' &&
-            ((node.declaration.type === 'VariableDeclaration' &&
-              node.declaration.declarations.some(
-                (decl) =>
-                  decl.id.type === 'Identifier' &&
-                  decl.id.value === 'getConfig',
-              )) ||
-              (node.declaration.type === 'FunctionDeclaration' &&
-                node.declaration.identifier.value === 'getConfig'))
-          );
-        });
-      };
-
-      const generateFile = (filePaths: string[]): string | null => {
-        const fileInfo: { path: string; src: string; hasGetConfig: boolean }[] =
-          [];
-        const moduleNames = getImportModuleNames(filePaths);
-
-        for (const filePath of filePaths) {
-          // where to import the component from
-          const src = filePath.replace(/^\//, '');
-          let hasGetConfig = false;
-          try {
-            hasGetConfig = fileExportsGetConfig(filePath);
-          } catch {
-            return null;
-          }
-
-          if (
-            filePath.endsWith('/_layout.tsx') ||
-            isIgnoredPath(filePath.split('/'))
-          ) {
-            continue;
-          } else if (filePath.endsWith('/index.tsx')) {
-            const path = filePath.slice(0, -'/index.tsx'.length);
-            fileInfo.push({
-              path: getGrouplessPath(path) || '/',
-              src,
-              hasGetConfig,
-            });
-          } else {
-            fileInfo.push({
-              path: getGrouplessPath(filePath.replace('.tsx', '')),
-              src,
-              hasGetConfig,
-            });
-          }
-        }
-
-        let result = `// deno-fmt-ignore-file
-// biome-ignore format: generated types do not need formatting
-// prettier-ignore
-import type { PathsForPages, GetConfigResponse } from 'waku/router';\n\n`;
-
-        for (const file of fileInfo) {
-          const moduleName = moduleNames[file.src];
-          if (file.hasGetConfig) {
-            result += `// prettier-ignore\nimport type { getConfig as ${moduleName}_getConfig } from './${SRC_PAGES}/${file.src.replace('.tsx', '')}';\n`;
-          }
-        }
-
-        result += `\n// prettier-ignore\ntype Page =\n`;
-
-        for (const file of fileInfo) {
-          const moduleName = moduleNames[file.src];
-          if (file.hasGetConfig) {
-            result += `| ({ path: '${file.path}' } & GetConfigResponse<typeof ${moduleName}_getConfig>)\n`;
-          } else {
-            result += `| { path: '${file.path}'; render: 'dynamic' }\n`;
-          }
-        }
-
-        result =
-          result.slice(0, -1) +
-          `;
-
-// prettier-ignore
-declare module 'waku/router' {
-  interface RouteConfig {
-    paths: PathsForPages<Page>;
-  }
-  interface CreatePagesConfig {
-    pages: Page;
-  }
-}
-`;
-
-        return result;
-      };
-
-      const updateGeneratedFile = async () => {
-        if (!pagesDir || !outputFile) {
+        // skip when the entries file exists or pages dir does not exist
+        if (!existsSync(pagesDir) || !(await detectFsRouterUsage(srcDir))) {
           return;
         }
-        const files = await collectFiles(pagesDir);
-        if (!files.length) {
-          return;
-        }
-        const generation = generateFile(files);
+        const generation = await generateFsRouterTypes(pagesDir);
         if (!generation) {
           // skip failures
           return;
@@ -270,28 +122,204 @@ declare module 'waku/router' {
       };
 
       server.watcher.on('change', async (file) => {
-        if (!outputFile || outputFile.endsWith(file)) {
-          return;
-        }
-
-        await updateGeneratedFile();
+        await updateGeneratedFile(file);
       });
       server.watcher.on('add', async (file) => {
-        if (!outputFile || outputFile.endsWith(file)) {
-          return;
-        }
-
-        await updateGeneratedFile();
+        await updateGeneratedFile(file);
       });
       server.watcher.on('unlink', async (file) => {
-        if (!outputFile || outputFile.endsWith(file)) {
-          return;
-        }
-
-        await updateGeneratedFile();
+        await updateGeneratedFile(file);
       });
-
-      void updateGeneratedFile();
+      void updateGeneratedFile(undefined);
     },
   };
 };
+
+export async function detectFsRouterUsage(srcDir: string): Promise<boolean> {
+  const existingServerEntry = EXTENSIONS.map((ext) =>
+    joinPath(srcDir, SRC_SERVER_ENTRY + ext),
+  ).find((entriesFile) => existsSync(entriesFile));
+
+  // managed mode if no entry
+  if (!existingServerEntry) {
+    return true;
+  }
+
+  try {
+    const file = await parseModule(existingServerEntry);
+    const usesFsRouter = file.body.some((node) => {
+      if (node.type !== 'ImportDeclaration') {
+        return false;
+      }
+      if (
+        node.source.type !== 'Literal' ||
+        typeof node.source.value !== 'string' ||
+        !node.source.value.startsWith('waku')
+      ) {
+        return false;
+      }
+      return node.specifiers.some((specifier) => {
+        if (
+          specifier.type !== 'ImportSpecifier' ||
+          specifier.local.type !== 'Identifier'
+        ) {
+          return false;
+        }
+        return getImportedName(specifier) === 'fsRouter';
+      });
+    });
+    return usesFsRouter;
+  } catch {
+    return false;
+  }
+}
+
+export async function generateFsRouterTypes(pagesDir: string) {
+  // Recursively collect `.tsx` files in the given directory
+  const collectFiles = async (
+    dir: string,
+    files: string[] = [],
+  ): Promise<string[]> => {
+    // TODO revisit recursive option for readdir once more stable
+    // https://nodejs.org/docs/latest-v20.x/api/fs.html#direntparentpath
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = joinPath(dir, entry.name);
+      if (entry.isDirectory()) {
+        await collectFiles(fullPath, files);
+      } else {
+        if (entry.name.endsWith('.tsx')) {
+          files.push(fullPath.slice(pagesDir.length));
+        }
+      }
+    }
+    return files;
+  };
+
+  const fileExportsGetConfig = async (filePath: string) => {
+    const file = await parseModule(pagesDir + filePath);
+    return file.body.some((node) => {
+      if (node.type !== 'ExportNamedDeclaration') {
+        return false;
+      }
+      if (
+        node.declaration?.type === 'VariableDeclaration' &&
+        node.declaration.declarations.some(
+          (decl) =>
+            decl.id.type === 'Identifier' && decl.id.name === 'getConfig',
+        )
+      ) {
+        return true;
+      }
+      if (
+        node.declaration?.type === 'FunctionDeclaration' &&
+        node.declaration.id?.name === 'getConfig'
+      ) {
+        return true;
+      }
+      return node.specifiers.some(
+        (specifier) =>
+          specifier.type === 'ExportSpecifier' &&
+          getExportedName(specifier) === 'getConfig',
+      );
+    });
+  };
+
+  const generateFile = async (filePaths: string[]): Promise<string | null> => {
+    const fileInfo: { path: string; src: string; hasGetConfig: boolean }[] = [];
+    const moduleNames = getImportModuleNames(filePaths);
+
+    for (const filePath of filePaths) {
+      // where to import the component from
+      const src = filePath.replace(/^\//, '');
+      let hasGetConfig = false;
+      try {
+        hasGetConfig = await fileExportsGetConfig(filePath);
+      } catch {
+        return null;
+      }
+
+      if (
+        filePath.endsWith('/_layout.tsx') ||
+        isIgnoredPath(filePath.split('/'))
+      ) {
+        continue;
+      } else if (filePath.endsWith('/index.tsx')) {
+        const path = filePath.slice(0, -'/index.tsx'.length);
+        fileInfo.push({
+          path: getGrouplessPath(path) || '/',
+          src,
+          hasGetConfig,
+        });
+      } else {
+        fileInfo.push({
+          path: getGrouplessPath(filePath.replace('.tsx', '')),
+          src,
+          hasGetConfig,
+        });
+      }
+    }
+
+    const hasAnyGetConfig = fileInfo.some((file) => file.hasGetConfig);
+    const lines: string[] = [
+      '// deno-fmt-ignore-file',
+      '// biome-ignore format: generated types do not need formatting',
+      '// prettier-ignore',
+      hasAnyGetConfig
+        ? "import type { PathsForPages, GetConfigResponse } from 'waku/router';"
+        : "import type { PathsForPages } from 'waku/router';",
+    ];
+
+    if (hasAnyGetConfig) {
+      lines.push('');
+      for (const file of fileInfo) {
+        if (!file.hasGetConfig) {
+          continue;
+        }
+        const moduleName = moduleNames[file.src];
+        lines.push(
+          `// prettier-ignore`,
+          `import type { getConfig as ${moduleName}_getConfig } from './${SRC_PAGES}/${file.src.replace('.tsx', '')}';`,
+        );
+      }
+    }
+
+    lines.push('', '// prettier-ignore', 'type Page =');
+    for (const file of fileInfo) {
+      const moduleName = moduleNames[file.src];
+      if (file.hasGetConfig) {
+        lines.push(
+          `| ({ path: '${file.path}' } & GetConfigResponse<typeof ${moduleName}_getConfig>)`,
+        );
+      } else {
+        lines.push(`| { path: '${file.path}'; render: 'static' }`);
+      }
+    }
+    lines[lines.length - 1] += ';';
+
+    lines.push(
+      '',
+      '// prettier-ignore',
+      "declare module 'waku/router' {",
+      '  interface RouteConfig {',
+      '    paths: PathsForPages<Page>;',
+      '  }',
+      '  interface CreatePagesConfig {',
+      '    pages: Page;',
+      '  }',
+      '}',
+      '',
+    );
+
+    const result = lines.join('\n');
+
+    return result;
+  };
+
+  const files = await collectFiles(pagesDir);
+  if (!files.length) {
+    return;
+  }
+  const generation = await generateFile(files);
+  return generation;
+}

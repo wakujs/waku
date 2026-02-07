@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { exec } from 'node:child_process';
 import {
   cpSync,
   existsSync,
@@ -8,17 +8,20 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { expect } from '@playwright/test';
 import { getManagedServerEntry } from '../packages/waku/dist/lib/utils/managed.js';
 import { makeTempDir, test } from './utils.js';
 
+const execAsync = promisify(exec);
+
 const dryRunList = [
-  // without server-entry.tsx
+  // without waku.server.tsx
   {
     cwd: fileURLToPath(new URL('./fixtures/partial-build', import.meta.url)),
     project: 'partial-build',
   },
-  // with server-entry.tsx
+  // with waku.server.tsx
   {
     cwd: fileURLToPath(new URL('./fixtures/ssr-basic', import.meta.url)),
     project: 'ssr-basic',
@@ -58,7 +61,7 @@ const changeAdapter = (file: string, adapter: string) => {
     content = readFileSync(file, 'utf-8');
   } else {
     // managed mode
-    content = getManagedServerEntry({ srcDir: 'src' });
+    content = getManagedServerEntry('src');
   }
   content = content.replace(
     /^import adapter from 'waku\/adapters\/default';/,
@@ -80,12 +83,12 @@ test.describe(`multi platform builds`, () => {
       test(`build ${project} with ${adapter} should not throw error`, async () => {
         const temp = makeTempDir(project);
         cpSync(cwd, temp, { recursive: true });
-        changeAdapter(join(temp, 'src', 'server-entry.tsx'), adapter);
+        changeAdapter(join(temp, 'src', 'waku.server.tsx'), adapter);
         for (const name of clearDirOrFile) {
           rmSync(join(temp, name), { recursive: true, force: true });
         }
         try {
-          execSync(`node ${waku} build ${adapter}`, {
+          await execAsync(`node ${waku} build ${adapter}`, {
             cwd: temp,
             env: process.env,
           });

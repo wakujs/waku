@@ -1,4 +1,5 @@
 import {
+  createFromReadableStream,
   createTemporaryReferenceSet,
   decodeAction,
   decodeFormState,
@@ -6,8 +7,10 @@ import {
   loadServerAction,
   renderToReadableStream,
 } from '@vitejs/plugin-rsc/rsc';
-import { config, isBuild, rootDir } from 'virtual:vite-rsc-waku/config';
-import { DIST_PUBLIC } from '../constants.js';
+import { buildMetadata } from 'virtual:vite-rsc-waku/build-metadata';
+import { config, isBuild } from 'virtual:vite-rsc-waku/config';
+import notFoundHtml from 'virtual:vite-rsc-waku/not-found';
+import { BUILD_METADATA_FILE, DIST_PUBLIC, DIST_SERVER } from '../constants.js';
 import { INTERNAL_runWithContext } from '../context.js';
 import type {
   Unstable_CreateServerEntryAdapter as CreateServerEntryAdapter,
@@ -17,20 +20,18 @@ import type {
   Unstable_ProcessRequest as ProcessRequest,
 } from '../types.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
-import { extname, joinPath } from '../utils/path.js';
+import { joinPath } from '../utils/path.js';
 import { createRenderUtils } from '../utils/render.js';
 import { getInput } from '../utils/request.js';
 import { encodeRscPath } from '../utils/rsc-path.js';
 import { stringToStream } from '../utils/stream.js';
-import { createTaskRunner, emitFileInTask } from '../utils/task-runner.js';
 
 function loadSsrEntryModule() {
   // This is an API to communicate between two server environments `rsc` and `ssr`.
   // https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-rsc/README.md#importmetaviterscloadmodule
-  return import.meta.viteRsc.loadModule<typeof import('./ssr.js')>(
-    'ssr',
-    'index',
-  );
+  return import.meta.viteRsc.loadModule<
+    typeof import('../vite-entries/entry.ssr.js')
+  >('ssr', 'index');
 }
 
 const toProcessRequest =
@@ -51,12 +52,16 @@ const toProcessRequest =
     const renderUtils = createRenderUtils(
       temporaryReferences,
       renderToReadableStream,
+      createFromReadableStream,
       loadSsrEntryModule,
     );
 
     let res: Awaited<ReturnType<typeof handleRequest>>;
     try {
-      res = await handleRequest(input, renderUtils);
+      res = await handleRequest(input, {
+        ...renderUtils,
+        loadBuildMetadata: async (key: string) => buildMetadata.get(key),
+      });
     } catch (e) {
       const info = getErrorInfo(e);
       const status = info?.status || 500;
@@ -79,8 +84,8 @@ const toProcessRequest =
     // fallback index html like packages/waku/src/lib/plugins/vite-plugin-rsc-index.ts
     const url = new URL(req.url);
     if (res === 'fallback' || (!res && url.pathname === '/')) {
-      const { renderHtmlFallback } = await loadSsrEntryModule();
-      const htmlFallbackStream = await renderHtmlFallback();
+      const { INTERNAL_renderHtmlFallback } = await loadSsrEntryModule();
+      const htmlFallbackStream = await INTERNAL_renderHtmlFallback();
       const headers = { 'content-type': 'text/html; charset=utf-8' };
       return new Response(htmlFallbackStream, { headers });
     }
@@ -90,10 +95,11 @@ const toProcessRequest =
 
 const toProcessBuild =
   (handleBuild: HandleBuild): ProcessBuild =>
-  async () => {
+  async ({ emitFile }) => {
     const renderUtils = createRenderUtils(
       undefined,
       renderToReadableStream,
+      createFromReadableStream,
       loadSsrEntryModule,
     );
 
@@ -101,64 +107,52 @@ const toProcessBuild =
     const getFallbackHtml = async () => {
       if (!fallbackHtml) {
         const ssrEntryModule = await loadSsrEntryModule();
-        fallbackHtml = await ssrEntryModule.renderHtmlFallback();
+        fallbackHtml = await ssrEntryModule.INTERNAL_renderHtmlFallback();
       }
       return fallbackHtml;
     };
 
-    const { runTask, waitForTasks } = createTaskRunner();
+    const buildMetadata = new Map<string, string>();
 
     await handleBuild({
       renderRsc: renderUtils.renderRsc,
+      parseRsc: renderUtils.parseRsc,
       renderHtml: renderUtils.renderHtml,
       rscPath2pathname: (rscPath) =>
         joinPath(config.rscBase, encodeRscPath(rscPath)),
-      generateFile: async (
-        pathname: string,
-        req: Request,
-        renderBody: () => Promise<ReadableStream | string>,
-      ) => {
-        const filePath = joinPath(
-          config.distDir,
-          DIST_PUBLIC,
-          extname(pathname)
-            ? pathname
-            : pathname === '/404'
-              ? '404.html' // HACK special treatment for 404, better way?
-              : pathname + '/index.html',
-        );
-        await INTERNAL_runWithContext(req, async () => {
-          await emitFileInTask(runTask, rootDir, filePath, renderBody());
-        });
+      saveBuildMetadata: async (key, value) => {
+        buildMetadata.set(key, value);
       },
-      generateDefaultHtml: async (pathname: string) => {
-        const filePath = joinPath(
-          config.distDir,
-          DIST_PUBLIC,
-          extname(pathname)
-            ? pathname
-            : pathname === '/404'
-              ? '404.html' // HACK special treatment for 404, better way?
-              : pathname + '/index.html',
+      withRequest: (req, fn) => INTERNAL_runWithContext(req, fn),
+      generateFile: async (fileName, body) => {
+        await emitFile(joinPath(DIST_PUBLIC, fileName), body);
+      },
+      generateDefaultHtml: async (fileName) => {
+        await emitFile(
+          joinPath(DIST_PUBLIC, fileName),
+          await getFallbackHtml(),
         );
-        await emitFileInTask(runTask, rootDir, filePath, getFallbackHtml());
       },
     });
 
-    await waitForTasks();
+    await emitFile(
+      joinPath(DIST_SERVER, BUILD_METADATA_FILE),
+      `export const buildMetadata = new Map(${JSON.stringify(Array.from(buildMetadata))});`,
+    );
   };
 
 export const createServerEntryAdapter: CreateServerEntryAdapter =
-  (fn) =>
-  ({ handleRequest, handleBuild }, options) => {
-    const processRequest = toProcessRequest(handleRequest);
-    const processBuild = toProcessBuild(handleBuild);
+  (fn) => (handlers, options) => {
+    const processRequest = toProcessRequest(handlers.handleRequest);
+    const processBuild = toProcessBuild(handlers.handleBuild);
     return fn(
       {
+        handlers,
         processRequest,
         processBuild,
         config,
         isBuild,
+        notFoundHtml,
       },
       options,
     );

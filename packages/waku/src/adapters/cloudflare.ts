@@ -1,73 +1,108 @@
-import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
+import { Hono } from 'hono/tiny';
 import {
+  unstable_constants as constants,
   unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
-import { joinPath as joinPathOrig } from '../lib/utils/path.js';
+import type { BuildOptions } from './cloudflare-build-enhancer.js';
 
-declare global {
-  interface ImportMeta {
-    readonly __WAKU_ORIGINAL_PATH__: string;
-  }
-}
-
-function joinPath(path1: string, path2: string) {
-  const p = joinPathOrig(path1, path2);
-  return p.startsWith('/') ? p : './' + p;
-}
-
+const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
+
+function isWranglerDev(req: Request): boolean {
+  // This header seems to only be set for production cloudflare workers
+  return !req.headers.get('cf-visitor');
+}
+
+function removeGzipEncoding(res: Response): Response {
+  const contentType = res.headers.get('content-type');
+  if (
+    !contentType ||
+    contentType.includes('text/html') ||
+    contentType.includes('text/plain')
+  ) {
+    const headers = new Headers(res.headers);
+    headers.set('content-encoding', 'Identity');
+    return new Response(res.body, {
+      status: res.status,
+      statusText: res.statusText,
+      headers,
+    });
+  }
+  return res;
+}
 
 export default createServerEntryAdapter(
   (
-    { processRequest, processBuild, config },
+    { processRequest, processBuild, config, notFoundHtml },
     options?: {
+      static?: boolean;
+      handlers?: Record<string, unknown>;
+      assetsDir?: string;
       middlewareFns?: (() => MiddlewareHandler)[];
-      middlewareModules?: Record<
-        string,
-        () => Promise<{
-          default: () => MiddlewareHandler;
-        }>
-      >;
+      middlewareModules?: Record<string, () => Promise<unknown>>;
     },
   ) => {
     const { middlewareFns = [], middlewareModules = {} } = options || {};
     const app = new Hono();
+    app.notFound((c) => {
+      if (notFoundHtml) {
+        return c.html(notFoundHtml, 404);
+      }
+      return c.text('404 Not Found', 404);
+    });
     app.use(contextMiddleware());
     for (const middlewareFn of middlewareFns) {
       app.use(middlewareFn());
     }
-    app.use(middlewareRunner(middlewareModules));
+    app.use(middlewareRunner(middlewareModules as never));
     app.use(rscMiddleware({ processRequest }));
-    app.notFound(async (c) => {
-      const assetsFetcher = (c.env as any).ASSETS;
-      const url = new URL(c.req.raw.url);
-      const errorHtmlUrl = url.origin + '/404.html';
-      const notFoundStaticAssetResponse = await assetsFetcher?.fetch(
-        new URL(errorHtmlUrl),
-      );
-      if (
-        notFoundStaticAssetResponse &&
-        notFoundStaticAssetResponse.status < 400
-      ) {
-        return c.body(notFoundStaticAssetResponse.body, 404);
-      }
-      return c.text('404 Not Found', 404);
-    });
-    const postBuildScript = joinPath(
-      import.meta.__WAKU_ORIGINAL_PATH__,
-      '../lib/cloudflare-post-build.js',
-    );
-    const postBuildArg: Parameters<
-      typeof import('./lib/cloudflare-post-build.js').default
-    >[0] = {
+    const buildOptions: BuildOptions = {
+      assetsDir: options?.assetsDir || 'assets',
       distDir: config.distDir,
+      privateDir: config.privateDir,
+      rscBase: config.rscBase,
+      basePath: config.basePath,
+      DIST_PUBLIC,
+      serverless: !options?.static,
     };
+
     return {
-      fetch: app.fetch,
+      fetch: async (req: Request) => {
+        let cloudflareContext;
+        try {
+          // @ts-expect-error - available when running in a Cloudflare environment
+          // eslint-disable-next-line import/no-unresolved
+          cloudflareContext = await import('cloudflare:workers');
+        } catch {
+          // Not in a Cloudflare environment
+        }
+        let res: Response | Promise<Response>;
+        if (cloudflareContext) {
+          const { env, waitUntil, passThroughOnException } = cloudflareContext;
+          res = app.fetch(req, env, {
+            waitUntil,
+            passThroughOnException,
+            props: undefined,
+          });
+        } else {
+          res = app.fetch(req);
+        }
+        // Workaround https://github.com/cloudflare/workers-sdk/issues/6577
+        if (import.meta.env?.PROD && isWranglerDev(req)) {
+          if ('then' in res) {
+            res = res.then((res) => removeGzipEncoding(res));
+          } else {
+            res = removeGzipEncoding(res);
+          }
+        }
+        return res;
+      },
+      handlers: options?.handlers,
       build: processBuild,
-      postBuild: [postBuildScript, postBuildArg],
+      buildOptions,
+      buildEnhancers: ['waku/adapters/cloudflare-build-enhancer'],
     };
   },
 );

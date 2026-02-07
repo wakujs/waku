@@ -5,25 +5,84 @@ const startApp = prepareNormalSetup('base-path');
 
 test.describe(`base-path`, () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
   test.afterAll(async () => {
-    await stopApp?.();
+    await stopApp();
   });
 
-  test('basic', async ({ page, mode }) => {
+  test('api', async ({ request }) => {
+    const baseUrl = `http://localhost:${port}/custom/base/`;
+
+    // get
+    const resGet = await request.get(`${baseUrl}hello`);
+    expect(resGet.ok()).toBe(true);
+    expect(await resGet.json()).toEqual({
+      ok: true,
+      request: {
+        handler: 'GET',
+        method: 'GET',
+        pathname: '/hello',
+      },
+    });
+
+    // post
+    const resPost = await request.post(`${baseUrl}hello`, {
+      data: 'hello',
+    });
+    expect(resPost.ok()).toBe(true);
+    expect(await resPost.json()).toEqual({
+      ok: true,
+      request: {
+        handler: 'POST',
+        method: 'POST',
+        pathname: '/hello',
+        text: 'hello',
+      },
+    });
+  });
+
+  test('router', async ({ page }) => {
+    const baseUrl = `http://localhost:${port}/custom/base/`;
+    await page.goto(baseUrl);
+    await waitForHydration(page);
+
+    // push
+    await page.getByText('dynamic-push').click();
+    await page.waitForURL(`${baseUrl}dynamic`);
+    await expect(
+      page.getByRole('heading', { name: 'Dynamic page' }),
+    ).toBeVisible();
+
+    // replace
+    await page.goto(baseUrl);
+    await waitForHydration(page);
+    await page.getByText('dynamic-replace').click();
+    await page.waitForURL(`${baseUrl}dynamic`);
+    await expect(
+      page.getByRole('heading', { name: 'Dynamic page' }),
+    ).toBeVisible();
+  });
+
+  // eslint-disable-next-line playwright/expect-expect
+  test('basic DEV', async ({ page, mode }) => {
+    test.skip(mode !== 'DEV');
+    await basicTest(page, `http://localhost:${port}/custom/base/`);
+  });
+
+  // eslint-disable-next-line playwright/expect-expect
+  test('basic PRD', async ({ page, mode }) => {
+    test.skip(mode !== 'PRD');
     await basicTest(page, `http://localhost:${port}/custom/base/`);
 
     // test static
-    if (mode === 'PRD') {
-      await stopApp?.();
-      ({ port, stopApp } = await startApp(mode, {
-        cmd: 'pnpm start-static',
-      }));
-      await basicTest(page, `http://localhost:${port}/custom/base/`);
-    }
+    await stopApp();
+    ({ port, stopApp } = await startApp(mode, {
+      cmd: 'pnpm start-static',
+    }));
+    await basicTest(page, `http://localhost:${port}/custom/base/`);
   });
 });
 
