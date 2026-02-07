@@ -17,18 +17,18 @@ export const streamToBase64 = async (
 ): Promise<string> => {
   const reader = stream.getReader();
   let binary = '';
-  let result: ReadableStreamReadResult<unknown>;
-  do {
-    result = await reader.read();
-    if (result.value) {
-      if (!(result.value instanceof Uint8Array)) {
-        throw new Error('Unexpected buffer type');
-      }
-      for (let i = 0; i < result.value.length; i++) {
-        binary += String.fromCharCode(result.value[i]!);
-      }
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) {
+      break;
     }
-  } while (!result.done);
+    if (!(value instanceof Uint8Array)) {
+      throw new Error('Unexpected buffer type');
+    }
+    for (let i = 0; i < value.length; i++) {
+      binary += String.fromCharCode(value[i]!);
+    }
+  }
   return btoa(binary);
 };
 
@@ -214,8 +214,8 @@ export function produceMultiplexedStream(
   let controller: ReadableStreamDefaultController<Uint8Array>;
 
   const frameStream = new ReadableStream<Uint8Array>({
-    start(ctrl) {
-      controller = ctrl;
+    start(c) {
+      controller = c;
     },
   });
 
@@ -223,16 +223,16 @@ export function produceMultiplexedStream(
     controller.enqueue(encodeStart(key));
     const reader = stream.getReader();
     try {
-      let result: ReadableStreamReadResult<unknown>;
-      do {
-        result = await reader.read();
-        if (result.value) {
-          if (!(result.value instanceof Uint8Array)) {
-            throw new Error('Unexpected buffer type');
-          }
-          controller.enqueue(encodeChunk(key, result.value));
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+          break;
         }
-      } while (!result.done);
+        if (!(value instanceof Uint8Array)) {
+          throw new Error('Unexpected buffer type');
+        }
+        controller.enqueue(encodeChunk(key, value));
+      }
       controller.enqueue(encodeEnd(key));
     } catch (err) {
       controller.enqueue(encodeError(key, err));
@@ -260,8 +260,8 @@ export async function consumeMultiplexedStream(
     // onStart
     (key) => {
       const stream = new ReadableStream<Uint8Array>({
-        start(ctrl) {
-          controllers.set(key, ctrl);
+        start(c) {
+          controllers.set(key, c);
         },
       });
       promises.push(callback(key, stream));
@@ -283,13 +283,13 @@ export async function consumeMultiplexedStream(
   );
 
   const reader = frameStream.getReader();
-  let result: ReadableStreamReadResult<Uint8Array>;
-  do {
-    result = await reader.read();
-    if (result.value) {
-      dispatchFrame(result.value);
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) {
+      break;
     }
-  } while (!result.done);
+    dispatchFrame(value);
+  }
 
   await Promise.all(promises);
 }
