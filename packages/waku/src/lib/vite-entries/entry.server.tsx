@@ -1,5 +1,3 @@
-import { createRequire } from 'node:module';
-import { pathToFileURL } from 'node:url';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 import { INTERNAL_setAllEnv } from '../../server.js';
 import type { Unstable_EmitFile } from '../types.js';
@@ -24,7 +22,7 @@ export async function INTERNAL_runFetch(
 async function runBuild(rootDir: string): Promise<ReadableStream> {
   let build = serverEntry.build;
   for (const enhancer of serverEntry.buildEnhancers || []) {
-    const moduleId = resolveModuleId(enhancer, rootDir);
+    const moduleId = await resolveModuleId(enhancer, rootDir);
     const mod = await import(moduleId);
     build = await mod.default(build);
   }
@@ -36,7 +34,9 @@ async function runBuild(rootDir: string): Promise<ReadableStream> {
   });
 }
 
-function resolveModuleId(moduleId: string, rootDir: string) {
+async function resolveModuleId(moduleId: string, rootDir: string) {
+  const { createRequire } = await import('node:module');
+  const { pathToFileURL } = await import('node:url');
   if (moduleId.startsWith('file://')) {
     return moduleId;
   }
