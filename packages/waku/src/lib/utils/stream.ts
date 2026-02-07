@@ -177,6 +177,8 @@ export async function consumeMultiplexedStream(
         break;
       case 'done':
         break;
+      default:
+        throw new Error(`Unknown frame type: ${JSON.stringify(frame)}`);
     }
   } while (!result.done);
 
