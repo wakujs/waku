@@ -10,6 +10,7 @@ for (const packageManager of ['npm', 'pnpm', 'yarn'] as const) {
   test.describe(`${packageManager} monorepo`, () => {
     let port: number;
     let stopApp: () => Promise<void>;
+
     test.beforeAll(async ({ mode }) => {
       ({ port, stopApp } = await startApp(
         mode,
@@ -17,6 +18,7 @@ for (const packageManager of ['npm', 'pnpm', 'yarn'] as const) {
         'packages/waku-project',
       ));
     });
+
     test.afterAll(async () => {
       await stopApp();
     });
@@ -29,7 +31,7 @@ for (const packageManager of ['npm', 'pnpm', 'yarn'] as const) {
       await page.goto(`http://localhost:${port}`);
       await expect(page.getByTestId('header')).toHaveText('Waku');
       // it should show context value from provider correctly
-      await page.waitForSelector('[data-testid="context-consumer-mounted"]');
+      await expect(page.getByTestId('context-consumer-mounted')).toBeVisible();
       await expect(page.getByTestId('context-consumer-value')).toHaveText(
         'provider value',
       );

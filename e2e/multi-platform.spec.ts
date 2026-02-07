@@ -87,14 +87,12 @@ test.describe(`multi platform builds`, () => {
         for (const name of clearDirOrFile) {
           rmSync(join(temp, name), { recursive: true, force: true });
         }
-        try {
-          await execAsync(`node ${waku} build ${adapter}`, {
+        await expect(
+          execAsync(`node ${waku} build ${adapter}`, {
             cwd: temp,
             env: process.env,
-          });
-        } catch (error) {
-          expect(error).toBeNull();
-        }
+          }),
+        ).resolves.not.toThrow();
         rmSync(temp, { recursive: true, force: true });
       });
     }
