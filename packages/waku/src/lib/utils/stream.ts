@@ -1,7 +1,9 @@
 // Utility functions for web streams (not Node.js streams)
 
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
 export const stringToStream = (str: string): ReadableStream => {
-  const encoder = new TextEncoder();
   return new ReadableStream({
     start(controller) {
       controller.enqueue(encoder.encode(str));
@@ -88,84 +90,74 @@ export function batchReadableStream(
 
 // Stream Multiplexer
 
-type Frame =
-  | { type: 'start'; key: string }
-  | { type: 'chunk'; key: string; chunk: Uint8Array }
-  | { type: 'end'; key: string }
-  | { type: 'error'; key: string; error: unknown }
-  | { type: 'done' };
-
 const FRAME_START = 0x01;
 const FRAME_CHUNK = 0x02;
 const FRAME_END = 0x03;
 const FRAME_ERROR = 0x04;
-const FRAME_DONE = 0x05;
 
-const enc = new TextEncoder();
-const dec = new TextDecoder();
-
-function encodeFrame(frame: Frame): Uint8Array {
-  switch (frame.type) {
-    case 'chunk': {
-      const keyBytes = enc.encode(frame.key);
-      const out = new Uint8Array(
-        1 + 2 + keyBytes.length + 4 + frame.chunk.length,
-      );
-      let offset = 0;
-      out[offset++] = FRAME_CHUNK;
-      new DataView(out.buffer).setUint16(offset, keyBytes.length);
-      offset += 2;
-      out.set(keyBytes, offset);
-      offset += keyBytes.length;
-      new DataView(out.buffer).setUint32(offset, frame.chunk.length);
-      offset += 4;
-      out.set(frame.chunk, offset);
-      return out;
-    }
-    case 'error': {
-      const keyBytes = enc.encode(frame.key);
-      const payload = enc.encode(String(frame.error));
-      const out = new Uint8Array(1 + 2 + keyBytes.length + 4 + payload.length);
-      let offset = 0;
-      out[offset++] = FRAME_ERROR;
-      new DataView(out.buffer).setUint16(offset, keyBytes.length);
-      offset += 2;
-      out.set(keyBytes, offset);
-      offset += keyBytes.length;
-      new DataView(out.buffer).setUint32(offset, payload.length);
-      offset += 4;
-      out.set(payload, offset);
-      return out;
-    }
-    case 'start':
-    case 'end': {
-      const keyBytes = enc.encode(frame.key);
-      const out = new Uint8Array(1 + 2 + keyBytes.length);
-      out[0] = frame.type === 'start' ? FRAME_START : FRAME_END;
-      new DataView(out.buffer).setUint16(1, keyBytes.length);
-      out.set(keyBytes, 3);
-      return out;
-    }
-    case 'done':
-      return new Uint8Array([FRAME_DONE]);
-  }
+function encodeStart(key: string): Uint8Array {
+  const keyBytes = encoder.encode(key);
+  const out = new Uint8Array(1 + 2 + keyBytes.length);
+  out[0] = FRAME_START;
+  new DataView(out.buffer).setUint16(1, keyBytes.length);
+  out.set(keyBytes, 3);
+  return out;
 }
 
-function createFrameDecoder(): (data: Uint8Array) => Frame[] {
+function encodeEnd(key: string): Uint8Array {
+  const keyBytes = encoder.encode(key);
+  const out = new Uint8Array(1 + 2 + keyBytes.length);
+  out[0] = FRAME_END;
+  new DataView(out.buffer).setUint16(1, keyBytes.length);
+  out.set(keyBytes, 3);
+  return out;
+}
+
+function encodeChunk(key: string, chunk: Uint8Array): Uint8Array {
+  const keyBytes = encoder.encode(key);
+  const out = new Uint8Array(1 + 2 + keyBytes.length + 4 + chunk.length);
+  let offset = 0;
+  out[offset++] = FRAME_CHUNK;
+  new DataView(out.buffer).setUint16(offset, keyBytes.length);
+  offset += 2;
+  out.set(keyBytes, offset);
+  offset += keyBytes.length;
+  new DataView(out.buffer).setUint32(offset, chunk.length);
+  offset += 4;
+  out.set(chunk, offset);
+  return out;
+}
+
+function encodeError(key: string, error: unknown): Uint8Array {
+  const keyBytes = encoder.encode(key);
+  const payload = encoder.encode(String(error));
+  const out = new Uint8Array(1 + 2 + keyBytes.length + 4 + payload.length);
+  let offset = 0;
+  out[offset++] = FRAME_ERROR;
+  new DataView(out.buffer).setUint16(offset, keyBytes.length);
+  offset += 2;
+  out.set(keyBytes, offset);
+  offset += keyBytes.length;
+  new DataView(out.buffer).setUint32(offset, payload.length);
+  offset += 4;
+  out.set(payload, offset);
+  return out;
+}
+
+function createFrameDispatcher(
+  onStart: (key: string) => void,
+  onChunk: (key: string, chunk: Uint8Array) => void,
+  onEnd: (key: string) => void,
+  onError: (key: string, error: string) => void,
+): (data: Uint8Array) => void {
   let buffer: Uint8Array = new Uint8Array(0);
 
-  return (data: Uint8Array): Frame[] => {
+  return (data: Uint8Array): void => {
     buffer = concatUint8Array([buffer, data]);
-    const frames: Frame[] = [];
 
     while (buffer.length > 0) {
-      const type = buffer[0]!;
-      if (type === FRAME_DONE) {
-        frames.push({ type: 'done' });
-        buffer = buffer.slice(1);
-        continue;
-      }
-      // Need at least type + 2 byte key length
+      const frameType = buffer[0]!;
+      // Need at least frameType + 2 byte key length
       if (buffer.length < 3) {
         break;
       }
@@ -176,10 +168,15 @@ function createFrameDecoder(): (data: Uint8Array) => Frame[] {
       if (buffer.length < headerLen) {
         break;
       }
-      const key = dec.decode(buffer.slice(3, 3 + keyLen));
+      const key = decoder.decode(buffer.slice(3, 3 + keyLen));
 
-      if (type === FRAME_START || type === FRAME_END) {
-        frames.push({ type: type === FRAME_START ? 'start' : 'end', key });
+      if (frameType === FRAME_START) {
+        onStart(key);
+        buffer = buffer.slice(headerLen);
+        continue;
+      }
+      if (frameType === FRAME_END) {
+        onEnd(key);
         buffer = buffer.slice(headerLen);
         continue;
       }
@@ -197,15 +194,15 @@ function createFrameDecoder(): (data: Uint8Array) => Frame[] {
       }
       const payload = buffer.slice(headerLen + 4, totalLen);
 
-      if (type === FRAME_CHUNK) {
-        frames.push({ type: 'chunk', key, chunk: payload });
+      if (frameType === FRAME_CHUNK) {
+        onChunk(key, payload);
+      } else if (frameType === FRAME_ERROR) {
+        onError(key, decoder.decode(payload));
       } else {
-        frames.push({ type: 'error', key, error: dec.decode(payload) });
+        throw new Error(`Unknown frame type: ${frameType}`);
       }
       buffer = buffer.slice(totalLen);
     }
-
-    return frames;
   };
 }
 
@@ -223,7 +220,7 @@ export function produceMultiplexedStream(
   });
 
   const callback = async (key: string, stream: ReadableStream) => {
-    controller.enqueue(encodeFrame({ type: 'start', key }));
+    controller.enqueue(encodeStart(key));
     const reader = stream.getReader();
     try {
       let result: ReadableStreamReadResult<unknown>;
@@ -233,22 +230,17 @@ export function produceMultiplexedStream(
           if (!(result.value instanceof Uint8Array)) {
             throw new Error('Unexpected buffer type');
           }
-          controller.enqueue(
-            encodeFrame({ type: 'chunk', key, chunk: result.value }),
-          );
+          controller.enqueue(encodeChunk(key, result.value));
         }
       } while (!result.done);
-      controller.enqueue(encodeFrame({ type: 'end', key }));
+      controller.enqueue(encodeEnd(key));
     } catch (err) {
-      controller.enqueue(encodeFrame({ type: 'error', key, error: err }));
+      controller.enqueue(encodeError(key, err));
     }
   };
 
   fn(callback).then(
-    () => {
-      controller.enqueue(encodeFrame({ type: 'done' }));
-      controller.close();
-    },
+    () => controller.close(),
     (err) => controller.error(err),
   );
 
@@ -264,40 +256,38 @@ export async function consumeMultiplexedStream(
     ReadableStreamDefaultController<Uint8Array>
   >();
   const promises: Promise<void>[] = [];
-  const decodeFrame = createFrameDecoder();
+  const dispatchFrame = createFrameDispatcher(
+    // onStart
+    (key) => {
+      const stream = new ReadableStream<Uint8Array>({
+        start(ctrl) {
+          controllers.set(key, ctrl);
+        },
+      });
+      promises.push(callback(key, stream));
+    },
+    // onChunk
+    (key, chunk) => {
+      controllers.get(key)?.enqueue(chunk);
+    },
+    // onEnd
+    (key) => {
+      controllers.get(key)?.close();
+      controllers.delete(key);
+    },
+    // onError
+    (key, error) => {
+      controllers.get(key)?.error(error);
+      controllers.delete(key);
+    },
+  );
 
   const reader = frameStream.getReader();
   let result: ReadableStreamReadResult<Uint8Array>;
   do {
     result = await reader.read();
-    const frames = (result.value && decodeFrame(result.value)) || [];
-    for (const frame of frames) {
-      switch (frame.type) {
-        case 'start': {
-          const stream = new ReadableStream<Uint8Array>({
-            start(ctrl) {
-              controllers.set(frame.key, ctrl);
-            },
-          });
-          promises.push(callback(frame.key, stream));
-          break;
-        }
-        case 'chunk':
-          controllers.get(frame.key)?.enqueue(frame.chunk);
-          break;
-        case 'end':
-          controllers.get(frame.key)?.close();
-          controllers.delete(frame.key);
-          break;
-        case 'error':
-          controllers.get(frame.key)?.error(frame.error);
-          controllers.delete(frame.key);
-          break;
-        case 'done':
-          break;
-        default:
-          throw new Error(`Unknown frame type: ${JSON.stringify(frame)}`);
-      }
+    if (result.value) {
+      dispatchFrame(result.value);
     }
   } while (!result.done);
 
