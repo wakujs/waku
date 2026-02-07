@@ -41,22 +41,18 @@ test.describe('render type', () => {
     test('does not hydrate server components', async ({ page }) => {
       await page.goto(`http://localhost:${port}/server/static/static-echo`);
       const timestamp = await page.getByTestId('timestamp').innerText();
-      await page.waitForTimeout(100);
       await page.reload();
       // Timestamp should remain the same, because its build time.
       await expect(page.getByTestId('timestamp')).toHaveText(timestamp);
-      await page.waitForTimeout(100);
     });
 
     test('hydrates client components', async ({ page }) => {
       await page.goto(`http://localhost:${port}/client/static/static-echo`);
       await expect(page.getByTestId('echo')).toHaveText('static-echo');
       const timestamp = await page.getByTestId('timestamp').innerText();
-      await page.waitForTimeout(100);
       await page.reload();
       // Timestamp should update with each refresh, because its client rendered.
       await expect(page.getByTestId('timestamp')).not.toHaveText(timestamp);
-      await page.waitForTimeout(100);
       // Timestamp should update in the browser because its hydrated.
       await expect(page.getByTestId('timestamp')).not.toHaveText(timestamp);
     });
@@ -83,7 +79,6 @@ test.describe('render type', () => {
     test('does not hydrate server components', async ({ page }) => {
       await page.goto(`http://localhost:${port}/server/dynamic/dynamic-echo`);
       const timestamp = await page.getByTestId('timestamp').innerText();
-      await page.waitForTimeout(100);
       await page.reload();
       // Timestamp should update with each refresh, because its server rendered.
       await expect(page.getByTestId('timestamp')).not.toHaveText(timestamp);
@@ -93,11 +88,9 @@ test.describe('render type', () => {
       await page.goto(`http://localhost:${port}/client/dynamic/dynamic-echo`);
       await expect(page.getByTestId('echo')).toHaveText('dynamic-echo');
       const timestamp = await page.getByTestId('timestamp').innerText();
-      await page.waitForTimeout(100);
       await page.reload();
       // Timestamp should update with each refresh, because its server rendered.
       await expect(page.getByTestId('timestamp')).not.toHaveText(timestamp);
-      await page.waitForTimeout(100);
       // Timestamp should update in the browser because its hydrated.
       await expect(page.getByTestId('timestamp')).not.toHaveText(timestamp);
     });

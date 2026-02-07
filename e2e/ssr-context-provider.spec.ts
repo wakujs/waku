@@ -17,7 +17,7 @@ test.describe(`ssr-context-provider`, () => {
 
   test('show context value', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
-    await page.waitForSelector('[data-testid="mounted"]');
+    await expect(page.getByTestId('mounted')).toBeVisible();
     await expect(page.getByTestId('value')).toHaveText('provider value');
   });
 
