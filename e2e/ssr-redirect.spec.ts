@@ -20,16 +20,18 @@ test.describe(`ssr-redirect`, () => {
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
   });
 
-  test('access async page directly', async ({ page, mode }) => {
+  test('access async page directly (DEV)', async ({ page, mode }) => {
+    test.skip(mode !== 'DEV', 'DEV mode only test');
     // TODO: async redirection on dev is flaky, so wrap with retry for now
     // https://github.com/wakujs/waku/pull/1586
-    if (mode === 'DEV') {
-      await expect(async () => {
-        await page.goto(`http://localhost:${port}/async`);
-        await expect(page.getByRole('heading')).toHaveText('Destination Page');
-      }).toPass();
-      return;
-    }
+    await expect(async () => {
+      await page.goto(`http://localhost:${port}/async`);
+      await expect(page.getByRole('heading')).toHaveText('Destination Page');
+    }).toPass();
+  });
+
+  test('access async page directly (PRD)', async ({ page, mode }) => {
+    test.skip(mode !== 'PRD', 'PRD mode only test');
     await page.goto(`http://localhost:${port}/async`);
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
   });

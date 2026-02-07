@@ -58,6 +58,7 @@ test.describe('hot reload', () => {
       'Modified Page',
     );
     await expect(page.getByText('Modified Page')).toBeVisible();
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(500); // need to wait not to full reload
     await expect(page.getByTestId('count')).toHaveText('1');
     await page.getByTestId('increment').click();
@@ -70,6 +71,7 @@ test.describe('hot reload', () => {
       'Plus One',
     );
     await expect(page.getByText('Plus One')).toBeVisible();
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(500); // need to wait not to full reload
     await expect(page.getByTestId('count')).toHaveText('2');
     await page.getByTestId('increment').click();
@@ -82,6 +84,7 @@ test.describe('hot reload', () => {
       'Edited Page',
     );
     await expect(page.getByText('Edited Page')).toBeVisible();
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(500); // need to wait not to full reload
     await expect(page.getByTestId('count')).toHaveText('3');
     await page.getByTestId('increment').click();
@@ -105,6 +108,7 @@ test.describe('hot reload', () => {
       '<p>Edited Page</p>',
       '<pEdited Page</p>',
     );
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(500); // need to wait for possible crash
     modifyFile(
       standaloneDir,
@@ -135,6 +139,7 @@ test.describe('hot reload', () => {
       'background-color: green;',
       'background-color: yellow;',
     );
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(500); // need to wait for full reload
     const bgColor2 = await page.evaluate(() =>
       window
@@ -167,6 +172,7 @@ test.describe('hot reload', () => {
       'background-color: red;',
       'background-color: blue;',
     );
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(500); // need to wait for full reload
     const bgColor2 = await page.evaluate(() =>
       window
@@ -178,7 +184,6 @@ test.describe('hot reload', () => {
     expect(bgColor2).toBe('rgb(0, 0, 255)');
 
     await page.reload();
-    await page.waitForTimeout(500); // need to wait?
     const bgColor3 = await page.evaluate(() =>
       window
         .getComputedStyle(
@@ -206,6 +211,7 @@ test.describe('hot reload', () => {
       'Mesg 1001',
     );
     await expect(page.getByTestId('mesg')).toHaveText('Mesg 1001');
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(500); // need to wait not to full reload
     await expect(page.getByTestId('count')).toHaveText('1');
     await page.getByTestId('increment').click();
