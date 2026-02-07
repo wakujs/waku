@@ -7,7 +7,7 @@ import { Meta } from './meta';
 import { Page } from './page';
 import { StarWaku } from './star-waku';
 
-export async function PostPage({
+export async function compilePost({
   slug,
   folder,
 }: {
@@ -45,13 +45,33 @@ export async function PostPage({
         year: 'numeric',
       })
     : undefined;
+  return { content, frontmatter, author, date };
+}
+
+export async function PostPage({
+  slug,
+  folder,
+  ogImageUrl,
+}: {
+  slug: string;
+  folder: string;
+  ogImageUrl?: string;
+}) {
+  const compiled = await compilePost({ folder, slug });
+  if (!compiled) {
+    return null;
+  }
+
+  const { content, frontmatter, author, date } = compiled;
 
   return (
     <Page>
       <Meta
         title={`${frontmatter.title} — Waku`}
         description={frontmatter.description}
+        ogImageUrl={ogImageUrl}
       />
+      <meta property="twitter:card" content="summary_large_image" />
       <div className="relative z-10 mx-auto w-full max-w-[80ch] pt-16 text-white lg:pt-36 xl:-right-[calc(296px/2)] 2xl:right-auto">
         <div className="mb-8 flex items-center gap-2 sm:gap-4">
           {frontmatter.release && (

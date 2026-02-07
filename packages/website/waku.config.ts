@@ -7,7 +7,7 @@ export default defineConfig({
     environments: {
       rsc: {
         resolve: {
-          external: ['shiki'],
+          external: ['shiki', '@vercel/og'],
         },
       },
     },
