@@ -184,12 +184,17 @@ describe('produceMultiplexedStream/consumeMultiplexedStream', () => {
 
   test('propagates stream errors to the consumer stream', async () => {
     const source = produceMultiplexedStream(async (callback) => {
+      let sent = false;
       await callback(
         'broken',
         new ReadableStream<Uint8Array>({
-          start(controller) {
-            controller.enqueue(toUint8('ok'));
-            controller.error(new Error('boom'));
+          pull(controller) {
+            if (!sent) {
+              sent = true;
+              controller.enqueue(toUint8('ok'));
+            } else {
+              controller.error(new Error('boom'));
+            }
           },
         }),
       );
