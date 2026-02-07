@@ -284,8 +284,8 @@ test.describe(`create-pages`, () => {
     expect(await res.text()).toBe('');
   });
 
-  test('api empty (PRD)', async () => {
-    test.skip(({ mode }) => mode !== 'PRD', 'PRD only test');
+  test('api empty (PRD)', async ({ mode }) => {
+    test.skip(mode !== 'PRD', 'PRD only test');
     expect(
       statSync(
         path.join(fixtureDir, 'dist', 'public', 'api', 'empty'),

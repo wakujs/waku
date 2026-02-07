@@ -69,14 +69,14 @@ test.describe(`base-path`, () => {
   });
 
   // eslint-disable-next-line playwright/expect-expect
-  test('basic DEV', async ({ page }) => {
-    test.skip(({ mode }) => mode !== 'DEV', 'DEV only test');
+  test('basic DEV', async ({ page, mode }) => {
+    test.skip(mode !== 'DEV', 'DEV only test');
     await basicTest(page, `http://localhost:${port}/custom/base/`);
   });
 
   // eslint-disable-next-line playwright/expect-expect
   test('basic PRD', async ({ page, mode }) => {
-    test.skip(({ mode }) => mode !== 'PRD', 'PRD only test');
+    test.skip(mode !== 'PRD', 'PRD only test');
     await basicTest(page, `http://localhost:${port}/custom/base/`);
 
     // test static
