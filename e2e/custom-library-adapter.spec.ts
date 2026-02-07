@@ -25,7 +25,7 @@ test.describe('custom-library-adapter', () => {
   });
 
   test('runs post build from dependency adapter', async ({ page, mode }) => {
-    test.skip(mode === 'DEV', 'postBuild runs only in build mode');
+    test.skip(mode !== 'PRD', 'postBuild runs only in build mode');
 
     await page.goto(`http://localhost:${port}/`);
     await expect(page.getByTestId('custom-adapter-heading')).toHaveText(

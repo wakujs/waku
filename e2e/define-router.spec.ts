@@ -6,9 +6,11 @@ const startApp = prepareNormalSetup('define-router');
 test.describe(`define-router`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
+
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
+
   test.afterAll(async () => {
     await stopApp();
   });
@@ -45,7 +47,9 @@ test.describe(`define-router`, () => {
     await expect(page.getByTestId('bar1-title')).toHaveText('Bar1');
     const sliceText3 = page.getByTestId('slice001');
     await expect(sliceText3).toHaveText(sliceText);
+    // eslint-disable-next-line playwright/no-conditional-in-test
     if (mode === 'PRD') {
+      // eslint-disable-next-line playwright/no-conditional-expect
       await expect(page.getByTestId('bar1-random')).not.toHaveText(randomText);
     }
   });
@@ -67,7 +71,9 @@ test.describe(`define-router`, () => {
     await expect(page.getByTestId('bar2-title')).toHaveText('Bar2');
     const sliceText2 = page.getByTestId('slice002');
     await expect(sliceText2).not.toHaveText(sliceText);
+    // eslint-disable-next-line playwright/no-conditional-in-test
     if (mode === 'PRD') {
+      // eslint-disable-next-line playwright/no-conditional-expect
       await expect(page.getByTestId('bar2-random')).toHaveText(randomText);
     }
   });
@@ -89,7 +95,9 @@ test.describe(`define-router`, () => {
     await expect(sliceText2).toHaveText(sliceText);
     await page.reload();
     await expect(page.getByTestId('baz1-title')).toHaveText('Baz1');
+    // eslint-disable-next-line playwright/no-conditional-in-test
     if (mode === 'PRD') {
+      // eslint-disable-next-line playwright/no-conditional-expect
       await expect(page.getByTestId('baz1-random')).not.toHaveText(randomText);
     }
   });
@@ -109,10 +117,13 @@ test.describe(`define-router`, () => {
     await expect(page.getByTestId('home-title')).toHaveText('Home');
     await page.click("a[href='/baz2']");
     await expect(page.getByTestId('baz2-title')).toHaveText('Baz2');
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(100); // need to wait to refetch the slice
     const sliceText2 = page.getByTestId('slice002');
     await expect(sliceText2).not.toHaveText(sliceText);
+    // eslint-disable-next-line playwright/no-conditional-in-test
     if (mode === 'PRD') {
+      // eslint-disable-next-line playwright/no-conditional-expect
       await expect(page.getByTestId('baz2-random')).toHaveText(randomText);
     }
   });

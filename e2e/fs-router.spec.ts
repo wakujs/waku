@@ -6,9 +6,11 @@ const startApp = prepareNormalSetup('fs-router');
 test.describe('fs-router', () => {
   let port: number;
   let stopApp: () => Promise<void>;
+
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
+
   test.afterAll(async () => {
     await stopApp();
   });
