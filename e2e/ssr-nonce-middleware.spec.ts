@@ -6,9 +6,11 @@ const startApp = prepareNormalSetup('ssr-nonce-middleware');
 test.describe(`ssr-nonce-middleware`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
+
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
+
   test.afterAll(async () => {
     await stopApp();
   });

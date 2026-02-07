@@ -34,9 +34,11 @@ test.describe('hot reload', () => {
   let port: number;
   let stopApp: () => Promise<void>;
   let standaloneDir: string;
+
   test.beforeAll(async () => {
     ({ port, stopApp, fixtureDir: standaloneDir } = await startApp('DEV'));
   });
+
   test.afterAll(async () => {
     await stopApp();
   });

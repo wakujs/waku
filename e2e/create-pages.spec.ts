@@ -14,9 +14,11 @@ test.describe(`create-pages`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
   let fixtureDir: string;
+
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp, fixtureDir } = await startApp(mode));
   });
+
   test.afterAll(async () => {
     await stopApp();
   });
@@ -481,12 +483,14 @@ test.describe(`create-pages STATIC`, () => {
 
   let port: number;
   let stopApp: () => Promise<void>;
+
   test.beforeAll(async ({ mode }) => {
     if (mode !== 'PRD') {
       return;
     }
     ({ port, stopApp } = await startApp('STATIC'));
   });
+
   test.afterAll(async ({ mode }) => {
     if (mode !== 'PRD') {
       return;

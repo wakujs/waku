@@ -9,9 +9,11 @@ test.describe(`ssr-target-bundle`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
   let fixtureDir: string;
+
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp, fixtureDir } = await startApp(mode));
   });
+
   test.afterAll(async () => {
     await stopApp();
   });
