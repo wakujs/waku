@@ -8,18 +8,20 @@ import { Page } from './page';
 import { StarWaku } from './star-waku';
 
 export async function compilePost({
-  folder,
   slug,
+  folder,
 }: {
-  folder: string;
   slug: string;
+  folder: string;
 }) {
   const fileName = await getFileName(folder, slug);
+
   if (!fileName) {
-    return;
+    return null;
   }
-  const filePath = `${folder}/${fileName}`;
-  const source = readFileSync(filePath, 'utf8');
+
+  const path = `${folder}/${fileName}`;
+  const source = readFileSync(path, 'utf8');
   const mdx = await compileMDX({
     source,
     components,
