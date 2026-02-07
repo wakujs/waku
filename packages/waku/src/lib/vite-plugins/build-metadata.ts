@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
+import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { type Plugin, normalizePath } from 'vite';
-import { BUILD_METADATA_FILE } from '../constants.js';
+import { BUILD_METADATA_FILE, DIST_SERVER } from '../constants.js';
+import { joinPath } from '../utils/path.js';
 
 const forceRelativePath = (s: string) => (s.startsWith('.') ? s : './' + s);
 
-export function buildMetadataPlugin(): Plugin {
+export function buildMetadataPlugin({ distDir }: { distDir: string }): Plugin {
   const virtualModule = 'virtual:vite-rsc-waku/build-metadata';
   const dummySource = 'export const buildMetadata = new Map();';
   return {
@@ -36,6 +38,19 @@ export function buildMetadataPlugin(): Plugin {
         );
         return code.replaceAll(virtualModule, () => replacement);
       }
+    },
+    buildApp: {
+      async handler(builder) {
+        const viteConfig = builder.config;
+        const rootDir = viteConfig.root;
+        const buildMetadataFile = joinPath(
+          rootDir,
+          distDir,
+          DIST_SERVER,
+          BUILD_METADATA_FILE,
+        );
+        await writeFile(buildMetadataFile, dummySource);
+      },
     },
   };
 }

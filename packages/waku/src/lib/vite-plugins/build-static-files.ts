@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -17,7 +17,6 @@ export function buildStaticFilesPlugin({
 }: {
   distDir: string;
 }): Plugin {
-  const dummySource = 'export const buildMetadata = new Map();';
   let userConfig: UserConfig;
   return {
     name: 'waku:vite-plugins:build-static-files',
@@ -54,7 +53,6 @@ export function buildStaticFilesPlugin({
           DIST_SERVER,
           BUILD_METADATA_FILE,
         );
-        await writeFile(buildMetadataFile, dummySource);
 
         // XXX isn't it weird to run vite in a vite plugin?
         const server = await vite.preview(userConfig);
@@ -67,6 +65,7 @@ export function buildStaticFilesPlugin({
             throw new Error('Invalid filePath: ' + filePath);
           }
           // In partial mode, skip if the file already exists.
+          // TODO: We'll revisit this: https://github.com/wakujs/waku/issues/1790
           if (
             fs.existsSync(destFile) &&
             // HACK: This feels a bit hacky
@@ -76,14 +75,10 @@ export function buildStaticFilesPlugin({
           }
           progress.update(`generating a file ${pc.dim(filePath)}`);
           await mkdir(joinPath(destFile, '..'), { recursive: true });
-          if (typeof body === 'string') {
-            await writeFile(destFile, body);
-          } else {
-            await pipeline(
-              Readable.fromWeb(body as never),
-              fs.createWriteStream(destFile),
-            );
-          }
+          await pipeline(
+            Readable.fromWeb(body as never),
+            fs.createWriteStream(destFile),
+          );
         };
         console.log(pc.blue('[ssg] processing static generation...'));
         const startTime = performance.now();

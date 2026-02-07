@@ -33,7 +33,7 @@ export function combinedPlugins(config: Required<Config>): PluginOption {
     defaultAdapterPlugin(config),
     notFoundPlugin(),
     patchRsdwPlugin(),
-    buildMetadataPlugin(),
+    buildMetadataPlugin(config),
     buildStaticFilesPlugin(config),
     privateDirPlugin(config),
     fallbackHtmlPlugin(),
