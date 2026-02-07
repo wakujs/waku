@@ -20,7 +20,7 @@ export const streamToBase64 = async (
     result = await reader.read();
     if (result.value) {
       if (!(result.value instanceof Uint8Array)) {
-        throw new Error('Unexepected buffer type');
+        throw new Error('Unexpected buffer type');
       }
       for (let i = 0; i < result.value.length; i++) {
         binary += String.fromCharCode(result.value[i]!);
@@ -84,4 +84,101 @@ export function batchReadableStream(
       },
     }),
   );
+}
+
+// Stream Multiplexer
+
+type Frame =
+  | { type: 'start'; key: string }
+  | { type: 'chunk'; key: string; chunk: Uint8Array }
+  | { type: 'end'; key: string }
+  | { type: 'error'; key: string; error: unknown }
+  | { type: 'done' };
+
+export function produceMultiplexedStream(
+  fn: (
+    callback: (key: string, stream: ReadableStream) => Promise<void>,
+  ) => Promise<void>,
+): ReadableStream<Frame> {
+  let controller: ReadableStreamDefaultController<Frame>;
+
+  const frameStream = new ReadableStream<Frame>({
+    start(ctrl) {
+      controller = ctrl;
+    },
+  });
+
+  const callback = async (key: string, stream: ReadableStream) => {
+    controller.enqueue({ type: 'start', key });
+    const reader = stream.getReader();
+    try {
+      let result: ReadableStreamReadResult<unknown>;
+      do {
+        result = await reader.read();
+        if (result.value) {
+          if (!(result.value instanceof Uint8Array)) {
+            throw new Error('Unexpected buffer type');
+          }
+          controller.enqueue({ type: 'chunk', key, chunk: result.value });
+        }
+      } while (!result.done);
+      controller.enqueue({ type: 'end', key });
+    } catch (err) {
+      controller.enqueue({ type: 'error', key, error: err });
+    }
+  };
+
+  fn(callback).then(
+    () => {
+      controller.enqueue({ type: 'done' });
+      controller.close();
+    },
+    (err) => controller.error(err),
+  );
+
+  return frameStream;
+}
+
+export async function consumeMultiplexedStream(
+  frameStream: ReadableStream<Frame>,
+  callback: (key: string, stream: ReadableStream<Uint8Array>) => Promise<void>,
+): Promise<void> {
+  const controllers = new Map<
+    string,
+    ReadableStreamDefaultController<Uint8Array>
+  >();
+  const promises: Promise<void>[] = [];
+
+  const reader = frameStream.getReader();
+  let result: ReadableStreamReadResult<Frame>;
+  do {
+    result = await reader.read();
+    const frame = result.value;
+    switch (frame?.type) {
+      case 'start': {
+        const stream = new ReadableStream<Uint8Array>({
+          start(ctrl) {
+            controllers.set(frame.key, ctrl);
+          },
+        });
+        promises.push(callback(frame.key, stream));
+        break;
+      }
+      case 'chunk':
+        controllers.get(frame.key)?.enqueue(frame.chunk);
+        break;
+      case 'end':
+        controllers.get(frame.key)?.close();
+        controllers.delete(frame.key);
+        break;
+      case 'error':
+        controllers.get(frame.key)?.error(frame.error);
+        controllers.delete(frame.key);
+        break;
+      case 'done':
+        break;
+    }
+  } while (!result.done);
+
+  await Promise.all(promises);
 }
