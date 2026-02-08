@@ -95,13 +95,7 @@ export function buildStaticFilesPlugin({
         );
 
         await new Promise<void>((resolve, reject) => {
-          server.httpServer.close((err) => {
-            if (err) {
-              reject(err);
-            } else {
-              resolve();
-            }
-          });
+          server.httpServer.close((err) => (err ? reject(err) : resolve()));
         });
       },
     },
