@@ -3,9 +3,9 @@ import process from 'node:process';
 import { parseArgs } from 'node:util';
 import loadEnv from './lib/utils/env.js';
 
-loadEnv();
-
 const require = createRequire(new URL('.', import.meta.url));
+
+loadEnv();
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
