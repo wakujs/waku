@@ -286,12 +286,14 @@ defineConfig({
     );
 
     // Add middleware to expose env vars
-    modifyFile(
+    // Use createFile instead of modifyFile because a previous test may have
+    // already replaced the original defineConfig({}) content.
+    createFile(
       standaloneDir,
       'waku.config.ts',
-      'defineConfig({})',
-      `\
-defineConfig({
+      `import { defineConfig } from 'waku/config';
+
+export default defineConfig({
   vite: {
     plugins: [
       [
@@ -315,7 +317,7 @@ defineConfig({
       ]
     ]
   }
-})
+});
 `,
     );
 
