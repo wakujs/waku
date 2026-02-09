@@ -19,11 +19,7 @@ function modifyFile(
   writeFileSync(filePath, content.replace(search, replace));
 }
 
-function createFile(
-  standaloneDir: string,
-  file: string,
-  content: string,
-) {
+function createFile(standaloneDir: string, file: string, content: string) {
   const filePath = join(standaloneDir, file);
   if (existsSync(filePath)) {
     originalFiles[filePath] ??= readFileSync(filePath, 'utf-8');
@@ -279,11 +275,7 @@ defineConfig({
     request,
   }) => {
     // Create initial .env file with only one variable
-    createFile(
-      standaloneDir,
-      '.env',
-      'TEST_MESSAGE=Hello from initial .env\n',
-    );
+    createFile(standaloneDir, '.env', 'TEST_MESSAGE=Hello from initial .env\n');
 
     // Add middleware to expose env vars
     // Use createFile instead of modifyFile because a previous test may have
