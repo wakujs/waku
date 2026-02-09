@@ -5,7 +5,7 @@ import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('hot-reload');
 
-const originalFiles: { [key: string]: string } = {};
+const originalFiles: { [key: string]: string | false } = {};
 
 function modifyFile(
   standaloneDir: string,
@@ -19,28 +19,24 @@ function modifyFile(
   writeFileSync(filePath, content.replace(search, replace));
 }
 
-function createOrModifyFile(
+function createFile(
   standaloneDir: string,
   file: string,
   content: string,
 ) {
   const filePath = join(standaloneDir, file);
-  if (existsSync(filePath) && !originalFiles[filePath]) {
-    originalFiles[filePath] = readFileSync(filePath, 'utf-8');
-  } else if (!existsSync(filePath)) {
-    // Mark as non-existent so we can delete it in cleanup
-    originalFiles[filePath] = '';
+  if (existsSync(filePath)) {
+    originalFiles[filePath] ??= readFileSync(filePath, 'utf-8');
+  } else {
+    originalFiles[filePath] ??= false;
   }
   writeFileSync(filePath, content);
 }
 
 test.afterAll(() => {
   for (const [file, content] of Object.entries(originalFiles)) {
-    if (content === '') {
-      // File didn't exist before, delete it
-      if (existsSync(file)) {
-        unlinkSync(file);
-      }
+    if (content === false) {
+      unlinkSync(file);
     } else {
       writeFileSync(file, content);
     }
@@ -283,7 +279,7 @@ defineConfig({
     request,
   }) => {
     // Create initial .env file with only one variable
-    createOrModifyFile(
+    createFile(
       standaloneDir,
       '.env',
       'TEST_MESSAGE=Hello from initial .env\n',
@@ -333,7 +329,7 @@ defineConfig({
     }).toPass({ timeout: 10000 });
 
     // Add a new env variable
-    createOrModifyFile(
+    createFile(
       standaloneDir,
       '.env',
       'TEST_MESSAGE=Hello from initial .env\nAPP_VERSION=1.0.0\n',
@@ -349,7 +345,7 @@ defineConfig({
     }).toPass({ timeout: 10000 });
 
     // Add another new env variable
-    createOrModifyFile(
+    createFile(
       standaloneDir,
       '.env',
       'TEST_MESSAGE=Hello from initial .env\nAPP_VERSION=1.0.0\nNEW_FEATURE=enabled\n',
