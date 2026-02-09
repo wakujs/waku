@@ -3,7 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as vite from 'vite';
 import { combinedPlugins } from '../vite-plugins/combined-plugins.js';
-import { loadConfig, startDevServer } from './dev/dev.js';
+import { loadConfig, startDevServer } from './dev.js';
 
 export async function runCommand(
   cmd: 'dev' | 'build' | 'start',
