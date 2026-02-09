@@ -125,19 +125,24 @@ const toProcessBuild =
       },
       withRequest: (req, fn) => INTERNAL_runWithContext(req, fn),
       generateFile: async (fileName, body) => {
-        await emitFile(joinPath(DIST_PUBLIC, fileName), body);
+        await emitFile(
+          joinPath(DIST_PUBLIC, fileName),
+          typeof body === 'string' ? stringToStream(body) : body,
+        );
       },
       generateDefaultHtml: async (fileName) => {
         await emitFile(
           joinPath(DIST_PUBLIC, fileName),
-          await getFallbackHtml(),
+          stringToStream(await getFallbackHtml()),
         );
       },
     });
 
     await emitFile(
       joinPath(DIST_SERVER, BUILD_METADATA_FILE),
-      `export const buildMetadata = new Map(${JSON.stringify(Array.from(buildMetadata))});`,
+      stringToStream(
+        `export const buildMetadata = new Map(${JSON.stringify(Array.from(buildMetadata))});`,
+      ),
     );
   };
 

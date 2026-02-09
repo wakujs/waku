@@ -28,7 +28,7 @@ export type Unstable_RenderHtml = (
 
 export type Unstable_EmitFile = (
   filePath: string,
-  body: ReadableStream | string,
+  body: ReadableStream,
 ) => Promise<void>;
 
 export type Unstable_HandleRequest = (
