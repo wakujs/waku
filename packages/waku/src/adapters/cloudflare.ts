@@ -2,8 +2,11 @@ import type { MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import {
   unstable_constants as constants,
+  unstable_consumeMultiplexedStream as consumeMultiplexedStream,
   unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
+  unstable_produceMultiplexedStream as produceMultiplexedStream,
+  unstable_startPreviewServer as startPreviewServer,
 } from 'waku/internals';
 import type { BuildOptions } from './cloudflare-build-enhancer.js';
 
@@ -42,9 +45,14 @@ export default createServerEntryAdapter(
       assetsDir?: string;
       middlewareFns?: (() => MiddlewareHandler)[];
       middlewareModules?: Record<string, () => Promise<unknown>>;
+      internalPathToBuildStaticFiles?: string;
     },
   ) => {
-    const { middlewareFns = [], middlewareModules = {} } = options || {};
+    const {
+      middlewareFns = [],
+      middlewareModules = {},
+      internalPathToBuildStaticFiles = '/__waku_internal_build_static_files',
+    } = options || {};
     const app = new Hono();
     app.notFound((c) => {
       if (notFoundHtml) {
@@ -70,6 +78,12 @@ export default createServerEntryAdapter(
 
     return {
       fetch: async (req: Request) => {
+        if (req.url === internalPathToBuildStaticFiles) {
+          const body = produceMultiplexedStream(async (emitFile) => {
+            await processBuild({ emitFile });
+          });
+          return new Response(body);
+        }
         let cloudflareContext;
         try {
           // @ts-expect-error - available when running in a Cloudflare environment
@@ -100,7 +114,14 @@ export default createServerEntryAdapter(
         return res;
       },
       handlers: options?.handlers,
-      build: processBuild,
+      build: async (utils) => {
+        const server = await startPreviewServer();
+        const response = await fetch(
+          server.baseUrl + internalPathToBuildStaticFiles,
+        );
+        await consumeMultiplexedStream(response.body!, utils.emitFile);
+        await server.close();
+      },
       buildOptions,
       buildEnhancers: ['waku/adapters/cloudflare-build-enhancer'],
     };

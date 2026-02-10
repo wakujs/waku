@@ -79,6 +79,7 @@ export function mainPlugin(config: Required<Config>): Plugin {
                     __dirname,
                     '../vite-entries/entry.server.js',
                   ),
+                  build: path.join(__dirname, '../vite-entries/entry.build.js'),
                 },
               },
             },
