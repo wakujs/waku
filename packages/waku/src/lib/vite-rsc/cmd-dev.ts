@@ -6,39 +6,32 @@ import { loadConfig, loadEnv, overrideNodeEnv } from './loader.js';
 
 loadEnv();
 
-// Track if a restart is currently in flight to prevent concurrent restarts
-let restartInFlight = false;
+function createServerRestartHandler() {
+  let restartInFlight = false;
 
-async function withRestartLock<T>(
-  operation: () => Promise<T>,
-): Promise<T | undefined> {
-  if (restartInFlight) {
-    console.log('Server restart already in progress, skipping...');
-    return undefined;
-  }
-  restartInFlight = true;
-  try {
-    return await operation();
-  } finally {
-    restartInFlight = false;
-  }
-}
-
-async function handleServerRestart(
-  host: string | undefined,
-  port: number,
-  server: vite.ViteDevServer,
-) {
-  await withRestartLock(async () => {
-    console.log('Restarting server with fresh plugin configuration...');
-    const previousUrls = server.resolvedUrls;
-    await server.close();
-    const freshConfig = await loadConfig();
-    const newServer = await startDevServer(host, port, freshConfig, true);
-    if (previousUrls) {
-      server.resolvedUrls = newServer.resolvedUrls;
+  return async (
+    host: string | undefined,
+    port: number,
+    server: vite.ViteDevServer,
+  ) => {
+    if (restartInFlight) {
+      console.log('Server restart already in progress, skipping...');
+      return;
     }
-  });
+    restartInFlight = true;
+    try {
+      console.log('Restarting server with fresh plugin configuration...');
+      const previousUrls = server.resolvedUrls;
+      await server.close();
+      const freshConfig = await loadConfig();
+      const newServer = await startDevServer(host, port, freshConfig, true);
+      if (previousUrls) {
+        server.resolvedUrls = newServer.resolvedUrls;
+      }
+    } finally {
+      restartInFlight = false;
+    }
+  };
 }
 
 async function startDevServer(
@@ -55,6 +48,7 @@ async function startDevServer(
     plugins: [combinedPlugins(config)],
     server: host ? { host, port } : { port },
   });
+  const handleServerRestart = createServerRestartHandler();
   // Override Vite's restart to intercept automatic restarts (.env, tsconfig, etc.)
   server.restart = async () => {
     console.log('Vite server restart intercepted, reloading Waku plugins...');
