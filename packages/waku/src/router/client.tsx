@@ -602,7 +602,7 @@ const ThrowError = ({ error }: { error: unknown }) => {
   throw error;
 };
 
-const getRouteSlotId = (path: string) => 'route:' + decodeURI(path);
+const getRouteSlotId = (path: string) => 'route:' + path;
 const getSliceSlotId = (id: SliceId) => 'slice:' + id;
 
 export function Slice({

@@ -82,7 +82,7 @@ const parseModule = async (filePath: string) => {
     loader,
     jsx: 'preserve',
   });
-  return parseAstAsync(transformed.code, { jsx: true });
+  return parseAstAsync(transformed.code, { jsx: true, lang: 'tsx' } as never);
 };
 
 const getImportedName = (specifier: ImportSpecifier) =>

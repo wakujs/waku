@@ -1,5 +1,5 @@
-import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
+import { Hono } from 'hono/tiny';
 import {
   unstable_constants as constants,
   unstable_createServerEntryAdapter as createServerEntryAdapter,
@@ -36,6 +36,7 @@ export default createServerEntryAdapter(
     const buildOptions: BuildOptions = {
       distDir: config.distDir,
       privateDir: config.privateDir,
+      rscBase: config.rscBase,
       DIST_PUBLIC,
       serverless: !options?.static,
     };

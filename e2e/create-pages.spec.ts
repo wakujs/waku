@@ -14,9 +14,11 @@ test.describe(`create-pages`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
   let fixtureDir: string;
+
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp, fixtureDir } = await startApp(mode));
   });
+
   test.afterAll(async () => {
     await stopApp();
   });
@@ -92,6 +94,7 @@ test.describe(`create-pages`, () => {
     await page.click("a[href='/foo']");
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
     await page.click('text=Jump to random page');
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(500); // need to wait not to error
     await expect(page.getByRole('heading', { level: 2 })).toBeVisible();
     await expect(
@@ -149,7 +152,6 @@ test.describe(`create-pages`, () => {
     ).toHaveText('init');
     await stopApp();
     await page.getByTestId('server-throws').getByTestId('success').click();
-    await page.waitForTimeout(500); // need to wait?
     await expect(
       page.getByTestId('server-throws').getByTestId('throws-error'),
     ).toHaveText(FETCH_ERROR_MESSAGES[browserName]);
@@ -276,17 +278,19 @@ test.describe(`create-pages`, () => {
     expect(await res.text()).toBe('hello from a text file!');
   });
 
-  test('api empty', async ({ mode }) => {
-    if (mode === 'PRD') {
-      expect(
-        statSync(
-          path.join(fixtureDir, 'dist', 'public', 'api', 'empty'),
-        ).isFile(),
-      ).toBe(true);
-    }
+  test('api empty', async () => {
     const res = await fetch(`http://localhost:${port}/api/empty`);
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('');
+  });
+
+  test('api empty (PRD)', async ({ mode }) => {
+    test.skip(mode !== 'PRD', 'PRD only test');
+    expect(
+      statSync(
+        path.join(fixtureDir, 'dist', 'public', 'api', 'empty'),
+      ).isFile(),
+    ).toBe(true);
   });
 
   test('api hi with POST', async () => {
@@ -329,6 +333,22 @@ test.describe(`create-pages`, () => {
       keys: ['test-string', 'test-file'],
       testString: 'value',
       testFile: { name: 'test.txt', data: 'data' },
+    });
+  });
+
+  test('api handler receives params from apiContext', async () => {
+    const res = await fetch(`http://localhost:${port}/api/echo/123`);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ params: { id: '123' } });
+  });
+
+  test('api handler receives wildcard params from apiContext', async () => {
+    const res = await fetch(
+      `http://localhost:${port}/api/echo/books/fiction/scifi`,
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      params: { category: 'books', rest: ['fiction', 'scifi'] },
     });
   });
 
@@ -381,6 +401,7 @@ test.describe(`create-pages`, () => {
     expect(Math.abs(dynamicTime - staticTime)).toBeLessThanOrEqual(1000);
 
     await page.getByRole('link', { name: 'Home' }).click();
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(1000);
     await page.getByRole('link', { name: 'Nested Layouts' }).click();
     const dynamicTime2 = await whatTime('Dynamic Layout');
@@ -412,6 +433,7 @@ test.describe(`create-pages`, () => {
     expect(dynamicSliceText.startsWith('Slice 002')).toBeTruthy();
 
     await page.getByRole('link', { name: 'Home' }).click();
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(1000);
     await page.getByRole('link', { name: 'Slices' }).click();
 
@@ -465,12 +487,14 @@ test.describe(`create-pages STATIC`, () => {
 
   let port: number;
   let stopApp: () => Promise<void>;
+
   test.beforeAll(async ({ mode }) => {
     if (mode !== 'PRD') {
       return;
     }
     ({ port, stopApp } = await startApp('STATIC'));
   });
+
   test.afterAll(async ({ mode }) => {
     if (mode !== 'PRD') {
       return;

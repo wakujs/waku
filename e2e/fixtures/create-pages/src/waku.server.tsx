@@ -260,6 +260,26 @@ const pages: ReturnType<typeof createPages> = createPages(
       },
     }),
 
+    createApi({
+      path: '/api/echo/[id]',
+      render: 'dynamic',
+      handlers: {
+        GET: async (_req, apiContext) => {
+          return Response.json({ params: apiContext.params });
+        },
+      },
+    }),
+
+    createApi({
+      path: '/api/echo/[category]/[...rest]',
+      render: 'dynamic',
+      handlers: {
+        GET: async (_req, apiContext) => {
+          return Response.json({ params: apiContext.params });
+        },
+      },
+    }),
+
     createPage({
       render: 'static',
       path: '/exact/[slug]/[...wild]',

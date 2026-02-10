@@ -18,6 +18,11 @@ import {
   encodeSliceId,
 } from './common.js';
 
+export type ApiHandler = (
+  req: Request,
+  apiContext: { params: Record<string, string | string[]> },
+) => Promise<Response>;
+
 const isStringArray = (x: unknown): x is string[] =>
   Array.isArray(x) && x.every((y) => typeof y === 'string');
 
@@ -191,7 +196,7 @@ type ApiConfig = {
   type: 'api';
   path: PathSpec;
   isStatic: boolean;
-  handler: (req: Request) => Promise<Response>;
+  handler: ApiHandler;
 };
 
 type SliceConfig = {
@@ -303,10 +308,9 @@ export function unstable_defineRouter(fns: {
     }
     const skipIdSet = new Set(isStringArray(skipParam) ? skipParam : []);
     const { query } = parseRscParams(rscParams);
-    const decodedPathname = decodeURI(pathname);
-    const routeId = ROUTE_SLOT_ID_PREFIX + decodedPathname;
+    const routeId = ROUTE_SLOT_ID_PREFIX + pathname;
     const option: RendererOption = {
-      pathname: decodedPathname,
+      pathname,
       query: pathConfigItem.isStatic ? undefined : query,
     };
     const myConfig = await getMyConfig();
@@ -382,7 +386,7 @@ export function unstable_defineRouter(fns: {
         entries[id] = sliceElement;
       }),
     ]);
-    entries[ROUTE_ID] = [decodedPathname, query];
+    entries[ROUTE_ID] = [pathname, query];
     entries[IS_STATIC_ID] = pathConfigItem.isStatic;
     sliceConfigMap.forEach((sliceConfig, sliceId) => {
       if (sliceConfig.isStatic) {
@@ -451,7 +455,8 @@ export function unstable_defineRouter(fns: {
       const url = new URL(input.req.url);
       url.pathname = input.pathname;
       const req = new Request(url, input.req);
-      return pathConfigItem.handler(req);
+      const params = getPathMapping(pathConfigItem.path, input.pathname) ?? {};
+      return pathConfigItem.handler(req, { params });
     }
 
     const url = new URL(input.req.url);
@@ -663,7 +668,7 @@ export function unstable_defineRouter(fns: {
       const req = new Request(new URL(pathname, 'http://localhost:3000'));
       runTask(async () => {
         await withRequest(req, async () => {
-          const res = await item.handler(req);
+          const res = await item.handler(req, { params: {} });
           await generateFile(pathname, res.body || '');
         });
       });

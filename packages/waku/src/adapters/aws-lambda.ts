@@ -1,8 +1,8 @@
 import path from 'node:path';
 import { serveStatic } from '@hono/node-server/serve-static';
-import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
 import * as honoAwsLambda from 'hono/aws-lambda';
+import { Hono } from 'hono/tiny';
 import {
   unstable_constants as constants,
   unstable_createServerEntryAdapter as createServerEntryAdapter,

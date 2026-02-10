@@ -73,7 +73,7 @@ const isUseDirective = (stmt: BodyItem, directive: string) =>
 
 const getDeclarationId = (item: BodyItem) =>
   (item.type === 'FunctionDeclaration' || item.type === 'ClassDeclaration') &&
-  item.id.type === 'Identifier' &&
+  item.id?.type === 'Identifier' &&
   item.id;
 
 const transformExportedClientThings = (mod: ProgramNode) => {
@@ -255,7 +255,10 @@ export function allowServerPlugin(): Plugin {
         return;
       }
 
-      const mod = await parseAstAsync(code, { jsx: true });
+      const mod = await parseAstAsync(code, {
+        jsx: true,
+        lang: 'tsx',
+      } as never);
       if (!hasDirective(mod, 'use client')) {
         return;
       }

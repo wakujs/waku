@@ -17,6 +17,7 @@ import type {
   PropsForPages,
 } from './create-pages-utils/inferred-path-types.js';
 import { unstable_defineRouter } from './define-router.js';
+import type { ApiHandler } from './define-router.js';
 
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods
 export const METHODS = [
@@ -181,8 +182,6 @@ export type CreateLayout = <Path extends string>(
         component: FunctionComponent<{ children: ReactNode }>;
       },
 ) => void;
-
-type ApiHandler = (req: Request) => Promise<Response>;
 
 export type CreateApi = <Path extends string>(
   params:
@@ -361,8 +360,7 @@ export const createPages = <
   const createPathPropsMapper = (path: string) => {
     const layoutMatchPath = groupPathLookup.get(path) ?? path;
     const pathSpec = parsePathWithSlug(layoutMatchPath);
-    return (pathname: string) =>
-      pathMappingWithoutGroups(pathSpec, encodeURI(pathname));
+    return (pathname: string) => pathMappingWithoutGroups(pathSpec, pathname);
   };
 
   /** Builds the routeElement renderer from layouts and page slots */
@@ -851,7 +849,10 @@ export const createPages = <
             type: 'api' as const,
             path: pathSpec,
             isStatic: render === 'static',
-            handler: async (req: Request) => {
+            handler: async (
+              req: Request,
+              apiContext: Parameters<ApiHandler>[1],
+            ) => {
               const path = new URL(req.url).pathname;
               const method = req.method;
               const handler = handlers[method as Method] ?? handlers.all;
@@ -860,7 +861,7 @@ export const createPages = <
                   'API method not found: ' + method + 'for path: ' + path,
                 );
               }
-              return handler(req);
+              return handler(req, apiContext);
             },
           };
         },

@@ -6,16 +6,18 @@ const startApp = prepareNormalSetup('ssr-context-provider');
 test.describe(`ssr-context-provider`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
+
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
+
   test.afterAll(async () => {
     await stopApp();
   });
 
   test('show context value', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
-    await page.waitForSelector('[data-testid="mounted"]');
+    await expect(page.getByTestId('mounted')).toBeVisible();
     await expect(page.getByTestId('value')).toHaveText('provider value');
   });
 
