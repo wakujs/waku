@@ -1,25 +1,12 @@
-import { existsSync } from 'node:fs';
 import path from 'node:path';
 import * as vite from 'vite';
 import type { Config } from '../../config.js';
-import { resolveConfig } from '../utils/config.js';
-import loadEnv from '../utils/env.js';
 import { combinedPlugins } from '../vite-plugins/combined-plugins.js';
+import { loadConfig, loadEnv, overrideNodeEnv } from './loader.js';
 
-export async function loadConfig(): Promise<Required<Config>> {
-  let config: Config | undefined;
-  if (existsSync('waku.config.ts') || existsSync('waku.config.js')) {
-    const imported = await vite.runnerImport<{ default: Config }>(
-      '/waku.config',
-    );
-    config = imported.module.default;
-  }
-  return resolveConfig(config);
-}
+loadEnv();
 
-/**
- * Track if a restart is currently in flight to prevent concurrent restarts
- */
+// Track if a restart is currently in flight to prevent concurrent restarts
 let restartInFlight = false;
 
 async function withRestartLock<T>(
@@ -29,7 +16,6 @@ async function withRestartLock<T>(
     console.log('Server restart already in progress, skipping...');
     return undefined;
   }
-
   restartInFlight = true;
   try {
     return await operation();
@@ -45,44 +31,35 @@ async function handleServerRestart(
 ) {
   await withRestartLock(async () => {
     console.log('Restarting server with fresh plugin configuration...');
-
     const previousUrls = server.resolvedUrls;
-
     await server.close();
-
     const freshConfig = await loadConfig();
-
     const newServer = await startDevServer(host, port, freshConfig, true);
-
     if (previousUrls) {
       server.resolvedUrls = newServer.resolvedUrls;
     }
   });
 }
 
-export async function startDevServer(
+async function startDevServer(
   host: string | undefined,
   port: number,
   config: Required<Config>,
   isRestart?: boolean,
 ) {
   if (isRestart) {
-    // Reload env vars when server restarts using the workaround pattern
     loadEnv();
   }
-
   const server = await vite.createServer({
     configFile: false,
     plugins: [combinedPlugins(config)],
     server: host ? { host, port } : { port },
   });
-
   // Override Vite's restart to intercept automatic restarts (.env, tsconfig, etc.)
   server.restart = async () => {
     console.log('Vite server restart intercepted, reloading Waku plugins...');
     await handleServerRestart(host, port, server);
   };
-
   await server.listen();
   const url =
     server.resolvedUrls?.network?.[0] ?? server.resolvedUrls?.local?.[0];
@@ -105,4 +82,12 @@ export async function startDevServer(
   }
 
   return server;
+}
+
+export async function runDev(flags: { host?: string; port?: string }) {
+  overrideNodeEnv('development');
+  const config = await loadConfig();
+  const host = flags.host;
+  const port = parseInt(flags.port || '3000', 10);
+  await startDevServer(host, port, config);
 }

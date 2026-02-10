@@ -1,11 +1,8 @@
 import { createRequire } from 'node:module';
 import process from 'node:process';
 import { parseArgs } from 'node:util';
-import loadEnv from './lib/utils/env.js';
 
 const require = createRequire(new URL('.', import.meta.url));
-
-loadEnv();
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
@@ -37,9 +34,15 @@ async function run() {
     console.log(version);
   } else if (values.help) {
     displayUsage();
-  } else if (cmd === 'dev' || cmd === 'build' || cmd === 'start') {
-    const { runCommand } = await import('./lib/vite-rsc/command.js');
-    await runCommand(cmd, values);
+  } else if (cmd === 'dev') {
+    const { runDev } = await import('./lib/vite-rsc/cmd-dev.js');
+    await runDev(values);
+  } else if (cmd === 'build') {
+    const { runBuild } = await import('./lib/vite-rsc/cmd-build.js');
+    await runBuild();
+  } else if (cmd === 'start') {
+    const { runStart } = await import('./lib/vite-rsc/cmd-start.js');
+    await runStart(values);
   } else {
     if (cmd) {
       console.error('Unknown command:', cmd);
