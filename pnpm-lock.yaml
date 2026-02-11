@@ -209,6 +209,31 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  e2e/fixtures/define-config-callback:
+    dependencies:
+      react:
+        specifier: ~19.2.4
+        version: 19.2.4
+      react-dom:
+        specifier: ~19.2.4
+        version: 19.2.4(react@19.2.4)
+      react-server-dom-webpack:
+        specifier: ~19.2.4
+        version: 19.2.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.99.9)
+      waku:
+        specifier: latest
+        version: link:../../../packages/waku
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.9
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.9)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   e2e/fixtures/define-router:
     dependencies:
       react:
