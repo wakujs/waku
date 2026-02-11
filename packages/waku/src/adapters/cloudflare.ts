@@ -1,12 +1,14 @@
 import type { MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import {
+  unstable_createServerEntryAdapter as createServerEntryAdapter,
+  unstable_startPreviewServer as startPreviewServer,
+} from 'waku/adapter-builders';
+import {
   unstable_constants as constants,
   unstable_consumeMultiplexedStream as consumeMultiplexedStream,
-  unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
   unstable_produceMultiplexedStream as produceMultiplexedStream,
-  unstable_startPreviewServer as startPreviewServer,
 } from 'waku/internals';
 import type { BuildOptions } from './cloudflare-build-enhancer.js';
 
