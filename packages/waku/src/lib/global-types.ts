@@ -5,6 +5,7 @@ declare global {
   var __WAKU_START_PREVIEW_SERVER__:
     | (() => Promise<{
         baseUrl: string;
+        middlewares: { use: (fn: any) => void };
         close: () => Promise<void>;
       }>)
     | undefined;

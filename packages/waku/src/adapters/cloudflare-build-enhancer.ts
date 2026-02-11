@@ -11,7 +11,7 @@ export type BuildOptions = {
   serverless: boolean;
 };
 
-async function postBuild({ distDir, DIST_PUBLIC, serverless }: BuildOptions) {
+async function preBuild({ distDir, DIST_PUBLIC, serverless }: BuildOptions) {
   const mainEntry = path.resolve(
     path.join(distDir, 'server', 'serve-cloudflare.js'),
   );
@@ -88,8 +88,8 @@ export default async function buildEnhancer(
   build: (utils: unknown, options: BuildOptions) => Promise<void>,
 ): Promise<typeof build> {
   return async (utils: unknown, options: BuildOptions) => {
+    await preBuild(options);
     await build(utils, options);
-    await postBuild(options);
   };
 }
 

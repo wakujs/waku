@@ -19,6 +19,7 @@ export async function runBuild() {
 
 async function startPreviewServerImpl(config: Required<Config>): Promise<{
   baseUrl: string;
+  middlewares: { use: (fn: any) => void };
   close: () => Promise<void>;
 }> {
   const server = await vite.preview({
@@ -27,6 +28,9 @@ async function startPreviewServerImpl(config: Required<Config>): Promise<{
   });
   return {
     baseUrl: server.resolvedUrls!.local[0]!,
+    middlewares: {
+      use: (fn: any) => server.middlewares.use(fn),
+    },
     close: () => server.close(),
   };
 }

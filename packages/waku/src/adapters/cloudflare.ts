@@ -1,3 +1,5 @@
+import http from 'node:http';
+import { Readable } from 'node:stream';
 import type { MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import {
@@ -53,7 +55,7 @@ export default createServerEntryAdapter(
     const {
       middlewareFns = [],
       middlewareModules = {},
-      internalPathToBuildStaticFiles = '/__waku_internal_build_static_files',
+      internalPathToBuildStaticFiles = '__waku_internal_build_static_files',
     } = options || {};
     const app = new Hono();
     app.notFound((c) => {
@@ -80,7 +82,8 @@ export default createServerEntryAdapter(
 
     return {
       fetch: async (req: Request) => {
-        if (req.url === internalPathToBuildStaticFiles) {
+        console.log('[DEBUG] Fetch received:', req.url);
+        if (req.url === `/${internalPathToBuildStaticFiles}`) {
           const body = produceMultiplexedStream(async (emitFile) => {
             await processBuild({ emitFile });
           });
@@ -118,6 +121,22 @@ export default createServerEntryAdapter(
       handlers: options?.handlers,
       build: async (utils) => {
         const server = await startPreviewServer();
+        server.middlewares.use(
+          async (
+            _req: http.IncomingMessage,
+            res: http.ServerResponse,
+            next: (err?: unknown) => void,
+          ) => {
+            try {
+              const body = produceMultiplexedStream(async (emitFile) => {
+                await processBuild({ emitFile });
+              });
+              Readable.fromWeb(body as never).pipe(res);
+            } catch (err) {
+              next(err);
+            }
+          },
+        );
         const response = await fetch(
           server.baseUrl + internalPathToBuildStaticFiles,
         );
