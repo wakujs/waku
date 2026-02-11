@@ -3,9 +3,9 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import type { MiddlewareHandler } from 'hono';
 import * as honoAwsLambda from 'hono/aws-lambda';
 import { Hono } from 'hono/tiny';
+import { unstable_createServerEntryAdapter as createServerEntryAdapter } from 'waku/adapter-builders';
 import {
   unstable_constants as constants,
-  unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
 import type { BuildOptions } from './aws-lambda-build-enhancer.js';
