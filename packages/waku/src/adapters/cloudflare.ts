@@ -1,5 +1,3 @@
-import http from 'node:http';
-import { Readable } from 'node:stream';
 import type { MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
 import {
@@ -121,22 +119,17 @@ export default createServerEntryAdapter(
       handlers: options?.handlers,
       build: async (utils) => {
         const server = await startPreviewServer();
-        server.middlewares.use(
-          async (
-            _req: http.IncomingMessage,
-            res: http.ServerResponse,
-            next: (err?: unknown) => void,
-          ) => {
-            try {
-              const body = produceMultiplexedStream(async (emitFile) => {
-                await processBuild({ emitFile });
-              });
-              Readable.fromWeb(body as never).pipe(res);
-            } catch (err) {
-              next(err);
-            }
-          },
-        );
+        server.middlewares.use(async (_req, res, next) => {
+          try {
+            const { Readable } = await import('node:stream');
+            const body = produceMultiplexedStream(async (emitFile) => {
+              await processBuild({ emitFile });
+            });
+            Readable.fromWeb(body as never).pipe(res);
+          } catch (err) {
+            next(err);
+          }
+        });
         const response = await fetch(
           server.baseUrl + internalPathToBuildStaticFiles,
         );
