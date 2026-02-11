@@ -34,6 +34,10 @@
       "types": "./dist/server.d.ts",
       "default": "./dist/server.js"
     },
+    "./adapter-builders": {
+      "types": "./dist/adapter-builders.d.ts",
+      "default": "./dist/adapter-builders.js"
+    },
     "./internals": {
       "types": "./dist/internals.d.ts",
       "default": "./dist/internals.js"
