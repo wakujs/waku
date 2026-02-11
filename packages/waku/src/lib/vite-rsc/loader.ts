@@ -4,7 +4,7 @@ import * as vite from 'vite';
 import type { Config } from '../../config.js';
 import { resolveConfig } from '../utils/config.js';
 
-export function loadEnv() {
+export function loadDotenv() {
   dotenv.config({ path: ['.env.local', '.env'], quiet: true });
 }
 

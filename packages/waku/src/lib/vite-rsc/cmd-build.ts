@@ -1,10 +1,10 @@
 import * as vite from 'vite';
 import type { Config } from '../../config.js';
 import { combinedPlugins } from '../vite-plugins/combined-plugins.js';
-import { loadConfig, loadEnv, overrideNodeEnv } from './loader.js';
+import { loadConfig, loadDotenv, overrideNodeEnv } from './loader.js';
 import type { PreviewServer } from './preview.js';
 
-loadEnv();
+loadDotenv();
 
 export async function runBuild() {
   overrideNodeEnv('production');
