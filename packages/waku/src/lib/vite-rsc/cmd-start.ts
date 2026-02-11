@@ -1,9 +1,9 @@
 import net from 'node:net';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { loadConfig, loadEnv, overrideNodeEnv } from './loader.js';
+import { loadConfig, loadDotenv, overrideNodeEnv } from './loader.js';
 
-loadEnv();
+loadDotenv();
 
 export async function runStart(flags: { host?: string; port?: string }) {
   overrideNodeEnv('production');

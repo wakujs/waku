@@ -2,9 +2,9 @@ import path from 'node:path';
 import * as vite from 'vite';
 import type { Config } from '../../config.js';
 import { combinedPlugins } from '../vite-plugins/combined-plugins.js';
-import { loadConfig, loadEnv, overrideNodeEnv } from './loader.js';
+import { loadConfig, loadDotenv, overrideNodeEnv } from './loader.js';
 
-loadEnv();
+loadDotenv();
 
 function createServerRestartHandler() {
   let restartInFlight = false;
@@ -41,7 +41,7 @@ async function startDevServer(
   isRestart?: boolean,
 ) {
   if (isRestart) {
-    loadEnv();
+    loadDotenv();
   }
   const server = await vite.createServer({
     configFile: false,
