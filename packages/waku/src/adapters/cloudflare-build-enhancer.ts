@@ -32,11 +32,14 @@ export default {
   const wranglerTomlFile = path.resolve('wrangler.toml');
   const wranglerJsonFile = path.resolve('wrangler.json');
   const wranglerJsoncFile = path.resolve('wrangler.jsonc');
-  if (
-    !fs.existsSync(wranglerTomlFile) &&
-    !fs.existsSync(wranglerJsonFile) &&
-    !fs.existsSync(wranglerJsoncFile)
-  ) {
+  const hasWranglerToml = fs.existsSync(wranglerTomlFile);
+  const hasWranglerJson = fs.existsSync(wranglerJsonFile);
+  const hasWranglerJsonc = fs.existsSync(wranglerJsoncFile);
+  const shouldWriteWranglerConfig =
+    !hasWranglerToml &&
+    !(hasWranglerJsonc && hasTopLevelNameField(wranglerJsoncFile)) &&
+    !(hasWranglerJson && hasTopLevelNameField(wranglerJsonFile));
+  if (shouldWriteWranglerConfig) {
     let projectName = 'waku-project';
     try {
       const packageJsonPath = path.resolve('package.json');
@@ -96,3 +99,14 @@ export default async function buildEnhancer(
 }
 
 const forceRelativePath = (s: string) => (s.startsWith('.') ? s : './' + s);
+
+function hasTopLevelNameField(filePath: string): boolean {
+  try {
+    const source = fs.readFileSync(filePath, 'utf-8');
+    // This is intentionally a lightweight check to detect bootstrap config
+    // created by prepareCloudflare() with only "main".
+    return /(^|[,{]\s*)"name"\s*:/.test(source);
+  } catch {
+    return false;
+  }
+}
