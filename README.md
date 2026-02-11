@@ -527,7 +527,7 @@ The following directories are ignored by the router:
 - `_components`
 - `_hooks`
 
-All files inside there directories are excluded from routing.
+All files inside these directories are excluded from routing.
 
 For instance, in the case below, `pages/about.tsx` is routed to `/about`, but files like `_components/header.tsx` are not routed anywhere.
 
@@ -761,7 +761,7 @@ This allows you to have a `dynamic` slice component while keeping the rest of th
 
 ### Link
 
-The`<Link />` component should be used for internal links. It accepts a `to` prop for the destination, which is automatically prefetched ahead of the navigation.
+The `<Link />` component should be used for internal links. It accepts a `to` prop for the destination, which is automatically prefetched ahead of the navigation.
 
 ```tsx
 // ./src/pages/index.tsx
@@ -1561,7 +1561,7 @@ export default adapter(
 npm run build
 ```
 
-The handler entrypoint is `dist/serve-asw-lambda.js`: see [Hono AWS Lambda Deploy Docs](https://hono.dev/getting-started/aws-lambda#_3-deploy).
+The handler entrypoint is `dist/serve-aws-lambda.js`: see [Hono AWS Lambda Deploy Docs](https://hono.dev/getting-started/aws-lambda#_3-deploy).
 
 ### Edge
 
