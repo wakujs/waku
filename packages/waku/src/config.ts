@@ -10,6 +10,17 @@ declare global {
   }
 }
 
+export type Command = 'dev' | 'build' | 'start';
+
+export interface ConfigEnv {
+  command: Command;
+  mode: string;
+}
+
+export type ConfigFn = (env: ConfigEnv) => Config | Promise<Config>;
+
+export type ConfigExport = Config | ConfigFn;
+
 export interface Config {
   /**
    * The base path for serve HTTP.
@@ -51,6 +62,6 @@ export interface Config {
   vite?: UserConfig | undefined;
 }
 
-export function defineConfig(config: Config) {
+export function defineConfig(config: ConfigExport): ConfigExport {
   return config;
 }

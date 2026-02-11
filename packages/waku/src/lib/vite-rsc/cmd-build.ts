@@ -6,7 +6,8 @@ loadDotenv();
 
 export async function runBuild() {
   overrideNodeEnv('production');
-  const config = await loadConfig();
+  const mode = 'production';
+  const config = await loadConfig('build', mode);
   const builder = await vite.createBuilder({
     configFile: false,
     plugins: [combinedPlugins(config)],
