@@ -75,7 +75,7 @@ export function mainPlugin(config: Required<Config>): Plugin {
             build: {
               rollupOptions: {
                 input: {
-                  index: path.join(
+                  server: path.join(
                     __dirname,
                     '../vite-entries/entry.server.js',
                   ),
@@ -137,7 +137,7 @@ export function mainPlugin(config: Required<Config>): Plugin {
       const { getRequestListener } = await import('@hono/node-server');
       const environment = server.environments.rsc! as RunnableDevEnvironment;
       const entryId = (environment.config.build.rollupOptions.input as any)
-        .index;
+        .server;
       return () => {
         server.middlewares.use(async (req, res, next) => {
           try {

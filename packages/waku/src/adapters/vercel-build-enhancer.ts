@@ -22,7 +22,7 @@ async function postBuild({
 }: BuildOptions) {
   const SERVE_JS = 'serve-vercel.js';
   const serveCode = `
-import { INTERNAL_runFetch } from './server/index.js';
+import { INTERNAL_runFetch } from './server/server.js';
 
 const getRequestListener = globalThis.__WAKU_HONO_NODE_SERVER_GET_REQUEST_LISTENER__;
 

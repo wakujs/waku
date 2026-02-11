@@ -9,6 +9,26 @@ export type BuildOptions = {
 
 async function preBuild({ distDir, DIST_PUBLIC, serverless }: BuildOptions) {
   const mainEntry = path.resolve(path.join(distDir, 'server', 'index.js'));
+  fs.writeFileSync(
+    mainEntry,
+    `\
+import { INTERNAL_runFetch, unstable_serverEntry as serverEntry } from './server.js';
+
+export default {
+  ...(serverEntry.handlers ? serverEntry.handlers : {}),
+  fetch: async (request, env) => {
+    let cloudflareContext;
+    try {
+      cloudflareContext = await import('cloudflare:workers');
+    } catch {
+      // Not in a Cloudflare environment
+    }
+    return INTERNAL_runFetch(env, request, cloudflareContext);
+  },
+};
+`,
+  );
+
   const wranglerTomlFile = path.resolve('wrangler.toml');
   const wranglerJsonFile = path.resolve('wrangler.json');
   const wranglerJsoncFile = path.resolve('wrangler.jsonc');

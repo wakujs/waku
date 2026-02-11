@@ -12,7 +12,7 @@ import { serveStatic } from 'jsr:@hono/hono/deno';
 globalThis.__WAKU_DENO_ADAPTER_HONO__ = Hono;
 globalThis.__WAKU_DENO_ADAPTER_SERVE_STATIC__ = serveStatic;
 
-const { INTERNAL_runFetch } = await import('./server/index.js');
+const { INTERNAL_runFetch } = await import('./server/server.js');
 
 const env = Deno.env.toObject();
 Deno.serve((req, ...args) => INTERNAL_runFetch(env, req, ...args));

@@ -6,7 +6,7 @@ export type BuildOptions = { distDir: string };
 async function postBuild({ distDir }: BuildOptions) {
   const SERVE_JS = 'serve-node.js';
   const serveCode = `
-import { INTERNAL_runFetch, unstable_serverEntry } from './server/index.js';
+import { INTERNAL_runFetch, unstable_serverEntry } from './server/server.js';
 
 const { serve } = unstable_serverEntry;
 

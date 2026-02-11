@@ -6,7 +6,7 @@ export type BuildOptions = { distDir: string };
 async function postBuild({ distDir }: BuildOptions) {
   const SERVE_JS = 'serve-bun.js';
   const serveCode = `
-import { unstable_serverEntry } from './server/index.js';
+import { unstable_serverEntry } from './server/server.js';
 
 Bun.serve({
   fetch: unstable_serverEntry.fetch,

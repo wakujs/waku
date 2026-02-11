@@ -10,7 +10,6 @@ import {
 import { buildMetadata } from 'virtual:vite-rsc-waku/build-metadata';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import notFoundHtml from 'virtual:vite-rsc-waku/not-found';
-import { INTERNAL_setAllEnv } from '../../server.js';
 import { BUILD_METADATA_FILE, DIST_PUBLIC, DIST_SERVER } from '../constants.js';
 import { INTERNAL_runWithContext } from '../context.js';
 import type {
@@ -156,7 +155,6 @@ export const createServerEntryAdapter: CreateServerEntryAdapter =
         handlers,
         processRequest,
         processBuild,
-        setAllEnv: INTERNAL_setAllEnv,
         config,
         isBuild,
         notFoundHtml,

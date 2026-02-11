@@ -24,7 +24,7 @@ async function postBuild({
     writeFileSync(
       path.join(functionsDir, 'serve.js'),
       `\
-const { INTERNAL_runFetch } = await import('../${distDir}/server/index.js');
+const { INTERNAL_runFetch } = await import('../${distDir}/server/server.js');
 
 export default async (request, context) =>
   INTERNAL_runFetch(process.env, request, { context });
