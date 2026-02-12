@@ -15,6 +15,8 @@ import type { BuildOptions } from './cloudflare-build-enhancer.js';
 const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
+const DO_NOT_BUNDLE = '';
+
 function isWranglerDev(req: Request): boolean {
   // This header seems to only be set for production cloudflare workers
   return !req.headers.get('cf-visitor');
@@ -83,7 +85,6 @@ export default createServerEntryAdapter(
       }
       let cloudflareContext;
       try {
-        const DO_NOT_BUNDLE = '';
         cloudflareContext = await import(
           /* @vite-ignore */ DO_NOT_BUNDLE + 'cloudflare:workers'
         );
@@ -119,7 +120,9 @@ export default createServerEntryAdapter(
         // Fallback middleware for the case without @cloudflare/vite-plugin
         server.middlewares.use(async (_req, res, next) => {
           try {
-            const { Readable } = await import('node:stream');
+            const { Readable } = await import(
+              /* @vite-ignore */ DO_NOT_BUNDLE + 'node:stream'
+            );
             const body = produceMultiplexedStream(async (emitFile) => {
               await processBuild({ emitFile });
             });
