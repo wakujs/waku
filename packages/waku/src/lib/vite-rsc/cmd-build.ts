@@ -2,7 +2,7 @@ import * as vite from 'vite';
 import type { Config } from '../../config.js';
 import { combinedPlugins } from '../vite-plugins/combined-plugins.js';
 import { loadConfig, loadEnv, overrideNodeEnv } from './loader.js';
-import type { PreviewServerMiddlewares } from './preview.js';
+import type { PreviewServer } from './preview.js';
 
 loadEnv();
 
@@ -18,11 +18,9 @@ export async function runBuild() {
   await builder.buildApp();
 }
 
-async function startPreviewServerImpl(config: Required<Config>): Promise<{
-  baseUrl: string;
-  middlewares: PreviewServerMiddlewares;
-  close: () => Promise<void>;
-}> {
+async function startPreviewServerImpl(
+  config: Required<Config>,
+): Promise<PreviewServer> {
   const server = await vite.preview({
     configFile: false,
     plugins: [combinedPlugins(config)],

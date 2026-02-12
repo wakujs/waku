@@ -3,10 +3,6 @@ declare global {
   var __WAKU_REFETCH_RSC__: (() => void) | undefined;
   var __WAKU_REFETCH_ROUTE__: (() => void) | undefined;
   var __WAKU_START_PREVIEW_SERVER__:
-    | (() => Promise<{
-        baseUrl: string;
-        middlewares: import('./vite-rsc/preview.js').PreviewServerMiddlewares;
-        close: () => Promise<void>;
-      }>)
+    | (() => Promise<import('./vite-rsc/preview.js').PreviewServer>)
     | undefined;
 }

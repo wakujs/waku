@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
-export type PreviewServerMiddlewares = {
+type PreviewServerMiddlewares = {
   use: (
     fn: (
       req: IncomingMessage,
@@ -10,11 +10,13 @@ export type PreviewServerMiddlewares = {
   ) => void;
 };
 
-export async function startPreviewServer(): Promise<{
+export type PreviewServer = {
   baseUrl: string;
   middlewares: PreviewServerMiddlewares;
   close: () => Promise<void>;
-}> {
+};
+
+export async function startPreviewServer(): Promise<PreviewServer> {
   const start = globalThis.__WAKU_START_PREVIEW_SERVER__;
   if (!start) {
     throw new Error('Preview server is not available.');
