@@ -84,7 +84,9 @@ export default createServerEntryAdapter(
       let cloudflareContext;
       try {
         const DO_NOT_BUNDLE = '';
-        cloudflareContext = await import(DO_NOT_BUNDLE + 'cloudflare:workers');
+        cloudflareContext = await import(
+          /* @vite-ignore */ DO_NOT_BUNDLE + 'cloudflare:workers'
+        );
       } catch {
         // Not in a Cloudflare environment
       }
