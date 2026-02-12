@@ -104,6 +104,7 @@ export type Unstable_CreateServerEntryAdapter = <Options>(
       handlers: Unstable_Handlers;
       processRequest: Unstable_ProcessRequest;
       processBuild: Unstable_ProcessBuild;
+      setAllEnv: (newEnv: Readonly<Record<string, string>>) => void;
       config: Omit<Required<Config>, 'vite'>;
       isBuild: boolean;
       notFoundHtml: string;

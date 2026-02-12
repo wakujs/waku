@@ -40,7 +40,7 @@ function removeGzipEncoding(res: Response): Response {
 
 export default createServerEntryAdapter(
   (
-    { processRequest, processBuild, config, notFoundHtml },
+    { processRequest, processBuild, setAllEnv, config, notFoundHtml },
     options?: {
       static?: boolean;
       handlers?: Record<string, unknown>;
@@ -74,38 +74,44 @@ export default createServerEntryAdapter(
       serverless: !options?.static,
     };
 
-    return {
-      fetch: async (req: Request, cloudflareContext) => {
-        if (
-          new URL(req.url).pathname === `/${internalPathToBuildStaticFiles}`
-        ) {
-          const body = produceMultiplexedStream(async (emitFile) => {
-            await processBuild({ emitFile });
-          });
-          return new Response(body);
-        }
-        let res: Response | Promise<Response>;
-        if (cloudflareContext) {
-          const { env, waitUntil, passThroughOnException } = cloudflareContext;
-          res = app.fetch(req, env, {
-            waitUntil,
-            passThroughOnException,
-            props: undefined,
-          });
+    const fetchFn = async (req: Request) => {
+      if (new URL(req.url).pathname === `/${internalPathToBuildStaticFiles}`) {
+        const body = produceMultiplexedStream(async (emitFile) => {
+          await processBuild({ emitFile });
+        });
+        return new Response(body);
+      }
+      let cloudflareContext;
+      try {
+        const DO_NOT_BUNDLE = '';
+        cloudflareContext = await import(DO_NOT_BUNDLE + 'cloudflare:workers');
+      } catch {
+        // Not in a Cloudflare environment
+      }
+      let res: Response | Promise<Response>;
+      if (cloudflareContext) {
+        const { env, waitUntil, passThroughOnException } = cloudflareContext;
+        res = app.fetch(req, env, {
+          waitUntil,
+          passThroughOnException,
+          props: undefined,
+        });
+      } else {
+        res = app.fetch(req);
+      }
+      // Workaround https://github.com/cloudflare/workers-sdk/issues/6577
+      if (import.meta.env?.PROD && isWranglerDev(req)) {
+        if ('then' in res) {
+          res = res.then((res) => removeGzipEncoding(res));
         } else {
-          res = app.fetch(req);
+          res = removeGzipEncoding(res);
         }
-        // Workaround https://github.com/cloudflare/workers-sdk/issues/6577
-        if (import.meta.env?.PROD && isWranglerDev(req)) {
-          if ('then' in res) {
-            res = res.then((res) => removeGzipEncoding(res));
-          } else {
-            res = removeGzipEncoding(res);
-          }
-        }
-        return res;
-      },
-      handlers: options?.handlers,
+      }
+      return res;
+    };
+
+    return {
+      fetch: fetchFn,
       build: async (utils) => {
         const server = await startPreviewServer();
         // Fallback middleware for the case without @cloudflare/vite-plugin
@@ -128,6 +134,13 @@ export default createServerEntryAdapter(
       },
       buildOptions,
       buildEnhancers: ['waku/adapters/cloudflare-build-enhancer'],
+      defaultExport: {
+        ...options?.handlers,
+        fetch(req: Request, env: Record<string, string>) {
+          setAllEnv(env);
+          return fetchFn(req);
+        },
+      },
     };
   },
 );

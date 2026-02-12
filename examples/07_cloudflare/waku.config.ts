@@ -56,7 +56,8 @@ export default defineConfig({
       }),
       prepareCloudflare(),
       cloudflare({
-        viteEnvironment: { name: 'rsc' },
+        config: { main: './src/waku.server' },
+        viteEnvironment: { name: 'rsc', childEnvironments: ['ssr'] },
         inspectorPort: false,
       }),
     ],

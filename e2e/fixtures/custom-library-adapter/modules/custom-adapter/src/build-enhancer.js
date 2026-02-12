@@ -10,7 +10,7 @@ async function postBuild({ distDir, marker }) {
 import { createServer } from 'node:http';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { INTERNAL_runFetch } from './server/server.js';
+import { INTERNAL_runFetch } from './server/index.js';
 
 const host = process.env.HOST;
 const port = process.env.PORT;

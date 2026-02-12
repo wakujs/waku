@@ -6,7 +6,7 @@ export type BuildOptions = { distDir: string };
 async function postBuild({ distDir }: BuildOptions) {
   const SERVE_JS = 'serve-aws-lambda.js';
   const serveCode = `
-import { INTERNAL_runFetch } from './server/server.js';
+import { INTERNAL_runFetch } from './server/index.js';
 
 const handle = globalThis.__WAKU_AWS_LAMBDA_HANDLE__;
 
