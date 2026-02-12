@@ -2,9 +2,9 @@ import path from 'node:path';
 import type { MiddlewareHandler } from 'hono';
 // FIXME hopefully we should avoid bundling this
 import { Hono as HonoForDevAndBuild } from 'hono/tiny';
+import { unstable_createServerEntryAdapter as createServerEntryAdapter } from 'waku/adapter-builders';
 import {
   unstable_constants as constants,
-  unstable_createServerEntryAdapter as createServerEntryAdapter,
   unstable_honoMiddleware as honoMiddleware,
 } from 'waku/internals';
 import type { BuildOptions } from './deno-build-enhancer.js';
