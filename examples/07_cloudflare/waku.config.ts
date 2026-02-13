@@ -33,6 +33,9 @@ export default defineConfig({
   vite: {
     environments: {
       rsc: {
+        optimizeDeps: {
+          include: ['hono/tiny'],
+        },
         build: {
           rollupOptions: {
             platform: 'neutral',
@@ -40,6 +43,9 @@ export default defineConfig({
         },
       },
       ssr: {
+        optimizeDeps: {
+          include: ['waku > rsc-html-stream/server'],
+        },
         build: {
           rollupOptions: {
             platform: 'neutral',
