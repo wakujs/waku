@@ -2,13 +2,19 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export type BuildOptions = {
+  srcDir: string;
   distDir: string;
   DIST_PUBLIC: string;
   serverless: boolean;
 };
 
-async function preBuild({ distDir, DIST_PUBLIC, serverless }: BuildOptions) {
-  const mainEntry = path.resolve(path.join(distDir, 'server', 'index.js'));
+async function preBuild({
+  srcDir,
+  distDir,
+  DIST_PUBLIC,
+  serverless,
+}: BuildOptions) {
+  const mainEntry = path.resolve(path.join(srcDir, 'waku.server'));
   const wranglerTomlFile = path.resolve('wrangler.toml');
   const wranglerJsonFile = path.resolve('wrangler.json');
   const wranglerJsoncFile = path.resolve('wrangler.jsonc');

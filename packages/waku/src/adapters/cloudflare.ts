@@ -71,6 +71,7 @@ export default createServerEntryAdapter(
     app.use(middlewareRunner(middlewareModules as never));
     app.use(rscMiddleware({ processRequest }));
     const buildOptions: BuildOptions = {
+      srcDir: config.srcDir,
       distDir: config.distDir,
       DIST_PUBLIC,
       serverless: !options?.static,

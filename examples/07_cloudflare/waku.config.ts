@@ -17,13 +17,8 @@ function prepareCloudflare(): VitePlugin {
       if (!fs.existsSync(wranglerPath)) {
         fs.writeFileSync(
           wranglerPath,
-          '{ "main": "./dist/server/index.js", "compatibility_flags": ["nodejs_als"] }',
+          '{ "main": "./src/waku.server", "compatibility_flags": ["nodejs_als"] }',
         );
-      }
-      const mainEntryAbs = path.join(root, 'dist/server/index.js');
-      if (!fs.existsSync(mainEntryAbs)) {
-        fs.mkdirSync(path.dirname(mainEntryAbs), { recursive: true });
-        fs.writeFileSync(mainEntryAbs, 'export default {};');
       }
     },
   };
@@ -62,7 +57,6 @@ export default defineConfig({
       }),
       prepareCloudflare(),
       cloudflare({
-        config: { main: './src/waku.server' },
         viteEnvironment: { name: 'rsc', childEnvironments: ['ssr'] },
         inspectorPort: false,
       }),
