@@ -1,10 +1,7 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import { cloudflare } from '@cloudflare/vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'waku/config';
-import type { VitePlugin } from 'waku/config';
 
 export default defineConfig({
   vite: {
