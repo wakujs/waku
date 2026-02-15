@@ -40,10 +40,7 @@ export const GET = async (request: Request) => {
     ],
   };
 
-  backgroundSrc ??= await fetchAsDataUri(
-    'https://cdn.candycode.com/waku/background.jpg',
-    'image/jpeg',
-  );
+  backgroundSrc ??= `data:image/jpeg;base64,${readFileSync('private/background.jpg').toString('base64')}`;
 
   let authorAvatarSrc: string | undefined;
   if (result.author?.avatar) {
