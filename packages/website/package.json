@@ -22,7 +22,7 @@
     "waku": "workspace:*"
   },
   "devDependencies": {
-    "@fontsource/alegreya": "^5.2.8",
+    "@fontsource/inter": "^5.2.8",
     "@tailwindcss/vite": "4.1.18",
     "@types/react": "^19.2.9",
     "@types/react-dom": "^19.2.3",

@@ -1864,7 +1864,7 @@ importers:
         specifier: workspace:*
         version: link:../waku
     devDependencies:
-      '@fontsource/alegreya':
+      '@fontsource/inter':
         specifier: ^5.2.8
         version: 5.2.8
       '@tailwindcss/vite':
@@ -2719,8 +2719,8 @@ packages:
     resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
     engines: {node: '>=14'}
 
-  '@fontsource/alegreya@5.2.8':
-    resolution: {integrity: sha512-/C4ShWmhyyaDZj9GfFvMaeGrt7pRupgoXdFd26Cg/y5m49UhhifbqBBRNwVhGCt5+wfjmakz7wBhFHJLH5c/mg==}
+  '@fontsource/inter@5.2.8':
+    resolution: {integrity: sha512-P6r5WnJoKiNVV+zvW2xM13gNdFhAEpQ9dQJHt3naLvfg+LkF2ldgSLiF4T41lf1SQCM9QmkqPTn4TH568IRagg==}
 
   '@hiogawa/node-loader-cloudflare@0.0.2':
     resolution: {integrity: sha512-ly7gF+iQ8DFYV0dC9rKLA32KuncqQNVyQsgnZesGDE22N/jCvOnI2XWeyfpq8lOfTTygRitREQZQFOMbcIt9vQ==}
@@ -7761,7 +7761,7 @@ snapshots:
 
   '@fastify/busboy@2.1.1': {}
 
-  '@fontsource/alegreya@5.2.8': {}
+  '@fontsource/inter@5.2.8': {}
 
   '@hiogawa/node-loader-cloudflare@0.0.2(miniflare@4.20260120.0)(vite@7.3.1(@types/node@25.0.10)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(tsx@4.19.4)(yaml@2.8.2))(wrangler@4.60.0)':
     dependencies:
