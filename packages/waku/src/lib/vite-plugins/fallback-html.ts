@@ -12,7 +12,7 @@ export function fallbackHtmlPlugin(): Plugin {
         environments: {
           client: {
             build: {
-              rollupOptions: {
+              rolldownOptions: {
                 input: {
                   indexHtml: 'index.html',
                 },
