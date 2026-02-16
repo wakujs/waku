@@ -28,7 +28,7 @@ export type Unstable_RenderHtml = (
 
 export type Unstable_EmitFile = (
   filePath: string,
-  body: ReadableStream | string,
+  body: ReadableStream,
 ) => Promise<void>;
 
 export type Unstable_HandleRequest = (
@@ -86,6 +86,7 @@ export type Unstable_ServerEntry = {
   ) => Promise<void>;
   buildOptions?: Record<string, unknown>;
   buildEnhancers?: string[]; // enhancer module ids
+  defaultExport?: unknown;
   [someOtherProperty: string]: unknown;
 };
 
@@ -103,6 +104,7 @@ export type Unstable_CreateServerEntryAdapter = <Options>(
       handlers: Unstable_Handlers;
       processRequest: Unstable_ProcessRequest;
       processBuild: Unstable_ProcessBuild;
+      setAllEnv: (newEnv: Readonly<Record<string, string>>) => void;
       config: Omit<Required<Config>, 'vite'>;
       isBuild: boolean;
       notFoundHtml: string;

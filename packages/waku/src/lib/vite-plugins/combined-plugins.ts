@@ -3,7 +3,7 @@ import type { PluginOption } from 'vite';
 import type { Config } from '../../config.js';
 import { allowServerPlugin } from './allow-server.js';
 import { buildMetadataPlugin } from './build-metadata.js';
-import { cloudflarePlugin } from './cloudflare.js';
+import { buildStaticFilesPlugin } from './build-static-files.js';
 import { defaultAdapterPlugin } from './default-adapter.js';
 import { extraPlugins } from './extra-plugins.js';
 import { fallbackHtmlPlugin } from './fallback-html.js';
@@ -19,7 +19,6 @@ export function combinedPlugins(config: Required<Config>): PluginOption {
   return [
     extraPlugins(config),
     allowServerPlugin(), // apply `allowServer` DCE before "use client" transform
-    cloudflarePlugin(),
     rsc({
       serverHandler: false,
       keepUseCientProxy: true,
@@ -33,6 +32,7 @@ export function combinedPlugins(config: Required<Config>): PluginOption {
     notFoundPlugin(),
     patchRsdwPlugin(),
     buildMetadataPlugin(config),
+    buildStaticFilesPlugin(config),
     privateDirPlugin(config),
     fallbackHtmlPlugin(),
     fsRouterTypegenPlugin(config),

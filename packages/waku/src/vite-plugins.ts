@@ -1,7 +1,7 @@
 export { allowServerPlugin as unstable_allowServerPlugin } from './lib/vite-plugins/allow-server.js';
 export { buildMetadataPlugin as unstable_buildMetadataPlugin } from './lib/vite-plugins/build-metadata.js';
+export { buildStaticFilesPlugin as unstable_buildStaticFilesPlugin } from './lib/vite-plugins/build-static-files.js';
 export { combinedPlugins as unstable_combinedPlugins } from './lib/vite-plugins/combined-plugins.js';
-export { cloudflarePlugin as unstable_cloudflarePlugin } from './lib/vite-plugins/cloudflare.js';
 export { defaultAdapterPlugin as unstable_defaultAdapterPlugin } from './lib/vite-plugins/default-adapter.js';
 export { extraPlugins as unstable_extraPlugins } from './lib/vite-plugins/extra-plugins.js';
 export { fallbackHtmlPlugin as unstable_fallbackHtmlPlugin } from './lib/vite-plugins/fallback-html.js';
