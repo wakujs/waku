@@ -145,8 +145,8 @@ async function doPrompts() {
           }
           return p.text({
             message: 'Package name',
-            validate: (dir: string) => {
-              if (!isValidPackageName(dir)) {
+            validate: (dir: string | undefined) => {
+              if (!isValidPackageName(dir || '')) {
                 return 'Invalid package.json name';
               }
             },

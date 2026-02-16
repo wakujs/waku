@@ -15,10 +15,10 @@
     "waku": "1.0.0-alpha.3"
   },
   "devDependencies": {
-    "@types/react": "^19.2.9",
+    "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "rollup": "^4.56.0",
+    "rollup": "^4.57.1",
     "typescript": "^5.9.3",
-    "vite-tsconfig-paths": "^6.0.5"
+    "vite-tsconfig-paths": "^6.1.1"
   }
 }

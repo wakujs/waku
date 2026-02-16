@@ -56,7 +56,7 @@ const buildPlatformTarget = [
 ];
 
 const changeAdapter = (file: string, adapter: string) => {
-  let content = '';
+  let content: string;
   if (existsSync(file)) {
     content = readFileSync(file, 'utf-8');
   } else {

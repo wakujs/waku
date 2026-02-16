@@ -19,9 +19,9 @@
     "@babel/plugin-syntax-jsx": "^7.28.6",
     "@babel/preset-typescript": "^7.28.5",
     "@stylexjs/postcss-plugin": "^0.17.5",
-    "@types/react": "^19.2.9",
+    "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.0",
-    "vite-plugin-babel": "^1.4.1"
+    "vite-plugin-babel": "^1.5.1"
   }
 }
