@@ -24,10 +24,6 @@ const Meta = () => {
       <meta property="og:locale" content="en" />
       <meta property="og:site_name" content="Waku" />
       <meta property="og:type" content="website" />
-      <meta
-        property="og:image"
-        content="https://cdn.candycode.com/waku/opengraph.jpg"
-      />
       <meta property="og:image:width" content="1200" />
       <meta property="og:image:height" content="630" />
       <meta property="og:url" content="https://waku.gg" />
