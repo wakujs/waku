@@ -93,7 +93,7 @@
     "@hono/node-server": "^1.19.0",
     "@vitejs/plugin-react": "^5.1.0",
     "@vitejs/plugin-rsc": "^0.5.19",
-    "dotenv": "^17.2.3",
+    "dotenv": "^17.3.1",
     "hono": "^4.10.0",
     "magic-string": "^0.30.21",
     "picocolors": "^1.1.1",
@@ -101,7 +101,7 @@
     "vite": "^7.2.0"
   },
   "devDependencies": {
-    "@swc/cli": "^0.7.10",
+    "@swc/cli": "^0.8.0",
     "react": "~19.2.4",
     "react-dom": "~19.2.4",
     "react-server-dom-webpack": "~19.2.4",

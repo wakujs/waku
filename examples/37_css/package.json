@@ -16,7 +16,7 @@
     "waku": "1.0.0-alpha.3"
   },
   "devDependencies": {
-    "@types/react": "^19.2.9",
+    "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3"
   }
 }

@@ -232,7 +232,7 @@ export async function generateFsRouterTypes(pagesDir: string) {
     for (const filePath of filePaths) {
       // where to import the component from
       const src = filePath.replace(/^\//, '');
-      let hasGetConfig = false;
+      let hasGetConfig: boolean;
       try {
         hasGetConfig = await fileExportsGetConfig(filePath);
       } catch {
