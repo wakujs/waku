@@ -158,6 +158,12 @@ const renderApp = async (element: ReactElement) => {
   };
 };
 
+const flush = async () => {
+  await act(async () => {
+    await new Promise<void>((resolve) => setTimeout(resolve));
+  });
+};
+
 const renderRouter = async (
   props?: Parameters<typeof Router>[0],
   elements: ElementsMap = {},
@@ -427,7 +433,7 @@ describe('useRouter + Link with context', () => {
       button: 0,
     });
     links[0]!.dispatchEvent(normalClick);
-    await new Promise<void>((r) => setTimeout(r));
+    await flush();
 
     expect(normalClick.defaultPrevented).toBe(true);
     expect(prefetchRoute).toHaveBeenCalledWith({
@@ -925,7 +931,7 @@ describe('Router integration', () => {
 
     window.history.pushState({}, '', '/ignored');
     window.dispatchEvent(new PopStateEvent('popstate'));
-    await new Promise<void>((r) => setTimeout(r));
+    await flush();
 
     expect(getRefetchMock()).toHaveBeenCalledWith(
       unstable_encodeRoutePath('/intercepted'),
@@ -980,13 +986,14 @@ describe('Router integration', () => {
 
     const enhancedFetchRscInternal = enhancer(baseFetchRscInternalMock);
 
-    await enhancedFetchRscInternal(
-      'R/streamed',
-      undefined,
-      undefined,
-      fetchSpy,
-    );
-    await new Promise<void>((r) => setTimeout(r));
+    await act(async () => {
+      await enhancedFetchRscInternal(
+        'R/streamed',
+        undefined,
+        undefined,
+        fetchSpy,
+      );
+    });
 
     const requestInit = fetchSpy.mock.calls[0]?.[1] as RequestInit | undefined;
     const headers = (requestInit?.headers ?? {}) as Record<string, string>;
@@ -995,11 +1002,10 @@ describe('Router integration', () => {
     const skipped = JSON.parse(headers[SKIP_HEADER]! as string) as string[];
     expect(skipped).toContain('foo');
     expect(skipped).toContain('bar');
-
-    expect(getRefetchMock()).not.toHaveBeenCalled();
     expect(capture.router?.path).toBe('/streamed');
     expect(capture.router?.query).toBe('x=1');
     expect(historyPushSpy).toHaveBeenCalled();
+    expect(getRefetchMock()).not.toHaveBeenCalled();
 
     view.unmount();
   });
