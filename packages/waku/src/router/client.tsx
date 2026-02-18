@@ -402,6 +402,16 @@ export function Link({
       props.onClick(event);
     }
     if (!event.defaultPrevented && !isAltClick(event)) {
+      if (props.target && props.target.toLowerCase() !== '_self') {
+        console.warn(
+          '[Link] `target` is discouraged. Use `<a>` for this case.',
+        );
+      }
+      if (props.download != null && props.download !== false) {
+        console.warn(
+          '[Link] `download` is discouraged. Use `<a>` for this case.',
+        );
+      }
       event.preventDefault();
       internalOnClick();
     }
