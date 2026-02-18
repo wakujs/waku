@@ -28,6 +28,53 @@ export default function TestRouter() {
           Increment hash (push)
         </button>
       </p>
+      <p>
+        <button
+          data-testid="router-replace-dynamic"
+        onClick={() => router.replace('/dynamic?count=9#9')}
+        >
+          Dynamic router.replace button
+        </button>
+      </p>
+      <p>
+        <button
+          data-testid="router-replace-static"
+        onClick={() => router.replace('/static?count=8#8')}
+        >
+          Static router.replace button
+        </button>
+      </p>
+      <p>
+        <button data-testid="router-back" onClick={() => router.back()}>
+          router.back button
+        </button>
+      </p>
+      <p>
+        <button data-testid="router-forward" onClick={() => router.forward()}>
+          router.forward button
+        </button>
+      </p>
+      <p>
+        <button data-testid="router-reload" onClick={() => router.reload()}>
+          router.reload button
+        </button>
+      </p>
+      <p>
+        <button
+          data-testid="router-prefetch-static"
+          onClick={() => router.prefetch('/static?count=55#55')}
+        >
+          router.prefetch static target
+        </button>
+      </p>
+      <p>
+        <button
+          data-testid="router-push-prefetched-static"
+          onClick={() => router.push('/static?count=55#55')}
+        >
+          router.push prefetched static target
+        </button>
+      </p>
     </>
   );
 }
