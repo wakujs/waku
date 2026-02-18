@@ -12,6 +12,18 @@ const allowedConsoleErrorPatterns: RegExp[] = [
 ];
 const isAllowedConsoleError = (text: string) =>
   allowedConsoleErrorPatterns.some((pattern) => pattern.test(text));
+const expectedErrorFlowConsolePatterns: RegExp[] = [
+  /The above error occurred in the <TriggerNotFoundPage> component\./,
+  /The above error occurred in the <TriggerRedirectPage> component\./,
+  /The above error occurred in the <ThrowError> component\./,
+  /React will try to recreate this component tree from scratch using the error boundary you provided, CustomErrorHandler\./,
+  /^Error$/,
+];
+const dropExpectedErrorFlowConsoleErrors = (errors: string[]): string[] =>
+  errors.filter(
+    (text) =>
+      !expectedErrorFlowConsolePatterns.some((pattern) => pattern.test(text)),
+  );
 
 test.describe('router-client', () => {
   let port: number;
@@ -191,6 +203,7 @@ test.describe('router-client', () => {
     await expect(page.getByTestId('route-path')).toHaveText('/404');
     await expect(page.getByTestId('route-query')).toHaveText('');
     await expect(page).toHaveURL(/\/trigger-not-found$/);
+    consoleErrors = dropExpectedErrorFlowConsoleErrors(consoleErrors);
   });
 
   test('client redirect navigation resolves to target and replaces history entry', async ({
@@ -209,6 +222,7 @@ test.describe('router-client', () => {
     await page.goBack();
     await expect(page.getByRole('heading', { name: 'Start' })).toBeVisible();
     await expect(page).toHaveURL(/\/start$/);
+    consoleErrors = dropExpectedErrorFlowConsoleErrors(consoleErrors);
   });
 
   test('client navigation to missing route with /404 page renders /404 content', async ({
@@ -224,5 +238,6 @@ test.describe('router-client', () => {
     ).toBeVisible();
     await expect(page.getByTestId('route-path')).toHaveText('/404');
     await expect(page).toHaveURL(/\/start$/);
+    consoleErrors = dropExpectedErrorFlowConsoleErrors(consoleErrors);
   });
 });
