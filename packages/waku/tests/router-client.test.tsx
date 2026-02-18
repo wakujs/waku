@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { act } from 'react';
+import { StrictMode, act } from 'react';
 import type { ReactElement } from 'react';
 import { preloadModule } from 'react-dom';
 import { createRoot } from 'react-dom/client';
@@ -165,8 +165,8 @@ const flush = async () => {
 };
 
 const renderRouter = async (
-  props?: Parameters<typeof Router>[0],
-  elements: ElementsMap = {},
+  props: Parameters<typeof Router>[0],
+  elements: ElementsMap,
 ) => {
   type RouterWithFetchCacheProps = Parameters<typeof Router>[0] & {
     unstable_fetchCache?: RouterFetchCache | undefined;
@@ -182,10 +182,27 @@ const renderRouter = async (
   );
 };
 
-const renderWithMinimalRoot = (
-  element: ReactElement,
-  elements: ElementsMap = {},
-) =>
+const renderRouterInStrictMode = async (
+  props: Parameters<typeof Router>[0],
+  elements: ElementsMap,
+) => {
+  type RouterWithFetchCacheProps = Parameters<typeof Router>[0] & {
+    unstable_fetchCache?: RouterFetchCache | undefined;
+  };
+  const RouterWithFetchCache = Router as unknown as (
+    props: RouterWithFetchCacheProps,
+  ) => ReactElement;
+  return renderApp(
+    <StrictMode>
+      <RouterWithFetchCache
+        {...(props || {})}
+        unstable_fetchCache={createMockFetchCache(elements)}
+      />
+    </StrictMode>,
+  );
+};
+
+const renderWithMinimalRoot = (element: ReactElement, elements: ElementsMap) =>
   renderApp(
     <Root initialRscPath="" fetchCache={createMockFetchCache(elements)}>
       {element}
@@ -614,6 +631,7 @@ describe('Slice', () => {
           />
         </>
       </RouterContext>,
+      {},
     );
 
     const refetch = getRefetchMock();
@@ -674,6 +692,7 @@ describe('Slice', () => {
       >
         <Slice id="slice-1" lazy fallback={<div>fallback</div>} />
       </RouterContext>,
+      {},
     );
 
     expect(consoleSpy).toHaveBeenCalledWith(
@@ -749,7 +768,7 @@ describe('Router integration', () => {
       [IS_STATIC_ID]: true,
     };
 
-    const view = await renderRouter(undefined, elements);
+    const view = await renderRouter({}, elements);
     expect(capture.router?.path).toBe('/404');
     view.unmount();
   });
@@ -1065,6 +1084,47 @@ describe('Router integration', () => {
     expect(capture.router?.path).toBe('/404');
 
     view.unmount();
+  });
+
+  test('custom 404 handling with a /404 page avoids strict-mode refetching race', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const ThrowNotFound = () => {
+      throw createCustomError('not-found', { status: 404 });
+    };
+    const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <ThrowNotFound />,
+      [unstable_getRouteSlotId('/404')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+      [HAS404_ID]: true,
+    };
+
+    const view = await renderRouterInStrictMode(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+
+    await flush();
+    try {
+      expect(getRefetchMock()).toHaveBeenCalledWith(
+        unstable_encodeRoutePath('/404'),
+        expect.any(URLSearchParams),
+      );
+      expect(capture.router?.path).toBe('/404');
+
+      const errorLogs = consoleLogSpy.mock.calls.filter(
+        ([message]) => message === 'Error while navigating to 404:',
+      );
+      expect(errorLogs).toHaveLength(0);
+    } finally {
+      view.unmount();
+      consoleLogSpy.mockRestore();
+    }
   });
 
   test('redirect error triggers same-origin client navigation', async () => {
