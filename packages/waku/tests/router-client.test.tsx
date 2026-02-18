@@ -480,6 +480,86 @@ describe('useRouter + Link with context', () => {
     view.unmount();
   });
 
+  test('Link currently intercepts external clicks and prevents default for unsupported cases', async () => {
+    const changeRoute = vi.fn(async () => {});
+    const prefetchRoute = vi.fn();
+    const pushStateSpy = vi
+      .spyOn(window.history, 'pushState')
+      .mockImplementation(() => {
+        return;
+      });
+
+    const view = await renderApp(
+      <RouterContext
+        value={{
+          route: { path: '/start', query: '', hash: '' },
+          changeRoute,
+          prefetchRoute,
+          routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set(),
+        }}
+      >
+        <>
+          <Link to="https://example.com/external" data-testid="external-link">
+            external
+          </Link>
+          <Link to="/start" data-testid="same-url-link">
+            same-url
+          </Link>
+          <Link to="/start" target="_blank" data-testid="target-link">
+            target
+          </Link>
+          <Link to="/start" download data-testid="download-link">
+            download
+          </Link>
+        </>
+      </RouterContext>,
+    );
+
+    const click = () =>
+      new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+      });
+    const externalClick = click();
+    const sameUrlClick = click();
+    const targetClick = click();
+    const downloadClick = click();
+    view.container
+      .querySelector('[data-testid="external-link"]')
+      ?.dispatchEvent(externalClick);
+    view.container
+      .querySelector('[data-testid="same-url-link"]')
+      ?.dispatchEvent(sameUrlClick);
+    view.container
+      .querySelector('[data-testid="target-link"]')
+      ?.dispatchEvent(targetClick);
+    view.container
+      .querySelector('[data-testid="download-link"]')
+      ?.dispatchEvent(downloadClick);
+    await flush();
+
+    expect(externalClick.defaultPrevented).toBe(true);
+    expect(sameUrlClick.defaultPrevented).toBe(true);
+    expect(targetClick.defaultPrevented).toBe(true);
+    expect(downloadClick.defaultPrevented).toBe(true);
+    expect(prefetchRoute).toHaveBeenCalledTimes(1);
+    expect(prefetchRoute).toHaveBeenCalledWith({
+      path: '/external',
+      query: '',
+      hash: '',
+    });
+    expect(changeRoute).toHaveBeenCalledTimes(1);
+    expect(changeRoute).toHaveBeenCalledWith(
+      { path: '/external', query: '', hash: '' },
+      expect.objectContaining({ shouldScroll: true }),
+    );
+
+    view.unmount();
+    pushStateSpy.mockRestore();
+  });
+
   test('Link handles prefetchOnEnter and prefetchOnView', async () => {
     const prefetchRoute = vi.fn();
     const onMouseEnter = vi.fn();
@@ -533,6 +613,51 @@ describe('useRouter + Link with context', () => {
 
     view.unmount();
     expect(observer.disconnect).toHaveBeenCalledTimes(1);
+  });
+
+  test('Link uses unstable_startTransition override for navigation', async () => {
+    const changeRoute = vi.fn(async () => {});
+    const prefetchRoute = vi.fn();
+    const unstableStartTransition = vi.fn((fn: () => void) => fn());
+
+    const view = await renderApp(
+      <RouterContext
+        value={{
+          route: { path: '/start', query: '', hash: '' },
+          changeRoute,
+          prefetchRoute,
+          routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set(),
+        }}
+      >
+        <Link to="/next" unstable_startTransition={unstableStartTransition}>
+          next
+        </Link>
+      </RouterContext>,
+    );
+
+    const link = view.container.querySelector('a');
+    if (!link) {
+      throw new Error('expected link');
+    }
+    link.dispatchEvent(
+      new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+      }),
+    );
+    await flush();
+
+    expect(unstableStartTransition).toHaveBeenCalledTimes(1);
+    expect(changeRoute).toHaveBeenCalledWith(
+      { path: '/next', query: '', hash: '' },
+      expect.objectContaining({
+        unstable_startTransition: unstableStartTransition,
+      }),
+    );
+
+    view.unmount();
   });
 
   test('Link ref supports object refs and callback cleanup', async () => {

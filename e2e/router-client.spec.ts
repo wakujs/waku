@@ -136,6 +136,47 @@ test.describe('router-client', () => {
     expect(prefetchedViewRequests.length).toBe(afterPrefetchCount);
   });
 
+  test('unstable_prefetchOnEnter triggers prefetch on hover', async ({
+    page,
+  }) => {
+    const prefetchedEnterRequests: string[] = [];
+    page.on('request', (request) => {
+      const requestUrl = request.url();
+      if (
+        request.method() === 'GET' &&
+        requestUrl.includes('/RSC/R/next.txt')
+      ) {
+        prefetchedEnterRequests.push(requestUrl);
+      }
+    });
+
+    await page.goto(`http://localhost:${port}/start`);
+    await waitForHydration(page);
+    expect(prefetchedEnterRequests).toHaveLength(0);
+
+    await page.getByTestId('prefetch-on-enter-link').hover();
+    await expect.poll(() => prefetchedEnterRequests.length).toBeGreaterThan(0);
+    await expect(page.getByRole('heading', { name: 'Start' })).toBeVisible();
+  });
+
+  test('unstable_pending and unstable_notPending reflect async transition state', async ({
+    page,
+  }) => {
+    await page.route('**/RSC/R/next.txt**', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      await route.continue();
+    });
+
+    await page.goto(`http://localhost:${port}/start`);
+    await waitForHydration(page);
+    await expect(page.getByTestId('not-pending-indicator')).toBeVisible();
+
+    await page.getByTestId('pending-link').click();
+    await expect(page.getByTestId('pending-indicator')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Next' })).toBeVisible();
+    await expect(page.getByTestId('pending-indicator')).toHaveCount(0);
+  });
+
   test('client notFound navigation uses /404 page content when present', async ({
     page,
   }) => {
