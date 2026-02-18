@@ -120,6 +120,7 @@ type ChangeRouteOptions = {
   skipRefetch?: boolean;
   mode?: undefined | 'push' | 'replace';
   url?: URL;
+  unstable_historyOnError?: boolean; // FIXME not a big fan of this hack
   unstable_startTransition?: ((fn: TransitionFunction) => void) | undefined;
 };
 
@@ -390,6 +391,7 @@ export function Link({
           shouldScroll: scroll ?? newPath,
           mode: 'push',
           url,
+          unstable_historyOnError: true,
           unstable_startTransition: startTransitionFn,
         });
       });
@@ -839,30 +841,13 @@ const InnerRouter = ({
       emitRouteChangeEvent('start', route);
       const startTransitionFn =
         options.unstable_startTransition || ((fn: TransitionFunction) => fn());
-      const { skipRefetch, mode, url } = options;
+      const { skipRefetch, mode, url, unstable_historyOnError } = options;
       const historyPathnameBeforeChange = window.location.pathname;
       const urlToWrite = mode && (url || getRouteUrl(route));
       const newPath = urlToWrite?.pathname
         ? urlToWrite.pathname !== historyPathnameBeforeChange
         : route.path !== historyPathnameBeforeChange;
-      refetching.current = [];
-      setErr(null);
-      if (!staticPathSetRef.current.has(route.path) && !skipRefetch) {
-        const rscPath = encodeRoutePath(route.path);
-        const rscParams = createRscParams(route.query);
-        try {
-          await refetch(rscPath, rscParams);
-        } catch (e) {
-          refetching.current = null;
-          setErr(e);
-          throw e;
-        }
-      }
-      startTransitionFn(() => {
-        if (options.shouldScroll) {
-          handleScroll();
-        }
-        setRoute(route);
+      const writeHistoryIfNeeded = () => {
         if (
           mode &&
           urlToWrite &&
@@ -878,6 +863,29 @@ const InnerRouter = ({
             window.history.replaceState(nextState, '', urlToWrite);
           }
         }
+      };
+      refetching.current = [];
+      setErr(null);
+      if (!staticPathSetRef.current.has(route.path) && !skipRefetch) {
+        const rscPath = encodeRoutePath(route.path);
+        const rscParams = createRscParams(route.query);
+        try {
+          await refetch(rscPath, rscParams);
+        } catch (e) {
+          if (unstable_historyOnError) {
+            writeHistoryIfNeeded();
+          }
+          refetching.current = null;
+          setErr(e);
+          throw e;
+        }
+      }
+      startTransitionFn(() => {
+        if (options.shouldScroll) {
+          handleScroll();
+        }
+        setRoute(route);
+        writeHistoryIfNeeded();
         refetching.current?.[0]?.();
         refetching.current = null;
         emitRouteChangeEvent('complete', route);
