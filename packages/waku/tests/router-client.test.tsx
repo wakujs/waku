@@ -1320,7 +1320,7 @@ describe('Router integration', () => {
     const pushPromise = capture.router.push('/next?from=push');
     await Promise.resolve();
     await act(async () => {
-      await enhancedFetchRscInternal('R/streamed');
+      await enhancedFetchRscInternal('R/streamed', undefined);
     });
     resolveRefetch?.();
     await pushPromise;
@@ -1377,7 +1377,7 @@ describe('Router integration', () => {
     const enhancedFetchRscInternal = enhancer(baseFetchRscInternalMock);
 
     await act(async () => {
-      await enhancedFetchRscInternal('R/404');
+      await enhancedFetchRscInternal('R/404', undefined);
     });
     await flush();
 
