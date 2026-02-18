@@ -877,7 +877,7 @@ const InnerRouter = ({
           handleScroll();
         }
         setRoute(route);
-        refetching.current![0]?.();
+        refetching.current?.[0]?.();
         refetching.current = null;
         executeListeners('complete', route);
       });
