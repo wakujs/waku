@@ -798,6 +798,36 @@ describe('Slice', () => {
     view.unmount();
   });
 
+  test('lazy slice with existing non-static slot still refetches', async () => {
+    const slotId = unstable_getSliceSlotId('slice-1');
+    const elements = {
+      [slotId]: <div>loaded</div>,
+      [`${IS_STATIC_ID}:${slotId}`]: false,
+    };
+
+    const view = await renderWithMinimalRoot(
+      <RouterContext
+        value={{
+          route: { path: '/start', query: '', hash: '' },
+          changeRoute: vi.fn(async () => {}),
+          prefetchRoute: vi.fn(),
+          routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set(),
+        }}
+      >
+        <Slice id="slice-1" lazy fallback={<div>fallback</div>} />
+      </RouterContext>,
+      elements,
+    );
+
+    const refetch = getRefetchMock();
+    expect(view.container.textContent).toContain('loaded');
+    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(refetch).toHaveBeenCalledWith(unstable_encodeSliceId('slice-1'));
+
+    view.unmount();
+  });
+
   test('logs refetch failures and clears fetching set', async () => {
     const fetchingSlices = new Set<string>();
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -1244,6 +1274,120 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('location listener queues one update during in-flight refetch and applies it once', async () => {
+    let resolveRefetch: (() => void) | undefined;
+    const pendingRefetch = new Promise<void>((resolve) => {
+      resolveRefetch = resolve;
+    });
+    const refetch = vi.fn(async (..._args: unknown[]) => pendingRefetch);
+    vi.mocked(useRefetch).mockReturnValue(
+      refetch as ReturnType<typeof useRefetch>,
+    );
+
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/next')]: <Probe />,
+      [unstable_getRouteSlotId('/streamed')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+      foo: true,
+    };
+    const historyPushSpy = vi.spyOn(window.history, 'pushState');
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    if (!capture.router) {
+      throw new Error('router not initialized');
+    }
+
+    const enhanceFetchRscInternal = getEnhanceFetchRscInternalMock();
+    const enhancer = enhanceFetchRscInternal.mock.calls[0]?.[0];
+    if (!enhancer) {
+      throw new Error('enhanced fetch enhancer was not registered');
+    }
+    const baseFetchRscInternalMock = vi.fn(async () => ({
+      [ROUTE_ID]: ['/streamed', 'x=1'],
+      [IS_STATIC_ID]: false,
+    }));
+    const enhancedFetchRscInternal = enhancer(baseFetchRscInternalMock);
+
+    const pushPromise = capture.router.push('/next?from=push');
+    await Promise.resolve();
+    await act(async () => {
+      await enhancedFetchRscInternal('R/streamed');
+    });
+    resolveRefetch?.();
+    await pushPromise;
+    await flush();
+
+    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(refetch.mock.calls[0]?.[0]).toBe(unstable_encodeRoutePath('/next'));
+    const refetchParams = refetch.mock.calls[0]?.[1] as URLSearchParams;
+    expect(refetchParams.get('query')).toBe('from=push');
+    expect(capture.router.path).toBe('/streamed');
+    expect(capture.router.query).toBe('x=1');
+
+    const streamedPushes = historyPushSpy.mock.calls.filter((call) => {
+      const target = call[2];
+      const url =
+        target instanceof URL
+          ? target
+          : new URL(String(target), window.location.origin);
+      return url.pathname === '/streamed';
+    });
+    expect(streamedPushes).toHaveLength(1);
+
+    view.unmount();
+  });
+
+  test('location listener route update to /404 does not push history', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/404')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+      foo: true,
+    };
+    const historyPushSpy = vi.spyOn(window.history, 'pushState');
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+
+    const enhanceFetchRscInternal = getEnhanceFetchRscInternalMock();
+    const enhancer = enhanceFetchRscInternal.mock.calls[0]?.[0];
+    if (!enhancer) {
+      throw new Error('enhanced fetch enhancer was not registered');
+    }
+    const baseFetchRscInternalMock = vi.fn(async () => ({
+      [ROUTE_ID]: ['/404', ''],
+      [IS_STATIC_ID]: false,
+    }));
+    const enhancedFetchRscInternal = enhancer(baseFetchRscInternalMock);
+
+    await act(async () => {
+      await enhancedFetchRscInternal('R/404');
+    });
+    await flush();
+
+    expect(capture.router?.path).toBe('/404');
+    expect(historyPushSpy).not.toHaveBeenCalled();
+    expect(getRefetchMock()).not.toHaveBeenCalled();
+
+    view.unmount();
+  });
+
   test('custom 404 handling without a /404 page keeps Not Found fallback', async () => {
     const ThrowNotFound = () => {
       throw createCustomError('not-found', { status: 404 });
@@ -1446,6 +1590,21 @@ describe('INTERNAL_ServerRouter', () => {
     await expect(capture.router!.push('/next')).rejects.toThrow(
       'changeRoute is not in the server',
     );
+    expect(() => capture.router!.prefetch('/next')).toThrow(
+      'prefetchRoute is not in the server',
+    );
+    const onResult = capture.router!.unstable_events.on(
+      'start',
+      () => {},
+    ) as unknown as (() => never) | undefined;
+    expect(typeof onResult).toBe('function');
+    expect(() => onResult?.()).toThrow('routeChange:on is not in the server');
+    const offResult = capture.router!.unstable_events.off(
+      'start',
+      () => {},
+    ) as unknown as (() => never) | undefined;
+    expect(typeof offResult).toBe('function');
+    expect(() => offResult?.()).toThrow('routeChange:off is not in the server');
 
     view.unmount();
   });
