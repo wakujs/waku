@@ -1001,6 +1001,39 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('push does not write history when refetch fails', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = createRefetchMock();
+    refetch.mockRejectedValueOnce(new Error('refetch failed'));
+    vi.mocked(useRefetch).mockReturnValue(refetch);
+    const historyPushSpy = vi.spyOn(window.history, 'pushState');
+
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+
+    if (!capture.router) {
+      throw new Error('router not initialized');
+    }
+
+    await expect(capture.router.push('/next')).rejects.toThrow(
+      'refetch failed',
+    );
+    expect(historyPushSpy).not.toHaveBeenCalled();
+
+    view.unmount();
+  });
+
   test('push skips refetch for static routes', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
@@ -1462,7 +1495,7 @@ describe('Router integration', () => {
       },
       elements,
     );
-    await act(() => new Promise<void>((r) => setTimeout(r)));
+    await flush();
 
     expect(getRefetchMock()).toHaveBeenCalledWith(
       unstable_encodeRoutePath('/404'),
@@ -1498,6 +1531,7 @@ describe('Router integration', () => {
 
     await flush();
     try {
+      expect(getRefetchMock()).toHaveBeenCalledTimes(1);
       expect(getRefetchMock()).toHaveBeenCalledWith(
         unstable_encodeRoutePath('/404'),
         expect.any(URLSearchParams),
@@ -1536,7 +1570,7 @@ describe('Router integration', () => {
       },
       elements,
     );
-    await act(() => new Promise<void>((r) => setTimeout(r)));
+    await flush();
 
     expect(getRefetchMock()).toHaveBeenCalledWith(
       unstable_encodeRoutePath('/target'),
@@ -1580,6 +1614,48 @@ describe('Router integration', () => {
       );
       expect(window.location.pathname).toBe('/start');
       expect(getRefetchMock()).not.toHaveBeenCalled();
+    } finally {
+      view.unmount();
+      replaceLocationSpy.mockRestore();
+    }
+  });
+
+  test('redirect error with same hostname but different origin stays in client navigation', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const ThrowRedirect = () => {
+      throw createCustomError('redirect', {
+        location: 'http://localhost:4321/target?ok=1',
+      });
+    };
+
+    const replaceLocationSpy = vi
+      .spyOn(window.location, 'replace')
+      .mockImplementation(() => {});
+
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <ThrowRedirect />,
+      [unstable_getRouteSlotId('/target')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      await flush();
+
+      expect(replaceLocationSpy).not.toHaveBeenCalled();
+      expect(capture.router?.path).toBe('/target');
+      expect(capture.router?.query).toBe('ok=1');
+      expect(getRefetchMock()).toHaveBeenCalledWith(
+        unstable_encodeRoutePath('/target'),
+        expect.any(URLSearchParams),
+      );
     } finally {
       view.unmount();
       replaceLocationSpy.mockRestore();

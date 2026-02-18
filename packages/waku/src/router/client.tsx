@@ -507,11 +507,15 @@ export class ErrorBoundary extends Component<
 }
 
 const NotFound = ({
+  error,
   has404,
   reset,
+  handledErrorSet,
 }: {
+  error: unknown;
   has404: boolean;
   reset: () => void;
+  handledErrorSet: WeakSet<object>;
 }) => {
   const router = useContext(RouterContext);
   if (!router) {
@@ -520,20 +524,20 @@ const NotFound = ({
   const { changeRoute } = router;
   useEffect(() => {
     if (has404) {
+      if (handledErrorSet.has(error as object)) {
+        return;
+      }
+      handledErrorSet.add(error as object);
       const url = new URL('/404', window.location.href);
       changeRoute(parseRoute(url), { shouldScroll: true })
         .then(() => {
-          // HACK: This timeout is required for canary-ci to work
-          // FIXME: As we understand it, we should have a proper solution.
-          setTimeout(() => {
-            reset();
-          }, 1);
+          reset();
         })
         .catch((err) => {
           console.log('Error while navigating to 404:', err);
         });
     }
-  }, [has404, reset, changeRoute]);
+  }, [error, has404, reset, changeRoute, handledErrorSet]);
   return has404 ? null : <h1>Not Found</h1>;
 };
 
@@ -575,12 +579,14 @@ const Redirect = ({
       url,
     })
       .then(() => {
+        handledErrorSet.delete(error as object);
         // FIXME: As we understand it, we should have a proper solution.
         setTimeout(() => {
           reset();
         }, 1);
       })
       .catch((err) => {
+        handledErrorSet.delete(error as object);
         console.log('Error while navigating to redirect:', err);
       });
   }, [error, to, reset, changeRoute, handledErrorSet]);
@@ -608,7 +614,14 @@ class CustomErrorHandler extends Component<
     if (error !== null) {
       const info = getErrorInfo(error);
       if (info?.status === 404) {
-        return <NotFound has404={this.props.has404} reset={this.reset} />;
+        return (
+          <NotFound
+            error={error}
+            has404={this.props.has404}
+            reset={this.reset}
+            handledErrorSet={this.handledErrorSet}
+          />
+        );
       }
       if (info?.location) {
         return (
