@@ -104,7 +104,41 @@ test.describe('router-client', () => {
     expect(prefetchedViewRequests.length).toBe(afterPrefetchCount);
   });
 
-  test('client navigation to missing route without /404 uses Not Found fallback', async ({
+  test('client notFound navigation uses /404 page content when present', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/start`);
+    await waitForHydration(page);
+
+    await page.getByTestId('go-trigger-not-found').click();
+
+    await expect(
+      page.getByRole('heading', { name: 'Custom 404' }),
+    ).toBeVisible();
+    await expect(page.getByTestId('route-path')).toHaveText('/404');
+    await expect(page.getByTestId('route-query')).toHaveText('');
+    await expect(page).toHaveURL(/\/trigger-not-found$/);
+  });
+
+  test('client redirect navigation resolves to target and replaces history entry', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/start`);
+    await waitForHydration(page);
+
+    await page.getByTestId('go-trigger-redirect').click();
+
+    await expect(page.getByRole('heading', { name: 'Next' })).toBeVisible();
+    await expect(page.getByTestId('route-path')).toHaveText('/next');
+    await expect(page.getByTestId('route-query')).toHaveText('from=redirect');
+    await expect(page).toHaveURL(/\/next\?from=redirect$/);
+
+    await page.goBack();
+    await expect(page.getByRole('heading', { name: 'Start' })).toBeVisible();
+    await expect(page).toHaveURL(/\/start$/);
+  });
+
+  test('client navigation to missing route with /404 page renders /404 content', async ({
     page,
   }) => {
     await page.goto(`http://localhost:${port}/start`);
@@ -113,8 +147,9 @@ test.describe('router-client', () => {
     await page.getByTestId('go-missing').click();
 
     await expect(
-      page.getByRole('heading', { name: 'Not Found' }),
+      page.getByRole('heading', { name: 'Custom 404' }),
     ).toBeVisible();
+    await expect(page.getByTestId('route-path')).toHaveText('/404');
     await expect(page).toHaveURL(/\/start$/);
   });
 });

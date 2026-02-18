@@ -12,6 +12,16 @@ export default function StartPage() {
         </Link>
       </p>
       <p>
+        <Link to="/trigger-not-found" data-testid="go-trigger-not-found">
+          Go trigger not found
+        </Link>
+      </p>
+      <p>
+        <Link to="/trigger-redirect" data-testid="go-trigger-redirect">
+          Go trigger redirect
+        </Link>
+      </p>
+      <p>
         <PushMissingButton />
       </p>
       <div style={{ minHeight: '140vh' }} />
