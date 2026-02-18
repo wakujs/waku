@@ -31,7 +31,7 @@ export default function TestRouter() {
       <p>
         <button
           data-testid="router-replace-dynamic"
-        onClick={() => router.replace('/dynamic?count=9#9')}
+          onClick={() => router.replace('/dynamic?count=9#9')}
         >
           Dynamic router.replace button
         </button>
@@ -39,7 +39,7 @@ export default function TestRouter() {
       <p>
         <button
           data-testid="router-replace-static"
-        onClick={() => router.replace('/static?count=8#8')}
+          onClick={() => router.replace('/static?count=8#8')}
         >
           Static router.replace button
         </button>
