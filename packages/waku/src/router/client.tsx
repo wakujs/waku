@@ -981,16 +981,22 @@ const InnerRouter = ({
 
 export function Router({
   initialRoute = parseRouteFromLocation(),
+  unstable_fetchCache,
   unstable_routeInterceptor,
 }: {
   initialRoute?: RouteProps;
+  unstable_fetchCache?: Parameters<typeof Root>[0]['fetchCache'];
   unstable_routeInterceptor?: (route: RouteProps) => RouteProps | false;
 }) {
   const initialRscPath = encodeRoutePath(initialRoute.path);
   const initialRscParams = createRscParams(initialRoute.query);
   const httpStatus = getHttpStatusFromMeta();
   return (
-    <Root initialRscPath={initialRscPath} initialRscParams={initialRscParams}>
+    <Root
+      initialRscPath={initialRscPath}
+      initialRscParams={initialRscParams}
+      fetchCache={unstable_fetchCache}
+    >
       <InnerRouter
         initialRoute={initialRoute}
         httpStatus={httpStatus}
