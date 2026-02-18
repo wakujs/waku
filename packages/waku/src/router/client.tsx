@@ -119,7 +119,7 @@ type ChangeRouteOptions = {
   shouldScroll: boolean;
   skipRefetch?: boolean;
   mode?: undefined | 'push' | 'replace';
-  url?: URL;
+  url?: URL | undefined;
   unstable_historyOnError?: boolean; // FIXME not a big fan of this hack
   unstable_startTransition?: ((fn: TransitionFunction) => void) | undefined;
 };
@@ -573,8 +573,7 @@ const Redirect = ({
     }
     const currentPath = window.location.pathname;
     const newPath = url.pathname !== currentPath;
-    const historyUrl =
-      url.origin === window.location.origin ? url : undefined;
+    const historyUrl = url.origin === window.location.origin ? url : undefined;
     changeRoute(parseRoute(url), {
       shouldScroll: newPath,
       mode: 'replace',
