@@ -962,6 +962,96 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('popstate scrolls to hash target with instant behavior for new path', async () => {
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <div>start</div>,
+      [unstable_getRouteSlotId('/next')]: <div>next</div>,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
+      return;
+    });
+    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
+      window,
+      'scrollY',
+    );
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      value: 100,
+    });
+    const hashTarget = document.createElement('div');
+    hashTarget.id = 'target';
+    const getBoundingClientRectSpy = vi
+      .spyOn(hashTarget, 'getBoundingClientRect')
+      .mockReturnValue({ top: 40 } as DOMRect);
+    document.body.append(hashTarget);
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      window.history.pushState({ waku_new_path: true }, '', '/next#target');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      await flush();
+
+      expect(scrollToSpy).toHaveBeenCalledWith({
+        left: 0,
+        top: 140,
+        behavior: 'instant',
+      });
+    } finally {
+      view.unmount();
+      getBoundingClientRectSpy.mockRestore();
+      hashTarget.remove();
+      if (scrollYDescriptor) {
+        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
+      } else {
+        Object.defineProperty(window, 'scrollY', {
+          configurable: true,
+          value: 0,
+        });
+      }
+    }
+  });
+
+  test('popstate scrolls to top with auto behavior when hash target is missing', async () => {
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <div>start</div>,
+      [unstable_getRouteSlotId('/next')]: <div>next</div>,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
+      return;
+    });
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      window.history.pushState({}, '', '/next#missing');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      await flush();
+
+      expect(scrollToSpy).toHaveBeenCalledWith({
+        left: 0,
+        top: 0,
+        behavior: 'auto',
+      });
+    } finally {
+      view.unmount();
+    }
+  });
+
   test('enhanced fetch injects skip header and can trigger location listener route updates', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
@@ -1160,6 +1250,43 @@ describe('Router integration', () => {
     expect(replaceStateSpy).toHaveBeenCalled();
 
     view.unmount();
+  });
+
+  test('redirect error with cross-origin location uses window.location.replace', async () => {
+    const ThrowRedirect = () => {
+      throw createCustomError('redirect', {
+        location: 'https://example.com/target?ok=1',
+      });
+    };
+
+    const replaceLocationSpy = vi
+      .spyOn(window.location, 'replace')
+      .mockImplementation(() => {});
+
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <ThrowRedirect />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      await flush();
+
+      expect(replaceLocationSpy).toHaveBeenCalledWith(
+        'https://example.com/target?ok=1',
+      );
+      expect(window.location.pathname).toBe('/start');
+      expect(getRefetchMock()).not.toHaveBeenCalled();
+    } finally {
+      view.unmount();
+      replaceLocationSpy.mockRestore();
+    }
   });
 });
 

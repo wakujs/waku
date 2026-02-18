@@ -1,18 +1,50 @@
 import { expect } from '@playwright/test';
+import type { ConsoleMessage } from '@playwright/test';
 import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('router-client');
+const allowedConsoleErrorPatterns: RegExp[] = [
+  /An error occurred in the Server Components render\./,
+  /Error:\s+Not Found/,
+  /Error:\s+Redirect/,
+  /Failed to load resource: the server responded with a status of 404 \(Not Found\)/,
+  /Error: 404 Not Found/,
+];
+const isAllowedConsoleError = (text: string) =>
+  allowedConsoleErrorPatterns.some((pattern) => pattern.test(text));
 
 test.describe('router-client', () => {
   let port: number;
   let stopApp: () => Promise<void>;
+  let consoleErrors: string[];
+  let consoleHandler: ((msg: ConsoleMessage) => void) | undefined;
 
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
 
+  test.beforeEach(async ({ page }) => {
+    consoleErrors = [];
+    consoleHandler = (msg: ConsoleMessage) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    };
+    page.on('console', consoleHandler);
+  });
+
   test.afterAll(async () => {
     await stopApp();
+  });
+
+  test.afterEach(async ({ page }) => {
+    if (consoleHandler) {
+      page.off('console', consoleHandler);
+    }
+    const unexpectedErrors = consoleErrors.filter(
+      (text) => !isAllowedConsoleError(text),
+    );
+    expect(unexpectedErrors).toEqual([]);
   });
 
   test('popstate interceptor can block navigation', async ({ page }) => {
