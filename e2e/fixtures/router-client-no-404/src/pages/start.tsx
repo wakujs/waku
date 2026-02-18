@@ -12,29 +12,6 @@ export default function StartPage() {
         </Link>
       </p>
       <p>
-        <Link
-          to="/next?from=enter"
-          unstable_prefetchOnEnter
-          data-testid="prefetch-on-enter-link"
-        >
-          Prefetch on enter
-        </Link>
-      </p>
-      <p>
-        <Link
-          to="/next?from=pending"
-          unstable_pending={
-            <span data-testid="pending-indicator">Pending transition...</span>
-          }
-          unstable_notPending={
-            <span data-testid="not-pending-indicator">Not pending</span>
-          }
-          data-testid="pending-link"
-        >
-          Go next with pending state
-        </Link>
-      </p>
-      <p>
         <Link to="/trigger-not-found" data-testid="go-trigger-not-found">
           Go trigger not found
         </Link>
