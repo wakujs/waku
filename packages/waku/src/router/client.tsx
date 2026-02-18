@@ -72,6 +72,14 @@ const parseRoute = (url: URL): RouteProps => {
   };
 };
 
+const getRouteUrl = (route: RouteProps): URL => {
+  const nextUrl = new URL(window.location.href);
+  nextUrl.pathname = route.path;
+  nextUrl.search = route.query;
+  nextUrl.hash = route.hash;
+  return nextUrl;
+};
+
 const getHttpStatusFromMeta = (): string | undefined => {
   const httpStatusMeta = document.querySelector('meta[name="httpstatus"]');
   if (
@@ -107,13 +115,18 @@ const createRscParams = (query: string): URLSearchParams => {
   return rscParams;
 };
 
+type ChangeRouteOptions = {
+  shouldScroll: boolean;
+  skipRefetch?: boolean;
+  mode?: undefined | 'push' | 'replace';
+  url?: URL;
+  unstable_historyOnError?: boolean; // FIXME not a big fan of this hack
+  unstable_startTransition?: ((fn: TransitionFunction) => void) | undefined;
+};
+
 type ChangeRoute = (
   route: RouteProps,
-  options: {
-    shouldScroll: boolean;
-    skipRefetch?: boolean;
-    unstable_startTransition?: ((fn: TransitionFunction) => void) | undefined;
-  },
+  options: ChangeRouteOptions,
 ) => Promise<void>;
 
 type ChangeRouteEvent = 'start' | 'complete';
@@ -123,6 +136,39 @@ type ChangeRouteCallback = (route: RouteProps) => void;
 type PrefetchRoute = (route: RouteProps) => void;
 
 type SliceId = string;
+
+const createRouteChangeListeners = (): [
+  Record<
+    'on' | 'off',
+    (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
+  >,
+  (event: ChangeRouteEvent, route: RouteProps) => void,
+] => {
+  const listeners: Record<ChangeRouteEvent, Set<ChangeRouteCallback>> = {
+    start: new Set(),
+    complete: new Set(),
+  };
+  const emit = (event: ChangeRouteEvent, route: RouteProps) => {
+    const eventListenersSet = listeners[event];
+    if (!eventListenersSet.size) {
+      return;
+    }
+    for (const listener of eventListenersSet) {
+      listener(route);
+    }
+  };
+  return [
+    {
+      on: (event: ChangeRouteEvent, handler: ChangeRouteCallback) => {
+        listeners[event].add(handler);
+      },
+      off: (event: ChangeRouteEvent, handler: ChangeRouteCallback) => {
+        listeners[event].delete(handler);
+      },
+    },
+    emit,
+  ];
+};
 
 // This is an internal thing, not a public API
 const RouterContext = createContext<{
@@ -162,17 +208,9 @@ export function useRouter() {
       const newPath = url.pathname !== currentPath;
       await changeRoute(parseRoute(url), {
         shouldScroll: options?.scroll ?? newPath,
+        mode: 'push',
+        url,
       });
-      if (window.location.pathname === currentPath) {
-        window.history.pushState(
-          {
-            ...window.history.state,
-            waku_new_path: newPath,
-          },
-          '',
-          url,
-        );
-      }
     },
     [changeRoute],
   );
@@ -195,10 +233,9 @@ export function useRouter() {
       const newPath = url.pathname !== currentPath;
       await changeRoute(parseRoute(url), {
         shouldScroll: options?.scroll ?? newPath,
+        mode: 'replace',
+        url,
       });
-      if (window.location.pathname === currentPath) {
-        window.history.replaceState(window.history.state, '', url);
-      }
     },
     [changeRoute],
   );
@@ -350,24 +387,13 @@ export function Link({
       startTransitionFn(async () => {
         const currentPath = window.location.pathname;
         const newPath = url.pathname !== currentPath;
-        try {
-          await changeRoute(route, {
-            shouldScroll: scroll ?? newPath,
-            unstable_startTransition: startTransitionFn,
-          });
-        } finally {
-          if (window.location.pathname === currentPath) {
-            // Update history if it wasn't already updated
-            window.history.pushState(
-              {
-                ...window.history.state,
-                waku_new_path: newPath,
-              },
-              '',
-              url,
-            );
-          }
-        }
+        await changeRoute(route, {
+          shouldScroll: scroll ?? newPath,
+          mode: 'push',
+          url,
+          unstable_historyOnError: true,
+          unstable_startTransition: startTransitionFn,
+        });
       });
     }
   };
@@ -533,7 +559,11 @@ const Redirect = ({
     }
     const currentPath = window.location.pathname;
     const newPath = url.pathname !== currentPath;
-    changeRoute(parseRoute(url), { shouldScroll: newPath })
+    changeRoute(parseRoute(url), {
+      shouldScroll: newPath,
+      mode: 'replace',
+      url,
+    })
       .then(() => {
         // FIXME: As we understand it, we should have a proper solution.
         setTimeout(() => {
@@ -542,18 +572,6 @@ const Redirect = ({
       })
       .catch((err) => {
         console.log('Error while navigating to redirect:', err);
-      })
-      .finally(() => {
-        if (window.location.pathname === currentPath) {
-          window.history.replaceState(
-            {
-              ...window.history.state,
-              waku_new_path: newPath,
-            },
-            '',
-            url,
-          );
-        }
       });
   }, [error, to, reset, changeRoute, handledErrorSet]);
   return null;
@@ -792,47 +810,11 @@ const InnerRouter = ({
     ...initialRoute,
     hash: '',
   }));
-  const routeChangeListenersRef =
-    useRef<
-      [
-        Record<
-          'on' | 'off',
-          (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
-        >,
-        (
-          eventType: ChangeRouteEvent,
-          eventRoute: Parameters<ChangeRouteCallback>[0],
-        ) => void,
-      ]
-    >(null);
+  const routeChangeListenersRef = useRef<ReturnType<
+    typeof createRouteChangeListeners
+  > | null>(null);
   if (routeChangeListenersRef.current === null) {
-    const listeners: Record<ChangeRouteEvent, Set<ChangeRouteCallback>> = {
-      start: new Set(),
-      complete: new Set(),
-    };
-    const executeListeners = (
-      eventType: ChangeRouteEvent,
-      eventRoute: Parameters<ChangeRouteCallback>[0],
-    ) => {
-      const eventListenersSet = listeners[eventType];
-      if (!eventListenersSet.size) {
-        return;
-      }
-      for (const listener of eventListenersSet) {
-        listener(eventRoute);
-      }
-    };
-    const events = (() => {
-      const on = (event: ChangeRouteEvent, handler: ChangeRouteCallback) => {
-        listeners[event].add(handler);
-      };
-      const off = (event: ChangeRouteEvent, handler: ChangeRouteCallback) => {
-        listeners[event].delete(handler);
-      };
-      return { on, off };
-    })();
-
-    routeChangeListenersRef.current = [events, executeListeners];
+    routeChangeListenersRef.current = createRouteChangeListeners();
   }
   // Update the route post-load to include the current hash.
   useEffect(() => {
@@ -848,25 +830,51 @@ const InnerRouter = ({
     });
   }, [initialRoute]);
 
-  const [routeChangeEvents, executeListeners] = routeChangeListenersRef.current;
+  const [routeChangeEvents, emitRouteChangeEvent] =
+    routeChangeListenersRef.current;
   const [err, setErr] = useState<unknown>(null);
   // FIXME this "refetching" hack doesn't seem ideal.
   const refetching = useRef<[onFinish?: () => void] | null>(null);
   const changeRoute: ChangeRoute = useCallback(
     async (route, options) => {
       requestedRouteRef.current = route;
-      executeListeners('start', route);
+      emitRouteChangeEvent('start', route);
       const startTransitionFn =
         options.unstable_startTransition || ((fn: TransitionFunction) => fn());
+      const { skipRefetch, mode, url, unstable_historyOnError } = options;
+      const historyPathnameBeforeChange = window.location.pathname;
+      const urlToWrite = mode && (url || getRouteUrl(route));
+      const newPath = urlToWrite?.pathname
+        ? urlToWrite.pathname !== historyPathnameBeforeChange
+        : route.path !== historyPathnameBeforeChange;
+      const writeHistoryIfNeeded = () => {
+        if (
+          mode &&
+          urlToWrite &&
+          window.location.pathname === historyPathnameBeforeChange
+        ) {
+          const nextState = {
+            ...window.history.state,
+            waku_new_path: newPath,
+          };
+          if (mode === 'push') {
+            window.history.pushState(nextState, '', urlToWrite);
+          } else {
+            window.history.replaceState(nextState, '', urlToWrite);
+          }
+        }
+      };
       refetching.current = [];
       setErr(null);
-      const { skipRefetch } = options || {};
       if (!staticPathSetRef.current.has(route.path) && !skipRefetch) {
         const rscPath = encodeRoutePath(route.path);
         const rscParams = createRscParams(route.query);
         try {
           await refetch(rscPath, rscParams);
         } catch (e) {
+          if (unstable_historyOnError) {
+            writeHistoryIfNeeded();
+          }
           refetching.current = null;
           setErr(e);
           throw e;
@@ -877,12 +885,13 @@ const InnerRouter = ({
           handleScroll();
         }
         setRoute(route);
+        writeHistoryIfNeeded();
         refetching.current?.[0]?.();
         refetching.current = null;
-        executeListeners('complete', route);
+        emitRouteChangeEvent('complete', route);
       });
     },
-    [executeListeners, refetch],
+    [emitRouteChangeEvent, refetch],
   );
 
   const prefetchRoute: PrefetchRoute = useCallback((route) => {
@@ -923,25 +932,16 @@ const InnerRouter = ({
         changeRoute(parseRoute(url), {
           skipRefetch: true,
           shouldScroll: false,
-        })
-          .catch((err) => {
-            console.log('Error while handling location listeners:', err);
-          })
-          .finally(() => {
-            if (path !== '/404') {
-              window.history.pushState(
-                {
-                  ...window.history.state,
-                  waku_new_path: url.pathname !== window.location.pathname,
-                },
-                '',
-                url,
-              );
-            }
-          });
+          mode: path === '/404' ? undefined : 'push',
+          url,
+        }).catch((err) => {
+          console.log('Error while handling location listeners:', err);
+        });
       };
       if (refetching.current) {
-        refetching.current.push(fn);
+        refetching.current[0] = () => {
+          startTransition(fn);
+        };
       } else {
         startTransition(fn);
       }
