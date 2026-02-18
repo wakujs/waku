@@ -573,10 +573,12 @@ const Redirect = ({
     }
     const currentPath = window.location.pathname;
     const newPath = url.pathname !== currentPath;
+    const historyUrl =
+      url.origin === window.location.origin ? url : undefined;
     changeRoute(parseRoute(url), {
       shouldScroll: newPath,
       mode: 'replace',
-      url,
+      url: historyUrl,
     })
       .then(() => {
         handledErrorSet.delete(error as object);
