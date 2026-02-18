@@ -393,20 +393,40 @@ describe('useRouter + Link with context', () => {
     expect(changeRoute).toHaveBeenNthCalledWith(
       1,
       { path: '/start', query: 'query=1', hash: '' },
-      { shouldScroll: false },
+      expect.objectContaining({
+        shouldScroll: false,
+        mode: 'push',
+        url: expect.any(URL),
+      }),
     );
     expect(changeRoute).toHaveBeenNthCalledWith(
       2,
       { path: '/start', query: 'query=2', hash: '' },
-      { shouldScroll: false },
+      expect.objectContaining({
+        shouldScroll: false,
+        mode: 'replace',
+        url: expect.any(URL),
+      }),
     );
     expect(changeRoute).toHaveBeenNthCalledWith(
       3,
-      { path: '/start', query: 'query=2', hash: '' },
+      { path: '/start', query: '', hash: '' },
       { shouldScroll: true },
     );
-    expect(pushStateSpy).toHaveBeenCalled();
-    expect(replaceStateSpy).toHaveBeenCalled();
+    const firstUrl = (
+      (changeRoute.mock.calls[0] as unknown[] | undefined)?.[1] as
+        | { url?: URL }
+        | undefined
+    )?.url;
+    expect(firstUrl?.href).toContain('/start?query=1');
+    const secondUrl = (
+      (changeRoute.mock.calls[1] as unknown[] | undefined)?.[1] as
+        | { url?: URL }
+        | undefined
+    )?.url;
+    expect(secondUrl?.href).toContain('/start?query=2');
+    expect(pushStateSpy).not.toHaveBeenCalled();
+    expect(replaceStateSpy).not.toHaveBeenCalled();
     expect(backSpy).toHaveBeenCalledTimes(1);
     expect(forwardSpy).toHaveBeenCalledTimes(1);
     expect(prefetchRoute).toHaveBeenCalledWith({
@@ -422,7 +442,6 @@ describe('useRouter + Link with context', () => {
   test('Link intercepts normal click and skips alt/defaultPrevented clicks', async () => {
     const changeRoute = vi.fn(async () => {});
     const prefetchRoute = vi.fn();
-    const pushStateSpy = vi.spyOn(window.history, 'pushState');
 
     const view = await renderApp(
       <RouterContext
@@ -459,7 +478,20 @@ describe('useRouter + Link with context', () => {
       hash: '',
     });
     expect(changeRoute).toHaveBeenCalledTimes(1);
-    expect(pushStateSpy).toHaveBeenCalled();
+    expect(changeRoute).toHaveBeenCalledWith(
+      { path: '/next', query: '', hash: '' },
+      expect.objectContaining({
+        shouldScroll: true,
+        mode: 'push',
+        url: expect.any(URL),
+      }),
+    );
+    const firstUrl = (
+      (changeRoute.mock.calls[0] as unknown[] | undefined)?.[1] as
+        | { url?: URL }
+        | undefined
+    )?.url;
+    expect(firstUrl?.href).toContain('/next');
 
     const altClick = new MouseEvent('click', {
       bubbles: true,
