@@ -480,6 +480,86 @@ describe('useRouter + Link with context', () => {
     view.unmount();
   });
 
+  test('Link currently intercepts external clicks and prevents default for unsupported cases', async () => {
+    const changeRoute = vi.fn(async () => {});
+    const prefetchRoute = vi.fn();
+    const pushStateSpy = vi
+      .spyOn(window.history, 'pushState')
+      .mockImplementation(() => {
+        return;
+      });
+
+    const view = await renderApp(
+      <RouterContext
+        value={{
+          route: { path: '/start', query: '', hash: '' },
+          changeRoute,
+          prefetchRoute,
+          routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set(),
+        }}
+      >
+        <>
+          <Link to="https://example.com/external" data-testid="external-link">
+            external
+          </Link>
+          <Link to="/start" data-testid="same-url-link">
+            same-url
+          </Link>
+          <Link to="/start" target="_blank" data-testid="target-link">
+            target
+          </Link>
+          <Link to="/start" download data-testid="download-link">
+            download
+          </Link>
+        </>
+      </RouterContext>,
+    );
+
+    const click = () =>
+      new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+      });
+    const externalClick = click();
+    const sameUrlClick = click();
+    const targetClick = click();
+    const downloadClick = click();
+    view.container
+      .querySelector('[data-testid="external-link"]')
+      ?.dispatchEvent(externalClick);
+    view.container
+      .querySelector('[data-testid="same-url-link"]')
+      ?.dispatchEvent(sameUrlClick);
+    view.container
+      .querySelector('[data-testid="target-link"]')
+      ?.dispatchEvent(targetClick);
+    view.container
+      .querySelector('[data-testid="download-link"]')
+      ?.dispatchEvent(downloadClick);
+    await flush();
+
+    expect(externalClick.defaultPrevented).toBe(true);
+    expect(sameUrlClick.defaultPrevented).toBe(true);
+    expect(targetClick.defaultPrevented).toBe(true);
+    expect(downloadClick.defaultPrevented).toBe(true);
+    expect(prefetchRoute).toHaveBeenCalledTimes(1);
+    expect(prefetchRoute).toHaveBeenCalledWith({
+      path: '/external',
+      query: '',
+      hash: '',
+    });
+    expect(changeRoute).toHaveBeenCalledTimes(1);
+    expect(changeRoute).toHaveBeenCalledWith(
+      { path: '/external', query: '', hash: '' },
+      expect.objectContaining({ shouldScroll: true }),
+    );
+
+    view.unmount();
+    pushStateSpy.mockRestore();
+  });
+
   test('Link handles prefetchOnEnter and prefetchOnView', async () => {
     const prefetchRoute = vi.fn();
     const onMouseEnter = vi.fn();
@@ -533,6 +613,51 @@ describe('useRouter + Link with context', () => {
 
     view.unmount();
     expect(observer.disconnect).toHaveBeenCalledTimes(1);
+  });
+
+  test('Link uses unstable_startTransition override for navigation', async () => {
+    const changeRoute = vi.fn(async () => {});
+    const prefetchRoute = vi.fn();
+    const unstableStartTransition = vi.fn((fn: () => void) => fn());
+
+    const view = await renderApp(
+      <RouterContext
+        value={{
+          route: { path: '/start', query: '', hash: '' },
+          changeRoute,
+          prefetchRoute,
+          routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set(),
+        }}
+      >
+        <Link to="/next" unstable_startTransition={unstableStartTransition}>
+          next
+        </Link>
+      </RouterContext>,
+    );
+
+    const link = view.container.querySelector('a');
+    if (!link) {
+      throw new Error('expected link');
+    }
+    link.dispatchEvent(
+      new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+      }),
+    );
+    await flush();
+
+    expect(unstableStartTransition).toHaveBeenCalledTimes(1);
+    expect(changeRoute).toHaveBeenCalledWith(
+      { path: '/next', query: '', hash: '' },
+      expect.objectContaining({
+        unstable_startTransition: unstableStartTransition,
+      }),
+    );
+
+    view.unmount();
   });
 
   test('Link ref supports object refs and callback cleanup', async () => {
@@ -669,6 +794,36 @@ describe('Slice', () => {
     const refetch = getRefetchMock();
     expect(view.container.textContent).toContain('loaded');
     expect(refetch).not.toHaveBeenCalled();
+
+    view.unmount();
+  });
+
+  test('lazy slice with existing non-static slot still refetches', async () => {
+    const slotId = unstable_getSliceSlotId('slice-1');
+    const elements = {
+      [slotId]: <div>loaded</div>,
+      [`${IS_STATIC_ID}:${slotId}`]: false,
+    };
+
+    const view = await renderWithMinimalRoot(
+      <RouterContext
+        value={{
+          route: { path: '/start', query: '', hash: '' },
+          changeRoute: vi.fn(async () => {}),
+          prefetchRoute: vi.fn(),
+          routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set(),
+        }}
+      >
+        <Slice id="slice-1" lazy fallback={<div>fallback</div>} />
+      </RouterContext>,
+      elements,
+    );
+
+    const refetch = getRefetchMock();
+    expect(view.container.textContent).toContain('loaded');
+    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(refetch).toHaveBeenCalledWith(unstable_encodeSliceId('slice-1'));
 
     view.unmount();
   });
@@ -962,6 +1117,96 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('popstate scrolls to hash target with instant behavior for new path', async () => {
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <div>start</div>,
+      [unstable_getRouteSlotId('/next')]: <div>next</div>,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
+      return;
+    });
+    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
+      window,
+      'scrollY',
+    );
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      value: 100,
+    });
+    const hashTarget = document.createElement('div');
+    hashTarget.id = 'target';
+    const getBoundingClientRectSpy = vi
+      .spyOn(hashTarget, 'getBoundingClientRect')
+      .mockReturnValue({ top: 40 } as DOMRect);
+    document.body.append(hashTarget);
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      window.history.pushState({ waku_new_path: true }, '', '/next#target');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      await flush();
+
+      expect(scrollToSpy).toHaveBeenCalledWith({
+        left: 0,
+        top: 140,
+        behavior: 'instant',
+      });
+    } finally {
+      view.unmount();
+      getBoundingClientRectSpy.mockRestore();
+      hashTarget.remove();
+      if (scrollYDescriptor) {
+        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
+      } else {
+        Object.defineProperty(window, 'scrollY', {
+          configurable: true,
+          value: 0,
+        });
+      }
+    }
+  });
+
+  test('popstate scrolls to top with auto behavior when hash target is missing', async () => {
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <div>start</div>,
+      [unstable_getRouteSlotId('/next')]: <div>next</div>,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
+      return;
+    });
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      window.history.pushState({}, '', '/next#missing');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      await flush();
+
+      expect(scrollToSpy).toHaveBeenCalledWith({
+        left: 0,
+        top: 0,
+        behavior: 'auto',
+      });
+    } finally {
+      view.unmount();
+    }
+  });
+
   test('enhanced fetch injects skip header and can trigger location listener route updates', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
@@ -1024,6 +1269,120 @@ describe('Router integration', () => {
     expect(capture.router?.path).toBe('/streamed');
     expect(capture.router?.query).toBe('x=1');
     expect(historyPushSpy).toHaveBeenCalled();
+    expect(getRefetchMock()).not.toHaveBeenCalled();
+
+    view.unmount();
+  });
+
+  test('location listener queues one update during in-flight refetch and applies it once', async () => {
+    let resolveRefetch: (() => void) | undefined;
+    const pendingRefetch = new Promise<void>((resolve) => {
+      resolveRefetch = resolve;
+    });
+    const refetch = vi.fn(async (..._args: unknown[]) => pendingRefetch);
+    vi.mocked(useRefetch).mockReturnValue(
+      refetch as ReturnType<typeof useRefetch>,
+    );
+
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/next')]: <Probe />,
+      [unstable_getRouteSlotId('/streamed')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+      foo: true,
+    };
+    const historyPushSpy = vi.spyOn(window.history, 'pushState');
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    if (!capture.router) {
+      throw new Error('router not initialized');
+    }
+
+    const enhanceFetchRscInternal = getEnhanceFetchRscInternalMock();
+    const enhancer = enhanceFetchRscInternal.mock.calls[0]?.[0];
+    if (!enhancer) {
+      throw new Error('enhanced fetch enhancer was not registered');
+    }
+    const baseFetchRscInternalMock = vi.fn(async () => ({
+      [ROUTE_ID]: ['/streamed', 'x=1'],
+      [IS_STATIC_ID]: false,
+    }));
+    const enhancedFetchRscInternal = enhancer(baseFetchRscInternalMock);
+
+    const pushPromise = capture.router.push('/next?from=push');
+    await Promise.resolve();
+    await act(async () => {
+      await enhancedFetchRscInternal('R/streamed', undefined);
+    });
+    resolveRefetch?.();
+    await pushPromise;
+    await flush();
+
+    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(refetch.mock.calls[0]?.[0]).toBe(unstable_encodeRoutePath('/next'));
+    const refetchParams = refetch.mock.calls[0]?.[1] as URLSearchParams;
+    expect(refetchParams.get('query')).toBe('from=push');
+    expect(capture.router.path).toBe('/streamed');
+    expect(capture.router.query).toBe('x=1');
+
+    const streamedPushes = historyPushSpy.mock.calls.filter((call) => {
+      const target = call[2];
+      const url =
+        target instanceof URL
+          ? target
+          : new URL(String(target), window.location.origin);
+      return url.pathname === '/streamed';
+    });
+    expect(streamedPushes).toHaveLength(1);
+
+    view.unmount();
+  });
+
+  test('location listener route update to /404 does not push history', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/404')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+      foo: true,
+    };
+    const historyPushSpy = vi.spyOn(window.history, 'pushState');
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+
+    const enhanceFetchRscInternal = getEnhanceFetchRscInternalMock();
+    const enhancer = enhanceFetchRscInternal.mock.calls[0]?.[0];
+    if (!enhancer) {
+      throw new Error('enhanced fetch enhancer was not registered');
+    }
+    const baseFetchRscInternalMock = vi.fn(async () => ({
+      [ROUTE_ID]: ['/404', ''],
+      [IS_STATIC_ID]: false,
+    }));
+    const enhancedFetchRscInternal = enhancer(baseFetchRscInternalMock);
+
+    await act(async () => {
+      await enhancedFetchRscInternal('R/404', undefined);
+    });
+    await flush();
+
+    expect(capture.router?.path).toBe('/404');
+    expect(historyPushSpy).not.toHaveBeenCalled();
     expect(getRefetchMock()).not.toHaveBeenCalled();
 
     view.unmount();
@@ -1161,6 +1520,43 @@ describe('Router integration', () => {
 
     view.unmount();
   });
+
+  test('redirect error with cross-origin location uses window.location.replace', async () => {
+    const ThrowRedirect = () => {
+      throw createCustomError('redirect', {
+        location: 'https://example.com/target?ok=1',
+      });
+    };
+
+    const replaceLocationSpy = vi
+      .spyOn(window.location, 'replace')
+      .mockImplementation(() => {});
+
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <ThrowRedirect />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      await flush();
+
+      expect(replaceLocationSpy).toHaveBeenCalledWith(
+        'https://example.com/target?ok=1',
+      );
+      expect(window.location.pathname).toBe('/start');
+      expect(getRefetchMock()).not.toHaveBeenCalled();
+    } finally {
+      view.unmount();
+      replaceLocationSpy.mockRestore();
+    }
+  });
 });
 
 describe('INTERNAL_ServerRouter', () => {
@@ -1194,6 +1590,21 @@ describe('INTERNAL_ServerRouter', () => {
     await expect(capture.router!.push('/next')).rejects.toThrow(
       'changeRoute is not in the server',
     );
+    expect(() => capture.router!.prefetch('/next')).toThrow(
+      'prefetchRoute is not in the server',
+    );
+    const onResult = capture.router!.unstable_events.on(
+      'start',
+      () => {},
+    ) as unknown as (() => never) | undefined;
+    expect(typeof onResult).toBe('function');
+    expect(() => onResult?.()).toThrow('routeChange:on is not in the server');
+    const offResult = capture.router!.unstable_events.off(
+      'start',
+      () => {},
+    ) as unknown as (() => never) | undefined;
+    expect(typeof offResult).toBe('function');
+    expect(() => offResult?.()).toThrow('routeChange:off is not in the server');
 
     view.unmount();
   });
