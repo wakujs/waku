@@ -6,14 +6,12 @@ import {
   prepareNormalSetup,
   test,
   waitForHydration,
+  waitForSelectorText,
 } from './utils.js';
 
 const startApp = prepareNormalSetup('create-pages');
 
-// WebKit + react@experimental can keep Playwright locator actions waiting for
-// "navigation to finish" during client-side transitions.
-// Use direct DOM click and poll rendered text for only these flaky cases.
-
+// Long suspense flows are more stable with direct DOM clicks.
 const clickClientLink = async (page: Page, href: string) => {
   await page.evaluate((targetHref) => {
     const link = document.querySelector(`a[href="${targetHref}"]`);
@@ -24,23 +22,8 @@ const clickClientLink = async (page: Page, href: string) => {
   }, href);
 };
 
-const waitForSelectorText = async (
-  page: Page,
-  selector: string,
-  text: string,
-) => {
-  await expect
-    .poll(
-      async () =>
-        page.evaluate(
-          (selector) => document.querySelector(selector)?.textContent ?? null,
-          selector,
-        ),
-      { timeout: 10_000 },
-    )
-    .toBe(text);
-};
-
+// The pending indicator can flash very briefly. Detect "seen at least once"
+// with a short-lived observer instead of asserting an instant count.
 const waitForSelectorSeen = async (page: Page, selector: string) => {
   await expect
     .poll(
@@ -125,8 +108,8 @@ test.describe(`create-pages`, () => {
   test('foo', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await clickClientLink(page, '/foo');
-    await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
+    await page.click("a[href='/foo']", { noWaitAfter: true });
+    await waitForSelectorText(page, 'h2', 'Foo');
 
     await page.goto(`http://localhost:${port}/foo`);
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
@@ -172,8 +155,8 @@ test.describe(`create-pages`, () => {
   test('jump', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await clickClientLink(page, '/foo');
-    await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
+    await page.click("a[href='/foo']", { noWaitAfter: true });
+    await waitForSelectorText(page, 'h2', 'Foo');
     await page.click('text=Jump to random page');
     // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(500); // need to wait not to error
@@ -188,8 +171,8 @@ test.describe(`create-pages`, () => {
     page.on('pageerror', (err) => errors.push(err.message));
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await clickClientLink(page, '/foo');
-    await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
+    await page.click("a[href='/foo']", { noWaitAfter: true });
+    await waitForSelectorText(page, 'h2', 'Foo');
     await page.click('text=Jump with setState');
     await expect(
       page.getByRole('heading', { name: 'Baz', exact: true }),

@@ -1,5 +1,10 @@
 import { expect } from '@playwright/test';
-import { prepareNormalSetup, test, waitForHydration } from './utils.js';
+import {
+  prepareNormalSetup,
+  test,
+  waitForHydration,
+  waitForSelectorText,
+} from './utils.js';
 
 const startApp = prepareNormalSetup('fs-router');
 
@@ -29,8 +34,8 @@ test.describe('fs-router', () => {
   test('foo', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await page.click("a[href='/foo']");
-    await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
+    await page.click("a[href='/foo']", { noWaitAfter: true });
+    await waitForSelectorText(page, 'h2', 'Foo');
 
     await page.goto(`http://localhost:${port}/foo`);
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
