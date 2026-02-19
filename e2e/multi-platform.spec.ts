@@ -32,7 +32,24 @@ const waku = fileURLToPath(
   new URL('../packages/waku/dist/cli.js', import.meta.url),
 );
 
-const buildPlatformTarget = [
+type BuildPlatformTarget = {
+  adapter: string;
+  clearDirOrFile: string[];
+  checkJsonFile?: (dir: string) => boolean;
+};
+
+const hasDistServerWranglerMainIndexJs = (dir: string) => {
+  const file = join(dir, 'dist', 'server', 'wrangler.json');
+  if (!existsSync(file)) {
+    return false;
+  }
+  const json = JSON.parse(readFileSync(file, 'utf-8')) as {
+    main?: string;
+  };
+  return json.main === 'index.js';
+};
+
+const buildPlatformTarget: BuildPlatformTarget[] = [
   {
     adapter: 'vercel',
     clearDirOrFile: ['dist', '.vercel'],
@@ -43,7 +60,8 @@ const buildPlatformTarget = [
   },
   {
     adapter: 'cloudflare',
-    clearDirOrFile: ['dist', 'wrangler.toml'],
+    clearDirOrFile: ['dist', 'wrangler.jsonc'],
+    checkJsonFile: hasDistServerWranglerMainIndexJs,
   },
   {
     adapter: 'deno',
@@ -55,19 +73,18 @@ const buildPlatformTarget = [
   },
 ];
 
-const changeAdapter = (file: string, adapter: string) => {
-  let content: string;
-  if (existsSync(file)) {
-    content = readFileSync(file, 'utf-8');
-  } else {
-    // managed mode
-    content = getManagedServerEntry('src');
-  }
-  content = content.replace(
-    /^import adapter from 'waku\/adapters\/default';/,
+const ensureServerEntryWithAdapter = (file: string, adapter: string) => {
+  const content = existsSync(file)
+    ? readFileSync(file, 'utf-8')
+    : getManagedServerEntry('src');
+  const replaced = content.replace(
+    /import adapter from 'waku\/adapters\/default';/,
     `import adapter from 'waku/adapters/${adapter}';`,
   );
-  writeFileSync(file, content);
+  if (replaced === content) {
+    throw new Error(`Failed to replace adapter in ${file}`);
+  }
+  writeFileSync(file, replaced);
 };
 
 test.describe.configure({ mode: 'parallel' });
@@ -79,21 +96,30 @@ test.skip(
 
 test.describe(`multi platform builds`, () => {
   for (const { cwd, project } of dryRunList) {
-    for (const { adapter, clearDirOrFile } of buildPlatformTarget) {
+    for (const {
+      adapter,
+      clearDirOrFile,
+      checkJsonFile = () => true,
+    } of buildPlatformTarget) {
       test(`build ${project} with ${adapter} should not throw error`, async () => {
         const temp = makeTempDir(project);
-        cpSync(cwd, temp, { recursive: true });
-        changeAdapter(join(temp, 'src', 'waku.server.tsx'), adapter);
-        for (const name of clearDirOrFile) {
-          rmSync(join(temp, name), { recursive: true, force: true });
+        const serverEntryFile = join(temp, 'src', 'waku.server.tsx');
+        try {
+          cpSync(cwd, temp, { recursive: true });
+          ensureServerEntryWithAdapter(serverEntryFile, adapter);
+          for (const name of clearDirOrFile) {
+            rmSync(join(temp, name), { recursive: true, force: true });
+          }
+          await expect(
+            execAsync(`node ${waku} build ${adapter}`, {
+              cwd: temp,
+              env: process.env,
+            }),
+          ).resolves.not.toThrow();
+          expect(checkJsonFile(temp)).toBe(true);
+        } finally {
+          rmSync(temp, { recursive: true, force: true });
         }
-        await expect(
-          execAsync(`node ${waku} build ${adapter}`, {
-            cwd: temp,
-            env: process.env,
-          }),
-        ).resolves.not.toThrow();
-        rmSync(temp, { recursive: true, force: true });
       });
     }
   }

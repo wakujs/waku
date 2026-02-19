@@ -72,12 +72,26 @@ async function preBuild({
   }
 }
 
+async function postBuild({ distDir, serverless }: BuildOptions) {
+  if (!serverless) {
+    return;
+  }
+  const distServerDir = path.resolve(path.join(distDir, 'server'));
+  const distServerWranglerJson = path.join(distServerDir, 'wrangler.json');
+  if (!fs.existsSync(distServerWranglerJson)) {
+    fs.mkdirSync(distServerDir, { recursive: true });
+    // Fallback for the case without @cloudflare/vite-plugin.
+    fs.writeFileSync(distServerWranglerJson, '{"main":"index.js"}');
+  }
+}
+
 export default async function buildEnhancer(
   build: (utils: unknown, options: BuildOptions) => Promise<void>,
 ): Promise<typeof build> {
   return async (utils: unknown, options: BuildOptions) => {
     await preBuild(options);
     await build(utils, options);
+    await postBuild(options);
   };
 }
 
