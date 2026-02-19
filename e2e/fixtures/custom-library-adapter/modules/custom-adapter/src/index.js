@@ -1,4 +1,4 @@
-import { unstable_createServerEntryAdapter as createServerEntryAdapter } from 'waku/internals';
+import { unstable_createServerEntryAdapter as createServerEntryAdapter } from 'waku/adapter-builders';
 
 export default createServerEntryAdapter(
   ({ processRequest, processBuild, config }) => {

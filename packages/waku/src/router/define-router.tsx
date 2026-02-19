@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
-import { getPathMapping } from '../lib/utils/path.js';
+import { getPathMapping, path2regexp } from '../lib/utils/path.js';
 import type { PathSpec } from '../lib/utils/path.js';
 import { base64ToStream, streamToBase64 } from '../lib/utils/stream.js';
 import { createTaskRunner } from '../lib/utils/task-runner.js';
@@ -17,6 +17,11 @@ import {
   encodeRoutePath,
   encodeSliceId,
 } from './common.js';
+
+export type ApiHandler = (
+  req: Request,
+  apiContext: { params: Record<string, string | string[]> },
+) => Promise<Response>;
 
 const isStringArray = (x: unknown): x is string[] =>
   Array.isArray(x) && x.every((y) => typeof y === 'string');
@@ -83,6 +88,15 @@ export function unstable_getRscParams(): unknown {
     return undefined;
   }
 }
+
+const getNonce = () => {
+  try {
+    const context = getContext();
+    return context.nonce;
+  } catch {
+    return undefined;
+  }
+};
 
 const RERENDER_SYMBOL = Symbol('RERENDER');
 type Rerender = (rscPath: string, rscParams?: unknown) => void;
@@ -182,7 +196,7 @@ type ApiConfig = {
   type: 'api';
   path: PathSpec;
   isStatic: boolean;
-  handler: (req: Request) => Promise<Response>;
+  handler: ApiHandler;
 };
 
 type SliceConfig = {
@@ -190,6 +204,28 @@ type SliceConfig = {
   id: string;
   isStatic: boolean;
   renderer: () => Promise<ReactNode>;
+};
+
+const getRouterPrefetchCode = (path2moduleIds: Record<string, string[]>) => {
+  const moduleIdSet = new Set<string>();
+  Object.values(path2moduleIds).forEach((ids) =>
+    ids.forEach((id) => moduleIdSet.add(id)),
+  );
+  const ids = Array.from(moduleIdSet);
+  const path2idxs: Record<string, number[]> = {};
+  Object.entries(path2moduleIds).forEach(([path, ids]) => {
+    path2idxs[path] = ids.map((id) => ids.indexOf(id));
+  });
+  return `
+globalThis.__WAKU_ROUTER_PREFETCH__ = (path, callback) => {
+  const ids = ${JSON.stringify(ids)};
+  const path2idxs = ${JSON.stringify(path2idxs)};
+  const key = Object.keys(path2idxs).find((key) => new RegExp(key).test(path));
+  for (const idx of path2idxs[key] || []) {
+    callback(ids[idx]);
+  }
+};
+`;
 };
 
 export function unstable_defineRouter(fns: {
@@ -272,10 +308,9 @@ export function unstable_defineRouter(fns: {
     }
     const skipIdSet = new Set(isStringArray(skipParam) ? skipParam : []);
     const { query } = parseRscParams(rscParams);
-    const decodedPathname = decodeURI(pathname);
-    const routeId = ROUTE_SLOT_ID_PREFIX + decodedPathname;
+    const routeId = ROUTE_SLOT_ID_PREFIX + pathname;
     const option: RendererOption = {
-      pathname: decodedPathname,
+      pathname,
       query: pathConfigItem.isStatic ? undefined : query,
     };
     const myConfig = await getMyConfig();
@@ -351,7 +386,7 @@ export function unstable_defineRouter(fns: {
         entries[id] = sliceElement;
       }),
     ]);
-    entries[ROUTE_ID] = [decodedPathname, query];
+    entries[ROUTE_ID] = [pathname, query];
     entries[IS_STATIC_ID] = pathConfigItem.isStatic;
     sliceConfigMap.forEach((sliceConfig, sliceId) => {
       if (sliceConfig.isStatic) {
@@ -370,6 +405,8 @@ export function unstable_defineRouter(fns: {
 
   const cachedElementsForRequest = new Map<SlotId, Promise<ReactNode>>();
   let cachedElementsForRequestInitialized = false;
+  let cachedPath2moduleIds: Record<string, string[]> | undefined;
+
   const handleRequest: HandleRequest = async (
     input,
     { renderRsc, parseRsc, renderHtml, loadBuildMetadata },
@@ -404,13 +441,24 @@ export function unstable_defineRouter(fns: {
         );
       }
     }
+    const getPath2moduleIds = async () => {
+      if (!cachedPath2moduleIds) {
+        cachedPath2moduleIds = JSON.parse(
+          (await loadBuildMetadata('defineRouter:path2moduleIds')) || '{}',
+        );
+      }
+      return cachedPath2moduleIds!;
+    };
+
     const pathConfigItem = await getPathConfigItem(input.pathname);
     if (pathConfigItem?.type === 'api') {
       const url = new URL(input.req.url);
       url.pathname = input.pathname;
       const req = new Request(url, input.req);
-      return pathConfigItem.handler(req);
+      const params = getPathMapping(pathConfigItem.path, input.pathname) ?? {};
+      return pathConfigItem.handler(req, { params });
     }
+
     const url = new URL(input.req.url);
     const headers = Object.fromEntries(input.req.headers.entries());
     if (input.type === 'component') {
@@ -454,6 +502,7 @@ export function unstable_defineRouter(fns: {
       }
       return renderRsc(entries);
     }
+
     if (input.type === 'function') {
       let elementsPromise: Promise<Record<string, unknown>> = Promise.resolve(
         {},
@@ -507,6 +556,7 @@ export function unstable_defineRouter(fns: {
         rendered = true;
       }
     }
+
     if (input.type === 'action' || input.type === 'custom') {
       const renderIt = async (
         pathname: string,
@@ -525,18 +575,22 @@ export function unstable_defineRouter(fns: {
         if (!entries) {
           return null;
         }
+        const path2moduleIds = await getPath2moduleIds();
         const html = (
           <INTERNAL_ServerRouter
             route={{ path: pathname, query, hash: '' }}
             httpstatus={httpstatus}
           />
         );
-        const actionResult =
+        const formState =
           input.type === 'action' ? await input.fn() : undefined;
+        const nonce = getNonce();
         return renderHtml(await renderRsc(entries), html, {
           rscPath,
-          actionResult,
+          formState,
           status: httpstatus,
+          ...(nonce ? { nonce } : {}),
+          unstable_extraScriptContent: getRouterPrefetchCode(path2moduleIds),
         });
       };
       const query = url.searchParams.toString();
@@ -614,11 +668,14 @@ export function unstable_defineRouter(fns: {
       const req = new Request(new URL(pathname, 'http://localhost:3000'));
       runTask(async () => {
         await withRequest(req, async () => {
-          const res = await item.handler(req);
+          const res = await item.handler(req, { params: {} });
           await generateFile(pathname, res.body || '');
         });
       });
     }
+
+    const path2moduleIds: Record<string, string[]> = {};
+    const htmlRenderTasks = new Set<() => Promise<void>>();
 
     // static route
     for (const item of myConfig.configs) {
@@ -650,20 +707,35 @@ export function unstable_defineRouter(fns: {
             const cached = getCachedElement(id);
             entries[id] = cached ? await cached : entries[id];
           }
-          const stream = await renderRsc(entries);
+          const moduleIds = new Set<string>();
+          const stream = await renderRsc(entries, {
+            unstable_clientModuleCallback: (ids) =>
+              ids.forEach((id) => moduleIds.add(id)),
+          });
           const [stream1, stream2] = stream.tee();
           await generateFile(rscPath2pathname(rscPath), stream1);
-          const html = (
-            <INTERNAL_ServerRouter
-              route={{ path: pathname, query: '', hash: '' }}
-              httpstatus={is404(item.path) ? 404 : 200}
-            />
-          );
-          const res = await renderHtml(stream2, html, { rscPath });
-          await generateFile(htmlPath2pathname(pathname), res.body || '');
+          path2moduleIds[path2regexp(item.pathPattern || item.path)] =
+            Array.from(moduleIds);
+          htmlRenderTasks.add(async () => {
+            const html = (
+              <INTERNAL_ServerRouter
+                route={{ path: pathname, query: '', hash: '' }}
+                httpstatus={is404(item.path) ? 404 : 200}
+              />
+            );
+            const res = await renderHtml(stream2, html, {
+              rscPath,
+              unstable_extraScriptContent:
+                getRouterPrefetchCode(path2moduleIds),
+            });
+            await generateFile(htmlPath2pathname(pathname), res.body || '');
+          });
         });
       });
     }
+    // HACK hopefully there is a better way than this
+    await waitForTasks();
+    htmlRenderTasks.forEach(runTask);
 
     // default html
     for (const item of myConfig.configs) {
@@ -715,6 +787,10 @@ export function unstable_defineRouter(fns: {
     await saveBuildMetadata(
       'defineRouter:cachedElements',
       JSON.stringify(Object.fromEntries(serializedCachedElements)),
+    );
+    await saveBuildMetadata(
+      'defineRouter:path2moduleIds',
+      JSON.stringify(path2moduleIds),
     );
   };
 

@@ -33,6 +33,7 @@ test.skip(
 test.describe(`partial builds`, () => {
   let port: number;
   let cp: ChildProcess;
+
   test.beforeEach(async ({ page }) => {
     rmSync(`${cwd}/dist`, { recursive: true, force: true });
     await execAsync(`node ${waku} build`, {
@@ -59,6 +60,7 @@ test.describe(`partial builds`, () => {
     await page.goto(`http://localhost:${port}/page/a`);
     await expect(page.getByTestId('title')).toHaveText('a');
   });
+
   test.afterEach(async () => {
     await terminate(cp);
   });

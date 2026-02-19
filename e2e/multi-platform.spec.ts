@@ -56,7 +56,7 @@ const buildPlatformTarget = [
 ];
 
 const changeAdapter = (file: string, adapter: string) => {
-  let content = '';
+  let content: string;
   if (existsSync(file)) {
     content = readFileSync(file, 'utf-8');
   } else {
@@ -87,14 +87,12 @@ test.describe(`multi platform builds`, () => {
         for (const name of clearDirOrFile) {
           rmSync(join(temp, name), { recursive: true, force: true });
         }
-        try {
-          await execAsync(`node ${waku} build ${adapter}`, {
+        await expect(
+          execAsync(`node ${waku} build ${adapter}`, {
             cwd: temp,
             env: process.env,
-          });
-        } catch (error) {
-          expect(error).toBeNull();
-        }
+          }),
+        ).resolves.not.toThrow();
         rmSync(temp, { recursive: true, force: true });
       });
     }

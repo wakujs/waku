@@ -2,31 +2,19 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export type BuildOptions = {
-  assetsDir: string;
+  srcDir: string;
   distDir: string;
-  rscBase: string;
-  privateDir: string;
-  basePath: string;
   DIST_PUBLIC: string;
   serverless: boolean;
 };
 
-async function postBuild({ distDir, DIST_PUBLIC, serverless }: BuildOptions) {
-  const mainEntry = path.resolve(
-    path.join(distDir, 'server', 'serve-cloudflare.js'),
-  );
-  fs.writeFileSync(
-    mainEntry,
-    `\
-import { INTERNAL_runFetch, unstable_serverEntry as serverEntry } from './index.js';
-
-export default {
-  ...(serverEntry.handlers ? serverEntry.handlers : {}),
-  fetch: (request, env, ...args) => INTERNAL_runFetch(env, request, env, ...args),
-};
-`,
-  );
-
+async function preBuild({
+  srcDir,
+  distDir,
+  DIST_PUBLIC,
+  serverless,
+}: BuildOptions) {
+  const mainEntry = path.resolve(path.join(srcDir, 'waku.server'));
   const wranglerTomlFile = path.resolve('wrangler.toml');
   const wranglerJsonFile = path.resolve('wrangler.json');
   const wranglerJsoncFile = path.resolve('wrangler.jsonc');
@@ -49,6 +37,7 @@ export default {
       wranglerJsoncFile,
       `\
 {
+  "$schema": "node_modules/wrangler/config-schema.json",
   "name": ${JSON.stringify(projectName)},
   ${
     serverless
@@ -69,7 +58,14 @@ export default {
         : ''
     }"directory": "./${distDir}/${DIST_PUBLIC}",
     "html_handling": "drop-trailing-slash"
-  }
+  },
+  "rules": [
+    {
+      "type": "ESModule",
+      "globs": ["**/*.js", "**/*.mjs"],
+    },
+  ],
+  "no_bundle": true,
 }
 `,
     );
@@ -80,8 +76,8 @@ export default async function buildEnhancer(
   build: (utils: unknown, options: BuildOptions) => Promise<void>,
 ): Promise<typeof build> {
   return async (utils: unknown, options: BuildOptions) => {
+    await preBuild(options);
     await build(utils, options);
-    await postBuild(options);
   };
 }
 

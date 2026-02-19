@@ -12,10 +12,11 @@ import { batchReadableStream } from '../utils/stream.js';
 type RenderHtmlStream = (
   rscStream: ReadableStream<Uint8Array>,
   rscHtmlStream: ReadableStream<Uint8Array>,
-  options?: {
-    rscPath?: string | undefined;
-    formState?: ReactFormState | undefined;
-    nonce?: string | undefined;
+  options: {
+    rscPath: string | undefined;
+    formState: ReactFormState | undefined;
+    nonce: string | undefined;
+    extraScriptContent: string | undefined;
   },
 ) => Promise<{ stream: ReadableStream; status: number | undefined }>;
 
@@ -59,9 +60,11 @@ export const renderHtmlStream: RenderHtmlStream = async (
     htmlStream = await renderToReadableStream(<SsrRoot />, {
       bootstrapScriptContent:
         getBootstrapPreamble({
-          rscPath: options?.rscPath || '',
+          rscPath: options.rscPath || '',
           hydrate: true,
-        }) + bootstrapScriptContent,
+        }) +
+        bootstrapScriptContent +
+        (options.extraScriptContent || ''),
       onError: (e: unknown) => {
         if (
           e &&
@@ -73,8 +76,8 @@ export const renderHtmlStream: RenderHtmlStream = async (
         }
         console.error('[SSR Error]', captureOwnerStack?.() || '', '\n', e);
       },
-      ...(options?.nonce ? { nonce: options.nonce } : {}),
-      ...(options?.formState ? { formState: options.formState } : {}),
+      ...(options.nonce ? { nonce: options.nonce } : {}),
+      ...(options.formState ? { formState: options.formState } : {}),
     });
   } catch (e) {
     const info = getErrorInfo(e);
@@ -92,17 +95,19 @@ export const renderHtmlStream: RenderHtmlStream = async (
     htmlStream = await renderToReadableStream(ssrErrorRoot, {
       bootstrapScriptContent:
         getBootstrapPreamble({
-          rscPath: options?.rscPath || '',
+          rscPath: options.rscPath || '',
           hydrate: false,
-        }) + bootstrapScriptContent,
-      ...(options?.nonce ? { nonce: options.nonce } : {}),
+        }) +
+        bootstrapScriptContent +
+        (options.extraScriptContent || ''),
+      ...(options.nonce ? { nonce: options.nonce } : {}),
     });
   }
   let responseStream: ReadableStream<Uint8Array> = htmlStream;
   responseStream = responseStream.pipeThrough(
     injectRSCPayload(
       batchReadableStream(stream2),
-      options?.nonce ? { nonce: options?.nonce } : {},
+      options.nonce ? { nonce: options.nonce } : {},
     ),
   );
 

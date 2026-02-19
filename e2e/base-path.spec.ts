@@ -6,9 +6,11 @@ const startApp = prepareNormalSetup('base-path');
 test.describe(`base-path`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
+
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
+
   test.afterAll(async () => {
     await stopApp();
   });
@@ -68,13 +70,13 @@ test.describe(`base-path`, () => {
 
   // eslint-disable-next-line playwright/expect-expect
   test('basic DEV', async ({ page, mode }) => {
-    test.skip(mode !== 'DEV');
+    test.skip(mode !== 'DEV', 'DEV only test');
     await basicTest(page, `http://localhost:${port}/custom/base/`);
   });
 
   // eslint-disable-next-line playwright/expect-expect
   test('basic PRD', async ({ page, mode }) => {
-    test.skip(mode !== 'PRD');
+    test.skip(mode !== 'PRD', 'PRD only test');
     await basicTest(page, `http://localhost:${port}/custom/base/`);
 
     // test static

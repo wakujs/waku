@@ -6,7 +6,11 @@ import type {
 
 export function createRenderUtils(
   temporaryReferences: unknown,
-  renderToReadableStream: (data: unknown, options?: object) => ReadableStream,
+  renderToReadableStream: (
+    data: unknown,
+    options?: object,
+    extraOptions?: object,
+  ) => ReadableStream,
   createFromReadableStream: (
     stream: ReadableStream,
     options?: object,
@@ -32,22 +36,30 @@ export function createRenderUtils(
   };
 
   return {
-    async renderRsc(elements) {
-      return renderToReadableStream(elements, {
-        temporaryReferences,
-        onError,
-      });
+    async renderRsc(elements, options) {
+      return renderToReadableStream(
+        elements,
+        {
+          temporaryReferences,
+          onError,
+        },
+        {
+          onClientReference(metadata: {
+            id: string;
+            name: string;
+            deps: { js: string[]; css: string[] };
+          }) {
+            options?.unstable_clientModuleCallback?.(metadata.deps.js);
+          },
+        },
+      );
     },
     async parseRsc(stream) {
       return createFromReadableStream(stream, {}) as Promise<
         Record<string, unknown>
       >;
     },
-    async renderHtml(
-      elementsStream,
-      html,
-      options?: { rscPath?: string; actionResult?: any; status?: number },
-    ) {
+    async renderHtml(elementsStream, html, options) {
       const { INTERNAL_renderHtmlStream: renderHtmlStream } =
         await loadSsrEntryModule();
 
@@ -55,11 +67,13 @@ export function createRenderUtils(
         onError,
       });
       const htmlResult = await renderHtmlStream(elementsStream, rscHtmlStream, {
-        formState: options?.actionResult,
-        rscPath: options?.rscPath,
+        rscPath: options.rscPath,
+        formState: options.formState as never,
+        nonce: options.nonce,
+        extraScriptContent: options.unstable_extraScriptContent,
       });
       return new Response(htmlResult.stream, {
-        status: htmlResult.status || options?.status || 200,
+        status: htmlResult.status || options.status || 200,
         headers: { 'content-type': 'text/html' },
       });
     },

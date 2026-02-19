@@ -1,6 +1,7 @@
 {
+  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "waku-project",
-  "main": "./dist/server/serve-cloudflare.js",
+  "main": "./src/waku.server",
   // nodejs_als is required for Waku server-side request context
   // It can be removed if only building static pages
   "compatibility_flags": ["nodejs_als"],
@@ -14,5 +15,12 @@
   },
   "vars": {
     "MAX_ITEMS": 10
-  }
+  },
+  "rules": [
+    {
+      "type": "ESModule",
+      "globs": ["**/*.js", "**/*.mjs"]
+    }
+  ],
+  "no_bundle": true
 }
