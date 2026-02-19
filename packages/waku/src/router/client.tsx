@@ -119,7 +119,7 @@ type ChangeRouteOptions = {
   shouldScroll: boolean;
   skipRefetch?: boolean;
   mode?: undefined | 'push' | 'replace';
-  url?: URL;
+  url?: URL | undefined;
   unstable_historyOnError?: boolean; // FIXME not a big fan of this hack
   unstable_startTransition?: ((fn: TransitionFunction) => void) | undefined;
 };
@@ -402,6 +402,16 @@ export function Link({
       props.onClick(event);
     }
     if (!event.defaultPrevented && !isAltClick(event)) {
+      if (props.target && props.target.toLowerCase() !== '_self') {
+        console.warn(
+          '[Link] `target` is discouraged. Use `<a>` for this case.',
+        );
+      }
+      if (props.download != null && props.download !== false) {
+        console.warn(
+          '[Link] `download` is discouraged. Use `<a>` for this case.',
+        );
+      }
       event.preventDefault();
       internalOnClick();
     }
@@ -497,11 +507,15 @@ export class ErrorBoundary extends Component<
 }
 
 const NotFound = ({
+  error,
   has404,
   reset,
+  handledErrorSet,
 }: {
+  error: unknown;
   has404: boolean;
   reset: () => void;
+  handledErrorSet: WeakSet<object>;
 }) => {
   const router = useContext(RouterContext);
   if (!router) {
@@ -510,20 +524,20 @@ const NotFound = ({
   const { changeRoute } = router;
   useEffect(() => {
     if (has404) {
+      if (handledErrorSet.has(error as object)) {
+        return;
+      }
+      handledErrorSet.add(error as object);
       const url = new URL('/404', window.location.href);
       changeRoute(parseRoute(url), { shouldScroll: true })
         .then(() => {
-          // HACK: This timeout is required for canary-ci to work
-          // FIXME: As we understand it, we should have a proper solution.
-          setTimeout(() => {
-            reset();
-          }, 1);
+          reset();
         })
         .catch((err) => {
           console.log('Error while navigating to 404:', err);
         });
     }
-  }, [has404, reset, changeRoute]);
+  }, [error, has404, reset, changeRoute, handledErrorSet]);
   return has404 ? null : <h1>Not Found</h1>;
 };
 
@@ -559,18 +573,21 @@ const Redirect = ({
     }
     const currentPath = window.location.pathname;
     const newPath = url.pathname !== currentPath;
+    const historyUrl = url.origin === window.location.origin ? url : undefined;
     changeRoute(parseRoute(url), {
       shouldScroll: newPath,
       mode: 'replace',
-      url,
+      url: historyUrl,
     })
       .then(() => {
+        handledErrorSet.delete(error as object);
         // FIXME: As we understand it, we should have a proper solution.
         setTimeout(() => {
           reset();
         }, 1);
       })
       .catch((err) => {
+        handledErrorSet.delete(error as object);
         console.log('Error while navigating to redirect:', err);
       });
   }, [error, to, reset, changeRoute, handledErrorSet]);
@@ -598,7 +615,14 @@ class CustomErrorHandler extends Component<
     if (error !== null) {
       const info = getErrorInfo(error);
       if (info?.status === 404) {
-        return <NotFound has404={this.props.has404} reset={this.reset} />;
+        return (
+          <NotFound
+            error={error}
+            has404={this.props.has404}
+            reset={this.reset}
+            handledErrorSet={this.handledErrorSet}
+          />
+        );
       }
       if (info?.location) {
         return (

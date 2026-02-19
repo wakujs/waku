@@ -512,14 +512,10 @@ describe('useRouter + Link with context', () => {
     view.unmount();
   });
 
-  test('Link currently intercepts external clicks and prevents default for unsupported cases', async () => {
+  test('Link intercepts external, target, and download clicks', async () => {
     const changeRoute = vi.fn(async () => {});
     const prefetchRoute = vi.fn();
-    const pushStateSpy = vi
-      .spyOn(window.history, 'pushState')
-      .mockImplementation(() => {
-        return;
-      });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const view = await renderApp(
       <RouterContext
@@ -535,13 +531,10 @@ describe('useRouter + Link with context', () => {
           <Link to="https://example.com/external" data-testid="external-link">
             external
           </Link>
-          <Link to="/start" data-testid="same-url-link">
-            same-url
-          </Link>
-          <Link to="/start" target="_blank" data-testid="target-link">
+          <Link to="/next" target="_blank" data-testid="target-link">
             target
           </Link>
-          <Link to="/start" download data-testid="download-link">
+          <Link to="/next" download data-testid="download-link">
             download
           </Link>
         </>
@@ -555,41 +548,44 @@ describe('useRouter + Link with context', () => {
         button: 0,
       });
     const externalClick = click();
-    const sameUrlClick = click();
     const targetClick = click();
+    const secondTargetClick = click();
     const downloadClick = click();
+    const secondDownloadClick = click();
     view.container
       .querySelector('[data-testid="external-link"]')
       ?.dispatchEvent(externalClick);
     view.container
-      .querySelector('[data-testid="same-url-link"]')
-      ?.dispatchEvent(sameUrlClick);
-    view.container
       .querySelector('[data-testid="target-link"]')
       ?.dispatchEvent(targetClick);
     view.container
+      .querySelector('[data-testid="target-link"]')
+      ?.dispatchEvent(secondTargetClick);
+    view.container
       .querySelector('[data-testid="download-link"]')
       ?.dispatchEvent(downloadClick);
+    view.container
+      .querySelector('[data-testid="download-link"]')
+      ?.dispatchEvent(secondDownloadClick);
     await flush();
 
     expect(externalClick.defaultPrevented).toBe(true);
-    expect(sameUrlClick.defaultPrevented).toBe(true);
     expect(targetClick.defaultPrevented).toBe(true);
+    expect(secondTargetClick.defaultPrevented).toBe(true);
     expect(downloadClick.defaultPrevented).toBe(true);
-    expect(prefetchRoute).toHaveBeenCalledTimes(1);
-    expect(prefetchRoute).toHaveBeenCalledWith({
-      path: '/external',
-      query: '',
-      hash: '',
-    });
-    expect(changeRoute).toHaveBeenCalledTimes(1);
-    expect(changeRoute).toHaveBeenCalledWith(
-      { path: '/external', query: '', hash: '' },
-      expect.objectContaining({ shouldScroll: true }),
+    expect(secondDownloadClick.defaultPrevented).toBe(true);
+    expect(prefetchRoute).toHaveBeenCalledTimes(5);
+    expect(changeRoute).toHaveBeenCalledTimes(5);
+    expect(warnSpy).toHaveBeenCalledTimes(4);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[Link] `target` is discouraged. Use `<a>` for this case.',
+    );
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[Link] `download` is discouraged. Use `<a>` for this case.',
     );
 
     view.unmount();
-    pushStateSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 
   test('Link handles prefetchOnEnter and prefetchOnView', async () => {
@@ -1001,6 +997,39 @@ describe('Router integration', () => {
     expect(capture.router.path).toBe('/next');
     expect(capture.router.query).toBe('x=1');
     expect(capture.router.hash).toBe('#h');
+
+    view.unmount();
+  });
+
+  test('push does not write history when refetch fails', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = createRefetchMock();
+    refetch.mockRejectedValueOnce(new Error('refetch failed'));
+    vi.mocked(useRefetch).mockReturnValue(refetch);
+    const historyPushSpy = vi.spyOn(window.history, 'pushState');
+
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+
+    if (!capture.router) {
+      throw new Error('router not initialized');
+    }
+
+    await expect(capture.router.push('/next')).rejects.toThrow(
+      'refetch failed',
+    );
+    expect(historyPushSpy).not.toHaveBeenCalled();
 
     view.unmount();
   });
@@ -1466,7 +1495,7 @@ describe('Router integration', () => {
       },
       elements,
     );
-    await act(() => new Promise<void>((r) => setTimeout(r)));
+    await flush();
 
     expect(getRefetchMock()).toHaveBeenCalledWith(
       unstable_encodeRoutePath('/404'),
@@ -1502,6 +1531,7 @@ describe('Router integration', () => {
 
     await flush();
     try {
+      expect(getRefetchMock()).toHaveBeenCalledTimes(1);
       expect(getRefetchMock()).toHaveBeenCalledWith(
         unstable_encodeRoutePath('/404'),
         expect.any(URLSearchParams),
@@ -1540,7 +1570,7 @@ describe('Router integration', () => {
       },
       elements,
     );
-    await act(() => new Promise<void>((r) => setTimeout(r)));
+    await flush();
 
     expect(getRefetchMock()).toHaveBeenCalledWith(
       unstable_encodeRoutePath('/target'),
@@ -1584,6 +1614,48 @@ describe('Router integration', () => {
       );
       expect(window.location.pathname).toBe('/start');
       expect(getRefetchMock()).not.toHaveBeenCalled();
+    } finally {
+      view.unmount();
+      replaceLocationSpy.mockRestore();
+    }
+  });
+
+  test('redirect error with same hostname but different origin stays in client navigation', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const ThrowRedirect = () => {
+      throw createCustomError('redirect', {
+        location: 'http://localhost:4321/target?ok=1',
+      });
+    };
+
+    const replaceLocationSpy = vi
+      .spyOn(window.location, 'replace')
+      .mockImplementation(() => {});
+
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <ThrowRedirect />,
+      [unstable_getRouteSlotId('/target')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      await flush();
+
+      expect(replaceLocationSpy).not.toHaveBeenCalled();
+      expect(capture.router?.path).toBe('/target');
+      expect(capture.router?.query).toBe('ok=1');
+      expect(getRefetchMock()).toHaveBeenCalledWith(
+        unstable_encodeRoutePath('/target'),
+        expect.any(URLSearchParams),
+      );
     } finally {
       view.unmount();
       replaceLocationSpy.mockRestore();
