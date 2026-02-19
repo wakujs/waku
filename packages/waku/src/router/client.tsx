@@ -100,6 +100,10 @@ const parseRouteFromLocation = (): RouteProps => {
   return parseRoute(new URL(window.location.href));
 };
 
+const shouldScrollByDefault = (url: URL) =>
+  url.pathname !== window.location.pathname ||
+  url.hash !== window.location.hash;
+
 const isAltClick = (event: MouseEvent<HTMLAnchorElement>) =>
   event.button !== 0 ||
   !!(event.metaKey || event.altKey || event.ctrlKey || event.shiftKey);
@@ -197,17 +201,15 @@ export function useRouter() {
          * indicates if the link should scroll or not on navigation
          * - `true`: always scroll
          * - `false`: never scroll
-         * - `undefined`: scroll on path change (not on searchParams change)
+         * - `undefined`: scroll on path/hash change (not on query-only change)
          */
         scroll?: boolean;
       },
     ) => {
       to = addBase(to, import.meta.env.WAKU_CONFIG_BASE_PATH);
       const url = new URL(to, window.location.href);
-      const currentPath = window.location.pathname;
-      const newPath = url.pathname !== currentPath;
       await changeRoute(parseRoute(url), {
-        shouldScroll: options?.scroll ?? newPath,
+        shouldScroll: options?.scroll ?? shouldScrollByDefault(url),
         mode: 'push',
         url,
       });
@@ -222,17 +224,15 @@ export function useRouter() {
          * indicates if the link should scroll or not on navigation
          * - `true`: always scroll
          * - `false`: never scroll
-         * - `undefined`: scroll on path change (not on searchParams change)
+         * - `undefined`: scroll on path/hash change (not on query-only change)
          */
         scroll?: boolean;
       },
     ) => {
       to = addBase(to, import.meta.env.WAKU_CONFIG_BASE_PATH);
       const url = new URL(to, window.location.href);
-      const currentPath = window.location.pathname;
-      const newPath = url.pathname !== currentPath;
       await changeRoute(parseRoute(url), {
-        shouldScroll: options?.scroll ?? newPath,
+        shouldScroll: options?.scroll ?? shouldScrollByDefault(url),
         mode: 'replace',
         url,
       });
@@ -313,7 +313,7 @@ export type LinkProps = {
    * indicates if the link should scroll or not on navigation
    * - `true`: always scroll
    * - `false`: never scroll
-   * - `undefined`: scroll on path change (not on searchParams change)
+   * - `undefined`: scroll on path/hash change (not on query-only change)
    */
   scroll?: boolean;
   unstable_pending?: ReactNode;
@@ -385,10 +385,8 @@ export function Link({
       const route = parseRoute(url);
       prefetchRoute(route);
       startTransitionFn(async () => {
-        const currentPath = window.location.pathname;
-        const newPath = url.pathname !== currentPath;
         await changeRoute(route, {
-          shouldScroll: scroll ?? newPath,
+          shouldScroll: scroll ?? shouldScrollByDefault(url),
           mode: 'push',
           url,
           unstable_historyOnError: true,
@@ -698,14 +696,12 @@ export function Slice({
   return <Slot id={slotId}>{children}</Slot>;
 }
 
-const handleScroll = () => {
-  const { hash } = window.location;
-  const { state } = window.history;
-  const element = hash && document.getElementById(hash.slice(1));
+const scrollToRoute = (route: RouteProps, behavior: ScrollBehavior) => {
+  const element = route.hash && document.getElementById(route.hash.slice(1));
   window.scrollTo({
     left: 0,
     top: element ? element.getBoundingClientRect().top + window.scrollY : 0,
-    behavior: state?.waku_new_path ? 'instant' : 'auto',
+    behavior,
   });
 };
 
@@ -854,6 +850,11 @@ const InnerRouter = ({
     });
   }, [initialRoute]);
 
+  const routeRef = useRef(route);
+  useEffect(() => {
+    routeRef.current = route;
+  }, [route]);
+
   const [routeChangeEvents, emitRouteChangeEvent] =
     routeChangeListenersRef.current;
   const [err, setErr] = useState<unknown>(null);
@@ -866,11 +867,10 @@ const InnerRouter = ({
       const startTransitionFn =
         options.unstable_startTransition || ((fn: TransitionFunction) => fn());
       const { skipRefetch, mode, url, unstable_historyOnError } = options;
+      const routeBeforeChange = routeRef.current;
       const historyPathnameBeforeChange = window.location.pathname;
       const urlToWrite = mode && (url || getRouteUrl(route));
-      const newPath = urlToWrite?.pathname
-        ? urlToWrite.pathname !== historyPathnameBeforeChange
-        : route.path !== historyPathnameBeforeChange;
+      const newPath = route.path !== routeBeforeChange.path;
       const writeHistoryIfNeeded = () => {
         if (
           mode &&
@@ -904,12 +904,18 @@ const InnerRouter = ({
           throw e;
         }
       }
+      const scrollBehavior: ScrollBehavior =
+        mode && newPath
+          ? 'instant'
+          : window.history.state?.waku_new_path
+            ? 'instant'
+            : 'auto';
       startTransitionFn(() => {
-        if (options.shouldScroll) {
-          handleScroll();
-        }
-        setRoute(route);
         writeHistoryIfNeeded();
+        setRoute(route);
+        if (options.shouldScroll) {
+          scrollToRoute(route, scrollBehavior);
+        }
         refetching.current?.[0]?.();
         refetching.current = null;
         emitRouteChangeEvent('complete', route);

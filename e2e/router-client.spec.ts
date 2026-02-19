@@ -97,6 +97,127 @@ test.describe('router-client', () => {
     );
   });
 
+  test('hash-only link navigation scrolls to anchor target', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/start`);
+    await waitForHydration(page);
+
+    await page.evaluate(() => {
+      const scrollToCalls: ScrollToOptions[] = [];
+      (window as unknown as Record<string, unknown>).__scrollToCalls =
+        scrollToCalls;
+      const originalScrollTo = window.scrollTo.bind(window);
+      window.scrollTo = ((options: ScrollToOptions | number, top?: number) => {
+        if (typeof options === 'number') {
+          scrollToCalls.push({ left: options, top: top ?? 0 });
+          originalScrollTo(options, top ?? 0);
+          return;
+        }
+        scrollToCalls.push(options);
+        originalScrollTo(options);
+      }) as typeof window.scrollTo;
+    });
+
+    await page.getByTestId('router-push-hash-target').click();
+
+    await expect(page.getByTestId('route-path')).toHaveText('/start');
+    await expect(page.getByTestId('route-query')).toHaveText('');
+    await expect(page.getByTestId('route-hash')).toHaveText('#scroll-target');
+    await expect(page).toHaveURL(/\/start#scroll-target$/);
+    const scrollToCalls = (await page.evaluate(
+      () =>
+        (window as unknown as Record<string, unknown>)
+          .__scrollToCalls as ScrollToOptions[],
+    )) as ScrollToOptions[];
+    const lastScrollToCall = scrollToCalls.at(-1);
+    expect(lastScrollToCall).toBeDefined();
+    expect(lastScrollToCall?.left).toBe(0);
+    expect(lastScrollToCall?.top).toBeGreaterThan(100);
+  });
+
+  test('query-only link navigation preserves current scroll position by default', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/start`);
+    await waitForHydration(page);
+
+    await page.evaluate(() => {
+      window.scrollTo({ left: 0, top: 600 });
+    });
+    await page.evaluate(() => {
+      const scrollToCalls: ScrollToOptions[] = [];
+      (window as unknown as Record<string, unknown>).__scrollToCalls =
+        scrollToCalls;
+      const originalScrollTo = window.scrollTo.bind(window);
+      window.scrollTo = ((options: ScrollToOptions | number, top?: number) => {
+        if (typeof options === 'number') {
+          scrollToCalls.push({ left: options, top: top ?? 0 });
+          originalScrollTo(options, top ?? 0);
+          return;
+        }
+        scrollToCalls.push(options);
+        originalScrollTo(options);
+      }) as typeof window.scrollTo;
+    });
+
+    await page.getByTestId('router-push-query-only').click();
+
+    await expect(page.getByTestId('route-path')).toHaveText('/start');
+    await expect(page.getByTestId('route-query')).toHaveText('from=query-only');
+    await expect(page.getByTestId('route-hash')).toHaveText('');
+    await expect(page).toHaveURL(/\/start\?from=query-only$/);
+    const scrollToCalls = (await page.evaluate(
+      () =>
+        (window as unknown as Record<string, unknown>)
+          .__scrollToCalls as ScrollToOptions[],
+    )) as ScrollToOptions[];
+    expect(scrollToCalls).toHaveLength(0);
+  });
+
+  test('path-change link navigation resets scroll position to top by default', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/start`);
+    await waitForHydration(page);
+
+    await page.evaluate(() => {
+      window.scrollTo({ left: 0, top: 600 });
+    });
+    await page.evaluate(() => {
+      const scrollToCalls: ScrollToOptions[] = [];
+      (window as unknown as Record<string, unknown>).__scrollToCalls =
+        scrollToCalls;
+      const originalScrollTo = window.scrollTo.bind(window);
+      window.scrollTo = ((options: ScrollToOptions | number, top?: number) => {
+        if (typeof options === 'number') {
+          scrollToCalls.push({ left: options, top: top ?? 0 });
+          originalScrollTo(options, top ?? 0);
+          return;
+        }
+        scrollToCalls.push(options);
+        originalScrollTo(options);
+      }) as typeof window.scrollTo;
+    });
+
+    await page.getByTestId('router-push-next').click();
+
+    await expect(page.getByRole('heading', { name: 'Next' })).toBeVisible();
+    await expect(page.getByTestId('route-path')).toHaveText('/next');
+    await expect(page.getByTestId('route-query')).toHaveText('x=1');
+    await expect(page.getByTestId('route-hash')).toHaveText('');
+    await expect(page).toHaveURL(/\/next\?x=1$/);
+    const scrollToCalls = (await page.evaluate(
+      () =>
+        (window as unknown as Record<string, unknown>)
+          .__scrollToCalls as ScrollToOptions[],
+    )) as ScrollToOptions[];
+    const lastScrollToCall = scrollToCalls.at(-1);
+    expect(lastScrollToCall).toBeDefined();
+    expect(lastScrollToCall?.left).toBe(0);
+    expect(lastScrollToCall?.top).toBe(0);
+  });
+
   test('route fetch includes X-Waku-Router-Skip header', async ({ page }) => {
     await page.goto(`http://localhost:${port}/start`);
     await waitForHydration(page);

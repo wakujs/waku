@@ -1001,6 +1001,222 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('push to a new path with hash scrolls using destination hash after history write', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/next')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const scrollSnapshots: Array<{
+      pathname: string;
+      hash: string;
+      state: unknown;
+    }> = [];
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
+      scrollSnapshots.push({
+        pathname: window.location.pathname,
+        hash: window.location.hash,
+        state: window.history.state,
+      });
+    });
+    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
+      window,
+      'scrollY',
+    );
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      value: 100,
+    });
+    const hashTarget = document.createElement('div');
+    hashTarget.id = 'target';
+    const getBoundingClientRectSpy = vi
+      .spyOn(hashTarget, 'getBoundingClientRect')
+      .mockReturnValue({ top: 40 } as DOMRect);
+    document.body.append(hashTarget);
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      if (!capture.router) {
+        throw new Error('router not initialized');
+      }
+
+      await act(async () => {
+        await capture.router!.push('/next#target');
+      });
+
+      expect(scrollToSpy).toHaveBeenCalledWith({
+        left: 0,
+        top: 140,
+        behavior: 'instant',
+      });
+      expect(scrollSnapshots).toEqual([
+        {
+          pathname: '/next',
+          hash: '#target',
+          state: expect.objectContaining({ waku_new_path: true }),
+        },
+      ]);
+    } finally {
+      view.unmount();
+      getBoundingClientRectSpy.mockRestore();
+      hashTarget.remove();
+      if (scrollYDescriptor) {
+        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
+      } else {
+        Object.defineProperty(window, 'scrollY', {
+          configurable: true,
+          value: 0,
+        });
+      }
+    }
+  });
+
+  test('query-only push preserves scroll by default', async () => {
+    window.history.replaceState({}, '', '/start?a=1');
+
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [ROUTE_ID]: ['/start', 'a=1'],
+      [IS_STATIC_ID]: false,
+    };
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
+      return;
+    });
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: 'a=1', hash: '' },
+      },
+      elements,
+    );
+    try {
+      if (!capture.router) {
+        throw new Error('router not initialized');
+      }
+
+      await act(async () => {
+        await capture.router!.push('/start?a=2');
+      });
+
+      expect(capture.router.query).toBe('a=2');
+      expect(window.location.pathname).toBe('/start');
+      expect(window.location.search).toBe('?a=2');
+      expect(scrollToSpy).not.toHaveBeenCalled();
+    } finally {
+      view.unmount();
+    }
+  });
+
+  test('hash-only push scrolls to hash target by default', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
+      return;
+    });
+    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
+      window,
+      'scrollY',
+    );
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      value: 100,
+    });
+    const hashTarget = document.createElement('div');
+    hashTarget.id = 'target';
+    const getBoundingClientRectSpy = vi
+      .spyOn(hashTarget, 'getBoundingClientRect')
+      .mockReturnValue({ top: 30 } as DOMRect);
+    document.body.append(hashTarget);
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      if (!capture.router) {
+        throw new Error('router not initialized');
+      }
+
+      await act(async () => {
+        await capture.router!.push('/start#target');
+      });
+
+      expect(scrollToSpy).toHaveBeenCalledWith({
+        left: 0,
+        top: 130,
+        behavior: 'auto',
+      });
+      expect(window.location.hash).toBe('#target');
+      expect(capture.router.hash).toBe('#target');
+    } finally {
+      view.unmount();
+      getBoundingClientRectSpy.mockRestore();
+      hashTarget.remove();
+      if (scrollYDescriptor) {
+        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
+      } else {
+        Object.defineProperty(window, 'scrollY', {
+          configurable: true,
+          value: 0,
+        });
+      }
+    }
+  });
+
+  test('path change push with scroll false preserves scroll position', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/next')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
+      return;
+    });
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      if (!capture.router) {
+        throw new Error('router not initialized');
+      }
+
+      await act(async () => {
+        await capture.router!.push('/next', { scroll: false });
+      });
+
+      expect(capture.router.path).toBe('/next');
+      expect(scrollToSpy).not.toHaveBeenCalled();
+    } finally {
+      view.unmount();
+    }
+  });
+
   test('push does not write history when refetch fails', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);

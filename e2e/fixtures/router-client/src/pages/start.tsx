@@ -12,6 +12,16 @@ export default function StartPage() {
         </Link>
       </p>
       <p>
+        <Link to="/start?from=query-only" data-testid="go-query-only">
+          Go query only
+        </Link>
+      </p>
+      <p>
+        <Link to="/start#scroll-target" data-testid="go-hash-target">
+          Go hash target
+        </Link>
+      </p>
+      <p>
         <Link
           to="/next?from=enter"
           unstable_prefetchOnEnter
@@ -47,7 +57,10 @@ export default function StartPage() {
       <p>
         <PushMissingButton />
       </p>
-      <div style={{ minHeight: '140vh' }} />
+      <div style={{ minHeight: '200vh' }} />
+      <div id="scroll-target" data-testid="scroll-target">
+        Scroll Target
+      </div>
       <p>
         <Link
           to="/view-target?from=view"
