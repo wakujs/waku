@@ -8,45 +8,43 @@ description: How to intercept SSR stream to inject content before it is sent to 
 
 In some cases you may want to inject additional content into the SSR stream before it's sent to the client. This can be useful for injecting properties onto the document's root element (e.g., the `lang` attribute or a class name based on the user's request headers).
 
-### Step 1: Create a custom middleware for Waku
+### Step 1: Create a custom middleware
 
-Create a new file in your project, for example `./src/middleware/stream-interceptor.ts`:
+Create a new file in `src/middleware/`. Waku automatically discovers and loads middleware from this directory.
 
 ```ts
-import type { Middleware } from 'waku/config';
+// ./src/middleware/stream-interceptor.ts
+import type { MiddlewareHandler } from 'hono';
+import { unstable_getContextData as getContextData } from 'waku/server';
 
-// key below is probably best to have at a central config location to allow for it to be changed easily
-export const themeCookieKey = 'waku-color-theme';
-
-const streamInterceptor: Middleware = () => {
-  return async (ctx, next) => {
-    const theme = ctx.context.theme;
+const streamInterceptor = (): MiddlewareHandler => {
+  return async (c, next) => {
+    const data = getContextData<{ theme?: string }>();
 
     await next();
 
-    ctx.res.headers ||= {};
-
-    const isDocument = ctx.res.headers['content-type']?.includes('text/html');
+    const contentType = c.res.headers.get('content-type');
+    const isDocument = contentType?.includes('text/html');
     const lang = 'en-US';
 
-    if (isDocument) {
-      const documentContent = ctx.res.body;
-
-      const newDocumentContent = documentContent?.pipeThrough(
+    if (isDocument && c.res.body) {
+      const newBody = c.res.body.pipeThrough(
         new TransformStream({
-          async transform(chunk, controller) {
+          transform(chunk, controller) {
             const text = new TextDecoder().decode(chunk);
             const newText = text.replace(
               '<html>',
-              `<html lang="${lang}" ${theme == 'dark' ? "class='dark'" : ''}>`,
+              `<html lang="${lang}" ${data.theme === 'dark' ? "class='dark'" : ''}>`,
             );
-
             controller.enqueue(new TextEncoder().encode(newText));
           },
         }),
       );
 
-      ctx.res.body = newDocumentContent!;
+      c.res = new Response(newBody, {
+        status: c.res.status,
+        headers: c.res.headers,
+      });
     }
   };
 };
@@ -54,29 +52,6 @@ const streamInterceptor: Middleware = () => {
 export default streamInterceptor;
 ```
 
-### Step 2: Register the middleware
-
-In your `waku.config.ts` file, import the middleware and add it to the `middleware` array:
-
-```ts
-import streamInterceptor from './src/middleware/stream-interceptor';
-import { defineConfig } from 'waku/config';
-
-export default defineConfig({
-  // ...
-  middleware: [
-    'waku/middleware/context',
-    './src/middleware/themePreload.js', // + this is the one we just added
-    'waku/middleware/dev-server',
-    'waku/middleware/handler',
-  ],
-});
-```
-
-### Step 3: Restart the server
-
-After adding the middleware, you'll need to restart the server for the changes to take effect.
-
-### Step 4: Verify the changes
+### Step 2: Verify the changes
 
 After restarting the server, you can verify that the changes have taken effect by inspecting the HTML source of your page. You should see the `lang` attribute and, if your system is set to dark mode, the `class` attribute on the `<html>` element as well.

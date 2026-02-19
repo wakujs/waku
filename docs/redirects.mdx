@@ -4,63 +4,46 @@ title: Redirects
 description: How to add HTTP redirects to your Waku project.
 ---
 
-### Redirects
+## Redirects
 
-Redirects are not handled by Waku directly. Instead, you can use either a custom middleware or the hosting environment to achieve that. The `<Link />` component does not deal with redirects either and will by default show the **404** page instead. To resolve this, you have to add an additional redirect for each redirected path, that points Waku to the correct `RSC` file. If there is a redirect from `/old` to `/new`, there also has to be one from `/RSC/old.txt`` to `/RSC/new.txt`to make the `<Link />` component`s smooth page transition work.
+HTTP redirects are not handled by the Waku router directly. Instead, you can use either a custom middleware or the hosting environment to achieve that. The `<Link />` component does not deal with HTTP redirects either and will by default show the **404** page instead. To resolve this, you have to add an additional redirect for each redirected path, that points Waku to the correct RSC file. If there is a redirect from `/old` to `/new`, there also has to be one from `/RSC/R/old.txt` to `/RSC/R/new.txt` to make the `<Link />` component's smooth page transition work.
 
 > The `/RSC/` file naming convention is [subject to change](https://github.com/wakujs/waku/discussions/929#discussioncomment-10825975) in future versions of Waku.
 
-#### Redirect via middleware
+### Redirect via middleware
 
-Create a new middleware somewhere in your project and add it to the `waku.config.ts` file.
+Create a new middleware file in `src/middleware/`. Waku automatically discovers and loads middleware from this directory.
 
 ```typescript
-// ./src/middleware/redirect.ts
-import type { Middleware } from 'waku/config';
+// ./src/middleware/redirects.ts
+import type { MiddlewareHandler } from 'hono';
 
-const redirectsMiddleware: Middleware = () => async (ctx, next) => {
-  // Define the list of redirects.
-  const redirects = {
+const redirectsMiddleware = (): MiddlewareHandler => async (c, next) => {
+  const url = new URL(c.req.raw.url);
+
+  // Define the list of redirects with corresponding RSC paths.
+  const redirects: Record<string, string> = {
     '/old': '/new',
+    '/RSC/R/old.txt': '/RSC/R/new.txt',
     // ... add more redirects here
   };
 
-  // Create a corresponding /RSC/ entry for each redirect.
-  const withRSC = Object.fromEntries(
-    Object.entries(redirects).flatMap(([from, to]) => [
-      [from, to],
-      [`/RSC${from}.txt`, `/RSC${to}.txt`],
-    ]),
-  );
-
-  if (withRSC[ctx.req.url.pathname]) {
-    ctx.res.status = 301;
-    ctx.res.headers = {
-      Location: redirects[ctx.req.url.pathname],
-    };
-  } else {
-    return await next();
+  if (url.pathname in redirects) {
+    url.pathname = redirects[url.pathname]!;
+    c.res = new Response(null, {
+      status: 302,
+      headers: { location: url.toString() },
+    });
+    return;
   }
+
+  return await next();
 };
 
 export default redirectsMiddleware;
 ```
 
-```typescript
-// ./waku.config.ts
-import type { Config } from 'waku/config';
-
-export default {
-  middleware: [
-    'waku/middleware/context',
-    './src/middleware/redirects.js',
-    'waku/middleware/dev-server',
-    'waku/middleware/handler',
-  ],
-} satisfies Config;
-```
-
-#### Redirect via hosting environment
+### Redirect via hosting environment
 
 This very much depends on the hosting environment you are using. For example, on [Vercel](https://vercel.com/docs/projects/project-configuration#redirects) you can use the `vercel.json` file to define redirects.
 
@@ -69,18 +52,17 @@ This very much depends on the hosting environment you are using. For example, on
   "redirects": [
     { "source": "/old", "destination": "/new", "permanent": true },
     {
-      "source": "/RSC/old.txt",
-      "destination": "/RSC/new.txt",
+      "source": "/RSC/R/old.txt",
+      "destination": "/RSC/R/new.txt",
       "permanent": true
     }
   ]
 }
 ```
 
-[Netlify](https://docs.netlify.com/routing/redirects/#syntax-for-the-redirects-file) and [Cloudflare pages](https://developers.cloudflare.com/pages/configuration/redirects/) will respect a `_redirects` file that you can place in the `public` folder:
-bbb
+[Netlify](https://docs.netlify.com/routing/redirects/#syntax-for-the-redirects-file) and [Cloudflare Pages](https://developers.cloudflare.com/pages/configuration/redirects/) will respect a `_redirects` file that you can place in the `public` folder:
 
 ```
 /old /new 301
-/RSC/old.txt /RSC/new.txt 301
+/RSC/R/old.txt /RSC/R/new.txt 301
 ```
