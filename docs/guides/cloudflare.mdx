@@ -95,15 +95,15 @@ Configure your `wrangler.jsonc` to point to the server entry:
   "assets": {
     "binding": "ASSETS",
     "directory": "./dist/public",
-    "html_handling": "drop-trailing-slash"
+    "html_handling": "drop-trailing-slash",
   },
   "rules": [
     {
       "type": "ESModule",
-      "globs": ["**/*.js", "**/*.mjs"]
-    }
+      "globs": ["**/*.js", "**/*.mjs"],
+    },
   ],
-  "no_bundle": true
+  "no_bundle": true,
 }
 ```
 
