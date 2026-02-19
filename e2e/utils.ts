@@ -408,3 +408,22 @@ export async function waitForHydration(page: Page) {
     { timeout: 20_000 },
   );
 }
+
+// In WebKit + react@experimental, locator-based assertions can hang while
+// Playwright waits for navigation to settle. This polls DOM text directly.
+export const waitForSelectorText = async (
+  page: Page,
+  selector: string,
+  text: string,
+) => {
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(
+          (selector) => document.querySelector(selector)?.textContent ?? null,
+          selector,
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe(text);
+};

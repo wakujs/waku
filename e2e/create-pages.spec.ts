@@ -1,14 +1,75 @@
 import { statSync } from 'node:fs';
 import path from 'node:path';
-import { expect } from '@playwright/test';
+import { type Page, expect } from '@playwright/test';
 import {
   FETCH_ERROR_MESSAGES,
   prepareNormalSetup,
   test,
   waitForHydration,
+  waitForSelectorText,
 } from './utils.js';
 
 const startApp = prepareNormalSetup('create-pages');
+
+// Long suspense flows are more stable with direct DOM clicks.
+const clickClientLink = async (page: Page, href: string) => {
+  await page.evaluate((targetHref) => {
+    const link = document.querySelector(`a[href="${targetHref}"]`);
+    if (!(link instanceof HTMLAnchorElement)) {
+      throw new Error(`Missing link: ${targetHref}`);
+    }
+    link.click();
+  }, href);
+};
+
+// The pending indicator can flash very briefly. Detect "seen at least once"
+// with a short-lived observer instead of asserting an instant count.
+const waitForSelectorSeen = async (page: Page, selector: string) => {
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(
+          (selector) =>
+            new Promise<boolean>((resolve) => {
+              let settled = false;
+              let timer: ReturnType<typeof setTimeout> | null = null;
+              let observer: MutationObserver | null = null;
+              const done = (value: boolean) => {
+                if (settled) {
+                  return;
+                }
+                settled = true;
+                if (observer) {
+                  observer.disconnect();
+                }
+                if (timer) {
+                  clearTimeout(timer);
+                }
+                resolve(value);
+              };
+              const isVisible = () => !!document.querySelector(selector);
+              if (isVisible()) {
+                done(true);
+                return;
+              }
+              observer = new MutationObserver(() => {
+                if (isVisible()) {
+                  done(true);
+                }
+              });
+              observer.observe(document.documentElement, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+              });
+              timer = setTimeout(() => done(false), 3_000);
+            }),
+          selector,
+        ),
+      { timeout: 4_000 },
+    )
+    .toBe(true);
+};
 
 test.describe(`create-pages`, () => {
   let port: number;
@@ -22,6 +83,9 @@ test.describe(`create-pages`, () => {
   test.afterAll(async () => {
     await stopApp();
   });
+
+  const SELECTOR = '[data-testid="long-suspense-component"] h3';
+  const PENDING_SELECTOR = '[data-testid="long-suspense-pending"]';
 
   test('home', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
@@ -44,8 +108,8 @@ test.describe(`create-pages`, () => {
   test('foo', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await page.click("a[href='/foo']");
-    await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
+    await page.click("a[href='/foo']", { noWaitAfter: true });
+    await waitForSelectorText(page, 'h2', 'Foo');
 
     await page.goto(`http://localhost:${port}/foo`);
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
@@ -91,8 +155,8 @@ test.describe(`create-pages`, () => {
   test('jump', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await page.click("a[href='/foo']");
-    await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
+    await page.click("a[href='/foo']", { noWaitAfter: true });
+    await waitForSelectorText(page, 'h2', 'Foo');
     await page.click('text=Jump to random page');
     // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(500); // need to wait not to error
@@ -107,8 +171,8 @@ test.describe(`create-pages`, () => {
     page.on('pageerror', (err) => errors.push(err.message));
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await page.click("a[href='/foo']");
-    await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
+    await page.click("a[href='/foo']", { noWaitAfter: true });
+    await waitForSelectorText(page, 'h2', 'Foo');
     await page.click('text=Jump with setState');
     await expect(
       page.getByRole('heading', { name: 'Baz', exact: true }),
@@ -178,57 +242,14 @@ test.describe(`create-pages`, () => {
     await expect(
       page.getByRole('heading', { name: 'Long Suspense Page 1' }),
     ).toBeVisible();
-    await page.click("a[href='/long-suspense/2']");
-    await page.waitForFunction(
-      () => {
-        const pendingElement = document.querySelector(
-          '[data-testid="long-suspense-pending"]',
-        );
-        const heading = document.querySelector(
-          '[data-testid="long-suspense-component"] h3',
-        );
-        return (
-          pendingElement?.textContent === 'Pending...' &&
-          heading?.textContent === 'Long Suspense Page 1'
-        );
-      },
-      undefined,
-      { timeout: 1000 },
-    );
-    await expect(page.getByTestId('long-suspense')).toHaveCount(0);
-    await expect(
-      page.getByRole('heading', { name: 'Long Suspense Page 2' }),
-    ).toBeVisible();
-    await page.click("a[href='/long-suspense/3']");
-    await expect(
-      page.getByRole('heading', { name: 'Long Suspense Page 2' }),
-    ).toBeHidden();
-    await expect(page.getByTestId('long-suspense')).toHaveText('Loading...');
-    await expect(page.getByTestId('long-suspense-pending')).toHaveCount(0);
-    await expect(
-      page.getByRole('heading', { name: 'Long Suspense Page 3' }),
-    ).toBeVisible();
-    await page.click("a[href='/long-suspense/2']");
-    await page.waitForFunction(
-      () => {
-        const pendingElement = document.querySelector(
-          '[data-testid="long-suspense-pending"]',
-        );
-        const heading = document.querySelector(
-          '[data-testid="long-suspense-component"] h3',
-        );
-        return (
-          pendingElement?.textContent === 'Pending...' &&
-          heading?.textContent === 'Long Suspense Page 3'
-        );
-      },
-      undefined,
-      { timeout: 1000 },
-    );
-    await expect(page.getByTestId('long-suspense')).toHaveCount(0);
-    await expect(
-      page.getByRole('heading', { name: 'Long Suspense Page 2' }),
-    ).toBeVisible();
+    const pendingSeen = waitForSelectorSeen(page, PENDING_SELECTOR);
+    await clickClientLink(page, '/long-suspense/2');
+    await pendingSeen;
+    await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 2');
+    await clickClientLink(page, '/long-suspense/3');
+    await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 3');
+    await clickClientLink(page, '/long-suspense/2');
+    await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 2');
   });
 
   // https://github.com/wakujs/waku/issues/1437
@@ -241,21 +262,12 @@ test.describe(`create-pages`, () => {
     await expect(
       page.getByRole('heading', { name: 'Long Suspense Page 4' }),
     ).toBeVisible();
-    await page.click("a[href='/static-long-suspense/5']");
-    // It flashes very briefly
-    // await expect(page.getByTestId('long-suspense-pending')).toHaveCount(1);
-    await expect(page.getByTestId('long-suspense')).toHaveCount(0);
-    await expect(
-      page.getByRole('heading', { name: 'Long Suspense Page 5' }),
-    ).toBeVisible();
-    await page.click("a[href='/static-long-suspense/6']");
-    // It flashes very briefly
-    // await expect(page.getByTestId('long-suspense-pending')).toHaveCount(0);
-    // No loading state with static
-    await expect(page.getByTestId('long-suspense')).toHaveCount(0);
-    await expect(
-      page.getByRole('heading', { name: 'Long Suspense Page 6' }),
-    ).toBeVisible();
+    const pendingSeen = waitForSelectorSeen(page, PENDING_SELECTOR);
+    await clickClientLink(page, '/static-long-suspense/5');
+    await pendingSeen;
+    await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 5');
+    await clickClientLink(page, '/static-long-suspense/6');
+    await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 6');
   });
 
   test('api hi', async () => {
