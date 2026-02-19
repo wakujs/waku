@@ -46,7 +46,7 @@ const waitForSelectorSeen = async (page: Page, selector: string) => {
     .poll(
       async () =>
         page.evaluate(
-          ({ selector }) =>
+          (selector) =>
             new Promise<boolean>((resolve) => {
               let settled = false;
               let timer: ReturnType<typeof setTimeout> | null = null;
@@ -81,7 +81,7 @@ const waitForSelectorSeen = async (page: Page, selector: string) => {
               });
               timer = setTimeout(() => done(false), 3_000);
             }),
-          { selector },
+          selector,
         ),
       { timeout: 4_000 },
     )
@@ -125,7 +125,7 @@ test.describe(`create-pages`, () => {
   test('foo', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await page.click("a[href='/foo']");
+    await clickClientLink(page, '/foo');
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
 
     await page.goto(`http://localhost:${port}/foo`);
@@ -172,7 +172,7 @@ test.describe(`create-pages`, () => {
   test('jump', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await page.click("a[href='/foo']");
+    await clickClientLink(page, '/foo');
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
     await page.click('text=Jump to random page');
     // eslint-disable-next-line playwright/no-wait-for-timeout
@@ -188,7 +188,7 @@ test.describe(`create-pages`, () => {
     page.on('pageerror', (err) => errors.push(err.message));
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await page.click("a[href='/foo']");
+    await clickClientLink(page, '/foo');
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
     await page.click('text=Jump with setState');
     await expect(
