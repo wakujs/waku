@@ -19,11 +19,20 @@ Then use these commands:
 
 ## Building Waku For Cloudflare Workers
 
-To build a Waku app for Cloudflare Workers, simply set the `CLOUDFLARE` or `WORKERS_CI` environment variable to `1` and run `waku build`. Waku will use its adapter for Cloudflare Workers. Alternatively, you can import 'waku/adapters/cloudflare' in your `src/waku.server.ts` file.
+Waku integrates with Cloudflare Workers via [`@cloudflare/vite-plugin`](https://developers.cloudflare.com/workers/vite-plugin/). This plugin runs your code in the actual Cloudflare workerd runtime during both development and build, so Cloudflare bindings (D1, KV, etc.) work without additional shims.
 
-`./src/waku.server.ts`:
+> `@cloudflare/vite-plugin` is optional. If you don't need Cloudflare-specific features like D1, KV, or other bindings, you can deploy to Cloudflare Workers without it — just use `waku/adapters/cloudflare` in your `src/waku.server.ts`.
+
+Install `@cloudflare/vite-plugin` and [`wrangler`](https://www.npmjs.com/package/wrangler) as development dependencies:
+
+```sh
+npm install --save-dev @cloudflare/vite-plugin wrangler
+```
+
+Create a `src/waku.server.ts` file that uses the Cloudflare adapter:
 
 ```ts
+// ./src/waku.server.ts
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/cloudflare';
 
@@ -32,27 +41,75 @@ export default adapter(
 );
 ```
 
-> The Waku starter template for Cloudflare Workers includes an example `./src/waku.server.ts` file and sets the **`CLOUDFLARE`** environment variable in the build script in `package.json`:
+Add `@cloudflare/vite-plugin` to your `waku.config.ts`:
 
-```json
+```ts
+// ./waku.config.ts
+import { cloudflare } from '@cloudflare/vite-plugin';
+import { defineConfig } from 'waku/config';
+
+export default defineConfig({
+  vite: {
+    environments: {
+      rsc: {
+        optimizeDeps: {
+          include: ['hono/tiny'],
+        },
+        build: {
+          rollupOptions: {
+            platform: 'neutral',
+          } as never,
+        },
+      },
+      ssr: {
+        optimizeDeps: {
+          include: ['waku > rsc-html-stream/server'],
+        },
+        build: {
+          rollupOptions: {
+            platform: 'neutral',
+          } as never,
+        },
+      },
+    },
+    plugins: [
+      cloudflare({
+        viteEnvironment: { name: 'rsc', childEnvironments: ['ssr'] },
+        inspectorPort: false,
+      }),
+    ],
+  },
+});
+```
+
+Configure your `wrangler.jsonc` to point to the server entry:
+
+```jsonc
+// ./wrangler.jsonc
 {
-  "scripts": {
-    "build": "CLOUDFLARE=1 waku build"
-  }
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "waku-project",
+  "main": "./src/waku.server",
+  "compatibility_flags": ["nodejs_als"],
+  "compatibility_date": "2025-11-17",
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist/public",
+    "html_handling": "drop-trailing-slash",
+  },
+  "rules": [
+    {
+      "type": "ESModule",
+      "globs": ["**/*.js", "**/*.mjs"],
+    },
+  ],
+  "no_bundle": true,
 }
 ```
 
-The first time you run `npm run build`, it will create a `wrangler.jsonc` file with minimal configuration for Cloudflare Workers. See [Cloudflare's documentation](https://developers.cloudflare.com/workers/wrangler/configuration/) for more information on configuring Cloudflare Workers and `wrangler.jsonc`.
+See [Cloudflare's documentation](https://developers.cloudflare.com/workers/wrangler/configuration/) for more information on configuring `wrangler.jsonc`.
 
-> The Waku starter template for Cloudflare Workers also includes an example `wrangler.jsonc` file with an example environment variable that sets `env.MAX_ITEMS` to `10`.
-
-To test your build, you can add Cloudflare's CLI tool [`wrangler`](https://www.npmjs.com/package/wrangler) as a development dependency:
-
-```sh
-npm install --save-dev wrangler
-```
-
-After building, you can test your build by running `npx wrangler dev` or deploy it to Cloudflare using `npx wrangler deploy`.
+After setting up, run `waku build` to build and `npx wrangler dev` to test locally, or `npx wrangler deploy` to deploy.
 
 ## Notes on Cloudflare's workerd Runtime
 
@@ -101,39 +158,9 @@ const getData = async () => {
 };
 ```
 
-### Dev Mode Setup
+### Dev Mode
 
-> Note: the following setup is optional. You can also develop Waku apps for Cloudflare Workers without it, but you won't be able to access Cloudflare bindings like KV, D1, etc. in your server components or functions during local development. If you create your project with the Waku Cloudflare Workers starter template, this setup is already done for you.
-
-To be able to simulate the Cloudflare Workers environment locally, install [`@hiogawa/node-loader-cloudflare`](https://github.com/hi-ogawa/vite-plugins/tree/main/packages/node-loader-cloudflare) and Cloudflare's build tool, [`wrangler`](https://www.npmjs.com/package/wrangler) as development dependencies:
-
-```sh
-npm install --save-dev @hiogawa/node-loader-cloudflare wrangler
-```
-
-Then, create a `waku.config.ts` file in your project root with the following content:
-
-```ts
-import nodeLoaderCloudflare from '@hiogawa/node-loader-cloudflare/vite';
-import { defineConfig } from 'waku/config';
-
-export default defineConfig({
-  vite: {
-    plugins: [
-      nodeLoaderCloudflare({
-        environments: ['rsc'],
-        build: true,
-        // https://developers.cloudflare.com/workers/wrangler/api/#getplatformproxy
-        getPlatformProxyOptions: {
-          persist: {
-            path: '.wrangler/state/v3',
-          },
-        },
-      }),
-    ],
-  },
-});
-```
+The `@cloudflare/vite-plugin` configured in `waku.config.ts` runs your code in the Cloudflare workerd runtime during local development, so Cloudflare bindings like KV, D1, etc. are available in your server components and functions without additional setup. See [Cloudflare's Vite plugin documentation](https://developers.cloudflare.com/workers/vite-plugin/) for more details.
 
 ## Additional Handlers
 
