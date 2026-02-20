@@ -29,6 +29,15 @@ export function RouteState() {
       </p>
       <p>
         <button
+          data-testid="router-push-hash-missing"
+          onClick={() => router.push('/start#missing')}
+          type="button"
+        >
+          router.push hash missing
+        </button>
+      </p>
+      <p>
+        <button
           data-testid="router-push-next"
           onClick={() => router.push('/next?x=1')}
           type="button"

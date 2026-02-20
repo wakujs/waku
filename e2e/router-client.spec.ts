@@ -152,6 +152,26 @@ test.describe('router-client', () => {
     expect(lastScrollToCall?.top).toBeGreaterThan(100);
   });
 
+  test('hash-only navigation preserves scroll when hash target is missing', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/start`);
+    await waitForHydration(page);
+
+    await page.evaluate(() => {
+      window.scrollTo({ left: 0, top: 600 });
+    });
+    await installScrollToRecorder(page);
+
+    await page.getByTestId('router-push-hash-missing').click();
+
+    await expect(page.getByTestId('route-path')).toHaveText('/start');
+    await expect(page.getByTestId('route-query')).toHaveText('');
+    await expect(page.getByTestId('route-hash')).toHaveText('#missing');
+    await expect(page).toHaveURL(/\/start#missing$/);
+    expect(await getScrollToCalls(page)).toHaveLength(0);
+  });
+
   test('query-only link navigation preserves current scroll position by default', async ({
     page,
   }) => {

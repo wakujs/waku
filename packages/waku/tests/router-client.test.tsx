@@ -1182,6 +1182,41 @@ describe('Router integration', () => {
     }
   });
 
+  test('hash-only push preserves scroll when hash target is missing', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
+      return;
+    });
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      if (!capture.router) {
+        throw new Error('router not initialized');
+      }
+
+      await act(async () => {
+        await capture.router!.push('/start#missing');
+      });
+
+      expect(scrollToSpy).not.toHaveBeenCalled();
+      expect(window.location.hash).toBe('#missing');
+      expect(capture.router.hash).toBe('#missing');
+    } finally {
+      view.unmount();
+    }
+  });
+
   test('path change push with scroll false preserves scroll position', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
@@ -1483,7 +1518,7 @@ describe('Router integration', () => {
     }
   });
 
-  test('popstate scrolls to top with auto behavior when hash target is missing', async () => {
+  test('popstate path change scrolls to top with auto behavior when hash target is missing', async () => {
     const elements = {
       [unstable_getRouteSlotId('/start')]: <div>start</div>,
       [unstable_getRouteSlotId('/next')]: <div>next</div>,
@@ -1511,6 +1546,38 @@ describe('Router integration', () => {
         top: 0,
         behavior: 'auto',
       });
+    } finally {
+      view.unmount();
+    }
+  });
+
+  test('popstate hash-only transition preserves scroll when hash target is missing', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
+      return;
+    });
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      window.history.pushState({}, '', '/start#missing');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      await flush();
+
+      expect(capture.router?.path).toBe('/start');
+      expect(capture.router?.hash).toBe('#missing');
+      expect(scrollToSpy).not.toHaveBeenCalled();
     } finally {
       view.unmount();
     }

@@ -696,11 +696,26 @@ export function Slice({
   return <Slot id={slotId}>{children}</Slot>;
 }
 
-const scrollToRoute = (route: RouteProps, behavior: ScrollBehavior) => {
-  const element = route.hash && document.getElementById(route.hash.slice(1));
+const scrollToRoute = (
+  route: RouteProps,
+  behavior: ScrollBehavior,
+  scrollTopForMissingHash: boolean,
+) => {
+  if (route.hash) {
+    const element = document.getElementById(route.hash.slice(1));
+    if (!element && !scrollTopForMissingHash) {
+      return;
+    }
+    window.scrollTo({
+      left: 0,
+      top: element ? element.getBoundingClientRect().top + window.scrollY : 0,
+      behavior,
+    });
+    return;
+  }
   window.scrollTo({
     left: 0,
-    top: element ? element.getBoundingClientRect().top + window.scrollY : 0,
+    top: 0,
     behavior,
   });
 };
@@ -914,7 +929,7 @@ const InnerRouter = ({
         writeHistoryIfNeeded();
         setRoute(route);
         if (options.shouldScroll) {
-          scrollToRoute(route, scrollBehavior);
+          scrollToRoute(route, scrollBehavior, newPath);
         }
         refetching.current?.[0]?.();
         refetching.current = null;
