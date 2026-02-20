@@ -377,8 +377,7 @@ export function Link({
             if (entry.isIntersecting) {
               const url = new URL(to, window.location.href);
               if (router && url.href !== window.location.href) {
-                const route = parseRoute(url);
-                router.prefetchRoute(route);
+                router.prefetchRoute(parseRoute(url));
               }
             }
           });
@@ -432,8 +431,7 @@ export function Link({
     ? (event: MouseEvent<HTMLAnchorElement>) => {
         const url = new URL(to, window.location.href);
         if (url.href !== window.location.href) {
-          const route = parseRoute(url);
-          prefetchRoute(route);
+          prefetchRoute(parseRoute(url));
         }
         props.onMouseEnter?.(event);
       }
