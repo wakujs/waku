@@ -44,7 +44,12 @@ import {
 import type { RouteProps } from './common.js';
 
 type AllowPathDecorators<Path extends string> = Path extends unknown
-  ? Path | `${Path}?${string}` | `${Path}#${string}`
+  ?
+      | Path
+      | `${Path}?${string}`
+      | `${Path}#${string}`
+      | `?${string}`
+      | `#${string}`
   : never;
 
 type InferredPaths = RouteConfig extends {
