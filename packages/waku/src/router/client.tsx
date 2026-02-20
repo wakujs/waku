@@ -762,6 +762,7 @@ const InnerRouter = ({
   const requestedRouteRef = useRef<RouteProps>(initialRoute);
   const staticPathSetRef = useRef(new Set<string>());
   const cachedIdSetRef = useRef(new Set<string>());
+  const fetchingSlicesRef = useRef(new Set<SliceId>());
   useEffect(() => {
     elementsPromise.then(
       (elements) => {
@@ -1015,7 +1016,7 @@ const InnerRouter = ({
         changeRoute,
         prefetchRoute,
         routeChangeEvents,
-        fetchingSlices: useRef(new Set<SliceId>()).current,
+        fetchingSlices: fetchingSlicesRef.current,
       }}
     >
       {rootElement}
