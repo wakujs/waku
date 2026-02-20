@@ -892,14 +892,10 @@ const InnerRouter = ({
           urlToWrite &&
           window.location.pathname === historyPathnameBeforeChange
         ) {
-          const nextState = {
-            ...window.history.state,
-            waku_new_path: newPath,
-          };
           if (mode === 'push') {
-            window.history.pushState(nextState, '', urlToWrite);
+            window.history.pushState(window.history.state, '', urlToWrite);
           } else {
-            window.history.replaceState(nextState, '', urlToWrite);
+            window.history.replaceState(window.history.state, '', urlToWrite);
           }
         }
       };
@@ -919,12 +915,7 @@ const InnerRouter = ({
           throw e;
         }
       }
-      const scrollBehavior: ScrollBehavior =
-        mode && newPath
-          ? 'instant'
-          : window.history.state?.waku_new_path
-            ? 'instant'
-            : 'auto';
+      const scrollBehavior: ScrollBehavior = newPath ? 'instant' : 'auto';
       startTransitionFn(() => {
         writeHistoryIfNeeded();
         setRoute(route);

@@ -1011,16 +1011,11 @@ describe('Router integration', () => {
       [IS_STATIC_ID]: false,
     };
 
-    const scrollSnapshots: Array<{
-      pathname: string;
-      hash: string;
-      state: unknown;
-    }> = [];
+    const scrollSnapshots: Array<{ pathname: string; hash: string }> = [];
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
       scrollSnapshots.push({
         pathname: window.location.pathname,
         hash: window.location.hash,
-        state: window.history.state,
       });
     });
     const scrollYDescriptor = Object.getOwnPropertyDescriptor(
@@ -1062,7 +1057,6 @@ describe('Router integration', () => {
         {
           pathname: '/next',
           hash: '#target',
-          state: expect.objectContaining({ waku_new_path: true }),
         },
       ]);
     } finally {
@@ -1494,7 +1488,7 @@ describe('Router integration', () => {
       elements,
     );
     try {
-      window.history.pushState({ waku_new_path: true }, '', '/next#target');
+      window.history.pushState({}, '', '/next#target');
       window.dispatchEvent(new PopStateEvent('popstate'));
       await flush();
 
@@ -1518,7 +1512,7 @@ describe('Router integration', () => {
     }
   });
 
-  test('popstate path change scrolls to top with auto behavior when hash target is missing', async () => {
+  test('popstate path change scrolls to top with instant behavior when hash target is missing', async () => {
     const elements = {
       [unstable_getRouteSlotId('/start')]: <div>start</div>,
       [unstable_getRouteSlotId('/next')]: <div>next</div>,
@@ -1544,7 +1538,7 @@ describe('Router integration', () => {
       expect(scrollToSpy).toHaveBeenCalledWith({
         left: 0,
         top: 0,
-        behavior: 'auto',
+        behavior: 'instant',
       });
     } finally {
       view.unmount();
