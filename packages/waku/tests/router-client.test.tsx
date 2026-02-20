@@ -1394,6 +1394,38 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('popstate query-only transition preserves scroll behavior', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [ROUTE_ID]: ['/start', 'a=1'],
+      [IS_STATIC_ID]: false,
+    };
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
+      return;
+    });
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: 'a=1', hash: '' },
+      },
+      elements,
+    );
+    try {
+      window.history.pushState({}, '', '/start?a=2');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      await flush();
+
+      expect(capture.router?.path).toBe('/start');
+      expect(capture.router?.query).toBe('a=2');
+      expect(scrollToSpy).not.toHaveBeenCalled();
+    } finally {
+      view.unmount();
+    }
+  });
+
   test('popstate scrolls to hash target with instant behavior for new path', async () => {
     const elements = {
       [unstable_getRouteSlotId('/start')]: <div>start</div>,

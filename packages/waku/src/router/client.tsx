@@ -942,7 +942,10 @@ const InnerRouter = ({
       if (!route) {
         return;
       }
-      changeRoute(route, { shouldScroll: true }).catch((err) => {
+      const shouldScroll =
+        route.path !== routeRef.current.path ||
+        route.hash !== routeRef.current.hash;
+      changeRoute(route, { shouldScroll }).catch((err) => {
         console.log('Error while navigating back:', err);
       });
     };

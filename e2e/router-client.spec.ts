@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import type { ConsoleMessage } from '@playwright/test';
+import type { ConsoleMessage, Page } from '@playwright/test';
 import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('router-client');
@@ -24,6 +24,41 @@ const dropExpectedErrorFlowConsoleErrors = (errors: string[]): string[] =>
     (text) =>
       !expectedErrorFlowConsolePatterns.some((pattern) => pattern.test(text)),
   );
+
+const installScrollToRecorder = async (page: Page) => {
+  await page.evaluate(() => {
+    const scrollToCalls: ScrollToOptions[] = [];
+    (window as unknown as Record<string, unknown>).__scrollToCalls =
+      scrollToCalls;
+    const originalScrollTo = window.scrollTo.bind(window);
+    window.scrollTo = ((options: ScrollToOptions | number, top?: number) => {
+      if (typeof options === 'number') {
+        scrollToCalls.push({ left: options, top: top ?? 0 });
+        originalScrollTo(options, top ?? 0);
+        return;
+      }
+      scrollToCalls.push(options);
+      originalScrollTo(options);
+    }) as typeof window.scrollTo;
+  });
+};
+
+const resetScrollToCalls = async (page: Page) => {
+  await page.evaluate(() => {
+    const calls = (window as unknown as Record<string, unknown>)
+      .__scrollToCalls as ScrollToOptions[] | undefined;
+    if (calls) {
+      calls.length = 0;
+    }
+  });
+};
+
+const getScrollToCalls = async (page: Page) =>
+  (await page.evaluate(
+    () =>
+      (window as unknown as Record<string, unknown>)
+        .__scrollToCalls as ScrollToOptions[],
+  )) as ScrollToOptions[];
 
 test.describe('router-client', () => {
   let port: number;
@@ -102,22 +137,7 @@ test.describe('router-client', () => {
   }) => {
     await page.goto(`http://localhost:${port}/start`);
     await waitForHydration(page);
-
-    await page.evaluate(() => {
-      const scrollToCalls: ScrollToOptions[] = [];
-      (window as unknown as Record<string, unknown>).__scrollToCalls =
-        scrollToCalls;
-      const originalScrollTo = window.scrollTo.bind(window);
-      window.scrollTo = ((options: ScrollToOptions | number, top?: number) => {
-        if (typeof options === 'number') {
-          scrollToCalls.push({ left: options, top: top ?? 0 });
-          originalScrollTo(options, top ?? 0);
-          return;
-        }
-        scrollToCalls.push(options);
-        originalScrollTo(options);
-      }) as typeof window.scrollTo;
-    });
+    await installScrollToRecorder(page);
 
     await page.getByTestId('router-push-hash-target').click();
 
@@ -125,11 +145,7 @@ test.describe('router-client', () => {
     await expect(page.getByTestId('route-query')).toHaveText('');
     await expect(page.getByTestId('route-hash')).toHaveText('#scroll-target');
     await expect(page).toHaveURL(/\/start#scroll-target$/);
-    const scrollToCalls = (await page.evaluate(
-      () =>
-        (window as unknown as Record<string, unknown>)
-          .__scrollToCalls as ScrollToOptions[],
-    )) as ScrollToOptions[];
+    const scrollToCalls = await getScrollToCalls(page);
     const lastScrollToCall = scrollToCalls.at(-1);
     expect(lastScrollToCall).toBeDefined();
     expect(lastScrollToCall?.left).toBe(0);
@@ -145,21 +161,7 @@ test.describe('router-client', () => {
     await page.evaluate(() => {
       window.scrollTo({ left: 0, top: 600 });
     });
-    await page.evaluate(() => {
-      const scrollToCalls: ScrollToOptions[] = [];
-      (window as unknown as Record<string, unknown>).__scrollToCalls =
-        scrollToCalls;
-      const originalScrollTo = window.scrollTo.bind(window);
-      window.scrollTo = ((options: ScrollToOptions | number, top?: number) => {
-        if (typeof options === 'number') {
-          scrollToCalls.push({ left: options, top: top ?? 0 });
-          originalScrollTo(options, top ?? 0);
-          return;
-        }
-        scrollToCalls.push(options);
-        originalScrollTo(options);
-      }) as typeof window.scrollTo;
-    });
+    await installScrollToRecorder(page);
 
     await page.getByTestId('router-push-query-only').click();
 
@@ -167,11 +169,7 @@ test.describe('router-client', () => {
     await expect(page.getByTestId('route-query')).toHaveText('from=query-only');
     await expect(page.getByTestId('route-hash')).toHaveText('');
     await expect(page).toHaveURL(/\/start\?from=query-only$/);
-    const scrollToCalls = (await page.evaluate(
-      () =>
-        (window as unknown as Record<string, unknown>)
-          .__scrollToCalls as ScrollToOptions[],
-    )) as ScrollToOptions[];
+    const scrollToCalls = await getScrollToCalls(page);
     expect(scrollToCalls).toHaveLength(0);
   });
 
@@ -184,21 +182,7 @@ test.describe('router-client', () => {
     await page.evaluate(() => {
       window.scrollTo({ left: 0, top: 600 });
     });
-    await page.evaluate(() => {
-      const scrollToCalls: ScrollToOptions[] = [];
-      (window as unknown as Record<string, unknown>).__scrollToCalls =
-        scrollToCalls;
-      const originalScrollTo = window.scrollTo.bind(window);
-      window.scrollTo = ((options: ScrollToOptions | number, top?: number) => {
-        if (typeof options === 'number') {
-          scrollToCalls.push({ left: options, top: top ?? 0 });
-          originalScrollTo(options, top ?? 0);
-          return;
-        }
-        scrollToCalls.push(options);
-        originalScrollTo(options);
-      }) as typeof window.scrollTo;
-    });
+    await installScrollToRecorder(page);
 
     await page.getByTestId('router-push-next').click();
 
@@ -207,15 +191,112 @@ test.describe('router-client', () => {
     await expect(page.getByTestId('route-query')).toHaveText('x=1');
     await expect(page.getByTestId('route-hash')).toHaveText('');
     await expect(page).toHaveURL(/\/next\?x=1$/);
-    const scrollToCalls = (await page.evaluate(
-      () =>
-        (window as unknown as Record<string, unknown>)
-          .__scrollToCalls as ScrollToOptions[],
-    )) as ScrollToOptions[];
+    const scrollToCalls = await getScrollToCalls(page);
     const lastScrollToCall = scrollToCalls.at(-1);
     expect(lastScrollToCall).toBeDefined();
     expect(lastScrollToCall?.left).toBe(0);
     expect(lastScrollToCall?.top).toBe(0);
+  });
+
+  test('back/forward for query-only history preserves scroll behavior', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/start`);
+    await waitForHydration(page);
+
+    await page.evaluate(() => {
+      window.scrollTo({ left: 0, top: 600 });
+    });
+    await installScrollToRecorder(page);
+
+    await page.getByTestId('router-push-query-only').click();
+    await expect(page.getByTestId('route-path')).toHaveText('/start');
+    await expect(page.getByTestId('route-query')).toHaveText('from=query-only');
+    expect(await getScrollToCalls(page)).toHaveLength(0);
+
+    await page.evaluate(() => {
+      window.history.back();
+    });
+    await expect(page.getByTestId('route-path')).toHaveText('/start');
+    await expect(page.getByTestId('route-query')).toHaveText('');
+    expect(await getScrollToCalls(page)).toHaveLength(0);
+
+    await page.evaluate(() => {
+      window.history.forward();
+    });
+    await expect(page.getByTestId('route-path')).toHaveText('/start');
+    await expect(page.getByTestId('route-query')).toHaveText('from=query-only');
+    expect(await getScrollToCalls(page)).toHaveLength(0);
+  });
+
+  test('back/forward for path-change history scrolls to top', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/start`);
+    await waitForHydration(page);
+
+    await page.evaluate(() => {
+      window.scrollTo({ left: 0, top: 600 });
+    });
+    await installScrollToRecorder(page);
+
+    await page.getByTestId('router-push-next').click();
+    await expect(page.getByRole('heading', { name: 'Next' })).toBeVisible();
+    await expect(page.getByTestId('route-path')).toHaveText('/next');
+    let scrollToCalls = await getScrollToCalls(page);
+    let lastScrollToCall = scrollToCalls.at(-1);
+    expect(lastScrollToCall).toBeDefined();
+    expect(lastScrollToCall?.top).toBe(0);
+
+    await resetScrollToCalls(page);
+    await page.evaluate(() => {
+      window.history.back();
+    });
+    await expect(page.getByRole('heading', { name: 'Start' })).toBeVisible();
+    await expect(page.getByTestId('route-path')).toHaveText('/start');
+    scrollToCalls = await getScrollToCalls(page);
+    lastScrollToCall = scrollToCalls.at(-1);
+    expect(lastScrollToCall).toBeDefined();
+    expect(lastScrollToCall?.top).toBe(0);
+
+    await resetScrollToCalls(page);
+    await page.evaluate(() => {
+      window.history.forward();
+    });
+    await expect(page.getByRole('heading', { name: 'Next' })).toBeVisible();
+    await expect(page.getByTestId('route-path')).toHaveText('/next');
+    scrollToCalls = await getScrollToCalls(page);
+    lastScrollToCall = scrollToCalls.at(-1);
+    expect(lastScrollToCall).toBeDefined();
+    expect(lastScrollToCall?.top).toBe(0);
+  });
+
+  test('forward to hash history entry scrolls to anchor target', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/start`);
+    await waitForHydration(page);
+    await installScrollToRecorder(page);
+
+    await page.getByTestId('router-push-hash-target').click();
+    await expect(page.getByTestId('route-hash')).toHaveText('#scroll-target');
+
+    await resetScrollToCalls(page);
+    await page.evaluate(() => {
+      window.history.back();
+    });
+    await expect(page.getByTestId('route-hash')).toHaveText('');
+
+    await resetScrollToCalls(page);
+    await page.evaluate(() => {
+      window.history.forward();
+    });
+    await expect(page.getByTestId('route-hash')).toHaveText('#scroll-target');
+    const scrollToCalls = await getScrollToCalls(page);
+    const lastScrollToCall = scrollToCalls.at(-1);
+    expect(lastScrollToCall).toBeDefined();
+    expect(lastScrollToCall?.left).toBe(0);
+    expect(lastScrollToCall?.top).toBeGreaterThan(100);
   });
 
   test('route fetch includes X-Waku-Router-Skip header', async ({ page }) => {
