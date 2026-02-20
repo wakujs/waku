@@ -109,6 +109,15 @@ const shouldScrollByDefault = (url: URL) =>
   url.pathname !== window.location.pathname ||
   url.hash !== window.location.hash;
 
+const isPathChange = (next: RouteProps, prev: RouteProps) =>
+  next.path !== prev.path;
+
+const isHashChange = (next: RouteProps, prev: RouteProps) =>
+  next.hash !== prev.hash;
+
+const shouldScrollForRouteChange = (next: RouteProps, prev: RouteProps) =>
+  isPathChange(next, prev) || isHashChange(next, prev);
+
 const isAltClick = (event: MouseEvent<HTMLAnchorElement>) =>
   event.button !== 0 ||
   !!(event.metaKey || event.altKey || event.ctrlKey || event.shiftKey);
@@ -891,7 +900,7 @@ const InnerRouter = ({
       const routeBeforeChange = routeRef.current;
       const historyPathnameBeforeChange = window.location.pathname;
       const urlToWrite = mode && (url || getRouteUrl(route));
-      const newPath = route.path !== routeBeforeChange.path;
+      const pathChanged = isPathChange(route, routeBeforeChange);
       const writeHistoryIfNeeded = () => {
         if (
           mode &&
@@ -921,12 +930,12 @@ const InnerRouter = ({
           throw e;
         }
       }
-      const scrollBehavior: ScrollBehavior = newPath ? 'instant' : 'auto';
+      const scrollBehavior: ScrollBehavior = pathChanged ? 'instant' : 'auto';
       startTransitionFn(() => {
         writeHistoryIfNeeded();
         setRoute(route);
         if (options.shouldScroll) {
-          scrollToRoute(route, scrollBehavior, newPath);
+          scrollToRoute(route, scrollBehavior, pathChanged);
         }
         refetching.current?.[0]?.();
         refetching.current = null;
@@ -954,10 +963,9 @@ const InnerRouter = ({
       if (!route) {
         return;
       }
-      const shouldScroll =
-        route.path !== routeRef.current.path ||
-        route.hash !== routeRef.current.hash;
-      changeRoute(route, { shouldScroll }).catch((err) => {
+      changeRoute(route, {
+        shouldScroll: shouldScrollForRouteChange(route, routeRef.current),
+      }).catch((err) => {
         console.log('Error while navigating back:', err);
       });
     };
