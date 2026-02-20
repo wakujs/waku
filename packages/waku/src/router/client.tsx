@@ -109,6 +109,15 @@ const shouldScrollByDefault = (url: URL) =>
   url.pathname !== window.location.pathname ||
   url.hash !== window.location.hash;
 
+const isPathChange = (next: RouteProps, prev: RouteProps) =>
+  next.path !== prev.path;
+
+const isHashChange = (next: RouteProps, prev: RouteProps) =>
+  next.hash !== prev.hash;
+
+const shouldScrollForRouteChange = (next: RouteProps, prev: RouteProps) =>
+  isPathChange(next, prev) || isHashChange(next, prev);
+
 const isAltClick = (event: MouseEvent<HTMLAnchorElement>) =>
   event.button !== 0 ||
   !!(event.metaKey || event.altKey || event.ctrlKey || event.shiftKey);
@@ -368,8 +377,7 @@ export function Link({
             if (entry.isIntersecting) {
               const url = new URL(to, window.location.href);
               if (router && url.href !== window.location.href) {
-                const route = parseRoute(url);
-                router.prefetchRoute(route);
+                router.prefetchRoute(parseRoute(url));
               }
             }
           });
@@ -423,8 +431,7 @@ export function Link({
     ? (event: MouseEvent<HTMLAnchorElement>) => {
         const url = new URL(to, window.location.href);
         if (url.href !== window.location.href) {
-          const route = parseRoute(url);
-          prefetchRoute(route);
+          prefetchRoute(parseRoute(url));
         }
         props.onMouseEnter?.(event);
       }
@@ -762,6 +769,7 @@ const InnerRouter = ({
   const requestedRouteRef = useRef<RouteProps>(initialRoute);
   const staticPathSetRef = useRef(new Set<string>());
   const cachedIdSetRef = useRef(new Set<string>());
+  const fetchingSlicesRef = useRef(new Set<SliceId>());
   useEffect(() => {
     elementsPromise.then(
       (elements) => {
@@ -890,7 +898,7 @@ const InnerRouter = ({
       const routeBeforeChange = routeRef.current;
       const historyPathnameBeforeChange = window.location.pathname;
       const urlToWrite = mode && (url || getRouteUrl(route));
-      const newPath = route.path !== routeBeforeChange.path;
+      const pathChanged = isPathChange(route, routeBeforeChange);
       const writeHistoryIfNeeded = () => {
         if (
           mode &&
@@ -920,12 +928,12 @@ const InnerRouter = ({
           throw e;
         }
       }
-      const scrollBehavior: ScrollBehavior = newPath ? 'instant' : 'auto';
+      const scrollBehavior: ScrollBehavior = pathChanged ? 'instant' : 'auto';
       startTransitionFn(() => {
         writeHistoryIfNeeded();
         setRoute(route);
         if (options.shouldScroll) {
-          scrollToRoute(route, scrollBehavior, newPath);
+          scrollToRoute(route, scrollBehavior, pathChanged);
         }
         refetching.current?.[0]?.();
         refetching.current = null;
@@ -953,10 +961,9 @@ const InnerRouter = ({
       if (!route) {
         return;
       }
-      const shouldScroll =
-        route.path !== routeRef.current.path ||
-        route.hash !== routeRef.current.hash;
-      changeRoute(route, { shouldScroll }).catch((err) => {
+      changeRoute(route, {
+        shouldScroll: shouldScrollForRouteChange(route, routeRef.current),
+      }).catch((err) => {
         console.log('Error while navigating back:', err);
       });
     };
@@ -1015,7 +1022,7 @@ const InnerRouter = ({
         changeRoute,
         prefetchRoute,
         routeChangeEvents,
-        fetchingSlices: useRef(new Set<SliceId>()).current,
+        fetchingSlices: fetchingSlicesRef.current,
       }}
     >
       {rootElement}
