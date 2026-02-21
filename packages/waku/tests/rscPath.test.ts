@@ -16,10 +16,14 @@ describe('encodeRscPath', () => {
     expect(encodeRscPath('/foo/')).toBe('_/foo/_.txt');
   });
 
-  test('throws on invalid rscPath', () => {
-    expect(() => encodeRscPath('_foo')).toThrow();
-    expect(() => encodeRscPath('foo_')).toThrow();
-    expect(() => encodeRscPath('_foo_')).toThrow();
+  test('encodes rscPath with underscore at boundaries', () => {
+    expect(encodeRscPath('_foo')).toBe('__foo.txt');
+    expect(encodeRscPath('foo_')).toBe('foo__.txt');
+    expect(encodeRscPath('_foo_')).toBe('__foo__.txt');
+    expect(encodeRscPath('_')).toBe('___.txt');
+    expect(encodeRscPath('__')).toBe('____.txt');
+    expect(encodeRscPath('_/')).toBe('__/_.txt');
+    expect(encodeRscPath('/_')).toBe('_/__.txt');
   });
 });
 
@@ -32,6 +36,16 @@ describe('decodeRscPath', () => {
     expect(decodeRscPath('_/foo/_.txt')).toBe('/foo/');
   });
 
+  test('decodes rscPath with underscore at boundaries', () => {
+    expect(decodeRscPath('__foo.txt')).toBe('_foo');
+    expect(decodeRscPath('foo__.txt')).toBe('foo_');
+    expect(decodeRscPath('__foo__.txt')).toBe('_foo_');
+    expect(decodeRscPath('___.txt')).toBe('_');
+    expect(decodeRscPath('____.txt')).toBe('__');
+    expect(decodeRscPath('__/_.txt')).toBe('_/');
+    expect(decodeRscPath('_/__.txt')).toBe('/_');
+  });
+
   test('throws on invalid rscPath', () => {
     expect(() => decodeRscPath('foo')).toThrow();
   });
@@ -42,6 +56,10 @@ describe('encodeFuncId', () => {
     expect(encodeFuncId('foo#bar')).toBe('F/foo/bar');
   });
 
+  test('encodes funcId with underscore prefix', () => {
+    expect(encodeFuncId('_foo#bar')).toBe('F/__foo/bar');
+  });
+
   test('throws on invalid funcId', () => {
     expect(() => encodeFuncId('foo#bar/baz')).toThrow();
   });
@@ -50,6 +68,10 @@ describe('encodeFuncId', () => {
 describe('decodeFuncId', () => {
   test('decodes funcId', () => {
     expect(decodeFuncId('F/foo/bar')).toBe('foo#bar');
+  });
+
+  test('decodes funcId with underscore prefix', () => {
+    expect(decodeFuncId('F/__foo/bar')).toBe('_foo#bar');
   });
 
   test('returns null on invalid funcId', () => {
