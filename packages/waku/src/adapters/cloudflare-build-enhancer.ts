@@ -126,13 +126,12 @@ async function postBuild({ distDir, DIST_PUBLIC, serverless }: BuildOptions) {
   if (!serverless) {
     return;
   }
-  const distServerDir = path.resolve(path.join(distDir, 'server'));
-  const distServerWranglerJson = path.join(distServerDir, 'wrangler.json');
+  const distServerWranglerJson = path.join(distDir, 'server', 'wrangler.json');
   if (!fs.existsSync(distServerWranglerJson)) {
-    fs.mkdirSync(distServerDir, { recursive: true });
-    const assetsDirectory = path.relative(
-      distServerDir,
-      path.resolve(distDir, DIST_PUBLIC),
+    fs.mkdirSync(path.dirname(distServerWranglerJson), { recursive: true });
+    const assetsDirectory = path.posix.relative(
+      path.posix.join(distDir, 'server'),
+      path.posix.join(distDir, DIST_PUBLIC),
     );
     // Fallback for the case without @cloudflare/vite-plugin.
     fs.writeFileSync(
@@ -140,11 +139,13 @@ async function postBuild({ distDir, DIST_PUBLIC, serverless }: BuildOptions) {
       getWranglerConfig(true, assetsDirectory, 'index.js'),
     );
   }
-  const deployConfigDir = path.resolve('.wrangler', 'deploy');
-  const deployConfigFile = path.join(deployConfigDir, 'config.json');
+  const deployConfigFile = path.join('.wrangler', 'deploy', 'config.json');
   if (!fs.existsSync(deployConfigFile)) {
-    fs.mkdirSync(deployConfigDir, { recursive: true });
-    const configPath = path.relative(deployConfigDir, distServerWranglerJson);
+    fs.mkdirSync(path.dirname(deployConfigFile), { recursive: true });
+    const configPath = path.posix.relative(
+      path.posix.join('.wrangler', 'deploy'),
+      path.posix.join(distDir, 'server', 'wrangler.json'),
+    );
     fs.writeFileSync(deployConfigFile, JSON.stringify({ configPath }));
   }
 }
