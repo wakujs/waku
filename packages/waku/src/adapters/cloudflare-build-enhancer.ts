@@ -140,6 +140,13 @@ async function postBuild({ distDir, serverless }: BuildOptions) {
       getWranglerConfig(true, 'index.js'),
     );
   }
+  const deployConfigDir = path.resolve('.wrangler', 'deploy');
+  const deployConfigFile = path.join(deployConfigDir, 'config.json');
+  if (!fs.existsSync(deployConfigFile)) {
+    fs.mkdirSync(deployConfigDir, { recursive: true });
+    const configPath = path.relative(deployConfigDir, distServerWranglerJson);
+    fs.writeFileSync(deployConfigFile, JSON.stringify({ configPath }));
+  }
 }
 
 export default async function buildEnhancer(
