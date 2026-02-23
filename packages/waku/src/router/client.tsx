@@ -370,27 +370,28 @@ export function Link({
   const [ref, setRef] = useSharedRef<HTMLAnchorElement>(refProp);
 
   useEffect(() => {
-    if (unstable_prefetchOnView && ref.current) {
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              const url = new URL(to, window.location.href);
-              if (router && url.href !== window.location.href) {
-                router.prefetchRoute(parseRoute(url));
-              }
-            }
-          });
-        },
-        { threshold: 0.1 },
-      );
-
-      observer.observe(ref.current);
-
-      return () => {
-        observer.disconnect();
-      };
+    if (!unstable_prefetchOnView || !ref.current) {
+      return;
     }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const url = new URL(to, window.location.href);
+            if (router && url.href !== window.location.href) {
+              router.prefetchRoute(parseRoute(url));
+            }
+          }
+        });
+      },
+      { threshold: 0.1 },
+    );
+
+    observer.observe(ref.current);
+
+    return () => {
+      observer.disconnect();
+    };
   }, [unstable_prefetchOnView, router, to, ref]);
   const internalOnClick = () => {
     const url = new URL(to, window.location.href);
@@ -409,23 +410,18 @@ export function Link({
     }
   };
   const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
-    if (props.onClick) {
-      props.onClick(event);
+    props.onClick?.(event);
+    if (event.defaultPrevented || isAltClick(event)) {
+      return;
     }
-    if (!event.defaultPrevented && !isAltClick(event)) {
-      if (props.target && props.target.toLowerCase() !== '_self') {
-        console.warn(
-          '[Link] `target` is discouraged. Use `<a>` for this case.',
-        );
-      }
-      if (props.download != null && props.download !== false) {
-        console.warn(
-          '[Link] `download` is discouraged. Use `<a>` for this case.',
-        );
-      }
-      event.preventDefault();
-      internalOnClick();
+    if (props.target && props.target.toLowerCase() !== '_self') {
+      console.warn('[Link] `target` is discouraged. Use `<a>` for this case.');
     }
+    if (props.download != null && props.download !== false) {
+      console.warn('[Link] `download` is discouraged. Use `<a>` for this case.');
+    }
+    event.preventDefault();
+    internalOnClick();
   };
   const onMouseEnter = unstable_prefetchOnEnter
     ? (event: MouseEvent<HTMLAnchorElement>) => {
