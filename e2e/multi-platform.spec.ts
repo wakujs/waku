@@ -45,8 +45,22 @@ const hasDistServerWranglerMainIndexJs = (dir: string) => {
   }
   const json = JSON.parse(readFileSync(file, 'utf-8')) as {
     main?: string;
+    assets?: { directory?: string };
   };
-  return json.main === 'index.js';
+  if (json.main !== 'index.js') {
+    return false;
+  }
+  if (!json.assets?.directory) {
+    return false;
+  }
+  const deployConfig = join(dir, '.wrangler', 'deploy', 'config.json');
+  if (!existsSync(deployConfig)) {
+    return false;
+  }
+  const deployJson = JSON.parse(readFileSync(deployConfig, 'utf-8')) as {
+    configPath?: string;
+  };
+  return deployJson.configPath === '../../dist/server/wrangler.json';
 };
 
 const buildPlatformTarget: BuildPlatformTarget[] = [
@@ -60,7 +74,7 @@ const buildPlatformTarget: BuildPlatformTarget[] = [
   },
   {
     adapter: 'cloudflare',
-    clearDirOrFile: ['dist', 'wrangler.jsonc'],
+    clearDirOrFile: ['dist', 'wrangler.jsonc', '.wrangler'],
     checkJsonFile: hasDistServerWranglerMainIndexJs,
   },
   {
