@@ -418,7 +418,9 @@ export function Link({
       console.warn('[Link] `target` is discouraged. Use `<a>` for this case.');
     }
     if (props.download != null && props.download !== false) {
-      console.warn('[Link] `download` is discouraged. Use `<a>` for this case.');
+      console.warn(
+        '[Link] `download` is discouraged. Use `<a>` for this case.',
+      );
     }
     event.preventDefault();
     internalOnClick();
