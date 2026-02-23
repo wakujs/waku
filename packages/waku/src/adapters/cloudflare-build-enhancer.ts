@@ -8,6 +8,93 @@ export type BuildOptions = {
   serverless: boolean;
 };
 
+const DEFAULT_COMPATIBILITY_DATE = '2025-11-17';
+const DEFAULT_COMPATIBILITY_FLAGS = ['nodejs_als'];
+
+function readRootWranglerConfig(): Record<string, unknown> | null {
+  for (const file of ['wrangler.json', 'wrangler.jsonc', 'wrangler.toml']) {
+    try {
+      const filePath = path.resolve(file);
+      if (!fs.existsSync(filePath)) {
+        continue;
+      }
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const config: Record<string, unknown> = {};
+      const nameMatch = content.match(/"?name"?\s*[:=]\s*"([^"]+)"/);
+      if (nameMatch) {
+        config.name = nameMatch[1];
+      }
+      const dateMatch = content.match(
+        /"?compatibility_date"?\s*[:=]\s*"([^"]+)"/,
+      );
+      if (dateMatch) {
+        config.compatibility_date = dateMatch[1];
+      }
+      const flagsMatch = content.match(
+        /"?compatibility_flags"?\s*[:=]\s*\[([^\]]*)\]/,
+      );
+      if (flagsMatch) {
+        const flags = [...flagsMatch[1]!.matchAll(/"([^"]+)"/g)].map(
+          (m) => m[1] as string,
+        );
+        if (flags.length > 0) {
+          config.compatibility_flags = flags;
+        }
+      }
+      return config;
+    } catch {
+      // Skip if can't be read
+    }
+  }
+  return null;
+}
+
+function getProjectName(rootConfig: Record<string, unknown> | null): string {
+  if (typeof rootConfig?.name === 'string') {
+    return rootConfig.name;
+  }
+  try {
+    const packageJsonPath = path.resolve('package.json');
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+    if (typeof packageJson.name === 'string') {
+      return packageJson.name;
+    }
+  } catch {
+    // Fall back to default
+  }
+  return 'waku-project';
+}
+
+function getWranglerConfig(
+  serverless: boolean,
+  main?: string,
+  assets?: { directory: string; html_handling: string },
+): string {
+  const rootConfig = readRootWranglerConfig();
+  const config: Record<string, unknown> = {
+    $schema: 'node_modules/wrangler/config-schema.json',
+    name: getProjectName(rootConfig),
+    ...(main && { main }),
+    ...(serverless && {
+      compatibility_flags:
+        (rootConfig?.compatibility_flags as string[]) ||
+        DEFAULT_COMPATIBILITY_FLAGS,
+    }),
+    compatibility_date:
+      (rootConfig?.compatibility_date as string) || DEFAULT_COMPATIBILITY_DATE,
+    ...(assets && {
+      assets: {
+        ...(serverless && { binding: 'ASSETS' }),
+        directory: assets.directory,
+        html_handling: assets.html_handling,
+      },
+    }),
+    rules: [{ type: 'ESModule', globs: ['**/*.js', '**/*.mjs'] }],
+    no_bundle: true,
+  };
+  return JSON.stringify(config, null, 2) + '\n';
+}
+
 async function preBuild({
   srcDir,
   distDir,
@@ -23,51 +110,18 @@ async function preBuild({
     !fs.existsSync(wranglerJsonFile) &&
     !fs.existsSync(wranglerJsoncFile)
   ) {
-    let projectName = 'waku-project';
-    try {
-      const packageJsonPath = path.resolve('package.json');
-      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-      if (packageJson.name && typeof packageJson.name === 'string') {
-        projectName = packageJson.name;
-      }
-    } catch {
-      // Fall back to default if package.json can't be read or parsed
-    }
     fs.writeFileSync(
       wranglerJsoncFile,
-      `\
-{
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": ${JSON.stringify(projectName)},
-  ${
-    serverless
-      ? `"main": ${JSON.stringify(forceRelativePath(path.relative(process.cwd(), mainEntry)))},
-  // nodejs_als is required for Waku server-side request context
-  // It can be removed if only building static pages
-  "compatibility_flags": ["nodejs_als"],
-  `
-      : ''
-  }// https://developers.cloudflare.com/workers/platform/compatibility-dates
-  "compatibility_date": "2025-11-17",
-  "assets": {
-    ${
-      serverless
-        ? `// https://developers.cloudflare.com/workers/static-assets/binding/
-    "binding": "ASSETS",
-    `
-        : ''
-    }"directory": "./${distDir}/${DIST_PUBLIC}",
-    "html_handling": "drop-trailing-slash"
-  },
-  "rules": [
-    {
-      "type": "ESModule",
-      "globs": ["**/*.js", "**/*.mjs"],
-    },
-  ],
-  "no_bundle": true,
-}
-`,
+      getWranglerConfig(
+        serverless,
+        serverless
+          ? forceRelativePath(path.relative(process.cwd(), mainEntry))
+          : undefined,
+        {
+          directory: `./${distDir}/${DIST_PUBLIC}`,
+          html_handling: 'drop-trailing-slash',
+        },
+      ),
     );
   }
 }
@@ -81,7 +135,10 @@ async function postBuild({ distDir, serverless }: BuildOptions) {
   if (!fs.existsSync(distServerWranglerJson)) {
     fs.mkdirSync(distServerDir, { recursive: true });
     // Fallback for the case without @cloudflare/vite-plugin.
-    fs.writeFileSync(distServerWranglerJson, '{"main":"index.js"}');
+    fs.writeFileSync(
+      distServerWranglerJson,
+      getWranglerConfig(true, 'index.js'),
+    );
   }
 }
 
