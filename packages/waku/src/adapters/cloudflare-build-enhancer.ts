@@ -58,7 +58,7 @@ function getProjectName(rootConfig: Record<string, unknown> | null): string {
     const packageJsonPath = path.resolve('package.json');
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
     if (typeof packageJson.name === 'string') {
-      return packageJson.name;
+      return sanitizeWorkerName(packageJson.name);
     }
   } catch {
     // Fall back to default
@@ -160,3 +160,9 @@ export default async function buildEnhancer(
 }
 
 const forceRelativePath = (s: string) => (s.startsWith('.') ? s : './' + s);
+
+const sanitizeWorkerName = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/^-+|-+$/g, '');
