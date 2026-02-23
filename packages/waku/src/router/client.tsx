@@ -8,7 +8,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useReducer,
   useRef,
   useState,
   useTransition,
@@ -160,45 +159,6 @@ type ChangeRouteCallback = (route: RouteProps) => void;
 type PrefetchRoute = (route: RouteProps) => void;
 
 type SliceId = string;
-
-type RouterState = {
-  route: RouteProps;
-  err: unknown | null;
-};
-
-type RouterStateAction = { route: RouteProps } | { err: unknown } | null;
-
-const createInitialRouterState = (initialRoute: RouteProps): RouterState => ({
-  route: {
-    // This is the first initialization of the route, and it has
-    // to ignore the hash, because on server side there is none.
-    // Otherwise there will be a hydration error.
-    // The client side route, including the hash, will be updated in the effect below.
-    ...initialRoute,
-    hash: '',
-  },
-  err: null,
-});
-
-const routerStateReducer = (
-  state: RouterState,
-  action: RouterStateAction,
-): RouterState => {
-  if (action) {
-    if ('route' in action) {
-      if (isSameRoute(action.route, state.route)) {
-        return state;
-      }
-      return { ...state, route: action.route };
-    }
-    if ('err' in action) {
-      return { ...state, err: action.err };
-    }
-  } else if (state.err !== null) {
-    return { ...state, err: null };
-  }
-  return state;
-};
 
 const createRouteChangeListeners = (): [
   Record<
@@ -893,11 +853,14 @@ const InnerRouter = ({
     );
   }, [enhanceFetchRscInternal, locationListeners]);
   const refetch = useRefetch();
-  const [{ route, err }, dispatchRouterState] = useReducer(
-    routerStateReducer,
-    initialRoute,
-    createInitialRouterState,
-  );
+  const [route, setRoute] = useState(() => ({
+    // This is the first initialization of the route, and it has
+    // to ignore the hash, because on server side there is none.
+    // Otherwise there will be a hydration error.
+    // The client side route, including the hash, will be updated in the effect below.
+    ...initialRoute,
+    hash: '',
+  }));
   const routeChangeListenersRef = useRef<ReturnType<
     typeof createRouteChangeListeners
   > | null>(null);
@@ -906,8 +869,18 @@ const InnerRouter = ({
   }
   // Update the route post-load to include the current hash.
   useEffect(() => {
-    dispatchRouterState({ route: initialRoute });
+    setRoute((prev) => {
+      if (isSameRoute(prev, initialRoute)) {
+        return prev;
+      }
+      return initialRoute;
+    });
   }, [initialRoute]);
+  const [err, setErr] = useState<unknown>(null);
+  const routeRef = useRef(route);
+  useEffect(() => {
+    routeRef.current = route;
+  }, [route]);
 
   const [routeChangeEvents, emitRouteChangeEvent] =
     routeChangeListenersRef.current;
@@ -920,7 +893,7 @@ const InnerRouter = ({
       const startTransitionFn =
         options.unstable_startTransition || ((fn: TransitionFunction) => fn());
       const { skipRefetch, mode, url, unstable_historyOnError } = options;
-      const routeBeforeChange = route;
+      const routeBeforeChange = routeRef.current;
       const historyPathnameBeforeChange = window.location.pathname;
       const urlToWrite = mode && (url || getRouteUrl(nextRoute));
       const pathChanged = isPathChange(nextRoute, routeBeforeChange);
@@ -938,7 +911,7 @@ const InnerRouter = ({
         }
       };
       refetching.current = [];
-      dispatchRouterState(null);
+      setErr(null);
       if (!staticPathSetRef.current.has(nextRoute.path) && !skipRefetch) {
         const rscPath = encodeRoutePath(nextRoute.path);
         const rscParams = createRscParams(nextRoute.query);
@@ -949,14 +922,14 @@ const InnerRouter = ({
             writeHistoryIfNeeded();
           }
           refetching.current = null;
-          dispatchRouterState({ err: e });
+          setErr(e);
           throw e;
         }
       }
       const scrollBehavior: ScrollBehavior = pathChanged ? 'instant' : 'auto';
       startTransitionFn(() => {
         writeHistoryIfNeeded();
-        dispatchRouterState({ route: nextRoute });
+        setRoute(nextRoute);
         if (options.shouldScroll) {
           scrollToRoute(nextRoute, scrollBehavior, pathChanged);
         }
@@ -965,7 +938,7 @@ const InnerRouter = ({
         emitRouteChangeEvent('complete', nextRoute);
       });
     },
-    [emitRouteChangeEvent, refetch, route],
+    [emitRouteChangeEvent, refetch],
   );
 
   const prefetchRoute: PrefetchRoute = useCallback((route) => {
@@ -989,7 +962,8 @@ const InnerRouter = ({
         return;
       }
       changeRoute(nextRoute, {
-        shouldScroll: shouldScrollForRouteChange(nextRoute, route),
+        shouldScroll: shouldScrollForRouteChange(nextRoute, routeRef.current),
+        skipRefetch: isSameRoute(nextRoute, routeRef.current),
       }).catch((err) => {
         console.log('Error while navigating back:', err);
       });
@@ -998,7 +972,7 @@ const InnerRouter = ({
     return () => {
       window.removeEventListener('popstate', callback);
     };
-  }, [changeRoute, route, routeInterceptor]);
+  }, [changeRoute, routeInterceptor]);
 
   useEffect(() => {
     const callback = (path: string, query: string) => {
