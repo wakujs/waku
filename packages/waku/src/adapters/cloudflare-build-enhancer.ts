@@ -10,6 +10,7 @@ export type BuildOptions = {
 
 const DEFAULT_COMPATIBILITY_DATE = '2025-11-17';
 const DEFAULT_COMPATIBILITY_FLAGS = ['nodejs_als'];
+const DEFAULT_HTML_HANDLING = 'drop-trailing-slash';
 
 function readRootWranglerConfig(): Record<string, unknown> | null {
   for (const file of ['wrangler.json', 'wrangler.jsonc', 'wrangler.toml']) {
@@ -67,8 +68,8 @@ function getProjectName(rootConfig: Record<string, unknown> | null): string {
 
 function getWranglerConfig(
   serverless: boolean,
+  assetsDirectory: string,
   main?: string,
-  assets?: { directory: string; html_handling: string },
 ): string {
   const rootConfig = readRootWranglerConfig();
   const config: Record<string, unknown> = {
@@ -82,13 +83,11 @@ function getWranglerConfig(
     }),
     compatibility_date:
       (rootConfig?.compatibility_date as string) || DEFAULT_COMPATIBILITY_DATE,
-    ...(assets && {
-      assets: {
-        ...(serverless && { binding: 'ASSETS' }),
-        directory: assets.directory,
-        html_handling: assets.html_handling,
-      },
-    }),
+    assets: {
+      ...(serverless && { binding: 'ASSETS' }),
+      directory: assetsDirectory,
+      html_handling: DEFAULT_HTML_HANDLING,
+    },
     rules: [{ type: 'ESModule', globs: ['**/*.js', '**/*.mjs'] }],
     no_bundle: true,
   };
@@ -114,19 +113,16 @@ async function preBuild({
       wranglerJsoncFile,
       getWranglerConfig(
         serverless,
+        `./${distDir}/${DIST_PUBLIC}`,
         serverless
           ? forceRelativePath(path.relative(process.cwd(), mainEntry))
           : undefined,
-        {
-          directory: `./${distDir}/${DIST_PUBLIC}`,
-          html_handling: 'drop-trailing-slash',
-        },
       ),
     );
   }
 }
 
-async function postBuild({ distDir, serverless }: BuildOptions) {
+async function postBuild({ distDir, DIST_PUBLIC, serverless }: BuildOptions) {
   if (!serverless) {
     return;
   }
@@ -134,10 +130,14 @@ async function postBuild({ distDir, serverless }: BuildOptions) {
   const distServerWranglerJson = path.join(distServerDir, 'wrangler.json');
   if (!fs.existsSync(distServerWranglerJson)) {
     fs.mkdirSync(distServerDir, { recursive: true });
+    const assetsDirectory = path.relative(
+      distServerDir,
+      path.resolve(distDir, DIST_PUBLIC),
+    );
     // Fallback for the case without @cloudflare/vite-plugin.
     fs.writeFileSync(
       distServerWranglerJson,
-      getWranglerConfig(true, 'index.js'),
+      getWranglerConfig(true, assetsDirectory, 'index.js'),
     );
   }
   const deployConfigDir = path.resolve('.wrangler', 'deploy');

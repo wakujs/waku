@@ -45,8 +45,12 @@ const hasDistServerWranglerMainIndexJs = (dir: string) => {
   }
   const json = JSON.parse(readFileSync(file, 'utf-8')) as {
     main?: string;
+    assets?: { directory?: string };
   };
   if (json.main !== 'index.js') {
+    return false;
+  }
+  if (!json.assets?.directory) {
     return false;
   }
   const deployConfig = join(dir, '.wrangler', 'deploy', 'config.json');
