@@ -8,6 +8,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useReducer,
   useRef,
   useState,
   useTransition,
@@ -115,6 +116,11 @@ const isPathChange = (next: RouteProps, prev: RouteProps) =>
 const isHashChange = (next: RouteProps, prev: RouteProps) =>
   next.hash !== prev.hash;
 
+const isSameRoute = (next: RouteProps, prev: RouteProps) =>
+  next.path === prev.path &&
+  next.query === prev.query &&
+  next.hash === prev.hash;
+
 const shouldScrollForRouteChange = (next: RouteProps, prev: RouteProps) =>
   isPathChange(next, prev) || isHashChange(next, prev);
 
@@ -154,6 +160,45 @@ type ChangeRouteCallback = (route: RouteProps) => void;
 type PrefetchRoute = (route: RouteProps) => void;
 
 type SliceId = string;
+
+type RouterState = {
+  route: RouteProps;
+  err: unknown | null;
+};
+
+type RouterStateAction = { route: RouteProps } | { err: unknown } | null;
+
+const createInitialRouterState = (initialRoute: RouteProps): RouterState => ({
+  route: {
+    // This is the first initialization of the route, and it has
+    // to ignore the hash, because on server side there is none.
+    // Otherwise there will be a hydration error.
+    // The client side route, including the hash, will be updated in the effect below.
+    ...initialRoute,
+    hash: '',
+  },
+  err: null,
+});
+
+const routerStateReducer = (
+  state: RouterState,
+  action: RouterStateAction,
+): RouterState => {
+  if (action) {
+    if ('route' in action) {
+      if (isSameRoute(action.route, state.route)) {
+        return state;
+      }
+      return { ...state, route: action.route };
+    }
+    if ('err' in action) {
+      return { ...state, err: action.err };
+    }
+  } else if (state.err !== null) {
+    return { ...state, err: null };
+  }
+  return state;
+};
 
 const createRouteChangeListeners = (): [
   Record<
@@ -848,14 +893,11 @@ const InnerRouter = ({
     );
   }, [enhanceFetchRscInternal, locationListeners]);
   const refetch = useRefetch();
-  const [route, setRoute] = useState(() => ({
-    // This is the first initialization of the route, and it has
-    // to ignore the hash, because on server side there is none.
-    // Otherwise there will be a hydration error.
-    // The client side route, including the hash, will be updated in the effect below.
-    ...initialRoute,
-    hash: '',
-  }));
+  const [{ route, err }, dispatchRouterState] = useReducer(
+    routerStateReducer,
+    initialRoute,
+    createInitialRouterState,
+  );
   const routeChangeListenersRef = useRef<ReturnType<
     typeof createRouteChangeListeners
   > | null>(null);
@@ -864,39 +906,24 @@ const InnerRouter = ({
   }
   // Update the route post-load to include the current hash.
   useEffect(() => {
-    setRoute((prev) => {
-      if (
-        prev.path === initialRoute.path &&
-        prev.query === initialRoute.query &&
-        prev.hash === initialRoute.hash
-      ) {
-        return prev;
-      }
-      return initialRoute;
-    });
+    dispatchRouterState({ route: initialRoute });
   }, [initialRoute]);
-
-  const routeRef = useRef(route);
-  useEffect(() => {
-    routeRef.current = route;
-  }, [route]);
 
   const [routeChangeEvents, emitRouteChangeEvent] =
     routeChangeListenersRef.current;
-  const [err, setErr] = useState<unknown>(null);
   // FIXME this "refetching" hack doesn't seem ideal.
   const refetching = useRef<[onFinish?: () => void] | null>(null);
   const changeRoute: ChangeRoute = useCallback(
-    async (route, options) => {
-      requestedRouteRef.current = route;
-      emitRouteChangeEvent('start', route);
+    async (nextRoute, options) => {
+      requestedRouteRef.current = nextRoute;
+      emitRouteChangeEvent('start', nextRoute);
       const startTransitionFn =
         options.unstable_startTransition || ((fn: TransitionFunction) => fn());
       const { skipRefetch, mode, url, unstable_historyOnError } = options;
-      const routeBeforeChange = routeRef.current;
+      const routeBeforeChange = route;
       const historyPathnameBeforeChange = window.location.pathname;
-      const urlToWrite = mode && (url || getRouteUrl(route));
-      const pathChanged = isPathChange(route, routeBeforeChange);
+      const urlToWrite = mode && (url || getRouteUrl(nextRoute));
+      const pathChanged = isPathChange(nextRoute, routeBeforeChange);
       const writeHistoryIfNeeded = () => {
         if (
           mode &&
@@ -911,10 +938,10 @@ const InnerRouter = ({
         }
       };
       refetching.current = [];
-      setErr(null);
-      if (!staticPathSetRef.current.has(route.path) && !skipRefetch) {
-        const rscPath = encodeRoutePath(route.path);
-        const rscParams = createRscParams(route.query);
+      dispatchRouterState(null);
+      if (!staticPathSetRef.current.has(nextRoute.path) && !skipRefetch) {
+        const rscPath = encodeRoutePath(nextRoute.path);
+        const rscParams = createRscParams(nextRoute.query);
         try {
           await refetch(rscPath, rscParams);
         } catch (e) {
@@ -922,23 +949,23 @@ const InnerRouter = ({
             writeHistoryIfNeeded();
           }
           refetching.current = null;
-          setErr(e);
+          dispatchRouterState({ err: e });
           throw e;
         }
       }
       const scrollBehavior: ScrollBehavior = pathChanged ? 'instant' : 'auto';
       startTransitionFn(() => {
         writeHistoryIfNeeded();
-        setRoute(route);
+        dispatchRouterState({ route: nextRoute });
         if (options.shouldScroll) {
-          scrollToRoute(route, scrollBehavior, pathChanged);
+          scrollToRoute(nextRoute, scrollBehavior, pathChanged);
         }
         refetching.current?.[0]?.();
         refetching.current = null;
-        emitRouteChangeEvent('complete', route);
+        emitRouteChangeEvent('complete', nextRoute);
       });
     },
-    [emitRouteChangeEvent, refetch],
+    [emitRouteChangeEvent, refetch, route],
   );
 
   const prefetchRoute: PrefetchRoute = useCallback((route) => {
@@ -955,12 +982,14 @@ const InnerRouter = ({
 
   useEffect(() => {
     const callback = () => {
-      const route = routeInterceptor(parseRoute(new URL(window.location.href)));
-      if (!route) {
+      const nextRoute = routeInterceptor(
+        parseRoute(new URL(window.location.href)),
+      );
+      if (!nextRoute) {
         return;
       }
-      changeRoute(route, {
-        shouldScroll: shouldScrollForRouteChange(route, routeRef.current),
+      changeRoute(nextRoute, {
+        shouldScroll: shouldScrollForRouteChange(nextRoute, route),
       }).catch((err) => {
         console.log('Error while navigating back:', err);
       });
@@ -969,7 +998,7 @@ const InnerRouter = ({
     return () => {
       window.removeEventListener('popstate', callback);
     };
-  }, [changeRoute, routeInterceptor]);
+  }, [changeRoute, route, routeInterceptor]);
 
   useEffect(() => {
     const callback = (path: string, query: string) => {
