@@ -157,6 +157,23 @@ test.describe('useRouter', () => {
       await expect(page.getByTestId('hash')).toHaveText('Hash: 55');
       expect(rscRequests.length).toBe(prefetchedCount);
     });
+
+    test('router.push last call wins during fast consecutive pushes', async ({
+      page,
+    }) => {
+      const messages: string[] = [];
+      page.on('console', (msg) => messages.push(msg.text()));
+      await page.goto(`http://localhost:${port}/race`);
+      await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+      await waitForHydration(page);
+
+      await page.getByRole('button', { name: 'Fast Navigate' }).click();
+
+      await expect(page).toHaveURL(`http://localhost:${port}/race-bar`);
+      await expect(page.getByRole('heading', { name: 'Home' })).toBeHidden();
+      await expect(page.getByRole('heading', { name: 'Bar' })).toBeVisible();
+      expect(messages.some((msg) => msg.includes('Uncaught'))).toBe(false);
+    });
   });
 
   test.describe('retrieves query variables', () => {

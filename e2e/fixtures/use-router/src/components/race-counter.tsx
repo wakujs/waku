@@ -3,7 +3,7 @@
 import { useId, useState } from 'react';
 import { Link } from 'waku/router/client';
 
-export const Counter = () => {
+export const RaceCounter = () => {
   const [count, setCount] = useState(0);
   const id = useId();
   return (
@@ -13,7 +13,7 @@ export const Counter = () => {
         Increment
       </button>
       <h3>This is a client component.</h3>
-      <Link to="/">Go to Home</Link>
+      <Link to="/race">Go to Home</Link>
     </div>
   );
 };

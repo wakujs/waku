@@ -1,7 +1,7 @@
 import { Link } from 'waku';
-import { FastNavigate } from './_components/FastNavigate.js';
+import { RaceFastNavigate } from '../components/race-fast-navigate.js';
 
-const Home = () => {
+const RaceHomePage = () => {
   // TODO is there a more reasonable way?
   // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
@@ -10,12 +10,12 @@ const Home = () => {
     <div>
       <h1>Home</h1>
       <p>now: {now}</p>
-      <FastNavigate />
+      <RaceFastNavigate />
       <div>
-        <Link to="/about">About Waku</Link>
+        <Link to="/race-about">About Waku</Link>
       </div>
       <div>
-        <Link to="/bar">Counter</Link>
+        <Link to="/race-bar">Counter</Link>
       </div>
     </div>
   );
@@ -27,4 +27,4 @@ export const getConfig = () => {
   } as const;
 };
 
-export default Home;
+export default RaceHomePage;
