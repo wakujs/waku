@@ -772,6 +772,7 @@ const InnerRouter = ({
   const requestedRouteRef = useRef<RouteProps>(initialRoute);
   const staticPathSetRef = useRef(new Set<string>());
   const cachedIdSetRef = useRef(new Set<string>());
+  // FIXME this "fetchingSlices" hack feels suboptimal.
   const fetchingSlicesRef = useRef(new Set<SliceId>());
   useEffect(() => {
     elementsPromise.then(
@@ -869,12 +870,7 @@ const InnerRouter = ({
   }
   // Update the route post-load to include the current hash.
   useEffect(() => {
-    setRoute((prev) => {
-      if (isSameRoute(prev, initialRoute)) {
-        return prev;
-      }
-      return initialRoute;
-    });
+    setRoute((prev) => (isSameRoute(prev, initialRoute) ? prev : initialRoute));
   }, [initialRoute]);
   const [err, setErr] = useState<unknown>(null);
   const routeRef = useRef(route);
