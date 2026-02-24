@@ -1,10 +1,32 @@
-import nodeLoaderCloudflare from '@hiogawa/node-loader-cloudflare/vite';
+import { cloudflare } from '@cloudflare/vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'waku/config';
 
 export default defineConfig({
   vite: {
+    environments: {
+      rsc: {
+        optimizeDeps: {
+          include: ['hono/tiny'],
+        },
+        build: {
+          rollupOptions: {
+            platform: 'neutral',
+          } as never,
+        },
+      },
+      ssr: {
+        optimizeDeps: {
+          include: ['waku > rsc-html-stream/server'],
+        },
+        build: {
+          rollupOptions: {
+            platform: 'neutral',
+          } as never,
+        },
+      },
+    },
     plugins: [
       tailwindcss(),
       react({
@@ -12,15 +34,9 @@ export default defineConfig({
           plugins: ['babel-plugin-react-compiler'],
         },
       }),
-      nodeLoaderCloudflare({
-        environments: ['rsc'],
-        build: true,
-        // https://developers.cloudflare.com/workers/wrangler/api/#getplatformproxy
-        getPlatformProxyOptions: {
-          persist: {
-            path: '.wrangler/state/v3',
-          },
-        },
+      cloudflare({
+        viteEnvironment: { name: 'rsc', childEnvironments: ['ssr'] },
+        inspectorPort: false,
       }),
     ],
   },

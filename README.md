@@ -527,7 +527,7 @@ The following directories are ignored by the router:
 - `_components`
 - `_hooks`
 
-All files inside there directories are excluded from routing.
+All files inside these directories are excluded from routing.
 
 For instance, in the case below, `pages/about.tsx` is routed to `/about`, but files like `_components/header.tsx` are not routed anywhere.
 
@@ -761,7 +761,7 @@ This allows you to have a `dynamic` slice component while keeping the rest of th
 
 ### Link
 
-The`<Link />` component should be used for internal links. It accepts a `to` prop for the destination, which is automatically prefetched ahead of the navigation.
+The `<Link />` component should be used for internal links. It accepts a `to` prop for the destination, which is automatically prefetched ahead of the navigation.
 
 ```tsx
 // ./src/pages/index.tsx
@@ -1113,6 +1113,38 @@ export default function handler(request: Request): Response {
     { message: 'Default handler ' + request.method },
     { status: 200 },
   );
+}
+```
+
+#### Typed route parameters
+
+For API routes with dynamic segments (e.g., `./src/pages/_api/users/[id].ts`), you can use `ApiContext` as the second parameter to get typed access to route parameters. The `params` property will be automatically typed based on the path pattern.
+
+```ts
+// ./src/pages/_api/users/[id].ts
+import type { ApiContext } from 'waku/router';
+
+export async function GET(
+  _req: Request,
+  { params }: ApiContext<'/users/[id]'>,
+) {
+  const { id } = params; // id is typed as string
+  return Response.json({ id, message: `Hello user ${id}` });
+}
+```
+
+This also works with multiple parameters and wildcard routes:
+
+```ts
+// ./src/pages/_api/files/[...path].ts
+import type { ApiContext } from 'waku/router';
+
+export async function GET(
+  _req: Request,
+  { params }: ApiContext<'/files/[...path]'>,
+) {
+  const { path } = params; // path is typed as string[]
+  return Response.json({ segments: path });
 }
 ```
 
@@ -1494,6 +1526,23 @@ npm run build
 deployctl deploy --prod dist/serve-deno.js --exclude node_modules
 ```
 
+### Bun (experimental)
+
+`./src/waku.server.ts`:
+
+```ts
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/bun';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+);
+```
+
+```sh
+npm run build
+```
+
 ### AWS Lambda (experimental)
 
 `./src/waku.server.ts`:
@@ -1512,7 +1561,7 @@ export default adapter(
 npm run build
 ```
 
-The handler entrypoint is `dist/serve-asw-lambda.js`: see [Hono AWS Lambda Deploy Docs](https://hono.dev/getting-started/aws-lambda#_3-deploy).
+The handler entrypoint is `dist/serve-aws-lambda.js`: see [Hono AWS Lambda Deploy Docs](https://hono.dev/getting-started/aws-lambda#_3-deploy).
 
 ### Edge
 

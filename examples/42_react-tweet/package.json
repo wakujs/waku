@@ -9,15 +9,15 @@
     "start": "waku start"
   },
   "dependencies": {
-    "react": "~19.2.3",
-    "react-dom": "~19.2.3",
-    "react-server-dom-webpack": "~19.2.3",
+    "react": "~19.2.4",
+    "react-dom": "~19.2.4",
+    "react-server-dom-webpack": "~19.2.4",
     "react-tweet": "^3.3.0",
-    "waku": "1.0.0-alpha.1"
+    "waku": "1.0.0-alpha.4"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.18",
-    "@types/react": "^19.2.7",
+    "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3"

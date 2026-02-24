@@ -22,15 +22,12 @@ export async function getInput(
   loadServerAction: (id: string) => Promise<unknown>,
 ) {
   const url = new URL(req.url);
-  url.pathname = removeBase(url.pathname, config.basePath);
-  const pathname = decodeURI(url.pathname);
+  const pathname = removeBase(url.pathname, config.basePath);
   const rscPathPrefix = '/' + config.rscBase + '/';
   let rscPath: string | undefined;
   let input: HandleRequestInput;
-  if (url.pathname.startsWith(rscPathPrefix)) {
-    rscPath = decodeRscPath(
-      decodeURI(url.pathname.slice(rscPathPrefix.length)),
-    );
+  if (pathname.startsWith(rscPathPrefix)) {
+    rscPath = decodeRscPath(pathname.slice(rscPathPrefix.length));
     // server action: js
     const actionId = decodeFuncId(rscPath);
     if (actionId) {

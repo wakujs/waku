@@ -22,14 +22,13 @@ export default adapter({
       (input.type === 'action' || input.type === 'custom') &&
       input.pathname === '/'
     ) {
-      const actionResult =
-        input.type === 'action' ? await input.fn() : undefined;
+      const formState = input.type === 'action' ? await input.fn() : undefined;
       return renderHtml(
         await renderRsc({ App: <App name="Waku" /> }),
         <Slot id="App" />,
         {
           rscPath: '',
-          actionResult,
+          formState,
         },
       );
     }

@@ -65,14 +65,17 @@ for (const cwd of examples) {
   const exampleCommands = cwd.includes('cloudflare')
     ? commandsCloudflare
     : commands;
+
   test.describe.serial(`smoke test on ${basename(cwd)}`, () => {
     for (const { commandMode, command } of exampleCommands) {
       if (command.includes('wrangler dev') && os.platform() === 'win32') {
         // FIXME npx wrangler dev doesn't work on Windows and we don't know why.
         continue;
       }
+
       test.describe(`smoke test in ${commandMode}`, () => {
         test.skip(({ mode }) => mode !== commandMode);
+
         test.describe(`command: ${command}`, () => {
           let port: number;
           let cp: ChildProcess;

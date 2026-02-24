@@ -1,11 +1,21 @@
 import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import { App } from './app';
+import { createRoot, hydrateRoot } from 'react-dom/client';
+import { Router } from 'waku/router/client';
+
+const initialRoute = { path: '/', query: '', hash: '' };
+const routeInterceptor = () => false as const;
 
 const rootElement = (
   <StrictMode>
-    <App />
+    <Router
+      initialRoute={initialRoute}
+      unstable_routeInterceptor={routeInterceptor}
+    />
   </StrictMode>
 );
 
-createRoot(document).render(rootElement);
+if ((globalThis as Record<string, unknown>).__WAKU_HYDRATE__) {
+  hydrateRoot(document, rootElement);
+} else {
+  createRoot(document).render(rootElement);
+}

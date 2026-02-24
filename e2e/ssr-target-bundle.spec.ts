@@ -9,41 +9,44 @@ test.describe(`ssr-target-bundle`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
   let fixtureDir: string;
+
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp, fixtureDir } = await startApp(mode));
   });
+
   test.afterAll(async () => {
     await stopApp();
   });
 
-  test('image exists in folder public/assets', async ({ mode }) => {
-    test.skip(mode === 'DEV');
-    const imagePath = path.join(fixtureDir, 'dist', 'public', 'assets');
-    const files = readdirSync(imagePath);
-    const imageExists = files.some((file) =>
-      file.startsWith('image-not-inlined-'),
-    );
-    expect(imageExists).toBe(true);
-  });
+  test.describe('PRD only tests', () => {
+    test.skip(({ mode }) => mode !== 'PRD', 'PRD only tests');
 
-  test('json public linked exists in folder public/assets', async ({
-    mode,
-  }) => {
-    test.skip(mode === 'DEV');
-    const imagePath = path.join(fixtureDir, 'dist', 'public', 'assets');
-    const files = readdirSync(imagePath);
-    const imageExists = files.some((file) =>
-      file.startsWith('json-public-linked-'),
-    );
-    expect(imageExists).toBe(true);
-  });
+    test('image exists in folder public/assets', async () => {
+      const imagePath = path.join(fixtureDir, 'dist', 'public', 'assets');
+      const files = readdirSync(imagePath);
+      const imageExists = files.some((file) =>
+        file.startsWith('image-not-inlined-'),
+      );
+      expect(imageExists).toBe(true);
+    });
 
-  test('json private NOT exists in folder public/assets', async ({ mode }) => {
-    test.skip(mode === 'DEV');
-    const imagePath = path.join(fixtureDir, 'dist', 'public', 'assets');
-    const files = readdirSync(imagePath);
-    const imageExists = files.some((file) => file.startsWith('json-private-'));
-    expect(imageExists).not.toBe(true);
+    test('json public linked exists in folder public/assets', async () => {
+      const imagePath = path.join(fixtureDir, 'dist', 'public', 'assets');
+      const files = readdirSync(imagePath);
+      const imageExists = files.some((file) =>
+        file.startsWith('json-public-linked-'),
+      );
+      expect(imageExists).toBe(true);
+    });
+
+    test('json private NOT exists in folder public/assets', async () => {
+      const imagePath = path.join(fixtureDir, 'dist', 'public', 'assets');
+      const files = readdirSync(imagePath);
+      const imageExists = files.some((file) =>
+        file.startsWith('json-private-'),
+      );
+      expect(imageExists).not.toBe(true);
+    });
   });
 
   test('add text input', async ({ page }) => {

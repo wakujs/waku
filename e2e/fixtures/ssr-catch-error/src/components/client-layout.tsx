@@ -14,10 +14,8 @@ const FallbackComponent = ({ error, resetErrorBoundary }: FallbackProps) => {
   return (
     <div role="alert">
       <p>Unexpected error in client fallback</p>
-      <pre style={{ color: 'red' }}>{error.message}</pre>
-      {'statusCode' in error && (
-        <pre style={{ color: 'red' }}>{String(error.statusCode)}</pre>
-      )}
+      <pre style={{ color: 'red' }}>{(error as any).message}</pre>
+      <pre style={{ color: 'red' }}>{(error as any).statusCode}</pre>
     </div>
   );
 };

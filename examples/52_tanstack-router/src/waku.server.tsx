@@ -1,14 +1,19 @@
+import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/default';
 
+const router = fsRouter(
+  import.meta.glob('./**/*.{tsx,ts}', { base: './pages' }),
+);
+
 export default adapter({
-  handleRequest: async (input, { renderRsc }) => {
-    if (input.type === 'function') {
-      const value = await input.fn(...input.args);
-      return renderRsc({ _value: value });
+  handleRequest: async (input, utils) => {
+    const res = await router.handleRequest(input, utils);
+    if (res) {
+      return res;
     }
-    return 'fallback';
+    if (input.type === 'custom') {
+      return router.handleRequest({ ...input, pathname: '/' }, utils);
+    }
   },
-  handleBuild: async ({ generateDefaultHtml }) => {
-    await generateDefaultHtml('index.html');
-  },
+  handleBuild: (utils) => router.handleBuild(utils),
 });

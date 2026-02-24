@@ -25,7 +25,7 @@ test.describe('custom-user-adapter', () => {
   });
 
   test('runs post build from in-project adapter', async ({ page, mode }) => {
-    test.skip(mode === 'DEV', 'postBuild runs only in build mode');
+    test.skip(mode !== 'PRD', 'postBuild runs only in build mode');
 
     await page.goto(`http://localhost:${port}/`);
     await expect(page.getByTestId('custom-user-adapter-heading')).toHaveText(

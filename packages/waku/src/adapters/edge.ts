@@ -1,10 +1,8 @@
-import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
+import { Hono } from 'hono/tiny';
 import type { ImportGlobFunction } from 'vite/types/importGlob.d.ts';
-import {
-  unstable_createServerEntryAdapter as createServerEntryAdapter,
-  unstable_honoMiddleware as honoMiddleware,
-} from 'waku/internals';
+import { unstable_createServerEntryAdapter as createServerEntryAdapter } from 'waku/adapter-builders';
+import { unstable_honoMiddleware as honoMiddleware } from 'waku/internals';
 
 declare global {
   interface ImportMeta {

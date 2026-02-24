@@ -10,13 +10,13 @@
   },
   "dependencies": {
     "@vanilla-extract/css": "^1.18.0",
-    "react": "~19.2.3",
-    "react-dom": "~19.2.3",
-    "react-server-dom-webpack": "~19.2.3",
-    "waku": "1.0.0-alpha.1"
+    "react": "~19.2.4",
+    "react-dom": "~19.2.4",
+    "react-server-dom-webpack": "~19.2.4",
+    "waku": "1.0.0-alpha.4"
   },
   "devDependencies": {
-    "@types/react": "^19.2.7",
+    "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vanilla-extract/vite-plugin": "^5.1.4"
   }

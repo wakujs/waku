@@ -1,16 +1,10 @@
-import type { ReactNode } from 'react';
+import type { unstable_defineHandlers as defineHandlers } from 'waku/minimal/server';
 import { getServerInsertedHTML, serverInsertedHTMLStorage } from './context';
 import { createHeadInsertionTransformStream } from './stream';
 
-type RenderHtml = (
-  elementsStream: ReadableStream,
-  html: ReactNode,
-  options: {
-    rscPath: string;
-    actionResult?: unknown;
-    status?: number;
-  },
-) => Promise<Response>;
+type RenderHtml = Parameters<
+  ReturnType<typeof defineHandlers>['handleRequest']
+>[1]['renderHtml'];
 
 export function injectRenderHtml(renderHtml: RenderHtml): RenderHtml {
   if (!import.meta.env.SSR) {

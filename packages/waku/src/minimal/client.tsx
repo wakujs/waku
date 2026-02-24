@@ -262,7 +262,7 @@ export const Root = ({
 }: {
   initialRscPath?: string;
   initialRscParams?: unknown;
-  fetchCache?: FetchCache;
+  fetchCache?: FetchCache | undefined;
   children: ReactNode;
 }) => {
   fetchCache[FETCH_RSC_INTERNAL] ||= createFetchRscInternal(fetchCache);

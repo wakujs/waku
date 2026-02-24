@@ -11,21 +11,21 @@
   },
   "dependencies": {
     "hono": "^4.10.0",
-    "react": "~19.2.3",
-    "react-dom": "~19.2.3",
-    "react-server-dom-webpack": "~19.2.3",
-    "waku": "1.0.0-alpha.1",
-    "wrangler": "^4.56.0"
+    "react": "~19.2.4",
+    "react-dom": "~19.2.4",
+    "react-server-dom-webpack": "~19.2.4",
+    "waku": "1.0.0-alpha.4",
+    "wrangler": "^4.65.0"
   },
   "devDependencies": {
-    "@hiogawa/node-loader-cloudflare": "^0.0.2",
+    "@cloudflare/vite-plugin": "^1.25.0",
     "@tailwindcss/vite": "^4.1.18",
-    "@types/node": "^25.0.3",
-    "@types/react": "^19.2.7",
+    "@types/node": "^25.2.3",
+    "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.0",
     "babel-plugin-react-compiler": "^1.0.0",
-    "miniflare": "^4.20251217.0",
+    "miniflare": "^4.20260212.0",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3"
   }

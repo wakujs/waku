@@ -11,3 +11,5 @@ export async function INTERNAL_runFetch(
   INTERNAL_setAllEnv(env);
   return serverEntry.fetch(req, ...args);
 }
+
+export default serverEntry.defaultExport;

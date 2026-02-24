@@ -6,9 +6,11 @@ const startApp = prepareNormalSetup('rsc-basic');
 test.describe(`rsc-basic`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
+
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
+
   test.afterAll(async () => {
     await stopApp();
   });
@@ -166,7 +168,7 @@ test.describe(`rsc-basic`, () => {
   });
 
   test('build metadata', async ({ page, mode }) => {
-    test.skip(mode === 'DEV', 'Build metadata is only available in build mode');
+    test.skip(mode !== 'PRD', 'Build metadata is only available in build mode');
     await page.goto(`http://localhost:${port}/`);
     await expect(page.getByTestId('build-metadata')).toHaveText(
       'metadata-value',
