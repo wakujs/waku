@@ -341,6 +341,49 @@ test.describe('router-client', () => {
     await expect(page.getByTestId('route-query')).toHaveText('x=1');
   });
 
+  test('skip header omits static layout payload on soft navigation', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/skip/a`);
+    await waitForHydration(page);
+
+    await expect(page.getByTestId('skip-static-layout-marker')).toHaveText(
+      'SKIP_STATIC_LAYOUT_MARKER',
+    );
+    await expect(
+      page.getByRole('heading', { name: 'SKIP_A_PAGE_MARKER' }),
+    ).toBeVisible();
+
+    const rscResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/RSC/R/skip/b.txt') &&
+        response.request().method() === 'GET',
+    );
+
+    await page.getByTestId('skip-go-b').click();
+
+    const response = await rscResponsePromise;
+    const request = response.request();
+    const skipHeader = request.headers()['x-waku-router-skip'];
+
+    expect(skipHeader).toBeTruthy();
+    const skipIds = JSON.parse(skipHeader as string) as unknown;
+    expect(Array.isArray(skipIds)).toBe(true);
+    expect(skipIds).toContain('root');
+
+    const payload = await response.text();
+    expect(payload).toContain('SKIP_B_PAGE_MARKER');
+    expect(payload).not.toContain('SKIP_STATIC_LAYOUT_MARKER');
+    expect(payload).not.toContain('SKIP_A_PAGE_MARKER');
+
+    await expect(
+      page.getByRole('heading', { name: 'SKIP_B_PAGE_MARKER' }),
+    ).toBeVisible();
+    await expect(page.getByTestId('skip-static-layout-marker')).toHaveText(
+      'SKIP_STATIC_LAYOUT_MARKER',
+    );
+  });
+
   test('unstable_prefetchOnView triggers prefetch when link enters viewport', async ({
     page,
   }) => {
