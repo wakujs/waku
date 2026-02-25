@@ -31,6 +31,7 @@ import {
   useElementsPromise_UNSTABLE as useElementsPromise,
   useEnhanceFetchRscInternal_UNSTABLE as useEnhanceFetchRscInternal,
   useRefetch,
+  unstable_withFetchFn as withFetchFn,
 } from '../minimal/client.js';
 import type { RouteConfig } from './base-types.js';
 import {
@@ -917,11 +918,7 @@ const InnerRouter = ({
           return fetch(input, init);
         };
         try {
-          await refetch(rscPath, rscParams, (fetchCache) => ({
-            ...fetchCache,
-            // TODO "f" is hard-coded
-            f: fetchWithSkipHeader,
-          }));
+          await refetch(rscPath, rscParams, withFetchFn(fetchWithSkipHeader));
         } catch (e) {
           if (unstable_historyOnError) {
             writeHistoryIfNeeded();
@@ -967,11 +964,7 @@ const InnerRouter = ({
       }
       return fetch(input, init);
     };
-    prefetchRsc(rscPath, rscParams, (fetchCache) => ({
-      ...fetchCache,
-      // TODO "f" is hard-coded
-      f: fetchWithSkipHeader,
-    }));
+    prefetchRsc(rscPath, rscParams, withFetchFn(fetchWithSkipHeader));
     (globalThis as any).__WAKU_ROUTER_PREFETCH__?.(route.path, (id: string) => {
       preloadModule(id, { as: 'script' });
     });
