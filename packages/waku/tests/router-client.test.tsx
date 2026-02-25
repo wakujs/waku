@@ -20,7 +20,6 @@ import {
   INTERNAL_ServerRoot,
   Root,
   unstable_prefetchRsc as prefetchRsc,
-  useEnhanceFetchRscInternal_UNSTABLE,
   useRefetch,
 } from '../src/minimal/client.js';
 import {
@@ -66,22 +65,6 @@ const getRefetchMock = () => {
     }
   }
   throw new Error('useRefetch was not called');
-};
-
-const createEnhanceFetchRscInternalMock = () =>
-  vi.fn<ReturnType<typeof useEnhanceFetchRscInternal_UNSTABLE>>(() => () => {});
-
-const getEnhanceFetchRscInternalMock = () => {
-  const results = vi.mocked(useEnhanceFetchRscInternal_UNSTABLE).mock.results;
-  for (let index = results.length - 1; index >= 0; index -= 1) {
-    const result = results[index];
-    if (result?.type === 'return') {
-      return result.value as ReturnType<
-        typeof createEnhanceFetchRscInternalMock
-      >;
-    }
-  }
-  throw new Error('useEnhanceFetchRscInternal_UNSTABLE was not called');
 };
 
 const getIntersectionObserverMockInstance = () => {
@@ -137,7 +120,6 @@ vi.mock('../src/minimal/client.js', async () => {
     ),
     unstable_prefetchRsc: vi.fn(),
     useRefetch: vi.fn(),
-    useEnhanceFetchRscInternal_UNSTABLE: vi.fn(),
   };
 });
 
@@ -224,10 +206,6 @@ beforeEach(() => {
 
   vi.mocked(useRefetch).mockReset();
   vi.mocked(useRefetch).mockReturnValue(createRefetchMock());
-  vi.mocked(useEnhanceFetchRscInternal_UNSTABLE).mockReset();
-  vi.mocked(useEnhanceFetchRscInternal_UNSTABLE).mockReturnValue(
-    createEnhanceFetchRscInternalMock(),
-  );
   vi.mocked(preloadModule).mockClear();
   vi.mocked(prefetchRsc).mockClear();
   vi.mocked(Root).mockClear();
@@ -1246,7 +1224,7 @@ describe('Router integration', () => {
     }
   });
 
-  test('push does not write history when refetch fails', async () => {
+  test('push writes history when refetch fails', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
     const refetch = createRefetchMock();
@@ -1266,17 +1244,20 @@ describe('Router integration', () => {
       },
       elements,
     );
+    try {
+      if (!capture.router) {
+        throw new Error('router not initialized');
+      }
 
-    if (!capture.router) {
-      throw new Error('router not initialized');
+      await expect(capture.router.push('/next')).rejects.toThrow(
+        'refetch failed',
+      );
+      expect(historyPushSpy).toHaveBeenCalledTimes(1);
+      expect(window.location.pathname).toBe('/next');
+      expect(capture.router.path).toBe('/start');
+    } finally {
+      view.unmount();
     }
-
-    await expect(capture.router.push('/next')).rejects.toThrow(
-      'refetch failed',
-    );
-    expect(historyPushSpy).not.toHaveBeenCalled();
-
-    view.unmount();
   });
 
   test('push skips refetch for static routes', async () => {
@@ -1711,56 +1692,6 @@ describe('Router integration', () => {
     }
   });
 
-  test('enhanced fetch can trigger location listener route updates', async () => {
-    const capture = { router: null as RouterApi | null };
-    const Probe = makeProbe(capture);
-
-    const elements = {
-      [unstable_getRouteSlotId('/start')]: <Probe />,
-      [unstable_getRouteSlotId('/streamed')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
-      [IS_STATIC_ID]: false,
-    };
-
-    const historyPushSpy = vi.spyOn(window.history, 'pushState');
-
-    const view = await renderRouter(
-      {
-        initialRoute: { path: '/start', query: '', hash: '' },
-      },
-      elements,
-    );
-
-    const enhanceFetchRscInternal = getEnhanceFetchRscInternalMock();
-    const enhancer = enhanceFetchRscInternal.mock.calls[0]?.[0];
-    if (!enhancer) {
-      throw new Error('enhanced fetch enhancer was not registered');
-    }
-
-    const baseFetchRscInternalMock = vi.fn(async () => ({
-      [ROUTE_ID]: ['/streamed', 'x=1'],
-      [IS_STATIC_ID]: false,
-    }));
-
-    const enhancedFetchRscInternal = enhancer(baseFetchRscInternalMock);
-
-    await act(async () => {
-      await enhancedFetchRscInternal(
-        {} as RouterFetchCache,
-        'R/streamed',
-        undefined,
-        false,
-      );
-    });
-
-    expect(capture.router?.path).toBe('/streamed');
-    expect(capture.router?.query).toBe('x=1');
-    expect(historyPushSpy).toHaveBeenCalled();
-    expect(getRefetchMock()).not.toHaveBeenCalled();
-
-    view.unmount();
-  });
-
   test('changeRoute applies route rewrite from refetch result', async () => {
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
       [ROUTE_ID]: ['/streamed', 'x=1'],
@@ -1809,53 +1740,6 @@ describe('Router integration', () => {
       return url.pathname === '/streamed';
     });
     expect(streamedPushes).toHaveLength(1);
-
-    view.unmount();
-  });
-
-  test('location listener route update to /404 does not push history', async () => {
-    const capture = { router: null as RouterApi | null };
-    const Probe = makeProbe(capture);
-    const elements = {
-      [unstable_getRouteSlotId('/start')]: <Probe />,
-      [unstable_getRouteSlotId('/404')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
-      [IS_STATIC_ID]: false,
-      foo: true,
-    };
-    const historyPushSpy = vi.spyOn(window.history, 'pushState');
-
-    const view = await renderRouter(
-      {
-        initialRoute: { path: '/start', query: '', hash: '' },
-      },
-      elements,
-    );
-
-    const enhanceFetchRscInternal = getEnhanceFetchRscInternalMock();
-    const enhancer = enhanceFetchRscInternal.mock.calls[0]?.[0];
-    if (!enhancer) {
-      throw new Error('enhanced fetch enhancer was not registered');
-    }
-    const baseFetchRscInternalMock = vi.fn(async () => ({
-      [ROUTE_ID]: ['/404', ''],
-      [IS_STATIC_ID]: false,
-    }));
-    const enhancedFetchRscInternal = enhancer(baseFetchRscInternalMock);
-
-    await act(async () => {
-      await enhancedFetchRscInternal(
-        {} as RouterFetchCache,
-        'R/404',
-        undefined,
-        false,
-      );
-    });
-    await flush();
-
-    expect(capture.router?.path).toBe('/404');
-    expect(historyPushSpy).not.toHaveBeenCalled();
-    expect(getRefetchMock()).not.toHaveBeenCalled();
 
     view.unmount();
   });

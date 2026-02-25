@@ -144,7 +144,6 @@ type ChangeRouteOptions = {
   skipRefetch?: boolean;
   mode?: undefined | 'push' | 'replace';
   url?: URL | undefined;
-  unstable_historyOnError?: boolean; // FIXME not a big fan of this hack
   unstable_startTransition?: ((fn: TransitionFunction) => void) | undefined;
 };
 
@@ -409,7 +408,6 @@ export function Link({
           shouldScroll: scroll ?? shouldScrollByDefault(url),
           mode: 'push',
           url,
-          unstable_historyOnError: true,
           unstable_startTransition: startTransitionFn,
         });
       });
@@ -770,7 +768,6 @@ const InnerRouter = ({
 
   const elementsPromise = useElementsPromise();
   const [has404, setHas404] = useState(false);
-  const requestedRouteRef = useRef<RouteProps>(initialRoute);
   const staticPathSetRef = useRef(new Set<string>());
   const cachedIdSetRef = useRef(new Set<string>());
   // FIXME this "fetchingSlices" hack feels suboptimal.
@@ -800,53 +797,6 @@ const InnerRouter = ({
   }, [elementsPromise]);
 
   const enhanceFetchRscInternal = useEnhanceFetchRscInternal();
-  const locationListenersRef = useRef(
-    new Set<(path: string, query: string) => void>(),
-  );
-  const locationListeners = locationListenersRef.current;
-  useEffect(() => {
-    type FetchCache = Parameters<
-      Parameters<Parameters<typeof enhanceFetchRscInternal>[0]>[0]
-    >[0];
-    return enhanceFetchRscInternal(
-      (fetchRscInternal) =>
-        (
-          fetchCache: FetchCache,
-          rscPath: string,
-          rscParams: unknown,
-          prefetchOnly,
-        ) => {
-          type Elements = Record<string, unknown>;
-          const elementsPromise = fetchRscInternal(
-            fetchCache,
-            rscPath,
-            rscParams,
-            prefetchOnly as never,
-          ) as Promise<Elements> | undefined;
-          Promise.resolve(elementsPromise)
-            .then((elements = {}) => {
-              if (refetching.current) {
-                return;
-              }
-              const { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic } =
-                elements;
-              if (routeData) {
-                const [path, query] = routeData as [string, string];
-                if (
-                  requestedRouteRef.current.path !== path ||
-                  (!isStatic && requestedRouteRef.current.query !== query)
-                ) {
-                  locationListeners.forEach((listener) =>
-                    listener(path, query),
-                  );
-                }
-              }
-            })
-            .catch(() => {});
-          return elementsPromise as never;
-        },
-    );
-  }, [enhanceFetchRscInternal, locationListeners]);
   const refetch = useRefetch();
   const [route, setRoute] = useState(() => ({
     // This is the first initialization of the route, and it has
@@ -874,8 +824,6 @@ const InnerRouter = ({
 
   const [routeChangeEvents, emitRouteChangeEvent] =
     routeChangeListenersRef.current;
-  // FIXME this "refetching" hack doesn't seem ideal.
-  const refetching = useRef<[onFinish?: () => void] | null>(null);
   const routeChangeAbortRef = useRef<AbortController | null>(null);
   const changeRoute: ChangeRoute = useCallback(
     async (nextRoute, options) => {
@@ -883,11 +831,10 @@ const InnerRouter = ({
       const abortController = new AbortController();
       routeChangeAbortRef.current = abortController;
       const isAborted = () => abortController.signal.aborted;
-      requestedRouteRef.current = nextRoute;
       emitRouteChangeEvent('start', nextRoute);
       const startTransitionFn =
         options.unstable_startTransition || ((fn: TransitionFunction) => fn());
-      const { skipRefetch, unstable_historyOnError } = options;
+      const { skipRefetch } = options;
       const historyPathnameBeforeChange = window.location.pathname;
       const writeHistoryIfNeeded = (
         mode: undefined | 'push' | 'replace',
@@ -909,7 +856,6 @@ const InnerRouter = ({
       const requestedUrlToWrite = mode && (url || getRouteUrl(nextRoute));
       const routeBeforeChange = routeRef.current;
       const pathChanged = isPathChange(nextRoute, routeBeforeChange);
-      refetching.current = [];
       setErr(null);
       if (!staticPathSetRef.current.has(nextRoute.path) && !skipRefetch) {
         const rscPath = encodeRoutePath(nextRoute.path);
@@ -959,10 +905,8 @@ const InnerRouter = ({
           if (isAborted()) {
             return;
           }
-          if (unstable_historyOnError) {
-            writeHistoryIfNeeded(mode, requestedUrlToWrite);
-          }
-          refetching.current = null;
+          writeHistoryIfNeeded(mode, requestedUrlToWrite);
+          routeChangeAbortRef.current = null;
           setErr(e);
           throw e;
         }
@@ -978,16 +922,75 @@ const InnerRouter = ({
         }
         writeHistoryIfNeeded(mode, urlToWrite);
         setRoute(nextRoute);
+        routeChangeAbortRef.current = null;
         if (options.shouldScroll) {
           scrollToRoute(nextRoute, scrollBehavior, pathChanged);
         }
-        refetching.current?.[0]?.();
-        refetching.current = null;
         emitRouteChangeEvent('complete', nextRoute);
       });
     },
     [emitRouteChangeEvent, refetch],
   );
+  useEffect(() => {
+    type FetchCache = Parameters<
+      Parameters<Parameters<typeof enhanceFetchRscInternal>[0]>[0]
+    >[0];
+    return enhanceFetchRscInternal(
+      (fetchRscInternal) =>
+        (
+          fetchCache: FetchCache,
+          rscPath: string,
+          rscParams: unknown,
+          prefetchOnly,
+        ) => {
+          type Elements = Record<string, unknown>;
+          const elementsPromise = fetchRscInternal(
+            fetchCache,
+            rscPath,
+            rscParams,
+            prefetchOnly as never,
+          ) as Promise<Elements> | undefined;
+          Promise.resolve(elementsPromise)
+            .then((elements = {}) => {
+              if (
+                routeChangeAbortRef.current &&
+                !routeChangeAbortRef.current.signal.aborted
+              ) {
+                return;
+              }
+              const { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic } =
+                elements;
+              if (!routeData) {
+                return;
+              }
+              const [path, query] = routeData as [string, string];
+              const currentRoute = routeRef.current;
+              if (
+                currentRoute.path === path &&
+                (isStatic || currentRoute.query === query)
+              ) {
+                return;
+              }
+              const url = new URL(window.location.href);
+              url.pathname = path;
+              url.search = query;
+              url.hash = '';
+              startTransition(() => {
+                changeRoute(parseRoute(url), {
+                  skipRefetch: true,
+                  shouldScroll: false,
+                  mode: path === '/404' ? undefined : 'push',
+                  url,
+                }).catch((err) => {
+                  console.log('Error while handling route updates:', err);
+                });
+              });
+            })
+            .catch(() => {});
+          return elementsPromise as never;
+        },
+    );
+  }, [changeRoute, enhanceFetchRscInternal]);
 
   const prefetchRoute: PrefetchRoute = useCallback((route) => {
     if (staticPathSetRef.current.has(route.path)) {
@@ -1035,36 +1038,6 @@ const InnerRouter = ({
       window.removeEventListener('popstate', callback);
     };
   }, [changeRoute, routeInterceptor]);
-
-  useEffect(() => {
-    const callback = (path: string, query: string) => {
-      const fn = () => {
-        const url = new URL(window.location.href);
-        url.pathname = path;
-        url.search = query;
-        url.hash = '';
-        changeRoute(parseRoute(url), {
-          skipRefetch: true,
-          shouldScroll: false,
-          mode: path === '/404' ? undefined : 'push',
-          url,
-        }).catch((err) => {
-          console.log('Error while handling location listeners:', err);
-        });
-      };
-      if (refetching.current) {
-        refetching.current[0] = () => {
-          startTransition(fn);
-        };
-      } else {
-        startTransition(fn);
-      }
-    };
-    locationListeners.add(callback);
-    return () => {
-      locationListeners.delete(callback);
-    };
-  }, [changeRoute, locationListeners]);
 
   const routeElement =
     err !== null ? (

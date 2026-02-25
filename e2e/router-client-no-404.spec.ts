@@ -31,6 +31,6 @@ test.describe('router-client-no-404', () => {
     await expect(page.getByRole('heading', { name: 'Custom 404' })).toHaveCount(
       0,
     );
-    await expect(page).toHaveURL(/\/start$/);
+    await expect(page).toHaveURL(/\/missing$/);
   });
 });

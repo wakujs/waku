@@ -502,7 +502,7 @@ test.describe('router-client', () => {
       page.getByRole('heading', { name: 'Custom 404' }),
     ).toBeVisible();
     await expect(page.getByTestId('route-path')).toHaveText('/404');
-    await expect(page).toHaveURL(/\/start$/);
+    await expect(page).toHaveURL(/\/missing$/);
     consoleErrors = dropExpectedErrorFlowConsoleErrors(consoleErrors);
   });
 });
