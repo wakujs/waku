@@ -1761,14 +1761,11 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('location listener queues one update during in-flight refetch and applies it once', async () => {
-    let resolveRefetch: ((elements: ElementsMap) => void) | undefined;
-    const pendingRefetch = new Promise<ElementsMap>((resolve) => {
-      resolveRefetch = resolve;
-    });
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(
-      async () => pendingRefetch,
-    );
+  test('changeRoute applies route rewrite from refetch result', async () => {
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
+      [ROUTE_ID]: ['/streamed', 'x=1'],
+      [IS_STATIC_ID]: false,
+    }));
     vi.mocked(useRefetch).mockReturnValue(refetch);
 
     const capture = { router: null as RouterApi | null };
@@ -1793,29 +1790,7 @@ describe('Router integration', () => {
       throw new Error('router not initialized');
     }
 
-    const enhanceFetchRscInternal = getEnhanceFetchRscInternalMock();
-    const enhancer = enhanceFetchRscInternal.mock.calls[0]?.[0];
-    if (!enhancer) {
-      throw new Error('enhanced fetch enhancer was not registered');
-    }
-    const baseFetchRscInternalMock = vi.fn(async () => ({
-      [ROUTE_ID]: ['/streamed', 'x=1'],
-      [IS_STATIC_ID]: false,
-    }));
-    const enhancedFetchRscInternal = enhancer(baseFetchRscInternalMock);
-
-    const pushPromise = capture.router.push('/next?from=push');
-    await Promise.resolve();
-    await act(async () => {
-      await enhancedFetchRscInternal(
-        {} as RouterFetchCache,
-        'R/streamed',
-        undefined,
-        false,
-      );
-    });
-    resolveRefetch?.({});
-    await pushPromise;
+    await capture.router.push('/next?from=push');
     await flush();
 
     expect(refetch).toHaveBeenCalledTimes(1);

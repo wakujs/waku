@@ -27,11 +27,11 @@ import { addBase, removeBase } from '../lib/utils/path.js';
 import {
   Root,
   Slot,
+  unstable_enhanceFetchFn as enhanceFetchFn,
   unstable_prefetchRsc as prefetchRsc,
   useElementsPromise_UNSTABLE as useElementsPromise,
   useEnhanceFetchRscInternal_UNSTABLE as useEnhanceFetchRscInternal,
   useRefetch,
-  unstable_withFetchFn as withFetchFn,
 } from '../minimal/client.js';
 import type { RouteConfig } from './base-types.js';
 import {
@@ -128,14 +128,7 @@ const isAltClick = (event: MouseEvent<HTMLAnchorElement>) =>
   event.button !== 0 ||
   !!(event.metaKey || event.altKey || event.ctrlKey || event.shiftKey);
 
-const isAbortError = (error: unknown) =>
-  typeof error === 'object' &&
-  error !== null &&
-  'name' in error &&
-  error.name === 'AbortError';
-
 let savedRscParams: [query: string, rscParams: URLSearchParams] | undefined;
-let nextChangeRouteId = 0;
 
 const createRscParams = (query: string): URLSearchParams => {
   if (savedRscParams && savedRscParams[0] === query) {
@@ -832,6 +825,9 @@ const InnerRouter = ({
           ) as Promise<Elements> | undefined;
           Promise.resolve(elementsPromise)
             .then((elements = {}) => {
+              if (refetching.current) {
+                return;
+              }
               const { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic } =
                 elements;
               if (routeData) {
@@ -880,86 +876,107 @@ const InnerRouter = ({
     routeChangeListenersRef.current;
   // FIXME this "refetching" hack doesn't seem ideal.
   const refetching = useRef<[onFinish?: () => void] | null>(null);
-  const currentRouteChangeRef = useRef<
-    [id: number, abortController: AbortController] | null
-  >(null);
+  const routeChangeAbortRef = useRef<AbortController | null>(null);
   const changeRoute: ChangeRoute = useCallback(
     async (nextRoute, options) => {
-      currentRouteChangeRef.current?.[1].abort();
-      const id = ++nextChangeRouteId;
+      routeChangeAbortRef.current?.abort();
       const abortController = new AbortController();
-      currentRouteChangeRef.current = [id, abortController];
-      const isCurrentNavigation = () =>
-        currentRouteChangeRef.current?.[0] === id;
+      routeChangeAbortRef.current = abortController;
+      const isAborted = () => abortController.signal.aborted;
       requestedRouteRef.current = nextRoute;
       emitRouteChangeEvent('start', nextRoute);
       const startTransitionFn =
         options.unstable_startTransition || ((fn: TransitionFunction) => fn());
-      const { skipRefetch, mode, url, unstable_historyOnError } = options;
-      const routeBeforeChange = routeRef.current;
+      const { skipRefetch, unstable_historyOnError } = options;
       const historyPathnameBeforeChange = window.location.pathname;
-      const urlToWrite = mode && (url || getRouteUrl(nextRoute));
-      const pathChanged = isPathChange(nextRoute, routeBeforeChange);
-      const writeHistoryIfNeeded = () => {
+      const writeHistoryIfNeeded = (
+        mode: undefined | 'push' | 'replace',
+        url: false | URL | undefined,
+      ) => {
         if (
           mode &&
-          urlToWrite &&
+          url &&
           window.location.pathname === historyPathnameBeforeChange
         ) {
           if (mode === 'push') {
-            window.history.pushState(window.history.state, '', urlToWrite);
+            window.history.pushState(window.history.state, '', url);
           } else {
-            window.history.replaceState(window.history.state, '', urlToWrite);
+            window.history.replaceState(window.history.state, '', url);
           }
         }
       };
+      let { mode, url } = options;
+      const requestedUrlToWrite = mode && (url || getRouteUrl(nextRoute));
+      const routeBeforeChange = routeRef.current;
+      const pathChanged = isPathChange(nextRoute, routeBeforeChange);
       refetching.current = [];
       setErr(null);
       if (!staticPathSetRef.current.has(nextRoute.path) && !skipRefetch) {
         const rscPath = encodeRoutePath(nextRoute.path);
         const rscParams = createRscParams(nextRoute.query);
-        const fetchWithSkipHeader: typeof fetch = (
-          input: RequestInfo | URL,
-          init: RequestInit = {},
-        ) => {
-          if (init.signal === undefined) {
-            init.signal = abortController.signal;
-          }
-          const skipStr = JSON.stringify(Array.from(cachedIdSetRef.current));
-          const headers = (init.headers ||= {});
-          if (Array.isArray(headers)) {
-            headers.push([SKIP_HEADER, skipStr]);
-          } else if (headers instanceof Headers) {
-            headers.set(SKIP_HEADER, skipStr);
-          } else {
-            (headers as Record<string, string>)[SKIP_HEADER] = skipStr;
-          }
-          return fetch(input, init);
-        };
+        const withSkipHeader =
+          (fetchFn: typeof fetch) =>
+          (input: RequestInfo | URL, init: RequestInit = {}) => {
+            if (init.signal === undefined) {
+              init.signal = abortController.signal;
+            }
+            const skipStr = JSON.stringify(Array.from(cachedIdSetRef.current));
+            const headers = (init.headers ||= {});
+            if (Array.isArray(headers)) {
+              headers.push([SKIP_HEADER, skipStr]);
+            } else if (headers instanceof Headers) {
+              headers.set(SKIP_HEADER, skipStr);
+            } else {
+              (headers as Record<string, string>)[SKIP_HEADER] = skipStr;
+            }
+            return fetchFn(input, init);
+          };
         try {
-          await refetch(rscPath, rscParams, withFetchFn(fetchWithSkipHeader));
+          const elements = await refetch(
+            rscPath,
+            rscParams,
+            enhanceFetchFn(withSkipHeader),
+          );
+          const { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic } = elements;
+          if (routeData) {
+            const [path, query] = routeData as [string, string];
+            if (
+              nextRoute.path !== path ||
+              (!isStatic && nextRoute.query !== query)
+            ) {
+              nextRoute = {
+                path,
+                query,
+                hash: '',
+              };
+              if (mode) {
+                mode = path === '/404' ? undefined : 'push';
+                url = undefined;
+              }
+            }
+          }
         } catch (e) {
-          if (!isCurrentNavigation() || isAbortError(e)) {
+          if (isAborted()) {
             return;
           }
           if (unstable_historyOnError) {
-            writeHistoryIfNeeded();
+            writeHistoryIfNeeded(mode, requestedUrlToWrite);
           }
           refetching.current = null;
           setErr(e);
-          currentRouteChangeRef.current = null;
           throw e;
         }
       }
-      if (!isCurrentNavigation()) {
+      if (isAborted()) {
         return;
       }
+      const urlToWrite = mode && (url || getRouteUrl(nextRoute));
       const scrollBehavior: ScrollBehavior = pathChanged ? 'instant' : 'auto';
       startTransitionFn(() => {
-        if (!isCurrentNavigation()) {
+        if (isAborted()) {
           return;
         }
-        writeHistoryIfNeeded();
+        writeHistoryIfNeeded(mode, urlToWrite);
         setRoute(nextRoute);
         if (options.shouldScroll) {
           scrollToRoute(nextRoute, scrollBehavior, pathChanged);
@@ -967,7 +984,6 @@ const InnerRouter = ({
         refetching.current?.[0]?.();
         refetching.current = null;
         emitRouteChangeEvent('complete', nextRoute);
-        currentRouteChangeRef.current = null;
       });
     },
     [emitRouteChangeEvent, refetch],
@@ -979,22 +995,21 @@ const InnerRouter = ({
     }
     const rscPath = encodeRoutePath(route.path);
     const rscParams = createRscParams(route.query);
-    const fetchWithSkipHeader: typeof fetch = (
-      input: RequestInfo | URL,
-      init: RequestInit = {},
-    ) => {
-      const skipStr = JSON.stringify(Array.from(cachedIdSetRef.current));
-      const headers = (init.headers ||= {});
-      if (Array.isArray(headers)) {
-        headers.push([SKIP_HEADER, skipStr]);
-      } else if (headers instanceof Headers) {
-        headers.set(SKIP_HEADER, skipStr);
-      } else {
-        (headers as Record<string, string>)[SKIP_HEADER] = skipStr;
-      }
-      return fetch(input, init);
-    };
-    prefetchRsc(rscPath, rscParams, withFetchFn(fetchWithSkipHeader));
+    const withSkipHeader =
+      (fetchFn: typeof fetch) =>
+      (input: RequestInfo | URL, init: RequestInit = {}) => {
+        const skipStr = JSON.stringify(Array.from(cachedIdSetRef.current));
+        const headers = (init.headers ||= {});
+        if (Array.isArray(headers)) {
+          headers.push([SKIP_HEADER, skipStr]);
+        } else if (headers instanceof Headers) {
+          headers.set(SKIP_HEADER, skipStr);
+        } else {
+          (headers as Record<string, string>)[SKIP_HEADER] = skipStr;
+        }
+        return fetchFn(input, init);
+      };
+    prefetchRsc(rscPath, rscParams, enhanceFetchFn(withSkipHeader));
     (globalThis as any).__WAKU_ROUTER_PREFETCH__?.(route.path, (id: string) => {
       preloadModule(id, { as: 'script' });
     });

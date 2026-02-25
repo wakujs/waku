@@ -243,11 +243,11 @@ export const unstable_prefetchRsc = (
   fetchRscInternal(fetchCache, rscPath, rscParams, true);
 };
 
-export const unstable_withFetchFn =
-  (fetchFn: typeof fetch) =>
+export const unstable_enhanceFetchFn =
+  (enhance: (fn: typeof fetch) => typeof fetch) =>
   (fetchCache: FetchCache): FetchCache => ({
     ...fetchCache,
-    [FETCH_FN]: fetchFn,
+    [FETCH_FN]: enhance(fetchCache[FETCH_FN] || fetch),
   });
 
 const RefetchContext = createContext<
