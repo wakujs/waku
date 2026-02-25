@@ -27,7 +27,7 @@ import { addBase, removeBase } from '../lib/utils/path.js';
 import {
   Root,
   Slot,
-  prefetchRsc,
+  unstable_prefetchRsc as prefetchRsc,
   useElementsPromise_UNSTABLE as useElementsPromise,
   useEnhanceFetchRscInternal_UNSTABLE as useEnhanceFetchRscInternal,
   useRefetch,
@@ -804,33 +804,23 @@ const InnerRouter = ({
   );
   const locationListeners = locationListenersRef.current;
   useEffect(() => {
-    const enhanceFetch =
-      (fetchFn: typeof fetch) =>
-      (input: RequestInfo | URL, init: RequestInit = {}) => {
-        const skipStr = JSON.stringify(Array.from(cachedIdSetRef.current));
-        const headers = (init.headers ||= {});
-        if (Array.isArray(headers)) {
-          headers.push([SKIP_HEADER, skipStr]);
-        } else {
-          (headers as Record<string, string>)[SKIP_HEADER] = skipStr;
-        }
-        return fetchFn(input, init);
-      };
+    type FetchCache = Parameters<
+      Parameters<Parameters<typeof enhanceFetchRscInternal>[0]>[0]
+    >[0];
     return enhanceFetchRscInternal(
       (fetchRscInternal) =>
         (
+          fetchCache: FetchCache,
           rscPath: string,
           rscParams: unknown,
           prefetchOnly,
-          fetchFn = fetch,
         ) => {
-          const enhancedFetch = enhanceFetch(fetchFn);
           type Elements = Record<string, unknown>;
           const elementsPromise = fetchRscInternal(
+            fetchCache,
             rscPath,
             rscParams,
-            prefetchOnly as undefined,
-            enhancedFetch,
+            prefetchOnly as never,
           ) as Promise<Elements> | undefined;
           Promise.resolve(elementsPromise)
             .then((elements = {}) => {
@@ -911,8 +901,27 @@ const InnerRouter = ({
       if (!staticPathSetRef.current.has(nextRoute.path) && !skipRefetch) {
         const rscPath = encodeRoutePath(nextRoute.path);
         const rscParams = createRscParams(nextRoute.query);
+        const fetchWithSkipHeader: typeof fetch = (
+          input: RequestInfo | URL,
+          init: RequestInit = {},
+        ) => {
+          const skipStr = JSON.stringify(Array.from(cachedIdSetRef.current));
+          const headers = (init.headers ||= {});
+          if (Array.isArray(headers)) {
+            headers.push([SKIP_HEADER, skipStr]);
+          } else if (headers instanceof Headers) {
+            headers.set(SKIP_HEADER, skipStr);
+          } else {
+            (headers as Record<string, string>)[SKIP_HEADER] = skipStr;
+          }
+          return fetch(input, init);
+        };
         try {
-          await refetch(rscPath, rscParams);
+          await refetch(rscPath, rscParams, (fetchCache) => ({
+            ...fetchCache,
+            // TODO "f" is hard-coded
+            f: fetchWithSkipHeader,
+          }));
         } catch (e) {
           if (unstable_historyOnError) {
             writeHistoryIfNeeded();
@@ -943,7 +952,26 @@ const InnerRouter = ({
     }
     const rscPath = encodeRoutePath(route.path);
     const rscParams = createRscParams(route.query);
-    prefetchRsc(rscPath, rscParams);
+    const fetchWithSkipHeader: typeof fetch = (
+      input: RequestInfo | URL,
+      init: RequestInit = {},
+    ) => {
+      const skipStr = JSON.stringify(Array.from(cachedIdSetRef.current));
+      const headers = (init.headers ||= {});
+      if (Array.isArray(headers)) {
+        headers.push([SKIP_HEADER, skipStr]);
+      } else if (headers instanceof Headers) {
+        headers.set(SKIP_HEADER, skipStr);
+      } else {
+        (headers as Record<string, string>)[SKIP_HEADER] = skipStr;
+      }
+      return fetch(input, init);
+    };
+    prefetchRsc(rscPath, rscParams, (fetchCache) => ({
+      ...fetchCache,
+      // TODO "f" is hard-coded
+      f: fetchWithSkipHeader,
+    }));
     (globalThis as any).__WAKU_ROUTER_PREFETCH__?.(route.path, (id: string) => {
       preloadModule(id, { as: 'script' });
     });

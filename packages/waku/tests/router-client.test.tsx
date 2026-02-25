@@ -19,7 +19,7 @@ import {
   Children,
   INTERNAL_ServerRoot,
   Root,
-  prefetchRsc,
+  unstable_prefetchRsc as prefetchRsc,
   useEnhanceFetchRscInternal_UNSTABLE,
   useRefetch,
 } from '../src/minimal/client.js';
@@ -55,7 +55,7 @@ type IntersectionObserverMockInstance = IntersectionObserver & {
 };
 
 const createRefetchMock = () =>
-  vi.fn<ReturnType<typeof useRefetch>>(async () => {});
+  vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
 
 const getRefetchMock = () => {
   const results = vi.mocked(useRefetch).mock.results;
@@ -108,13 +108,13 @@ const getIntersectionObserverMockInstance = () => {
 
 const createMockFetchCache = (elements: ElementsMap): RouterFetchCache =>
   ({
-    f: ((_: string, __: unknown, prefetchOnly?: boolean) =>
+    r: ((_fetchCache, _rscPath, _rscParams, prefetchOnly) =>
       prefetchOnly
         ? undefined
         : Promise.resolve({
             root: <Children />,
             ...elements,
-          })) as RouterFetchCache['f'],
+          })) as RouterFetchCache['r'],
   }) as RouterFetchCache;
 
 vi.mock('react-dom', async () => {
@@ -135,7 +135,7 @@ vi.mock('../src/minimal/client.js', async () => {
     Root: vi.fn((props: Parameters<typeof actual.Root>[0]) =>
       actual.Root(props),
     ),
-    prefetchRsc: vi.fn(),
+    unstable_prefetchRsc: vi.fn(),
     useRefetch: vi.fn(),
     useEnhanceFetchRscInternal_UNSTABLE: vi.fn(),
   };
@@ -1416,6 +1416,7 @@ describe('Router integration', () => {
     expect(getRefetchMock()).toHaveBeenCalledWith(
       unstable_encodeRoutePath('/intercepted'),
       expect.any(URLSearchParams),
+      expect.any(Function),
     );
     expect(capture.router?.path).toBe('/intercepted');
     expect(capture.router?.query).toBe('from=interceptor');
@@ -1577,7 +1578,67 @@ describe('Router integration', () => {
     }
   });
 
-  test('enhanced fetch injects skip header and can trigger location listener route updates', async () => {
+  test('changeRoute refetch injects skip header', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const fetchSpy = vi.fn<typeof fetch>(
+      async () => new Response(null, { status: 200 }),
+    );
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(fetchSpy as typeof fetch);
+    const refetch = vi.fn(async (_rscPath, _rscParams, enhanceFetchCache) => {
+      const fetchCache = (
+        enhanceFetchCache ? enhanceFetchCache({} as RouterFetchCache) : {}
+      ) as RouterFetchCache;
+      const fetchFn = fetchCache.f || fetch;
+      await fetchFn('http://localhost/rsc', {});
+      return {};
+    });
+    vi.mocked(useRefetch).mockReturnValue(
+      refetch as ReturnType<typeof useRefetch>,
+    );
+
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/next')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+      foo: true,
+      bar: true,
+    };
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      if (!capture.router) {
+        throw new Error('router not initialized');
+      }
+      await act(async () => {
+        await capture.router!.push('/next');
+      });
+      const requestInit = fetchSpy.mock.calls[0]?.[1] as
+        | RequestInit
+        | undefined;
+      const headers = (requestInit?.headers ?? {}) as Record<string, string>;
+      expect(headers).toBeDefined();
+      expect(headers[SKIP_HEADER]).toBeTypeOf('string');
+      const skipped = JSON.parse(headers[SKIP_HEADER]! as string) as string[];
+      expect(skipped).toContain('foo');
+      expect(skipped).toContain('bar');
+      expect(capture.router.path).toBe('/next');
+      expect(capture.router.query).toBe('');
+    } finally {
+      view.unmount();
+      fetchMock.mockRestore();
+    }
+  });
+
+  test('enhanced fetch can trigger location listener route updates', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
 
@@ -1586,8 +1647,6 @@ describe('Router integration', () => {
       [unstable_getRouteSlotId('/streamed')]: <Probe />,
       [ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
-      foo: true,
-      bar: true,
     };
 
     const historyPushSpy = vi.spyOn(window.history, 'pushState');
@@ -1605,37 +1664,22 @@ describe('Router integration', () => {
       throw new Error('enhanced fetch enhancer was not registered');
     }
 
-    const fetchSpy = vi.fn<typeof fetch>(
-      async () => new Response(null, { status: 200 }),
-    );
-    const baseFetchRscInternalMock = vi.fn(
-      async (_rscPath, _rscParams, _prefetchOnly, fetchFn = fetch) => {
-        await fetchFn('http://localhost/rsc', {});
-        return {
-          [ROUTE_ID]: ['/streamed', 'x=1'],
-          [IS_STATIC_ID]: false,
-        };
-      },
-    );
+    const baseFetchRscInternalMock = vi.fn(async () => ({
+      [ROUTE_ID]: ['/streamed', 'x=1'],
+      [IS_STATIC_ID]: false,
+    }));
 
     const enhancedFetchRscInternal = enhancer(baseFetchRscInternalMock);
 
     await act(async () => {
       await enhancedFetchRscInternal(
+        {} as RouterFetchCache,
         'R/streamed',
         undefined,
-        undefined,
-        fetchSpy,
+        false,
       );
     });
 
-    const requestInit = fetchSpy.mock.calls[0]?.[1] as RequestInit | undefined;
-    const headers = (requestInit?.headers ?? {}) as Record<string, string>;
-    expect(headers).toBeDefined();
-    expect(headers[SKIP_HEADER]).toBeTypeOf('string');
-    const skipped = JSON.parse(headers[SKIP_HEADER]! as string) as string[];
-    expect(skipped).toContain('foo');
-    expect(skipped).toContain('bar');
     expect(capture.router?.path).toBe('/streamed');
     expect(capture.router?.query).toBe('x=1');
     expect(historyPushSpy).toHaveBeenCalled();
@@ -1645,14 +1689,14 @@ describe('Router integration', () => {
   });
 
   test('location listener queues one update during in-flight refetch and applies it once', async () => {
-    let resolveRefetch: (() => void) | undefined;
-    const pendingRefetch = new Promise<void>((resolve) => {
+    let resolveRefetch: ((elements: ElementsMap) => void) | undefined;
+    const pendingRefetch = new Promise<ElementsMap>((resolve) => {
       resolveRefetch = resolve;
     });
-    const refetch = vi.fn(async (..._args: unknown[]) => pendingRefetch);
-    vi.mocked(useRefetch).mockReturnValue(
-      refetch as ReturnType<typeof useRefetch>,
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(
+      async () => pendingRefetch,
     );
+    vi.mocked(useRefetch).mockReturnValue(refetch);
 
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
@@ -1690,9 +1734,14 @@ describe('Router integration', () => {
     const pushPromise = capture.router.push('/next?from=push');
     await Promise.resolve();
     await act(async () => {
-      await enhancedFetchRscInternal('R/streamed', undefined);
+      await enhancedFetchRscInternal(
+        {} as RouterFetchCache,
+        'R/streamed',
+        undefined,
+        false,
+      );
     });
-    resolveRefetch?.();
+    resolveRefetch?.({});
     await pushPromise;
     await flush();
 
@@ -1747,7 +1796,12 @@ describe('Router integration', () => {
     const enhancedFetchRscInternal = enhancer(baseFetchRscInternalMock);
 
     await act(async () => {
-      await enhancedFetchRscInternal('R/404', undefined);
+      await enhancedFetchRscInternal(
+        {} as RouterFetchCache,
+        'R/404',
+        undefined,
+        false,
+      );
     });
     await flush();
 
@@ -1809,6 +1863,7 @@ describe('Router integration', () => {
     expect(getRefetchMock()).toHaveBeenCalledWith(
       unstable_encodeRoutePath('/404'),
       expect.any(URLSearchParams),
+      expect.any(Function),
     );
     expect(capture.router?.path).toBe('/404');
 
@@ -1844,6 +1899,7 @@ describe('Router integration', () => {
       expect(getRefetchMock()).toHaveBeenCalledWith(
         unstable_encodeRoutePath('/404'),
         expect.any(URLSearchParams),
+        expect.any(Function),
       );
       expect(capture.router?.path).toBe('/404');
 
@@ -1884,6 +1940,7 @@ describe('Router integration', () => {
     expect(getRefetchMock()).toHaveBeenCalledWith(
       unstable_encodeRoutePath('/target'),
       expect.any(URLSearchParams),
+      expect.any(Function),
     );
     expect(capture.router?.path).toBe('/target');
     expect(capture.router?.query).toBe('ok=1');
@@ -1964,6 +2021,7 @@ describe('Router integration', () => {
       expect(getRefetchMock()).toHaveBeenCalledWith(
         unstable_encodeRoutePath('/target'),
         expect.any(URLSearchParams),
+        expect.any(Function),
       );
     } finally {
       view.unmount();
