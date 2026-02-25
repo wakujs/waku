@@ -1638,6 +1638,79 @@ describe('Router integration', () => {
     }
   });
 
+  test('newer navigation aborts previous in-flight route fetch', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    let firstSignal: AbortSignal | undefined;
+    const fetchSpy = vi.fn<typeof fetch>((_input, init = {}) => {
+      const signal = init.signal as AbortSignal | undefined;
+      if (!firstSignal) {
+        firstSignal = signal;
+        return new Promise<Response>((_resolve, reject) => {
+          signal?.addEventListener(
+            'abort',
+            () => {
+              reject(
+                Object.assign(new Error('Aborted'), { name: 'AbortError' }),
+              );
+            },
+            { once: true },
+          );
+        });
+      }
+      return Promise.resolve(new Response(null, { status: 200 }));
+    });
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(fetchSpy as typeof fetch);
+    const refetch = vi.fn(async (_rscPath, _rscParams, enhanceFetchCache) => {
+      const fetchCache = (
+        enhanceFetchCache ? enhanceFetchCache({} as RouterFetchCache) : {}
+      ) as RouterFetchCache;
+      const fetchFn = fetchCache.f || fetch;
+      await fetchFn('http://localhost/rsc', {});
+      return {};
+    });
+    vi.mocked(useRefetch).mockReturnValue(
+      refetch as ReturnType<typeof useRefetch>,
+    );
+
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/next')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+      foo: true,
+    };
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      if (!capture.router) {
+        throw new Error('router not initialized');
+      }
+
+      const firstPromise = capture.router.push('/next');
+      await Promise.resolve();
+      const secondPromise = capture.router.push('/start?x=2');
+      await secondPromise;
+      await firstPromise;
+      await flush();
+
+      expect(refetch).toHaveBeenCalledTimes(2);
+      expect(firstSignal?.aborted).toBe(true);
+      expect(capture.router.path).toBe('/start');
+      expect(capture.router.query).toBe('x=2');
+    } finally {
+      view.unmount();
+      fetchMock.mockRestore();
+    }
+  });
+
   test('enhanced fetch can trigger location listener route updates', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);

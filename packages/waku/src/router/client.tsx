@@ -128,7 +128,14 @@ const isAltClick = (event: MouseEvent<HTMLAnchorElement>) =>
   event.button !== 0 ||
   !!(event.metaKey || event.altKey || event.ctrlKey || event.shiftKey);
 
+const isAbortError = (error: unknown) =>
+  typeof error === 'object' &&
+  error !== null &&
+  'name' in error &&
+  error.name === 'AbortError';
+
 let savedRscParams: [query: string, rscParams: URLSearchParams] | undefined;
+let nextChangeRouteId = 0;
 
 const createRscParams = (query: string): URLSearchParams => {
   if (savedRscParams && savedRscParams[0] === query) {
@@ -873,8 +880,17 @@ const InnerRouter = ({
     routeChangeListenersRef.current;
   // FIXME this "refetching" hack doesn't seem ideal.
   const refetching = useRef<[onFinish?: () => void] | null>(null);
+  const currentRouteChangeRef = useRef<
+    [id: number, abortController: AbortController] | null
+  >(null);
   const changeRoute: ChangeRoute = useCallback(
     async (nextRoute, options) => {
+      currentRouteChangeRef.current?.[1].abort();
+      const id = ++nextChangeRouteId;
+      const abortController = new AbortController();
+      currentRouteChangeRef.current = [id, abortController];
+      const isCurrentNavigation = () =>
+        currentRouteChangeRef.current?.[0] === id;
       requestedRouteRef.current = nextRoute;
       emitRouteChangeEvent('start', nextRoute);
       const startTransitionFn =
@@ -906,6 +922,9 @@ const InnerRouter = ({
           input: RequestInfo | URL,
           init: RequestInit = {},
         ) => {
+          if (init.signal === undefined) {
+            init.signal = abortController.signal;
+          }
           const skipStr = JSON.stringify(Array.from(cachedIdSetRef.current));
           const headers = (init.headers ||= {});
           if (Array.isArray(headers)) {
@@ -920,16 +939,26 @@ const InnerRouter = ({
         try {
           await refetch(rscPath, rscParams, withFetchFn(fetchWithSkipHeader));
         } catch (e) {
+          if (!isCurrentNavigation() || isAbortError(e)) {
+            return;
+          }
           if (unstable_historyOnError) {
             writeHistoryIfNeeded();
           }
           refetching.current = null;
           setErr(e);
+          currentRouteChangeRef.current = null;
           throw e;
         }
       }
+      if (!isCurrentNavigation()) {
+        return;
+      }
       const scrollBehavior: ScrollBehavior = pathChanged ? 'instant' : 'auto';
       startTransitionFn(() => {
+        if (!isCurrentNavigation()) {
+          return;
+        }
         writeHistoryIfNeeded();
         setRoute(nextRoute);
         if (options.shouldScroll) {
@@ -938,6 +967,7 @@ const InnerRouter = ({
         refetching.current?.[0]?.();
         refetching.current = null;
         emitRouteChangeEvent('complete', nextRoute);
+        currentRouteChangeRef.current = null;
       });
     },
     [emitRouteChangeEvent, refetch],
