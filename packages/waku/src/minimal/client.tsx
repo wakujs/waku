@@ -78,13 +78,13 @@ const ENTRY = 'e';
 const SET_ELEMENTS = 's';
 const FETCH_FN = 'f';
 const TRANSFORM_FETCH_RSC_INPUT = 't';
-const ON_CALL_SERVER_ELEMENTS = 'o';
+const CALL_SERVER_ELEMENTS_LISTENERS = 'o';
 
 type TransformFetchRscInput = (
   rscPath: string,
   rscParams: unknown,
   prefetchOnly: boolean,
-) => [rscPath: string, rscParams: unknown, prefetchOnly: boolean];
+) => readonly [rscPath: string, rscParams: unknown, prefetchOnly: boolean];
 
 type CallServerElementsListeners = Set<(elements: Elements) => void>;
 
@@ -112,7 +112,7 @@ type FetchRscStore = {
   [SET_ELEMENTS]?: SetElements;
   [FETCH_FN]?: typeof fetch;
   [TRANSFORM_FETCH_RSC_INPUT]?: TransformFetchRscInput;
-  [ON_CALL_SERVER_ELEMENTS]?: CallServerElementsListeners;
+  [CALL_SERVER_ELEMENTS_LISTENERS]?: CallServerElementsListeners;
 };
 
 const defaultFetchRscStore: FetchRscStore = {};
@@ -191,7 +191,8 @@ export const unstable_callServerRsc = async (
 ) => {
   const fetchRscStore = enhanceFetchRscStore(defaultFetchRscStore);
   const setElements = fetchRscStore[SET_ELEMENTS]!;
-  const callServerElementsListeners = fetchRscStore[ON_CALL_SERVER_ELEMENTS];
+  const callServerElementsListeners =
+    fetchRscStore[CALL_SERVER_ELEMENTS_LISTENERS];
   const rscPath = encodeFuncId(funcId);
   const rscParams =
     args.length === 1 && args[0] instanceof URLSearchParams ? args[0] : args;
@@ -218,7 +219,7 @@ export const unstable_registerCallServerElementsListener = (
   listener: (elements: Elements) => void,
 ): Unregister => {
   const callServerElementsListeners = (fetchRscStore[
-    ON_CALL_SERVER_ELEMENTS
+    CALL_SERVER_ELEMENTS_LISTENERS
   ] ||= new Set());
   callServerElementsListeners.add(listener);
   return () => {
