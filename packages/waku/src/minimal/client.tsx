@@ -78,7 +78,7 @@ const ENTRY = 'e';
 const SET_ELEMENTS = 's';
 const FETCH_FN = 'f';
 const FETCH_RSC_INPUT_TRANSFORMERS = 't';
-const CALL_SERVER_ELEMENTS_LISTENERS = 'o';
+const CALL_SERVER_ELEMENTS_LISTENERS = 'l';
 
 type TransformFetchRscInput = (
   rscPath: string,
