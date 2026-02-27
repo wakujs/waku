@@ -1,17 +1,29 @@
 'use client';
 
+import { createPortal } from 'react-dom';
 import { Link, useRouter } from 'waku';
+
+const BodyPortal = () => {
+  return createPortal(<div data-testid="portal-marker">portal</div>, document.body);
+};
 
 export default function TestRouter() {
   const router = useRouter();
   const params = new URLSearchParams(router.query);
   const queryCount = parseInt(params.get('count') || '0');
   const hashCount = parseInt(router.hash?.slice(1) || '0');
+  const portal = params.get('portal') === '1';
   return (
     <>
+      {portal && <BodyPortal />}
       <p data-testid="path">Path: {router.path}</p>
       <p data-testid="query">Query: {queryCount}</p>
       <p data-testid="hash">Hash: {hashCount}</p>
+      <p>
+        <Link data-testid="go-dynamic-portal" to="/dynamic?portal=1">
+          Go to dynamic portal
+        </Link>
+      </p>
       <p>
         <Link to={`?count=${queryCount + 1}`}>Increment query</Link>
       </p>
