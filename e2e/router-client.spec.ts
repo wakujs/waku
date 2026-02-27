@@ -293,6 +293,39 @@ test.describe('router-client', () => {
     await expect(page.getByTestId('route-query')).toHaveText('from=query-only');
   });
 
+  test('non-portal route with popstate churn preserves prior query history entry', async ({
+    page,
+  }) => {
+    let delayedRequestCount = 0;
+    await page.route('**/RSC/R/next.txt**', async (route) => {
+      if (route.request().url().includes('query=x%3D1')) {
+        delayedRequestCount += 1;
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+      await route.continue();
+    });
+
+    await page.goto(`http://localhost:${port}/start`);
+    await waitForHydration(page);
+
+    await page.getByTestId('router-push-query-only').click();
+    await expect(page.getByTestId('route-path')).toHaveText('/start');
+    await expect(page.getByTestId('route-query')).toHaveText('from=query-only');
+
+    await page.getByTestId('go-next').click();
+    await expect(page.getByRole('heading', { name: 'Next' })).toBeVisible();
+
+    await page.evaluate(() => {
+      window.history.back();
+      window.history.forward();
+      window.history.back();
+    });
+
+    expect(delayedRequestCount).toBeGreaterThan(0);
+    await expect(page.getByTestId('route-path')).toHaveText('/start');
+    await expect(page.getByTestId('route-query')).toHaveText('from=query-only');
+  });
+
   test('back/forward for path-change history scrolls to top', async ({
     page,
   }) => {
