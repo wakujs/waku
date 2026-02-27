@@ -29,7 +29,7 @@ import {
   unstable_enhanceFetchFn as enhanceFetchFn,
   unstable_prefetchRsc as prefetchRsc,
   useElementsPromise_UNSTABLE as useElementsPromise,
-  useOnSetElementsData_UNSTABLE as useOnSetElementsData,
+  useFetchCache_UNSTABLE as useFetchCache,
   useRefetch,
 } from '../minimal/client.js';
 import type { RouteConfig } from './base-types.js';
@@ -958,16 +958,23 @@ const InnerRouter = ({
     },
     [changeRoute],
   );
-  const onSetElementsData = useOnSetElementsData();
+  const fetchCache = useFetchCache();
   useEffect(() => {
-    return onSetElementsData((elements) => {
+    const entry = (fetchCache.o ||= {
+      listeners: new Set<(elements: Record<string, unknown>) => void>(),
+    });
+    const listener = (elements: Record<string, unknown>) => {
       const { [CHANGE_ROUTE_ID]: changeRouteData, [IS_STATIC_ID]: isStatic } =
         elements;
       applyChangeRouteData(changeRouteData, isStatic).catch((err) => {
         console.log('Error while handling route updates:', err);
       });
-    });
-  }, [applyChangeRouteData, onSetElementsData]);
+    };
+    entry.listeners.add(listener);
+    return () => {
+      entry.listeners.delete(listener);
+    };
+  }, [applyChangeRouteData, fetchCache]);
 
   const prefetchRoute: PrefetchRoute = useCallback((route) => {
     if (staticPathSetRef.current.has(route.path)) {

@@ -7,7 +7,6 @@ import {
   use,
   useCallback,
   useEffect,
-  useMemo,
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
@@ -266,15 +265,15 @@ const RefetchContext = createContext<
   throw new Error('Missing Root component');
 });
 const ElementsContext = createContext<Promise<Elements> | null>(null);
+const FetchCacheContext = createContext<FetchCache | null>(null);
 
-const OnSetElementsDataContext = createContext<
-  (listener: OnSetElementsData) => () => void
->(() => {
-  throw new Error('Missing Root component');
-});
-
-export const useOnSetElementsData_UNSTABLE = () =>
-  use(OnSetElementsDataContext);
+export const useFetchCache_UNSTABLE = () => {
+  const fetchCache = use(FetchCacheContext);
+  if (!fetchCache) {
+    throw new Error('Missing Root component');
+  }
+  return fetchCache;
+};
 
 export const Root = ({
   initialRscPath,
@@ -287,17 +286,6 @@ export const Root = ({
   fetchCache?: FetchCache | undefined;
   children: ReactNode;
 }) => {
-  const onSetElementsData = useMemo(() => {
-    const entry = (fetchCache[ON_SET_ELEMENTS_DATA] ||= {
-      listeners: new Set<OnSetElementsData>(),
-    });
-    return (listener: OnSetElementsData) => {
-      entry.listeners.add(listener);
-      return () => {
-        entry.listeners.delete(listener);
-      };
-    };
-  }, [fetchCache]);
   const [elements, setElements] = useState(() =>
     unstable_fetchRsc(initialRscPath || '', initialRscParams, () => fetchCache),
   );
@@ -322,14 +310,14 @@ export const Root = ({
     [fetchCache],
   );
   return (
-    <OnSetElementsDataContext value={onSetElementsData}>
+    <FetchCacheContext value={fetchCache}>
       <RefetchContext value={refetch}>
         <ElementsContext value={elements}>
           {DEFAULT_HTML_HEAD}
           {children}
         </ElementsContext>
       </RefetchContext>
-    </OnSetElementsDataContext>
+    </FetchCacheContext>
   );
 };
 
