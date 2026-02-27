@@ -35,9 +35,9 @@ import {
 } from '../minimal/client.js';
 import type { RouteConfig } from './base-types.js';
 import {
-  CHANGE_ROUTE_ID,
   HAS404_ID,
   IS_STATIC_ID,
+  ROUTE_ID,
   SKIP_HEADER,
   encodeRoutePath,
   encodeSliceId,
@@ -776,7 +776,7 @@ const InnerRouter = ({
     elementsPromise.then(
       (elements) => {
         const {
-          [CHANGE_ROUTE_ID]: changeRouteData,
+          [ROUTE_ID]: routeData,
           [IS_STATIC_ID]: isStatic,
           [HAS404_ID]: has404FromElements,
           ...rest
@@ -784,8 +784,8 @@ const InnerRouter = ({
         if (has404FromElements) {
           setHas404(true);
         }
-        if (changeRouteData) {
-          const [path, _query] = changeRouteData as [string, string];
+        if (routeData) {
+          const [path, _query] = routeData as [string, string];
           if (isStatic) {
             staticPathSetRef.current.add(path);
           }
@@ -882,12 +882,9 @@ const InnerRouter = ({
             rscParams,
             withEnhanceFetchFn(skipHeaderEnhancer),
           );
-          const {
-            [CHANGE_ROUTE_ID]: changeRouteData,
-            [IS_STATIC_ID]: isStatic,
-          } = elements;
-          if (changeRouteData) {
-            const [path, query] = changeRouteData as [string, string];
+          const { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic } = elements;
+          if (routeData) {
+            const [path, query] = routeData as [string, string];
             if (
               nextRoute.path !== path ||
               (!isStatic && nextRoute.query !== query)
@@ -934,11 +931,11 @@ const InnerRouter = ({
     [emitRouteChangeEvent, refetch],
   );
   const applyChangeRouteData = useCallback(
-    async (changeRouteData: unknown, isStatic: unknown) => {
-      if (!changeRouteData) {
+    async (routeData: unknown, isStatic: unknown) => {
+      if (!routeData) {
         return;
       }
-      const [path, query] = changeRouteData as [string, string];
+      const [path, query] = routeData as [string, string];
       const currentRoute = routeRef.current;
       if (
         currentRoute.path === path &&
@@ -962,9 +959,8 @@ const InnerRouter = ({
   const fetchRscStore = useFetchRscStore();
   useEffect(() => {
     const listener = (elements: Record<string, unknown>) => {
-      const { [CHANGE_ROUTE_ID]: changeRouteData, [IS_STATIC_ID]: isStatic } =
-        elements;
-      applyChangeRouteData(changeRouteData, isStatic).catch((err) => {
+      const { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic } = elements;
+      applyChangeRouteData(routeData, isStatic).catch((err) => {
         console.log('Error while handling route updates:', err);
       });
     };
@@ -1120,7 +1116,7 @@ export function INTERNAL_ServerRouter({
 export type Unstable_RouteProps = RouteProps;
 export const unstable_HAS404_ID = HAS404_ID;
 export const unstable_IS_STATIC_ID = IS_STATIC_ID;
-export const unstable_CHANGE_ROUTE_ID = CHANGE_ROUTE_ID;
+export const unstable_ROUTE_ID = ROUTE_ID;
 export const unstable_SKIP_HEADER = SKIP_HEADER;
 export const unstable_encodeRoutePath = encodeRoutePath;
 export const unstable_encodeSliceId = encodeSliceId;

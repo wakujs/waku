@@ -190,7 +190,7 @@ const fetchRscInternal: FetchRscInternal = (
 export const unstable_callServerRsc = async (
   funcId: string,
   args: unknown[],
-  enhanceFetchRscStore: (c: FetchRscStore) => FetchRscStore = (c) => c,
+  enhanceFetchRscStore: (s: FetchRscStore) => FetchRscStore = (s) => s,
 ) => {
   const fetchRscStore = enhanceFetchRscStore(defaultFetchRscStore);
   const setElements = fetchRscStore[SET_ELEMENTS]!;
@@ -246,7 +246,7 @@ export const unstable_registerFetchRscInputTransformer = (
 export const unstable_fetchRsc = (
   rscPath: string,
   rscParams?: unknown,
-  enhanceFetchRscStore: (c: FetchRscStore) => FetchRscStore = (c) => c,
+  enhanceFetchRscStore: (s: FetchRscStore) => FetchRscStore = (s) => s,
 ): Promise<Elements> => {
   const fetchRscStore = enhanceFetchRscStore(defaultFetchRscStore);
   if (import.meta.hot) {
@@ -279,7 +279,7 @@ export const unstable_fetchRsc = (
 export const unstable_prefetchRsc = (
   rscPath: string,
   rscParams?: unknown,
-  enhanceFetchRscStore: (c: FetchRscStore) => FetchRscStore = (c) => c,
+  enhanceFetchRscStore: (s: FetchRscStore) => FetchRscStore = (s) => s,
 ): void => {
   const fetchRscStore = enhanceFetchRscStore(defaultFetchRscStore);
   const prefetched: Record<string, PrefetchedEntry> = ((
@@ -344,10 +344,10 @@ export const Root = ({
     async (
       rscPath: string,
       rscParams?: unknown,
-      enhanceFetchRscStore: (c: FetchRscStore) => FetchRscStore = (c) => c,
+      enhanceFetchRscStore: (s: FetchRscStore) => FetchRscStore = (s) => s,
     ) => {
       // clear cache entry before fetching
-      delete fetchRscStore[ENTRY];
+      delete fetchRscStore[ENTRY]; // use non-enhanced store
       const data = unstable_fetchRsc(rscPath, rscParams, () =>
         enhanceFetchRscStore(fetchRscStore),
       );

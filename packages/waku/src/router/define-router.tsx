@@ -8,9 +8,9 @@ import { unstable_defineHandlers as defineHandlers } from '../minimal/server.js'
 import { unstable_getContext as getContext } from '../server.js';
 import { INTERNAL_ServerRouter } from './client.js';
 import {
-  CHANGE_ROUTE_ID,
   HAS404_ID,
   IS_STATIC_ID,
+  ROUTE_ID,
   SKIP_HEADER,
   decodeRoutePath,
   decodeSliceId,
@@ -386,7 +386,7 @@ export function unstable_defineRouter(fns: {
         entries[id] = sliceElement;
       }),
     ]);
-    entries[CHANGE_ROUTE_ID] = [pathname, query];
+    entries[ROUTE_ID] = [pathname, query];
     entries[IS_STATIC_ID] = pathConfigItem.isStatic;
     sliceConfigMap.forEach((sliceConfig, sliceId) => {
       if (sliceConfig.isStatic) {

@@ -65,7 +65,7 @@ export function decodeSliceId(rscPath: string): string | null {
   return rscPath.slice(SLICE_PREFIX.length);
 }
 
-export const CHANGE_ROUTE_ID = 'CHANGE_ROUTE';
+export const ROUTE_ID = 'ROUTE';
 export const IS_STATIC_ID = 'IS_STATIC';
 export const HAS404_ID = 'HAS404';
 
