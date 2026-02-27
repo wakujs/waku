@@ -1,11 +1,18 @@
 'use client';
 
+import { createPortal } from 'react-dom';
 import { useRouter } from 'waku';
 
 export function RouteState() {
   const router = useRouter();
+  const portal = new URLSearchParams(router.query).get('portal') === '1';
   return (
     <>
+      {portal &&
+        createPortal(
+          <div data-testid="portal-marker">portal</div>,
+          document.body,
+        )}
       <p data-testid="route-path">{router.path}</p>
       <p data-testid="route-query">{router.query}</p>
       <p data-testid="route-hash">{router.hash}</p>

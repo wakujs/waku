@@ -112,49 +112,6 @@ test.describe('useRouter', () => {
       await expect(page.getByTestId('query')).toHaveText('Query: 0');
     });
 
-    test('browser back/forward with portal page has no runtime errors', async ({
-      page,
-    }) => {
-      const runtimeErrors: string[] = [];
-      let delayedRequestCount = 0;
-      page.on('pageerror', (error) => {
-        runtimeErrors.push(error.message);
-      });
-      page.on('console', (msg) => {
-        if (msg.type() === 'error' && msg.text().includes('removeChild')) {
-          runtimeErrors.push(msg.text());
-        }
-      });
-      await page.route('**/RSC/R/dynamic.txt**', async (route) => {
-        if (route.request().url().includes('query=portal%3D1')) {
-          delayedRequestCount += 1;
-          await new Promise((resolve) => setTimeout(resolve, 200));
-        }
-        await route.continue();
-      });
-
-      await page.goto(`http://localhost:${port}/static`);
-      await waitForHydration(page);
-      await page.click('text=Increment query (push)');
-      await expect(page.getByTestId('query')).toHaveText('Query: 1');
-
-      await page.getByTestId('go-dynamic-portal').click();
-      await expect(page.getByRole('heading', { name: 'Dynamic' })).toBeVisible();
-      await expect(page.getByTestId('portal-marker')).toBeVisible();
-      await page.evaluate(() => {
-        window.history.back();
-        window.history.forward();
-        window.history.back();
-      });
-
-      expect(delayedRequestCount).toBeGreaterThan(0);
-      expect(runtimeErrors).toEqual([]);
-      await expect.poll(() => new URL(page.url()).pathname).toBe('/static');
-      await expect
-        .poll(() => new URL(page.url()).searchParams.get('count'))
-        .toBe('1');
-    });
-
     test('router.reload refetches dynamic route', async ({ page }) => {
       await page.goto(`http://localhost:${port}/dynamic`);
       await waitForHydration(page);

@@ -249,6 +249,50 @@ test.describe('router-client', () => {
     expect(await getScrollToCalls(page)).toHaveLength(0);
   });
 
+  test('portal route with popstate churn preserves prior query history entry', async ({
+    page,
+  }) => {
+    const runtimeErrors: string[] = [];
+    let delayedRequestCount = 0;
+    page.on('pageerror', (error) => {
+      runtimeErrors.push(error.message);
+    });
+    page.on('console', (msg) => {
+      if (msg.type() === 'error' && msg.text().includes('removeChild')) {
+        runtimeErrors.push(msg.text());
+      }
+    });
+    await page.route('**/RSC/R/next.txt**', async (route) => {
+      if (route.request().url().includes('query=portal%3D1')) {
+        delayedRequestCount += 1;
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+      await route.continue();
+    });
+
+    await page.goto(`http://localhost:${port}/start`);
+    await waitForHydration(page);
+
+    await page.getByTestId('router-push-query-only').click();
+    await expect(page.getByTestId('route-path')).toHaveText('/start');
+    await expect(page.getByTestId('route-query')).toHaveText('from=query-only');
+
+    await page.getByTestId('go-next-portal').click();
+    await expect(page.getByRole('heading', { name: 'Next' })).toBeVisible();
+    await expect(page.getByTestId('portal-marker')).toBeVisible();
+
+    await page.evaluate(() => {
+      window.history.back();
+      window.history.forward();
+      window.history.back();
+    });
+
+    expect(delayedRequestCount).toBeGreaterThan(0);
+    expect(runtimeErrors).toEqual([]);
+    await expect(page.getByTestId('route-path')).toHaveText('/start');
+    await expect(page.getByTestId('route-query')).toHaveText('from=query-only');
+  });
+
   test('back/forward for path-change history scrolls to top', async ({
     page,
   }) => {

@@ -12,6 +12,11 @@ export default function StartPage() {
         </Link>
       </p>
       <p>
+        <Link to="/next?portal=1" data-testid="go-next-portal">
+          Go next portal
+        </Link>
+      </p>
+      <p>
         <Link to="/start?from=query-only" data-testid="go-query-only">
           Go query only
         </Link>
