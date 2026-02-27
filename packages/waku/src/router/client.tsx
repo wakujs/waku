@@ -3,7 +3,6 @@
 import {
   Component,
   createContext,
-  startTransition,
   use,
   useCallback,
   useContext,
@@ -30,14 +29,14 @@ import {
   unstable_enhanceFetchFn as enhanceFetchFn,
   unstable_prefetchRsc as prefetchRsc,
   useElementsPromise_UNSTABLE as useElementsPromise,
-  useEnhanceFetchRscInternal_UNSTABLE as useEnhanceFetchRscInternal,
+  useOnSetElementsData_UNSTABLE as useOnSetElementsData,
   useRefetch,
 } from '../minimal/client.js';
 import type { RouteConfig } from './base-types.js';
 import {
+  CHANGE_ROUTE_ID,
   HAS404_ID,
   IS_STATIC_ID,
-  ROUTE_ID,
   SKIP_HEADER,
   encodeRoutePath,
   encodeSliceId,
@@ -776,7 +775,7 @@ const InnerRouter = ({
     elementsPromise.then(
       (elements) => {
         const {
-          [ROUTE_ID]: routeData,
+          [CHANGE_ROUTE_ID]: changeRouteData,
           [IS_STATIC_ID]: isStatic,
           [HAS404_ID]: has404FromElements,
           ...rest
@@ -784,8 +783,8 @@ const InnerRouter = ({
         if (has404FromElements) {
           setHas404(true);
         }
-        if (routeData) {
-          const [path, _query] = routeData as [string, string];
+        if (changeRouteData) {
+          const [path, _query] = changeRouteData as [string, string];
           if (isStatic) {
             staticPathSetRef.current.add(path);
           }
@@ -796,7 +795,6 @@ const InnerRouter = ({
     );
   }, [elementsPromise]);
 
-  const enhanceFetchRscInternal = useEnhanceFetchRscInternal();
   const refetch = useRefetch();
   const [route, setRoute] = useState(() => ({
     // This is the first initialization of the route, and it has
@@ -883,9 +881,12 @@ const InnerRouter = ({
             rscParams,
             enhanceFetchFn(withSkipHeader),
           );
-          const { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic } = elements;
-          if (routeData) {
-            const [path, query] = routeData as [string, string];
+          const {
+            [CHANGE_ROUTE_ID]: changeRouteData,
+            [IS_STATIC_ID]: isStatic,
+          } = elements;
+          if (changeRouteData) {
+            const [path, query] = changeRouteData as [string, string];
             if (
               nextRoute.path !== path ||
               (!isStatic && nextRoute.query !== query)
@@ -931,66 +932,42 @@ const InnerRouter = ({
     },
     [emitRouteChangeEvent, refetch],
   );
+  const applyChangeRouteData = useCallback(
+    async (changeRouteData: unknown, isStatic: unknown) => {
+      if (!changeRouteData) {
+        return;
+      }
+      const [path, query] = changeRouteData as [string, string];
+      const currentRoute = routeRef.current;
+      if (
+        currentRoute.path === path &&
+        (isStatic || currentRoute.query === query)
+      ) {
+        return;
+      }
+      const url = new URL(window.location.href);
+      url.pathname = path;
+      url.search = query;
+      url.hash = '';
+      await changeRoute(parseRoute(url), {
+        skipRefetch: true,
+        shouldScroll: false,
+        mode: path === '/404' ? undefined : 'push',
+        url,
+      });
+    },
+    [changeRoute],
+  );
+  const onSetElementsData = useOnSetElementsData();
   useEffect(() => {
-    type FetchCache = Parameters<
-      Parameters<Parameters<typeof enhanceFetchRscInternal>[0]>[0]
-    >[0];
-    return enhanceFetchRscInternal(
-      (fetchRscInternal) =>
-        (
-          fetchCache: FetchCache,
-          rscPath: string,
-          rscParams: unknown,
-          prefetchOnly,
-        ) => {
-          type Elements = Record<string, unknown>;
-          const elementsPromise = fetchRscInternal(
-            fetchCache,
-            rscPath,
-            rscParams,
-            prefetchOnly as never,
-          ) as Promise<Elements> | undefined;
-          Promise.resolve(elementsPromise)
-            .then((elements = {}) => {
-              if (
-                routeChangeAbortRef.current &&
-                !routeChangeAbortRef.current.signal.aborted
-              ) {
-                return;
-              }
-              const { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic } =
-                elements;
-              if (!routeData) {
-                return;
-              }
-              const [path, query] = routeData as [string, string];
-              const currentRoute = routeRef.current;
-              if (
-                currentRoute.path === path &&
-                (isStatic || currentRoute.query === query)
-              ) {
-                return;
-              }
-              const url = new URL(window.location.href);
-              url.pathname = path;
-              url.search = query;
-              url.hash = '';
-              startTransition(() => {
-                changeRoute(parseRoute(url), {
-                  skipRefetch: true,
-                  shouldScroll: false,
-                  mode: path === '/404' ? undefined : 'push',
-                  url,
-                }).catch((err) => {
-                  console.log('Error while handling route updates:', err);
-                });
-              });
-            })
-            .catch(() => {});
-          return elementsPromise as never;
-        },
-    );
-  }, [changeRoute, enhanceFetchRscInternal]);
+    return onSetElementsData((elements) => {
+      const { [CHANGE_ROUTE_ID]: changeRouteData, [IS_STATIC_ID]: isStatic } =
+        elements;
+      applyChangeRouteData(changeRouteData, isStatic).catch((err) => {
+        console.log('Error while handling route updates:', err);
+      });
+    });
+  }, [applyChangeRouteData, onSetElementsData]);
 
   const prefetchRoute: PrefetchRoute = useCallback((route) => {
     if (staticPathSetRef.current.has(route.path)) {
@@ -1141,7 +1118,7 @@ export function INTERNAL_ServerRouter({
 export type Unstable_RouteProps = RouteProps;
 export const unstable_HAS404_ID = HAS404_ID;
 export const unstable_IS_STATIC_ID = IS_STATIC_ID;
-export const unstable_ROUTE_ID = ROUTE_ID;
+export const unstable_CHANGE_ROUTE_ID = CHANGE_ROUTE_ID;
 export const unstable_SKIP_HEADER = SKIP_HEADER;
 export const unstable_encodeRoutePath = encodeRoutePath;
 export const unstable_encodeSliceId = encodeSliceId;

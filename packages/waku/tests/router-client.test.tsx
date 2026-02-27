@@ -38,9 +38,9 @@ import {
   useRouter,
 } from '../src/router/client.js';
 import {
+  CHANGE_ROUTE_ID,
   HAS404_ID,
   IS_STATIC_ID,
-  ROUTE_ID,
   SKIP_HEADER,
 } from '../src/router/common.js';
 
@@ -49,12 +49,21 @@ type RouterApi = ReturnType<typeof useRouter>;
 type RouterFetchCache = NonNullable<
   Parameters<typeof Router>[0]['unstable_fetchCache']
 >;
+type TestFetchCache = RouterFetchCache & {
+  __testElements?: ElementsMap | undefined;
+};
 type IntersectionObserverMockInstance = IntersectionObserver & {
   callback: IntersectionObserverCallback;
 };
 
 const createRefetchMock = () =>
   vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
+
+const resolvedThenable = <T,>(value: T): Promise<T> =>
+  Object.assign(Promise.resolve(value), {
+    status: 'fulfilled' as const,
+    value,
+  });
 
 const getRefetchMock = () => {
   const results = vi.mocked(useRefetch).mock.results;
@@ -91,14 +100,8 @@ const getIntersectionObserverMockInstance = () => {
 
 const createMockFetchCache = (elements: ElementsMap): RouterFetchCache =>
   ({
-    r: ((_fetchCache, _rscPath, _rscParams, prefetchOnly) =>
-      prefetchOnly
-        ? undefined
-        : Promise.resolve({
-            root: <Children />,
-            ...elements,
-          })) as RouterFetchCache['r'],
-  }) as RouterFetchCache;
+    __testElements: elements,
+  }) as TestFetchCache;
 
 vi.mock('react-dom', async () => {
   const actual = await vi.importActual<typeof import('react-dom')>('react-dom');
@@ -115,9 +118,20 @@ vi.mock('../src/minimal/client.js', async () => {
 
   return {
     ...actual,
-    Root: vi.fn((props: Parameters<typeof actual.Root>[0]) =>
-      actual.Root(props),
-    ),
+    Root: vi.fn((props: Parameters<typeof actual.Root>[0]) => {
+      const fetchCache = props.fetchCache as TestFetchCache | undefined;
+      if (fetchCache) {
+        fetchCache.e = [
+          props.initialRscPath || '',
+          props.initialRscParams,
+          resolvedThenable({
+            root: <Children />,
+            ...(fetchCache.__testElements || {}),
+          }),
+        ];
+      }
+      return actual.Root(props);
+    }),
     unstable_prefetchRsc: vi.fn(),
     useRefetch: vi.fn(),
   };
@@ -889,7 +903,7 @@ describe('Router integration', () => {
 
     const elements = {
       [unstable_getRouteSlotId('/start')]: <Probe />,
-      [ROUTE_ID]: ['/start', 'a=1'],
+      [CHANGE_ROUTE_ID]: ['/start', 'a=1'],
       [IS_STATIC_ID]: false,
     };
 
@@ -925,7 +939,7 @@ describe('Router integration', () => {
 
     const elements = {
       [unstable_getRouteSlotId('/404')]: <Probe />,
-      [ROUTE_ID]: ['/404', ''],
+      [CHANGE_ROUTE_ID]: ['/404', ''],
       [IS_STATIC_ID]: true,
     };
 
@@ -941,7 +955,7 @@ describe('Router integration', () => {
     const elements = {
       [unstable_getRouteSlotId('/start')]: <Probe />,
       [unstable_getRouteSlotId('/next')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
     };
 
@@ -985,7 +999,7 @@ describe('Router integration', () => {
     const elements = {
       [unstable_getRouteSlotId('/start')]: <Probe />,
       [unstable_getRouteSlotId('/next')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
     };
 
@@ -1059,7 +1073,7 @@ describe('Router integration', () => {
     const Probe = makeProbe(capture);
     const elements = {
       [unstable_getRouteSlotId('/start')]: <Probe />,
-      [ROUTE_ID]: ['/start', 'a=1'],
+      [CHANGE_ROUTE_ID]: ['/start', 'a=1'],
       [IS_STATIC_ID]: false,
     };
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
@@ -1095,7 +1109,7 @@ describe('Router integration', () => {
     const Probe = makeProbe(capture);
     const elements = {
       [unstable_getRouteSlotId('/start')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
     };
 
@@ -1159,7 +1173,7 @@ describe('Router integration', () => {
     const Probe = makeProbe(capture);
     const elements = {
       [unstable_getRouteSlotId('/start')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
     };
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
@@ -1195,7 +1209,7 @@ describe('Router integration', () => {
     const elements = {
       [unstable_getRouteSlotId('/start')]: <Probe />,
       [unstable_getRouteSlotId('/next')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
     };
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
@@ -1234,7 +1248,7 @@ describe('Router integration', () => {
 
     const elements = {
       [unstable_getRouteSlotId('/start')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
     };
 
@@ -1266,7 +1280,7 @@ describe('Router integration', () => {
 
     const elements = {
       [unstable_getRouteSlotId('/start')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: true,
     };
 
@@ -1298,7 +1312,7 @@ describe('Router integration', () => {
 
     const elements = {
       [unstable_getRouteSlotId('/start')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: true,
     };
 
@@ -1346,7 +1360,7 @@ describe('Router integration', () => {
     const elements = {
       [unstable_getRouteSlotId('/start')]: <Probe />,
       [unstable_getRouteSlotId('/blocked')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
     };
 
@@ -1374,7 +1388,7 @@ describe('Router integration', () => {
     const elements = {
       [unstable_getRouteSlotId('/start')]: <Probe />,
       [unstable_getRouteSlotId('/intercepted')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
     };
 
@@ -1411,7 +1425,7 @@ describe('Router integration', () => {
 
     const elements = {
       [unstable_getRouteSlotId('/start')]: <Probe />,
-      [ROUTE_ID]: ['/start', 'a=1'],
+      [CHANGE_ROUTE_ID]: ['/start', 'a=1'],
       [IS_STATIC_ID]: false,
     };
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
@@ -1441,7 +1455,7 @@ describe('Router integration', () => {
     const elements = {
       [unstable_getRouteSlotId('/start')]: <div>start</div>,
       [unstable_getRouteSlotId('/next')]: <div>next</div>,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
     };
 
@@ -1498,7 +1512,7 @@ describe('Router integration', () => {
     const elements = {
       [unstable_getRouteSlotId('/start')]: <div>start</div>,
       [unstable_getRouteSlotId('/next')]: <div>next</div>,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
     };
 
@@ -1532,7 +1546,7 @@ describe('Router integration', () => {
     const Probe = makeProbe(capture);
     const elements = {
       [unstable_getRouteSlotId('/start')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
     };
 
@@ -1583,7 +1597,7 @@ describe('Router integration', () => {
     const elements = {
       [unstable_getRouteSlotId('/start')]: <Probe />,
       [unstable_getRouteSlotId('/next')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
       foo: true,
       bar: true,
@@ -1659,7 +1673,7 @@ describe('Router integration', () => {
     const elements = {
       [unstable_getRouteSlotId('/start')]: <Probe />,
       [unstable_getRouteSlotId('/next')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
       foo: true,
     };
@@ -1694,7 +1708,7 @@ describe('Router integration', () => {
 
   test('changeRoute applies route rewrite from refetch result', async () => {
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
-      [ROUTE_ID]: ['/streamed', 'x=1'],
+      [CHANGE_ROUTE_ID]: ['/streamed', 'x=1'],
       [IS_STATIC_ID]: false,
     }));
     vi.mocked(useRefetch).mockReturnValue(refetch);
@@ -1705,7 +1719,7 @@ describe('Router integration', () => {
       [unstable_getRouteSlotId('/start')]: <Probe />,
       [unstable_getRouteSlotId('/next')]: <Probe />,
       [unstable_getRouteSlotId('/streamed')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
       foo: true,
     };
@@ -1751,7 +1765,7 @@ describe('Router integration', () => {
 
     const elements = {
       [unstable_getRouteSlotId('/start')]: <ThrowNotFound />,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
       [HAS404_ID]: false,
     };
@@ -1779,7 +1793,7 @@ describe('Router integration', () => {
     const elements = {
       [unstable_getRouteSlotId('/start')]: <ThrowNotFound />,
       [unstable_getRouteSlotId('/404')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
       [HAS404_ID]: true,
     };
@@ -1813,7 +1827,7 @@ describe('Router integration', () => {
     const elements = {
       [unstable_getRouteSlotId('/start')]: <ThrowNotFound />,
       [unstable_getRouteSlotId('/404')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
       [HAS404_ID]: true,
     };
@@ -1857,7 +1871,7 @@ describe('Router integration', () => {
     const elements = {
       [unstable_getRouteSlotId('/start')]: <ThrowRedirect />,
       [unstable_getRouteSlotId('/target')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
     };
 
@@ -1894,7 +1908,7 @@ describe('Router integration', () => {
 
     const elements = {
       [unstable_getRouteSlotId('/start')]: <ThrowRedirect />,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
     };
 
@@ -1934,7 +1948,7 @@ describe('Router integration', () => {
     const elements = {
       [unstable_getRouteSlotId('/start')]: <ThrowRedirect />,
       [unstable_getRouteSlotId('/target')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
+      [CHANGE_ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
     };
 
@@ -1974,7 +1988,7 @@ describe('INTERNAL_ServerRouter', () => {
       return <div>{router.path}</div>;
     };
 
-    const elementsPromise = Promise.resolve({
+    const elementsPromise = resolvedThenable({
       root: <Children />,
       [unstable_getRouteSlotId('/server')]: <Probe />,
     });

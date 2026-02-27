@@ -77,8 +77,13 @@ type SetElements = (
 
 const ENTRY = 'e';
 const SET_ELEMENTS = 's';
+const ON_SET_ELEMENTS_DATA = 'o';
 const FETCH_FN = 'f';
-const FETCH_RSC_INTERNAL = 'r'; // TODO drop this
+
+type OnSetElementsData = (data: Elements) => void;
+type OnSetElementsDataEntry = {
+  listeners: Set<OnSetElementsData>;
+};
 
 type FetchRscInternal = {
   (
@@ -102,8 +107,8 @@ type FetchCache = {
     elementsPromise: Promise<Elements>,
   ];
   [SET_ELEMENTS]?: SetElements;
+  [ON_SET_ELEMENTS_DATA]?: OnSetElementsDataEntry;
   [FETCH_FN]?: typeof fetch;
-  [FETCH_RSC_INTERNAL]?: FetchRscInternal; // TODO drop this
 };
 
 const defaultFetchCache: FetchCache = {};
@@ -174,7 +179,7 @@ export const unstable_callServerRsc = async (
 ) => {
   const fetchCache = enhanceFetchCache(defaultFetchCache);
   const setElements = fetchCache[SET_ELEMENTS]!;
-  const fetchRscInternal = fetchCache[FETCH_RSC_INTERNAL]!;
+  const onSetElementsData = fetchCache[ON_SET_ELEMENTS_DATA];
   const rscPath = encodeFuncId(funcId);
   const rscParams =
     args.length === 1 && args[0] instanceof URLSearchParams ? args[0] : args;
@@ -186,6 +191,9 @@ export const unstable_callServerRsc = async (
   );
   if (Object.keys(data).length) {
     startTransition(() => {
+      onSetElementsData?.listeners.forEach((listener) => {
+        listener(data);
+      });
       setElements((prev) => mergeElementsPromise(prev, data));
     });
   }
@@ -216,7 +224,6 @@ export const unstable_fetchRsc = (
     globalThis.__WAKU_REFETCH_RSC__ = refetchRsc;
   }
 
-  const fetchRscInternal = fetchCache[FETCH_RSC_INTERNAL]!;
   const entry = fetchCache[ENTRY];
   if (entry && entry[0] === rscPath && entry[1] === rscParams) {
     return entry[2];
@@ -232,7 +239,6 @@ export const unstable_prefetchRsc = (
   enhanceFetchCache: (c: FetchCache) => FetchCache = (c) => c,
 ): void => {
   const fetchCache = enhanceFetchCache(defaultFetchCache);
-  const fetchRscInternal = fetchCache[FETCH_RSC_INTERNAL]!;
   const prefetched: Record<string, PrefetchedEntry> = ((
     globalThis as any
   ).__WAKU_PREFETCHED__ ||= {});
@@ -261,18 +267,14 @@ const RefetchContext = createContext<
 });
 const ElementsContext = createContext<Promise<Elements> | null>(null);
 
-type EnhanceFetchRscInternal = (
-  fn: (fetchRscInternal: FetchRscInternal) => FetchRscInternal,
-) => () => void;
+const OnSetElementsDataContext = createContext<
+  (listener: OnSetElementsData) => () => void
+>(() => {
+  throw new Error('Missing Root component');
+});
 
-const EnhanceFetchRscInternalContext = createContext<EnhanceFetchRscInternal>(
-  () => {
-    throw new Error('Missing Root component');
-  },
-);
-
-export const useEnhanceFetchRscInternal_UNSTABLE = () =>
-  use(EnhanceFetchRscInternalContext);
+export const useOnSetElementsData_UNSTABLE = () =>
+  use(OnSetElementsDataContext);
 
 export const Root = ({
   initialRscPath,
@@ -285,23 +287,14 @@ export const Root = ({
   fetchCache?: FetchCache | undefined;
   children: ReactNode;
 }) => {
-  fetchCache[FETCH_RSC_INTERNAL] ||= fetchRscInternal;
-  // TODO drop enhanceFetchRscInternal
-  const enhanceFetchRscInternal: EnhanceFetchRscInternal = useMemo(() => {
-    const enhancers = new Set<Parameters<EnhanceFetchRscInternal>[0]>();
-    const enhance = () => {
-      let fn = fetchRscInternal;
-      for (const enhancer of enhancers) {
-        fn = enhancer(fetchRscInternal);
-      }
-      fetchCache[FETCH_RSC_INTERNAL] = fn;
-    };
-    return (enhancer) => {
-      enhancers.add(enhancer);
-      enhance();
+  const onSetElementsData = useMemo(() => {
+    const entry = (fetchCache[ON_SET_ELEMENTS_DATA] ||= {
+      listeners: new Set<OnSetElementsData>(),
+    });
+    return (listener: OnSetElementsData) => {
+      entry.listeners.add(listener);
       return () => {
-        enhancers.delete(enhancer);
-        enhance();
+        entry.listeners.delete(listener);
       };
     };
   }, [fetchCache]);
@@ -329,14 +322,14 @@ export const Root = ({
     [fetchCache],
   );
   return (
-    <EnhanceFetchRscInternalContext value={enhanceFetchRscInternal}>
+    <OnSetElementsDataContext value={onSetElementsData}>
       <RefetchContext value={refetch}>
         <ElementsContext value={elements}>
           {DEFAULT_HTML_HEAD}
           {children}
         </ElementsContext>
       </RefetchContext>
-    </EnhanceFetchRscInternalContext>
+    </OnSetElementsDataContext>
   );
 };
 
