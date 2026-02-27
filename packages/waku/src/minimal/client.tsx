@@ -86,7 +86,7 @@ type TransformFetchRscInput = (
   prefetchOnly: boolean,
 ) => [rscPath: string, rscParams: unknown, prefetchOnly: boolean];
 
-type OnCallServerElements = (elements: Elements) => void;
+type CallServerElementsListeners = Set<(elements: Elements) => void>;
 
 type FetchRscInternal = {
   (
@@ -112,7 +112,7 @@ type FetchRscStore = {
   [SET_ELEMENTS]?: SetElements;
   [FETCH_FN]?: typeof fetch;
   [TRANSFORM_FETCH_RSC_INPUT]?: TransformFetchRscInput;
-  [ON_CALL_SERVER_ELEMENTS]?: OnCallServerElements;
+  [ON_CALL_SERVER_ELEMENTS]?: CallServerElementsListeners;
 };
 
 const defaultFetchRscStore: FetchRscStore = {};
@@ -191,7 +191,7 @@ export const unstable_callServerRsc = async (
 ) => {
   const fetchRscStore = enhanceFetchRscStore(defaultFetchRscStore);
   const setElements = fetchRscStore[SET_ELEMENTS]!;
-  const onCallServerElements = fetchRscStore[ON_CALL_SERVER_ELEMENTS];
+  const callServerElementsListeners = fetchRscStore[ON_CALL_SERVER_ELEMENTS];
   const rscPath = encodeFuncId(funcId);
   const rscParams =
     args.length === 1 && args[0] instanceof URLSearchParams ? args[0] : args;
@@ -203,11 +203,27 @@ export const unstable_callServerRsc = async (
   );
   if (Object.keys(data).length) {
     startTransition(() => {
-      onCallServerElements?.(data);
+      callServerElementsListeners?.forEach((listener) => {
+        listener(data);
+      });
       setElements((prev) => mergeElementsPromise(prev, data));
     });
   }
   return value;
+};
+
+type Unregister = () => void;
+export const unstable_registerCallServerElementsListener = (
+  fetchRscStore: FetchRscStore,
+  listener: (elements: Elements) => void,
+): Unregister => {
+  const callServerElementsListeners = (fetchRscStore[
+    ON_CALL_SERVER_ELEMENTS
+  ] ||= new Set());
+  callServerElementsListeners.add(listener);
+  return () => {
+    callServerElementsListeners.delete(listener);
+  };
 };
 
 export const unstable_fetchRsc = (

@@ -27,6 +27,7 @@ import {
   Root,
   Slot,
   unstable_prefetchRsc as prefetchRsc,
+  unstable_registerCallServerElementsListener as registerCallServerElementsListener,
   useElementsPromise_UNSTABLE as useElementsPromise,
   useFetchRscStore_UNSTABLE as useFetchRscStore,
   useRefetch,
@@ -967,21 +968,7 @@ const InnerRouter = ({
         console.log('Error while handling route updates:', err);
       });
     };
-    const previousListener = fetchRscStore.o;
-    const mergedListener = (elements: Record<string, unknown>) => {
-      previousListener?.(elements);
-      listener(elements);
-    };
-    fetchRscStore.o = mergedListener;
-    return () => {
-      if (fetchRscStore.o === mergedListener) {
-        if (previousListener) {
-          fetchRscStore.o = previousListener;
-        } else {
-          delete fetchRscStore.o;
-        }
-      }
-    };
+    return registerCallServerElementsListener(fetchRscStore, listener);
   }, [applyChangeRouteData, fetchRscStore]);
 
   const prefetchRoute: PrefetchRoute = useCallback((route) => {
