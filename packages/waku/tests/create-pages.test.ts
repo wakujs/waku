@@ -1163,6 +1163,43 @@ describe('createPages pages and layouts', () => {
     );
   });
 
+  it('literal route takes priority over dynamic slug route at same depth', async () => {
+    const AboutPage = vi.fn();
+    const SlugPage = vi.fn();
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/[slug]',
+        component: SlugPage,
+      }),
+      createPage({
+        render: 'dynamic',
+        path: '/about',
+        component: AboutPage,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = await getConfigs();
+    expect(configs).toHaveLength(2);
+    const literalRoute = Array.from(configs).find(
+      (config) =>
+        config.type === 'route' &&
+        config.path.length === 1 &&
+        config.path[0]?.type === 'literal',
+    );
+    const slugRoute = Array.from(configs).find(
+      (config) =>
+        config.type === 'route' &&
+        config.path.length === 1 &&
+        config.path[0]?.type === 'group',
+    );
+    expect(literalRoute).toBeDefined();
+    expect(slugRoute).toBeDefined();
+    expect(Array.from(configs).indexOf(literalRoute!)).toBeLessThan(
+      Array.from(configs).indexOf(slugRoute!),
+    );
+  });
+
   it('fails if static paths do not match the slug pattern', async () => {
     createPages(async ({ createPage }) => [
       createPage({

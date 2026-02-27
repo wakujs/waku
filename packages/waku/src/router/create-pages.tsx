@@ -285,6 +285,16 @@ const routePriorityComparator = (
     return aPathLength > bPathLength ? -1 : 1;
   }
 
+  // If path lengths are equal, literal segments take priority over dynamic segments
+  const minLength = Math.min(aPathLength, bPathLength);
+  for (let i = 0; i < minLength; i++) {
+    const aIsLiteral = aPath[i]?.type === 'literal';
+    const bIsLiteral = bPath[i]?.type === 'literal';
+    if (aIsLiteral !== bIsLiteral) {
+      return aIsLiteral ? -1 : 1;
+    }
+  }
+
   // If path lengths are equal, compare wildcard presence
   // sort the route without the wildcard higher, to check it earlier
   if (aHasWildcard !== bHasWildcard) {

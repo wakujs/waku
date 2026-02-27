@@ -14,7 +14,7 @@
     "react-dom": "~19.2.4",
     "react-server-dom-webpack": "~19.2.4",
     "waku": "1.0.0-alpha.4",
-    "waku-jotai": "^0.2.1"
+    "waku-jotai": "https://pkg.pr.new/waku-jotai@8"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.18",
