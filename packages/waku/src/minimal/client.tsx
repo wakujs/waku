@@ -76,10 +76,16 @@ type SetElements = (
 
 const ENTRY = 'e';
 const SET_ELEMENTS = 's';
-const ON_CALL_SERVER_ELEMENTS = 'o';
 const FETCH_FN = 'f';
+const ON_CALL_SERVER_ELEMENTS = 'o';
+const TRANSFORM_FETCH_RSC_INPUT = 't';
 
 type OnCallServerElements = (elements: Elements) => void;
+type TransformFetchRscInput = (
+  rscPath: string,
+  rscParams: unknown,
+  prefetchOnly: boolean,
+) => [rscPath: string, rscParams: unknown, prefetchOnly: boolean];
 
 type FetchRscInternal = {
   (
@@ -103,8 +109,9 @@ type FetchCache = {
     elementsPromise: Promise<Elements>,
   ];
   [SET_ELEMENTS]?: SetElements;
-  [ON_CALL_SERVER_ELEMENTS]?: OnCallServerElements;
   [FETCH_FN]?: typeof fetch;
+  [ON_CALL_SERVER_ELEMENTS]?: OnCallServerElements;
+  [TRANSFORM_FETCH_RSC_INPUT]?: TransformFetchRscInput;
 };
 
 const defaultFetchCache: FetchCache = {};
@@ -124,6 +131,14 @@ const fetchRscInternal: FetchRscInternal = (
   rscParams: unknown,
   prefetchOnly: boolean,
 ) => {
+  const transformFetchRscInput = fetchCache[TRANSFORM_FETCH_RSC_INPUT];
+  if (transformFetchRscInput) {
+    [rscPath, rscParams, prefetchOnly] = transformFetchRscInput(
+      rscPath,
+      rscParams,
+      prefetchOnly,
+    );
+  }
   const fetchFn = fetchCache[FETCH_FN] || fetch;
   const prefetched: Record<string, PrefetchedEntry> = ((
     globalThis as any
@@ -249,6 +264,19 @@ export const unstable_enhanceFetchFn =
     ...fetchCache,
     [FETCH_FN]: enhance(fetchCache[FETCH_FN] || fetch),
   });
+
+export const unstable_enhanceFetchRscInput =
+  (transform: TransformFetchRscInput) =>
+  (fetchCache: FetchCache): FetchCache => {
+    const previousTransform = fetchCache[TRANSFORM_FETCH_RSC_INPUT];
+    return {
+      ...fetchCache,
+      [TRANSFORM_FETCH_RSC_INPUT]: previousTransform
+        ? (rscPath, rscParams, prefetchOnly) =>
+            transform(...previousTransform(rscPath, rscParams, prefetchOnly))
+        : transform,
+    };
+  };
 
 const RefetchContext = createContext<
   (
