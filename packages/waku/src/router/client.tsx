@@ -960,9 +960,6 @@ const InnerRouter = ({
   );
   const fetchCache = useFetchCache();
   useEffect(() => {
-    const entry = (fetchCache.o ||= {
-      listeners: new Set<(elements: Record<string, unknown>) => void>(),
-    });
     const listener = (elements: Record<string, unknown>) => {
       const { [CHANGE_ROUTE_ID]: changeRouteData, [IS_STATIC_ID]: isStatic } =
         elements;
@@ -970,9 +967,20 @@ const InnerRouter = ({
         console.log('Error while handling route updates:', err);
       });
     };
-    entry.listeners.add(listener);
+    const previousListener = fetchCache.o;
+    const mergedListener = (elements: Record<string, unknown>) => {
+      previousListener?.(elements);
+      listener(elements);
+    };
+    fetchCache.o = mergedListener;
     return () => {
-      entry.listeners.delete(listener);
+      if (fetchCache.o === mergedListener) {
+        if (previousListener) {
+          fetchCache.o = previousListener;
+        } else {
+          delete fetchCache.o;
+        }
+      }
     };
   }, [applyChangeRouteData, fetchCache]);
 

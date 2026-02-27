@@ -76,13 +76,10 @@ type SetElements = (
 
 const ENTRY = 'e';
 const SET_ELEMENTS = 's';
-const ON_SET_ELEMENTS_DATA = 'o';
+const ON_CALL_SERVER_ELEMENTS = 'o';
 const FETCH_FN = 'f';
 
-type OnSetElementsData = (data: Elements) => void;
-type OnSetElementsDataEntry = {
-  listeners: Set<OnSetElementsData>;
-};
+type OnCallServerElements = (elements: Elements) => void;
 
 type FetchRscInternal = {
   (
@@ -106,7 +103,7 @@ type FetchCache = {
     elementsPromise: Promise<Elements>,
   ];
   [SET_ELEMENTS]?: SetElements;
-  [ON_SET_ELEMENTS_DATA]?: OnSetElementsDataEntry;
+  [ON_CALL_SERVER_ELEMENTS]?: OnCallServerElements;
   [FETCH_FN]?: typeof fetch;
 };
 
@@ -178,7 +175,7 @@ export const unstable_callServerRsc = async (
 ) => {
   const fetchCache = enhanceFetchCache(defaultFetchCache);
   const setElements = fetchCache[SET_ELEMENTS]!;
-  const onSetElementsData = fetchCache[ON_SET_ELEMENTS_DATA];
+  const onCallServerElements = fetchCache[ON_CALL_SERVER_ELEMENTS];
   const rscPath = encodeFuncId(funcId);
   const rscParams =
     args.length === 1 && args[0] instanceof URLSearchParams ? args[0] : args;
@@ -190,9 +187,7 @@ export const unstable_callServerRsc = async (
   );
   if (Object.keys(data).length) {
     startTransition(() => {
-      onSetElementsData?.listeners.forEach((listener) => {
-        listener(data);
-      });
+      onCallServerElements?.(data);
       setElements((prev) => mergeElementsPromise(prev, data));
     });
   }
