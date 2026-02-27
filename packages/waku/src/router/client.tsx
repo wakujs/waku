@@ -26,11 +26,11 @@ import { addBase, removeBase } from '../lib/utils/path.js';
 import {
   Root,
   Slot,
-  unstable_enhanceFetchFn as enhanceFetchFn,
   unstable_prefetchRsc as prefetchRsc,
   useElementsPromise_UNSTABLE as useElementsPromise,
-  useFetchCache_UNSTABLE as useFetchCache,
+  useFetchRscStore_UNSTABLE as useFetchRscStore,
   useRefetch,
+  unstable_withEnhanceFetchFn as withEnhanceFetchFn,
 } from '../minimal/client.js';
 import type { RouteConfig } from './base-types.js';
 import {
@@ -858,7 +858,7 @@ const InnerRouter = ({
       if (!staticPathSetRef.current.has(nextRoute.path) && !skipRefetch) {
         const rscPath = encodeRoutePath(nextRoute.path);
         const rscParams = createRscParams(nextRoute.query);
-        const withSkipHeader =
+        const skipHeaderEnhancer =
           (fetchFn: typeof fetch) =>
           (input: RequestInfo | URL, init: RequestInit = {}) => {
             if (init.signal === undefined) {
@@ -879,7 +879,7 @@ const InnerRouter = ({
           const elements = await refetch(
             rscPath,
             rscParams,
-            enhanceFetchFn(withSkipHeader),
+            withEnhanceFetchFn(skipHeaderEnhancer),
           );
           const {
             [CHANGE_ROUTE_ID]: changeRouteData,
@@ -958,7 +958,7 @@ const InnerRouter = ({
     },
     [changeRoute],
   );
-  const fetchCache = useFetchCache();
+  const fetchRscStore = useFetchRscStore();
   useEffect(() => {
     const listener = (elements: Record<string, unknown>) => {
       const { [CHANGE_ROUTE_ID]: changeRouteData, [IS_STATIC_ID]: isStatic } =
@@ -967,22 +967,22 @@ const InnerRouter = ({
         console.log('Error while handling route updates:', err);
       });
     };
-    const previousListener = fetchCache.o;
+    const previousListener = fetchRscStore.o;
     const mergedListener = (elements: Record<string, unknown>) => {
       previousListener?.(elements);
       listener(elements);
     };
-    fetchCache.o = mergedListener;
+    fetchRscStore.o = mergedListener;
     return () => {
-      if (fetchCache.o === mergedListener) {
+      if (fetchRscStore.o === mergedListener) {
         if (previousListener) {
-          fetchCache.o = previousListener;
+          fetchRscStore.o = previousListener;
         } else {
-          delete fetchCache.o;
+          delete fetchRscStore.o;
         }
       }
     };
-  }, [applyChangeRouteData, fetchCache]);
+  }, [applyChangeRouteData, fetchRscStore]);
 
   const prefetchRoute: PrefetchRoute = useCallback((route) => {
     if (staticPathSetRef.current.has(route.path)) {
@@ -990,7 +990,7 @@ const InnerRouter = ({
     }
     const rscPath = encodeRoutePath(route.path);
     const rscParams = createRscParams(route.query);
-    const withSkipHeader =
+    const skipHeaderEnhancer =
       (fetchFn: typeof fetch) =>
       (input: RequestInfo | URL, init: RequestInit = {}) => {
         const skipStr = JSON.stringify(Array.from(cachedIdSetRef.current));
@@ -1004,7 +1004,7 @@ const InnerRouter = ({
         }
         return fetchFn(input, init);
       };
-    prefetchRsc(rscPath, rscParams, enhanceFetchFn(withSkipHeader));
+    prefetchRsc(rscPath, rscParams, withEnhanceFetchFn(skipHeaderEnhancer));
     (globalThis as any).__WAKU_ROUTER_PREFETCH__?.(route.path, (id: string) => {
       preloadModule(id, { as: 'script' });
     });
@@ -1060,11 +1060,11 @@ const InnerRouter = ({
 
 export function Router({
   initialRoute = parseRouteFromLocation(),
-  unstable_fetchCache,
+  unstable_fetchRscStore,
   unstable_routeInterceptor,
 }: {
   initialRoute?: RouteProps;
-  unstable_fetchCache?: Parameters<typeof Root>[0]['fetchCache'];
+  unstable_fetchRscStore?: Parameters<typeof Root>[0]['fetchRscStore'];
   unstable_routeInterceptor?: (route: RouteProps) => RouteProps | false;
 }) {
   const initialRscPath = encodeRoutePath(initialRoute.path);
@@ -1074,7 +1074,7 @@ export function Router({
     <Root
       initialRscPath={initialRscPath}
       initialRscParams={initialRscParams}
-      fetchCache={unstable_fetchCache}
+      fetchRscStore={unstable_fetchRscStore}
     >
       <InnerRouter
         initialRoute={initialRoute}

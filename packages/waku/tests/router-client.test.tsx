@@ -46,10 +46,10 @@ import {
 
 type ElementsMap = Record<string, unknown>;
 type RouterApi = ReturnType<typeof useRouter>;
-type RouterFetchCache = NonNullable<
-  Parameters<typeof Router>[0]['unstable_fetchCache']
+type RouterFetchRscStore = NonNullable<
+  Parameters<typeof Router>[0]['unstable_fetchRscStore']
 >;
-type TestFetchCache = RouterFetchCache & {
+type TestFetchRscStore = RouterFetchRscStore & {
   __testElements?: ElementsMap | undefined;
 };
 type IntersectionObserverMockInstance = IntersectionObserver & {
@@ -98,10 +98,10 @@ const getIntersectionObserverMockInstance = () => {
   throw new Error('IntersectionObserver was not constructed');
 };
 
-const createMockFetchCache = (elements: ElementsMap): RouterFetchCache =>
+const createMockFetchRscStore = (elements: ElementsMap): RouterFetchRscStore =>
   ({
     __testElements: elements,
-  }) as TestFetchCache;
+  }) as TestFetchRscStore;
 
 vi.mock('react-dom', async () => {
   const actual = await vi.importActual<typeof import('react-dom')>('react-dom');
@@ -119,14 +119,16 @@ vi.mock('../src/minimal/client.js', async () => {
   return {
     ...actual,
     Root: vi.fn((props: Parameters<typeof actual.Root>[0]) => {
-      const fetchCache = props.fetchCache as TestFetchCache | undefined;
-      if (fetchCache) {
-        fetchCache.e = [
+      const fetchRscStore = props.fetchRscStore as
+        | TestFetchRscStore
+        | undefined;
+      if (fetchRscStore) {
+        fetchRscStore.e = [
           props.initialRscPath || '',
           props.initialRscParams,
           resolvedThenable({
             root: <Children />,
-            ...(fetchCache.__testElements || {}),
+            ...(fetchRscStore.__testElements || {}),
           }),
         ];
       }
@@ -164,16 +166,16 @@ const renderRouter = async (
   props: Parameters<typeof Router>[0],
   elements: ElementsMap,
 ) => {
-  type RouterWithFetchCacheProps = Parameters<typeof Router>[0] & {
-    unstable_fetchCache?: RouterFetchCache | undefined;
+  type RouterWithFetchRscStoreProps = Parameters<typeof Router>[0] & {
+    unstable_fetchRscStore?: RouterFetchRscStore | undefined;
   };
-  const RouterWithFetchCache = Router as unknown as (
-    props: RouterWithFetchCacheProps,
+  const RouterWithFetchRscStore = Router as unknown as (
+    props: RouterWithFetchRscStoreProps,
   ) => ReactElement;
   return renderApp(
-    <RouterWithFetchCache
+    <RouterWithFetchRscStore
       {...(props || {})}
-      unstable_fetchCache={createMockFetchCache(elements)}
+      unstable_fetchRscStore={createMockFetchRscStore(elements)}
     />,
   );
 };
@@ -182,17 +184,17 @@ const renderRouterInStrictMode = async (
   props: Parameters<typeof Router>[0],
   elements: ElementsMap,
 ) => {
-  type RouterWithFetchCacheProps = Parameters<typeof Router>[0] & {
-    unstable_fetchCache?: RouterFetchCache | undefined;
+  type RouterWithFetchRscStoreProps = Parameters<typeof Router>[0] & {
+    unstable_fetchRscStore?: RouterFetchRscStore | undefined;
   };
-  const RouterWithFetchCache = Router as unknown as (
-    props: RouterWithFetchCacheProps,
+  const RouterWithFetchRscStore = Router as unknown as (
+    props: RouterWithFetchRscStoreProps,
   ) => ReactElement;
   return renderApp(
     <StrictMode>
-      <RouterWithFetchCache
+      <RouterWithFetchRscStore
         {...(props || {})}
-        unstable_fetchCache={createMockFetchCache(elements)}
+        unstable_fetchRscStore={createMockFetchRscStore(elements)}
       />
     </StrictMode>,
   );
@@ -200,7 +202,7 @@ const renderRouterInStrictMode = async (
 
 const renderWithMinimalRoot = (element: ReactElement, elements: ElementsMap) =>
   renderApp(
-    <Root initialRscPath="" fetchCache={createMockFetchCache(elements)}>
+    <Root initialRscPath="" fetchRscStore={createMockFetchRscStore(elements)}>
       {element}
     </Root>,
   );
@@ -1582,14 +1584,18 @@ describe('Router integration', () => {
     const fetchMock = vi
       .spyOn(globalThis, 'fetch')
       .mockImplementation(fetchSpy as typeof fetch);
-    const refetch = vi.fn(async (_rscPath, _rscParams, enhanceFetchCache) => {
-      const fetchCache = (
-        enhanceFetchCache ? enhanceFetchCache({} as RouterFetchCache) : {}
-      ) as RouterFetchCache;
-      const fetchFn = fetchCache.f || fetch;
-      await fetchFn('http://localhost/rsc', {});
-      return {};
-    });
+    const refetch = vi.fn(
+      async (_rscPath, _rscParams, enhanceFetchRscStore) => {
+        const fetchRscStore = (
+          enhanceFetchRscStore
+            ? enhanceFetchRscStore({} as RouterFetchRscStore)
+            : {}
+        ) as RouterFetchRscStore;
+        const fetchFn = fetchRscStore.f || fetch;
+        await fetchFn('http://localhost/rsc', {});
+        return {};
+      },
+    );
     vi.mocked(useRefetch).mockReturnValue(
       refetch as ReturnType<typeof useRefetch>,
     );
@@ -1658,14 +1664,18 @@ describe('Router integration', () => {
     const fetchMock = vi
       .spyOn(globalThis, 'fetch')
       .mockImplementation(fetchSpy as typeof fetch);
-    const refetch = vi.fn(async (_rscPath, _rscParams, enhanceFetchCache) => {
-      const fetchCache = (
-        enhanceFetchCache ? enhanceFetchCache({} as RouterFetchCache) : {}
-      ) as RouterFetchCache;
-      const fetchFn = fetchCache.f || fetch;
-      await fetchFn('http://localhost/rsc', {});
-      return {};
-    });
+    const refetch = vi.fn(
+      async (_rscPath, _rscParams, enhanceFetchRscStore) => {
+        const fetchRscStore = (
+          enhanceFetchRscStore
+            ? enhanceFetchRscStore({} as RouterFetchRscStore)
+            : {}
+        ) as RouterFetchRscStore;
+        const fetchFn = fetchRscStore.f || fetch;
+        await fetchFn('http://localhost/rsc', {});
+        return {};
+      },
+    );
     vi.mocked(useRefetch).mockReturnValue(
       refetch as ReturnType<typeof useRefetch>,
     );
