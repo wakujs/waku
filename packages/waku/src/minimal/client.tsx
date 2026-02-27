@@ -77,7 +77,7 @@ type SetElements = (
 const ENTRY = 'e';
 const SET_ELEMENTS = 's';
 const FETCH_FN = 'f';
-const TRANSFORM_FETCH_RSC_INPUT = 't';
+const FETCH_RSC_INPUT_TRANSFORMERS = 't';
 const CALL_SERVER_ELEMENTS_LISTENERS = 'o';
 
 type TransformFetchRscInput = (
@@ -85,6 +85,7 @@ type TransformFetchRscInput = (
   rscParams: unknown,
   prefetchOnly: boolean,
 ) => readonly [rscPath: string, rscParams: unknown, prefetchOnly: boolean];
+type FetchRscInputTransformers = Set<TransformFetchRscInput>;
 
 type CallServerElementsListeners = Set<(elements: Elements) => void>;
 
@@ -111,7 +112,7 @@ type FetchRscStore = {
   ];
   [SET_ELEMENTS]?: SetElements;
   [FETCH_FN]?: typeof fetch;
-  [TRANSFORM_FETCH_RSC_INPUT]?: TransformFetchRscInput;
+  [FETCH_RSC_INPUT_TRANSFORMERS]?: FetchRscInputTransformers;
   [CALL_SERVER_ELEMENTS_LISTENERS]?: CallServerElementsListeners;
 };
 
@@ -132,13 +133,15 @@ const fetchRscInternal: FetchRscInternal = (
   rscParams: unknown,
   prefetchOnly: boolean,
 ) => {
-  const transformFetchRscInput = fetchRscStore[TRANSFORM_FETCH_RSC_INPUT];
-  if (transformFetchRscInput) {
-    [rscPath, rscParams, prefetchOnly] = transformFetchRscInput(
-      rscPath,
-      rscParams,
-      prefetchOnly,
-    );
+  const fetchRscInputTransformers = fetchRscStore[FETCH_RSC_INPUT_TRANSFORMERS];
+  if (fetchRscInputTransformers) {
+    for (const transformFetchRscInput of fetchRscInputTransformers) {
+      [rscPath, rscParams, prefetchOnly] = transformFetchRscInput(
+        rscPath,
+        rscParams,
+        prefetchOnly,
+      );
+    }
   }
   const fetchFn = fetchRscStore[FETCH_FN] || fetch;
   const prefetched: Record<string, PrefetchedEntry> = ((
@@ -227,6 +230,19 @@ export const unstable_registerCallServerElementsListener = (
   };
 };
 
+export const unstable_registerFetchRscInputTransformer = (
+  fetchRscStore: FetchRscStore,
+  transformFetchRscInput: TransformFetchRscInput,
+): Unregister => {
+  const fetchRscInputTransformers =
+    fetchRscStore[FETCH_RSC_INPUT_TRANSFORMERS] ||
+    (fetchRscStore[FETCH_RSC_INPUT_TRANSFORMERS] = new Set());
+  fetchRscInputTransformers.add(transformFetchRscInput);
+  return () => {
+    fetchRscInputTransformers.delete(transformFetchRscInput);
+  };
+};
+
 export const unstable_fetchRsc = (
   rscPath: string,
   rscParams?: unknown,
@@ -282,22 +298,6 @@ export const unstable_withEnhanceFetchFn =
     ...fetchRscStore,
     [FETCH_FN]: enhanceFetchFn(fetchRscStore[FETCH_FN] || fetch),
   });
-
-export const unstable_withEnhanceFetchRscInput =
-  (
-    enhanceFetchRscInput: (
-      fn: TransformFetchRscInput,
-    ) => TransformFetchRscInput,
-  ) =>
-  (fetchRscStore: FetchRscStore): FetchRscStore => {
-    const previousTransform = fetchRscStore[TRANSFORM_FETCH_RSC_INPUT];
-    return {
-      ...fetchRscStore,
-      [TRANSFORM_FETCH_RSC_INPUT]: enhanceFetchRscInput(
-        previousTransform || ((...args) => args),
-      ),
-    };
-  };
 
 const RefetchContext = createContext<
   (
