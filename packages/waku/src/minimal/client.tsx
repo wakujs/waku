@@ -7,7 +7,6 @@ import {
   use,
   useCallback,
   useEffect,
-  useMemo,
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
@@ -77,34 +76,47 @@ type SetElements = (
 
 const ENTRY = 'e';
 const SET_ELEMENTS = 's';
-const FETCH_RSC_INTERNAL = 'f';
+const FETCH_FN = 'f';
+const FETCH_RSC_INPUT_TRANSFORMERS = 't';
+const CALL_SERVER_ELEMENTS_LISTENERS = 'l';
+
+type TransformFetchRscInput = (
+  rscPath: string,
+  rscParams: unknown,
+  prefetchOnly: boolean,
+) => readonly [rscPath: string, rscParams: unknown, prefetchOnly: boolean];
+type FetchRscInputTransformers = Set<TransformFetchRscInput>;
+
+type CallServerElementsListeners = Set<(elements: Elements) => void>;
 
 type FetchRscInternal = {
   (
+    fetchRscStore: FetchRscStore,
     rscPath: string,
     rscParams: unknown,
-    prefetchOnly?: undefined | false,
-    fetchFn?: typeof fetch,
+    prefetchOnly: false,
   ): Promise<Elements>;
   (
+    fetchRscStore: FetchRscStore,
     rscPath: string,
     rscParams: unknown,
     prefetchOnly: true,
-    fetchFn?: typeof fetch,
   ): void;
 };
 
-type FetchCache = {
+type FetchRscStore = {
   [ENTRY]?: [
     rscPath: string,
     rscParams: unknown,
     elementsPromise: Promise<Elements>,
   ];
   [SET_ELEMENTS]?: SetElements;
-  [FETCH_RSC_INTERNAL]?: FetchRscInternal;
+  [FETCH_FN]?: typeof fetch;
+  [FETCH_RSC_INPUT_TRANSFORMERS]?: FetchRscInputTransformers;
+  [CALL_SERVER_ELEMENTS_LISTENERS]?: CallServerElementsListeners;
 };
 
-const defaultFetchCache: FetchCache = {};
+const defaultFetchRscStore: FetchRscStore = {};
 
 // TODO: This does't feel like an ideal solution.
 type PrefetchedEntry =
@@ -115,52 +127,61 @@ type PrefetchedEntry =
       temporaryReferences?: ReturnType<typeof createTemporaryReferenceSet>,
     ]; // from prefetch
 
-const createFetchRscInternal =
-  (fetchCache: FetchCache): FetchRscInternal =>
-  (
-    rscPath: string,
-    rscParams: unknown,
-    prefetchOnly?: boolean,
-    fetchFn = fetch,
-  ) => {
-    const prefetched: Record<string, PrefetchedEntry> = ((
-      globalThis as any
-    ).__WAKU_PREFETCHED__ ||= {});
-    let prefetchedEntry = prefetchOnly ? undefined : prefetched[rscPath];
-    delete prefetched[rscPath];
-    if (prefetchedEntry) {
-      if (Array.isArray(prefetchedEntry)) {
-        if (prefetchedEntry[1] !== rscParams) {
-          prefetchedEntry = undefined;
-        }
-      } else {
-        // We don't check rscParams for the initial hydration
-        // It's limited and may result in a wrong result. FIXME
-        prefetchedEntry = [prefetchedEntry];
+const fetchRscInternal: FetchRscInternal = (
+  fetchRscStore: FetchRscStore,
+  rscPath: string,
+  rscParams: unknown,
+  prefetchOnly: boolean,
+) => {
+  const fetchRscInputTransformers = fetchRscStore[FETCH_RSC_INPUT_TRANSFORMERS];
+  if (fetchRscInputTransformers) {
+    for (const transformFetchRscInput of fetchRscInputTransformers) {
+      [rscPath, rscParams, prefetchOnly] = transformFetchRscInput(
+        rscPath,
+        rscParams,
+        prefetchOnly,
+      );
+    }
+  }
+  const fetchFn = fetchRscStore[FETCH_FN] || fetch;
+  const prefetched: Record<string, PrefetchedEntry> = ((
+    globalThis as any
+  ).__WAKU_PREFETCHED__ ||= {});
+  let prefetchedEntry = prefetchOnly ? undefined : prefetched[rscPath];
+  delete prefetched[rscPath];
+  if (prefetchedEntry) {
+    if (Array.isArray(prefetchedEntry)) {
+      if (prefetchedEntry[1] !== rscParams) {
+        prefetchedEntry = undefined;
       }
+    } else {
+      // We don't check rscParams for the initial hydration
+      // It's limited and may result in a wrong result. FIXME
+      prefetchedEntry = [prefetchedEntry];
     }
-    const temporaryReferences =
-      prefetchedEntry?.[2] || createTemporaryReferenceSet();
-    const url = BASE_RSC_PATH + encodeRscPath(rscPath);
-    const responsePromise = prefetchedEntry
-      ? prefetchedEntry[0]
-      : rscParams === undefined
-        ? fetchFn(url)
-        : rscParams instanceof URLSearchParams
-          ? fetchFn(url + '?' + rscParams)
-          : encodeReply(rscParams, { temporaryReferences }).then((body) =>
-              fetchFn(url, { method: 'POST', body }),
-            );
-    if (prefetchOnly) {
-      prefetched[rscPath] = [responsePromise, rscParams, temporaryReferences];
-      return undefined as never;
-    }
-    return createFromFetch<Elements>(checkStatus(responsePromise), {
-      callServer: (funcId: string, args: unknown[]) =>
-        unstable_callServerRsc(funcId, args, fetchCache),
-      temporaryReferences,
-    });
-  };
+  }
+  const temporaryReferences =
+    prefetchedEntry?.[2] || createTemporaryReferenceSet();
+  const url = BASE_RSC_PATH + encodeRscPath(rscPath);
+  const responsePromise = prefetchedEntry
+    ? prefetchedEntry[0]
+    : rscParams === undefined
+      ? fetchFn(url)
+      : rscParams instanceof URLSearchParams
+        ? fetchFn(url + '?' + rscParams)
+        : encodeReply(rscParams, { temporaryReferences }).then((body) =>
+            fetchFn(url, { method: 'POST', body }),
+          );
+  if (prefetchOnly) {
+    prefetched[rscPath] = [responsePromise, rscParams, temporaryReferences];
+    return undefined as never;
+  }
+  return createFromFetch<Elements>(checkStatus(responsePromise), {
+    callServer: (funcId: string, args: unknown[]) =>
+      unstable_callServerRsc(funcId, args, () => fetchRscStore),
+    temporaryReferences,
+  });
+};
 
 /**
  * callServer callback
@@ -169,32 +190,70 @@ const createFetchRscInternal =
 export const unstable_callServerRsc = async (
   funcId: string,
   args: unknown[],
-  fetchCache = defaultFetchCache,
+  enhanceFetchRscStore: (s: FetchRscStore) => FetchRscStore = (s) => s,
 ) => {
-  const setElements = fetchCache[SET_ELEMENTS]!;
-  const fetchRscInternal = fetchCache[FETCH_RSC_INTERNAL]!;
+  const fetchRscStore = enhanceFetchRscStore(defaultFetchRscStore);
+  const setElements = fetchRscStore[SET_ELEMENTS]!;
+  const callServerElementsListeners =
+    fetchRscStore[CALL_SERVER_ELEMENTS_LISTENERS];
   const rscPath = encodeFuncId(funcId);
   const rscParams =
     args.length === 1 && args[0] instanceof URLSearchParams ? args[0] : args;
-  const { _value: value, ...data } = await fetchRscInternal(rscPath, rscParams);
+  const { _value: value, ...data } = await fetchRscInternal(
+    fetchRscStore,
+    rscPath,
+    rscParams,
+    false,
+  );
   if (Object.keys(data).length) {
     startTransition(() => {
+      callServerElementsListeners?.forEach((listener) => {
+        listener(data);
+      });
       setElements((prev) => mergeElementsPromise(prev, data));
     });
   }
   return value;
 };
 
-export const fetchRsc = (
+type Unregister = () => void;
+export const unstable_registerCallServerElementsListener = (
+  fetchRscStore: FetchRscStore,
+  listener: (elements: Elements) => void,
+): Unregister => {
+  const callServerElementsListeners = (fetchRscStore[
+    CALL_SERVER_ELEMENTS_LISTENERS
+  ] ||= new Set());
+  callServerElementsListeners.add(listener);
+  return () => {
+    callServerElementsListeners.delete(listener);
+  };
+};
+
+export const unstable_registerFetchRscInputTransformer = (
+  fetchRscStore: FetchRscStore,
+  transformFetchRscInput: TransformFetchRscInput,
+): Unregister => {
+  const fetchRscInputTransformers =
+    fetchRscStore[FETCH_RSC_INPUT_TRANSFORMERS] ||
+    (fetchRscStore[FETCH_RSC_INPUT_TRANSFORMERS] = new Set());
+  fetchRscInputTransformers.add(transformFetchRscInput);
+  return () => {
+    fetchRscInputTransformers.delete(transformFetchRscInput);
+  };
+};
+
+export const unstable_fetchRsc = (
   rscPath: string,
   rscParams?: unknown,
-  fetchCache = defaultFetchCache,
+  enhanceFetchRscStore: (s: FetchRscStore) => FetchRscStore = (s) => s,
 ): Promise<Elements> => {
+  const fetchRscStore = enhanceFetchRscStore(defaultFetchRscStore);
   if (import.meta.hot) {
     const refetchRsc = () => {
-      delete fetchCache[ENTRY];
-      const data = fetchRsc(rscPath, rscParams, fetchCache);
-      fetchCache[SET_ELEMENTS]!(() => data);
+      delete fetchRscStore[ENTRY];
+      const data = unstable_fetchRsc(rscPath, rscParams, enhanceFetchRscStore);
+      fetchRscStore[SET_ELEMENTS]!(() => data);
     };
     globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= [];
     const index = globalThis.__WAKU_RSC_RELOAD_LISTENERS__.indexOf(
@@ -208,22 +267,21 @@ export const fetchRsc = (
     globalThis.__WAKU_REFETCH_RSC__ = refetchRsc;
   }
 
-  const fetchRscInternal = fetchCache[FETCH_RSC_INTERNAL]!;
-  const entry = fetchCache[ENTRY];
+  const entry = fetchRscStore[ENTRY];
   if (entry && entry[0] === rscPath && entry[1] === rscParams) {
     return entry[2];
   }
-  const data = fetchRscInternal(rscPath, rscParams);
-  fetchCache[ENTRY] = [rscPath, rscParams, data];
+  const data = fetchRscInternal(fetchRscStore, rscPath, rscParams, false);
+  fetchRscStore[ENTRY] = [rscPath, rscParams, data];
   return data;
 };
 
-export const prefetchRsc = (
+export const unstable_prefetchRsc = (
   rscPath: string,
   rscParams?: unknown,
-  fetchCache = defaultFetchCache,
+  enhanceFetchRscStore: (s: FetchRscStore) => FetchRscStore = (s) => s,
 ): void => {
-  const fetchRscInternal = fetchCache[FETCH_RSC_INTERNAL]!;
+  const fetchRscStore = enhanceFetchRscStore(defaultFetchRscStore);
   const prefetched: Record<string, PrefetchedEntry> = ((
     globalThis as any
   ).__WAKU_PREFETCHED__ ||= {});
@@ -231,85 +289,83 @@ export const prefetchRsc = (
   if (Array.isArray(prefetchedEntry) && prefetchedEntry[1] === rscParams) {
     return; // already prefetched
   }
-  fetchRscInternal(rscPath, rscParams, true);
+  fetchRscInternal(fetchRscStore, rscPath, rscParams, true);
 };
 
+export const unstable_withEnhanceFetchFn =
+  (enhanceFetchFn: (fn: typeof fetch) => typeof fetch) =>
+  (fetchRscStore: FetchRscStore): FetchRscStore => ({
+    ...fetchRscStore,
+    [FETCH_FN]: enhanceFetchFn(fetchRscStore[FETCH_FN] || fetch),
+  });
+
 const RefetchContext = createContext<
-  (rscPath: string, rscParams?: unknown) => Promise<void>
+  (
+    rscPath: string,
+    rscParams?: unknown,
+    enhanceFetchRscStore?: (c: FetchRscStore) => FetchRscStore,
+  ) => Promise<Elements>
 >(() => {
   throw new Error('Missing Root component');
 });
 const ElementsContext = createContext<Promise<Elements> | null>(null);
+const FetchRscStoreContext = createContext<FetchRscStore | null>(null);
 
-type EnhanceFetchRscInternal = (
-  fn: (fetchRscInternal: FetchRscInternal) => FetchRscInternal,
-) => () => void;
-
-const EnhanceFetchRscInternalContext = createContext<EnhanceFetchRscInternal>(
-  () => {
+export const useFetchRscStore_UNSTABLE = () => {
+  const fetchRscStore = use(FetchRscStoreContext);
+  if (!fetchRscStore) {
     throw new Error('Missing Root component');
-  },
-);
-
-export const useEnhanceFetchRscInternal_UNSTABLE = () =>
-  use(EnhanceFetchRscInternalContext);
+  }
+  return fetchRscStore;
+};
 
 export const Root = ({
   initialRscPath,
   initialRscParams,
-  fetchCache = defaultFetchCache,
+  fetchRscStore = defaultFetchRscStore,
   children,
 }: {
   initialRscPath?: string;
   initialRscParams?: unknown;
-  fetchCache?: FetchCache | undefined;
+  fetchRscStore?: FetchRscStore | undefined;
   children: ReactNode;
 }) => {
-  fetchCache[FETCH_RSC_INTERNAL] ||= createFetchRscInternal(fetchCache);
-  const enhanceFetchRscInternal: EnhanceFetchRscInternal = useMemo(() => {
-    const enhancers = new Set<Parameters<EnhanceFetchRscInternal>[0]>();
-    const enhance = () => {
-      let fetchRscInternal = createFetchRscInternal(fetchCache);
-      for (const fn of enhancers) {
-        fetchRscInternal = fn(fetchRscInternal);
-      }
-      fetchCache[FETCH_RSC_INTERNAL] = fetchRscInternal;
-    };
-    return (fn) => {
-      enhancers.add(fn);
-      enhance();
-      return () => {
-        enhancers.delete(fn);
-        enhance();
-      };
-    };
-  }, [fetchCache]);
   const [elements, setElements] = useState(() =>
-    fetchRsc(initialRscPath || '', initialRscParams, fetchCache),
+    unstable_fetchRsc(
+      initialRscPath || '',
+      initialRscParams,
+      () => fetchRscStore,
+    ),
   );
   useEffect(() => {
-    fetchCache[SET_ELEMENTS] = setElements;
-  }, [fetchCache]);
+    fetchRscStore[SET_ELEMENTS] = setElements;
+  }, [fetchRscStore]);
   const refetch = useCallback(
-    async (rscPath: string, rscParams?: unknown) => {
+    async (
+      rscPath: string,
+      rscParams?: unknown,
+      enhanceFetchRscStore: (s: FetchRscStore) => FetchRscStore = (s) => s,
+    ) => {
       // clear cache entry before fetching
-      delete fetchCache[ENTRY];
-      const data = fetchRsc(rscPath, rscParams, fetchCache);
+      delete fetchRscStore[ENTRY]; // use non-enhanced store
+      const data = unstable_fetchRsc(rscPath, rscParams, () =>
+        enhanceFetchRscStore(fetchRscStore),
+      );
       const dataWithoutErrors = Promise.resolve(data).catch(() => ({}));
       setElements((prev) => mergeElementsPromise(prev, dataWithoutErrors));
-      await data;
+      return data;
     },
-    [fetchCache],
+    [fetchRscStore],
   );
   return (
-    <EnhanceFetchRscInternalContext value={enhanceFetchRscInternal}>
+    <FetchRscStoreContext value={fetchRscStore}>
       <RefetchContext value={refetch}>
         <ElementsContext value={elements}>
           {DEFAULT_HTML_HEAD}
           {children}
         </ElementsContext>
       </RefetchContext>
-    </EnhanceFetchRscInternalContext>
+    </FetchRscStoreContext>
   );
 };
 

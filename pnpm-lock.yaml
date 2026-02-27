@@ -859,8 +859,8 @@ importers:
         specifier: latest
         version: link:../../../packages/waku
       waku-jotai:
-        specifier: ^0.2.1
-        version: 0.2.1(jotai@2.17.1(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react@19.2.4))(react@19.2.4)(waku@packages+waku)
+        specifier: https://pkg.pr.new/waku-jotai@8
+        version: https://pkg.pr.new/waku-jotai@8(jotai@2.17.1(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react@19.2.4))(react@19.2.4)(waku@packages+waku)
     devDependencies:
       '@types/react':
         specifier: ^19.2.14
@@ -1137,8 +1137,8 @@ importers:
         specifier: 1.0.0-alpha.4
         version: link:../../packages/waku
       waku-jotai:
-        specifier: ^0.2.1
-        version: 0.2.1(jotai@2.17.1(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react@19.2.4))(react@19.2.4)(waku@packages+waku)
+        specifier: https://pkg.pr.new/waku-jotai@8
+        version: https://pkg.pr.new/waku-jotai@8(jotai@2.17.1(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react@19.2.4))(react@19.2.4)(waku@packages+waku)
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.1.18
@@ -1783,8 +1783,8 @@ importers:
         specifier: 1.0.0-alpha.4
         version: link:../../packages/waku
       waku-jotai:
-        specifier: ^0.2.1
-        version: 0.2.1(jotai@2.17.1(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react@19.2.4))(react@19.2.4)(waku@packages+waku)
+        specifier: https://pkg.pr.new/waku-jotai@8
+        version: https://pkg.pr.new/waku-jotai@8(jotai@2.17.1(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react@19.2.4))(react@19.2.4)(waku@packages+waku)
     devDependencies:
       '@types/react':
         specifier: ^19.2.14
@@ -6999,12 +6999,13 @@ packages:
       jsdom:
         optional: true
 
-  waku-jotai@0.2.1:
-    resolution: {integrity: sha512-Zlj0FUGenKgmMcuuMPlw4vIyvDK+eVYwqdbpF06uSTMSG8XrKPpLWnuMaD0NnEL3GODgTtEQqBpuFZpas5Tu0Q==}
+  waku-jotai@https://pkg.pr.new/waku-jotai@8:
+    resolution: {tarball: https://pkg.pr.new/waku-jotai@8}
+    version: 0.2.1
     peerDependencies:
       jotai: '>=2.15.2'
       react: '>=19.0.0'
-      waku: '>=0.23.6'
+      waku: '>=1.0.0-alpha.5'
 
   watchpack@2.5.1:
     resolution: {integrity: sha512-Zn5uXdcFNIA1+1Ei5McRd+iRzfhENPCe7LeABkJtNulSxjma+l7ltNx55BWZkRlwRnpOgHqxnjyaDgJnNXnqzg==}
@@ -12592,7 +12593,7 @@ snapshots:
       - tsx
       - yaml
 
-  waku-jotai@0.2.1(jotai@2.17.1(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react@19.2.4))(react@19.2.4)(waku@packages+waku):
+  waku-jotai@https://pkg.pr.new/waku-jotai@8(jotai@2.17.1(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react@19.2.4))(react@19.2.4)(waku@packages+waku):
     dependencies:
       jotai: 2.17.1(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react@19.2.4)
       react: 19.2.4
