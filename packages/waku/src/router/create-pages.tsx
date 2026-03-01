@@ -641,7 +641,8 @@ export const createPages = <
   };
 
   const definedRouter = unstable_defineRouter({
-    getConfigs: async () => {
+    getConfigs: async (context?: { mode?: 'runtime' | 'build' }) => {
+      const mode = context?.mode || 'runtime';
       await configure();
       type ElementSpec = {
         isStatic: boolean;
@@ -893,7 +894,17 @@ export const createPages = <
       const pathConfigs = [...routeConfigs, ...apiConfigs]
         // Sort routes by priority: "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
         .sort((configA, configB) => routePriorityComparator(configA, configB));
-      return [...pathConfigs, ...sliceConfigs];
+      const filteredPathConfigs =
+        mode === 'runtime'
+          ? pathConfigs.filter(
+              (config) =>
+                !(
+                  (config.type === 'route' || config.type === 'api') &&
+                  config.isStatic
+                ),
+            )
+          : pathConfigs;
+      return [...filteredPathConfigs, ...sliceConfigs];
     },
   });
 

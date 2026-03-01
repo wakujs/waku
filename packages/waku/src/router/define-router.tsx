@@ -229,18 +229,23 @@ globalThis.__WAKU_ROUTER_PREFETCH__ = (path, callback) => {
 };
 
 export function unstable_defineRouter(fns: {
-  getConfigs: () => Promise<Iterable<RouteConfig | ApiConfig | SliceConfig>>;
+  getConfigs: (context?: { mode?: 'runtime' | 'build' }) => Promise<
+    Iterable<RouteConfig | ApiConfig | SliceConfig>
+  >;
 }) {
+  type RouterMode = 'runtime' | 'build';
+
   // This is an internal type for caching
   type MyConfig = {
     configs: (RouteConfig | ApiConfig | SliceConfig)[];
     has404: boolean;
   };
 
-  let cachedMyConfig: MyConfig | undefined;
-  const getMyConfig = async (): Promise<MyConfig> => {
+  const cachedMyConfigByMode = new Map<RouterMode, MyConfig>();
+  const getMyConfig = async (mode: RouterMode = 'runtime'): Promise<MyConfig> => {
+    let cachedMyConfig = cachedMyConfigByMode.get(mode);
     if (!cachedMyConfig) {
-      const configs = Array.from(await fns.getConfigs());
+      const configs = Array.from(await fns.getConfigs({ mode }));
       let has404 = false;
       configs.forEach((item) => {
         if (item.type === 'route') {
@@ -251,12 +256,16 @@ export function unstable_defineRouter(fns: {
         }
       });
       cachedMyConfig = { configs, has404 };
+      cachedMyConfigByMode.set(mode, cachedMyConfig);
     }
     return cachedMyConfig;
   };
 
-  const getPathConfigItem = async (pathname: string) => {
-    const myConfig = await getMyConfig();
+  const getPathConfigItem = async (
+    pathname: string,
+    mode: RouterMode = 'runtime',
+  ) => {
+    const myConfig = await getMyConfig(mode);
     const found = myConfig.configs.find(
       (item): item is typeof item & { type: 'route' | 'api' } =>
         (item.type === 'route' || item.type === 'api') &&
@@ -292,11 +301,12 @@ export function unstable_defineRouter(fns: {
     headers: Readonly<Record<string, string>>,
     getCachedElement: (id: SlotId) => Promise<ReactNode> | undefined,
     setCachedElement: (id: SlotId, element: ReactNode) => Promise<ReactNode>,
+    mode: RouterMode = 'runtime',
   ) => {
     setRscPath(rscPath);
     setRscParams(rscParams);
     const pathname = decodeRoutePath(rscPath);
-    const pathConfigItem = await getPathConfigItem(pathname);
+    const pathConfigItem = await getPathConfigItem(pathname, mode);
     if (pathConfigItem?.type !== 'route') {
       return null;
     }
@@ -313,7 +323,7 @@ export function unstable_defineRouter(fns: {
       pathname,
       query: pathConfigItem.isStatic ? undefined : query,
     };
-    const myConfig = await getMyConfig();
+    const myConfig = await getMyConfig(mode);
     const slices = pathConfigItem.slices || [];
     const sliceConfigMap = new Map<
       string,
@@ -450,7 +460,7 @@ export function unstable_defineRouter(fns: {
       return cachedPath2moduleIds!;
     };
 
-    const pathConfigItem = await getPathConfigItem(input.pathname);
+    const pathConfigItem = await getPathConfigItem(input.pathname, 'runtime');
     if (pathConfigItem?.type === 'api') {
       const url = new URL(input.req.url);
       url.pathname = input.pathname;
@@ -466,7 +476,7 @@ export function unstable_defineRouter(fns: {
       if (sliceId !== null) {
         // LIMITATION: This is a signle slice request.
         // Ideally, we should be able to respond with multiple slices in one request.
-        const sliceConfig = await getMyConfig().then((myConfig) =>
+        const sliceConfig = await getMyConfig('runtime').then((myConfig) =>
           myConfig.configs.find(
             (item): item is typeof item & { type: 'slice' } =>
               item.type === 'slice' && item.id === sliceId,
@@ -496,6 +506,7 @@ export function unstable_defineRouter(fns: {
         headers,
         getCachedElement,
         setCachedElement,
+        'runtime',
       );
       if (!entries) {
         return null;
@@ -520,6 +531,7 @@ export function unstable_defineRouter(fns: {
             headers,
             getCachedElement,
             setCachedElement,
+            'runtime',
           ),
         ]).then(([oldElements, newElements]) => {
           if (newElements === null) {
@@ -545,6 +557,7 @@ export function unstable_defineRouter(fns: {
             headers,
             getCachedElement,
             setCachedElement,
+            'runtime',
           );
           if (!entries) {
             unstable_notFound();
@@ -571,6 +584,7 @@ export function unstable_defineRouter(fns: {
           headers,
           getCachedElement,
           setCachedElement,
+          'runtime',
         );
         if (!entries) {
           return null;
@@ -607,7 +621,7 @@ export function unstable_defineRouter(fns: {
           throw e;
         }
       }
-      if ((await getMyConfig()).has404) {
+      if ((await getMyConfig('runtime')).has404) {
         return renderIt('/404', '', 404);
       } else {
         return null;
@@ -625,7 +639,7 @@ export function unstable_defineRouter(fns: {
     generateFile,
     generateDefaultHtml,
   }) => {
-    const myConfig = await getMyConfig();
+    const myConfig = await getMyConfig('build');
     const cachedElementsForBuild = new Map<SlotId, Promise<ReactNode>>();
     const serializedCachedElements = new Map<SlotId, string>();
     const getCachedElement = (id: SlotId) => cachedElementsForBuild.get(id);
@@ -699,6 +713,7 @@ export function unstable_defineRouter(fns: {
             {},
             getCachedElement,
             setCachedElement,
+            'build',
           );
           if (!entries) {
             return;
