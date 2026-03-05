@@ -6,13 +6,8 @@ import {
 } from '../utils/managed.js';
 
 export function userEntriesPlugin({ srcDir }: { srcDir: string }): Plugin {
-  let rootDir = '';
-
   return {
     name: 'waku:vite-plugins:user-entries',
-    configResolved(config) {
-      rootDir = config.root;
-    },
     // resolve user entries and fallbacks to "managed mode" if not found.
     async resolveId(source, _importer, options) {
       if (source === 'virtual:vite-rsc-waku/server-entry') {
@@ -67,18 +62,10 @@ if (import.meta.hot) {
 `;
       }
       if (id === '\0virtual:vite-rsc-waku/server-entry-runtime-inner') {
-        return getManagedServerEntry({
-          srcDir,
-          rootDir,
-          mode: 'runtime',
-        });
+        return getManagedServerEntry(srcDir);
       }
       if (id === '\0virtual:vite-rsc-waku/server-entry-build-inner') {
-        return getManagedServerEntry({
-          srcDir,
-          rootDir,
-          mode: 'build',
-        });
+        return getManagedServerEntry(srcDir);
       }
       if (id === '\0virtual:vite-rsc-waku/client-entry') {
         return getManagedClientEntry();

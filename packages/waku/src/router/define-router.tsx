@@ -229,9 +229,7 @@ globalThis.__WAKU_ROUTER_PREFETCH__ = (path, callback) => {
 };
 
 export function unstable_defineRouter(fns: {
-  getConfigs: (context?: { mode?: 'runtime' | 'build' }) => Promise<
-    Iterable<RouteConfig | ApiConfig | SliceConfig>
-  >;
+  getConfigs: () => Promise<Iterable<RouteConfig | ApiConfig | SliceConfig>>;
 }) {
   type RouterMode = 'runtime' | 'build';
 
@@ -245,7 +243,17 @@ export function unstable_defineRouter(fns: {
   const getMyConfig = async (mode: RouterMode = 'runtime'): Promise<MyConfig> => {
     let cachedMyConfig = cachedMyConfigByMode.get(mode);
     if (!cachedMyConfig) {
-      const configs = Array.from(await fns.getConfigs({ mode }));
+      const allConfigs = Array.from(await fns.getConfigs());
+      const configs =
+        mode === 'runtime'
+          ? allConfigs.filter(
+              (item) =>
+                !(
+                  (item.type === 'route' || item.type === 'api') &&
+                  item.isStatic
+                ),
+            )
+          : allConfigs;
       let has404 = false;
       configs.forEach((item) => {
         if (item.type === 'route') {
@@ -810,6 +818,6 @@ export function unstable_defineRouter(fns: {
   };
 
   return Object.assign(defineHandlers({ handleRequest, handleBuild }), {
-    unstable_getRouterConfigs: () => getMyConfig().then((c) => c.configs),
+    unstable_getRouterConfigs: () => getMyConfig('build').then((c) => c.configs),
   });
 }
