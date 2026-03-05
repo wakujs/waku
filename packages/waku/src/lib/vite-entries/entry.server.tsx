@@ -1,4 +1,4 @@
-import serverEntry from 'virtual:vite-rsc-waku/server-entry';
+import serverEntry from 'virtual:vite-rsc-waku/server-entry-runtime';
 import { INTERNAL_setAllEnv } from '../../server.js';
 
 export { serverEntry as unstable_serverEntry };

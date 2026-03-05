@@ -1,5 +1,4 @@
 import { EXTENSIONS, SRC_MIDDLEWARE, SRC_PAGES } from '../constants.js';
-
 export const getManagedServerEntry = (srcDir: string) => {
   const globBase = `/${srcDir}/${SRC_PAGES}`;
   const exts = EXTENSIONS.map((ext) => ext.slice(1)).join(',');

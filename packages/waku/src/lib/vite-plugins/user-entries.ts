@@ -11,9 +11,23 @@ export function userEntriesPlugin({ srcDir }: { srcDir: string }): Plugin {
     // resolve user entries and fallbacks to "managed mode" if not found.
     async resolveId(source, _importer, options) {
       if (source === 'virtual:vite-rsc-waku/server-entry') {
+        return '\0virtual:vite-rsc-waku/server-entry-runtime';
+      }
+      if (source === 'virtual:vite-rsc-waku/server-entry-runtime') {
         return '\0' + source;
       }
-      if (source === 'virtual:vite-rsc-waku/server-entry-inner') {
+      if (source === 'virtual:vite-rsc-waku/server-entry-build') {
+        return '\0' + source;
+      }
+      if (source === 'virtual:vite-rsc-waku/server-entry-runtime-inner') {
+        const resolved = await this.resolve(
+          `/${srcDir}/${SRC_SERVER_ENTRY}`,
+          undefined,
+          options,
+        );
+        return resolved ? resolved : '\0' + source;
+      }
+      if (source === 'virtual:vite-rsc-waku/server-entry-build-inner') {
         const resolved = await this.resolve(
           `/${srcDir}/${SRC_SERVER_ENTRY}`,
           undefined,
@@ -30,16 +44,27 @@ export function userEntriesPlugin({ srcDir }: { srcDir: string }): Plugin {
         return resolved ? resolved : '\0' + source;
       }
     },
-    load(id) {
-      if (id === '\0virtual:vite-rsc-waku/server-entry') {
+    async load(id) {
+      if (id === '\0virtual:vite-rsc-waku/server-entry-runtime') {
         return `\
-export { default } from 'virtual:vite-rsc-waku/server-entry-inner';
+export { default } from 'virtual:vite-rsc-waku/server-entry-runtime-inner';
 if (import.meta.hot) {
   import.meta.hot.accept()
 }
 `;
       }
-      if (id === '\0virtual:vite-rsc-waku/server-entry-inner') {
+      if (id === '\0virtual:vite-rsc-waku/server-entry-build') {
+        return `\
+export { default } from 'virtual:vite-rsc-waku/server-entry-build-inner';
+if (import.meta.hot) {
+  import.meta.hot.accept()
+}
+`;
+      }
+      if (id === '\0virtual:vite-rsc-waku/server-entry-runtime-inner') {
+        return getManagedServerEntry(srcDir);
+      }
+      if (id === '\0virtual:vite-rsc-waku/server-entry-build-inner') {
         return getManagedServerEntry(srcDir);
       }
       if (id === '\0virtual:vite-rsc-waku/client-entry') {
