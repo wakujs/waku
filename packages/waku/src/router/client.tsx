@@ -142,7 +142,7 @@ const createRscParams = (query: string): URLSearchParams => {
 
 type ChangeRouteOptions = {
   shouldScroll: boolean;
-  skipRefetch?: boolean;
+  refetch?: boolean; // true: force refetch, false: don't refetch, undefined: auto-decide based on route change
   mode?: undefined | 'push' | 'replace';
   url?: URL | undefined;
   unstable_startTransition?: ((fn: TransitionFunction) => void) | undefined;
@@ -263,10 +263,7 @@ export function useRouter() {
   );
   const reload = useCallback(async () => {
     const url = new URL(window.location.href);
-    await changeRoute(parseRoute(url), {
-      shouldScroll: true,
-      skipRefetch: false,
-    });
+    await changeRoute(parseRoute(url), { shouldScroll: true, refetch: true });
   }, [changeRoute]);
   const back = useCallback(() => {
     // FIXME is this correct?
@@ -862,11 +859,11 @@ const InnerRouter = ({
       let { mode, url } = options;
       const requestedUrlToWrite = mode && (url || getRouteUrl(nextRoute));
       const routeBeforeChange = routeRef.current;
-      const skipRefetch =
-        options.skipRefetch ?? isSameRoute(nextRoute, routeBeforeChange);
+      const shouldRefetch =
+        options.refetch ?? !isSameRoute(nextRoute, routeBeforeChange);
       const pathChanged = isPathChange(nextRoute, routeBeforeChange);
       setErr(null);
-      if (!staticPathSetRef.current.has(nextRoute.path) && !skipRefetch) {
+      if (!staticPathSetRef.current.has(nextRoute.path) && shouldRefetch) {
         const rscPath = encodeRoutePath(nextRoute.path);
         const rscParams = createRscParams(nextRoute.query);
         const skipHeaderEnhancer =
@@ -959,7 +956,7 @@ const InnerRouter = ({
       url.search = query;
       url.hash = '';
       await changeRoute(parseRoute(url), {
-        skipRefetch: true,
+        refetch: false,
         shouldScroll: false,
         mode: path === '/404' ? undefined : 'push',
         url,

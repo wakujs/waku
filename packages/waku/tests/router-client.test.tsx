@@ -412,7 +412,7 @@ describe('useRouter + Link with context', () => {
     expect(changeRoute).toHaveBeenNthCalledWith(
       3,
       { path: '/start', query: '', hash: '' },
-      { shouldScroll: true, skipRefetch: false },
+      { shouldScroll: true, refetch: true },
     );
     const firstUrl = (
       (changeRoute.mock.calls[0] as unknown[] | undefined)?.[1] as
