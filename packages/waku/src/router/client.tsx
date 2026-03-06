@@ -230,13 +230,12 @@ export function useRouter() {
       const url = new URL(to, window.location.href);
       const nextRoute = parseRoute(url);
       await changeRoute(nextRoute, {
-        skipRefetch: isSameRoute(nextRoute, route),
         shouldScroll: options?.scroll ?? shouldScrollByDefault(url),
         mode: 'push',
         url,
       });
     },
-    [changeRoute, route],
+    [changeRoute],
   );
   const replace = useCallback(
     async (
@@ -255,17 +254,19 @@ export function useRouter() {
       const url = new URL(to, window.location.href);
       const nextRoute = parseRoute(url);
       await changeRoute(nextRoute, {
-        skipRefetch: isSameRoute(nextRoute, route),
         shouldScroll: options?.scroll ?? shouldScrollByDefault(url),
         mode: 'replace',
         url,
       });
     },
-    [changeRoute, route],
+    [changeRoute],
   );
   const reload = useCallback(async () => {
     const url = new URL(window.location.href);
-    await changeRoute(parseRoute(url), { shouldScroll: true });
+    await changeRoute(parseRoute(url), {
+      shouldScroll: true,
+      skipRefetch: false,
+    });
   }, [changeRoute]);
   const back = useCallback(() => {
     // FIXME is this correct?
@@ -408,10 +409,8 @@ export function Link({
     if (url.href !== window.location.href) {
       const route = parseRoute(url);
       prefetchRoute(route);
-      const skipRefetch = router ? isSameRoute(route, router.route) : false;
       startTransitionFn(async () => {
         await changeRoute(route, {
-          skipRefetch,
           shouldScroll: scroll ?? shouldScrollByDefault(url),
           mode: 'push',
           url,
@@ -819,14 +818,17 @@ const InnerRouter = ({
     routeChangeListenersRef.current = createRouteChangeListeners();
   }
   // Update the route post-load to include the current hash.
-  useEffect(() => {
-    setRoute((prev) => (isSameRoute(prev, initialRoute) ? prev : initialRoute));
-  }, [initialRoute]);
-  const [err, setErr] = useState<unknown>(null);
   const routeRef = useRef(route);
   useEffect(() => {
-    routeRef.current = route;
-  }, [route]);
+    setRoute((prev) => {
+      if (isSameRoute(prev, initialRoute)) {
+        return prev;
+      }
+      routeRef.current = initialRoute;
+      return initialRoute;
+    });
+  }, [initialRoute]);
+  const [err, setErr] = useState<unknown>(null);
 
   const [routeChangeEvents, emitRouteChangeEvent] =
     routeChangeListenersRef.current;
@@ -840,7 +842,6 @@ const InnerRouter = ({
       emitRouteChangeEvent('start', nextRoute);
       const startTransitionFn =
         options.unstable_startTransition || ((fn: TransitionFunction) => fn());
-      const { skipRefetch } = options;
       const historyPathnameBeforeChange = window.location.pathname;
       const writeHistoryIfNeeded = (
         mode: undefined | 'push' | 'replace',
@@ -861,6 +862,8 @@ const InnerRouter = ({
       let { mode, url } = options;
       const requestedUrlToWrite = mode && (url || getRouteUrl(nextRoute));
       const routeBeforeChange = routeRef.current;
+      const skipRefetch =
+        options.skipRefetch ?? isSameRoute(nextRoute, routeBeforeChange);
       const pathChanged = isPathChange(nextRoute, routeBeforeChange);
       setErr(null);
       if (!staticPathSetRef.current.has(nextRoute.path) && !skipRefetch) {
@@ -927,6 +930,7 @@ const InnerRouter = ({
           return;
         }
         writeHistoryIfNeeded(mode, urlToWrite);
+        routeRef.current = nextRoute;
         setRoute(nextRoute);
         routeChangeAbortRef.current = null;
         if (options.shouldScroll) {
@@ -1010,7 +1014,6 @@ const InnerRouter = ({
       }
       changeRoute(nextRoute, {
         shouldScroll: shouldScrollForRouteChange(nextRoute, routeRef.current),
-        skipRefetch: isSameRoute(nextRoute, routeRef.current),
       }).catch((err) => {
         console.log('Error while navigating back:', err);
       });
