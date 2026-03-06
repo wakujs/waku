@@ -2116,6 +2116,101 @@ describe('createPages api', () => {
     expect(text).toEqual('Hello World foo');
     expect(res.status).toEqual(200);
   });
+
+  it('static api with wildcard passes correct params', async () => {
+    const receivedParams: unknown[] = [];
+    createPages(async ({ createApi }) => [
+      createApi({
+        path: '/test/[...slugs]',
+        render: 'static',
+        method: 'GET',
+        staticPaths: [
+          ['a', 'b'],
+          ['c'],
+        ],
+        handler: async (_req, ctx) => {
+          receivedParams.push((ctx as any).params);
+          return new Response('ok');
+        },
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs()) as any[];
+    const apiConfigs = configs.filter((c: any) => c.type === 'api');
+    expect(apiConfigs).toHaveLength(2);
+
+    // Verify paths are all-literal
+    expect(apiConfigs[0]!.path).toEqual([
+      { type: 'literal', name: 'test' },
+      { type: 'literal', name: 'a' },
+      { type: 'literal', name: 'b' },
+    ]);
+    expect(apiConfigs[1]!.path).toEqual([
+      { type: 'literal', name: 'test' },
+      { type: 'literal', name: 'c' },
+    ]);
+
+    // Call handlers and verify params
+    await apiConfigs[0]!.handler(
+      new Request('http://localhost:3000/test/a/b'),
+      { params: {} },
+    );
+    await apiConfigs[1]!.handler(
+      new Request('http://localhost:3000/test/c'),
+      { params: {} },
+    );
+    expect(receivedParams).toEqual([
+      { slugs: ['a', 'b'] },
+      { slugs: ['c'] },
+    ]);
+  });
+
+  it('static api with wildcard and empty path produces correct configs', async () => {
+    const receivedParams: unknown[] = [];
+    createPages(async ({ createApi }) => [
+      createApi({
+        path: '/test/[...slugs]',
+        render: 'static',
+        method: 'GET',
+        staticPaths: [[], ['foo']],
+        handler: async (_req, ctx) => {
+          receivedParams.push((ctx as any).params);
+          return new Response('ok');
+        },
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs()) as any[];
+    const apiConfigs = configs.filter((c: any) => c.type === 'api');
+    expect(apiConfigs).toHaveLength(2);
+
+    // Find configs by path length
+    const emptyConfig = apiConfigs.find((c: any) => c.path.length === 1);
+    const fooConfig = apiConfigs.find((c: any) => c.path.length === 2);
+
+    // Verify paths: empty wildcard should produce just /test
+    expect(emptyConfig!.path).toEqual([
+      { type: 'literal', name: 'test' },
+    ]);
+    expect(fooConfig!.path).toEqual([
+      { type: 'literal', name: 'test' },
+      { type: 'literal', name: 'foo' },
+    ]);
+
+    // Call handlers and verify params
+    await emptyConfig!.handler(
+      new Request('http://localhost:3000/test'),
+      { params: {} },
+    );
+    await fooConfig!.handler(
+      new Request('http://localhost:3000/test/foo'),
+      { params: {} },
+    );
+    expect(receivedParams).toEqual([
+      { slugs: [] },
+      { slugs: ['foo'] },
+    ]);
+  });
 });
 
 describe('createPages - exactPath', () => {
