@@ -146,7 +146,7 @@ export function unstable_notFound(): never {
 }
 
 export function unstable_redirect(
-  location: string,
+  location: string, // only URL `pathname` is supported.
   status: 303 | 307 | 308 = 307,
 ): never {
   throw createCustomError('Redirect', { status, location });
