@@ -102,12 +102,13 @@ describe('encodeRoutePath', () => {
     expect(encodeRoutePath('/')).toBe('R/_root');
     expect(encodeRoutePath('/foo')).toBe('R/foo');
     expect(encodeRoutePath('/foo/bar')).toBe('R/foo/bar');
-    expect(encodeRoutePath('/foo/')).toBe('R/foo');
-    expect(encodeRoutePath('/foo/index.html')).toBe('R/foo');
   });
 
   test('throws on invalid routePath', () => {
     expect(() => encodeRoutePath('foo')).toThrow();
+    expect(() => encodeRoutePath('/foo/')).toThrow();
+    expect(() => encodeRoutePath('/index.html')).toThrow();
+    expect(() => encodeRoutePath('/foo/index.html')).toThrow();
   });
 });
 

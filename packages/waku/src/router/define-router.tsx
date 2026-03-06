@@ -541,7 +541,8 @@ export function unstable_defineRouter(fns: {
       } catch (e) {
         const info = getErrorInfo(e);
         if (info?.location) {
-          const rscPath = encodeRoutePath(info.location);
+          const routePath = pathnameToRoutePath(info.location);
+          const rscPath = encodeRoutePath(routePath);
           const entries = await getEntriesForRoute(
             rscPath,
             undefined,

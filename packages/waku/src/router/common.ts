@@ -38,7 +38,15 @@ const ROUTE_PREFIX = 'R';
 const SLICE_PREFIX = 'S/';
 
 export function encodeRoutePath(routePath: string): string {
-  routePath = pathnameToRoutePath(routePath);
+  if (!routePath.startsWith('/')) {
+    throw new Error('Route path must start with `/`: ' + routePath);
+  }
+  if (routePath.length > 1 && routePath.endsWith('/')) {
+    throw new Error('Route path must not end with `/`: ' + routePath);
+  }
+  if (routePath.endsWith('/index.html')) {
+    throw new Error('Route path must not end with `/index.html`: ' + routePath);
+  }
   if (routePath === '/') {
     return ROUTE_PREFIX + '/_root';
   }
