@@ -7,8 +7,24 @@ export type RouteProps<Path extends string = string> = {
   hash: string;
 };
 
-export function getComponentIds(path: string): readonly string[] {
-  const pathItems = path.split('/').filter(Boolean);
+export function pathnameToRoutePath(pathname: string): string {
+  if (!pathname.startsWith('/')) {
+    throw new Error('Pathname must start with `/`: ' + pathname);
+  }
+  if (pathname.length > 1 && pathname.endsWith('/')) {
+    pathname = pathname.slice(0, -1);
+  }
+  if (pathname.endsWith('/index.html')) {
+    pathname = pathname.slice(0, -'/index.html'.length) || '/';
+  }
+  if (pathname.length > 1 && pathname.endsWith('/')) {
+    pathname = pathname.slice(0, -1);
+  }
+  return pathname || '/';
+}
+
+export function getComponentIds(routePath: string): readonly string[] {
+  const pathItems = routePath.split('/').filter(Boolean);
   const idSet = new Set<string>();
   for (let index = 0; index <= pathItems.length; ++index) {
     const id = [...pathItems.slice(0, index), 'layout'].join('/');
@@ -21,20 +37,15 @@ export function getComponentIds(path: string): readonly string[] {
 const ROUTE_PREFIX = 'R';
 const SLICE_PREFIX = 'S/';
 
-export function encodeRoutePath(path: string): string {
-  if (!path.startsWith('/')) {
-    throw new Error('Path must start with `/`: ' + path);
-  }
-  if (path.length > 1 && path.endsWith('/')) {
-    throw new Error('Path must not end with `/`: ' + path);
-  }
-  if (path === '/') {
+export function encodeRoutePath(routePath: string): string {
+  routePath = pathnameToRoutePath(routePath);
+  if (routePath === '/') {
     return ROUTE_PREFIX + '/_root';
   }
-  if (path.startsWith('/_')) {
-    return ROUTE_PREFIX + '/__' + path.slice(2);
+  if (routePath.startsWith('/_')) {
+    return ROUTE_PREFIX + '/__' + routePath.slice(2);
   }
-  return ROUTE_PREFIX + path;
+  return ROUTE_PREFIX + routePath;
 }
 
 export function decodeRoutePath(rscPath: string): string {

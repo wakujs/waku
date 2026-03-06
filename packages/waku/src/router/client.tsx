@@ -41,14 +41,19 @@ import {
   SKIP_HEADER,
   encodeRoutePath,
   encodeSliceId,
+  pathnameToRoutePath,
 } from './common.js';
 import type { RouteProps } from './common.js';
 
+type AllowTrailingSlash<Path extends string> = Path extends '/'
+  ? Path
+  : Path | `${Path}/`;
+
 type AllowPathDecorators<Path extends string> = Path extends unknown
   ?
-      | Path
-      | `${Path}?${string}`
-      | `${Path}#${string}`
+      | AllowTrailingSlash<Path>
+      | `${AllowTrailingSlash<Path>}?${string}`
+      | `${AllowTrailingSlash<Path>}#${string}`
       | `?${string}`
       | `#${string}`
   : never;
@@ -59,20 +64,15 @@ type InferredPaths = RouteConfig extends {
   ? AllowPathDecorators<UserPaths>
   : string;
 
-const normalizeRoutePath = (path: string) => {
-  path = removeBase(path, import.meta.env.WAKU_CONFIG_BASE_PATH);
-  for (const suffix of ['/', '/index.html']) {
-    if (path.endsWith(suffix)) {
-      return path.slice(0, -suffix.length) || '/';
-    }
-  }
-  return path;
-};
+const pathnameToCurrentRoutePath = (pathname: string) =>
+  pathnameToRoutePath(
+    removeBase(pathname, import.meta.env.WAKU_CONFIG_BASE_PATH),
+  );
 
 const parseRoute = (url: URL): RouteProps => {
   const { pathname, searchParams, hash } = url;
   return {
-    path: normalizeRoutePath(pathname),
+    path: pathnameToCurrentRoutePath(pathname),
     query: searchParams.toString(),
     hash,
   };
@@ -107,7 +107,8 @@ const parseRouteFromLocation = (): RouteProps => {
 };
 
 const shouldScrollByDefault = (url: URL) =>
-  url.pathname !== window.location.pathname ||
+  pathnameToCurrentRoutePath(url.pathname) !==
+    pathnameToCurrentRoutePath(window.location.pathname) ||
   url.hash !== window.location.hash;
 
 const isPathChange = (next: RouteProps, prev: RouteProps) =>
@@ -227,13 +228,15 @@ export function useRouter() {
     ) => {
       to = addBase(to, import.meta.env.WAKU_CONFIG_BASE_PATH);
       const url = new URL(to, window.location.href);
-      await changeRoute(parseRoute(url), {
+      const nextRoute = parseRoute(url);
+      await changeRoute(nextRoute, {
+        skipRefetch: isSameRoute(nextRoute, route),
         shouldScroll: options?.scroll ?? shouldScrollByDefault(url),
         mode: 'push',
         url,
       });
     },
-    [changeRoute],
+    [changeRoute, route],
   );
   const replace = useCallback(
     async (
@@ -250,13 +253,15 @@ export function useRouter() {
     ) => {
       to = addBase(to, import.meta.env.WAKU_CONFIG_BASE_PATH);
       const url = new URL(to, window.location.href);
-      await changeRoute(parseRoute(url), {
+      const nextRoute = parseRoute(url);
+      await changeRoute(nextRoute, {
+        skipRefetch: isSameRoute(nextRoute, route),
         shouldScroll: options?.scroll ?? shouldScrollByDefault(url),
         mode: 'replace',
         url,
       });
     },
-    [changeRoute],
+    [changeRoute, route],
   );
   const reload = useCallback(async () => {
     const url = new URL(window.location.href);
@@ -403,8 +408,10 @@ export function Link({
     if (url.href !== window.location.href) {
       const route = parseRoute(url);
       prefetchRoute(route);
+      const skipRefetch = router ? isSameRoute(route, router.route) : false;
       startTransitionFn(async () => {
         await changeRoute(route, {
+          skipRefetch,
           shouldScroll: scroll ?? shouldScrollByDefault(url),
           mode: 'push',
           url,

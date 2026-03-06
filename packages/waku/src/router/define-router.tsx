@@ -16,6 +16,7 @@ import {
   decodeSliceId,
   encodeRoutePath,
   encodeSliceId,
+  pathnameToRoutePath,
 } from './common.js';
 
 export type ApiHandler = (
@@ -124,18 +125,19 @@ const is404 = (pathSpec: PathSpec) =>
   pathSpec[0]!.type === 'literal' &&
   pathSpec[0]!.name === '404';
 
-const pathSpec2pathname = (pathSpec: PathSpec) => {
+const pathSpecToRoutePath = (pathSpec: PathSpec) => {
   if (pathSpec.some(({ type }) => type !== 'literal')) {
     return undefined;
   }
   return '/' + pathSpec.map(({ name }) => name!).join('/');
 };
 
-const htmlPath2pathname = (htmlPath: string): string =>
-  htmlPath === '/404' ? '404.html' : htmlPath + '/index.html';
+const routePathToHtmlFilePath = (routePath: string): string =>
+  routePath === '/404' ? '404.html' : routePath + '/index.html';
 
 export function unstable_rerenderRoute(pathname: string, query?: string) {
-  const rscPath = encodeRoutePath(pathname);
+  const routePath = pathnameToRoutePath(pathname);
+  const rscPath = encodeRoutePath(routePath);
   getRerender()(rscPath, query && new URLSearchParams({ query }));
 }
 
@@ -166,7 +168,7 @@ const assertNonReservedSlotId = (slotId: SlotId) => {
   }
 };
 
-type RendererOption = { pathname: string; query: string | undefined };
+type RendererOption = { routePath: string; query: string | undefined };
 
 type RouteConfig = {
   type: 'route';
@@ -256,11 +258,12 @@ export function unstable_defineRouter(fns: {
   };
 
   const getPathConfigItem = async (pathname: string) => {
+    const routePath = pathnameToRoutePath(pathname);
     const myConfig = await getMyConfig();
     const found = myConfig.configs.find(
       (item): item is typeof item & { type: 'route' | 'api' } =>
         (item.type === 'route' || item.type === 'api') &&
-        !!getPathMapping(item.path, pathname),
+        !!getPathMapping(item.path, routePath),
     );
     return found;
   };
@@ -295,8 +298,8 @@ export function unstable_defineRouter(fns: {
   ) => {
     setRscPath(rscPath);
     setRscParams(rscParams);
-    const pathname = decodeRoutePath(rscPath);
-    const pathConfigItem = await getPathConfigItem(pathname);
+    const routePath = decodeRoutePath(rscPath);
+    const pathConfigItem = await getPathConfigItem(routePath);
     if (pathConfigItem?.type !== 'route') {
       return null;
     }
@@ -308,9 +311,9 @@ export function unstable_defineRouter(fns: {
     }
     const skipIdSet = new Set(isStringArray(skipParam) ? skipParam : []);
     const { query } = parseRscParams(rscParams);
-    const routeId = ROUTE_SLOT_ID_PREFIX + pathname;
+    const routeId = ROUTE_SLOT_ID_PREFIX + routePath;
     const option: RendererOption = {
-      pathname,
+      routePath,
       query: pathConfigItem.isStatic ? undefined : query,
     };
     const myConfig = await getMyConfig();
@@ -386,7 +389,7 @@ export function unstable_defineRouter(fns: {
         entries[id] = sliceElement;
       }),
     ]);
-    entries[ROUTE_ID] = [pathname, query];
+    entries[ROUTE_ID] = [routePath, query];
     entries[IS_STATIC_ID] = pathConfigItem.isStatic;
     sliceConfigMap.forEach((sliceConfig, sliceId) => {
       if (sliceConfig.isStatic) {
@@ -563,7 +566,8 @@ export function unstable_defineRouter(fns: {
         query: string,
         httpstatus = 200,
       ) => {
-        const rscPath = encodeRoutePath(pathname);
+        const routePath = pathnameToRoutePath(pathname);
+        const rscPath = encodeRoutePath(routePath);
         const rscParams = new URLSearchParams({ query });
         const entries = await getEntriesForRoute(
           rscPath,
@@ -578,7 +582,7 @@ export function unstable_defineRouter(fns: {
         const path2moduleIds = await getPath2moduleIds();
         const html = (
           <INTERNAL_ServerRouter
-            route={{ path: pathname, query, hash: '' }}
+            route={{ path: routePath, query, hash: '' }}
             httpstatus={httpstatus}
           />
         );
@@ -661,15 +665,15 @@ export function unstable_defineRouter(fns: {
       if (!item.isStatic) {
         continue;
       }
-      const pathname = pathSpec2pathname(item.path);
-      if (!pathname) {
+      const routePath = pathSpecToRoutePath(item.path);
+      if (!routePath) {
         continue;
       }
-      const req = new Request(new URL(pathname, 'http://localhost:3000'));
+      const req = new Request(new URL(routePath, 'http://localhost:3000'));
       runTask(async () => {
         await withRequest(req, async () => {
           const res = await item.handler(req, { params: {} });
-          await generateFile(pathname, res.body || '');
+          await generateFile(routePath, res.body || '');
         });
       });
     }
@@ -685,12 +689,12 @@ export function unstable_defineRouter(fns: {
       if (!item.isStatic) {
         continue;
       }
-      const pathname = pathSpec2pathname(item.path);
-      if (!pathname) {
+      const routePath = pathSpecToRoutePath(item.path);
+      if (!routePath) {
         continue;
       }
-      const rscPath = encodeRoutePath(pathname);
-      const req = new Request(new URL(pathname, 'http://localhost:3000'));
+      const rscPath = encodeRoutePath(routePath);
+      const req = new Request(new URL(routePath, 'http://localhost:3000'));
       runTask(async () => {
         await withRequest(req, async () => {
           const entries = await getEntriesForRoute(
@@ -719,7 +723,7 @@ export function unstable_defineRouter(fns: {
           htmlRenderTasks.add(async () => {
             const html = (
               <INTERNAL_ServerRouter
-                route={{ path: pathname, query: '', hash: '' }}
+                route={{ path: routePath, query: '', hash: '' }}
                 httpstatus={is404(item.path) ? 404 : 200}
               />
             );
@@ -728,7 +732,10 @@ export function unstable_defineRouter(fns: {
               unstable_extraScriptContent:
                 getRouterPrefetchCode(path2moduleIds),
             });
-            await generateFile(htmlPath2pathname(pathname), res.body || '');
+            await generateFile(
+              routePathToHtmlFilePath(routePath),
+              res.body || '',
+            );
           });
         });
       });
@@ -743,12 +750,12 @@ export function unstable_defineRouter(fns: {
         continue;
       }
       if (item.noSsr) {
-        const pathname = pathSpec2pathname(item.path);
-        if (!pathname) {
+        const routePath = pathSpecToRoutePath(item.path);
+        if (!routePath) {
           throw new Error('Pathname is required for noSsr routes on build');
         }
         runTask(async () => {
-          await generateDefaultHtml(htmlPath2pathname(pathname));
+          await generateDefaultHtml(routePathToHtmlFilePath(routePath));
         });
       }
     }

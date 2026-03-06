@@ -260,7 +260,7 @@ afterEach(() => {
 });
 
 describe('router/client utilities', () => {
-  test('parses route path/query/hash and normalizes trailing suffixes', () => {
+  test('parses route path/query/hash and canonicalizes path from pathname', () => {
     const route = unstable_parseRoute(
       new URL('http://localhost/foo/index.html?count=2#hash'),
     );
@@ -273,6 +273,13 @@ describe('router/client utilities', () => {
     const route2 = unstable_parseRoute(new URL('http://localhost/bar/?q=1'));
     expect(route2).toEqual({
       path: '/bar',
+      query: 'q=1',
+      hash: '',
+    });
+
+    const route3 = unstable_parseRoute(new URL('http://localhost/baz/?q=1'));
+    expect(route3).toEqual({
+      path: '/baz',
       query: 'q=1',
       hash: '',
     });

@@ -29,6 +29,20 @@ test.describe('useRouter', () => {
       await expect(page.getByRole('heading', { name: 'Static' })).toBeVisible();
       await expect(page.getByTestId('path')).toHaveText('Path: /static');
     });
+
+    test(`on dynamic pages with trailing slash`, async ({ page }) => {
+      await page.goto(`http://localhost:${port}/dynamic/`);
+      await expect(
+        page.getByRole('heading', { name: 'Dynamic' }),
+      ).toBeVisible();
+      await expect(page.getByTestId('path')).toHaveText('Path: /dynamic');
+    });
+
+    test(`on static pages with trailing slash`, async ({ page }) => {
+      await page.goto(`http://localhost:${port}/static/`);
+      await expect(page.getByRole('heading', { name: 'Static' })).toBeVisible();
+      await expect(page.getByTestId('path')).toHaveText('Path: /static');
+    });
   });
 
   test.describe('updates path on link navigation', () => {
@@ -63,7 +77,9 @@ test.describe('useRouter', () => {
     }) => {
       await page.goto(`http://localhost:${port}/dynamic`);
       await waitForHydration(page);
-      await page.getByRole('link', { name: 'Go to static' }).click();
+      await page
+        .getByRole('link', { name: 'Go to static', exact: true })
+        .click();
       await expect(page.getByRole('heading', { name: 'Static' })).toBeVisible();
       const beforeReplaceHistoryLength = await page.evaluate(
         () => window.history.length,
@@ -97,7 +113,9 @@ test.describe('useRouter', () => {
       await page.click('text=Increment query');
       await expect(page.getByTestId('query')).toHaveText('Query: 1');
 
-      await page.getByRole('link', { name: 'Go to static' }).click();
+      await page
+        .getByRole('link', { name: 'Go to static', exact: true })
+        .click();
       await expect(page.getByRole('heading', { name: 'Static' })).toBeVisible();
       await expect(page.getByTestId('query')).toHaveText('Query: 0');
 
@@ -173,6 +191,26 @@ test.describe('useRouter', () => {
       await expect(page.getByRole('heading', { name: 'Home' })).toBeHidden();
       await expect(page.getByRole('heading', { name: 'Bar' })).toBeVisible();
       expect(messages.some((msg) => msg.includes('Uncaught'))).toBe(false);
+    });
+
+    test('router.push preserves trailing-slash URL while keeping canonical path', async ({
+      page,
+    }) => {
+      await page.goto(`http://localhost:${port}/dynamic`);
+      await waitForHydration(page);
+      await page.getByTestId('router-push-static-trailing').click();
+      await expect(page.getByRole('heading', { name: 'Static' })).toBeVisible();
+      await expect(page).toHaveURL(`http://localhost:${port}/static/`);
+      await expect(page.getByTestId('path')).toHaveText('Path: /static');
+    });
+
+    test('Link supports trailing-slash targets', async ({ page }) => {
+      await page.goto(`http://localhost:${port}/dynamic`);
+      await waitForHydration(page);
+      await page.getByTestId('link-static-trailing').click();
+      await expect(page.getByRole('heading', { name: 'Static' })).toBeVisible();
+      await expect(page).toHaveURL(`http://localhost:${port}/static/`);
+      await expect(page.getByTestId('path')).toHaveText('Path: /static');
     });
   });
 
