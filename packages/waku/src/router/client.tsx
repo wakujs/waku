@@ -41,14 +41,19 @@ import {
   SKIP_HEADER,
   encodeRoutePath,
   encodeSliceId,
+  pathnameToRoutePath,
 } from './common.js';
 import type { RouteProps } from './common.js';
 
+type AllowTrailingSlash<Path extends string> = Path extends '/'
+  ? Path
+  : Path | `${Path}/`;
+
 type AllowPathDecorators<Path extends string> = Path extends unknown
   ?
-      | Path
-      | `${Path}?${string}`
-      | `${Path}#${string}`
+      | AllowTrailingSlash<Path>
+      | `${AllowTrailingSlash<Path>}?${string}`
+      | `${AllowTrailingSlash<Path>}#${string}`
       | `?${string}`
       | `#${string}`
   : never;
@@ -59,20 +64,15 @@ type InferredPaths = RouteConfig extends {
   ? AllowPathDecorators<UserPaths>
   : string;
 
-const normalizeRoutePath = (path: string) => {
-  path = removeBase(path, import.meta.env.WAKU_CONFIG_BASE_PATH);
-  for (const suffix of ['/', '/index.html']) {
-    if (path.endsWith(suffix)) {
-      return path.slice(0, -suffix.length) || '/';
-    }
-  }
-  return path;
-};
+const pathnameToCurrentRoutePath = (pathname: string) =>
+  pathnameToRoutePath(
+    removeBase(pathname, import.meta.env.WAKU_CONFIG_BASE_PATH),
+  );
 
 const parseRoute = (url: URL): RouteProps => {
   const { pathname, searchParams, hash } = url;
   return {
-    path: normalizeRoutePath(pathname),
+    path: pathnameToCurrentRoutePath(pathname),
     query: searchParams.toString(),
     hash,
   };
@@ -107,7 +107,8 @@ const parseRouteFromLocation = (): RouteProps => {
 };
 
 const shouldScrollByDefault = (url: URL) =>
-  url.pathname !== window.location.pathname ||
+  pathnameToCurrentRoutePath(url.pathname) !==
+    pathnameToCurrentRoutePath(window.location.pathname) ||
   url.hash !== window.location.hash;
 
 const isPathChange = (next: RouteProps, prev: RouteProps) =>
@@ -141,7 +142,7 @@ const createRscParams = (query: string): URLSearchParams => {
 
 type ChangeRouteOptions = {
   shouldScroll: boolean;
-  skipRefetch?: boolean;
+  refetch?: boolean; // true: force refetch, false: don't refetch, undefined: auto-decide based on route change
   mode?: undefined | 'push' | 'replace';
   url?: URL | undefined;
   unstable_startTransition?: ((fn: TransitionFunction) => void) | undefined;
@@ -260,7 +261,7 @@ export function useRouter() {
   );
   const reload = useCallback(async () => {
     const url = new URL(window.location.href);
-    await changeRoute(parseRoute(url), { shouldScroll: true });
+    await changeRoute(parseRoute(url), { shouldScroll: true, refetch: true });
   }, [changeRoute]);
   const back = useCallback(() => {
     // FIXME is this correct?
@@ -812,14 +813,12 @@ const InnerRouter = ({
     routeChangeListenersRef.current = createRouteChangeListeners();
   }
   // Update the route post-load to include the current hash.
+  const routeRef = useRef(route);
   useEffect(() => {
+    routeRef.current = initialRoute;
     setRoute((prev) => (isSameRoute(prev, initialRoute) ? prev : initialRoute));
   }, [initialRoute]);
   const [err, setErr] = useState<unknown>(null);
-  const routeRef = useRef(route);
-  useEffect(() => {
-    routeRef.current = route;
-  }, [route]);
 
   const [routeChangeEvents, emitRouteChangeEvent] =
     routeChangeListenersRef.current;
@@ -833,7 +832,6 @@ const InnerRouter = ({
       emitRouteChangeEvent('start', nextRoute);
       const startTransitionFn =
         options.unstable_startTransition || ((fn: TransitionFunction) => fn());
-      const { skipRefetch } = options;
       const historyPathnameBeforeChange = window.location.pathname;
       const writeHistoryIfNeeded = (
         mode: undefined | 'push' | 'replace',
@@ -854,9 +852,11 @@ const InnerRouter = ({
       let { mode, url } = options;
       const requestedUrlToWrite = mode && (url || getRouteUrl(nextRoute));
       const routeBeforeChange = routeRef.current;
+      const shouldRefetch =
+        options.refetch ?? !isSameRoute(nextRoute, routeBeforeChange);
       const pathChanged = isPathChange(nextRoute, routeBeforeChange);
       setErr(null);
-      if (!staticPathSetRef.current.has(nextRoute.path) && !skipRefetch) {
+      if (!staticPathSetRef.current.has(nextRoute.path) && shouldRefetch) {
         const rscPath = encodeRoutePath(nextRoute.path);
         const rscParams = createRscParams(nextRoute.query);
         const skipHeaderEnhancer =
@@ -920,6 +920,7 @@ const InnerRouter = ({
           return;
         }
         writeHistoryIfNeeded(mode, urlToWrite);
+        routeRef.current = nextRoute;
         setRoute(nextRoute);
         routeChangeAbortRef.current = null;
         if (options.shouldScroll) {
@@ -948,7 +949,7 @@ const InnerRouter = ({
       url.search = query;
       url.hash = '';
       await changeRoute(parseRoute(url), {
-        skipRefetch: true,
+        refetch: false,
         shouldScroll: false,
         mode: path === '/404' ? undefined : 'push',
         url,
@@ -1003,7 +1004,6 @@ const InnerRouter = ({
       }
       changeRoute(nextRoute, {
         shouldScroll: shouldScrollForRouteChange(nextRoute, routeRef.current),
-        skipRefetch: isSameRoute(nextRoute, routeRef.current),
       }).catch((err) => {
         console.log('Error while navigating back:', err);
       });

@@ -17,14 +17,25 @@ export function PushMissingButton() {
   const router = useRouter();
   const push = router.push as unknown as (to: string) => Promise<void>;
   return (
-    <button
-      data-testid="go-missing"
-      onClick={() => {
-        void push('/missing');
-      }}
-      type="button"
-    >
-      Go missing
-    </button>
+    <>
+      <button
+        data-testid="go-missing"
+        onClick={() => {
+          void push('/missing');
+        }}
+        type="button"
+      >
+        Go missing
+      </button>
+      <button
+        data-testid="go-missing-trailing"
+        onClick={() => {
+          void push('/missing/');
+        }}
+        type="button"
+      >
+        Go missing trailing
+      </button>
+    </>
   );
 }

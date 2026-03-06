@@ -44,6 +44,33 @@ test.describe(`base-path`, () => {
         text: 'hello',
       },
     });
+
+    // get trailing slash
+    const resGetTrailing = await request.get(`${baseUrl}hello/`);
+    expect(resGetTrailing.ok()).toBe(true);
+    expect(await resGetTrailing.json()).toEqual({
+      ok: true,
+      request: {
+        handler: 'GET',
+        method: 'GET',
+        pathname: '/hello/',
+      },
+    });
+
+    // post trailing slash
+    const resPostTrailing = await request.post(`${baseUrl}hello/`, {
+      data: 'hello',
+    });
+    expect(resPostTrailing.ok()).toBe(true);
+    expect(await resPostTrailing.json()).toEqual({
+      ok: true,
+      request: {
+        handler: 'POST',
+        method: 'POST',
+        pathname: '/hello/',
+        text: 'hello',
+      },
+    });
   });
 
   test('router', async ({ page }) => {
@@ -52,8 +79,19 @@ test.describe(`base-path`, () => {
     await waitForHydration(page);
 
     // push
-    await page.getByText('dynamic-push').click();
+    await page
+      .getByRole('button', { name: 'dynamic-push', exact: true })
+      .click();
     await page.waitForURL(`${baseUrl}dynamic`);
+    await expect(
+      page.getByRole('heading', { name: 'Dynamic page' }),
+    ).toBeVisible();
+
+    // push trailing slash
+    await page.goto(baseUrl);
+    await waitForHydration(page);
+    await page.getByRole('button', { name: 'dynamic-push-trailing' }).click();
+    await page.waitForURL(`${baseUrl}dynamic/`);
     await expect(
       page.getByRole('heading', { name: 'Dynamic page' }),
     ).toBeVisible();
@@ -61,7 +99,7 @@ test.describe(`base-path`, () => {
     // replace
     await page.goto(baseUrl);
     await waitForHydration(page);
-    await page.getByText('dynamic-replace').click();
+    await page.getByRole('button', { name: 'dynamic-replace' }).click();
     await page.waitForURL(`${baseUrl}dynamic`);
     await expect(
       page.getByRole('heading', { name: 'Dynamic page' }),
@@ -112,6 +150,11 @@ async function basicTest(page: Page, baseUrl: string) {
 
   // ssr
   await page.goto(`${baseUrl}static`);
+  await expect(
+    page.getByRole('heading', { name: 'Static page' }),
+  ).toBeVisible();
+
+  await page.goto(`${baseUrl}static/`);
   await expect(
     page.getByRole('heading', { name: 'Static page' }),
   ).toBeVisible();
