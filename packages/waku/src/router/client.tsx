@@ -816,12 +816,7 @@ const InnerRouter = ({
   const routeRef = useRef(route);
   useEffect(() => {
     routeRef.current = initialRoute;
-    setRoute((prev) => {
-      if (isSameRoute(prev, initialRoute)) {
-        return prev;
-      }
-      return initialRoute;
-    });
+    setRoute((prev) => (isSameRoute(prev, initialRoute) ? prev : initialRoute));
   }, [initialRoute]);
   const [err, setErr] = useState<unknown>(null);
 
