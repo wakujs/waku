@@ -334,6 +334,7 @@ export const createPages = <
       render: 'static' | 'dynamic';
       pathSpec: PathSpec;
       handlers: Partial<Record<Method | 'all', ApiHandler>>;
+      staticParams?: Record<string, string | string[]>;
     }
   >();
   const staticComponentMap = new Map<string, FunctionComponent<any>>();
@@ -552,7 +553,7 @@ export const createPages = <
           if (staticPath.length !== numSlugs && numWildcards === 0) {
             throw new Error('staticPaths does not match with slug pattern');
           }
-          const { definedPath, pathItems } = expandStaticPathSpec(
+          const { definedPath, pathItems, mapping } = expandStaticPathSpec(
             pathSpec,
             staticPath,
           );
@@ -563,6 +564,7 @@ export const createPages = <
             render: 'static',
             pathSpec: pathItems.map((name) => ({ type: 'literal', name })),
             handlers: { GET: options.handler },
+            staticParams: mapping,
           });
         }
       } else {
@@ -854,7 +856,7 @@ export const createPages = <
         });
       }
       const apiConfigs = Array.from(apiPathMap.values()).map(
-        ({ pathSpec, render, handlers }) => {
+        ({ pathSpec, render, handlers, staticParams }) => {
           return {
             type: 'api' as const,
             path: pathSpec,
@@ -871,7 +873,10 @@ export const createPages = <
                   'API method not found: ' + method + 'for path: ' + path,
                 );
               }
-              return handler(req, apiContext);
+              return handler(
+                req,
+                staticParams ? { params: staticParams } : apiContext,
+              );
             },
           };
         },
