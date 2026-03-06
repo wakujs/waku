@@ -371,17 +371,13 @@ test.describe(`create-pages`, () => {
     expect(res1.status).toBe(200);
     expect(await res1.json()).toEqual({ params: { slugs: ['a', 'b'] } });
 
-    const res2 = await fetch(
-      `http://localhost:${port}/api/static-wildcard/c`,
-    );
+    const res2 = await fetch(`http://localhost:${port}/api/static-wildcard/c`);
     expect(res2.status).toBe(200);
     expect(await res2.json()).toEqual({ params: { slugs: ['c'] } });
   });
 
   test('static api wildcard with empty path', async () => {
-    const res = await fetch(
-      `http://localhost:${port}/api/static-wildcard`,
-    );
+    const res = await fetch(`http://localhost:${port}/api/static-wildcard`);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ params: { slugs: [] } });
   });
