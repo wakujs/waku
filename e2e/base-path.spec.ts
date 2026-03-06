@@ -52,8 +52,19 @@ test.describe(`base-path`, () => {
     await waitForHydration(page);
 
     // push
-    await page.getByText('dynamic-push').click();
+    await page
+      .getByRole('button', { name: 'dynamic-push', exact: true })
+      .click();
     await page.waitForURL(`${baseUrl}dynamic`);
+    await expect(
+      page.getByRole('heading', { name: 'Dynamic page' }),
+    ).toBeVisible();
+
+    // push trailing slash
+    await page.goto(baseUrl);
+    await waitForHydration(page);
+    await page.getByRole('button', { name: 'dynamic-push-trailing' }).click();
+    await page.waitForURL(`${baseUrl}dynamic/`);
     await expect(
       page.getByRole('heading', { name: 'Dynamic page' }),
     ).toBeVisible();
@@ -61,7 +72,7 @@ test.describe(`base-path`, () => {
     // replace
     await page.goto(baseUrl);
     await waitForHydration(page);
-    await page.getByText('dynamic-replace').click();
+    await page.getByRole('button', { name: 'dynamic-replace' }).click();
     await page.waitForURL(`${baseUrl}dynamic`);
     await expect(
       page.getByRole('heading', { name: 'Dynamic page' }),
@@ -112,6 +123,11 @@ async function basicTest(page: Page, baseUrl: string) {
 
   // ssr
   await page.goto(`${baseUrl}static`);
+  await expect(
+    page.getByRole('heading', { name: 'Static page' }),
+  ).toBeVisible();
+
+  await page.goto(`${baseUrl}static/`);
   await expect(
     page.getByRole('heading', { name: 'Static page' }),
   ).toBeVisible();

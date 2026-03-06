@@ -38,6 +38,15 @@ export function RouteState() {
       </p>
       <p>
         <button
+          data-testid="router-push-trailing-slash"
+          onClick={() => router.push('/start/')}
+          type="button"
+        >
+          router.push trailing slash
+        </button>
+      </p>
+      <p>
+        <button
           data-testid="router-push-next"
           onClick={() => router.push('/next?x=1')}
           type="button"
