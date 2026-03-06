@@ -228,8 +228,7 @@ export function useRouter() {
     ) => {
       to = addBase(to, import.meta.env.WAKU_CONFIG_BASE_PATH);
       const url = new URL(to, window.location.href);
-      const nextRoute = parseRoute(url);
-      await changeRoute(nextRoute, {
+      await changeRoute(parseRoute(url), {
         shouldScroll: options?.scroll ?? shouldScrollByDefault(url),
         mode: 'push',
         url,
@@ -252,8 +251,7 @@ export function useRouter() {
     ) => {
       to = addBase(to, import.meta.env.WAKU_CONFIG_BASE_PATH);
       const url = new URL(to, window.location.href);
-      const nextRoute = parseRoute(url);
-      await changeRoute(nextRoute, {
+      await changeRoute(parseRoute(url), {
         shouldScroll: options?.scroll ?? shouldScrollByDefault(url),
         mode: 'replace',
         url,
@@ -817,11 +815,11 @@ const InnerRouter = ({
   // Update the route post-load to include the current hash.
   const routeRef = useRef(route);
   useEffect(() => {
+    routeRef.current = initialRoute;
     setRoute((prev) => {
       if (isSameRoute(prev, initialRoute)) {
         return prev;
       }
-      routeRef.current = initialRoute;
       return initialRoute;
     });
   }, [initialRoute]);
