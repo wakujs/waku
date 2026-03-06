@@ -44,6 +44,33 @@ test.describe(`base-path`, () => {
         text: 'hello',
       },
     });
+
+    // get trailing slash
+    const resGetTrailing = await request.get(`${baseUrl}hello/`);
+    expect(resGetTrailing.ok()).toBe(true);
+    expect(await resGetTrailing.json()).toEqual({
+      ok: true,
+      request: {
+        handler: 'GET',
+        method: 'GET',
+        pathname: '/hello/',
+      },
+    });
+
+    // post trailing slash
+    const resPostTrailing = await request.post(`${baseUrl}hello/`, {
+      data: 'hello',
+    });
+    expect(resPostTrailing.ok()).toBe(true);
+    expect(await resPostTrailing.json()).toEqual({
+      ok: true,
+      request: {
+        handler: 'POST',
+        method: 'POST',
+        pathname: '/hello/',
+        text: 'hello',
+      },
+    });
   });
 
   test('router', async ({ page }) => {

@@ -104,6 +104,12 @@ test.describe('fs-router', () => {
     expect(await res.text()).toBe('Hello from API!');
   });
 
+  test('api hi with trailing slash', async () => {
+    const res = await fetch(`http://localhost:${port}/hi/`);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe('Hello from API!');
+  });
+
   test('api hi.txt', async () => {
     const res = await fetch(`http://localhost:${port}/hi.txt`);
     expect(res.status).toBe(200);
@@ -118,6 +124,15 @@ test.describe('fs-router', () => {
 
   test('api hi with POST', async () => {
     const res = await fetch(`http://localhost:${port}/hi`, {
+      method: 'POST',
+      body: 'from the test!',
+    });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe('POST Hello from API! from the test!');
+  });
+
+  test('api hi with POST and trailing slash', async () => {
+    const res = await fetch(`http://localhost:${port}/hi/`, {
       method: 'POST',
       body: 'from the test!',
     });
