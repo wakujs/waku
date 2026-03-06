@@ -41,6 +41,11 @@ test.describe('fs-router', () => {
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
   });
 
+  test('foo with trailing slash', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/foo/`);
+    await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
+  });
+
   test('nested/foo', async ({ page }) => {
     // /nested/foo is defined as a staticPath of /nested/[id] which matches this layout
     await page.goto(`http://localhost:${port}/nested/foo`);
@@ -53,6 +58,20 @@ test.describe('fs-router', () => {
     await page.goto(`http://localhost:${port}/nested/baz`);
     await expect(
       page.getByRole('heading', { name: 'Nested Layout' }),
+    ).toBeVisible();
+  });
+
+  test('nested/baz with trailing slash', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/nested/baz/`);
+    await expect(
+      page.getByRole('heading', { name: 'Nested Layout' }),
+    ).toBeVisible();
+  });
+
+  test('static-nested encoded path with trailing slash', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/static-nested/encoded%20path/`);
+    await expect(
+      page.getByRole('heading', { name: 'Nested / encoded%20path' }),
     ).toBeVisible();
   });
 
