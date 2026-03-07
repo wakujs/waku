@@ -43,14 +43,19 @@ export function middlewareRunner(
       );
     }
     const handlers = await handlersPromise;
+    let response: Response | undefined;
     const run = async (index: number) => {
       const handler = handlers[index];
       if (handler) {
-        await handler(c, () => run(index + 1));
+        const result = await handler(c, () => run(index + 1));
+        if (result && !response) {
+          response = result;
+        }
       } else {
         await next();
       }
     };
     await run(0);
+    return response;
   };
 }
