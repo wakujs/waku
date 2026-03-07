@@ -94,8 +94,8 @@ importers:
   e2e/fixtures/broken-links:
     dependencies:
       hono:
-        specifier: ^4.10.0
-        version: 4.10.0
+        specifier: ^4.12.5
+        version: 4.12.5
       react:
         specifier: ~19.2.4
         version: 19.2.4
@@ -567,8 +567,8 @@ importers:
   e2e/fixtures/ssr-catch-error:
     dependencies:
       hono:
-        specifier: ^4.10.0
-        version: 4.10.0
+        specifier: ^4.12.5
+        version: 4.12.5
       react:
         specifier: ~19.2.4
         version: 19.2.4
@@ -648,8 +648,8 @@ importers:
   e2e/fixtures/ssr-nonce-middleware:
     dependencies:
       hono:
-        specifier: ^4.10.0
-        version: 4.10.0
+        specifier: ^4.12.5
+        version: 4.12.5
       react:
         specifier: ~19.2.4
         version: 19.2.4
@@ -899,6 +899,9 @@ importers:
 
   examples/01_template:
     dependencies:
+      hono:
+        specifier: ^4.12.5
+        version: 4.12.5
       react:
         specifier: ~19.2.4
         version: 19.2.4
@@ -936,6 +939,9 @@ importers:
 
   examples/02_template_js:
     dependencies:
+      hono:
+        specifier: ^4.12.5
+        version: 4.12.5
       react:
         specifier: ~19.2.4
         version: 19.2.4
@@ -1070,8 +1076,8 @@ importers:
   examples/07_cloudflare:
     dependencies:
       hono:
-        specifier: ^4.10.0
-        version: 4.10.0
+        specifier: ^4.12.5
+        version: 4.12.5
       react:
         specifier: ~19.2.4
         version: 19.2.4
@@ -1513,8 +1519,8 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1
       hono:
-        specifier: ^4.10.0
-        version: 4.10.0
+        specifier: ^4.12.5
+        version: 4.12.5
       react:
         specifier: ~19.2.4
         version: 19.2.4
@@ -1832,8 +1838,8 @@ importers:
   packages/waku:
     dependencies:
       '@hono/node-server':
-        specifier: ^1.19.0
-        version: 1.19.0(hono@4.10.0)
+        specifier: ^1.19.11
+        version: 1.19.11(hono@4.12.5)
       '@vitejs/plugin-react':
         specifier: ^5.1.0
         version: 5.1.0(vite@7.3.1(@types/node@25.3.2)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.19.4)(yaml@2.8.2))
@@ -1844,8 +1850,8 @@ importers:
         specifier: ^17.3.1
         version: 17.3.1
       hono:
-        specifier: ^4.10.0
-        version: 4.10.0
+        specifier: ^4.12.5
+        version: 4.12.5
       magic-string:
         specifier: ^0.30.21
         version: 0.30.21
@@ -2786,8 +2792,8 @@ packages:
   '@fontsource/inter@5.2.8':
     resolution: {integrity: sha512-P6r5WnJoKiNVV+zvW2xM13gNdFhAEpQ9dQJHt3naLvfg+LkF2ldgSLiF4T41lf1SQCM9QmkqPTn4TH568IRagg==}
 
-  '@hono/node-server@1.19.0':
-    resolution: {integrity: sha512-1k8/8OHf5VIymJEcJyVksFpT+AQ5euY0VA5hUkCnlKpD4mr8FSbvXaHblxeTTEr90OaqWzAkQaqD80qHZQKxBA==}
+  '@hono/node-server@1.19.11':
+    resolution: {integrity: sha512-dr8/3zEaB+p0D2n/IUrlPF1HZm586qgJNXK1a9fhg/PzdtkK7Ksd5l312tJX2yBuALqDYBlG20QEbayqPyxn+g==}
     engines: {node: '>=18.14.1'}
     peerDependencies:
       hono: ^4
@@ -5158,8 +5164,8 @@ packages:
     resolution: {integrity: sha512-Ox1pJVrDCyGHMG9CFg1tmrRUMRPRsAWYc/PinY0XzJU4K7y7vjNoLKIQ7BR5UJMCxNN8EM1MNDmHWA/B3aZUuw==}
     engines: {node: '>=6'}
 
-  hono@4.10.0:
-    resolution: {integrity: sha512-V/S2IyKL6fk5+bEjiQzg74r5BglqAwU20IX3WjdTUFgvmtSqAZjSxN/Zb5lr6/JXVmH0aqkqOq++3UgzOi9+4Q==}
+  hono@4.12.5:
+    resolution: {integrity: sha512-3qq+FUBtlTHhtYxbxheZgY8NIFnkkC/MR8u5TTsr7YZ3wixryQ3cCwn3iZbg8p8B88iDBBAYSfZDS75t8MN7Vg==}
     engines: {node: '>=16.9.0'}
 
   html-void-elements@3.0.0:
@@ -7901,9 +7907,9 @@ snapshots:
 
   '@fontsource/inter@5.2.8': {}
 
-  '@hono/node-server@1.19.0(hono@4.10.0)':
+  '@hono/node-server@1.19.11(hono@4.12.5)':
     dependencies:
-      hono: 4.10.0
+      hono: 4.12.5
 
   '@humanfs/core@0.19.1': {}
 
@@ -10519,7 +10525,7 @@ snapshots:
 
   hex-rgb@4.3.0: {}
 
-  hono@4.10.0: {}
+  hono@4.12.5: {}
 
   html-void-elements@3.0.0: {}
 

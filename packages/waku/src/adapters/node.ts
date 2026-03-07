@@ -29,6 +29,11 @@ export default createServerEntryAdapter(
       }
       return c.text('404 Not Found', 404);
     });
+    app.use(contextMiddleware());
+    for (const middlewareFn of middlewareFns) {
+      app.use(middlewareFn());
+    }
+    app.use(middlewareRunner(middlewareModules as never));
     if (isBuild) {
       app.use(
         `${config.basePath}*`,
@@ -38,11 +43,6 @@ export default createServerEntryAdapter(
         }),
       );
     }
-    app.use(contextMiddleware());
-    for (const middlewareFn of middlewareFns) {
-      app.use(middlewareFn());
-    }
-    app.use(middlewareRunner(middlewareModules as never));
     app.use(rscMiddleware({ processRequest }));
     const buildOptions: BuildOptions = {
       distDir: config.distDir,
