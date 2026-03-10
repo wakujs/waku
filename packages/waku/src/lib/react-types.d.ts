@@ -77,6 +77,7 @@ declare module 'react-server-dom-webpack/client' {
   type Options<T> = {
     callServer?: CallServerCallback<T>;
     debugChannel?: { writable?: WritableStream; readable?: ReadableStream };
+    findSourceMapURL?: (filename: string, environmentName: string) => string;
     temporaryReferences?: TemporaryReferenceSet;
   };
 
