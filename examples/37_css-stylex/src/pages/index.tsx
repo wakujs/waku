@@ -1,7 +1,7 @@
 import '../index.css';
 import * as stylex from '@stylexjs/stylex';
-import { Counter } from '../components/counter.js';
-import { DevStyleXInject } from '../components/stylex-dev-injection.js';
+import { Counter } from '../components/counter';
+import { DevStyleXInject } from '../components/stylex-dev-injection';
 
 const styles = stylex.create({
   server: {
