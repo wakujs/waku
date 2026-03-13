@@ -91,14 +91,14 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.19.11",
-    "@vitejs/plugin-react": "^5.1.0",
+    "@vitejs/plugin-react": "^6.0.0",
     "@vitejs/plugin-rsc": "^0.5.19",
     "dotenv": "^17.3.1",
     "hono": "^4.12.5",
     "magic-string": "^0.30.21",
     "picocolors": "^1.1.1",
     "rsc-html-stream": "^0.0.7",
-    "vite": "^7.2.0"
+    "vite": "^8.0.0"
   },
   "devDependencies": {
     "@swc/cli": "^0.8.0",
