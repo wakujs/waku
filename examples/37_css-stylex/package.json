@@ -16,12 +16,9 @@
     "waku": "1.0.0-alpha.5"
   },
   "devDependencies": {
-    "@babel/plugin-syntax-jsx": "^7.28.6",
-    "@babel/preset-typescript": "^7.28.5",
-    "@stylexjs/postcss-plugin": "^0.17.5",
+    "@stylexjs/unplugin": "^0.18.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.0",
-    "vite-plugin-babel": "^1.5.1"
+    "@vitejs/plugin-react": "^6.0.0"
   }
 }
