@@ -35,6 +35,7 @@ declare module 'react-server-dom-webpack/server.edge' {
   interface TemporaryReferenceSet {}
 
   type Options = {
+    debugChannel?: { readable?: ReadableStream; writable?: WritableStream };
     environmentName?: string;
     identifierPrefix?: string;
     signal?: AbortSignal;
@@ -75,6 +76,8 @@ declare module 'react-server-dom-webpack/client' {
 
   type Options<T> = {
     callServer?: CallServerCallback<T>;
+    debugChannel?: { writable?: WritableStream; readable?: ReadableStream };
+    findSourceMapURL?: (filename: string, environmentName: string) => string;
     temporaryReferences?: TemporaryReferenceSet;
   };
 
