@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import { getRouterConfigs } from '../waku.server.js';
 
 const SlowServerInfo = async () => {
-  await new Promise<void>((resolve) => setTimeout(resolve, 2000));
+  await new Promise<void>((resolve) => setTimeout(resolve, 500));
   return <p>Server delay complete at {new Date().toLocaleTimeString()}</p>;
 };
 
