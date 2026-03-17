@@ -2175,7 +2175,8 @@ describe('createPages api', () => {
     expect(receivedParams).toEqual([{ slugs: ['a', 'b'] }, { slugs: ['c'] }]);
   });
 
-  it('static api with wildcard and empty path throws error', async () => {
+  it('static api with wildcard and empty path warns', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     createPages(async ({ createApi }) => [
       createApi({
         path: '/test/[...slugs]',
@@ -2188,9 +2189,13 @@ describe('createPages api', () => {
       }),
     ]);
     const { getConfigs } = injectedFunctions();
-    await expect(getConfigs).rejects.toThrowError(
-      'Empty staticPaths entry is not supported for wildcard routes',
+    await getConfigs();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'Empty staticPaths entry is not supported for wildcard routes',
+      ),
     );
+    warnSpy.mockRestore();
   });
 });
 
