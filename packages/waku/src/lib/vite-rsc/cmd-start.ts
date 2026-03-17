@@ -19,7 +19,7 @@ export async function runStart(flags: { host?: string; port?: string }) {
   }
   process.env.PORT = String(port);
   await import(serveFileUrl);
-  console.log(`ready: Listening on http://${host || 'localhost'}:${port}/`);
+  console.log(`ready: Listening on http://${process.env.HOST || 'localhost'}:${port}/`);
 }
 
 async function getFreePort(startPort: number): Promise<number> {
