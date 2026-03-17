@@ -61,13 +61,14 @@ export type IsValidPathInSlugPath<T> = T extends `/${infer L}/${infer R}`
     ? IsValidPathItem<U>
     : false;
 /** Checks if a particular slug name exists in a path. */
-export type HasSlugInPath<T, K extends string> = T extends `/[${K}]/${infer _}`
-  ? true
-  : T extends `/${infer _}/${infer U}`
-    ? HasSlugInPath<`/${U}`, K>
-    : T extends `/[${K}]`
-      ? true
-      : false;
+export type HasSlugInPath<T, K extends string> =
+  T extends `/${string}[${K}]${string}/${infer _Rest}`
+    ? true
+    : T extends `/${infer _}/${infer U}`
+      ? HasSlugInPath<`/${U}`, K>
+      : T extends `/${string}[${K}]${string}`
+        ? true
+        : false;
 
 export type HasWildcardInPath<T> = T extends `/[...${string}]/${string}`
   ? true
@@ -931,21 +932,25 @@ function expandStaticPathSpec(pathSpec: PathSpec, staticPath: string[]) {
   const mapping: Record<string, string | string[]> = {};
   let slugIndex = 0;
   const pathItems: string[] = [];
-  pathSpec.forEach(({ type, name }) => {
-    switch (type) {
+  pathSpec.forEach((spec) => {
+    switch (spec.type) {
       case 'literal':
-        pathItems.push(name!);
+        pathItems.push(spec.name!);
         break;
       case 'wildcard':
-        mapping[name!] = staticPath.slice(slugIndex);
+        mapping[spec.name!] = staticPath.slice(slugIndex);
         staticPath.slice(slugIndex++).forEach((slug) => {
           pathItems.push(slug);
         });
         break;
-      case 'group':
-        pathItems.push(staticPath[slugIndex++]!);
-        mapping[name!] = pathItems[pathItems.length - 1]!;
+      case 'group': {
+        const slug = staticPath[slugIndex++]!;
+        const prefix = spec.prefix ?? '';
+        const suffix = spec.suffix ?? '';
+        pathItems.push(`${prefix}${slug}${suffix}`);
+        mapping[spec.name!] = slug;
         break;
+      }
     }
   });
   const definedPath = '/' + pathItems.join('/');
