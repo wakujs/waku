@@ -284,7 +284,7 @@ const pages: ReturnType<typeof createPages> = createPages(
       path: '/api/static-wildcard/[...slugs]',
       render: 'static',
       method: 'GET',
-      staticPaths: [['a', 'b'], ['c'], []],
+      staticPaths: [['a', 'b'], ['c']],
       handler: async (_req, ctx) => {
         return Response.json({ params: (ctx as any).params });
       },

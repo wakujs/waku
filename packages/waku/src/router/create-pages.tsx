@@ -479,6 +479,12 @@ export const createPages = <
         if (staticPath.length !== numSlugs && numWildcards === 0) {
           throw new Error('staticPaths does not match with slug pattern');
         }
+        if (staticPath.length === 0 && numWildcards > 0) {
+          throw new Error(
+            `Empty staticPaths entry is not supported for wildcard routes. ` +
+              `Route "${page.path}" has a wildcard segment, so each staticPaths entry must contain at least one element.`,
+          );
+        }
         const { definedPath, pathItems, mapping } = expandStaticPathSpec(
           pathSpec,
           staticPath,
@@ -552,6 +558,12 @@ export const createPages = <
         for (const staticPath of staticPaths) {
           if (staticPath.length !== numSlugs && numWildcards === 0) {
             throw new Error('staticPaths does not match with slug pattern');
+          }
+          if (staticPath.length === 0 && numWildcards > 0) {
+            throw new Error(
+              `Empty staticPaths entry is not supported for wildcard routes. ` +
+                `Route "${options.path}" has a wildcard segment, so each staticPaths entry must contain at least one element.`,
+            );
           }
           const { definedPath, pathItems, mapping } = expandStaticPathSpec(
             pathSpec,

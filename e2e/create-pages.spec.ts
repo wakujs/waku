@@ -376,12 +376,6 @@ test.describe(`create-pages`, () => {
     expect(await res2.json()).toEqual({ params: { slugs: ['c'] } });
   });
 
-  test('static api wildcard with empty path', async () => {
-    const res = await fetch(`http://localhost:${port}/api/static-wildcard`);
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ params: { slugs: [] } });
-  });
-
   test('exactPath', async ({ page }) => {
     await page.goto(`http://localhost:${port}/exact/[slug]/[...wild]`);
     await expect(

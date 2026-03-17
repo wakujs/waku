@@ -654,16 +654,6 @@ export function unstable_defineRouter(fns: {
     const { runTask, waitForTasks } = createTaskRunner(500);
 
     // static api
-    const staticApiPathnames = new Set<string>();
-    for (const item of myConfig.configs) {
-      if (item.type !== 'api' || !item.isStatic) {
-        continue;
-      }
-      const pathname = pathSpec2pathname(item.path);
-      if (pathname) {
-        staticApiPathnames.add(pathname);
-      }
-    }
     for (const item of myConfig.configs) {
       if (item.type !== 'api') {
         continue;
@@ -675,21 +665,11 @@ export function unstable_defineRouter(fns: {
       if (!pathname) {
         continue;
       }
-      // If this pathname is also a directory prefix for another static API
-      // route, emit as pathname/index to avoid file-system conflicts.
-      let hasConflict = false;
-      for (const other of staticApiPathnames) {
-        if (other !== pathname && other.startsWith(pathname + '/')) {
-          hasConflict = true;
-          break;
-        }
-      }
-      const filePath = hasConflict ? pathname + '/index' : pathname;
       const req = new Request(new URL(pathname, 'http://localhost:3000'));
       runTask(async () => {
         await withRequest(req, async () => {
           const res = await item.handler(req, { params: {} });
-          await generateFile(filePath, res.body || '');
+          await generateFile(pathname, res.body || '');
         });
       });
     }
