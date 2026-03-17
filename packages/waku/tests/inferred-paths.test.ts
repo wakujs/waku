@@ -3,11 +3,15 @@ import type { TypeEqual } from 'ts-expect';
 import { describe, it } from 'vitest';
 
 // Reproduce the AllowPathDecorators type from router/client.tsx to test it directly
+type AllowTrailingSlash<Path extends string> = Path extends '/'
+  ? Path
+  : Path | `${Path}/`;
+
 type AllowPathDecorators<Path extends string> = Path extends unknown
   ?
-      | Path
-      | `${Path}?${string}`
-      | `${Path}#${string}`
+      | AllowTrailingSlash<Path>
+      | `${AllowTrailingSlash<Path>}?${string}`
+      | `${AllowTrailingSlash<Path>}#${string}`
       | `?${string}`
       | `#${string}`
   : never;
@@ -17,6 +21,7 @@ describe('AllowPathDecorators', () => {
     type Result = AllowPathDecorators<'/' | '/foo'>;
     expectType<TypeEqual<'/' extends Result ? true : false, true>>(true);
     expectType<TypeEqual<'/foo' extends Result ? true : false, true>>(true);
+    expectType<TypeEqual<'/foo/' extends Result ? true : false, true>>(true);
   });
 
   it('allows paths with query strings', () => {
@@ -27,6 +32,9 @@ describe('AllowPathDecorators', () => {
     expectType<TypeEqual<'/foo?key=val' extends Result ? true : false, true>>(
       true,
     );
+    expectType<TypeEqual<'/foo/?key=val' extends Result ? true : false, true>>(
+      true,
+    );
   });
 
   it('allows paths with hash fragments', () => {
@@ -35,6 +43,9 @@ describe('AllowPathDecorators', () => {
       true,
     );
     expectType<TypeEqual<'/foo#section' extends Result ? true : false, true>>(
+      true,
+    );
+    expectType<TypeEqual<'/foo/#section' extends Result ? true : false, true>>(
       true,
     );
   });

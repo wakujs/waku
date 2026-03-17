@@ -5,7 +5,11 @@ import {
   encodeFuncId,
   encodeRscPath,
 } from '../src/lib/utils/rsc-path.js';
-import { decodeRoutePath, encodeRoutePath } from '../src/router/common.js';
+import {
+  decodeRoutePath,
+  encodeRoutePath,
+  pathnameToRoutePath,
+} from '../src/router/common.js';
 
 describe('encodeRscPath', () => {
   test('encodes rscPath', () => {
@@ -79,6 +83,20 @@ describe('decodeFuncId', () => {
   });
 });
 
+describe('pathnameToRoutePath', () => {
+  test('canonicalizes trailing slash and index.html', () => {
+    expect(pathnameToRoutePath('/')).toBe('/');
+    expect(pathnameToRoutePath('/foo')).toBe('/foo');
+    expect(pathnameToRoutePath('/foo/')).toBe('/foo');
+    expect(pathnameToRoutePath('/index.html')).toBe('/');
+    expect(pathnameToRoutePath('/foo/index.html')).toBe('/foo');
+  });
+
+  test('throws on invalid pathname', () => {
+    expect(() => pathnameToRoutePath('foo')).toThrow();
+  });
+});
+
 describe('encodeRoutePath', () => {
   test('encodes routePath', () => {
     expect(encodeRoutePath('/')).toBe('R/_root');
@@ -89,6 +107,8 @@ describe('encodeRoutePath', () => {
   test('throws on invalid routePath', () => {
     expect(() => encodeRoutePath('foo')).toThrow();
     expect(() => encodeRoutePath('/foo/')).toThrow();
+    expect(() => encodeRoutePath('/index.html')).toThrow();
+    expect(() => encodeRoutePath('/foo/index.html')).toThrow();
   });
 });
 

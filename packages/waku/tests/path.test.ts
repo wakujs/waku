@@ -52,12 +52,14 @@ describe('getPathMapping', () => {
   test('handles literal paths', () => {
     const pathSpec = parsePathWithSlug('/foo/bar');
     expect(getPathMapping(pathSpec, '/foo/bar')).toEqual({});
+    expect(getPathMapping(pathSpec, '/foo/bar/')).toEqual({});
     expect(getPathMapping(pathSpec, '/foo/baz')).toBe(null);
   });
 
   test('handles paths with groups', () => {
     const pathSpec = parsePathWithSlug('/foo/[id]');
     expect(getPathMapping(pathSpec, '/foo/123')).toEqual({ id: '123' });
+    expect(getPathMapping(pathSpec, '/foo/123/')).toEqual({ id: '123' });
     expect(getPathMapping(pathSpec, '/foo/bar')).toEqual({ id: 'bar' });
     expect(getPathMapping(pathSpec, '/foo')).toBe(null);
   });

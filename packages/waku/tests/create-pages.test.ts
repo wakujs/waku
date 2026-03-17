@@ -1473,6 +1473,23 @@ describe('createPages pages and layouts', () => {
     await expect(getConfigs).rejects.toThrowError('Duplicated path: /test');
   });
 
+  it('fails if canonical and trailing-slash paths override each other', async () => {
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/test',
+        component: () => null,
+      }),
+      createPage({
+        render: 'dynamic',
+        path: '/test/' as never,
+        component: () => null,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    await expect(getConfigs).rejects.toThrowError('Duplicated path: /test/');
+  });
+
   it('creates a complex router', async () => {
     const TestPage = vi.fn();
     complexTestRouter(createPages, TestPage);

@@ -32,14 +32,14 @@ export default createServerEntryAdapter(
       }
       return c.text('404 Not Found', 404);
     });
-    if (serveStatic) {
-      app.use(serveStatic({ root: path.join(config.distDir, DIST_PUBLIC) }));
-    }
     app.use(contextMiddleware());
     for (const middlewareFn of middlewareFns) {
       app.use(middlewareFn());
     }
     app.use(middlewareRunner(middlewareModules as never));
+    if (serveStatic) {
+      app.use(serveStatic({ root: path.join(config.distDir, DIST_PUBLIC) }));
+    }
     app.use(rscMiddleware({ processRequest }));
     const buildOptions: BuildOptions = {
       distDir: config.distDir,

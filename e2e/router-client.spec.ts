@@ -193,6 +193,26 @@ test.describe('router-client', () => {
     expect(scrollToCalls).toHaveLength(0);
   });
 
+  test('same-route trailing-slash navigation preserves scroll and keeps canonical route path', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/start`);
+    await waitForHydration(page);
+
+    await page.evaluate(() => {
+      window.scrollTo({ left: 0, top: 600 });
+    });
+    await installScrollToRecorder(page);
+
+    await page.getByTestId('router-push-trailing-slash').click();
+
+    await expect(page.getByTestId('route-path')).toHaveText('/start');
+    await expect(page.getByTestId('route-query')).toHaveText('');
+    await expect(page.getByTestId('route-hash')).toHaveText('');
+    await expect(page).toHaveURL(/\/start\/$/);
+    expect(await getScrollToCalls(page)).toHaveLength(0);
+  });
+
   test('path-change link navigation resets scroll position to top by default', async ({
     page,
   }) => {

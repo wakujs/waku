@@ -75,6 +75,19 @@ export default function TestRouter() {
           router.push prefetched static target
         </button>
       </p>
+      <p>
+        <button
+          data-testid="router-push-static-trailing"
+          onClick={() => router.push('/static/')}
+        >
+          router.push static trailing target
+        </button>
+      </p>
+      <p>
+        <Link to="/static/" data-testid="link-static-trailing">
+          Go to static trailing
+        </Link>
+      </p>
     </>
   );
 }

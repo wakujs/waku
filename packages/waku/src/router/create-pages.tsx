@@ -11,6 +11,7 @@ import {
 import type { PathSpec } from '../lib/utils/path.js';
 import { Children, Slot } from '../minimal/client.js';
 import { ErrorBoundary } from '../router/client.js';
+import { pathnameToRoutePath } from './common.js';
 import type {
   AnyPage,
   GetSlugs,
@@ -430,39 +431,41 @@ export const createPages = <
     if (configured) {
       throw new Error('createPage no longer available');
     }
-    if (pagePathExists(page.path)) {
+    const pageRoutePath = pathnameToRoutePath(page.path);
+    if (pagePathExists(pageRoutePath)) {
       throw new Error(`Duplicated path: ${page.path}`);
     }
 
-    const pathSpec = parsePathWithSlug(page.path);
+    const pathSpec = parsePathWithSlug(pageRoutePath);
     const { numSlugs, numWildcards } = getSlugsAndWildcards(pathSpec);
     if (page.unstable_disableSSR) {
       noSsrSet.add(pathSpec);
     }
 
     if (page.exactPath) {
-      const spec = parseExactPath(page.path);
+      const routePath = pageRoutePath;
+      const spec = parseExactPath(routePath);
       if (page.render === 'static') {
-        staticPathMap.set(page.path, {
+        staticPathMap.set(routePath, {
           literalSpec: spec,
         });
-        const id = joinPath(page.path, 'page').replace(/^\//, '');
+        const id = joinPath(routePath, 'page').replace(/^\//, '');
         if (page.component) {
           registerStaticComponent(id, page.component);
         }
       } else if (page.component) {
-        dynamicPagePathMap.set(page.path, [spec, page.component]);
+        dynamicPagePathMap.set(routePath, [spec, page.component]);
       } else {
-        dynamicPagePathMap.set(page.path, [spec, []]);
+        dynamicPagePathMap.set(routePath, [spec, []]);
       }
     } else if (page.render === 'static' && numSlugs === 0) {
-      const pagePath = getGrouplessPath(page.path);
-      staticPathMap.set(pagePath, {
+      const routePath = pathnameToRoutePath(getGrouplessPath(page.path));
+      staticPathMap.set(routePath, {
         literalSpec: pathSpec,
       });
-      const id = joinPath(pagePath, 'page').replace(/^\//, '');
-      if (pagePath !== page.path) {
-        groupPathLookup.set(pagePath, page.path);
+      const id = joinPath(routePath, 'page').replace(/^\//, '');
+      if (routePath !== pageRoutePath) {
+        groupPathLookup.set(routePath, pageRoutePath);
       }
       if (page.component) {
         registerStaticComponent(id, page.component);
@@ -489,36 +492,37 @@ export const createPages = <
           pathSpec,
           staticPath,
         );
-        const pagePath = getGrouplessPath(definedPath);
-        staticPathMap.set(pagePath, {
+        const routePath = pathnameToRoutePath(getGrouplessPath(definedPath));
+        staticPathMap.set(routePath, {
           literalSpec: pathItems.map((name) => ({ type: 'literal', name })),
           originalSpec: pathSpec,
         });
-        if (pagePath !== definedPath) {
-          groupPathLookup.set(pagePath, definedPath);
+        const definedRoutePath = pathnameToRoutePath(definedPath);
+        if (routePath !== definedRoutePath) {
+          groupPathLookup.set(routePath, definedRoutePath);
         }
-        const id = joinPath(pagePath, 'page').replace(/^\//, '');
+        const id = joinPath(routePath, 'page').replace(/^\//, '');
         const WrappedComponent = (props: Record<string, unknown>) =>
           createElement(page.component as any, { ...props, ...mapping });
         registerStaticComponent(id, WrappedComponent);
       }
     } else if (page.render === 'dynamic' && numWildcards === 0) {
-      const pagePath = getGrouplessPath(page.path);
-      if (pagePath !== page.path) {
-        groupPathLookup.set(pagePath, page.path);
+      const routePath = pathnameToRoutePath(getGrouplessPath(page.path));
+      if (routePath !== pageRoutePath) {
+        groupPathLookup.set(routePath, pageRoutePath);
       }
-      dynamicPagePathMap.set(pagePath, [pathSpec, page.component]);
+      dynamicPagePathMap.set(routePath, [pathSpec, page.component]);
     } else if (page.render === 'dynamic' && numWildcards === 1) {
-      const pagePath = getGrouplessPath(page.path);
-      if (pagePath !== page.path) {
-        groupPathLookup.set(pagePath, page.path);
+      const routePath = pathnameToRoutePath(getGrouplessPath(page.path));
+      if (routePath !== pageRoutePath) {
+        groupPathLookup.set(routePath, pageRoutePath);
       }
-      wildcardPagePathMap.set(pagePath, [pathSpec, page.component]);
+      wildcardPagePathMap.set(routePath, [pathSpec, page.component]);
     } else {
       throw new Error('Invalid page configuration ' + JSON.stringify(page));
     }
     if (page.slices?.length) {
-      slicePathMap.set(page.path, page.slices);
+      slicePathMap.set(pageRoutePath, page.slices);
     }
     return page as Exclude<typeof page, { path: never } | { render: never }>;
   };
@@ -527,15 +531,16 @@ export const createPages = <
     if (configured) {
       throw new Error('createLayout no longer available');
     }
+    const routePath = pathnameToRoutePath(layout.path);
     if (layout.render === 'static') {
-      const id = joinPath(layout.path, 'layout').replace(/^\//, '');
+      const id = joinPath(routePath, 'layout').replace(/^\//, '');
       registerStaticComponent(id, layout.component);
     } else if (layout.render === 'dynamic') {
-      if (dynamicLayoutPathMap.has(layout.path)) {
+      if (dynamicLayoutPathMap.has(routePath)) {
         throw new Error(`Duplicated dynamic path: ${layout.path}`);
       }
-      const pathSpec = parsePathWithSlug(layout.path);
-      dynamicLayoutPathMap.set(layout.path, [pathSpec, layout.component]);
+      const pathSpec = parsePathWithSlug(routePath);
+      dynamicLayoutPathMap.set(routePath, [pathSpec, layout.component]);
     } else {
       throw new Error('Invalid layout configuration');
     }
@@ -545,10 +550,11 @@ export const createPages = <
     if (configured) {
       throw new Error('createApi no longer available');
     }
-    if (apiPathMap.has(options.path)) {
+    const routePath = pathnameToRoutePath(options.path);
+    if (apiPathMap.has(routePath)) {
       throw new Error(`Duplicated api path: ${options.path}`);
     }
-    const pathSpec = parsePathWithSlug(options.path);
+    const pathSpec = parsePathWithSlug(routePath);
     if (options.render === 'static') {
       const { numSlugs, numWildcards } = getSlugsAndWildcards(pathSpec);
       if (numSlugs > 0 && options.staticPaths) {
@@ -569,10 +575,11 @@ export const createPages = <
             pathSpec,
             staticPath,
           );
-          if (apiPathMap.has(definedPath)) {
+          const definedRoutePath = pathnameToRoutePath(definedPath);
+          if (apiPathMap.has(definedRoutePath)) {
             throw new Error(`Duplicated api path: ${definedPath}`);
           }
-          apiPathMap.set(definedPath, {
+          apiPathMap.set(definedRoutePath, {
             render: 'static',
             pathSpec: pathItems.map((name) => ({ type: 'literal', name })),
             handlers: { GET: options.handler },
@@ -580,14 +587,14 @@ export const createPages = <
           });
         }
       } else {
-        apiPathMap.set(options.path, {
+        apiPathMap.set(routePath, {
           render: 'static',
           pathSpec,
           handlers: { GET: options.handler },
         });
       }
     } else {
-      apiPathMap.set(options.path, {
+      apiPathMap.set(routePath, {
         render: 'dynamic',
         pathSpec,
         handlers: options.handlers,
@@ -660,7 +667,7 @@ export const createPages = <
       type ElementSpec = {
         isStatic: boolean;
         renderer: (options: {
-          pathname: string;
+          routePath: string;
           query: string | undefined;
         }) => ReactNode;
       };
@@ -705,9 +712,9 @@ export const createPages = <
             createElement(
               pageComponent,
               {
-                ...getPropsMapping(option.pathname),
+                ...getPropsMapping(option.routePath),
                 ...(option.query ? { query: option.query } : {}),
-                path: option.pathname,
+                path: option.routePath,
               },
               <Children />,
             ),
@@ -759,9 +766,9 @@ export const createPages = <
                 isStatic: comp.render === 'static',
                 renderer: (option) =>
                   createElement(comp.component, {
-                    ...getPropsMapping(option.pathname),
+                    ...getPropsMapping(option.routePath),
                     ...(option.query ? { query: option.query } : {}),
-                    path: option.pathname,
+                    path: option.routePath,
                   }),
               };
             }
@@ -773,9 +780,9 @@ export const createPages = <
               createElement(
                 components,
                 {
-                  ...getPropsMapping(option.pathname),
+                  ...getPropsMapping(option.routePath),
                   ...(option.query ? { query: option.query } : {}),
-                  path: option.pathname,
+                  path: option.routePath,
                 },
                 <Children />,
               ),
@@ -827,9 +834,9 @@ export const createPages = <
                 isStatic: comp.render === 'static',
                 renderer: (option) =>
                   createElement(comp.component, {
-                    ...getPropsMapping(option.pathname),
+                    ...getPropsMapping(option.routePath),
                     ...(option.query ? { query: option.query } : {}),
-                    path: option.pathname,
+                    path: option.routePath,
                   }),
               };
             }
@@ -841,9 +848,9 @@ export const createPages = <
               createElement(
                 components,
                 {
-                  ...getPropsMapping(option.pathname),
+                  ...getPropsMapping(option.routePath),
                   ...(option.query ? { query: option.query } : {}),
-                  path: option.pathname,
+                  path: option.routePath,
                 },
                 <Children />,
               ),

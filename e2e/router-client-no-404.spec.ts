@@ -33,4 +33,21 @@ test.describe('router-client-no-404', () => {
     );
     await expect(page).toHaveURL(/\/missing$/);
   });
+
+  test('client navigation to missing trailing-slash route renders Not Found fallback without /404 page', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/start`);
+    await waitForHydration(page);
+
+    await page.getByTestId('go-missing-trailing').click();
+
+    await expect(
+      page.getByRole('heading', { name: 'Not Found' }),
+    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Custom 404' })).toHaveCount(
+      0,
+    );
+    await expect(page).toHaveURL(/\/missing\/$/);
+  });
 });

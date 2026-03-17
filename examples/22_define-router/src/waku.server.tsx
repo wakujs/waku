@@ -133,7 +133,7 @@ export default adapter(
           // using `[slug]` syntax is just an example and it technically conflicts with others. So, it's better to use a different prefix like `dynamic-page:`.
           'page:/dynamic/[slug]': {
             isStatic: false,
-            renderer: ({ pathname }) => <h3>{pathname}</h3>,
+            renderer: ({ routePath }) => <h3>{routePath}</h3>,
           },
         },
       },
