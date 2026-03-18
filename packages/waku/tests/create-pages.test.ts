@@ -2207,6 +2207,70 @@ describe('createPages api', () => {
     expect(text).toEqual('Hello World foo');
     expect(res.status).toEqual(200);
   });
+
+  it('static api with wildcard passes correct params', async () => {
+    const receivedParams: unknown[] = [];
+    createPages(async ({ createApi }) => [
+      createApi({
+        path: '/test/[...slugs]',
+        render: 'static',
+        method: 'GET',
+        staticPaths: [['a', 'b'], ['c']],
+        handler: async (_req, ctx) => {
+          receivedParams.push((ctx as any).params);
+          return new Response('ok');
+        },
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs()) as any[];
+    const apiConfigs = configs.filter((c: any) => c.type === 'api');
+    expect(apiConfigs).toHaveLength(2);
+
+    // Verify paths are all-literal
+    expect(apiConfigs[0]!.path).toEqual([
+      { type: 'literal', name: 'test' },
+      { type: 'literal', name: 'a' },
+      { type: 'literal', name: 'b' },
+    ]);
+    expect(apiConfigs[1]!.path).toEqual([
+      { type: 'literal', name: 'test' },
+      { type: 'literal', name: 'c' },
+    ]);
+
+    // Call handlers and verify params
+    await apiConfigs[0]!.handler(
+      new Request('http://localhost:3000/test/a/b'),
+      { params: {} },
+    );
+    await apiConfigs[1]!.handler(new Request('http://localhost:3000/test/c'), {
+      params: {},
+    });
+    expect(receivedParams).toEqual([{ slugs: ['a', 'b'] }, { slugs: ['c'] }]);
+  });
+
+  it('static api with wildcard and empty path warns', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    createPages(async ({ createApi }) => [
+      createApi({
+        path: '/test/[...slugs]',
+        render: 'static',
+        method: 'GET',
+        staticPaths: [[], ['foo']],
+        handler: async () => {
+          return new Response('ok');
+        },
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    await getConfigs();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'Empty staticPaths entry is not supported for wildcard routes',
+      ),
+    );
+    warnSpy.mockRestore();
+  });
 });
 
 describe('createPages - exactPath', () => {
