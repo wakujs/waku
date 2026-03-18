@@ -345,9 +345,18 @@ test.describe('fs-router', () => {
   test('prefixed dynamic segment @[username] with different value', async ({
     page,
   }) => {
-    await page.goto(`http://localhost:${port}/@alice`);
+    await page.goto(`http://localhost:${port}/@bob`);
     await expect(
-      page.getByRole('heading', { name: 'Profile / alice' }),
+      page.getByRole('heading', { name: 'Profile / bob' }),
+    ).toBeVisible();
+  });
+
+  test('static @foo takes priority over dynamic @[username]', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/@foo`);
+    await expect(
+      page.getByRole('heading', { name: 'Static Foo' }),
     ).toBeVisible();
   });
 
