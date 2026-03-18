@@ -61,14 +61,16 @@ export type IsValidPathInSlugPath<T> = T extends `/${infer L}/${infer R}`
     ? IsValidPathItem<U>
     : false;
 /** Checks if a particular slug name exists in a path. */
-export type HasSlugInPath<T, K extends string> =
-  T extends `/${string}[${K}]${string}/${infer _Rest}`
-    ? true
-    : T extends `/${infer _}/${infer U}`
-      ? HasSlugInPath<`/${U}`, K>
-      : T extends `/${string}[${K}]${string}`
-        ? true
-        : false;
+export type HasSlugInPath<
+  T,
+  K extends string,
+> = T extends `/${string}[${K}]${string}/${infer _Rest}`
+  ? true
+  : T extends `/${infer _}/${infer U}`
+    ? HasSlugInPath<`/${U}`, K>
+    : T extends `/${string}[${K}]${string}`
+      ? true
+      : false;
 
 export type HasWildcardInPath<T> = T extends `/[...${string}]/${string}`
   ? true
