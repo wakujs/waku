@@ -7,6 +7,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useTransition,
@@ -819,6 +820,24 @@ const InnerRouter = ({
     setRoute((prev) => (isSameRoute(prev, initialRoute) ? prev : initialRoute));
   }, [initialRoute]);
   const [err, setErr] = useState<unknown>(null);
+  const pendingScrollRef = useRef<{
+    behavior: ScrollBehavior;
+    route: RouteProps;
+    scrollTopForMissingHash: boolean;
+  } | null>(null);
+
+  useLayoutEffect(() => {
+    const pendingScroll = pendingScrollRef.current;
+    if (!pendingScroll || !isSameRoute(pendingScroll.route, route)) {
+      return;
+    }
+    pendingScrollRef.current = null;
+    scrollToRoute(
+      pendingScroll.route,
+      pendingScroll.behavior,
+      pendingScroll.scrollTopForMissingHash,
+    );
+  }, [route]);
 
   const [routeChangeEvents, emitRouteChangeEvent] =
     routeChangeListenersRef.current;
@@ -920,12 +939,16 @@ const InnerRouter = ({
           return;
         }
         writeHistoryIfNeeded(mode, urlToWrite);
+        pendingScrollRef.current = options.shouldScroll
+          ? {
+              route: nextRoute,
+              behavior: scrollBehavior,
+              scrollTopForMissingHash: pathChanged,
+            }
+          : null;
         routeRef.current = nextRoute;
         setRoute(nextRoute);
         routeChangeAbortRef.current = null;
-        if (options.shouldScroll) {
-          scrollToRoute(nextRoute, scrollBehavior, pathChanged);
-        }
         emitRouteChangeEvent('complete', nextRoute);
       });
     },
