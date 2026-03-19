@@ -61,11 +61,14 @@ export type IsValidPathInSlugPath<T> = T extends `/${infer L}/${infer R}`
     ? IsValidPathItem<U>
     : false;
 /** Checks if a particular slug name exists in a path. */
-export type HasSlugInPath<T, K extends string> = T extends `/[${K}]/${infer _}`
+export type HasSlugInPath<
+  T,
+  K extends string,
+> = T extends `/${string}[${K}]${string}/${infer _Rest}`
   ? true
   : T extends `/${infer _}/${infer U}`
     ? HasSlugInPath<`/${U}`, K>
-    : T extends `/[${K}]`
+    : T extends `/${string}[${K}]${string}`
       ? true
       : false;
 
@@ -335,6 +338,7 @@ export const createPages = <
       render: 'static' | 'dynamic';
       pathSpec: PathSpec;
       handlers: Partial<Record<Method | 'all', ApiHandler>>;
+      staticParams?: Record<string, string | string[]>;
     }
   >();
   const staticComponentMap = new Map<string, FunctionComponent<any>>();
@@ -481,6 +485,12 @@ export const createPages = <
         if (staticPath.length !== numSlugs && numWildcards === 0) {
           throw new Error('staticPaths does not match with slug pattern');
         }
+        if (staticPath.length === 0 && numWildcards > 0) {
+          console.warn(
+            `Empty staticPaths entry is not supported for wildcard routes. ` +
+              `Route "${page.path}" has a wildcard segment, so each staticPaths entry should contain at least one element.`,
+          );
+        }
         const { definedPath, pathItems, mapping } = expandStaticPathSpec(
           pathSpec,
           staticPath,
@@ -558,7 +568,13 @@ export const createPages = <
           if (staticPath.length !== numSlugs && numWildcards === 0) {
             throw new Error('staticPaths does not match with slug pattern');
           }
-          const { definedPath, pathItems } = expandStaticPathSpec(
+          if (staticPath.length === 0 && numWildcards > 0) {
+            console.warn(
+              `Empty staticPaths entry is not supported for wildcard routes. ` +
+                `Route "${options.path}" has a wildcard segment, so each staticPaths entry should contain at least one element.`,
+            );
+          }
+          const { definedPath, pathItems, mapping } = expandStaticPathSpec(
             pathSpec,
             staticPath,
           );
@@ -570,6 +586,7 @@ export const createPages = <
             render: 'static',
             pathSpec: pathItems.map((name) => ({ type: 'literal', name })),
             handlers: { GET: options.handler },
+            staticParams: mapping,
           });
         }
       } else {
@@ -861,7 +878,7 @@ export const createPages = <
         });
       }
       const apiConfigs = Array.from(apiPathMap.values()).map(
-        ({ pathSpec, render, handlers }) => {
+        ({ pathSpec, render, handlers, staticParams }) => {
           return {
             type: 'api' as const,
             path: pathSpec,
@@ -878,7 +895,10 @@ export const createPages = <
                   'API method not found: ' + method + 'for path: ' + path,
                 );
               }
-              return handler(req, apiContext);
+              return handler(
+                req,
+                staticParams ? { params: staticParams } : apiContext,
+              );
             },
           };
         },
@@ -931,21 +951,25 @@ function expandStaticPathSpec(pathSpec: PathSpec, staticPath: string[]) {
   const mapping: Record<string, string | string[]> = {};
   let slugIndex = 0;
   const pathItems: string[] = [];
-  pathSpec.forEach(({ type, name }) => {
-    switch (type) {
+  pathSpec.forEach((spec) => {
+    switch (spec.type) {
       case 'literal':
-        pathItems.push(name!);
+        pathItems.push(spec.name!);
         break;
       case 'wildcard':
-        mapping[name!] = staticPath.slice(slugIndex);
+        mapping[spec.name!] = staticPath.slice(slugIndex);
         staticPath.slice(slugIndex++).forEach((slug) => {
           pathItems.push(slug);
         });
         break;
-      case 'group':
-        pathItems.push(staticPath[slugIndex++]!);
-        mapping[name!] = pathItems[pathItems.length - 1]!;
+      case 'group': {
+        const slug = staticPath[slugIndex++]!;
+        const prefix = spec.prefix ?? '';
+        const suffix = spec.suffix ?? '';
+        pathItems.push(`${prefix}${slug}${suffix}`);
+        mapping[spec.name!] = slug;
         break;
+      }
     }
   });
   const definedPath = '/' + pathItems.join('/');

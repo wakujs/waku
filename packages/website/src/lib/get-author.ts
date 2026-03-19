@@ -26,7 +26,7 @@ export const getAuthor = (author: string): Author => {
         name: 'Tyler Lawson',
         biography: 'senior engineer at second spectrum',
         avatar: 'https://avatars.githubusercontent.com/u/26290074',
-        url: 'https://tylur.dev',
+        url: 'https://tyler.fun',
       };
     case 'hiroshi':
       return {
