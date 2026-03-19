@@ -19,14 +19,21 @@ Promise.resolve(new Response(new ReadableStream({
   .map((line) => line.trim())
   .join('');
 
+const KEY_RESPONSE = 'r';
+const KEY_DEBUG_ID = 'd';
+
 export function getBootstrapPreamble(options: {
   rscPath: string;
   hydrate: boolean;
+  debugId?: string | undefined;
 }) {
   return `
     ${options.hydrate ? 'globalThis.__WAKU_HYDRATE__ = true;' : ''}
     globalThis.__WAKU_PREFETCHED__ = {
-      ${JSON.stringify(options.rscPath)}: ${fakeFetchCode}
+      ${JSON.stringify(options.rscPath)}: {
+        ${KEY_RESPONSE}: ${fakeFetchCode},
+        ${options.debugId ? `${KEY_DEBUG_ID}: ${JSON.stringify(options.debugId)},` : ''}
+      },
     };
   `;
 }

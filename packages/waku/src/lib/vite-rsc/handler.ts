@@ -22,6 +22,7 @@ import type {
 } from '../types.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
 import { joinPath } from '../utils/path.js';
+import { DEBUG_ID_HEADER } from '../utils/react-debug-channel.js';
 import { createRenderUtils } from '../utils/render.js';
 import { getInput } from '../utils/request.js';
 import { encodeRscPath } from '../utils/rsc-path.js';
@@ -50,11 +51,22 @@ const toProcessRequest =
       loadServerAction,
     );
 
+    const debugId = req.headers.get(DEBUG_ID_HEADER.toLowerCase()) || undefined;
+    const debugChannels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as
+      | Map<string, { readable: ReadableStream; writable: WritableStream }>
+      | undefined;
+    const debugChannel = debugId ? debugChannels?.get(debugId) : undefined;
+    if (debugId) {
+      debugChannels?.delete(debugId);
+    }
+
     const renderUtils = createRenderUtils(
       temporaryReferences,
       renderToReadableStream,
       createFromReadableStream,
       loadSsrEntryModule,
+      debugChannel,
+      debugId,
     );
 
     let res: Awaited<ReturnType<typeof handleRequest>>;
