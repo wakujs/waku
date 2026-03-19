@@ -103,7 +103,12 @@ describe('react debug channel', () => {
         accept: 'text/x-component',
         [DEBUG_ID_HEADER.toLowerCase()]: 'early-debug-id',
       },
-      rawHeaders: [DEBUG_ID_HEADER, 'early-debug-id', 'Accept', 'text/x-component'],
+      rawHeaders: [
+        DEBUG_ID_HEADER,
+        'early-debug-id',
+        'Accept',
+        'text/x-component',
+      ],
     };
     middleware!(req, {}, () => {});
 
@@ -176,9 +181,7 @@ describe('react debug channel', () => {
       d: true,
     });
     await wait();
-    expect(await readAll(entry!.readable!)).toBe(
-      'Q:1\n',
-    );
+    expect(await readAll(entry!.readable!)).toBe('Q:1\n');
 
     await writer.close();
     await wait();
