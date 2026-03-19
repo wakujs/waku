@@ -19,13 +19,13 @@ type Middleware = (
   next: () => void,
 ) => void;
 
-const setupPlugin = () => {
+type Req = Parameters<Middleware>[0];
+
+const setupPlugin = async () => {
   const hotListeners = new Map<string, (data: unknown) => void>();
   const sent: { event: string; data: unknown }[] = [];
   let middleware: Middleware | undefined;
-
-  const plugin = reactDebugPlugin();
-  const postConfigure = plugin.configureServer?.({
+  const server = {
     environments: {
       client: {
         hot: {
@@ -43,8 +43,21 @@ const setupPlugin = () => {
         middleware = fn;
       },
     },
-  } as never);
-  postConfigure?.();
+  };
+
+  const plugin = reactDebugPlugin();
+  const configureServer = plugin.configureServer;
+  if (!configureServer) {
+    throw new Error('configureServer is not defined');
+  }
+  const serverHook =
+    typeof configureServer === 'function'
+      ? configureServer
+      : configureServer.handler;
+  const postConfigure = await serverHook.call({} as never, server as never);
+  if (typeof postConfigure === 'function') {
+    postConfigure();
+  }
 
   return { hotListeners, sent, middleware: middleware! };
 };
@@ -77,14 +90,14 @@ afterEach(() => {
 
 describe('react debug channel', () => {
   test('plugin skips non-debug non-html requests', async () => {
-    const { middleware } = setupPlugin();
+    const { middleware } = await setupPlugin();
 
-    const req = {
+    const req: Req = {
       headers: { accept: 'application/json' },
       rawHeaders: ['Accept', 'application/json'],
     };
     let nextCalled = false;
-    middleware!(req, {}, () => {
+    middleware(req, {}, () => {
       nextCalled = true;
     });
 
@@ -94,11 +107,11 @@ describe('react debug channel', () => {
   });
 
   test('plugin handles early ready before request middleware', async () => {
-    const { hotListeners, sent, middleware } = setupPlugin();
+    const { hotListeners, sent, middleware } = await setupPlugin();
 
     hotListeners.get(DEBUG_CMD_EVENT)?.({ i: 'early-debug-id' });
 
-    const req = {
+    const req: Req = {
       headers: {
         accept: 'text/x-component',
         [DEBUG_ID_HEADER.toLowerCase()]: 'early-debug-id',
@@ -110,7 +123,7 @@ describe('react debug channel', () => {
         'text/x-component',
       ],
     };
-    middleware!(req, {}, () => {});
+    middleware(req, {}, () => {});
 
     const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
       string,
@@ -133,13 +146,13 @@ describe('react debug channel', () => {
   });
 
   test('plugin injects the initial html debug id and buffers until ready', async () => {
-    const { hotListeners, sent, middleware } = setupPlugin();
+    const { hotListeners, sent, middleware } = await setupPlugin();
 
-    const req = {
+    const req: Req = {
       headers: { accept: 'text/html' },
       rawHeaders: ['Accept', 'text/html'],
     };
-    middleware!(req, {}, () => {});
+    middleware(req, {}, () => {});
 
     const debugId = req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
     expect(typeof debugId).toBe('string');
@@ -198,12 +211,12 @@ describe('react debug channel', () => {
   });
 
   test('plugin flushes buffered initial chunks even if ready arrives after server close', async () => {
-    const { hotListeners, sent, middleware } = setupPlugin();
-    const req = {
+    const { hotListeners, sent, middleware } = await setupPlugin();
+    const req: Req = {
       headers: { accept: 'text/html' },
       rawHeaders: ['Accept', 'text/html'],
     };
-    middleware!(req, {}, () => {});
+    middleware(req, {}, () => {});
 
     const debugId = req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
     const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
@@ -240,12 +253,12 @@ describe('react debug channel', () => {
   });
 
   test('plugin sends done immediately when stream closes after ready', async () => {
-    const { hotListeners, sent, middleware } = setupPlugin();
-    const req = {
+    const { hotListeners, sent, middleware } = await setupPlugin();
+    const req: Req = {
       headers: { accept: 'text/html' },
       rawHeaders: ['Accept', 'text/html'],
     };
-    middleware!(req, {}, () => {});
+    middleware(req, {}, () => {});
 
     const debugId = req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
     const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
