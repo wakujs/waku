@@ -19,6 +19,8 @@ Promise.resolve(new Response(new ReadableStream({
   .map((line) => line.trim())
   .join('');
 
+// These constants are defined in packages/waku/src/minimal/client.tsx.
+// TODO(daishi): We should avoid duplicating definitions.
 const KEY_RESPONSE = 'r';
 const KEY_DEBUG_ID = 'd';
 
