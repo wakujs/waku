@@ -16,6 +16,8 @@ export async function runStart(flags: { host?: string; port?: string }) {
   ).href;
   if (host) {
     process.env.HOST = host;
+  } else {
+    delete process.env.HOST;
   }
   process.env.PORT = String(port);
   await import(serveFileUrl);
