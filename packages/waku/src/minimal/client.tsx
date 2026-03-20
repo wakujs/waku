@@ -12,6 +12,7 @@ import {
 import type { ReactNode } from 'react';
 import RSDWClient from 'react-server-dom-webpack/client';
 import { createCustomError } from '../lib/utils/custom-errors.js';
+import { setupDebugChannel } from '../lib/utils/react-debug-channel.js';
 import { encodeFuncId, encodeRscPath } from '../lib/utils/rsc-path.js';
 
 const { createFromFetch, encodeReply, createTemporaryReferenceSet } =
@@ -70,6 +71,18 @@ const mergeElementsPromise = (
   return getCached(getResult, cache2, b);
 };
 
+// Keep this local for now.
+// Importing the helper from @vitejs/plugin-rsc pulls in its browser runtime,
+// which breaks Node-side tests.
+// TODO
+// If upstream exposes a lighter shared entry for this helper, switch to that.
+const findSourceMapURL = (fileName: string, environmentName: string) => {
+  const url = new URL('/__vite_rsc_findSourceMapURL', import.meta.url);
+  url.searchParams.set('filename', fileName);
+  url.searchParams.set('environmentName', environmentName);
+  return url.toString();
+};
+
 type SetElements = (
   updater: (prev: Promise<Elements>) => Promise<Elements>,
 ) => void;
@@ -118,14 +131,19 @@ type FetchRscStore = {
 
 const defaultFetchRscStore: FetchRscStore = {};
 
-// TODO: This does't feel like an ideal solution.
-type PrefetchedEntry =
-  | Promise<Response> // from html
-  | [
-      responsePromise: Promise<Response>,
-      rscParams?: unknown,
-      temporaryReferences?: ReturnType<typeof createTemporaryReferenceSet>,
-    ]; // from prefetch
+const KEY_RESPONSE = 'r';
+const KEY_CLIENT_PREFETCHED = 'c';
+const KEY_RSC_PARAMS = 'p';
+const KEY_TEMPORARY_REFERENCES = 't';
+const KEY_DEBUG_ID = 'd';
+
+type PrefetchedEntry = {
+  [KEY_RESPONSE]: Promise<Response>;
+  [KEY_CLIENT_PREFETCHED]?: boolean;
+  [KEY_RSC_PARAMS]?: unknown | undefined;
+  [KEY_TEMPORARY_REFERENCES]?: ReturnType<typeof createTemporaryReferenceSet>;
+  [KEY_DEBUG_ID]?: string;
+};
 
 const fetchRscInternal: FetchRscInternal = (
   fetchRscStore: FetchRscStore,
@@ -143,28 +161,33 @@ const fetchRscInternal: FetchRscInternal = (
       );
     }
   }
-  const fetchFn = fetchRscStore[FETCH_FN] || fetch;
+  const baseFetchFn = fetchRscStore[FETCH_FN] || fetch;
   const prefetched: Record<string, PrefetchedEntry> = ((
     globalThis as any
   ).__WAKU_PREFETCHED__ ||= {});
   let prefetchedEntry = prefetchOnly ? undefined : prefetched[rscPath];
   delete prefetched[rscPath];
   if (prefetchedEntry) {
-    if (Array.isArray(prefetchedEntry)) {
-      if (prefetchedEntry[1] !== rscParams) {
+    if (prefetchedEntry[KEY_CLIENT_PREFETCHED]) {
+      // We only check rscParams for client prefetch.
+      // For initial hydration, we ignore rscParams,
+      // but I wonder if this can cause a problem. FIXME
+      if (prefetchedEntry[KEY_RSC_PARAMS] !== rscParams) {
         prefetchedEntry = undefined;
       }
-    } else {
-      // We don't check rscParams for the initial hydration
-      // It's limited and may result in a wrong result. FIXME
-      prefetchedEntry = [prefetchedEntry];
     }
   }
+  const debug =
+    import.meta.hot && !prefetchOnly
+      ? setupDebugChannel(baseFetchFn, prefetchedEntry)
+      : undefined;
+  const fetchFn = debug?.fetchFn || baseFetchFn;
   const temporaryReferences =
-    prefetchedEntry?.[2] || createTemporaryReferenceSet();
+    prefetchedEntry?.[KEY_TEMPORARY_REFERENCES] ||
+    createTemporaryReferenceSet();
   const url = BASE_RSC_PATH + encodeRscPath(rscPath);
   const responsePromise = prefetchedEntry
-    ? prefetchedEntry[0]
+    ? prefetchedEntry[KEY_RESPONSE]
     : rscParams === undefined
       ? fetchFn(url)
       : rscParams instanceof URLSearchParams
@@ -173,12 +196,21 @@ const fetchRscInternal: FetchRscInternal = (
             fetchFn(url, { method: 'POST', body }),
           );
   if (prefetchOnly) {
-    prefetched[rscPath] = [responsePromise, rscParams, temporaryReferences];
+    prefetched[rscPath] = {
+      [KEY_RESPONSE]: responsePromise,
+      [KEY_CLIENT_PREFETCHED]: true,
+      [KEY_RSC_PARAMS]: rscParams,
+      [KEY_TEMPORARY_REFERENCES]: temporaryReferences,
+    };
     return undefined as never;
   }
   return createFromFetch<Elements>(checkStatus(responsePromise), {
     callServer: (funcId: string, args: unknown[]) =>
       unstable_callServerRsc(funcId, args, () => fetchRscStore),
+    ...(import.meta.hot && {
+      debugChannel: debug?.debugChannel,
+      findSourceMapURL,
+    }),
     temporaryReferences,
   });
 };
@@ -286,7 +318,10 @@ export const unstable_prefetchRsc = (
     globalThis as any
   ).__WAKU_PREFETCHED__ ||= {});
   const prefetchedEntry = prefetched[rscPath];
-  if (Array.isArray(prefetchedEntry) && prefetchedEntry[1] === rscParams) {
+  if (
+    prefetchedEntry?.[KEY_CLIENT_PREFETCHED] &&
+    prefetchedEntry?.[KEY_RSC_PARAMS] === rscParams
+  ) {
     return; // already prefetched
   }
   fetchRscInternal(fetchRscStore, rscPath, rscParams, true);

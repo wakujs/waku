@@ -412,7 +412,7 @@ export function unstable_defineRouter(fns: {
 
   const handleRequest: HandleRequest = async (
     input,
-    { renderRsc, parseRsc, renderHtml, loadBuildMetadata },
+    { renderRsc, renderRscForParse, parseRsc, renderHtml, loadBuildMetadata },
   ): Promise<ReadableStream | Response | 'fallback' | null | undefined> => {
     const getCachedElement = (id: SlotId) => cachedElementsForRequest.get(id);
     const setCachedElement = (id: SlotId, element: ReactNode) => {
@@ -420,7 +420,7 @@ export function unstable_defineRouter(fns: {
       if (cached) {
         return cached;
       }
-      const copied = renderRsc({ [id]: element }).then((rscStream) =>
+      const copied = renderRscForParse({ [id]: element }).then((rscStream) =>
         parseRsc(rscStream).then((parsed) => parsed[id]),
       ) as Promise<ReactNode>;
       cachedElementsForRequest.set(id, copied);

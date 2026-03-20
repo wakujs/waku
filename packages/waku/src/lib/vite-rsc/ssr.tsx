@@ -17,6 +17,7 @@ type RenderHtmlStream = (
     formState: ReactFormState | undefined;
     nonce: string | undefined;
     extraScriptContent: string | undefined;
+    debugId: string | undefined;
   },
 ) => Promise<{ stream: ReadableStream; status: number | undefined }>;
 
@@ -62,6 +63,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
         getBootstrapPreamble({
           rscPath: options.rscPath || '',
           hydrate: true,
+          debugId: options.debugId,
         }) +
         bootstrapScriptContent +
         (options.extraScriptContent || ''),
