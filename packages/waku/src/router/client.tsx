@@ -820,15 +820,16 @@ const InnerRouter = ({
     setRoute((prev) => (isSameRoute(prev, initialRoute) ? prev : initialRoute));
   }, [initialRoute]);
   const [err, setErr] = useState<unknown>(null);
-  const [pendingHashScroll, setPendingHashScroll] = useState(false);
-
+  const [pendingScroll, setPendingScroll] = useState<{
+    pathChanged: boolean;
+  } | null>(null);
   useLayoutEffect(() => {
-    if (!pendingHashScroll) {
-      return;
+    if (pendingScroll) {
+      const { pathChanged } = pendingScroll;
+      const scrollBehavior: ScrollBehavior = pathChanged ? 'instant' : 'auto';
+      scrollToRoute(route, scrollBehavior, pathChanged);
     }
-    setPendingHashScroll(false);
-    scrollToRoute(route, 'instant', true);
-  }, [pendingHashScroll, route]);
+  }, [route, pendingScroll]);
 
   const [routeChangeEvents, emitRouteChangeEvent] =
     routeChangeListenersRef.current;
@@ -924,7 +925,6 @@ const InnerRouter = ({
         return;
       }
       const urlToWrite = mode && (url || getRouteUrl(nextRoute));
-      const scrollBehavior: ScrollBehavior = pathChanged ? 'instant' : 'auto';
       startTransitionFn(() => {
         if (isAborted()) {
           return;
@@ -932,15 +932,7 @@ const InnerRouter = ({
         writeHistoryIfNeeded(mode, urlToWrite);
         routeRef.current = nextRoute;
         setRoute(nextRoute);
-        if (options.shouldScroll) {
-          if (pathChanged && nextRoute.hash) {
-            setPendingHashScroll(true);
-          } else {
-            scrollToRoute(nextRoute, scrollBehavior, pathChanged);
-          }
-        } else {
-          setPendingHashScroll(false);
-        }
+        setPendingScroll(options.shouldScroll ? { pathChanged } : null);
         routeChangeAbortRef.current = null;
         emitRouteChangeEvent('complete', nextRoute);
       });
