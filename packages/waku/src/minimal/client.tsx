@@ -71,18 +71,6 @@ const mergeElementsPromise = (
   return getCached(getResult, cache2, b);
 };
 
-// Keep this local for now.
-// Importing the helper from @vitejs/plugin-rsc pulls in its browser runtime,
-// which breaks Node-side tests.
-// TODO
-// If upstream exposes a lighter shared entry for this helper, switch to that.
-const findSourceMapURL = (fileName: string, environmentName: string) => {
-  const url = new URL('/__vite_rsc_findSourceMapURL', import.meta.url);
-  url.searchParams.set('filename', fileName);
-  url.searchParams.set('environmentName', environmentName);
-  return url.toString();
-};
-
 type SetElements = (
   updater: (prev: Promise<Elements>) => Promise<Elements>,
 ) => void;
@@ -207,10 +195,7 @@ const fetchRscInternal: FetchRscInternal = (
   return createFromFetch<Elements>(checkStatus(responsePromise), {
     callServer: (funcId: string, args: unknown[]) =>
       unstable_callServerRsc(funcId, args, () => fetchRscStore),
-    ...(import.meta.hot && {
-      debugChannel: debug?.debugChannel,
-      findSourceMapURL,
-    }),
+    debugChannel: debug?.debugChannel,
     temporaryReferences,
   });
 };
