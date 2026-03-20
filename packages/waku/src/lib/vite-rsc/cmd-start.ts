@@ -21,7 +21,9 @@ export async function runStart(flags: { host?: string; port?: string }) {
   }
   process.env.PORT = String(port);
   await import(serveFileUrl);
-  console.log(`ready: Listening on http://${host || 'localhost'}:${port}/`);
+  // Defaulting '0.0.0.0' seems heuristic, and not useful.
+  // Ref: https://github.com/wakujs/waku/pull/1987
+  console.log(`ready: Listening on http://${host || '0.0.0.0'}:${port}/`);
 }
 
 async function getFreePort(startPort: number): Promise<number> {
