@@ -801,7 +801,7 @@ importers:
         version: link:../../../packages/waku
     devDependencies:
       '@tailwindcss/vite':
-        specifier: ^4.2.1
+        specifier: 4.2.1
         version: 4.2.1(vite@7.3.1(@types/node@25.3.2)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.19.4)(yaml@2.8.2))
       '@types/react':
         specifier: ^19.2.14
@@ -916,7 +916,7 @@ importers:
         version: link:../../packages/waku
     devDependencies:
       '@tailwindcss/vite':
-        specifier: ^4.2.1
+        specifier: 4.2.1
         version: 4.2.1(vite@7.3.1(@types/node@25.3.2)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.19.4)(yaml@2.8.2))
       '@types/react':
         specifier: ^19.2.14
@@ -956,7 +956,7 @@ importers:
         version: link:../../packages/waku
     devDependencies:
       '@tailwindcss/vite':
-        specifier: ^4.2.1
+        specifier: 4.2.1
         version: 4.2.1(vite@7.3.1(@types/node@25.3.2)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.19.4)(yaml@2.8.2))
       '@vitejs/plugin-react':
         specifier: ^5.1.0
@@ -984,7 +984,7 @@ importers:
         version: link:../../packages/waku
     devDependencies:
       '@tailwindcss/vite':
-        specifier: ^4.2.1
+        specifier: 4.2.1
         version: 4.2.1(vite@7.3.1(@types/node@25.3.2)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.19.4)(yaml@2.8.2))
       '@types/react':
         specifier: ^19.2.14
@@ -1052,7 +1052,7 @@ importers:
         version: link:../../packages/waku
     devDependencies:
       '@tailwindcss/vite':
-        specifier: ^4.2.1
+        specifier: 4.2.1
         version: 4.2.1(vite@7.3.1(@types/node@25.3.2)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.19.4)(yaml@2.8.2))
       '@types/react':
         specifier: ^19.2.14
@@ -1098,7 +1098,7 @@ importers:
         specifier: ^1.25.6
         version: 1.25.6(vite@7.3.1(@types/node@25.3.2)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.19.4)(yaml@2.8.2))(workerd@1.20260305.0)(wrangler@4.69.0)
       '@tailwindcss/vite':
-        specifier: ^4.2.1
+        specifier: 4.2.1
         version: 4.2.1(vite@7.3.1(@types/node@25.3.2)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.19.4)(yaml@2.8.2))
       '@types/node':
         specifier: ^25.3.2
@@ -1147,7 +1147,7 @@ importers:
         version: 0.3.0(jotai@2.18.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react@19.2.4))(react@19.2.4)(waku@packages+waku)
     devDependencies:
       '@tailwindcss/vite':
-        specifier: ^4.2.1
+        specifier: 4.2.1
         version: 4.2.1(vite@7.3.1(@types/node@25.3.2)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.19.4)(yaml@2.8.2))
       '@types/react':
         specifier: ^19.2.14
@@ -1209,7 +1209,7 @@ importers:
         version: link:../../packages/waku
     devDependencies:
       '@tailwindcss/vite':
-        specifier: ^4.2.1
+        specifier: 4.2.1
         version: 4.2.1(vite@7.3.1(@types/node@25.3.2)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.19.4)(yaml@2.8.2))
       '@types/react':
         specifier: ^19.2.14
@@ -1613,7 +1613,7 @@ importers:
         version: link:../../packages/waku
     devDependencies:
       '@tailwindcss/vite':
-        specifier: ^4.2.1
+        specifier: 4.2.1
         version: 4.2.1(vite@7.3.1(@types/node@25.3.2)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.19.4)(yaml@2.8.2))
       '@types/react':
         specifier: ^19.2.14
