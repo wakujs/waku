@@ -12,7 +12,9 @@ export async function getInput(
   temporaryReferences: unknown,
   decodeReply: (
     body: string | FormData,
-    options?: any,
+    options?: {
+      temporaryReferences?: unknown;
+    },
   ) => Promise<unknown[]>,
   decodeAction: (body: FormData) => Promise<() => Promise<void>>,
   decodeFormState: (
