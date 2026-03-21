@@ -12,8 +12,8 @@ export async function getInput(
   temporaryReferences: unknown,
   decodeReply: (
     body: string | FormData,
-    options?: unknown,
-  ) => Promise<unknown[]>,
+    options?: any,
+  ) => Promise<unknown>,
   decodeAction: (body: FormData) => Promise<() => Promise<void>>,
   decodeFormState: (
     actionResult: unknown,
@@ -37,7 +37,7 @@ export async function getInput(
       input = {
         type: 'function',
         fn: action as any,
-        args,
+        args: args as any[],
         pathname,
         req,
       };
