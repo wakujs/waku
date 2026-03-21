@@ -7,6 +7,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useTransition,
@@ -819,6 +820,16 @@ const InnerRouter = ({
     setRoute((prev) => (isSameRoute(prev, initialRoute) ? prev : initialRoute));
   }, [initialRoute]);
   const [err, setErr] = useState<unknown>(null);
+  const [pendingScroll, setPendingScroll] = useState<{
+    pathChanged: boolean;
+  } | null>(null);
+  useLayoutEffect(() => {
+    if (pendingScroll) {
+      const { pathChanged } = pendingScroll;
+      const scrollBehavior: ScrollBehavior = pathChanged ? 'instant' : 'auto';
+      scrollToRoute(route, scrollBehavior, pathChanged);
+    }
+  }, [route, pendingScroll]);
 
   const [routeChangeEvents, emitRouteChangeEvent] =
     routeChangeListenersRef.current;
@@ -914,7 +925,6 @@ const InnerRouter = ({
         return;
       }
       const urlToWrite = mode && (url || getRouteUrl(nextRoute));
-      const scrollBehavior: ScrollBehavior = pathChanged ? 'instant' : 'auto';
       startTransitionFn(() => {
         if (isAborted()) {
           return;
@@ -922,10 +932,8 @@ const InnerRouter = ({
         writeHistoryIfNeeded(mode, urlToWrite);
         routeRef.current = nextRoute;
         setRoute(nextRoute);
+        setPendingScroll(options.shouldScroll ? { pathChanged } : null);
         routeChangeAbortRef.current = null;
-        if (options.shouldScroll) {
-          scrollToRoute(nextRoute, scrollBehavior, pathChanged);
-        }
         emitRouteChangeEvent('complete', nextRoute);
       });
     },

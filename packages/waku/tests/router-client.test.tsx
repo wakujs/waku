@@ -1005,9 +1005,15 @@ describe('Router integration', () => {
   test('push to a new path with hash scrolls using destination hash after history write', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
+    const NextRoute = () => (
+      <>
+        <Probe />
+        <div id="target">target</div>
+      </>
+    );
     const elements = {
       [unstable_getRouteSlotId('/start')]: <Probe />,
-      [unstable_getRouteSlotId('/next')]: <Probe />,
+      [unstable_getRouteSlotId('/next')]: <NextRoute />,
       [ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
     };
@@ -1027,12 +1033,24 @@ describe('Router integration', () => {
       configurable: true,
       value: 100,
     });
-    const hashTarget = document.createElement('div');
-    hashTarget.id = 'target';
     const getBoundingClientRectSpy = vi
-      .spyOn(hashTarget, 'getBoundingClientRect')
-      .mockReturnValue({ top: 40 } as DOMRect);
-    document.body.append(hashTarget);
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        if (this.id === 'target') {
+          return { top: 40 } as DOMRect;
+        }
+        return {
+          bottom: 0,
+          height: 0,
+          left: 0,
+          right: 0,
+          top: 0,
+          width: 0,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        } as DOMRect;
+      });
 
     const view = await renderRouter(
       {
@@ -1041,6 +1059,7 @@ describe('Router integration', () => {
       elements,
     );
     try {
+      document.body.append(view.container);
       if (!capture.router) {
         throw new Error('router not initialized');
       }
@@ -1048,6 +1067,7 @@ describe('Router integration', () => {
       await act(async () => {
         await capture.router!.push('/next#target');
       });
+      await flush();
 
       expect(scrollToSpy).toHaveBeenCalledWith({
         left: 0,
@@ -1063,7 +1083,6 @@ describe('Router integration', () => {
     } finally {
       view.unmount();
       getBoundingClientRectSpy.mockRestore();
-      hashTarget.remove();
       if (scrollYDescriptor) {
         Object.defineProperty(window, 'scrollY', scrollYDescriptor);
       } else {
