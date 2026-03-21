@@ -10,10 +10,7 @@ export async function getInput(
   req: Request,
   config: Omit<Required<Config>, 'vite'>,
   temporaryReferences: unknown,
-  decodeReply: (
-    body: string | FormData,
-    options?: any,
-  ) => Promise<unknown>,
+  decodeReply: (body: string | FormData, options?: any) => Promise<unknown>,
   decodeAction: (body: FormData) => Promise<() => Promise<void>>,
   decodeFormState: (
     actionResult: unknown,
