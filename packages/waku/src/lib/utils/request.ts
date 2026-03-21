@@ -10,7 +10,10 @@ export async function getInput(
   req: Request,
   config: Omit<Required<Config>, 'vite'>,
   temporaryReferences: unknown,
-  decodeReply: (body: string | FormData, options?: any) => Promise<unknown>,
+  decodeReply: (
+    body: string | FormData,
+    options?: any,
+  ) => Promise<unknown[]>,
   decodeAction: (body: FormData) => Promise<() => Promise<void>>,
   decodeFormState: (
     actionResult: unknown,
@@ -34,7 +37,7 @@ export async function getInput(
       input = {
         type: 'function',
         fn: action as any,
-        args: args as any[],
+        args,
         pathname,
         req,
       };
