@@ -12,6 +12,7 @@ import { mainPlugin } from './main.js';
 import { notFoundPlugin } from './not-found.js';
 import { patchRsdwPlugin } from './patch-rsdw.js';
 import { privateDirPlugin } from './private-dir.js';
+import { reactDebugPlugin } from './react-debug.js';
 import { userEntriesPlugin } from './user-entries.js';
 import { virtualConfigPlugin } from './virtual-config.js';
 
@@ -25,6 +26,7 @@ export function combinedPlugins(config: Required<Config>): PluginOption {
       useBuildAppHook: true,
       clientChunks: (meta) => meta.serverChunk,
     }),
+    reactDebugPlugin(),
     mainPlugin(config),
     userEntriesPlugin(config),
     virtualConfigPlugin(config),
