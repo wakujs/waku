@@ -16,7 +16,7 @@
     "waku": "1.0.0-alpha.5"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.2.1",
+    "@tailwindcss/vite": "4.2.1",
     "@vitejs/plugin-react": "^5.1.0",
     "babel-plugin-react-compiler": "^1.0.0",
     "tailwindcss": "^4.2.1"
