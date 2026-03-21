@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
-import RSDWClient from 'react-server-dom-webpack/client';
+import * as RSDWClient from '@vitejs/plugin-rsc/browser';
 import { createCustomError } from '../lib/utils/custom-errors.js';
 import { setupDebugChannel } from '../lib/utils/react-debug-channel.js';
 import { encodeFuncId, encodeRscPath } from '../lib/utils/rsc-path.js';
@@ -180,7 +180,7 @@ const fetchRscInternal: FetchRscInternal = (
       ? fetchFn(url)
       : rscParams instanceof URLSearchParams
         ? fetchFn(url + '?' + rscParams)
-        : encodeReply(rscParams, { temporaryReferences }).then((body) =>
+        : encodeReply(rscParams as any, { temporaryReferences }).then((body) =>
             fetchFn(url, { method: 'POST', body }),
           );
   if (prefetchOnly) {
@@ -195,8 +195,8 @@ const fetchRscInternal: FetchRscInternal = (
   return createFromFetch<Elements>(checkStatus(responsePromise), {
     callServer: (funcId: string, args: unknown[]) =>
       unstable_callServerRsc(funcId, args, () => fetchRscStore),
-    debugChannel: debug?.debugChannel,
     temporaryReferences,
+    ...(debug?.debugChannel ? { debugChannel: debug.debugChannel } : {}),
   });
 };
 
