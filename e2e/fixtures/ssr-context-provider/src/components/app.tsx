@@ -1,5 +1,5 @@
-import { ContextProvider } from './context-provider.js';
 import { ContextConsumer } from './context-consumer.js';
+import { ContextProvider } from './context-provider.js';
 
 export default function App() {
   return (

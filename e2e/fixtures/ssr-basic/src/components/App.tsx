@@ -1,12 +1,11 @@
 import { Suspense } from 'react';
 import { preload } from 'react-dom';
-
-import { Counter } from './Counter.js';
+import config from '../../private/config.js';
 import { AIProvider } from '../ai/index.js';
 import { AIClient } from './AIClient.js';
-import { TestEnvServer } from './test-env/server.js';
+import { Counter } from './Counter.js';
 import { TestEnvClient } from './test-env/client.js';
-import config from '../../private/config.js';
+import { TestEnvServer } from './test-env/server.js';
 
 const DelayedBackground = async () => {
   await new Promise((resolve) => setTimeout(resolve, 2000));

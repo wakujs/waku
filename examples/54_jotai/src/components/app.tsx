@@ -1,7 +1,6 @@
 import { Suspense } from 'react';
 import { atom } from 'jotai/vanilla';
-
-import { getStore, Provider } from 'waku-jotai/minimal';
+import { Provider, getStore } from 'waku-jotai/minimal';
 import { Counter, countAtom } from './counter';
 
 // server-only atom

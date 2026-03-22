@@ -1,24 +1,25 @@
 import * as cookie from 'cookie';
-
-import type { Middleware } from 'waku/config';
+import type { MiddlewareHandler } from 'hono';
+import { unstable_getContextData as getContextData } from 'waku/server';
 
 // XXX we would probably like to extend config.
 const COOKIE_OPTS = {};
 
-const cookieMiddleware: Middleware = () => {
-  return async (ctx, next) => {
-    const cookies = cookie.parse(ctx.req.headers.get('cookie') || '');
-    ctx.data.count = Number(cookies.count) || 0;
+const cookieMiddleware = (): MiddlewareHandler => {
+  return async (c, next) => {
+    const data = getContextData();
+    const cookies = cookie.parse(c.req.header('cookie') || '');
+    data.count = Number(cookies.count) || 0;
     await next();
-    if (ctx.res) {
-      const headers = new Headers(ctx.res.headers);
+    if (c.res) {
+      const headers = new Headers(c.res.headers);
       headers.append(
         'set-cookie',
-        cookie.serialize('count', String(ctx.data.count), COOKIE_OPTS),
+        cookie.serialize('count', String(data.count), COOKIE_OPTS),
       );
-      ctx.res = new Response(ctx.res.body, {
-        status: ctx.res.status,
-        statusText: ctx.res.statusText,
+      c.res = new Response(c.res.body, {
+        status: c.res.status,
+        statusText: c.res.statusText,
         headers,
       });
     }

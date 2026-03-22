@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-
 import { Link } from 'waku/router/client';
 
 import '../styles.css';

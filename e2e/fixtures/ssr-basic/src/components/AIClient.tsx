@@ -1,7 +1,7 @@
 'use client';
+import { useActionState, useTransition } from 'react';
 import { useAIState, useActions, useUIState } from '@ai-sdk/rsc';
 import type { AIProvider } from '../ai/index.js';
-import { useActionState, useTransition } from 'react';
 
 export const AIClient = () => {
   const [isPending, startTransition] = useTransition();

@@ -1,5 +1,4 @@
 import { Link } from 'waku';
-
 import styles from './about.module.css';
 
 export default async function AboutPage() {

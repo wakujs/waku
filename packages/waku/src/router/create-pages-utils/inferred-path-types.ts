@@ -1,6 +1,6 @@
 import type { RouteProps } from '../common.js';
 import type { PathWithoutSlug } from '../create-pages.js';
-import type { Join, ReplaceAll, Split, Prettify } from '../util-types.js';
+import type { Join, Prettify, ReplaceAll, Split } from '../util-types.js';
 
 type ReadOnlyStringTupleList = readonly (readonly string[])[];
 
@@ -57,7 +57,17 @@ type ReplaceHelper<
           [...SlugCountArr, null],
           [...Result, StaticSlugs[SlugCountArr['length']]]
         >
-      : ReplaceHelper<Rest, StaticSlugs, SlugCountArr, [...Result, PathPart]>
+      : PathPart extends `${infer Prefix}[${string}]${infer Suffix}`
+        ? ReplaceHelper<
+            Rest,
+            StaticSlugs,
+            [...SlugCountArr, null],
+            [
+              ...Result,
+              `${Prefix}${StaticSlugs[SlugCountArr['length']]}${Suffix}`,
+            ]
+          >
+        : ReplaceHelper<Rest, StaticSlugs, SlugCountArr, [...Result, PathPart]>
   : Result;
 
 /**
@@ -160,7 +170,7 @@ type _GetSlugs<
 > = SplitRoute extends []
   ? Result
   : SplitRoute extends [`${infer MaybeSlug}`, ...infer Rest extends string[]]
-    ? MaybeSlug extends `[${infer Slug}]`
+    ? MaybeSlug extends `${string}[${infer Slug}]${string}`
       ? _GetSlugs<Route, Rest, [...Result, Slug]>
       : _GetSlugs<Route, Rest, Result>
     : Result;
@@ -188,6 +198,14 @@ type SlugTypes<Path extends string> =
         [Slug in GetSlugs<Path>[number] as CleanWildcard<Slug>]: IndividualSlugType<Slug>;
       }
     : never;
+
+/** Extracts route parameters from an API path pattern. */
+export type ApiParams<Path extends string> = Prettify<SlugTypes<Path>>;
+
+/** Context object passed to API route handlers with typed route parameters. */
+export interface ApiContext<Path extends string> {
+  readonly params: ApiParams<Path>;
+}
 
 export type PropsForPages<Path extends string> = Prettify<
   Omit<RouteProps<ReplaceAll<Path, `[${string}]`, string>>, 'hash'> &

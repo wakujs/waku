@@ -1,13 +1,13 @@
 ---
 slug: rethinking-fine-grained-components
-title: Introducing “slice components”
-description: We’ve re-thought the API for fine-grained component rendering.
+title: Introducing "slice components"
+description: We've re-thought the API for fine-grained component rendering.
 author: tyler
 release: v0.25
 date: 2025/08/12
 ---
 
-We’re happy to announce Waku v0.25 with a brand new API: Slice Components!
+We're happy to announce Waku v0.25 with a brand new API: Slice Components!
 
 We feel the Slices API solves issues reported with the now deprecated Page Part components while also unlocking brand new flexibility with render patterns!
 
@@ -63,11 +63,11 @@ export const getConfig = () => {
 };
 ```
 
-We’re really happy with the new approach and how it will allow simply importing and assembling your components like normal components, while also specifying alternate rendering.
+We're really happy with the new approach and how it will allow simply importing and assembling your components like normal components, while also specifying alternate rendering.
 
 ## Lazy Slice Components
 
-`lazy` Slice Components are a new addition with the Slices API. They are Waku’s take on the [server islands feature](https://astro.build/blog/astro-4120/) from Astro. `lazy` allows components to be requested independent from the page they are used on. This is useful for components will be dynamically rendered on otherwise static pages and layouts.
+`lazy` Slice Components are a new addition with the Slices API. They are Waku's take on the [server islands feature](https://astro.build/blog/astro-4120/) from Astro. `lazy` allows components to be requested independent from the page they are used on. This is useful for components will be dynamically rendered on otherwise static pages and layouts.
 
 If we re-use the example above, it could be written like this:
 
@@ -95,7 +95,7 @@ This makes it so that now you can have a `dynamic` Slice component for slice `tw
 
 ## Some breaking changes
 
-We’ve standardized on the following defaults: pages, layouts, and slices are all static by default. API routes are dynamic by default.
+We've standardized on the following defaults: pages, layouts, and slices are all static by default. API routes are dynamic by default.
 
 This comes with the explicit change of `pages` default render to `'static'`. So any pages that do not currently use `getConfig` should add:
 
@@ -107,8 +107,8 @@ export const getConfig = () => {
 };
 ```
 
-## There’s more to come
+## There's more to come
 
-We’re keeping Waku Router minimal and making it even more powerful with this release. We’re really excited to see what you can build with Slices and would love to hear from you on our [Discord server](https://discord.gg/MrQdmzd), [GitHub discussions](https://github.com/wakujs/waku/discussions), or [around](https://x.com/wakujs) [the](https://bsky.app/profile/daishikato.com) [web](https://fosstodon.org/@daishi).
+We're keeping Waku Router minimal and making it even more powerful with this release. We're really excited to see what you can build with Slices and would love to hear from you on our [Discord server](https://discord.gg/MrQdmzd), [GitHub discussions](https://github.com/wakujs/waku/discussions), or [around](https://x.com/wakujs) [the](https://bsky.app/profile/daishikato.com) [web](https://fosstodon.org/@daishi).
 
 P.S., We have a [few more things](https://github.com/wakujs/waku/issues/24) coming soon!

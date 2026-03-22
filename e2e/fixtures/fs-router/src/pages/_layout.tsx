@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-
 import { Link } from 'waku/router/client';
 
 const Pending = ({ isPending }: { isPending: boolean }) => (
@@ -74,10 +73,47 @@ const HomeLayout = ({ children }: { children: ReactNode }) => (
         </Link>
       </li>
       <li>
+        <Link
+          to="/nested/encoded%E6%B8%AC%E8%A9%A6path"
+          unstable_pending={<Pending isPending />}
+          unstable_notPending={<Pending isPending={false} />}
+        >
+          Nested / Encoded Unicode Path
+        </Link>
+      </li>
+      <li>
+        <Link
+          to="/static-nested/encoded%20path"
+          unstable_pending={<Pending isPending />}
+          unstable_notPending={<Pending isPending={false} />}
+        >
+          Nested / Static Encoded Path
+        </Link>
+      </li>
+      <li>
+        <Link
+          to="/static-nested/encoded%E6%B8%AC%E8%A9%A6path"
+          unstable_pending={<Pending isPending />}
+          unstable_notPending={<Pending isPending={false} />}
+        >
+          Nested / Static Encoded Unicode Path
+        </Link>
+      </li>
+      <li>
         <Link to="/page-with-slices">Page with Slices</Link>
       </li>
       <li>
         <Link to="/css-split">Css split</Link>
+      </li>
+      <li>
+        <Link to="/page-with-segment/introducing-waku">
+          Page with Segment / Introducing Waku
+        </Link>
+      </li>
+      <li>
+        <Link to="/page-with-segment/article/introducing-waku">
+          Page with Segment / Article / Introducing Waku
+        </Link>
       </li>
     </ul>
     {children}

@@ -1,23 +1,31 @@
 import { expect } from '@playwright/test';
+import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
-import { test, prepareStandaloneSetup, waitForHydration } from './utils.js';
-
-const startApp = prepareStandaloneSetup('ssr-catch-error');
+const startApp = prepareNormalSetup('ssr-catch-error');
 
 test.describe(`ssr-catch-error`, () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
+
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
+
   test.afterAll(async () => {
-    await stopApp?.();
+    await stopApp();
   });
 
   test('access top page', async ({ page }) => {
-    await page.goto(`http://localhost:${port}/`);
+    const res = await page.goto(`http://localhost:${port}/`);
+    expect(res?.status()).toBe(500);
     await expect(page.getByText('Home Page')).toBeVisible();
     await expect(page.getByText('Something went wrong')).toBeVisible();
+  });
+
+  test('error inside Suspense inside ErrorBoundary', async ({ page }) => {
+    const res = await page.goto(`http://localhost:${port}/suspense`);
+    expect(res?.status()).toBe(200);
+    await expect(page.getByText('ErrorBoundary fallback')).toBeVisible();
   });
 
   test('access dynamic server page', async ({ page }) => {

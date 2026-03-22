@@ -2,7 +2,6 @@
 
 import cx from 'classnames';
 import { useAtom } from 'jotai';
-
 import { menuAtom } from '../atoms';
 import { useOnEscape } from '../hooks';
 

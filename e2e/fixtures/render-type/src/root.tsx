@@ -9,6 +9,9 @@ export default function Root() {
       <li>
         <Link to="/build/dynamic">Build dynamic</Link>
       </li>
+      <li>
+        <Link to="/server/static/static-echo">/server/static</Link>
+      </li>
     </ul>
   );
 }

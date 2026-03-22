@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react';
-
 import '../styles.css';
-import styles from './_layout.module.css';
-import { Header } from '../components/header';
 import { Footer } from '../components/footer';
+import { Header } from '../components/header';
+import styles from './_layout.module.css';
 
 type RootLayoutProps = { children: ReactNode };
 
@@ -14,6 +13,13 @@ export default async function RootLayout({ children }: RootLayoutProps) {
     <div className={styles.div}>
       <meta name="description" content={data.description} />
       <link rel="icon" type="image/png" href={data.icon} />
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+        precedence="font"
+      />
       <Header />
       <main className={styles.main}>{children}</main>
       <Footer />

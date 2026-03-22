@@ -1,17 +1,18 @@
 import { expect } from '@playwright/test';
-
-import { test, prepareNormalSetup, FETCH_ERROR_MESSAGES } from './utils.js';
+import { FETCH_ERROR_MESSAGES, prepareNormalSetup, test } from './utils.js';
 
 const startApp = prepareNormalSetup('rsc-basic');
 
 test.describe(`rsc-basic`, () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
+
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
+
   test.afterAll(async () => {
-    await stopApp?.();
+    await stopApp();
   });
 
   test('basic', async ({ page }) => {
@@ -152,7 +153,7 @@ test.describe(`rsc-basic`, () => {
     await expect(
       page.getByTestId('server-throws').getByTestId('throws-success'),
     ).toHaveText('init');
-    await stopApp?.();
+    await stopApp();
     await page.getByTestId('server-throws').getByTestId('success').click();
     await expect(
       page.getByTestId('server-throws').getByTestId('throws-error'),
@@ -164,5 +165,13 @@ test.describe(`rsc-basic`, () => {
     await page.goto(`http://localhost:${port}/`);
     await expect(page.getByTestId('app-name')).toHaveText('Waku');
     await expect(page.getByTestId('some-config-foo')).toHaveText('value-1234');
+  });
+
+  test('build metadata', async ({ page, mode }) => {
+    test.skip(mode !== 'PRD', 'Build metadata is only available in build mode');
+    await page.goto(`http://localhost:${port}/`);
+    await expect(page.getByTestId('build-metadata')).toHaveText(
+      'metadata-value',
+    );
   });
 });

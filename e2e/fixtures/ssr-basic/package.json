@@ -9,17 +9,16 @@
     "start": "waku start"
   },
   "dependencies": {
-    "@ai-sdk/rsc": "^1.0.22",
-    "ai": "^5.0.22",
-    "react": "19.1.1",
-    "react-dom": "19.1.1",
-    "react-server-dom-webpack": "19.1.1",
+    "@ai-sdk/rsc": "^2.0.104",
+    "ai": "^6.0.104",
+    "react": "~19.2.4",
+    "react-dom": "~19.2.4",
+    "react-server-dom-webpack": "~19.2.4",
     "waku": "latest"
   },
   "devDependencies": {
-    "@types/react": "^19.1.10",
-    "@types/react-dom": "^19.1.7",
-    "typescript": "^5.9.2",
-    "vite": "7.1.3"
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.9.3"
   }
 }

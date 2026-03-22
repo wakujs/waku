@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import cx from 'classnames';
-
 import { useInterval } from '../hooks';
 
 type SponsorsProps = {
@@ -72,10 +71,5 @@ const sponsors = [
     title: 'Vercel',
     logo: 'https://cdn.candycode.com/waku/vercel.svg',
     url: 'https://vercel.com/home',
-  },
-  {
-    title: 'Progress KendoReact',
-    logo: 'https://cdn.candycode.com/waku/sponsors/kendo-react.png',
-    url: 'https://www.telerik.com/kendo-react-ui?utm_medium=referral&utm_source=waku&utm_campaign=waku-sponsorship',
   },
 ];

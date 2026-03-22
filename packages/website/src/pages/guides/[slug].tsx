@@ -1,5 +1,5 @@
-import { getPostPaths } from '../../lib/get-file-name';
 import { PostPage } from '../../components/post-page';
+import { getPostPaths } from '../../lib/get-file-name';
 
 type BlogArticlePageProps = {
   slug: string;

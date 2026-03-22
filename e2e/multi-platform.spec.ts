@@ -1,18 +1,27 @@
-import { execSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import { cpSync, rmSync } from 'node:fs';
+import { exec } from 'node:child_process';
+import {
+  cpSync,
+  existsSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { expect } from '@playwright/test';
+import { getManagedServerEntry } from '../packages/waku/dist/lib/utils/managed.js';
+import { makeTempDir, test } from './utils.js';
 
-import { test, makeTempDir } from './utils.js';
+const execAsync = promisify(exec);
 
 const dryRunList = [
-  // without server-entry.tsx
+  // without waku.server.tsx
   {
     cwd: fileURLToPath(new URL('./fixtures/partial-build', import.meta.url)),
     project: 'partial-build',
   },
-  // with server-entry.tsx
+  // with waku.server.tsx
   {
     cwd: fileURLToPath(new URL('./fixtures/ssr-basic', import.meta.url)),
     project: 'ssr-basic',
@@ -23,40 +32,74 @@ const waku = fileURLToPath(
   new URL('../packages/waku/dist/cli.js', import.meta.url),
 );
 
-const buildPlatformTarget = [
+type BuildPlatformTarget = {
+  adapter: string;
+  clearDirOrFile: string[];
+  checkJsonFile?: (dir: string) => boolean;
+};
+
+const hasDistServerWranglerMainIndexJs = (dir: string) => {
+  const file = join(dir, 'dist', 'server', 'wrangler.json');
+  if (!existsSync(file)) {
+    return false;
+  }
+  const json = JSON.parse(readFileSync(file, 'utf-8')) as {
+    main?: string;
+    assets?: { directory?: string };
+  };
+  if (json.main !== 'index.js') {
+    return false;
+  }
+  if (!json.assets?.directory) {
+    return false;
+  }
+  const deployConfig = join(dir, '.wrangler', 'deploy', 'config.json');
+  if (!existsSync(deployConfig)) {
+    return false;
+  }
+  const deployJson = JSON.parse(readFileSync(deployConfig, 'utf-8')) as {
+    configPath?: string;
+  };
+  return deployJson.configPath === '../../dist/server/wrangler.json';
+};
+
+const buildPlatformTarget: BuildPlatformTarget[] = [
   {
-    platform: '--with-vercel',
+    adapter: 'vercel',
     clearDirOrFile: ['dist', '.vercel'],
   },
   {
-    platform: '--with-vercel-static',
-    clearDirOrFile: ['dist'],
-  },
-  {
-    platform: '--with-netlify',
+    adapter: 'netlify',
     clearDirOrFile: ['dist', 'netlify', 'netlify.toml'],
   },
   {
-    platform: '--with-netlify-static',
+    adapter: 'cloudflare',
+    clearDirOrFile: ['dist', 'wrangler.jsonc', '.wrangler'],
+    checkJsonFile: hasDistServerWranglerMainIndexJs,
+  },
+  {
+    adapter: 'deno',
     clearDirOrFile: ['dist'],
   },
   {
-    platform: '--with-cloudflare',
-    clearDirOrFile: ['dist', 'wrangler.toml'],
-  },
-  {
-    platform: '--with-partykit',
-    clearDirOrFile: ['dist', 'partykit.json'],
-  },
-  {
-    platform: '--with-deno',
-    clearDirOrFile: ['dist'],
-  },
-  {
-    platform: '--with-aws-lambda',
+    adapter: 'aws-lambda',
     clearDirOrFile: ['dist'],
   },
 ];
+
+const ensureServerEntryWithAdapter = (file: string, adapter: string) => {
+  const content = existsSync(file)
+    ? readFileSync(file, 'utf-8')
+    : getManagedServerEntry('src');
+  const replaced = content.replace(
+    /import adapter from 'waku\/adapters\/default';/,
+    `import adapter from 'waku/adapters/${adapter}';`,
+  );
+  if (replaced === content) {
+    throw new Error(`Failed to replace adapter in ${file}`);
+  }
+  writeFileSync(file, replaced);
+};
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -67,22 +110,30 @@ test.skip(
 
 test.describe(`multi platform builds`, () => {
   for (const { cwd, project } of dryRunList) {
-    for (const { platform, clearDirOrFile } of buildPlatformTarget) {
-      test(`build ${project} with ${platform} should not throw error`, async () => {
+    for (const {
+      adapter,
+      clearDirOrFile,
+      checkJsonFile = () => true,
+    } of buildPlatformTarget) {
+      test(`build ${project} with ${adapter} should not throw error`, async () => {
         const temp = makeTempDir(project);
-        cpSync(cwd, temp, { recursive: true });
-        for (const name of clearDirOrFile) {
-          rmSync(join(temp, name), { recursive: true, force: true });
-        }
+        const serverEntryFile = join(temp, 'src', 'waku.server.tsx');
         try {
-          execSync(`node ${waku} build ${platform}`, {
-            cwd: temp,
-            env: process.env,
-          });
-        } catch (error) {
-          expect(error).toBeNull();
+          cpSync(cwd, temp, { recursive: true });
+          ensureServerEntryWithAdapter(serverEntryFile, adapter);
+          for (const name of clearDirOrFile) {
+            rmSync(join(temp, name), { recursive: true, force: true });
+          }
+          await expect(
+            execAsync(`node ${waku} build ${adapter}`, {
+              cwd: temp,
+              env: process.env,
+            }),
+          ).resolves.not.toThrow();
+          expect(checkJsonFile(temp)).toBe(true);
+        } finally {
+          rmSync(temp, { recursive: true, force: true });
         }
-        rmSync(temp, { recursive: true, force: true });
       });
     }
   }

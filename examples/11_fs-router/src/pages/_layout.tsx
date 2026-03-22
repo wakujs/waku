@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-
 import { Link } from 'waku/router/client';
 
 const Pending = ({ isPending }: { isPending: boolean }) => (
@@ -66,6 +65,9 @@ const HomeLayout = ({ children }: { children: ReactNode }) => (
       </li>
       <li>
         <Link to="/slice-page">Slice Page</Link>
+      </li>
+      <li>
+        <Link to="/debug">Debug</Link>
       </li>
     </ul>
     {children}

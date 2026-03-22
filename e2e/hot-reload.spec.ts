@@ -1,10 +1,11 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect } from '@playwright/test';
+import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
-import { test, prepareStandaloneSetup, waitForHydration } from './utils.js';
+const startApp = prepareNormalSetup('hot-reload');
 
-const startApp = prepareStandaloneSetup('hot-reload');
+const originalFiles: { [key: string]: string | false } = {};
 
 function modifyFile(
   standaloneDir: string,
@@ -12,9 +13,31 @@ function modifyFile(
   search: string,
   replace: string,
 ) {
-  const content = readFileSync(join(standaloneDir, file), 'utf-8');
-  writeFileSync(join(standaloneDir, file), content.replace(search, replace));
+  const filePath = join(standaloneDir, file);
+  const content = readFileSync(filePath, 'utf-8');
+  originalFiles[filePath] ??= content;
+  writeFileSync(filePath, content.replace(search, replace));
 }
+
+function createFile(standaloneDir: string, file: string, content: string) {
+  const filePath = join(standaloneDir, file);
+  if (existsSync(filePath)) {
+    originalFiles[filePath] ??= readFileSync(filePath, 'utf-8');
+  } else {
+    originalFiles[filePath] ??= false;
+  }
+  writeFileSync(filePath, content);
+}
+
+test.afterAll(() => {
+  for (const [file, content] of Object.entries(originalFiles)) {
+    if (content === false) {
+      unlinkSync(file);
+    } else {
+      writeFileSync(file, content);
+    }
+  }
+});
 
 test.skip(
   ({ mode }) => mode !== 'DEV',
@@ -23,13 +46,15 @@ test.skip(
 
 test.describe('hot reload', () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
   let standaloneDir: string;
+
   test.beforeAll(async () => {
-    ({ port, stopApp, standaloneDir } = await startApp('DEV'));
+    ({ port, stopApp, fixtureDir: standaloneDir } = await startApp('DEV'));
   });
+
   test.afterAll(async () => {
-    await stopApp?.();
+    await stopApp();
   });
 
   test('server and client', async ({ page }) => {
@@ -47,6 +72,7 @@ test.describe('hot reload', () => {
       'Modified Page',
     );
     await expect(page.getByText('Modified Page')).toBeVisible();
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(500); // need to wait not to full reload
     await expect(page.getByTestId('count')).toHaveText('1');
     await page.getByTestId('increment').click();
@@ -59,6 +85,7 @@ test.describe('hot reload', () => {
       'Plus One',
     );
     await expect(page.getByText('Plus One')).toBeVisible();
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(500); // need to wait not to full reload
     await expect(page.getByTestId('count')).toHaveText('2');
     await page.getByTestId('increment').click();
@@ -71,6 +98,7 @@ test.describe('hot reload', () => {
       'Edited Page',
     );
     await expect(page.getByText('Edited Page')).toBeVisible();
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(500); // need to wait not to full reload
     await expect(page.getByTestId('count')).toHaveText('3');
     await page.getByTestId('increment').click();
@@ -94,6 +122,7 @@ test.describe('hot reload', () => {
       '<p>Edited Page</p>',
       '<pEdited Page</p>',
     );
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(500); // need to wait for possible crash
     modifyFile(
       standaloneDir,
@@ -124,6 +153,7 @@ test.describe('hot reload', () => {
       'background-color: green;',
       'background-color: yellow;',
     );
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(500); // need to wait for full reload
     const bgColor2 = await page.evaluate(() =>
       window
@@ -156,6 +186,7 @@ test.describe('hot reload', () => {
       'background-color: red;',
       'background-color: blue;',
     );
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(500); // need to wait for full reload
     const bgColor2 = await page.evaluate(() =>
       window
@@ -167,7 +198,6 @@ test.describe('hot reload', () => {
     expect(bgColor2).toBe('rgb(0, 0, 255)');
 
     await page.reload();
-    await page.waitForTimeout(500); // need to wait?
     const bgColor3 = await page.evaluate(() =>
       window
         .getComputedStyle(
@@ -195,6 +225,7 @@ test.describe('hot reload', () => {
       'Mesg 1001',
     );
     await expect(page.getByTestId('mesg')).toHaveText('Mesg 1001');
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(500); // need to wait not to full reload
     await expect(page.getByTestId('count')).toHaveText('1');
     await page.getByTestId('increment').click();
@@ -244,5 +275,89 @@ defineConfig({
       const res = await request.get(`http://localhost:${port}/__test_edit`);
       expect(await res.text()).toEqual('ok');
     }).toPass();
+  });
+
+  test('reload environment variables when new env added', async ({
+    request,
+  }) => {
+    // Create initial .env file with only one variable
+    createFile(standaloneDir, '.env', 'TEST_MESSAGE=Hello from initial .env\n');
+
+    // Add middleware to expose env vars
+    // Use createFile instead of modifyFile because a previous test may have
+    // already replaced the original defineConfig({}) content.
+    createFile(
+      standaloneDir,
+      'waku.config.ts',
+      `import { defineConfig } from 'waku/config';
+
+export default defineConfig({
+  vite: {
+    plugins: [
+      [
+        {
+          name: 'test-env',
+          configureServer(server) {
+            server.middlewares.use((req, res, next) => {
+              if (req.url === "/__test_env") {
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({
+                  testMessage: process.env.TEST_MESSAGE,
+                  appVersion: process.env.APP_VERSION,
+                  newFeature: process.env.NEW_FEATURE,
+                }));
+                return;
+              }
+              next();
+            });
+          }
+        }
+      ]
+    ]
+  }
+});
+`,
+    );
+
+    // Wait for server restart after config change
+    await expect(async () => {
+      const res = await request.get(`http://localhost:${port}/__test_env`);
+      const data = await res.json();
+      expect(data.testMessage).toEqual('Hello from initial .env');
+      expect(data.appVersion).toBeUndefined();
+      expect(data.newFeature).toBeUndefined();
+    }).toPass({ timeout: 10000 });
+
+    // Add a new env variable
+    createFile(
+      standaloneDir,
+      '.env',
+      'TEST_MESSAGE=Hello from initial .env\nAPP_VERSION=1.0.0\n',
+    );
+
+    // Wait for server restart and verify new env var is available
+    await expect(async () => {
+      const res = await request.get(`http://localhost:${port}/__test_env`);
+      const data = await res.json();
+      expect(data.testMessage).toEqual('Hello from initial .env');
+      expect(data.appVersion).toEqual('1.0.0');
+      expect(data.newFeature).toBeUndefined();
+    }).toPass({ timeout: 10000 });
+
+    // Add another new env variable
+    createFile(
+      standaloneDir,
+      '.env',
+      'TEST_MESSAGE=Hello from initial .env\nAPP_VERSION=1.0.0\nNEW_FEATURE=enabled\n',
+    );
+
+    // Verify the newly added env var is available
+    await expect(async () => {
+      const res = await request.get(`http://localhost:${port}/__test_env`);
+      const data = await res.json();
+      expect(data.testMessage).toEqual('Hello from initial .env');
+      expect(data.appVersion).toEqual('1.0.0');
+      expect(data.newFeature).toEqual('enabled');
+    }).toPass({ timeout: 10000 });
   });
 });

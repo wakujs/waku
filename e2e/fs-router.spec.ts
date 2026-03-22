@@ -1,17 +1,23 @@
 import { expect } from '@playwright/test';
+import {
+  prepareNormalSetup,
+  test,
+  waitForHydration,
+  waitForSelectorText,
+} from './utils.js';
 
-import { test, prepareStandaloneSetup, waitForHydration } from './utils.js';
+const startApp = prepareNormalSetup('fs-router');
 
-const startApp = prepareStandaloneSetup('fs-router');
-
-test.describe(`fs-router`, async () => {
+test.describe('fs-router', () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
+
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
+
   test.afterAll(async () => {
-    await stopApp?.();
+    await stopApp();
   });
 
   test('home', async ({ page }) => {
@@ -27,10 +33,16 @@ test.describe(`fs-router`, async () => {
 
   test('foo', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
-    await page.click("a[href='/foo']");
-    await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
+    await waitForHydration(page);
+    await page.click("a[href='/foo']", { noWaitAfter: true });
+    await waitForSelectorText(page, 'h2', 'Foo');
 
     await page.goto(`http://localhost:${port}/foo`);
+    await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
+  });
+
+  test('foo with trailing slash', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/foo/`);
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
   });
 
@@ -49,6 +61,20 @@ test.describe(`fs-router`, async () => {
     ).toBeVisible();
   });
 
+  test('nested/baz with trailing slash', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/nested/baz/`);
+    await expect(
+      page.getByRole('heading', { name: 'Nested Layout' }),
+    ).toBeVisible();
+  });
+
+  test('static-nested encoded path with trailing slash', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/static-nested/encoded%20path/`);
+    await expect(
+      page.getByRole('heading', { name: 'Nested / encoded%20path' }),
+    ).toBeVisible();
+  });
+
   test('check hydration error', async ({ page }) => {
     const messages: string[] = [];
     page.on('console', (msg) => messages.push(msg.text()));
@@ -60,26 +86,53 @@ test.describe(`fs-router`, async () => {
     expect(errors.join('\n')).not.toContain('Minified React error #418');
   });
 
+  test('check hydration error with useId', async ({ page }) => {
+    const messages: string[] = [];
+    page.on('console', (msg) => messages.push(msg.text()));
+    const errors: string[] = [];
+    page.on('pageerror', (err) => errors.push(err.message));
+    await page.goto(`http://localhost:${port}/foo`);
+    await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
+    await waitForHydration(page);
+    expect(messages.join('\n')).not.toContain('hydration-mismatch');
+    expect(errors.join('\n')).not.toContain('Minified React error #418');
+  });
+
   test('api hi', async () => {
-    const res = await fetch(`http://localhost:${port}/api/hi`);
+    const res = await fetch(`http://localhost:${port}/hi`);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe('Hello from API!');
+  });
+
+  test('api hi with trailing slash', async () => {
+    const res = await fetch(`http://localhost:${port}/hi/`);
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('Hello from API!');
   });
 
   test('api hi.txt', async () => {
-    const res = await fetch(`http://localhost:${port}/api/hi.txt`);
+    const res = await fetch(`http://localhost:${port}/hi.txt`);
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('hello from a text file!');
   });
 
   test('api empty', async () => {
-    const res = await fetch(`http://localhost:${port}/api/empty`);
+    const res = await fetch(`http://localhost:${port}/empty`);
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('');
   });
 
   test('api hi with POST', async () => {
-    const res = await fetch(`http://localhost:${port}/api/hi`, {
+    const res = await fetch(`http://localhost:${port}/hi`, {
+      method: 'POST',
+      body: 'from the test!',
+    });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe('POST Hello from API! from the test!');
+  });
+
+  test('api hi with POST and trailing slash', async () => {
+    const res = await fetch(`http://localhost:${port}/hi/`, {
       method: 'POST',
       body: 'from the test!',
     });
@@ -88,18 +141,27 @@ test.describe(`fs-router`, async () => {
   });
 
   test('api has-default GET', async () => {
-    const res = await fetch(`http://localhost:${port}/api/has-default`);
+    const res = await fetch(`http://localhost:${port}/has-default`);
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('GET');
   });
 
   test('api has-default POST', async () => {
-    const res = await fetch(`http://localhost:${port}/api/has-default`, {
+    const res = await fetch(`http://localhost:${port}/has-default`, {
       method: 'POST',
       body: 'from the test!',
     });
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('default: POST');
+  });
+
+  test('api blog/rss.xml', async () => {
+    const res = await fetch(`http://localhost:${port}/blog/rss.xml`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Type')).toBe('application/xml');
+    const text = await res.text();
+    expect(text).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+    expect(text).toContain('<rss version="2.0">');
   });
 
   test('_components', async ({ page }) => {
@@ -109,19 +171,21 @@ test.describe(`fs-router`, async () => {
 
   test('alt click', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
     await page.click("a[href='/foo']", {
       button: 'right',
     });
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
     await page.click("a[href='/foo']", {
-      modifiers: ['Alt'],
+      modifiers: ['ControlOrMeta'],
     });
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
   });
 
-  test('encoded path', async ({ page }) => {
+  test('encoded path - space - dynamic', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
     await page.click("a[href='/nested/encoded%20path']");
     await expect(
       page.getByRole('heading', { name: 'Nested / encoded%20path' }),
@@ -132,6 +196,68 @@ test.describe(`fs-router`, async () => {
     ).toBeVisible();
   });
 
+  test('encoded path - space - static', async ({ page }) => {
+    await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
+    await page.click("a[href='/static-nested/encoded%20path']");
+    await expect(
+      page.getByRole('heading', { name: 'Nested / encoded%20path' }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(
+      page.getByRole('heading', { name: 'Nested / encoded%20path' }),
+    ).toBeVisible();
+  });
+
+  test('encoded path - unicode - dynamic', async ({ page }) => {
+    await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
+    await page.click("a[href='/nested/encoded%E6%B8%AC%E8%A9%A6path']");
+    await expect(
+      page.getByRole('heading', {
+        name: 'Nested / encoded%E6%B8%AC%E8%A9%A6path',
+      }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(
+      page.getByRole('heading', {
+        name: 'Nested / encoded%E6%B8%AC%E8%A9%A6path',
+      }),
+    ).toBeVisible();
+  });
+
+  test('encoded path - unicode - static', async ({ page }) => {
+    await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
+    await page.click("a[href='/static-nested/encoded%E6%B8%AC%E8%A9%A6path']");
+    await expect(
+      page.getByRole('heading', {
+        name: 'Nested / encoded%E6%B8%AC%E8%A9%A6path',
+      }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(
+      page.getByRole('heading', {
+        name: 'Nested / encoded%E6%B8%AC%E8%A9%A6path',
+      }),
+    ).toBeVisible();
+  });
+
+  test('check hydration error with unicode page', async ({ page }) => {
+    const messages: string[] = [];
+    page.on('console', (msg) => messages.push(msg.text()));
+    const errors: string[] = [];
+    page.on('pageerror', (err) => errors.push(err.message));
+    await page.goto(`http://localhost:${port}/%E4%B8%AD%E6%96%87`);
+    await waitForHydration(page);
+    await expect(
+      page.getByRole('heading', { name: '/%E4%B8%AD%E6%96%87' }),
+    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: '/中文' })).toBeHidden();
+    expect(messages.join('\n')).not.toContain('hydration-mismatch');
+    expect(errors.join('\n')).not.toContain('Minified React error #418');
+  });
+
   test('slices', async ({ page }) => {
     await page.goto(`http://localhost:${port}/page-with-slices`);
     await waitForHydration(page);
@@ -140,14 +266,32 @@ test.describe(`fs-router`, async () => {
     await expect(page.getByTestId('slice002')).toHaveText('Slice 002');
   });
 
+  test('segment route in group route', async ({ page }) => {
+    await page.goto(
+      `http://localhost:${port}/page-with-segment/introducing-waku`,
+    );
+    const heading = page.getByRole('heading', { name: 'introducing-waku' });
+    await expect(heading).toBeVisible();
+  });
+
+  test('segment route', async ({ page }) => {
+    await page.goto(
+      `http://localhost:${port}/page-with-segment/article/introducing-waku`,
+    );
+    const heading = page.getByRole('heading', { name: 'introducing-waku' });
+    await expect(heading).toBeVisible();
+  });
+
   test('css split', async ({ page }) => {
     // each ssr-ed page includes split css
     await page.goto(`http://localhost:${port}/css-split/page1`);
+    await waitForHydration(page);
     await expect(page.getByText('css-split / page1 / index')).toHaveCSS(
       'color',
       'rgb(255, 0, 0)', // red
     );
     await page.goto(`http://localhost:${port}/css-split/page1/nested`);
+    await waitForHydration(page);
     await expect(
       page.getByText('css-split / page1 / nested / index'),
     ).toHaveCSS(
@@ -155,11 +299,13 @@ test.describe(`fs-router`, async () => {
       'rgb(255, 0, 0)', // red
     );
     await page.goto(`http://localhost:${port}/css-split/page2`);
+    await waitForHydration(page);
     await expect(page.getByText('css-split / page2 / index')).toHaveCSS(
       'color',
       'rgb(0, 0, 255)', // blue
     );
     await page.goto(`http://localhost:${port}/css-split/page2/nested`);
+    await waitForHydration(page);
     await expect(
       page.getByText('css-split / page2 / nested / index'),
     ).toHaveCSS(
@@ -187,5 +333,49 @@ test.describe(`fs-router`, async () => {
       'color',
       'rgb(0, 0, 255)', // blue
     );
+  });
+
+  test('prefixed dynamic segment @[username]', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/@alice`);
+    await expect(
+      page.getByRole('heading', { name: 'Profile / alice' }),
+    ).toBeVisible();
+  });
+
+  test('prefixed dynamic segment @[username] with different value', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/@bob`);
+    await expect(
+      page.getByRole('heading', { name: 'Profile / bob' }),
+    ).toBeVisible();
+  });
+
+  test('static @foo takes priority over dynamic @[username]', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/@foo`);
+    await expect(
+      page.getByRole('heading', { name: 'Static Foo' }),
+    ).toBeVisible();
+  });
+
+  test('subroute', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/subroute`);
+    await expect(page.getByRole('heading', { name: 'Subroute' })).toBeVisible();
+  });
+
+  test('subroute catch-all', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/subroute/test`);
+    await expect(
+      page.getByRole('heading', { name: 'Subroute Catch-All: test' }),
+    ).toBeVisible();
+
+    await page.goto(`http://localhost:${port}/subroute/test/deep/path`);
+    await expect(
+      page.getByRole('heading', {
+        name: 'Subroute Catch-All: test/deep/path',
+      }),
+    ).toBeVisible();
   });
 });

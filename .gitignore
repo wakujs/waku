@@ -3,6 +3,7 @@
 node_modules
 dist
 /packages/waku/README.md
+/packages/website/.vercel
 /packages/create-waku/template
 .env.local
 .devcontainer

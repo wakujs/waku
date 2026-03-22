@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-
 import { MyFragment } from '@/components/MyFragment';
 
 export const Counter = () => {

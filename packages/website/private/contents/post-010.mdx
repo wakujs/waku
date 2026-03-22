@@ -1,7 +1,7 @@
 ---
 slug: fine-grained-router-components
 title: Fine-grained component render modes
-description: We’re extending the power of Waku Router.
+description: We're extending the power of Waku Router.
 author: tyler
 release: v0.23
 date: 2025/05/14
@@ -17,9 +17,9 @@ Page Parts allow for mixing `static` and `dynamic` rendering on the same page.
 
 ## Route Groups
 
-The path of a file inside the `pages` directory determines its route and the layouts it will have. One thing we knew we’d have to support is a way to group together layout combinations that allow for convenient composition independent of the route itself. This is where Route Groups come in.
+The path of a file inside the `pages` directory determines its route and the layouts it will have. One thing we knew we'd have to support is a way to group together layout combinations that allow for convenient composition independent of the route itself. This is where Route Groups come in.
 
-Let’s say you’d like to have a home page at `/`, but all other routes should share a layout which is not used on `/`. This is now possible by grouping those routes in a directory marked with parenthesis (e.g., `(some-group)`). An example file setup:
+Let's say you'd like to have a home page at `/`, but all other routes should share a layout which is not used on `/`. This is now possible by grouping those routes in a directory marked with parenthesis (e.g., `(some-group)`). An example file setup:
 
 ```
 ├── (some-group)
@@ -29,7 +29,7 @@ Let’s say you’d like to have a home page at `/`, but all other routes should
 └── index.tsx
 ```
 
-The composition capabilities that Route Groups unlock are really cool too! You could have some work you’d like to only occur for the layout at build time (`static`), then have more work that should be done for all routes at runtime (`dynamic`). This example could be setup like:
+The composition capabilities that Route Groups unlock are really cool too! You could have some work you'd like to only occur for the layout at build time (`static`), then have more work that should be done for all routes at runtime (`dynamic`). This example could be setup like:
 
 ```
 (some-group)
@@ -44,7 +44,7 @@ Layouts can essentially slot in anywhere and are great for components, state, or
 
 ## Page Parts
 
-Before Waku v0.23 a page was either all `static` or all `dynamic`. We’re now introducing the ability to compose pages like this:
+Before Waku v0.23 a page was either all `static` or all `dynamic`. We're now introducing the ability to compose pages like this:
 
 ```tsx
 // just an example to show the full component tree of a page with parts
@@ -90,8 +90,8 @@ export const getConfig = () => {
 
 The `order` here determines the order in which Banana is rendered on the `/foo` page. So in this case orange could have `order: 1` to be rendered next, and cherry could have `order: 2` to be last. Now the full route is assembled from the three parts.
 
-## There’s more to come
+## There's more to come
 
-Waku Router is built to be minimal and powerful. We’re really excited to see what you can build with Fine-Grained Component Render Modes. We’d love to hear from you on our [Discord server](https://discord.gg/MrQdmzd), [GitHub discussions](https://github.com/wakujs/waku/discussions), or [around](https://x.com/wakujs) [the](https://bsky.app/profile/daishikato.com) [web](https://fosstodon.org/@daishi).
+Waku Router is built to be minimal and powerful. We're really excited to see what you can build with Fine-Grained Component Render Modes. We'd love to hear from you on our [Discord server](https://discord.gg/MrQdmzd), [GitHub discussions](https://github.com/wakujs/waku/discussions), or [around](https://x.com/wakujs) [the](https://bsky.app/profile/daishikato.com) [web](https://fosstodon.org/@daishi).
 
 P.S., We have a [few more things](https://github.com/wakujs/waku/issues/24) coming soon!

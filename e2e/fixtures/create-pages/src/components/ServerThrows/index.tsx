@@ -1,5 +1,5 @@
-import { Counter } from './Counter.js';
 import { throws } from '../funcs.js';
+import { Counter } from './Counter.js';
 
 export function ServerThrows() {
   return (

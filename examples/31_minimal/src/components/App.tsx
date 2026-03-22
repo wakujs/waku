@@ -1,5 +1,4 @@
 import { Suspense } from 'react';
-
 import { Counter } from './Counter';
 
 const App = ({ name }: { name: string }) => {

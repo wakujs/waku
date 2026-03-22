@@ -1,6 +1,7 @@
 import '../index.css';
-import { Counter } from '../components/counter';
 import * as stylex from '@stylexjs/stylex';
+import { Counter } from '../components/counter';
+import { DevStyleXInject } from '../components/stylex-dev-injection';
 
 const styles = stylex.create({
   server: {
@@ -15,6 +16,7 @@ const styles = stylex.create({
 export default async function HomePage() {
   return (
     <div>
+      <DevStyleXInject />
       <title>Waku</title>
       <div {...stylex.props(styles.server)}>Server Style (green)</div>
       <div>

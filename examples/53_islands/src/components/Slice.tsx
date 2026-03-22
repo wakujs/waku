@@ -2,11 +2,10 @@
 
 import { use, useEffect } from 'react';
 import type { ReactNode } from 'react';
-
 import {
+  Slot,
   useElementsPromise_UNSTABLE as useElementsPromise,
   useRefetch,
-  Slot,
 } from 'waku/minimal/client';
 
 const getSliceSlotId = (id: string) => 'slice:' + id;

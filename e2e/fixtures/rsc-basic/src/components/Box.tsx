@@ -1,4 +1,4 @@
-import type { ReactNode, HTMLAttributes } from 'react';
+import type { HTMLAttributes, ReactNode } from 'react';
 
 export const ServerBox = ({
   children,

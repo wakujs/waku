@@ -1,6 +1,6 @@
-import { test, expect } from 'vitest';
-import { type Config, defineConfig } from '../src/config.js';
 import { expectType } from 'ts-expect';
+import { expect, test } from 'vitest';
+import { type Config, defineConfig } from '../src/config.js';
 
 // Absolutely meaningless unit and type test examples.
 // Only exist to proof that the frameworks are set up correctly.

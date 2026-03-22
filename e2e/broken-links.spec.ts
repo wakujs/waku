@@ -1,17 +1,18 @@
 import { expect } from '@playwright/test';
+import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
-import { test, prepareStandaloneSetup, waitForHydration } from './utils.js';
+const startApp = prepareNormalSetup('broken-links');
 
-const startApp = prepareStandaloneSetup('broken-links');
-
-test.describe(`broken-links: normal server`, async () => {
+test.describe('broken-links: normal server', () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
+
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
+
   test.afterAll(async () => {
-    await stopApp?.();
+    await stopApp();
   });
 
   test.describe('server side navigation', () => {
@@ -79,12 +80,14 @@ test.describe('broken-links: static server', () => {
 
   test.describe('client side navigation', () => {
     let port: number;
-    let stopApp: (() => Promise<void>) | undefined;
+    let stopApp: () => Promise<void>;
+
     test.beforeAll(async () => {
       ({ port, stopApp } = await startApp('STATIC'));
     });
+
     test.afterAll(async () => {
-      await stopApp?.();
+      await stopApp();
     });
 
     test('correct link', async ({ page }) => {
@@ -129,6 +132,7 @@ test.describe('broken-links: static server', () => {
 
     test('broken redirect', async ({ page }) => {
       await page.goto(`http://localhost:${port}`);
+      await waitForHydration(page);
       // Click on a link to a broken redirect
       await page.getByRole('link', { name: 'Broken redirect' }).click();
       // The page renders the custom 404.tsx
@@ -146,14 +150,16 @@ test.describe('broken-links: static server', () => {
   });
 });
 
-test.describe(`broken-links/dynamic-not-found`, async () => {
+test.describe('broken-links/dynamic-not-found', () => {
   let port: number;
-  let stopApp: (() => Promise<void>) | undefined;
+  let stopApp: () => Promise<void>;
+
   test.beforeAll(async ({ mode }) => {
     ({ port, stopApp } = await startApp(mode));
   });
+
   test.afterAll(async () => {
-    await stopApp?.();
+    await stopApp();
   });
 
   test('access sync page directly', async ({ page }) => {

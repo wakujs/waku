@@ -1,11 +1,15 @@
-import { test, describe, expect } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import {
-  encodeRscPath,
+  decodeFuncId,
   decodeRscPath,
   encodeFuncId,
-  decodeFuncId,
-} from '../src/lib/renderers/utils.js';
-import { encodeRoutePath, decodeRoutePath } from '../src/router/common.js';
+  encodeRscPath,
+} from '../src/lib/utils/rsc-path.js';
+import {
+  decodeRoutePath,
+  encodeRoutePath,
+  pathnameToRoutePath,
+} from '../src/router/common.js';
 
 describe('encodeRscPath', () => {
   test('encodes rscPath', () => {
@@ -16,10 +20,14 @@ describe('encodeRscPath', () => {
     expect(encodeRscPath('/foo/')).toBe('_/foo/_.txt');
   });
 
-  test('throws on invalid rscPath', () => {
-    expect(() => encodeRscPath('_foo')).toThrow();
-    expect(() => encodeRscPath('foo_')).toThrow();
-    expect(() => encodeRscPath('_foo_')).toThrow();
+  test('encodes rscPath with underscore at boundaries', () => {
+    expect(encodeRscPath('_foo')).toBe('__foo.txt');
+    expect(encodeRscPath('foo_')).toBe('foo__.txt');
+    expect(encodeRscPath('_foo_')).toBe('__foo__.txt');
+    expect(encodeRscPath('_')).toBe('___.txt');
+    expect(encodeRscPath('__')).toBe('____.txt');
+    expect(encodeRscPath('_/')).toBe('__/_.txt');
+    expect(encodeRscPath('/_')).toBe('_/__.txt');
   });
 });
 
@@ -32,6 +40,16 @@ describe('decodeRscPath', () => {
     expect(decodeRscPath('_/foo/_.txt')).toBe('/foo/');
   });
 
+  test('decodes rscPath with underscore at boundaries', () => {
+    expect(decodeRscPath('__foo.txt')).toBe('_foo');
+    expect(decodeRscPath('foo__.txt')).toBe('foo_');
+    expect(decodeRscPath('__foo__.txt')).toBe('_foo_');
+    expect(decodeRscPath('___.txt')).toBe('_');
+    expect(decodeRscPath('____.txt')).toBe('__');
+    expect(decodeRscPath('__/_.txt')).toBe('_/');
+    expect(decodeRscPath('_/__.txt')).toBe('/_');
+  });
+
   test('throws on invalid rscPath', () => {
     expect(() => decodeRscPath('foo')).toThrow();
   });
@@ -40,6 +58,10 @@ describe('decodeRscPath', () => {
 describe('encodeFuncId', () => {
   test('encodes funcId', () => {
     expect(encodeFuncId('foo#bar')).toBe('F/foo/bar');
+  });
+
+  test('encodes funcId with underscore prefix', () => {
+    expect(encodeFuncId('_foo#bar')).toBe('F/__foo/bar');
   });
 
   test('throws on invalid funcId', () => {
@@ -52,8 +74,26 @@ describe('decodeFuncId', () => {
     expect(decodeFuncId('F/foo/bar')).toBe('foo#bar');
   });
 
+  test('decodes funcId with underscore prefix', () => {
+    expect(decodeFuncId('F/__foo/bar')).toBe('_foo#bar');
+  });
+
   test('returns null on invalid funcId', () => {
     expect(decodeFuncId('foo/bar')).toBe(null);
+  });
+});
+
+describe('pathnameToRoutePath', () => {
+  test('canonicalizes trailing slash and index.html', () => {
+    expect(pathnameToRoutePath('/')).toBe('/');
+    expect(pathnameToRoutePath('/foo')).toBe('/foo');
+    expect(pathnameToRoutePath('/foo/')).toBe('/foo');
+    expect(pathnameToRoutePath('/index.html')).toBe('/');
+    expect(pathnameToRoutePath('/foo/index.html')).toBe('/foo');
+  });
+
+  test('throws on invalid pathname', () => {
+    expect(() => pathnameToRoutePath('foo')).toThrow();
   });
 });
 
@@ -67,6 +107,8 @@ describe('encodeRoutePath', () => {
   test('throws on invalid routePath', () => {
     expect(() => encodeRoutePath('foo')).toThrow();
     expect(() => encodeRoutePath('/foo/')).toThrow();
+    expect(() => encodeRoutePath('/index.html')).toThrow();
+    expect(() => encodeRoutePath('/foo/index.html')).toThrow();
   });
 });
 

@@ -1,5 +1,5 @@
-import { Slice } from './Slice';
 import { Counter } from './Counter';
+import { Slice } from './Slice';
 
 const App = ({ name }: { name: string }) => {
   return (

@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react';
-
-import { Menu } from '../components/menu';
-import { Fade } from '../components/fade';
 import { Credits } from '../components/credits';
+import { Fade } from '../components/fade';
+import { Menu } from '../components/menu';
 import { Scroll } from '../components/scroll';
 import { Navigation } from './navigation';
 
@@ -16,7 +15,7 @@ export const Page = async ({ isHome = false, children }: PageProps) => {
     <>
       <Menu />
       <Background />
-      <Fade always={!isHome} />
+      <Fade always={true} />
       <Navigation isHome={isHome} />
       <Main>{children}</Main>
       <Credits />

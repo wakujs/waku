@@ -7,3 +7,11 @@ packages:
 preferWorkspacePackages: true
 saveWorkspaceProtocol: true
 linkWorkspacePackages: true
+minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - '@vitejs/plugin-rsc'
+  - 'react'
+  - 'react-dom'
+  - 'react-server-dom-webpack'
+  - 'scheduler'
+  - 'waku-jotai'

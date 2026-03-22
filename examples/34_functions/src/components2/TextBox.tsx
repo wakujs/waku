@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-
 import { greet, hello } from './funcs2';
 
 export const TextBox = () => {

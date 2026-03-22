@@ -1,19 +1,28 @@
 // no "use server" detective
 
-import { ClientCounter, someConfigs } from './ClientCounter.js';
-import { ServerPing } from './ServerPing/index.js';
 import { ServerBox } from './Box.js';
-import { ServerProvider } from './ServerAction/Server.js';
+import { ClientCounter, someConfigs } from './ClientCounter.js';
 import { ClientActionsConsumer } from './ServerAction/Client.js';
+import { ServerProvider } from './ServerAction/Server.js';
+import { ServerPing } from './ServerPing/index.js';
 import { ServerThrows } from './ServerThrows/index.js';
 
-const App = ({ name, params }: { name: string; params: unknown }) => {
+const App = ({
+  name,
+  params,
+  metadata,
+}: {
+  name: string;
+  params: unknown;
+  metadata: string | undefined;
+}) => {
   return (
     <html>
       <head>
         <title>Waku example</title>
       </head>
       <body>
+        <p data-testid="build-metadata">{metadata}</p>
         <ServerBox>
           <p data-testid="app-name">{name}</p>
           <ClientCounter params={params} />
