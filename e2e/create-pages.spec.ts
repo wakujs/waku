@@ -260,7 +260,7 @@ test.describe(`create-pages`, () => {
     );
     await pendingSeen;
     await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 2');
-    const pendingSeen2= waitForSelectorSeen(page, PENDING_SELECTOR);
+    const pendingSeen2 = waitForSelectorSeen(page, PENDING_SELECTOR);
     await clickClientLink(page, '/long-suspense/3');
     await page.waitForFunction(
       ([pendingSel, sel]) => {
