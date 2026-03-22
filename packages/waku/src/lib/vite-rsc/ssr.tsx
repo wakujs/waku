@@ -24,6 +24,53 @@ type RenderHtmlStream = (
 type RscElementsPayload = Record<string, unknown>;
 type RscHtmlPayload = ReactNode;
 
+const createPendingPromise = () => {
+  let resolve!: () => void;
+  const promise = new Promise<void>((r) => {
+    resolve = r;
+  });
+  return [promise, resolve] as const;
+};
+
+const deferReadableStream = (
+  stream: ReadableStream<Uint8Array>,
+  promise: Promise<void>,
+) => {
+  const reader = stream.getReader();
+  let canceled = false;
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read();
+        if (done) {
+          await promise;
+          if (!canceled) {
+            controller.close();
+          }
+          reader.releaseLock();
+          return;
+        }
+        if (!canceled) {
+          controller.enqueue(value);
+        }
+      } catch (error) {
+        if (!canceled) {
+          controller.error(error);
+        }
+        reader.releaseLock();
+      }
+    },
+    async cancel(reason) {
+      canceled = true;
+      try {
+        await reader.cancel(reason);
+      } finally {
+        reader.releaseLock();
+      }
+    },
+  });
+};
+
 // This code runs on `ssr` environment,
 // i.e. it runs on server but without `react-server` condition.
 // These utilities are used by `rsc` environment through
@@ -35,6 +82,10 @@ export const renderHtmlStream: RenderHtmlStream = async (
   options,
 ) => {
   const [stream1, stream2] = rscStream.tee();
+  // React canary treats an early Flight close as a hard protocol failure.
+  // Keep the elements stream open until client-reference resolution finishes.
+  const [pendingPromise, resolvePending] = createPendingPromise();
+  const deferredStream1 = deferReadableStream(stream1, pendingPromise);
 
   let elementsPromise: Promise<RscElementsPayload>;
   let htmlPromise: Promise<RscHtmlPayload>;
@@ -44,7 +95,8 @@ export const renderHtmlStream: RenderHtmlStream = async (
     // RSC stream needs to be deserialized inside SSR component.
     // This is for ReactDomServer preinit/preload (e.g. client reference modulepreload, css)
     // https://github.com/facebook/react/pull/31799#discussion_r1886166075
-    elementsPromise ??= createFromReadableStream<RscElementsPayload>(stream1);
+    elementsPromise ??=
+      createFromReadableStream<RscElementsPayload>(deferredStream1);
     htmlPromise ??= createFromReadableStream<RscHtmlPayload>(rscHtmlStream);
     return (
       <INTERNAL_ServerRoot elementsPromise={elementsPromise}>
@@ -55,7 +107,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
 
   // render html
   const bootstrapScriptContent = await loadBootstrapScriptContent();
-  let htmlStream: ReadableStream;
+  let htmlStream: Awaited<ReturnType<typeof renderToReadableStream>>;
   let status: number | undefined;
   try {
     htmlStream = await renderToReadableStream(<SsrRoot />, {
@@ -81,7 +133,13 @@ export const renderHtmlStream: RenderHtmlStream = async (
       ...(options.nonce ? { nonce: options.nonce } : {}),
       ...(options.formState ? { formState: options.formState } : {}),
     });
+    // Temporary workaround: this doesn't feel ideal,
+    // but it is the only available signal we have for now.
+    // TODO The real fix would be a narrower hook from @vitejs/plugin-rsc
+    // for async client-reference resolution?
+    htmlStream.allReady.then(resolvePending, resolvePending);
   } catch (e) {
+    resolvePending();
     const info = getErrorInfo(e);
     if (info?.location) {
       // keep unstable_redirect error as http redirection
@@ -105,8 +163,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
       ...(options.nonce ? { nonce: options.nonce } : {}),
     });
   }
-  let responseStream: ReadableStream<Uint8Array> = htmlStream;
-  responseStream = responseStream.pipeThrough(
+  const responseStream: ReadableStream<Uint8Array> = htmlStream.pipeThrough(
     injectRSCPayload(
       batchReadableStream(stream2),
       options.nonce ? { nonce: options.nonce } : {},
