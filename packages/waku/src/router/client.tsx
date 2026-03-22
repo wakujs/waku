@@ -406,16 +406,12 @@ export function Link({
       const route = parseRoute(url);
       prefetchRoute(route);
       startTransitionFn(async () => {
-        try {
-          await changeRoute(route, {
-            shouldScroll: scroll ?? shouldScrollByDefault(url),
-            mode: 'push',
-            url,
-            unstable_startTransition: startTransitionFn,
-          });
-        } catch {
-          // Error already handled via setErr inside changeRoute
-        }
+        await changeRoute(route, {
+          shouldScroll: scroll ?? shouldScrollByDefault(url),
+          mode: 'push',
+          url,
+          unstable_startTransition: startTransitionFn,
+        });
       });
     }
   };
@@ -835,16 +831,6 @@ const InnerRouter = ({
     setPendingHistory(null);
   }, [initialRoute]);
   const [err, setErr] = useState<unknown>(null);
-  const [pendingScroll, setPendingScroll] = useState<{
-    pathChanged: boolean;
-  } | null>(null);
-  useLayoutEffect(() => {
-    if (pendingScroll) {
-      const { pathChanged } = pendingScroll;
-      const scrollBehavior: ScrollBehavior = pathChanged ? 'instant' : 'auto';
-      scrollToRoute(route, scrollBehavior, pathChanged);
-    }
-  }, [route, pendingScroll]);
   const [pendingHistory, setPendingHistory] = useState<{
     mode: 'push' | 'replace';
     url: URL | undefined;
@@ -859,6 +845,16 @@ const InnerRouter = ({
       }
     }
   }, [route, pendingHistory]);
+  const [pendingScroll, setPendingScroll] = useState<{
+    pathChanged: boolean;
+  } | null>(null);
+  useLayoutEffect(() => {
+    if (pendingScroll) {
+      const { pathChanged } = pendingScroll;
+      const scrollBehavior: ScrollBehavior = pathChanged ? 'instant' : 'auto';
+      scrollToRoute(route, scrollBehavior, pathChanged);
+    }
+  }, [route, pendingScroll]);
   // TODO(daishi): consider combining three or four useState hooks above.
 
   const [routeChangeEvents, emitRouteChangeEvent] =
@@ -935,8 +931,6 @@ const InnerRouter = ({
             writeUrlToHistory(mode, urlToWrite);
           }
           setErr(e);
-          setPendingScroll(null);
-          setPendingHistory(null);
           throw e;
         }
       }
