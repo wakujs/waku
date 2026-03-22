@@ -245,49 +245,49 @@ test.describe(`create-pages`, () => {
     const pendingSeen = waitForSelectorSeen(page, PENDING_SELECTOR);
     await clickClientLink(page, '/long-suspense/2');
     await page.waitForFunction(
-      () => {
+      ([pendingSel, sel]) => {
         const pathname = window.location.pathname;
-        const pendingElement = document.querySelector(PENDING_SELECTOR);
-        const heading = document.querySelector(SELECTOR);
+        const pendingElement = document.querySelector(pendingSel);
+        const heading = document.querySelector(sel);
         return (
           pendingElement?.textContent === 'Pending...' &&
           pathname === '/long-suspense/1' &&
           heading?.textContent === 'Long Suspense Page 1'
         );
       },
-      undefined,
+      [PENDING_SELECTOR, SELECTOR] as const,
       { timeout: 1000 },
     );
     await pendingSeen;
     await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 2');
     await clickClientLink(page, '/long-suspense/3');
     await page.waitForFunction(
-      () => {
+      (sel: string) => {
         const pathname = window.location.pathname;
-        const heading = document.querySelector(SELECTOR);
+        const heading = document.querySelector(sel);
         return (
           pathname === '/long-suspense/2' &&
           heading?.textContent === 'Long Suspense Page 2'
         );
       },
-      undefined,
+      SELECTOR,
       { timeout: 1000 },
     );
     await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 3');
     const pendingSeen2 = waitForSelectorSeen(page, PENDING_SELECTOR);
     await clickClientLink(page, '/long-suspense/2');
     await page.waitForFunction(
-      () => {
+      ([pendingSel, sel]) => {
         const pathname = window.location.pathname;
-        const pendingElement = document.querySelector(PENDING_SELECTOR);
-        const heading = document.querySelector(SELECTOR);
+        const pendingElement = document.querySelector(pendingSel);
+        const heading = document.querySelector(sel);
         return (
           pendingElement?.textContent === 'Pending...' &&
           pathname === '/long-suspense/3' &&
           heading?.textContent === 'Long Suspense Page 3'
         );
       },
-      undefined,
+      [PENDING_SELECTOR, SELECTOR] as const,
       { timeout: 1000 },
     );
     await pendingSeen2;
