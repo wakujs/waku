@@ -406,12 +406,16 @@ export function Link({
       const route = parseRoute(url);
       prefetchRoute(route);
       startTransitionFn(async () => {
-        await changeRoute(route, {
-          shouldScroll: scroll ?? shouldScrollByDefault(url),
-          mode: 'push',
-          url,
-          unstable_startTransition: startTransitionFn,
-        });
+        try {
+          await changeRoute(route, {
+            shouldScroll: scroll ?? shouldScrollByDefault(url),
+            mode: 'push',
+            url,
+            unstable_startTransition: startTransitionFn,
+          });
+        } catch {
+          // Error already handled via setErr inside changeRoute
+        }
       });
     }
   };
@@ -736,6 +740,14 @@ const scrollToRoute = (
   });
 };
 
+const writeUrlToHistory = (mode: 'push' | 'replace', url: URL) => {
+  if (mode === 'push') {
+    window.history.pushState(window.history.state, '', url);
+  } else {
+    window.history.replaceState(window.history.state, '', url);
+  }
+};
+
 const defaultRouteInterceptor = (route: RouteProps) => route;
 
 const InnerRouter = ({
@@ -818,6 +830,9 @@ const InnerRouter = ({
   useEffect(() => {
     routeRef.current = initialRoute;
     setRoute((prev) => (isSameRoute(prev, initialRoute) ? prev : initialRoute));
+    setErr(null);
+    setPendingScroll(null);
+    setPendingHistory(null);
   }, [initialRoute]);
   const [err, setErr] = useState<unknown>(null);
   const [pendingScroll, setPendingScroll] = useState<{
@@ -830,6 +845,21 @@ const InnerRouter = ({
       scrollToRoute(route, scrollBehavior, pathChanged);
     }
   }, [route, pendingScroll]);
+  const [pendingHistory, setPendingHistory] = useState<{
+    mode: 'push' | 'replace';
+    url: URL | undefined;
+    prevPathname: string;
+  } | null>(null);
+  useLayoutEffect(() => {
+    if (pendingHistory) {
+      const { mode, url, prevPathname } = pendingHistory;
+      const urlToWrite = url || getRouteUrl(route);
+      if (window.location.pathname === prevPathname) {
+        writeUrlToHistory(mode, urlToWrite);
+      }
+    }
+  }, [route, pendingHistory]);
+  // TODO(daishi): consider combining three or four useState hooks above.
 
   const [routeChangeEvents, emitRouteChangeEvent] =
     routeChangeListenersRef.current;
@@ -843,30 +873,12 @@ const InnerRouter = ({
       emitRouteChangeEvent('start', nextRoute);
       const startTransitionFn =
         options.unstable_startTransition || ((fn: TransitionFunction) => fn());
-      const historyPathnameBeforeChange = window.location.pathname;
-      const writeHistoryIfNeeded = (
-        mode: undefined | 'push' | 'replace',
-        url: false | URL | undefined,
-      ) => {
-        if (
-          mode &&
-          url &&
-          window.location.pathname === historyPathnameBeforeChange
-        ) {
-          if (mode === 'push') {
-            window.history.pushState(window.history.state, '', url);
-          } else {
-            window.history.replaceState(window.history.state, '', url);
-          }
-        }
-      };
+      const prevPathname = window.location.pathname;
       let { mode, url } = options;
-      const requestedUrlToWrite = mode && (url || getRouteUrl(nextRoute));
       const routeBeforeChange = routeRef.current;
       const shouldRefetch =
         options.refetch ?? !isSameRoute(nextRoute, routeBeforeChange);
       const pathChanged = isPathChange(nextRoute, routeBeforeChange);
-      setErr(null);
       if (!staticPathSetRef.current.has(nextRoute.path) && shouldRefetch) {
         const rscPath = encodeRoutePath(nextRoute.path);
         const rscParams = createRscParams(nextRoute.query);
@@ -915,24 +927,31 @@ const InnerRouter = ({
           if (isAborted()) {
             return;
           }
-          writeHistoryIfNeeded(mode, requestedUrlToWrite);
           routeChangeAbortRef.current = null;
+          // Write URL synchronously
+          // React may rollback transition state updates when the render throws
+          if (mode && window.location.pathname === prevPathname) {
+            const urlToWrite = url || getRouteUrl(nextRoute);
+            writeUrlToHistory(mode, urlToWrite);
+          }
           setErr(e);
+          setPendingScroll(null);
+          setPendingHistory(null);
           throw e;
         }
       }
       if (isAborted()) {
         return;
       }
-      const urlToWrite = mode && (url || getRouteUrl(nextRoute));
       startTransitionFn(() => {
         if (isAborted()) {
           return;
         }
-        writeHistoryIfNeeded(mode, urlToWrite);
         routeRef.current = nextRoute;
         setRoute(nextRoute);
+        setErr(null);
         setPendingScroll(options.shouldScroll ? { pathChanged } : null);
+        setPendingHistory(mode ? { mode, url, prevPathname } : null);
         routeChangeAbortRef.current = null;
         emitRouteChangeEvent('complete', nextRoute);
       });

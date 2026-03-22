@@ -260,21 +260,25 @@ test.describe(`create-pages`, () => {
     );
     await pendingSeen;
     await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 2');
+    const pendingSeen2= waitForSelectorSeen(page, PENDING_SELECTOR);
     await clickClientLink(page, '/long-suspense/3');
     await page.waitForFunction(
-      (sel: string) => {
+      ([pendingSel, sel]) => {
         const pathname = window.location.pathname;
+        const pendingElement = document.querySelector(pendingSel);
         const heading = document.querySelector(sel);
         return (
+          pendingElement?.textContent === 'Pending...' &&
           pathname === '/long-suspense/2' &&
           heading?.textContent === 'Long Suspense Page 2'
         );
       },
-      SELECTOR,
+      [PENDING_SELECTOR, SELECTOR] as const,
       { timeout: 1000 },
     );
+    await pendingSeen2;
     await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 3');
-    const pendingSeen2 = waitForSelectorSeen(page, PENDING_SELECTOR);
+    const pendingSeen3 = waitForSelectorSeen(page, PENDING_SELECTOR);
     await clickClientLink(page, '/long-suspense/2');
     await page.waitForFunction(
       ([pendingSel, sel]) => {
@@ -290,7 +294,7 @@ test.describe(`create-pages`, () => {
       [PENDING_SELECTOR, SELECTOR] as const,
       { timeout: 1000 },
     );
-    await pendingSeen2;
+    await pendingSeen3;
     await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 2');
   });
 
