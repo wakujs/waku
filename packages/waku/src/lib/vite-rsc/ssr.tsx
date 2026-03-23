@@ -95,13 +95,12 @@ export const renderHtmlStream: RenderHtmlStream = async (
       ...(options.nonce ? { nonce: options.nonce } : {}),
       ...(options.formState ? { formState: options.formState } : {}),
     });
-    // Temporary workaround: this doesn't feel ideal,
-    // but it is the only available signal we have for now.
-    // TODO The real fix would be a narrower hook from @vitejs/plugin-rsc
+    // Temporary workaround: this isn't ideal.
+    // TODO The real fix would be a proper signal from @vitejs/plugin-rsc
     // for async client-reference resolution?
-    htmlStream.allReady.then(resolvePending, resolvePending);
+    setTimeout(resolvePending, 500);
   } catch (e) {
-    resolvePending();
+    setTimeout(resolvePending, 500);
     const info = getErrorInfo(e);
     if (info?.location) {
       // keep unstable_redirect error as http redirection
