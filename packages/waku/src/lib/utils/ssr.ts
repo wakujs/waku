@@ -20,7 +20,7 @@ const createPrefetchedEntry = (debugId: string | undefined) =>
           } else {
             c.close();
           }
-        }, 500);
+        }, 1200);
       }
     }))),
     ${debugId ? `${KEY_DEBUG_ID}: ${JSON.stringify(debugId)},` : ''}

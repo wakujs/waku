@@ -98,9 +98,9 @@ export const renderHtmlStream: RenderHtmlStream = async (
     // Temporary workaround: this isn't ideal.
     // TODO The real fix would be a proper signal from @vitejs/plugin-rsc
     // for async client-reference resolution?
-    setTimeout(resolvePending, 500);
+    setTimeout(resolvePending, 1200);
   } catch (e) {
-    setTimeout(resolvePending, 500);
+    setTimeout(resolvePending, 1200);
     const info = getErrorInfo(e);
     if (info?.location) {
       // keep unstable_redirect error as http redirection
