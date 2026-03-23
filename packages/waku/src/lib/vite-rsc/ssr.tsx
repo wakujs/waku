@@ -7,7 +7,7 @@ import fallbackHtml from 'virtual:vite-rsc-waku/fallback-html';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
 import { getBootstrapPreamble } from '../utils/ssr.js';
-import { batchReadableStream } from '../utils/stream.js';
+import { batchReadableStream, deferReadableStream } from '../utils/stream.js';
 
 type RenderHtmlStream = (
   rscStream: ReadableStream<Uint8Array>,
@@ -32,45 +32,6 @@ const createPendingPromise = () => {
   return [promise, resolve] as const;
 };
 
-const deferReadableStream = (
-  stream: ReadableStream<Uint8Array>,
-  promise: Promise<void>,
-) => {
-  const reader = stream.getReader();
-  let canceled = false;
-  return new ReadableStream<Uint8Array>({
-    async pull(controller) {
-      try {
-        const { done, value } = await reader.read();
-        if (done) {
-          await promise;
-          if (!canceled) {
-            controller.close();
-          }
-          reader.releaseLock();
-          return;
-        }
-        if (!canceled) {
-          controller.enqueue(value);
-        }
-      } catch (error) {
-        if (!canceled) {
-          controller.error(error);
-        }
-        reader.releaseLock();
-      }
-    },
-    async cancel(reason) {
-      canceled = true;
-      try {
-        await reader.cancel(reason);
-      } finally {
-        reader.releaseLock();
-      }
-    },
-  });
-};
-
 // This code runs on `ssr` environment,
 // i.e. it runs on server but without `react-server` condition.
 // These utilities are used by `rsc` environment through
@@ -83,7 +44,8 @@ export const renderHtmlStream: RenderHtmlStream = async (
 ) => {
   const [stream1, stream2] = rscStream.tee();
   // React canary treats an early Flight close as a hard protocol failure.
-  // Keep the elements stream open until client-reference resolution finishes.
+  // Keep the elements stream open until Fizz finishes resolving the HTML
+  // shell, including async client-reference preloads.
   const [pendingPromise, resolvePending] = createPendingPromise();
   const deferredStream1 = deferReadableStream(stream1, pendingPromise);
 

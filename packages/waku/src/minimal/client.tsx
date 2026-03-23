@@ -119,6 +119,7 @@ type FetchRscStore = {
 
 const defaultFetchRscStore: FetchRscStore = {};
 
+// XXX some of these keys are used in packages/waku/src/lib/utils/ssr.ts.
 const KEY_RESPONSE = 'r';
 const KEY_CLIENT_PREFETCHED = 'c';
 const KEY_RSC_PARAMS = 'p';
@@ -453,8 +454,12 @@ export const INTERNAL_ServerRoot = ({
   elementsPromise: Promise<Elements>;
   children: ReactNode;
 }) => (
-  <ElementsContext value={elementsPromise}>
-    {DEFAULT_HTML_HEAD}
-    {children}
-  </ElementsContext>
+  <FetchRscStoreContext value={{}}>
+    <RefetchContext value={async () => ({})}>
+      <ElementsContext value={elementsPromise}>
+        {DEFAULT_HTML_HEAD}
+        {children}
+      </ElementsContext>
+    </RefetchContext>
+  </FetchRscStoreContext>
 );
