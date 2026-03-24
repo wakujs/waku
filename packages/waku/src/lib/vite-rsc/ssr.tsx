@@ -35,6 +35,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
   options,
 ) => {
   const [stream1, stream2] = rscStream.tee();
+
   let elementsPromise: Promise<RscElementsPayload>;
   let htmlPromise: Promise<RscHtmlPayload>;
 
