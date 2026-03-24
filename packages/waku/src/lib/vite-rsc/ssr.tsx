@@ -7,7 +7,7 @@ import fallbackHtml from 'virtual:vite-rsc-waku/fallback-html';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
 import { getBootstrapPreamble } from '../utils/ssr.js';
-import { batchReadableStream, deferReadableStream } from '../utils/stream.js';
+import { batchReadableStream } from '../utils/stream.js';
 
 type RenderHtmlStream = (
   rscStream: ReadableStream<Uint8Array>,
@@ -24,14 +24,6 @@ type RenderHtmlStream = (
 type RscElementsPayload = Record<string, unknown>;
 type RscHtmlPayload = ReactNode;
 
-const createPendingPromise = () => {
-  let resolve!: () => void;
-  const promise = new Promise<void>((r) => {
-    resolve = r;
-  });
-  return [promise, resolve] as const;
-};
-
 // This code runs on `ssr` environment,
 // i.e. it runs on server but without `react-server` condition.
 // These utilities are used by `rsc` environment through
@@ -43,12 +35,6 @@ export const renderHtmlStream: RenderHtmlStream = async (
   options,
 ) => {
   const [stream1, stream2] = rscStream.tee();
-  // React canary treats an early Flight close as a hard protocol failure.
-  // Keep the elements stream open until Fizz finishes resolving the HTML
-  // shell, including async client-reference preloads.
-  const [pendingPromise, resolvePending] = createPendingPromise();
-  const deferredStream1 = deferReadableStream(stream1, pendingPromise);
-
   let elementsPromise: Promise<RscElementsPayload>;
   let htmlPromise: Promise<RscHtmlPayload>;
 
@@ -57,8 +43,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
     // RSC stream needs to be deserialized inside SSR component.
     // This is for ReactDomServer preinit/preload (e.g. client reference modulepreload, css)
     // https://github.com/facebook/react/pull/31799#discussion_r1886166075
-    elementsPromise ??=
-      createFromReadableStream<RscElementsPayload>(deferredStream1);
+    elementsPromise ??= createFromReadableStream<RscElementsPayload>(stream1);
     htmlPromise ??= createFromReadableStream<RscHtmlPayload>(rscHtmlStream);
     return (
       <INTERNAL_ServerRoot elementsPromise={elementsPromise}>
@@ -95,12 +80,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
       ...(options.nonce ? { nonce: options.nonce } : {}),
       ...(options.formState ? { formState: options.formState } : {}),
     });
-    // Temporary workaround: this isn't ideal.
-    // TODO The real fix would be a proper signal from @vitejs/plugin-rsc
-    // for async client-reference resolution?
-    setTimeout(resolvePending, 1200);
   } catch (e) {
-    setTimeout(resolvePending, 1200);
     const info = getErrorInfo(e);
     if (info?.location) {
       // keep unstable_redirect error as http redirection

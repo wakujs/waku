@@ -15,3 +15,5 @@ minimumReleaseAgeExclude:
   - 'react-server-dom-webpack'
   - 'scheduler'
   - 'waku-jotai'
+patchedDependencies:
+  '@vitejs/plugin-rsc@0.5.19': patches/@vitejs__plugin-rsc@0.5.19.patch
