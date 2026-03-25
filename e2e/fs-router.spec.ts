@@ -266,6 +266,14 @@ test.describe('fs-router', () => {
     await expect(page.getByTestId('slice002')).toHaveText('Slice 002');
   });
 
+  test('slug slices', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/page-with-slices`);
+    await waitForHydration(page);
+    await expect(page.getByTestId('dynamic-slice')).toHaveText(
+      'Dynamic Slice: test123',
+    );
+  });
+
   test('segment route in group route', async ({ page }) => {
     await page.goto(
       `http://localhost:${port}/page-with-segment/introducing-waku`,

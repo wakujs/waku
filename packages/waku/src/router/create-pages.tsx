@@ -210,7 +210,7 @@ export type CreateApi = <Path extends string>(
 export type CreateSlice = <ID extends string>(slice: {
   render: 'static' | 'dynamic';
   id: ID;
-  component: FunctionComponent<{ children: ReactNode }>;
+  component: FunctionComponent<any>;
 }) => void;
 
 type RootItem = {
@@ -904,18 +904,23 @@ export const createPages = <
         },
       );
 
-      const sliceConfigs = Array.from(sliceIdMap).map(([id, { isStatic }]) => ({
-        type: 'slice' as const,
-        id,
-        isStatic,
-        renderer: async () => {
-          const slice = sliceIdMap.get(id);
-          if (!slice) {
-            throw new Error('Slice not found: ' + id);
-          }
-          return <slice.component />;
-        },
-      }));
+      const sliceConfigs = Array.from(sliceIdMap).map(([id, { isStatic }]) => {
+        const slicePathSpec = parsePathWithSlug(id);
+        const hasSlug = slicePathSpec.some((s) => s.type !== 'literal');
+        return {
+          type: 'slice' as const,
+          id,
+          ...(hasSlug ? { pathSpec: slicePathSpec } : {}),
+          isStatic,
+          renderer: async (params?: Record<string, string | string[]>) => {
+            const slice = sliceIdMap.get(id);
+            if (!slice) {
+              throw new Error('Slice not found: ' + id);
+            }
+            return <slice.component {...params} />;
+          },
+        };
+      });
 
       const pathConfigs = [...routeConfigs, ...apiConfigs]
         // Sort routes by priority: "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
