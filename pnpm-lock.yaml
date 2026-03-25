@@ -4,11 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-patchedDependencies:
-  '@vitejs/plugin-rsc@0.5.19':
-    hash: 3e2b2db6f6417414932268f97009d48ef61fc49e8ea644df0eb8be606611acd0
-    path: patches/@vitejs__plugin-rsc@0.5.19.patch
-
 importers:
 
   .:
@@ -1841,7 +1836,7 @@ importers:
         version: 5.1.0(vite@7.3.1(@types/node@25.3.2)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.19.4)(yaml@2.8.2))
       '@vitejs/plugin-rsc':
         specifier: ^0.5.19
-        version: 0.5.19(patch_hash=3e2b2db6f6417414932268f97009d48ef61fc49e8ea644df0eb8be606611acd0)(react-dom@19.2.4(react@19.2.4))(react-server-dom-webpack@19.2.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.99.9(@swc/core@1.15.3(@swc/helpers@0.5.19))))(react@19.2.4)(vite@7.3.1(@types/node@25.3.2)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.19.4)(yaml@2.8.2))
+        version: 0.5.19(react-dom@19.2.4(react@19.2.4))(react-server-dom-webpack@19.2.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.99.9(@swc/core@1.15.3(@swc/helpers@0.5.19))))(react@19.2.4)(vite@7.3.1(@types/node@25.3.2)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.19.4)(yaml@2.8.2))
       dotenv:
         specifier: ^17.3.1
         version: 17.3.1
@@ -8354,7 +8349,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vitejs/plugin-rsc@0.5.19(patch_hash=3e2b2db6f6417414932268f97009d48ef61fc49e8ea644df0eb8be606611acd0)(react-dom@19.2.4(react@19.2.4))(react-server-dom-webpack@19.2.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.99.9(@swc/core@1.15.3(@swc/helpers@0.5.19))))(react@19.2.4)(vite@7.3.1(@types/node@25.3.2)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.19.4)(yaml@2.8.2))':
+  '@vitejs/plugin-rsc@0.5.19(react-dom@19.2.4(react@19.2.4))(react-server-dom-webpack@19.2.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.99.9(@swc/core@1.15.3(@swc/helpers@0.5.19))))(react@19.2.4)(vite@7.3.1(@types/node@25.3.2)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.19.4)(yaml@2.8.2))':
     dependencies:
       '@rolldown/pluginutils': 1.0.0-rc.2
       es-module-lexer: 2.0.0

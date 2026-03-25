@@ -1,12 +1,14 @@
 // These constants are defined in packages/waku/src/minimal/client.tsx.
 // TODO(daishi): We should avoid duplicating definitions.
 const KEY_RESPONSE = 'r';
+const KEY_CLOSE = 'x';
 const KEY_DEBUG_ID = 'd';
 
 const createPrefetchedEntry = (debugId: string | undefined) =>
   `
-  {
-    ${KEY_RESPONSE}: Promise.resolve(new Response(new ReadableStream({
+  (() => {
+    const e = {};
+    e.${KEY_RESPONSE} = Promise.resolve(new Response(new ReadableStream({
       start(c) {
         const d = (window.__FLIGHT_DATA ||= []);
         const t = new TextEncoder();
@@ -14,17 +16,12 @@ const createPrefetchedEntry = (debugId: string | undefined) =>
         d.forEach(f);
         d.length = 0;
         d.push = f;
-        setTimeout(() => {
-          if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => c.close());
-          } else {
-            c.close();
-          }
-        }, 1200);
+        e.${KEY_CLOSE} = () => c.close();
       }
-    }))),
-    ${debugId ? `${KEY_DEBUG_ID}: ${JSON.stringify(debugId)},` : ''}
-  }
+    })));
+    ${debugId ? `e.${KEY_DEBUG_ID} = ${JSON.stringify(debugId)};` : ''}
+    return e;
+  })()
 `
     .split('\n')
     .map((line) => line.trim())
