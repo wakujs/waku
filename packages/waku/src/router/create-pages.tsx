@@ -210,7 +210,7 @@ export type CreateApi = <Path extends string>(
 export type CreateSlice = <ID extends string>(slice: {
   render: 'static' | 'dynamic';
   id: ID;
-  component: FunctionComponent<any>;
+  component: FunctionComponent<{ children: ReactNode }>;
 }) => void;
 
 type RootItem = {
