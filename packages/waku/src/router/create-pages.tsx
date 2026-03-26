@@ -207,10 +207,17 @@ export type CreateApi = <Path extends string>(
       },
 ) => void;
 
+type SlugPropsFromId<ID extends string> =
+  GetSlugs<`/${ID}`> extends never[]
+    ? {}
+    : GetSlugs<`/${ID}`> extends string[]
+      ? { [K in GetSlugs<`/${ID}`>[number]]: string }
+      : {};
+
 export type CreateSlice = <ID extends string>(slice: {
   render: 'static' | 'dynamic';
   id: ID;
-  component: FunctionComponent<{ children: ReactNode }>;
+  component: FunctionComponent<{ children: ReactNode } & SlugPropsFromId<ID>>;
 }) => void;
 
 type RootItem = {
