@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import {
   base64ToStream,
   batchReadableStream,
+  bytesToStream,
   consumeMultiplexedStream,
   produceMultiplexedStream,
   streamToBase64,
@@ -118,6 +119,37 @@ describe('streamToBase64/base64ToStream', () => {
     const base64 = btoa(String.fromCharCode(...bytes));
     const decoded = concatUint8(await readAllChunks(base64ToStream(base64)));
     expect(Array.from(decoded)).toEqual(Array.from(bytes));
+  });
+});
+
+describe('bytesToStream', () => {
+  test('creates a stream from bytes', async () => {
+    const input = toUint8('hello world');
+    const stream = bytesToStream(input);
+    const output = concatUint8(await readAllChunks(stream));
+    expect(Array.from(output)).toEqual(Array.from(input));
+  });
+
+  test('handles full-range binary bytes', async () => {
+    const bytes = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) {
+      bytes[i] = i;
+    }
+    const stream = bytesToStream(bytes);
+    const decoded = concatUint8(await readAllChunks(stream));
+    expect(Array.from(decoded)).toEqual(Array.from(bytes));
+  });
+
+  test('creates independent streams from same bytes', async () => {
+    const bytes = toUint8('shared data');
+    const stream1 = bytesToStream(bytes);
+    const stream2 = bytesToStream(bytes);
+
+    const result1 = concatUint8(await readAllChunks(stream1));
+    const result2 = concatUint8(await readAllChunks(stream2));
+
+    expect(dec.decode(result1)).toBe('shared data');
+    expect(dec.decode(result2)).toBe('shared data');
   });
 });
 

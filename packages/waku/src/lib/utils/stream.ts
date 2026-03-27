@@ -37,6 +37,14 @@ export const base64ToStream = (base64: string): ReadableStream => {
   return new Blob([bytes]).stream();
 };
 
+export const bytesToStream = (bytes: Uint8Array): ReadableStream =>
+  new ReadableStream({
+    start(controller) {
+      controller.enqueue(bytes);
+      controller.close();
+    },
+  });
+
 function concatUint8Array(chunks: readonly Uint8Array[]): Uint8Array {
   if (chunks.length === 1) {
     return chunks[0]!;

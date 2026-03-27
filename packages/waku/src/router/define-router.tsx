@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
 import { getPathMapping, path2regexp } from '../lib/utils/path.js';
 import type { PathSpec } from '../lib/utils/path.js';
-import { base64ToStream, streamToBase64 } from '../lib/utils/stream.js';
+import { bytesToStream, streamToBase64 } from '../lib/utils/stream.js';
 import { createTaskRunner } from '../lib/utils/task-runner.js';
 import { unstable_defineHandlers as defineHandlers } from '../minimal/server.js';
 import { unstable_getContext as getContext } from '../server.js';
@@ -406,7 +406,10 @@ export function unstable_defineRouter(fns: {
   type HandleRequest = Parameters<typeof defineHandlers>[0]['handleRequest'];
   type HandleBuild = Parameters<typeof defineHandlers>[0]['handleBuild'];
 
-  const cachedElementsForRequest = new Map<SlotId, Promise<ReactNode>>();
+  // Cache serialized RSC bytes instead of promises to avoid cross-request
+  // promise sharing issues in Cloudflare Workers (workerd runtime).
+  // Each request deserializes the bytes into a fresh promise.
+  const cachedElementsForRequest = new Map<SlotId, Uint8Array>();
   let cachedElementsForRequestInitialized = false;
   let cachedPath2moduleIds: Record<string, string[]> | undefined;
 
@@ -414,17 +417,32 @@ export function unstable_defineRouter(fns: {
     input,
     { renderRsc, renderRscForParse, parseRsc, renderHtml, loadBuildMetadata },
   ): Promise<ReadableStream | Response | 'fallback' | null | undefined> => {
-    const getCachedElement = (id: SlotId) => cachedElementsForRequest.get(id);
-    const setCachedElement = (id: SlotId, element: ReactNode) => {
-      const cached = cachedElementsForRequest.get(id);
-      if (cached) {
-        return cached;
+    const getCachedElement = (id: SlotId) => {
+      const cachedBytes = cachedElementsForRequest.get(id);
+      if (!cachedBytes) {
+        return undefined;
       }
-      const copied = renderRscForParse({ [id]: element }).then((rscStream) =>
-        parseRsc(rscStream).then((parsed) => parsed[id]),
+      // Create a fresh stream and parse within this request's context
+      return parseRsc(bytesToStream(cachedBytes)).then(
+        (parsed) => parsed[id],
       ) as Promise<ReactNode>;
-      cachedElementsForRequest.set(id, copied);
-      return copied;
+    };
+    const setCachedElement = async (id: SlotId, element: ReactNode) => {
+      const cachedBytes = cachedElementsForRequest.get(id);
+      if (cachedBytes) {
+        // Already cached, just deserialize for this request
+        return parseRsc(bytesToStream(cachedBytes)).then(
+          (parsed) => parsed[id],
+        ) as Promise<ReactNode>;
+      }
+      // Render to RSC bytes and cache them
+      const rscStream = await renderRscForParse({ [id]: element });
+      const bytes = new Uint8Array(await new Response(rscStream).arrayBuffer());
+      cachedElementsForRequest.set(id, bytes);
+      // Deserialize from the cached bytes for this request
+      return parseRsc(bytesToStream(bytes)).then(
+        (parsed) => parsed[id],
+      ) as Promise<ReactNode>;
     };
     if (!cachedElementsForRequestInitialized) {
       cachedElementsForRequestInitialized = true;
@@ -434,12 +452,11 @@ export function unstable_defineRouter(fns: {
       if (cachedElementsMetadata) {
         Object.entries(JSON.parse(cachedElementsMetadata)).forEach(
           ([id, str]) => {
-            cachedElementsForRequest.set(
-              id,
-              parseRsc(base64ToStream(str as string)).then(
-                (parsed) => parsed[id],
-              ) as Promise<ReactNode>,
+            // Decode base64 to bytes and store in cache
+            const bytes = Uint8Array.from(atob(str as string), (c) =>
+              c.charCodeAt(0),
             );
+            cachedElementsForRequest.set(id, bytes);
           },
         );
       }
