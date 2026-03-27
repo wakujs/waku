@@ -244,11 +244,57 @@ test.describe(`create-pages`, () => {
     ).toBeVisible();
     const pendingSeen = waitForSelectorSeen(page, PENDING_SELECTOR);
     await clickClientLink(page, '/long-suspense/2');
+    await page.waitForFunction(
+      ([pendingSel, sel]) => {
+        const pathname = window.location.pathname;
+        const pendingElement = document.querySelector(pendingSel);
+        const heading = document.querySelector(sel);
+        return (
+          pendingElement?.textContent === 'Pending...' &&
+          pathname === '/long-suspense/1' &&
+          heading?.textContent === 'Long Suspense Page 1'
+        );
+      },
+      [PENDING_SELECTOR, SELECTOR] as const,
+      { timeout: 1000 },
+    );
     await pendingSeen;
     await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 2');
+    const pendingSeen2 = waitForSelectorSeen(page, PENDING_SELECTOR);
     await clickClientLink(page, '/long-suspense/3');
+    await page.waitForFunction(
+      ([pendingSel, sel]) => {
+        const pathname = window.location.pathname;
+        const pendingElement = document.querySelector(pendingSel);
+        const heading = document.querySelector(sel);
+        return (
+          pendingElement?.textContent === 'Pending...' &&
+          pathname === '/long-suspense/2' &&
+          heading?.textContent === 'Long Suspense Page 2'
+        );
+      },
+      [PENDING_SELECTOR, SELECTOR] as const,
+      { timeout: 1000 },
+    );
+    await pendingSeen2;
     await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 3');
+    const pendingSeen3 = waitForSelectorSeen(page, PENDING_SELECTOR);
     await clickClientLink(page, '/long-suspense/2');
+    await page.waitForFunction(
+      ([pendingSel, sel]) => {
+        const pathname = window.location.pathname;
+        const pendingElement = document.querySelector(pendingSel);
+        const heading = document.querySelector(sel);
+        return (
+          pendingElement?.textContent === 'Pending...' &&
+          pathname === '/long-suspense/3' &&
+          heading?.textContent === 'Long Suspense Page 3'
+        );
+      },
+      [PENDING_SELECTOR, SELECTOR] as const,
+      { timeout: 1000 },
+    );
+    await pendingSeen3;
     await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 2');
   });
 
