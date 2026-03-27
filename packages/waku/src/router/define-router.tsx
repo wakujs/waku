@@ -481,7 +481,7 @@ export function unstable_defineRouter(fns: {
     if (input.type === 'component') {
       const sliceId = decodeSliceId(input.rscPath);
       if (sliceId !== null) {
-        // LIMITATION: This is a signle slice request.
+        // LIMITATION: This is a single slice request.
         // Ideally, we should be able to respond with multiple slices in one request.
         const myConfig = await getMyConfig();
         let sliceConfig: SliceConfig | undefined;
