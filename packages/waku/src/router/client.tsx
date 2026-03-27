@@ -734,7 +734,8 @@ const scrollToRoute = (
       Number.parseFloat(window.getComputedStyle(element).scrollMarginTop) || 0;
     window.scrollTo({
       left: 0,
-      top: element.getBoundingClientRect().top + window.scrollY - scrollMarginTop,
+      top:
+        element.getBoundingClientRect().top + window.scrollY - scrollMarginTop,
       behavior,
     });
     return;
