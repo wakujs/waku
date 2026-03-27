@@ -119,6 +119,7 @@ type FetchRscStore = {
 
 const defaultFetchRscStore: FetchRscStore = {};
 
+// XXX some of these keys are used in packages/waku/src/lib/utils/ssr.ts.
 const KEY_RESPONSE = 'r';
 const KEY_CLIENT_PREFETCHED = 'c';
 const KEY_RSC_PARAMS = 'p';

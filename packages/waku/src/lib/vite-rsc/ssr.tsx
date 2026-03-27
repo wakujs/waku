@@ -55,7 +55,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
 
   // render html
   const bootstrapScriptContent = await loadBootstrapScriptContent();
-  let htmlStream: ReadableStream;
+  let htmlStream: Awaited<ReturnType<typeof renderToReadableStream>>;
   let status: number | undefined;
   try {
     htmlStream = await renderToReadableStream(<SsrRoot />, {
@@ -105,8 +105,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
       ...(options.nonce ? { nonce: options.nonce } : {}),
     });
   }
-  let responseStream: ReadableStream<Uint8Array> = htmlStream;
-  responseStream = responseStream.pipeThrough(
+  const responseStream: ReadableStream<Uint8Array> = htmlStream.pipeThrough(
     injectRSCPayload(
       batchReadableStream(stream2),
       options.nonce ? { nonce: options.nonce } : {},
