@@ -45,7 +45,7 @@ export function mainPlugin(config: Required<Config>): Plugin {
         environments: {
           client: {
             build: {
-              rollupOptions: {
+              rolldownOptions: {
                 input: {
                   index: path.join(
                     __dirname,
@@ -64,7 +64,7 @@ export function mainPlugin(config: Required<Config>): Plugin {
           },
           ssr: {
             build: {
-              rollupOptions: {
+              rolldownOptions: {
                 input: {
                   index: path.join(__dirname, '../vite-entries/entry.ssr.js'),
                 },
@@ -73,7 +73,7 @@ export function mainPlugin(config: Required<Config>): Plugin {
           },
           rsc: {
             build: {
-              rollupOptions: {
+              rolldownOptions: {
                 input: {
                   index: path.join(
                     __dirname,
@@ -136,7 +136,7 @@ export function mainPlugin(config: Required<Config>): Plugin {
     async configureServer(server) {
       const { getRequestListener } = await import('@hono/node-server');
       const environment = server.environments.rsc! as RunnableDevEnvironment;
-      const entryId = (environment.config.build.rollupOptions.input as any)
+      const entryId = (environment.config.build.rolldownOptions.input as any)
         .index;
       return () => {
         server.middlewares.use(async (req, res, next) => {
