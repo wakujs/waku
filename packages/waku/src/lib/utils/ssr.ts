@@ -16,7 +16,13 @@ const createPrefetchedEntry = (debugId: string | undefined) =>
         d.forEach(f);
         d.length = 0;
         d.push = f;
-        e.${KEY_CLOSE} = () => c.close();
+        e.${KEY_CLOSE} = () => {
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => c.close());
+          } else {
+            c.close();
+          }
+        };
       }
     })));
     ${debugId ? `e.${KEY_DEBUG_ID} = ${JSON.stringify(debugId)};` : ''}

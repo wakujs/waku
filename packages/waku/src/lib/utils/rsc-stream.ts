@@ -1,100 +1,139 @@
-function collectFlightChunks(root: unknown): Array<{ status: string }> {
-  const seen = new Set();
-  const chunks: Array<{ status: string }> = [];
-  const stack: unknown[] = [root];
+type AnyFunction = (...args: unknown[]) => unknown;
+
+type FlightChunk = {
+  _children?: unknown;
+  reason?: unknown;
+  status: string;
+  then?: AnyFunction;
+  value?: unknown;
+};
+
+type FlightRecordLike = {
+  _children?: unknown;
+  _payload?: unknown;
+  handler?: { chunk?: unknown };
+  props?: unknown;
+  value?: unknown;
+};
+
+const isObjectOrFunction = (value: unknown): value is object | AnyFunction =>
+  value !== null && (typeof value === 'object' || typeof value === 'function');
+
+const isFlightChunk = (value: unknown): value is FlightChunk =>
+  isObjectOrFunction(value) &&
+  'status' in value &&
+  typeof value.status === 'string' &&
+  (!('then' in value) || typeof value.then === 'function');
+
+const isFlightRecordLike = (value: unknown): value is FlightRecordLike =>
+  isObjectOrFunction(value) &&
+  !Array.isArray(value) &&
+  !(value instanceof Map) &&
+  !(value instanceof Set) &&
+  (!('handler' in value) ||
+    (isObjectOrFunction(value.handler) && 'chunk' in value.handler)) &&
+  ('_payload' in value ||
+    'handler' in value ||
+    '_children' in value ||
+    'value' in value ||
+    'props' in value);
+
+const isPendingStatus = (value: string) =>
+  value === 'pending' || value === 'blocked';
+
+const pushInspectable = (stack: object[], value: unknown) => {
+  if (isObjectOrFunction(value)) {
+    stack.push(value);
+  }
+};
+
+const pushInspectableValues = (stack: object[], values: Iterable<unknown>) => {
+  for (const value of values) {
+    pushInspectable(stack, value);
+  }
+};
+
+const pushChunkEdges = (stack: object[], chunk: FlightChunk) => {
+  if (Array.isArray(chunk._children)) {
+    pushInspectableValues(stack, chunk._children);
+  }
+  pushInspectable(stack, chunk.value);
+  pushInspectable(stack, chunk.reason);
+};
+
+const pushRecordEdges = (stack: object[], record: FlightRecordLike) => {
+  pushInspectable(stack, record._payload);
+  if (record.handler) {
+    pushInspectable(stack, record.handler.chunk);
+  }
+  if (Array.isArray(record._children)) {
+    pushInspectableValues(stack, record._children);
+  }
+  pushInspectable(stack, record.value);
+  pushInspectable(stack, record.props);
+};
+
+const pushObjectValues = (stack: object[], value: object) => {
+  pushInspectableValues(stack, Object.values(value));
+};
+
+const collectFlightChunks = (root: unknown): FlightChunk[] => {
+  const seen = new Set<object>();
+  const chunks: FlightChunk[] = [];
+  const stack: object[] = [];
+
+  if (isObjectOrFunction(root)) {
+    stack.push(root);
+  }
+
   while (stack.length) {
     const value = stack.pop();
-    if (value === null || value === undefined) {
-      continue;
-    }
-    const type = typeof value;
-    if (type !== 'object' && type !== 'function') {
-      continue;
-    }
-    if (seen.has(value)) {
+    if (!value || seen.has(value)) {
       continue;
     }
     seen.add(value);
-    const v = value as Record<string, unknown>;
+
     if (Array.isArray(value)) {
-      for (const item of value) {
-        stack.push(item);
-      }
+      pushInspectableValues(stack, value);
       continue;
     }
     if (value instanceof Map) {
-      for (const [key, item] of value) {
-        stack.push(key);
-        stack.push(item);
-      }
+      pushInspectableValues(stack, value.keys());
+      pushInspectableValues(stack, value.values());
       continue;
     }
     if (value instanceof Set) {
-      for (const item of value) {
-        stack.push(item);
-      }
+      pushInspectableValues(stack, value.values());
       continue;
     }
-    if ('status' in v && typeof v.status === 'string') {
-      chunks.push(v as { status: string });
-      if (Array.isArray(v._children)) {
-        for (const child of v._children) {
-          stack.push(child);
-        }
-      }
-      if ('value' in v) {
-        stack.push(v.value);
-      }
-      if ('reason' in v) {
-        stack.push(v.reason);
-      }
+    if (isFlightChunk(value)) {
+      chunks.push(value);
+      pushChunkEdges(stack, value);
       continue;
     }
-    if ('_payload' in v) {
-      stack.push(v._payload);
+    if (isFlightRecordLike(value)) {
+      pushRecordEdges(stack, value);
     }
-    if (
-      'handler' in v &&
-      v.handler &&
-      typeof v.handler === 'object' &&
-      'chunk' in v.handler
-    ) {
-      stack.push((v.handler as Record<string, unknown>).chunk);
-    }
-    if ('_children' in v && Array.isArray(v._children)) {
-      for (const child of v._children) {
-        stack.push(child);
-      }
-    }
-    if ('value' in v) {
-      stack.push(v.value);
-    }
-    if ('props' in v) {
-      stack.push(v.props);
-    }
-    for (const nested of Object.values(v)) {
-      stack.push(nested);
-    }
+    pushObjectValues(stack, value);
   }
   return chunks;
-}
+};
 
 export async function waitForRootPrerequisites(root: unknown): Promise<void> {
-  for (
-    let stablePasses = 0, lastPendingCount = -1, lastChunkCount = -1;
-    stablePasses < 2;
-  ) {
-    const chunks = collectFlightChunks(root);
-    const unresolvedChunks = chunks.filter(
-      (chunk) => chunk.status === 'pending' || chunk.status === 'blocked',
+  let stablePasses = 0;
+  let lastPendingCount = -1;
+  let lastChunkCount = -1;
+  while (stablePasses < 2) {
+    const unresolvedChunks = collectFlightChunks(root).filter((chunk) =>
+      isPendingStatus(chunk.status),
     );
     if (unresolvedChunks.length) {
-      await Promise.allSettled(unresolvedChunks as unknown as Promise<void>[]);
+      await Promise.allSettled(unresolvedChunks);
     }
     await Promise.resolve();
     const nextChunks = collectFlightChunks(root);
-    const pendingCount = nextChunks.filter(
-      (chunk) => chunk.status === 'pending' || chunk.status === 'blocked',
+    const pendingCount = nextChunks.filter((chunk) =>
+      isPendingStatus(chunk.status),
     ).length;
     const chunkCount = nextChunks.length;
     if (
