@@ -43,7 +43,10 @@ const getObjectProperty = (
   key: string,
   message: string,
 ): object => {
-  return assertObjectLike(Reflect.get(assertObjectLike(value, message), key), message);
+  return assertObjectLike(
+    Reflect.get(assertObjectLike(value, message), key),
+    message,
+  );
 };
 
 const getStringProperty = (
@@ -130,7 +133,10 @@ function getPendingPayloadChunk(root: unknown) {
     '_payload',
     'Missing root.props.children._payload.',
   );
-  if (getStringProperty(payload, 'status', 'Missing payload status.') !== 'pending') {
+  if (
+    getStringProperty(payload, 'status', 'Missing payload status.') !==
+    'pending'
+  ) {
     throw new Error('Expected the payload chunk to still be pending.');
   }
   return payload;
