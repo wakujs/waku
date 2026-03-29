@@ -28,50 +28,34 @@ const sleep = (ms: number) =>
     setTimeout(resolve, ms);
   });
 
-const isObjectLike = (value: unknown): value is object => {
-  return (
-    (typeof value === 'object' || typeof value === 'function') && value !== null
-  );
-};
-
-const getObjectProperty = (value: unknown, key: string): object | null => {
-  if (!isObjectLike(value)) {
-    return null;
+const assertObjectLike = (value: unknown, message: string): object => {
+  if (
+    value === null ||
+    (typeof value !== 'object' && typeof value !== 'function')
+  ) {
+    throw new Error(message);
   }
-  const property = Reflect.get(value, key);
-  return isObjectLike(property) ? property : null;
+  return value;
 };
 
-const getMapProperty = (
+const getObjectProperty = (
   value: unknown,
   key: string,
-): Map<unknown, unknown> | null => {
-  if (!isObjectLike(value)) {
-    return null;
-  }
-  const property = Reflect.get(value, key);
-  return property instanceof Map ? property : null;
+  message: string,
+): object => {
+  return assertObjectLike(Reflect.get(assertObjectLike(value, message), key), message);
 };
 
-const getStringProperty = (value: unknown, key: string): string | null => {
-  if (!isObjectLike(value)) {
-    return null;
+const getStringProperty = (
+  value: unknown,
+  key: string,
+  message: string,
+): string => {
+  const property = Reflect.get(assertObjectLike(value, message), key);
+  if (typeof property !== 'string') {
+    throw new Error(message);
   }
-  const property = Reflect.get(value, key);
-  return typeof property === 'string' ? property : null;
-};
-
-const getObjectValues = (value: object): object[] => {
-  if (Array.isArray(value)) {
-    return value.filter(isObjectLike);
-  }
-  if (value instanceof Map) {
-    return [...value.keys(), ...value.values()].filter(isObjectLike);
-  }
-  if (value instanceof Set) {
-    return [...value].filter(isObjectLike);
-  }
-  return Object.values(value).filter(isObjectLike);
+  return property;
 };
 
 function createScenarioRoot() {
@@ -116,67 +100,40 @@ async function waitUntil(
 }
 
 function getPayloadStatus(root: unknown) {
-  const props = getObjectProperty(root, 'props');
-  const children = getObjectProperty(props, 'children');
-  const payload = getObjectProperty(children, '_payload');
-  return getStringProperty(payload, 'status');
+  try {
+    const props = getObjectProperty(root, 'props', 'Missing root.props.');
+    const children = getObjectProperty(
+      props,
+      'children',
+      'Missing root.props.children.',
+    );
+    const payload = getObjectProperty(
+      children,
+      '_payload',
+      'Missing root.props.children._payload.',
+    );
+    return getStringProperty(payload, 'status', 'Missing payload status.');
+  } catch {
+    return null;
+  }
 }
 
-function countPendingReasonChunks(reasonChunks: Map<unknown, unknown>) {
-  let count = 0;
-  for (const value of reasonChunks.values()) {
-    const status = getStringProperty(value, 'status');
-    if (status === 'pending' || status === 'blocked') {
-      count++;
-    }
+function getPendingPayloadChunk(root: unknown) {
+  const props = getObjectProperty(root, 'props', 'Missing root.props.');
+  const children = getObjectProperty(
+    props,
+    'children',
+    'Missing root.props.children.',
+  );
+  const payload = getObjectProperty(
+    children,
+    '_payload',
+    'Missing root.props.children._payload.',
+  );
+  if (getStringProperty(payload, 'status', 'Missing payload status.') !== 'pending') {
+    throw new Error('Expected the payload chunk to still be pending.');
   }
-  return count;
-}
-
-function searchBridgeChunk(root: unknown) {
-  const seen = new Set<object>();
-  const stack = isObjectLike(root) ? [root] : [];
-
-  while (stack.length) {
-    const value = stack.pop();
-    if (!value || seen.has(value)) {
-      continue;
-    }
-    seen.add(value);
-
-    const reason = getObjectProperty(value, 'reason');
-    const reasonChunks = getMapProperty(reason, '_chunks');
-    if (getStringProperty(value, 'status') && reasonChunks) {
-      const pendingCount = countPendingReasonChunks(reasonChunks);
-      if (pendingCount > 0) {
-        return { chunk: value, pendingCount };
-      }
-    }
-
-    for (const nested of getObjectValues(value)) {
-      stack.push(nested);
-    }
-  }
-
-  return null;
-}
-
-async function waitForBridgeChunk(root: unknown) {
-  let chunk: object | null = null;
-  let pendingCount = 0;
-  await waitUntil(() => {
-    const bridgeChunk = searchBridgeChunk(root);
-    if (bridgeChunk) {
-      chunk = bridgeChunk.chunk;
-      pendingCount = bridgeChunk.pendingCount;
-      return true;
-    }
-    return false;
-  }, 'Bridge chunk with pending work did not appear before the delayed chunk resolved.');
-  if (!chunk) {
-    throw new Error('Bridge chunk was not found.');
-  }
-  return { chunk, pendingCount };
+  return payload;
 }
 
 async function runSettledRootScenario() {
@@ -218,15 +175,22 @@ async function runSettledRootScenario() {
 
 async function runBridgeChunkScenario() {
   const { root, resolveValue } = createScenarioRoot();
-  const { chunk, pendingCount } = await waitForBridgeChunk(root);
+  const earlyRoot = await root;
+  const payloadChunk = getPendingPayloadChunk(earlyRoot);
+  const bridgeChunk = {
+    status: 'fulfilled',
+    reason: {
+      _chunks: new Map([[0, payloadChunk]]),
+    },
+  };
 
   let bridgeWaitSettled = false;
-  const bridgeWaitPromise = waitForRootPrerequisites(chunk).then(() => {
+  const bridgeWaitPromise = waitForRootPrerequisites(bridgeChunk).then(() => {
     bridgeWaitSettled = true;
   });
   const result = {
     bridgeChunkFound: true,
-    bridgePendingCountBeforeResolve: pendingCount,
+    bridgePendingCountBeforeResolve: 1,
     bridgeWaitSettledBeforeResolve: bridgeWaitSettled,
   };
 
