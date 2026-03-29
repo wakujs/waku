@@ -1,6 +1,7 @@
 import { cloudflare } from '@cloudflare/vite-plugin';
+import babel from '@rolldown/plugin-babel';
 import tailwindcss from '@tailwindcss/vite';
-import react from '@vitejs/plugin-react';
+import react, { reactCompilerPreset } from '@vitejs/plugin-react';
 import { defineConfig } from 'waku/config';
 
 export default defineConfig({
@@ -11,7 +12,7 @@ export default defineConfig({
           include: ['hono/tiny'],
         },
         build: {
-          rollupOptions: {
+          rolldownOptions: {
             platform: 'neutral',
           } as never,
         },
@@ -21,7 +22,7 @@ export default defineConfig({
           include: ['waku > rsc-html-stream/server'],
         },
         build: {
-          rollupOptions: {
+          rolldownOptions: {
             platform: 'neutral',
           } as never,
         },
@@ -29,11 +30,8 @@ export default defineConfig({
     },
     plugins: [
       tailwindcss(),
-      react({
-        babel: {
-          plugins: ['babel-plugin-react-compiler'],
-        },
-      }),
+      react(),
+      babel({ presets: [reactCompilerPreset()] }),
       cloudflare({
         viteEnvironment: { name: 'rsc', childEnvironments: ['ssr'] },
         inspectorPort: false,
