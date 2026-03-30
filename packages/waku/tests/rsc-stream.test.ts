@@ -29,12 +29,11 @@ type ScenarioResult = {
 };
 
 type BridgeScenarioResult = {
-  bridgeChunkFound: boolean;
   bridgePendingCountBeforeResolve: number;
   bridgeWaitSettledBeforeResolve: boolean;
 };
 
-const runNodeScenario = async <T>(script: string): Promise<T> => {
+const runNodeScenario = async <T>(scenario: string): Promise<T> => {
   const { stdout } = await execFileAsync(
     process.execPath,
     [
@@ -49,21 +48,13 @@ const runNodeScenario = async <T>(script: string): Promise<T> => {
       env: {
         ...process.env,
         WAKU_RSC_STREAM_HELPER_URL: helperOutputUrl,
-        WAKU_RSC_STREAM_SCENARIO: script,
+        WAKU_RSC_STREAM_SCENARIO: scenario,
       },
       maxBuffer: 1024 * 1024,
       timeout: 30_000,
     },
   );
   return JSON.parse(stdout.trim()) as T;
-};
-
-const runSettledRootScenario = async (): Promise<ScenarioResult> => {
-  return runNodeScenario<ScenarioResult>('settled-root');
-};
-
-const runBridgeChunkScenario = async (): Promise<BridgeScenarioResult> => {
-  return runNodeScenario<BridgeScenarioResult>('bridge-chunk');
 };
 
 beforeAll(async () => {
@@ -91,7 +82,7 @@ afterAll(async () => {
 
 describe('waitForRootPrerequisites', () => {
   test('waits even after the root promise settles if Flight chunks are pending', async () => {
-    const result = await runSettledRootScenario();
+    const result = await runNodeScenario<ScenarioResult>('settled-root');
     expect(result.rootSettledBeforeResolve).toBe(true);
     expect(result.payloadStatusBeforeResolve).toBe('pending');
     expect(result.rootWaitSettledBeforeResolve).toBe(false);
@@ -99,8 +90,7 @@ describe('waitForRootPrerequisites', () => {
   });
 
   test('follows pending chunks through chunk.reason._chunks from real Flight output', async () => {
-    const result = await runBridgeChunkScenario();
-    expect(result.bridgeChunkFound).toBe(true);
+    const result = await runNodeScenario<BridgeScenarioResult>('bridge-chunk');
     expect(result.bridgePendingCountBeforeResolve).toBeGreaterThan(0);
     expect(result.bridgeWaitSettledBeforeResolve).toBe(false);
   });

@@ -27,9 +27,6 @@ const isFlightChunk = (value: unknown): value is FlightChunk =>
 
 const isFlightRecordLike = (value: unknown): value is FlightRecordLike =>
   isObjectOrFunction(value) &&
-  !Array.isArray(value) &&
-  !(value instanceof Map) &&
-  !(value instanceof Set) &&
   (!('handler' in value) ||
     (isObjectOrFunction(value.handler) && 'chunk' in value.handler)) &&
   ('_payload' in value ||
@@ -120,32 +117,13 @@ const collectFlightChunks = (root: unknown): FlightChunk[] => {
 };
 
 export async function waitForRootPrerequisites(root: unknown): Promise<void> {
-  let stablePasses = 0;
-  let lastPendingCount = -1;
-  let lastChunkCount = -1;
-  while (stablePasses < 2) {
+  while (true) {
     const unresolvedChunks = collectFlightChunks(root).filter((chunk) =>
       isPendingStatus(chunk.status),
     );
-    if (unresolvedChunks.length) {
-      await Promise.allSettled(unresolvedChunks);
+    if (unresolvedChunks.length === 0) {
+      return;
     }
-    await Promise.resolve();
-    const nextChunks = collectFlightChunks(root);
-    const pendingCount = nextChunks.filter((chunk) =>
-      isPendingStatus(chunk.status),
-    ).length;
-    const chunkCount = nextChunks.length;
-    if (
-      pendingCount === 0 &&
-      pendingCount === lastPendingCount &&
-      chunkCount === lastChunkCount
-    ) {
-      stablePasses++;
-    } else {
-      stablePasses = 0;
-      lastPendingCount = pendingCount;
-      lastChunkCount = chunkCount;
-    }
+    await Promise.allSettled(unresolvedChunks);
   }
 }

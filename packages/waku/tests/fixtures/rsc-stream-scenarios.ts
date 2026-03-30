@@ -42,12 +42,8 @@ const getObjectProperty = (
   value: unknown,
   key: string,
   message: string,
-): object => {
-  return assertObjectLike(
-    Reflect.get(assertObjectLike(value, message), key),
-    message,
-  );
-};
+): object =>
+  assertObjectLike(Reflect.get(assertObjectLike(value, message), key), message);
 
 const getStringProperty = (
   value: unknown,
@@ -60,6 +56,17 @@ const getStringProperty = (
   }
   return property;
 };
+
+const getPayloadChunk = (root: unknown): object =>
+  getObjectProperty(
+    getObjectProperty(
+      getObjectProperty(root, 'props', 'Missing root.props.'),
+      'children',
+      'Missing root.props.children.',
+    ),
+    '_payload',
+    'Missing root.props.children._payload.',
+  );
 
 function createScenarioRoot() {
   let resolveValue: (value: string) => void = (_value: string) => {
@@ -104,35 +111,18 @@ async function waitUntil(
 
 function getPayloadStatus(root: unknown) {
   try {
-    const props = getObjectProperty(root, 'props', 'Missing root.props.');
-    const children = getObjectProperty(
-      props,
-      'children',
-      'Missing root.props.children.',
+    return getStringProperty(
+      getPayloadChunk(root),
+      'status',
+      'Missing payload status.',
     );
-    const payload = getObjectProperty(
-      children,
-      '_payload',
-      'Missing root.props.children._payload.',
-    );
-    return getStringProperty(payload, 'status', 'Missing payload status.');
   } catch {
     return null;
   }
 }
 
 function getPendingPayloadChunk(root: unknown) {
-  const props = getObjectProperty(root, 'props', 'Missing root.props.');
-  const children = getObjectProperty(
-    props,
-    'children',
-    'Missing root.props.children.',
-  );
-  const payload = getObjectProperty(
-    children,
-    '_payload',
-    'Missing root.props.children._payload.',
-  );
+  const payload = getPayloadChunk(root);
   if (
     getStringProperty(payload, 'status', 'Missing payload status.') !==
     'pending'
@@ -164,18 +154,15 @@ async function runSettledRootScenario() {
   const rootWaitPromise = waitForRootPrerequisites(root).then(() => {
     rootWaitSettled = true;
   });
-  const result = {
-    payloadStatusBeforeResolve,
-    rootSettledBeforeResolve: rootSettled,
-    rootWaitSettledBeforeResolve: rootWaitSettled,
-  };
-
+  const rootWaitSettledBeforeResolve = rootWaitSettled;
   resolveValue('done');
   await rootWaitPromise;
 
   return {
+    payloadStatusBeforeResolve,
+    rootSettledBeforeResolve: rootSettled,
+    rootWaitSettledBeforeResolve,
     payloadStatusAfterResolve: getPayloadStatus(earlyRoot),
-    ...result,
   };
 }
 
@@ -194,15 +181,14 @@ async function runBridgeChunkScenario() {
   const bridgeWaitPromise = waitForRootPrerequisites(bridgeChunk).then(() => {
     bridgeWaitSettled = true;
   });
-  const result = {
-    bridgeChunkFound: true,
-    bridgePendingCountBeforeResolve: 1,
-    bridgeWaitSettledBeforeResolve: bridgeWaitSettled,
-  };
+  const bridgeWaitSettledBeforeResolve = bridgeWaitSettled;
 
   resolveValue('done');
   await bridgeWaitPromise;
-  return result;
+  return {
+    bridgePendingCountBeforeResolve: 1,
+    bridgeWaitSettledBeforeResolve,
+  };
 }
 
 switch (scenarioName) {
