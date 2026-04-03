@@ -1266,13 +1266,15 @@ describe('Router integration', () => {
     }
   });
 
-  test('push writes history when refetch fails', async () => {
+  test('push falls back to document navigation when refetch fails', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
     const refetch = createRefetchMock();
     refetch.mockRejectedValueOnce(new Error('refetch failed'));
     vi.mocked(useRefetch).mockReturnValue(refetch);
-    const historyPushSpy = vi.spyOn(window.history, 'pushState');
+    const assignSpy = vi
+      .spyOn(window.location, 'assign')
+      .mockImplementation(() => {});
 
     const elements = {
       [unstable_getRouteSlotId('/start')]: <Probe />,
@@ -1291,14 +1293,48 @@ describe('Router integration', () => {
         throw new Error('router not initialized');
       }
 
-      await expect(capture.router.push('/next')).rejects.toThrow(
-        'refetch failed',
-      );
-      expect(historyPushSpy).toHaveBeenCalledTimes(1);
-      expect(window.location.pathname).toBe('/next');
+      await expect(capture.router.push('/next')).resolves.toBeUndefined();
+      expect(assignSpy).toHaveBeenCalledWith('http://localhost:3000/next');
       expect(capture.router.path).toBe('/start');
     } finally {
       view.unmount();
+      assignSpy.mockRestore();
+    }
+  });
+
+  test('replace falls back to document navigation when refetch fails', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = createRefetchMock();
+    refetch.mockRejectedValueOnce(new Error('refetch failed'));
+    vi.mocked(useRefetch).mockReturnValue(refetch);
+    const replaceSpy = vi
+      .spyOn(window.location, 'replace')
+      .mockImplementation(() => {});
+
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      if (!capture.router) {
+        throw new Error('router not initialized');
+      }
+
+      await expect(capture.router.replace('/next')).resolves.toBeUndefined();
+      expect(replaceSpy).toHaveBeenCalledWith('http://localhost:3000/next');
+      expect(capture.router.path).toBe('/start');
+    } finally {
+      view.unmount();
+      replaceSpy.mockRestore();
     }
   });
 

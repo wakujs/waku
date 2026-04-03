@@ -87,6 +87,19 @@ const getRouteUrl = (route: RouteProps): URL => {
   return nextUrl;
 };
 
+const fallbackToDocumentNavigation = (
+  route: RouteProps,
+  mode: 'push' | 'replace' | undefined,
+  url: URL | undefined,
+) => {
+  const documentUrl = (url || getRouteUrl(route)).toString();
+  if (mode === 'push') {
+    window.location.assign(documentUrl);
+    return;
+  }
+  window.location.replace(documentUrl);
+};
+
 const getHttpStatusFromMeta = (): string | undefined => {
   const httpStatusMeta = document.querySelector('meta[name="httpstatus"]');
   if (
@@ -924,6 +937,10 @@ const InnerRouter = ({
             return;
           }
           routeChangeAbortRef.current = null;
+          if (!getErrorInfo(e)) {
+            fallbackToDocumentNavigation(nextRoute, mode, url);
+            return;
+          }
           // Write URL synchronously
           // React may rollback transition state updates when the render throws
           if (mode && window.location.pathname === prevPathname) {
