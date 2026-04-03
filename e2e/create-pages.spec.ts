@@ -222,15 +222,16 @@ test.describe(`create-pages`, () => {
     ({ port, stopApp } = await startApp(mode));
   });
 
-  test('server page unreachable', async ({ page, mode, browserName }) => {
+  test('server page unreachable', async ({ page, mode }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
     await stopApp();
-    await page.click("a[href='/error']");
-    // Default router client error boundary is reached
-    await expect(page.locator('p')).toContainText(
-      FETCH_ERROR_MESSAGES[browserName],
-    );
+    await page.click("a[href='/error']", { noWaitAfter: true });
+    // When route refetch fails, the router should hand off to document
+    // navigation instead of rendering the client error boundary.
+    await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+    await expect(page.locator('p')).toContainText('This is the home page.');
+    await expect(page).toHaveURL(`http://localhost:${port}/`);
     ({ port, stopApp } = await startApp(mode));
   });
 
