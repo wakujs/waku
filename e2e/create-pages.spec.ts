@@ -222,18 +222,24 @@ test.describe(`create-pages`, () => {
     ({ port, stopApp } = await startApp(mode));
   });
 
-  test('server page unreachable', async ({ page, mode, browserName }) => {
+  test('server page unreachable', async ({ page, mode }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
     await stopApp();
+    const targetUrl = `http://localhost:${port}/error`;
+    const navigationFailure = page.waitForEvent(
+      'requestfailed',
+      (request) =>
+        request.isNavigationRequest() &&
+        request.resourceType() === 'document' &&
+        request.url() === targetUrl,
+    );
     await page.click("a[href='/error']", { noWaitAfter: true });
-    // When route refetch fails, the router should hand off to document
-    // navigation instead of rendering the client error boundary.
-    await expect(page).not.toHaveURL(`http://localhost:${port}/`);
-    await expect(page.getByRole('heading', { name: 'Home' })).toHaveCount(0);
-    await expect(
-      page.getByText(FETCH_ERROR_MESSAGES[browserName], { exact: false }),
-    ).toHaveCount(0);
+    // When route refetch fails, the router should hand off to a document
+    // navigation for the target route instead of rendering the client error
+    // boundary inside the current page.
+    const failedRequest = await navigationFailure;
+    expect(failedRequest.url()).toBe(targetUrl);
     ({ port, stopApp } = await startApp(mode));
   });
 
