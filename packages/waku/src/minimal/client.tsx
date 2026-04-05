@@ -14,6 +14,7 @@ import RSDWClient from 'react-server-dom-webpack/client';
 import { createCustomError } from '../lib/utils/custom-errors.js';
 import { setupDebugChannel } from '../lib/utils/react-debug-channel.js';
 import { encodeFuncId, encodeRscPath } from '../lib/utils/rsc-path.js';
+import { waitForRootPrerequisites } from '../lib/utils/rsc-stream.js';
 
 const { createFromFetch, encodeReply, createTemporaryReferenceSet } =
   RSDWClient;
@@ -121,6 +122,7 @@ const defaultFetchRscStore: FetchRscStore = {};
 
 // XXX some of these keys are used in packages/waku/src/lib/utils/ssr.ts.
 const KEY_RESPONSE = 'r';
+const KEY_CLOSE = 'x';
 const KEY_CLIENT_PREFETCHED = 'c';
 const KEY_RSC_PARAMS = 'p';
 const KEY_TEMPORARY_REFERENCES = 't';
@@ -128,6 +130,7 @@ const KEY_DEBUG_ID = 'd';
 
 type PrefetchedEntry = {
   [KEY_RESPONSE]: Promise<Response>;
+  [KEY_CLOSE]?: () => void;
   [KEY_CLIENT_PREFETCHED]?: boolean;
   [KEY_RSC_PARAMS]?: unknown | undefined;
   [KEY_TEMPORARY_REFERENCES]?: ReturnType<typeof createTemporaryReferenceSet>;
@@ -193,12 +196,17 @@ const fetchRscInternal: FetchRscInternal = (
     };
     return undefined as never;
   }
-  return createFromFetch<Elements>(checkStatus(responsePromise), {
+  const elements = createFromFetch<Elements>(checkStatus(responsePromise), {
     callServer: (funcId: string, args: unknown[]) =>
       unstable_callServerRsc(funcId, args, () => fetchRscStore),
     debugChannel: debug?.debugChannel,
     temporaryReferences,
   });
+  const closeFn = prefetchedEntry?.[KEY_CLOSE];
+  if (closeFn) {
+    waitForRootPrerequisites(elements).then(closeFn, closeFn);
+  }
+  return elements;
 };
 
 /**
@@ -454,8 +462,12 @@ export const INTERNAL_ServerRoot = ({
   elementsPromise: Promise<Elements>;
   children: ReactNode;
 }) => (
-  <ElementsContext value={elementsPromise}>
-    {DEFAULT_HTML_HEAD}
-    {children}
-  </ElementsContext>
+  <FetchRscStoreContext value={{}}>
+    <RefetchContext value={async () => ({})}>
+      <ElementsContext value={elementsPromise}>
+        {DEFAULT_HTML_HEAD}
+        {children}
+      </ElementsContext>
+    </RefetchContext>
+  </FetchRscStoreContext>
 );
