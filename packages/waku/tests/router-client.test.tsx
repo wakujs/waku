@@ -59,6 +59,16 @@ type IntersectionObserverMockInstance = IntersectionObserver & {
 const createRefetchMock = () =>
   vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
 
+const createDeferred = <T,>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+};
+
 const resolvedThenable = <T,>(value: T): Promise<T> =>
   Object.assign(Promise.resolve(value), {
     status: 'fulfilled' as const,
@@ -1000,6 +1010,123 @@ describe('Router integration', () => {
     expect(capture.router.hash).toBe('#h');
 
     view.unmount();
+  });
+
+  test('link transitions still write committed history after pathname drift', async () => {
+    const firstNavigation = createDeferred<Record<string, unknown>>();
+    const secondNavigation = createDeferred<Record<string, unknown>>();
+    const thirdNavigation = createDeferred<Record<string, unknown>>();
+    const refetch = vi
+      .fn<ReturnType<typeof useRefetch>>()
+      .mockImplementationOnce(() => firstNavigation.promise)
+      .mockImplementationOnce(() => secondNavigation.promise)
+      .mockImplementationOnce(() => thirdNavigation.promise);
+    vi.mocked(useRefetch).mockReturnValue(refetch);
+    window.history.replaceState({}, '', '/one');
+
+    const view = await renderRouterInStrictMode(
+      {
+        initialRoute: { path: '/one', query: '', hash: '' },
+      },
+      {
+        [unstable_getRouteSlotId('/one')]: (
+          <>
+            <h1>Page 1</h1>
+            <Link to="/two" unstable_pending={<div>Pending...</div>}>
+              Go to two
+            </Link>
+          </>
+        ),
+        [unstable_getRouteSlotId('/two')]: (
+          <>
+            <h1>Page 2</h1>
+            <Link to="/three" unstable_pending={<div>Pending...</div>}>
+              Go to three
+            </Link>
+          </>
+        ),
+        [unstable_getRouteSlotId('/three')]: (
+          <>
+            <h1>Page 3</h1>
+            <Link to="/two" unstable_pending={<div>Pending...</div>}>
+              Go back to two
+            </Link>
+          </>
+        ),
+        [ROUTE_ID]: ['/one', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+
+    try {
+      const clickLink = async (text: string) => {
+        const link = Array.from(view.container.querySelectorAll('a')).find(
+          (anchor) => anchor.textContent === text,
+        ) as HTMLAnchorElement | undefined;
+        if (!link) {
+          throw new Error(`Link not found: ${text}`);
+        }
+        await act(async () => {
+          link.dispatchEvent(
+            new MouseEvent('click', {
+              bubbles: true,
+              cancelable: true,
+              button: 0,
+            }),
+          );
+          await Promise.resolve();
+        });
+      };
+
+      expect(window.location.pathname).toBe('/one');
+      expect(view.container.textContent).toContain('Page 1');
+
+      await clickLink('Go to two');
+      expect(view.container.textContent).toContain('Pending...');
+      expect(view.container.textContent).toContain('Page 1');
+      expect(window.location.pathname).toBe('/one');
+
+      firstNavigation.resolve({
+        [ROUTE_ID]: ['/two', ''],
+        [IS_STATIC_ID]: false,
+      });
+      await flush();
+
+      expect(view.container.textContent).toContain('Page 2');
+      expect(window.location.pathname).toBe('/two');
+
+      await clickLink('Go to three');
+      expect(view.container.textContent).toContain('Pending...');
+      expect(view.container.textContent).toContain('Page 2');
+      expect(window.location.pathname).toBe('/two');
+      window.history.replaceState({}, '', '/one');
+      expect(window.location.pathname).toBe('/one');
+
+      secondNavigation.resolve({
+        [ROUTE_ID]: ['/three', ''],
+        [IS_STATIC_ID]: false,
+      });
+      await flush();
+
+      expect(view.container.textContent).toContain('Page 3');
+      expect(window.location.pathname).toBe('/three');
+
+      await clickLink('Go back to two');
+      expect(view.container.textContent).toContain('Pending...');
+      expect(view.container.textContent).toContain('Page 3');
+      expect(window.location.pathname).toBe('/three');
+
+      thirdNavigation.resolve({
+        [ROUTE_ID]: ['/two', ''],
+        [IS_STATIC_ID]: false,
+      });
+      await flush();
+
+      expect(view.container.textContent).toContain('Page 2');
+      expect(window.location.pathname).toBe('/two');
+    } finally {
+      view.unmount();
+    }
   });
 
   test('push to a new path with hash scrolls using destination hash after history write', async () => {

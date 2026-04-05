@@ -19,6 +19,6 @@
     "@stylexjs/unplugin": "^0.18.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.0"
+    "@vitejs/plugin-react": "^6.0.0"
   }
 }
