@@ -1,11 +1,12 @@
 import { describe, expect, test } from 'vitest';
 import {
-  base64ToStream,
   batchReadableStream,
+  base64ToBytes,
+  bytesToBase64,
   bytesToStream,
   consumeMultiplexedStream,
   produceMultiplexedStream,
-  streamToBase64,
+  streamToBytes,
   stringToStream,
 } from '../src/lib/utils/stream.js';
 
@@ -57,11 +58,12 @@ describe('stringToStream', () => {
   });
 });
 
-describe('streamToBase64/base64ToStream', () => {
+describe('streamToBytes/bytesToBase64/base64ToBytes', () => {
   test('round-trips utf-8 content through base64', async () => {
     const input = 'hello world';
-    const base64 = await streamToBase64(stringToStream(input));
-    const output = await readAllText(base64ToStream(base64));
+    const bytes = await streamToBytes(stringToStream(input));
+    const base64 = bytesToBase64(bytes);
+    const output = await readAllText(bytesToStream(base64ToBytes(base64)));
     expect(output).toBe(input);
   });
 
@@ -77,8 +79,10 @@ describe('streamToBase64/base64ToStream', () => {
       },
     });
 
-    const base64 = await streamToBase64(stream);
-    const decoded = concatUint8(await readAllChunks(base64ToStream(base64)));
+    const base64 = bytesToBase64(await streamToBytes(stream));
+    const decoded = concatUint8(
+      await readAllChunks(bytesToStream(base64ToBytes(base64))),
+    );
     expect(Array.from(decoded)).toEqual(Array.from(bytes));
   });
 
@@ -96,12 +100,14 @@ describe('streamToBase64/base64ToStream', () => {
       },
     });
 
-    const base64 = await streamToBase64(stream);
-    const decoded = concatUint8(await readAllChunks(base64ToStream(base64)));
+    const base64 = bytesToBase64(await streamToBytes(stream));
+    const decoded = concatUint8(
+      await readAllChunks(bytesToStream(base64ToBytes(base64))),
+    );
     expect(Array.from(decoded)).toEqual(Array.from(bytes));
   });
 
-  test('streamToBase64 throws on non-Uint8Array chunks', async () => {
+  test('streamToBytes throws on non-Uint8Array chunks', async () => {
     const stream = new ReadableStream({
       start(controller) {
         controller.enqueue('oops' as never);
@@ -109,15 +115,15 @@ describe('streamToBase64/base64ToStream', () => {
       },
     }) as ReadableStream<Uint8Array>;
 
-    await expect(streamToBase64(stream)).rejects.toThrow(
-      'Unexpected buffer type',
-    );
+    await expect(streamToBytes(stream)).rejects.toThrow('Unexpected buffer type');
   });
 
-  test('base64ToStream yields the original bytes', async () => {
+  test('base64ToBytes yields the original bytes', async () => {
     const bytes = toUint8('waku');
-    const base64 = btoa(String.fromCharCode(...bytes));
-    const decoded = concatUint8(await readAllChunks(base64ToStream(base64)));
+    const base64 = bytesToBase64(bytes);
+    const decoded = concatUint8(
+      await readAllChunks(bytesToStream(base64ToBytes(base64))),
+    );
     expect(Array.from(decoded)).toEqual(Array.from(bytes));
   });
 });

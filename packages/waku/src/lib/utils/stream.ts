@@ -12,11 +12,11 @@ export const stringToStream = (str: string): ReadableStream => {
   });
 };
 
-export const streamToBase64 = async (
+export const streamToBytes = async (
   stream: ReadableStream,
-): Promise<string> => {
+): Promise<Uint8Array> => {
   const reader = stream.getReader();
-  let binary = '';
+  const chunks: Uint8Array[] = [];
   while (true) {
     const { value, done } = await reader.read();
     if (done) {
@@ -25,17 +25,21 @@ export const streamToBase64 = async (
     if (!(value instanceof Uint8Array)) {
       throw new Error('Unexpected buffer type');
     }
-    for (let i = 0; i < value.length; i++) {
-      binary += String.fromCharCode(value[i]!);
-    }
+    chunks.push(value);
+  }
+  return concatUint8Array(chunks);
+};
+
+export const bytesToBase64 = (bytes: Uint8Array): string => {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]!);
   }
   return btoa(binary);
 };
 
-export const base64ToStream = (base64: string): ReadableStream => {
-  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-  return new Blob([bytes]).stream();
-};
+export const base64ToBytes = (base64: string): Uint8Array =>
+  Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 
 export const bytesToStream = (bytes: Uint8Array): ReadableStream =>
   new ReadableStream({
