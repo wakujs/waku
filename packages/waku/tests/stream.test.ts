@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import {
-  batchReadableStream,
   base64ToBytes,
+  batchReadableStream,
   bytesToBase64,
   bytesToStream,
   consumeMultiplexedStream,
