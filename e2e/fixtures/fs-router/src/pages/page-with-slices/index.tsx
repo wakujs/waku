@@ -8,6 +8,11 @@ export default function Slices() {
       <h2>Slices</h2>
       <Slice id={slices[0]} />
       <Slice id={slices[1]} />
+      <Slice
+        id="dynamic/test123"
+        lazy
+        fallback={<span data-testid="dynamic-slice-loading">Loading...</span>}
+      />
     </>
   );
 }
