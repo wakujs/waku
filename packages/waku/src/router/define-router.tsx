@@ -2,7 +2,12 @@ import type { ReactNode } from 'react';
 import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
 import { getPathMapping, path2regexp } from '../lib/utils/path.js';
 import type { PathSpec } from '../lib/utils/path.js';
-import { base64ToStream, streamToBase64 } from '../lib/utils/stream.js';
+import {
+  base64ToBytes,
+  bytesToBase64,
+  bytesToStream,
+  streamToBytes,
+} from '../lib/utils/stream.js';
 import { createTaskRunner } from '../lib/utils/task-runner.js';
 import { unstable_defineHandlers as defineHandlers } from '../minimal/server.js';
 import { unstable_getContext as getContext } from '../server.js';
@@ -278,7 +283,7 @@ export function unstable_defineRouter(fns: {
       ) => Promise<ReactNode>;
     },
     getCachedElement: (id: SlotId) => Promise<ReactNode> | undefined,
-    setCachedElement: (id: SlotId, element: ReactNode) => Promise<ReactNode>,
+    setCachedElement: (id: SlotId, element: ReactNode) => Promise<void> | void,
     concreteId?: string,
     params?: Record<string, string | string[]>,
   ): Promise<ReactNode> => {
@@ -287,9 +292,10 @@ export function unstable_defineRouter(fns: {
     if (cached) {
       return cached;
     }
-    let element = await sliceConfig.renderer(params);
+    const element = await sliceConfig.renderer(params);
     if (sliceConfig.isStatic) {
-      element = await setCachedElement(id, element);
+      await setCachedElement(id, element);
+      return getCachedElement(id);
     }
     return element;
   };
@@ -299,7 +305,7 @@ export function unstable_defineRouter(fns: {
     rscParams: unknown,
     headers: Readonly<Record<string, string>>,
     getCachedElement: (id: SlotId) => Promise<ReactNode> | undefined,
-    setCachedElement: (id: SlotId, element: ReactNode) => Promise<ReactNode>,
+    setCachedElement: (id: SlotId, element: ReactNode) => Promise<void> | void,
   ) => {
     setRscPath(rscPath);
     setRscParams(rscParams);
@@ -351,26 +357,26 @@ export function unstable_defineRouter(fns: {
         if (!pathConfigItem.rootElement.isStatic) {
           entries[ROOT_SLOT_ID] = pathConfigItem.rootElement.renderer(option);
         } else if (!skipIdSet.has(ROOT_SLOT_ID)) {
-          const cached = getCachedElement(ROOT_SLOT_ID);
-          entries[ROOT_SLOT_ID] = cached
-            ? await cached
-            : await setCachedElement(
-                ROOT_SLOT_ID,
-                pathConfigItem.rootElement.renderer(option),
-              );
+          if (!getCachedElement(ROOT_SLOT_ID)) {
+            await setCachedElement(
+              ROOT_SLOT_ID,
+              pathConfigItem.rootElement.renderer(option),
+            );
+          }
+          entries[ROOT_SLOT_ID] = await getCachedElement(ROOT_SLOT_ID);
         }
       })(),
       (async () => {
         if (!pathConfigItem.routeElement.isStatic) {
           entries[routeId] = pathConfigItem.routeElement.renderer(option);
         } else if (!skipIdSet.has(routeId)) {
-          const cached = getCachedElement(routeId);
-          entries[routeId] = cached
-            ? await cached
-            : await setCachedElement(
-                routeId,
-                pathConfigItem.routeElement.renderer(option),
-              );
+          if (!getCachedElement(routeId)) {
+            await setCachedElement(
+              routeId,
+              pathConfigItem.routeElement.renderer(option),
+            );
+          }
+          entries[routeId] = await getCachedElement(routeId);
         }
       })(),
       ...Object.entries(pathConfigItem.elements).map(
@@ -379,10 +385,10 @@ export function unstable_defineRouter(fns: {
           if (!isStatic) {
             entries[id] = renderer?.(option);
           } else if (!skipIdSet.has(id)) {
-            const cached = getCachedElement(id);
-            entries[id] = cached
-              ? await cached
-              : await setCachedElement(id, renderer?.(option));
+            if (!getCachedElement(id)) {
+              await setCachedElement(id, renderer?.(option));
+            }
+            entries[id] = await getCachedElement(id);
           }
         },
       ),
@@ -420,7 +426,7 @@ export function unstable_defineRouter(fns: {
   type HandleRequest = Parameters<typeof defineHandlers>[0]['handleRequest'];
   type HandleBuild = Parameters<typeof defineHandlers>[0]['handleBuild'];
 
-  const cachedElementsForRequest = new Map<SlotId, Promise<ReactNode>>();
+  const cachedElementsForRequest = new Map<SlotId, Promise<Uint8Array>>();
   let cachedElementsForRequestInitialized = false;
   let cachedPath2moduleIds: Record<string, string[]> | undefined;
 
@@ -428,17 +434,24 @@ export function unstable_defineRouter(fns: {
     input,
     { renderRsc, renderRscForParse, parseRsc, renderHtml, loadBuildMetadata },
   ): Promise<ReadableStream | Response | 'fallback' | null | undefined> => {
-    const getCachedElement = (id: SlotId) => cachedElementsForRequest.get(id);
-    const setCachedElement = (id: SlotId, element: ReactNode) => {
-      const cached = cachedElementsForRequest.get(id);
-      if (cached) {
-        return cached;
+    const getCachedElement = (id: SlotId) => {
+      const cachedBytes = cachedElementsForRequest.get(id);
+      if (!cachedBytes) {
+        return undefined;
       }
-      const copied = renderRscForParse({ [id]: element }).then((rscStream) =>
-        parseRsc(rscStream).then((parsed) => parsed[id]),
-      ) as Promise<ReactNode>;
-      cachedElementsForRequest.set(id, copied);
-      return copied;
+      return cachedBytes
+        .then((bytes) => parseRsc(bytesToStream(bytes)))
+        .then((parsed) => parsed[id]) as Promise<ReactNode>;
+    };
+    const setCachedElement = (id: SlotId, element: ReactNode) => {
+      const cachedBytes = cachedElementsForRequest.get(id);
+      if (cachedBytes) {
+        return;
+      }
+      const bytes = renderRscForParse({ [id]: element }).then((rscStream) =>
+        streamToBytes(rscStream),
+      );
+      cachedElementsForRequest.set(id, bytes);
     };
     if (!cachedElementsForRequestInitialized) {
       cachedElementsForRequestInitialized = true;
@@ -450,9 +463,7 @@ export function unstable_defineRouter(fns: {
           ([id, str]) => {
             cachedElementsForRequest.set(
               id,
-              parseRsc(base64ToStream(str as string)).then(
-                (parsed) => parsed[id],
-              ) as Promise<ReactNode>,
+              Promise.resolve(base64ToBytes(str as string)),
             );
           },
         );
@@ -664,10 +675,10 @@ export function unstable_defineRouter(fns: {
     const cachedElementsForBuild = new Map<SlotId, Promise<ReactNode>>();
     const serializedCachedElements = new Map<SlotId, string>();
     const getCachedElement = (id: SlotId) => cachedElementsForBuild.get(id);
-    const setCachedElement = async (id: SlotId, element: ReactNode) => {
+    const setCachedElement = (id: SlotId, element: ReactNode) => {
       const cached = cachedElementsForBuild.get(id);
       if (cached) {
-        return cached;
+        return;
       }
       const teedStream = renderRsc({ [id]: element }).then((rscStream) =>
         rscStream.tee(),
@@ -681,8 +692,11 @@ export function unstable_defineRouter(fns: {
           ) as Promise<ReactNode>,
       );
       cachedElementsForBuild.set(id, copied);
-      serializedCachedElements.set(id, await streamToBase64(await stream2));
-      return copied;
+      return stream2
+        .then((rscStream) => streamToBytes(rscStream))
+        .then((bytes) => {
+          serializedCachedElements.set(id, bytesToBase64(bytes));
+        });
     };
 
     // hard-coded concurrency limit
