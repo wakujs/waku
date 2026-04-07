@@ -115,7 +115,9 @@ describe('streamToBytes/bytesToBase64/base64ToBytes', () => {
       },
     }) as ReadableStream<Uint8Array>;
 
-    await expect(streamToBytes(stream)).rejects.toThrow('Unexpected buffer type');
+    await expect(streamToBytes(stream)).rejects.toThrow(
+      'Unexpected buffer type',
+    );
   });
 
   test('base64ToBytes yields the original bytes', async () => {
