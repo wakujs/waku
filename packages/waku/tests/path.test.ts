@@ -176,6 +176,22 @@ describe('getPathMapping', () => {
     });
     expect(getPathMapping(pathSpec, '/users/john/posts')).toBe(null);
   });
+
+  test('matches slug slice ID pattern', () => {
+    const pathSpec = parsePathWithSlug('tooltip/[id]');
+    expect(getPathMapping(pathSpec, '/tooltip/123')).toEqual({ id: '123' });
+    expect(getPathMapping(pathSpec, '/tooltip')).toBe(null);
+    expect(getPathMapping(pathSpec, '/other/123')).toBe(null);
+  });
+
+  test('matches multi-segment slug slice ID pattern', () => {
+    const pathSpec = parsePathWithSlug('items/[cat]/[id]');
+    expect(getPathMapping(pathSpec, '/items/books/42')).toEqual({
+      cat: 'books',
+      id: '42',
+    });
+    expect(getPathMapping(pathSpec, '/items/books')).toBe(null);
+  });
 });
 
 describe('removeBase', () => {

@@ -1,16 +1,14 @@
+import babel from '@rolldown/plugin-babel';
 import tailwindcss from '@tailwindcss/vite';
-import react from '@vitejs/plugin-react';
+import react, { reactCompilerPreset } from '@vitejs/plugin-react';
 import { defineConfig } from 'waku/config';
 
 export default defineConfig({
   vite: {
     plugins: [
       tailwindcss(),
-      react({
-        babel: {
-          plugins: ['babel-plugin-react-compiler'],
-        },
-      }),
+      react(),
+      babel({ presets: [reactCompilerPreset()] }),
     ],
     optimizeDeps: {
       // technically false-positive warning but it ensures a safe behavior
