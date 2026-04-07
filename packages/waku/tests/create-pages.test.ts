@@ -907,6 +907,125 @@ describe('createPages pages and layouts', () => {
     ]);
   });
 
+  it('creates a slice with slug pattern', async () => {
+    const TestPage = () => null;
+    const TestSlice = (_props: { id: string }) => null;
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/',
+        component: TestPage,
+      }),
+      createSlice({
+        render: 'dynamic',
+        component: TestSlice,
+        id: 'tooltip/[id]',
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs());
+    const sliceConfig = configs.find(
+      (c: any) => c.type === 'slice' && c.id === 'tooltip/[id]',
+    );
+    expect(sliceConfig).toEqual({
+      type: 'slice',
+      id: 'tooltip/[id]',
+      pathSpec: [
+        { type: 'literal', name: 'tooltip' },
+        { type: 'group', name: 'id' },
+      ],
+      isStatic: false,
+      renderer: expect.any(Function),
+    });
+  });
+
+  it('creates a slice with nested slug pattern', async () => {
+    const TestPage = () => null;
+    const TestSlice = (_props: { category: string; id: string }) => null;
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/',
+        component: TestPage,
+      }),
+      createSlice({
+        render: 'dynamic',
+        component: TestSlice,
+        id: 'items/[category]/[id]',
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs());
+    const sliceConfig = configs.find(
+      (c: any) => c.type === 'slice' && c.id === 'items/[category]/[id]',
+    );
+    expect(sliceConfig).toEqual({
+      type: 'slice',
+      id: 'items/[category]/[id]',
+      pathSpec: [
+        { type: 'literal', name: 'items' },
+        { type: 'group', name: 'category' },
+        { type: 'group', name: 'id' },
+      ],
+      isStatic: false,
+      renderer: expect.any(Function),
+    });
+  });
+
+  it('slug slice renderer passes params as props', async () => {
+    const TestPage = () => null;
+    const TestSlice = (_props: { id: string }) => null;
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/',
+        component: TestPage,
+      }),
+      createSlice({
+        render: 'dynamic',
+        component: TestSlice,
+        id: 'tooltip/[id]',
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs());
+    const sliceConfig = configs.find(
+      (c: any) => c.type === 'slice' && c.id === 'tooltip/[id]',
+    ) as any;
+    const element = await sliceConfig.renderer({ id: '123' });
+    expect(element).toBeDefined();
+    expect(element.props).toEqual({ id: '123' });
+  });
+
+  it('static slice without slug has no pathSpec', async () => {
+    const TestPage = () => null;
+    const TestSlice = () => null;
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/',
+        component: TestPage,
+      }),
+      createSlice({
+        render: 'static',
+        component: TestSlice,
+        id: 'simple',
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs());
+    const sliceConfig = configs.find(
+      (c: any) => c.type === 'slice' && c.id === 'simple',
+    );
+    expect(sliceConfig).toEqual({
+      type: 'slice',
+      id: 'simple',
+      isStatic: true,
+      renderer: expect.any(Function),
+    });
+    expect(sliceConfig).not.toHaveProperty('pathSpec');
+  });
+
   it('creates a nested static page', async () => {
     const TestPage = () => null;
     createPages(async ({ createPage }) => [

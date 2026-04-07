@@ -204,8 +204,9 @@ type ApiConfig = {
 type SliceConfig = {
   type: 'slice';
   id: string;
+  pathSpec?: PathSpec;
   isStatic: boolean;
-  renderer: () => Promise<ReactNode>;
+  renderer: (params?: Record<string, string | string[]>) => Promise<ReactNode>;
 };
 
 const getRouterPrefetchCode = (path2moduleIds: Record<string, string[]>) => {
@@ -272,17 +273,21 @@ export function unstable_defineRouter(fns: {
     sliceConfig: {
       id: string;
       isStatic: boolean;
-      renderer: () => Promise<ReactNode>;
+      renderer: (
+        params?: Record<string, string | string[]>,
+      ) => Promise<ReactNode>;
     },
     getCachedElement: (id: SlotId) => Promise<ReactNode> | undefined,
     setCachedElement: (id: SlotId, element: ReactNode) => Promise<ReactNode>,
+    concreteId?: string,
+    params?: Record<string, string | string[]>,
   ): Promise<ReactNode> => {
-    const id = SLICE_SLOT_ID_PREFIX + sliceConfig.id;
+    const id = SLICE_SLOT_ID_PREFIX + (concreteId ?? sliceConfig.id);
     const cached = getCachedElement(id);
     if (cached) {
       return cached;
     }
-    let element = await sliceConfig.renderer();
+    let element = await sliceConfig.renderer(params);
     if (sliceConfig.isStatic) {
       element = await setCachedElement(id, element);
     }
@@ -320,12 +325,21 @@ export function unstable_defineRouter(fns: {
     const slices = pathConfigItem.slices || [];
     const sliceConfigMap = new Map<
       string,
-      { id: string; isStatic: boolean; renderer: () => Promise<ReactNode> }
+      {
+        id: string;
+        isStatic: boolean;
+        renderer: (
+          params?: Record<string, string | string[]>,
+        ) => Promise<ReactNode>;
+      }
     >();
     slices.forEach((sliceId) => {
       const sliceConfig = myConfig.configs.find(
         (item): item is typeof item & { type: 'slice' } =>
-          item.type === 'slice' && item.id === sliceId,
+          item.type === 'slice' &&
+          (item.id === sliceId ||
+            (!!item.pathSpec &&
+              !!getPathMapping(item.pathSpec, '/' + sliceId))),
       );
       if (sliceConfig) {
         sliceConfigMap.set(sliceId, sliceConfig);
@@ -467,14 +481,28 @@ export function unstable_defineRouter(fns: {
     if (input.type === 'component') {
       const sliceId = decodeSliceId(input.rscPath);
       if (sliceId !== null) {
-        // LIMITATION: This is a signle slice request.
+        // LIMITATION: This is a single slice request.
         // Ideally, we should be able to respond with multiple slices in one request.
-        const sliceConfig = await getMyConfig().then((myConfig) =>
-          myConfig.configs.find(
-            (item): item is typeof item & { type: 'slice' } =>
-              item.type === 'slice' && item.id === sliceId,
-          ),
-        );
+        const myConfig = await getMyConfig();
+        let sliceConfig: SliceConfig | undefined;
+        let sliceParams: Record<string, string | string[]> | undefined;
+        for (const item of myConfig.configs) {
+          if (item.type !== 'slice') {
+            continue;
+          }
+          if (item.id === sliceId) {
+            sliceConfig = item;
+            break;
+          }
+          if (item.pathSpec) {
+            const mapping = getPathMapping(item.pathSpec, '/' + sliceId);
+            if (mapping) {
+              sliceConfig = item;
+              sliceParams = mapping;
+              break;
+            }
+          }
+        }
         if (!sliceConfig) {
           return null;
         }
@@ -482,6 +510,8 @@ export function unstable_defineRouter(fns: {
           sliceConfig,
           getCachedElement,
           setCachedElement,
+          sliceId,
+          sliceParams,
         );
         return renderRsc({
           [SLICE_SLOT_ID_PREFIX + sliceId]: sliceElement,
@@ -767,6 +797,10 @@ export function unstable_defineRouter(fns: {
         continue;
       }
       if (!item.isStatic) {
+        continue;
+      }
+      if (item.pathSpec) {
+        // Skip slug slices — we can't pre-build them
         continue;
       }
       const rscPath = encodeSliceId(item.id);
