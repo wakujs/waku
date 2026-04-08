@@ -6,7 +6,7 @@ import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('hot-reload');
 const HMR_TIMEOUT_MS = 10_000;
-const HMR_SETTLE_TIMEOUT_MS = 500;
+const NO_FULL_RELOAD_TIMEOUT_MS = 500;
 
 const originalFiles: { [key: string]: string | false } = {};
 
@@ -54,9 +54,9 @@ async function expectBackgroundColor(
     .toBe(backgroundColor);
 }
 
-async function waitForHmrToSettle(
+async function expectNoFullReloadFor(
   page: Page,
-  timeout = HMR_SETTLE_TIMEOUT_MS,
+  timeout = NO_FULL_RELOAD_TIMEOUT_MS,
 ) {
   // Give Vite time to surface a delayed full reload after the hot update.
   let mainFrameNavigated = false;
@@ -119,7 +119,7 @@ test.describe('hot reload', () => {
       'Home Page',
       'Modified Page',
     );
-    await waitForHmrToSettle(page);
+    await expectNoFullReloadFor(page);
     await expect(page.getByText('Modified Page')).toBeVisible();
     await expect(page.getByTestId('count')).toHaveText('1');
     await page.getByTestId('increment').click();
@@ -131,7 +131,7 @@ test.describe('hot reload', () => {
       'Increment',
       'Plus One',
     );
-    await waitForHmrToSettle(page);
+    await expectNoFullReloadFor(page);
     await expect(page.getByTestId('increment')).toHaveText('Plus One');
     await expect(page.getByTestId('count')).toHaveText('2');
     await page.getByTestId('increment').click();
@@ -143,7 +143,7 @@ test.describe('hot reload', () => {
       'Modified Page',
       'Edited Page',
     );
-    await waitForHmrToSettle(page);
+    await expectNoFullReloadFor(page);
     await expect(page.getByText('Edited Page')).toBeVisible();
     await expect(page.getByTestId('count')).toHaveText('3');
     await page.getByTestId('increment').click();
@@ -157,7 +157,7 @@ test.describe('hot reload', () => {
       'About Page',
       'About2 Page',
     );
-    await waitForHmrToSettle(page);
+    await expectNoFullReloadFor(page);
     await expect(page.getByText('About2 Page')).toBeVisible();
     await page.getByTestId('home').click();
     await expect(page.getByText('Edited Page')).toBeVisible();
@@ -168,7 +168,7 @@ test.describe('hot reload', () => {
       '<p>Edited Page</p>',
       '<pEdited Page</p>',
     );
-    await waitForHmrToSettle(page);
+    await expectNoFullReloadFor(page);
     await expect(page.locator('vite-error-overlay')).toBeAttached();
     modifyFile(
       standaloneDir,
@@ -176,7 +176,7 @@ test.describe('hot reload', () => {
       '<pEdited Page</p>',
       '<p>Fixed Page</p>',
     );
-    await waitForHmrToSettle(page);
+    await expectNoFullReloadFor(page);
     await expect(page.locator('vite-error-overlay')).toHaveCount(0);
     await expect(page.getByText('Fixed Page')).toBeVisible();
   });
@@ -201,7 +201,7 @@ test.describe('hot reload', () => {
       'background-color: green;',
       'background-color: yellow;',
     );
-    await waitForHmrToSettle(page);
+    await expectNoFullReloadFor(page);
     await expectBackgroundColor(
       page,
       '[data-testid="css-modules-header"]',
@@ -228,7 +228,7 @@ test.describe('hot reload', () => {
       'background-color: red;',
       'background-color: blue;',
     );
-    await waitForHmrToSettle(page);
+    await expectNoFullReloadFor(page);
     await expectBackgroundColor(
       page,
       '[data-testid="css-modules-client"]',
@@ -260,7 +260,7 @@ test.describe('hot reload', () => {
       'Mesg 1001',
     );
     await expect(page.getByTestId('mesg')).toHaveText('Mesg 1001');
-    await waitForHmrToSettle(page);
+    await expectNoFullReloadFor(page);
     await expect(page.getByTestId('count')).toHaveText('1');
     await page.getByTestId('increment').click();
     await expect(page.getByTestId('count')).toHaveText('2');
