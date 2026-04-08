@@ -719,12 +719,23 @@ const scrollToRoute = (
 ) => {
   if (route.hash) {
     const element = document.getElementById(route.hash.slice(1));
-    if (!element && !scrollTopForMissingHash) {
+    if (!element) {
+      if (!scrollTopForMissingHash) {
+        return;
+      }
+      window.scrollTo({
+        left: 0,
+        top: 0,
+        behavior,
+      });
       return;
     }
+    const scrollMarginTop =
+      Number.parseFloat(window.getComputedStyle(element).scrollMarginTop) || 0;
     window.scrollTo({
       left: 0,
-      top: element ? element.getBoundingClientRect().top + window.scrollY : 0,
+      top:
+        element.getBoundingClientRect().top + window.scrollY - scrollMarginTop,
       behavior,
     });
     return;

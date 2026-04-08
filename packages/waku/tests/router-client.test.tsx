@@ -1221,6 +1221,90 @@ describe('Router integration', () => {
     }
   });
 
+  test('push to a new path with hash applies scroll-margin-top offset', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const NextRoute = () => (
+      <>
+        <Probe />
+        <div id="target" style={{ scrollMarginTop: '24px' }}>
+          target
+        </div>
+      </>
+    );
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/next')]: <NextRoute />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
+      return;
+    });
+    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
+      window,
+      'scrollY',
+    );
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      value: 100,
+    });
+    const getBoundingClientRectSpy = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        if (this.id === 'target') {
+          return { top: 40 } as DOMRect;
+        }
+        return {
+          bottom: 0,
+          height: 0,
+          left: 0,
+          right: 0,
+          top: 0,
+          width: 0,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        } as DOMRect;
+      });
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      document.body.append(view.container);
+      if (!capture.router) {
+        throw new Error('router not initialized');
+      }
+
+      await act(async () => {
+        await capture.router!.push('/next#target');
+      });
+      await flush();
+
+      expect(scrollToSpy).toHaveBeenCalledWith({
+        left: 0,
+        top: 116,
+        behavior: 'instant',
+      });
+    } finally {
+      view.unmount();
+      getBoundingClientRectSpy.mockRestore();
+      if (scrollYDescriptor) {
+        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
+      } else {
+        Object.defineProperty(window, 'scrollY', {
+          configurable: true,
+          value: 0,
+        });
+      }
+    }
+  });
+
   test('query-only push preserves scroll by default', async () => {
     window.history.replaceState({}, '', '/start?a=1');
 
