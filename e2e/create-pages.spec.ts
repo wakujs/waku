@@ -71,6 +71,23 @@ const waitForSelectorSeen = async (page: Page, selector: string) => {
     .toBe(true);
 };
 
+const expectNoPageErrorFor = async (
+  page: Page,
+) => {
+  const errors: string[] = [];
+  const onPageError = (err: Error) => errors.push(err.message);
+
+  page.on('pageerror', onPageError);
+  try {
+    // eslint-disable-next-line playwright/no-wait-for-timeout
+    await page.waitForTimeout(500);
+  } finally {
+    page.off('pageerror', onPageError);
+  }
+
+  expect(errors).toEqual([]);
+};
+
 test.describe(`create-pages`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
@@ -158,6 +175,7 @@ test.describe(`create-pages`, () => {
     await page.click("a[href='/foo']", { noWaitAfter: true });
     await waitForSelectorText(page, 'h2', 'Foo');
     await page.click('text=Jump to random page');
+    await expectNoPageErrorFor(page);
     await expect(
       page.getByRole('heading', { level: 2, name: 'Foo' }),
     ).toBeHidden();

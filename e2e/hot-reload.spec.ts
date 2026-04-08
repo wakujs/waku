@@ -5,8 +5,6 @@ import { expect } from '@playwright/test';
 import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('hot-reload');
-const HMR_TIMEOUT_MS = 10_000;
-const NO_FULL_RELOAD_TIMEOUT_MS = 500;
 
 const originalFiles: { [key: string]: string | false } = {};
 
@@ -49,14 +47,13 @@ async function expectBackgroundColor(
               : null,
           { selector },
         ),
-      { timeout: HMR_TIMEOUT_MS },
+      { timeout: 10_000 },
     )
     .toBe(backgroundColor);
 }
 
 async function expectNoFullReloadFor(
   page: Page,
-  timeout = NO_FULL_RELOAD_TIMEOUT_MS,
 ) {
   // Give Vite time to surface a delayed full reload after the hot update.
   let mainFrameNavigated = false;
@@ -69,7 +66,7 @@ async function expectNoFullReloadFor(
   page.on('framenavigated', onFrameNavigated);
   try {
     // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(timeout);
+    await page.waitForTimeout(500);
   } finally {
     page.off('framenavigated', onFrameNavigated);
   }
