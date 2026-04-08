@@ -6,6 +6,7 @@ import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('hot-reload');
 const HMR_TIMEOUT_MS = 10_000;
+const PAGE_MARKER_KEY = '__waku_hot_reload_page_marker__';
 
 const originalFiles: { [key: string]: string | false } = {};
 
@@ -31,23 +32,6 @@ function createFile(standaloneDir: string, file: string, content: string) {
   writeFileSync(filePath, content);
 }
 
-async function modifyFileAndWaitForConsoleMessage(
-  page: Page,
-  standaloneDir: string,
-  file: string,
-  search: string,
-  replace: string,
-  expectedTexts: string[],
-) {
-  const update = page.waitForEvent('console', {
-    predicate: (msg) =>
-      expectedTexts.every((expectedText) => msg.text().includes(expectedText)),
-    timeout: HMR_TIMEOUT_MS,
-  });
-  modifyFile(standaloneDir, file, search, replace);
-  await update;
-}
-
 async function expectBackgroundColor(
   page: Page,
   selector: string,
@@ -66,6 +50,28 @@ async function expectBackgroundColor(
       { timeout: HMR_TIMEOUT_MS },
     )
     .toBe(backgroundColor);
+}
+
+async function markPageInstance(page: Page) {
+  return page.evaluate((markerKey) => {
+    const marker = Math.random().toString(36).slice(2);
+    (globalThis as Record<string, unknown>)[markerKey] = marker;
+    return marker;
+  }, PAGE_MARKER_KEY);
+}
+
+async function expectSamePageInstance(page: Page, marker: string) {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          (markerKey) =>
+            (globalThis as Record<string, unknown>)[markerKey] ?? null,
+          PAGE_MARKER_KEY,
+        ),
+      { timeout: HMR_TIMEOUT_MS },
+    )
+    .toBe(marker);
 }
 
 test.afterAll(() => {
@@ -104,47 +110,48 @@ test.describe('hot reload', () => {
     await page.getByTestId('increment').click();
     await expect(page.getByTestId('count')).toHaveText('1');
     // Server component hot reload
-    await modifyFileAndWaitForConsoleMessage(
-      page,
+    const firstPageMarker = await markPageInstance(page);
+    modifyFile(
       standaloneDir,
       'src/pages/index.tsx',
       'Home Page',
       'Modified Page',
-      ['[rsc:update]', join(standaloneDir, 'src/pages/index.tsx')],
     );
     await expect(page.getByText('Modified Page')).toBeVisible();
+    await expectSamePageInstance(page, firstPageMarker);
     await expect(page.getByTestId('count')).toHaveText('1');
     await page.getByTestId('increment').click();
     await expect(page.getByTestId('count')).toHaveText('2');
     // Client component HMR
-    await modifyFileAndWaitForConsoleMessage(
-      page,
+    const secondPageMarker = await markPageInstance(page);
+    modifyFile(
       standaloneDir,
       'src/components/counter.tsx',
       'Increment',
       'Plus One',
-      ['[vite] hot updated:', '/src/components/counter.tsx'],
     );
-    await expect(page.getByText('Plus One')).toBeVisible();
+    await expect(page.getByTestId('increment')).toHaveText('Plus One');
+    await expectSamePageInstance(page, secondPageMarker);
     await expect(page.getByTestId('count')).toHaveText('2');
     await page.getByTestId('increment').click();
     await expect(page.getByTestId('count')).toHaveText('3');
     // Server component hot reload again
-    await modifyFileAndWaitForConsoleMessage(
-      page,
+    const thirdPageMarker = await markPageInstance(page);
+    modifyFile(
       standaloneDir,
       'src/pages/index.tsx',
       'Modified Page',
       'Edited Page',
-      ['[rsc:update]', join(standaloneDir, 'src/pages/index.tsx')],
     );
     await expect(page.getByText('Edited Page')).toBeVisible();
+    await expectSamePageInstance(page, thirdPageMarker);
     await expect(page.getByTestId('count')).toHaveText('3');
     await page.getByTestId('increment').click();
     await expect(page.getByTestId('count')).toHaveText('4');
     // Jump to another page and back
     await page.getByTestId('about').click();
     await expect(page.getByText('About Page')).toBeVisible();
+    const fourthPageMarker = await markPageInstance(page);
     modifyFile(
       standaloneDir,
       'src/pages/about.tsx',
@@ -152,9 +159,11 @@ test.describe('hot reload', () => {
       'About2 Page',
     );
     await expect(page.getByText('About2 Page')).toBeVisible();
+    await expectSamePageInstance(page, fourthPageMarker);
     await page.getByTestId('home').click();
     await expect(page.getByText('Edited Page')).toBeVisible();
     // Modify with a JSX syntax error
+    const fifthPageMarker = await markPageInstance(page);
     modifyFile(
       standaloneDir,
       'src/pages/index.tsx',
@@ -170,6 +179,7 @@ test.describe('hot reload', () => {
     );
     await expect(page.locator('vite-error-overlay')).toHaveCount(0);
     await expect(page.getByText('Fixed Page')).toBeVisible();
+    await expectSamePageInstance(page, fifthPageMarker);
   });
 
   test('css modules', async ({ page }) => {
@@ -183,19 +193,19 @@ test.describe('hot reload', () => {
       '[data-testid="css-modules-header"]',
       'rgb(0, 128, 0)',
     );
-    await modifyFileAndWaitForConsoleMessage(
-      page,
+    const cssPageMarker = await markPageInstance(page);
+    modifyFile(
       standaloneDir,
       'src/pages/css-modules.module.css',
       'background-color: green;',
       'background-color: yellow;',
-      ['[vite] css hot updated:', '/src/pages/css-modules.module.css'],
     );
     await expectBackgroundColor(
       page,
       '[data-testid="css-modules-header"]',
       'rgb(255, 255, 0)',
     );
+    await expectSamePageInstance(page, cssPageMarker);
   });
 
   test('css modules in client components with a reload (#1328)', async ({
@@ -210,19 +220,19 @@ test.describe('hot reload', () => {
       'rgb(255, 0, 0)',
     );
 
-    await modifyFileAndWaitForConsoleMessage(
-      page,
+    const cssClientPageMarker = await markPageInstance(page);
+    modifyFile(
       standaloneDir,
       'src/pages/css-modules-client.module.css',
       'background-color: red;',
       'background-color: blue;',
-      ['[vite] css hot updated:', '/src/pages/css-modules-client.module.css'],
     );
     await expectBackgroundColor(
       page,
       '[data-testid="css-modules-client"]',
       'rgb(0, 0, 255)',
     );
+    await expectSamePageInstance(page, cssClientPageMarker);
 
     await page.reload();
     await expectBackgroundColor(
@@ -242,15 +252,15 @@ test.describe('hot reload', () => {
     await expect(page.getByTestId('count')).toHaveText('1');
     await expect(page.getByTestId('mesg')).toHaveText('Mesg 1000');
     // Client component HMR
-    await modifyFileAndWaitForConsoleMessage(
-      page,
+    const messagePageMarker = await markPageInstance(page);
+    modifyFile(
       standaloneDir,
       'src/components/message.tsx',
       'Mesg 1000',
       'Mesg 1001',
-      ['[vite] hot updated:', '/src/components/message.tsx'],
     );
     await expect(page.getByTestId('mesg')).toHaveText('Mesg 1001');
+    await expectSamePageInstance(page, messagePageMarker);
     await expect(page.getByTestId('count')).toHaveText('1');
     await page.getByTestId('increment').click();
     await expect(page.getByTestId('count')).toHaveText('2');
