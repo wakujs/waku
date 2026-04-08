@@ -158,12 +158,10 @@ test.describe(`create-pages`, () => {
     await page.click("a[href='/foo']", { noWaitAfter: true });
     await waitForSelectorText(page, 'h2', 'Foo');
     await page.click('text=Jump to random page');
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(500); // need to wait not to error
-    await expect(page.getByRole('heading', { level: 2 })).toBeVisible();
     await expect(
       page.getByRole('heading', { level: 2, name: 'Foo' }),
     ).toBeHidden();
+    await expect(page.getByRole('heading', { level: 2 })).toBeVisible();
   });
 
   test('jump with setState', async ({ page }) => {
@@ -471,11 +469,15 @@ test.describe(`create-pages`, () => {
     expect(Math.abs(dynamicTime - staticTime)).toBeLessThanOrEqual(1000);
 
     await page.getByRole('link', { name: 'Home' }).click();
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(1000);
+    await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
     await page.getByRole('link', { name: 'Nested Layouts' }).click();
+    await expect(
+      page.getByRole('heading', { name: 'Nested Layouts page' }),
+    ).toBeVisible();
     const dynamicTime2 = await whatTime('Dynamic Layout');
     const staticTime2 = await whatTime('Static Layout');
+    expect(dynamicTime2).not.toEqual(dynamicTime);
+    expect(staticTime2).toEqual(staticTime);
     expect(dynamicTime2).not.toEqual(staticTime2);
   });
 
@@ -503,9 +505,9 @@ test.describe(`create-pages`, () => {
     expect(dynamicSliceText.startsWith('Slice 002')).toBeTruthy();
 
     await page.getByRole('link', { name: 'Home' }).click();
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(1000);
+    await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
     await page.getByRole('link', { name: 'Slices' }).click();
+    await expect(page.getByRole('heading', { name: 'Slices' })).toBeVisible();
 
     // test dynamic and static slices behavior after soft navigation
     const staticSliceText2 = page.getByTestId('slice001');
