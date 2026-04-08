@@ -71,9 +71,7 @@ const waitForSelectorSeen = async (page: Page, selector: string) => {
     .toBe(true);
 };
 
-const expectNoPageErrorFor = async (
-  page: Page,
-) => {
+const expectNoPageErrorFor = async (page: Page) => {
   const errors: string[] = [];
   const onPageError = (err: Error) => errors.push(err.message);
 

@@ -52,9 +52,7 @@ async function expectBackgroundColor(
     .toBe(backgroundColor);
 }
 
-async function expectNoFullReloadFor(
-  page: Page,
-) {
+async function expectNoFullReloadFor(page: Page) {
   // Give Vite time to surface a delayed full reload after the hot update.
   let mainFrameNavigated = false;
   const onFrameNavigated = (frame: Frame) => {
