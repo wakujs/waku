@@ -132,7 +132,11 @@ test.describe('router-client', () => {
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
 
-    await waitForSelectorText(page, '[data-testid="route-path"]', '/intercepted');
+    await waitForSelectorText(
+      page,
+      '[data-testid="route-path"]',
+      '/intercepted',
+    );
     await waitForSelectorText(
       page,
       '[data-testid="route-query"]',
