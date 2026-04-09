@@ -1,6 +1,11 @@
 import { expect } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
-import { prepareNormalSetup, test, waitForHydration } from './utils.js';
+import {
+  prepareNormalSetup,
+  test,
+  waitForHydration,
+  waitForSelectorText,
+} from './utils.js';
 
 const startApp = prepareNormalSetup('router-client');
 const allowedConsoleErrorPatterns: RegExp[] = [
@@ -118,18 +123,22 @@ test.describe('router-client', () => {
     await page.goto(`http://localhost:${port}/start`);
     await waitForHydration(page);
 
+    await expect(page.getByRole('heading', { name: 'Start' })).toBeVisible();
+    await expect(page.getByTestId('route-path')).toHaveText('/start');
+    await expect(page.getByTestId('route-query')).toHaveText('');
+
     await page.evaluate(() => {
       window.history.pushState({}, '', '/ignored?__interceptor=rewrite');
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
 
-    await expect(
-      page.getByRole('heading', { name: 'Intercepted' }),
-    ).toBeVisible();
-    await expect(page.getByTestId('route-path')).toHaveText('/intercepted');
-    await expect(page.getByTestId('route-query')).toHaveText(
+    await waitForSelectorText(page, '[data-testid="route-path"]', '/intercepted');
+    await waitForSelectorText(
+      page,
+      '[data-testid="route-query"]',
       'from=interceptor',
     );
+    await waitForSelectorText(page, 'h1', 'Intercepted');
   });
 
   test('hash-only link navigation scrolls to anchor target', async ({
