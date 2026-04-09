@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { Frame, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
@@ -27,6 +28,48 @@ function createFile(standaloneDir: string, file: string, content: string) {
     originalFiles[filePath] ??= false;
   }
   writeFileSync(filePath, content);
+}
+
+async function expectBackgroundColor(
+  page: Page,
+  selector: string,
+  backgroundColor: string,
+) {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          ({ selector }) =>
+            document.querySelector(selector)
+              ? window
+                  .getComputedStyle(document.querySelector(selector)!)
+                  .getPropertyValue('background-color')
+              : null,
+          { selector },
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe(backgroundColor);
+}
+
+async function expectNoFullReloadFor(page: Page) {
+  // Give Vite time to surface a delayed full reload after the hot update.
+  let mainFrameNavigated = false;
+  const onFrameNavigated = (frame: Frame) => {
+    if (frame === page.mainFrame()) {
+      mainFrameNavigated = true;
+    }
+  };
+
+  page.on('framenavigated', onFrameNavigated);
+  try {
+    // eslint-disable-next-line playwright/no-wait-for-timeout
+    await page.waitForTimeout(500);
+  } finally {
+    page.off('framenavigated', onFrameNavigated);
+  }
+
+  expect(mainFrameNavigated).toBe(false);
 }
 
 test.afterAll(() => {
@@ -71,9 +114,8 @@ test.describe('hot reload', () => {
       'Home Page',
       'Modified Page',
     );
+    await expectNoFullReloadFor(page);
     await expect(page.getByText('Modified Page')).toBeVisible();
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(500); // need to wait not to full reload
     await expect(page.getByTestId('count')).toHaveText('1');
     await page.getByTestId('increment').click();
     await expect(page.getByTestId('count')).toHaveText('2');
@@ -84,9 +126,8 @@ test.describe('hot reload', () => {
       'Increment',
       'Plus One',
     );
-    await expect(page.getByText('Plus One')).toBeVisible();
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(500); // need to wait not to full reload
+    await expectNoFullReloadFor(page);
+    await expect(page.getByTestId('increment')).toHaveText('Plus One');
     await expect(page.getByTestId('count')).toHaveText('2');
     await page.getByTestId('increment').click();
     await expect(page.getByTestId('count')).toHaveText('3');
@@ -97,9 +138,8 @@ test.describe('hot reload', () => {
       'Modified Page',
       'Edited Page',
     );
+    await expectNoFullReloadFor(page);
     await expect(page.getByText('Edited Page')).toBeVisible();
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(500); // need to wait not to full reload
     await expect(page.getByTestId('count')).toHaveText('3');
     await page.getByTestId('increment').click();
     await expect(page.getByTestId('count')).toHaveText('4');
@@ -112,6 +152,7 @@ test.describe('hot reload', () => {
       'About Page',
       'About2 Page',
     );
+    await expectNoFullReloadFor(page);
     await expect(page.getByText('About2 Page')).toBeVisible();
     await page.getByTestId('home').click();
     await expect(page.getByText('Edited Page')).toBeVisible();
@@ -122,14 +163,16 @@ test.describe('hot reload', () => {
       '<p>Edited Page</p>',
       '<pEdited Page</p>',
     );
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(500); // need to wait for possible crash
+    await expectNoFullReloadFor(page);
+    await expect(page.locator('vite-error-overlay')).toBeAttached();
     modifyFile(
       standaloneDir,
       'src/pages/index.tsx',
       '<pEdited Page</p>',
       '<p>Fixed Page</p>',
     );
+    await expectNoFullReloadFor(page);
+    await expect(page.locator('vite-error-overlay')).toHaveCount(0);
     await expect(page.getByText('Fixed Page')).toBeVisible();
   });
 
@@ -139,30 +182,27 @@ test.describe('hot reload', () => {
     await expect(page.getByTestId('css-modules-header')).toHaveText(
       'CSS Modules',
     );
-    const bgColor1 = await page.evaluate(() =>
-      window
-        .getComputedStyle(
-          document.querySelector('[data-testid="css-modules-header"]')!,
-        )
-        .getPropertyValue('background-color'),
+    await expect(page.getByTestId('count')).toHaveText('0');
+    await page.getByTestId('increment').click();
+    await expect(page.getByTestId('count')).toHaveText('1');
+    await expectBackgroundColor(
+      page,
+      '[data-testid="css-modules-header"]',
+      'rgb(0, 128, 0)',
     );
-    expect(bgColor1).toBe('rgb(0, 128, 0)');
     modifyFile(
       standaloneDir,
       'src/pages/css-modules.module.css',
       'background-color: green;',
       'background-color: yellow;',
     );
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(500); // need to wait for full reload
-    const bgColor2 = await page.evaluate(() =>
-      window
-        .getComputedStyle(
-          document.querySelector('[data-testid="css-modules-header"]')!,
-        )
-        .getPropertyValue('background-color'),
+    await expectNoFullReloadFor(page);
+    await expectBackgroundColor(
+      page,
+      '[data-testid="css-modules-header"]',
+      'rgb(255, 255, 0)',
     );
-    expect(bgColor2).toBe('rgb(255, 255, 0)');
+    await expect(page.getByTestId('count')).toHaveText('1');
   });
 
   test('css modules in client components with a reload (#1328)', async ({
@@ -171,14 +211,11 @@ test.describe('hot reload', () => {
     await page.goto(`http://localhost:${port}/css-modules-client`);
     await waitForHydration(page);
     await expect(page.getByTestId('css-modules-client')).toHaveText('Hello');
-    const bgColor1 = await page.evaluate(() =>
-      window
-        .getComputedStyle(
-          document.querySelector('[data-testid="css-modules-client"]')!,
-        )
-        .getPropertyValue('background-color'),
+    await expectBackgroundColor(
+      page,
+      '[data-testid="css-modules-client"]',
+      'rgb(255, 0, 0)',
     );
-    expect(bgColor1).toBe('rgb(255, 0, 0)');
 
     modifyFile(
       standaloneDir,
@@ -186,26 +223,19 @@ test.describe('hot reload', () => {
       'background-color: red;',
       'background-color: blue;',
     );
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(500); // need to wait for full reload
-    const bgColor2 = await page.evaluate(() =>
-      window
-        .getComputedStyle(
-          document.querySelector('[data-testid="css-modules-client"]')!,
-        )
-        .getPropertyValue('background-color'),
+    await expectNoFullReloadFor(page);
+    await expectBackgroundColor(
+      page,
+      '[data-testid="css-modules-client"]',
+      'rgb(0, 0, 255)',
     );
-    expect(bgColor2).toBe('rgb(0, 0, 255)');
 
     await page.reload();
-    const bgColor3 = await page.evaluate(() =>
-      window
-        .getComputedStyle(
-          document.querySelector('[data-testid="css-modules-client"]')!,
-        )
-        .getPropertyValue('background-color'),
+    await expectBackgroundColor(
+      page,
+      '[data-testid="css-modules-client"]',
+      'rgb(0, 0, 255)',
     );
-    expect(bgColor3).toBe('rgb(0, 0, 255)');
   });
 
   test('indirect client components (#1491)', async ({ page }) => {
@@ -225,13 +255,13 @@ test.describe('hot reload', () => {
       'Mesg 1001',
     );
     await expect(page.getByTestId('mesg')).toHaveText('Mesg 1001');
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(500); // need to wait not to full reload
+    await expectNoFullReloadFor(page);
     await expect(page.getByTestId('count')).toHaveText('1');
     await page.getByTestId('increment').click();
     await expect(page.getByTestId('count')).toHaveText('2');
     // Browser refresh
     await page.reload();
+    await waitForHydration(page);
     await expect(page.getByTestId('mesg')).toHaveText('Mesg 1001');
     await expect(page.getByTestId('count')).toHaveText('0');
     await page.getByTestId('increment').click();
