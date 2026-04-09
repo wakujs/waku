@@ -40,6 +40,7 @@ async function run() {
   } else if (cmd === 'build') {
     const { runBuild } = await import('./lib/vite-rsc/cmd-build.js');
     await runBuild();
+    process.exit(0);
   } else if (cmd === 'start') {
     const { runStart } = await import('./lib/vite-rsc/cmd-start.js');
     await runStart(values);
