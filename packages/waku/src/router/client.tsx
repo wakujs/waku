@@ -719,12 +719,23 @@ const scrollToRoute = (
 ) => {
   if (route.hash) {
     const element = document.getElementById(route.hash.slice(1));
-    if (!element && !scrollTopForMissingHash) {
+    if (!element) {
+      if (!scrollTopForMissingHash) {
+        return;
+      }
+      window.scrollTo({
+        left: 0,
+        top: 0,
+        behavior,
+      });
       return;
     }
+    const scrollMarginTop =
+      Number.parseFloat(window.getComputedStyle(element).scrollMarginTop) || 0;
     window.scrollTo({
       left: 0,
-      top: element ? element.getBoundingClientRect().top + window.scrollY : 0,
+      top:
+        element.getBoundingClientRect().top + window.scrollY - scrollMarginTop,
       behavior,
     });
     return;
@@ -834,15 +845,12 @@ const InnerRouter = ({
   const [pendingHistory, setPendingHistory] = useState<{
     mode: 'push' | 'replace';
     url: URL | undefined;
-    prevPathname: string;
   } | null>(null);
   useLayoutEffect(() => {
     if (pendingHistory) {
-      const { mode, url, prevPathname } = pendingHistory;
+      const { mode, url } = pendingHistory;
       const urlToWrite = url || getRouteUrl(route);
-      if (window.location.pathname === prevPathname) {
-        writeUrlToHistory(mode, urlToWrite);
-      }
+      writeUrlToHistory(mode, urlToWrite);
     }
   }, [route, pendingHistory]);
   const [pendingScroll, setPendingScroll] = useState<{
@@ -945,7 +953,7 @@ const InnerRouter = ({
         setRoute(nextRoute);
         setErr(null);
         setPendingScroll(options.shouldScroll ? { pathChanged } : null);
-        setPendingHistory(mode ? { mode, url, prevPathname } : null);
+        setPendingHistory(mode ? { mode, url } : null);
         routeChangeAbortRef.current = null;
         emitRouteChangeEvent('complete', nextRoute);
       });
