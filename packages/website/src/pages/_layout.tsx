@@ -1,3 +1,4 @@
+// @ts-expect-error no types
 import '../styles.css';
 
 import type { ReactNode } from 'react';

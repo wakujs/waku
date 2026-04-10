@@ -2,7 +2,6 @@
   "compilerOptions": {
     "strict": true,
     "target": "esnext",
-    "downlevelIteration": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
