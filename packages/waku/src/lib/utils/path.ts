@@ -180,8 +180,7 @@ export const getPathMapping = (
     } else if (actual.length < pathSpec.length - 1) {
       // Non-terminal wildcards can match zero segments; just need enough
       // actual segments for every non-wildcard spec in the pathSpec
-        return null;
-      }
+      return null;
     }
   }
   const mapping: Record<string, string | string[]> = {};
