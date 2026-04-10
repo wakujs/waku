@@ -177,10 +177,9 @@ export const getPathMapping = (
       if (actual.length > 0) {
         return null;
       }
-    } else {
+    } else if (actual.length < pathSpec.length - 1) {
       // Non-terminal wildcards can match zero segments; just need enough
       // actual segments for every non-wildcard spec in the pathSpec
-      if (actual.length < pathSpec.length - 1) {
         return null;
       }
     }
