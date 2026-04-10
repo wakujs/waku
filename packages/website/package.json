@@ -15,9 +15,9 @@
     "framer-motion": "^12.34.3",
     "jotai": "^2.18.0",
     "next-mdx-remote": "^6.0.0",
-    "react": "~19.2.4",
-    "react-dom": "~19.2.4",
-    "react-server-dom-webpack": "~19.2.4",
+    "react": "~19.2.5",
+    "react-dom": "~19.2.5",
+    "react-server-dom-webpack": "~19.2.5",
     "smartquotes": "^2.3.2",
     "waku": "workspace:*"
   },
