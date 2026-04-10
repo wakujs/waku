@@ -14,13 +14,13 @@
     "react-dom": "~19.2.5",
     "react-error-boundary": "^6.1.1",
     "react-server-dom-webpack": "~19.2.5",
-    "serve": "^14.2.5",
+    "serve": "^14.2.6",
     "waku": "latest"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "server-only": "^0.0.1",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.2"
   }
 }
