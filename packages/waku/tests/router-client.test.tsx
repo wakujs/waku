@@ -252,6 +252,7 @@ beforeEach(() => {
       disconnect,
       unobserve,
       takeRecords,
+      scrollMargin: '',
     };
     return instance;
   });

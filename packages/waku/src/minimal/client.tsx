@@ -54,7 +54,7 @@ const checkStatus = async (
 type Elements = Record<string, unknown>;
 
 // TODO(daishi) do we still this?
-const getCached = <T,>(c: () => T, m: WeakMap<object, T>, k: object): T =>
+const getCached = <T,>(c: () => T, m: WeakMap<WeakKey, T>, k: object): T =>
   (m.has(k) ? m : m.set(k, c())).get(k) as T;
 
 const cache1 = new WeakMap();
