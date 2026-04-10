@@ -41,6 +41,28 @@ test.describe('wildcard api routes', () => {
     expect(text).toBe('Greetings from the API!');
   });
 
+  test('non-terminal catch-all matches with zero segments', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/about`);
+    await expect(page.getByRole('heading', { name: 'About' })).toBeVisible();
+    await expect(page.getByTestId('locale')).toHaveText('');
+  });
+
+  test('non-terminal catch-all matches with one segment', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/zh/about`);
+    await expect(page.getByRole('heading', { name: 'About' })).toBeVisible();
+    await expect(page.getByTestId('locale')).toHaveText('zh');
+  });
+
+  test('non-terminal catch-all matches with multiple segments', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/zh/cn/about`);
+    await expect(page.getByRole('heading', { name: 'About' })).toBeVisible();
+    await expect(page.getByTestId('locale')).toHaveText('zh/cn');
+  });
+
   test(`static nested catch-all route matches before root catch-all route`, async ({
     page,
   }) => {

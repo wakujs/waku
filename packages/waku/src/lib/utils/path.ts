@@ -164,9 +164,25 @@ export const getPathMapping = (
 ): Record<string, string | string[]> | null => {
   const actual = pathname.split('/').filter(Boolean);
   if (pathSpec.length > actual.length) {
-    const hasWildcard = pathSpec.some((spec) => spec.type === 'wildcard');
-    if (!hasWildcard || actual.length > 0) {
+    const wildcardIndex = pathSpec.findIndex(
+      (spec) => spec.type === 'wildcard',
+    );
+    if (wildcardIndex === -1) {
       return null;
+    }
+    const isTerminalWildcard = wildcardIndex === pathSpec.length - 1;
+    if (isTerminalWildcard) {
+      // Terminal wildcards only pass through with zero actual segments
+      // (handled by the root-wildcard special case below)
+      if (actual.length > 0) {
+        return null;
+      }
+    } else {
+      // Non-terminal wildcards can match zero segments; just need enough
+      // actual segments for every non-wildcard spec in the pathSpec
+      if (actual.length < pathSpec.length - 1) {
+        return null;
+      }
     }
   }
   const mapping: Record<string, string | string[]> = {};
@@ -257,7 +273,7 @@ export const getPathMapping = (
       }
     }
   }
-  if (wildcardStartIndex === -1 || wildcardEndIndex === -1) {
+  if (wildcardStartIndex === -1) {
     throw new Error('Invalid wildcard path');
   }
   const wildcardName = pathSpec[wildcardStartIndex]!.name;

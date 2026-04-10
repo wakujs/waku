@@ -146,6 +146,41 @@ describe('getPathMapping', () => {
     expect(getPathMapping(pathSpec, '/prefix/foo')).toEqual({ path: ['foo'] });
   });
 
+  test('handles non-terminal wildcard matching zero segments', () => {
+    const pathSpec = parsePathWithSlug('/[...locale]/about');
+    expect(getPathMapping(pathSpec, '/about')).toEqual({ locale: [] });
+    expect(getPathMapping(pathSpec, '/zh/about')).toEqual({ locale: ['zh'] });
+    expect(getPathMapping(pathSpec, '/zh/cn/about')).toEqual({
+      locale: ['zh', 'cn'],
+    });
+    expect(getPathMapping(pathSpec, '/')).toBe(null);
+    expect(getPathMapping(pathSpec, '/zh')).toBe(null);
+  });
+
+  test('handles non-terminal wildcard with multiple trailing literals', () => {
+    const pathSpec = parsePathWithSlug('/[...wild]/foo/bar');
+    expect(getPathMapping(pathSpec, '/foo/bar')).toEqual({ wild: [] });
+    expect(getPathMapping(pathSpec, '/a/foo/bar')).toEqual({ wild: ['a'] });
+    expect(getPathMapping(pathSpec, '/a/b/foo/bar')).toEqual({
+      wild: ['a', 'b'],
+    });
+    expect(getPathMapping(pathSpec, '/bar')).toBe(null);
+    expect(getPathMapping(pathSpec, '/foo')).toBe(null);
+  });
+
+  test('handles non-terminal wildcard with leading and trailing literals', () => {
+    const pathSpec = parsePathWithSlug('/prefix/[...wild]/suffix');
+    expect(getPathMapping(pathSpec, '/prefix/suffix')).toEqual({ wild: [] });
+    expect(getPathMapping(pathSpec, '/prefix/a/suffix')).toEqual({
+      wild: ['a'],
+    });
+    expect(getPathMapping(pathSpec, '/prefix/a/b/suffix')).toEqual({
+      wild: ['a', 'b'],
+    });
+    expect(getPathMapping(pathSpec, '/prefix')).toBe(null);
+    expect(getPathMapping(pathSpec, '/suffix')).toBe(null);
+  });
+
   test('handles paths with prefixed groups', () => {
     const pathSpec = parsePathWithSlug('/@[username]');
     expect(getPathMapping(pathSpec, '/@john')).toEqual({
