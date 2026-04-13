@@ -200,7 +200,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     const stopApp = async () => {
       await terminate(cp);
     };
-    return { port, stopApp, fixtureDir };
+    return { port, stopApp, fixtureDir, cp };
   };
   return startApp;
 };
