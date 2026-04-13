@@ -1,3 +1,4 @@
+import type { ChildProcess } from 'node:child_process';
 import { expect } from '@playwright/test';
 import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
@@ -6,12 +7,10 @@ const startApp = prepareNormalSetup('ssr-redirect');
 test.describe(`ssr-redirect`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
-  const serverOutput: string[] = [];
+  let cp: ChildProcess;
 
   test.beforeAll(async ({ mode }) => {
-    ({ port, stopApp } = await startApp(mode, {
-      onServerOutput: (data) => serverOutput.push(data),
-    }));
+    ({ port, stopApp, cp } = await startApp(mode));
   });
 
   test.afterAll(async () => {
@@ -77,10 +76,11 @@ test.describe(`ssr-redirect`, () => {
   test('redirect should not log "Error during rendering" to server console', async ({
     page,
   }) => {
-    serverOutput.length = 0;
+    const serverOutput: string[] = [];
+    const onData = (data: any) => serverOutput.push(data.toString());
+    cp.stdout?.on('data', onData);
+    cp.stderr?.on('data', onData);
 
-    // TODO: async redirection on dev is flaky, so wrap with retry for now
-    // https://github.com/wakujs/waku/pull/1586
     await expect(async () => {
       await page.goto(`http://localhost:${port}/async`);
       await expect(page.getByRole('heading')).toHaveText('Destination Page');
