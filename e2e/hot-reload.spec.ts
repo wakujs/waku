@@ -304,7 +304,7 @@ defineConfig({
     await expect(async () => {
       const res = await request.get(`http://localhost:${port}/__test_edit`);
       expect(await res.text()).toEqual('ok');
-    }).toPass();
+    }).toPass({ timeout: 10_000 });
   });
 
   test('reload environment variables when new env added', async ({
@@ -356,7 +356,7 @@ export default defineConfig({
       expect(data.testMessage).toEqual('Hello from initial .env');
       expect(data.appVersion).toBeUndefined();
       expect(data.newFeature).toBeUndefined();
-    }).toPass({ timeout: 10000 });
+    }).toPass({ timeout: 10_000 });
 
     // Add a new env variable
     createFile(
@@ -372,7 +372,7 @@ export default defineConfig({
       expect(data.testMessage).toEqual('Hello from initial .env');
       expect(data.appVersion).toEqual('1.0.0');
       expect(data.newFeature).toBeUndefined();
-    }).toPass({ timeout: 10000 });
+    }).toPass({ timeout: 10_000 });
 
     // Add another new env variable
     createFile(
@@ -388,6 +388,6 @@ export default defineConfig({
       expect(data.testMessage).toEqual('Hello from initial .env');
       expect(data.appVersion).toEqual('1.0.0');
       expect(data.newFeature).toEqual('enabled');
-    }).toPass({ timeout: 10000 });
+    }).toPass({ timeout: 10_000 });
   });
 });
