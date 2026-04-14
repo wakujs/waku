@@ -272,6 +272,7 @@ Important details:
 
 - `renderHtml` expects an options object such as `{ rscPath: '' }`.
 - `rscPath` and `rscParams` are opaque application data. Waku does not assign them semantics.
+- On the client, RSC caching and prefetch reuse compare `rscParams` by identity. Reuse the same object or `URLSearchParams` instance if you want reuse; creating a fresh object each time is treated as different input.
 - Throwing from `handleRequest` turns into an HTTP error response. If you throw one of Waku's custom errors, status and location are preserved.
 
 #### `handleBuild(utils)`
@@ -388,6 +389,7 @@ Important behavior:
 - `Root` is required for `Slot` and `useRefetch`.
 - `unstable_fetchRscStore` is an unstable escape hatch for custom integrations.
 - The store type is intentionally not exported. Treat it as opaque.
+- If you mount multiple `Root` instances, they share the default store unless you pass a different `unstable_fetchRscStore` object to each one. This is uncommon, but it matters if you want isolation.
 - `Root` injects default head tags for charset, viewport, and generator.
 - For SSR or SSG, use `hydrateRoot(document, rootElement)` when `globalThis.__WAKU_HYDRATE__` is set.
 - For purely client-side rendering, use `createRoot(document).render(rootElement)`.
@@ -502,8 +504,10 @@ const Counter = () => {
 Important behavior:
 
 - `refetch(...)` requests a new RSC payload for the given `rscPath` and optional `rscParams`.
+- Client-side cache reuse for `rscParams` is identity-based here as well.
 - The returned payload is merged into the current element map by key.
 - If you return only `InnerApp`, previously rendered elements such as `App` stay mounted.
+- If the refetch fails, the existing element map stays in place.
 - `unstable_enhanceFetchRscStore` is an unstable escape hatch for custom fetch-store behavior and is usually unnecessary unless you are building router-like abstractions.
 
 ### Common Patterns
@@ -593,10 +597,10 @@ if (
 
 ### Examples
 
-- [../examples/31_minimal](Minimal SSR and prerendered root route)
-- [../examples/33_promise](Using `Children` to compose client content into a server tree)
-- [../examples/34_functions](Server functions returning `_value` and updated elements)
-- [../examples/35_nesting](Nested slots, `useRefetch`, `withRequest`, and fallback HTML generation)
-- [../examples/36_form](Server actions and `formState`)
-- [../examples/39_api](Custom API endpoints alongside minimal SSR)
-- [../examples/51_spa](SPA-style build using `generateDefaultHtml`)
+- [Minimal SSR and prerendered root route](https://github.com/wakujs/waku/tree/main/examples/31_minimal)
+- [Using `Children` to compose client content into a server tree](https://github.com/wakujs/waku/tree/main/examples/33_promise)
+- [Server functions returning `_value` and updated elements](https://github.com/wakujs/waku/tree/main/examples/34_functions)
+- [Nested slots, `useRefetch`, `withRequest`, and fallback HTML generation](https://github.com/wakujs/waku/tree/main/examples/35_nesting)
+- [Server actions and `formState`](https://github.com/wakujs/waku/tree/main/examples/36_form)
+- [Custom API endpoints alongside minimal SSR](https://github.com/wakujs/waku/tree/main/examples/39_api)
+- [SPA-style build using `generateDefaultHtml`](https://github.com/wakujs/waku/tree/main/examples/51_spa)
