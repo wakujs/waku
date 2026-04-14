@@ -1076,7 +1076,7 @@ export function Router({
   unstable_routeInterceptor,
 }: {
   initialRoute?: RouteProps;
-  unstable_fetchRscStore?: Parameters<typeof Root>[0]['fetchRscStore'];
+  unstable_fetchRscStore?: Parameters<typeof Root>[0]['unstable_fetchRscStore'];
   unstable_routeInterceptor?: (route: RouteProps) => RouteProps | false;
 }) {
   const initialRscPath = encodeRoutePath(initialRoute.path);
@@ -1086,7 +1086,7 @@ export function Router({
     <Root
       initialRscPath={initialRscPath}
       initialRscParams={initialRscParams}
-      fetchRscStore={unstable_fetchRscStore}
+      unstable_fetchRscStore={unstable_fetchRscStore}
     >
       <InnerRouter
         initialRoute={initialRoute}
