@@ -13,6 +13,7 @@ To use React Server Components in Waku, you need to create a `./src/waku.server.
 ```tsx
 import { unstable_defineHandlers as defineHandlers } from 'waku/minimal/server';
 import adapter from 'waku/adapters/default';
+import { Slot } from 'waku/minimal/client';
 import App from './components/App.js';
 
 const handlers = defineHandlers({
@@ -24,11 +25,13 @@ const handlers = defineHandlers({
       return renderHtml(
         await renderRsc({ App: <App name="Waku" /> }),
         <Slot id="App" />,
-        '',
+        {
+          rscPath: '',
+        },
       );
     }
   },
-  handleBuild: () => null,
+  handleBuild: async () => {},
 });
 
 export default adapter(handlers);
@@ -41,45 +44,49 @@ Tips for experimenting:
 
 #### `handleBuild`
 
-The `handleBuild` function is to produce a build for production.
-It has to return AsyncIterable of build instructions.
+The `handleBuild` function runs during `waku build`.
+Unlike older versions, it does not return build instructions.
+Instead, it is an async function that receives build utilities and emits files with `generateFile`.
+
+If you only need dynamic SSR, an empty handler is enough:
 
 ```tsx
-  handleBuild: ({
+  handleBuild: async () => {},
+```
+
+To prerender the root route in the minimal example:
+
+```tsx
+  handleBuild: async ({
     renderRsc,
     renderHtml,
     rscPath2pathname,
-  }) =>
-    createAsyncIterable(async () => {
-      const tasks = [
-        async () => ({
-          type: 'file' as const,
-          pathname: rscPath2pathname(''),
-          body: renderRsc({ App: <App name="Waku" /> }),
-        }),
-        async () => ({
-          type: 'file' as const,
-          pathname: '/',
-          body: renderHtml(
-            await renderRsc({ App: <App name="Waku" /> }),
-            <Slot id="App" />,
-            {
-              rscPath: '',
-            },
-          ).then((res) => res.body || ''),
-        }),
-      ];
-      return tasks;
-    }),
+    generateFile,
+  }) => {
+    const rscPath = '';
+    const stream = await renderRsc({ App: <App name="Waku" /> });
+    const [rscStream, htmlStream] = stream.tee();
+
+    await generateFile(rscPath2pathname(rscPath), rscStream);
+
+    const res = await renderHtml(htmlStream, <Slot id="App" />, {
+      rscPath,
+    });
+    await generateFile('index.html', res.body!);
+  },
 ```
+
+`generateFile` writes files into `dist/public`.
+`rscPath2pathname` converts an RSC path such as `''` into the corresponding RSC payload pathname.
 
 ### Client API
 
-To render a React Server Component on the client, you can use the `Root` and `Slot` components from `waku/client` with the RSC ID to create a wrapper component.
+To render a React Server Component on the client, use the `Root` and `Slot` components from `waku/minimal/client` with the RSC ID to create a wrapper component.
 
 This file should be `./src/waku.client.tsx`.
 
 ```tsx
+import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Root, Slot } from 'waku/minimal/client';
 
@@ -97,7 +104,7 @@ createRoot(document.getElementById('root')!).render(rootElement);
 The `initialRscPath` prop can be passed to the `Root` Component, overriding the default rscPath which is `""`. You can also re-render a React Server Component with new rscPath.
 
 ```tsx
-import { useRefetch } from 'waku/client';
+import { useRefetch } from 'waku/minimal/client';
 
 const Component = () => {
   const refetch = useRefetch();
