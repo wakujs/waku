@@ -1,14 +1,68 @@
 ---
 slug: minimal-api
 title: Minimal API
-description: The minimal Waku API for library authors.
+description: Low-level Waku primitives for library authors and custom integrations.
 ---
 
-## Minimal
+## Minimal API
 
-### Server API
+The minimal API is the lowest-level public surface for building on top of Waku. It is intended for:
 
-To use React Server Components in Waku, you need to create a `./src/waku.server.tsx` file and `defineHandlers` to handle server requests.
+- library authors
+- custom runtimes and integrations
+- advanced users who need direct control over routing, request dispatch, and build output
+
+If you are building an application, use `waku/router` instead. The minimal API deliberately does not provide:
+
+- config-based routing / filesystem routing
+- automatic route-to-component mapping
+- automatic prerender planning
+- page conventions such as `layout.tsx`, `page.tsx`, or `404.tsx`
+
+All `unstable_*` exports in this document are genuinely unstable and may change.
+
+### Mental Model
+
+At this level, Waku gives you rendering primitives and very little policy.
+
+- `handleRequest` decides how each incoming request is handled.
+- `renderRsc` renders a React Server Components payload as a `ReadableStream`.
+- `renderHtml` renders the HTML shell that boots the client.
+- `Root` fetches and caches RSC payloads on the client.
+- `Slot` renders a named element from the RSC payload.
+- `handleBuild` decides which files are emitted during `waku build`.
+
+Two terms are important:
+
+- `RSC ID`: the key of an element returned by `renderRsc`.
+- `rscPath`: an application-defined string that identifies which RSC payload to fetch. Waku treats it as opaque.
+
+If the server returns:
+
+```tsx
+return renderRsc({
+  App: <App />,
+  Sidebar: <Sidebar />,
+});
+```
+
+then the client can render those elements with:
+
+```tsx
+<Root>
+  <Slot id="App" />
+  <Slot id="Sidebar" />
+</Root>
+```
+
+### End-To-End Example
+
+A minimal SSR setup has two entry points:
+
+- `src/waku.server.tsx`
+- `src/waku.client.tsx`
+
+`src/waku.server.tsx`:
 
 ```tsx
 import { unstable_defineHandlers as defineHandlers } from 'waku/minimal/server';
@@ -22,41 +76,16 @@ const handlers = defineHandlers({
       return renderRsc({ App: <App name={input.rscPath || 'Waku'} /> });
     }
     if (input.type === 'custom' && input.pathname === '/') {
+      const rscPath = '';
       return renderHtml(
         await renderRsc({ App: <App name="Waku" /> }),
         <Slot id="App" />,
-        {
-          rscPath: '',
-        },
+        { rscPath },
       );
     }
+    return null;
   },
-  handleBuild: async () => {},
-});
 
-export default adapter(handlers);
-```
-
-Tips for experimenting:
-
-- Object keys like `App` are called RSC ID.
-- `input.type === 'custom'` condition can be omitted if you don't need SSR.
-
-#### `handleBuild`
-
-The `handleBuild` function runs during `waku build`.
-Unlike older versions, it does not return build instructions.
-Instead, it is an async function that receives build utilities and emits files with `generateFile`.
-
-If you only need dynamic SSR, an empty handler is enough:
-
-```tsx
-  handleBuild: async () => {},
-```
-
-To prerender the root route in the minimal example:
-
-```tsx
   handleBuild: async ({
     renderRsc,
     renderHtml,
@@ -66,28 +95,20 @@ To prerender the root route in the minimal example:
     const rscPath = '';
     const stream = await renderRsc({ App: <App name="Waku" /> });
     const [rscStream, htmlStream] = stream.tee();
-
     await generateFile(rscPath2pathname(rscPath), rscStream);
-
-    const res = await renderHtml(htmlStream, <Slot id="App" />, {
-      rscPath,
-    });
-    await generateFile('index.html', res.body!);
+    const html = await renderHtml(htmlStream, <Slot id="App" />, { rscPath });
+    await generateFile('index.html', html.body!);
   },
+});
+
+export default adapter(handlers);
 ```
 
-`generateFile` writes files into `dist/public`.
-`rscPath2pathname` converts an RSC path such as `''` into the corresponding RSC payload pathname.
-
-### Client API
-
-To render a React Server Component on the client, use the `Root` and `Slot` components from `waku/minimal/client` with the RSC ID to create a wrapper component.
-
-This file should be `./src/waku.client.tsx`.
+`src/waku.client.tsx`:
 
 ```tsx
 import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createRoot, hydrateRoot } from 'react-dom/client';
 import { Root, Slot } from 'waku/minimal/client';
 
 const rootElement = (
@@ -98,26 +119,482 @@ const rootElement = (
   </StrictMode>
 );
 
-createRoot(document.getElementById('root')!).render(rootElement);
+if ((globalThis as any).__WAKU_HYDRATE__) {
+  hydrateRoot(document, rootElement);
+} else {
+  createRoot(document).render(rootElement);
+}
 ```
 
-The `initialRscPath` prop can be passed to the `Root` Component, overriding the default rscPath which is `""`. You can also re-render a React Server Component with new rscPath.
+`unstable_defineHandlers` is optional. It is currently an identity helper that gives you a typed place to define handlers before passing them to an adapter. Most examples in this repository pass the handler object directly to `adapter(...)`.
+
+### Request Flow
+
+In the example above, a request to `/` looks like this:
+
+1. The adapter receives `GET /` and calls `handleRequest` with `input.type === 'custom'`.
+2. `handleRequest` renders an RSC payload with `renderRsc(...)`.
+3. `handleRequest` passes that payload to `renderHtml(...)` together with an HTML tree containing `<Slot id="App" />`.
+4. The browser loads `src/waku.client.tsx`.
+5. `<Root>` fetches the RSC payload for `rscPath === ''`.
+6. `<Slot id="App" />` renders the server element stored under the `App` key.
+
+### Server API
+
+#### `unstable_defineHandlers`
+
+`unstable_defineHandlers` is the main server-side entry point from `waku/minimal/server`.
 
 ```tsx
+import { unstable_defineHandlers as defineHandlers } from 'waku/minimal/server';
+```
+
+Use it when you want to:
+
+- define handlers separately from the adapter call
+- compose handlers before exporting them
+- keep type checking close to the handler object
+
+If you do not need that, this is equivalent:
+
+```tsx
+import adapter from 'waku/adapters/default';
+
+export default adapter({
+  handleRequest: async () => null,
+  handleBuild: async () => {},
+});
+```
+
+#### `handleRequest(input, utils)`
+
+`handleRequest` is the runtime dispatcher. It receives every request that reaches the minimal server.
+
+The `input` argument is one of the following shapes:
+
+| `input.type` | When it is used                                                      | Extra fields           |
+| ------------ | -------------------------------------------------------------------- | ---------------------- |
+| `component`  | RSC payload fetches initiated by `Root` or `useRefetch`              | `rscPath`, `rscParams` |
+| `function`   | Server function calls                                                | `fn`, `args`           |
+| `action`     | Server action submissions                                            | `fn`                   |
+| `custom`     | Ordinary HTTP requests such as document requests or custom endpoints | none                   |
+
+Every input also includes:
+
+- `pathname`: pathname from the request URL
+- `req`: the original `Request` object
+
+Typical handling patterns:
+
+`component` requests usually return an RSC payload:
+
+```tsx
+if (input.type === 'component') {
+  return renderRsc({
+    App: <App name={input.rscPath || 'Waku'} />,
+  });
+}
+```
+
+`function` requests usually execute the server function and return `_value` in the payload:
+
+```tsx
+if (input.type === 'function') {
+  const value = await input.fn(...input.args);
+  return renderRsc({ _value: value });
+}
+```
+
+`_value` is a special key used by Waku's server function plumbing. If a server function should also update the rendered server elements, return both the updated elements and `_value`:
+
+```tsx
+if (input.type === 'function') {
+  const value = await input.fn(...input.args);
+  return renderRsc({
+    App: <App name="Updated" />,
+    _value: value,
+  });
+}
+```
+
+`action` requests often re-render HTML and pass `formState`:
+
+```tsx
+if (input.type === 'action' && input.pathname === '/') {
+  const formState = await input.fn();
+  return renderHtml(
+    await renderRsc({ App: <App name="Waku" /> }),
+    <Slot id="App" />,
+    {
+      rscPath: '',
+      formState,
+    },
+  );
+}
+```
+
+`custom` requests are where you implement document rendering and custom endpoints:
+
+```tsx
+if (input.type === 'custom' && input.pathname === '/') {
+  return renderHtml(
+    await renderRsc({ App: <App name="Waku" /> }),
+    <Slot id="App" />,
+    { rscPath: '' },
+  );
+}
+
+if (input.type === 'custom' && input.pathname === '/api/hello') {
+  return new Response('world');
+}
+```
+
+The `utils` argument provides these helpers:
+
+| Utility                                     | Purpose                                                                                                                          |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `renderRsc(elements, options?)`             | Render an RSC payload as a `ReadableStream`. Object keys become RSC IDs.                                                         |
+| `renderRscForParse(elements)`               | Render an RSC payload without the debug channel. This is an advanced escape hatch for parse or copy flows.                       |
+| `parseRsc(stream)`                          | Parse an RSC stream back into an elements object. Useful when you need to inspect an RSC payload rather than stream it directly. |
+| `renderHtml(elementsStream, html, options)` | Render the full HTML response that boots the client.                                                                             |
+| `loadBuildMetadata(key)`                    | Read metadata saved during `handleBuild`.                                                                                        |
+
+`handleRequest` may return any of the following:
+
+| Return value          | Meaning                                                                                                        |
+| --------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `ReadableStream`      | Waku wraps it in `new Response(stream)`.                                                                       |
+| `Response`            | Returned as-is.                                                                                                |
+| `'fallback'`          | Ask Waku to serve its fallback HTML response.                                                                  |
+| `null` or `undefined` | No direct response. For `/`, Waku still falls back to HTML. For other paths, the adapter receives no response. |
+
+Important details:
+
+- `renderHtml` expects an options object such as `{ rscPath: '' }`.
+- `rscPath` and `rscParams` are opaque application data. Waku does not assign them semantics.
+- Throwing from `handleRequest` turns into an HTTP error response. If you throw one of Waku's custom errors, status and location are preserved.
+
+#### `handleBuild(utils)`
+
+`handleBuild` runs during `waku build`. It does not return a manifest or instruction list. It is responsible for emitting any static files you want in the build output.
+
+The build utilities are:
+
+| Utility                                     | Purpose                                                                                            |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `renderRsc(elements, options?)`             | Render an RSC payload stream.                                                                      |
+| `parseRsc(stream)`                          | Parse an RSC stream back into elements. Useful for build-time inspection.                          |
+| `renderHtml(elementsStream, html, options)` | Render HTML from an RSC stream and client shell.                                                   |
+| `rscPath2pathname(rscPath)`                 | Convert an RSC path into the correct output pathname for the RSC payload.                          |
+| `saveBuildMetadata(key, value)`             | Persist metadata that will later be available through `loadBuildMetadata(...)` in `handleRequest`. |
+| `withRequest(req, fn)`                      | Install a request context while rendering at build time.                                           |
+| `generateFile(fileName, body)`              | Write a file to `dist/public`. Accepts `ReadableStream` or `string`.                               |
+| `generateDefaultHtml(fileName)`             | Write Waku's default fallback HTML to `dist/public`.                                               |
+
+The most common patterns are:
+
+Dynamic SSR only:
+
+```tsx
+handleBuild: async () => {},
+```
+
+Prerender one HTML page and one RSC payload:
+
+```tsx
+handleBuild: async ({
+  renderRsc,
+  renderHtml,
+  rscPath2pathname,
+  generateFile,
+}) => {
+  const rscPath = '';
+  const stream = await renderRsc({ App: <App name="Waku" /> });
+  const [rscStream, htmlStream] = stream.tee();
+
+  await generateFile(rscPath2pathname(rscPath), rscStream);
+
+  const html = await renderHtml(htmlStream, <Slot id="App" />, { rscPath });
+  await generateFile('index.html', html.body!);
+},
+```
+
+`renderHtml(...)` consumes its stream. If you need the same RSC payload both as a standalone file and as input to `renderHtml(...)`, use `ReadableStream.prototype.tee()` as shown above.
+
+Generate fallback HTML only, for example in an SPA build:
+
+```tsx
+handleBuild: async ({ generateDefaultHtml }) => {
+  await generateDefaultHtml('index.html');
+},
+```
+
+Persist build metadata and read it at request time:
+
+```tsx
+const BUILD_METADATA_KEY = 'metadata-key';
+
+handleBuild: async ({ saveBuildMetadata }) => {
+  await saveBuildMetadata(BUILD_METADATA_KEY, 'metadata-value');
+},
+
+handleRequest: async (input, { renderRsc, loadBuildMetadata }) => {
+  if (input.type === 'component') {
+    return renderRsc({
+      App: (
+        <App metadata={(await loadBuildMetadata(BUILD_METADATA_KEY)) || 'Empty'} />
+      ),
+    });
+  }
+  return null;
+},
+```
+
+Render with request-scoped context during build:
+
+```tsx
+handleBuild: async ({ renderRsc, withRequest, generateFile, rscPath2pathname }) => {
+  await withRequest(new Request('http://localhost:3000/'), async () => {
+    const body = await renderRsc({ App: <App name="Waku" /> });
+    await generateFile(rscPath2pathname(''), body);
+  });
+},
+```
+
+`withRequest(...)` matters when your render path reads request-scoped data such as the URL, cookies, or values stored in request context.
+
+### Client API
+
+The minimal client API lives in `waku/minimal/client`.
+
+#### `Root`
+
+`Root` is the top-level provider for the minimal client runtime.
+
+```tsx
+import { Root } from 'waku/minimal/client';
+```
+
+Props:
+
+- `initialRscPath?: string`
+- `initialRscParams?: unknown`
+- `fetchRscStore?: FetchRscStore`
+- `children: ReactNode`
+
+Important behavior:
+
+- `initialRscPath` defaults to `''`.
+- `Root` is required for `Slot` and `useRefetch`.
+- `Root` injects default head tags for charset, viewport, and generator.
+- For SSR or SSG, use `hydrateRoot(document, rootElement)` when `globalThis.__WAKU_HYDRATE__` is set.
+- For purely client-side rendering, use `createRoot(document).render(rootElement)`.
+
+A standard bootstrap looks like this:
+
+```tsx
+import { StrictMode } from 'react';
+import { createRoot, hydrateRoot } from 'react-dom/client';
+import { Root, Slot } from 'waku/minimal/client';
+
+const rootElement = (
+  <StrictMode>
+    <Root>
+      <Slot id="App" />
+    </Root>
+  </StrictMode>
+);
+
+if ((globalThis as any).__WAKU_HYDRATE__) {
+  hydrateRoot(document, rootElement);
+} else {
+  createRoot(document).render(rootElement);
+}
+```
+
+#### `Slot`
+
+`Slot` renders a server element by RSC ID.
+
+```tsx
+import { Slot } from 'waku/minimal/client';
+```
+
+```tsx
+<Root>
+  <Slot id="App" />
+</Root>
+```
+
+Rules:
+
+- `id` must match a key returned from `renderRsc(...)`.
+- Missing keys throw `Invalid element: <id>`.
+- `undefined` is not allowed. If an element is intentionally empty, return `null`.
+- `Slot` must be rendered under `Root`.
+
+#### `Children`
+
+`Children` lets a server element render the client children passed to `Slot`.
+
+Server:
+
+```tsx
+import { Children } from 'waku/minimal/client';
+
+return renderRsc({
+  App: (
+    <App>
+      <Children />
+    </App>
+  ),
+});
+```
+
+Client:
+
+```tsx
+<Slot id="App">
+  <h3>A client element</h3>
+</Slot>
+```
+
+This is useful for nested layouts and composition patterns where the server tree decides where client-provided children should appear.
+
+#### `useRefetch()`
+
+`useRefetch()` returns a function with this shape:
+
+```tsx
+refetch(
+  rscPath: string,
+  rscParams?: unknown,
+  enhanceFetchRscStore?: (store) => store,
+)
+```
+
+Example:
+
+```tsx
+import { useTransition } from 'react';
 import { useRefetch } from 'waku/minimal/client';
 
-const Component = () => {
+const Counter = () => {
+  const [isPending, startTransition] = useTransition();
   const refetch = useRefetch();
-  const handleClick = () => {
-    refetch('...');
+
+  const handleClick = (count: number) => {
+    startTransition(async () => {
+      await refetch('InnerApp=' + count);
+    });
   };
-  // ...
+
+  return (
+    <button onClick={() => handleClick(1)} disabled={isPending}>
+      Refetch
+    </button>
+  );
 };
 ```
 
+Important behavior:
+
+- `refetch(...)` requests a new RSC payload for the given `rscPath` and optional `rscParams`.
+- The returned payload is merged into the current element map by key.
+- If you return only `InnerApp`, previously rendered elements such as `App` stay mounted.
+- The third argument is an advanced escape hatch for custom fetch-store behavior and is usually unnecessary unless you are building router-like abstractions.
+
+### Common Patterns
+
+#### Dynamic SSR without prerendering
+
+Use `renderHtml(...)` for document requests and leave `handleBuild` empty:
+
+```tsx
+export default adapter({
+  handleRequest: async (input, { renderRsc, renderHtml }) => {
+    if (input.type === 'component') {
+      return renderRsc({ App: <App name={input.rscPath || 'Waku'} /> });
+    }
+    if (input.type === 'custom' && input.pathname === '/') {
+      return renderHtml(
+        await renderRsc({ App: <App name="Waku" /> }),
+        <Slot id="App" />,
+        { rscPath: '' },
+      );
+    }
+    return null;
+  },
+  handleBuild: async () => {},
+});
+```
+
+#### Custom API endpoints
+
+Use `input.type === 'custom'` and return a `Response` directly:
+
+```tsx
+if (input.type === 'custom' && input.pathname === '/api/hello') {
+  return new Response('world');
+}
+```
+
+#### Server functions
+
+Server functions typically return `_value`, and may optionally return updated server elements in the same payload:
+
+```tsx
+if (input.type === 'function') {
+  const value = await input.fn(...input.args);
+  return renderRsc({
+    App: <App name="Updated" />,
+    _value: value,
+  });
+}
+```
+
+#### Server actions with progressive enhancement
+
+Server actions often return HTML rather than a bare RSC payload so that the same flow works with or without JavaScript:
+
+```tsx
+if (
+  (input.type === 'action' || input.type === 'custom') &&
+  input.pathname === '/'
+) {
+  const formState = input.type === 'action' ? await input.fn() : undefined;
+  return renderHtml(
+    await renderRsc({ App: <App name="Waku" /> }),
+    <Slot id="App" />,
+    {
+      rscPath: '',
+      formState,
+    },
+  );
+}
+```
+
+### Pitfalls
+
+- `renderHtml(...)` consumes its stream. Call `tee()` if you also need to emit that same payload as a file.
+- `Slot` IDs must exactly match the keys returned by `renderRsc(...)`.
+- `undefined` is invalid for slot values. Use `null` for an intentionally empty element.
+- `rscPath2pathname(...)` should be used instead of hardcoding RSC payload file names.
+- `handleBuild` emits nothing unless you explicitly call `generateFile(...)` or `generateDefaultHtml(...)`.
+- Returning `'fallback'` is not the same as returning `null`. `'fallback'` explicitly asks Waku to generate the fallback HTML response.
+- The client bootstrap for SSR uses `hydrateRoot(document, ...)`, not `createRoot(document.getElementById('root')!)`.
+- This API is intentionally low-level. If you find yourself rebuilding routing conventions, `waku/router` is probably the better fit.
+
+### Adapter Authors
+
+`waku/minimal/server` also exports `unstable_defineServerEntry`. That is a lower-level hook than `unstable_defineHandlers` and is meant for adapter authors who need to work directly with server entries, request processing, and build processing. Most advanced users of the minimal API do not need it.
+
 ### Examples
 
-- [../examples/31_minimal](Minimal example)
-- [../examples/34_functions](With server functions)
-- [../examples/39_api](With custom API endpoints)
-- [../examples/51_spa](Fully client components)
+- [../examples/31_minimal](Minimal SSR and prerendered root route)
+- [../examples/33_promise](Using `Children` to compose client content into a server tree)
+- [../examples/34_functions](Server functions returning `_value` and updated elements)
+- [../examples/35_nesting](Nested slots, `useRefetch`, `withRequest`, and fallback HTML generation)
+- [../examples/36_form](Server actions and `formState`)
+- [../examples/39_api](Custom API endpoints alongside minimal SSR)
+- [../examples/51_spa](SPA-style build using `generateDefaultHtml`)
