@@ -1,14 +1,29 @@
 ---
-slug: redirects
-title: Redirects
-description: How to add HTTP redirects to your Waku project.
+slug: redirect-maps
+title: Redirect Maps
+description: How to configure redirect maps in front of a Waku server.
 ---
 
-## Redirects
+## Redirect Maps
 
-HTTP redirects are not handled by the Waku router directly. Instead, you can use either a custom middleware or the hosting environment to achieve that. The `<Link />` component does not deal with HTTP redirects either and will by default show the **404** page instead. To resolve this, you have to add an additional redirect for each redirected path, that points Waku to the correct RSC file. If there is a redirect from `/old` to `/new`, there also has to be one from `/RSC/R/old.txt` to `/RSC/R/new.txt` to make the `<Link />` component's smooth page transition work.
+This guide is for redirect maps that sit in front of the Waku server, such as middleware, reverse proxies, CDNs, or hosting-platform redirect rules.
 
-> The `/RSC/` file naming convention is [subject to change](https://github.com/wakujs/waku/discussions/929#discussioncomment-10825975) in future versions of Waku.
+When a Waku app uses the client router, a navigation usually fetches both:
+
+- the browser route, such as `/old`
+- the corresponding RSC payload route, such as `/RSC/R/old.txt`
+
+If you want `/old` to behave like a redirect to `/new` even during client-side navigation, you usually need to redirect both paths.
+
+With Waku's default config:
+
+- `basePath` is `/`
+- `rscBase` is `RSC`
+- the route `/old` maps to the RSC path `/RSC/R/old.txt`
+
+If you customize `basePath` or `rscBase`, adjust the redirect rules accordingly.
+
+For application-level redirects implemented inside Waku routes or server actions, use `unstable_redirect` from `waku/router/server` instead. That is a separate use case from the redirect-map approach described here.
 
 ### Redirect via middleware
 
@@ -21,7 +36,8 @@ import type { MiddlewareHandler } from 'hono';
 const redirectsMiddleware = (): MiddlewareHandler => async (c, next) => {
   const url = new URL(c.req.raw.url);
 
-  // Define the list of redirects with corresponding RSC paths.
+  // With the default Waku config, redirect both the browser route
+  // and the corresponding RSC payload route.
   const redirects: Record<string, string> = {
     '/old': '/new',
     '/RSC/R/old.txt': '/RSC/R/new.txt',
@@ -42,6 +58,8 @@ const redirectsMiddleware = (): MiddlewareHandler => async (c, next) => {
 
 export default redirectsMiddleware;
 ```
+
+This only handles the paths you explicitly match. If you redirect only `/old` and not `/RSC/R/old.txt`, direct requests may work while client-side navigation can still fail or land on the wrong state.
 
 ### Redirect via hosting environment
 
@@ -66,3 +84,5 @@ This very much depends on the hosting environment you are using. For example, on
 /old /new 301
 /RSC/R/old.txt /RSC/R/new.txt 301
 ```
+
+For app-level redirects inside page code or server actions, use `unstable_redirect` from `waku/router/server` instead of external redirect maps.
