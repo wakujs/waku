@@ -379,13 +379,14 @@ Props:
 
 - `initialRscPath?: string`
 - `initialRscParams?: unknown`
-- `fetchRscStore?: FetchRscStore`
+- `unstable_fetchRscStore?: Unstable_FetchRscStore`
 - `children: ReactNode`
 
 Important behavior:
 
 - `initialRscPath` defaults to `''`.
 - `Root` is required for `Slot` and `useRefetch`.
+- `unstable_fetchRscStore` is an unstable escape hatch for custom integrations.
 - `Root` injects default head tags for charset, viewport, and generator.
 - For SSR or SSG, use `hydrateRoot(document, rootElement)` when `globalThis.__WAKU_HYDRATE__` is set.
 - For purely client-side rendering, use `createRoot(document).render(rootElement)`.
@@ -469,7 +470,7 @@ This is useful for nested layouts and composition patterns where the server tree
 refetch(
   rscPath: string,
   rscParams?: unknown,
-  enhanceFetchRscStore?: (store) => store,
+  unstable_enhanceFetchRscStore?: (store) => store,
 )
 ```
 
@@ -502,7 +503,7 @@ Important behavior:
 - `refetch(...)` requests a new RSC payload for the given `rscPath` and optional `rscParams`.
 - The returned payload is merged into the current element map by key.
 - If you return only `InnerApp`, previously rendered elements such as `App` stay mounted.
-- The third argument is an advanced escape hatch for custom fetch-store behavior and is usually unnecessary unless you are building router-like abstractions.
+- `unstable_enhanceFetchRscStore` is an unstable escape hatch for custom fetch-store behavior and is usually unnecessary unless you are building router-like abstractions.
 
 ### Common Patterns
 
