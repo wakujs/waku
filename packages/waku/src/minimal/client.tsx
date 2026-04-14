@@ -93,20 +93,20 @@ type CallServerElementsListeners = Set<(elements: Elements) => void>;
 
 type FetchRscInternal = {
   (
-    fetchRscStore: FetchRscStore,
+    fetchRscStore: Unstable_FetchRscStore,
     rscPath: string,
     rscParams: unknown,
     prefetchOnly: false,
   ): Promise<Elements>;
   (
-    fetchRscStore: FetchRscStore,
+    fetchRscStore: Unstable_FetchRscStore,
     rscPath: string,
     rscParams: unknown,
     prefetchOnly: true,
   ): void;
 };
 
-type FetchRscStore = {
+type Unstable_FetchRscStore = {
   [ENTRY]?: [
     rscPath: string,
     rscParams: unknown,
@@ -118,7 +118,7 @@ type FetchRscStore = {
   [CALL_SERVER_ELEMENTS_LISTENERS]?: CallServerElementsListeners;
 };
 
-const defaultFetchRscStore: FetchRscStore = {};
+const defaultFetchRscStore: Unstable_FetchRscStore = {};
 
 // XXX some of these keys are used in packages/waku/src/lib/utils/ssr.ts.
 const KEY_RESPONSE = 'r';
@@ -138,7 +138,7 @@ type PrefetchedEntry = {
 };
 
 const fetchRscInternal: FetchRscInternal = (
-  fetchRscStore: FetchRscStore,
+  fetchRscStore: Unstable_FetchRscStore,
   rscPath: string,
   rscParams: unknown,
   prefetchOnly: boolean,
@@ -216,9 +216,11 @@ const fetchRscInternal: FetchRscInternal = (
 export const unstable_callServerRsc = async (
   funcId: string,
   args: unknown[],
-  enhanceFetchRscStore: (s: FetchRscStore) => FetchRscStore = (s) => s,
+  unstable_enhanceFetchRscStore: (
+    s: Unstable_FetchRscStore,
+  ) => Unstable_FetchRscStore = (s) => s,
 ) => {
-  const fetchRscStore = enhanceFetchRscStore(defaultFetchRscStore);
+  const fetchRscStore = unstable_enhanceFetchRscStore(defaultFetchRscStore);
   const setElements = fetchRscStore[SET_ELEMENTS]!;
   const callServerElementsListeners =
     fetchRscStore[CALL_SERVER_ELEMENTS_LISTENERS];
@@ -244,7 +246,7 @@ export const unstable_callServerRsc = async (
 
 type Unregister = () => void;
 export const unstable_registerCallServerElementsListener = (
-  fetchRscStore: FetchRscStore,
+  fetchRscStore: Unstable_FetchRscStore,
   listener: (elements: Elements) => void,
 ): Unregister => {
   const callServerElementsListeners = (fetchRscStore[
@@ -257,7 +259,7 @@ export const unstable_registerCallServerElementsListener = (
 };
 
 export const unstable_registerFetchRscInputTransformer = (
-  fetchRscStore: FetchRscStore,
+  fetchRscStore: Unstable_FetchRscStore,
   transformFetchRscInput: TransformFetchRscInput,
 ): Unregister => {
   const fetchRscInputTransformers =
@@ -272,13 +274,19 @@ export const unstable_registerFetchRscInputTransformer = (
 export const unstable_fetchRsc = (
   rscPath: string,
   rscParams?: unknown,
-  enhanceFetchRscStore: (s: FetchRscStore) => FetchRscStore = (s) => s,
+  unstable_enhanceFetchRscStore: (
+    s: Unstable_FetchRscStore,
+  ) => Unstable_FetchRscStore = (s) => s,
 ): Promise<Elements> => {
-  const fetchRscStore = enhanceFetchRscStore(defaultFetchRscStore);
+  const fetchRscStore = unstable_enhanceFetchRscStore(defaultFetchRscStore);
   if (import.meta.hot) {
     const refetchRsc = () => {
       delete fetchRscStore[ENTRY];
-      const data = unstable_fetchRsc(rscPath, rscParams, enhanceFetchRscStore);
+      const data = unstable_fetchRsc(
+        rscPath,
+        rscParams,
+        unstable_enhanceFetchRscStore,
+      );
       fetchRscStore[SET_ELEMENTS]!(() => data);
     };
     globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= [];
@@ -305,9 +313,11 @@ export const unstable_fetchRsc = (
 export const unstable_prefetchRsc = (
   rscPath: string,
   rscParams?: unknown,
-  enhanceFetchRscStore: (s: FetchRscStore) => FetchRscStore = (s) => s,
+  unstable_enhanceFetchRscStore: (
+    s: Unstable_FetchRscStore,
+  ) => Unstable_FetchRscStore = (s) => s,
 ): void => {
-  const fetchRscStore = enhanceFetchRscStore(defaultFetchRscStore);
+  const fetchRscStore = unstable_enhanceFetchRscStore(defaultFetchRscStore);
   const prefetched: Record<string, PrefetchedEntry> = ((
     globalThis as any
   ).__WAKU_PREFETCHED__ ||= {});
@@ -323,7 +333,7 @@ export const unstable_prefetchRsc = (
 
 export const unstable_withEnhanceFetchFn =
   (enhanceFetchFn: (fn: typeof fetch) => typeof fetch) =>
-  (fetchRscStore: FetchRscStore): FetchRscStore => ({
+  (fetchRscStore: Unstable_FetchRscStore): Unstable_FetchRscStore => ({
     ...fetchRscStore,
     [FETCH_FN]: enhanceFetchFn(fetchRscStore[FETCH_FN] || fetch),
   });
@@ -332,13 +342,15 @@ const RefetchContext = createContext<
   (
     rscPath: string,
     rscParams?: unknown,
-    enhanceFetchRscStore?: (c: FetchRscStore) => FetchRscStore,
+    unstable_enhanceFetchRscStore?: (
+      c: Unstable_FetchRscStore,
+    ) => Unstable_FetchRscStore,
   ) => Promise<Elements>
 >(() => {
   throw new Error('Missing Root component');
 });
 const ElementsContext = createContext<Promise<Elements> | null>(null);
-const FetchRscStoreContext = createContext<FetchRscStore | null>(null);
+const FetchRscStoreContext = createContext<Unstable_FetchRscStore | null>(null);
 
 export const useFetchRscStore_UNSTABLE = () => {
   const fetchRscStore = use(FetchRscStoreContext);
@@ -351,43 +363,45 @@ export const useFetchRscStore_UNSTABLE = () => {
 export const Root = ({
   initialRscPath,
   initialRscParams,
-  fetchRscStore = defaultFetchRscStore,
+  unstable_fetchRscStore = defaultFetchRscStore,
   children,
 }: {
   initialRscPath?: string;
   initialRscParams?: unknown;
-  fetchRscStore?: FetchRscStore | undefined;
+  unstable_fetchRscStore?: Unstable_FetchRscStore | undefined;
   children: ReactNode;
 }) => {
   const [elements, setElements] = useState(() =>
     unstable_fetchRsc(
       initialRscPath || '',
       initialRscParams,
-      () => fetchRscStore,
+      () => unstable_fetchRscStore,
     ),
   );
   useEffect(() => {
-    fetchRscStore[SET_ELEMENTS] = setElements;
-  }, [fetchRscStore]);
+    unstable_fetchRscStore[SET_ELEMENTS] = setElements;
+  }, [unstable_fetchRscStore]);
   const refetch = useCallback(
     async (
       rscPath: string,
       rscParams?: unknown,
-      enhanceFetchRscStore: (s: FetchRscStore) => FetchRscStore = (s) => s,
+      unstable_enhanceFetchRscStore: (
+        s: Unstable_FetchRscStore,
+      ) => Unstable_FetchRscStore = (s) => s,
     ) => {
       // clear cache entry before fetching
-      delete fetchRscStore[ENTRY]; // use non-enhanced store
+      delete unstable_fetchRscStore[ENTRY]; // use non-enhanced store
       const data = unstable_fetchRsc(rscPath, rscParams, () =>
-        enhanceFetchRscStore(fetchRscStore),
+        unstable_enhanceFetchRscStore(unstable_fetchRscStore),
       );
       const dataWithoutErrors = Promise.resolve(data).catch(() => ({}));
       setElements((prev) => mergeElementsPromise(prev, dataWithoutErrors));
       return data;
     },
-    [fetchRscStore],
+    [unstable_fetchRscStore],
   );
   return (
-    <FetchRscStoreContext value={fetchRscStore}>
+    <FetchRscStoreContext value={unstable_fetchRscStore}>
       <RefetchContext value={refetch}>
         <ElementsContext value={elements}>
           {DEFAULT_HTML_HEAD}
