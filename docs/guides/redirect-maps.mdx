@@ -21,6 +21,8 @@ With Waku's default config:
 - `rscBase` is `RSC`
 - the route `/old` maps to the RSC path `/RSC/R/old.txt`
 
+> The `/RSC/` file naming convention is [subject to change](https://github.com/wakujs/waku/discussions/929#discussioncomment-10825975) in future versions of Waku.
+
 If you customize `basePath` or `rscBase`, adjust the redirect rules accordingly.
 
 For application-level redirects implemented inside Waku routes or server actions, use `unstable_redirect` from `waku/router/server` instead. That is a separate use case from the redirect-map approach described here.
