@@ -1826,10 +1826,10 @@ describe('Router integration', () => {
       .spyOn(globalThis, 'fetch')
       .mockImplementation(fetchSpy as typeof fetch);
     const refetch = vi.fn(
-      async (_rscPath, _rscParams, enhanceFetchRscStore) => {
+      async (_rscPath, _rscParams, unstable_enhanceFetchRscStore) => {
         const fetchRscStore = (
-          enhanceFetchRscStore
-            ? enhanceFetchRscStore({} as RouterFetchRscStore)
+          unstable_enhanceFetchRscStore
+            ? unstable_enhanceFetchRscStore({} as RouterFetchRscStore)
             : {}
         ) as RouterFetchRscStore;
         const fetchFn = fetchRscStore.f || fetch;
@@ -1906,10 +1906,10 @@ describe('Router integration', () => {
       .spyOn(globalThis, 'fetch')
       .mockImplementation(fetchSpy as typeof fetch);
     const refetch = vi.fn(
-      async (_rscPath, _rscParams, enhanceFetchRscStore) => {
+      async (_rscPath, _rscParams, unstable_enhanceFetchRscStore) => {
         const fetchRscStore = (
-          enhanceFetchRscStore
-            ? enhanceFetchRscStore({} as RouterFetchRscStore)
+          unstable_enhanceFetchRscStore
+            ? unstable_enhanceFetchRscStore({} as RouterFetchRscStore)
             : {}
         ) as RouterFetchRscStore;
         const fetchFn = fetchRscStore.f || fetch;
