@@ -129,7 +129,7 @@ vi.mock('../src/minimal/client.js', async () => {
   return {
     ...actual,
     Root: vi.fn((props: Parameters<typeof actual.Root>[0]) => {
-      const fetchRscStore = props.fetchRscStore as
+      const fetchRscStore = props.unstable_fetchRscStore as
         | TestFetchRscStore
         | undefined;
       if (fetchRscStore) {
@@ -212,7 +212,10 @@ const renderRouterInStrictMode = async (
 
 const renderWithMinimalRoot = (element: ReactElement, elements: ElementsMap) =>
   renderApp(
-    <Root initialRscPath="" fetchRscStore={createMockFetchRscStore(elements)}>
+    <Root
+      initialRscPath=""
+      unstable_fetchRscStore={createMockFetchRscStore(elements)}
+    >
       {element}
     </Root>,
   );
