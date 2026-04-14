@@ -379,7 +379,7 @@ Props:
 
 - `initialRscPath?: string`
 - `initialRscParams?: unknown`
-- `unstable_fetchRscStore?: Unstable_FetchRscStore`
+- `unstable_fetchRscStore?`: opaque internal store object
 - `children: ReactNode`
 
 Important behavior:
@@ -387,6 +387,7 @@ Important behavior:
 - `initialRscPath` defaults to `''`.
 - `Root` is required for `Slot` and `useRefetch`.
 - `unstable_fetchRscStore` is an unstable escape hatch for custom integrations.
+- The store type is intentionally not exported. Treat it as opaque.
 - `Root` injects default head tags for charset, viewport, and generator.
 - For SSR or SSG, use `hydrateRoot(document, rootElement)` when `globalThis.__WAKU_HYDRATE__` is set.
 - For purely client-side rendering, use `createRoot(document).render(rootElement)`.
