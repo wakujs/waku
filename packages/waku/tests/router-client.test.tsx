@@ -129,7 +129,7 @@ vi.mock('../src/minimal/client.js', async () => {
   return {
     ...actual,
     Root: vi.fn((props: Parameters<typeof actual.Root>[0]) => {
-      const fetchRscStore = props.fetchRscStore as
+      const fetchRscStore = props.unstable_fetchRscStore as
         | TestFetchRscStore
         | undefined;
       if (fetchRscStore) {
@@ -212,7 +212,10 @@ const renderRouterInStrictMode = async (
 
 const renderWithMinimalRoot = (element: ReactElement, elements: ElementsMap) =>
   renderApp(
-    <Root initialRscPath="" fetchRscStore={createMockFetchRscStore(elements)}>
+    <Root
+      initialRscPath=""
+      unstable_fetchRscStore={createMockFetchRscStore(elements)}
+    >
       {element}
     </Root>,
   );
@@ -1823,10 +1826,10 @@ describe('Router integration', () => {
       .spyOn(globalThis, 'fetch')
       .mockImplementation(fetchSpy as typeof fetch);
     const refetch = vi.fn(
-      async (_rscPath, _rscParams, enhanceFetchRscStore) => {
+      async (_rscPath, _rscParams, unstable_enhanceFetchRscStore) => {
         const fetchRscStore = (
-          enhanceFetchRscStore
-            ? enhanceFetchRscStore({} as RouterFetchRscStore)
+          unstable_enhanceFetchRscStore
+            ? unstable_enhanceFetchRscStore({} as RouterFetchRscStore)
             : {}
         ) as RouterFetchRscStore;
         const fetchFn = fetchRscStore.f || fetch;
@@ -1903,10 +1906,10 @@ describe('Router integration', () => {
       .spyOn(globalThis, 'fetch')
       .mockImplementation(fetchSpy as typeof fetch);
     const refetch = vi.fn(
-      async (_rscPath, _rscParams, enhanceFetchRscStore) => {
+      async (_rscPath, _rscParams, unstable_enhanceFetchRscStore) => {
         const fetchRscStore = (
-          enhanceFetchRscStore
-            ? enhanceFetchRscStore({} as RouterFetchRscStore)
+          unstable_enhanceFetchRscStore
+            ? unstable_enhanceFetchRscStore({} as RouterFetchRscStore)
             : {}
         ) as RouterFetchRscStore;
         const fetchFn = fetchRscStore.f || fetch;
