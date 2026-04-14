@@ -170,7 +170,10 @@ export const prepareNormalSetup = (fixtureName: string) => {
   let built = false;
   const startApp = async (
     mode: 'DEV' | 'PRD' | 'STATIC',
-    options?: { cmd?: string | undefined },
+    options?: {
+      cmd?: string | undefined;
+      onServerOutput?: (data: string) => void;
+    },
   ) => {
     if (mode !== 'DEV' && !built) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
@@ -196,6 +199,11 @@ export const prepareNormalSetup = (fixtureName: string) => {
     // Assuming all commands support -p for port
     const cp = runShell(`${cmd} -p ${port}`, fixtureDir);
     debugChildProcess(cp, fileURLToPath(import.meta.url));
+    if (options?.onServerOutput) {
+      const callback = options.onServerOutput;
+      cp.stdout?.on('data', (data) => callback(data.toString()));
+      cp.stderr?.on('data', (data) => callback(data.toString()));
+    }
     await waitForPortReady(port);
     const stopApp = async () => {
       await terminate(cp);
