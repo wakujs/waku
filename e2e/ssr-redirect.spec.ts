@@ -67,14 +67,8 @@ test.describe(`ssr-redirect`, () => {
   test('redirect should not log "Error during rendering" to server console', async ({
     page,
   }) => {
-    serverOutput.length = 0;
-
-    // TODO: async redirection on dev is flaky, so wrap with retry for now
-    // https://github.com/wakujs/waku/pull/1586
-    await expect(async () => {
-      await page.goto(`http://localhost:${port}/async`);
-      await expect(page.getByRole('heading')).toHaveText('Destination Page');
-    }).toPass();
+    await page.goto(`http://localhost:${port}/async`);
+    await expect(page.getByRole('heading')).toHaveText('Destination Page');
 
     const combined = serverOutput.join('');
     expect(combined).not.toContain('Error during rendering');
