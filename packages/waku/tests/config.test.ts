@@ -1,6 +1,6 @@
 import { expectType } from 'ts-expect';
 import { expect, test } from 'vitest';
-import { type Config, defineConfig, loadEnv } from '../src/config.js';
+import { type Config, defineConfig } from '../src/config.js';
 
 // Absolutely meaningless unit and type test examples.
 // Only exist to proof that the frameworks are set up correctly.
@@ -13,10 +13,6 @@ test('defineConfig with object', () => {
 test('defineConfig with callback', () => {
   const fn = () => ({});
   expect(defineConfig(fn)).toBe(fn);
-});
-
-test('loadEnv is re-exported from vite', () => {
-  expect(typeof loadEnv).toBe('function');
 });
 
 // Type tests

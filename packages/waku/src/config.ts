@@ -1,7 +1,6 @@
 import type { UserConfig } from 'vite';
 
 export type { Plugin as VitePlugin } from 'vite';
-export { loadEnv } from 'vite';
 
 // HACK I don't know why this works.
 declare global {
