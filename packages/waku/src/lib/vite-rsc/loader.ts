@@ -1,16 +1,19 @@
 import { existsSync } from 'node:fs';
 import * as dotenv from 'dotenv';
 import * as vite from 'vite';
-import type { Command, Config, ConfigExport } from '../../config.js';
+import type { Config } from '../../config.js';
 import { resolveConfig } from '../utils/config.js';
 
 export function loadDotenv() {
   dotenv.config({ path: ['.env.local', '.env'], quiet: true });
 }
 
+type ConfigExport =
+  | Config
+  | ((param: { cmd: 'dev' | 'build' | 'start' }) => Config | Promise<Config>);
+
 export async function loadConfig(
-  cmd: Command,
-  mode: string,
+  cmd: 'dev' | 'build' | 'start',
 ): Promise<Required<Config>> {
   let config: Config | undefined;
   if (existsSync('waku.config.ts') || existsSync('waku.config.js')) {
@@ -20,7 +23,7 @@ export async function loadConfig(
     const configExport = imported.module.default;
     config =
       typeof configExport === 'function'
-        ? await configExport({ command: cmd, mode })
+        ? await configExport({ cmd })
         : configExport;
   }
   return resolveConfig(config);

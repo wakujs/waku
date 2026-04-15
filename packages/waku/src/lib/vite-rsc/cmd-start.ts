@@ -7,8 +7,7 @@ loadDotenv();
 
 export async function runStart(flags: { host?: string; port?: string }) {
   overrideNodeEnv('production');
-  const mode = 'production';
-  const config = await loadConfig('start', mode);
+  const config = await loadConfig('start');
   const host = flags.host;
   const port = await getFreePort(parseInt(flags.port || '8080', 10));
   const distDir = config?.distDir ?? 'dist';
