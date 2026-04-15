@@ -1,14 +1,21 @@
 import type { MiddlewareHandler } from 'hono';
 import { Hono } from 'hono/tiny';
-import { unstable_createServerEntryAdapter as createServerEntryAdapter } from 'waku/adapter-builders';
+import {
+  unstable_createServerEntryAdapter as createServerEntryAdapter,
+  unstable_startPreviewServer as startPreviewServer,
+} from 'waku/adapter-builders';
 import {
   unstable_constants as constants,
+  unstable_consumeMultiplexedStream as consumeMultiplexedStream,
   unstable_honoMiddleware as honoMiddleware,
+  unstable_produceMultiplexedStream as produceMultiplexedStream,
 } from 'waku/internals';
 import type { BuildOptions } from './cloudflare-build-enhancer.js';
 
 const { DIST_PUBLIC } = constants;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
+
+const DO_NOT_BUNDLE = '';
 
 function isWranglerDev(req: Request): boolean {
   // This header seems to only be set for production cloudflare workers
@@ -35,16 +42,21 @@ function removeGzipEncoding(res: Response): Response {
 
 export default createServerEntryAdapter(
   (
-    { processRequest, processBuild, config, notFoundHtml },
+    { processRequest, processBuild, setAllEnv, config, notFoundHtml },
     options?: {
       static?: boolean;
       handlers?: Record<string, unknown>;
       assetsDir?: string;
       middlewareFns?: (() => MiddlewareHandler)[];
       middlewareModules?: Record<string, () => Promise<unknown>>;
+      internalPathToBuildStaticFiles?: string;
     },
   ) => {
-    const { middlewareFns = [], middlewareModules = {} } = options || {};
+    const {
+      middlewareFns = [],
+      middlewareModules = {},
+      internalPathToBuildStaticFiles = '__waku_internal_build_static_files',
+    } = options || {};
     const app = new Hono();
     app.notFound((c) => {
       if (notFoundHtml) {
@@ -59,50 +71,82 @@ export default createServerEntryAdapter(
     app.use(middlewareRunner(middlewareModules as never));
     app.use(rscMiddleware({ processRequest }));
     const buildOptions: BuildOptions = {
-      assetsDir: options?.assetsDir || 'assets',
+      srcDir: config.srcDir,
       distDir: config.distDir,
-      privateDir: config.privateDir,
-      rscBase: config.rscBase,
-      basePath: config.basePath,
       DIST_PUBLIC,
       serverless: !options?.static,
     };
 
-    return {
-      fetch: async (req: Request) => {
-        let cloudflareContext;
-        try {
-          // @ts-expect-error - available when running in a Cloudflare environment
-          // eslint-disable-next-line import/no-unresolved
-          cloudflareContext = await import('cloudflare:workers');
-        } catch {
-          // Not in a Cloudflare environment
-        }
-        let res: Response | Promise<Response>;
-        if (cloudflareContext) {
-          const { env, waitUntil, passThroughOnException } = cloudflareContext;
-          res = app.fetch(req, env, {
-            waitUntil,
-            passThroughOnException,
-            props: undefined,
-          });
+    const fetchFn = async (req: Request) => {
+      if (new URL(req.url).pathname === `/${internalPathToBuildStaticFiles}`) {
+        const body = produceMultiplexedStream(async (emitFile) => {
+          await processBuild({ emitFile });
+        });
+        return new Response(body);
+      }
+      let cloudflareContext;
+      try {
+        cloudflareContext = await import(
+          /* @vite-ignore */ DO_NOT_BUNDLE + 'cloudflare:workers'
+        );
+      } catch {
+        // Not in a Cloudflare environment
+      }
+      let res: Response | Promise<Response>;
+      if (cloudflareContext) {
+        const { env, waitUntil, passThroughOnException } = cloudflareContext;
+        res = app.fetch(req, env, {
+          waitUntil,
+          passThroughOnException,
+          props: undefined,
+        });
+      } else {
+        res = app.fetch(req);
+      }
+      // Workaround https://github.com/cloudflare/workers-sdk/issues/6577
+      if (import.meta.env?.PROD && isWranglerDev(req)) {
+        if ('then' in res) {
+          res = res.then((res) => removeGzipEncoding(res));
         } else {
-          res = app.fetch(req);
+          res = removeGzipEncoding(res);
         }
-        // Workaround https://github.com/cloudflare/workers-sdk/issues/6577
-        if (import.meta.env?.PROD && isWranglerDev(req)) {
-          if ('then' in res) {
-            res = res.then((res) => removeGzipEncoding(res));
-          } else {
-            res = removeGzipEncoding(res);
+      }
+      return res;
+    };
+
+    return {
+      fetch: fetchFn,
+      build: async (utils) => {
+        const server = await startPreviewServer();
+        // Fallback middleware for the case without @cloudflare/vite-plugin
+        server.middlewares.use(async (_req, res, next) => {
+          try {
+            const { Readable } = await import(
+              /* @vite-ignore */ DO_NOT_BUNDLE + 'node:stream'
+            );
+            const body = produceMultiplexedStream(async (emitFile) => {
+              await processBuild({ emitFile });
+            });
+            Readable.fromWeb(body as never).pipe(res);
+          } catch (err) {
+            next(err);
           }
-        }
-        return res;
+        });
+        const response = await fetch(
+          server.baseUrl + internalPathToBuildStaticFiles,
+        );
+        await consumeMultiplexedStream(response.body!, utils.emitFile);
+        await server.close();
       },
-      handlers: options?.handlers,
-      build: processBuild,
       buildOptions,
       buildEnhancers: ['waku/adapters/cloudflare-build-enhancer'],
+      defaultExport: {
+        ...options?.handlers,
+        fetch(req: Request, env: Record<string, string>) {
+          setAllEnv(env);
+          return fetchFn(req);
+        },
+      },
     };
   },
 );

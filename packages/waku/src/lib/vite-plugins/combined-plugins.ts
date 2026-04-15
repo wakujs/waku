@@ -3,7 +3,7 @@ import type { PluginOption } from 'vite';
 import type { Config } from '../../config.js';
 import { allowServerPlugin } from './allow-server.js';
 import { buildMetadataPlugin } from './build-metadata.js';
-import { cloudflarePlugin } from './cloudflare.js';
+import { buildStaticFilesPlugin } from './build-static-files.js';
 import { defaultAdapterPlugin } from './default-adapter.js';
 import { extraPlugins } from './extra-plugins.js';
 import { fallbackHtmlPlugin } from './fallback-html.js';
@@ -12,6 +12,7 @@ import { mainPlugin } from './main.js';
 import { notFoundPlugin } from './not-found.js';
 import { patchRsdwPlugin } from './patch-rsdw.js';
 import { privateDirPlugin } from './private-dir.js';
+import { reactDebugPlugin } from './react-debug.js';
 import { userEntriesPlugin } from './user-entries.js';
 import { virtualConfigPlugin } from './virtual-config.js';
 
@@ -19,13 +20,13 @@ export function combinedPlugins(config: Required<Config>): PluginOption {
   return [
     extraPlugins(config),
     allowServerPlugin(), // apply `allowServer` DCE before "use client" transform
-    cloudflarePlugin(),
     rsc({
       serverHandler: false,
       keepUseCientProxy: true,
       useBuildAppHook: true,
       clientChunks: (meta) => meta.serverChunk,
     }),
+    reactDebugPlugin(),
     mainPlugin(config),
     userEntriesPlugin(config),
     virtualConfigPlugin(config),
@@ -33,6 +34,7 @@ export function combinedPlugins(config: Required<Config>): PluginOption {
     notFoundPlugin(),
     patchRsdwPlugin(),
     buildMetadataPlugin(config),
+    buildStaticFilesPlugin(config),
     privateDirPlugin(config),
     fallbackHtmlPlugin(),
     fsRouterTypegenPlugin(config),

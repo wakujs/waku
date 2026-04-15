@@ -1,20 +1,15 @@
 // This file should not include Node specific code.
 
 export const encodeRscPath = (rscPath: string) => {
-  if (rscPath.startsWith('_')) {
-    throw new Error('rscPath must not start with `_`: ' + rscPath);
-  }
-  if (rscPath.endsWith('_')) {
-    throw new Error('rscPath must not end with `_`: ' + rscPath);
-  }
   if (rscPath === '') {
     rscPath = '_';
-  }
-  if (rscPath.startsWith('/')) {
-    rscPath = '_' + rscPath;
-  }
-  if (rscPath.endsWith('/')) {
-    rscPath += '_';
+  } else {
+    if (rscPath.startsWith('_') || rscPath.startsWith('/')) {
+      rscPath = '_' + rscPath;
+    }
+    if (rscPath.endsWith('_') || rscPath.endsWith('/')) {
+      rscPath += '_';
+    }
   }
   return rscPath + '.txt';
 };
@@ -42,10 +37,7 @@ export const encodeFuncId = (funcId: string) => {
   if (name.includes('/')) {
     throw new Error('Function name must not include `/`: ' + name);
   }
-  if (file.startsWith('_')) {
-    throw new Error('File must not start with `_`: ' + file);
-  }
-  if (file.startsWith('/')) {
+  if (file.startsWith('_') || file.startsWith('/')) {
     return FUNC_PREFIX + '_' + file + '/' + name;
   }
   return FUNC_PREFIX + file + '/' + name;

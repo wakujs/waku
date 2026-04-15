@@ -8,13 +8,13 @@ export default function Index() {
         <Link to="/exists">Existing page</Link>
       </p>
       <p>
-        <Link to="/broken">Broken link</Link>
+        <Link to={'/broken' as never}>Broken link</Link>
       </p>
       <p>
-        <Link to="/redirect">Correct redirect</Link>
+        <Link to={'/redirect' as never}>Correct redirect</Link>
       </p>
       <p>
-        <Link to="/broken-redirect">Broken redirect</Link>
+        <Link to={'/broken-redirect' as never}>Broken redirect</Link>
       </p>
       <p>
         <Link to="/dynamic-not-found/sync">Dynamic not found sync</Link>

@@ -10,6 +10,7 @@ import {
 import { buildMetadata } from 'virtual:vite-rsc-waku/build-metadata';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import notFoundHtml from 'virtual:vite-rsc-waku/not-found';
+import { INTERNAL_setAllEnv } from '../../server.js';
 import { BUILD_METADATA_FILE, DIST_PUBLIC, DIST_SERVER } from '../constants.js';
 import { INTERNAL_runWithContext } from '../context.js';
 import type {
@@ -21,6 +22,7 @@ import type {
 } from '../types.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
 import { joinPath } from '../utils/path.js';
+import { DEBUG_ID_HEADER } from '../utils/react-debug-channel.js';
 import { createRenderUtils } from '../utils/render.js';
 import { getInput } from '../utils/request.js';
 import { encodeRscPath } from '../utils/rsc-path.js';
@@ -49,11 +51,22 @@ const toProcessRequest =
       loadServerAction,
     );
 
+    const debugId = req.headers.get(DEBUG_ID_HEADER.toLowerCase()) || undefined;
+    const debugChannels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as
+      | Map<string, { readable: ReadableStream; writable: WritableStream }>
+      | undefined;
+    const debugChannel = debugId ? debugChannels?.get(debugId) : undefined;
+    if (debugId) {
+      debugChannels?.delete(debugId);
+    }
+
     const renderUtils = createRenderUtils(
       temporaryReferences,
       renderToReadableStream,
       createFromReadableStream,
       loadSsrEntryModule,
+      debugChannel,
+      debugId,
     );
 
     let res: Awaited<ReturnType<typeof handleRequest>>;
@@ -125,19 +138,24 @@ const toProcessBuild =
       },
       withRequest: (req, fn) => INTERNAL_runWithContext(req, fn),
       generateFile: async (fileName, body) => {
-        await emitFile(joinPath(DIST_PUBLIC, fileName), body);
+        await emitFile(
+          joinPath(DIST_PUBLIC, fileName),
+          typeof body === 'string' ? stringToStream(body) : body,
+        );
       },
       generateDefaultHtml: async (fileName) => {
         await emitFile(
           joinPath(DIST_PUBLIC, fileName),
-          await getFallbackHtml(),
+          stringToStream(await getFallbackHtml()),
         );
       },
     });
 
     await emitFile(
       joinPath(DIST_SERVER, BUILD_METADATA_FILE),
-      `export const buildMetadata = new Map(${JSON.stringify(Array.from(buildMetadata))});`,
+      stringToStream(
+        `export const buildMetadata = new Map(${JSON.stringify(Array.from(buildMetadata))});`,
+      ),
     );
   };
 
@@ -150,6 +168,7 @@ export const createServerEntryAdapter: CreateServerEntryAdapter =
         handlers,
         processRequest,
         processBuild,
+        setAllEnv: INTERNAL_setAllEnv,
         config,
         isBuild,
         notFoundHtml,

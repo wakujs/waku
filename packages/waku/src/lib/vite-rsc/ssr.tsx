@@ -1,13 +1,27 @@
 import { type ReactNode, captureOwnerStack, use } from 'react';
-import { createFromReadableStream } from '@vitejs/plugin-rsc/ssr';
+import { createFromReadableStream as createFromReadableStreamBase } from '@vitejs/plugin-rsc/ssr';
 import type { ReactFormState } from 'react-dom/client';
 import { renderToReadableStream } from 'react-dom/server.edge';
 import { injectRSCPayload } from 'rsc-html-stream/server';
 import fallbackHtml from 'virtual:vite-rsc-waku/fallback-html';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
+import { waitForRootPrerequisites } from '../utils/rsc-stream.js';
 import { getBootstrapPreamble } from '../utils/ssr.js';
-import { batchReadableStream } from '../utils/stream.js';
+import { batchReadableStream, deferReadableStream } from '../utils/stream.js';
+
+function createFromReadableStream<T>(
+  stream: ReadableStream<Uint8Array>,
+): Promise<T> {
+  let resolve!: () => void;
+  const promise = new Promise<void>((r) => {
+    resolve = r;
+  });
+  const deferredStream = deferReadableStream(stream, promise);
+  const root = createFromReadableStreamBase<T>(deferredStream);
+  waitForRootPrerequisites(root).then(resolve, resolve);
+  return root;
+}
 
 type RenderHtmlStream = (
   rscStream: ReadableStream<Uint8Array>,
@@ -17,6 +31,7 @@ type RenderHtmlStream = (
     formState: ReactFormState | undefined;
     nonce: string | undefined;
     extraScriptContent: string | undefined;
+    debugId: string | undefined;
   },
 ) => Promise<{ stream: ReadableStream; status: number | undefined }>;
 
@@ -54,7 +69,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
 
   // render html
   const bootstrapScriptContent = await loadBootstrapScriptContent();
-  let htmlStream: ReadableStream;
+  let htmlStream: Awaited<ReturnType<typeof renderToReadableStream>>;
   let status: number | undefined;
   try {
     htmlStream = await renderToReadableStream(<SsrRoot />, {
@@ -62,6 +77,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
         getBootstrapPreamble({
           rscPath: options.rscPath || '',
           hydrate: true,
+          debugId: options.debugId,
         }) +
         bootstrapScriptContent +
         (options.extraScriptContent || ''),
@@ -103,8 +119,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
       ...(options.nonce ? { nonce: options.nonce } : {}),
     });
   }
-  let responseStream: ReadableStream<Uint8Array> = htmlStream;
-  responseStream = responseStream.pipeThrough(
+  const responseStream: ReadableStream<Uint8Array> = htmlStream.pipeThrough(
     injectRSCPayload(
       batchReadableStream(stream2),
       options.nonce ? { nonce: options.nonce } : {},

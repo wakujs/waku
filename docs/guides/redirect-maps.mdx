@@ -1,0 +1,90 @@
+---
+slug: redirect-maps
+title: Redirect Maps
+description: How to configure redirect maps in front of a Waku server.
+---
+
+## Redirect Maps
+
+This guide is for redirect maps that sit in front of the Waku server, such as middleware, reverse proxies, CDNs, or hosting-platform redirect rules.
+
+When a Waku app uses the client router, a navigation usually fetches both:
+
+- the browser route, such as `/old`
+- the corresponding RSC payload route, such as `/RSC/R/old.txt`
+
+If you want `/old` to behave like a redirect to `/new` even during client-side navigation, you usually need to redirect both paths.
+
+With Waku's default config:
+
+- `basePath` is `/`
+- `rscBase` is `RSC`
+- the route `/old` maps to the RSC path `/RSC/R/old.txt`
+
+> The `/RSC/` file naming convention is [subject to change](https://github.com/wakujs/waku/discussions/929#discussioncomment-10825975) in future versions of Waku.
+
+If you customize `basePath` or `rscBase`, adjust the redirect rules accordingly.
+
+For application-level redirects implemented inside Waku routes or server actions, use `unstable_redirect` from `waku/router/server` instead. That is a separate use case from the redirect-map approach described here.
+
+### Redirect via middleware
+
+Create a new middleware file in `src/middleware/`. Waku automatically discovers and loads middleware from this directory.
+
+```typescript
+// ./src/middleware/redirects.ts
+import type { MiddlewareHandler } from 'hono';
+
+const redirectsMiddleware = (): MiddlewareHandler => async (c, next) => {
+  const url = new URL(c.req.raw.url);
+
+  // With the default Waku config, redirect both the browser route
+  // and the corresponding RSC payload route.
+  const redirects: Record<string, string> = {
+    '/old': '/new',
+    '/RSC/R/old.txt': '/RSC/R/new.txt',
+    // ... add more redirects here
+  };
+
+  if (url.pathname in redirects) {
+    url.pathname = redirects[url.pathname]!;
+    c.res = new Response(null, {
+      status: 302,
+      headers: { location: url.toString() },
+    });
+    return;
+  }
+
+  return await next();
+};
+
+export default redirectsMiddleware;
+```
+
+This only handles the paths you explicitly match. If you redirect only `/old` and not `/RSC/R/old.txt`, direct requests may work while client-side navigation can still fail or land on the wrong state.
+
+### Redirect via hosting environment
+
+This very much depends on the hosting environment you are using. For example, on [Vercel](https://vercel.com/docs/projects/project-configuration#redirects) you can use the `vercel.json` file to define redirects.
+
+```json
+{
+  "redirects": [
+    { "source": "/old", "destination": "/new", "permanent": true },
+    {
+      "source": "/RSC/R/old.txt",
+      "destination": "/RSC/R/new.txt",
+      "permanent": true
+    }
+  ]
+}
+```
+
+[Netlify](https://docs.netlify.com/routing/redirects/#syntax-for-the-redirects-file) and [Cloudflare Pages](https://developers.cloudflare.com/pages/configuration/redirects/) will respect a `_redirects` file that you can place in the `public` folder:
+
+```
+/old /new 301
+/RSC/R/old.txt /RSC/R/new.txt 301
+```
+
+For app-level redirects inside page code or server actions, use `unstable_redirect` from `waku/router/server` instead of external redirect maps.

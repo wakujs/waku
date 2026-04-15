@@ -9,15 +9,15 @@
     "start": "waku start"
   },
   "dependencies": {
-    "react": "~19.2.4",
-    "react-dom": "~19.2.4",
-    "react-server-dom-webpack": "~19.2.4",
+    "react": "~19.2.5",
+    "react-dom": "~19.2.5",
+    "react-server-dom-webpack": "~19.2.5",
     "react-wrap-balancer": "^1.1.1",
-    "waku": "1.0.0-alpha.3"
+    "waku": "1.0.0-alpha.7"
   },
   "devDependencies": {
-    "@types/react": "^19.2.9",
+    "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.2"
   }
 }

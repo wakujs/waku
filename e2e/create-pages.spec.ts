@@ -1,14 +1,90 @@
 import { statSync } from 'node:fs';
 import path from 'node:path';
-import { expect } from '@playwright/test';
+import { type Page, expect } from '@playwright/test';
 import {
   FETCH_ERROR_MESSAGES,
   prepareNormalSetup,
   test,
   waitForHydration,
+  waitForSelectorText,
 } from './utils.js';
 
 const startApp = prepareNormalSetup('create-pages');
+
+// Long suspense flows are more stable with direct DOM clicks.
+const clickClientLink = async (page: Page, href: string) => {
+  await page.evaluate((targetHref) => {
+    const link = document.querySelector(`a[href="${targetHref}"]`);
+    if (!(link instanceof HTMLAnchorElement)) {
+      throw new Error(`Missing link: ${targetHref}`);
+    }
+    link.click();
+  }, href);
+};
+
+// The pending indicator can flash very briefly. Detect "seen at least once"
+// with a short-lived observer instead of asserting an instant count.
+const waitForSelectorSeen = async (page: Page, selector: string) => {
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(
+          (selector) =>
+            new Promise<boolean>((resolve) => {
+              let settled = false;
+              let timer: ReturnType<typeof setTimeout> | null = null;
+              let observer: MutationObserver | null = null;
+              const done = (value: boolean) => {
+                if (settled) {
+                  return;
+                }
+                settled = true;
+                if (observer) {
+                  observer.disconnect();
+                }
+                if (timer) {
+                  clearTimeout(timer);
+                }
+                resolve(value);
+              };
+              const isVisible = () => !!document.querySelector(selector);
+              if (isVisible()) {
+                done(true);
+                return;
+              }
+              observer = new MutationObserver(() => {
+                if (isVisible()) {
+                  done(true);
+                }
+              });
+              observer.observe(document.documentElement, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+              });
+              timer = setTimeout(() => done(false), 3_000);
+            }),
+          selector,
+        ),
+      { timeout: 4_000 },
+    )
+    .toBe(true);
+};
+
+const expectNoPageErrorFor = async (page: Page) => {
+  const errors: string[] = [];
+  const onPageError = (err: Error) => errors.push(err.message);
+
+  page.on('pageerror', onPageError);
+  try {
+    // eslint-disable-next-line playwright/no-wait-for-timeout
+    await page.waitForTimeout(500);
+  } finally {
+    page.off('pageerror', onPageError);
+  }
+
+  expect(errors).toEqual([]);
+};
 
 test.describe(`create-pages`, () => {
   let port: number;
@@ -22,6 +98,9 @@ test.describe(`create-pages`, () => {
   test.afterAll(async () => {
     await stopApp();
   });
+
+  const SELECTOR = '[data-testid="long-suspense-component"] h3';
+  const PENDING_SELECTOR = '[data-testid="long-suspense-pending"]';
 
   test('home', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
@@ -44,8 +123,8 @@ test.describe(`create-pages`, () => {
   test('foo', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await page.click("a[href='/foo']");
-    await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
+    await page.click("a[href='/foo']", { noWaitAfter: true });
+    await waitForSelectorText(page, 'h2', 'Foo');
 
     await page.goto(`http://localhost:${port}/foo`);
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
@@ -91,15 +170,14 @@ test.describe(`create-pages`, () => {
   test('jump', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await page.click("a[href='/foo']");
-    await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
+    await page.click("a[href='/foo']", { noWaitAfter: true });
+    await waitForSelectorText(page, 'h2', 'Foo');
     await page.click('text=Jump to random page');
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(500); // need to wait not to error
-    await expect(page.getByRole('heading', { level: 2 })).toBeVisible();
+    await expectNoPageErrorFor(page);
     await expect(
       page.getByRole('heading', { level: 2, name: 'Foo' }),
     ).toBeHidden();
+    await expect(page.getByRole('heading', { level: 2 })).toBeVisible();
   });
 
   test('jump with setState', async ({ page }) => {
@@ -107,8 +185,8 @@ test.describe(`create-pages`, () => {
     page.on('pageerror', (err) => errors.push(err.message));
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await page.click("a[href='/foo']");
-    await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
+    await page.click("a[href='/foo']", { noWaitAfter: true });
+    await waitForSelectorText(page, 'h2', 'Foo');
     await page.click('text=Jump with setState');
     await expect(
       page.getByRole('heading', { name: 'Baz', exact: true }),
@@ -178,57 +256,60 @@ test.describe(`create-pages`, () => {
     await expect(
       page.getByRole('heading', { name: 'Long Suspense Page 1' }),
     ).toBeVisible();
-    await page.click("a[href='/long-suspense/2']");
+    const pendingSeen = waitForSelectorSeen(page, PENDING_SELECTOR);
+    await clickClientLink(page, '/long-suspense/2');
     await page.waitForFunction(
-      () => {
-        const pendingElement = document.querySelector(
-          '[data-testid="long-suspense-pending"]',
-        );
-        const heading = document.querySelector(
-          '[data-testid="long-suspense-component"] h3',
-        );
+      ([pendingSel, sel]) => {
+        const pathname = window.location.pathname;
+        const pendingElement = document.querySelector(pendingSel);
+        const heading = document.querySelector(sel);
         return (
           pendingElement?.textContent === 'Pending...' &&
+          pathname === '/long-suspense/1' &&
           heading?.textContent === 'Long Suspense Page 1'
         );
       },
-      undefined,
+      [PENDING_SELECTOR, SELECTOR] as const,
       { timeout: 1000 },
     );
-    await expect(page.getByTestId('long-suspense')).toHaveCount(0);
-    await expect(
-      page.getByRole('heading', { name: 'Long Suspense Page 2' }),
-    ).toBeVisible();
-    await page.click("a[href='/long-suspense/3']");
-    await expect(
-      page.getByRole('heading', { name: 'Long Suspense Page 2' }),
-    ).toBeHidden();
-    await expect(page.getByTestId('long-suspense')).toHaveText('Loading...');
-    await expect(page.getByTestId('long-suspense-pending')).toHaveCount(0);
-    await expect(
-      page.getByRole('heading', { name: 'Long Suspense Page 3' }),
-    ).toBeVisible();
-    await page.click("a[href='/long-suspense/2']");
+    await pendingSeen;
+    await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 2');
+    const pendingSeen2 = waitForSelectorSeen(page, PENDING_SELECTOR);
+    await clickClientLink(page, '/long-suspense/3');
     await page.waitForFunction(
-      () => {
-        const pendingElement = document.querySelector(
-          '[data-testid="long-suspense-pending"]',
-        );
-        const heading = document.querySelector(
-          '[data-testid="long-suspense-component"] h3',
-        );
+      ([pendingSel, sel]) => {
+        const pathname = window.location.pathname;
+        const pendingElement = document.querySelector(pendingSel);
+        const heading = document.querySelector(sel);
         return (
           pendingElement?.textContent === 'Pending...' &&
+          pathname === '/long-suspense/2' &&
+          heading?.textContent === 'Long Suspense Page 2'
+        );
+      },
+      [PENDING_SELECTOR, SELECTOR] as const,
+      { timeout: 1000 },
+    );
+    await pendingSeen2;
+    await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 3');
+    const pendingSeen3 = waitForSelectorSeen(page, PENDING_SELECTOR);
+    await clickClientLink(page, '/long-suspense/2');
+    await page.waitForFunction(
+      ([pendingSel, sel]) => {
+        const pathname = window.location.pathname;
+        const pendingElement = document.querySelector(pendingSel);
+        const heading = document.querySelector(sel);
+        return (
+          pendingElement?.textContent === 'Pending...' &&
+          pathname === '/long-suspense/3' &&
           heading?.textContent === 'Long Suspense Page 3'
         );
       },
-      undefined,
+      [PENDING_SELECTOR, SELECTOR] as const,
       { timeout: 1000 },
     );
-    await expect(page.getByTestId('long-suspense')).toHaveCount(0);
-    await expect(
-      page.getByRole('heading', { name: 'Long Suspense Page 2' }),
-    ).toBeVisible();
+    await pendingSeen3;
+    await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 2');
   });
 
   // https://github.com/wakujs/waku/issues/1437
@@ -241,21 +322,12 @@ test.describe(`create-pages`, () => {
     await expect(
       page.getByRole('heading', { name: 'Long Suspense Page 4' }),
     ).toBeVisible();
-    await page.click("a[href='/static-long-suspense/5']");
-    // It flashes very briefly
-    // await expect(page.getByTestId('long-suspense-pending')).toHaveCount(1);
-    await expect(page.getByTestId('long-suspense')).toHaveCount(0);
-    await expect(
-      page.getByRole('heading', { name: 'Long Suspense Page 5' }),
-    ).toBeVisible();
-    await page.click("a[href='/static-long-suspense/6']");
-    // It flashes very briefly
-    // await expect(page.getByTestId('long-suspense-pending')).toHaveCount(0);
-    // No loading state with static
-    await expect(page.getByTestId('long-suspense')).toHaveCount(0);
-    await expect(
-      page.getByRole('heading', { name: 'Long Suspense Page 6' }),
-    ).toBeVisible();
+    const pendingSeen = waitForSelectorSeen(page, PENDING_SELECTOR);
+    await clickClientLink(page, '/static-long-suspense/5');
+    await pendingSeen;
+    await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 5');
+    await clickClientLink(page, '/static-long-suspense/6');
+    await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 6');
   });
 
   test('api hi', async () => {
@@ -352,6 +424,18 @@ test.describe(`create-pages`, () => {
     });
   });
 
+  test('static api wildcard passes correct params', async () => {
+    const res1 = await fetch(
+      `http://localhost:${port}/api/static-wildcard/a/b`,
+    );
+    expect(res1.status).toBe(200);
+    expect(await res1.json()).toEqual({ params: { slugs: ['a', 'b'] } });
+
+    const res2 = await fetch(`http://localhost:${port}/api/static-wildcard/c`);
+    expect(res2.status).toBe(200);
+    expect(await res2.json()).toEqual({ params: { slugs: ['c'] } });
+  });
+
   test('exactPath', async ({ page }) => {
     await page.goto(`http://localhost:${port}/exact/[slug]/[...wild]`);
     await expect(
@@ -401,11 +485,15 @@ test.describe(`create-pages`, () => {
     expect(Math.abs(dynamicTime - staticTime)).toBeLessThanOrEqual(1000);
 
     await page.getByRole('link', { name: 'Home' }).click();
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(1000);
+    await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
     await page.getByRole('link', { name: 'Nested Layouts' }).click();
+    await expect(
+      page.getByRole('heading', { name: 'Nested Layouts page' }),
+    ).toBeVisible();
     const dynamicTime2 = await whatTime('Dynamic Layout');
     const staticTime2 = await whatTime('Static Layout');
+    expect(dynamicTime2).not.toEqual(dynamicTime);
+    expect(staticTime2).toEqual(staticTime);
     expect(dynamicTime2).not.toEqual(staticTime2);
   });
 
@@ -433,9 +521,9 @@ test.describe(`create-pages`, () => {
     expect(dynamicSliceText.startsWith('Slice 002')).toBeTruthy();
 
     await page.getByRole('link', { name: 'Home' }).click();
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(1000);
+    await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
     await page.getByRole('link', { name: 'Slices' }).click();
+    await expect(page.getByRole('heading', { name: 'Slices' })).toBeVisible();
 
     // test dynamic and static slices behavior after soft navigation
     const staticSliceText2 = page.getByTestId('slice001');

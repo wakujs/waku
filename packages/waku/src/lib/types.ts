@@ -10,6 +10,11 @@ export type Unstable_RenderRsc = (
   },
 ) => Promise<ReadableStream>;
 
+// Experimental: render RSC only for parse/copy flows without a debug channel.
+export type Unstable_RenderRscForParse = (
+  elements: Elements,
+) => Promise<ReadableStream>;
+
 export type Unstable_ParseRsc = (
   rscStream: ReadableStream,
 ) => Promise<Elements>;
@@ -28,7 +33,7 @@ export type Unstable_RenderHtml = (
 
 export type Unstable_EmitFile = (
   filePath: string,
-  body: ReadableStream | string,
+  body: ReadableStream,
 ) => Promise<void>;
 
 export type Unstable_HandleRequest = (
@@ -50,6 +55,7 @@ export type Unstable_HandleRequest = (
   },
   utils: {
     renderRsc: Unstable_RenderRsc;
+    renderRscForParse: Unstable_RenderRscForParse;
     parseRsc: Unstable_ParseRsc;
     renderHtml: Unstable_RenderHtml;
     loadBuildMetadata: (key: string) => Promise<string | undefined>;
@@ -86,6 +92,7 @@ export type Unstable_ServerEntry = {
   ) => Promise<void>;
   buildOptions?: Record<string, unknown>;
   buildEnhancers?: string[]; // enhancer module ids
+  defaultExport?: unknown;
   [someOtherProperty: string]: unknown;
 };
 
@@ -103,6 +110,7 @@ export type Unstable_CreateServerEntryAdapter = <Options>(
       handlers: Unstable_Handlers;
       processRequest: Unstable_ProcessRequest;
       processBuild: Unstable_ProcessBuild;
+      setAllEnv: (newEnv: Readonly<Record<string, string>>) => void;
       config: Omit<Required<Config>, 'vite'>;
       isBuild: boolean;
       notFoundHtml: string;
