@@ -1,9 +1,24 @@
 import { expectType } from 'ts-expect';
-import { expect, test } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import { type Config, defineConfig } from '../src/config.js';
+import { loadConfig } from '../src/lib/vite-rsc/loader.js';
 
-// Absolutely meaningless unit and type test examples.
-// Only exist to proof that the frameworks are set up correctly.
+const { existsSyncMock, runnerImportMock } = vi.hoisted(() => ({
+  existsSyncMock: vi.fn<(path: string) => boolean>(),
+  runnerImportMock: vi.fn(),
+}));
+
+vi.mock('node:fs', () => ({
+  existsSync: existsSyncMock,
+}));
+
+vi.mock('vite', () => ({
+  runnerImport: runnerImportMock,
+}));
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 test('defineConfig with object', () => {
   expect(defineConfig({})).toEqual({});
@@ -13,6 +28,31 @@ test('defineConfig with object', () => {
 test('defineConfig with callback', () => {
   const fn = () => ({});
   expect(defineConfig(fn)).toBe(fn);
+});
+
+test('loadConfig with callback config export', async () => {
+  existsSyncMock.mockImplementation((path) => path === 'waku.config.ts');
+  const configExport = vi.fn(
+    async ({ cmd }: { cmd: 'dev' | 'build' | 'start' }) => ({
+      basePath: `/${cmd}/`,
+      srcDir: 'app',
+    }),
+  );
+  runnerImportMock.mockResolvedValue({
+    module: { default: defineConfig(configExport) },
+  });
+
+  await expect(loadConfig('build')).resolves.toMatchObject({
+    basePath: '/build/',
+    srcDir: 'app',
+    distDir: 'dist',
+    privateDir: 'private',
+    rscBase: 'RSC',
+    vite: undefined,
+  });
+  expect(existsSyncMock).toHaveBeenCalledWith('waku.config.ts');
+  expect(runnerImportMock).toHaveBeenCalledWith('/waku.config');
+  expect(configExport).toHaveBeenCalledWith({ cmd: 'build' });
 });
 
 // Type tests
