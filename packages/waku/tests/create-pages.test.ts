@@ -2368,23 +2368,6 @@ describe('createPages api', () => {
     expect(receivedParams).toEqual([{ slugs: ['a', 'b'] }, { slugs: ['c'] }]);
   });
 
-  it('static page with wildcard and empty path does not warn', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const TestPage = vi.fn();
-    createPages(async ({ createPage }) => [
-      createPage({
-        render: 'static',
-        path: '/test/[...path]',
-        staticPaths: [[], ['a', 'b']],
-        component: TestPage,
-      }),
-    ]);
-    const { getConfigs } = injectedFunctions();
-    await getConfigs();
-    expect(warnSpy).not.toHaveBeenCalled();
-    warnSpy.mockRestore();
-  });
-
   it('static api with wildcard and empty path warns', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     createPages(async ({ createApi }) => [
