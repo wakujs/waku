@@ -492,12 +492,6 @@ export const createPages = <
         if (staticPath.length !== numSlugs && numWildcards === 0) {
           throw new Error('staticPaths does not match with slug pattern');
         }
-        if (staticPath.length === 0 && numWildcards > 0) {
-          console.warn(
-            `Empty staticPaths entry is not supported for wildcard routes. ` +
-              `Route "${page.path}" has a wildcard segment, so each staticPaths entry should contain at least one element.`,
-          );
-        }
         const { definedPath, pathItems, mapping } = expandStaticPathSpec(
           pathSpec,
           staticPath,
