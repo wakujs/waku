@@ -68,8 +68,8 @@ test.describe(`ssr-redirect`, () => {
     page,
   }) => {
     await page.goto(`http://localhost:${port}/async`);
+    await waitForHydration(page);
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
-
     const combined = serverOutput.join('');
     expect(combined).not.toContain('Error during rendering');
   });
