@@ -28,7 +28,6 @@ export function createRenderUtils(
   renderHtml: Unstable_RenderHtml;
 } {
   const onError = (e: unknown) => {
-    console.error('Error during rendering:', e);
     if (
       e &&
       typeof e === 'object' &&
@@ -37,6 +36,7 @@ export function createRenderUtils(
     ) {
       return e.digest;
     }
+    console.error('Error during rendering:', e);
   };
 
   return {
