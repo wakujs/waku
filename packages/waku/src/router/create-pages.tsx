@@ -2,6 +2,7 @@ import { createElement } from 'react';
 import type { FunctionComponent, ReactElement, ReactNode } from 'react';
 import { getGrouplessPath } from '../lib/utils/create-pages.js';
 import {
+  countSlugsAndWildcards,
   getPathMapping,
   joinPath,
   parseExactPath,
@@ -447,7 +448,7 @@ export const createPages = <
     }
 
     const pathSpec = parsePathWithSlug(pageRoutePath);
-    const { numSlugs, numWildcards } = getSlugsAndWildcards(pathSpec);
+    const { numSlugs, numWildcards } = countSlugsAndWildcards(pathSpec);
     if (page.unstable_disableSSR) {
       noSsrSet.add(pathSpec);
     }
@@ -491,12 +492,6 @@ export const createPages = <
       for (const staticPath of staticPaths) {
         if (staticPath.length !== numSlugs && numWildcards === 0) {
           throw new Error('staticPaths does not match with slug pattern');
-        }
-        if (staticPath.length === 0 && numWildcards > 0) {
-          console.warn(
-            `Empty staticPaths entry is not supported for wildcard routes. ` +
-              `Route "${page.path}" has a wildcard segment, so each staticPaths entry should contain at least one element.`,
-          );
         }
         const { definedPath, pathItems, mapping } = expandStaticPathSpec(
           pathSpec,
@@ -566,7 +561,7 @@ export const createPages = <
     }
     const pathSpec = parsePathWithSlug(routePath);
     if (options.render === 'static') {
-      const { numSlugs, numWildcards } = getSlugsAndWildcards(pathSpec);
+      const { numSlugs, numWildcards } = countSlugsAndWildcards(pathSpec);
       if (numSlugs > 0 && options.staticPaths) {
         const staticPaths = options.staticPaths.map((item) =>
           (Array.isArray(item) ? item : [item]).map(sanitizeSlug),
@@ -574,12 +569,6 @@ export const createPages = <
         for (const staticPath of staticPaths) {
           if (staticPath.length !== numSlugs && numWildcards === 0) {
             throw new Error('staticPaths does not match with slug pattern');
-          }
-          if (staticPath.length === 0 && numWildcards > 0) {
-            console.warn(
-              `Empty staticPaths entry is not supported for wildcard routes. ` +
-                `Route "${options.path}" has a wildcard segment, so each staticPaths entry should contain at least one element.`,
-            );
           }
           const { definedPath, pathItems, mapping } = expandStaticPathSpec(
             pathSpec,
@@ -943,20 +932,6 @@ export const createPages = <
       void // createLayout returns void
     >;
   };
-};
-
-const getSlugsAndWildcards = (pathSpec: PathSpec) => {
-  let numSlugs = 0;
-  let numWildcards = 0;
-  for (const slug of pathSpec) {
-    if (slug.type !== 'literal') {
-      numSlugs++;
-    }
-    if (slug.type === 'wildcard') {
-      numWildcards++;
-    }
-  }
-  return { numSlugs, numWildcards };
 };
 
 function expandStaticPathSpec(pathSpec: PathSpec, staticPath: string[]) {
