@@ -179,7 +179,7 @@ const assertNonReservedSlotId = (slotId: SlotId) => {
 
 type RendererOption = { routePath: string; query: string | undefined };
 
-interface RouteConfig {
+type RouteConfig  = {
   type: 'route';
   path: PathSpec;
   isStatic: boolean;
@@ -203,14 +203,14 @@ interface RouteConfig {
   slices?: string[];
 }
 
-interface ApiConfig {
+type ApiConfig = {
   type: 'api';
   path: PathSpec;
   isStatic: boolean;
   handler: ApiHandler;
 }
 
-interface SliceConfig {
+type SliceConfig = {
   type: 'slice';
   id: string;
   pathSpec?: PathSpec;
