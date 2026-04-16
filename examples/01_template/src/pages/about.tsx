@@ -27,6 +27,6 @@ const getData = async () => {
 
 export const getConfig = async () => {
   return {
-    render: 'dynamic',
+    render: 'static',
   } as const;
 };
