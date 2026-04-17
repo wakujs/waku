@@ -1,3 +1,5 @@
+import { existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { expect } from '@playwright/test';
 import {
   prepareNormalSetup,
@@ -8,12 +10,36 @@ import {
 
 const startApp = prepareNormalSetup('fs-router');
 
+const STATIC_RENDER_SENTINEL = 'PR1974_STATIC_ROUTE_RENDER_SENTINEL';
+const RUNTIME_BUILD_STATIC_FILE_BASENAME = 'runtime-build-static';
+const RUNTIME_BUILD_DYNAMIC_FILE_BASENAME = 'runtime-build-dynamic';
+
+const collectDistFiles = (dir: string): string[] => {
+  const files: string[] = [];
+  const queue = [dir];
+
+  while (queue.length) {
+    const current = queue.pop()!;
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const nextPath = join(current, entry.name);
+      if (entry.isDirectory()) {
+        queue.push(nextPath);
+        continue;
+      }
+      files.push(nextPath);
+    }
+  }
+
+  return files;
+};
+
 test.describe('fs-router', () => {
   let port: number;
+  let fixtureDir: string;
   let stopApp: () => Promise<void>;
 
   test.beforeAll(async ({ mode }) => {
-    ({ port, stopApp } = await startApp(mode));
+    ({ port, stopApp, fixtureDir } = await startApp(mode));
   });
 
   test.afterAll(async () => {
@@ -385,5 +411,34 @@ test.describe('fs-router', () => {
         name: 'Subroute Catch-All: test/deep/path',
       }),
     ).toBeVisible();
+  });
+
+  test('runtime bundle excludes fully static routes while SSG still emits them', async ({
+    mode,
+    page,
+  }) => {
+    test.skip(mode !== 'PRD');
+
+    const distDir = join(fixtureDir, 'dist');
+
+    expect(existsSync(distDir)).toBe(true);
+
+    await page.goto(`http://localhost:${port}/runtime-build-static`);
+    await expect(
+      page.getByRole('heading', { name: STATIC_RENDER_SENTINEL }),
+    ).toBeVisible();
+
+    const distFiles = collectDistFiles(distDir);
+
+    expect(
+      distFiles.some((file) =>
+        file.includes(RUNTIME_BUILD_DYNAMIC_FILE_BASENAME),
+      ),
+    ).toBe(true);
+    expect(
+      distFiles.some((file) =>
+        file.includes(RUNTIME_BUILD_STATIC_FILE_BASENAME),
+      ),
+    ).toBe(false);
   });
 });
