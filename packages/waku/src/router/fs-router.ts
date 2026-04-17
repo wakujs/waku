@@ -34,7 +34,7 @@ export function fsRouter(
 ) {
   if (
     !didWarnAboutApiDirMigration &&
-    !(options as any).temporary_doNotWarnAboutApiDirMigration
+    !(options as any)?.temporary_doNotWarnAboutApiDirMigration
   ) {
     didWarnAboutApiDirMigration = true;
     // TODO: remove this warning after a few versions
