@@ -29,7 +29,7 @@ export function fsRouter(
     apiDir?: string;
     /** e.g. `"_slices"` will detect slices in `src/pages/_slices`. */
     slicesDir?: string;
-    unstable_buildFilter?: (routePath: string) => boolean;
+    unstable_skipBuild?: (routePath: string) => boolean;
   },
 ) {
   if (
@@ -47,7 +47,7 @@ export function fsRouter(
   const {
     apiDir = '_api',
     slicesDir = '_slices',
-    unstable_buildFilter,
+    unstable_skipBuild,
   } = options || {};
   return createPages(
     async ({
@@ -163,6 +163,6 @@ export function fsRouter(
       // HACK: to satisfy the return type, unused at runtime
       return null as never;
     },
-    unstable_buildFilter ? { unstable_buildFilter } : undefined,
+    unstable_skipBuild ? { unstable_skipBuild } : undefined,
   );
 }

@@ -238,7 +238,7 @@ globalThis.__WAKU_ROUTER_PREFETCH__ = (path, callback) => {
 
 export function unstable_defineRouter(fns: {
   getConfigs: () => Promise<Iterable<RouteConfig | ApiConfig | SliceConfig>>;
-  unstable_buildFilter?: (routePath: string) => boolean;
+  unstable_skipBuild?: (routePath: string) => boolean;
 }) {
   // This is an internal type for caching
   type MyConfig = {
@@ -702,7 +702,7 @@ export function unstable_defineRouter(fns: {
 
     // hard-coded concurrency limit
     const { runTask, waitForTasks } = createTaskRunner(500);
-    const buildFilter = fns.unstable_buildFilter;
+    const skipBuild = fns.unstable_skipBuild;
 
     // static api
     for (const item of myConfig.configs) {
@@ -716,7 +716,7 @@ export function unstable_defineRouter(fns: {
       if (!routePath) {
         continue;
       }
-      if (buildFilter && !buildFilter(routePath)) {
+      if (skipBuild?.(routePath)) {
         continue;
       }
       const req = new Request(new URL(routePath, 'http://localhost:3000'));
@@ -743,7 +743,7 @@ export function unstable_defineRouter(fns: {
       if (!routePath) {
         continue;
       }
-      if (buildFilter && !buildFilter(routePath)) {
+      if (skipBuild?.(routePath)) {
         continue;
       }
       const rscPath = encodeRoutePath(routePath);
@@ -807,7 +807,7 @@ export function unstable_defineRouter(fns: {
         if (!routePath) {
           throw new Error('Pathname is required for noSsr routes on build');
         }
-        if (buildFilter && !buildFilter(routePath)) {
+        if (skipBuild?.(routePath)) {
           continue;
         }
         runTask(async () => {

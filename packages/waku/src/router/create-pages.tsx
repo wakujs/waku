@@ -327,7 +327,7 @@ export const createPages = <
     createSlice: CreateSlice;
   }) => Promise<AllPages>,
   options?: {
-    unstable_buildFilter?: (routePath: string) => boolean;
+    unstable_skipBuild?: (routePath: string) => boolean;
   },
 ) => {
   let configured = false;
@@ -937,8 +937,8 @@ export const createPages = <
         .sort((configA, configB) => routePriorityComparator(configA, configB));
       return [...pathConfigs, ...sliceConfigs];
     },
-    ...(options?.unstable_buildFilter && {
-      unstable_buildFilter: options.unstable_buildFilter,
+    ...(options?.unstable_skipBuild && {
+      unstable_skipBuild: options.unstable_skipBuild,
     }),
   });
 
