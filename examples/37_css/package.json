@@ -10,10 +10,10 @@
   },
   "dependencies": {
     "classnames": "2.3.2",
-    "react": "~19.2.4",
-    "react-dom": "~19.2.4",
-    "react-server-dom-webpack": "~19.2.4",
-    "waku": "1.0.0-alpha.5"
+    "react": "~19.2.5",
+    "react-dom": "~19.2.5",
+    "react-server-dom-webpack": "~19.2.5",
+    "waku": "1.0.0-alpha.7"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",

@@ -57,7 +57,17 @@ type ReplaceHelper<
           [...SlugCountArr, null],
           [...Result, StaticSlugs[SlugCountArr['length']]]
         >
-      : ReplaceHelper<Rest, StaticSlugs, SlugCountArr, [...Result, PathPart]>
+      : PathPart extends `${infer Prefix}[${string}]${infer Suffix}`
+        ? ReplaceHelper<
+            Rest,
+            StaticSlugs,
+            [...SlugCountArr, null],
+            [
+              ...Result,
+              `${Prefix}${StaticSlugs[SlugCountArr['length']]}${Suffix}`,
+            ]
+          >
+        : ReplaceHelper<Rest, StaticSlugs, SlugCountArr, [...Result, PathPart]>
   : Result;
 
 /**
@@ -160,7 +170,7 @@ type _GetSlugs<
 > = SplitRoute extends []
   ? Result
   : SplitRoute extends [`${infer MaybeSlug}`, ...infer Rest extends string[]]
-    ? MaybeSlug extends `[${infer Slug}]`
+    ? MaybeSlug extends `${string}[${infer Slug}]${string}`
       ? _GetSlugs<Route, Rest, [...Result, Slug]>
       : _GetSlugs<Route, Rest, Result>
     : Result;

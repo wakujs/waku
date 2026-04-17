@@ -2,6 +2,7 @@ import type {
   Unstable_ParseRsc,
   Unstable_RenderHtml,
   Unstable_RenderRsc,
+  Unstable_RenderRscForParse,
 } from '../types.js';
 
 export function createRenderUtils(
@@ -18,13 +19,15 @@ export function createRenderUtils(
   loadSsrEntryModule: () => Promise<
     typeof import('../vite-entries/entry.ssr.js')
   >,
+  debugChannel?: { readable?: ReadableStream; writable?: WritableStream },
+  debugId?: string,
 ): {
   renderRsc: Unstable_RenderRsc;
+  renderRscForParse: Unstable_RenderRscForParse;
   parseRsc: Unstable_ParseRsc;
   renderHtml: Unstable_RenderHtml;
 } {
   const onError = (e: unknown) => {
-    console.error('Error during rendering:', e);
     if (
       e &&
       typeof e === 'object' &&
@@ -33,6 +36,7 @@ export function createRenderUtils(
     ) {
       return e.digest;
     }
+    console.error('Error during rendering:', e);
   };
 
   return {
@@ -42,6 +46,7 @@ export function createRenderUtils(
         {
           temporaryReferences,
           onError,
+          debugChannel,
         },
         {
           onClientReference(metadata: {
@@ -53,6 +58,12 @@ export function createRenderUtils(
           },
         },
       );
+    },
+    async renderRscForParse(elements) {
+      return renderToReadableStream(elements, {
+        temporaryReferences,
+        onError,
+      });
     },
     async parseRsc(stream) {
       return createFromReadableStream(stream, {}) as Promise<
@@ -71,6 +82,7 @@ export function createRenderUtils(
         formState: options.formState as never,
         nonce: options.nonce,
         extraScriptContent: options.unstable_extraScriptContent,
+        debugId,
       });
       return new Response(htmlResult.stream, {
         status: htmlResult.status || options.status || 200,

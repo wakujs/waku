@@ -1,13 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { readdir, writeFile } from 'node:fs/promises';
-import type { Plugin } from 'vite';
-import { parseAstAsync, transformWithEsbuild } from 'vite';
+import { parse, transformWithOxc } from 'vite';
+import type { ParseResult, Plugin } from 'vite';
 import { EXTENSIONS, SRC_PAGES, SRC_SERVER_ENTRY } from '../constants.js';
 import { getGrouplessPath } from '../utils/create-pages.js';
 import { isIgnoredPath } from '../utils/fs-router.js';
 import { joinPath } from '../utils/path.js';
 
-type ProgramNode = Awaited<ReturnType<typeof parseAstAsync>>;
+type ProgramNode = ParseResult['program'];
 type ImportDeclaration = ProgramNode['body'][number] & {
   type: 'ImportDeclaration';
 };
@@ -73,16 +73,16 @@ export function getImportModuleNames(filePaths: string[]): {
 
 const parseModule = async (filePath: string) => {
   const source = readFileSync(filePath, 'utf8');
-  const loader: 'jsx' | 'ts' | 'tsx' = filePath.endsWith('.tsx')
+  const lang: 'jsx' | 'ts' | 'tsx' = filePath.endsWith('.tsx')
     ? 'tsx'
     : filePath.endsWith('.ts')
       ? 'ts'
       : 'jsx';
-  const transformed = await transformWithEsbuild(source, filePath, {
-    loader,
+  const transformed = await transformWithOxc(source, filePath, {
+    lang,
     jsx: 'preserve',
   });
-  return parseAstAsync(transformed.code, { jsx: true, lang: 'tsx' } as never);
+  return (await parse(filePath, transformed.code, { lang } as never)).program;
 };
 
 const getImportedName = (specifier: ImportSpecifier) =>

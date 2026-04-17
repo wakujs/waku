@@ -25,6 +25,9 @@ export default async function RootLayout({
           <ClickLink to="/dynamic">dynamic-push</ClickLink>
         </li>
         <li>
+          <ClickLink to="/dynamic/">dynamic-push-trailing</ClickLink>
+        </li>
+        <li>
           <ClickLink to="/dynamic" replace>
             dynamic-replace
           </ClickLink>

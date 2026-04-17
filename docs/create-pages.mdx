@@ -6,7 +6,7 @@ description: The low-level routing API.
 
 ## Routing (low-level API)
 
-The entry point for programmatic routing in Waku projects is `./src/waku.server.tsx`. Export the `createPages` function to create your layouts and pages.
+The entry point for programmatic routing in Waku projects is `./src/waku.server.tsx`. In that file, call `createPages(...)` and pass the result to an adapter.
 
 `createLayout`, `createPage`, `createRoot`, and `createSlice` accept a configuration object to specify the route path, React component, and render method. Waku currently supports two options: `'static'` for static prerendering (SSG) or `'dynamic'` for server-side rendering (SSR).
 
@@ -95,7 +95,7 @@ export default adapter(pages);
 
 Pages can also render a segment route (e.g., `/blog/[slug]`). The rendered React component automatically receives a prop named by the segment (e.g, `slug`) with the value of the rendered segment (e.g., `'introducing-waku'`). If statically prerendering a segment route at build time, a `staticPaths` array must also be provided.
 
-**Note:** Slugs will be sanitized to replace spaces with `-`.
+**Note:** When using `staticPaths`, spaces in slug values are sanitized to `-`.
 
 ```tsx
 // ./src/waku.server.tsx
@@ -278,7 +278,7 @@ The `PageProps` type gives you type safety for the path and slug parameters in y
 // ./src/templates/about-page.tsx
 import type { PageProps } from 'waku/router';
 
-// PageProps<'/about/[foo]'> => { path: `/about/${string}`; foo: string; query: string; }
+// PageProps<'/about/[foo]'> => { path: `/about/${string}`; foo: string; query: string; hash: string; }
 export const AboutPage = ({ foo }: PageProps<'/about/[foo]'>) => {
   return <>{/* ...*/}</>;
 };
@@ -580,3 +580,63 @@ export default adapter(pages);
 ```
 
 This allows you to have a `dynamic` slice component while keeping the rest of the page static.
+
+#### Slug slices
+
+Slug slices support dynamic segments in their ID, similar to dynamic route paths. This lets you create a single slice definition that handles many concrete IDs by extracting parameters from the path and passing them as props.
+
+Slug slices use `render: 'dynamic'` and are always loaded lazily, since concrete IDs are not known at build time.
+
+```tsx
+// ./src/components/tooltip-slice.tsx
+
+export const TooltipSlice = ({ id }: { id: string }) => {
+  // fetch tooltip data based on id...
+  return <p>Tooltip content for {id}</p>;
+};
+```
+
+```tsx
+// ./src/waku.server.tsx
+import { createPages } from 'waku';
+import adapter from 'waku/adapters/default';
+
+import { HomePage } from './templates/home-page';
+import { TooltipSlice } from './components/tooltip-slice';
+
+const pages = createPages(async ({ createPage, createSlice }) => [
+  createPage({
+    render: 'static',
+    path: '/',
+    component: HomePage,
+  }),
+
+  createSlice({
+    render: 'dynamic',
+    component: TooltipSlice,
+    id: 'tooltip/[id]',
+  }),
+]);
+
+export default adapter(pages);
+```
+
+```tsx
+// ./src/templates/home-page.tsx
+import { Slice } from 'waku';
+
+export const HomePage = () => {
+  return (
+    <div>
+      <Slice id="tooltip/123" lazy fallback={<p>Loading...</p>} />
+      <Slice id="tooltip/456" lazy fallback={<p>Loading...</p>} />
+    </div>
+  );
+};
+```
+
+When `<Slice id="tooltip/123" lazy />` is requested, Waku matches it against the `tooltip/[id]` pattern, extracts `{ id: "123" }`, and passes those params as props to the component.
+
+With the file-system router, slug slices work the same way as slug pages — create a file at `src/pages/_slices/tooltip/[id].tsx` and the ID pattern is derived from the file path.
+
+Multiple dynamic segments are also supported (e.g., `items/[category]/[id]`), and each extracted parameter is passed as a separate prop.

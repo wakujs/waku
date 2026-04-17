@@ -1,10 +1,12 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import {
-  base64ToStream,
+  base64ToBytes,
   batchReadableStream,
+  bytesToBase64,
+  bytesToStream,
   consumeMultiplexedStream,
   produceMultiplexedStream,
-  streamToBase64,
+  streamToBytes,
   stringToStream,
 } from '../src/lib/utils/stream.js';
 
@@ -56,11 +58,12 @@ describe('stringToStream', () => {
   });
 });
 
-describe('streamToBase64/base64ToStream', () => {
+describe('streamToBytes/bytesToBase64/base64ToBytes', () => {
   test('round-trips utf-8 content through base64', async () => {
     const input = 'hello world';
-    const base64 = await streamToBase64(stringToStream(input));
-    const output = await readAllText(base64ToStream(base64));
+    const bytes = await streamToBytes(stringToStream(input));
+    const base64 = bytesToBase64(bytes);
+    const output = await readAllText(bytesToStream(base64ToBytes(base64)));
     expect(output).toBe(input);
   });
 
@@ -76,8 +79,10 @@ describe('streamToBase64/base64ToStream', () => {
       },
     });
 
-    const base64 = await streamToBase64(stream);
-    const decoded = concatUint8(await readAllChunks(base64ToStream(base64)));
+    const base64 = bytesToBase64(await streamToBytes(stream));
+    const decoded = concatUint8(
+      await readAllChunks(bytesToStream(base64ToBytes(base64))),
+    );
     expect(Array.from(decoded)).toEqual(Array.from(bytes));
   });
 
@@ -95,12 +100,14 @@ describe('streamToBase64/base64ToStream', () => {
       },
     });
 
-    const base64 = await streamToBase64(stream);
-    const decoded = concatUint8(await readAllChunks(base64ToStream(base64)));
+    const base64 = bytesToBase64(await streamToBytes(stream));
+    const decoded = concatUint8(
+      await readAllChunks(bytesToStream(base64ToBytes(base64))),
+    );
     expect(Array.from(decoded)).toEqual(Array.from(bytes));
   });
 
-  test('streamToBase64 throws on non-Uint8Array chunks', async () => {
+  test('streamToBytes throws on non-Uint8Array chunks', async () => {
     const stream = new ReadableStream({
       start(controller) {
         controller.enqueue('oops' as never);
@@ -108,16 +115,49 @@ describe('streamToBase64/base64ToStream', () => {
       },
     }) as ReadableStream<Uint8Array>;
 
-    await expect(streamToBase64(stream)).rejects.toThrow(
+    await expect(streamToBytes(stream)).rejects.toThrow(
       'Unexpected buffer type',
     );
   });
 
-  test('base64ToStream yields the original bytes', async () => {
+  test('base64ToBytes yields the original bytes', async () => {
     const bytes = toUint8('waku');
-    const base64 = btoa(String.fromCharCode(...bytes));
-    const decoded = concatUint8(await readAllChunks(base64ToStream(base64)));
+    const base64 = bytesToBase64(bytes);
+    const decoded = concatUint8(
+      await readAllChunks(bytesToStream(base64ToBytes(base64))),
+    );
     expect(Array.from(decoded)).toEqual(Array.from(bytes));
+  });
+});
+
+describe('bytesToStream', () => {
+  test('creates a stream from bytes', async () => {
+    const input = toUint8('hello world');
+    const stream = bytesToStream(input);
+    const output = concatUint8(await readAllChunks(stream));
+    expect(Array.from(output)).toEqual(Array.from(input));
+  });
+
+  test('handles full-range binary bytes', async () => {
+    const bytes = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) {
+      bytes[i] = i;
+    }
+    const stream = bytesToStream(bytes);
+    const decoded = concatUint8(await readAllChunks(stream));
+    expect(Array.from(decoded)).toEqual(Array.from(bytes));
+  });
+
+  test('creates independent streams from same bytes', async () => {
+    const bytes = toUint8('shared data');
+    const stream1 = bytesToStream(bytes);
+    const stream2 = bytesToStream(bytes);
+
+    const result1 = concatUint8(await readAllChunks(stream1));
+    const result2 = concatUint8(await readAllChunks(stream2));
+
+    expect(dec.decode(result1)).toBe('shared data');
+    expect(dec.decode(result2)).toBe('shared data');
   });
 });
 
@@ -138,18 +178,22 @@ describe('batchReadableStream', () => {
   });
 
   test('emits multiple chunks when input is spaced out', async () => {
-    const input = new ReadableStream<Uint8Array>({
-      async start(controller) {
-        controller.enqueue(toUint8('a'));
-        await new Promise((resolve) => setTimeout(resolve, 5));
-        controller.enqueue(toUint8('b'));
-        controller.close();
-      },
-    });
-
-    const output = await readAllChunks(batchReadableStream(input));
-    expect(output).toHaveLength(2);
-    expect(output.map((chunk) => dec.decode(chunk))).toEqual(['a', 'b']);
+    vi.useFakeTimers();
+    try {
+      const input = new TransformStream<Uint8Array, Uint8Array>();
+      const writer = input.writable.getWriter();
+      const outputPromise = readAllChunks(batchReadableStream(input.readable));
+      await writer.write(toUint8('a'));
+      await vi.advanceTimersByTimeAsync(0);
+      await writer.write(toUint8('b'));
+      await writer.close();
+      await vi.runAllTimersAsync();
+      const output = await outputPromise;
+      expect(output).toHaveLength(2);
+      expect(output.map((chunk) => dec.decode(chunk))).toEqual(['a', 'b']);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

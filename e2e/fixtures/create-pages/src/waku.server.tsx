@@ -280,6 +280,16 @@ const pages: ReturnType<typeof createPages> = createPages(
       },
     }),
 
+    createApi({
+      path: '/api/static-wildcard/[...slugs]',
+      render: 'static',
+      method: 'GET',
+      staticPaths: [['a', 'b'], ['c']],
+      handler: async (_req, ctx) => {
+        return Response.json({ params: (ctx as any).params });
+      },
+    }),
+
     createPage({
       render: 'static',
       path: '/exact/[slug]/[...wild]',

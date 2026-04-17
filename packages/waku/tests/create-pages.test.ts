@@ -110,6 +110,8 @@ describe('type tests', () => {
     expectType<PathWithoutSlug<'/test/a'>>('/test/a');
     // @ts-expect-error: PathWithoutSlug does not allow slugs - surprise!
     expectType<PathWithoutSlug<'/test/[slug]'>>('/test/[slug]');
+    // @ts-expect-error: PathWithoutSlug does not allow prefixed slugs either
+    expectType<PathWithoutSlug<'/@[username]'>>('/@[username]');
   });
   it('PathWithSlug', () => {
     expectType<PathWithSlug<'/test/[slug]', 'slug'>>('/test/[slug]');
@@ -119,6 +121,12 @@ describe('type tests', () => {
     expectType<PathWithSlug<'/test/[a]', 'a'>>('/test/[a]/[b]');
     // @ts-expect-error: PathWithSlug fails if the slug-id is not in the path.
     expectType<PathWithSlug<'/test/[a]/[b]', 'c'>>('/test/[a]/[b]');
+    // Prefixed slugs
+    expectType<PathWithSlug<'/@[username]', 'username'>>('/@[username]');
+    expectType<PathWithSlug<'/u-[id]', 'id'>>('/u-[id]');
+    expectType<PathWithSlug<'/users/@[username]/posts', 'username'>>(
+      '/users/@[username]/posts',
+    );
   });
   it('PathWithWildcard', () => {
     expectType<PathWithWildcard<'/test/[...path]', never, 'path'>>(
@@ -137,6 +145,12 @@ describe('type tests', () => {
     expectType<HasSlugInPath<'/test/[a]/[b]', 'b'>>(true);
     expectType<HasSlugInPath<'/test/[a]/[b]', 'c'>>(false);
     expectType<HasSlugInPath<'/test/[a]/[b]', 'd'>>(false);
+    // Prefixed slugs
+    expectType<HasSlugInPath<'/@[username]', 'username'>>(true);
+    expectType<HasSlugInPath<'/@[username]', 'other'>>(false);
+    expectType<HasSlugInPath<'/u-[id]', 'id'>>(true);
+    expectType<HasSlugInPath<'/test/pre-[id]-suf', 'id'>>(true);
+    expectType<HasSlugInPath<'/users/@[username]/posts', 'username'>>(true);
   });
   it('IsValidPathInSlugPath', () => {
     expectType<IsValidPathInSlugPath<'/test/[a]/[b]'>>(true);
@@ -160,6 +174,11 @@ describe('type tests', () => {
     expectType<GetSlugs<'/test/[a]/[b]'>>(['a', 'b']);
     expectType<GetSlugs<'/test/[a]/[b]/[c]'>>(['a', 'b', 'c']);
     expectType<GetSlugs<'/test/[a]/[b]/[c]/[d]'>>(['a', 'b', 'c', 'd']);
+    // Prefixed slugs
+    expectType<GetSlugs<'/@[username]'>>(['username']);
+    expectType<GetSlugs<'/u-[id]'>>(['id']);
+    expectType<GetSlugs<'/pre-[id]-suf'>>(['id']);
+    expectType<GetSlugs<'/users/@[username]/posts'>>(['username']);
   });
   it('StaticSlugRoutePathsTuple', () => {
     expectType<StaticSlugRoutePathsTuple<'/test/[a]/[b]'>>(['a', 'b']);
@@ -239,6 +258,17 @@ describe('type tests', () => {
 
       // good
       createPage({ render: 'dynamic', path: '/[a]', component: () => 'Hello' });
+      // good - prefixed slugs
+      createPage({
+        render: 'dynamic',
+        path: '/@[username]',
+        component: () => 'Hello',
+      });
+      createPage({
+        render: 'dynamic',
+        path: '/u-[id]',
+        component: () => 'Hello',
+      });
     });
   });
   describe('createLayout', () => {
@@ -460,6 +490,50 @@ describe('type tests', () => {
         TypeEqual<
           PathsForPages<typeof _multiplePageRouter>,
           '/' | '/foo' | `/bar/${string}` | `/buzz/thing/${string}`
+        >
+      >(true);
+    });
+
+    it('dynamic with prefixed slugs', () => {
+      const mockedCreatePages: typeof createPages = vi.fn();
+
+      const _prefixedRouter = mockedCreatePages(async ({ createPage }) => [
+        createPage({
+          render: 'dynamic',
+          path: '/@[username]',
+          component: () => 'Profile',
+        }),
+        createPage({
+          render: 'dynamic',
+          path: '/u-[id]',
+          component: () => 'User',
+        }),
+      ]);
+      expectType<
+        TypeEqual<
+          PathsForPages<typeof _prefixedRouter>,
+          `/@${string}` | `/u-${string}`
+        >
+      >(true);
+    });
+
+    it('static with prefixed slugs', () => {
+      const mockedCreatePages: typeof createPages = vi.fn();
+
+      const _prefixedStaticRouter = mockedCreatePages(
+        async ({ createPage }) => [
+          createPage({
+            render: 'static',
+            path: '/@[username]',
+            staticPaths: ['joe', 'alice'] as const,
+            component: () => 'Profile',
+          }),
+        ],
+      );
+      expectType<
+        TypeEqual<
+          PathsForPages<typeof _prefixedStaticRouter>,
+          '/@joe' | '/@alice'
         >
       >(true);
     });
@@ -831,6 +905,125 @@ describe('createPages pages and layouts', () => {
         renderer: expect.any(Function),
       },
     ]);
+  });
+
+  it('creates a slice with slug pattern', async () => {
+    const TestPage = () => null;
+    const TestSlice = (_props: { id: string }) => null;
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/',
+        component: TestPage,
+      }),
+      createSlice({
+        render: 'dynamic',
+        component: TestSlice,
+        id: 'tooltip/[id]',
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs());
+    const sliceConfig = configs.find(
+      (c: any) => c.type === 'slice' && c.id === 'tooltip/[id]',
+    );
+    expect(sliceConfig).toEqual({
+      type: 'slice',
+      id: 'tooltip/[id]',
+      pathSpec: [
+        { type: 'literal', name: 'tooltip' },
+        { type: 'group', name: 'id' },
+      ],
+      isStatic: false,
+      renderer: expect.any(Function),
+    });
+  });
+
+  it('creates a slice with nested slug pattern', async () => {
+    const TestPage = () => null;
+    const TestSlice = (_props: { category: string; id: string }) => null;
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/',
+        component: TestPage,
+      }),
+      createSlice({
+        render: 'dynamic',
+        component: TestSlice,
+        id: 'items/[category]/[id]',
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs());
+    const sliceConfig = configs.find(
+      (c: any) => c.type === 'slice' && c.id === 'items/[category]/[id]',
+    );
+    expect(sliceConfig).toEqual({
+      type: 'slice',
+      id: 'items/[category]/[id]',
+      pathSpec: [
+        { type: 'literal', name: 'items' },
+        { type: 'group', name: 'category' },
+        { type: 'group', name: 'id' },
+      ],
+      isStatic: false,
+      renderer: expect.any(Function),
+    });
+  });
+
+  it('slug slice renderer passes params as props', async () => {
+    const TestPage = () => null;
+    const TestSlice = (_props: { id: string }) => null;
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/',
+        component: TestPage,
+      }),
+      createSlice({
+        render: 'dynamic',
+        component: TestSlice,
+        id: 'tooltip/[id]',
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs());
+    const sliceConfig = configs.find(
+      (c: any) => c.type === 'slice' && c.id === 'tooltip/[id]',
+    ) as any;
+    const element = await sliceConfig.renderer({ id: '123' });
+    expect(element).toBeDefined();
+    expect(element.props).toEqual({ id: '123' });
+  });
+
+  it('static slice without slug has no pathSpec', async () => {
+    const TestPage = () => null;
+    const TestSlice = () => null;
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/',
+        component: TestPage,
+      }),
+      createSlice({
+        render: 'static',
+        component: TestSlice,
+        id: 'simple',
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs());
+    const sliceConfig = configs.find(
+      (c: any) => c.type === 'slice' && c.id === 'simple',
+    );
+    expect(sliceConfig).toEqual({
+      type: 'slice',
+      id: 'simple',
+      isStatic: true,
+      renderer: expect.any(Function),
+    });
+    expect(sliceConfig).not.toHaveProperty('pathSpec');
   });
 
   it('creates a nested static page', async () => {
@@ -1471,6 +1664,23 @@ describe('createPages pages and layouts', () => {
     ]);
     const { getConfigs } = injectedFunctions();
     await expect(getConfigs).rejects.toThrowError('Duplicated path: /test');
+  });
+
+  it('fails if canonical and trailing-slash paths override each other', async () => {
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/test',
+        component: () => null,
+      }),
+      createPage({
+        render: 'dynamic',
+        path: '/test/' as never,
+        component: () => null,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    await expect(getConfigs).rejects.toThrowError('Duplicated path: /test/');
   });
 
   it('creates a complex router', async () => {
@@ -2115,6 +2325,70 @@ describe('createPages api', () => {
     const text = await res.text();
     expect(text).toEqual('Hello World foo');
     expect(res.status).toEqual(200);
+  });
+
+  it('static api with wildcard passes correct params', async () => {
+    const receivedParams: unknown[] = [];
+    createPages(async ({ createApi }) => [
+      createApi({
+        path: '/test/[...slugs]',
+        render: 'static',
+        method: 'GET',
+        staticPaths: [['a', 'b'], ['c']],
+        handler: async (_req, ctx) => {
+          receivedParams.push((ctx as any).params);
+          return new Response('ok');
+        },
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs()) as any[];
+    const apiConfigs = configs.filter((c: any) => c.type === 'api');
+    expect(apiConfigs).toHaveLength(2);
+
+    // Verify paths are all-literal
+    expect(apiConfigs[0]!.path).toEqual([
+      { type: 'literal', name: 'test' },
+      { type: 'literal', name: 'a' },
+      { type: 'literal', name: 'b' },
+    ]);
+    expect(apiConfigs[1]!.path).toEqual([
+      { type: 'literal', name: 'test' },
+      { type: 'literal', name: 'c' },
+    ]);
+
+    // Call handlers and verify params
+    await apiConfigs[0]!.handler(
+      new Request('http://localhost:3000/test/a/b'),
+      { params: {} },
+    );
+    await apiConfigs[1]!.handler(new Request('http://localhost:3000/test/c'), {
+      params: {},
+    });
+    expect(receivedParams).toEqual([{ slugs: ['a', 'b'] }, { slugs: ['c'] }]);
+  });
+
+  it('static api with wildcard and empty path warns', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    createPages(async ({ createApi }) => [
+      createApi({
+        path: '/test/[...slugs]',
+        render: 'static',
+        method: 'GET',
+        staticPaths: [[], ['foo']],
+        handler: async () => {
+          return new Response('ok');
+        },
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    await getConfigs();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'Empty staticPaths entry is not supported for wildcard routes',
+      ),
+    );
+    warnSpy.mockRestore();
   });
 });
 

@@ -55,7 +55,14 @@ export const LongSuspenseLayout = ({ children }: { children: ReactNode }) => {
         </Link>
       </div>
       <div>
-        <Link to="/long-suspense/3">Click Me Too</Link>
+        <Link
+          to="/long-suspense/3"
+          unstable_pending={
+            <div data-testid="long-suspense-pending">Pending...</div>
+          }
+        >
+          Click Me Too
+        </Link>
       </div>
       <Suspense fallback={<div data-testid="long-suspense">Loading...</div>}>
         <SlowComponent />

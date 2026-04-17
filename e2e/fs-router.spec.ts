@@ -41,6 +41,11 @@ test.describe('fs-router', () => {
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
   });
 
+  test('foo with trailing slash', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/foo/`);
+    await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
+  });
+
   test('nested/foo', async ({ page }) => {
     // /nested/foo is defined as a staticPath of /nested/[id] which matches this layout
     await page.goto(`http://localhost:${port}/nested/foo`);
@@ -53,6 +58,20 @@ test.describe('fs-router', () => {
     await page.goto(`http://localhost:${port}/nested/baz`);
     await expect(
       page.getByRole('heading', { name: 'Nested Layout' }),
+    ).toBeVisible();
+  });
+
+  test('nested/baz with trailing slash', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/nested/baz/`);
+    await expect(
+      page.getByRole('heading', { name: 'Nested Layout' }),
+    ).toBeVisible();
+  });
+
+  test('static-nested encoded path with trailing slash', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/static-nested/encoded%20path/`);
+    await expect(
+      page.getByRole('heading', { name: 'Nested / encoded%20path' }),
     ).toBeVisible();
   });
 
@@ -85,6 +104,12 @@ test.describe('fs-router', () => {
     expect(await res.text()).toBe('Hello from API!');
   });
 
+  test('api hi with trailing slash', async () => {
+    const res = await fetch(`http://localhost:${port}/hi/`);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe('Hello from API!');
+  });
+
   test('api hi.txt', async () => {
     const res = await fetch(`http://localhost:${port}/hi.txt`);
     expect(res.status).toBe(200);
@@ -99,6 +124,15 @@ test.describe('fs-router', () => {
 
   test('api hi with POST', async () => {
     const res = await fetch(`http://localhost:${port}/hi`, {
+      method: 'POST',
+      body: 'from the test!',
+    });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe('POST Hello from API! from the test!');
+  });
+
+  test('api hi with POST and trailing slash', async () => {
+    const res = await fetch(`http://localhost:${port}/hi/`, {
       method: 'POST',
       body: 'from the test!',
     });
@@ -232,6 +266,14 @@ test.describe('fs-router', () => {
     await expect(page.getByTestId('slice002')).toHaveText('Slice 002');
   });
 
+  test('slug slices', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/page-with-slices`);
+    await waitForHydration(page);
+    await expect(page.getByTestId('dynamic-slice')).toHaveText(
+      'Dynamic Slice: test123',
+    );
+  });
+
   test('segment route in group route', async ({ page }) => {
     await page.goto(
       `http://localhost:${port}/page-with-segment/introducing-waku`,
@@ -299,6 +341,31 @@ test.describe('fs-router', () => {
       'color',
       'rgb(0, 0, 255)', // blue
     );
+  });
+
+  test('prefixed dynamic segment @[username]', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/@alice`);
+    await expect(
+      page.getByRole('heading', { name: 'Profile / alice' }),
+    ).toBeVisible();
+  });
+
+  test('prefixed dynamic segment @[username] with different value', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/@bob`);
+    await expect(
+      page.getByRole('heading', { name: 'Profile / bob' }),
+    ).toBeVisible();
+  });
+
+  test('static @foo takes priority over dynamic @[username]', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/@foo`);
+    await expect(
+      page.getByRole('heading', { name: 'Static Foo' }),
+    ).toBeVisible();
   });
 
   test('subroute', async ({ page }) => {

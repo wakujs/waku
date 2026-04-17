@@ -59,6 +59,16 @@ type IntersectionObserverMockInstance = IntersectionObserver & {
 const createRefetchMock = () =>
   vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
 
+const createDeferred = <T,>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+};
+
 const resolvedThenable = <T,>(value: T): Promise<T> =>
   Object.assign(Promise.resolve(value), {
     status: 'fulfilled' as const,
@@ -119,7 +129,7 @@ vi.mock('../src/minimal/client.js', async () => {
   return {
     ...actual,
     Root: vi.fn((props: Parameters<typeof actual.Root>[0]) => {
-      const fetchRscStore = props.fetchRscStore as
+      const fetchRscStore = props.unstable_fetchRscStore as
         | TestFetchRscStore
         | undefined;
       if (fetchRscStore) {
@@ -202,7 +212,10 @@ const renderRouterInStrictMode = async (
 
 const renderWithMinimalRoot = (element: ReactElement, elements: ElementsMap) =>
   renderApp(
-    <Root initialRscPath="" fetchRscStore={createMockFetchRscStore(elements)}>
+    <Root
+      initialRscPath=""
+      unstable_fetchRscStore={createMockFetchRscStore(elements)}
+    >
       {element}
     </Root>,
   );
@@ -242,6 +255,7 @@ beforeEach(() => {
       disconnect,
       unobserve,
       takeRecords,
+      scrollMargin: '',
     };
     return instance;
   });
@@ -260,7 +274,7 @@ afterEach(() => {
 });
 
 describe('router/client utilities', () => {
-  test('parses route path/query/hash and normalizes trailing suffixes', () => {
+  test('parses route path/query/hash and canonicalizes path from pathname', () => {
     const route = unstable_parseRoute(
       new URL('http://localhost/foo/index.html?count=2#hash'),
     );
@@ -273,6 +287,13 @@ describe('router/client utilities', () => {
     const route2 = unstable_parseRoute(new URL('http://localhost/bar/?q=1'));
     expect(route2).toEqual({
       path: '/bar',
+      query: 'q=1',
+      hash: '',
+    });
+
+    const route3 = unstable_parseRoute(new URL('http://localhost/baz/?q=1'));
+    expect(route3).toEqual({
+      path: '/baz',
       query: 'q=1',
       hash: '',
     });
@@ -405,7 +426,7 @@ describe('useRouter + Link with context', () => {
     expect(changeRoute).toHaveBeenNthCalledWith(
       3,
       { path: '/start', query: '', hash: '' },
-      { shouldScroll: true },
+      { shouldScroll: true, refetch: true },
     );
     const firstUrl = (
       (changeRoute.mock.calls[0] as unknown[] | undefined)?.[1] as
@@ -995,12 +1016,135 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('link transitions still write committed history after pathname drift', async () => {
+    const firstNavigation = createDeferred<Record<string, unknown>>();
+    const secondNavigation = createDeferred<Record<string, unknown>>();
+    const thirdNavigation = createDeferred<Record<string, unknown>>();
+    const refetch = vi
+      .fn<ReturnType<typeof useRefetch>>()
+      .mockImplementationOnce(() => firstNavigation.promise)
+      .mockImplementationOnce(() => secondNavigation.promise)
+      .mockImplementationOnce(() => thirdNavigation.promise);
+    vi.mocked(useRefetch).mockReturnValue(refetch);
+    window.history.replaceState({}, '', '/one');
+
+    const view = await renderRouterInStrictMode(
+      {
+        initialRoute: { path: '/one', query: '', hash: '' },
+      },
+      {
+        [unstable_getRouteSlotId('/one')]: (
+          <>
+            <h1>Page 1</h1>
+            <Link to="/two" unstable_pending={<div>Pending...</div>}>
+              Go to two
+            </Link>
+          </>
+        ),
+        [unstable_getRouteSlotId('/two')]: (
+          <>
+            <h1>Page 2</h1>
+            <Link to="/three" unstable_pending={<div>Pending...</div>}>
+              Go to three
+            </Link>
+          </>
+        ),
+        [unstable_getRouteSlotId('/three')]: (
+          <>
+            <h1>Page 3</h1>
+            <Link to="/two" unstable_pending={<div>Pending...</div>}>
+              Go back to two
+            </Link>
+          </>
+        ),
+        [ROUTE_ID]: ['/one', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+
+    try {
+      const clickLink = async (text: string) => {
+        const link = Array.from(view.container.querySelectorAll('a')).find(
+          (anchor) => anchor.textContent === text,
+        ) as HTMLAnchorElement | undefined;
+        if (!link) {
+          throw new Error(`Link not found: ${text}`);
+        }
+        await act(async () => {
+          link.dispatchEvent(
+            new MouseEvent('click', {
+              bubbles: true,
+              cancelable: true,
+              button: 0,
+            }),
+          );
+          await Promise.resolve();
+        });
+      };
+
+      expect(window.location.pathname).toBe('/one');
+      expect(view.container.textContent).toContain('Page 1');
+
+      await clickLink('Go to two');
+      expect(view.container.textContent).toContain('Pending...');
+      expect(view.container.textContent).toContain('Page 1');
+      expect(window.location.pathname).toBe('/one');
+
+      firstNavigation.resolve({
+        [ROUTE_ID]: ['/two', ''],
+        [IS_STATIC_ID]: false,
+      });
+      await flush();
+
+      expect(view.container.textContent).toContain('Page 2');
+      expect(window.location.pathname).toBe('/two');
+
+      await clickLink('Go to three');
+      expect(view.container.textContent).toContain('Pending...');
+      expect(view.container.textContent).toContain('Page 2');
+      expect(window.location.pathname).toBe('/two');
+      window.history.replaceState({}, '', '/one');
+      expect(window.location.pathname).toBe('/one');
+
+      secondNavigation.resolve({
+        [ROUTE_ID]: ['/three', ''],
+        [IS_STATIC_ID]: false,
+      });
+      await flush();
+
+      expect(view.container.textContent).toContain('Page 3');
+      expect(window.location.pathname).toBe('/three');
+
+      await clickLink('Go back to two');
+      expect(view.container.textContent).toContain('Pending...');
+      expect(view.container.textContent).toContain('Page 3');
+      expect(window.location.pathname).toBe('/three');
+
+      thirdNavigation.resolve({
+        [ROUTE_ID]: ['/two', ''],
+        [IS_STATIC_ID]: false,
+      });
+      await flush();
+
+      expect(view.container.textContent).toContain('Page 2');
+      expect(window.location.pathname).toBe('/two');
+    } finally {
+      view.unmount();
+    }
+  });
+
   test('push to a new path with hash scrolls using destination hash after history write', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
+    const NextRoute = () => (
+      <>
+        <Probe />
+        <div id="target">target</div>
+      </>
+    );
     const elements = {
       [unstable_getRouteSlotId('/start')]: <Probe />,
-      [unstable_getRouteSlotId('/next')]: <Probe />,
+      [unstable_getRouteSlotId('/next')]: <NextRoute />,
       [ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
     };
@@ -1020,12 +1164,24 @@ describe('Router integration', () => {
       configurable: true,
       value: 100,
     });
-    const hashTarget = document.createElement('div');
-    hashTarget.id = 'target';
     const getBoundingClientRectSpy = vi
-      .spyOn(hashTarget, 'getBoundingClientRect')
-      .mockReturnValue({ top: 40 } as DOMRect);
-    document.body.append(hashTarget);
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        if (this.id === 'target') {
+          return { top: 40 } as DOMRect;
+        }
+        return {
+          bottom: 0,
+          height: 0,
+          left: 0,
+          right: 0,
+          top: 0,
+          width: 0,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        } as DOMRect;
+      });
 
     const view = await renderRouter(
       {
@@ -1034,6 +1190,7 @@ describe('Router integration', () => {
       elements,
     );
     try {
+      document.body.append(view.container);
       if (!capture.router) {
         throw new Error('router not initialized');
       }
@@ -1041,6 +1198,7 @@ describe('Router integration', () => {
       await act(async () => {
         await capture.router!.push('/next#target');
       });
+      await flush();
 
       expect(scrollToSpy).toHaveBeenCalledWith({
         left: 0,
@@ -1056,7 +1214,90 @@ describe('Router integration', () => {
     } finally {
       view.unmount();
       getBoundingClientRectSpy.mockRestore();
-      hashTarget.remove();
+      if (scrollYDescriptor) {
+        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
+      } else {
+        Object.defineProperty(window, 'scrollY', {
+          configurable: true,
+          value: 0,
+        });
+      }
+    }
+  });
+
+  test('push to a new path with hash applies scroll-margin-top offset', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const NextRoute = () => (
+      <>
+        <Probe />
+        <div id="target" style={{ scrollMarginTop: '24px' }}>
+          target
+        </div>
+      </>
+    );
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/next')]: <NextRoute />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
+      return;
+    });
+    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
+      window,
+      'scrollY',
+    );
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      value: 100,
+    });
+    const getBoundingClientRectSpy = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        if (this.id === 'target') {
+          return { top: 40 } as DOMRect;
+        }
+        return {
+          bottom: 0,
+          height: 0,
+          left: 0,
+          right: 0,
+          top: 0,
+          width: 0,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        } as DOMRect;
+      });
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      document.body.append(view.container);
+      if (!capture.router) {
+        throw new Error('router not initialized');
+      }
+
+      await act(async () => {
+        await capture.router!.push('/next#target');
+      });
+      await flush();
+
+      expect(scrollToSpy).toHaveBeenCalledWith({
+        left: 0,
+        top: 116,
+        behavior: 'instant',
+      });
+    } finally {
+      view.unmount();
+      getBoundingClientRectSpy.mockRestore();
       if (scrollYDescriptor) {
         Object.defineProperty(window, 'scrollY', scrollYDescriptor);
       } else {
@@ -1585,10 +1826,10 @@ describe('Router integration', () => {
       .spyOn(globalThis, 'fetch')
       .mockImplementation(fetchSpy as typeof fetch);
     const refetch = vi.fn(
-      async (_rscPath, _rscParams, enhanceFetchRscStore) => {
+      async (_rscPath, _rscParams, unstable_enhanceFetchRscStore) => {
         const fetchRscStore = (
-          enhanceFetchRscStore
-            ? enhanceFetchRscStore({} as RouterFetchRscStore)
+          unstable_enhanceFetchRscStore
+            ? unstable_enhanceFetchRscStore({} as RouterFetchRscStore)
             : {}
         ) as RouterFetchRscStore;
         const fetchFn = fetchRscStore.f || fetch;
@@ -1665,10 +1906,10 @@ describe('Router integration', () => {
       .spyOn(globalThis, 'fetch')
       .mockImplementation(fetchSpy as typeof fetch);
     const refetch = vi.fn(
-      async (_rscPath, _rscParams, enhanceFetchRscStore) => {
+      async (_rscPath, _rscParams, unstable_enhanceFetchRscStore) => {
         const fetchRscStore = (
-          enhanceFetchRscStore
-            ? enhanceFetchRscStore({} as RouterFetchRscStore)
+          unstable_enhanceFetchRscStore
+            ? unstable_enhanceFetchRscStore({} as RouterFetchRscStore)
             : {}
         ) as RouterFetchRscStore;
         const fetchFn = fetchRscStore.f || fetch;

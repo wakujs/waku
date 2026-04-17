@@ -71,6 +71,21 @@ const waitForSelectorSeen = async (page: Page, selector: string) => {
     .toBe(true);
 };
 
+const expectNoPageErrorFor = async (page: Page) => {
+  const errors: string[] = [];
+  const onPageError = (err: Error) => errors.push(err.message);
+
+  page.on('pageerror', onPageError);
+  try {
+    // eslint-disable-next-line playwright/no-wait-for-timeout
+    await page.waitForTimeout(500);
+  } finally {
+    page.off('pageerror', onPageError);
+  }
+
+  expect(errors).toEqual([]);
+};
+
 test.describe(`create-pages`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
@@ -158,12 +173,11 @@ test.describe(`create-pages`, () => {
     await page.click("a[href='/foo']", { noWaitAfter: true });
     await waitForSelectorText(page, 'h2', 'Foo');
     await page.click('text=Jump to random page');
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(500); // need to wait not to error
-    await expect(page.getByRole('heading', { level: 2 })).toBeVisible();
+    await expectNoPageErrorFor(page);
     await expect(
       page.getByRole('heading', { level: 2, name: 'Foo' }),
     ).toBeHidden();
+    await expect(page.getByRole('heading', { level: 2 })).toBeVisible();
   });
 
   test('jump with setState', async ({ page }) => {
@@ -244,11 +258,57 @@ test.describe(`create-pages`, () => {
     ).toBeVisible();
     const pendingSeen = waitForSelectorSeen(page, PENDING_SELECTOR);
     await clickClientLink(page, '/long-suspense/2');
+    await page.waitForFunction(
+      ([pendingSel, sel]) => {
+        const pathname = window.location.pathname;
+        const pendingElement = document.querySelector(pendingSel);
+        const heading = document.querySelector(sel);
+        return (
+          pendingElement?.textContent === 'Pending...' &&
+          pathname === '/long-suspense/1' &&
+          heading?.textContent === 'Long Suspense Page 1'
+        );
+      },
+      [PENDING_SELECTOR, SELECTOR] as const,
+      { timeout: 1000 },
+    );
     await pendingSeen;
     await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 2');
+    const pendingSeen2 = waitForSelectorSeen(page, PENDING_SELECTOR);
     await clickClientLink(page, '/long-suspense/3');
+    await page.waitForFunction(
+      ([pendingSel, sel]) => {
+        const pathname = window.location.pathname;
+        const pendingElement = document.querySelector(pendingSel);
+        const heading = document.querySelector(sel);
+        return (
+          pendingElement?.textContent === 'Pending...' &&
+          pathname === '/long-suspense/2' &&
+          heading?.textContent === 'Long Suspense Page 2'
+        );
+      },
+      [PENDING_SELECTOR, SELECTOR] as const,
+      { timeout: 1000 },
+    );
+    await pendingSeen2;
     await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 3');
+    const pendingSeen3 = waitForSelectorSeen(page, PENDING_SELECTOR);
     await clickClientLink(page, '/long-suspense/2');
+    await page.waitForFunction(
+      ([pendingSel, sel]) => {
+        const pathname = window.location.pathname;
+        const pendingElement = document.querySelector(pendingSel);
+        const heading = document.querySelector(sel);
+        return (
+          pendingElement?.textContent === 'Pending...' &&
+          pathname === '/long-suspense/3' &&
+          heading?.textContent === 'Long Suspense Page 3'
+        );
+      },
+      [PENDING_SELECTOR, SELECTOR] as const,
+      { timeout: 1000 },
+    );
+    await pendingSeen3;
     await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 2');
   });
 
@@ -364,6 +424,18 @@ test.describe(`create-pages`, () => {
     });
   });
 
+  test('static api wildcard passes correct params', async () => {
+    const res1 = await fetch(
+      `http://localhost:${port}/api/static-wildcard/a/b`,
+    );
+    expect(res1.status).toBe(200);
+    expect(await res1.json()).toEqual({ params: { slugs: ['a', 'b'] } });
+
+    const res2 = await fetch(`http://localhost:${port}/api/static-wildcard/c`);
+    expect(res2.status).toBe(200);
+    expect(await res2.json()).toEqual({ params: { slugs: ['c'] } });
+  });
+
   test('exactPath', async ({ page }) => {
     await page.goto(`http://localhost:${port}/exact/[slug]/[...wild]`);
     await expect(
@@ -413,11 +485,15 @@ test.describe(`create-pages`, () => {
     expect(Math.abs(dynamicTime - staticTime)).toBeLessThanOrEqual(1000);
 
     await page.getByRole('link', { name: 'Home' }).click();
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(1000);
+    await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
     await page.getByRole('link', { name: 'Nested Layouts' }).click();
+    await expect(
+      page.getByRole('heading', { name: 'Nested Layouts page' }),
+    ).toBeVisible();
     const dynamicTime2 = await whatTime('Dynamic Layout');
     const staticTime2 = await whatTime('Static Layout');
+    expect(dynamicTime2).not.toEqual(dynamicTime);
+    expect(staticTime2).toEqual(staticTime);
     expect(dynamicTime2).not.toEqual(staticTime2);
   });
 
@@ -445,9 +521,9 @@ test.describe(`create-pages`, () => {
     expect(dynamicSliceText.startsWith('Slice 002')).toBeTruthy();
 
     await page.getByRole('link', { name: 'Home' }).click();
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(1000);
+    await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
     await page.getByRole('link', { name: 'Slices' }).click();
+    await expect(page.getByRole('heading', { name: 'Slices' })).toBeVisible();
 
     // test dynamic and static slices behavior after soft navigation
     const staticSliceText2 = page.getByTestId('slice001');
