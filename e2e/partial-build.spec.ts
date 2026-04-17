@@ -71,7 +71,7 @@ test.describe(`partial builds`, () => {
     const renderBefore = statSync(`${cwd}/dist/e2e/render/a.txt`);
     await execAsync(`node ${waku} build`, {
       cwd,
-      env: { ...process.env, PAGES: 'a,b', SKIP_BUILD: '/a' },
+      env: { ...process.env, PAGES: 'a,b', ONLY_BUILD: '/page/b' },
     });
     const htmlAfter = statSync(`${cwd}/dist/public/page/a/index.html`);
     const rscAfter = statSync(`${cwd}/dist/public/RSC/R/page/a.txt`);

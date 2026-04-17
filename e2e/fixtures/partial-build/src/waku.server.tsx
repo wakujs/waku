@@ -5,7 +5,7 @@ const router = fsRouter(
   import.meta.glob('./**/*.{tsx,ts}', { base: './pages' }),
   {
     unstable_buildFilter: (routePath) => {
-      return process.env.SKIP_BUILD !== routePath;
+      return new RegExp(process.env.ONLY_BUILD || '').test(routePath);
     },
   },
 );
