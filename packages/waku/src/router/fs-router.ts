@@ -29,6 +29,7 @@ export function fsRouter(
     apiDir: string;
     /** e.g. `"_slices"` will detect slices in `src/pages/_slices`. */
     slicesDir: string;
+    unstable_buildFilter?: (routePath: string) => boolean;
   } = {
     apiDir: '_api',
     slicesDir: '_slices',
@@ -160,5 +161,8 @@ export function fsRouter(
       // HACK: to satisfy the return type, unused at runtime
       return null as never;
     },
+    options.unstable_buildFilter
+      ? { unstable_buildFilter: options.unstable_buildFilter }
+      : undefined,
   );
 }

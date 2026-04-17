@@ -326,6 +326,9 @@ export const createPages = <
     createApi: CreateApi;
     createSlice: CreateSlice;
   }) => Promise<AllPages>,
+  options?: {
+    unstable_buildFilter?: (routePath: string) => boolean;
+  },
 ) => {
   let configured = false;
 
@@ -934,6 +937,9 @@ export const createPages = <
         .sort((configA, configB) => routePriorityComparator(configA, configB));
       return [...pathConfigs, ...sliceConfigs];
     },
+    ...(options?.unstable_buildFilter && {
+      unstable_buildFilter: options.unstable_buildFilter,
+    }),
   });
 
   return definedRouter as typeof definedRouter & {
