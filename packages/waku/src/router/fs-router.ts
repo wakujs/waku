@@ -24,15 +24,12 @@ export function fsRouter(
    *   import.meta.glob("./**\/*.{tsx,ts}", { base: "./pages" })
    */
   pages: { [file: string]: () => Promise<unknown> },
-  options: {
+  options?: {
     /** e.g. `"_api"` will detect pages in `src/pages/_api` and strip `_api` from the path. */
-    apiDir: string;
+    apiDir?: string;
     /** e.g. `"_slices"` will detect slices in `src/pages/_slices`. */
-    slicesDir: string;
+    slicesDir?: string;
     unstable_buildFilter?: (routePath: string) => boolean;
-  } = {
-    apiDir: '_api',
-    slicesDir: '_slices',
   },
 ) {
   if (
@@ -47,6 +44,11 @@ export function fsRouter(
       );
     }
   }
+  const {
+    apiDir = '_api',
+    slicesDir = '_slices',
+    unstable_buildFilter,
+  } = options || {};
   return createPages(
     async ({
       createPage,
@@ -85,7 +87,7 @@ export function fsRouter(
           throw new Error(
             'Page file cannot be named [path]. This will conflict with the path prop of the page component.',
           );
-        } else if (pathItems.at(0) === options.apiDir) {
+        } else if (pathItems.at(0) === apiDir) {
           // Strip the apiDir prefix from the path (e.g., _api/hello.txt -> hello.txt)
           const apiPath = '/' + pathItems.slice(1).join('/');
           if (config?.render === 'static') {
@@ -129,7 +131,7 @@ export function fsRouter(
               handlers,
             });
           }
-        } else if (pathItems.at(0) === options.slicesDir) {
+        } else if (pathItems.at(0) === slicesDir) {
           createSlice({
             component: mod.default,
             render: 'static',
@@ -161,8 +163,6 @@ export function fsRouter(
       // HACK: to satisfy the return type, unused at runtime
       return null as never;
     },
-    options.unstable_buildFilter
-      ? { unstable_buildFilter: options.unstable_buildFilter }
-      : undefined,
+    unstable_buildFilter ? { unstable_buildFilter } : undefined,
   );
 }
