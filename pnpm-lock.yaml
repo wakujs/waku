@@ -259,6 +259,31 @@ importers:
         specifier: ^6.0.2
         version: 6.0.2
 
+  e2e/fixtures/fs-router-build-split:
+    dependencies:
+      react:
+        specifier: ~19.2.5
+        version: 19.2.5
+      react-dom:
+        specifier: ~19.2.5
+        version: 19.2.5(react@19.2.5)
+      react-server-dom-webpack:
+        specifier: ~19.2.5
+        version: 19.2.5(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(webpack@5.99.9)
+      waku:
+        specifier: latest
+        version: link:../../../packages/waku
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.14)
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+
   e2e/fixtures/hot-reload:
     dependencies:
       react:
