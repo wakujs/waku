@@ -4,6 +4,10 @@ import type { Config } from '../../config.js';
 import { allowServerPlugin } from './allow-server.js';
 import { buildMetadataPlugin } from './build-metadata.js';
 import { buildStaticFilesPlugin } from './build-static-files.js';
+import {
+  createRscBuildOutputState,
+  trackRscBuildOutputsPlugin,
+} from './build-output-pruning.js';
 import { defaultAdapterPlugin } from './default-adapter.js';
 import { extraPlugins } from './extra-plugins.js';
 import { fallbackHtmlPlugin } from './fallback-html.js';
@@ -17,6 +21,7 @@ import { userEntriesPlugin } from './user-entries.js';
 import { virtualConfigPlugin } from './virtual-config.js';
 
 export function combinedPlugins(config: Required<Config>): PluginOption {
+  const rscBuildOutputState = createRscBuildOutputState();
   return [
     extraPlugins(config),
     allowServerPlugin(), // apply `allowServer` DCE before "use client" transform
@@ -34,7 +39,8 @@ export function combinedPlugins(config: Required<Config>): PluginOption {
     notFoundPlugin(),
     patchRsdwPlugin(),
     buildMetadataPlugin(config),
-    buildStaticFilesPlugin(config),
+    trackRscBuildOutputsPlugin(rscBuildOutputState),
+    buildStaticFilesPlugin({ ...config, rscBuildOutputState }),
     privateDirPlugin(config),
     fallbackHtmlPlugin(),
     fsRouterTypegenPlugin(config),

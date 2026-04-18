@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { isBuild } from 'virtual:vite-rsc-waku/config';
 import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
 import { getPathMapping, path2regexp } from '../lib/utils/path.js';
 import type { PathSpec } from '../lib/utils/path.js';
@@ -237,51 +238,46 @@ globalThis.__WAKU_ROUTER_PREFETCH__ = (path, callback) => {
 };
 
 export function unstable_defineRouter(fns: {
-  getConfigs: () => Promise<Iterable<RouteConfig | ApiConfig | SliceConfig>>;
+  getConfigs: (options?: {
+    mode: 'dev' | 'runtime' | 'build';
+  }) => Promise<Iterable<RouteConfig | ApiConfig | SliceConfig>>;
 }) {
-  type RouterMode = 'runtime' | 'build';
-
   // This is an internal type for caching
   type MyConfig = {
     configs: (RouteConfig | ApiConfig | SliceConfig)[];
     has404: boolean;
   };
 
-  const cachedMyConfigByMode = new Map<RouterMode, MyConfig>();
+  const cachedMyConfigs = new Map<
+    'dev' | 'runtime' | 'build',
+    Promise<MyConfig>
+  >();
   const getMyConfig = async (
-    mode: RouterMode = 'runtime',
+    mode: 'dev' | 'runtime' | 'build',
   ): Promise<MyConfig> => {
-    let cachedMyConfig = cachedMyConfigByMode.get(mode);
+    let cachedMyConfig = cachedMyConfigs.get(mode);
     if (!cachedMyConfig) {
-      const allConfigs = Array.from(await fns.getConfigs());
-      const configs =
-        mode === 'runtime'
-          ? allConfigs.filter(
-              (item) =>
-                !(
-                  (item.type === 'route' || item.type === 'api') &&
-                  item.isStatic
-                ),
-            )
-          : allConfigs;
-      let has404 = false;
-      configs.forEach((item) => {
-        if (item.type === 'route') {
-          Object.keys(item.elements).forEach(assertNonReservedSlotId);
-          if (!has404 && is404(item.path)) {
-            has404 = true;
+      cachedMyConfig = (async () => {
+        const configs = Array.from(await fns.getConfigs({ mode }));
+        let has404 = false;
+        configs.forEach((item) => {
+          if (item.type === 'route') {
+            Object.keys(item.elements).forEach(assertNonReservedSlotId);
+            if (!has404 && is404(item.path)) {
+              has404 = true;
+            }
           }
-        }
-      });
-      cachedMyConfig = { configs, has404 };
-      cachedMyConfigByMode.set(mode, cachedMyConfig);
+        });
+        return { configs, has404 };
+      })();
+      cachedMyConfigs.set(mode, cachedMyConfig);
     }
     return cachedMyConfig;
   };
 
   const getPathConfigItem = async (
     pathname: string,
-    mode: RouterMode = 'runtime',
+    mode: 'dev' | 'runtime' | 'build',
   ) => {
     const routePath = pathnameToRoutePath(pathname);
     const myConfig = await getMyConfig(mode);
@@ -322,10 +318,10 @@ export function unstable_defineRouter(fns: {
   const getEntriesForRoute = async (
     rscPath: string,
     rscParams: unknown,
+    mode: 'dev' | 'runtime' | 'build',
     headers: Readonly<Record<string, string>>,
     getCachedElement: (id: SlotId) => Promise<ReactNode> | undefined,
     setCachedElement: (id: SlotId, element: ReactNode) => Promise<void> | void,
-    mode: RouterMode = 'runtime',
   ) => {
     setRscPath(rscPath);
     setRscParams(rscParams);
@@ -498,7 +494,8 @@ export function unstable_defineRouter(fns: {
       return cachedPath2moduleIds!;
     };
 
-    const pathConfigItem = await getPathConfigItem(input.pathname, 'runtime');
+    const requestMode = isBuild ? 'runtime' : 'dev';
+    const pathConfigItem = await getPathConfigItem(input.pathname, requestMode);
     if (pathConfigItem?.type === 'api') {
       const url = new URL(input.req.url);
       url.pathname = input.pathname;
@@ -514,7 +511,7 @@ export function unstable_defineRouter(fns: {
       if (sliceId !== null) {
         // LIMITATION: This is a single slice request.
         // Ideally, we should be able to respond with multiple slices in one request.
-        const myConfig = await getMyConfig('runtime');
+        const myConfig = await getMyConfig(requestMode);
         let sliceConfig: SliceConfig | undefined;
         let sliceParams: Record<string, string | string[]> | undefined;
         for (const item of myConfig.configs) {
@@ -557,10 +554,10 @@ export function unstable_defineRouter(fns: {
       const entries = await getEntriesForRoute(
         input.rscPath,
         input.rscParams,
+        requestMode,
         headers,
         getCachedElement,
         setCachedElement,
-        'runtime',
       );
       if (!entries) {
         return null;
@@ -582,10 +579,10 @@ export function unstable_defineRouter(fns: {
           getEntriesForRoute(
             rscPath,
             rscParams,
+            requestMode,
             headers,
             getCachedElement,
             setCachedElement,
-            'runtime',
           ),
         ]).then(([oldElements, newElements]) => {
           if (newElements === null) {
@@ -609,10 +606,10 @@ export function unstable_defineRouter(fns: {
           const entries = await getEntriesForRoute(
             rscPath,
             undefined,
+            requestMode,
             headers,
             getCachedElement,
             setCachedElement,
-            'runtime',
           );
           if (!entries) {
             unstable_notFound();
@@ -637,10 +634,10 @@ export function unstable_defineRouter(fns: {
         const entries = await getEntriesForRoute(
           rscPath,
           rscParams,
+          requestMode,
           headers,
           getCachedElement,
           setCachedElement,
-          'runtime',
         );
         if (!entries) {
           return null;
@@ -677,7 +674,7 @@ export function unstable_defineRouter(fns: {
           throw e;
         }
       }
-      if ((await getMyConfig('runtime')).has404) {
+      if ((await getMyConfig(requestMode)).has404) {
         return renderIt('/404', '', 404);
       } else {
         return null;
@@ -769,10 +766,10 @@ export function unstable_defineRouter(fns: {
           const entries = await getEntriesForRoute(
             rscPath,
             undefined,
+            'build',
             {},
             getCachedElement,
             setCachedElement,
-            'build',
           );
           if (!entries) {
             return;
@@ -877,6 +874,6 @@ export function unstable_defineRouter(fns: {
 
   return Object.assign(defineHandlers({ handleRequest, handleBuild }), {
     unstable_getRouterConfigs: () =>
-      getMyConfig('build').then((c) => c.configs),
+      getMyConfig('runtime').then((c) => c.configs),
   });
 }
