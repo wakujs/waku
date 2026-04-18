@@ -8,17 +8,11 @@ import pc from 'picocolors';
 import type { Plugin } from 'vite';
 import { joinPath } from '../utils/path.js';
 import { createProgressLogger } from '../utils/progress-logger.js';
-import {
-  pruneRscBuildOutputs,
-  type RscBuildOutputState,
-} from './build-output-pruning.js';
 
 export function buildStaticFilesPlugin({
   distDir,
-  rscBuildOutputState,
 }: {
   distDir: string;
-  rscBuildOutputState: RscBuildOutputState;
 }): Plugin {
   return {
     name: 'waku:vite-plugins:build-static-files',
@@ -48,11 +42,6 @@ export function buildStaticFilesPlugin({
         const entry: typeof import('../vite-entries/entry.build.js') =
           await import(pathToFileURL(entryPath).href);
         await entry.INTERNAL_runBuild({ rootDir, emitFile });
-        await pruneRscBuildOutputs({
-          rootDir,
-          distDir,
-          state: rscBuildOutputState,
-        });
         progress.done();
         const fileCount = progress.getCount();
         console.log(

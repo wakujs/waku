@@ -1,12 +1,7 @@
 /// <reference types="vite/client" />
 /// <reference types="@vitejs/plugin-rsc/types" />
 
-declare module 'virtual:vite-rsc-waku/server-entry-runtime' {
-  const default_: import('./types.ts').Unstable_ServerEntry;
-  export default default_;
-}
-
-declare module 'virtual:vite-rsc-waku/server-entry-build' {
+declare module 'virtual:vite-rsc-waku/server-entry' {
   const default_: import('./types.ts').Unstable_ServerEntry;
   export default default_;
 }

@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import serverEntry from 'virtual:vite-rsc-waku/server-entry-build';
+import serverEntry from 'virtual:vite-rsc-waku/server-entry';
 import { INTERNAL_setAllEnv } from '../../server.js';
 import type { Unstable_EmitFile } from '../types.js';
 import { joinPath } from '../utils/path.js';

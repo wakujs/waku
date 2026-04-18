@@ -1,22 +1,9 @@
 import { EXTENSIONS, SRC_MIDDLEWARE, SRC_PAGES } from '../constants.js';
-import { getManagedRuntimeExcludes } from './managed-routes.js';
 
-export const getManagedServerEntry = async ({
-  rootDir,
-  srcDir,
-  mode,
-}: {
-  rootDir: string;
-  srcDir: string;
-  mode: 'dev' | 'runtime' | 'build';
-}) => {
+export const getManagedServerEntry = (srcDir: string) => {
   const globBase = `/${srcDir}/${SRC_PAGES}`;
   const exts = EXTENSIONS.map((ext) => ext.slice(1)).join(',');
   const globPattern = `${globBase}/**/*.{${exts}}`;
-  const pageGlobs =
-    mode === 'runtime'
-      ? [globPattern, ...(await getManagedRuntimeExcludes({ rootDir, srcDir }))]
-      : globPattern;
   const middlewareGlob = [
     `/${srcDir}/${SRC_MIDDLEWARE}/*.{${exts}}`,
     `!/${srcDir}/${SRC_MIDDLEWARE}/*.{test,spec}.{${exts}}`,
@@ -27,10 +14,9 @@ import adapter from 'waku/adapters/default';
 
 export default adapter(
   fsRouter(
-    Object.fromEntries(
-      Object.entries(import.meta.glob(${JSON.stringify(pageGlobs)})).map(
-        ([key, value]) => [key.slice(${JSON.stringify(globBase.length + 1)}), value]
-      )
+    import.meta.glob(
+      ${JSON.stringify(globPattern)},
+      { base: ${JSON.stringify(globBase)} }
     )
   ),
   {
