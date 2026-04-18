@@ -71,16 +71,14 @@ test.describe(`partial builds`, () => {
     const renderBefore = statSync(`${cwd}/dist/e2e/render/a.txt`);
     await execAsync(`node ${waku} build`, {
       cwd,
-      env: { ...process.env, PAGES: 'a,b' },
+      env: { ...process.env, PAGES: 'a,b', ONLY_BUILD: '/page/b' },
     });
     const htmlAfter = statSync(`${cwd}/dist/public/page/a/index.html`);
     const rscAfter = statSync(`${cwd}/dist/public/RSC/R/page/a.txt`);
     const renderAfter = statSync(`${cwd}/dist/e2e/render/a.txt`);
     expect(htmlBefore.mtimeMs).toBe(htmlAfter.mtimeMs);
     expect(rscBefore.mtimeMs).toBe(rscAfter.mtimeMs);
-
-    // TODO: each page render is not reused so "partial mode" is not effective anymore
-    expect(renderBefore.mtimeMs).toBeLessThan(renderAfter.mtimeMs);
+    expect(renderBefore.mtimeMs).toBe(renderAfter.mtimeMs);
   });
 
   test('adds new pages', async ({ page }) => {

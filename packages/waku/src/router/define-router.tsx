@@ -241,6 +241,7 @@ export function unstable_defineRouter(fns: {
   getConfigs: (options?: {
     mode: 'dev' | 'runtime' | 'build';
   }) => Promise<Iterable<RouteConfig | ApiConfig | SliceConfig>>;
+  unstable_skipBuild?: (routePath: string) => boolean;
 }) {
   // This is an internal type for caching
   type MyConfig = {
@@ -722,6 +723,7 @@ export function unstable_defineRouter(fns: {
 
     // hard-coded concurrency limit
     const { runTask, waitForTasks } = createTaskRunner(500);
+    const skipBuild = fns.unstable_skipBuild;
 
     // static api
     for (const item of myConfig.configs) {
@@ -733,6 +735,9 @@ export function unstable_defineRouter(fns: {
       }
       const routePath = pathSpecToRoutePath(item.path);
       if (!routePath) {
+        continue;
+      }
+      if (skipBuild?.(routePath)) {
         continue;
       }
       const req = new Request(new URL(routePath, 'http://localhost:3000'));
@@ -757,6 +762,9 @@ export function unstable_defineRouter(fns: {
       }
       const routePath = pathSpecToRoutePath(item.path);
       if (!routePath) {
+        continue;
+      }
+      if (skipBuild?.(routePath)) {
         continue;
       }
       const rscPath = encodeRoutePath(routePath);
@@ -820,6 +828,9 @@ export function unstable_defineRouter(fns: {
         const routePath = pathSpecToRoutePath(item.path);
         if (!routePath) {
           throw new Error('Pathname is required for noSsr routes on build');
+        }
+        if (skipBuild?.(routePath)) {
+          continue;
         }
         runTask(async () => {
           await generateDefaultHtml(routePathToHtmlFilePath(routePath));
