@@ -7,10 +7,10 @@ import { pathToFileURL } from 'node:url';
 import pc from 'picocolors';
 import type { Plugin } from 'vite';
 import {
+  type BuildOutputGraph,
   applyBuildOutputPrunePlan,
   collectBuildOutputGraph,
   computeBuildOutputPrunePlan,
-  type BuildOutputGraph,
 } from '../build-output-pruning.js';
 import { joinPath } from '../utils/path.js';
 import { createProgressLogger } from '../utils/progress-logger.js';
