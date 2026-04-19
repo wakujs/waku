@@ -7,8 +7,9 @@ import { pathToFileURL } from 'node:url';
 import pc from 'picocolors';
 import type { Plugin } from 'vite';
 import {
+  applyBuildOutputPrunePlan,
   collectBuildOutputGraph,
-  pruneRscBuildOutputs,
+  computeBuildOutputPrunePlan,
   type BuildOutputGraph,
 } from '../build-output-pruning.js';
 import { joinPath } from '../utils/path.js';
@@ -22,7 +23,7 @@ export function buildStaticFilesPlugin({
   let buildOutputGraph: BuildOutputGraph = {
     entryFiles: new Map(),
     nodes: new Map(),
-    pageLoaderChunks: new Map(),
+    pageRootChunksBySourceFile: new Map(),
   };
   return {
     name: 'waku:vite-plugins:build-static-files',
@@ -61,11 +62,12 @@ export function buildStaticFilesPlugin({
         const entry: typeof import('../vite-entries/entry.build.js') =
           await import(pathToFileURL(entryPath).href);
         await entry.INTERNAL_runBuild({ rootDir, emitFile });
-        await pruneRscBuildOutputs({
+        const prunePlan = await computeBuildOutputPrunePlan({
           rootDir,
           distDir,
           graph: buildOutputGraph,
         });
+        await applyBuildOutputPrunePlan(prunePlan);
         progress.done();
         const fileCount = progress.getCount();
         console.log(

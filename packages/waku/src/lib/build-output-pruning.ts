@@ -1,6 +1,6 @@
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
 import { rm } from 'node:fs/promises';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   BUILD_METADATA_FILE,
   DIST_SERVER,
@@ -31,7 +31,12 @@ type OutputNode = {
 export type BuildOutputGraph = {
   entryFiles: Map<string, string>;
   nodes: Map<string, OutputNode>;
-  pageLoaderChunks: Map<string, string[]>;
+  pageRootChunksBySourceFile: Map<string, string[]>;
+};
+
+export type BuildOutputPrunePlan = {
+  serverDir: string;
+  filesToDelete: string[];
 };
 
 const normalizeFileName = (fileName: string) =>
@@ -60,13 +65,34 @@ const getOrCreateNode = (graph: BuildOutputGraph, fileName: string) => {
   return node;
 };
 
+const extractPageRootChunksFromChunkCode = (
+  chunk: OutputChunk,
+): [string, string][] => {
+  const roots: [string, string][] = [];
+  for (const match of chunk.code.matchAll(
+    /['"`](\.\/[^'"`\s]+\.[^'"`\s]+)['"`]\s*:\s*\(\)\s*=>\s*import\((['"`])([^'"`\s]+\.(?:js|mjs|cjs))\2\)/g,
+  )) {
+    const sourceFile = match[1];
+    if (!sourceFile) {
+      continue;
+    }
+    roots.push([
+      sourceFile,
+      normalizeFileName(
+        path.posix.join(path.posix.dirname(chunk.fileName), match[3]!),
+      ),
+    ]);
+  }
+  return roots;
+};
+
 export const collectBuildOutputGraph = (
   bundle: OutputBundle,
 ): BuildOutputGraph => {
   const graph: BuildOutputGraph = {
     entryFiles: new Map(),
     nodes: new Map(),
-    pageLoaderChunks: new Map(),
+    pageRootChunksBySourceFile: new Map(),
   };
   for (const item of Object.values(bundle)) {
     if (item.type !== 'chunk') {
@@ -85,19 +111,12 @@ export const collectBuildOutputGraph = (
     if (item.isEntry) {
       graph.entryFiles.set(item.name, normalizeFileName(item.fileName));
     }
-    for (const match of item.code.matchAll(
-      /['"`](\.\/[^'"`\s]+\.[^'"`\s]+)['"`]\s*:\s*\(\)\s*=>\s*import\((['"`])([^'"`\s]+\.(?:js|mjs|cjs))\2\)/g,
+    for (const [sourceFile, rootChunk] of extractPageRootChunksFromChunkCode(
+      item,
     )) {
-      const sourceFile = match[1];
-      if (!sourceFile) {
-        continue;
-      }
-      const chunkFile = normalizeFileName(
-        path.posix.join(path.posix.dirname(item.fileName), match[3]!),
-      );
-      const existing = graph.pageLoaderChunks.get(sourceFile) || [];
-      existing.push(chunkFile);
-      graph.pageLoaderChunks.set(sourceFile, existing);
+      const existing = graph.pageRootChunksBySourceFile.get(sourceFile) || [];
+      existing.push(rootChunk);
+      graph.pageRootChunksBySourceFile.set(sourceFile, existing);
     }
   }
   return graph;
@@ -122,6 +141,8 @@ const collectReachableFiles = (
     node.imports.forEach(visit);
     node.referencedFiles.forEach(visit);
     node.dynamicImports.forEach((dynamicImport) => {
+      // Page roots are handled explicitly as traversal roots so we can prune
+      // one page subtree without implicitly keeping every page subtree.
       if (pageRootFiles.has(dynamicImport)) {
         return;
       }
@@ -134,7 +155,7 @@ const collectReachableFiles = (
   return reachableFiles;
 };
 
-const loadBuildMetadataMap = async ({
+const loadPrunableSourceFiles = async ({
   rootDir,
   distDir,
 }: {
@@ -148,10 +169,15 @@ const loadBuildMetadataMap = async ({
   )) as {
     buildMetadata?: Map<string, string>;
   };
-  return mod.buildMetadata ?? new Map<string, string>();
+  return new Set<string>(
+    JSON.parse(
+      mod.buildMetadata?.get(UNSTABLE_PRUNABLE_SOURCE_FILES_METADATA_KEY) ||
+        '[]',
+    ),
+  );
 };
 
-export const pruneRscBuildOutputs = async ({
+export const computeBuildOutputPrunePlan = async ({
   rootDir,
   distDir,
   graph,
@@ -159,25 +185,23 @@ export const pruneRscBuildOutputs = async ({
   rootDir: string;
   distDir: string;
   graph: BuildOutputGraph;
-}) => {
+}): Promise<BuildOutputPrunePlan> => {
   const serverDir = joinPath(rootDir, distDir, DIST_SERVER);
-  const buildMetadata = await loadBuildMetadataMap({ rootDir, distDir });
-  const prunablePageFiles = new Set<string>(
-    JSON.parse(
-      buildMetadata.get(UNSTABLE_PRUNABLE_SOURCE_FILES_METADATA_KEY) || '[]',
-    ),
-  );
+  const prunableSourceFiles = await loadPrunableSourceFiles({
+    rootDir,
+    distDir,
+  });
 
   const pageRootFiles = new Set(
-    Array.from(graph.pageLoaderChunks.values()).flatMap((fileNames) =>
+    Array.from(graph.pageRootChunksBySourceFile.values()).flatMap((fileNames) =>
       fileNames.map((fileName) =>
         normalizeMetadataChunkFile(serverDir, fileName),
       ),
     ),
   );
   const prunedPageRoots = new Set(
-    Array.from(graph.pageLoaderChunks.entries())
-      .filter(([file]) => prunablePageFiles.has(file))
+    Array.from(graph.pageRootChunksBySourceFile.entries())
+      .filter(([sourceFile]) => prunableSourceFiles.has(sourceFile))
       .flatMap(([, fileNames]) =>
         fileNames.map((fileName) =>
           normalizeMetadataChunkFile(serverDir, fileName),
@@ -201,12 +225,20 @@ export const pruneRscBuildOutputs = async ({
 
   const keepFiles = collectReachableFiles(graph, keepRoots, pageRootFiles);
   const pruneFiles = collectReachableFiles(graph, pruneRoots, pageRootFiles);
-  const filesToDelete = Array.from(pruneFiles).filter(
-    (fileName) =>
-      !keepFiles.has(fileName) &&
-      fileName !== normalizeFileName(BUILD_METADATA_FILE),
-  );
+  return {
+    serverDir,
+    filesToDelete: Array.from(pruneFiles).filter(
+      (fileName) =>
+        !keepFiles.has(fileName) &&
+        fileName !== normalizeFileName(BUILD_METADATA_FILE),
+    ),
+  };
+};
 
+export const applyBuildOutputPrunePlan = async ({
+  serverDir,
+  filesToDelete,
+}: BuildOutputPrunePlan) => {
   await Promise.all(
     filesToDelete.map((fileName) =>
       rm(joinPath(serverDir, fileName), { force: true }),
