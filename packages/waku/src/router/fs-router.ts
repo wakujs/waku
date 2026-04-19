@@ -1,5 +1,6 @@
 import type { FunctionComponent, ReactNode } from 'react';
 import type { ImportGlobFunction } from 'vite/types/importGlob.d.ts';
+import { UNSTABLE_PRUNABLE_SOURCE_FILES_METADATA_KEY } from '../lib/constants.js';
 import { isIgnoredPath } from '../lib/utils/fs-router.js';
 import { METHODS, createPages } from './create-pages.js';
 import type { Method } from './create-pages.js';
@@ -11,6 +12,32 @@ declare global {
 }
 
 let didWarnAboutApiDirMigration = false;
+
+type FsRouterModule = {
+  default: FunctionComponent<{ children: ReactNode }>;
+  getConfig?: () => Promise<{
+    render?: 'static' | 'dynamic';
+  }>;
+  GET?: (req: Request) => Promise<Response>;
+};
+
+type AnalyzedFile = {
+  sourceFile: string;
+  path: string;
+  pathItems: string[];
+  render: 'static' | 'dynamic';
+  kind: 'page' | 'api' | 'layout' | 'root' | 'slice';
+};
+
+const getAncestorPaths = (routePath: string) => {
+  const ancestors = ['/'];
+  let current = '';
+  for (const part of routePath.split('/').filter(Boolean)) {
+    current += `/${part}`;
+    ancestors.push(current);
+  }
+  return ancestors;
+};
 
 export function fsRouter(
   /**
@@ -49,7 +76,95 @@ export function fsRouter(
     slicesDir = '_slices',
     unstable_skipBuild,
   } = options || {};
-  return createPages(
+  let builtPrunablePageFiles: Set<string> | undefined;
+  let analyzedFilesPromise: Promise<AnalyzedFile[]> | undefined;
+  const analyzeFiles = async () => {
+    if (analyzedFilesPromise) {
+      return analyzedFilesPromise;
+    }
+    analyzedFilesPromise = (async () => {
+      const analyzedFiles: AnalyzedFile[] = [];
+      for (const sourceFile of Object.keys(pages)) {
+        const mod = (await pages[sourceFile]!()) as FsRouterModule;
+        const decodedFile = new URL(
+          sourceFile,
+          'http://localhost:3000',
+        ).pathname.slice(1);
+        const pathItems = decodedFile
+          .replace(/\.\w+$/, '')
+          .split('/')
+          .filter(Boolean);
+        if (isIgnoredPath(pathItems)) {
+          continue;
+        }
+        const path =
+          '/' +
+          (['_layout', 'index', '_root'].includes(pathItems.at(-1)!) ||
+          pathItems.at(-1)?.startsWith('_part')
+            ? pathItems.slice(0, -1)
+            : pathItems
+          ).join('/');
+        const render = (await mod.getConfig?.())?.render ?? 'static';
+        const kind =
+          pathItems.at(-1) === '_layout'
+            ? 'layout'
+            : pathItems.at(-1) === '_root'
+              ? 'root'
+              : pathItems.at(0) === apiDir
+                ? 'api'
+                : pathItems.at(0) === slicesDir
+                  ? 'slice'
+                  : 'page';
+        analyzedFiles.push({
+          sourceFile,
+          path,
+          pathItems,
+          render,
+          kind,
+        });
+      }
+      return analyzedFiles;
+    })();
+    return analyzedFilesPromise;
+  };
+  const getPrunableSourceFiles = async () => {
+    const analyzedFiles = await analyzeFiles();
+    const dynamicLayoutPaths = new Set(
+      analyzedFiles
+        .filter((file) => file.kind === 'layout' && file.render === 'dynamic')
+        .map((file) => file.path),
+    );
+    const hasDynamicRoot = analyzedFiles.some(
+      (file) => file.kind === 'root' && file.render === 'dynamic',
+    );
+    const prunableSourceFiles = new Set<string>();
+    for (const file of analyzedFiles) {
+      if (file.kind === 'api') {
+        if (file.render === 'static') {
+          prunableSourceFiles.add(file.sourceFile);
+        }
+        continue;
+      }
+      if (
+        file.kind !== 'page' ||
+        file.render !== 'static' ||
+        file.path === '/404'
+      ) {
+        continue;
+      }
+      if (hasDynamicRoot) {
+        continue;
+      }
+      if (
+        getAncestorPaths(file.path).some((path) => dynamicLayoutPaths.has(path))
+      ) {
+        continue;
+      }
+      prunableSourceFiles.add(file.sourceFile);
+    }
+    return prunableSourceFiles;
+  };
+  const router = createPages(
     async ({
       createPage,
       createLayout,
@@ -58,6 +173,9 @@ export function fsRouter(
       createSlice,
     }) => {
       for (let file in pages) {
+        if (builtPrunablePageFiles?.has(file)) {
+          continue;
+        }
         const mod = (await pages[file]!()) as {
           default: FunctionComponent<{ children: ReactNode }>;
           getConfig?: () => Promise<{
@@ -165,4 +283,34 @@ export function fsRouter(
     },
     unstable_skipBuild ? { unstable_skipBuild } : undefined,
   );
+  const originalHandleRequest = router.handleRequest;
+  const originalHandleBuild = router.handleBuild;
+  return Object.assign(router, {
+    handleRequest: async (
+      input: Parameters<typeof router.handleRequest>[0],
+      utils: Parameters<typeof router.handleRequest>[1],
+    ) => {
+      if (!builtPrunablePageFiles) {
+        try {
+          const serialized = await utils.loadBuildMetadata(
+            UNSTABLE_PRUNABLE_SOURCE_FILES_METADATA_KEY,
+          );
+          builtPrunablePageFiles = new Set<string>(
+            serialized ? (JSON.parse(serialized) as string[]) : [],
+          );
+        } catch {
+          builtPrunablePageFiles = new Set();
+        }
+      }
+      return originalHandleRequest(input, utils);
+    },
+    handleBuild: async (utils: Parameters<typeof router.handleBuild>[0]) => {
+      await originalHandleBuild(utils);
+      const prunableSourceFiles = await getPrunableSourceFiles();
+      await utils.saveBuildMetadata(
+        UNSTABLE_PRUNABLE_SOURCE_FILES_METADATA_KEY,
+        JSON.stringify(Array.from(prunableSourceFiles)),
+      );
+    },
+  });
 }

@@ -9,3 +9,5 @@ export const SRC_MIDDLEWARE = 'middleware'; // only for managed mode
 export const DIST_PUBLIC = 'public';
 export const DIST_SERVER = 'server';
 export const BUILD_METADATA_FILE = '__waku_build_metadata.js';
+export const UNSTABLE_PRUNABLE_SOURCE_FILES_METADATA_KEY =
+  'waku:prunableSourceFiles';
