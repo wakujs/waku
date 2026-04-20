@@ -30,14 +30,15 @@ export const getManagedClientEntry = () => {
   return `
 import { StrictMode, createElement } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
+import { defaultRootOptions } from 'waku/client';
 import { Router } from 'waku/router/client';
 
 const rootElement = createElement(StrictMode, null, createElement(Router));
 
 if (globalThis.__WAKU_HYDRATE__) {
-  hydrateRoot(document, rootElement);
+  hydrateRoot(document, rootElement, defaultRootOptions);
 } else {
-  createRoot(document).render(rootElement);
+  createRoot(document, defaultRootOptions).render(rootElement);
 }
 `;
 };
