@@ -56,7 +56,7 @@ export default adapter({
             rscPath: '',
           },
         );
-        await generateFile('/', res.body || '');
+        await generateFile('index.html', res.body || '');
       },
     );
   },

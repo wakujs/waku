@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import {
   base64ToBytes,
   batchReadableStream,
@@ -178,18 +178,22 @@ describe('batchReadableStream', () => {
   });
 
   test('emits multiple chunks when input is spaced out', async () => {
-    const input = new ReadableStream<Uint8Array>({
-      async start(controller) {
-        controller.enqueue(toUint8('a'));
-        await new Promise((resolve) => setTimeout(resolve, 5));
-        controller.enqueue(toUint8('b'));
-        controller.close();
-      },
-    });
-
-    const output = await readAllChunks(batchReadableStream(input));
-    expect(output).toHaveLength(2);
-    expect(output.map((chunk) => dec.decode(chunk))).toEqual(['a', 'b']);
+    vi.useFakeTimers();
+    try {
+      const input = new TransformStream<Uint8Array, Uint8Array>();
+      const writer = input.writable.getWriter();
+      const outputPromise = readAllChunks(batchReadableStream(input.readable));
+      await writer.write(toUint8('a'));
+      await vi.advanceTimersByTimeAsync(0);
+      await writer.write(toUint8('b'));
+      await writer.close();
+      await vi.runAllTimersAsync();
+      const output = await outputPromise;
+      expect(output).toHaveLength(2);
+      expect(output.map((chunk) => dec.decode(chunk))).toEqual(['a', 'b']);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

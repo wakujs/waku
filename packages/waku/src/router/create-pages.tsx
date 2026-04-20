@@ -327,6 +327,9 @@ export const createPages = <
     createApi: CreateApi;
     createSlice: CreateSlice;
   }) => Promise<AllPages>,
+  options?: {
+    unstable_skipBuild?: (routePath: string) => boolean;
+  },
 ) => {
   let configured = false;
 
@@ -923,6 +926,9 @@ export const createPages = <
         .sort((configA, configB) => routePriorityComparator(configA, configB));
       return [...pathConfigs, ...sliceConfigs];
     },
+    ...(options?.unstable_skipBuild && {
+      unstable_skipBuild: options.unstable_skipBuild,
+    }),
   });
 
   return definedRouter as typeof definedRouter & {
