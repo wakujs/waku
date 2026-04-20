@@ -1,6 +1,10 @@
 import type { ReactNode } from 'react';
 import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
-import { getPathMapping, path2regexp } from '../lib/utils/path.js';
+import {
+  getPathMapping,
+  path2regexp,
+  pathSpecAsString,
+} from '../lib/utils/path.js';
 import type { PathSpec } from '../lib/utils/path.js';
 import {
   base64ToBytes,
@@ -723,7 +727,16 @@ export function unstable_defineRouter(fns: {
       runTask(async () => {
         await withRequest(req, async () => {
           const res = await item.handler(req, { params: {} });
-          await generateFile(routePath, res.body || '');
+          await generateFile(routePath, res.body || '').catch((e) => {
+            if (e instanceof Error && 'code' in e && e.code === 'EEXIST') {
+              throw new Error(
+                `the API route ${pathSpecAsString(item.path)} faced file-system conflicts when writing static responses, this often happens because of empty segments in "staticPaths".`,
+                { cause: e },
+              );
+            }
+
+            throw e;
+          });
         });
       });
     }
