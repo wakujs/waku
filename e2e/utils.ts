@@ -88,11 +88,15 @@ export const terminate = async (cp: ChildProcess): Promise<void> => {
   if (cp.exitCode !== null) {
     return;
   }
+  const exitPromise = new Promise<void>((resolve) => {
+    cp.once('exit', () => resolve());
+  });
   if (process.platform === 'win32') {
     await execAsync(`taskkill /pid ${cp.pid} /t /f`);
   } else if (cp.pid) {
     process.kill(-cp.pid, 'SIGTERM');
   }
+  await exitPromise;
 };
 
 const unexpectedErrors: RegExp[] = [
