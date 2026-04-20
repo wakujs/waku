@@ -179,7 +179,7 @@ const assertNonReservedSlotId = (slotId: SlotId) => {
 
 type RendererOption = { routePath: string; query: string | undefined };
 
-type RouteConfig  = {
+type RouteConfig = {
   type: 'route';
   path: PathSpec;
   isStatic: boolean;
@@ -201,14 +201,14 @@ type RouteConfig  = {
   >;
   noSsr?: boolean;
   slices?: string[];
-}
+};
 
 type ApiConfig = {
   type: 'api';
   path: PathSpec;
   isStatic: boolean;
   handler: ApiHandler;
-}
+};
 
 type SliceConfig = {
   type: 'slice';
@@ -216,7 +216,7 @@ type SliceConfig = {
   pathSpec?: PathSpec;
   isStatic: boolean;
   renderer: (params?: Record<string, string | string[]>) => Promise<ReactNode>;
-}
+};
 
 const getRouterPrefetchCode = (path2moduleIds: Record<string, string[]>) => {
   const moduleIdSet = new Set<string>();
