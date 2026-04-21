@@ -67,11 +67,33 @@ test.describe(`ssr-redirect`, () => {
 
   test('redirect should not log "Error during rendering" to server console', async ({
     page,
+    request,
   }) => {
+    // Diagnostic: check if the dev server is responsive before navigating
+    const healthCheck = await request
+      .get(`http://localhost:${port}/`)
+      .catch((e: unknown) => e);
+    console.log(
+      `[ssr-redirect-diag] server health: ${healthCheck instanceof Error ? healthCheck.message : `status ${(healthCheck as { status: () => number }).status()}`}`,
+    );
+
     await page.goto(`http://localhost:${port}/async`);
     await waitForHydration(page);
-    // In DEV mode, redirect inside Suspense uses client-side error boundary + changeRoute.
-    // Under full test suite load, the RSC refetch can be slow.
+
+    // Diagnostic: check what the page shows after hydration
+    const bodyText = await page.evaluate(() => document.body.innerText);
+    console.log(
+      `[ssr-redirect-diag] body after hydration: ${JSON.stringify(bodyText.slice(0, 200))}`,
+    );
+
+    // Diagnostic: check if server still responds while waiting for redirect
+    const midCheck = await request
+      .get(`http://localhost:${port}/destination`)
+      .catch((e: unknown) => e);
+    console.log(
+      `[ssr-redirect-diag] server mid-test: ${midCheck instanceof Error ? midCheck.message : `status ${(midCheck as { status: () => number }).status()}`}`,
+    );
+
     await expect(page.getByRole('heading')).toHaveText('Destination Page', {
       timeout: 30_000,
     });
