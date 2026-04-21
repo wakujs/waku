@@ -44,7 +44,7 @@ export const getAvailablePort = async (): Promise<number> => {
     server.on('error', () => {
       server.close(() => resolve(getAvailablePort()));
     });
-    server.listen(port, '127.0.0.1', () => {
+    server.listen(port, () => {
       server.close(() => resolve(port));
     });
   });
