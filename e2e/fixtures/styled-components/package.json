@@ -14,12 +14,12 @@
     "react-dom": "~19.2.5",
     "react-server-dom-webpack": "~19.2.5",
     "serve": "^14.2.6",
-    "styled-components": "^6.3.12",
+    "styled-components": "^6.4.0",
     "waku": "latest"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.3"
   }
 }
