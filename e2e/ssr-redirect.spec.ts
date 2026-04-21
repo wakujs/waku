@@ -70,7 +70,11 @@ test.describe(`ssr-redirect`, () => {
   }) => {
     await page.goto(`http://localhost:${port}/async`);
     await waitForHydration(page);
-    await expect(page.getByRole('heading')).toHaveText('Destination Page');
+    // In DEV mode, redirect inside Suspense uses client-side error boundary + changeRoute.
+    // Under full test suite load, the RSC refetch can be slow.
+    await expect(page.getByRole('heading')).toHaveText('Destination Page', {
+      timeout: 30_000,
+    });
     const combined = serverOutput.join('');
     expect(combined).not.toContain('Error during rendering');
   });
