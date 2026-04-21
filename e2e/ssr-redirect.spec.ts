@@ -77,7 +77,10 @@ test.describe(`ssr-redirect`, () => {
       `[ssr-redirect-diag] server health: ${healthCheck instanceof Error ? healthCheck.message : `status ${(healthCheck as { status: () => number }).status()}`}`,
     );
 
-    await page.goto(`http://localhost:${port}/async`);
+    const response = await page.goto(`http://localhost:${port}/async`);
+    console.log(
+      `[ssr-redirect-diag] response status: ${response?.status()}, url: ${response?.url()}`,
+    );
     await waitForHydration(page);
 
     // Diagnostic: check what the page shows after hydration
@@ -85,13 +88,15 @@ test.describe(`ssr-redirect`, () => {
     console.log(
       `[ssr-redirect-diag] body after hydration: ${JSON.stringify(bodyText.slice(0, 200))}`,
     );
-
-    // Diagnostic: check if server still responds while waiting for redirect
-    const midCheck = await request
-      .get(`http://localhost:${port}/destination`)
-      .catch((e: unknown) => e);
+    const bodyHtml = await page.evaluate(() => document.body.innerHTML);
     console.log(
-      `[ssr-redirect-diag] server mid-test: ${midCheck instanceof Error ? midCheck.message : `status ${(midCheck as { status: () => number }).status()}`}`,
+      `[ssr-redirect-diag] body html: ${JSON.stringify(bodyHtml.slice(0, 500))}`,
+    );
+
+    // Diagnostic: check server output for SSR errors
+    const recentOutput = serverOutput.slice(-20).join('');
+    console.log(
+      `[ssr-redirect-diag] recent server output: ${JSON.stringify(recentOutput.slice(0, 500))}`,
     );
 
     await expect(page.getByRole('heading')).toHaveText('Destination Page', {
