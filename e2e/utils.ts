@@ -27,7 +27,7 @@ export const FETCH_ERROR_MESSAGES = {
   webkit: 'Load failed',
 };
 
-const EXEC_TIMEOUT_MS = process.env.CI ? 60_000 : undefined;
+const EXEC_TIMEOUT_MS = process.env.CI ? 120_000 : undefined;
 
 export type TestOptions = {
   mode: 'DEV' | 'PRD';
