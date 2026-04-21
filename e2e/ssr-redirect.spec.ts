@@ -62,6 +62,7 @@ test.describe(`ssr-redirect`, () => {
     await expect(page.getByRole('heading')).toHaveText('Action Page');
     await page.click('text=Redirect Action');
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
+    await context.close();
   });
 
   test('redirect should not log "Error during rendering" to server console', async ({
