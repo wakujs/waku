@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
-import { defaultRootOptions } from 'waku/client';
+import { unstable_defaultRootOptions as defaultRootOptions } from 'waku/client';
 import { Root, Slot } from 'waku/minimal/client';
 
 const pathname = window.location.pathname;

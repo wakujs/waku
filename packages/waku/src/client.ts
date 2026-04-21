@@ -6,9 +6,9 @@ import { getErrorInfo } from './lib/utils/custom-errors.js';
 export const unstable_allowServer = <T>(x: T) => x;
 
 /**
- * Although it doesn't have `unstable_` prefix, this is still experimental.
+ * Unsure if this is going to be a public API in the future.
  */
-export const defaultRootOptions = {
+export const unstable_defaultRootOptions = {
   onCaughtError(error: unknown) {
     if (getErrorInfo(error)) {
       return;
