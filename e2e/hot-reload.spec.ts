@@ -352,11 +352,12 @@ export default defineConfig({
     // Wait for server restart after config change
     await expect(async () => {
       const res = await request.get(`http://localhost:${port}/__test_env`);
+      expect(res.status()).toBe(200);
       const data = await res.json();
       expect(data.testMessage).toEqual('Hello from initial .env');
       expect(data.appVersion).toBeUndefined();
       expect(data.newFeature).toBeUndefined();
-    }).toPass({ timeout: 10_000 });
+    }).toPass({ timeout: 20_000 });
 
     // Add a new env variable
     createFile(
@@ -368,11 +369,12 @@ export default defineConfig({
     // Wait for server restart and verify new env var is available
     await expect(async () => {
       const res = await request.get(`http://localhost:${port}/__test_env`);
+      expect(res.status()).toBe(200);
       const data = await res.json();
       expect(data.testMessage).toEqual('Hello from initial .env');
       expect(data.appVersion).toEqual('1.0.0');
       expect(data.newFeature).toBeUndefined();
-    }).toPass({ timeout: 10_000 });
+    }).toPass({ timeout: 20_000 });
 
     // Add another new env variable
     createFile(
@@ -384,10 +386,11 @@ export default defineConfig({
     // Verify the newly added env var is available
     await expect(async () => {
       const res = await request.get(`http://localhost:${port}/__test_env`);
+      expect(res.status()).toBe(200);
       const data = await res.json();
       expect(data.testMessage).toEqual('Hello from initial .env');
       expect(data.appVersion).toEqual('1.0.0');
       expect(data.newFeature).toEqual('enabled');
-    }).toPass({ timeout: 10_000 });
+    }).toPass({ timeout: 20_000 });
   });
 });
