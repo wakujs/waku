@@ -34,23 +34,21 @@ export type TestOptions = {
   page: Page;
 };
 
-export const getAvailablePort = async (): Promise<number> =>
-  new Promise((resolve, reject) => {
+export const getAvailablePort = async (): Promise<number> => {
+  const MIN_PORT = 3100;
+  const MAX_PORT = 60000;
+  const port = MIN_PORT + Math.floor(Math.random() * (MAX_PORT - MIN_PORT));
+  return new Promise((resolve) => {
     const server = createServer();
     server.unref();
-    server.on('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      const address = server.address();
-      if (!address || typeof address === 'string') {
-        server.close(() => {
-          reject(new Error('Failed to acquire a free port'));
-        });
-        return;
-      }
-      const { port } = address;
+    server.on('error', () => {
+      server.close(() => resolve(getAvailablePort()));
+    });
+    server.listen(port, '127.0.0.1', () => {
       server.close(() => resolve(port));
     });
   });
+};
 
 const PORT_WAIT_TIMEOUT_MS = 30_000;
 
