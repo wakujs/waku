@@ -132,7 +132,7 @@ test.describe(`multi platform builds`, () => {
           ).resolves.not.toThrow();
           expect(checkJsonFile(temp)).toBe(true);
         } finally {
-          rmSync(temp, { recursive: true, force: true });
+          rmSync(temp, { recursive: true, force: true, maxRetries: 3 });
         }
       });
     }

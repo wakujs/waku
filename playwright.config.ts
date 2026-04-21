@@ -33,6 +33,8 @@ const config = defineConfig<TestOptions>({
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
+      // Workaround: WebKit has flaky internal crashes and network process errors on CI
+      retries: process.env.CI ? 2 : 0,
     },
   ].flatMap<PlaywrightTestProject<TestOptions>>((item) => [
     {
