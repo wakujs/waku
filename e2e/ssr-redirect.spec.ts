@@ -6,9 +6,12 @@ const startApp = prepareNormalSetup('ssr-redirect');
 test.describe(`ssr-redirect`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
+  const serverOutput: string[] = [];
 
   test.beforeAll(async ({ mode }) => {
-    ({ port, stopApp } = await startApp(mode));
+    ({ port, stopApp } = await startApp(mode, {
+      onServerOutput: (data) => serverOutput.push(data),
+    }));
   });
 
   test.afterAll(async () => {
@@ -59,5 +62,20 @@ test.describe(`ssr-redirect`, () => {
     await expect(page.getByRole('heading')).toHaveText('Action Page');
     await page.click('text=Redirect Action');
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
+    await context.close();
+  });
+
+  test('redirect should not log "Error during rendering" to server console', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/async`);
+    await waitForHydration(page);
+    // In DEV mode, redirect inside Suspense uses client-side error boundary + changeRoute.
+    // Under full test suite load, the RSC refetch can be slow.
+    await expect(page.getByRole('heading')).toHaveText('Destination Page', {
+      timeout: 30_000,
+    });
+    const combined = serverOutput.join('');
+    expect(combined).not.toContain('Error during rendering');
   });
 });

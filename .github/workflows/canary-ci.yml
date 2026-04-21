@@ -4,6 +4,9 @@ on:
   issue_comment:
     types: [created]
 
+permissions:
+  contents: read
+
 jobs:
   parse-version:
     if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/canary-ci run') }}
@@ -13,8 +16,10 @@ jobs:
     steps:
       - name: Get React version from comment
         id: get-version
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
-          comment="${{ github.event.comment.body }}"
+          comment="$COMMENT_BODY"
           # Extract version after '/canary-ci run', defaulting to 'canary' if not specified
           version=$(echo "$comment" | sed -n 's/^\/canary-ci run\s*\(\S*\).*/\1/p')
           if [ -z "$version" ]; then

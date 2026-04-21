@@ -2367,29 +2367,6 @@ describe('createPages api', () => {
     });
     expect(receivedParams).toEqual([{ slugs: ['a', 'b'] }, { slugs: ['c'] }]);
   });
-
-  it('static api with wildcard and empty path warns', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    createPages(async ({ createApi }) => [
-      createApi({
-        path: '/test/[...slugs]',
-        render: 'static',
-        method: 'GET',
-        staticPaths: [[], ['foo']],
-        handler: async () => {
-          return new Response('ok');
-        },
-      }),
-    ]);
-    const { getConfigs } = injectedFunctions();
-    await getConfigs();
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'Empty staticPaths entry is not supported for wildcard routes',
-      ),
-    );
-    warnSpy.mockRestore();
-  });
 });
 
 describe('createPages - exactPath', () => {

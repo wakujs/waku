@@ -27,30 +27,28 @@ export const FETCH_ERROR_MESSAGES = {
   webkit: 'Load failed',
 };
 
-const EXEC_TIMEOUT_MS = process.env.CI ? 60_000 : undefined;
+const EXEC_TIMEOUT_MS = process.env.CI ? 120_000 : undefined;
 
 export type TestOptions = {
   mode: 'DEV' | 'PRD';
   page: Page;
 };
 
-export const getAvailablePort = async (): Promise<number> =>
-  new Promise((resolve, reject) => {
+export const getAvailablePort = async (): Promise<number> => {
+  const MIN_PORT = 3100;
+  const MAX_PORT = 60000;
+  const port = MIN_PORT + Math.floor(Math.random() * (MAX_PORT - MIN_PORT));
+  return new Promise((resolve) => {
     const server = createServer();
     server.unref();
-    server.on('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      const address = server.address();
-      if (!address || typeof address === 'string') {
-        server.close(() => {
-          reject(new Error('Failed to acquire a free port'));
-        });
-        return;
-      }
-      const { port } = address;
+    server.on('error', () => {
+      server.close(() => resolve(getAvailablePort()));
+    });
+    server.listen(port, () => {
       server.close(() => resolve(port));
     });
   });
+};
 
 const PORT_WAIT_TIMEOUT_MS = 30_000;
 
@@ -170,7 +168,10 @@ export const prepareNormalSetup = (fixtureName: string) => {
   let built = false;
   const startApp = async (
     mode: 'DEV' | 'PRD' | 'STATIC',
-    options?: { cmd?: string | undefined },
+    options?: {
+      cmd?: string | undefined;
+      onServerOutput?: (data: string) => void;
+    },
   ) => {
     if (mode !== 'DEV' && !built) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
@@ -196,6 +197,11 @@ export const prepareNormalSetup = (fixtureName: string) => {
     // Assuming all commands support -p for port
     const cp = runShell(`${cmd} -p ${port}`, fixtureDir);
     debugChildProcess(cp, fileURLToPath(import.meta.url));
+    if (options?.onServerOutput) {
+      const callback = options.onServerOutput;
+      cp.stdout?.on('data', (data) => callback(data.toString()));
+      cp.stderr?.on('data', (data) => callback(data.toString()));
+    }
     await waitForPortReady(port);
     const stopApp = async () => {
       await terminate(cp);
