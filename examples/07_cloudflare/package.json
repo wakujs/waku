@@ -15,19 +15,19 @@
     "react-dom": "~19.2.5",
     "react-server-dom-webpack": "~19.2.5",
     "waku": "1.0.0-alpha.7",
-    "wrangler": "^4.81.0"
+    "wrangler": "^4.83.0"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.31.1",
-    "@rolldown/plugin-babel": "^0.2.2",
+    "@cloudflare/vite-plugin": "^1.32.3",
+    "@rolldown/plugin-babel": "^0.2.3",
     "@tailwindcss/vite": "4.2.2",
-    "@types/node": "^25.5.2",
+    "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "babel-plugin-react-compiler": "^1.0.0",
-    "miniflare": "^4.20260405.0",
+    "miniflare": "^4.20260415.0",
     "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.3"
   }
 }
