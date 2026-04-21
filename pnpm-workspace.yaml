@@ -15,7 +15,3 @@ minimumReleaseAgeExclude:
   - 'react-server-dom-webpack'
   - 'scheduler'
   - 'waku-jotai'
-overrides:
-  react: 'canary'
-  react-dom: 'canary'
-  react-server-dom-webpack: 'canary'
