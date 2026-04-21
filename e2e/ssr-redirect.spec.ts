@@ -89,25 +89,29 @@ test.describe(`ssr-redirect`, () => {
       `[ssr-redirect-diag] body after hydration: ${JSON.stringify(bodyText.slice(0, 200))}`,
     );
 
-    // Diagnostic: check RSC flight data and client errors
-    const diag = await page.evaluate(() => {
-      const flight = (globalThis as any).__FLIGHT_DATA;
-      const errors: string[] = [];
-      // Capture any error from the page
-      const meta = document.querySelector('meta[name="httpstatus"]');
-      return {
-        flightDataLength: flight ? flight.length : -1,
-        flightDataPreview: flight
-          ? JSON.stringify(flight.map((d: unknown) => typeof d === 'string' ? d.slice(0, 100) : '<binary>'))
-          : 'null',
-        httpStatus: meta ? meta.getAttribute('content') : 'no-meta',
-        html: document.body.innerHTML.slice(0, 300),
-      };
-    });
-    console.log(`[ssr-redirect-diag] flight data length: ${diag.flightDataLength}`);
-    console.log(`[ssr-redirect-diag] flight data preview: ${diag.flightDataPreview}`);
-    console.log(`[ssr-redirect-diag] httpstatus meta: ${diag.httpStatus}`);
-    console.log(`[ssr-redirect-diag] body html: ${diag.html.slice(0, 300)}`);
+    // Diagnostic: check if the browser can fetch from the server
+    const diag = await page.evaluate(async (p) => {
+      const results: Record<string, string> = {};
+      // Can the browser reach the server at all?
+      try {
+        const res = await fetch(`http://localhost:${p}/destination`);
+        results.fetchDestination = `status ${res.status}`;
+      } catch (e: any) {
+        results.fetchDestination = `error: ${e.message}`;
+      }
+      // Can the browser fetch the RSC endpoint?
+      try {
+        const res = await fetch(`http://localhost:${p}/RSC/R/destination`);
+        results.fetchRsc = `status ${res.status}, type ${res.headers.get('content-type')}`;
+      } catch (e: any) {
+        results.fetchRsc = `error: ${e.message}`;
+      }
+      results.bodyText = document.body.innerText.slice(0, 100);
+      return results;
+    }, port);
+    for (const [k, v] of Object.entries(diag)) {
+      console.log(`[ssr-redirect-diag] ${k}: ${v}`);
+    }
 
     await expect(page.getByRole('heading')).toHaveText('Destination Page', {
       timeout: 30_000,
