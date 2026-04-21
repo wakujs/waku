@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { unstable_defaultRootOptions as defaultRootOptions } from 'waku/client';
 import { Root, Slot } from 'waku/minimal/client';
 
 const rootElement = (
@@ -10,4 +11,4 @@ const rootElement = (
   </StrictMode>
 );
 
-createRoot(document).render(rootElement);
+createRoot(document, defaultRootOptions).render(rootElement);
