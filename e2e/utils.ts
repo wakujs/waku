@@ -35,7 +35,9 @@ export type TestOptions = {
 };
 
 export const getAvailablePort = async (): Promise<number> => {
-  const MIN_PORT = 3100;
+  // Start above 10080 to avoid browser-unsafe ports (e.g. 6665-6669, 10080)
+  // that Chromium/Firefox refuse to connect to with ERR_UNSAFE_PORT.
+  const MIN_PORT = 10100;
   const MAX_PORT = 60000;
   const port = MIN_PORT + Math.floor(Math.random() * (MAX_PORT - MIN_PORT));
   return new Promise((resolve) => {
