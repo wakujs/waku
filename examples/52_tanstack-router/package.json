@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "waku dev",
     "build": "waku build",
-    "start": "waku start"
+    "start": "waku start",
+    "typegen": "waku router typegen"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.168.23",

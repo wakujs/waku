@@ -61,10 +61,10 @@ function displayUsage() {
 Usage: waku [options] <command>
 
 Commands:
-  dev              Start the development server
-  build            Build the application for production
-  start            Start the production server
-  router typegen   Generate pages.gen.ts from src/pages
+  dev         Start the development server
+  build       Build the application for production
+  start       Start the production server
+  router      Router subcommands (run 'waku router' for details)
 
 Options:
   -h, --host            Hostname to bind (e.g. 0.0.0.0)
