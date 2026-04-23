@@ -5,7 +5,7 @@ export default function SlicePage() {
     <div>
       <h2>Slice Page</h2>
       <Slice id="one" />
-      <Slice id="two" />
+      <Slice id="two">Hello from SlicePage</Slice>
     </div>
   );
 }

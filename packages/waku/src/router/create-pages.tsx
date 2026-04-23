@@ -916,7 +916,7 @@ export const createPages = <
             if (!slice) {
               throw new Error('Slice not found: ' + id);
             }
-            return <slice.component {...params} />;
+            return createElement(slice.component, params, <Children />);
           },
         };
       });
