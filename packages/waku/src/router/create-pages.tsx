@@ -389,15 +389,14 @@ export const createPages = <
     return (pathname: string) => pathMappingWithoutGroups(pathSpec, pathname);
   };
 
-  const getLayoutIdPath = (
-    layoutPath: string,
-    routePath: string,
-  ): string => {
+  const getLayoutIdPath = (layoutPath: string, routePath: string): string => {
     const numSegments = parsePathWithSlug(layoutPath).length;
     if (numSegments === 0) {
       return '/';
     }
-    return '/' + routePath.split('/').filter(Boolean).slice(0, numSegments).join('/');
+    return (
+      '/' + routePath.split('/').filter(Boolean).slice(0, numSegments).join('/')
+    );
   };
 
   /** Builds the routeElement renderer from layouts and page slots */
