@@ -1,3 +1,7 @@
+// waku/router is technically a separate library from waku core.
+// This file is an exception placed here so that fsRouter users
+// get standalone type generation with better DX.
+
 import { existsSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
