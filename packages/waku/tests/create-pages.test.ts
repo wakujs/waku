@@ -2753,6 +2753,75 @@ describe('createPages - grouped paths', () => {
       },
     ]);
   });
+
+  it('uses concrete layout ids for static layout under grouped dynamic segment', async () => {
+    const TestPage = () => null;
+    const TestLayout = ({ children }: PropsWithChildren) => children;
+    createPages(async ({ createPage, createLayout }) => [
+      createLayout({
+        render: 'static',
+        path: '/(group)/[lang]',
+        component: TestLayout,
+      }),
+      createPage({
+        render: 'static',
+        path: '/(group)/[lang]/about',
+        staticPaths: ['en', 'fr'] as const,
+        component: TestPage,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    expect(await getConfigs()).toEqual([
+      {
+        type: 'route',
+        elements: {
+          'layout:/(group)/en': {
+            isStatic: true,
+            renderer: expect.any(Function),
+          },
+          'page:/en/about': { isStatic: true, renderer: expect.any(Function) },
+        },
+        rootElement: { isStatic: true, renderer: expect.any(Function) },
+        routeElement: { isStatic: true, renderer: expect.any(Function) },
+        noSsr: false,
+        path: [
+          { type: 'literal', name: 'en' },
+          { type: 'literal', name: 'about' },
+        ],
+        pathPattern: [
+          { type: 'literal', name: '(group)' },
+          { type: 'group', name: 'lang' },
+          { type: 'literal', name: 'about' },
+        ],
+        isStatic: true,
+        slices: [],
+      },
+      {
+        type: 'route',
+        elements: {
+          'layout:/(group)/fr': {
+            isStatic: true,
+            renderer: expect.any(Function),
+          },
+          'page:/fr/about': { isStatic: true, renderer: expect.any(Function) },
+        },
+        rootElement: { isStatic: true, renderer: expect.any(Function) },
+        routeElement: { isStatic: true, renderer: expect.any(Function) },
+        noSsr: false,
+        path: [
+          { type: 'literal', name: 'fr' },
+          { type: 'literal', name: 'about' },
+        ],
+        pathPattern: [
+          { type: 'literal', name: '(group)' },
+          { type: 'group', name: 'lang' },
+          { type: 'literal', name: 'about' },
+        ],
+        isStatic: true,
+        slices: [],
+      },
+    ]);
+  });
 });
 
 describe('pathMappingWithoutGroups', () => {
