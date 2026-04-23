@@ -4,6 +4,7 @@ import type { TypeEqual } from 'ts-expect';
 import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockedFunction } from 'vitest';
 import { parsePathWithSlug } from '../src/lib/utils/path.js';
+import { Children } from '../src/minimal/client.js';
 import type { PathsForPages } from '../src/router/base-types.js';
 import type { GetSlugs } from '../src/router/create-pages-utils/inferred-path-types.js';
 import {
@@ -972,7 +973,7 @@ describe('createPages pages and layouts', () => {
     });
   });
 
-  it('slug slice renderer passes params as props', async () => {
+  it('slug slice renderer passes params and children placeholder as props', async () => {
     const TestPage = () => null;
     const TestSlice = (_props: { id: string }) => null;
     createPages(async ({ createSlice, createPage }) => [
@@ -994,7 +995,8 @@ describe('createPages pages and layouts', () => {
     ) as any;
     const element = await sliceConfig.renderer({ id: '123' });
     expect(element).toBeDefined();
-    expect(element.props).toEqual({ id: '123' });
+    expect(element.props.id).toBe('123');
+    expect(element.props.children.type).toBe(Children);
   });
 
   it('static slice without slug has no pathSpec', async () => {
