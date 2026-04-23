@@ -44,6 +44,10 @@ async function run() {
   } else if (cmd === 'start') {
     const { runStart } = await import('./lib/vite-rsc/cmd-start.js');
     await runStart(values);
+  } else if (cmd === 'router') {
+    const { runRouter } = await import('./lib/vite-rsc/cmd-router.js');
+    await runRouter(positionals[1]);
+    process.exit(0);
   } else {
     if (cmd) {
       console.error('Unknown command:', cmd);
@@ -57,9 +61,10 @@ function displayUsage() {
 Usage: waku [options] <command>
 
 Commands:
-  dev         Start the development server
-  build       Build the application for production
-  start       Start the production server
+  dev              Start the development server
+  build            Build the application for production
+  start            Start the production server
+  router typegen   Generate pages.gen.ts from src/pages
 
 Options:
   -h, --host            Hostname to bind (e.g. 0.0.0.0)
