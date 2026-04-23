@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "waku dev",
     "build": "waku build",
-    "start": "waku start",
-    "typegen": "waku router typegen"
+    "start": "waku start"
   },
   "dependencies": {
     "hono": "^4.12.14",
