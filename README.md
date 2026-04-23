@@ -1448,7 +1448,7 @@ vercel
 
 For advanced users who want to avoid deploying functions, use the server entry file with the Vercel adapter and specify the `static` option.
 
-`./src/waku.server.ts`:
+`./src/waku.server.tsx`:
 
 ```ts
 import { fsRouter } from 'waku';
@@ -1473,7 +1473,7 @@ netlify deploy
 
 For advanced users who want to avoid deploying functions, use the server entry file with the Netlify adapter and specify the `static` option.
 
-`./src/waku.server.ts`:
+`./src/waku.server.tsx`:
 
 ```ts
 import { fsRouter } from 'waku';
@@ -1496,7 +1496,7 @@ wrangler deploy
 
 #### Pure SSG with Cloudflare Workers
 
-`./src/waku.server.ts`:
+`./src/waku.server.tsx`:
 
 ```ts
 import { fsRouter } from 'waku';
@@ -1510,7 +1510,7 @@ export default adapter(
 
 ### Deno Deploy (experimental)
 
-`./src/waku.server.ts`:
+`./src/waku.server.tsx`:
 
 ```ts
 import { fsRouter } from 'waku';
@@ -1528,7 +1528,7 @@ deployctl deploy --prod dist/serve-deno.js --exclude node_modules
 
 ### Bun (experimental)
 
-`./src/waku.server.ts`:
+`./src/waku.server.tsx`:
 
 ```ts
 import { fsRouter } from 'waku';
@@ -1545,7 +1545,7 @@ npm run build
 
 ### AWS Lambda (experimental)
 
-`./src/waku.server.ts`:
+`./src/waku.server.tsx`:
 
 ```ts
 import { fsRouter } from 'waku';
