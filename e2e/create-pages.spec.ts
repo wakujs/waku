@@ -502,7 +502,11 @@ test.describe(`create-pages`, () => {
   }) => {
     await page.goto(`http://localhost:${port}/layout-props/dynamic/en/post-1`);
     await expect(
-      page.getByRole('heading', { name: 'Dynamic Parent Layout' }),
+      page.getByRole('heading', {
+        name: 'Dynamic Parent Layout',
+        exact: true,
+        level: 2,
+      }),
     ).toBeVisible();
     await expect(page.getByTestId('dynamic-layout-props-keys')).toHaveText(
       'lang',
@@ -523,7 +527,11 @@ test.describe(`create-pages`, () => {
   }) => {
     await page.goto(`http://localhost:${port}/layout-props/static/en/post-1`);
     await expect(
-      page.getByRole('heading', { name: 'Static Parent Layout' }),
+      page.getByRole('heading', {
+        name: 'Static Parent Layout',
+        exact: true,
+        level: 2,
+      }),
     ).toBeVisible();
     await expect(page.getByTestId('static-layout-props-keys')).toHaveText(
       'lang',
@@ -544,7 +552,11 @@ test.describe(`create-pages`, () => {
       `http://localhost:${port}/layout-props/dynamic-complex/aaa/parent-b/ccc/parent-d/eee/child-f`,
     );
     await expect(
-      page.getByRole('heading', { name: 'Dynamic Complex Layout' }),
+      page.getByRole('heading', {
+        name: 'Dynamic Complex Layout',
+        exact: true,
+        level: 2,
+      }),
     ).toBeVisible();
     await expect(
       page.getByTestId('dynamic-complex-layout-props-keys'),
@@ -572,7 +584,11 @@ test.describe(`create-pages`, () => {
       `http://localhost:${port}/layout-props/static-grouped/en/docs/post-1`,
     );
     await expect(
-      page.getByRole('heading', { name: 'Static Grouped Layout' }),
+      page.getByRole('heading', {
+        name: 'Static Grouped Layout',
+        exact: true,
+        level: 2,
+      }),
     ).toBeVisible();
     await expect(
       page.getByTestId('static-grouped-layout-props-keys'),
