@@ -263,7 +263,9 @@ test.describe('fs-router', () => {
     await waitForHydration(page);
     const sliceText = await page.getByTestId('slice001').textContent();
     expect(sliceText?.startsWith('Slice 001')).toBeTruthy();
-    await expect(page.getByTestId('slice002')).toHaveText('Slice 002');
+    await expect(page.getByTestId('slice002')).toHaveText(
+      'Slice 002: Hello from page with slices',
+    );
   });
 
   test('slug slices', async ({ page }) => {

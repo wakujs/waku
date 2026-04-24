@@ -21,7 +21,7 @@ Then use these commands:
 
 Waku integrates with Cloudflare Workers via [`@cloudflare/vite-plugin`](https://developers.cloudflare.com/workers/vite-plugin/). This plugin runs your code in the actual Cloudflare workerd runtime during both development and build, so Cloudflare bindings (D1, KV, etc.) work without additional shims.
 
-> `@cloudflare/vite-plugin` is optional. If you don't need Cloudflare-specific features like D1, KV, or other bindings, you can deploy to Cloudflare Workers without it — just use `waku/adapters/cloudflare` in your `src/waku.server.ts`.
+> `@cloudflare/vite-plugin` is optional. If you don't need Cloudflare-specific features like D1, KV, or other bindings, you can deploy to Cloudflare Workers without it — just use `waku/adapters/cloudflare` in your `src/waku.server.tsx`.
 
 Install `@cloudflare/vite-plugin` and [`wrangler`](https://www.npmjs.com/package/wrangler) as development dependencies:
 
@@ -29,10 +29,10 @@ Install `@cloudflare/vite-plugin` and [`wrangler`](https://www.npmjs.com/package
 npm install --save-dev @cloudflare/vite-plugin wrangler
 ```
 
-Create a `src/waku.server.ts` file that uses the Cloudflare adapter:
+Create a `src/waku.server.tsx` file that uses the Cloudflare adapter:
 
 ```ts
-// ./src/waku.server.ts
+// ./src/waku.server.tsx
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/cloudflare';
 
@@ -165,7 +165,7 @@ The `@cloudflare/vite-plugin` configured in `waku.config.ts` runs your code in t
 ## Additional Handlers
 
 Waku supports defined additional [handlers](https://developers.cloudflare.com/workers/runtime-apis/handlers/) for your worker.
-Pass them to the adapter options in your waku.server.ts file:
+Pass them to the adapter options in your waku.server.tsx file:
 
 ```ts
 import { fsRouter } from 'waku';
@@ -255,7 +255,7 @@ To do this, create a `wrangler.jsonc` file with the following content:
 }
 ```
 
-and a `src/waku.server.ts` file that uses the Cloudflare adapter with the `static: true` option:
+and a `src/waku.server.tsx` file that uses the Cloudflare adapter with the `static: true` option:
 
 ```ts
 import { fsRouter } from 'waku';
