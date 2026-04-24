@@ -7,7 +7,8 @@
     "cf-typegen": "wrangler types",
     "dev": "waku dev",
     "build": "waku build",
-    "start": "wrangler dev"
+    "start": "wrangler dev",
+    "typegen": "waku router typegen"
   },
   "dependencies": {
     "hono": "^4.12.14",
