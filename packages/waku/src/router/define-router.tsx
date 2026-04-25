@@ -744,7 +744,7 @@ export function unstable_defineRouter(fns: {
     const path2moduleIds: Record<string, string[]> = {};
     const htmlRenderTasks = new Set<() => Promise<void>>();
 
-    // for each route, cache static elements and generate files for full static page
+    // for each route, cache static elements and generate files for full static route
     for (const item of myConfig.configs) {
       if (item.type !== 'route') {
         continue;
