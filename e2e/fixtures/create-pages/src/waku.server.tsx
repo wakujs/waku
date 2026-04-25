@@ -21,6 +21,25 @@ import { Slice001 } from './components/slice001.js';
 import { Slice002 } from './components/slice002.js';
 import { Slice003 } from './components/slice003.js';
 
+const renderLayoutProps = (title: string, testIdPrefix: string, props: any) => (
+  <div>
+    <h2>{title}</h2>
+    <p data-testid={`${testIdPrefix}-keys`}>
+      {Object.keys(props)
+        .filter((key) => key !== 'children')
+        .sort()
+        .join(',') || 'none'}
+    </p>
+    <p data-testid={`${testIdPrefix}-bbb`}>{props.bbb ?? 'missing'}</p>
+    <p data-testid={`${testIdPrefix}-ddd`}>{props.ddd ?? 'missing'}</p>
+    <p data-testid={`${testIdPrefix}-fff`}>{props.fff ?? 'missing'}</p>
+    <p data-testid={`${testIdPrefix}-lang`}>{props.lang ?? 'missing'}</p>
+    <p data-testid={`${testIdPrefix}-section`}>{props.section ?? 'missing'}</p>
+    <p data-testid={`${testIdPrefix}-slug`}>{props.slug ?? 'missing'}</p>
+    {props.children}
+  </div>
+);
+
 const pages: ReturnType<typeof createPages> = createPages(
   async ({ createPage, createLayout, createApi, createSlice }) => [
     createLayout({
@@ -336,6 +355,82 @@ const pages: ReturnType<typeof createPages> = createPages(
       render: 'dynamic',
       path: '/dynamic',
       component: () => <h1>Dynamic Page</h1>,
+    }),
+
+    createLayout({
+      render: 'dynamic',
+      path: '/layout-props/dynamic/[lang]',
+      component: ((props: any) =>
+        renderLayoutProps(
+          'Dynamic Parent Layout',
+          'dynamic-layout-props',
+          props,
+        )) as any,
+    }),
+
+    createPage({
+      render: 'dynamic',
+      path: '/layout-props/dynamic/[lang]/[slug]',
+      component: ({ slug }) => <h1>Dynamic Layout Props Page {slug}</h1>,
+    }),
+
+    createLayout({
+      render: 'dynamic',
+      path: '/layout-props/dynamic-complex/aaa/[bbb]/ccc/[ddd]',
+      component: ((props: any) =>
+        renderLayoutProps(
+          'Dynamic Complex Layout',
+          'dynamic-complex-layout-props',
+          props,
+        )) as any,
+    }),
+
+    createPage({
+      render: 'dynamic',
+      path: '/layout-props/dynamic-complex/aaa/[bbb]/ccc/[ddd]/eee/[fff]',
+      component: ({ fff }) => <h1>Dynamic Complex Layout Props Page {fff}</h1>,
+    }),
+
+    createLayout({
+      render: 'static',
+      path: '/layout-props/static/[lang]',
+      component: ((props: any) =>
+        renderLayoutProps(
+          'Static Parent Layout',
+          'static-layout-props',
+          props,
+        )) as any,
+    }),
+
+    createPage({
+      render: 'static',
+      path: '/layout-props/static/[lang]/[slug]',
+      staticPaths: [
+        ['en', 'post-1'],
+        ['fr', 'post-2'],
+      ] as const,
+      component: ({ slug }) => <h1>Static Layout Props Page {slug}</h1>,
+    }),
+
+    createLayout({
+      render: 'static',
+      path: '/(group)/layout-props/static-grouped/[lang]/[section]',
+      component: ((props: any) =>
+        renderLayoutProps(
+          'Static Grouped Layout',
+          'static-grouped-layout-props',
+          props,
+        )) as any,
+    }),
+
+    createPage({
+      render: 'static',
+      path: '/(group)/layout-props/static-grouped/[lang]/[section]/[slug]',
+      staticPaths: [
+        ['en', 'docs', 'post-1'],
+        ['fr', 'blog', 'post-2'],
+      ] as const,
+      component: ({ slug }) => <h1>Static Grouped Layout Props Page {slug}</h1>,
     }),
 
     createLayout({
