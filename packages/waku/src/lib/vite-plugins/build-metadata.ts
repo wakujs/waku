@@ -9,7 +9,8 @@ const forceRelativePath = (s: string) => (s.startsWith('.') ? s : './' + s);
 
 export function buildMetadataPlugin({ distDir }: { distDir: string }): Plugin {
   const virtualModule = 'virtual:vite-rsc-waku/build-metadata';
-  const dummySource = 'export const buildMetadata = new Map();';
+  const initialSource =
+    'export const buildMetadata = (globalThis.__WAKU_BUILD_METADATA__ ||= new Map());';
   return {
     name: 'waku:vite-plugins:build-metadata',
     resolveId(source, _importer, _options) {
@@ -25,7 +26,7 @@ export function buildMetadataPlugin({ distDir }: { distDir: string }): Plugin {
       if (id === '\0' + virtualModule) {
         // no-op during dev
         assert.equal(this.environment.mode, 'dev');
-        return dummySource;
+        return initialSource;
       }
     },
     renderChunk(code, chunk) {
@@ -49,7 +50,7 @@ export function buildMetadataPlugin({ distDir }: { distDir: string }): Plugin {
           DIST_SERVER,
           BUILD_METADATA_FILE,
         );
-        await writeFile(buildMetadataFile, dummySource);
+        await writeFile(buildMetadataFile, initialSource);
       },
     },
   };

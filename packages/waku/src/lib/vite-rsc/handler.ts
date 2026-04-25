@@ -125,8 +125,6 @@ const toProcessBuild =
       return fallbackHtml;
     };
 
-    const metadata = new Map<string, string>();
-
     await handleBuild({
       renderRsc: renderUtils.renderRsc,
       parseRsc: renderUtils.parseRsc,
@@ -134,7 +132,7 @@ const toProcessBuild =
       rscPath2pathname: (rscPath) =>
         joinPath(config.rscBase, encodeRscPath(rscPath)),
       saveBuildMetadata: async (key, value) => {
-        metadata.set(key, value);
+        buildMetadata.set(key, value);
       },
       withRequest: (req, fn) => INTERNAL_runWithContext(req, fn),
       generateFile: async (fileName, body) => {
@@ -154,7 +152,7 @@ const toProcessBuild =
     await emitFile(
       joinPath(DIST_SERVER, BUILD_METADATA_FILE),
       stringToStream(
-        `export const buildMetadata = new Map(${JSON.stringify(Array.from(metadata))});`,
+        `export const buildMetadata = new Map(${JSON.stringify(Array.from(buildMetadata))});`,
       ),
     );
   };
