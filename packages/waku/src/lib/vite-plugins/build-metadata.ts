@@ -9,8 +9,7 @@ const forceRelativePath = (s: string) => (s.startsWith('.') ? s : './' + s);
 
 export function buildMetadataPlugin({ distDir }: { distDir: string }): Plugin {
   const virtualModule = 'virtual:vite-rsc-waku/build-metadata';
-  const initialSource =
-    'export const buildMetadata = (globalThis.__WAKU_BUILD_METADATA__ ||= new Map());';
+  const initialSource = 'export const buildMetadata = new Map();';
   return {
     name: 'waku:vite-plugins:build-metadata',
     resolveId(source, _importer, _options) {
