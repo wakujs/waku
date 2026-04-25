@@ -11,7 +11,7 @@ import { buildMetadata } from 'virtual:vite-rsc-waku/build-metadata';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import notFoundHtml from 'virtual:vite-rsc-waku/not-found';
 import { INTERNAL_setAllEnv } from '../../server.js';
-import { BUILD_METADATA_FILE, DIST_PUBLIC, DIST_SERVER } from '../constants.js';
+import { DIST_PUBLIC } from '../constants.js';
 import { INTERNAL_runWithContext } from '../context.js';
 import type {
   Unstable_CreateServerEntryAdapter as CreateServerEntryAdapter,
@@ -125,8 +125,6 @@ const toProcessBuild =
       return fallbackHtml;
     };
 
-    const buildMetadata = new Map<string, string>();
-
     await handleBuild({
       renderRsc: renderUtils.renderRsc,
       parseRsc: renderUtils.parseRsc,
@@ -150,13 +148,6 @@ const toProcessBuild =
         );
       },
     });
-
-    await emitFile(
-      joinPath(DIST_SERVER, BUILD_METADATA_FILE),
-      stringToStream(
-        `export const buildMetadata = new Map(${JSON.stringify(Array.from(buildMetadata))});`,
-      ),
-    );
   };
 
 export const createServerEntryAdapter: CreateServerEntryAdapter =
