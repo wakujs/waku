@@ -482,7 +482,7 @@ test.describe(`create-pages`, () => {
     ).toBeVisible();
     const dynamicTime = await whatTime('Dynamic Layout');
     const staticTime = await whatTime('Static Layout');
-    expect(Math.abs(dynamicTime - staticTime)).toBeLessThanOrEqual(1000);
+    expect(staticTime).toBeLessThan(dynamicTime);
 
     await page.getByRole('link', { name: 'Home' }).click();
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
