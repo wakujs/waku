@@ -345,8 +345,7 @@ const mergeWithRuntimeConfigs = (
       ...(c.pathSpec !== undefined ? { pathSpec: c.pathSpec } : {}),
       isStatic: c.isStatic,
       renderer:
-        runtimeItem?.renderer ??
-        (async () => noRuntimeFn(`slice ${c.id}`)),
+        runtimeItem?.renderer ?? (async () => noRuntimeFn(`slice ${c.id}`)),
     };
   });
 };
