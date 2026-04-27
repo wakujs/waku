@@ -218,30 +218,18 @@ type SliceConfig = {
   renderer: (params?: Record<string, string | string[]>) => Promise<ReactNode>;
 };
 
-type SerializableRouteConfig = {
-  type: 'route';
-  path: PathSpec;
-  isStatic: boolean;
-  pathPattern?: PathSpec;
-  rootElement: { isStatic: boolean };
-  routeElement: { isStatic: boolean };
-  elements: Record<SlotId, { isStatic: boolean }>;
-  noSsr?: boolean;
-  slices?: string[];
+type SerializableRouteConfig = Omit<
+  RouteConfig,
+  'rootElement' | 'routeElement' | 'elements'
+> & {
+  rootElement: Omit<RouteConfig['rootElement'], 'renderer'>;
+  routeElement: Omit<RouteConfig['routeElement'], 'renderer'>;
+  elements: Record<SlotId, Omit<RouteConfig['elements'][string], 'renderer'>>;
 };
 
-type SerializableApiConfig = {
-  type: 'api';
-  path: PathSpec;
-  isStatic: boolean;
-};
+type SerializableApiConfig = Omit<ApiConfig, 'handler'>;
 
-type SerializableSliceConfig = {
-  type: 'slice';
-  id: string;
-  pathSpec?: PathSpec;
-  isStatic: boolean;
-};
+type SerializableSliceConfig = Omit<SliceConfig, 'renderer'>;
 
 type SerializableConfig =
   | SerializableRouteConfig
@@ -252,32 +240,33 @@ const toSerializable = (
   c: RouteConfig | ApiConfig | SliceConfig,
 ): SerializableConfig => {
   if (c.type === 'route') {
+    const { rootElement, routeElement, elements, ...rest } = c;
+    const {
+      renderer: _rootRenderer,
+      ...rootElementRest
+    } = rootElement;
+    const {
+      renderer: _routeRenderer,
+      ...routeElementRest
+    } = routeElement;
     return {
-      type: 'route',
-      path: c.path,
-      isStatic: c.isStatic,
-      ...(c.pathPattern !== undefined ? { pathPattern: c.pathPattern } : {}),
-      rootElement: { isStatic: c.rootElement.isStatic },
-      routeElement: { isStatic: c.routeElement.isStatic },
+      ...rest,
+      rootElement: rootElementRest,
+      routeElement: routeElementRest,
       elements: Object.fromEntries(
-        Object.entries(c.elements).map(([id, { isStatic }]) => [
+        Object.entries(elements).map(([id, { renderer: _r, ...elRest }]) => [
           id,
-          { isStatic },
+          elRest,
         ]),
       ),
-      ...(c.noSsr !== undefined ? { noSsr: c.noSsr } : {}),
-      ...(c.slices !== undefined ? { slices: c.slices } : {}),
     };
   }
   if (c.type === 'api') {
-    return { type: 'api', path: c.path, isStatic: c.isStatic };
+    const { handler: _handler, ...rest } = c;
+    return rest;
   }
-  return {
-    type: 'slice',
-    id: c.id,
-    ...(c.pathSpec !== undefined ? { pathSpec: c.pathSpec } : {}),
-    isStatic: c.isStatic,
-  };
+  const { renderer: _renderer, ...rest } = c;
+  return rest;
 };
 
 const pathSpecKey = (p: PathSpec) => JSON.stringify(p);
