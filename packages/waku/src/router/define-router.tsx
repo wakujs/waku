@@ -391,13 +391,13 @@ export function unstable_defineRouter(fns: {
     let merged: RuntimeConfig[] = runtimeConfigs;
     if (loadBuildMetadata) {
       const raw = await loadBuildMetadata('defineRouter:serializableConfigs');
-      const serializableConfigs = JSON.parse(
-        raw || '[]',
-      ) as SerializableConfig[];
-      merged = mergeWithSerializableConfigs(
-        runtimeConfigs,
-        serializableConfigs,
-      );
+      if (raw) {
+        const serializableConfigs = JSON.parse(raw) as SerializableConfig[];
+        merged = mergeWithSerializableConfigs(
+          runtimeConfigs,
+          serializableConfigs,
+        );
+      }
     }
     cachedConfigs = merged;
     cachedHas404 = merged.some(
