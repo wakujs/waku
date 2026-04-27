@@ -263,88 +263,29 @@ const toSerializable = (c: RuntimeConfig): SerializableConfig => {
   return rest;
 };
 
-const pathSpecKey = (p: PathSpec) => JSON.stringify(p);
+const stableJson = (v: unknown): string =>
+  JSON.stringify(v, (_k, val) =>
+    val && typeof val === 'object' && !Array.isArray(val)
+      ? Object.fromEntries(
+          Object.keys(val as Record<string, unknown>)
+            .sort()
+            .map((k) => [k, (val as Record<string, unknown>)[k]]),
+        )
+      : val,
+  );
 
-const mergeWithSerializableConfigs = (
+const verifyAgainstSerializableConfigs = (
   runtimeConfigs: RuntimeConfig[],
   serializableConfigs: SerializableConfig[],
-): RuntimeConfig[] => {
-  const runtimeRouteByPath = new Map<string, RouteConfig>();
-  const runtimeApiByPath = new Map<string, ApiConfig>();
-  const runtimeSliceById = new Map<string, SliceConfig>();
-  for (const c of runtimeConfigs) {
-    if (c.type === 'route') {
-      runtimeRouteByPath.set(pathSpecKey(c.path), c);
-    } else if (c.type === 'api') {
-      runtimeApiByPath.set(pathSpecKey(c.path), c);
-    } else {
-      runtimeSliceById.set(c.id, c);
-    }
+): void => {
+  if (
+    stableJson(runtimeConfigs.map(toSerializable)) !==
+    stableJson(serializableConfigs)
+  ) {
+    throw new Error(
+      'defineRouter: build/runtime config drift detected; rebuild required',
+    );
   }
-  return serializableConfigs.map((c) => {
-    if (c.type === 'route') {
-      const runtimeItem = runtimeRouteByPath.get(pathSpecKey(c.path));
-      if (!runtimeItem) {
-        throw new Error(
-          `defineRouter: missing runtime route for ${pathSpecAsString(c.path)} (build/runtime drift)`,
-        );
-      }
-      const elements: RouteConfig['elements'] = {};
-      for (const [id, val] of Object.entries(c.elements)) {
-        const runtimeEl = runtimeItem.elements[id];
-        if (!runtimeEl) {
-          throw new Error(
-            `defineRouter: missing runtime element ${id} for ${pathSpecAsString(c.path)}`,
-          );
-        }
-        elements[id] = { isStatic: val.isStatic, renderer: runtimeEl.renderer };
-      }
-      return {
-        type: 'route',
-        path: c.path,
-        isStatic: c.isStatic,
-        ...(c.pathPattern !== undefined ? { pathPattern: c.pathPattern } : {}),
-        rootElement: {
-          isStatic: c.rootElement.isStatic,
-          renderer: runtimeItem.rootElement.renderer,
-        },
-        routeElement: {
-          isStatic: c.routeElement.isStatic,
-          renderer: runtimeItem.routeElement.renderer,
-        },
-        elements,
-        ...(c.noSsr !== undefined ? { noSsr: c.noSsr } : {}),
-        ...(c.slices !== undefined ? { slices: c.slices } : {}),
-      };
-    }
-    if (c.type === 'api') {
-      const runtimeItem = runtimeApiByPath.get(pathSpecKey(c.path));
-      if (!runtimeItem) {
-        throw new Error(
-          `defineRouter: missing runtime api for ${pathSpecAsString(c.path)} (build/runtime drift)`,
-        );
-      }
-      return {
-        type: 'api',
-        path: c.path,
-        isStatic: c.isStatic,
-        handler: runtimeItem.handler,
-      };
-    }
-    const runtimeItem = runtimeSliceById.get(c.id);
-    if (!runtimeItem) {
-      throw new Error(
-        `defineRouter: missing runtime slice ${c.id} (build/runtime drift)`,
-      );
-    }
-    return {
-      type: 'slice',
-      id: c.id,
-      ...(c.pathSpec !== undefined ? { pathSpec: c.pathSpec } : {}),
-      isStatic: c.isStatic,
-      renderer: runtimeItem.renderer,
-    };
-  });
 };
 
 const getRouterPrefetchCode = (path2moduleIds: Record<string, string[]>) => {
@@ -388,19 +329,15 @@ export function unstable_defineRouter(fns: {
         Object.keys(item.elements).forEach(assertNonReservedSlotId);
       }
     });
-    let merged: RuntimeConfig[] = runtimeConfigs;
     if (loadBuildMetadata) {
       const raw = await loadBuildMetadata('defineRouter:serializableConfigs');
       if (raw) {
         const serializableConfigs = JSON.parse(raw) as SerializableConfig[];
-        merged = mergeWithSerializableConfigs(
-          runtimeConfigs,
-          serializableConfigs,
-        );
+        verifyAgainstSerializableConfigs(runtimeConfigs, serializableConfigs);
       }
     }
-    cachedConfigs = merged;
-    cachedHas404 = merged.some(
+    cachedConfigs = runtimeConfigs;
+    cachedHas404 = runtimeConfigs.some(
       (item) => item.type === 'route' && is404(item.path),
     );
   };
