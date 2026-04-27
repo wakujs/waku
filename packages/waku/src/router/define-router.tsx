@@ -966,9 +966,6 @@ export function unstable_defineRouter(fns: {
   };
 
   return Object.assign(defineHandlers({ handleRequest, handleBuild }), {
-    unstable_getRouterConfigs: async () => {
-      await initConfigs();
-      return getCachedConfigs();
-    },
+    unstable_getRouterConfigs: () => Promise.resolve(getCachedConfigs()),
   });
 }
