@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { readFile } from 'node:fs/promises';
 import adapter from 'waku/adapters/default';
 import { Children, Slot } from 'waku/minimal/client';
@@ -10,154 +9,131 @@ import HomePage from './components/HomePage';
 import NestedBazPage from './components/NestedBazPage';
 import Root from './components/Root';
 
-const elementRenderers: Record<
-  string,
-  (option: { routePath: string }) => ReactNode
-> = {
-  root: () => (
-    <Root>
-      <Children />
-    </Root>
-  ),
-  'layout:/': () => (
-    <HomeLayout>
-      <Children />
-    </HomeLayout>
-  ),
-  'route:/': () => (
-    <Slot id="layout:/">
-      <Slot id="page:/" />
-    </Slot>
-  ),
-  'route:/foo': () => (
-    <Slot id="layout:/">
-      <Slot id="page:/foo" />
-    </Slot>
-  ),
-  'route:/bar': () => (
-    <Slot id="layout:/">
-      <Slot id="page:/bar" />
-    </Slot>
-  ),
-  'route:/nested/baz': () => (
-    <Slot id="layout:/">
-      <Slot id="page:/nested/baz" />
-    </Slot>
-  ),
-  'route:/dynamic/[slug]': () => (
-    <Slot id="layout:/">
-      <Slot id="page:/dynamic/[slug]" />
-    </Slot>
-  ),
-  'page:/': () => <HomePage />,
-  'page:/foo': () => <FooPage />,
-  'page:/bar': () => <BarPage />,
-  'page:/nested/baz': () => <NestedBazPage />,
-  'page:/dynamic/[slug]': ({ routePath }) => <h3>{routePath}</h3>,
-};
+const renderRoot = () => (
+  <Root>
+    <Children />
+  </Root>
+);
 
-const apiHandlers: Record<string, () => Promise<Response>> = {
-  hi: async () =>
-    new Response(
-      new ReadableStream({
-        start(controller) {
-          controller.enqueue(new TextEncoder().encode('hello world!'));
-          controller.close();
-        },
-      }),
-    ),
-  'hi.txt': async () => {
-    const hiTxt = await readFile('./private/hi.txt');
-    return new Response(
-      new ReadableStream({
-        start(controller) {
-          controller.enqueue(hiTxt);
-          controller.close();
-        },
-      }),
-    );
-  },
-  empty: async () => new Response(null, { status: 200 }),
-};
+const renderHomeLayout = () => (
+  <HomeLayout>
+    <Children />
+  </HomeLayout>
+);
 
 export default adapter(
   defineRouter({
-    renderElement: (id, option) => elementRenderers[id]!(option),
-    renderSlice: async () => {
-      throw new Error('No slices defined');
-    },
-    handleApi: async (id) => apiHandlers[id]!(),
     getConfigs: async () => [
       {
         type: 'route',
+        pattern: '/',
         path: [],
         isStatic: true,
         slices: [],
-        rootElement: { isStatic: true, rendererId: 'root' },
-        routeElement: { isStatic: true, rendererId: 'route:/' },
+        rootElement: { isStatic: true, renderer: renderRoot },
+        routeElement: {
+          isStatic: true,
+          renderer: () => (
+            <Slot id="layout:/">
+              <Slot id="page:/" />
+            </Slot>
+          ),
+        },
         elements: {
-          'layout:/': { isStatic: true, rendererId: 'layout:/' },
-          'page:/': { isStatic: true, rendererId: 'page:/' },
+          'layout:/': { isStatic: true, renderer: renderHomeLayout },
+          'page:/': { isStatic: true, renderer: () => <HomePage /> },
         },
       },
       {
         type: 'route',
+        pattern: '/foo',
         path: [{ type: 'literal', name: 'foo' }],
         isStatic: true,
         slices: [],
-        rootElement: { isStatic: true, rendererId: 'root' },
-        routeElement: { isStatic: true, rendererId: 'route:/foo' },
+        rootElement: { isStatic: true, renderer: renderRoot },
+        routeElement: {
+          isStatic: true,
+          renderer: () => (
+            <Slot id="layout:/">
+              <Slot id="page:/foo" />
+            </Slot>
+          ),
+        },
         elements: {
-          'layout:/': { isStatic: true, rendererId: 'layout:/' },
-          'page:/foo': { isStatic: true, rendererId: 'page:/foo' },
+          'layout:/': { isStatic: true, renderer: renderHomeLayout },
+          'page:/foo': { isStatic: true, renderer: () => <FooPage /> },
         },
       },
       {
         type: 'route',
+        pattern: '/bar',
         path: [{ type: 'literal', name: 'bar' }],
         isStatic: true,
         slices: [],
-        rootElement: { isStatic: true, rendererId: 'root' },
-        routeElement: { isStatic: true, rendererId: 'route:/bar' },
+        rootElement: { isStatic: true, renderer: renderRoot },
+        routeElement: {
+          isStatic: true,
+          renderer: () => (
+            <Slot id="layout:/">
+              <Slot id="page:/bar" />
+            </Slot>
+          ),
+        },
         elements: {
-          'layout:/': { isStatic: true, rendererId: 'layout:/' },
-          'page:/bar': { isStatic: true, rendererId: 'page:/bar' },
+          'layout:/': { isStatic: true, renderer: renderHomeLayout },
+          'page:/bar': { isStatic: true, renderer: () => <BarPage /> },
         },
       },
       {
         type: 'route',
+        pattern: '/nested/baz',
         path: [
           { type: 'literal', name: 'nested' },
           { type: 'literal', name: 'baz' },
         ],
         isStatic: true,
         slices: [],
-        rootElement: { isStatic: true, rendererId: 'root' },
-        routeElement: { isStatic: true, rendererId: 'route:/nested/baz' },
+        rootElement: { isStatic: true, renderer: renderRoot },
+        routeElement: {
+          isStatic: true,
+          renderer: () => (
+            <Slot id="layout:/">
+              <Slot id="page:/nested/baz" />
+            </Slot>
+          ),
+        },
         elements: {
-          'layout:/': { isStatic: true, rendererId: 'layout:/' },
+          'layout:/': { isStatic: true, renderer: renderHomeLayout },
           'page:/nested/baz': {
             isStatic: true,
-            rendererId: 'page:/nested/baz',
+            renderer: () => <NestedBazPage />,
           },
         },
       },
       {
         type: 'route',
+        pattern: '/dynamic/([^/]+)',
         path: [
           { type: 'literal', name: 'dynamic' },
           { type: 'group', name: 'slug' },
         ],
         isStatic: true,
         slices: [],
-        rootElement: { isStatic: true, rendererId: 'root' },
-        routeElement: { isStatic: true, rendererId: 'route:/dynamic/[slug]' },
+        rootElement: { isStatic: true, renderer: renderRoot },
+        routeElement: {
+          isStatic: true,
+          renderer: () => (
+            <Slot id="layout:/">
+              <Slot id="page:/dynamic/[slug]" />
+            </Slot>
+          ),
+        },
         elements: {
-          'layout:/': { isStatic: true, rendererId: 'layout:/' },
+          'layout:/': { isStatic: true, renderer: renderHomeLayout },
           // using `[slug]` syntax is just an example and it technically conflicts with others. So, it's better to use a different prefix like `dynamic-page:`.
           'page:/dynamic/[slug]': {
             isStatic: false,
-            rendererId: 'page:/dynamic/[slug]',
+            renderer: ({ routePath }) => <h3>{routePath}</h3>,
           },
         },
       },
@@ -168,7 +144,16 @@ export default adapter(
           { type: 'literal', name: 'hi' },
         ],
         isStatic: false,
-        handlerId: 'hi',
+        handler: async () => {
+          return new Response(
+            new ReadableStream({
+              start(controller) {
+                controller.enqueue(new TextEncoder().encode('hello world!'));
+                controller.close();
+              },
+            }),
+          );
+        },
       },
       {
         type: 'api',
@@ -177,7 +162,17 @@ export default adapter(
           { type: 'literal', name: 'hi.txt' },
         ],
         isStatic: true,
-        handlerId: 'hi.txt',
+        handler: async () => {
+          const hiTxt = await readFile('./private/hi.txt');
+          return new Response(
+            new ReadableStream({
+              start(controller) {
+                controller.enqueue(hiTxt);
+                controller.close();
+              },
+            }),
+          );
+        },
       },
       {
         type: 'api',
@@ -186,7 +181,11 @@ export default adapter(
           { type: 'literal', name: 'empty' },
         ],
         isStatic: false,
-        handlerId: 'empty',
+        handler: async () => {
+          return new Response(null, {
+            status: 200,
+          });
+        },
       },
     ],
   }),

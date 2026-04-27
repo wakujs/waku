@@ -25,86 +25,12 @@ const PATH_PAGE: Record<string, ReactNode> = {
   '/baz2': <Baz2Page />, // static page + lazy dynamic slice
 };
 
-const elementRenderers: Record<string, () => ReactNode> = {
-  root: () => (
-    <html>
-      <head>
-        <title>Waku example</title>
-      </head>
-      <body>
-        <Children />
-      </body>
-    </html>
-  ),
-  'layout:/': () => (
-    <Layout>
-      <Children />
-    </Layout>
-  ),
-};
-for (const path of Object.keys(PATH_PAGE)) {
-  elementRenderers[`route:${path}`] = () => (
-    <Slot id="layout:/">
-      <Slot id={`page:${path}`} />
-    </Slot>
-  );
-  elementRenderers[`page:${path}`] = () => PATH_PAGE[path];
-}
-
-const sliceRenderers: Record<string, () => ReactNode> = {
-  slice001: () => <Slice001 />,
-  slice002: () => <Slice002 />,
-};
-
-const apiHandlers: Record<string, (req: Request) => Promise<Response>> = {
-  hi: async (req) => {
-    if (req.method === 'GET') {
-      return new Response(
-        new ReadableStream({
-          start(controller) {
-            controller.enqueue(new TextEncoder().encode('hello world!'));
-            controller.close();
-          },
-        }),
-      );
-    }
-    if (req.method === 'POST') {
-      const bodyContent = await new Response(req.body).text();
-      return new Response(
-        new ReadableStream({
-          start(controller) {
-            controller.enqueue(
-              new TextEncoder().encode(`POST to hello world! ${bodyContent}`),
-            );
-            controller.close();
-          },
-        }),
-      );
-    }
-    return new Response(null, { status: 404 });
-  },
-  'hi.txt': async () => {
-    const hiTxt = await readFile('./private/hi.txt');
-    return new Response(
-      new ReadableStream({
-        start(controller) {
-          controller.enqueue(hiTxt);
-          controller.close();
-        },
-      }),
-    );
-  },
-  empty: async () => new Response(null, { status: 200 }),
-};
-
 const router: ReturnType<typeof defineRouter> = defineRouter({
-  renderElement: (id) => elementRenderers[id]!(),
-  renderSlice: async (id) => sliceRenderers[id]!(),
-  handleApi: async (id, req) => apiHandlers[id]!(req),
   getConfigs: async () => [
     ...Object.keys(PATH_PAGE).map((path) => {
       return {
         type: 'route' as const,
+        pattern: `^${path}$`,
         path: path
           .split('/')
           .filter(Boolean)
@@ -113,55 +39,124 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
         ...(path === '/' ? { slices: ['slice001'] } : {}),
         ...(path === '/bar1' ? { slices: ['slice001'] } : {}),
         ...(path === '/bar2' ? { slices: ['slice002'] } : {}),
-        rootElement: { isStatic: true, rendererId: 'root' },
-        routeElement: { isStatic: true, rendererId: `route:${path}` },
+        rootElement: {
+          isStatic: true,
+          renderer: () => (
+            <html>
+              <head>
+                <title>Waku example</title>
+              </head>
+              <body>
+                <Children />
+              </body>
+            </html>
+          ),
+        },
+        routeElement: {
+          isStatic: true,
+          renderer: () => (
+            <Slot id="layout:/">
+              <Slot id={`page:${path}`} />
+            </Slot>
+          ),
+        },
         elements: {
-          'layout:/': { isStatic: true, rendererId: 'layout:/' },
+          'layout:/': {
+            isStatic: true,
+            renderer: () => (
+              <Layout>
+                <Children />
+              </Layout>
+            ),
+          },
           [`page:${path}`]: {
             isStatic: STATIC_PAGES.includes(path),
-            rendererId: `page:${path}`,
+            renderer: () => PATH_PAGE[path],
           },
         },
       };
     }),
     {
-      type: 'api' as const,
+      type: 'api',
       path: [
         { type: 'literal', name: 'api' },
         { type: 'literal', name: 'hi' },
       ],
       isStatic: false,
-      handlerId: 'hi',
+      handler: async (req) => {
+        if (req.method === 'GET') {
+          return new Response(
+            new ReadableStream({
+              start(controller) {
+                controller.enqueue(new TextEncoder().encode('hello world!'));
+                controller.close();
+              },
+            }),
+          );
+        }
+        if (req.method === 'POST') {
+          const bodyContent = await new Response(req.body).text();
+          return new Response(
+            new ReadableStream({
+              start(controller) {
+                controller.enqueue(
+                  new TextEncoder().encode(
+                    `POST to hello world! ${bodyContent}`,
+                  ),
+                );
+                controller.close();
+              },
+            }),
+          );
+        }
+        return new Response(null, {
+          status: 404,
+        });
+      },
     },
     {
-      type: 'api' as const,
+      type: 'api',
       path: [
         { type: 'literal', name: 'api' },
         { type: 'literal', name: 'hi.txt' },
       ],
       isStatic: false,
-      handlerId: 'hi.txt',
+      handler: async () => {
+        const hiTxt = await readFile('./private/hi.txt');
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(hiTxt);
+              controller.close();
+            },
+          }),
+        );
+      },
     },
     {
-      type: 'api' as const,
+      type: 'api',
       path: [
         { type: 'literal', name: 'api' },
         { type: 'literal', name: 'empty' },
       ],
       isStatic: true,
-      handlerId: 'empty',
+      handler: async () => {
+        return new Response(null, {
+          status: 200,
+        });
+      },
     },
     {
-      type: 'slice' as const,
+      type: 'slice',
       id: 'slice001',
       isStatic: true,
-      rendererId: 'slice001',
+      renderer: async () => <Slice001 />,
     },
     {
-      type: 'slice' as const,
+      type: 'slice',
       id: 'slice002',
       isStatic: false,
-      rendererId: 'slice002',
+      renderer: async () => <Slice002 />,
     },
   ],
 });

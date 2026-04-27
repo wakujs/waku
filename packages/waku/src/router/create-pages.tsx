@@ -642,10 +642,6 @@ export const createPages = <
         createSlice,
       });
       await ready;
-      // Populate executable router state (renderers, handlers) and cache
-      // serializable configs. Done here so it happens regardless of how
-      // configs are obtained downstream (via getConfigs vs metadata).
-      populateRouterState();
 
       configured = true;
     }
@@ -667,306 +663,268 @@ export const createPages = <
     );
   };
 
-  type RendererOption = { routePath: string; query: string | undefined };
-  type ElementRenderer = (option: RendererOption) => ReactNode;
-  type SliceRenderer = (
-    params?: Record<string, string | string[]>,
-  ) => Promise<ReactNode>;
-  type ElementSpec = { isStatic: boolean; rendererId: string };
-  type RouteConfigShape = {
-    type: 'route';
-    path: PathSpec;
-    isStatic: boolean;
-    pathPattern?: PathSpec;
-    rootElement: ElementSpec;
-    routeElement: ElementSpec;
-    elements: Record<string, ElementSpec>;
-    noSsr: boolean;
-    slices: string[];
-  };
-  type ApiConfigShape = {
-    type: 'api';
-    path: PathSpec;
-    isStatic: boolean;
-    handlerId: string;
-  };
-  type SliceConfigShape = {
-    type: 'slice';
-    id: string;
-    pathSpec?: PathSpec;
-    isStatic: boolean;
-    rendererId: string;
-  };
-  // Executable router state. Populated by populateRouterState() — independent
-  // of how the configs are obtained (live vs metadata).
-  const routeRenderers = new Map<string, ElementRenderer>();
-  const sliceRenderers = new Map<string, SliceRenderer>();
-  const apiHandlers = new Map<string, ApiHandler>();
-  // Cached config shape, built alongside renderer registration.
-  let cachedConfigs:
-    | (RouteConfigShape | ApiConfigShape | SliceConfigShape)[]
-    | undefined;
+  const definedRouter = unstable_defineRouter({
+    getConfigs: async () => {
+      await configure();
+      type ElementSpec = {
+        isStatic: boolean;
+        renderer: (options: {
+          routePath: string;
+          query: string | undefined;
+        }) => ReactNode;
+      };
+      const routeConfigs: {
+        type: 'route';
+        path: PathSpec;
+        isStatic: boolean;
+        pathPattern?: PathSpec;
+        rootElement: ElementSpec;
+        routeElement: ElementSpec;
+        elements: Record<string, ElementSpec>;
+        noSsr: boolean;
+        slices: string[];
+      }[] = [];
+      const rootIsStatic = !rootItem || rootItem.render === 'static';
+      for (const [path, { literalSpec, originalSpec }] of staticPathMap) {
+        const noSsr = noSsrSet.has(literalSpec);
+        const layoutPaths = getLayouts(originalSpec ?? literalSpec);
+        const pageComponent = staticComponentMap.get(
+          joinPath(path, 'page').slice(1),
+        )!;
+        const getPropsMapping = createPathPropsMapper(path);
 
-  const populateRouterState = () => {
-    if (cachedConfigs) {
-      return;
-    }
-    const routeConfigs: RouteConfigShape[] = [];
+        const elements: Record<string, ElementSpec> = {};
 
-    // Register the root renderer once (path-independent)
-    routeRenderers.set('root', renderRoot);
-    const rootIsStatic = !rootItem || rootItem.render === 'static';
-    for (const [path, { literalSpec, originalSpec }] of staticPathMap) {
-      const noSsr = noSsrSet.has(literalSpec);
-      const layoutPaths = getLayouts(originalSpec ?? literalSpec);
-      const pageComponent = staticComponentMap.get(
-        joinPath(path, 'page').slice(1),
-      )!;
-      const getPropsMapping = createPathPropsMapper(path);
-
-      const elements: Record<string, ElementSpec> = {};
-
-      // Add layout elements
-      for (const lPath of layoutPaths) {
-        const layout = getDynamicLayout(lPath) ?? getStaticLayout(lPath);
-        if (!layout || Array.isArray(layout)) {
-          throw new Error('Invalid layout ' + lPath);
+        // Add layout elements
+        for (const lPath of layoutPaths) {
+          const layout = getDynamicLayout(lPath) ?? getStaticLayout(lPath);
+          if (!layout || Array.isArray(layout)) {
+            throw new Error('Invalid layout ' + lPath);
+          }
+          elements[`layout:${lPath}`] = {
+            isStatic: !dynamicLayoutPathMap.has(lPath),
+            renderer: () => createElement(layout, null, <Children />),
+          };
         }
-        const layoutId = `layout:${lPath}`;
-        elements[layoutId] = {
-          isStatic: !dynamicLayoutPathMap.has(lPath),
-          rendererId: layoutId,
-        };
-        routeRenderers.set(layoutId, () =>
-          createElement(layout, null, <Children />),
-        );
-      }
 
-      // Add page element
-      const pageId = `page:${path}`;
-      elements[pageId] = { isStatic: true, rendererId: pageId };
-      routeRenderers.set(pageId, (option) =>
-        createElement(
-          pageComponent,
-          {
-            ...getPropsMapping(option.routePath),
-            ...(option.query ? { query: option.query } : {}),
-            path: option.routePath,
-          },
-          <Children />,
-        ),
-      );
-
-      const routeElementId = `route:${path}`;
-      routeRenderers.set(
-        routeElementId,
-        buildRouteElement(layoutPaths, path, pageComponent),
-      );
-
-      routeConfigs.push({
-        type: 'route',
-        path: literalSpec.filter((part) => !part.name?.startsWith('(')),
-        isStatic:
-          rootIsStatic &&
-          isAllElementsStatic(elements) &&
-          isAllSlicesStatic(path),
-        ...(originalSpec && { pathPattern: originalSpec }),
-        rootElement: { isStatic: rootIsStatic, rendererId: 'root' },
-        routeElement: { isStatic: true, rendererId: routeElementId },
-        elements,
-        noSsr,
-        slices: slicePathMap.get(path) || [],
-      });
-    }
-    const buildPageElements = (
-      path: string,
-      components: ComponentEntry,
-      layoutPaths: string[],
-    ) => {
-      const getPropsMapping = createPathPropsMapper(path);
-      const elements: Record<string, ElementSpec> = {};
-      // Add layout elements
-      for (const lPath of layoutPaths) {
-        const layout = getDynamicLayout(lPath) ?? getStaticLayout(lPath);
-        if (!layout || Array.isArray(layout)) {
-          throw new Error('Invalid layout ' + lPath);
-        }
-        const layoutId = `layout:${lPath}`;
-        elements[layoutId] = {
-          isStatic: !dynamicLayoutPathMap.has(lPath),
-          rendererId: layoutId,
-        };
-        routeRenderers.set(layoutId, () =>
-          createElement(layout, null, <Children />),
-        );
-      }
-      // Add page elements
-      if (Array.isArray(components)) {
-        for (let i = 0; i < components.length; i++) {
-          const comp = components[i];
-          if (comp) {
-            const id = `page:${path}:${i}`;
-            elements[id] = {
-              isStatic: comp.render === 'static',
-              rendererId: id,
-            };
-            routeRenderers.set(id, (option) =>
-              createElement(comp.component, {
+        // Add page element
+        elements[`page:${path}`] = {
+          isStatic: true,
+          renderer: (option) =>
+            createElement(
+              pageComponent,
+              {
                 ...getPropsMapping(option.routePath),
                 ...(option.query ? { query: option.query } : {}),
                 path: option.routePath,
-              }),
-            );
-          }
-        }
-      } else {
-        const id = `page:${path}`;
-        elements[id] = { isStatic: false, rendererId: id };
-        routeRenderers.set(id, (option) =>
-          createElement(
-            components,
-            {
-              ...getPropsMapping(option.routePath),
-              ...(option.query ? { query: option.query } : {}),
-              path: option.routePath,
-            },
-            <Children />,
-          ),
-        );
-      }
-      const routeElementId = `route:${path}`;
-      routeRenderers.set(
-        routeElementId,
-        buildRouteElement(layoutPaths, path, components),
-      );
-      return { elements, routeElementId };
-    };
-
-    for (const [path, [pathSpec, components]] of dynamicPagePathMap) {
-      const noSsr = noSsrSet.has(pathSpec);
-      const layoutPaths = getLayouts(pathSpec);
-      const { elements, routeElementId } = buildPageElements(
-        path,
-        components,
-        layoutPaths,
-      );
-
-      routeConfigs.push({
-        type: 'route',
-        isStatic:
-          rootIsStatic &&
-          isAllElementsStatic(elements) &&
-          isAllSlicesStatic(path),
-        path: pathSpec.filter((part) => !part.name?.startsWith('(')),
-        rootElement: { isStatic: rootIsStatic, rendererId: 'root' },
-        routeElement: { isStatic: true, rendererId: routeElementId },
-        elements,
-        noSsr,
-        slices: slicePathMap.get(path) || [],
-      });
-    }
-    for (const [path, [pathSpec, components]] of wildcardPagePathMap) {
-      const noSsr = noSsrSet.has(pathSpec);
-      const layoutPaths = getLayouts(pathSpec);
-      const { elements, routeElementId } = buildPageElements(
-        path,
-        components,
-        layoutPaths,
-      );
-
-      routeConfigs.push({
-        type: 'route',
-        isStatic:
-          rootIsStatic &&
-          isAllElementsStatic(elements) &&
-          isAllSlicesStatic(path),
-        path: pathSpec.filter((part) => !part.name?.startsWith('(')),
-        rootElement: { isStatic: rootIsStatic, rendererId: 'root' },
-        routeElement: { isStatic: true, rendererId: routeElementId },
-        elements,
-        noSsr,
-        slices: slicePathMap.get(path) || [],
-      });
-    }
-    const apiConfigs: ApiConfigShape[] = Array.from(apiPathMap.entries()).map(
-      ([key, { pathSpec, render, handlers, staticParams }]) => {
-        const handlerId = `api:${key}`;
-        apiHandlers.set(handlerId, async (req, apiContext) => {
-          const path = new URL(req.url).pathname;
-          const method = req.method;
-          const handler = handlers[method as Method] ?? handlers.all;
-          if (!handler) {
-            throw new Error(
-              'API method not found: ' + method + 'for path: ' + path,
-            );
-          }
-          return handler(
-            req,
-            staticParams ? { params: staticParams } : apiContext,
-          );
-        });
-        return {
-          type: 'api' as const,
-          path: pathSpec,
-          isStatic: render === 'static',
-          handlerId,
+              },
+              <Children />,
+            ),
         };
-      },
-    );
 
-    const sliceConfigs: SliceConfigShape[] = Array.from(sliceIdMap).map(
-      ([id, { isStatic }]) => {
+        routeConfigs.push({
+          type: 'route',
+          path: literalSpec.filter((part) => !part.name?.startsWith('(')),
+          isStatic:
+            rootIsStatic &&
+            isAllElementsStatic(elements) &&
+            isAllSlicesStatic(path),
+          ...(originalSpec && { pathPattern: originalSpec }),
+          rootElement: { isStatic: rootIsStatic, renderer: renderRoot },
+          routeElement: {
+            isStatic: true,
+            renderer: buildRouteElement(layoutPaths, path, pageComponent),
+          },
+          elements,
+          noSsr,
+          slices: slicePathMap.get(path) || [],
+        });
+      }
+      for (const [path, [pathSpec, components]] of dynamicPagePathMap) {
+        const noSsr = noSsrSet.has(pathSpec);
+        const layoutPaths = getLayouts(pathSpec);
+        const getPropsMapping = createPathPropsMapper(path);
+
+        const elements: Record<string, ElementSpec> = {};
+
+        // Add layout elements
+        for (const lPath of layoutPaths) {
+          const layout = getDynamicLayout(lPath) ?? getStaticLayout(lPath);
+          if (!layout || Array.isArray(layout)) {
+            throw new Error('Invalid layout ' + lPath);
+          }
+          elements[`layout:${lPath}`] = {
+            isStatic: !dynamicLayoutPathMap.has(lPath),
+            renderer: () => createElement(layout, null, <Children />),
+          };
+        }
+
+        // Add page elements
+        if (Array.isArray(components)) {
+          for (let i = 0; i < components.length; i++) {
+            const comp = components[i];
+            if (comp) {
+              elements[`page:${path}:${i}`] = {
+                isStatic: comp.render === 'static',
+                renderer: (option) =>
+                  createElement(comp.component, {
+                    ...getPropsMapping(option.routePath),
+                    ...(option.query ? { query: option.query } : {}),
+                    path: option.routePath,
+                  }),
+              };
+            }
+          }
+        } else {
+          elements[`page:${path}`] = {
+            isStatic: false,
+            renderer: (option) =>
+              createElement(
+                components,
+                {
+                  ...getPropsMapping(option.routePath),
+                  ...(option.query ? { query: option.query } : {}),
+                  path: option.routePath,
+                },
+                <Children />,
+              ),
+          };
+        }
+
+        routeConfigs.push({
+          type: 'route',
+          isStatic:
+            rootIsStatic &&
+            isAllElementsStatic(elements) &&
+            isAllSlicesStatic(path),
+          path: pathSpec.filter((part) => !part.name?.startsWith('(')),
+          rootElement: { isStatic: rootIsStatic, renderer: renderRoot },
+          routeElement: {
+            isStatic: true,
+            renderer: buildRouteElement(layoutPaths, path, components),
+          },
+          elements,
+          noSsr,
+          slices: slicePathMap.get(path) || [],
+        });
+      }
+      for (const [path, [pathSpec, components]] of wildcardPagePathMap) {
+        const noSsr = noSsrSet.has(pathSpec);
+        const layoutPaths = getLayouts(pathSpec);
+        const getPropsMapping = createPathPropsMapper(path);
+
+        const elements: Record<string, ElementSpec> = {};
+
+        // Add layout elements
+        for (const lPath of layoutPaths) {
+          const layout = getDynamicLayout(lPath) ?? getStaticLayout(lPath);
+          if (!layout || Array.isArray(layout)) {
+            throw new Error('Invalid layout ' + lPath);
+          }
+          elements[`layout:${lPath}`] = {
+            isStatic: !dynamicLayoutPathMap.has(lPath),
+            renderer: () => createElement(layout, null, <Children />),
+          };
+        }
+
+        // Add page elements
+        if (Array.isArray(components)) {
+          for (let i = 0; i < components.length; i++) {
+            const comp = components[i];
+            if (comp) {
+              elements[`page:${path}:${i}`] = {
+                isStatic: comp.render === 'static',
+                renderer: (option) =>
+                  createElement(comp.component, {
+                    ...getPropsMapping(option.routePath),
+                    ...(option.query ? { query: option.query } : {}),
+                    path: option.routePath,
+                  }),
+              };
+            }
+          }
+        } else {
+          elements[`page:${path}`] = {
+            isStatic: false,
+            renderer: (option) =>
+              createElement(
+                components,
+                {
+                  ...getPropsMapping(option.routePath),
+                  ...(option.query ? { query: option.query } : {}),
+                  path: option.routePath,
+                },
+                <Children />,
+              ),
+          };
+        }
+
+        routeConfigs.push({
+          type: 'route',
+          isStatic:
+            rootIsStatic &&
+            isAllElementsStatic(elements) &&
+            isAllSlicesStatic(path),
+          path: pathSpec.filter((part) => !part.name?.startsWith('(')),
+          rootElement: { isStatic: rootIsStatic, renderer: renderRoot },
+          routeElement: {
+            isStatic: true,
+            renderer: buildRouteElement(layoutPaths, path, components),
+          },
+          elements,
+          noSsr,
+          slices: slicePathMap.get(path) || [],
+        });
+      }
+      const apiConfigs = Array.from(apiPathMap.values()).map(
+        ({ pathSpec, render, handlers, staticParams }) => {
+          return {
+            type: 'api' as const,
+            path: pathSpec,
+            isStatic: render === 'static',
+            handler: async (
+              req: Request,
+              apiContext: Parameters<ApiHandler>[1],
+            ) => {
+              const path = new URL(req.url).pathname;
+              const method = req.method;
+              const handler = handlers[method as Method] ?? handlers.all;
+              if (!handler) {
+                throw new Error(
+                  'API method not found: ' + method + 'for path: ' + path,
+                );
+              }
+              return handler(
+                req,
+                staticParams ? { params: staticParams } : apiContext,
+              );
+            },
+          };
+        },
+      );
+
+      const sliceConfigs = Array.from(sliceIdMap).map(([id, { isStatic }]) => {
         const slicePathSpec = parsePathWithSlug(id);
         const hasSlug = slicePathSpec.some((s) => s.type !== 'literal');
-        const rendererId = `slice:${id}`;
-        sliceRenderers.set(rendererId, async (params) => {
-          const slice = sliceIdMap.get(id);
-          if (!slice) {
-            throw new Error('Slice not found: ' + id);
-          }
-          return createElement(slice.component, params, <Children />);
-        });
         return {
           type: 'slice' as const,
           id,
           ...(hasSlug ? { pathSpec: slicePathSpec } : {}),
           isStatic,
-          rendererId,
+          renderer: async (params?: Record<string, string | string[]>) => {
+            const slice = sliceIdMap.get(id);
+            if (!slice) {
+              throw new Error('Slice not found: ' + id);
+            }
+            return createElement(slice.component, params, <Children />);
+          },
         };
-      },
-    );
+      });
 
-    const pathConfigs = [...routeConfigs, ...apiConfigs]
-      // Sort routes by priority: "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
-      .sort((configA, configB) => routePriorityComparator(configA, configB));
-    cachedConfigs = [...pathConfigs, ...sliceConfigs];
-  };
-
-  const definedRouter = unstable_defineRouter({
-    renderElement: (rendererId, option) => {
-      const renderer = routeRenderers.get(rendererId);
-      if (!renderer) {
-        throw new Error(`Renderer not found: ${rendererId}`);
-      }
-      return renderer(option);
-    },
-    renderSlice: async (rendererId, params) => {
-      const renderer = sliceRenderers.get(rendererId);
-      if (!renderer) {
-        throw new Error(`Slice renderer not found: ${rendererId}`);
-      }
-      return renderer(params);
-    },
-    handleApi: async (handlerId, req, ctx) => {
-      const handler = apiHandlers.get(handlerId);
-      if (!handler) {
-        throw new Error(`API handler not found: ${handlerId}`);
-      }
-      return handler(req, ctx);
-    },
-    getConfigs: async () => {
-      await configure();
-      return cachedConfigs!;
+      const pathConfigs = [...routeConfigs, ...apiConfigs]
+        // Sort routes by priority: "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
+        .sort((configA, configB) => routePriorityComparator(configA, configB));
+      return [...pathConfigs, ...sliceConfigs];
     },
     ...(options?.unstable_skipBuild && {
       unstable_skipBuild: options.unstable_skipBuild,
