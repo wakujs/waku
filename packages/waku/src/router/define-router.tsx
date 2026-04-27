@@ -218,6 +218,8 @@ type SliceConfig = {
   renderer: (params?: Record<string, string | string[]>) => Promise<ReactNode>;
 };
 
+type RuntimeConfig = RouteConfig | ApiConfig | SliceConfig;
+
 type SerializableRouteConfig = Omit<
   RouteConfig,
   'rootElement' | 'routeElement' | 'elements'
@@ -237,7 +239,7 @@ type SerializableConfig =
   | SerializableSliceConfig;
 
 const toSerializable = (
-  c: RouteConfig | ApiConfig | SliceConfig,
+  c: RuntimeConfig,
 ): SerializableConfig => {
   if (c.type === 'route') {
     const { rootElement, routeElement, elements, ...rest } = c;
@@ -271,84 +273,84 @@ const toSerializable = (
 
 const pathSpecKey = (p: PathSpec) => JSON.stringify(p);
 
-const mergeWithManifest = (
-  live: (RouteConfig | ApiConfig | SliceConfig)[],
-  manifest: SerializableConfig[],
-): (RouteConfig | ApiConfig | SliceConfig)[] => {
-  const liveRouteByPath = new Map<string, RouteConfig>();
-  const liveApiByPath = new Map<string, ApiConfig>();
-  const liveSliceById = new Map<string, SliceConfig>();
-  for (const c of live) {
+const mergeWithSerializableConfigs = (
+  runtimeConfigs: RuntimeConfig[],
+  serializableConfigs: SerializableConfig[],
+): RuntimeConfig[] => {
+  const runtimeRouteByPath = new Map<string, RouteConfig>();
+  const runtimeApiByPath = new Map<string, ApiConfig>();
+  const runtimeSliceById = new Map<string, SliceConfig>();
+  for (const c of runtimeConfigs) {
     if (c.type === 'route') {
-      liveRouteByPath.set(pathSpecKey(c.path), c);
+      runtimeRouteByPath.set(pathSpecKey(c.path), c);
     } else if (c.type === 'api') {
-      liveApiByPath.set(pathSpecKey(c.path), c);
+      runtimeApiByPath.set(pathSpecKey(c.path), c);
     } else {
-      liveSliceById.set(c.id, c);
+      runtimeSliceById.set(c.id, c);
     }
   }
-  return manifest.map((m) => {
-    if (m.type === 'route') {
-      const liveItem = liveRouteByPath.get(pathSpecKey(m.path));
-      if (!liveItem) {
+  return serializableConfigs.map((c) => {
+    if (c.type === 'route') {
+      const runtimeItem = runtimeRouteByPath.get(pathSpecKey(c.path));
+      if (!runtimeItem) {
         throw new Error(
-          `defineRouter: missing live route for ${pathSpecAsString(m.path)} (build/runtime drift)`,
+          `defineRouter: missing runtime route for ${pathSpecAsString(c.path)} (build/runtime drift)`,
         );
       }
       const elements: RouteConfig['elements'] = {};
-      for (const [id, val] of Object.entries(m.elements)) {
-        const liveEl = liveItem.elements[id];
-        if (!liveEl) {
+      for (const [id, val] of Object.entries(c.elements)) {
+        const runtimeEl = runtimeItem.elements[id];
+        if (!runtimeEl) {
           throw new Error(
-            `defineRouter: missing live element ${id} for ${pathSpecAsString(m.path)}`,
+            `defineRouter: missing runtime element ${id} for ${pathSpecAsString(c.path)}`,
           );
         }
-        elements[id] = { isStatic: val.isStatic, renderer: liveEl.renderer };
+        elements[id] = { isStatic: val.isStatic, renderer: runtimeEl.renderer };
       }
       return {
         type: 'route',
-        path: m.path,
-        isStatic: m.isStatic,
-        ...(m.pathPattern !== undefined ? { pathPattern: m.pathPattern } : {}),
+        path: c.path,
+        isStatic: c.isStatic,
+        ...(c.pathPattern !== undefined ? { pathPattern: c.pathPattern } : {}),
         rootElement: {
-          isStatic: m.rootElement.isStatic,
-          renderer: liveItem.rootElement.renderer,
+          isStatic: c.rootElement.isStatic,
+          renderer: runtimeItem.rootElement.renderer,
         },
         routeElement: {
-          isStatic: m.routeElement.isStatic,
-          renderer: liveItem.routeElement.renderer,
+          isStatic: c.routeElement.isStatic,
+          renderer: runtimeItem.routeElement.renderer,
         },
         elements,
-        ...(m.noSsr !== undefined ? { noSsr: m.noSsr } : {}),
-        ...(m.slices !== undefined ? { slices: m.slices } : {}),
+        ...(c.noSsr !== undefined ? { noSsr: c.noSsr } : {}),
+        ...(c.slices !== undefined ? { slices: c.slices } : {}),
       };
     }
-    if (m.type === 'api') {
-      const liveItem = liveApiByPath.get(pathSpecKey(m.path));
-      if (!liveItem) {
+    if (c.type === 'api') {
+      const runtimeItem = runtimeApiByPath.get(pathSpecKey(c.path));
+      if (!runtimeItem) {
         throw new Error(
-          `defineRouter: missing live api for ${pathSpecAsString(m.path)} (build/runtime drift)`,
+          `defineRouter: missing runtime api for ${pathSpecAsString(c.path)} (build/runtime drift)`,
         );
       }
       return {
         type: 'api',
-        path: m.path,
-        isStatic: m.isStatic,
-        handler: liveItem.handler,
+        path: c.path,
+        isStatic: c.isStatic,
+        handler: runtimeItem.handler,
       };
     }
-    const liveItem = liveSliceById.get(m.id);
-    if (!liveItem) {
+    const runtimeItem = runtimeSliceById.get(c.id);
+    if (!runtimeItem) {
       throw new Error(
-        `defineRouter: missing live slice ${m.id} (build/runtime drift)`,
+        `defineRouter: missing runtime slice ${c.id} (build/runtime drift)`,
       );
     }
     return {
       type: 'slice',
-      id: m.id,
-      ...(m.pathSpec !== undefined ? { pathSpec: m.pathSpec } : {}),
-      isStatic: m.isStatic,
-      renderer: liveItem.renderer,
+      id: c.id,
+      ...(c.pathSpec !== undefined ? { pathSpec: c.pathSpec } : {}),
+      isStatic: c.isStatic,
+      renderer: runtimeItem.renderer,
     };
   });
 };
@@ -376,12 +378,10 @@ globalThis.__WAKU_ROUTER_PREFETCH__ = (path, callback) => {
 };
 
 export function unstable_defineRouter(fns: {
-  getConfigs: () => Promise<Iterable<RouteConfig | ApiConfig | SliceConfig>>;
+  getConfigs: () => Promise<Iterable<RuntimeConfig>>;
   unstable_skipBuild?: (routePath: string) => boolean;
 }) {
-  let cachedConfigs:
-    | (RouteConfig | ApiConfig | SliceConfig)[]
-    | undefined;
+  let cachedConfigs: RuntimeConfig[] | undefined;
 
   const initConfigs = async (
     loadBuildMetadata?: (key: string) => Promise<string | undefined>,
@@ -389,8 +389,8 @@ export function unstable_defineRouter(fns: {
     if (cachedConfigs) {
       return;
     }
-    const live = Array.from(await fns.getConfigs());
-    live.forEach((item) => {
+    const runtimeConfigs = Array.from(await fns.getConfigs());
+    runtimeConfigs.forEach((item) => {
       if (item.type === 'route') {
         Object.keys(item.elements).forEach(assertNonReservedSlotId);
       }
@@ -400,15 +400,18 @@ export function unstable_defineRouter(fns: {
         'defineRouter:serializableConfigs',
       );
       if (raw) {
-        const manifest = JSON.parse(raw) as SerializableConfig[];
-        cachedConfigs = mergeWithManifest(live, manifest);
+        const serializableConfigs = JSON.parse(raw) as SerializableConfig[];
+        cachedConfigs = mergeWithSerializableConfigs(
+          runtimeConfigs,
+          serializableConfigs,
+        );
         return;
       }
     }
-    cachedConfigs = live;
+    cachedConfigs = runtimeConfigs;
   };
 
-  const getCachedConfigs = (): (RouteConfig | ApiConfig | SliceConfig)[] => {
+  const getCachedConfigs = (): RuntimeConfig[] => {
     if (!cachedConfigs) {
       throw new Error('defineRouter: configs not initialized');
     }
