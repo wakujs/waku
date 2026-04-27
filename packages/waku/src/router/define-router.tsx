@@ -387,11 +387,6 @@ export function unstable_defineRouter(fns: {
       return;
     }
     const runtimeConfigs = Array.from(await fns.getConfigs());
-    runtimeConfigs.forEach((item) => {
-      if (item.type === 'route') {
-        Object.keys(item.elements).forEach(assertNonReservedSlotId);
-      }
-    });
     let configs: RuntimeConfig[] = runtimeConfigs;
     if (loadBuildMetadata) {
       const raw = await loadBuildMetadata('defineRouter:serializableConfigs');
@@ -400,6 +395,11 @@ export function unstable_defineRouter(fns: {
         configs = mergeWithRuntimeConfigs(serializableConfigs, runtimeConfigs);
       }
     }
+    configs.forEach((item) => {
+      if (item.type === 'route') {
+        Object.keys(item.elements).forEach(assertNonReservedSlotId);
+      }
+    });
     cachedConfigs = configs;
     cachedHas404 = configs.some(
       (item) => item.type === 'route' && is404(item.path),
@@ -1030,6 +1030,6 @@ export function unstable_defineRouter(fns: {
   };
 
   return Object.assign(defineHandlers({ handleRequest, handleBuild }), {
-    unstable_getRouterConfigs: () => Promise.resolve(getCachedConfigs()),
+    unstable_getRouterConfigs: async () => getCachedConfigs(),
   });
 }
