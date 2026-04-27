@@ -238,19 +238,11 @@ type SerializableConfig =
   | SerializableApiConfig
   | SerializableSliceConfig;
 
-const toSerializable = (
-  c: RuntimeConfig,
-): SerializableConfig => {
+const toSerializable = (c: RuntimeConfig): SerializableConfig => {
   if (c.type === 'route') {
     const { rootElement, routeElement, elements, ...rest } = c;
-    const {
-      renderer: _rootRenderer,
-      ...rootElementRest
-    } = rootElement;
-    const {
-      renderer: _routeRenderer,
-      ...routeElementRest
-    } = routeElement;
+    const { renderer: _rootRenderer, ...rootElementRest } = rootElement;
+    const { renderer: _routeRenderer, ...routeElementRest } = routeElement;
     return {
       ...rest,
       rootElement: rootElementRest,
@@ -382,6 +374,7 @@ export function unstable_defineRouter(fns: {
   unstable_skipBuild?: (routePath: string) => boolean;
 }) {
   let cachedConfigs: RuntimeConfig[] | undefined;
+  let cachedHas404 = false;
 
   const initConfigs = async (
     loadBuildMetadata?: (key: string) => Promise<string | undefined>,
@@ -395,33 +388,36 @@ export function unstable_defineRouter(fns: {
         Object.keys(item.elements).forEach(assertNonReservedSlotId);
       }
     });
+    let merged: RuntimeConfig[] = runtimeConfigs;
     if (loadBuildMetadata) {
-      const raw = await loadBuildMetadata(
-        'defineRouter:serializableConfigs',
+      const raw = await loadBuildMetadata('defineRouter:serializableConfigs');
+      const serializableConfigs = JSON.parse(
+        raw || '[]',
+      ) as SerializableConfig[];
+      merged = mergeWithSerializableConfigs(
+        runtimeConfigs,
+        serializableConfigs,
       );
-      if (raw) {
-        const serializableConfigs = JSON.parse(raw) as SerializableConfig[];
-        cachedConfigs = mergeWithSerializableConfigs(
-          runtimeConfigs,
-          serializableConfigs,
-        );
-        return;
-      }
     }
-    cachedConfigs = runtimeConfigs;
+    cachedConfigs = merged;
+    cachedHas404 = merged.some(
+      (item) => item.type === 'route' && is404(item.path),
+    );
   };
 
-  const getCachedConfigs = (): RuntimeConfig[] => {
+  const getCachedConfigs = () => {
     if (!cachedConfigs) {
       throw new Error('defineRouter: configs not initialized');
     }
     return cachedConfigs;
   };
 
-  const has404 = () =>
-    getCachedConfigs().some(
-      (item) => item.type === 'route' && is404(item.path),
-    );
+  const has404 = (): boolean => {
+    if (!cachedConfigs) {
+      throw new Error('defineRouter: configs not initialized');
+    }
+    return cachedHas404;
+  };
 
   const getPathConfigItem = (pathname: string) => {
     const routePath = pathnameToRoutePath(pathname);
