@@ -137,7 +137,7 @@ export function fsRouter(
             render: 'static',
             id: pathItems.slice(1).join('/'),
             ...config,
-          });
+          } as never); // FIXME avoid as never
         } else if (pathItems.at(-1) === '_layout') {
           createLayout({
             path,
