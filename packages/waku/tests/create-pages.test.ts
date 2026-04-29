@@ -318,6 +318,22 @@ describe('type tests', () => {
       // good
       createSlice({ render: 'static', component: () => null, id: 'slice001' });
     });
+    it('static with slug', () => {
+      const createSlice: CreateSlice = vi.fn();
+      // @ts-expect-error: staticPaths is required for static slug slice
+      createSlice({
+        render: 'static',
+        component: () => null,
+        id: 'dynamic/[id]',
+      });
+      // good
+      createSlice({
+        render: 'static',
+        component: () => null,
+        id: 'dynamic/[id]',
+        staticPaths: ['foo', 'bar'],
+      });
+    });
     it('dynamic', () => {
       const createSlice: CreateSlice = vi.fn();
       // @ts-expect-error: path is invalid
@@ -1026,6 +1042,91 @@ describe('createPages pages and layouts', () => {
       renderer: expect.any(Function),
     });
     expect(sliceConfig).not.toHaveProperty('pathSpec');
+  });
+
+  it('static slug slice expands staticPaths into concrete entries', async () => {
+    const TestPage = () => null;
+    const TestSlice = (_props: { id: string }) => null;
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/',
+        component: TestPage,
+      }),
+      createSlice({
+        render: 'static',
+        component: TestSlice,
+        id: 'dynamic/[id]',
+        staticPaths: ['foo', 'bar'],
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs());
+    const sliceConfigs = configs.filter((c: any) => c.type === 'slice');
+    expect(sliceConfigs).toHaveLength(2);
+    expect(sliceConfigs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'slice',
+          id: 'dynamic/foo',
+          isStatic: true,
+        }),
+        expect.objectContaining({
+          type: 'slice',
+          id: 'dynamic/bar',
+          isStatic: true,
+        }),
+      ]),
+    );
+    // Concrete entries are literal — no pathSpec.
+    sliceConfigs.forEach((c: any) => expect(c).not.toHaveProperty('pathSpec'));
+    // Renderer binds the slug param: invoking the wrapper passes the
+    // mapped slug value through to the user's component as a prop.
+    const fooConfig = sliceConfigs.find((c: any) => c.id === 'dynamic/foo');
+    const wrapper = await (fooConfig as any).renderer();
+    const inner = (wrapper as any).type((wrapper as any).props);
+    expect(inner.props.id).toBe('foo');
+  });
+
+  it('static slug slice fails when staticPaths is missing', async () => {
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/',
+        component: () => null,
+      }),
+      // @ts-expect-error: staticPaths is required for slug slices
+      createSlice({
+        render: 'static',
+        component: () => null,
+        id: 'dynamic/[id]',
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    await expect(getConfigs).rejects.toThrowError(
+      /Static slice with slug requires staticPaths/,
+    );
+  });
+
+  it('static slug slice fails when staticPaths length does not match slugs', async () => {
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/',
+        component: () => null,
+      }),
+      createSlice({
+        render: 'static',
+        component: () => null,
+        id: 'items/[category]/[id]',
+        // @ts-expect-error: each entry must be [string, string] for two slugs
+        staticPaths: ['only-one'],
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    await expect(getConfigs).rejects.toThrowError(
+      'staticPaths does not match with slug pattern',
+    );
   });
 
   it('creates a nested static page', async () => {

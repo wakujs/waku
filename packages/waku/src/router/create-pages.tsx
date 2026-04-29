@@ -215,11 +215,35 @@ type SlugPropsFromId<ID extends string> =
       ? { [K in GetSlugs<`/${ID}`>[number]]: string }
       : {};
 
-export type CreateSlice = <ID extends string>(slice: {
-  render: 'static' | 'dynamic';
-  id: ID;
-  component: FunctionComponent<{ children: ReactNode } & SlugPropsFromId<ID>>;
-}) => void;
+export type CreateSlice = <
+  ID extends string,
+  StaticPaths extends StaticSlugRoutePaths<`/${ID}`>,
+>(
+  slice:
+    | {
+        render: 'dynamic';
+        id: ID;
+        component: FunctionComponent<
+          { children: ReactNode } & SlugPropsFromId<ID>
+        >;
+      }
+    | {
+        // Static slice without a slug in its id.
+        render: 'static';
+        id: PathWithoutSlug<`/${ID}`> extends never ? never : ID;
+        component: FunctionComponent<{ children: ReactNode }>;
+      }
+    | {
+        // Static slice with a slug — staticPaths is required and
+        // enumerates the concrete slug values to pre-build.
+        render: 'static';
+        id: PathWithStaticSlugs<`/${ID}`> extends never ? never : ID;
+        component: FunctionComponent<
+          { children: ReactNode } & SlugPropsFromId<ID>
+        >;
+        staticPaths: StaticPaths;
+      },
+) => void;
 
 type RootItem = {
   render: 'static' | 'dynamic';
@@ -621,6 +645,38 @@ export const createPages = <
   const createSlice: CreateSlice = (slice) => {
     if (configured) {
       throw new Error('createSlice no longer available');
+    }
+    const slicePathSpec = parsePathWithSlug(slice.id);
+    const { numSlugs, numWildcards } = countSlugsAndWildcards(slicePathSpec);
+    if (slice.render === 'static' && numSlugs > 0) {
+      if (!('staticPaths' in slice) || !slice.staticPaths) {
+        throw new Error(
+          `Static slice with slug requires staticPaths: ${slice.id}`,
+        );
+      }
+      const staticPaths = slice.staticPaths.map((item) =>
+        (Array.isArray(item) ? item : [item]).map(sanitizeSlug),
+      );
+      for (const staticPath of staticPaths) {
+        if (staticPath.length !== numSlugs && numWildcards === 0) {
+          throw new Error('staticPaths does not match with slug pattern');
+        }
+        const { definedPath, mapping } = expandStaticPathSpec(
+          slicePathSpec,
+          staticPath,
+        );
+        const concreteId = definedPath.replace(/^\//, '');
+        if (sliceIdMap.has(concreteId)) {
+          throw new Error(`Duplicated slice id: ${concreteId}`);
+        }
+        const WrappedComponent = (props: Record<string, unknown>) =>
+          createElement(slice.component as any, { ...props, ...mapping });
+        sliceIdMap.set(concreteId, {
+          component: WrappedComponent,
+          isStatic: true,
+        });
+      }
+      return;
     }
     if (sliceIdMap.has(slice.id)) {
       throw new Error(`Duplicated slice id: ${slice.id}`);

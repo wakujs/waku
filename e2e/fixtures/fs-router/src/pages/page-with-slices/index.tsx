@@ -13,6 +13,11 @@ export default function Slices() {
         lazy
         fallback={<span data-testid="dynamic-slice-loading">Loading...</span>}
       />
+      <Slice
+        id="preset/foo"
+        lazy
+        fallback={<span data-testid="preset-slice-loading">Loading...</span>}
+      />
     </>
   );
 }

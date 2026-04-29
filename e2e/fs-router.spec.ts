@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { expect } from '@playwright/test';
 import {
   prepareNormalSetup,
@@ -11,9 +13,10 @@ const startApp = prepareNormalSetup('fs-router');
 test.describe('fs-router', () => {
   let port: number;
   let stopApp: () => Promise<void>;
+  let fixtureDir: string;
 
   test.beforeAll(async ({ mode }) => {
-    ({ port, stopApp } = await startApp(mode));
+    ({ port, stopApp, fixtureDir } = await startApp(mode));
   });
 
   test.afterAll(async () => {
@@ -273,6 +276,26 @@ test.describe('fs-router', () => {
     await waitForHydration(page);
     await expect(page.getByTestId('dynamic-slice')).toHaveText(
       'Dynamic Slice: test123',
+    );
+  });
+
+  test('static slug slice emits an RSC file per staticPaths entry', ({
+    mode,
+  }) => {
+    test.skip(mode !== 'PRD');
+    const distPublic = join(fixtureDir, 'dist', 'public');
+    for (const slug of ['foo', 'bar']) {
+      expect(
+        existsSync(join(distPublic, 'RSC', 'S', 'preset', `${slug}.txt`)),
+      ).toBe(true);
+    }
+  });
+
+  test('static slug slice renders on the page', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/page-with-slices`);
+    await waitForHydration(page);
+    await expect(page.getByTestId('preset-slice')).toHaveText(
+      'Preset Slice: foo',
     );
   });
 
