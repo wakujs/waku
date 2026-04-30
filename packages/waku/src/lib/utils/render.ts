@@ -1,9 +1,11 @@
 import type {
+  Unstable_RenderRsc,
   Unstable_ParseRsc,
   Unstable_RenderHtml,
-  Unstable_RenderRsc,
-  Unstable_RenderRscForParse,
+  Unstable_SerializeRsc,
+  Unstable_DeserializeRsc,
 } from '../types.js';
+import { bytesToStream, streamToBytes } from './stream.js';
 
 export function createRenderUtils(
   temporaryReferences: unknown,
@@ -23,9 +25,10 @@ export function createRenderUtils(
   debugId?: string,
 ): {
   renderRsc: Unstable_RenderRsc;
-  renderRscForParse: Unstable_RenderRscForParse;
   parseRsc: Unstable_ParseRsc;
   renderHtml: Unstable_RenderHtml;
+  serializeRsc: Unstable_SerializeRsc;
+  deserializeRsc: Unstable_DeserializeRsc;
 } {
   const onError = (e: unknown) => {
     if (
@@ -59,12 +62,6 @@ export function createRenderUtils(
         },
       );
     },
-    async renderRscForParse(elements) {
-      return renderToReadableStream(elements, {
-        temporaryReferences,
-        onError,
-      });
-    },
     async parseRsc(stream) {
       return createFromReadableStream(stream, {}) as Promise<
         Record<string, unknown>
@@ -88,6 +85,19 @@ export function createRenderUtils(
         status: htmlResult.status || options.status || 200,
         headers: { 'content-type': 'text/html' },
       });
+    },
+    async serializeRsc(element) {
+      return streamToBytes(
+        renderToReadableStream(element, {
+          onError,
+        }),
+      );
+    },
+    async deserializeRsc(bytes) {
+      return createFromReadableStream(
+        bytesToStream(bytes),
+        {},
+      ) as Promise<unknown>;
     },
   };
 }

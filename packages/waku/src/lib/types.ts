@@ -10,11 +10,6 @@ export type Unstable_RenderRsc = (
   },
 ) => Promise<ReadableStream>;
 
-// Experimental: render RSC only for parse/copy flows without a debug channel.
-export type Unstable_RenderRscForParse = (
-  elements: Elements,
-) => Promise<ReadableStream>;
-
 export type Unstable_ParseRsc = (
   rscStream: ReadableStream,
 ) => Promise<Elements>;
@@ -30,6 +25,10 @@ export type Unstable_RenderHtml = (
     unstable_extraScriptContent?: string;
   },
 ) => Promise<Response>;
+
+export type Unstable_SerializeRsc = (element: unknown) => Promise<Uint8Array>;
+
+export type Unstable_DeserializeRsc = (bytes: Uint8Array) => Promise<unknown>;
 
 export type Unstable_EmitFile = (
   filePath: string,
@@ -55,9 +54,10 @@ export type Unstable_HandleRequest = (
   },
   utils: {
     renderRsc: Unstable_RenderRsc;
-    renderRscForParse: Unstable_RenderRscForParse;
     parseRsc: Unstable_ParseRsc;
     renderHtml: Unstable_RenderHtml;
+    serializeRsc: Unstable_SerializeRsc;
+    deserializeRsc: Unstable_DeserializeRsc;
     loadBuildMetadata: (key: string) => Promise<string | undefined>;
   },
 ) => Promise<ReadableStream | Response | 'fallback' | null | undefined>;
@@ -66,6 +66,8 @@ export type Unstable_HandleBuild = (utils: {
   renderRsc: Unstable_RenderRsc;
   parseRsc: Unstable_ParseRsc;
   renderHtml: Unstable_RenderHtml;
+  serializeRsc: Unstable_SerializeRsc;
+  deserializeRsc: Unstable_DeserializeRsc;
   rscPath2pathname: (rscPath: string) => string;
   saveBuildMetadata: (key: string, value: string) => Promise<void>;
   withRequest: <T>(req: Request, fn: () => T) => T;
