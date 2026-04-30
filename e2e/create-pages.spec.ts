@@ -482,7 +482,7 @@ test.describe(`create-pages`, () => {
     ).toBeVisible();
     const dynamicTime = await whatTime('Dynamic Layout');
     const staticTime = await whatTime('Static Layout');
-    expect(Math.abs(dynamicTime - staticTime)).toBeLessThanOrEqual(1000);
+    expect(staticTime).toBeLessThan(dynamicTime);
 
     await page.getByRole('link', { name: 'Home' }).click();
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
@@ -638,6 +638,36 @@ test.describe(`create-pages`, () => {
     await expect(
       page.getByTestId('static-grouped-layout-props-section'),
     ).toHaveText('docs');
+  });
+
+  test('static layout under dynamic layout is pre-cached at build time', async ({
+    browser,
+    mode,
+  }) => {
+    test.skip(mode !== 'PRD', 'Only relevant in production mode');
+    const getStaticTime = async (port: number) => {
+      const context = await browser.newContext();
+      const page = await context.newPage();
+      await page.goto(`http://localhost:${port}/nested-layouts`);
+      const text = await page
+        .getByRole('heading', { name: 'Static Layout' })
+        .textContent();
+      await context.close();
+      return text!.replace('Static Layout ', '');
+    };
+    // Stop the shared server, start two fresh instances and compare.
+    // If the static layout is pre-cached at build time, both runs see
+    // the same timestamp. If rendered at runtime, they differ.
+    await stopApp();
+    const run1 = await startApp(mode);
+    const time1 = await getStaticTime(run1.port);
+    await run1.stopApp();
+    const run2 = await startApp(mode);
+    const time2 = await getStaticTime(run2.port);
+    await run2.stopApp();
+    // Restart the shared server for remaining tests
+    ({ port, stopApp } = await startApp(mode));
+    expect(time1).toBe(time2);
   });
 
   test('no ssr', async ({ page }) => {
