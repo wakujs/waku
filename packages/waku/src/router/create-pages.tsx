@@ -458,7 +458,8 @@ export const createPages = <
       component: Slot,
       props: { id: `layout:${layoutIdPath}` },
     }));
-    return () => createNestedElements(layoutElements, <Slot id={`page:${path}`} />);
+    return () =>
+      createNestedElements(layoutElements, <Slot id={`page:${path}`} />);
   };
 
   /** Renders the root component */
