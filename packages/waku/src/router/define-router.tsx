@@ -187,6 +187,7 @@ type RouteConfig = {
   rootElement: {
     isStatic: boolean;
     renderer: (option: RendererOption) => ReactNode;
+    sourceFile?: string;
   };
   routeElement: {
     isStatic: boolean;
@@ -197,6 +198,7 @@ type RouteConfig = {
     {
       isStatic: boolean;
       renderer: (option: RendererOption) => ReactNode;
+      sourceFile?: string;
     }
   >;
   noSsr?: boolean;
@@ -208,6 +210,7 @@ type ApiConfig = {
   path: PathSpec;
   isStatic: boolean;
   handler: ApiHandler;
+  sourceFile?: string;
 };
 
 type SliceConfig = {
@@ -216,6 +219,7 @@ type SliceConfig = {
   pathSpec?: PathSpec;
   isStatic: boolean;
   renderer: (params?: Record<string, string | string[]>) => Promise<ReactNode>;
+  sourceFile?: string;
 };
 
 type RuntimeConfig = RouteConfig | ApiConfig | SliceConfig;
@@ -271,6 +275,8 @@ const noRuntimeFn = (what: string): never => {
   );
 };
 
+// `rootElement.renderer` and per-id element renderers are shared
+// across routes - any one is a valid fallback for another.
 const mergeWithRuntimeConfigs = (
   serializableConfigs: SerializableConfig[],
   runtimeConfigs: RuntimeConfig[],
@@ -287,6 +293,23 @@ const mergeWithRuntimeConfigs = (
       runtimeSliceById.set(c.id, c);
     }
   }
+  const sharedRootRenderer = runtimeConfigs.find(
+    (c): c is RouteConfig => c.type === 'route',
+  )?.rootElement.renderer;
+  const sharedElementRenderers = new Map<
+    SlotId,
+    RouteConfig['elements'][string]['renderer']
+  >();
+  for (const c of runtimeConfigs) {
+    if (c.type !== 'route') {
+      continue;
+    }
+    for (const [id, el] of Object.entries(c.elements)) {
+      if (!sharedElementRenderers.has(id)) {
+        sharedElementRenderers.set(id, el.renderer);
+      }
+    }
+  }
   return serializableConfigs.map((c) => {
     if (c.type === 'route') {
       const runtimeItem = runtimeRouteByPath.get(pathSpecKey(c.path));
@@ -297,7 +320,9 @@ const mergeWithRuntimeConfigs = (
           isStatic: val.isStatic,
           renderer:
             runtimeItem?.elements[id]?.renderer ??
+            sharedElementRenderers.get(id) ??
             (() => noRuntimeFn(`element "${id}" of ${label}`)),
+          ...(val.sourceFile ? { sourceFile: val.sourceFile } : {}),
         };
       }
       return {
@@ -309,7 +334,11 @@ const mergeWithRuntimeConfigs = (
           isStatic: c.rootElement.isStatic,
           renderer:
             runtimeItem?.rootElement.renderer ??
+            sharedRootRenderer ??
             (() => noRuntimeFn(`rootElement of ${label}`)),
+          ...(c.rootElement.sourceFile
+            ? { sourceFile: c.rootElement.sourceFile }
+            : {}),
         },
         routeElement: {
           isStatic: c.routeElement.isStatic,
@@ -331,6 +360,7 @@ const mergeWithRuntimeConfigs = (
         handler:
           runtimeItem?.handler ??
           (async () => noRuntimeFn(`api ${pathSpecAsString(c.path)}`)),
+        ...(c.sourceFile ? { sourceFile: c.sourceFile } : {}),
       };
     }
     const runtimeItem = runtimeSliceById.get(c.id);
@@ -341,6 +371,7 @@ const mergeWithRuntimeConfigs = (
       isStatic: c.isStatic,
       renderer:
         runtimeItem?.renderer ?? (async () => noRuntimeFn(`slice ${c.id}`)),
+      ...(c.sourceFile ? { sourceFile: c.sourceFile } : {}),
     };
   });
 };
@@ -472,6 +503,8 @@ export function unstable_defineRouter(fns: {
     const skipIdSet = new Set(isStringArray(skipParam) ? skipParam : []);
     const { query } = parseRscParams(rscParams);
     const routeId = ROUTE_SLOT_ID_PREFIX + routePath;
+    const routeTemplateCacheId =
+      ROUTE_SLOT_ID_PREFIX + pathSpecKey(pathConfigItem.path);
     const option: RendererOption = {
       routePath,
       query: pathConfigItem.isStatic ? undefined : query,
@@ -519,13 +552,13 @@ export function unstable_defineRouter(fns: {
         if (!pathConfigItem.routeElement.isStatic) {
           entries[routeId] = pathConfigItem.routeElement.renderer(option);
         } else if (!skipIdSet.has(routeId)) {
-          if (!getCachedElement(routeId)) {
+          if (!getCachedElement(routeTemplateCacheId)) {
             await setCachedElement(
-              routeId,
+              routeTemplateCacheId,
               pathConfigItem.routeElement.renderer(option),
             );
           }
-          entries[routeId] = await getCachedElement(routeId);
+          entries[routeId] = await getCachedElement(routeTemplateCacheId);
         }
       })(),
       ...Object.entries(pathConfigItem.elements).map(
@@ -576,7 +609,7 @@ export function unstable_defineRouter(fns: {
   type HandleBuild = Parameters<typeof defineHandlers>[0]['handleBuild'];
 
   const cachedElementsForRequest = new Map<SlotId, Promise<Uint8Array>>();
-  let cachedElementsForRequestInitialized = false;
+  let cachedElementsForRequestInit: Promise<void> | undefined;
   let cachedPath2moduleIds: Record<string, string[]> | undefined;
 
   const handleRequest: HandleRequest = async (
@@ -603,8 +636,7 @@ export function unstable_defineRouter(fns: {
       );
       cachedElementsForRequest.set(id, bytes);
     };
-    if (!cachedElementsForRequestInitialized) {
-      cachedElementsForRequestInitialized = true;
+    cachedElementsForRequestInit ??= (async () => {
       const cachedElementsMetadata = await loadBuildMetadata(
         'defineRouter:cachedElements',
       );
@@ -618,7 +650,8 @@ export function unstable_defineRouter(fns: {
           },
         );
       }
-    }
+    })();
+    await cachedElementsForRequestInit;
     const getPath2moduleIds = async () => {
       if (!cachedPath2moduleIds) {
         cachedPath2moduleIds = JSON.parse(
@@ -819,9 +852,38 @@ export function unstable_defineRouter(fns: {
     withRequest,
     generateFile,
     generateDefaultHtml,
+    unstable_registerPrunableFile = () => {},
   }) => {
     await initConfigs();
     const configs = getCachedConfigs();
+    const sourceFiles = new Map<string, boolean>();
+    const recordSourceFile = (
+      isStatic: boolean,
+      sourceFile: string | undefined,
+    ) => {
+      if (!sourceFile) {
+        return;
+      }
+      sourceFiles.set(
+        sourceFile,
+        (sourceFiles.get(sourceFile) ?? true) && isStatic,
+      );
+    };
+    for (const c of configs) {
+      if (c.type === 'route') {
+        recordSourceFile(c.rootElement.isStatic, c.rootElement.sourceFile);
+        for (const el of Object.values(c.elements)) {
+          recordSourceFile(el.isStatic, el.sourceFile);
+        }
+      } else {
+        recordSourceFile(c.isStatic, c.sourceFile);
+      }
+    }
+    for (const [srcPath, prunable] of sourceFiles) {
+      if (prunable) {
+        unstable_registerPrunableFile(srcPath);
+      }
+    }
     const cachedElementsForBuild = new Map<SlotId, Promise<ReactNode>>();
     const serializedCachedElements = new Map<SlotId, string>();
     const getCachedElement = (id: SlotId) => cachedElementsForBuild.get(id);
@@ -889,9 +951,12 @@ export function unstable_defineRouter(fns: {
     const path2moduleIds: Record<string, string[]> = {};
     const htmlRenderTasks = new Set<() => Promise<void>>();
 
-    const cacheStaticElementsOfRoute = async (item: RouteConfig) => {
+    const cacheStaticElementsOfRoute = async (
+      item: RouteConfig,
+      routePath: string | undefined,
+    ) => {
       const option: RendererOption = {
-        routePath: pathSpecAsString(item.path),
+        routePath: routePath ?? pathSpecAsString(item.path),
         query: undefined,
       };
       const tasks: Promise<unknown>[] = [];
@@ -908,6 +973,7 @@ export function unstable_defineRouter(fns: {
         }
       };
       cache(ROOT_SLOT_ID, item.rootElement);
+      cache(ROUTE_SLOT_ID_PREFIX + pathSpecKey(item.path), item.routeElement);
       for (const [id, el] of Object.entries(item.elements)) {
         cache(id, el);
       }
@@ -924,7 +990,7 @@ export function unstable_defineRouter(fns: {
         continue;
       }
       if (!routePath || !item.isStatic) {
-        runTask(() => cacheStaticElementsOfRoute(item));
+        runTask(() => cacheStaticElementsOfRoute(item, routePath));
         continue;
       }
       const rscPath = encodeRoutePath(routePath);

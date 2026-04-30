@@ -74,6 +74,7 @@ export type Unstable_HandleBuild = (utils: {
     body: ReadableStream | string,
   ) => Promise<void>;
   generateDefaultHtml: (fileName: string) => Promise<void>;
+  unstable_registerPrunableFile?: ((srcPath: string) => void) | undefined;
 }) => Promise<void>;
 
 export type Unstable_Handlers = {
@@ -87,6 +88,7 @@ export type Unstable_ServerEntry = {
   build: (
     utils: {
       emitFile: Unstable_EmitFile;
+      unstable_registerPrunableFile?: ((srcPath: string) => void) | undefined;
     },
     ...args: any[]
   ) => Promise<void>;
@@ -97,12 +99,12 @@ export type Unstable_ServerEntry = {
 };
 
 export type Unstable_ProcessRequest = (
-  req: Request,
+  arg: Parameters<Unstable_ServerEntry['fetch']>[0],
 ) => Promise<Response | null>;
 
-export type Unstable_ProcessBuild = (utils: {
-  emitFile: Unstable_EmitFile;
-}) => Promise<void>;
+export type Unstable_ProcessBuild = (
+  arg: Parameters<Unstable_ServerEntry['build']>[0],
+) => Promise<void>;
 
 export type Unstable_CreateServerEntryAdapter = <Options>(
   fn: (

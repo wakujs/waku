@@ -5,17 +5,29 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
 import pc from 'picocolors';
-import type { Plugin } from 'vite';
+import type { Plugin, Rollup } from 'vite';
 import { joinPath } from '../utils/path.js';
 import { createProgressLogger } from '../utils/progress-logger.js';
+import { pruneBuildOutput } from '../utils/prune-build.js';
 
 export function buildStaticFilesPlugin({
+  srcDir,
   distDir,
 }: {
+  srcDir: string;
   distDir: string;
 }): Plugin {
+  let rscBundle: Rollup.OutputBundle | undefined;
   return {
     name: 'waku:vite-plugins:build-static-files',
+    generateBundle(_options, bundle) {
+      if (
+        this.environment.name === 'rsc' &&
+        this.environment.mode === 'build'
+      ) {
+        rscBundle = bundle;
+      }
+    },
     buildApp: {
       async handler(builder) {
         const viteConfig = builder.config;
@@ -41,7 +53,24 @@ export function buildStaticFilesPlugin({
         const startTime = performance.now();
         const entry: typeof import('../vite-entries/entry.build.js') =
           await import(pathToFileURL(entryPath).href);
-        await entry.INTERNAL_runBuild({ rootDir, emitFile });
+        const { prunableFiles } = await entry.INTERNAL_runBuild({
+          rootDir,
+          emitFile,
+        });
+        if (prunableFiles.length && rscBundle) {
+          const { stubbedChunks, deletedAssets } = await pruneBuildOutput({
+            rootDir,
+            srcDir,
+            distDir,
+            rscBundle,
+            prunableFiles,
+          });
+          console.log(
+            pc.blue(
+              `[prune] removed static-only ${stubbedChunks.length} chunk(s) and ${deletedAssets.length} asset(s) from server bundle`,
+            ),
+          );
+        }
         progress.done();
         const fileCount = progress.getCount();
         console.log(

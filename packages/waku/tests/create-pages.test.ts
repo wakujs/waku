@@ -367,6 +367,12 @@ describe('type tests', () => {
         render: 'static',
         // @ts-expect-error: method is not valid
         method: 'foo',
+        handler: async () => Response.json('test'),
+      });
+      createApi({
+        path: '/',
+        render: 'static',
+        method: 'GET',
         // @ts-expect-error: null is not valid
         handler: () => null,
       });
