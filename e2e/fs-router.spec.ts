@@ -299,6 +299,24 @@ test.describe('fs-router', () => {
     );
   });
 
+  test('static layout inside a dynamic-path route is served from build-time cache', async ({
+    page,
+    mode,
+  }) => {
+    test.skip(mode !== 'PRD');
+    // `/cache-check/[name]` is a dynamic-path route whose layout is
+    // static and renders `Date.now()`. With build-time caching the
+    // value was baked at build (before this test even started), so
+    // it must be older than `curr`. Without it, the layout would
+    // render at runtime on this first request, after `curr`.
+    const curr = Date.now();
+    await page.goto(`http://localhost:${port}/cache-check/foo`);
+    const rendered = Number(
+      (await page.getByTestId('cache-check-time').textContent()) ?? '',
+    );
+    expect(rendered).toBeLessThan(curr);
+  });
+
   test('segment route in group route', async ({ page }) => {
     await page.goto(
       `http://localhost:${port}/page-with-segment/introducing-waku`,
