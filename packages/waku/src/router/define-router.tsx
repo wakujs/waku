@@ -271,11 +271,6 @@ const noRuntimeFn = (what: string): never => {
   );
 };
 
-// Build the cached config table using `serializableConfigs` (from build
-// metadata) as the source of truth for shape, and grafting renderers/handlers
-// from `runtimeConfigs` onto each entry. Missing runtime functions are
-// replaced with stubs that throw when invoked, surfacing build/runtime drift
-// at the point of use.
 const mergeWithRuntimeConfigs = (
   serializableConfigs: SerializableConfig[],
   runtimeConfigs: RuntimeConfig[],
@@ -894,16 +889,42 @@ export function unstable_defineRouter(fns: {
     const path2moduleIds: Record<string, string[]> = {};
     const htmlRenderTasks = new Set<() => Promise<void>>();
 
+    const cacheStaticElementsOfRoute = async (item: RouteConfig) => {
+      const option: RendererOption = {
+        routePath: pathSpecAsString(item.path),
+        query: undefined,
+      };
+      const tasks: Promise<unknown>[] = [];
+      const cache = (
+        id: SlotId,
+        el: { isStatic: boolean; renderer: (o: RendererOption) => ReactNode },
+      ) => {
+        if (!el.isStatic || getCachedElement(id)) {
+          return;
+        }
+        const result = setCachedElement(id, el.renderer(option));
+        if (result instanceof Promise) {
+          tasks.push(result);
+        }
+      };
+      cache(ROOT_SLOT_ID, item.rootElement);
+      for (const [id, el] of Object.entries(item.elements)) {
+        cache(id, el);
+      }
+      await Promise.all(tasks);
+    };
+
     // for each route, cache static elements and generate files for full static route
     for (const item of configs) {
       if (item.type !== 'route') {
         continue;
       }
       const routePath = pathSpecToRoutePath(item.path);
-      if (!routePath) {
+      if (routePath && skipBuild?.(routePath)) {
         continue;
       }
-      if (skipBuild?.(routePath)) {
+      if (!routePath || !item.isStatic) {
+        runTask(() => cacheStaticElementsOfRoute(item));
         continue;
       }
       const rscPath = encodeRoutePath(routePath);
@@ -918,9 +939,6 @@ export function unstable_defineRouter(fns: {
             setCachedElement,
           );
           if (!entries) {
-            return;
-          }
-          if (!item.isStatic) {
             return;
           }
           for (const id of Object.keys(entries)) {
