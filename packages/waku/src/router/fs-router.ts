@@ -78,8 +78,7 @@ export function fsRouter(
         }
         const path =
           '/' +
-          (['_layout', 'index', '_root'].includes(pathItems.at(-1)!) ||
-          pathItems.at(-1)?.startsWith('_part')
+          (['_layout', 'index', '_root'].includes(pathItems.at(-1)!)
             ? pathItems.slice(0, -1)
             : pathItems
           ).join('/');
