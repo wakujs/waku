@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from 'react';
+import type { PropsWithChildren, ReactNode } from 'react';
 import { expectType } from 'ts-expect';
 import type { TypeEqual } from 'ts-expect';
 import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -2853,6 +2853,152 @@ describe('createPages - grouped paths', () => {
         slices: [],
       },
     ]);
+  });
+
+  it('uses concrete layout ids for static layout under grouped dynamic segment', async () => {
+    const TestPage = () => null;
+    const TestLayout = ({ children }: PropsWithChildren) => children;
+    createPages(async ({ createPage, createLayout }) => [
+      createLayout({
+        render: 'static',
+        path: '/(group)/[lang]',
+        component: TestLayout,
+      }),
+      createPage({
+        render: 'static',
+        path: '/(group)/[lang]/about',
+        staticPaths: ['en', 'fr'] as const,
+        component: TestPage,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    expect(await getConfigs()).toEqual([
+      {
+        type: 'route',
+        elements: {
+          'layout:/(group)/en': {
+            isStatic: true,
+            renderer: expect.any(Function),
+          },
+          'page:/en/about': { isStatic: true, renderer: expect.any(Function) },
+        },
+        rootElement: { isStatic: true, renderer: expect.any(Function) },
+        routeElement: { isStatic: true, renderer: expect.any(Function) },
+        noSsr: false,
+        path: [
+          { type: 'literal', name: 'en' },
+          { type: 'literal', name: 'about' },
+        ],
+        pathPattern: [
+          { type: 'literal', name: '(group)' },
+          { type: 'group', name: 'lang' },
+          { type: 'literal', name: 'about' },
+        ],
+        isStatic: true,
+        slices: [],
+      },
+      {
+        type: 'route',
+        elements: {
+          'layout:/(group)/fr': {
+            isStatic: true,
+            renderer: expect.any(Function),
+          },
+          'page:/fr/about': { isStatic: true, renderer: expect.any(Function) },
+        },
+        rootElement: { isStatic: true, renderer: expect.any(Function) },
+        routeElement: { isStatic: true, renderer: expect.any(Function) },
+        noSsr: false,
+        path: [
+          { type: 'literal', name: 'fr' },
+          { type: 'literal', name: 'about' },
+        ],
+        pathPattern: [
+          { type: 'literal', name: '(group)' },
+          { type: 'group', name: 'lang' },
+          { type: 'literal', name: 'about' },
+        ],
+        isStatic: true,
+        slices: [],
+      },
+    ]);
+  });
+
+  it('layout renderer passes parent slug props without child slug for dynamic routes', async () => {
+    const TestPage = () => null;
+    const TestLayout = (_props: { children: ReactNode; lang: string }) => null;
+    createPages(async ({ createPage, createLayout }) => [
+      createLayout({
+        render: 'dynamic',
+        path: '/layout-props/[lang]',
+        component: TestLayout,
+      }),
+      createPage({
+        render: 'dynamic',
+        path: '/layout-props/[lang]/[slug]',
+        component: TestPage,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs()) as any[];
+    const routeConfig = configs.find(
+      (config) =>
+        config.type === 'route' &&
+        config.path?.[0]?.name === 'layout-props' &&
+        config.path?.[1]?.name === 'lang' &&
+        config.path?.[2]?.name === 'slug',
+    );
+    const element = routeConfig.elements[
+      'layout:/layout-props/[lang]'
+    ].renderer({
+      routePath: '/layout-props/en/post-1',
+      query: undefined,
+    });
+    expect(element.props.lang).toBe('en');
+    expect(element.props.slug).toBeUndefined();
+    expect(element.props.children.type).toBe(Children);
+  });
+
+  it('layout renderer passes grouped parent slug props without child slug for static routes', async () => {
+    const TestPage = () => null;
+    const TestLayout = (_props: {
+      children: ReactNode;
+      lang: string;
+      section: string;
+    }) => null;
+    createPages(async ({ createPage, createLayout }) => [
+      createLayout({
+        render: 'static',
+        path: '/(group)/layout-props/[lang]/[section]',
+        component: TestLayout,
+      }),
+      createPage({
+        render: 'static',
+        path: '/(group)/layout-props/[lang]/[section]/[slug]',
+        staticPaths: [['en', 'docs', 'post-1']] as const,
+        component: TestPage,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs()) as any[];
+    const routeConfig = configs.find(
+      (config) =>
+        config.type === 'route' &&
+        config.path?.[0]?.name === 'layout-props' &&
+        config.path?.[1]?.name === 'en' &&
+        config.path?.[2]?.name === 'docs' &&
+        config.path?.[3]?.name === 'post-1',
+    );
+    const element = routeConfig.elements[
+      'layout:/(group)/layout-props/en/docs'
+    ].renderer({
+      routePath: '/layout-props/en/docs/post-1',
+      query: undefined,
+    });
+    expect(element.props.lang).toBe('en');
+    expect(element.props.section).toBe('docs');
+    expect(element.props.slug).toBeUndefined();
+    expect(element.props.children.type).toBe(Children);
   });
 });
 

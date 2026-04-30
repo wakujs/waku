@@ -502,6 +502,149 @@ test.describe(`create-pages`, () => {
     expect(dynamicTime2).not.toEqual(staticTime2);
   });
 
+  test('dynamic layout receives parent slug but not child slug', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/layout-props/dynamic/en/post-1`);
+    await expect(
+      page.getByRole('heading', {
+        name: 'Dynamic Parent Layout',
+        exact: true,
+        level: 2,
+      }),
+    ).toBeVisible();
+    await expect(page.getByTestId('dynamic-layout-props-keys')).toHaveText(
+      'lang',
+    );
+    await expect(page.getByTestId('dynamic-layout-props-lang')).toHaveText(
+      'en',
+    );
+    await expect(page.getByTestId('dynamic-layout-props-slug')).toHaveText(
+      'missing',
+    );
+    await expect(
+      page.getByRole('heading', { name: 'Dynamic Layout Props Page post-1' }),
+    ).toBeVisible();
+  });
+
+  test('static layout receives parent slug but not child slug', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/layout-props/static/en/post-1`);
+    await expect(
+      page.getByRole('heading', {
+        name: 'Static Parent Layout',
+        exact: true,
+        level: 2,
+      }),
+    ).toBeVisible();
+    await expect(page.getByTestId('static-layout-props-keys')).toHaveText(
+      'lang',
+    );
+    await expect(page.getByTestId('static-layout-props-lang')).toHaveText('en');
+    await expect(page.getByTestId('static-layout-props-slug')).toHaveText(
+      'missing',
+    );
+    await expect(
+      page.getByRole('heading', { name: 'Static Layout Props Page post-1' }),
+    ).toBeVisible();
+  });
+
+  test('dynamic layout receives all parent slugs in a complex path but not child slugs', async ({
+    page,
+  }) => {
+    await page.goto(
+      `http://localhost:${port}/layout-props/dynamic-complex/aaa/parent-b/ccc/parent-d/eee/child-f`,
+    );
+    await expect(
+      page.getByRole('heading', {
+        name: 'Dynamic Complex Layout',
+        exact: true,
+        level: 2,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('dynamic-complex-layout-props-keys'),
+    ).toHaveText('bbb,ddd');
+    await expect(
+      page.getByTestId('dynamic-complex-layout-props-bbb'),
+    ).toHaveText('parent-b');
+    await expect(
+      page.getByTestId('dynamic-complex-layout-props-ddd'),
+    ).toHaveText('parent-d');
+    await expect(
+      page.getByTestId('dynamic-complex-layout-props-fff'),
+    ).toHaveText('missing');
+    await expect(
+      page.getByRole('heading', {
+        name: 'Dynamic Complex Layout Props Page child-f',
+      }),
+    ).toBeVisible();
+  });
+
+  test('static grouped layout receives parent slugs and keeps cache separated by concrete path', async ({
+    page,
+  }) => {
+    await page.goto(
+      `http://localhost:${port}/layout-props/static-grouped/en/docs/post-1`,
+    );
+    await expect(
+      page.getByRole('heading', {
+        name: 'Static Grouped Layout',
+        exact: true,
+        level: 2,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('static-grouped-layout-props-keys'),
+    ).toHaveText('lang,section');
+    await expect(
+      page.getByTestId('static-grouped-layout-props-lang'),
+    ).toHaveText('en');
+    await expect(
+      page.getByTestId('static-grouped-layout-props-section'),
+    ).toHaveText('docs');
+    await expect(
+      page.getByTestId('static-grouped-layout-props-slug'),
+    ).toHaveText('missing');
+    await expect(
+      page.getByRole('heading', {
+        name: 'Static Grouped Layout Props Page post-1',
+      }),
+    ).toBeVisible();
+
+    await page.goto(
+      `http://localhost:${port}/layout-props/static-grouped/fr/blog/post-2`,
+    );
+    await expect(
+      page.getByTestId('static-grouped-layout-props-keys'),
+    ).toHaveText('lang,section');
+    await expect(
+      page.getByTestId('static-grouped-layout-props-lang'),
+    ).toHaveText('fr');
+    await expect(
+      page.getByTestId('static-grouped-layout-props-section'),
+    ).toHaveText('blog');
+    await expect(
+      page.getByTestId('static-grouped-layout-props-slug'),
+    ).toHaveText('missing');
+    await expect(
+      page.getByRole('heading', {
+        name: 'Static Grouped Layout Props Page post-2',
+      }),
+    ).toBeVisible();
+
+    await page.goto(
+      `http://localhost:${port}/layout-props/static-grouped/en/docs/post-1`,
+    );
+    await expect(
+      page.getByTestId('static-grouped-layout-props-lang'),
+    ).toHaveText('en');
+    await expect(
+      page.getByTestId('static-grouped-layout-props-section'),
+    ).toHaveText('docs');
+  });
+
   test('static layout under dynamic layout is pre-cached at build time', async ({
     browser,
     mode,
