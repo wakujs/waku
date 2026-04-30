@@ -1,5 +1,3 @@
-import { statSync } from 'node:fs';
-import path from 'node:path';
 import { type Page, expect } from '@playwright/test';
 import {
   FETCH_ERROR_MESSAGES,
@@ -89,10 +87,9 @@ const expectNoPageErrorFor = async (page: Page) => {
 test.describe(`create-pages`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
-  let fixtureDir: string;
 
   test.beforeAll(async ({ mode }) => {
-    ({ port, stopApp, fixtureDir } = await startApp(mode));
+    ({ port, stopApp } = await startApp(mode));
   });
 
   test.afterAll(async () => {
@@ -356,13 +353,21 @@ test.describe(`create-pages`, () => {
     expect(await res.text()).toBe('');
   });
 
-  test('api empty (PRD)', async ({ mode }) => {
+  test('static api is served from build-time pre-generation', async ({
+    mode,
+  }) => {
     test.skip(mode !== 'PRD', 'PRD only test');
-    expect(
-      statSync(
-        path.join(fixtureDir, 'dist', 'public', 'api', 'empty'),
-      ).isFile(),
-    ).toBe(true);
+    // `/api/cache-time` is a static API whose handler returns
+    // `Date.now()`. With build-time pre-generation it was emitted at
+    // build (before this test started), so the returned timestamp is
+    // older than `curr`. Without pre-generation the handler would run
+    // at request time, after `curr`. The route is dedicated so this
+    // test is the first request to it in the process.
+    const curr = Date.now();
+    const res = await fetch(`http://localhost:${port}/api/cache-time`);
+    expect(res.status).toBe(200);
+    const time = Number(await res.text());
+    expect(time).toBeLessThan(curr);
   });
 
   test('api hi with POST', async () => {
