@@ -228,6 +228,19 @@ const pages: ReturnType<typeof createPages> = createPages(
     }),
 
     createApi({
+      // Returns `Date.now()` at handler-evaluation time. Used by an
+      // e2e test to detect whether the static API was pre-generated at
+      // build (response < test's `curr`) or rendered live at runtime
+      // (response > `curr`).
+      path: '/api/cache-time',
+      render: 'static',
+      method: 'GET',
+      handler: async () => {
+        return new Response(String(Date.now()));
+      },
+    }),
+
+    createApi({
       path: '/api/static-paths/[name]',
       render: 'static',
       method: 'GET',
