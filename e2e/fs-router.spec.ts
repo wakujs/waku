@@ -1,5 +1,3 @@
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { expect } from '@playwright/test';
 import {
   prepareNormalSetup,
@@ -13,10 +11,9 @@ const startApp = prepareNormalSetup('fs-router');
 test.describe('fs-router', () => {
   let port: number;
   let stopApp: () => Promise<void>;
-  let fixtureDir: string;
 
   test.beforeAll(async ({ mode }) => {
-    ({ port, stopApp, fixtureDir } = await startApp(mode));
+    ({ port, stopApp } = await startApp(mode));
   });
 
   test.afterAll(async () => {
@@ -279,16 +276,25 @@ test.describe('fs-router', () => {
     );
   });
 
-  test('static slug slice emits an RSC file per staticPaths entry', ({
+  test('static slug slice is served from build-time cache', async ({
+    page,
     mode,
   }) => {
     test.skip(mode !== 'PRD');
-    const distPublic = join(fixtureDir, 'dist', 'public');
-    for (const slug of ['foo', 'bar']) {
-      expect(
-        existsSync(join(distPublic, 'RSC', 'S', 'preset', `${slug}.txt`)),
-      ).toBe(true);
-    }
+    // `_slices/cache-time/[id].tsx` is a static slug slice with
+    // `staticPaths: ['foo']`. With build-time pre-rendering its
+    // `Date.now()` is baked at build (before this test started), so
+    // it must be older than `curr`. Without it, the slice would
+    // render on the first PRD request — after `curr`. The route is
+    // dedicated so this test is the first request to that slice.
+    const curr = Date.now();
+    await page.goto(`http://localhost:${port}/cache-time`);
+    await waitForHydration(page);
+    const text = (await page
+      .getByTestId('cache-time-foo')
+      .textContent()) as string;
+    const time = Number(text.split(':')[1]);
+    expect(time).toBeLessThan(curr);
   });
 
   test('static slug slice renders on the page', async ({ page }) => {
