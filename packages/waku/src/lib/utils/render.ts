@@ -1,9 +1,9 @@
 import type {
-  Unstable_RenderRsc,
+  Unstable_DeserializeRsc,
   Unstable_ParseRsc,
   Unstable_RenderHtml,
+  Unstable_RenderRsc,
   Unstable_SerializeRsc,
-  Unstable_DeserializeRsc,
 } from '../types.js';
 import { bytesToStream, streamToBytes } from './stream.js';
 
@@ -87,17 +87,10 @@ export function createRenderUtils(
       });
     },
     async serializeRsc(element) {
-      return streamToBytes(
-        renderToReadableStream(element, {
-          onError,
-        }),
-      );
+      return streamToBytes(renderToReadableStream(element, { onError }));
     },
     async deserializeRsc(bytes) {
-      return createFromReadableStream(
-        bytesToStream(bytes),
-        {},
-      ) as Promise<unknown>;
+      return createFromReadableStream(bytesToStream(bytes), {});
     },
   };
 }
