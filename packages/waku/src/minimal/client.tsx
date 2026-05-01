@@ -379,6 +379,7 @@ export const Root = ({
     ),
   );
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/immutability
     unstable_fetchRscStore[SET_ELEMENTS] = setElements;
   }, [unstable_fetchRscStore]);
   const refetch = useCallback(
@@ -390,6 +391,7 @@ export const Root = ({
       ) => Unstable_FetchRscStore = (s) => s,
     ) => {
       // clear cache entry before fetching
+      // eslint-disable-next-line react-hooks/immutability
       delete unstable_fetchRscStore[ENTRY]; // use non-enhanced store
       const data = unstable_fetchRsc(rscPath, rscParams, () =>
         unstable_enhanceFetchRscStore(unstable_fetchRscStore),

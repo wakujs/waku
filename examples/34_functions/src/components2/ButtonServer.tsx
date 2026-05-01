@@ -3,6 +3,7 @@ import ButtonClient from './ButtonClient';
 let counter = 0;
 
 const ButtonServer = ({ name }: { name: string }) => {
+  // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
   async function handleClick() {
     'use server';
