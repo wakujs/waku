@@ -204,6 +204,7 @@ describe('define-router handleBuild', () => {
       withRequest: <T>(_req: Request, fn: () => T) => fn(),
       generateFile: vi.fn().mockResolvedValue(undefined),
       generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
+      unstable_registerPrunableFile: vi.fn(),
     });
     const buildMetadata = new Map<string, string>(
       buildSave.mock.calls.map(([key, value]) => [key, value]),

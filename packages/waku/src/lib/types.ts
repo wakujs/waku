@@ -74,7 +74,7 @@ export type Unstable_HandleBuild = (utils: {
     body: ReadableStream | string,
   ) => Promise<void>;
   generateDefaultHtml: (fileName: string) => Promise<void>;
-  unstable_registerPrunableFile?: ((srcPath: string) => void) | undefined;
+  unstable_registerPrunableFile: (srcPath: string) => void;
 }) => Promise<void>;
 
 export type Unstable_Handlers = {
@@ -88,7 +88,7 @@ export type Unstable_ServerEntry = {
   build: (
     utils: {
       emitFile: Unstable_EmitFile;
-      unstable_registerPrunableFile?: ((srcPath: string) => void) | undefined;
+      unstable_registerPrunableFile: (srcPath: string) => void;
     },
     ...args: any[]
   ) => Promise<void>;

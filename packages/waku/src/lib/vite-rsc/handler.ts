@@ -108,7 +108,7 @@ const toProcessRequest =
 
 const toProcessBuild =
   (handleBuild: HandleBuild): ProcessBuild =>
-  async ({ emitFile, unstable_registerPrunableFile = () => {} }) => {
+  async ({ emitFile, unstable_registerPrunableFile }) => {
     const renderUtils = createRenderUtils(
       undefined,
       renderToReadableStream,

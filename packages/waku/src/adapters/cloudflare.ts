@@ -17,6 +17,15 @@ const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 const DO_NOT_BUNDLE = '';
 
+const PRUNABLE_KEY_PREFIX = '\0__prunable__/';
+
+const emptyStream = () =>
+  new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.close();
+    },
+  });
+
 function isWranglerDev(req: Request): boolean {
   // This header seems to only be set for production cloudflare workers
   return !req.headers.get('cf-visitor');
@@ -80,7 +89,11 @@ export default createServerEntryAdapter(
     const fetchFn = async (req: Request) => {
       if (new URL(req.url).pathname === `/${internalPathToBuildStaticFiles}`) {
         const body = produceMultiplexedStream(async (emitFile) => {
-          await processBuild({ emitFile });
+          await processBuild({
+            emitFile,
+            unstable_registerPrunableFile: (srcPath) =>
+              emitFile(PRUNABLE_KEY_PREFIX + srcPath, emptyStream()),
+          });
         });
         return new Response(body);
       }
@@ -125,7 +138,11 @@ export default createServerEntryAdapter(
               /* @vite-ignore */ DO_NOT_BUNDLE + 'node:stream'
             );
             const body = produceMultiplexedStream(async (emitFile) => {
-              await processBuild({ emitFile });
+              await processBuild({
+                emitFile,
+                unstable_registerPrunableFile: (srcPath) =>
+                  emitFile(PRUNABLE_KEY_PREFIX + srcPath, emptyStream()),
+              });
             });
             Readable.fromWeb(body as never).pipe(res);
           } catch (err) {
@@ -135,7 +152,15 @@ export default createServerEntryAdapter(
         const response = await fetch(
           server.baseUrl + internalPathToBuildStaticFiles,
         );
-        await consumeMultiplexedStream(response.body!, utils.emitFile);
+        await consumeMultiplexedStream(response.body!, async (key, stream) => {
+          if (key.startsWith(PRUNABLE_KEY_PREFIX)) {
+            utils.unstable_registerPrunableFile(
+              key.slice(PRUNABLE_KEY_PREFIX.length),
+            );
+            return;
+          }
+          await utils.emitFile(key, stream);
+        });
         await server.close();
       },
       buildOptions,

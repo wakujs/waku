@@ -852,7 +852,7 @@ export function unstable_defineRouter(fns: {
     withRequest,
     generateFile,
     generateDefaultHtml,
-    unstable_registerPrunableFile = () => {},
+    unstable_registerPrunableFile,
   }) => {
     await initConfigs();
     const configs = getCachedConfigs();
