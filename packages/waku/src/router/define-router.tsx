@@ -6,15 +6,14 @@ import {
   pathSpecAsString,
 } from '../lib/utils/path.js';
 import type { PathSpec } from '../lib/utils/path.js';
-import {
-  base64ToBytes,
-  bytesToBase64,
-  bytesToStream,
-  streamToBytes,
-} from '../lib/utils/stream.js';
+import { base64ToBytes, bytesToBase64 } from '../lib/utils/stream.js';
 import { createTaskRunner } from '../lib/utils/task-runner.js';
 import { unstable_defineHandlers as defineHandlers } from '../minimal/server.js';
-import { unstable_getContext as getContext } from '../server.js';
+import {
+  deserializeRsc,
+  unstable_getContext as getContext,
+  serializeRsc,
+} from '../server.js';
 import { INTERNAL_ServerRouter } from './client.js';
 import {
   HAS404_ID,
@@ -614,7 +613,7 @@ export function unstable_defineRouter(fns: {
 
   const handleRequest: HandleRequest = async (
     input,
-    { renderRsc, renderRscForParse, parseRsc, renderHtml, loadBuildMetadata },
+    { renderRsc, renderHtml, loadBuildMetadata },
   ): Promise<ReadableStream | Response | 'fallback' | null | undefined> => {
     await initConfigs(loadBuildMetadata);
     const getCachedElement = (id: SlotId) => {
@@ -622,18 +621,16 @@ export function unstable_defineRouter(fns: {
       if (!cachedBytes) {
         return undefined;
       }
-      return cachedBytes
-        .then((bytes) => parseRsc(bytesToStream(bytes)))
-        .then((parsed) => parsed[id]) as Promise<ReactNode>;
+      return cachedBytes.then((bytes) =>
+        deserializeRsc(bytes),
+      ) as Promise<ReactNode>;
     };
     const setCachedElement = (id: SlotId, element: ReactNode) => {
       const cachedBytes = cachedElementsForRequest.get(id);
       if (cachedBytes) {
         return;
       }
-      const bytes = renderRscForParse({ [id]: element }).then((rscStream) =>
-        streamToBytes(rscStream),
-      );
+      const bytes = serializeRsc(element);
       cachedElementsForRequest.set(id, bytes);
     };
     cachedElementsForRequestInit ??= (async () => {
@@ -845,7 +842,6 @@ export function unstable_defineRouter(fns: {
 
   const handleBuild: HandleBuild = async ({
     renderRsc,
-    parseRsc,
     renderHtml,
     rscPath2pathname,
     saveBuildMetadata,
@@ -885,31 +881,27 @@ export function unstable_defineRouter(fns: {
         unstable_registerPrunableFile(srcPath);
       }
     }
-    const cachedElementsForBuild = new Map<SlotId, Promise<ReactNode>>();
+    const cachedElementsForBuild = new Map<SlotId, Promise<Uint8Array>>();
     const serializedCachedElements = new Map<SlotId, string>();
-    const getCachedElement = (id: SlotId) => cachedElementsForBuild.get(id);
+    const getCachedElement = (id: SlotId) => {
+      const cachedBytes = cachedElementsForBuild.get(id);
+      if (!cachedBytes) {
+        return undefined;
+      }
+      return cachedBytes.then((bytes) =>
+        deserializeRsc(bytes),
+      ) as Promise<ReactNode>;
+    };
     const setCachedElement = (id: SlotId, element: ReactNode) => {
-      const cached = cachedElementsForBuild.get(id);
-      if (cached) {
+      const cachedBytes = cachedElementsForBuild.get(id);
+      if (cachedBytes) {
         return;
       }
-      const teedStream = renderRsc({ [id]: element }).then((rscStream) =>
-        rscStream.tee(),
-      );
-      const stream1 = teedStream.then(([s1]) => s1);
-      const stream2 = teedStream.then(([, s2]) => s2);
-      const copied = stream1.then(
-        (rscStream) =>
-          parseRsc(rscStream).then(
-            (parsed) => parsed[id],
-          ) as Promise<ReactNode>,
-      );
-      cachedElementsForBuild.set(id, copied);
-      return stream2
-        .then((rscStream) => streamToBytes(rscStream))
-        .then((bytes) => {
-          serializedCachedElements.set(id, bytesToBase64(bytes));
-        });
+      const bytes = serializeRsc(element);
+      cachedElementsForBuild.set(id, bytes);
+      return bytes.then((bytes) => {
+        serializedCachedElements.set(id, bytesToBase64(bytes));
+      });
     };
 
     // hard-coded concurrency limit

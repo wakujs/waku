@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createPages } from '../src/router/create-pages.js';
 
+vi.mock('../src/server.js', () => ({
+  deserializeRsc: vi.fn().mockResolvedValue(null),
+  serializeRsc: vi.fn().mockResolvedValue(new Uint8Array([1])),
+  unstable_getContext: vi.fn(),
+}));
+
 const makeStream = () =>
   new ReadableStream<Uint8Array>({
     start(controller) {

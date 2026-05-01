@@ -254,7 +254,6 @@ The `utils` argument provides these helpers:
 | Utility                                     | Purpose                                                                                                                          |
 | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | `renderRsc(elements, options?)`             | Render an RSC payload as a `ReadableStream`. Object keys become RSC IDs.                                                         |
-| `renderRscForParse(elements)`               | Render an RSC payload without the debug channel. This is an advanced escape hatch for parse or copy flows.                       |
 | `parseRsc(stream)`                          | Parse an RSC stream back into an elements object. Useful when you need to inspect an RSC payload rather than stream it directly. |
 | `renderHtml(elementsStream, html, options)` | Render the full HTML response that boots the client.                                                                             |
 | `loadBuildMetadata(key)`                    | Read metadata saved during `handleBuild`.                                                                                        |
