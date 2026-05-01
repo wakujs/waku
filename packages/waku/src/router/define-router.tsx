@@ -856,7 +856,8 @@ export function unstable_defineRouter(fns: {
   }) => {
     await initConfigs();
     const configs = getCachedConfigs();
-    const sourceFiles = new Map<string, boolean>();
+    const allSourceFiles = new Set<string>();
+    const dynamicSourceFiles = new Set<string>();
     const recordSourceFile = (
       isStatic: boolean,
       sourceFile: string | undefined,
@@ -864,10 +865,10 @@ export function unstable_defineRouter(fns: {
       if (!sourceFile) {
         return;
       }
-      sourceFiles.set(
-        sourceFile,
-        (sourceFiles.get(sourceFile) ?? true) && isStatic,
-      );
+      allSourceFiles.add(sourceFile);
+      if (!isStatic) {
+        dynamicSourceFiles.add(sourceFile);
+      }
     };
     for (const c of configs) {
       if (c.type === 'route') {
@@ -879,8 +880,8 @@ export function unstable_defineRouter(fns: {
         recordSourceFile(c.isStatic, c.sourceFile);
       }
     }
-    for (const [srcPath, prunable] of sourceFiles) {
-      if (prunable) {
+    for (const srcPath of allSourceFiles) {
+      if (!dynamicSourceFiles.has(srcPath)) {
         unstable_registerPrunableFile(srcPath);
       }
     }

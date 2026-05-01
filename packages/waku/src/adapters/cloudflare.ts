@@ -86,16 +86,18 @@ export default createServerEntryAdapter(
       serverless: !options?.static,
     };
 
+    const buildBody = () =>
+      produceMultiplexedStream(async (emitFile) => {
+        await processBuild({
+          emitFile,
+          unstable_registerPrunableFile: (srcPath) =>
+            emitFile(PRUNABLE_KEY_PREFIX + srcPath, emptyStream()),
+        });
+      });
+
     const fetchFn = async (req: Request) => {
       if (new URL(req.url).pathname === `/${internalPathToBuildStaticFiles}`) {
-        const body = produceMultiplexedStream(async (emitFile) => {
-          await processBuild({
-            emitFile,
-            unstable_registerPrunableFile: (srcPath) =>
-              emitFile(PRUNABLE_KEY_PREFIX + srcPath, emptyStream()),
-          });
-        });
-        return new Response(body);
+        return new Response(buildBody());
       }
       let cloudflareContext;
       try {
@@ -137,14 +139,7 @@ export default createServerEntryAdapter(
             const { Readable } = await import(
               /* @vite-ignore */ DO_NOT_BUNDLE + 'node:stream'
             );
-            const body = produceMultiplexedStream(async (emitFile) => {
-              await processBuild({
-                emitFile,
-                unstable_registerPrunableFile: (srcPath) =>
-                  emitFile(PRUNABLE_KEY_PREFIX + srcPath, emptyStream()),
-              });
-            });
-            Readable.fromWeb(body as never).pipe(res);
+            Readable.fromWeb(buildBody() as never).pipe(res);
           } catch (err) {
             next(err);
           }

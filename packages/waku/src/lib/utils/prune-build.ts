@@ -56,15 +56,17 @@ export const pruneBuildOutput = async ({
   }
   const chunkMap = new Map(chunks.map((c) => [c.fileName, c]));
 
+  const viteAssetsOf = (chunk: Chunk) => [
+    ...(chunk.viteMetadata?.importedAssets ?? []),
+    ...(chunk.viteMetadata?.importedCss ?? []),
+  ];
+
   // Standalone assets (e.g. `wrangler.json` from @cloudflare/vite-plugin)
   // aren't ours to manage.
   const chunkImportedAssets = new Set<string>();
   for (const chunk of chunks) {
-    for (const a of chunk.viteMetadata?.importedAssets ?? []) {
+    for (const a of viteAssetsOf(chunk)) {
       chunkImportedAssets.add(a);
-    }
-    for (const c of chunk.viteMetadata?.importedCss ?? []) {
-      chunkImportedAssets.add(c);
     }
   }
 
@@ -105,12 +107,8 @@ export const pruneBuildOutput = async ({
         visit(dyn);
       }
     }
-    // Vite-emitted assets (CSS, fonts, wasm, ...) referenced by this chunk.
-    for (const a of chunk.viteMetadata?.importedAssets ?? []) {
+    for (const a of viteAssetsOf(chunk)) {
       keepFiles.add(a);
-    }
-    for (const c of chunk.viteMetadata?.importedCss ?? []) {
-      keepFiles.add(c);
     }
   };
   keepRoots.forEach(visit);
