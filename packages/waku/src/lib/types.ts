@@ -26,10 +26,6 @@ export type Unstable_RenderHtml = (
   },
 ) => Promise<Response>;
 
-export type Unstable_SerializeRsc = (element: unknown) => Promise<Uint8Array>;
-
-export type Unstable_DeserializeRsc = (bytes: Uint8Array) => Promise<unknown>;
-
 export type Unstable_EmitFile = (
   filePath: string,
   body: ReadableStream,
@@ -56,8 +52,6 @@ export type Unstable_HandleRequest = (
     renderRsc: Unstable_RenderRsc;
     parseRsc: Unstable_ParseRsc;
     renderHtml: Unstable_RenderHtml;
-    serializeRsc: Unstable_SerializeRsc;
-    deserializeRsc: Unstable_DeserializeRsc;
     loadBuildMetadata: (key: string) => Promise<string | undefined>;
   },
 ) => Promise<ReadableStream | Response | 'fallback' | null | undefined>;
@@ -66,8 +60,6 @@ export type Unstable_HandleBuild = (utils: {
   renderRsc: Unstable_RenderRsc;
   parseRsc: Unstable_ParseRsc;
   renderHtml: Unstable_RenderHtml;
-  serializeRsc: Unstable_SerializeRsc;
-  deserializeRsc: Unstable_DeserializeRsc;
   rscPath2pathname: (rscPath: string) => string;
   saveBuildMetadata: (key: string, value: string) => Promise<void>;
   withRequest: <T>(req: Request, fn: () => T) => T;

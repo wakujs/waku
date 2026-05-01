@@ -129,8 +129,6 @@ const toProcessBuild =
       renderRsc: renderUtils.renderRsc,
       parseRsc: renderUtils.parseRsc,
       renderHtml: renderUtils.renderHtml,
-      serializeRsc: renderUtils.serializeRsc,
-      deserializeRsc: renderUtils.deserializeRsc,
       rscPath2pathname: (rscPath) =>
         joinPath(config.rscBase, encodeRscPath(rscPath)),
       saveBuildMetadata: async (key, value) => {

@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { unstable_defineRouter } from '../src/router/define-router.js';
 
+vi.mock('../src/server.js', () => ({
+  deserializeRsc: vi.fn().mockResolvedValue(null),
+  serializeRsc: vi.fn().mockResolvedValue(new Uint8Array([1])),
+  unstable_getContext: vi.fn(),
+}));
+
 const makeStream = () =>
   new ReadableStream<Uint8Array>({
     start(controller) {
@@ -40,8 +46,6 @@ describe('define-router handleBuild', () => {
       renderRsc: () => Promise.resolve(makeStream()),
       parseRsc: vi.fn().mockResolvedValue({}),
       renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
-      serializeRsc: vi.fn().mockResolvedValue(new Uint8Array([1])),
-      deserializeRsc: vi.fn().mockResolvedValue(null),
       rscPath2pathname: (rscPath: string) => `dist/${rscPath}.txt`,
       saveBuildMetadata,
       withRequest: <T>(_req: Request, fn: () => T) => fn(),
@@ -102,8 +106,6 @@ describe('define-router handleBuild', () => {
         renderRsc: () => Promise.resolve(makeStream()),
         parseRsc: vi.fn(),
         renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
-        serializeRsc: vi.fn().mockResolvedValue(new Uint8Array([1])),
-        deserializeRsc: vi.fn().mockResolvedValue(null),
         rscPath2pathname: (rscPath: string) => `dist/${rscPath}.txt`,
         saveBuildMetadata: vi.fn().mockResolvedValue(undefined),
         withRequest: <T>(_req: Request, fn: () => T) => fn(),

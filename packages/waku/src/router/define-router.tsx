@@ -9,7 +9,11 @@ import type { PathSpec } from '../lib/utils/path.js';
 import { base64ToBytes, bytesToBase64 } from '../lib/utils/stream.js';
 import { createTaskRunner } from '../lib/utils/task-runner.js';
 import { unstable_defineHandlers as defineHandlers } from '../minimal/server.js';
-import { unstable_getContext as getContext } from '../server.js';
+import {
+  deserializeRsc,
+  unstable_getContext as getContext,
+  serializeRsc,
+} from '../server.js';
 import { INTERNAL_ServerRouter } from './client.js';
 import {
   HAS404_ID,
@@ -576,7 +580,7 @@ export function unstable_defineRouter(fns: {
 
   const handleRequest: HandleRequest = async (
     input,
-    { renderRsc, renderHtml, serializeRsc, deserializeRsc, loadBuildMetadata },
+    { renderRsc, renderHtml, loadBuildMetadata },
   ): Promise<ReadableStream | Response | 'fallback' | null | undefined> => {
     await initConfigs(loadBuildMetadata);
     const getCachedElement = (id: SlotId) => {
@@ -806,8 +810,6 @@ export function unstable_defineRouter(fns: {
   const handleBuild: HandleBuild = async ({
     renderRsc,
     renderHtml,
-    serializeRsc,
-    deserializeRsc,
     rscPath2pathname,
     saveBuildMetadata,
     withRequest,

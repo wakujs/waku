@@ -256,8 +256,6 @@ The `utils` argument provides these helpers:
 | `renderRsc(elements, options?)`             | Render an RSC payload as a `ReadableStream`. Object keys become RSC IDs.                                                         |
 | `parseRsc(stream)`                          | Parse an RSC stream back into an elements object. Useful when you need to inspect an RSC payload rather than stream it directly. |
 | `renderHtml(elementsStream, html, options)` | Render the full HTML response that boots the client.                                                                             |
-| `serializeRsc(element)`                     | Serialize one RSC element into bytes. Useful for snapshot or cache flows.                                                        |
-| `deserializeRsc(bytes)`                     | Deserialize bytes created by `serializeRsc` back into one element.                                                               |
 | `loadBuildMetadata(key)`                    | Read metadata saved during `handleBuild`.                                                                                        |
 
 `handleRequest` may return any of the following:
@@ -287,8 +285,6 @@ The build utilities are:
 | `renderRsc(elements, options?)`             | Render an RSC payload stream.                                                                      |
 | `parseRsc(stream)`                          | Parse an RSC stream back into elements. Useful for build-time inspection.                          |
 | `renderHtml(elementsStream, html, options)` | Render HTML from an RSC stream and client shell.                                                   |
-| `serializeRsc(element)`                     | Serialize one RSC element into bytes. Useful for snapshot or cache flows.                          |
-| `deserializeRsc(bytes)`                     | Deserialize bytes created by `serializeRsc` back into one element.                                 |
 | `rscPath2pathname(rscPath)`                 | Convert an RSC path into the correct output pathname for the RSC payload.                          |
 | `saveBuildMetadata(key, value)`             | Persist metadata that will later be available through `loadBuildMetadata(...)` in `handleRequest`. |
 | `withRequest(req, fn)`                      | Install a request context while rendering at build time.                                           |

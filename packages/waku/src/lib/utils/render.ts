@@ -1,11 +1,8 @@
 import type {
-  Unstable_DeserializeRsc,
   Unstable_ParseRsc,
   Unstable_RenderHtml,
   Unstable_RenderRsc,
-  Unstable_SerializeRsc,
 } from '../types.js';
-import { bytesToStream, streamToBytes } from './stream.js';
 
 export function createRenderUtils(
   temporaryReferences: unknown,
@@ -27,8 +24,6 @@ export function createRenderUtils(
   renderRsc: Unstable_RenderRsc;
   parseRsc: Unstable_ParseRsc;
   renderHtml: Unstable_RenderHtml;
-  serializeRsc: Unstable_SerializeRsc;
-  deserializeRsc: Unstable_DeserializeRsc;
 } {
   const onError = (e: unknown) => {
     if (
@@ -85,12 +80,6 @@ export function createRenderUtils(
         status: htmlResult.status || options.status || 200,
         headers: { 'content-type': 'text/html' },
       });
-    },
-    async serializeRsc(element) {
-      return streamToBytes(renderToReadableStream(element, { onError }));
-    },
-    async deserializeRsc(bytes) {
-      return createFromReadableStream(bytesToStream(bytes), {});
     },
   };
 }
