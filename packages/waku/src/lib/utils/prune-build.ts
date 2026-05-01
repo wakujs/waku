@@ -1,5 +1,5 @@
 import { rm, writeFile } from 'node:fs/promises';
-import { BUILD_METADATA_FILE, DIST_SERVER } from '../constants.js';
+import { DIST_SERVER } from '../constants.js';
 import { joinPath } from './path.js';
 
 type Chunk = {
@@ -56,6 +56,18 @@ export const pruneBuildOutput = async ({
   }
   const chunkMap = new Map(chunks.map((c) => [c.fileName, c]));
 
+  // Standalone assets (e.g. `wrangler.json` from @cloudflare/vite-plugin)
+  // aren't ours to manage.
+  const chunkImportedAssets = new Set<string>();
+  for (const chunk of chunks) {
+    for (const a of chunk.viteMetadata?.importedAssets ?? []) {
+      chunkImportedAssets.add(a);
+    }
+    for (const c of chunk.viteMetadata?.importedCss ?? []) {
+      chunkImportedAssets.add(c);
+    }
+  }
+
   const allDynamicEntryFiles = new Set<string>();
   const keepRoots: string[] = [];
   for (const chunk of chunks) {
@@ -106,10 +118,10 @@ export const pruneBuildOutput = async ({
   const serverDir = joinPath(rootDir, distDir, DIST_SERVER);
   const stubbedChunks = chunks
     .map((c) => c.fileName)
-    .filter((f) => !keepFiles.has(f) && f !== BUILD_METADATA_FILE);
+    .filter((f) => !keepFiles.has(f));
   const deletedAssets = assets
     .map((a) => a.fileName)
-    .filter((f) => !keepFiles.has(f));
+    .filter((f) => chunkImportedAssets.has(f) && !keepFiles.has(f));
 
   await Promise.all([
     ...stubbedChunks.map((f) =>
