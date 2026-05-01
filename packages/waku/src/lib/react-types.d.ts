@@ -101,6 +101,6 @@ declare module 'react-server-dom-webpack/client.edge' {
   };
   export function createFromReadableStream<T>(
     stream: ReadableStream,
-    options: Options<T>,
+    options?: Options,
   ): Promise<T>;
 }

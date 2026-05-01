@@ -2,7 +2,6 @@ import type {
   Unstable_ParseRsc,
   Unstable_RenderHtml,
   Unstable_RenderRsc,
-  Unstable_RenderRscForParse,
 } from '../types.js';
 
 export function createRenderUtils(
@@ -23,7 +22,6 @@ export function createRenderUtils(
   debugId?: string,
 ): {
   renderRsc: Unstable_RenderRsc;
-  renderRscForParse: Unstable_RenderRscForParse;
   parseRsc: Unstable_ParseRsc;
   renderHtml: Unstable_RenderHtml;
 } {
@@ -58,12 +56,6 @@ export function createRenderUtils(
           },
         },
       );
-    },
-    async renderRscForParse(elements) {
-      return renderToReadableStream(elements, {
-        temporaryReferences,
-        onError,
-      });
     },
     async parseRsc(stream) {
       return createFromReadableStream(stream, {}) as Promise<

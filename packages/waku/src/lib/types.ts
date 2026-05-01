@@ -10,11 +10,6 @@ export type Unstable_RenderRsc = (
   },
 ) => Promise<ReadableStream>;
 
-// Experimental: render RSC only for parse/copy flows without a debug channel.
-export type Unstable_RenderRscForParse = (
-  elements: Elements,
-) => Promise<ReadableStream>;
-
 export type Unstable_ParseRsc = (
   rscStream: ReadableStream,
 ) => Promise<Elements>;
@@ -55,7 +50,6 @@ export type Unstable_HandleRequest = (
   },
   utils: {
     renderRsc: Unstable_RenderRsc;
-    renderRscForParse: Unstable_RenderRscForParse;
     parseRsc: Unstable_ParseRsc;
     renderHtml: Unstable_RenderHtml;
     loadBuildMetadata: (key: string) => Promise<string | undefined>;
