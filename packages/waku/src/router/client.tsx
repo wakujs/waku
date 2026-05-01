@@ -297,6 +297,7 @@ function useSharedRef<T>(
   const managedRef = useRef<T>(null);
 
   const handleRef = useCallback(
+    // eslint-disable-next-line react-hooks/immutability
     (node: T | null): void | (() => void) => {
       managedRef.current = node;
       const isRefCallback = typeof ref === 'function';
@@ -357,7 +358,7 @@ export function Link({
   ref: refProp,
   ...props
 }: LinkProps): ReactElement {
-  to = addBase(to, import.meta.env.WAKU_CONFIG_BASE_PATH);
+  const resolvedTo = addBase(to, import.meta.env.WAKU_CONFIG_BASE_PATH);
   const router = useContext(RouterContext);
   const changeRoute = router
     ? router.changeRoute
@@ -384,7 +385,7 @@ export function Link({
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            const url = new URL(to, window.location.href);
+            const url = new URL(resolvedTo, window.location.href);
             if (router && url.href !== window.location.href) {
               router.prefetchRoute(parseRoute(url));
             }
@@ -399,9 +400,9 @@ export function Link({
     return () => {
       observer.disconnect();
     };
-  }, [unstable_prefetchOnView, router, to, ref]);
+  }, [unstable_prefetchOnView, router, resolvedTo, ref]);
   const internalOnClick = () => {
-    const url = new URL(to, window.location.href);
+    const url = new URL(resolvedTo, window.location.href);
     if (url.href !== window.location.href) {
       const route = parseRoute(url);
       prefetchRoute(route);
@@ -433,7 +434,7 @@ export function Link({
   };
   const onMouseEnter = unstable_prefetchOnEnter
     ? (event: MouseEvent<HTMLAnchorElement>) => {
-        const url = new URL(to, window.location.href);
+        const url = new URL(resolvedTo, window.location.href);
         if (url.href !== window.location.href) {
           prefetchRoute(parseRoute(url));
         }
@@ -443,7 +444,7 @@ export function Link({
   const ele = (
     <a
       {...props}
-      href={to}
+      href={resolvedTo}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       ref={setRef}
