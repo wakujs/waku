@@ -879,6 +879,86 @@ describe('createPages pages and layouts', () => {
     ]);
   });
 
+  it('attaches slices to a static page declared under a pathless group', async () => {
+    const TestPage = () => null;
+    const TestSlice = () => null;
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'static',
+        path: '/(group)/foo',
+        component: TestPage,
+        slices: ['slice001'],
+      }),
+      createSlice({
+        render: 'static',
+        component: TestSlice,
+        id: 'slice001',
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = (await getConfigs()) as {
+      type: string;
+      slices?: string[];
+    }[];
+    const route = configs.find((c) => c.type === 'route');
+    expect(route?.slices).toEqual(['slice001']);
+  });
+
+  it('attaches slices to a dynamic page declared under a pathless group', async () => {
+    const TestPage = () => null;
+    const TestSlice = () => null;
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/(group)/[lang]',
+        component: TestPage,
+        slices: ['slice001'],
+      }),
+      createSlice({
+        render: 'static',
+        component: TestSlice,
+        id: 'slice001',
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = (await getConfigs()) as {
+      type: string;
+      slices?: string[];
+    }[];
+    const route = configs.find((c) => c.type === 'route');
+    expect(route?.slices).toEqual(['slice001']);
+  });
+
+  it('attaches slices to every concrete instance of a static slug page declared under a pathless group', async () => {
+    const TestPage = () => null;
+    const TestSlice = () => null;
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'static',
+        path: '/(group)/[lang]/about',
+        staticPaths: ['en', 'fr'] as const,
+        component: TestPage,
+        slices: ['slice001'],
+      }),
+      createSlice({
+        render: 'static',
+        component: TestSlice,
+        id: 'slice001',
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = (await getConfigs()) as {
+      type: string;
+      path?: { name?: string; type: string }[];
+      slices?: string[];
+    }[];
+    const routes = configs.filter((c) => c.type === 'route');
+    expect(routes).toHaveLength(2);
+    for (const route of routes) {
+      expect(route.slices).toEqual(['slice001']);
+    }
+  });
+
   it('creates a wildcard page with slices', async () => {
     const TestPage = () => null;
     const TestSlice = () => null;
