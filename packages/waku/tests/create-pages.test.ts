@@ -1798,6 +1798,57 @@ describe('createPages pages and layouts', () => {
     ]);
   });
 
+  it('disables SSR on a static page with slugs and staticPaths', async () => {
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'static',
+        path: '/post/[id]',
+        staticPaths: ['a', 'b'],
+        component: () => null,
+        unstable_disableSSR: true,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = (await getConfigs()) as { type: string; noSsr?: boolean }[];
+    const routes = configs.filter((c) => c.type === 'route');
+    expect(routes).toHaveLength(2);
+    for (const route of routes) {
+      expect(route.noSsr).toBe(true);
+    }
+  });
+
+  it('disables SSR on an exactPath static page with slug-looking segments', async () => {
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'static',
+        path: '/post/[id]',
+        exactPath: true,
+        component: () => null,
+        unstable_disableSSR: true,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = (await getConfigs()) as { type: string; noSsr?: boolean }[];
+    const route = configs.find((c) => c.type === 'route');
+    expect(route?.noSsr).toBe(true);
+  });
+
+  it('disables SSR on an exactPath dynamic page with slug-looking segments', async () => {
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/post/[id]',
+        exactPath: true,
+        component: () => null,
+        unstable_disableSSR: true,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = (await getConfigs()) as { type: string; noSsr?: boolean }[];
+    const route = configs.find((c) => c.type === 'route');
+    expect(route?.noSsr).toBe(true);
+  });
+
   it('fails if duplicated dynamic paths are registered', async () => {
     createPages(async ({ createPage }) => [
       createPage({
