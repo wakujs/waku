@@ -495,13 +495,16 @@ export const createPages = <
 
     const pathSpec = parsePathWithSlug(pageRoutePath);
     const { numSlugs, numWildcards } = countSlugsAndWildcards(pathSpec);
-    if (page.unstable_disableSSR) {
-      noSsrSet.add(pathSpec);
-    }
 
     const recordSlices = (routePath: string) => {
       if (page.slices?.length) {
         slicePathMap.set(routePath, page.slices);
+      }
+    };
+
+    const recordNoSsr = (spec: PathSpec) => {
+      if (page.unstable_disableSSR) {
+        noSsrSet.add(spec);
       }
     };
 
@@ -517,6 +520,7 @@ export const createPages = <
       } else {
         dynamicPagePathMap.set(routePath, [spec, page.component]);
       }
+      recordNoSsr(spec);
       recordSlices(routePath);
     } else if (page.render === 'static' && numSlugs === 0) {
       const routePath = pathnameToRoutePath(getGrouplessPath(page.path));
@@ -528,6 +532,7 @@ export const createPages = <
         groupPathLookup.set(routePath, pageRoutePath);
       }
       registerStaticComponent(id, page.component);
+      recordNoSsr(pathSpec);
       recordSlices(routePath);
     } else if (
       page.render === 'static' &&
@@ -546,8 +551,12 @@ export const createPages = <
           staticPath,
         );
         const routePath = pathnameToRoutePath(getGrouplessPath(definedPath));
+        const literalSpec: PathSpec = pathItems.map((name) => ({
+          type: 'literal',
+          name,
+        }));
         staticPathMap.set(routePath, {
-          literalSpec: pathItems.map((name) => ({ type: 'literal', name })),
+          literalSpec,
           originalSpec: pathSpec,
         });
         const definedRoutePath = pathnameToRoutePath(definedPath);
@@ -558,6 +567,7 @@ export const createPages = <
         const WrappedComponent = (props: Record<string, unknown>) =>
           createElement(page.component as any, { ...props, ...mapping });
         registerStaticComponent(id, WrappedComponent);
+        recordNoSsr(literalSpec);
         recordSlices(routePath);
       }
     } else if (page.render === 'dynamic' && numWildcards === 0) {
@@ -566,6 +576,7 @@ export const createPages = <
         groupPathLookup.set(routePath, pageRoutePath);
       }
       dynamicPagePathMap.set(routePath, [pathSpec, page.component]);
+      recordNoSsr(pathSpec);
       recordSlices(routePath);
     } else if (page.render === 'dynamic' && numWildcards === 1) {
       const routePath = pathnameToRoutePath(getGrouplessPath(page.path));
@@ -573,6 +584,7 @@ export const createPages = <
         groupPathLookup.set(routePath, pageRoutePath);
       }
       wildcardPagePathMap.set(routePath, [pathSpec, page.component]);
+      recordNoSsr(pathSpec);
       recordSlices(routePath);
     } else {
       throw new Error('Invalid page configuration ' + JSON.stringify(page));
