@@ -499,6 +499,12 @@ export const createPages = <
       noSsrSet.add(pathSpec);
     }
 
+    const recordSlices = (routePath: string) => {
+      if (page.slices?.length) {
+        slicePathMap.set(routePath, page.slices);
+      }
+    };
+
     if (page.exactPath) {
       const routePath = pageRoutePath;
       const spec = parseExactPath(routePath);
@@ -511,6 +517,7 @@ export const createPages = <
       } else {
         dynamicPagePathMap.set(routePath, [spec, page.component]);
       }
+      recordSlices(routePath);
     } else if (page.render === 'static' && numSlugs === 0) {
       const routePath = pathnameToRoutePath(getGrouplessPath(page.path));
       staticPathMap.set(routePath, {
@@ -521,6 +528,7 @@ export const createPages = <
         groupPathLookup.set(routePath, pageRoutePath);
       }
       registerStaticComponent(id, page.component);
+      recordSlices(routePath);
     } else if (
       page.render === 'static' &&
       numSlugs > 0 &&
@@ -550,6 +558,7 @@ export const createPages = <
         const WrappedComponent = (props: Record<string, unknown>) =>
           createElement(page.component as any, { ...props, ...mapping });
         registerStaticComponent(id, WrappedComponent);
+        recordSlices(routePath);
       }
     } else if (page.render === 'dynamic' && numWildcards === 0) {
       const routePath = pathnameToRoutePath(getGrouplessPath(page.path));
@@ -557,17 +566,16 @@ export const createPages = <
         groupPathLookup.set(routePath, pageRoutePath);
       }
       dynamicPagePathMap.set(routePath, [pathSpec, page.component]);
+      recordSlices(routePath);
     } else if (page.render === 'dynamic' && numWildcards === 1) {
       const routePath = pathnameToRoutePath(getGrouplessPath(page.path));
       if (routePath !== pageRoutePath) {
         groupPathLookup.set(routePath, pageRoutePath);
       }
       wildcardPagePathMap.set(routePath, [pathSpec, page.component]);
+      recordSlices(routePath);
     } else {
       throw new Error('Invalid page configuration ' + JSON.stringify(page));
-    }
-    if (page.slices?.length) {
-      slicePathMap.set(pageRoutePath, page.slices);
     }
     return page as Exclude<typeof page, { path: never } | { render: never }>;
   };
