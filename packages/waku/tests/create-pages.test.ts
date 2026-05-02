@@ -1786,6 +1786,64 @@ describe('createPages pages and layouts', () => {
     await expect(getConfigs).rejects.toThrowError('Duplicated path: /test/');
   });
 
+  it('fails when a page is registered on a path already used by an api', async () => {
+    createPages(async ({ createPage, createApi }) => [
+      createApi({
+        path: '/test',
+        render: 'static',
+        method: 'GET',
+        handler: async () => new Response('ok'),
+      }),
+      createPage({
+        render: 'dynamic',
+        path: '/test',
+        component: () => null,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    await expect(getConfigs).rejects.toThrowError('Duplicated path: /test');
+  });
+
+  it('fails when an api is registered on a path already used by a page', async () => {
+    createPages(async ({ createPage, createApi }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/test',
+        component: () => null,
+      }),
+      createApi({
+        path: '/test',
+        render: 'static',
+        method: 'GET',
+        handler: async () => new Response('ok'),
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    await expect(getConfigs).rejects.toThrowError(
+      'Duplicated api path: /test',
+    );
+  });
+
+  it('fails when two apis are registered on the same path', async () => {
+    createPages(async ({ createApi }) => [
+      createApi({
+        path: '/test',
+        render: 'static',
+        method: 'GET',
+        handler: async () => new Response('ok'),
+      }),
+      createApi({
+        path: '/test',
+        render: 'dynamic',
+        handlers: { POST: async () => new Response('ok') },
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    await expect(getConfigs).rejects.toThrowError(
+      'Duplicated api path: /test',
+    );
+  });
+
   it('creates a complex router', async () => {
     const TestPage = vi.fn();
     complexTestRouter(createPages, TestPage);

@@ -374,7 +374,7 @@ export const createPages = <
     [PathSpec, FunctionComponent<any>]
   >();
   const apiPathMap = new Map<
-    string, // `${method} ${path}`
+    string,
     {
       render: 'static' | 'dynamic';
       pathSpec: PathSpec;
@@ -398,19 +398,11 @@ export const createPages = <
   let rootItem: RootItem | undefined = undefined;
   const noSsrSet = new WeakSet<PathSpec>();
 
-  const pagePathExists = (path: string) => {
-    for (const pathKey of apiPathMap.keys()) {
-      const [_m, p] = pathKey.split(' ');
-      if (p === path) {
-        return true;
-      }
-    }
-    return (
-      staticPathMap.has(path) ||
-      dynamicPagePathMap.has(path) ||
-      wildcardPagePathMap.has(path)
-    );
-  };
+  const pagePathExists = (path: string) =>
+    apiPathMap.has(path) ||
+    staticPathMap.has(path) ||
+    dynamicPagePathMap.has(path) ||
+    wildcardPagePathMap.has(path);
 
   /** Creates a function to map pathname to component props */
   const createPathPropsMapper = (path: string) => {
@@ -604,7 +596,7 @@ export const createPages = <
       throw new Error('createApi no longer available');
     }
     const routePath = pathnameToRoutePath(options.path);
-    if (apiPathMap.has(routePath)) {
+    if (pagePathExists(routePath)) {
       throw new Error(`Duplicated api path: ${options.path}`);
     }
     const pathSpec = parsePathWithSlug(routePath);
@@ -623,7 +615,7 @@ export const createPages = <
             staticPath,
           );
           const definedRoutePath = pathnameToRoutePath(definedPath);
-          if (apiPathMap.has(definedRoutePath)) {
+          if (pagePathExists(definedRoutePath)) {
             throw new Error(`Duplicated api path: ${definedPath}`);
           }
           apiPathMap.set(definedRoutePath, {
