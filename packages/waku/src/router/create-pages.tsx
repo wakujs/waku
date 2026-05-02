@@ -512,9 +512,7 @@ export const createPages = <
       const routePath = pageRoutePath;
       const spec = parseExactPath(routePath);
       if (page.render === 'static') {
-        staticPathMap.set(routePath, {
-          literalSpec: spec,
-        });
+        staticPathMap.set(routePath, { literalSpec: spec });
         const id = joinPath(routePath, 'page').replace(/^\//, '');
         registerStaticComponent(id, page.component);
       } else {
@@ -524,9 +522,7 @@ export const createPages = <
       recordSlices(routePath);
     } else if (page.render === 'static' && numSlugs === 0) {
       const routePath = pathnameToRoutePath(getGrouplessPath(page.path));
-      staticPathMap.set(routePath, {
-        literalSpec: pathSpec,
-      });
+      staticPathMap.set(routePath, { literalSpec: pathSpec });
       const id = joinPath(routePath, 'page').replace(/^\//, '');
       if (routePath !== pageRoutePath) {
         groupPathLookup.set(routePath, pageRoutePath);
@@ -555,10 +551,7 @@ export const createPages = <
           type: 'literal',
           name,
         }));
-        staticPathMap.set(routePath, {
-          literalSpec,
-          originalSpec: pathSpec,
-        });
+        staticPathMap.set(routePath, { literalSpec, originalSpec: pathSpec });
         const definedRoutePath = pathnameToRoutePath(definedPath);
         if (routePath !== definedRoutePath) {
           groupPathLookup.set(routePath, definedRoutePath);
