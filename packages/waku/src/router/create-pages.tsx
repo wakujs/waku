@@ -356,8 +356,8 @@ export const createPages = <
 
   // layout lookups retain (group) path and pathMaps store without group
   // paths are stored without groups to easily detect duplicates
-  const groupPathLookup = new Map<string, string>();
-  const staticPathMap = new Map<
+  const groupedRoutePathByRoutePath = new Map<string, string>();
+  const staticPageEntryByRoutePath = new Map<
     string,
     { literalSpec: PathSpec; originalSpec?: PathSpec; noSsr: boolean }
   >();
@@ -370,10 +370,10 @@ export const createPages = <
     pathSpec: PathSpec;
     component: FunctionComponent<any>;
   };
-  const dynamicPagePathMap = new Map<string, DynamicPageEntry>();
-  const wildcardPagePathMap = new Map<string, DynamicPageEntry>();
-  const dynamicLayoutPathMap = new Map<string, LayoutEntry>();
-  const apiPathMap = new Map<
+  const dynamicPageEntryByRoutePath = new Map<string, DynamicPageEntry>();
+  const wildcardPageEntryByRoutePath = new Map<string, DynamicPageEntry>();
+  const dynamicLayoutEntryByRoutePath = new Map<string, LayoutEntry>();
+  const apiEntryByRoutePath = new Map<
     string,
     {
       render: 'static' | 'dynamic';
@@ -382,13 +382,13 @@ export const createPages = <
       staticParams?: Record<string, string | string[]>;
     }
   >();
-  const staticComponentMap = new Map<string, FunctionComponent<any>>();
+  const staticComponentById = new Map<string, FunctionComponent<any>>();
   const getStaticLayout = (id: string) =>
-    staticComponentMap.get(joinPath(id, 'layout').slice(1));
+    staticComponentById.get(joinPath(id, 'layout').slice(1));
   const getDynamicLayout = (segment: string) =>
-    dynamicLayoutPathMap.get(segment)?.component;
-  const slicePathMap = new Map<string, string[]>();
-  const sliceIdMap = new Map<
+    dynamicLayoutEntryByRoutePath.get(segment)?.component;
+  const sliceIdsByRoutePath = new Map<string, string[]>();
+  const sliceEntryById = new Map<
     string,
     {
       component: FunctionComponent<any>;
@@ -398,14 +398,14 @@ export const createPages = <
   let rootItem: RootItem | undefined = undefined;
 
   const pagePathExists = (path: string) =>
-    apiPathMap.has(path) ||
-    staticPathMap.has(path) ||
-    dynamicPagePathMap.has(path) ||
-    wildcardPagePathMap.has(path);
+    apiEntryByRoutePath.has(path) ||
+    staticPageEntryByRoutePath.has(path) ||
+    dynamicPageEntryByRoutePath.has(path) ||
+    wildcardPageEntryByRoutePath.has(path);
 
   /** Creates a function to map pathname to component props */
   const createPathPropsMapper = (path: string) => {
-    const layoutMatchPath = groupPathLookup.get(path) ?? path;
+    const layoutMatchPath = groupedRoutePathByRoutePath.get(path) ?? path;
     const pathSpec = parsePathWithSlug(layoutMatchPath);
     return (pathname: string) => pathMappingWithoutGroups(pathSpec, pathname);
   };
@@ -466,12 +466,12 @@ export const createPages = <
     component: FunctionComponent<any>,
   ) => {
     if (
-      staticComponentMap.has(id) &&
-      staticComponentMap.get(id) !== component
+      staticComponentById.has(id) &&
+      staticComponentById.get(id) !== component
     ) {
       throw new Error(`Duplicated component for: ${id}`);
     }
-    staticComponentMap.set(id, component);
+    staticComponentById.set(id, component);
   };
 
   const isAllElementsStatic = (
@@ -479,8 +479,8 @@ export const createPages = <
   ) => Object.values(elements).every((element) => element.isStatic);
 
   const isAllSlicesStatic = (path: string) =>
-    (slicePathMap.get(path) || []).every(
-      (sliceId) => sliceIdMap.get(sliceId)?.isStatic,
+    (sliceIdsByRoutePath.get(path) || []).every(
+      (sliceId) => sliceEntryById.get(sliceId)?.isStatic,
     );
 
   const createPage: CreatePage = (page) => {
@@ -497,7 +497,7 @@ export const createPages = <
 
     const recordSlices = (routePath: string) => {
       if (page.slices?.length) {
-        slicePathMap.set(routePath, page.slices);
+        sliceIdsByRoutePath.set(routePath, page.slices);
       }
     };
 
@@ -507,11 +507,11 @@ export const createPages = <
       const routePath = pageRoutePath;
       const spec = parseExactPath(routePath);
       if (page.render === 'static') {
-        staticPathMap.set(routePath, { literalSpec: spec, noSsr });
+        staticPageEntryByRoutePath.set(routePath, { literalSpec: spec, noSsr });
         const id = joinPath(routePath, 'page').replace(/^\//, '');
         registerStaticComponent(id, page.component);
       } else {
-        dynamicPagePathMap.set(routePath, {
+        dynamicPageEntryByRoutePath.set(routePath, {
           pathSpec: spec,
           component: page.component,
           noSsr,
@@ -520,10 +520,13 @@ export const createPages = <
       recordSlices(routePath);
     } else if (page.render === 'static' && numSlugs === 0) {
       const routePath = pathnameToRoutePath(getGrouplessPath(page.path));
-      staticPathMap.set(routePath, { literalSpec: pathSpec, noSsr });
+      staticPageEntryByRoutePath.set(routePath, {
+        literalSpec: pathSpec,
+        noSsr,
+      });
       const id = joinPath(routePath, 'page').replace(/^\//, '');
       if (routePath !== pageRoutePath) {
-        groupPathLookup.set(routePath, pageRoutePath);
+        groupedRoutePathByRoutePath.set(routePath, pageRoutePath);
       }
       registerStaticComponent(id, page.component);
       recordSlices(routePath);
@@ -548,14 +551,14 @@ export const createPages = <
           type: 'literal',
           name,
         }));
-        staticPathMap.set(routePath, {
+        staticPageEntryByRoutePath.set(routePath, {
           literalSpec,
           originalSpec: pathSpec,
           noSsr,
         });
         const definedRoutePath = pathnameToRoutePath(definedPath);
         if (routePath !== definedRoutePath) {
-          groupPathLookup.set(routePath, definedRoutePath);
+          groupedRoutePathByRoutePath.set(routePath, definedRoutePath);
         }
         const id = joinPath(routePath, 'page').replace(/^\//, '');
         const WrappedComponent = (props: Record<string, unknown>) =>
@@ -566,9 +569,9 @@ export const createPages = <
     } else if (page.render === 'dynamic' && numWildcards === 0) {
       const routePath = pathnameToRoutePath(getGrouplessPath(page.path));
       if (routePath !== pageRoutePath) {
-        groupPathLookup.set(routePath, pageRoutePath);
+        groupedRoutePathByRoutePath.set(routePath, pageRoutePath);
       }
-      dynamicPagePathMap.set(routePath, {
+      dynamicPageEntryByRoutePath.set(routePath, {
         pathSpec,
         component: page.component,
         noSsr,
@@ -577,9 +580,9 @@ export const createPages = <
     } else if (page.render === 'dynamic' && numWildcards === 1) {
       const routePath = pathnameToRoutePath(getGrouplessPath(page.path));
       if (routePath !== pageRoutePath) {
-        groupPathLookup.set(routePath, pageRoutePath);
+        groupedRoutePathByRoutePath.set(routePath, pageRoutePath);
       }
-      wildcardPagePathMap.set(routePath, {
+      wildcardPageEntryByRoutePath.set(routePath, {
         pathSpec,
         component: page.component,
         noSsr,
@@ -600,11 +603,11 @@ export const createPages = <
       const id = joinPath(routePath, 'layout').replace(/^\//, '');
       registerStaticComponent(id, layout.component);
     } else if (layout.render === 'dynamic') {
-      if (dynamicLayoutPathMap.has(routePath)) {
+      if (dynamicLayoutEntryByRoutePath.has(routePath)) {
         throw new Error(`Duplicated dynamic path: ${layout.path}`);
       }
       const pathSpec = parsePathWithSlug(routePath);
-      dynamicLayoutPathMap.set(routePath, {
+      dynamicLayoutEntryByRoutePath.set(routePath, {
         pathSpec,
         component: layout.component,
       });
@@ -640,7 +643,7 @@ export const createPages = <
           if (pagePathExists(definedRoutePath)) {
             throw new Error(`Duplicated api path: ${definedPath}`);
           }
-          apiPathMap.set(definedRoutePath, {
+          apiEntryByRoutePath.set(definedRoutePath, {
             render: 'static',
             pathSpec: pathItems.map((name) => ({ type: 'literal', name })),
             handlers: { GET: options.handler },
@@ -648,14 +651,14 @@ export const createPages = <
           });
         }
       } else {
-        apiPathMap.set(routePath, {
+        apiEntryByRoutePath.set(routePath, {
           render: 'static',
           pathSpec,
           handlers: { GET: options.handler },
         });
       }
     } else {
-      apiPathMap.set(routePath, {
+      apiEntryByRoutePath.set(routePath, {
         render: 'dynamic',
         pathSpec,
         handlers: options.handlers,
@@ -701,22 +704,22 @@ export const createPages = <
           staticPath,
         );
         const concreteId = definedPath.replace(/^\//, '');
-        if (sliceIdMap.has(concreteId)) {
+        if (sliceEntryById.has(concreteId)) {
           throw new Error(`Duplicated slice id: ${concreteId}`);
         }
         const WrappedComponent = (props: Record<string, unknown>) =>
           createElement(slice.component as any, { ...props, ...mapping });
-        sliceIdMap.set(concreteId, {
+        sliceEntryById.set(concreteId, {
           component: WrappedComponent,
           isStatic: true,
         });
       }
       return;
     }
-    if (sliceIdMap.has(slice.id)) {
+    if (sliceEntryById.has(slice.id)) {
       throw new Error(`Duplicated slice id: ${slice.id}`);
     }
-    sliceIdMap.set(slice.id, {
+    sliceEntryById.set(slice.id, {
       component: slice.component,
       isStatic: slice.render === 'static',
     });
@@ -750,7 +753,7 @@ export const createPages = <
 
     return pathSegments.filter(
       (segment) =>
-        dynamicLayoutPathMap.has(segment) || getStaticLayout(segment),
+        dynamicLayoutEntryByRoutePath.has(segment) || getStaticLayout(segment),
     );
   };
 
@@ -779,15 +782,15 @@ export const createPages = <
       for (const [
         path,
         { literalSpec, originalSpec, noSsr },
-      ] of staticPathMap) {
-        const routePath = groupPathLookup.get(path) ?? path;
+      ] of staticPageEntryByRoutePath) {
+        const routePath = groupedRoutePathByRoutePath.get(path) ?? path;
         const layouts = getLayouts(originalSpec ?? literalSpec).map(
           (layoutPath) => ({
             layoutPath,
             layoutIdPath: getLayoutIdPath(layoutPath, routePath),
           }),
         );
-        const pageComponent = staticComponentMap.get(
+        const pageComponent = staticComponentById.get(
           joinPath(path, 'page').slice(1),
         )!;
         const getPropsMapping = createPathPropsMapper(path);
@@ -803,7 +806,7 @@ export const createPages = <
           }
           const getLayoutPropsMapping = createLayoutPropsMapper(layoutPath);
           elements[`layout:${layoutIdPath}`] = {
-            isStatic: !dynamicLayoutPathMap.has(layoutPath),
+            isStatic: !dynamicLayoutEntryByRoutePath.has(layoutPath),
             renderer: (option) =>
               createElement(
                 layout,
@@ -843,73 +846,13 @@ export const createPages = <
           },
           elements,
           noSsr,
-          slices: slicePathMap.get(path) || [],
-        });
-      }
-      for (const [path, { pathSpec, component, noSsr }] of dynamicPagePathMap) {
-        const layouts = getLayouts(pathSpec).map((layoutPath) => ({
-          layoutPath,
-          layoutIdPath: layoutPath,
-        }));
-        const getPropsMapping = createPathPropsMapper(path);
-
-        const elements: Record<string, ElementSpec> = {};
-
-        // Add layout elements
-        for (const { layoutPath, layoutIdPath } of layouts) {
-          const layout =
-            getDynamicLayout(layoutPath) ?? getStaticLayout(layoutPath);
-          if (!layout) {
-            throw new Error('Invalid layout ' + layoutPath);
-          }
-          const getLayoutPropsMapping = createLayoutPropsMapper(layoutPath);
-          elements[`layout:${layoutIdPath}`] = {
-            isStatic: !dynamicLayoutPathMap.has(layoutPath),
-            renderer: (option) =>
-              createElement(
-                layout,
-                getLayoutPropsMapping(option.routePath),
-                <Children />,
-              ),
-          };
-        }
-
-        // Add page element
-        elements[`page:${path}`] = {
-          isStatic: false,
-          renderer: (option) =>
-            createElement(
-              component,
-              {
-                ...getPropsMapping(option.routePath),
-                ...(option.query ? { query: option.query } : {}),
-                path: option.routePath,
-              },
-              <Children />,
-            ),
-        };
-
-        routeConfigs.push({
-          type: 'route',
-          isStatic:
-            rootIsStatic &&
-            isAllElementsStatic(elements) &&
-            isAllSlicesStatic(path),
-          path: pathSpec.filter((part) => !part.name?.startsWith('(')),
-          rootElement: { isStatic: rootIsStatic, renderer: renderRoot },
-          routeElement: {
-            isStatic: true,
-            renderer: buildRouteElement(layouts, path),
-          },
-          elements,
-          noSsr,
-          slices: slicePathMap.get(path) || [],
+          slices: sliceIdsByRoutePath.get(path) || [],
         });
       }
       for (const [
         path,
         { pathSpec, component, noSsr },
-      ] of wildcardPagePathMap) {
+      ] of dynamicPageEntryByRoutePath) {
         const layouts = getLayouts(pathSpec).map((layoutPath) => ({
           layoutPath,
           layoutIdPath: layoutPath,
@@ -927,7 +870,7 @@ export const createPages = <
           }
           const getLayoutPropsMapping = createLayoutPropsMapper(layoutPath);
           elements[`layout:${layoutIdPath}`] = {
-            isStatic: !dynamicLayoutPathMap.has(layoutPath),
+            isStatic: !dynamicLayoutEntryByRoutePath.has(layoutPath),
             renderer: (option) =>
               createElement(
                 layout,
@@ -966,10 +909,73 @@ export const createPages = <
           },
           elements,
           noSsr,
-          slices: slicePathMap.get(path) || [],
+          slices: sliceIdsByRoutePath.get(path) || [],
         });
       }
-      const apiConfigs = Array.from(apiPathMap.values()).map(
+      for (const [
+        path,
+        { pathSpec, component, noSsr },
+      ] of wildcardPageEntryByRoutePath) {
+        const layouts = getLayouts(pathSpec).map((layoutPath) => ({
+          layoutPath,
+          layoutIdPath: layoutPath,
+        }));
+        const getPropsMapping = createPathPropsMapper(path);
+
+        const elements: Record<string, ElementSpec> = {};
+
+        // Add layout elements
+        for (const { layoutPath, layoutIdPath } of layouts) {
+          const layout =
+            getDynamicLayout(layoutPath) ?? getStaticLayout(layoutPath);
+          if (!layout) {
+            throw new Error('Invalid layout ' + layoutPath);
+          }
+          const getLayoutPropsMapping = createLayoutPropsMapper(layoutPath);
+          elements[`layout:${layoutIdPath}`] = {
+            isStatic: !dynamicLayoutEntryByRoutePath.has(layoutPath),
+            renderer: (option) =>
+              createElement(
+                layout,
+                getLayoutPropsMapping(option.routePath),
+                <Children />,
+              ),
+          };
+        }
+
+        // Add page element
+        elements[`page:${path}`] = {
+          isStatic: false,
+          renderer: (option) =>
+            createElement(
+              component,
+              {
+                ...getPropsMapping(option.routePath),
+                ...(option.query ? { query: option.query } : {}),
+                path: option.routePath,
+              },
+              <Children />,
+            ),
+        };
+
+        routeConfigs.push({
+          type: 'route',
+          isStatic:
+            rootIsStatic &&
+            isAllElementsStatic(elements) &&
+            isAllSlicesStatic(path),
+          path: pathSpec.filter((part) => !part.name?.startsWith('(')),
+          rootElement: { isStatic: rootIsStatic, renderer: renderRoot },
+          routeElement: {
+            isStatic: true,
+            renderer: buildRouteElement(layouts, path),
+          },
+          elements,
+          noSsr,
+          slices: sliceIdsByRoutePath.get(path) || [],
+        });
+      }
+      const apiConfigs = Array.from(apiEntryByRoutePath.values()).map(
         ({ pathSpec, render, handlers, staticParams }) => {
           return {
             type: 'api' as const,
@@ -996,23 +1002,25 @@ export const createPages = <
         },
       );
 
-      const sliceConfigs = Array.from(sliceIdMap).map(([id, { isStatic }]) => {
-        const slicePathSpec = parsePathWithSlug(id);
-        const hasSlug = slicePathSpec.some((s) => s.type !== 'literal');
-        return {
-          type: 'slice' as const,
-          id,
-          ...(hasSlug ? { pathSpec: slicePathSpec } : {}),
-          isStatic,
-          renderer: async (params?: Record<string, string | string[]>) => {
-            const slice = sliceIdMap.get(id);
-            if (!slice) {
-              throw new Error('Slice not found: ' + id);
-            }
-            return createElement(slice.component, params, <Children />);
-          },
-        };
-      });
+      const sliceConfigs = Array.from(sliceEntryById).map(
+        ([id, { isStatic }]) => {
+          const slicePathSpec = parsePathWithSlug(id);
+          const hasSlug = slicePathSpec.some((s) => s.type !== 'literal');
+          return {
+            type: 'slice' as const,
+            id,
+            ...(hasSlug ? { pathSpec: slicePathSpec } : {}),
+            isStatic,
+            renderer: async (params?: Record<string, string | string[]>) => {
+              const slice = sliceEntryById.get(id);
+              if (!slice) {
+                throw new Error('Slice not found: ' + id);
+              }
+              return createElement(slice.component, params, <Children />);
+            },
+          };
+        },
+      );
 
       const pathConfigs = [...routeConfigs, ...apiConfigs]
         // Sort routes by priority: "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
