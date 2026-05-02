@@ -1819,9 +1819,7 @@ describe('createPages pages and layouts', () => {
       }),
     ]);
     const { getConfigs } = injectedFunctions();
-    await expect(getConfigs).rejects.toThrowError(
-      'Duplicated api path: /test',
-    );
+    await expect(getConfigs).rejects.toThrowError('Duplicated api path: /test');
   });
 
   it('fails when two apis are registered on the same path', async () => {
@@ -1839,9 +1837,7 @@ describe('createPages pages and layouts', () => {
       }),
     ]);
     const { getConfigs } = injectedFunctions();
-    await expect(getConfigs).rejects.toThrowError(
-      'Duplicated api path: /test',
-    );
+    await expect(getConfigs).rejects.toThrowError('Duplicated api path: /test');
   });
 
   it('creates a complex router', async () => {
