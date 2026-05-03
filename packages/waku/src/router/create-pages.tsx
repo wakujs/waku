@@ -47,6 +47,23 @@ export const pathMappingWithoutGroups: typeof getPathMapping = (
 
 const sanitizeSlug = (slug: string) => slug.replace(/ /g, '-');
 
+const normalizeStaticPaths = (
+  staticPaths: readonly (string | readonly string[])[],
+): string[][] =>
+  staticPaths.map((item) =>
+    (Array.isArray(item) ? item : [item]).map(sanitizeSlug),
+  );
+
+const assertStaticPathArity = (
+  staticSegments: readonly string[],
+  slugCount: number,
+  wildcardCount: number,
+) => {
+  if (staticSegments.length !== slugCount && wildcardCount === 0) {
+    throw new Error('staticPaths does not match with slug pattern');
+  }
+};
+
 // createPages API (a wrapper around unstable_defineRouter)
 
 /** Assumes that the path is a part of a slug path. */
@@ -539,16 +556,12 @@ export const createPages = <
       numSlugs > 0 &&
       'staticPaths' in page
     ) {
-      const staticPaths = page.staticPaths.map((item) =>
-        (Array.isArray(item) ? item : [item]).map(sanitizeSlug),
-      );
-      for (const staticPath of staticPaths) {
-        if (staticPath.length !== numSlugs && numWildcards === 0) {
-          throw new Error('staticPaths does not match with slug pattern');
-        }
-        const { concretePath, pathItems, mapping } = expandStaticPathSpec(
+      const staticPaths = normalizeStaticPaths(page.staticPaths);
+      for (const staticSegments of staticPaths) {
+        assertStaticPathArity(staticSegments, numSlugs, numWildcards);
+        const { concretePath, pathItems, mapping } = expandStaticRoutePath(
           routePathSpec,
-          staticPath,
+          staticSegments,
         );
         const routePath = pathnameToRoutePath(getGrouplessPath(concretePath));
         const concretePathSpec: PathSpec = pathItems.map((name) => ({
@@ -632,16 +645,12 @@ export const createPages = <
     if (options.render === 'static') {
       const { numSlugs, numWildcards } = countSlugsAndWildcards(routePathSpec);
       if (numSlugs > 0 && options.staticPaths) {
-        const staticPaths = options.staticPaths.map((item) =>
-          (Array.isArray(item) ? item : [item]).map(sanitizeSlug),
-        );
-        for (const staticPath of staticPaths) {
-          if (staticPath.length !== numSlugs && numWildcards === 0) {
-            throw new Error('staticPaths does not match with slug pattern');
-          }
-          const { concretePath, pathItems, mapping } = expandStaticPathSpec(
+        const staticPaths = normalizeStaticPaths(options.staticPaths);
+        for (const staticSegments of staticPaths) {
+          assertStaticPathArity(staticSegments, numSlugs, numWildcards);
+          const { concretePath, pathItems, mapping } = expandStaticRoutePath(
             routePathSpec,
-            staticPath,
+            staticSegments,
           );
           const concreteRoutePath = pathnameToRoutePath(concretePath);
           if (pagePathExists(concreteRoutePath)) {
@@ -696,16 +705,12 @@ export const createPages = <
           `Static slice with slug requires staticPaths: ${slice.id}`,
         );
       }
-      const staticPaths = slice.staticPaths.map((item) =>
-        (Array.isArray(item) ? item : [item]).map(sanitizeSlug),
-      );
-      for (const staticPath of staticPaths) {
-        if (staticPath.length !== numSlugs && numWildcards === 0) {
-          throw new Error('staticPaths does not match with slug pattern');
-        }
-        const { concretePath, mapping } = expandStaticPathSpec(
+      const staticPaths = normalizeStaticPaths(slice.staticPaths);
+      for (const staticSegments of staticPaths) {
+        assertStaticPathArity(staticSegments, numSlugs, numWildcards);
+        const { concretePath, mapping } = expandStaticRoutePath(
           slicePathSpec,
-          staticPath,
+          staticSegments,
         );
         const concreteId = concretePath.replace(/^\//, '');
         if (sliceEntryById.has(concreteId)) {
@@ -1045,7 +1050,10 @@ export const createPages = <
   };
 };
 
-function expandStaticPathSpec(routePathSpec: PathSpec, staticPath: string[]) {
+function expandStaticRoutePath(
+  routePathSpec: PathSpec,
+  staticSegments: readonly string[],
+) {
   const mapping: Record<string, string | string[]> = {};
   let slugIndex = 0;
   const pathItems: string[] = [];
@@ -1055,13 +1063,13 @@ function expandStaticPathSpec(routePathSpec: PathSpec, staticPath: string[]) {
         pathItems.push(spec.name!);
         break;
       case 'wildcard':
-        mapping[spec.name!] = staticPath.slice(slugIndex);
-        staticPath.slice(slugIndex++).forEach((slug) => {
+        mapping[spec.name!] = staticSegments.slice(slugIndex);
+        staticSegments.slice(slugIndex++).forEach((slug) => {
           pathItems.push(slug);
         });
         break;
       case 'group': {
-        const slug = staticPath[slugIndex++]!;
+        const slug = staticSegments[slugIndex++]!;
         const prefix = spec.prefix ?? '';
         const suffix = spec.suffix ?? '';
         pathItems.push(`${prefix}${slug}${suffix}`);
