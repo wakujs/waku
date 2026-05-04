@@ -503,16 +503,10 @@ export const createPages = <
 
     const routePathSpec = parsePathWithSlug(pageRoutePath);
     const { numSlugs, numWildcards } = countSlugsAndWildcards(routePathSpec);
-
-    const recordSlices = (routePath: string) => {
-      if (page.slices?.length) {
-        sliceIdsByRoutePath.set(routePath, page.slices);
-      }
-    };
-
     const noSsr = page.unstable_disableSSR ?? false;
+    const slices = page.slices || [];
 
-    if (page.exactPath) {
+    const registerPageWithExactPath = () => {
       const routePath = pageRoutePath;
       const spec = parseExactPath(routePath);
       if (page.render === 'static') {
@@ -529,8 +523,10 @@ export const createPages = <
           noSsr,
         });
       }
-      recordSlices(routePath);
-    } else if (page.render === 'static' && numSlugs === 0) {
+      sliceIdsByRoutePath.set(routePath, slices);
+    };
+
+    const registerStaticPageWithoutSlugs = () => {
       const routePath = pathnameToRoutePath(getGrouplessPath(page.path));
       staticPageEntryByRoutePath.set(routePath, {
         concretePathSpec: routePathSpec,
@@ -541,13 +537,13 @@ export const createPages = <
         groupedRoutePathByRoutePath.set(routePath, pageRoutePath);
       }
       registerStaticComponent(id, page.component);
-      recordSlices(routePath);
-    } else if (
-      page.render === 'static' &&
-      numSlugs > 0 &&
-      'staticPaths' in page
-    ) {
-      const staticPaths = normalizeStaticPaths(page.staticPaths);
+      sliceIdsByRoutePath.set(routePath, slices);
+    };
+
+    const registerStaticPageWithSlugs = (
+      staticPathsInput: readonly (string | readonly string[])[],
+    ) => {
+      const staticPaths = normalizeStaticPaths(staticPathsInput);
       for (const staticSegments of staticPaths) {
         assertStaticPathArity(staticSegments, numSlugs, numWildcards);
         const { concretePath, pathItems, mapping } = expandStaticRoutePath(
@@ -572,9 +568,11 @@ export const createPages = <
         const WrappedComponent = (props: Record<string, unknown>) =>
           createElement(page.component as any, { ...props, ...mapping });
         registerStaticComponent(id, WrappedComponent);
-        recordSlices(routePath);
+        sliceIdsByRoutePath.set(routePath, slices);
       }
-    } else if (page.render === 'dynamic' && numWildcards === 0) {
+    };
+
+    const registerDynamicPageWithoutWildcard = () => {
       const routePath = pathnameToRoutePath(getGrouplessPath(page.path));
       if (routePath !== pageRoutePath) {
         groupedRoutePathByRoutePath.set(routePath, pageRoutePath);
@@ -584,8 +582,10 @@ export const createPages = <
         component: page.component,
         noSsr,
       });
-      recordSlices(routePath);
-    } else if (page.render === 'dynamic' && numWildcards === 1) {
+      sliceIdsByRoutePath.set(routePath, slices);
+    };
+
+    const registerDynamicPageWithWildcard = () => {
       const routePath = pathnameToRoutePath(getGrouplessPath(page.path));
       if (routePath !== pageRoutePath) {
         groupedRoutePathByRoutePath.set(routePath, pageRoutePath);
@@ -595,7 +595,23 @@ export const createPages = <
         component: page.component,
         noSsr,
       });
-      recordSlices(routePath);
+      sliceIdsByRoutePath.set(routePath, slices);
+    };
+
+    if (page.exactPath) {
+      registerPageWithExactPath();
+    } else if (page.render === 'static' && numSlugs === 0) {
+      registerStaticPageWithoutSlugs();
+    } else if (
+      page.render === 'static' &&
+      numSlugs > 0 &&
+      'staticPaths' in page
+    ) {
+      registerStaticPageWithSlugs(page.staticPaths);
+    } else if (page.render === 'dynamic' && numWildcards === 0) {
+      registerDynamicPageWithoutWildcard();
+    } else if (page.render === 'dynamic' && numWildcards === 1) {
+      registerDynamicPageWithWildcard();
     } else {
       throw new Error('Invalid page configuration ' + JSON.stringify(page));
     }
@@ -742,10 +758,10 @@ export const createPages = <
     await ready;
   };
 
-  const getLayouts = (spec: PathSpec): string[] => {
-    const pathSegments = spec.reduce<string[]>(
+  const getLayouts = (routePathSpec: PathSpec): string[] => {
+    const pathSegments = routePathSpec.reduce<string[]>(
       (acc, _segment, index) => {
-        acc.push(pathSpecAsString(spec.slice(0, index + 1)));
+        acc.push(pathSpecAsString(routePathSpec.slice(0, index + 1)));
         return acc;
       },
       ['/'],
@@ -825,19 +841,20 @@ export const createPages = <
       const buildStaticRouteConfigs = () =>
         Array.from(
           staticPageEntryByRoutePath,
-          ([path, { concretePathSpec, pathPatternSpec, noSsr }]) => {
-            const routePath = groupedRoutePathByRoutePath.get(path) ?? path;
+          ([routePath, { concretePathSpec, pathPatternSpec, noSsr }]) => {
+            const groupedRoutePath =
+              groupedRoutePathByRoutePath.get(routePath) ?? routePath;
             const layouts = collectLayoutMatches(
               pathPatternSpec ?? concretePathSpec,
-              routePath,
+              groupedRoutePath,
             );
             const pageComponent = staticComponentById.get(
-              joinPath(path, 'page').slice(1),
+              joinPath(routePath, 'page').slice(1),
             )!;
-            const getPropsMapping = createPathPropsMapper(path);
+            const getPropsMapping = createPathPropsMapper(routePath);
             const elements: Record<string, ElementSpec> =
               buildLayoutElements(layouts);
-            elements[`page:${path}`] = buildPageElement(
+            elements[`page:${routePath}`] = buildPageElement(
               pageComponent,
               getPropsMapping,
               true,
@@ -850,28 +867,28 @@ export const createPages = <
               isStatic:
                 rootIsStatic &&
                 isAllElementsStatic(elements) &&
-                isAllSlicesStatic(path),
+                isAllSlicesStatic(routePath),
               ...(pathPatternSpec && { pathPattern: pathPatternSpec }),
               rootElement: { isStatic: rootIsStatic, renderer: renderRoot },
               routeElement: {
                 isStatic: true,
-                renderer: buildRouteElement(layouts, path),
+                renderer: buildRouteElement(layouts, routePath),
               },
               elements,
               noSsr,
-              slices: sliceIdsByRoutePath.get(path) || [],
+              slices: sliceIdsByRoutePath.get(routePath) || [],
             };
           },
         );
       const buildDynamicLikeRouteConfig = (
-        path: string,
+        routePath: string,
         { routePathSpec, component, noSsr }: DynamicPageEntry,
       ) => {
         const layouts = collectLayoutMatches(routePathSpec);
-        const getPropsMapping = createPathPropsMapper(path);
+        const getPropsMapping = createPathPropsMapper(routePath);
         const elements: Record<string, ElementSpec> =
           buildLayoutElements(layouts);
-        elements[`page:${path}`] = buildPageElement(
+        elements[`page:${routePath}`] = buildPageElement(
           component,
           getPropsMapping,
           false,
@@ -881,25 +898,25 @@ export const createPages = <
           isStatic:
             rootIsStatic &&
             isAllElementsStatic(elements) &&
-            isAllSlicesStatic(path),
+            isAllSlicesStatic(routePath),
           path: routePathSpec.filter((part) => !part.name?.startsWith('(')),
           rootElement: { isStatic: rootIsStatic, renderer: renderRoot },
           routeElement: {
             isStatic: true,
-            renderer: buildRouteElement(layouts, path),
+            renderer: buildRouteElement(layouts, routePath),
           },
           elements,
           noSsr,
-          slices: sliceIdsByRoutePath.get(path) || [],
+          slices: sliceIdsByRoutePath.get(routePath) || [],
         };
       };
       const buildDynamicRouteConfigs = () =>
-        Array.from(dynamicPageEntryByRoutePath, ([path, entry]) =>
-          buildDynamicLikeRouteConfig(path, entry),
+        Array.from(dynamicPageEntryByRoutePath, ([routePath, entry]) =>
+          buildDynamicLikeRouteConfig(routePath, entry),
         );
       const buildWildcardRouteConfigs = () =>
-        Array.from(wildcardPageEntryByRoutePath, ([path, entry]) =>
-          buildDynamicLikeRouteConfig(path, entry),
+        Array.from(wildcardPageEntryByRoutePath, ([routePath, entry]) =>
+          buildDynamicLikeRouteConfig(routePath, entry),
         );
       const buildApiConfigs = () =>
         Array.from(
