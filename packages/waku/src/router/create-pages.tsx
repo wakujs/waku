@@ -506,7 +506,7 @@ export const createPages = <
     const noSsr = page.unstable_disableSSR ?? false;
     const slices = page.slices || [];
 
-    const registerExactPathPage = () => {
+    const registerPageWithExactPath = () => {
       const routePath = pageRoutePath;
       const spec = parseExactPath(routePath);
       if (page.render === 'static') {
@@ -526,7 +526,7 @@ export const createPages = <
       sliceIdsByRoutePath.set(routePath, slices);
     };
 
-    const registerSimpleStaticPage = () => {
+    const registerStaticPageWithoutSlugs = () => {
       const routePath = pathnameToRoutePath(getGrouplessPath(page.path));
       staticPageEntryByRoutePath.set(routePath, {
         concretePathSpec: routePathSpec,
@@ -540,7 +540,7 @@ export const createPages = <
       sliceIdsByRoutePath.set(routePath, slices);
     };
 
-    const registerExpandedStaticPages = (
+    const registerStaticPageWithSlugs = (
       staticPathsInput: readonly (string | readonly string[])[],
     ) => {
       const staticPaths = normalizeStaticPaths(staticPathsInput);
@@ -572,14 +572,25 @@ export const createPages = <
       }
     };
 
-    const registerDynamicLikePage = (
-      entryMap: Map<string, DynamicPageEntry>,
-    ) => {
+    const registerDynamicPageWithoutWildcard = () => {
       const routePath = pathnameToRoutePath(getGrouplessPath(page.path));
       if (routePath !== pageRoutePath) {
         groupedRoutePathByRoutePath.set(routePath, pageRoutePath);
       }
-      entryMap.set(routePath, {
+      dynamicPageEntryByRoutePath.set(routePath, {
+        routePathSpec,
+        component: page.component,
+        noSsr,
+      });
+      sliceIdsByRoutePath.set(routePath, slices);
+    };
+
+    const registerDynamicPageWithWildcard = () => {
+      const routePath = pathnameToRoutePath(getGrouplessPath(page.path));
+      if (routePath !== pageRoutePath) {
+        groupedRoutePathByRoutePath.set(routePath, pageRoutePath);
+      }
+      wildcardPageEntryByRoutePath.set(routePath, {
         routePathSpec,
         component: page.component,
         noSsr,
@@ -588,19 +599,19 @@ export const createPages = <
     };
 
     if (page.exactPath) {
-      registerExactPathPage();
+      registerPageWithExactPath();
     } else if (page.render === 'static' && numSlugs === 0) {
-      registerSimpleStaticPage();
+      registerStaticPageWithoutSlugs();
     } else if (
       page.render === 'static' &&
       numSlugs > 0 &&
       'staticPaths' in page
     ) {
-      registerExpandedStaticPages(page.staticPaths);
+      registerStaticPageWithSlugs(page.staticPaths);
     } else if (page.render === 'dynamic' && numWildcards === 0) {
-      registerDynamicLikePage(dynamicPageEntryByRoutePath);
+      registerDynamicPageWithoutWildcard();
     } else if (page.render === 'dynamic' && numWildcards === 1) {
-      registerDynamicLikePage(wildcardPageEntryByRoutePath);
+      registerDynamicPageWithWildcard();
     } else {
       throw new Error('Invalid page configuration ' + JSON.stringify(page));
     }
