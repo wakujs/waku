@@ -436,23 +436,14 @@ export const createPages = <
     ).length;
     return (routePath: string) => {
       const layoutRoutePath =
-        numSegments === 0
-          ? '/'
-          : '/' +
-            routePath
-              .split('/')
-              .filter(Boolean)
-              .slice(0, numSegments)
-              .join('/');
+        '/' +
+        routePath.split('/').filter(Boolean).slice(0, numSegments).join('/');
       return pathMappingWithoutGroups(routePathSpec, layoutRoutePath) ?? {};
     };
   };
 
   const getLayoutIdPath = (layoutPath: string, routePath: string): string => {
     const numSegments = parsePathWithSlug(layoutPath).length;
-    if (numSegments === 0) {
-      return '/';
-    }
     return (
       '/' + routePath.split('/').filter(Boolean).slice(0, numSegments).join('/')
     );
