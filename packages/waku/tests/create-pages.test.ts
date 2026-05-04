@@ -885,6 +885,86 @@ describe('createPages pages and layouts', () => {
     ]);
   });
 
+  it('attaches slices to a static page declared under a pathless group', async () => {
+    const TestPage = () => null;
+    const TestSlice = () => null;
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'static',
+        path: '/(group)/foo',
+        component: TestPage,
+        slices: ['slice001'],
+      }),
+      createSlice({
+        render: 'static',
+        component: TestSlice,
+        id: 'slice001',
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = (await getConfigs()) as {
+      type: string;
+      slices?: string[];
+    }[];
+    const route = configs.find((c) => c.type === 'route');
+    expect(route?.slices).toEqual(['slice001']);
+  });
+
+  it('attaches slices to a dynamic page declared under a pathless group', async () => {
+    const TestPage = () => null;
+    const TestSlice = () => null;
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/(group)/[lang]',
+        component: TestPage,
+        slices: ['slice001'],
+      }),
+      createSlice({
+        render: 'static',
+        component: TestSlice,
+        id: 'slice001',
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = (await getConfigs()) as {
+      type: string;
+      slices?: string[];
+    }[];
+    const route = configs.find((c) => c.type === 'route');
+    expect(route?.slices).toEqual(['slice001']);
+  });
+
+  it('attaches slices to every concrete instance of a static slug page declared under a pathless group', async () => {
+    const TestPage = () => null;
+    const TestSlice = () => null;
+    createPages(async ({ createSlice, createPage }) => [
+      createPage({
+        render: 'static',
+        path: '/(group)/[lang]/about',
+        staticPaths: ['en', 'fr'] as const,
+        component: TestPage,
+        slices: ['slice001'],
+      }),
+      createSlice({
+        render: 'static',
+        component: TestSlice,
+        id: 'slice001',
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = (await getConfigs()) as {
+      type: string;
+      path?: { name?: string; type: string }[];
+      slices?: string[];
+    }[];
+    const routes = configs.filter((c) => c.type === 'route');
+    expect(routes).toHaveLength(2);
+    for (const route of routes) {
+      expect(route.slices).toEqual(['slice001']);
+    }
+  });
+
   it('creates a wildcard page with slices', async () => {
     const TestPage = () => null;
     const TestSlice = () => null;
@@ -1132,6 +1212,38 @@ describe('createPages pages and layouts', () => {
     const { getConfigs } = injectedFunctions();
     await expect(getConfigs).rejects.toThrowError(
       'staticPaths does not match with slug pattern',
+    );
+  });
+
+  it('fails when two slices share the same id', async () => {
+    createPages(async ({ createSlice }) => [
+      createSlice({
+        render: 'static',
+        id: 'dup',
+        component: () => null,
+      }),
+      createSlice({
+        render: 'dynamic',
+        id: 'dup',
+        component: () => null,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    await expect(getConfigs).rejects.toThrowError('Duplicated slice id: dup');
+  });
+
+  it('fails when a static slug slice expansion produces a duplicate concrete id', async () => {
+    createPages(async ({ createSlice }) => [
+      createSlice({
+        render: 'static',
+        id: 'items/[id]',
+        component: () => null,
+        staticPaths: ['a', 'a'],
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    await expect(getConfigs).rejects.toThrowError(
+      'Duplicated slice id: items/a',
     );
   });
 
@@ -1724,6 +1836,72 @@ describe('createPages pages and layouts', () => {
     ]);
   });
 
+  it('disables SSR on a static page with slugs and staticPaths', async () => {
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'static',
+        path: '/post/[id]',
+        staticPaths: ['a', 'b'],
+        component: () => null,
+        unstable_disableSSR: true,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = (await getConfigs()) as { type: string; noSsr?: boolean }[];
+    const routes = configs.filter((c) => c.type === 'route');
+    expect(routes).toHaveLength(2);
+    for (const route of routes) {
+      expect(route.noSsr).toBe(true);
+    }
+  });
+
+  it('disables SSR on an exactPath static page with slug-looking segments', async () => {
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'static',
+        path: '/post/[id]',
+        exactPath: true,
+        component: () => null,
+        unstable_disableSSR: true,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = (await getConfigs()) as { type: string; noSsr?: boolean }[];
+    const route = configs.find((c) => c.type === 'route');
+    expect(route?.noSsr).toBe(true);
+  });
+
+  it('disables SSR on a dynamic wildcard page', async () => {
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/files/[...path]',
+        component: () => null,
+        unstable_disableSSR: true,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = (await getConfigs()) as { type: string; noSsr?: boolean }[];
+    const route = configs.find((c) => c.type === 'route');
+    expect(route?.noSsr).toBe(true);
+  });
+
+  it('disables SSR on an exactPath dynamic page with slug-looking segments', async () => {
+    createPages(async ({ createPage }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/post/[id]',
+        exactPath: true,
+        component: () => null,
+        unstable_disableSSR: true,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = (await getConfigs()) as { type: string; noSsr?: boolean }[];
+    const route = configs.find((c) => c.type === 'route');
+    expect(route?.noSsr).toBe(true);
+  });
+
   it('fails if duplicated dynamic paths are registered', async () => {
     createPages(async ({ createPage }) => [
       createPage({
@@ -1790,6 +1968,60 @@ describe('createPages pages and layouts', () => {
     ]);
     const { getConfigs } = injectedFunctions();
     await expect(getConfigs).rejects.toThrowError('Duplicated path: /test/');
+  });
+
+  it('fails when a page is registered on a path already used by an api', async () => {
+    createPages(async ({ createPage, createApi }) => [
+      createApi({
+        path: '/test',
+        render: 'static',
+        method: 'GET',
+        handler: async () => new Response('ok'),
+      }),
+      createPage({
+        render: 'dynamic',
+        path: '/test',
+        component: () => null,
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    await expect(getConfigs).rejects.toThrowError('Duplicated path: /test');
+  });
+
+  it('fails when an api is registered on a path already used by a page', async () => {
+    createPages(async ({ createPage, createApi }) => [
+      createPage({
+        render: 'dynamic',
+        path: '/test',
+        component: () => null,
+      }),
+      createApi({
+        path: '/test',
+        render: 'static',
+        method: 'GET',
+        handler: async () => new Response('ok'),
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    await expect(getConfigs).rejects.toThrowError('Duplicated api path: /test');
+  });
+
+  it('fails when two apis are registered on the same path', async () => {
+    createPages(async ({ createApi }) => [
+      createApi({
+        path: '/test',
+        render: 'static',
+        method: 'GET',
+        handler: async () => new Response('ok'),
+      }),
+      createApi({
+        path: '/test',
+        render: 'dynamic',
+        handlers: { POST: async () => new Response('ok') },
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    await expect(getConfigs).rejects.toThrowError('Duplicated api path: /test');
   });
 
   it('creates a complex router', async () => {
@@ -2368,6 +2600,88 @@ describe('createPages pages and layouts', () => {
         slices: [],
       },
     ]);
+  });
+
+  it('rejects createPage calls after the router has been configured', async () => {
+    let savedCreatePage: CreatePage | undefined;
+    createPages(async ({ createPage }) => {
+      savedCreatePage = createPage;
+      return null as never;
+    });
+    const { getConfigs } = injectedFunctions();
+    await getConfigs();
+    expect(() =>
+      savedCreatePage?.({
+        render: 'static',
+        path: '/late',
+        component: () => null,
+      }),
+    ).toThrowError('createPage no longer available');
+  });
+
+  it('rejects createLayout calls after the router has been configured', async () => {
+    let savedCreateLayout: CreateLayout | undefined;
+    createPages(async ({ createLayout }) => {
+      savedCreateLayout = createLayout;
+      return null as never;
+    });
+    const { getConfigs } = injectedFunctions();
+    await getConfigs();
+    expect(() =>
+      savedCreateLayout?.({
+        render: 'static',
+        path: '/late',
+        component: () => null,
+      }),
+    ).toThrowError('createLayout no longer available');
+  });
+
+  it('rejects createApi calls after the router has been configured', async () => {
+    let savedCreateApi: CreateApi | undefined;
+    createPages(async ({ createApi }) => {
+      savedCreateApi = createApi;
+      return null as never;
+    });
+    const { getConfigs } = injectedFunctions();
+    await getConfigs();
+    expect(() =>
+      savedCreateApi?.({
+        path: '/late',
+        render: 'static',
+        method: 'GET',
+        handler: async () => new Response('ok'),
+      }),
+    ).toThrowError('createApi no longer available');
+  });
+
+  it('rejects createSlice calls after the router has been configured', async () => {
+    let savedCreateSlice: CreateSlice | undefined;
+    createPages(async ({ createSlice }) => {
+      savedCreateSlice = createSlice;
+      return null as never;
+    });
+    const { getConfigs } = injectedFunctions();
+    await getConfigs();
+    expect(() =>
+      savedCreateSlice?.({
+        render: 'static',
+        id: 'late',
+        component: () => null,
+      }),
+    ).toThrowError('createSlice no longer available');
+  });
+
+  it('rejects createRoot calls after the router has been configured', async () => {
+    let savedCreateRoot: ((root: unknown) => void) | undefined;
+    createPages(async ({ createRoot }) => {
+      savedCreateRoot = createRoot as never;
+      return null as never;
+    });
+    const { getConfigs } = injectedFunctions();
+    await getConfigs();
+    expect(() =>
+      savedCreateRoot?.({ render: 'static', component: () => null }),
+    ).toThrowError('createRoot no longer available');
   });
 });
 
