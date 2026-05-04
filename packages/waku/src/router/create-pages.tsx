@@ -64,6 +64,21 @@ const assertStaticPathArity = (
   }
 };
 
+const getPageSlotId = (routePath: string) => `page:${routePath}`;
+const getLayoutSlotId = (layoutIdPath: string) => `layout:${layoutIdPath}`;
+
+const forEachConcreteStaticPath = (
+  routePathSpec: PathSpec,
+  staticPathsInput: readonly (string | readonly string[])[],
+  fn: (concrete: ReturnType<typeof expandStaticRoutePath>) => void,
+) => {
+  const { numSlugs, numWildcards } = countSlugsAndWildcards(routePathSpec);
+  for (const staticSegments of normalizeStaticPaths(staticPathsInput)) {
+    assertStaticPathArity(staticSegments, numSlugs, numWildcards);
+    fn(expandStaticRoutePath(routePathSpec, staticSegments));
+  }
+};
+
 // createPages API (a wrapper around unstable_defineRouter)
 
 /** Assumes that the path is a part of a slug path. */
@@ -456,10 +471,10 @@ export const createPages = <
   ) => {
     const layoutElements = layouts.map(({ layoutIdPath }) => ({
       component: Slot,
-      props: { id: `layout:${layoutIdPath}` },
+      props: { id: getLayoutSlotId(layoutIdPath) },
     }));
     return () =>
-      createNestedElements(layoutElements, <Slot id={`page:${path}`} />);
+      createNestedElements(layoutElements, <Slot id={getPageSlotId(path)} />);
   };
 
   /** Renders the root component */
@@ -488,9 +503,9 @@ export const createPages = <
   ) => Object.values(elements).every((element) => element.isStatic);
 
   const isAllSlicesStatic = (path: string) =>
-    (sliceIdsByRoutePath.get(path) || []).every(
-      (sliceId) => sliceEntryById.get(sliceId)?.isStatic,
-    );
+    sliceIdsByRoutePath
+      .get(path)!
+      .every((sliceId) => sliceEntryById.get(sliceId)?.isStatic);
 
   const createPage: CreatePage = (page) => {
     if (configured) {
@@ -543,33 +558,31 @@ export const createPages = <
     const registerStaticPageWithSlugs = (
       staticPathsInput: readonly (string | readonly string[])[],
     ) => {
-      const staticPaths = normalizeStaticPaths(staticPathsInput);
-      for (const staticSegments of staticPaths) {
-        assertStaticPathArity(staticSegments, numSlugs, numWildcards);
-        const { concretePath, pathItems, mapping } = expandStaticRoutePath(
-          routePathSpec,
-          staticSegments,
-        );
-        const routePath = pathnameToRoutePath(getGrouplessPath(concretePath));
-        const concretePathSpec: PathSpec = pathItems.map((name) => ({
-          type: 'literal',
-          name,
-        }));
-        staticPageEntryByRoutePath.set(routePath, {
-          concretePathSpec,
-          pathPatternSpec: routePathSpec,
-          noSsr,
-        });
-        const concreteRoutePath = pathnameToRoutePath(concretePath);
-        if (routePath !== concreteRoutePath) {
-          groupedRoutePathByRoutePath.set(routePath, concreteRoutePath);
-        }
-        const id = joinPath(routePath, 'page').replace(/^\//, '');
-        const WrappedComponent = (props: Record<string, unknown>) =>
-          createElement(page.component as any, { ...props, ...mapping });
-        registerStaticComponent(id, WrappedComponent);
-        sliceIdsByRoutePath.set(routePath, slices);
-      }
+      forEachConcreteStaticPath(
+        routePathSpec,
+        staticPathsInput,
+        ({ concretePath, pathItems, mapping }) => {
+          const routePath = pathnameToRoutePath(getGrouplessPath(concretePath));
+          const concretePathSpec: PathSpec = pathItems.map((name) => ({
+            type: 'literal',
+            name,
+          }));
+          staticPageEntryByRoutePath.set(routePath, {
+            concretePathSpec,
+            pathPatternSpec: routePathSpec,
+            noSsr,
+          });
+          const concreteRoutePath = pathnameToRoutePath(concretePath);
+          if (routePath !== concreteRoutePath) {
+            groupedRoutePathByRoutePath.set(routePath, concreteRoutePath);
+          }
+          const id = joinPath(routePath, 'page').replace(/^\//, '');
+          const WrappedComponent = (props: Record<string, unknown>) =>
+            createElement(page.component as any, { ...props, ...mapping });
+          registerStaticComponent(id, WrappedComponent);
+          sliceIdsByRoutePath.set(routePath, slices);
+        },
+      );
     };
 
     const registerDynamicPageWithoutWildcard = () => {
@@ -650,26 +663,27 @@ export const createPages = <
     }
     const routePathSpec = parsePathWithSlug(routePath);
     if (options.render === 'static') {
-      const { numSlugs, numWildcards } = countSlugsAndWildcards(routePathSpec);
+      const { numSlugs } = countSlugsAndWildcards(routePathSpec);
       if (numSlugs > 0 && options.staticPaths) {
-        const staticPaths = normalizeStaticPaths(options.staticPaths);
-        for (const staticSegments of staticPaths) {
-          assertStaticPathArity(staticSegments, numSlugs, numWildcards);
-          const { concretePath, pathItems, mapping } = expandStaticRoutePath(
-            routePathSpec,
-            staticSegments,
-          );
-          const concreteRoutePath = pathnameToRoutePath(concretePath);
-          if (pagePathExists(concreteRoutePath)) {
-            throw new Error(`Duplicated api path: ${concretePath}`);
-          }
-          apiEntryByRoutePath.set(concreteRoutePath, {
-            render: 'static',
-            routePathSpec: pathItems.map((name) => ({ type: 'literal', name })),
-            handlers: { GET: options.handler },
-            staticParams: mapping,
-          });
-        }
+        forEachConcreteStaticPath(
+          routePathSpec,
+          options.staticPaths,
+          ({ concretePath, pathItems, mapping }) => {
+            const concreteRoutePath = pathnameToRoutePath(concretePath);
+            if (pagePathExists(concreteRoutePath)) {
+              throw new Error(`Duplicated api path: ${concretePath}`);
+            }
+            apiEntryByRoutePath.set(concreteRoutePath, {
+              render: 'static',
+              routePathSpec: pathItems.map((name) => ({
+                type: 'literal',
+                name,
+              })),
+              handlers: { GET: options.handler },
+              staticParams: mapping,
+            });
+          },
+        );
       } else {
         apiEntryByRoutePath.set(routePath, {
           render: 'static',
@@ -705,31 +719,29 @@ export const createPages = <
       throw new Error('createSlice no longer available');
     }
     const slicePathSpec = parsePathWithSlug(slice.id);
-    const { numSlugs, numWildcards } = countSlugsAndWildcards(slicePathSpec);
+    const { numSlugs } = countSlugsAndWildcards(slicePathSpec);
     if (slice.render === 'static' && numSlugs > 0) {
       if (!('staticPaths' in slice) || !slice.staticPaths) {
         throw new Error(
           `Static slice with slug requires staticPaths: ${slice.id}`,
         );
       }
-      const staticPaths = normalizeStaticPaths(slice.staticPaths);
-      for (const staticSegments of staticPaths) {
-        assertStaticPathArity(staticSegments, numSlugs, numWildcards);
-        const { concretePath, mapping } = expandStaticRoutePath(
-          slicePathSpec,
-          staticSegments,
-        );
-        const concreteId = concretePath.replace(/^\//, '');
-        if (sliceEntryById.has(concreteId)) {
-          throw new Error(`Duplicated slice id: ${concreteId}`);
-        }
-        const WrappedComponent = (props: Record<string, unknown>) =>
-          createElement(slice.component as any, { ...props, ...mapping });
-        sliceEntryById.set(concreteId, {
-          component: WrappedComponent,
-          isStatic: true,
-        });
-      }
+      forEachConcreteStaticPath(
+        slicePathSpec,
+        slice.staticPaths,
+        ({ concretePath, mapping }) => {
+          const concreteId = concretePath.replace(/^\//, '');
+          if (sliceEntryById.has(concreteId)) {
+            throw new Error(`Duplicated slice id: ${concreteId}`);
+          }
+          const WrappedComponent = (props: Record<string, unknown>) =>
+            createElement(slice.component as any, { ...props, ...mapping });
+          sliceEntryById.set(concreteId, {
+            component: WrappedComponent,
+            isStatic: true,
+          });
+        },
+      );
       return;
     }
     if (sliceEntryById.has(slice.id)) {
@@ -816,7 +828,7 @@ export const createPages = <
       ): Record<string, ElementSpec> =>
         Object.fromEntries(
           matches.map(({ layoutPath, layoutIdPath }) => [
-            `layout:${layoutIdPath}`,
+            getLayoutSlotId(layoutIdPath),
             buildLayoutElement(layoutPath),
           ]),
         );
@@ -854,7 +866,7 @@ export const createPages = <
             const getPropsMapping = createPathPropsMapper(routePath);
             const elements: Record<string, ElementSpec> =
               buildLayoutElements(layouts);
-            elements[`page:${routePath}`] = buildPageElement(
+            elements[getPageSlotId(routePath)] = buildPageElement(
               pageComponent,
               getPropsMapping,
               true,
@@ -876,7 +888,7 @@ export const createPages = <
               },
               elements,
               noSsr,
-              slices: sliceIdsByRoutePath.get(routePath) || [],
+              slices: sliceIdsByRoutePath.get(routePath)!,
             };
           },
         );
@@ -888,7 +900,7 @@ export const createPages = <
         const getPropsMapping = createPathPropsMapper(routePath);
         const elements: Record<string, ElementSpec> =
           buildLayoutElements(layouts);
-        elements[`page:${routePath}`] = buildPageElement(
+        elements[getPageSlotId(routePath)] = buildPageElement(
           component,
           getPropsMapping,
           false,
@@ -907,7 +919,7 @@ export const createPages = <
           },
           elements,
           noSsr,
-          slices: sliceIdsByRoutePath.get(routePath) || [],
+          slices: sliceIdsByRoutePath.get(routePath)!,
         };
       };
       const buildDynamicRouteConfigs = () =>
