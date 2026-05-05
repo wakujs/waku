@@ -23,7 +23,7 @@ Waku has 2 ways to set `nonce`.
 
 ### Hono Middleware
 
-Hono provides a [middleware](https://hono.dev/docs/middleware/builtin/secure-headers) which simplifies the setup of security headers Set up a middleware in `src/middleware/nonce.ts`:
+Hono provides a [middleware](https://hono.dev/docs/middleware/builtin/secure-headers) which simplifies the setup of security headers. Set up a middleware in `src/middleware/nonce.ts`:
 
 ```ts
 import type { MiddlewareHandler } from 'hono';
@@ -54,6 +54,8 @@ export default nonceMiddleware;
 ```
 
 Behind the scenes, hono generates the `nonce`, passes it to `Content-Security-Policy` headers (you can add more here) and stores it in `secureHeadersNonce` context. We need to pass it again to Waku context so Waku can apply it to its inline script.
+
+For more on request context and middleware data, see [Request Context](/guides/request-context).
 
 ### Pass nonce in `waku.server.entry`
 

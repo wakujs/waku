@@ -23,7 +23,7 @@ import { unstable_getContextData as getContextData } from 'waku/server';
 
 const streamInterceptor = (): MiddlewareHandler => {
   return async (c, next) => {
-    const data = getContextData<{ theme?: string }>();
+    const data = getContextData() as { theme?: string };
 
     await next();
 
@@ -59,3 +59,5 @@ export default streamInterceptor;
 ### Step 2: Verify the changes
 
 After restarting the server, you can verify that the changes have taken effect by inspecting the HTML source of your page. You should see the `lang` attribute and, if your system is set to dark mode, the `class` attribute on the `<html>` element as well.
+
+For more on request-scoped data, see [Request Context](/guides/request-context).

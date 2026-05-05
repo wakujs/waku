@@ -131,6 +131,8 @@ You can run `npx wrangler types` to generate a `worker-configuration.d.ts` file 
 
 Import from `cloudflare:workers` to access Cloudflare Workers bindings such as environment variables, D1 databases and KV namespaces. See [Cloudflare's documentation on Workers bindings](https://developers.cloudflare.com/workers/runtime-apis/bindings/) for more information.
 
+For general Waku request context usage, see [Request Context](/guides/request-context).
+
 > Note: Durable Objects cannot currently be defined in a Waku app. You can create Durable Objects in another Cloudflare Worker and connect to it via [service bindings](https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/) from your Waku app.
 
 ```ts
