@@ -1,0 +1,324 @@
+---
+slug: adapter-authoring
+title: Adapter Authoring
+description: Build a custom Waku adapter around server entries, request processing, and build processing.
+category: Low-level APIs
+order: 30
+---
+
+## When to Write an Adapter
+
+Most apps should use a built-in adapter such as `waku/adapters/default`, `waku/adapters/node`, `waku/adapters/cloudflare`, or a deployment-specific adapter.
+
+Write a custom adapter only when you need to integrate Waku with a runtime or deployment target that the built-in adapters do not cover. Typical adapter responsibilities are:
+
+- translating platform requests into Waku request processing
+- serving static assets in development or build preview environments
+- wiring Waku middleware and request context
+- exposing the platform-specific default export
+- injecting platform environment bindings into Waku server code
+- adding deployment files after `waku build`
+
+The APIs in this guide currently use `unstable_` names and may change.
+
+## Mental Model
+
+A Waku server entry has two jobs:
+
+- `fetch` handles runtime requests.
+- `build` emits static files and build metadata during `waku build`.
+
+Application routers such as `fsRouter`, `createPages`, `unstable_defineRouter`, and Minimal API handlers implement `handleRequest` and `handleBuild`. An adapter turns those handlers into the server entry that Waku's Vite plugin and the deployment runtime can execute.
+
+`unstable_createServerEntryAdapter` is the usual adapter-authoring helper:
+
+```ts
+import { unstable_createServerEntryAdapter as createServerEntryAdapter } from 'waku/adapter-builders';
+```
+
+It receives the app's handlers and gives your adapter two wrapped functions:
+
+- `processRequest(req)` parses the request, calls `handleRequest`, renders RSC/HTML when needed, and returns a `Response | null`.
+- `processBuild(utils)` calls `handleBuild` with Waku build helpers such as `renderRsc`, `renderHtml`, `generateFile`, and `saveBuildMetadata`.
+
+Your adapter decides when and where to call them.
+
+## Minimal Fetch Adapter
+
+This is the smallest useful shape. It handles runtime requests and lets Waku's build process run normally.
+
+```ts
+// my-waku-adapter.ts
+import { unstable_createServerEntryAdapter as createServerEntryAdapter } from 'waku/adapter-builders';
+
+export default createServerEntryAdapter(({ processRequest, processBuild }) => {
+  return {
+    fetch: async (req: Request) => {
+      const res = await processRequest(req);
+      return res || new Response('Not Found', { status: 404 });
+    },
+    build: processBuild,
+  };
+});
+```
+
+Then use it from `src/waku.server.tsx`:
+
+```tsx
+import { fsRouter } from 'waku';
+import adapter from './my-waku-adapter';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+);
+```
+
+This direct shape is useful for learning the contract, but most production adapters need middleware and platform-specific build output.
+
+## Hono-Based Adapter
+
+The built-in Waku adapters use Hono internally. That gives them a common middleware shape and lets managed-mode `src/middleware` modules run consistently.
+
+```ts
+import type { MiddlewareHandler } from 'hono';
+import { Hono } from 'hono/tiny';
+import { unstable_createServerEntryAdapter as createServerEntryAdapter } from 'waku/adapter-builders';
+import { unstable_honoMiddleware as honoMiddleware } from 'waku/internals';
+
+const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
+
+export default createServerEntryAdapter(
+  (
+    { processRequest, processBuild, notFoundHtml },
+    options?: {
+      middlewareFns?: (() => MiddlewareHandler)[];
+      middlewareModules?: Record<
+        string,
+        () => Promise<{ default: () => MiddlewareHandler }>
+      >;
+    },
+  ) => {
+    const { middlewareFns = [], middlewareModules = {} } = options || {};
+    const app = new Hono();
+
+    app.notFound((c) => {
+      if (notFoundHtml) {
+        return c.html(notFoundHtml, 404);
+      }
+      return c.text('404 Not Found', 404);
+    });
+
+    app.use(contextMiddleware());
+
+    for (const middlewareFn of middlewareFns) {
+      app.use(middlewareFn());
+    }
+
+    app.use(middlewareRunner(middlewareModules));
+    app.use(rscMiddleware({ processRequest }));
+
+    return {
+      fetch: app.fetch,
+      build: processBuild,
+    };
+  },
+);
+```
+
+`contextMiddleware()` is what makes Waku request context APIs such as `unstable_getContext` work. `middlewareRunner(...)` runs middleware modules discovered from `src/middleware`. `rscMiddleware(...)` delegates the final request handling to Waku.
+
+`waku/internals` is intentionally internal. It is useful for adapter authors, but it is not a stable application API.
+
+## Static Assets
+
+Built-in adapters serve generated static assets from Waku's public output directory when the runtime needs to handle them directly. The shared constant lives in `waku/internals`:
+
+```ts
+import { unstable_constants as constants } from 'waku/internals';
+
+const { DIST_PUBLIC } = constants;
+```
+
+Use `config.distDir` with `DIST_PUBLIC` to locate the generated public files. Many adapters only add static-file middleware while `isBuild` is true, because the build-time preview server needs access to files that were just emitted.
+
+## Adapter Builder Inputs
+
+The callback passed to `createServerEntryAdapter` receives:
+
+- `handlers`: the original `handleRequest` and `handleBuild` object.
+- `processRequest`: a Waku request processor that returns `Response | null`.
+- `processBuild`: a Waku build processor that emits generated files.
+- `setAllEnv`: updates Waku's server-side environment map.
+- `config`: resolved Waku config without the Vite config.
+- `isBuild`: `true` while Vite is running the build environment.
+- `notFoundHtml`: prerendered not-found HTML, when available.
+
+The returned server entry can include:
+
+- `fetch`: the runtime request handler.
+- `build`: the build-time file emitter.
+- `buildOptions`: data passed to build enhancers.
+- `buildEnhancers`: module IDs for post-build wrappers.
+- `defaultExport`: a platform-specific default export.
+- other platform-specific fields consumed by your own build enhancer.
+
+## Platform Environment Bindings
+
+Some platforms pass environment bindings as extra arguments to `fetch` instead of using `process.env`. Use `setAllEnv` before delegating to Waku so `getEnv()` and related server code see the platform values.
+
+```ts
+export default createServerEntryAdapter(
+  ({ processRequest, processBuild, setAllEnv }) => {
+    return {
+      fetch: async (req: Request, env: Record<string, string>) => {
+        setAllEnv(env);
+        const res = await processRequest(req);
+        return res || new Response('Not Found', { status: 404 });
+      },
+      build: processBuild,
+    };
+  },
+);
+```
+
+The Cloudflare adapter uses this pattern because Workers pass bindings as the second `fetch` argument.
+
+## Platform Default Exports
+
+Some runtimes need the module's default export to have a platform-specific shape. Return `defaultExport` when the deployment target should import something other than the internal Waku server entry object.
+
+```ts
+export default createServerEntryAdapter(
+  (
+    { processRequest, processBuild, setAllEnv },
+    options?: { handlers?: Record<string, unknown> },
+  ) => {
+    const fetch = async (req: Request, env: Record<string, string>) => {
+      setAllEnv(env);
+      const res = await processRequest(req);
+      return res || new Response('Not Found', { status: 404 });
+    };
+
+    return {
+      fetch,
+      build: processBuild,
+      defaultExport: {
+        ...options?.handlers,
+        fetch,
+      },
+    };
+  },
+);
+```
+
+This is useful for platforms that support extra handlers next to `fetch`, such as queue or scheduled handlers.
+
+## Build Enhancers
+
+`processBuild` emits Waku's generated files, but deployment targets often need extra output. For example, Node needs a small `serve-node.js` entry, and serverless platforms may need manifest or config files.
+
+Use `buildEnhancers` when an adapter needs to wrap the build step:
+
+```ts
+export default createServerEntryAdapter(
+  ({ processRequest, processBuild, config }) => {
+    return {
+      fetch: async (req) => {
+        const res = await processRequest(req);
+        return res || new Response('Not Found', { status: 404 });
+      },
+      build: processBuild,
+      buildOptions: {
+        distDir: config.distDir,
+      },
+      buildEnhancers: ['my-waku-adapter/build-enhancer'],
+    };
+  },
+);
+```
+
+Build enhancer module IDs must be resolvable from the project root. Use a package export for reusable adapters, or a project-root-relative path starting with `/` for app-local experiments.
+
+A build enhancer receives the build function and returns a wrapped build function:
+
+```ts
+// build-enhancer.ts
+import { writeFileSync } from 'node:fs';
+import path from 'node:path';
+
+type BuildOptions = {
+  distDir: string;
+};
+
+export default async function buildEnhancer(
+  build: (utils: unknown, options: BuildOptions) => Promise<void>,
+) {
+  return async (utils: unknown, options: BuildOptions) => {
+    await build(utils, options);
+    writeFileSync(
+      path.join(options.distDir, 'platform-entry.js'),
+      "export { default } from './server/index.js';\n",
+    );
+  };
+}
+```
+
+Keep build enhancers focused on deployment output. Route rendering and static generation should stay in `handleBuild` or `processBuild`.
+
+## Preview Server
+
+Some platform build tools need to execute Waku through a local runtime during `waku build`. Use `unstable_startPreviewServer` for that pattern:
+
+```ts
+import { unstable_startPreviewServer as startPreviewServer } from 'waku/adapter-builders';
+```
+
+It returns:
+
+```ts
+type NodeMiddleware = (
+  req: import('node:http').IncomingMessage,
+  res: import('node:http').ServerResponse,
+  next: (err?: unknown) => void,
+) => void;
+
+type PreviewServer = {
+  baseUrl: string;
+  middlewares: {
+    use: (fn: NodeMiddleware) => void;
+  };
+  close: () => Promise<void>;
+};
+```
+
+The Cloudflare adapter uses this when it needs the Cloudflare Vite plugin/workerd runtime to participate in static file generation.
+
+Only use a preview server when direct `processBuild(...)` is not enough. It is more complex because your adapter must start the server, request the build endpoint, consume the result, and close the server.
+
+## Direct Server Entries
+
+`waku/minimal/server` exports `unstable_defineServerEntry` for cases where you already have a complete server entry and do not want to wrap app handlers with an adapter builder.
+
+```ts
+import { unstable_defineServerEntry as defineServerEntry } from 'waku/minimal/server';
+
+export default defineServerEntry({
+  fetch: async (req) => {
+    return new Response(`Request: ${new URL(req.url).pathname}`);
+  },
+  build: async () => {},
+});
+```
+
+This bypasses router and Minimal API handler helpers. Use it only when you are intentionally owning the entire server entry contract.
+
+## Practical Boundaries
+
+Adapter authors should keep these boundaries clear:
+
+- App routing belongs in `fsRouter`, `createPages`, `unstable_defineRouter`, or Minimal API handlers.
+- Platform request shape, environment bindings, middleware setup, static asset serving, and deployment files belong in the adapter.
+- Build output that depends on app routes belongs in `handleBuild`/`processBuild`.
+- Build output that depends on the deployment platform belongs in a build enhancer.
+
+Avoid copying large parts of Waku's built-in adapters unless you are intentionally matching that platform. Start from the smallest adapter shape that calls `processRequest` and `processBuild`, then add only the platform behavior your target needs.
