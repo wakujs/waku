@@ -1,13 +1,23 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { compileMDX } from 'next-mdx-remote/rsc';
 import { GuideList } from '../../components/guide-list';
+import type { GuideSectionProps } from '../../components/guide-list';
 import { Meta } from '../../components/meta';
 import { Page } from '../../components/page';
 import { PostListContainer } from '../../components/post-list';
-import type { BlogFrontmatter } from '../../types';
+import type { GuideFrontmatter } from '../../types';
+
+const GUIDE_CATEGORY_ORDER = [
+  'Getting Started',
+  'Advanced Setup',
+  'Routing and Navigation',
+  'Runtime and Middleware',
+  'Low-level APIs',
+  'Deployment',
+];
 
 export default async function GuidesIndexPage() {
-  const guides = await getGuides();
+  const guideSections = await getGuideSections();
 
   return (
     <Page>
@@ -16,18 +26,26 @@ export default async function GuidesIndexPage() {
         description="The guides for working with Waku."
       />
       <PostListContainer>
-        <GuideList guides={guides} />
+        <GuideList sections={guideSections} />
       </PostListContainer>
     </Page>
   );
 }
 
-const getGuides = async () => {
+const getCategoryIndex = (category: string) => {
+  const index = GUIDE_CATEGORY_ORDER.indexOf(category);
+  return index === -1 ? GUIDE_CATEGORY_ORDER.length : index;
+};
+
+const getGuideSections = async (): Promise<GuideSectionProps[]> => {
   const guideFileNames: Array<string> = [];
   const guides: Array<{
     slug: string;
     title: string;
     description: string;
+    category: string;
+    order: number;
+    tags: NonNullable<GuideFrontmatter['tags']>;
   }> = [];
 
   readdirSync('../../docs/guides/').forEach((fileName) => {
@@ -43,16 +61,40 @@ const getGuides = async () => {
       source,
       options: { parseFrontmatter: true },
     });
-    const frontmatter = mdx.frontmatter as BlogFrontmatter;
+    const frontmatter = mdx.frontmatter as GuideFrontmatter;
 
     guides.push({
       slug: frontmatter.slug,
       title: frontmatter.title,
       description: frontmatter.description,
+      category: frontmatter.category || 'Other',
+      order: frontmatter.order ?? Number.MAX_SAFE_INTEGER,
+      tags: frontmatter.tags ?? [],
     });
   }
 
-  return guides.sort((a, b) => a.slug.localeCompare(b.slug));
+  const categories = new Map<string, typeof guides>();
+  for (const guide of guides) {
+    const categoryGuides = categories.get(guide.category) || [];
+    categoryGuides.push(guide);
+    categories.set(guide.category, categoryGuides);
+  }
+
+  return Array.from(categories)
+    .sort(([categoryA], [categoryB]) => {
+      const categoryOrderDiff =
+        getCategoryIndex(categoryA) - getCategoryIndex(categoryB);
+      return categoryOrderDiff || categoryA.localeCompare(categoryB);
+    })
+    .map(([category, categoryGuides]) => ({
+      category,
+      guides: categoryGuides
+        .sort((guideA, guideB) => {
+          const guideOrderDiff = guideA.order - guideB.order;
+          return guideOrderDiff || guideA.title.localeCompare(guideB.title);
+        })
+        .map(({ order: _order, category: _category, ...guide }) => guide),
+    }));
 };
 
 export const getConfig = async () => {
