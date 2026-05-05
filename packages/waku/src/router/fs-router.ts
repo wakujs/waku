@@ -1,6 +1,7 @@
 import type { FunctionComponent, ReactNode } from 'react';
 import type { ImportGlobFunction } from 'vite/types/importGlob.d.ts';
 import { isIgnoredPath } from '../lib/utils/fs-router.js';
+import { joinPath } from '../lib/utils/path.js';
 import { METHODS, createPages } from './create-pages.js';
 import type { Method } from './create-pages.js';
 
@@ -25,6 +26,14 @@ export function fsRouter(
    */
   pages: { [file: string]: () => Promise<unknown> },
   options?: {
+    /**
+     * The pages directory name relative to the project's source root,
+     * matching the `base` you pass to `import.meta.glob`. Used to map
+     * glob keys (e.g. `./foo.tsx`) to src-relative paths (e.g.
+     * `pages/foo.tsx`) for build-time pruning.
+     * Defaults to `"pages"`.
+     */
+    pagesDir?: string;
     /** e.g. `"_api"` will detect pages in `src/pages/_api` and strip `_api` from the path. */
     apiDir?: string;
     /** e.g. `"_slices"` will detect slices in `src/pages/_slices`. */
@@ -45,6 +54,7 @@ export function fsRouter(
     }
   }
   const {
+    pagesDir = 'pages',
     apiDir = '_api',
     slicesDir = '_slices',
     unstable_skipBuild,
@@ -58,6 +68,7 @@ export function fsRouter(
       createSlice,
     }) => {
       for (let file in pages) {
+        const srcPath = joinPath(pagesDir, file);
         const mod = (await pages[file]!()) as {
           default: FunctionComponent<{ children: ReactNode }>;
           getConfig?: () => Promise<{
@@ -101,6 +112,7 @@ export function fsRouter(
               render: 'static',
               method: 'GET',
               handler: mod.GET!,
+              unstable_sourceFile: srcPath,
             });
           } else {
             const validMethods = new Set(METHODS);
@@ -128,6 +140,7 @@ export function fsRouter(
               path: apiPath,
               render: 'dynamic',
               handlers,
+              unstable_sourceFile: srcPath,
             });
           }
         } else if (pathItems.at(0) === slicesDir) {
@@ -136,6 +149,7 @@ export function fsRouter(
             render: 'static',
             id: pathItems.slice(1).join('/'),
             ...config,
+            unstable_sourceFile: srcPath,
           } as never); // FIXME avoid as never
         } else if (pathItems.at(-1) === '_layout') {
           createLayout({
@@ -143,12 +157,14 @@ export function fsRouter(
             component: mod.default,
             render: 'static',
             ...config,
+            unstable_sourceFile: srcPath,
           });
         } else if (pathItems.at(-1) === '_root') {
           createRoot({
             component: mod.default,
             render: 'static',
             ...config,
+            unstable_sourceFile: srcPath,
           });
         } else {
           createPage({
@@ -156,6 +172,7 @@ export function fsRouter(
             component: mod.default,
             render: 'static',
             ...config,
+            unstable_sourceFile: srcPath,
           } as never); // FIXME avoid as never
         }
       }

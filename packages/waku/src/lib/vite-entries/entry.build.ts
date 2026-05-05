@@ -29,17 +29,27 @@ export async function INTERNAL_runBuild({
   emitFile: Unstable_EmitFile;
 }) {
   INTERNAL_setAllEnv(process.env as any);
+  const prunableFiles = new Set<string>();
   let build = serverEntry.build;
   for (const enhancer of serverEntry.buildEnhancers || []) {
     const moduleId = resolveModuleId(enhancer, rootDir);
     const mod = await import(moduleId);
     build = await mod.default(build);
   }
-  await build({ emitFile }, serverEntry.buildOptions || {});
+  await build(
+    {
+      emitFile,
+      unstable_registerPrunableFile: (srcPath) => {
+        prunableFiles.add(srcPath);
+      },
+    },
+    serverEntry.buildOptions || {},
+  );
   await emitFile(
     joinPath(DIST_SERVER, BUILD_METADATA_FILE),
     stringToStream(
       `export const buildMetadata = new Map(${JSON.stringify(Array.from(buildMetadata))});`,
     ),
   );
+  return { prunableFiles: Array.from(prunableFiles) };
 }

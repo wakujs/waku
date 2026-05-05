@@ -17,6 +17,15 @@ const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 const DO_NOT_BUNDLE = '';
 
+const PRUNABLE_KEY_PREFIX = '\0__prunable__/';
+
+const emptyStream = () =>
+  new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.close();
+    },
+  });
+
 function isWranglerDev(req: Request): boolean {
   // This header seems to only be set for production cloudflare workers
   return !req.headers.get('cf-visitor');
@@ -77,12 +86,18 @@ export default createServerEntryAdapter(
       serverless: !options?.static,
     };
 
+    const buildBody = () =>
+      produceMultiplexedStream(async (emitFile) => {
+        await processBuild({
+          emitFile,
+          unstable_registerPrunableFile: (srcPath) =>
+            emitFile(PRUNABLE_KEY_PREFIX + srcPath, emptyStream()),
+        });
+      });
+
     const fetchFn = async (req: Request) => {
       if (new URL(req.url).pathname === `/${internalPathToBuildStaticFiles}`) {
-        const body = produceMultiplexedStream(async (emitFile) => {
-          await processBuild({ emitFile });
-        });
-        return new Response(body);
+        return new Response(buildBody());
       }
       let cloudflareContext;
       try {
@@ -124,10 +139,7 @@ export default createServerEntryAdapter(
             const { Readable } = await import(
               /* @vite-ignore */ DO_NOT_BUNDLE + 'node:stream'
             );
-            const body = produceMultiplexedStream(async (emitFile) => {
-              await processBuild({ emitFile });
-            });
-            Readable.fromWeb(body as never).pipe(res);
+            Readable.fromWeb(buildBody() as never).pipe(res);
           } catch (err) {
             next(err);
           }
@@ -135,7 +147,15 @@ export default createServerEntryAdapter(
         const response = await fetch(
           server.baseUrl + internalPathToBuildStaticFiles,
         );
-        await consumeMultiplexedStream(response.body!, utils.emitFile);
+        await consumeMultiplexedStream(response.body!, async (key, stream) => {
+          if (key.startsWith(PRUNABLE_KEY_PREFIX)) {
+            utils.unstable_registerPrunableFile(
+              key.slice(PRUNABLE_KEY_PREFIX.length),
+            );
+            return;
+          }
+          await utils.emitFile(key, stream);
+        });
         await server.close();
       },
       buildOptions,
