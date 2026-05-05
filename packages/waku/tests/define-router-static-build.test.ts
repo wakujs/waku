@@ -63,11 +63,11 @@ describe('define-router handleBuild', () => {
     );
     expect(cached, 'cachedElements should be saved').toBeDefined();
     const cachedEntries = JSON.parse(cached![1]);
-    expect(Object.keys(cachedEntries)).toContain('layout:/nested');
+    expect(Object.keys(cachedEntries)).toContain('slot/layout:/nested');
     // routeElement is keyed by the path template (not a concrete path)
     // so a single cache entry covers every concrete instance under
     // a slug/wildcard route.
-    const templateRouteKey = `route:${JSON.stringify([
+    const templateRouteKey = `pathSpec/${JSON.stringify([
       { type: 'literal', name: 'nested' },
       { type: 'group', name: 'name' },
     ])}`;
@@ -123,7 +123,9 @@ describe('define-router handleBuild', () => {
       ([key]) => key === 'defineRouter:cachedElements',
     );
     expect(cached).toBeDefined();
-    expect(Object.keys(JSON.parse(cached![1]))).toContain('slice:my-slice');
+    expect(Object.keys(JSON.parse(cached![1]))).toContain(
+      'slot/slice:my-slice',
+    );
   });
 
   it('wraps EEXIST on static wildcard emit with a clear error', async () => {
