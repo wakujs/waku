@@ -62,6 +62,9 @@ const getGuideSections = async (): Promise<GuideSectionProps[]> => {
       options: { parseFrontmatter: true },
     });
     const frontmatter = mdx.frontmatter as GuideFrontmatter;
+    if (frontmatter.hidden) {
+      continue;
+    }
 
     guides.push({
       slug: frontmatter.slug,

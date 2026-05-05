@@ -8,7 +8,7 @@ tags:
   - Experimental
 ---
 
-## Redirect Maps
+## External Redirect Maps
 
 This guide is for redirect maps that sit in front of the Waku server, such as middleware, reverse proxies, CDNs, or hosting-platform redirect rules.
 
@@ -29,7 +29,7 @@ With Waku's default config:
 
 If you customize `basePath` or `rscBase`, adjust the redirect rules accordingly.
 
-For application-level redirects implemented inside Waku routes or server actions, use `unstable_redirect` from `waku/router/server` instead. That is a separate use case from the redirect-map approach described here.
+For application-level redirects implemented inside Waku routes or server actions, see [Redirects and Not Found](/guides/redirects-and-not-found) instead. That is a separate use case from the redirect-map approach described here.
 
 ### Redirect via middleware
 
@@ -91,4 +91,4 @@ This very much depends on the hosting environment you are using. For example, on
 /RSC/R/old.txt /RSC/R/new.txt 301
 ```
 
-For app-level redirects inside page code or server actions, use `unstable_redirect` from `waku/router/server` instead of external redirect maps.
+For app-level redirects inside page code or server actions, use [Redirects and Not Found](/guides/redirects-and-not-found) instead of external redirect maps.

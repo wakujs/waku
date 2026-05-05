@@ -1,0 +1,108 @@
+---
+slug: no-ssr
+title: No SSR and Static Fallbacks
+description: Disable document SSR when a route should render from Waku's fallback HTML shell.
+category: Routing and Navigation
+order: 40
+tags:
+  - Experimental
+---
+
+## When to Disable Document SSR
+
+By default, Waku renders an HTML document for page requests. This gives the browser useful HTML before client-side JavaScript loads.
+
+Disabling document SSR changes that behavior. The server returns Waku's fallback HTML shell, and the client router fetches the RSC payload to render the route in the browser.
+
+This can be useful for:
+
+- authenticated app areas where HTML content is not useful before client state loads
+- browser-only experiences where server-rendered document content would be misleading
+- routes where you intentionally prefer a static shell over per-request document rendering
+
+It is usually a poor fit for public content pages, marketing pages, documentation, or any route where SEO and initial HTML content matter.
+
+## Disable SSR for a Programmatic Route
+
+With `createPages`, use `unstable_disableSSR` on a page:
+
+```tsx
+// src/waku.server.tsx
+import { createPages } from 'waku';
+import adapter from 'waku/adapters/default';
+import { AppPage } from './templates/app-page';
+
+const pages = createPages(async ({ createPage }) => [
+  createPage({
+    render: 'static',
+    path: '/app',
+    component: AppPage,
+    unstable_disableSSR: true,
+  }),
+]);
+
+export default adapter(pages);
+```
+
+`unstable_disableSSR` currently uses an `unstable_` name and may change. See the [`createPages` reference](/create-pages#disabling-ssr) for the API-level details.
+
+## Disable SSR from a Custom Server Entry
+
+If you own `src/waku.server.tsx`, you can return `'fallback'` for document requests. This is useful when using the file-system router but deciding at the server-entry level that some or all document requests should skip SSR.
+
+The simplest whole-app version looks like this:
+
+```tsx
+// src/waku.server.tsx
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/default';
+
+const router = fsRouter(import.meta.glob('./**/*.tsx', { base: './pages' }));
+
+export default adapter({
+  handleRequest: async (input, utils) => {
+    if (input.type === 'custom') {
+      return 'fallback';
+    }
+    return router.handleRequest(input, utils);
+  },
+  handleBuild: (utils) => {
+    return router.handleBuild(utils);
+  },
+});
+```
+
+You can also make this conditional:
+
+```tsx
+handleRequest: async (input, utils) => {
+  if (input.type === 'custom' && input.pathname.startsWith('/app')) {
+    return 'fallback';
+  }
+  return router.handleRequest(input, utils);
+};
+```
+
+## What the Fallback Contains
+
+The fallback is an HTML shell that can boot the Waku client. It is not the same as a fully rendered page.
+
+When a route uses the fallback:
+
+- the initial document does not contain that route's rendered content
+- the client still needs JavaScript to render the route
+- the RSC payload is still requested and rendered by the client router
+
+## No SSR vs Static Rendering
+
+Static rendering and no SSR solve different problems.
+
+Static rendering prerenders route output at build time. The generated HTML can contain the page content.
+
+No SSR skips document rendering and serves a fallback shell. It can reduce server document work, but it also removes the initial page content from the HTML document.
+
+Disabling SSR does not turn every Waku feature into pure static output. Dynamic server behavior still needs a runtime that can serve the relevant RSC requests and APIs.
+
+## Verify the Result
+
+After building or starting the app, inspect the page source for a route with SSR disabled. You should see the Waku shell rather than the route's full rendered content. Then load the page normally in the browser and verify that the client renders the route after JavaScript starts.

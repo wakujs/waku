@@ -1,24 +1,50 @@
 ---
 slug: react-compiler
-title: Enabling React Compiler in Waku
-description: Learn how to enable the React Compiler in your Waku project using the Vite Plugin to optimize your React applications.
+title: React Compiler in Waku
+description: How new Waku projects enable React Compiler, and what to check when upgrading an older app.
 category: Advanced Setup
 order: 20
 ---
 
-The React Compiler is a build-time tool designed to optimize React applications automatically. This guide will show you how to enable the React Compiler by integrating it with the `@vitejs/plugin-react`.
+## Default Template Setup
 
-```bash
-npm install -D @vitejs/plugin-react babel-plugin-react-compiler
-```
+New Waku projects created with `npm create waku@latest` already enable React Compiler in `waku.config.ts`.
+
+The default TypeScript template includes:
 
 ```ts
-// waku.config.ts
-import { defineConfig } from 'waku/config';
-import react, { reactCompilerPreset } from '@vitejs/plugin-react'; // make sure v6.0.0 or above is installed
 import babel from '@rolldown/plugin-babel';
+import tailwindcss from '@tailwindcss/vite';
+import react, { reactCompilerPreset } from '@vitejs/plugin-react';
+import { defineConfig } from 'waku/config';
 
-const ReactCompilerConfig = {};
+export default defineConfig({
+  vite: {
+    plugins: [
+      tailwindcss(),
+      react(),
+      babel({ presets: [reactCompilerPreset()] }),
+    ],
+  },
+});
+```
+
+If you created a new project from the current template, there is nothing else to install.
+
+## Upgrading an Existing Project
+
+Older Waku projects may not have React Compiler configured. To enable it, install the Vite React plugin and React Compiler Babel plugin:
+
+```bash
+npm install -D @vitejs/plugin-react babel-plugin-react-compiler @rolldown/plugin-babel
+```
+
+Then add the React Compiler preset to your Waku config:
+
+```ts
+import babel from '@rolldown/plugin-babel';
+import react, { reactCompilerPreset } from '@vitejs/plugin-react';
+import { defineConfig } from 'waku/config';
 
 export default defineConfig({
   vite: {
@@ -26,3 +52,9 @@ export default defineConfig({
   },
 });
 ```
+
+If your project already has other Vite plugins, keep them in the same `plugins` array.
+
+## Learn More
+
+For React-specific behavior, compatibility, diagnostics, and configuration options, see the [official React Compiler docs](https://react.dev/learn/react-compiler).

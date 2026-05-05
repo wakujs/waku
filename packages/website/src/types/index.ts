@@ -16,4 +16,5 @@ export type GuideFrontmatter = {
   category?: string;
   order?: number;
   tags?: GuideTag[];
+  hidden?: boolean;
 };
