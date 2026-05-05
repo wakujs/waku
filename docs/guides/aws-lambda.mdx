@@ -1,25 +1,49 @@
 ---
 slug: aws-lambda
-title: AWS Lambda Builder
-description: Deploy a WAKU application to AWS.
+title: Deploy Waku to AWS Lambda
+description: Deploy a Waku application with the experimental AWS Lambda adapter.
 category: Deployment
 order: 20
-tags:
-  - Experimental
+tags: [Experimental]
 ---
 
-The WAKU builder for AWS Lambda will provide the bundled output in the `dist` folder.
-The entry handler for the Lambda is `dist/serve-aws-lambda.handler`.
+## Configure the AWS Lambda Adapter
 
-> Folder which require directly access - eg. `fs.readFile("./private/data.json")` needs to be manual added to the deployment configuration.
+Use `waku/adapters/aws-lambda` in `src/waku.server.tsx`:
 
-> **activate Streaming support:** `DEPLOY_AWS_LAMBDA_STREAMING=true pnpm build --with-aws-lambda`
+```ts
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/aws-lambda';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  { streaming: false },
+);
+```
+
+The AWS Lambda adapter adds a generated handler module during `waku build`:
+
+- generated file: `dist/serve-aws-lambda.js`
+- exported handler: `handler`
+
+If the deployment package root is your project root, use `dist/serve-aws-lambda.handler` as the Lambda handler. If the deployment package root is `dist`, use `serve-aws-lambda.handler`.
+
+To enable Lambda response streaming, set `streaming: true` in the adapter options:
+
+```ts
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  { streaming: true },
+);
+```
+
+Files that your server code reads directly, such as `fs.readFile('./private/data.json')`, must be included in your deployment package.
 
 ## [Serverless Framework](https://www.serverless.com)
 
 ### Installation
 
-add this serverless plugin to your `package.json`:
+Add this Serverless Framework plugin to your project:
 
 ```sh
 pnpm add -D serverless-scriptable-plugin
@@ -27,7 +51,7 @@ pnpm add -D serverless-scriptable-plugin
 
 ### Setup
 
-create a `serverlesss.yml` with this content and change the `service:` to your project name.
+Create a `serverless.yml` with this content and change `service:` to your project name.
 
 ```yml
 service: waku-aws-lambda
@@ -63,7 +87,7 @@ custom:
     # add custom hooks
     hooks:
       before:package:createDeploymentArtifacts:
-        - pnpm waku build --with-aws-lambda
+        - pnpm exec waku build
 ```
 
 This configuration will include all files from the `./private` directory in the final deployment.
@@ -92,23 +116,23 @@ For more configuration options and how to use a custom domain visit the Serverle
 
 ### Setup
 
-Initialize your project with the `cdk` CLI
+Initialize your project with the `cdk` CLI:
 
 ```sh
-mkdir cdk &&  cd "$_"
+mkdir cdk && cd "$_"
 pnpx cdk init app -l typescript --generate-only
 cd ..
 cp cdk/cdk.json .
 ```
 
-change entry in `cdk.json`:
+Change the entry in `cdk.json`:
 
 ```diff
 -  "app": "npx ts-node --prefer-ts-exts bin/cdk.ts",
 +  "app": "infra/main.js",
 ```
 
-remove these lines:
+Remove these lines:
 
 ```diff
 -  "watch": {
@@ -129,32 +153,32 @@ remove these lines:
 -  },
 ```
 
-remove the `cdk` directory:
+Remove the `cdk` directory:
 
 ```sh
 rm -fr cdk
 ```
 
-add packages:
+Add packages:
 
 ```sh
 pnpm add -D aws-cdk
 pnpm add aws-cdk-lib constructs
 ```
 
-create the infrastructure directory:
+Create the infrastructure directory:
 
 ```sh
 mkdir -p  infra/lib
 ```
 
-bootstrap the AWS CDK:
+Bootstrap the AWS CDK:
 
 ```sh
 pnpm cdk bootstrap
 ```
 
-create `infra/main.js`:
+Create `infra/main.js`:
 
 ```js
 #!/usr/bin/env node
@@ -177,7 +201,7 @@ new WakuStack(app, 'WakuStack', {
 });
 ```
 
-create `infra/lib/waku-stack.js`:
+Create `infra/lib/waku-stack.js`:
 
 ```js
 import * as cdk from 'aws-cdk-lib';
@@ -198,11 +222,9 @@ export class WakuStack extends cdk.Stack {
           image: cdk.DockerImage.fromRegistry('local'),
           local: {
             tryBundle(outputDir) {
-              spawnSync(
-                'pnpm',
-                ['exec', 'waku', 'build', '--with-aws-lambda'],
-                { stdio: 'inherit' },
-              );
+              spawnSync('pnpm', ['exec', 'waku', 'build'], {
+                stdio: 'inherit',
+              });
               cpSync('dist', outputDir, { recursive: true, dereference: true });
               if (existsSync('private')) {
                 cpSync('private', join(outputDir, 'private'), {
@@ -228,7 +250,7 @@ export class WakuStack extends cdk.Stack {
       authType: lambda.FunctionUrlAuthType.NONE,
     });
 
-    // 👇 add an Output with the API Url
+    // Add an output with the API URL.
     new cdk.CfnOutput(this, 'waku-http-api-url', {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       value: httpApi.url,
@@ -239,26 +261,25 @@ export class WakuStack extends cdk.Stack {
 
 This configuration will include all files from the `./private` directory in the final deployment.
 
-deploy to AWS:
+Deploy to AWS:
 
 ```sh
 pnpm cdk deploy WakuStack
 ```
 
-For more configuration options and how to use a custom domain visit the AWS CDK [documentation](https://docs.aws.amazon.com/cdk/v2/guide/home.html)
+For more configuration options and how to use a custom domain, visit the AWS CDK [documentation](https://docs.aws.amazon.com/cdk/v2/guide/home.html).
 
 ## sst.dev V3
 
-This example requires a build with activated streaming.
-`DEPLOY_AWS_LAMBDA_STREAMING=true pnpm build --with-aws-lambda`
+This example uses Lambda response streaming, so set `streaming: true` in the adapter options.
 
 ### Setup
 
-1. add `pnpm sst@latest init`
+1. Run `pnpm sst@latest init`
 
-### configuration
+### Configuration
 
-use this as an example to run WAKU as Lamda Function:
+Use this as an example to run Waku as a Lambda function:
 
 sst.config.ts
 
@@ -299,7 +320,7 @@ export default $config({
 });
 ```
 
-### deploy
+### Deploy
 
 ```sh
 pnpx sst deploy

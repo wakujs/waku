@@ -1,0 +1,166 @@
+---
+slug: request-context
+title: Request Context
+description: Read request headers and pass middleware data to server components and server functions.
+category: Runtime and Middleware
+order: 10
+---
+
+## When to Use Request Context
+
+Waku provides request-scoped context for server code. Use it when a server component, server function, or middleware needs information from the current request.
+
+The APIs in this guide currently use `unstable_` names and may change.
+
+## Read the Current Request
+
+Use `unstable_getContext` in server-only code to access the current request object:
+
+```tsx
+import { unstable_getContext as getContext } from 'waku/server';
+
+const getCurrentPath = () => {
+  const { req } = getContext();
+  return new URL(req.url).pathname;
+};
+
+export default function Page() {
+  const path = getCurrentPath();
+
+  return <p>Current path: {path}</p>;
+}
+```
+
+`getContext()` throws if request context is not available. Call it during request handling, not in module scope.
+
+## Read Request Headers
+
+For headers, use `unstable_getHeaders`:
+
+```tsx
+import { unstable_getHeaders as getHeaders } from 'waku/server';
+
+export default function Page() {
+  const headers = getHeaders();
+  const userAgent = headers['user-agent'] || 'unknown';
+
+  return <p>User agent: {userAgent}</p>;
+}
+```
+
+The returned object is a snapshot of the request headers for the current request.
+
+## Pass Data from Middleware
+
+Middleware can store request-scoped data with `unstable_getContextData`. Server components and server functions can read the same data later in the request.
+
+Create a middleware file under `src/middleware/`:
+
+```ts
+// src/middleware/request-info.ts
+import type { MiddlewareHandler } from 'hono';
+import { unstable_getContextData as getContextData } from 'waku/server';
+
+type RequestData = {
+  country?: string;
+};
+
+const requestInfoMiddleware = (): MiddlewareHandler => {
+  return async (c, next) => {
+    const data = getContextData() as RequestData;
+    data.country = c.req.header('cf-ipcountry') || 'unknown';
+    await next();
+  };
+};
+
+export default requestInfoMiddleware;
+```
+
+Then read that data from server code:
+
+```tsx
+import { unstable_getContextData as getContextData } from 'waku/server';
+
+type RequestData = {
+  country?: string;
+};
+
+export default function Page() {
+  const data = getContextData() as RequestData;
+
+  return <p>Country: {data.country || 'unknown'}</p>;
+}
+```
+
+In managed mode, Waku automatically discovers middleware files in `src/middleware/`. If you own a custom server entry, pass middleware modules or middleware functions to your adapter instead.
+
+## Cookies
+
+Waku does not currently provide a dedicated cookie API. Use middleware to parse request cookies, store the values your app needs in context data, and set response cookies after rendering.
+
+This example uses the `cookie` package:
+
+```ts
+// src/middleware/session.ts
+import * as cookie from 'cookie';
+import type { MiddlewareHandler } from 'hono';
+import { unstable_getContextData as getContextData } from 'waku/server';
+
+type RequestData = {
+  sessionId?: string;
+};
+
+const sessionMiddleware = (): MiddlewareHandler => {
+  return async (c, next) => {
+    const data = getContextData() as RequestData;
+    const cookies = cookie.parse(c.req.header('cookie') || '');
+    data.sessionId = cookies.sessionId;
+
+    await next();
+
+    if (c.res && data.sessionId) {
+      const headers = new Headers(c.res.headers);
+      headers.append(
+        'set-cookie',
+        cookie.serialize('sessionId', data.sessionId, {
+          httpOnly: true,
+          path: '/',
+          sameSite: 'lax',
+          secure: true,
+        }),
+      );
+      c.res = new Response(c.res.body, {
+        status: c.res.status,
+        statusText: c.res.statusText,
+        headers,
+      });
+    }
+  };
+};
+
+export default sessionMiddleware;
+```
+
+Keep context data small and request-specific. Do not store values that should outlive the request.
+
+## Cloudflare Bindings
+
+On Cloudflare Workers, import bindings from `cloudflare:workers`. Use Waku request context for request data, and Cloudflare's runtime APIs for environment bindings, D1, KV, and `waitUntil`.
+
+```tsx
+import { env } from 'cloudflare:workers'; // eslint-disable-line import/no-unresolved
+import { unstable_getContext as getContext } from 'waku/server';
+
+export default async function Page() {
+  const { req } = getContext();
+  const url = new URL(req.url);
+  const id = url.searchParams.get('id');
+  const item = id
+    ? await env.DB.prepare('SELECT * FROM item WHERE id = ?').bind(id).first()
+    : null;
+
+  return <pre>{JSON.stringify(item, null, 2)}</pre>;
+}
+```
+
+See [Run Waku on Cloudflare](/guides/cloudflare) for the full Cloudflare setup.

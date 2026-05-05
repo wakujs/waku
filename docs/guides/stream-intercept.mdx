@@ -4,13 +4,14 @@ title: SSR Stream Interception
 description: How to intercept SSR stream to inject content before it is sent to the client.
 category: Runtime and Middleware
 order: 30
-tags:
-  - Experimental
+tags: [Experimental]
 ---
 
 ## Additional Content Injection in SSR
 
 In some cases you may want to inject additional content into the SSR stream before it's sent to the client. This can be useful for injecting properties onto the document's root element (e.g., the `lang` attribute or a class name based on the user's request headers).
+
+This guide is intentionally narrow. Use it when you specifically need to transform the HTML stream. For request-scoped data and regular middleware, see [Request Context](/guides/request-context).
 
 ### Step 1: Create a custom middleware
 
@@ -19,27 +20,25 @@ Create a new file in `src/middleware/`. Waku automatically discovers and loads m
 ```ts
 // ./src/middleware/stream-interceptor.ts
 import type { MiddlewareHandler } from 'hono';
-import { unstable_getContextData as getContextData } from 'waku/server';
+
+const getPreferredLanguage = (acceptLanguage: string | undefined) => {
+  return acceptLanguage?.split(',')[0]?.trim() || 'en';
+};
 
 const streamInterceptor = (): MiddlewareHandler => {
   return async (c, next) => {
-    const data = getContextData<{ theme?: string }>();
-
     await next();
 
     const contentType = c.res.headers.get('content-type');
     const isDocument = contentType?.includes('text/html');
-    const lang = 'en-US';
+    const lang = getPreferredLanguage(c.req.header('accept-language'));
 
     if (isDocument && c.res.body) {
       const newBody = c.res.body.pipeThrough(
         new TransformStream({
           transform(chunk, controller) {
             const text = new TextDecoder().decode(chunk);
-            const newText = text.replace(
-              '<html>',
-              `<html lang="${lang}" ${data.theme === 'dark' ? "class='dark'" : ''}>`,
-            );
+            const newText = text.replace('<html>', `<html lang="${lang}">`);
             controller.enqueue(new TextEncoder().encode(newText));
           },
         }),
@@ -58,4 +57,6 @@ export default streamInterceptor;
 
 ### Step 2: Verify the changes
 
-After restarting the server, you can verify that the changes have taken effect by inspecting the HTML source of your page. You should see the `lang` attribute and, if your system is set to dark mode, the `class` attribute on the `<html>` element as well.
+After restarting the server, inspect the HTML source of your page. You should see the `lang` attribute on the `<html>` element.
+
+For more on request-scoped data, see [Request Context](/guides/request-context).

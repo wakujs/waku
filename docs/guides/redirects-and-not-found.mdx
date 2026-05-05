@@ -1,0 +1,127 @@
+---
+slug: redirects-and-not-found
+title: Redirects and Not Found
+description: Handle app-level redirects, missing data, and custom 404 pages.
+category: Routing and Navigation
+order: 30
+tags: [Experimental]
+---
+
+## Choose the Redirect Type
+
+Waku supports two different redirect patterns:
+
+- Use app-level redirects when route code decides where the user should go.
+- Use external redirect maps when a proxy, CDN, middleware, or hosting platform should redirect paths before Waku renders.
+
+This guide covers app-level redirects and not-found handling. For infrastructure redirects, see [Redirect Maps](/guides/redirect-maps).
+
+The APIs in this guide currently use `unstable_` names and may change.
+
+## Redirect from Server Code
+
+Use `unstable_redirect` from `waku/router/server` in server-only code:
+
+```tsx
+// src/pages/account.tsx
+import { unstable_redirect as redirect } from 'waku/router/server';
+import { getCurrentUser } from '../lib/auth';
+
+export default async function AccountPage() {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect('/login');
+  }
+
+  return <h1>Welcome, {user.name}</h1>;
+}
+```
+
+`redirect(location, status?)` accepts a pathname and one of these status codes:
+
+- `303`
+- `307`
+- `308`
+
+The default is `307`.
+
+## Redirect After a Server Action
+
+For form submissions and mutations, use `303` when the next page should be loaded with a `GET` request:
+
+```tsx
+// src/pages/posts/new.tsx
+import { unstable_redirect as redirect } from 'waku/router/server';
+import { createPost } from '../../lib/posts';
+
+export default function NewPostPage() {
+  return (
+    <form
+      action={async (formData) => {
+        'use server';
+
+        const post = await createPost({
+          title: String(formData.get('title') || ''),
+        });
+
+        redirect(`/posts/${post.slug}`, 303);
+      }}
+    >
+      <input name="title" />
+      <button>Create post</button>
+    </form>
+  );
+}
+```
+
+## Render Not Found for Missing Data
+
+Use `unstable_notFound` when a route matches but the backing data does not exist:
+
+```tsx
+// src/pages/posts/[slug].tsx
+import type { PageProps } from 'waku/router';
+import { unstable_notFound as notFound } from 'waku/router/server';
+import { getPost } from '../../lib/posts';
+
+export default async function PostPage({ slug }: PageProps<'/posts/[slug]'>) {
+  const post = await getPost(slug);
+
+  if (!post) {
+    notFound();
+  }
+
+  return <article>{post.title}</article>;
+}
+```
+
+## Add a Custom 404 Page
+
+Create `src/pages/404.tsx` to customize the not-found page:
+
+```tsx
+// src/pages/404.tsx
+export default function NotFoundPage() {
+  return (
+    <main>
+      <h1>Not found</h1>
+      <p>The page you requested does not exist.</p>
+    </main>
+  );
+}
+
+export const getConfig = async () => {
+  return {
+    render: 'static',
+  } as const;
+};
+```
+
+If a `/404` page exists, Waku uses it for unmatched routes and `notFound()` results. If it does not exist, Waku falls back to a minimal not-found response.
+
+## Status and Streaming Notes
+
+Redirects and not-found responses work best when they are thrown before the page has started streaming meaningful content. Once a response has started streaming to the browser, the server may not be able to change the HTTP status or response headers.
+
+For redirects that should happen before Waku handles the request at all, use middleware or a hosting-platform redirect map instead.

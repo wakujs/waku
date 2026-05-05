@@ -1,54 +1,54 @@
 ---
 slug: docker
 title: Dockerise a Waku app
-description: How to package a Waku app into a Docker container.
+description: How to package a Waku app into a Docker image.
 category: Deployment
 order: 30
 ---
 
-## Dockerise a Waku app
+## Build a Docker Image
 
-Bundle your Waku app into a Docker container for portability and easy deployment in various environments.
+Bundle your Waku app into a Docker image for portability and deployment in container-based environments.
 
 ### Prerequisites
 
-Make sure you have Docker and Node.js installed on your machine. We will prepare the image and container in 3 easy steps for reproducible results. Create 3 files in your folder root: `Dockerfile`, `.dockerignore`, `docker-compose.yml`.
+Make sure Docker is installed on your machine. This guide assumes an npm-based Waku app. If your project uses pnpm or another package manager, use the matching lockfile and install commands in the Dockerfile.
 
 ### Dockerfile
 
-First, let's take a look at `Dockerfile` where we define the Docker commands to build the app image.
+Create a `Dockerfile` in your project root:
 
 ```dockerfile
-FROM node:20-alpine as builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# import dependencies
-COPY package.json .
-COPY package-lock.json .
+COPY package*.json ./
+RUN npm ci
 
-RUN npm install
-
-# copy assets
 COPY . .
-
 RUN npm run build
+
+FROM node:22-alpine AS runner
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+COPY --from=builder /app/dist ./dist
 
 EXPOSE 8080
 
 CMD ["npm", "run", "start"]
 ```
 
-Dockerfile is set up so that it uses Docker's [multi-stage build](https://docs.docker.com/build/building/multi-stage/) paradigm, in which different layers of the process are cached and reused on subsequent builds if the underlying files have not changed since the previous build. Here's a breakdown of the commands:
+This Dockerfile uses Docker's [multi-stage build](https://docs.docker.com/build/building/multi-stage/) pattern:
 
-1. FROM: use a Node v20 base image to scaffold the build process
-2. WORKDIR: set a directory path where all the following commands take place
-3. COPY: copy dependency info to the working directory (signified by the **dot** at the end)
-4. RUN: install project dependencies
-5. COPY: copy project assets (images, jsx files etc.)
-6. RUN: build the app with production settings
-7. EXPOSE: declare a port to enable access to the application from the container
-8. CMD: start up the app
+- the `builder` stage installs all dependencies and runs `npm run build`
+- the `runner` stage installs production dependencies and copies only the built `dist` output
+- the container starts the app with `npm run start`
 
 A health check command can be optionally included at the end of the Dockerfile. An example would be:
 `HEALTHCHECK --interval=30s CMD wget -qO- http://localhost:8080 || exit 1`
@@ -59,27 +59,27 @@ Use an ignore file to avoid copying unnecessary/undesirable files into the image
 
 ```
 /node_modules
+.git
+dist
 .vscode
 ```
 
 This way `node_modules` files will not be copied in the above Dockerfile setup.
 
-### docker-compose.yml file
+### Compose File
 
-To streamline the build process, create a compose file which will be easily extensible when additional services are needed:
+To streamline local container startup, create a compose file:
 
 ```yaml
-version: '3.8'
-
 services:
-  waku-app-frontend:
+  waku-app:
     build:
       context: .
-    image: wakuapp
+    image: waku-app
     environment:
       NODE_ENV: production
     ports:
-      - 8080:8080
+      - '8080:8080'
 ```
 
 Specify the name of the service, and within it add the following:
@@ -91,7 +91,10 @@ Specify the name of the service, and within it add the following:
 
 ### Build the container
 
-Finally, with the blueprints ready, build the container using the following command:
-`docker-compose up -d --build`
+Finally, build and start the container:
 
-With this, the app should be accessible from _localhost_ in the browser and the container should be deployable to cloud hosting platforms.
+```sh
+docker compose up --build
+```
+
+The app should be available at [http://localhost:8080](http://localhost:8080).

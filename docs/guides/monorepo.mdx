@@ -1,35 +1,75 @@
 ---
 slug: monorepo
 title: Waku in a Monorepo Setup
-description: Tips for Using Waku in a Monorepo Setup
+description: Avoid duplicate React installs and common workspace issues.
 category: Advanced Setup
 order: 10
 ---
 
-## Issues with Two Instances of React
+## Avoid Duplicate React Installs
 
-Example error:
+The most common Waku monorepo problem is loading more than one copy of React. It can happen when a workspace package installs its own `react` dependency instead of using the app's copy.
 
-```
+Typical symptoms include errors like:
+
+```txt
 TypeError: Cannot read properties of null (reading 'use')
 ```
 
-This issue can sometimes occur in `pnpm` workspaces. In such cases, configuring Vite may resolve the problem.
+or React hook errors that only happen when importing a component from another workspace package.
 
-`vite.config.ts`:
+For local workspace packages, prefer declaring React packages as peer dependencies. For example, a shared UI package can keep React available for local development without bundling its own runtime copy:
+
+```json
+{
+  "peerDependencies": {
+    "react": "~19.2.5",
+    "react-dom": "~19.2.5"
+  },
+  "devDependencies": {
+    "react": "~19.2.5",
+    "react-dom": "~19.2.5"
+  }
+}
+```
+
+The Waku app should keep the actual runtime dependencies:
+
+```json
+{
+  "dependencies": {
+    "react": "~19.2.5",
+    "react-dom": "~19.2.5",
+    "react-server-dom-webpack": "~19.2.5",
+    "waku": "1.0.0-alpha.9"
+  }
+}
+```
+
+## Dedupe React in Vite
+
+If your package manager still resolves multiple React copies, configure Vite through `waku.config.ts`:
 
 ```ts
-import { defineConfig } from 'vite';
+import { defineConfig } from 'waku/config';
 
 export default defineConfig({
-  resolve: {
-    dedupe: ['react', 'react-dom'],
+  vite: {
+    resolve: {
+      dedupe: ['react', 'react-dom'],
+    },
   },
 });
 ```
 
-Ref: https://github.com/wakujs/waku/issues/676
+This asks Vite to resolve `react` and `react-dom` from a single location when bundling linked workspace packages.
 
----
+Waku depends on React, React DOM, and React Server DOM Webpack versions that are meant to work together. In a workspace, keep those versions aligned across apps and packages before debugging Waku-specific behavior.
 
-If you encounter other issues while using Waku in a monorepo setup, please report them.
+## Shared Packages
+
+Shared packages imported by a Waku app should publish or expose code that Vite can process. For TypeScript or JSX source packages, make sure the package's `exports` point to files your app can import, and avoid importing server-only modules from client components.
+
+If a shared package has a file that uses React client APIs such as `useState` or `useEffect`, that file still needs a `'use client'` directive when it can be imported from a server component.
+
+See [issue #676](https://github.com/wakujs/waku/issues/676) for the original duplicate React report.
