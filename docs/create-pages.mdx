@@ -8,7 +8,7 @@ description: The low-level routing API.
 
 The entry point for programmatic routing in Waku projects is `./src/waku.server.tsx`. In that file, call `createPages(...)` and pass the result to an adapter.
 
-`createLayout`, `createPage`, `createRoot`, and `createSlice` accept a configuration object to specify the route path, React component, and render method. Waku currently supports two options: `'static'` for static prerendering (SSG) or `'dynamic'` for server-side rendering (SSR).
+`createPage`, `createLayout`, `createRoot`, `createSlice`, and `createApi` register programmatic routes and renderable entries. Pages, layouts, roots, and slices specify a React component and render method. APIs specify HTTP handlers. Waku currently supports two render options: `'static'` for static prerendering (SSG) or `'dynamic'` for server-side rendering (SSR).
 
 For example, you can statically prerender a global header and footer in the root layout at build time, but dynamically render the rest of a home page at request time for personalized user experiences.
 
@@ -23,7 +23,7 @@ import { Root } from './components/root';
 import { Slice } from './components/slice';
 
 const pages = createPages(
-  async ({ createPage, createLayout, createRoot, createSlice }) => [
+  async ({ createPage, createLayout, createRoot, createSlice, createApi }) => [
     // Create root component
     // not required, but supported for customizing
     // `<html>`, `<head>`, and `<body>` tags
@@ -51,6 +51,14 @@ const pages = createPages(
       render: 'static',
       component: Slice,
       id: 'slice-1',
+    }),
+
+    // Create API endpoint
+    createApi({
+      render: 'static',
+      path: '/health',
+      method: 'GET',
+      handler: async () => new Response('OK'),
     }),
   ],
 );
@@ -229,6 +237,48 @@ const pages = createPages(async ({ createPage }) => [
 export default adapter(pages);
 ```
 
+### Advanced page options
+
+#### Disabling SSR
+
+`unstable_disableSSR` disables document SSR for a page. Runtime document requests return Waku's fallback HTML shell, and build output uses fallback HTML for that route. The RSC payload is still available to the client router.
+
+```tsx
+// ./src/waku.server.tsx
+import { createPages } from 'waku';
+import adapter from 'waku/adapters/default';
+
+import { AppPage } from './templates/app-page';
+
+const pages = createPages(async ({ createPage }) => [
+  createPage({
+    render: 'static',
+    path: '/app',
+    component: AppPage,
+    unstable_disableSSR: true,
+  }),
+]);
+
+export default adapter(pages);
+```
+
+This option is unstable and may change.
+
+#### Exact paths
+
+`exactPath: true` treats the path string literally. Slug and wildcard tokens such as `[slug]` or `[...path]` are matched as literal path segments instead of dynamic route patterns.
+
+```tsx
+createPage({
+  render: 'static',
+  path: '/legacy/[literal]',
+  exactPath: true,
+  component: LegacyPage,
+});
+```
+
+This is primarily intended for custom router integrations.
+
 ### Router paths type safety
 
 Waku provides inference for the router paths when created pages are returned from the callback passed into `createPages`. The following example shows how to setup router paths type safety.
@@ -357,7 +407,6 @@ import adapter from 'waku/adapters/default';
 import { BlogLayout } from './templates/blog-layout';
 
 const pages = createPages(async ({ createLayout }) => [
-  // Add a sidebar to the blog index and blog article pages
   createLayout({
     render: 'static',
     path: '/blog',
@@ -431,6 +480,66 @@ if (globalThis.__WAKU_HYDRATE__) {
 ```
 
 You can omit `./src/waku.client.tsx` unless you need to modify it.
+
+### APIs
+
+APIs are created with `createApi` inside `createPages`. Unlike file-system API routes, programmatic API paths are used as written.
+
+Static APIs support `GET` handlers and can be emitted at build time:
+
+```tsx
+// ./src/waku.server.tsx
+import { createPages } from 'waku';
+import adapter from 'waku/adapters/default';
+
+const pages = createPages(async ({ createApi }) => [
+  createApi({
+    render: 'static',
+    path: '/rss.xml',
+    method: 'GET',
+    handler: async () => {
+      return new Response('<rss />', {
+        headers: { 'Content-Type': 'application/rss+xml' },
+      });
+    },
+  }),
+]);
+
+export default adapter(pages);
+```
+
+Dynamic APIs use a `handlers` object. Named methods take precedence over `all`.
+
+```tsx
+const pages = createPages(async ({ createApi }) => [
+  createApi({
+    render: 'dynamic',
+    path: '/api/users/[id]',
+    handlers: {
+      GET: async (_req, { params }) => {
+        return Response.json({ id: params.id });
+      },
+      all: async () => new Response('Method not allowed', { status: 405 }),
+    },
+  }),
+]);
+```
+
+Static APIs with dynamic segments can use `staticPaths`, similar to static pages:
+
+```tsx
+createApi({
+  render: 'static',
+  path: '/feeds/[category]',
+  method: 'GET',
+  staticPaths: ['news', 'docs'],
+  handler: async (_req, { params }) => {
+    return new Response(`Feed for ${params.category}`);
+  },
+});
+```
+
+Wildcard API params are passed as `string[]`, and named segment params are passed as `string`.
 
 ### Slices
 
@@ -640,3 +749,24 @@ When `<Slice id="tooltip/123" lazy />` is requested, Waku matches it against the
 With the file-system router, slug slices work the same way as slug pages — create a file at `src/pages/_slices/tooltip/[id].tsx` and the ID pattern is derived from the file path.
 
 Multiple dynamic segments are also supported (e.g., `items/[category]/[id]`), and each extracted parameter is passed as a separate prop.
+
+### Build options
+
+`createPages` accepts an optional second argument with `unstable_skipBuild`. This callback receives a route path and can skip static build output for matching static routes or APIs.
+
+```tsx
+const pages = createPages(
+  async ({ createPage }) => [
+    createPage({
+      render: 'static',
+      path: '/preview',
+      component: PreviewPage,
+    }),
+  ],
+  {
+    unstable_skipBuild: (routePath) => routePath === '/preview',
+  },
+);
+```
+
+This option only affects build output. It does not remove the route from runtime routing.
