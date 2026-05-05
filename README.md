@@ -761,7 +761,7 @@ This allows you to have a `dynamic` slice component while keeping the rest of th
 
 ### Link
 
-The `<Link />` component should be used for internal links. It accepts a `to` prop for the destination, which is automatically prefetched ahead of the navigation.
+The `<Link />` component should be used for internal links. It accepts a `to` prop for the destination and handles client-side navigation through Waku's router.
 
 ```tsx
 // ./src/pages/index.tsx
@@ -1026,6 +1026,26 @@ export const getConfig = async () => {
   } as const;
 };
 ```
+
+## Middleware
+
+In the default Waku setup, files in `./src/middleware` are automatically loaded as [Hono middleware](https://hono.dev/docs/guides/middleware). Each file should default export a function that returns a `MiddlewareHandler`.
+
+```ts
+// ./src/middleware/logger.ts
+import type { MiddlewareHandler } from 'hono';
+
+const logger = (): MiddlewareHandler => {
+  return async (c, next) => {
+    console.log(c.req.method, c.req.path);
+    await next();
+  };
+};
+
+export default logger;
+```
+
+If you provide a custom `./src/waku.server.tsx`, pass middleware through the adapter options with `middlewareModules` or `middlewareFns`.
 
 ## Data fetching
 
@@ -1553,7 +1573,7 @@ import adapter from 'waku/adapters/aws-lambda';
 
 export default adapter(
   fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
-  streaming: false, // optional, default is false
+  { streaming: false }, // optional, default is false
 );
 ```
 
