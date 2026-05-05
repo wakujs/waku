@@ -1,10 +1,10 @@
 import { readFileSync, readdirSync } from 'node:fs';
-import { compileMDX } from 'next-mdx-remote/rsc';
 import { GuideList } from '../../components/guide-list';
 import type { GuideSectionProps } from '../../components/guide-list';
 import { Meta } from '../../components/meta';
 import { Page } from '../../components/page';
 import { PostListContainer } from '../../components/post-list';
+import { compileMDX } from '../../lib/compile-mdx';
 import type { GuideFrontmatter } from '../../types';
 
 const GUIDE_CATEGORY_ORDER = [

@@ -1,10 +1,10 @@
-import { compileMDX } from 'next-mdx-remote/rsc';
 import { Destination } from '../components/destination';
 import { components } from '../components/mdx';
 import { Meta } from '../components/meta';
 import { Page } from '../components/page';
 import { RoutingTabs } from '../components/routing-tabs';
 import { StarWaku } from '../components/star-waku';
+import { compileMDX } from '../lib/compile-mdx';
 import {
   loadAfterRouting,
   loadBeforeRouting,

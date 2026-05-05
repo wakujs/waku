@@ -7,56 +7,6 @@ order: 30
 tags: [Experimental]
 ---
 
-## Prefer a Neutral Module First
-
-React Server Components can import ordinary server-safe modules. If a value is needed by both server and client code, the simplest option is usually to put it in a module without a `'use client'` directive.
-
-For example, a Jotai atom definition can often live in a shared module:
-
-```ts
-// src/state/count.ts
-import { atom } from 'jotai/vanilla';
-
-export const countAtom = atom(1);
-```
-
-Then client components can import that shared value from a client module:
-
-```tsx
-// src/components/counter.tsx
-'use client';
-
-import { useAtom } from 'jotai';
-import { countAtom } from '../state/count';
-
-export const Counter = () => {
-  const [count, setCount] = useAtom(countAtom);
-  return <button onClick={() => setCount((c) => c + 1)}>{count}</button>;
-};
-```
-
-Server components can import the same atom definition:
-
-```tsx
-// src/pages/index.tsx
-import { getStore } from 'waku-jotai/router';
-import { Counter } from '../components/counter';
-import { countAtom } from '../state/count';
-
-export default async function Page() {
-  const store = await getStore();
-
-  return (
-    <>
-      <Counter />
-      <p>Server count: {store.get(countAtom)}</p>
-    </>
-  );
-}
-```
-
-Use this pattern when you can. It keeps the client/server boundary obvious.
-
 ## When to Use `unstable_allowServer`
 
 Sometimes a value must be declared in a client module, but server code still needs to import that one value. `unstable_allowServer` marks a specific export from a `'use client'` module as safe for Waku's server build.
@@ -78,9 +28,9 @@ Do not use it for:
 
 The API is highly experimental and may change.
 
-## Jotai Example
+## Colocated Jotai Atom
 
-This example follows the pattern used by the Waku Jotai examples. The atom is declared in the same client module as the component, but only the atom export is marked as server-safe.
+This example follows the pattern used by the Waku Jotai examples. The atom is declared in the same client module as the component, and only the atom export is marked as server-safe.
 
 ```tsx
 // src/components/counter.tsx
@@ -111,7 +61,7 @@ export const Counter = () => {
 };
 ```
 
-The server component can import `countAtom` from the client module:
+Because `countAtom` is wrapped with `allowServer(...)`, server code can import that one export from the client module and use it with the Jotai store:
 
 ```tsx
 // src/pages/index.tsx
@@ -143,6 +93,38 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 ```
 
 If you use the Minimal API, use `Provider` and `getStore` from `waku-jotai/minimal` instead.
+
+## Prefer a Neutral Module When Possible
+
+If the shared definition does not need to live in a client module, put it in a module without a `'use client'` directive. React Server Components can import ordinary server-safe modules without `unstable_allowServer`.
+
+For example, a Jotai atom definition can often live in a shared module:
+
+```ts
+// src/state/count.ts
+import { atom } from 'jotai/vanilla';
+
+export const countAtom = atom(1);
+```
+
+Then client components can import that shared value from a client module:
+
+```tsx
+// src/components/counter.tsx
+'use client';
+
+import { useAtom } from 'jotai';
+import { countAtom } from '../state/count';
+
+export const Counter = () => {
+  const [count, setCount] = useAtom(countAtom);
+  return (
+    <button onClick={() => setCount((count) => count + 1)}>{count}</button>
+  );
+};
+```
+
+Server code can also import `countAtom` from `src/state/count.ts` if it has a real server-side use for the atom definition. Use this pattern when you can because it keeps the client/server boundary obvious.
 
 ## What Waku Transforms
 
