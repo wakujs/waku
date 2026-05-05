@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { compileMDX } from 'next-mdx-remote/rsc';
+import { compileMDX } from '../lib/compile-mdx';
 import { getAuthor } from '../lib/get-author';
 import { getFileName } from '../lib/get-file-name';
 import { components } from './mdx';

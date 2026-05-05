@@ -1,0 +1,174 @@
+---
+slug: state-across-client-server
+title: State Across Client and Server
+description: Share selected client-module values with server code using unstable_allowServer.
+category: Advanced Setup
+order: 30
+tags: [Experimental]
+---
+
+## When to Use `unstable_allowServer`
+
+Sometimes a value must be declared in a client module, but server code still needs to import that one value. `unstable_allowServer` marks a specific export from a `'use client'` module as safe for Waku's server build.
+
+Use it for shared definitions, not live state:
+
+- Jotai atom definitions that must be colocated with a client component
+- small constants used by both server and client code
+- pure factory results that do not touch browser APIs
+
+Do not use it for:
+
+- React components
+- hooks
+- functions that read `window`, `document`, `localStorage`, or browser-only globals
+- mutable singletons that should be request-scoped
+- secrets, database clients, or server-only resources
+- a shortcut to import an entire client module from server code
+
+The API is highly experimental and may change.
+
+## Colocated Jotai Atom
+
+This example follows the pattern used by the Waku Jotai examples. The atom is declared in the same client module as the component, and only the atom export is marked as server-safe.
+
+```tsx
+// src/components/counter.tsx
+'use client';
+
+import { useTransition } from 'react';
+import { atom, useAtom } from 'jotai';
+import { unstable_allowServer as allowServer } from 'waku/client';
+
+export const countAtom = allowServer(atom(1));
+
+export const Counter = () => {
+  const [count, setCount] = useAtom(countAtom);
+  const [isPending, startTransition] = useTransition();
+
+  const increment = () => {
+    startTransition(() => {
+      setCount((count) => count + 1);
+    });
+  };
+
+  return (
+    <button onClick={increment}>
+      Count: {count}
+      {isPending ? '...' : ''}
+    </button>
+  );
+};
+```
+
+Because `countAtom` is wrapped with `allowServer(...)`, server code can import that one export from the client module and use it with the Jotai store:
+
+```tsx
+// src/pages/index.tsx
+import { getStore } from 'waku-jotai/router';
+import { Counter, countAtom } from '../components/counter';
+
+export default async function Page() {
+  const store = await getStore();
+
+  return (
+    <>
+      <Counter />
+      <p>Initial count: {store.get(countAtom)}</p>
+    </>
+  );
+}
+```
+
+For file-system-router apps, wrap the route tree with `RouterProvider`:
+
+```tsx
+// src/pages/_layout.tsx
+import type { ReactNode } from 'react';
+import { RouterProvider } from 'waku-jotai/router';
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return <RouterProvider>{children}</RouterProvider>;
+}
+```
+
+If you use the Minimal API, use `Provider` and `getStore` from `waku-jotai/minimal` instead.
+
+## Prefer a Neutral Module When Possible
+
+If the shared definition does not need to live in a client module, put it in a module without a `'use client'` directive. React Server Components can import ordinary server-safe modules without `unstable_allowServer`.
+
+For example, a Jotai atom definition can often live in a shared module:
+
+```ts
+// src/state/count.ts
+import { atom } from 'jotai/vanilla';
+
+export const countAtom = atom(1);
+```
+
+Then client components can import that shared value from a client module:
+
+```tsx
+// src/components/counter.tsx
+'use client';
+
+import { useAtom } from 'jotai';
+import { countAtom } from '../state/count';
+
+export const Counter = () => {
+  const [count, setCount] = useAtom(countAtom);
+  return (
+    <button onClick={() => setCount((count) => count + 1)}>{count}</button>
+  );
+};
+```
+
+Server code can also import `countAtom` from `src/state/count.ts` if it has a real server-side use for the atom definition. Use this pattern when you can because it keeps the client/server boundary obvious.
+
+## What Waku Transforms
+
+`unstable_allowServer` is an identity function at runtime. Its main purpose is to tell Waku's Vite plugin which expression from a client module should remain importable in the RSC build.
+
+In the RSC environment, Waku transforms a `'use client'` module so that:
+
+- the wrapped `allowServer(...)` export is preserved
+- dependencies used by that wrapped expression are preserved
+- other exports are not made callable server functions
+- the wrapper call itself is removed from the emitted server-side expression
+
+This means the server can import `countAtom`, but it does not make every export in `counter.tsx` server-safe.
+
+`unstable_allowServer` must receive exactly one argument:
+
+```tsx
+export const countAtom = allowServer(atom(1));
+```
+
+## What It Does Not Do
+
+`unstable_allowServer` does not synchronize live state between the server and browser. In the Jotai example, the shared value is the atom definition. The current atom value still belongs to the store/provider for the current render and client session.
+
+It also does not make browser-only code safe on the server. This is unsafe:
+
+```tsx
+'use client';
+
+import { unstable_allowServer as allowServer } from 'waku/client';
+
+export const theme = allowServer(localStorage.getItem('theme'));
+```
+
+The server has no `localStorage`, so this module cannot be evaluated safely in the RSC environment.
+
+## Safer Alternatives
+
+Before using `unstable_allowServer`, consider these alternatives:
+
+- Move shared definitions to a neutral module without `'use client'`.
+- Pass serializable values from server components to client components as props.
+- Put request-specific data in request context or provider state.
+- Keep browser-only behavior inside client components and hooks.
+- Use provider boundaries to initialize client state from server-rendered values.
+
+Use `unstable_allowServer` only for the narrow case where a client module must expose one server-safe definition and moving that definition to a neutral module is worse for the integration.

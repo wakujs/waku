@@ -21,7 +21,25 @@ If you are building an application, use `waku/router` instead. The minimal API d
 - automatic prerender planning
 - page conventions such as `layout.tsx`, `page.tsx`, or `404.tsx`
 
+If you need programmatic routing while keeping Waku's router behavior, see the [`createPages` reference](/create-pages) or [Custom Router](/guides/custom-router). If you are implementing a deployment/runtime adapter, start with [Adapter Authoring](/guides/adapter-authoring).
+
 All `unstable_*` exports in this document are genuinely unstable and may change.
+
+### API Surface
+
+The minimal API is small, but it exposes both server-side handlers and client-side rendering primitives:
+
+| Entry point           | Surface                          | Use when                                                              |
+| --------------------- | -------------------------------- | --------------------------------------------------------------------- |
+| `waku/minimal/server` | `unstable_defineHandlers`        | Defining `handleRequest` and `handleBuild`.                           |
+| `waku/minimal/server` | `unstable_defineServerEntry`     | Writing server entries directly, usually for adapters.                |
+| `waku/minimal/client` | `Root`                           | Installing the minimal client runtime.                                |
+| `waku/minimal/client` | `Slot`                           | Rendering a server element by RSC ID.                                 |
+| `waku/minimal/client` | `Children`                       | Placing client-side `Slot` children inside a server-rendered element. |
+| `waku/minimal/client` | `useRefetch`                     | Fetching and merging another RSC payload.                             |
+| `waku/minimal/client` | `unstable_*` fetch-store helpers | Building router-like abstractions.                                    |
+
+The components and hooks without `unstable_` names are the intended minimal client primitives. This guide does not document every exported helper from `waku/minimal/client`; undocumented exports are for Waku internals or custom integrations and should be treated as unstable.
 
 ### Mental Model
 
@@ -595,6 +613,8 @@ if (
 ### Adapter Authors
 
 `waku/minimal/server` also exports `unstable_defineServerEntry`. That is a lower-level hook than `unstable_defineHandlers` and is meant for adapter authors who need to work directly with server entries, request processing, and build processing. Most advanced users of the minimal API do not need it.
+
+For adapter implementation details, see [Adapter Authoring](/guides/adapter-authoring).
 
 ### Examples
 

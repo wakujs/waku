@@ -70,10 +70,12 @@ export const components = {
     const classNames =
       'text-white/80 underline decoration-white/60 decoration-1 transition-colors duration-300 ease-in-out hover:text-white';
 
-    if (href.startsWith('/')) {
-      <Link to={href} className={classNames} {...rest}>
-        {children}
-      </Link>;
+    if (href?.startsWith('/')) {
+      return (
+        <Link to={href} className={classNames} {...rest}>
+          {children}
+        </Link>
+      );
     }
 
     return (
@@ -106,6 +108,52 @@ export const components = {
       >
         {children}
       </ol>
+    );
+  },
+  table: ({ children, ...rest }: any) => {
+    return (
+      <div className="bg-gray-950/80 mb-8 max-w-full overflow-x-auto rounded-xl border border-gray-800 sm:-mx-3">
+        <table
+          className="w-full min-w-max border-collapse text-left text-sm text-white/70 sm:text-base"
+          {...rest}
+        >
+          {children}
+        </table>
+      </div>
+    );
+  },
+  thead: ({ children, ...rest }: any) => {
+    return (
+      <thead className="bg-gray-900 text-white" {...rest}>
+        {children}
+      </thead>
+    );
+  },
+  tbody: ({ children, ...rest }: any) => {
+    return <tbody {...rest}>{children}</tbody>;
+  },
+  tr: ({ children, ...rest }: any) => {
+    return (
+      <tr className="border-t border-gray-800 first:border-t-0" {...rest}>
+        {children}
+      </tr>
+    );
+  },
+  th: ({ children, ...rest }: any) => {
+    return (
+      <th
+        className="font-label px-4 py-3 align-top text-xs font-bold uppercase leading-tight text-white sm:px-5"
+        {...rest}
+      >
+        {children}
+      </th>
+    );
+  },
+  td: ({ children, ...rest }: any) => {
+    return (
+      <td className="px-4 py-3 align-top leading-normal sm:px-5" {...rest}>
+        {children}
+      </td>
     );
   },
   code: ({ children, ...rest }: any) => {

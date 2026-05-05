@@ -1,0 +1,160 @@
+---
+slug: static-deployments
+title: Static Deployments
+description: Build a pure static Waku app and publish dist/public without a server runtime.
+category: Deployment
+order: 5
+---
+
+## When Static Deployment Fits
+
+A static deployment serves only the files generated during `waku build`. There is no Waku server, worker, Lambda function, or other request-time runtime after deploy.
+
+Use a static deployment for apps where every public route can be known and rendered at build time:
+
+- marketing sites
+- documentation sites
+- blogs with generated static paths
+- static resources such as RSS feeds, sitemaps, and JSON files
+
+Do not use a static-only deployment if the app needs request-time behavior:
+
+- dynamic routes without `staticPaths`
+- dynamic API routes
+- server actions
+- per-request cookies, headers, authentication, or personalization
+- Waku middleware that must run for deployed requests
+- redirects or rewrites that must be decided at request time
+
+If you need those features, deploy Waku with a server-capable adapter instead. Static pages can still be part of a server-capable deployment.
+
+## Make Routes Static
+
+Pages, layouts, and slices are static by default in the file-system router. For routes that matter to a static deployment, it is still useful to be explicit:
+
+```tsx
+// src/pages/index.tsx
+export default async function HomePage() {
+  return <main>...</main>;
+}
+
+export const getConfig = async () => {
+  return {
+    render: 'static',
+  } as const;
+};
+```
+
+Dynamic segments need `staticPaths` so Waku knows which concrete URLs to emit:
+
+```tsx
+// src/pages/blog/[slug].tsx
+export default async function BlogPost({ slug }: { slug: string }) {
+  return <article>...</article>;
+}
+
+export const getConfig = async () => {
+  return {
+    render: 'static',
+    staticPaths: ['introducing-waku', 'deploying-waku'],
+  } as const;
+};
+```
+
+For nested segments, use arrays in the same order as the route parameters:
+
+```tsx
+// src/pages/docs/[section]/[slug].tsx
+export const getConfig = async () => {
+  return {
+    render: 'static',
+    staticPaths: [
+      ['guides', 'getting-started'],
+      ['reference', 'configuration'],
+    ],
+  } as const;
+};
+```
+
+API routes are dynamic by default. If an API route produces a build-time resource, mark it static too:
+
+```ts
+// src/pages/_api/rss.xml.ts
+export const GET = async () => {
+  return new Response(generateRss(), {
+    headers: { 'content-type': 'application/rss+xml' },
+  });
+};
+
+export const getConfig = async () => {
+  return {
+    render: 'static',
+  } as const;
+};
+```
+
+## Build Output
+
+Run the normal production build:
+
+```sh
+pnpm exec waku build
+```
+
+Static files are written to `dist/public`. Publish that entire directory:
+
+- generated HTML files
+- generated RSC payloads under Waku's RSC path
+- Vite client assets
+- files copied from `public`
+- static API route output
+
+Do not publish only the HTML and asset files. The generated RSC payloads are part of the static app and are used during client-side navigation.
+
+## Static Hosts
+
+For a plain static host, configure the publish directory as:
+
+```txt
+dist/public
+```
+
+The host should serve generated files as they exist on disk. Avoid using a single-page-app fallback to serve `index.html` for every path. If a route is not emitted during the build, either add it to `staticPaths` or use a server-capable deployment.
+
+If the host lets you configure response headers, keep Waku's generated RSC files deployable and cache immutable client assets aggressively. For public RSC payloads, a common choice is to prevent search indexing:
+
+```txt
+/RSC/*
+  X-Robots-Tag: noindex
+```
+
+## Adapter Static Mode
+
+Some platform adapters can generate platform-specific static deployment output. Use their `static` option when you want that platform integration without a serverless function:
+
+```ts
+// src/waku.server.tsx
+import { fsRouter } from 'waku';
+import adapter from 'waku/adapters/vercel';
+
+export default adapter(
+  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  { static: true },
+);
+```
+
+Use the adapter for your platform:
+
+| Platform   | Adapter                    | Static output behavior                                        |
+| ---------- | -------------------------- | ------------------------------------------------------------- |
+| Vercel     | `waku/adapters/vercel`     | copies `dist/public` to `.vercel/output/static`               |
+| Netlify    | `waku/adapters/netlify`    | uses `dist/public` as the publish directory                   |
+| Cloudflare | `waku/adapters/cloudflare` | configures Wrangler static assets to serve from `dist/public` |
+
+The static option only changes the deployment output. It does not make dynamic Waku features work without a runtime.
+
+## Static Rendering Is Not No SSR
+
+Static rendering prerenders route output at build time and writes that output to `dist/public`. The generated HTML can contain the page's rendered content.
+
+No SSR serves a fallback shell and lets the browser render the route after JavaScript starts. It is useful for different tradeoffs and does not make an app deployable without a server runtime. For that pattern, see [No SSR and Static Fallbacks](/guides/no-ssr).

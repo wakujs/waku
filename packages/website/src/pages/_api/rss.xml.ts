@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from 'node:fs';
-import { compileMDX } from 'next-mdx-remote/rsc';
+import { compileMDX } from '../../lib/compile-mdx';
 
 type Item = {
   title: string;
