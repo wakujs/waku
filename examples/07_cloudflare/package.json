@@ -16,7 +16,7 @@
     "react-dom": "~19.2.5",
     "react-server-dom-webpack": "~19.2.5",
     "waku": "1.0.0-alpha.9",
-    "wrangler": "^4.87.0"
+    "wrangler": "^4.86.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.34.0",
