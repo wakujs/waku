@@ -191,6 +191,44 @@ test.describe(`create-pages`, () => {
     expect(errors).toEqual([]);
   });
 
+  test('server action rerenders route with js', async ({ page }) => {
+    const submittedName = `With JS ${Date.now()}`;
+    await page.goto(`http://localhost:${port}/rerender-action`);
+    await waitForHydration(page);
+    await expect(
+      page.getByRole('heading', { name: 'Rerender Action' }),
+    ).toBeVisible();
+    await page.getByLabel('Name').fill(submittedName);
+    await page.getByRole('button', { name: 'Submit Rerender' }).click();
+    await expect(page.getByTestId('rerender-action-message')).toHaveText(
+      `Submitted: ${submittedName}`,
+    );
+    await expect(page.locator('body')).not.toContainText('getRerender');
+  });
+
+  test('server action rerenders route without js', async ({ browser }) => {
+    const context = await browser.newContext({
+      javaScriptEnabled: false,
+    });
+    const page = await context.newPage();
+    const submittedName = `No JS ${Date.now()}`;
+    try {
+      await page.goto(`http://localhost:${port}/rerender-action`);
+      await expect(
+        page.getByRole('heading', { name: 'Rerender Action' }),
+      ).toBeVisible();
+      await page.getByLabel('Name').fill(submittedName);
+      await page.getByRole('button', { name: 'Submit Rerender' }).click();
+      await expect(page.getByTestId('rerender-action-message')).toHaveText(
+        `Submitted: ${submittedName}`,
+      );
+      await expect(page.locator('body')).not.toContainText('getRerender');
+    } finally {
+      await page.close();
+      await context.close();
+    }
+  });
+
   test('errors', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);

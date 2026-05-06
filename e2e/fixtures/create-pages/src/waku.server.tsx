@@ -17,6 +17,7 @@ import {
 import NestedBazPage from './components/NestedBazPage.js';
 import NestedLayout from './components/NestedLayout.js';
 import NoSsr from './components/NoSsr.js';
+import { RerenderActionPage } from './components/RerenderActionPage.js';
 import { Slice001 } from './components/slice001.js';
 import { Slice002 } from './components/slice002.js';
 import { Slice003 } from './components/slice003.js';
@@ -368,6 +369,12 @@ const pages: ReturnType<typeof createPages> = createPages(
       render: 'dynamic',
       path: '/dynamic',
       component: () => <h1>Dynamic Page</h1>,
+    }),
+
+    createPage({
+      render: 'dynamic',
+      path: '/rerender-action',
+      component: RerenderActionPage,
     }),
 
     createLayout({
