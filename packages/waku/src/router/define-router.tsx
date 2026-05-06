@@ -683,6 +683,46 @@ export function unstable_defineRouter(fns: {
 
     const url = new URL(input.req.url);
     const headers = Object.fromEntries(input.req.headers.entries());
+    const withRerender = async <T,>(fn: () => Promise<T>) => {
+      let elementsPromise: Promise<Record<string, unknown>> = Promise.resolve(
+        {},
+      );
+      let rendered = false;
+      const rerender = (rscPath: string, rscParams?: unknown) => {
+        if (rendered) {
+          throw new Error('already rendered');
+        }
+        elementsPromise = Promise.all([
+          elementsPromise,
+          getEntriesForRoute(
+            rscPath,
+            rscParams,
+            headers,
+            getCachedElement,
+            setCachedElement,
+          ),
+        ]).then(([oldElements, newElements]) => {
+          if (newElements === null) {
+            console.warn('getEntries returned null');
+          }
+          return {
+            ...oldElements,
+            ...newElements,
+          };
+        });
+      };
+      setRerender(rerender);
+      try {
+        const value = await fn();
+        return {
+          value,
+          elements: await elementsPromise,
+        };
+      } finally {
+        rendered = true;
+      }
+    };
+
     if (input.type === 'component') {
       const sliceId = decodeSliceId(input.rscPath);
       if (sliceId !== null) {
@@ -741,37 +781,11 @@ export function unstable_defineRouter(fns: {
     }
 
     if (input.type === 'function') {
-      let elementsPromise: Promise<Record<string, unknown>> = Promise.resolve(
-        {},
-      );
-      let rendered = false;
-      const rerender = (rscPath: string, rscParams?: unknown) => {
-        if (rendered) {
-          throw new Error('already rendered');
-        }
-        elementsPromise = Promise.all([
-          elementsPromise,
-          getEntriesForRoute(
-            rscPath,
-            rscParams,
-            headers,
-            getCachedElement,
-            setCachedElement,
-          ),
-        ]).then(([oldElements, newElements]) => {
-          if (newElements === null) {
-            console.warn('getEntries returned null');
-          }
-          return {
-            ...oldElements,
-            ...newElements,
-          };
-        });
-      };
-      setRerender(rerender);
       try {
-        const value = await input.fn(...input.args);
-        return renderRsc({ ...(await elementsPromise), _value: value });
+        const { value, elements } = await withRerender(() =>
+          input.fn(...input.args),
+        );
+        return renderRsc({ ...elements, _value: value });
       } catch (e) {
         const info = getErrorInfo(e);
         if (info?.location) {
@@ -790,8 +804,6 @@ export function unstable_defineRouter(fns: {
           return renderRsc(entries);
         }
         throw e;
-      } finally {
-        rendered = true;
       }
     }
 
@@ -821,8 +833,12 @@ export function unstable_defineRouter(fns: {
             httpstatus={httpstatus}
           />
         );
-        const formState =
-          input.type === 'action' ? await input.fn() : undefined;
+        let formState: unknown;
+        if (input.type === 'action') {
+          const { value, elements } = await withRerender(() => input.fn());
+          formState = value;
+          Object.assign(entries, elements);
+        }
         const nonce = getNonce();
         return renderHtml(await renderRsc(entries), html, {
           rscPath,
