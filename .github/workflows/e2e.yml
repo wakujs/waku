@@ -82,13 +82,13 @@ jobs:
         version: [26.0.0, 24.0.0, 22.12.0]
         exclude:
           - os: macos-latest
-            version: 20.0.0
+            version: 24.0.0
           - os: windows-latest
             version: 24.0.0
           - os: macos-latest
-            version: 20.0.0
+            version: 22.12.0
           - os: windows-latest
-            version: 24.0.0
+            version: 22.12.0
 
     runs-on: ${{ matrix.os }}
     steps:
