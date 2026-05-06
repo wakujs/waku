@@ -4,6 +4,7 @@ import {
   existsSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
@@ -119,7 +120,13 @@ test.describe(`multi platform builds`, () => {
         const temp = makeTempDir(project);
         const serverEntryFile = join(temp, 'src', 'waku.server.tsx');
         try {
-          cpSync(cwd, temp, { recursive: true });
+          // node_modules is symlinked, not copied: Node 24.2+ cpSync walks into NTFS junctions on Windows (https://github.com/nodejs/node/pull/58461), breaking pnpm's link to the workspace .pnpm cache.
+          const cwdNodeModules = join(cwd, 'node_modules');
+          cpSync(cwd, temp, {
+            recursive: true,
+            filter: (src) => !src.startsWith(cwdNodeModules),
+          });
+          symlinkSync(cwdNodeModules, join(temp, 'node_modules'), 'junction');
           ensureServerEntryWithAdapter(serverEntryFile, adapter);
           for (const name of clearDirOrFile) {
             rmSync(join(temp, name), { recursive: true, force: true });
