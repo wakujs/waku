@@ -11,8 +11,6 @@ declare global {
   }
 }
 
-let didWarnAboutApiDirMigration = false;
-
 export function fsRouter(
   /**
    * A mapping from a file path to a route module, e.g.
@@ -41,18 +39,6 @@ export function fsRouter(
     unstable_skipBuild?: (routePath: string) => boolean;
   },
 ) {
-  if (
-    !didWarnAboutApiDirMigration &&
-    !(options as any)?.temporary_doNotWarnAboutApiDirMigration
-  ) {
-    didWarnAboutApiDirMigration = true;
-    // TODO: remove this warning after a few versions
-    if (Object.keys(pages).some((file) => file.startsWith('./api/'))) {
-      console.warn(
-        '[fsRouter] Migration required (v1.0.0-alpha.1): Move "./api/" to "./_api/". To preserve the old "/api/*" URL paths, move to "./_api/api/". See https://github.com/wakujs/waku/pull/1885',
-      );
-    }
-  }
   const {
     pagesDir = 'pages',
     apiDir = '_api',
