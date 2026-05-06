@@ -705,19 +705,13 @@ export function unstable_defineRouter(fns: {
           if (newElements === null) {
             console.warn('getEntries returned null');
           }
-          return {
-            ...oldElements,
-            ...newElements,
-          };
+          return { ...oldElements, ...newElements };
         });
       };
       setRerender(rerender);
       try {
         const value = await fn();
-        return {
-          value,
-          elements: await elementsPromise,
-        };
+        return { value, elements: await elementsPromise };
       } finally {
         rendered = true;
       }
