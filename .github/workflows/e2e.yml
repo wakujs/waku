@@ -84,7 +84,7 @@ jobs:
           - os: macos-latest
             version: 24.0.0
           - os: windows-latest
-            version: 24.0.0
+            version: 26.0.0
           - os: macos-latest
             version: 22.12.0
           - os: windows-latest
