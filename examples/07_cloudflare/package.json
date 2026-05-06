@@ -19,7 +19,7 @@
     "wrangler": "^4.87.0"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.35.0",
+    "@cloudflare/vite-plugin": "^1.34.0",
     "@rolldown/plugin-babel": "^0.2.3",
     "@tailwindcss/vite": "4.2.4",
     "@types/node": "^25.6.0",
@@ -27,7 +27,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "babel-plugin-react-compiler": "^1.0.0",
-    "miniflare": "^4.20260430.0",
+    "miniflare": "^4.20260426.0",
     "tailwindcss": "^4.2.4",
     "typescript": "^6.0.3"
   }
