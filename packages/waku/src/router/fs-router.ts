@@ -1,7 +1,6 @@
 import type { FunctionComponent, ReactNode } from 'react';
 import type { ImportGlobFunction } from 'vite/types/importGlob.d.ts';
 import { isIgnoredPath } from '../lib/utils/fs-router.js';
-import { joinPath } from '../lib/utils/path.js';
 import { METHODS, createPages } from './create-pages.js';
 import type { Method } from './create-pages.js';
 
@@ -15,20 +14,20 @@ export function fsRouter(
   /**
    * A mapping from a file path to a route module, e.g.
    *   {
-   *     "_layout.tsx": () => ({ default: ... }),
-   *     "index.tsx": () => ({ default: ... }),
-   *     "foo/index.tsx": () => ...,
+   *     "./pages/_layout.tsx": () => ({ default: ... }),
+   *     "./pages/index.tsx": () => ({ default: ... }),
+   *     "./pages/foo/index.tsx": () => ...,
    *   }
-   * This mapping can be created by Vite's import.meta.glob, e.g.
-   *   import.meta.glob("./**\/*.{tsx,ts}", { base: "./pages" })
+   * Intended to be created by Vite's import.meta.glob with the pages
+   * directory included in the pattern, e.g.
+   *   import.meta.glob("./pages/**\/*.{tsx,ts}")
    */
-  pages: { [file: string]: () => Promise<unknown> },
+  modules: { [file: string]: () => Promise<unknown> },
   options?: {
     /**
-     * The pages directory name relative to the project's source root,
-     * matching the `base` you pass to `import.meta.glob`. Used to map
-     * glob keys (e.g. `./foo.tsx`) to src-relative paths (e.g.
-     * `pages/foo.tsx`) for build-time pruning.
+     * The pages directory name. Must match the directory in the glob
+     * pattern, e.g. `"pages"` for `import.meta.glob('./pages/**\/*')`.
+     * Glob keys whose first segment doesn't match are ignored.
      * Defaults to `"pages"`.
      */
     pagesDir?: string;
@@ -53,9 +52,16 @@ export function fsRouter(
       createApi,
       createSlice,
     }) => {
-      for (let file in pages) {
-        const srcPath = joinPath(pagesDir, file);
-        const mod = (await pages[file]!()) as {
+      const pagesDirPrefix = pagesDir + '/';
+      for (const file in modules) {
+        // Use WHATWG URL encoding for the file path (different from RFC2396-based encoding)
+        const srcPath = new URL(file, 'http://localhost:3000').pathname.slice(
+          1,
+        );
+        if (!srcPath.startsWith(pagesDirPrefix)) {
+          continue;
+        }
+        const mod = (await modules[file]!()) as {
           default: FunctionComponent<{ children: ReactNode }>;
           getConfig?: () => Promise<{
             render?: 'static' | 'dynamic';
@@ -63,10 +69,9 @@ export function fsRouter(
           GET?: (req: Request) => Promise<Response>;
         };
 
-        // Use WHATWG URL encoding for the file path (different from RFC2396-based encoding)
-        file = new URL(file, 'http://localhost:3000').pathname.slice(1);
         const config = await mod.getConfig?.();
-        const pathItems = file
+        const pathItems = srcPath
+          .slice(pagesDirPrefix.length)
           .replace(/\.\w+$/, '')
           .split('/')
           .filter(Boolean);

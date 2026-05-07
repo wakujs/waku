@@ -7,7 +7,7 @@ const adapter: typeof vercelAdapter = process.env.VERCEL
   : nodeAdapter;
 
 const handler: ReturnType<typeof adapter> = adapter(
-  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')),
   { static: true },
 );
 

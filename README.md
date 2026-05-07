@@ -1475,7 +1475,7 @@ import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/vercel';
 
 export default adapter(
-  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')),
   { static: true },
 );
 ```
@@ -1500,7 +1500,7 @@ import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/netlify';
 
 export default adapter(
-  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')),
   { static: true },
 );
 ```
@@ -1523,7 +1523,7 @@ import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/cloudflare';
 
 export default adapter(
-  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')),
   { static: true },
 );
 ```
@@ -1537,7 +1537,7 @@ import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/deno';
 
 export default adapter(
-  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')),
 );
 ```
 
@@ -1555,7 +1555,7 @@ import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/bun';
 
 export default adapter(
-  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')),
 );
 ```
 
@@ -1572,7 +1572,7 @@ import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/aws-lambda';
 
 export default adapter(
-  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
+  fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')),
   { streaming: false }, // optional, default is false
 );
 ```

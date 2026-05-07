@@ -1,28 +1,27 @@
 import { EXTENSIONS, SRC_MIDDLEWARE, SRC_PAGES } from '../constants.js';
 
 export const getManagedServerEntry = (srcDir: string) => {
-  const globBase = `/${srcDir}/${SRC_PAGES}`;
   const exts = EXTENSIONS.map((ext) => ext.slice(1)).join(',');
-  const globPattern = `${globBase}/**/*.{${exts}}`;
+  const globPattern = `/${srcDir}/${SRC_PAGES}/**/*.{${exts}}`;
+  const srcDirPrefix = `/${srcDir}/`;
   const middlewareGlob = [
     `/${srcDir}/${SRC_MIDDLEWARE}/*.{${exts}}`,
     `!/${srcDir}/${SRC_MIDDLEWARE}/*.{test,spec}.{${exts}}`,
   ];
+  // Strip srcDir prefix from glob keys so fsRouter's default `pagesDir: 'pages'` applies.
   return `
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/default';
 
-export default adapter(
-  fsRouter(
-    import.meta.glob(
-      ${JSON.stringify(globPattern)},
-      { base: ${JSON.stringify(globBase)} }
-    )
+const modules = Object.fromEntries(
+  Object.entries(import.meta.glob(${JSON.stringify(globPattern)})).map(
+    ([k, v]) => [k.slice(${srcDirPrefix.length}), v],
   ),
-  {
-    middlewareModules: import.meta.glob(${JSON.stringify(middlewareGlob)}),
-  },
 );
+
+export default adapter(fsRouter(modules), {
+  middlewareModules: import.meta.glob(${JSON.stringify(middlewareGlob)}),
+});
 `;
 };
 

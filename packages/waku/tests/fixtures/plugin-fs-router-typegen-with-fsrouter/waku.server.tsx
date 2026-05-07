@@ -1,6 +1,4 @@
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/default';
 
-export default adapter(
-  fsRouter(import.meta.glob('./**/*.{tsx,ts}', { base: './pages' })),
-);
+export default adapter(fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')));

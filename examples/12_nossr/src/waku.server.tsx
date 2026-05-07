@@ -1,7 +1,7 @@
 import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/default';
 
-const router = fsRouter(import.meta.glob('./**/*.tsx', { base: './pages' }));
+const router = fsRouter(import.meta.glob('./pages/**/*.tsx'));
 
 export default adapter({
   handleRequest: async (input, utils) => {
