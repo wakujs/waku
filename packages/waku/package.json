@@ -92,7 +92,7 @@
   "dependencies": {
     "@hono/node-server": "^2.0.1",
     "@vitejs/plugin-react": "^6.0.1",
-    "@vitejs/plugin-rsc": "^0.5.23",
+    "@vitejs/plugin-rsc": "^0.5.26",
     "dotenv": "^17.4.2",
     "hono": "^4.12.14",
     "magic-string": "^0.30.21",
