@@ -3,10 +3,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Plugin, ViteDevServer } from 'vite';
 
-export function fallbackHtmlPlugin(): Plugin {
+export function htmlShellPlugin(): Plugin {
   let server: ViteDevServer | undefined;
   return {
-    name: 'waku:vite-plugins:fallback-html',
+    name: 'waku:vite-plugins:html-shell',
     config() {
       return {
         environments: {
@@ -33,7 +33,7 @@ export function fallbackHtmlPlugin(): Plugin {
         assert(this.environment.mode === 'build');
         return source;
       }
-      if (source === 'virtual:vite-rsc-waku/fallback-html') {
+      if (source === 'virtual:vite-rsc-waku/html-shell') {
         assert(this.environment.name === 'ssr');
         return { id: '\0' + source, moduleSideEffects: true };
       }
@@ -42,7 +42,7 @@ export function fallbackHtmlPlugin(): Plugin {
       if (id === 'index.html') {
         return `<html><body></body></html>`;
       }
-      if (id === '\0virtual:vite-rsc-waku/fallback-html') {
+      if (id === '\0virtual:vite-rsc-waku/html-shell') {
         let html = `<html><body></body></html>`;
         if (this.environment.mode === 'dev') {
           if (fs.existsSync('index.html')) {

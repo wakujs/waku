@@ -47,9 +47,9 @@ type Session = {
   cmdController?: ReadableStreamDefaultController<Uint8Array>;
 };
 
-export function reactDebugPlugin(): Plugin {
+export function rscDevtoolsPlugin(): Plugin {
   return {
-    name: 'waku:vite-plugins:react-debug',
+    name: 'waku:vite-plugins:rsc-devtools',
     configureServer(server) {
       const hot = server.environments.client.hot;
       const sessions = new Map<string, Session>();

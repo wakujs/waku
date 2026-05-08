@@ -3,7 +3,7 @@ import { createFromReadableStream as createFromReadableStreamBase } from '@vitej
 import type { ReactFormState } from 'react-dom/client';
 import { renderToReadableStream } from 'react-dom/server.edge';
 import { injectRSCPayload } from 'rsc-html-stream/server';
-import fallbackHtml from 'virtual:vite-rsc-waku/fallback-html';
+import htmlShell from 'virtual:vite-rsc-waku/html-shell';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
 import { waitForRootPrerequisites } from '../utils/rsc-stream.js';
@@ -131,7 +131,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
 
 export async function renderHtmlFallback() {
   const bootstrapScriptContent = await loadBootstrapScriptContent();
-  const html = fallbackHtml.replace(
+  const html = htmlShell.replace(
     '</body>',
     () => `<script>${bootstrapScriptContent}</script></body>`,
   );

@@ -10,7 +10,7 @@ import { joinPath } from '../utils/path.js';
 import { createProgressLogger } from '../utils/progress-logger.js';
 import { pruneBuildOutput } from '../utils/prune-build.js';
 
-export function buildStaticFilesPlugin({
+export function staticBuildPlugin({
   srcDir,
   distDir,
 }: {
@@ -19,7 +19,7 @@ export function buildStaticFilesPlugin({
 }): Plugin {
   let rscBundle: Rollup.OutputBundle | undefined;
   return {
-    name: 'waku:vite-plugins:build-static-files',
+    name: 'waku:vite-plugins:static-build',
     generateBundle(_options, bundle) {
       if (
         this.environment.name === 'rsc' &&

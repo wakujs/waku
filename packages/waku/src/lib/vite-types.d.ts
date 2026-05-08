@@ -17,7 +17,7 @@ declare module 'virtual:vite-rsc-waku/config' {
   export const isBuild: boolean;
 }
 
-declare module 'virtual:vite-rsc-waku/fallback-html' {
+declare module 'virtual:vite-rsc-waku/html-shell' {
   const default_: string;
   export default default_;
 }

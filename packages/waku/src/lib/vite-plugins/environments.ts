@@ -14,9 +14,9 @@ import {
 const PKG_NAME = 'waku';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
-export function mainPlugin(config: Required<Config>): Plugin {
+export function environmentsPlugin(config: Required<Config>): Plugin {
   return {
-    name: 'waku:vite-plugins:main',
+    name: 'waku:vite-plugins:environments',
     async config(_config) {
       let viteRscConfig: UserConfig = {
         base: config.basePath,

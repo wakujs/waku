@@ -1,19 +1,19 @@
 import rsc from '@vitejs/plugin-rsc';
 import type { PluginOption } from 'vite';
 import type { Config } from '../../config.js';
+import { adapterAliasPlugin } from './adapter-alias.js';
 import { allowServerPlugin } from './allow-server.js';
+import { appEntriesPlugin } from './app-entries.js';
 import { buildMetadataPlugin } from './build-metadata.js';
-import { buildStaticFilesPlugin } from './build-static-files.js';
-import { defaultAdapterPlugin } from './default-adapter.js';
+import { environmentsPlugin } from './environments.js';
 import { extraPlugins } from './extra-plugins.js';
-import { fallbackHtmlPlugin } from './fallback-html.js';
 import { fsRouterTypegenPlugin } from './fs-router-typegen.js';
-import { mainPlugin } from './main.js';
+import { htmlShellPlugin } from './html-shell.js';
 import { notFoundPlugin } from './not-found.js';
 import { patchRsdwPlugin } from './patch-rsdw.js';
 import { privateDirPlugin } from './private-dir.js';
-import { reactDebugPlugin } from './react-debug.js';
-import { userEntriesPlugin } from './user-entries.js';
+import { rscDevtoolsPlugin } from './rsc-devtools.js';
+import { staticBuildPlugin } from './static-build.js';
 import { virtualConfigPlugin } from './virtual-config.js';
 
 export function combinedPlugins(config: Required<Config>): PluginOption {
@@ -26,17 +26,17 @@ export function combinedPlugins(config: Required<Config>): PluginOption {
       useBuildAppHook: true,
       clientChunks: (meta) => meta.serverChunk,
     }),
-    reactDebugPlugin(),
-    mainPlugin(config),
-    userEntriesPlugin(config),
+    rscDevtoolsPlugin(),
+    environmentsPlugin(config),
+    appEntriesPlugin(config),
     virtualConfigPlugin(config),
-    defaultAdapterPlugin(config),
+    adapterAliasPlugin(config),
     notFoundPlugin(),
     patchRsdwPlugin(),
     buildMetadataPlugin(config),
-    buildStaticFilesPlugin(config),
+    staticBuildPlugin(config),
     privateDirPlugin(config),
-    fallbackHtmlPlugin(),
+    htmlShellPlugin(),
     fsRouterTypegenPlugin(config),
   ];
 }

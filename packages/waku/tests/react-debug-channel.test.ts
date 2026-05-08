@@ -4,7 +4,7 @@ import {
   DEBUG_DATA_EVENT,
   DEBUG_ID_HEADER,
 } from '../src/lib/utils/react-debug-channel.js';
-import { reactDebugPlugin } from '../src/lib/vite-plugins/react-debug.js';
+import { rscDevtoolsPlugin } from '../src/lib/vite-plugins/rsc-devtools.js';
 
 const enc = new TextEncoder();
 
@@ -45,7 +45,7 @@ const setupPlugin = async () => {
     },
   };
 
-  const plugin = reactDebugPlugin();
+  const plugin = rscDevtoolsPlugin();
   const configureServer = plugin.configureServer;
   if (!configureServer) {
     throw new Error('configureServer is not defined');

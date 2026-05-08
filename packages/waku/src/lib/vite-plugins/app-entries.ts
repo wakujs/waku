@@ -5,9 +5,9 @@ import {
   getManagedServerEntry,
 } from '../utils/managed.js';
 
-export function userEntriesPlugin({ srcDir }: { srcDir: string }): Plugin {
+export function appEntriesPlugin({ srcDir }: { srcDir: string }): Plugin {
   return {
-    name: 'waku:vite-plugins:user-entries',
+    name: 'waku:vite-plugins:app-entries',
     // resolve user entries and fallbacks to "managed mode" if not found.
     async resolveId(source, _importer, options) {
       if (source === 'virtual:vite-rsc-waku/server-entry') {
