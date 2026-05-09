@@ -18,6 +18,7 @@ export function createRenderUtils(
   loadSsrEntryModule: () => Promise<
     typeof import('../vite-entries/entry.ssr.js')
   >,
+  buildId: string | undefined,
   debugChannel?: { readable?: ReadableStream; writable?: WritableStream },
   debugId?: string,
 ): {
@@ -40,7 +41,7 @@ export function createRenderUtils(
   return {
     async renderRsc(elements, options) {
       return renderToReadableStream(
-        elements,
+        buildId ? { ...elements, _buildId: buildId } : elements,
         {
           temporaryReferences,
           onError,

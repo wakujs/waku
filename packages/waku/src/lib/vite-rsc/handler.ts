@@ -65,6 +65,7 @@ const toProcessRequest =
       renderToReadableStream,
       createFromReadableStream,
       loadSsrEntryModule,
+      import.meta.env?.WAKU_BUILD_ID,
       debugChannel,
       debugId,
     );
@@ -114,6 +115,7 @@ const toProcessBuild =
       renderToReadableStream,
       createFromReadableStream,
       loadSsrEntryModule,
+      import.meta.env?.WAKU_BUILD_ID,
     );
 
     let fallbackHtml: string | undefined;

@@ -9,4 +9,10 @@ if (import.meta.hot) {
   });
 }
 
+if (import.meta.env.WAKU_BUILD_ID) {
+  window.addEventListener('vite:preloadError', () => {
+    window.location.reload();
+  });
+}
+
 import 'virtual:vite-rsc-waku/client-entry';

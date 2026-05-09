@@ -41,6 +41,38 @@ test.describe('fs-router', () => {
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
   });
 
+  test('reloads on build id mismatch', async ({ page }) => {
+    let navigations = 0;
+    page.on('framenavigated', (frame) => {
+      if (frame === page.mainFrame()) {
+        navigations++;
+      }
+    });
+    await page.goto(`http://localhost:${port}`);
+    await waitForHydration(page);
+
+    const html = await page.content();
+    const buildId = html.match(/\\"_buildId\\":\\"([^\\]+)\\"/)?.[1];
+    if (!buildId) {
+      throw new Error('build id not found in SSR HTML');
+    }
+
+    await page.route('**/RSC/**', async (route) => {
+      const response = await route.fetch();
+      const body = await response.text();
+      await route.fulfill({
+        status: response.status(),
+        headers: response.headers(),
+        body: body.replaceAll(buildId, 'tampered'),
+      });
+    });
+
+    await page.click("a[href='/foo']", { noWaitAfter: true });
+    await expect
+      .poll(() => navigations, { timeout: 10_000 })
+      .toBeGreaterThanOrEqual(2);
+  });
+
   test('foo with trailing slash', async ({ page }) => {
     await page.goto(`http://localhost:${port}/foo/`);
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();

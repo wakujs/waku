@@ -4,6 +4,7 @@ import type { Config } from '../../config.js';
 import { adapterAliasPlugin } from './adapter-alias.js';
 import { allowServerPlugin } from './allow-server.js';
 import { appEntriesPlugin } from './app-entries.js';
+import { buildIdPlugin } from './build-id.js';
 import { buildMetadataPlugin } from './build-metadata.js';
 import { environmentsPlugin } from './environments.js';
 import { extraPlugins } from './extra-plugins.js';
@@ -27,6 +28,7 @@ export function combinedPlugins(config: Required<Config>): PluginOption {
       clientChunks: (meta) => meta.serverChunk,
     }),
     rscDevtoolsPlugin(),
+    buildIdPlugin(),
     environmentsPlugin(config),
     appEntriesPlugin(config),
     virtualConfigPlugin(config),

@@ -29,8 +29,8 @@ const DEFAULT_HTML_HEAD = [
   <meta name="generator" content="Waku" key="generator" />,
 ];
 
-const BASE_RSC_PATH = `${import.meta.env?.WAKU_CONFIG_BASE_PATH}${
-  import.meta.env?.WAKU_CONFIG_RSC_BASE
+const BASE_RSC_PATH = `${import.meta.env?.WAKU_CONFIG_BASE_PATH ?? '/'}${
+  import.meta.env?.WAKU_CONFIG_RSC_BASE ?? 'RSC'
 }/`;
 
 const checkStatus = async (
@@ -202,6 +202,16 @@ const fetchRscInternal: FetchRscInternal = (
     debugChannel: debug?.debugChannel,
     temporaryReferences,
   });
+  if (import.meta.env?.WAKU_BUILD_ID) {
+    Promise.resolve(elements).then(
+      (data) => {
+        if (data._buildId !== import.meta.env.WAKU_BUILD_ID) {
+          window.location.reload();
+        }
+      },
+      () => {},
+    );
+  }
   const closeFn = prefetchedEntry?.[KEY_CLOSE];
   if (closeFn) {
     waitForRootPrerequisites(elements).then(closeFn, closeFn);
