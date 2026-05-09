@@ -1,10 +1,10 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import type { Plugin } from 'vite';
 
 const KEY = 'import.meta.env.WAKU_BUILD_ID';
 
 export function buildIdPlugin(): Plugin {
-  const buildId = randomUUID();
+  const buildId = randomBytes(6).toString('base64url');
   return {
     name: 'waku:vite-plugins:build-id',
     config(merged, env) {
