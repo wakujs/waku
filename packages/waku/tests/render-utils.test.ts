@@ -36,4 +36,33 @@ describe('createRenderUtils', () => {
       'RSC element IDs starting with "_" are reserved for Waku internals: _foo',
     );
   });
+
+  test('HTML response sets charset=utf-8 (full document reload decoding)', async () => {
+    const renderToReadableStream = vi.fn(
+      (_data: unknown, _options?: object, _extraOptions?: object) =>
+        new ReadableStream(),
+    );
+    const fakeHtmlStream = new ReadableStream();
+    const renderHtmlStream = vi.fn().mockResolvedValue({
+      stream: fakeHtmlStream,
+      status: undefined,
+    });
+    const renderUtils = createRenderUtils(
+      undefined,
+      renderToReadableStream,
+      vi.fn(),
+      async () =>
+        ({
+          INTERNAL_renderHtmlStream: renderHtmlStream,
+        }) as any,
+    );
+
+    const res = await renderUtils.renderHtml(
+      new ReadableStream(),
+      { App: 'html' },
+      {},
+    );
+
+    expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8');
+  });
 });
