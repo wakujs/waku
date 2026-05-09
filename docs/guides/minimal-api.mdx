@@ -216,24 +216,21 @@ if (input.type === 'component') {
 }
 ```
 
-`function` requests usually execute the server function and return `_value` in the payload:
+`function` requests usually execute the server function and return its result with the `value` option:
 
 ```tsx
 if (input.type === 'function') {
   const value = await input.fn(...input.args);
-  return renderRsc({ _value: value });
+  return renderRsc({}, { value });
 }
 ```
 
-`_value` is a special key used by Waku's server function plumbing. If a server function should also update the rendered server elements, return both the updated elements and `_value`:
+If a server function should also update the rendered server elements, return the updated elements and pass the function result with `value`:
 
 ```tsx
 if (input.type === 'function') {
   const value = await input.fn(...input.args);
-  return renderRsc({
-    App: <App name="Updated" />,
-    _value: value,
-  });
+  return renderRsc({ App: <App name="Updated" /> }, { value });
 }
 ```
 
@@ -273,7 +270,7 @@ The `utils` argument provides these helpers:
 
 | Utility                                     | Purpose                                                                                                                          |
 | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `renderRsc(elements, options?)`             | Render an RSC payload as a `ReadableStream`. Object keys become RSC IDs.                                                         |
+| `renderRsc(elements, options?)`             | Render an RSC payload as a `ReadableStream`. Object keys become RSC IDs; use `options.value` for a server function result.       |
 | `parseRsc(stream)`                          | Parse an RSC stream back into an elements object. Useful when you need to inspect an RSC payload rather than stream it directly. |
 | `renderHtml(elementsStream, html, options)` | Render the full HTML response that boots the client.                                                                             |
 | `loadBuildMetadata(key)`                    | Read metadata saved during `handleBuild`.                                                                                        |
@@ -290,6 +287,7 @@ The `utils` argument provides these helpers:
 Important details:
 
 - `renderHtml` expects an options object such as `{ rscPath: '' }`.
+- RSC IDs starting with `_` are reserved for Waku internals.
 - `rscPath` and `rscParams` are opaque application data. Waku does not assign them semantics.
 - On the client, RSC caching and prefetch reuse compare `rscParams` by identity. Reuse the same object or `URLSearchParams` instance if you want reuse; creating a fresh object each time is treated as different input.
 - Throwing from `handleRequest` turns into an HTTP error response. If you throw one of Waku's custom errors, status and location are preserved.
@@ -302,7 +300,7 @@ The build utilities are:
 
 | Utility                                     | Purpose                                                                                            |
 | ------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `renderRsc(elements, options?)`             | Render an RSC payload stream.                                                                      |
+| `renderRsc(elements, options?)`             | Render an RSC payload stream. Use `options.value` for a server function result.                    |
 | `parseRsc(stream)`                          | Parse an RSC stream back into elements. Useful for build-time inspection.                          |
 | `renderHtml(elementsStream, html, options)` | Render HTML from an RSC stream and client shell.                                                   |
 | `rscPath2pathname(rscPath)`                 | Convert an RSC path into the correct output pathname for the RSC payload.                          |
@@ -566,15 +564,12 @@ if (input.type === 'custom' && input.pathname === '/api/hello') {
 
 #### Server functions
 
-Server functions typically return `_value`, and may optionally return updated server elements in the same payload:
+Server functions typically return their result with the `value` option, and may optionally return updated server elements in the same payload:
 
 ```tsx
 if (input.type === 'function') {
   const value = await input.fn(...input.args);
-  return renderRsc({
-    App: <App name="Updated" />,
-    _value: value,
-  });
+  return renderRsc({ App: <App name="Updated" /> }, { value });
 }
 ```
 
@@ -620,7 +615,7 @@ For adapter implementation details, see [Adapter Authoring](/guides/adapter-auth
 
 - [Minimal SSR and prerendered root route](https://github.com/wakujs/waku/tree/main/examples/31_minimal)
 - [Using `Children` to compose client content into a server tree](https://github.com/wakujs/waku/tree/main/examples/33_promise)
-- [Server functions returning `_value` and updated elements](https://github.com/wakujs/waku/tree/main/examples/34_functions)
+- [Server functions returning a value and updated elements](https://github.com/wakujs/waku/tree/main/examples/34_functions)
 - [Nested slots, `useRefetch`, `withRequest`, and fallback HTML generation](https://github.com/wakujs/waku/tree/main/examples/35_nesting)
 - [Server actions and `formState`](https://github.com/wakujs/waku/tree/main/examples/36_form)
 - [Custom API endpoints alongside minimal SSR](https://github.com/wakujs/waku/tree/main/examples/39_api)

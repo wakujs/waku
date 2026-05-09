@@ -779,7 +779,7 @@ export function unstable_defineRouter(fns: {
         const { value, elements } = await withRerender(() =>
           input.fn(...input.args),
         );
-        return renderRsc({ ...elements, _value: value });
+        return renderRsc(elements, { value });
       } catch (e) {
         const info = getErrorInfo(e);
         if (info?.location) {
