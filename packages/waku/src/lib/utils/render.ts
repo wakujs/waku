@@ -4,6 +4,16 @@ import type {
   Unstable_RenderRsc,
 } from '../types.js';
 
+const validateRscElementIds = (elements: Record<string, unknown>) => {
+  for (const id of Object.keys(elements)) {
+    if (id.startsWith('_')) {
+      throw new Error(
+        `RSC element IDs starting with "_" are reserved for Waku internals: ${id}`,
+      );
+    }
+  }
+};
+
 export function createRenderUtils(
   temporaryReferences: unknown,
   renderToReadableStream: (
@@ -39,8 +49,13 @@ export function createRenderUtils(
 
   return {
     async renderRsc(elements, options) {
+      validateRscElementIds(elements);
+      const data =
+        options && 'value' in options
+          ? { ...elements, _value: options.value }
+          : elements;
       return renderToReadableStream(
-        elements,
+        data,
         {
           temporaryReferences,
           onError,
