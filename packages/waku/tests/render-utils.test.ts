@@ -12,7 +12,7 @@ const makeRenderUtils = () => {
     renderToReadableStream,
     createFromReadableStream,
     async () => ({}) as any,
-    undefined,
+    '',
   );
   return { renderToReadableStream, renderUtils };
 };
@@ -56,7 +56,7 @@ describe('createRenderUtils', () => {
         ({
           INTERNAL_renderHtmlStream: renderHtmlStream,
         }) as any,
-      undefined,
+      '',
     );
 
     const res = await renderUtils.renderHtml(new ReadableStream(), 'app', {

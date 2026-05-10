@@ -28,7 +28,7 @@ export function createRenderUtils(
   loadSsrEntryModule: () => Promise<
     typeof import('../vite-entries/entry.ssr.js')
   >,
-  buildId: string | undefined,
+  buildId: string,
   debugChannel?: { readable?: ReadableStream; writable?: WritableStream },
   debugId?: string,
 ): {
