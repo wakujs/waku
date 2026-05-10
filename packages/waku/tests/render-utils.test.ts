@@ -57,11 +57,9 @@ describe('createRenderUtils', () => {
         }) as any,
     );
 
-    const res = await renderUtils.renderHtml(
-      new ReadableStream(),
-      { App: 'html' },
-      {},
-    );
+    const res = await renderUtils.renderHtml(new ReadableStream(), 'app', {
+      rscPath: '',
+    });
 
     expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8');
   });
