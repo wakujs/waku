@@ -12,6 +12,7 @@ const makeRenderUtils = () => {
     renderToReadableStream,
     createFromReadableStream,
     async () => ({}) as any,
+    undefined,
   );
   return { renderToReadableStream, renderUtils };
 };
