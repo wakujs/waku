@@ -6,6 +6,7 @@ type Elements = Record<string, unknown>;
 export type Unstable_RenderRsc = (
   elements: Elements,
   options?: {
+    value?: unknown;
     unstable_clientModuleCallback?: (ids: string[]) => void;
   },
 ) => Promise<ReadableStream>;

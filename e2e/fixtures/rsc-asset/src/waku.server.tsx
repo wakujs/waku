@@ -8,7 +8,7 @@ export default adapter({
     }
     if (input.type === 'function') {
       const value = await input.fn(...input.args);
-      return renderRsc({ _value: value });
+      return renderRsc({}, { value });
     }
   },
   handleBuild: async () => {},

@@ -16,7 +16,7 @@ export default adapter({
       const value = await runWithRerender(rerender, () =>
         input.fn(...input.args),
       );
-      return renderRsc({ ...elements, _value: value });
+      return renderRsc(elements, { value });
     }
     if (
       (input.type === 'action' || input.type === 'custom') &&
