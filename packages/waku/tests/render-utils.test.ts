@@ -56,6 +56,7 @@ describe('createRenderUtils', () => {
         ({
           INTERNAL_renderHtmlStream: renderHtmlStream,
         }) as any,
+      undefined,
     );
 
     const res = await renderUtils.renderHtml(new ReadableStream(), 'app', {
