@@ -49,7 +49,7 @@ test.describe('useRouter', () => {
     test(`on dynamic pages`, async ({ page }) => {
       await page.goto(`http://localhost:${port}/dynamic`);
       await waitForHydration(page);
-      await page.click('text=Go to static');
+      await page.getByText('Go to static', { exact: true }).click();
       await expect(page.getByRole('heading', { name: 'Static' })).toBeVisible();
       await expect(page.getByTestId('path')).toHaveText('Path: /static');
     });
@@ -57,7 +57,7 @@ test.describe('useRouter', () => {
     test(`on static pages`, async ({ page }) => {
       await page.goto(`http://localhost:${port}/static`);
       await waitForHydration(page);
-      await page.click('text=Go to dynamic');
+      await page.locator('text=Go to dynamic').click();
       await expect(
         page.getByRole('heading', { name: 'Dynamic' }),
       ).toBeVisible();
@@ -67,7 +67,7 @@ test.describe('useRouter', () => {
     test('router.push changes the page', async ({ page }) => {
       await page.goto(`http://localhost:${port}/dynamic`);
       await waitForHydration(page);
-      await page.click('text=Static router.push button');
+      await page.locator('text=Static router.push button').click();
       await expect(page.getByRole('heading', { name: 'Static' })).toBeVisible();
       await expect(page.getByTestId('path')).toHaveText('Path: /static');
     });
@@ -110,7 +110,7 @@ test.describe('useRouter', () => {
     }) => {
       await page.goto(`http://localhost:${port}/dynamic`);
       await waitForHydration(page);
-      await page.click('text=Increment query');
+      await page.getByText('Increment query', { exact: true }).click();
       await expect(page.getByTestId('query')).toHaveText('Query: 1');
 
       await page
@@ -173,7 +173,7 @@ test.describe('useRouter', () => {
       await expect(page.getByRole('heading', { name: 'Static' })).toBeVisible();
       await expect(page.getByTestId('query')).toHaveText('Query: 55');
       await expect(page.getByTestId('hash')).toHaveText('Hash: 55');
-      expect(rscRequests.length).toBe(prefetchedCount);
+      expect(rscRequests).toHaveLength(prefetchedCount);
     });
 
     test('router.push last call wins during fast consecutive pushes', async ({
@@ -230,18 +230,18 @@ test.describe('useRouter', () => {
     test(`on dynamic pages`, async ({ page }) => {
       await page.goto(`http://localhost:${port}/dynamic`);
       await waitForHydration(page);
-      await page.click('text=Increment query');
+      await page.getByText('Increment query', { exact: true }).click();
       await expect(page.getByTestId('query')).toHaveText('Query: 1');
-      await page.click('text=Increment query (push)');
+      await page.locator('text=Increment query (push)').click();
       await expect(page.getByTestId('query')).toHaveText('Query: 2');
     });
 
     test(`on static pages`, async ({ page }) => {
       await page.goto(`http://localhost:${port}/static`);
       await waitForHydration(page);
-      await page.click('text=Increment query');
+      await page.getByText('Increment query', { exact: true }).click();
       await expect(page.getByTestId('query')).toHaveText('Query: 1');
-      await page.click('text=Increment query (push)');
+      await page.locator('text=Increment query (push)').click();
       await expect(page.getByTestId('query')).toHaveText('Query: 2');
     });
   });
@@ -262,18 +262,18 @@ test.describe('useRouter', () => {
     test(`on dynamic pages`, async ({ page }) => {
       await page.goto(`http://localhost:${port}/dynamic`);
       await waitForHydration(page);
-      await page.click('text=Increment hash');
+      await page.getByText('Increment hash', { exact: true }).click();
       await expect(page.getByTestId('hash')).toHaveText('Hash: 1');
-      await page.click('text=Increment hash (push)');
+      await page.locator('text=Increment hash (push)').click();
       await expect(page.getByTestId('hash')).toHaveText('Hash: 2');
     });
 
     test(`on static pages`, async ({ page }) => {
       await page.goto(`http://localhost:${port}/static`);
       await waitForHydration(page);
-      await page.click('text=Increment hash');
+      await page.getByText('Increment hash', { exact: true }).click();
       await expect(page.getByTestId('hash')).toHaveText('Hash: 1');
-      await page.click('text=Increment hash (push)');
+      await page.locator('text=Increment hash (push)').click();
       await expect(page.getByTestId('hash')).toHaveText('Hash: 2');
     });
   });
@@ -290,7 +290,7 @@ test.describe('useRouter', () => {
         }
       });
       await waitForHydration(page);
-      await page.click('text=Static router.push button');
+      await page.locator('text=Static router.push button').click();
       await expect(page.getByRole('heading', { name: 'Static' })).toBeVisible();
       expect(msgs).toEqual(['Route change started', 'Route change completed']);
     });

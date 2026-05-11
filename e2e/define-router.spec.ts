@@ -19,7 +19,7 @@ test.describe(`define-router`, () => {
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
     await expect(page.getByTestId('home-title')).toHaveText('Home');
-    await page.click("a[href='/foo']");
+    await page.locator("a[href='/foo']").click();
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');
   });
 
@@ -36,7 +36,7 @@ test.describe(`define-router`, () => {
       .getByTestId('slice001')
       .textContent()) as string;
     expect(sliceText.startsWith('Slice 001')).toBeTruthy();
-    await page.click("a[href='/bar1']");
+    await page.locator("a[href='/bar1']").click();
     await expect(page.getByTestId('bar1-title')).toHaveText('Bar1');
     const sliceText2 = page.getByTestId('slice001');
     await expect(sliceText2).toHaveText(sliceText);
@@ -65,9 +65,9 @@ test.describe(`define-router`, () => {
       .getByTestId('slice002')
       .textContent()) as string;
     expect(sliceText.startsWith('Slice 002')).toBeTruthy();
-    await page.click("a[href='/']");
+    await page.locator("a[href='/']").click();
     await expect(page.getByTestId('home-title')).toHaveText('Home');
-    await page.click("a[href='/bar2']");
+    await page.locator("a[href='/bar2']").click();
     await expect(page.getByTestId('bar2-title')).toHaveText('Bar2');
     const sliceText2 = page.getByTestId('slice002');
     await expect(sliceText2).not.toHaveText(sliceText);
@@ -86,7 +86,7 @@ test.describe(`define-router`, () => {
       .getByTestId('slice001')
       .textContent()) as string;
     expect(sliceText.startsWith('Slice 001')).toBeTruthy();
-    await page.click("a[href='/baz1']");
+    await page.locator("a[href='/baz1']").click();
     await expect(page.getByTestId('baz1-title')).toHaveText('Baz1');
     const randomText = (await page
       .getByTestId('baz1-random')
@@ -113,9 +113,9 @@ test.describe(`define-router`, () => {
       .getByTestId('slice002')
       .textContent()) as string;
     expect(sliceText.startsWith('Slice 002')).toBeTruthy();
-    await page.click("a[href='/']");
+    await page.locator("a[href='/']").click();
     await expect(page.getByTestId('home-title')).toHaveText('Home');
-    await page.click("a[href='/baz2']");
+    await page.locator("a[href='/baz2']").click();
     await expect(page.getByTestId('baz2-title')).toHaveText('Baz2');
     // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(100); // need to wait to refetch the slice

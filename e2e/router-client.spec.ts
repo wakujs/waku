@@ -73,10 +73,6 @@ test.describe('router-client', () => {
     page.on('console', consoleHandler);
   });
 
-  test.afterAll(async () => {
-    await stopApp();
-  });
-
   test.afterEach(async ({ page }) => {
     if (consoleHandler) {
       page.off('console', consoleHandler);
@@ -85,6 +81,10 @@ test.describe('router-client', () => {
       (text) => !isAllowedConsoleError(text),
     );
     expect(unexpectedErrors).toEqual([]);
+  });
+
+  test.afterAll(async () => {
+    await stopApp();
   });
 
   test('popstate interceptor can block navigation', async ({ page }) => {
@@ -431,7 +431,7 @@ test.describe('router-client', () => {
     await expect(
       page.getByRole('heading', { name: 'View Target' }),
     ).toBeVisible();
-    expect(prefetchedViewRequests.length).toBe(afterPrefetchCount);
+    expect(prefetchedViewRequests).toHaveLength(afterPrefetchCount);
   });
 
   test('unstable_prefetchOnEnter triggers prefetch on hover', async ({

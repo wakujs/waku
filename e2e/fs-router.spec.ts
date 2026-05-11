@@ -34,7 +34,7 @@ test.describe('fs-router', () => {
   test('foo', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await page.click("a[href='/foo']", { noWaitAfter: true });
+    await page.locator("a[href='/foo']").click({ noWaitAfter: true });
     await waitForSelectorText(page, 'h2', 'Foo');
 
     await page.goto(`http://localhost:${port}/foo`);
@@ -204,11 +204,11 @@ test.describe('fs-router', () => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
-    await page.click("a[href='/foo']", {
+    await page.locator("a[href='/foo']").click({
       button: 'right',
     });
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
-    await page.click("a[href='/foo']", {
+    await page.locator("a[href='/foo']").click({
       modifiers: ['ControlOrMeta'],
     });
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
@@ -217,7 +217,7 @@ test.describe('fs-router', () => {
   test('encoded path - space - dynamic', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await page.click("a[href='/nested/encoded%20path']");
+    await page.locator("a[href='/nested/encoded%20path']").click();
     await expect(
       page.getByRole('heading', { name: 'Nested / encoded%20path' }),
     ).toBeVisible();
@@ -230,7 +230,7 @@ test.describe('fs-router', () => {
   test('encoded path - space - static', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await page.click("a[href='/static-nested/encoded%20path']");
+    await page.locator("a[href='/static-nested/encoded%20path']").click();
     await expect(
       page.getByRole('heading', { name: 'Nested / encoded%20path' }),
     ).toBeVisible();
@@ -243,7 +243,9 @@ test.describe('fs-router', () => {
   test('encoded path - unicode - dynamic', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await page.click("a[href='/nested/encoded%E6%B8%AC%E8%A9%A6path']");
+    await page
+      .locator("a[href='/nested/encoded%E6%B8%AC%E8%A9%A6path']")
+      .click();
     await expect(
       page.getByRole('heading', {
         name: 'Nested / encoded%E6%B8%AC%E8%A9%A6path',
@@ -260,7 +262,9 @@ test.describe('fs-router', () => {
   test('encoded path - unicode - static', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await page.click("a[href='/static-nested/encoded%E6%B8%AC%E8%A9%A6path']");
+    await page
+      .locator("a[href='/static-nested/encoded%E6%B8%AC%E8%A9%A6path']")
+      .click();
     await expect(
       page.getByRole('heading', {
         name: 'Nested / encoded%E6%B8%AC%E8%A9%A6path',
@@ -411,12 +415,12 @@ test.describe('fs-router', () => {
       'color',
       'rgb(255, 0, 0)', // red
     );
-    await page.click("a[href='/css-split/page2']");
+    await page.locator("a[href='/css-split/page2']").click();
     await expect(page.getByText('css-split / page2 / index')).toHaveCSS(
       'color',
       'rgb(0, 0, 255)', // blue
     );
-    await page.click("a[href='/css-split/page1']");
+    await page.locator("a[href='/css-split/page1']").click();
     await expect(page.getByText('css-split / page1 / index')).toHaveCSS(
       'color',
       'rgb(0, 0, 255)', // blue
