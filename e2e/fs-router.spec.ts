@@ -65,7 +65,7 @@ test.describe('fs-router', () => {
       });
     });
 
-    await page.locator("a[href='/foo']").click({ noWaitAfter: true });
+    await page.locator("a[href='/foo']").click();
     await expect
       .poll(() => navigations, { timeout: 10_000 })
       .toBeGreaterThanOrEqual(2);

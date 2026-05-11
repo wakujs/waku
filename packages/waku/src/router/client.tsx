@@ -908,9 +908,10 @@ const InnerRouter = ({
         try {
           const targetUrl = url || getRouteUrl(nextRoute);
           const elements = await refetch(rscPath, rscParams, (store) =>
-            withBuildIdMismatchHandler(() => window.location.assign(targetUrl))(
-              withEnhanceFetchFn(skipHeaderEnhancer)(store),
-            ),
+            withBuildIdMismatchHandler(() => {
+              window.history.pushState(window.history.state, '', targetUrl);
+              window.location.reload();
+            })(withEnhanceFetchFn(skipHeaderEnhancer)(store)),
           );
           const { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic } = elements;
           if (routeData) {
