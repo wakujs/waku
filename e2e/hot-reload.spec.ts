@@ -205,6 +205,23 @@ test.describe('hot reload', () => {
     await expect(page.getByTestId('count')).toHaveText('1');
   });
 
+  test('css url from root', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    await expect(page.getByTestId('count')).toHaveText('0');
+    await expect
+      .poll(() => page.evaluate(() => getComputedStyle(document.body).color))
+      .toBe('rgb(255, 0, 0)');
+
+    modifyFile(standaloneDir, 'src/styles.css', 'color: red;', 'color: blue;');
+    await expectNoFullReloadFor(page);
+    await expect
+      .poll(() => page.evaluate(() => getComputedStyle(document.body).color))
+      .toBe('rgb(0, 0, 255)');
+    await page.getByTestId('increment').click();
+    await expect(page.getByTestId('count')).toHaveText('1');
+  });
+
   test('css modules in client components with a reload (#1328)', async ({
     page,
   }) => {
