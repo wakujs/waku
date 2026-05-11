@@ -178,7 +178,7 @@ test.describe('broken-links/dynamic-not-found', () => {
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
     await expect(page.getByRole('heading')).toHaveText('Index');
-    await page.click("a[href='/dynamic-not-found/sync']");
+    await page.locator("a[href='/dynamic-not-found/sync']").click();
     await expect(page.getByRole('heading')).toHaveText('Custom not found');
     await expect(page).toHaveTitle('Custom Not Found Title');
   });
@@ -187,7 +187,7 @@ test.describe('broken-links/dynamic-not-found', () => {
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
     await expect(page.getByRole('heading')).toHaveText('Index');
-    await page.click("a[href='/dynamic-not-found/async']");
+    await page.locator("a[href='/dynamic-not-found/async']").click();
     await expect(page.getByRole('heading')).toHaveText('Custom not found');
     await expect(page).toHaveTitle('Custom Not Found Title');
   });

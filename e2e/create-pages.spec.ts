@@ -120,7 +120,7 @@ test.describe(`create-pages`, () => {
   test('foo', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await page.click("a[href='/foo']", { noWaitAfter: true });
+    await page.locator("a[href='/foo']").click({ noWaitAfter: true });
     await waitForSelectorText(page, 'h2', 'Foo');
 
     await page.goto(`http://localhost:${port}/foo`);
@@ -167,9 +167,9 @@ test.describe(`create-pages`, () => {
   test('jump', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await page.click("a[href='/foo']", { noWaitAfter: true });
+    await page.locator("a[href='/foo']").click({ noWaitAfter: true });
     await waitForSelectorText(page, 'h2', 'Foo');
-    await page.click('text=Jump to random page');
+    await page.locator('text=Jump to random page').click();
     await expectNoPageErrorFor(page);
     await expect(
       page.getByRole('heading', { level: 2, name: 'Foo' }),
@@ -182,9 +182,9 @@ test.describe(`create-pages`, () => {
     page.on('pageerror', (err) => errors.push(err.message));
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await page.click("a[href='/foo']", { noWaitAfter: true });
+    await page.locator("a[href='/foo']").click({ noWaitAfter: true });
     await waitForSelectorText(page, 'h2', 'Foo');
-    await page.click('text=Jump with setState');
+    await page.locator('text=Jump with setState').click();
     await expect(
       page.getByRole('heading', { name: 'Baz', exact: true }),
     ).toBeVisible();
@@ -232,7 +232,7 @@ test.describe(`create-pages`, () => {
   test('errors', async ({ page }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await page.click("a[href='/error']");
+    await page.locator("a[href='/error']").click();
     await expect(
       page.getByRole('heading', { name: 'Error Page' }),
     ).toBeVisible();
@@ -251,7 +251,7 @@ test.describe(`create-pages`, () => {
   test('server function unreachable', async ({ page, mode, browserName }) => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
-    await page.click("a[href='/error']");
+    await page.locator("a[href='/error']").click();
     await expect(
       page.getByRole('heading', { name: 'Error Page' }),
     ).toBeVisible();
@@ -275,7 +275,7 @@ test.describe(`create-pages`, () => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
     await stopApp();
-    await page.click("a[href='/error']");
+    await page.locator("a[href='/error']").click();
     // Default router client error boundary is reached
     await expect(page.locator('p')).toContainText(
       FETCH_ERROR_MESSAGES[browserName],

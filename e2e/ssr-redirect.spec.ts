@@ -33,7 +33,7 @@ test.describe(`ssr-redirect`, () => {
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
     await expect(page.getByRole('heading')).toHaveText('Home Page');
-    await page.click("a[href='/sync']");
+    await page.locator("a[href='/sync']").click();
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
   });
 
@@ -41,7 +41,7 @@ test.describe(`ssr-redirect`, () => {
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
     await expect(page.getByRole('heading')).toHaveText('Home Page');
-    await page.click("a[href='/async']");
+    await page.locator("a[href='/async']").click();
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
   });
 
@@ -49,7 +49,7 @@ test.describe(`ssr-redirect`, () => {
     await page.goto(`http://localhost:${port}/action`);
     await waitForHydration(page);
     await expect(page.getByRole('heading')).toHaveText('Action Page');
-    await page.click('text=Redirect Action');
+    await page.locator('text=Redirect Action').click();
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
   });
 
@@ -60,7 +60,7 @@ test.describe(`ssr-redirect`, () => {
     const page = await context.newPage();
     await page.goto(`http://localhost:${port}/action`);
     await expect(page.getByRole('heading')).toHaveText('Action Page');
-    await page.click('text=Redirect Action');
+    await page.locator('text=Redirect Action').click();
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
     await context.close();
   });
