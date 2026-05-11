@@ -51,12 +51,11 @@ export function createRenderUtils(
   return {
     async renderRsc(elements, options) {
       validateRscElementIds(elements);
-      let data: Record<string, unknown> = elements;
+      const data: Record<string, unknown> = buildId
+        ? { ...elements, _buildId: buildId }
+        : { ...elements };
       if (options && 'value' in options) {
-        data = { ...data, _value: options.value };
-      }
-      if (buildId) {
-        data = { ...data, _buildId: buildId };
+        data._value = options.value;
       }
       return renderToReadableStream(
         data,

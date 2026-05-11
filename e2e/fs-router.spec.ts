@@ -52,10 +52,8 @@ test.describe('fs-router', () => {
     await waitForHydration(page);
 
     const html = await page.content();
-    const buildId = html.match(/\\"_buildId\\":\\"([^\\]+)\\"/)?.[1];
-    if (!buildId) {
-      throw new Error('build id not found in SSR HTML');
-    }
+    const buildId = html.match(/\\"_buildId\\":\\"([^\\]+)\\"/)?.[1] ?? '';
+    expect(buildId.length).toBeGreaterThan(0);
 
     await page.route('**/RSC/**', async (route) => {
       const response = await route.fetch();
