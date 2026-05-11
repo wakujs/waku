@@ -81,6 +81,7 @@ const SET_ELEMENTS = 's';
 const FETCH_FN = 'f';
 const FETCH_RSC_INPUT_TRANSFORMERS = 't';
 const CALL_SERVER_ELEMENTS_LISTENERS = 'l';
+const ON_BUILD_ID_MISMATCH = 'b';
 
 type TransformFetchRscInput = (
   rscPath: string,
@@ -116,6 +117,7 @@ type Unstable_FetchRscStore = {
   [FETCH_FN]?: typeof fetch;
   [FETCH_RSC_INPUT_TRANSFORMERS]?: FetchRscInputTransformers;
   [CALL_SERVER_ELEMENTS_LISTENERS]?: CallServerElementsListeners;
+  [ON_BUILD_ID_MISMATCH]?: () => void;
 };
 
 const defaultFetchRscStore: Unstable_FetchRscStore = {};
@@ -206,7 +208,10 @@ const fetchRscInternal: FetchRscInternal = (
     Promise.resolve(elements).then(
       (data) => {
         if (data._buildId !== import.meta.env.WAKU_BUILD_ID) {
-          window.location.reload();
+          (
+            fetchRscStore[ON_BUILD_ID_MISMATCH] ??
+            (() => window.location.reload())
+          )();
         }
       },
       () => {},
@@ -346,6 +351,13 @@ export const unstable_withEnhanceFetchFn =
   (fetchRscStore: Unstable_FetchRscStore): Unstable_FetchRscStore => ({
     ...fetchRscStore,
     [FETCH_FN]: enhanceFetchFn(fetchRscStore[FETCH_FN] || fetch),
+  });
+
+export const unstable_withBuildIdMismatchHandler =
+  (handler: () => void) =>
+  (fetchRscStore: Unstable_FetchRscStore): Unstable_FetchRscStore => ({
+    ...fetchRscStore,
+    [ON_BUILD_ID_MISMATCH]: handler,
   });
 
 const RefetchContext = createContext<

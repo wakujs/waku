@@ -69,6 +69,7 @@ test.describe('fs-router', () => {
     await expect
       .poll(() => navigations, { timeout: 10_000 })
       .toBeGreaterThanOrEqual(2);
+    await expect(page).toHaveURL(`http://localhost:${port}/foo`);
   });
 
   test('foo with trailing slash', async ({ page }) => {

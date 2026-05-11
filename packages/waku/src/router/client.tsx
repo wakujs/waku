@@ -32,6 +32,7 @@ import {
   useElementsPromise_UNSTABLE as useElementsPromise,
   useFetchRscStore_UNSTABLE as useFetchRscStore,
   useRefetch,
+  unstable_withBuildIdMismatchHandler as withBuildIdMismatchHandler,
   unstable_withEnhanceFetchFn as withEnhanceFetchFn,
 } from '../minimal/client.js';
 import type { RouteConfig } from './base-types.js';
@@ -905,10 +906,11 @@ const InnerRouter = ({
             return fetchFn(input, init);
           };
         try {
-          const elements = await refetch(
-            rscPath,
-            rscParams,
-            withEnhanceFetchFn(skipHeaderEnhancer),
+          const targetUrl = url || getRouteUrl(nextRoute);
+          const elements = await refetch(rscPath, rscParams, (store) =>
+            withBuildIdMismatchHandler(() => window.location.assign(targetUrl))(
+              withEnhanceFetchFn(skipHeaderEnhancer)(store),
+            ),
           );
           const { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic } = elements;
           if (routeData) {
