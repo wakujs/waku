@@ -1,4 +1,3 @@
-import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { buildMetadata } from 'virtual:vite-rsc-waku/build-metadata';
 import serverEntry from 'virtual:vite-rsc-waku/server-entry';
@@ -8,7 +7,7 @@ import type { Unstable_EmitFile } from '../types.js';
 import { joinPath } from '../utils/path.js';
 import { stringToStream } from '../utils/stream.js';
 
-function resolveModuleId(moduleId: string, rootDir: string) {
+async function resolveModuleId(moduleId: string, rootDir: string) {
   if (moduleId.startsWith('file://')) {
     return moduleId;
   }
@@ -16,6 +15,7 @@ function resolveModuleId(moduleId: string, rootDir: string) {
     // treat as project-root relative (not filesystem root)
     return pathToFileURL(joinPath(rootDir, moduleId.slice(1))).href;
   }
+  const { createRequire } = await import('node:module');
   const require = createRequire(joinPath(rootDir, 'DUMMY.js'));
   const resolved = require.resolve(moduleId);
   return pathToFileURL(resolved).href;
@@ -32,7 +32,7 @@ export async function INTERNAL_runBuild({
   const prunableFiles = new Set<string>();
   let build = serverEntry.build;
   for (const enhancer of serverEntry.buildEnhancers || []) {
-    const moduleId = resolveModuleId(enhancer, rootDir);
+    const moduleId = await resolveModuleId(enhancer, rootDir);
     const mod = await import(moduleId);
     build = await mod.default(build);
   }

@@ -3,6 +3,7 @@ import {
   cpSync,
   existsSync,
   readFileSync,
+  readdirSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -33,35 +34,50 @@ const waku = fileURLToPath(
   new URL('../packages/waku/dist/cli.js', import.meta.url),
 );
 
+const STATIC_NODE_MODULE_IMPORT_RE =
+  /(?:^|[;\n])\s*import(?:\s+[\w*\s{},]+?\s+from)?\s*['"]node:module['"]/m;
+
 type BuildPlatformTarget = {
   adapter: string;
   clearDirOrFile: string[];
-  checkJsonFile?: (dir: string) => boolean;
+  assertBuildOutput?: (dir: string) => void;
 };
 
-const hasDistServerWranglerMainIndexJs = (dir: string) => {
-  const file = join(dir, 'dist', 'server', 'wrangler.json');
-  if (!existsSync(file)) {
-    return false;
+const directoryContainsPattern = (dir: string, pattern: RegExp): boolean => {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const file = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (directoryContainsPattern(file, pattern)) {
+        return true;
+      }
+    } else if (entry.isFile() && pattern.test(readFileSync(file, 'utf-8'))) {
+      return true;
+    }
   }
+  return false;
+};
+
+const assertCloudflareBuildOutput = (dir: string) => {
+  const file = join(dir, 'dist', 'server', 'wrangler.json');
+  expect(existsSync(file)).toBe(true);
   const json = JSON.parse(readFileSync(file, 'utf-8')) as {
     main?: string;
     assets?: { directory?: string };
   };
-  if (json.main !== 'index.js') {
-    return false;
-  }
-  if (!json.assets?.directory) {
-    return false;
-  }
+  expect(json.main).toBe('index.js');
+  expect(json.assets?.directory).toBeTruthy();
   const deployConfig = join(dir, '.wrangler', 'deploy', 'config.json');
-  if (!existsSync(deployConfig)) {
-    return false;
-  }
+  expect(existsSync(deployConfig)).toBe(true);
   const deployJson = JSON.parse(readFileSync(deployConfig, 'utf-8')) as {
     configPath?: string;
   };
-  return deployJson.configPath === '../../dist/server/wrangler.json';
+  expect(deployJson.configPath).toBe('../../dist/server/wrangler.json');
+  expect(
+    directoryContainsPattern(
+      join(dir, 'dist', 'server'),
+      STATIC_NODE_MODULE_IMPORT_RE,
+    ),
+  ).toBe(false);
 };
 
 const buildPlatformTarget: BuildPlatformTarget[] = [
@@ -76,7 +92,7 @@ const buildPlatformTarget: BuildPlatformTarget[] = [
   {
     adapter: 'cloudflare',
     clearDirOrFile: ['dist', 'wrangler.jsonc', '.wrangler'],
-    checkJsonFile: hasDistServerWranglerMainIndexJs,
+    assertBuildOutput: assertCloudflareBuildOutput,
   },
   {
     adapter: 'deno',
@@ -114,7 +130,7 @@ test.describe(`multi platform builds`, () => {
     for (const {
       adapter,
       clearDirOrFile,
-      checkJsonFile = () => true,
+      assertBuildOutput,
     } of buildPlatformTarget) {
       test(`build ${project} with ${adapter} should not throw error`, async () => {
         const temp = makeTempDir(project);
@@ -137,7 +153,7 @@ test.describe(`multi platform builds`, () => {
               env: process.env,
             }),
           ).resolves.not.toThrow();
-          expect(checkJsonFile(temp)).toBe(true);
+          assertBuildOutput?.(temp);
         } finally {
           rmSync(temp, { recursive: true, force: true, maxRetries: 3 });
         }
