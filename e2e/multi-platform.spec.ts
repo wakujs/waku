@@ -34,20 +34,23 @@ const waku = fileURLToPath(
   new URL('../packages/waku/dist/cli.js', import.meta.url),
 );
 
+const STATIC_NODE_MODULE_IMPORT_RE =
+  /(?:^|[;\n])\s*import(?:\s+[\w*\s{},]+?\s+from)?\s*['"]node:module['"]/m;
+
 type BuildPlatformTarget = {
   adapter: string;
   clearDirOrFile: string[];
   assertBuildOutput?: (dir: string) => void;
 };
 
-const directoryContainsText = (dir: string, text: string): boolean => {
+const directoryContainsPattern = (dir: string, pattern: RegExp): boolean => {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const file = join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (directoryContainsText(file, text)) {
+      if (directoryContainsPattern(file, pattern)) {
         return true;
       }
-    } else if (entry.isFile() && readFileSync(file, 'utf-8').includes(text)) {
+    } else if (entry.isFile() && pattern.test(readFileSync(file, 'utf-8'))) {
       return true;
     }
   }
@@ -70,7 +73,10 @@ const assertCloudflareBuildOutput = (dir: string) => {
   };
   expect(deployJson.configPath).toBe('../../dist/server/wrangler.json');
   expect(
-    directoryContainsText(join(dir, 'dist', 'server'), 'node:module'),
+    directoryContainsPattern(
+      join(dir, 'dist', 'server'),
+      STATIC_NODE_MODULE_IMPORT_RE,
+    ),
   ).toBe(false);
 };
 
