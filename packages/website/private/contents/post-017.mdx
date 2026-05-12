@@ -1,7 +1,7 @@
 ---
 slug: waku-v1-beta
 title: Waku 1.0 (beta)
-description: Version skew handling, Vite 8 with Rolldown, and a focus on stability.
+description: Version skew handling, Vite 8 with Rolldown, and a focus on compatibility.
 author: sophia
 release: v1-beta
 date: 2026/05/12
@@ -11,7 +11,7 @@ We're excited to announce the release of Waku 1.0-beta!
 
 Waku is a minimal React Server Components framework with a simple API and a fast dev server powered by Vite and Hono. It shines for sites that are mostly static with some dynamic routes, such as marketing sites, blogs, docs, and light ecommerce. A single route can be fully static, fully dynamic, or a blend of both, depending on the layouts, slices, and page that compose it.
 
-The beta marks our shift toward stability, package compatibility, and production readiness. It introduces graceful version skew handling: when you redeploy, clients that loaded against the previous build now recover instead of breaking. We've also upgraded to Vite 8, bringing its new Rolldown bundler to Waku's build pipeline.
+The beta marks our shift toward compatibility and production readiness. It introduces graceful version skew handling: when you redeploy, clients that loaded against the previous build now recover instead of breaking. We've also upgraded to Vite 8, bringing its new Rolldown bundler to Waku's build pipeline.
 
 Other recent additions include [performance tracks](https://react.dev/reference/dev-tools/react-performance-tracks) for server components in React DevTools, Content-Security-Policy support, a more flexible router (slug slices, prefixed slugs, trailing-slash handling, layout slug props), and Node 26 support.
 
