@@ -88,24 +88,19 @@ const getRouteUrl = (route: RouteProps): URL => {
   return nextUrl;
 };
 
-const getHttpStatusFromMeta = (): string | undefined => {
-  const httpStatusMeta = document.querySelector('meta[name="httpstatus"]');
-  if (
-    httpStatusMeta &&
-    'content' in httpStatusMeta &&
-    typeof httpStatusMeta.content === 'string'
-  ) {
-    return httpStatusMeta.content;
-  }
-  return undefined;
+const parseRouteFromLocation = (): RouteProps => {
+  return parseRoute(new URL(window.location.href));
 };
 
-const parseRouteFromLocation = (): RouteProps => {
-  const httpStatus = getHttpStatusFromMeta();
-  if (httpStatus === '404') {
-    return { path: '/404', query: '', hash: '' };
+const getRouteFromElements = (
+  elements: Record<string, unknown>,
+): RouteProps | undefined => {
+  const routeData = elements[ROUTE_ID];
+  if (routeData) {
+    const [path, query] = routeData as [string, string];
+    return { path, query, hash: '' };
   }
-  return parseRoute(new URL(window.location.href));
+  return undefined;
 };
 
 const shouldScrollByDefault = (url: URL) =>
@@ -760,14 +755,19 @@ const writeUrlToHistory = (mode: 'push' | 'replace', url: URL) => {
 const defaultRouteInterceptor = (route: RouteProps) => route;
 
 const InnerRouter = ({
+  fallbackRoute,
   initialRoute,
-  httpStatus,
   routeInterceptor = defaultRouteInterceptor,
 }: {
-  initialRoute: RouteProps;
-  httpStatus: string | undefined;
+  fallbackRoute: RouteProps;
+  initialRoute: RouteProps | undefined;
   routeInterceptor: ((route: RouteProps) => RouteProps | false) | undefined;
 }) => {
+  const elementsPromise = useElementsPromise();
+  const initialElements = use(elementsPromise);
+  const resolvedInitialRoute =
+    initialRoute || getRouteFromElements(initialElements) || fallbackRoute;
+
   if (import.meta.hot) {
     const refetchRoute = () => {
       staticPathSetRef.current.clear();
@@ -789,7 +789,6 @@ const InnerRouter = ({
     globalThis.__WAKU_REFETCH_ROUTE__ = refetchRoute;
   }
 
-  const elementsPromise = useElementsPromise();
   const [has404, setHas404] = useState(false);
   const staticPathSetRef = useRef(new Set<string>());
   const cachedIdSetRef = useRef(new Set<string>());
@@ -825,7 +824,7 @@ const InnerRouter = ({
     // to ignore the hash, because on server side there is none.
     // Otherwise there will be a hydration error.
     // The client side route, including the hash, will be updated in the effect below.
-    ...initialRoute,
+    ...resolvedInitialRoute,
     hash: '',
   }));
   const routeChangeListenersRef = useRef<ReturnType<
@@ -837,12 +836,14 @@ const InnerRouter = ({
   // Update the route post-load to include the current hash.
   const routeRef = useRef(route);
   useEffect(() => {
-    routeRef.current = initialRoute;
-    setRoute((prev) => (isSameRoute(prev, initialRoute) ? prev : initialRoute));
+    routeRef.current = resolvedInitialRoute;
+    setRoute((prev) =>
+      isSameRoute(prev, resolvedInitialRoute) ? prev : resolvedInitialRoute,
+    );
     setErr(null);
     setPendingScroll(null);
     setPendingHistory(null);
-  }, [initialRoute]);
+  }, [resolvedInitialRoute]);
   const [err, setErr] = useState<unknown>(null);
   const [pendingHistory, setPendingHistory] = useState<{
     mode: 'push' | 'replace';
@@ -1055,7 +1056,6 @@ const InnerRouter = ({
     );
   const rootElement = (
     <Slot id="root">
-      <meta name="httpstatus" content={httpStatus} />
       <CustomErrorHandler has404={has404}>{routeElement}</CustomErrorHandler>
     </Slot>
   );
@@ -1075,7 +1075,7 @@ const InnerRouter = ({
 };
 
 export function Router({
-  initialRoute = parseRouteFromLocation(),
+  initialRoute,
   unstable_fetchRscStore,
   unstable_routeInterceptor,
 }: {
@@ -1083,9 +1083,9 @@ export function Router({
   unstable_fetchRscStore?: Parameters<typeof Root>[0]['unstable_fetchRscStore'];
   unstable_routeInterceptor?: (route: RouteProps) => RouteProps | false;
 }) {
-  const initialRscPath = encodeRoutePath(initialRoute.path);
-  const initialRscParams = createRscParams(initialRoute.query);
-  const httpStatus = getHttpStatusFromMeta();
+  const fallbackRoute = initialRoute || parseRouteFromLocation();
+  const initialRscPath = encodeRoutePath(fallbackRoute.path);
+  const initialRscParams = createRscParams(fallbackRoute.query);
   return (
     <Root
       initialRscPath={initialRscPath}
@@ -1093,8 +1093,8 @@ export function Router({
       unstable_fetchRscStore={unstable_fetchRscStore}
     >
       <InnerRouter
+        fallbackRoute={fallbackRoute}
         initialRoute={initialRoute}
-        httpStatus={httpStatus}
         routeInterceptor={unstable_routeInterceptor}
       />
     </Root>
@@ -1113,20 +1113,9 @@ const MOCK_ROUTE_CHANGE_LISTENER: Record<
  * ServerRouter for SSR
  * This is not a public API.
  */
-export function INTERNAL_ServerRouter({
-  route,
-  httpstatus,
-}: {
-  route: RouteProps;
-  httpstatus: number;
-}) {
+export function INTERNAL_ServerRouter({ route }: { route: RouteProps }) {
   const routeElement = <Slot id={getRouteSlotId(route.path)} />;
-  const rootElement = (
-    <Slot id="root">
-      <meta name="httpstatus" content={`${httpstatus}`} />
-      {routeElement}
-    </Slot>
-  );
+  const rootElement = <Slot id="root">{routeElement}</Slot>;
   return (
     <>
       <RouterContext
@@ -1166,4 +1155,3 @@ export type Unstable_PrefetchRoute = PrefetchRoute;
 export type Unstable_SliceId = SliceId;
 export type Unstable_InferredPaths = InferredPaths;
 export const unstable_parseRoute = parseRoute;
-export const unstable_getHttpStatusFromMeta = getHttpStatusFromMeta;
