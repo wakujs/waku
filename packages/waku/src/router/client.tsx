@@ -767,6 +767,7 @@ const InnerRouter = ({
   const initialElements = use(elementsPromise);
   const resolvedInitialRoute =
     initialRoute || getRouteFromElements(initialElements) || fallbackRoute;
+  const initialRouteRef = useRef(resolvedInitialRoute);
 
   if (import.meta.hot) {
     const refetchRoute = () => {
@@ -824,7 +825,7 @@ const InnerRouter = ({
     // to ignore the hash, because on server side there is none.
     // Otherwise there will be a hydration error.
     // The client side route, including the hash, will be updated in the effect below.
-    ...resolvedInitialRoute,
+    ...initialRouteRef.current,
     hash: '',
   }));
   const routeChangeListenersRef = useRef<ReturnType<
@@ -836,14 +837,15 @@ const InnerRouter = ({
   // Update the route post-load to include the current hash.
   const routeRef = useRef(route);
   useEffect(() => {
-    routeRef.current = resolvedInitialRoute;
+    const route = initialRouteRef.current;
+    routeRef.current = route;
     setRoute((prev) =>
-      isSameRoute(prev, resolvedInitialRoute) ? prev : resolvedInitialRoute,
+      isSameRoute(prev, route) ? prev : route,
     );
     setErr(null);
     setPendingScroll(null);
     setPendingHistory(null);
-  }, [resolvedInitialRoute]);
+  }, []);
   const [err, setErr] = useState<unknown>(null);
   const [pendingHistory, setPendingHistory] = useState<{
     mode: 'push' | 'replace';
@@ -886,7 +888,11 @@ const InnerRouter = ({
       const shouldRefetch =
         options.refetch ?? !isSameRoute(nextRoute, routeBeforeChange);
       const pathChanged = isPathChange(nextRoute, routeBeforeChange);
-      if (!staticPathSetRef.current.has(nextRoute.path) && shouldRefetch) {
+      if (
+        (!staticPathSetRef.current.has(nextRoute.path) ||
+          !cachedIdSetRef.current.has(getRouteSlotId(nextRoute.path))) &&
+        shouldRefetch
+      ) {
         const rscPath = encodeRoutePath(nextRoute.path);
         const rscParams = createRscParams(nextRoute.query);
         const skipHeaderEnhancer =
@@ -1003,7 +1009,10 @@ const InnerRouter = ({
   }, [applyChangeRouteData, fetchRscStore]);
 
   const prefetchRoute: PrefetchRoute = useCallback((route) => {
-    if (staticPathSetRef.current.has(route.path)) {
+    if (
+      staticPathSetRef.current.has(route.path) &&
+      cachedIdSetRef.current.has(getRouteSlotId(route.path))
+    ) {
       return;
     }
     const rscPath = encodeRoutePath(route.path);
