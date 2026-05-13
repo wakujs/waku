@@ -13,6 +13,7 @@ import type { ReactNode } from 'react';
 import RSDWClient from 'react-server-dom-webpack/client';
 import { createCustomError } from '../lib/utils/custom-errors.js';
 import {
+  type INTERNAL_PrefetchedEntry,
   createPrefetchedEntry,
   getPrefetchedClose,
   getPrefetchedDebugId,
@@ -20,7 +21,6 @@ import {
   getPrefetchedRscParams,
   getPrefetchedRscPath,
   getPrefetchedTemporaryReferences,
-  type INTERNAL_PrefetchedEntry,
 } from '../lib/utils/prefetch.js';
 import { setupDebugChannel } from '../lib/utils/react-debug-channel.js';
 import { encodeFuncId, encodeRscPath } from '../lib/utils/rsc-path.js';

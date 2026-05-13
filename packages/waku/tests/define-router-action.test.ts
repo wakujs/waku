@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
+import { ROUTE_ID } from '../src/router/common.js';
 import {
   unstable_defineRouter,
   unstable_rerenderRoute,
 } from '../src/router/define-router.js';
-import { ROUTE_ID } from '../src/router/common.js';
 
 const requestContext = vi.hoisted(() => ({}));
 
