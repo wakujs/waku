@@ -837,7 +837,10 @@ const InnerRouter = ({
   // Update the route post-load to include the current hash.
   const routeRef = useRef(route);
   useEffect(() => {
-    const route = initialRouteRef.current;
+    const route = {
+      ...initialRouteRef.current,
+      hash: window.location.hash || initialRouteRef.current.hash,
+    };
     routeRef.current = route;
     setRoute((prev) =>
       isSameRoute(prev, route) ? prev : route,
