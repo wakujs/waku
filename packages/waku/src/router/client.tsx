@@ -837,8 +837,10 @@ const InnerRouter = ({
   // Update the route post-load to include the current hash.
   const routeRef = useRef(route);
   useEffect(() => {
+    const query = new URLSearchParams(window.location.search).toString();
     const route = {
       ...initialRouteRef.current,
+      query: query || initialRouteRef.current.query,
       hash: window.location.hash || initialRouteRef.current.hash,
     };
     routeRef.current = route;
