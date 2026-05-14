@@ -172,6 +172,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     mode: 'DEV' | 'PRD' | 'STATIC',
     options?: {
       cmd?: string | undefined;
+      portFlag?: string | undefined;
       onServerOutput?: (data: string) => void;
     },
   ) => {
@@ -195,9 +196,9 @@ export const prepareNormalSetup = (fixtureName: string) => {
     if (options?.cmd) {
       cmd = options.cmd;
     }
+    const portFlag = options?.portFlag ?? '-p';
     const port = await getAvailablePort();
-    // Assuming all commands support -p for port
-    const cp = runShell(`${cmd} -p ${port}`, fixtureDir);
+    const cp = runShell(`${cmd} ${portFlag} ${port}`, fixtureDir);
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     if (options?.onServerOutput) {
       const callback = options.onServerOutput;

@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cloudflare-adapter",
+  "main": "./src/waku.server",
+  "compatibility_flags": ["nodejs_als"],
+  "compatibility_date": "2025-11-17",
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist/public",
+    "html_handling": "drop-trailing-slash"
+  },
+  "rules": [
+    {
+      "type": "ESModule",
+      "globs": ["**/*.js", "**/*.mjs"]
+    }
+  ],
+  "no_bundle": true
+}
