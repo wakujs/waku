@@ -842,9 +842,7 @@ const InnerRouter = ({
       hash: window.location.hash || initialRouteRef.current.hash,
     };
     routeRef.current = route;
-    setRoute((prev) =>
-      isSameRoute(prev, route) ? prev : route,
-    );
+    setRoute((prev) => (isSameRoute(prev, route) ? prev : route));
     setErr(null);
     setPendingScroll(null);
     setPendingHistory(null);
