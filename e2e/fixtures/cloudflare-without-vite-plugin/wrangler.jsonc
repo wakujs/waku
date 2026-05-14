@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "cloudflare-adapter",
+  "name": "cloudflare-without-vite-plugin",
   "main": "./src/waku.server",
   "compatibility_flags": ["nodejs_als"],
   "compatibility_date": "2025-11-17",
