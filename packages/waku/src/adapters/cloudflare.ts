@@ -17,14 +17,32 @@ const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 const DO_NOT_BUNDLE = '';
 
-const PRUNABLE_KEY_PREFIX = '\0__prunable__/';
+const PRUNABLE_LIST_KEY = '\0__prunable_list__';
 
-const emptyStream = () =>
-  new ReadableStream<Uint8Array>({
+const stringToStream = (str: string): ReadableStream<Uint8Array> => {
+  const encoder = new TextEncoder();
+  return new ReadableStream({
     start(controller) {
+      controller.enqueue(encoder.encode(str));
       controller.close();
     },
   });
+};
+
+const streamToString = async (
+  stream: ReadableStream<Uint8Array>,
+): Promise<string> => {
+  const decoder = new TextDecoder();
+  const reader = stream.getReader();
+  let result = '';
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    result += decoder.decode(value, { stream: true });
+  }
+  result += decoder.decode();
+  return result;
+};
 
 function isWranglerDev(req: Request): boolean {
   // This header seems to only be set for production cloudflare workers
@@ -88,11 +106,19 @@ export default createServerEntryAdapter(
 
     const buildBody = () =>
       produceMultiplexedStream(async (emitFile) => {
+        const prunableFiles = new Set<string>();
         await processBuild({
           emitFile,
-          unstable_registerPrunableFile: (srcPath) =>
-            emitFile(PRUNABLE_KEY_PREFIX + srcPath, emptyStream()),
+          unstable_registerPrunableFile: (srcPath) => {
+            prunableFiles.add(srcPath);
+          },
         });
+        if (prunableFiles.size > 0) {
+          await emitFile(
+            PRUNABLE_LIST_KEY,
+            stringToStream(JSON.stringify(Array.from(prunableFiles))),
+          );
+        }
       });
 
     const fetchFn = async (req: Request) => {
@@ -148,10 +174,11 @@ export default createServerEntryAdapter(
           server.baseUrl + internalPathToBuildStaticFiles,
         );
         await consumeMultiplexedStream(response.body!, async (key, stream) => {
-          if (key.startsWith(PRUNABLE_KEY_PREFIX)) {
-            utils.unstable_registerPrunableFile(
-              key.slice(PRUNABLE_KEY_PREFIX.length),
-            );
+          if (key === PRUNABLE_LIST_KEY) {
+            const text = await streamToString(stream);
+            for (const srcPath of JSON.parse(text) as string[]) {
+              utils.unstable_registerPrunableFile(srcPath);
+            }
             return;
           }
           await utils.emitFile(key, stream);
