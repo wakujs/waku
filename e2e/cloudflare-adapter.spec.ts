@@ -3,7 +3,9 @@ import { prepareNormalSetup, test } from './utils.js';
 
 const startApp = prepareNormalSetup('cloudflare-adapter');
 
+// The cloudflare adapter behavior is browser-agnostic, so chromium is enough.
 test.skip(({ browserName }) => browserName !== 'chromium');
+// Only PRD exercises `waku build` + the cloudflare adapter; DEV runs `waku dev` and bypasses it.
 test.skip(({ mode }) => mode !== 'PRD');
 
 test.describe('cloudflare adapter', () => {

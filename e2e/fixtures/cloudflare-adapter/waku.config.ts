@@ -6,11 +6,11 @@ export default defineConfig({
     environments: {
       rsc: {
         optimizeDeps: { include: ['hono/tiny'] },
-        build: { rolldownOptions: { platform: 'neutral' } as never },
+        build: { rolldownOptions: { platform: 'neutral' } },
       },
       ssr: {
         optimizeDeps: { include: ['waku > rsc-html-stream/server'] },
-        build: { rolldownOptions: { platform: 'neutral' } as never },
+        build: { rolldownOptions: { platform: 'neutral' } },
       },
     },
     plugins: [

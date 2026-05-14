@@ -37,7 +37,9 @@ const streamToString = async (
   let result = '';
   while (true) {
     const { value, done } = await reader.read();
-    if (done) break;
+    if (done) {
+      break;
+    }
     result += decoder.decode(value, { stream: true });
   }
   result += decoder.decode();
