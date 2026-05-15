@@ -88,11 +88,16 @@ export default createServerEntryAdapter(
 
     const buildBody = () =>
       produceMultiplexedStream(async (emitFile) => {
+        const prunableEmits: Promise<void>[] = [];
         await processBuild({
           emitFile,
-          unstable_registerPrunableFile: (srcPath) =>
-            emitFile(PRUNABLE_KEY_PREFIX + srcPath, emptyStream()),
+          unstable_registerPrunableFile: (srcPath) => {
+            prunableEmits.push(
+              emitFile(PRUNABLE_KEY_PREFIX + srcPath, emptyStream()),
+            );
+          },
         });
+        await Promise.all(prunableEmits);
       });
 
     const fetchFn = async (req: Request) => {
@@ -146,9 +151,6 @@ export default createServerEntryAdapter(
         });
         const response = await fetch(
           server.baseUrl + internalPathToBuildStaticFiles,
-          // Workaround for Windows + Node 23+ libuv UV_HANDLE_CLOSING crash.
-          // https://github.com/nodejs/node/issues/56645
-          { headers: { connection: 'close' } },
         );
         await consumeMultiplexedStream(response.body!, async (key, stream) => {
           if (key.startsWith(PRUNABLE_KEY_PREFIX)) {
