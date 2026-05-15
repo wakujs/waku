@@ -29,9 +29,6 @@ test.describe('cloudflare adapter', () => {
     await expect(page.getByTestId('page-marker')).toHaveText('PAGE_MARKER');
   });
 
-  // The cloudflare adapter shouldn't trigger this vite warning. When it does,
-  // it means Node-only modules are leaking into the worker (ssr) bundle, which
-  // also correlates with libuv UV_HANDLE_CLOSING crashes during build on Windows.
   test('build does not warn about Node.js imports in the ssr (worker) environment', () => {
     const output =
       (buildResult?.stdout ?? '') + '\n' + (buildResult?.stderr ?? '');
