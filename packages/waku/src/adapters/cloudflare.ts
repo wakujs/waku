@@ -156,13 +156,16 @@ export default createServerEntryAdapter(
           }
           await utils.emitFile(key, stream);
         });
-        await server.close();
         if (process.platform === 'win32') {
           // Workaround for Windows + Node 23+ libuv UV_HANDLE_CLOSING crash.
-          // V8 schedules a delayed Wasm-caching task after fetch; exiting
-          // before it fires races the close. 150ms lets it drain.
+          // V8 schedules a delayed Wasm-caching task after fetch; tearing
+          // down workerd before it fires races the close. 150ms lets it
+          // drain so server.close and the eventual exit are race-free.
           // https://github.com/nodejs/node/issues/56645
           await new Promise((resolve) => setTimeout(resolve, 150));
+        }
+        await server.close();
+        if (process.platform === 'win32') {
           process.exit(0);
         }
       },
