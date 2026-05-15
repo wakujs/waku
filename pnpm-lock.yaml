@@ -122,6 +122,40 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  e2e/fixtures/cloudflare-adapter:
+    dependencies:
+      hono:
+        specifier: ^4.12.14
+        version: 4.12.14
+      react:
+        specifier: ~19.2.6
+        version: 19.2.6
+      react-dom:
+        specifier: ~19.2.6
+        version: 19.2.6(react@19.2.6)
+      react-server-dom-webpack:
+        specifier: ~19.2.6
+        version: 19.2.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(webpack@5.99.9(esbuild@0.28.0))
+      waku:
+        specifier: latest
+        version: link:../../../packages/waku
+      wrangler:
+        specifier: ^4.90.0
+        version: 4.90.0
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: ^1.36.3
+        version: 1.36.3(vite@8.0.11(@types/node@25.6.2)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.47.1)(tsx@4.19.4)(yaml@2.8.4))(workerd@1.20260507.1)(wrangler@4.90.0)
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.14)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
   e2e/fixtures/create-pages:
     dependencies:
       react:

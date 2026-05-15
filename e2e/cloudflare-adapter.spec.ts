@@ -1,0 +1,42 @@
+import { expect } from '@playwright/test';
+import { prepareNormalSetup, test } from './utils.js';
+
+const startApp = prepareNormalSetup('cloudflare-adapter');
+
+// The cloudflare adapter behavior is browser-agnostic, so chromium is enough.
+test.skip(({ browserName }) => browserName !== 'chromium');
+// This spec runs `wrangler dev` against the built output, which requires the PRD build step.
+test.skip(({ mode }) => mode !== 'PRD');
+
+test.describe('cloudflare adapter', () => {
+  let port: number;
+  let stopApp: () => Promise<void>;
+  let buildResult: { stdout: string; stderr: string } | undefined;
+
+  test.beforeAll(async ({ mode }) => {
+    ({ port, stopApp, buildResult } = await startApp(mode, {
+      cmd: 'npx wrangler dev',
+      portFlag: '--port',
+    }));
+  });
+
+  test.afterAll(async () => {
+    await stopApp();
+  });
+
+  test('renders the home page through wrangler', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/`);
+    await expect(page.getByTestId('page-marker')).toHaveText('PAGE_MARKER');
+  });
+
+  // The cloudflare adapter shouldn't trigger this vite warning. When it does,
+  // it means Node-only modules are leaking into the worker (ssr) bundle, which
+  // also correlates with libuv UV_HANDLE_CLOSING crashes during build on Windows.
+  test('build does not warn about Node.js imports in the ssr (worker) environment', () => {
+    const output =
+      (buildResult?.stdout ?? '') + '\n' + (buildResult?.stderr ?? '');
+    expect(output).not.toMatch(
+      /Unexpected Node\.js imports for environment "ssr"/,
+    );
+  });
+});
