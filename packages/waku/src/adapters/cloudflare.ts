@@ -12,7 +12,8 @@ import {
 } from 'waku/internals';
 import type { BuildOptions } from './cloudflare-build-enhancer.js';
 
-const { DIST_PUBLIC } = constants;
+const { DIST_PUBLIC, DIST_SERVER, BUILD_METADATA_FILE } = constants;
+const METADATA_KEY = `${DIST_SERVER}/${BUILD_METADATA_FILE}`;
 const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
 
 const DO_NOT_BUNDLE = '';
@@ -175,6 +176,7 @@ export default createServerEntryAdapter(
         const response = await fetch(
           server.baseUrl + internalPathToBuildStaticFiles,
         );
+        let metadataContent: string | undefined;
         await consumeMultiplexedStream(response.body!, async (key, stream) => {
           if (key === PRUNABLE_LIST_KEY) {
             const text = await streamToString(stream);
@@ -183,8 +185,15 @@ export default createServerEntryAdapter(
             }
             return;
           }
+          if (key === METADATA_KEY) {
+            metadataContent = await streamToString(stream);
+            return;
+          }
           await utils.emitFile(key, stream);
         });
+        if (metadataContent !== undefined) {
+          await utils.emitFile(METADATA_KEY, stringToStream(metadataContent));
+        }
         await server.close();
       },
       buildOptions,
