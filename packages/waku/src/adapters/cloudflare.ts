@@ -88,16 +88,11 @@ export default createServerEntryAdapter(
 
     const buildBody = () =>
       produceMultiplexedStream(async (emitFile) => {
-        const prunableEmits: Promise<void>[] = [];
         await processBuild({
           emitFile,
-          unstable_registerPrunableFile: (srcPath) => {
-            prunableEmits.push(
-              emitFile(PRUNABLE_KEY_PREFIX + srcPath, emptyStream()),
-            );
-          },
+          unstable_registerPrunableFile: (srcPath) =>
+            emitFile(PRUNABLE_KEY_PREFIX + srcPath, emptyStream()),
         });
-        await Promise.all(prunableEmits);
       });
 
     const fetchFn = async (req: Request) => {
@@ -162,6 +157,12 @@ export default createServerEntryAdapter(
           await utils.emitFile(key, stream);
         });
         await server.close();
+        if (process.platform === 'win32') {
+          // Workaround for Windows + Node 23+ libuv UV_HANDLE_CLOSING crash
+          // during workerd teardown.
+          // https://github.com/nodejs/node/issues/56645
+          process.nextTick(() => process.exit(0));
+        }
       },
       buildOptions,
       buildEnhancers: ['waku/adapters/cloudflare-build-enhancer'],
