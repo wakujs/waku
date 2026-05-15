@@ -5,15 +5,16 @@ const startApp = prepareNormalSetup('cloudflare-adapter');
 
 // The cloudflare adapter behavior is browser-agnostic, so chromium is enough.
 test.skip(({ browserName }) => browserName !== 'chromium');
-// Only PRD exercises `waku build` + the cloudflare adapter; DEV runs `waku dev` and bypasses it.
+// This spec runs `wrangler dev` against the built output, which requires the PRD build step.
 test.skip(({ mode }) => mode !== 'PRD');
 
 test.describe('cloudflare adapter', () => {
   let port: number;
   let stopApp: () => Promise<void>;
+  let buildResult: { stdout: string; stderr: string } | undefined;
 
   test.beforeAll(async ({ mode }) => {
-    ({ port, stopApp } = await startApp(mode, {
+    ({ port, stopApp, buildResult } = await startApp(mode, {
       cmd: 'npx wrangler dev',
       portFlag: '--port',
     }));
@@ -29,5 +30,13 @@ test.describe('cloudflare adapter', () => {
     await expect(page.getByTestId('root-marker')).toHaveText('ROOT_MARKER');
     await expect(page.getByTestId('layout-marker')).toHaveText('LAYOUT_MARKER');
     await expect(page.getByTestId('page-marker')).toHaveText('PAGE_MARKER');
+  });
+
+  test('build does not warn about Node.js imports in the ssr (worker) environment', () => {
+    const output =
+      (buildResult?.stdout ?? '') + '\n' + (buildResult?.stderr ?? '');
+    expect(output).not.toMatch(
+      /Unexpected Node\.js imports for environment "ssr"/,
+    );
   });
 });

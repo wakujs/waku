@@ -168,6 +168,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
   let built = false;
+  let buildResult: { stdout: string; stderr: string } | undefined;
   const startApp = async (
     mode: 'DEV' | 'PRD' | 'STATIC',
     options?: {
@@ -178,7 +179,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
   ) => {
     if (mode !== 'DEV' && !built) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
-      await execAsync(`node ${waku} build`, { cwd: fixtureDir });
+      buildResult = await execAsync(`node ${waku} build`, { cwd: fixtureDir });
       built = true;
     }
     let cmd: string;
@@ -209,7 +210,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     const stopApp = async () => {
       await terminate(cp);
     };
-    return { port, stopApp, fixtureDir };
+    return { port, stopApp, fixtureDir, buildResult };
   };
   return startApp;
 };
