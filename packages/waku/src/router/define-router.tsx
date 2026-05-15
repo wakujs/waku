@@ -929,8 +929,7 @@ export function unstable_defineRouter(fns: {
     };
 
     // hard-coded concurrency limit
-    const { runTask } = createTaskRunner(500);
-    const tasks: Promise<unknown>[] = [];
+    const { runTask, waitForTasks } = createTaskRunner(500);
     const skipBuild = fns.unstable_skipBuild;
 
     // static api
@@ -949,23 +948,21 @@ export function unstable_defineRouter(fns: {
         continue;
       }
       const req = new Request(new URL(routePath, 'http://localhost:3000'));
-      tasks.push(
-        runTask(async () => {
-          await withRequest(req, async () => {
-            const res = await item.handler(req, { params: {} });
-            await generateFile(routePath, res.body || '').catch((e) => {
-              if (e instanceof Error && 'code' in e && e.code === 'EEXIST') {
-                throw new Error(
-                  `the API route ${pathSpecAsString(item.path)} faced file-system conflicts when writing static responses, this often happens because of empty segments in "staticPaths".`,
-                  { cause: e },
-                );
-              }
+      runTask(async () => {
+        await withRequest(req, async () => {
+          const res = await item.handler(req, { params: {} });
+          await generateFile(routePath, res.body || '').catch((e) => {
+            if (e instanceof Error && 'code' in e && e.code === 'EEXIST') {
+              throw new Error(
+                `the API route ${pathSpecAsString(item.path)} faced file-system conflicts when writing static responses, this often happens because of empty segments in "staticPaths".`,
+                { cause: e },
+              );
+            }
 
-              throw e;
-            });
+            throw e;
           });
-        }),
-      );
+        });
+      });
     }
 
     const path2moduleIds: Record<string, string[]> = {};
@@ -1010,61 +1007,59 @@ export function unstable_defineRouter(fns: {
         continue;
       }
       if (!routePath || !item.isStatic) {
-        tasks.push(runTask(() => cacheStaticElementsOfRoute(item, routePath)));
+        runTask(() => cacheStaticElementsOfRoute(item, routePath));
         continue;
       }
       const rscPath = encodeRoutePath(routePath);
       const req = new Request(new URL(routePath, 'http://localhost:3000'));
-      tasks.push(
-        runTask(async () => {
-          await withRequest(req, async () => {
-            const entries = await getEntriesForRoute(
-              rscPath,
-              undefined,
-              {},
-              getCachedElement,
-              setCachedElement,
-            );
-            if (!entries) {
-              return;
-            }
-            for (const id of Object.keys(entries)) {
-              const cached = getCachedElement(id);
-              entries[id] = cached ? await cached : entries[id];
-            }
-            const moduleIds = new Set<string>();
-            const stream = await renderRsc(entries, {
-              unstable_clientModuleCallback: (ids) =>
-                ids.forEach((id) => moduleIds.add(id)),
-            });
-            const [stream1, stream2] = stream.tee();
-            await generateFile(rscPath2pathname(rscPath), stream1);
-            path2moduleIds[path2regexp(item.pathPattern || item.path)] =
-              Array.from(moduleIds);
-            htmlRenderTasks.add(async () => {
-              const html = (
-                <INTERNAL_ServerRouter
-                  route={{ path: routePath, query: '', hash: '' }}
-                  httpstatus={is404(item.path) ? 404 : 200}
-                />
-              );
-              const res = await renderHtml(stream2, html, {
-                rscPath,
-                unstable_extraScriptContent:
-                  getRouterPrefetchCode(path2moduleIds),
-              });
-              await generateFile(
-                routePathToHtmlFilePath(routePath),
-                res.body || '',
-              );
-            });
+      runTask(async () => {
+        await withRequest(req, async () => {
+          const entries = await getEntriesForRoute(
+            rscPath,
+            undefined,
+            {},
+            getCachedElement,
+            setCachedElement,
+          );
+          if (!entries) {
+            return;
+          }
+          for (const id of Object.keys(entries)) {
+            const cached = getCachedElement(id);
+            entries[id] = cached ? await cached : entries[id];
+          }
+          const moduleIds = new Set<string>();
+          const stream = await renderRsc(entries, {
+            unstable_clientModuleCallback: (ids) =>
+              ids.forEach((id) => moduleIds.add(id)),
           });
-        }),
-      );
+          const [stream1, stream2] = stream.tee();
+          await generateFile(rscPath2pathname(rscPath), stream1);
+          path2moduleIds[path2regexp(item.pathPattern || item.path)] =
+            Array.from(moduleIds);
+          htmlRenderTasks.add(async () => {
+            const html = (
+              <INTERNAL_ServerRouter
+                route={{ path: routePath, query: '', hash: '' }}
+                httpstatus={is404(item.path) ? 404 : 200}
+              />
+            );
+            const res = await renderHtml(stream2, html, {
+              rscPath,
+              unstable_extraScriptContent:
+                getRouterPrefetchCode(path2moduleIds),
+            });
+            await generateFile(
+              routePathToHtmlFilePath(routePath),
+              res.body || '',
+            );
+          });
+        });
+      });
     }
     // HACK hopefully there is a better way than this
-    await Promise.all(tasks);
-    htmlRenderTasks.forEach((task) => tasks.push(runTask(task)));
+    await waitForTasks();
+    htmlRenderTasks.forEach(runTask);
 
     // default html
     for (const item of configs) {
@@ -1079,11 +1074,9 @@ export function unstable_defineRouter(fns: {
         if (skipBuild?.(routePath)) {
           continue;
         }
-        tasks.push(
-          runTask(async () => {
-            await generateDefaultHtml(routePathToHtmlFilePath(routePath));
-          }),
-        );
+        runTask(async () => {
+          await generateDefaultHtml(routePathToHtmlFilePath(routePath));
+        });
       }
     }
 
@@ -1102,26 +1095,24 @@ export function unstable_defineRouter(fns: {
       const rscPath = encodeSliceId(item.id);
       // dummy req for slice which is not determined at build time
       const req = new Request(new URL('http://localhost:3000'));
-      tasks.push(
-        runTask(async () => {
-          await withRequest(req, async () => {
-            const sliceElement = await getSliceElement(
-              item,
-              getCachedElement,
-              setCachedElement,
-            );
-            const body = await renderRsc({
-              [SLICE_SLOT_ID_PREFIX + item.id]: sliceElement,
-              // FIXME: hard-coded for now
-              [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + item.id]: true,
-            });
-            await generateFile(rscPath2pathname(rscPath), body);
+      runTask(async () => {
+        await withRequest(req, async () => {
+          const sliceElement = await getSliceElement(
+            item,
+            getCachedElement,
+            setCachedElement,
+          );
+          const body = await renderRsc({
+            [SLICE_SLOT_ID_PREFIX + item.id]: sliceElement,
+            // FIXME: hard-coded for now
+            [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + item.id]: true,
           });
-        }),
-      );
+          await generateFile(rscPath2pathname(rscPath), body);
+        });
+      });
     }
 
-    await Promise.all(tasks);
+    await waitForTasks();
 
     // TODO should we save serialized cached elements separately?
     await saveBuildMetadata(

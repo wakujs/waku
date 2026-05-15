@@ -9,7 +9,6 @@ import type { Plugin, Rollup } from 'vite';
 import { joinPath } from '../utils/path.js';
 import { createProgressLogger } from '../utils/progress-logger.js';
 import { pruneBuildOutput } from '../utils/prune-build.js';
-import { createTaskRunner } from '../utils/task-runner.js';
 
 export function staticBuildPlugin({
   srcDir,
@@ -34,20 +33,18 @@ export function staticBuildPlugin({
         const viteConfig = builder.config;
         const rootDir = viteConfig.root;
         const progress = createProgressLogger();
-        const { runTask } = createTaskRunner(8);
-        const emitFile = (filePath: string, body: ReadableStream) =>
-          runTask(async () => {
-            const destFile = joinPath(rootDir, distDir, filePath);
-            if (!destFile.startsWith(rootDir)) {
-              throw new Error('Invalid filePath: ' + filePath);
-            }
-            progress.update(`generating a file ${pc.dim(filePath)}`);
-            await mkdir(joinPath(destFile, '..'), { recursive: true });
-            await pipeline(
-              Readable.fromWeb(body as never),
-              fs.createWriteStream(destFile),
-            );
-          });
+        const emitFile = async (filePath: string, body: ReadableStream) => {
+          const destFile = joinPath(rootDir, distDir, filePath);
+          if (!destFile.startsWith(rootDir)) {
+            throw new Error('Invalid filePath: ' + filePath);
+          }
+          progress.update(`generating a file ${pc.dim(filePath)}`);
+          await mkdir(joinPath(destFile, '..'), { recursive: true });
+          await pipeline(
+            Readable.fromWeb(body as never),
+            fs.createWriteStream(destFile),
+          );
+        };
         const entryPath = path.join(
           viteConfig.environments.rsc!.build.outDir,
           'build.js',
