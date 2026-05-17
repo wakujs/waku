@@ -158,6 +158,11 @@ export default createServerEntryAdapter(
           await utils.emitFile(key, stream);
         });
         await server.close();
+        if (process.platform === 'win32') {
+          // https://github.com/nodejs/node/issues/56645
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          process.exit(0);
+        }
       },
       buildOptions,
       buildEnhancers: ['waku/adapters/cloudflare-build-enhancer'],
