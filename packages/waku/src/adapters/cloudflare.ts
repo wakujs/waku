@@ -158,17 +158,15 @@ export default createServerEntryAdapter(
         });
         if (process.platform === 'win32') {
           // Workaround for Windows + Node 23+ libuv UV_HANDLE_CLOSING crash.
-          // V8 schedules a delayed Wasm-caching task after fetch; tearing
-          // down workerd before it fires races the close. Drain before and
-          // after server.close: the first lets the fetch's pending task
-          // fire while handles are open; the second covers any new tasks
-          // scheduled by the close itself (IPC to workerd).
+          // V8 schedules a delayed Wasm-caching task ~2s after fetch; if
+          // workerd is torn down before it fires the close races and the
+          // process aborts. Wait long enough for the task to drain while
+          // handles are still open, then close cleanly and exit.
           // https://github.com/nodejs/node/issues/56645
-          await new Promise((resolve) => setTimeout(resolve, 150));
+          await new Promise((resolve) => setTimeout(resolve, 2000));
         }
         await server.close();
         if (process.platform === 'win32') {
-          await new Promise((resolve) => setTimeout(resolve, 150));
           process.exit(0);
         }
       },
