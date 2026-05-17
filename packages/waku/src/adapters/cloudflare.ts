@@ -156,19 +156,7 @@ export default createServerEntryAdapter(
           }
           await utils.emitFile(key, stream);
         });
-        if (process.platform === 'win32') {
-          // Workaround for Windows + Node 23+ libuv UV_HANDLE_CLOSING crash.
-          // V8 schedules a delayed Wasm-caching task ~2s after fetch; if
-          // workerd is torn down before it fires the close races and the
-          // process aborts. Wait long enough for the task to drain while
-          // handles are still open, then close cleanly and exit.
-          // https://github.com/nodejs/node/issues/56645
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-        }
         await server.close();
-        if (process.platform === 'win32') {
-          process.exit(0);
-        }
       },
       buildOptions,
       buildEnhancers: ['waku/adapters/cloudflare-build-enhancer'],
