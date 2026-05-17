@@ -146,6 +146,7 @@ export default createServerEntryAdapter(
         });
         const response = await fetch(
           server.baseUrl + internalPathToBuildStaticFiles,
+          { headers: { connection: 'close' } },
         );
         await consumeMultiplexedStream(response.body!, async (key, stream) => {
           if (key.startsWith(PRUNABLE_KEY_PREFIX)) {
