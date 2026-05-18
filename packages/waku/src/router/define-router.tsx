@@ -157,6 +157,13 @@ export function unstable_redirect(
   location: string, // only URL `pathname` is supported.
   status: 303 | 307 | 308 = 307,
 ): never {
+  if (
+    !location.startsWith('/') ||
+    location.startsWith('//') ||
+    /[\x00-\x1f\x7f\\]/.test(location)
+  ) {
+    throw new Error('Invalid redirect location');
+  }
   throw createCustomError('Redirect', { status, location });
 }
 
