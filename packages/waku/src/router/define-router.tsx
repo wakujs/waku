@@ -157,12 +157,14 @@ export function unstable_redirect(
   location: string, // only URL `pathname` is supported.
   status: 303 | 307 | 308 = 307,
 ): never {
-  if (
-    !location.startsWith('/') ||
-    location.startsWith('//') ||
-    /[\x00-\x1f\x7f\\]/.test(location)
-  ) {
+  if (!location.startsWith('/') || location.startsWith('//')) {
     throw new Error('Invalid redirect location');
+  }
+  for (let i = 0; i < location.length; ++i) {
+    const charCode = location.charCodeAt(i);
+    if (charCode < 0x20 || charCode === 0x7f || charCode === 0x5c) {
+      throw new Error('Invalid redirect location');
+    }
   }
   throw createCustomError('Redirect', { status, location });
 }
