@@ -153,8 +153,12 @@ export function unstable_notFound(): never {
   throw createCustomError('Not Found', { status: 404 });
 }
 
+/**
+ * Redirect to a path in the current application.
+ * The `location` must start with a single `/`.
+ */
 export function unstable_redirect(
-  location: string, // only URL `pathname` is supported.
+  location: string,
   status: 303 | 307 | 308 = 307,
 ): never {
   if (!location.startsWith('/') || location.startsWith('//')) {
