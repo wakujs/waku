@@ -117,8 +117,11 @@ function validateServerActionRequest(req: Request) {
     if (originUrl.origin !== requestOrigin) {
       throw createCustomError('Forbidden', { status: 403 });
     }
-  } else if (req.headers.get('sec-fetch-site') === 'cross-site') {
-    throw createCustomError('Forbidden', { status: 403 });
+  } else {
+    const site = req.headers.get('sec-fetch-site');
+    if (site !== 'same-origin' && site !== 'none') {
+      throw createCustomError('Forbidden', { status: 403 });
+    }
   }
 }
 

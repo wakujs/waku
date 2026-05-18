@@ -78,6 +78,36 @@ describe('getInput server action request validation', () => {
     ).resolves.toBe(403);
   });
 
+  it('rejects server function requests with same-site fetch metadata', async () => {
+    await expect(
+      getStatus(
+        makeInput(
+          makeRequest({
+            'sec-fetch-site': 'same-site',
+          }),
+        ),
+      ),
+    ).resolves.toBe(403);
+  });
+
+  it('rejects server function requests with no origin and no fetch metadata', async () => {
+    await expect(getStatus(makeInput(makeRequest({})))).resolves.toBe(403);
+  });
+
+  it('accepts server function requests with same-origin fetch metadata', async () => {
+    const input = await makeInput(
+      makeRequest({ 'sec-fetch-site': 'same-origin' }),
+    );
+
+    expect(input.type).toBe('function');
+  });
+
+  it('accepts user-initiated server function requests (sec-fetch-site: none)', async () => {
+    const input = await makeInput(makeRequest({ 'sec-fetch-site': 'none' }));
+
+    expect(input.type).toBe('function');
+  });
+
   it('accepts server function requests after middleware rewrites origin', async () => {
     const input = await makeInput(
       makeRequest({
