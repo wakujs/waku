@@ -11,7 +11,7 @@ import { buildMetadata } from 'virtual:vite-rsc-waku/build-metadata';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import notFoundHtml from 'virtual:vite-rsc-waku/not-found';
 import { INTERNAL_setAllEnv } from '../../server.js';
-import { DIST_PUBLIC } from '../constants.js';
+import { BUILD_METADATA_FILE, DIST_PUBLIC, DIST_SERVER } from '../constants.js';
 import { INTERNAL_runWithContext } from '../context.js';
 import type {
   Unstable_CreateServerEntryAdapter as CreateServerEntryAdapter,
@@ -79,9 +79,14 @@ const toProcessRequest =
     } catch (e) {
       const info = getErrorInfo(e);
       const status = info?.status || 500;
-      const body = stringToStream(
-        (e as { message?: string } | undefined)?.message || String(e),
-      );
+      let message: string;
+      if (info) {
+        message = (e as { message?: string } | undefined)?.message || String(e);
+      } else {
+        console.warn(e);
+        message = 'Internal Server Error';
+      }
+      const body = stringToStream(message);
       const headers: { location?: string } = {};
       if (info?.location) {
         headers.location = info.location;
@@ -151,6 +156,14 @@ const toProcessBuild =
       },
       unstable_registerPrunableFile,
     });
+    await emitFile(
+      joinPath(DIST_SERVER, BUILD_METADATA_FILE),
+      stringToStream(
+        `export const buildMetadata = new Map(${JSON.stringify(
+          Array.from(buildMetadata),
+        )});`,
+      ),
+    );
   };
 
 export const createServerEntryAdapter: CreateServerEntryAdapter =

@@ -105,7 +105,8 @@ export const ignoreErrors: RegExp[] = [
   /ExperimentalWarning: Custom ESM Loaders is an experimental feature and might change at any time/,
   /npm warn Unknown env config "verify-deps-before-run"\. This will stop working in the next major version of npm\./,
   /^(Error during rendering: )?Error: Unexpected error\s+at ThrowsComponent/,
-  /^(Error during rendering: )?Error: Something unexpected happened\s+at ErrorRender/,
+  /^(Error during rendering: )?Error: Intentional render error\s+at ErrorRender/,
+  /^Error: Input is required\b/,
   /^(Error during rendering: )?Error: 401 Unauthorized\s+at CheckIfAccessDenied/,
   /^(Error during rendering: )?Error: Not Found\s+at SyncPage/,
   /^(Error during rendering: )?Error: Not Found\s+at AsyncPage/,
@@ -168,16 +169,18 @@ export const prepareNormalSetup = (fixtureName: string) => {
     new URL('./fixtures/' + fixtureName, import.meta.url),
   );
   let built = false;
+  let buildResult: { stdout: string; stderr: string } | undefined;
   const startApp = async (
     mode: 'DEV' | 'PRD' | 'STATIC',
     options?: {
       cmd?: string | undefined;
+      portFlag?: string | undefined;
       onServerOutput?: (data: string) => void;
     },
   ) => {
     if (mode !== 'DEV' && !built) {
       rmSync(`${fixtureDir}/dist`, { recursive: true, force: true });
-      await execAsync(`node ${waku} build`, { cwd: fixtureDir });
+      buildResult = await execAsync(`node ${waku} build`, { cwd: fixtureDir });
       built = true;
     }
     let cmd: string;
@@ -195,9 +198,9 @@ export const prepareNormalSetup = (fixtureName: string) => {
     if (options?.cmd) {
       cmd = options.cmd;
     }
+    const portFlag = options?.portFlag ?? '-p';
     const port = await getAvailablePort();
-    // Assuming all commands support -p for port
-    const cp = runShell(`${cmd} -p ${port}`, fixtureDir);
+    const cp = runShell(`${cmd} ${portFlag} ${port}`, fixtureDir);
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     if (options?.onServerOutput) {
       const callback = options.onServerOutput;
@@ -208,7 +211,7 @@ export const prepareNormalSetup = (fixtureName: string) => {
     const stopApp = async () => {
       await terminate(cp);
     };
-    return { port, stopApp, fixtureDir };
+    return { port, stopApp, fixtureDir, buildResult };
   };
   return startApp;
 };

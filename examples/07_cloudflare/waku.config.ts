@@ -14,7 +14,7 @@ export default defineConfig({
         build: {
           rolldownOptions: {
             platform: 'neutral',
-          } as never,
+          },
         },
       },
       ssr: {
@@ -24,7 +24,7 @@ export default defineConfig({
         build: {
           rolldownOptions: {
             platform: 'neutral',
-          } as never,
+          },
         },
       },
     },
