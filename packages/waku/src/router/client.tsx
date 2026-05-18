@@ -758,18 +758,18 @@ const defaultRouteInterceptor = (route: RouteProps) => route;
 
 const InnerRouter = ({
   fallbackRoute,
-  initialRoute,
   routeInterceptor = defaultRouteInterceptor,
 }: {
   fallbackRoute: RouteProps;
-  initialRoute: RouteProps | undefined;
   routeInterceptor: ((route: RouteProps) => RouteProps | false) | undefined;
 }) => {
   const elementsPromise = useElementsPromise();
-  const initialElements = use(elementsPromise);
-  const resolvedInitialRoute =
-    initialRoute || getRouteFromElements(initialElements) || fallbackRoute;
-  const initialRouteRef = useRef(resolvedInitialRoute);
+  const elements = use(elementsPromise);
+  const routeFromElements = getRouteFromElements(elements);
+  const resolvedRoute = routeFromElements
+    ? { ...routeFromElements, hash: fallbackRoute.hash }
+    : fallbackRoute;
+  const initialRouteRef = useRef(resolvedRoute);
 
   if (import.meta.hot) {
     const refetchRoute = () => {
@@ -839,10 +839,8 @@ const InnerRouter = ({
   // Update the route post-load to include the current hash.
   const routeRef = useRef(route);
   useEffect(() => {
-    const query = new URLSearchParams(window.location.search).toString();
     const route = {
       ...initialRouteRef.current,
-      query: query || initialRouteRef.current.query,
       hash: window.location.hash || initialRouteRef.current.hash,
     };
     routeRef.current = route;
@@ -893,11 +891,7 @@ const InnerRouter = ({
       const shouldRefetch =
         options.refetch ?? !isSameRoute(nextRoute, routeBeforeChange);
       const pathChanged = isPathChange(nextRoute, routeBeforeChange);
-      if (
-        (!staticPathSetRef.current.has(nextRoute.path) ||
-          !cachedIdSetRef.current.has(getRouteSlotId(nextRoute.path))) &&
-        shouldRefetch
-      ) {
+      if (!staticPathSetRef.current.has(nextRoute.path) && shouldRefetch) {
         const rscPath = encodeRoutePath(nextRoute.path);
         const rscParams = createRscParams(nextRoute.query);
         const skipHeaderEnhancer =
@@ -1014,10 +1008,7 @@ const InnerRouter = ({
   }, [applyChangeRouteData, fetchRscStore]);
 
   const prefetchRoute: PrefetchRoute = useCallback((route) => {
-    if (
-      staticPathSetRef.current.has(route.path) &&
-      cachedIdSetRef.current.has(getRouteSlotId(route.path))
-    ) {
+    if (staticPathSetRef.current.has(route.path)) {
       return;
     }
     const rscPath = encodeRoutePath(route.path);
@@ -1089,7 +1080,7 @@ const InnerRouter = ({
 };
 
 export function Router({
-  initialRoute,
+  initialRoute = parseRouteFromLocation(),
   unstable_fetchRscStore,
   unstable_routeInterceptor,
 }: {
@@ -1097,9 +1088,8 @@ export function Router({
   unstable_fetchRscStore?: Parameters<typeof Root>[0]['unstable_fetchRscStore'];
   unstable_routeInterceptor?: (route: RouteProps) => RouteProps | false;
 }) {
-  const fallbackRoute = initialRoute || parseRouteFromLocation();
-  const initialRscPath = encodeRoutePath(fallbackRoute.path);
-  const initialRscParams = createRscParams(fallbackRoute.query);
+  const initialRscPath = encodeRoutePath(initialRoute.path);
+  const initialRscParams = createRscParams(initialRoute.query);
   return (
     <Root
       initialRscPath={initialRscPath}
@@ -1107,8 +1097,7 @@ export function Router({
       unstable_fetchRscStore={unstable_fetchRscStore}
     >
       <InnerRouter
-        fallbackRoute={fallbackRoute}
-        initialRoute={initialRoute}
+        fallbackRoute={initialRoute}
         routeInterceptor={unstable_routeInterceptor}
       />
     </Root>

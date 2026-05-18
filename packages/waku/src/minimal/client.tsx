@@ -152,12 +152,12 @@ const consumeClientPrefetchedEntry = (
   rscParams: unknown,
 ) => {
   const index = prefetchedEntries.findIndex(
-    (entry) => getPrefetchedRscPath(entry) === rscPath,
+    (entry) =>
+      getPrefetchedRscPath(entry) === rscPath &&
+      // rscParams is intentionally compared by reference.
+      getPrefetchedRscParams(entry) === rscParams,
   );
-  const entry = index >= 0 && prefetchedEntries.splice(index, 1)[0];
-  return entry && getPrefetchedRscParams(entry) === rscParams
-    ? entry
-    : undefined;
+  return index >= 0 ? prefetchedEntries.splice(index, 1)[0] : undefined;
 };
 
 const fetchRscInternal: FetchRscInternal = (
@@ -178,14 +178,10 @@ const fetchRscInternal: FetchRscInternal = (
   }
   const baseFetchFn = fetchRscStore[FETCH_FN] || fetch;
   const prefetchedEntries = getClientPrefetchedEntries();
-  const clientPrefetchedEntry = prefetchOnly
-    ? undefined
-    : consumeClientPrefetchedEntry(prefetchedEntries, rscPath, rscParams);
-  const initialPrefetchedEntry =
-    !prefetchOnly && !clientPrefetchedEntry
-      ? consumeInitialPrefetchedEntry()
-      : undefined;
-  const prefetchedEntry = clientPrefetchedEntry || initialPrefetchedEntry;
+  const prefetchedEntry = !prefetchOnly
+    ? consumeClientPrefetchedEntry(prefetchedEntries, rscPath, rscParams) ||
+      consumeInitialPrefetchedEntry()
+    : undefined;
   const debug =
     import.meta.hot && !prefetchOnly
       ? setupDebugChannel(
@@ -196,10 +192,10 @@ const fetchRscInternal: FetchRscInternal = (
       : undefined;
   const fetchFn = debug?.fetchFn || baseFetchFn;
   const temporaryReferences =
-    (clientPrefetchedEntry &&
+    (prefetchedEntry &&
       getPrefetchedTemporaryReferences<
         ReturnType<typeof createTemporaryReferenceSet>
-      >(clientPrefetchedEntry)) ||
+      >(prefetchedEntry)) ||
     createTemporaryReferenceSet();
   const url = BASE_RSC_PATH + encodeRscPath(rscPath);
   const responsePromise = prefetchedEntry
@@ -241,8 +237,7 @@ const fetchRscInternal: FetchRscInternal = (
       () => {},
     );
   }
-  const closeFn =
-    initialPrefetchedEntry && getPrefetchedClose(initialPrefetchedEntry);
+  const closeFn = prefetchedEntry && getPrefetchedClose(prefetchedEntry);
   if (closeFn) {
     waitForRootPrerequisites(elements).then(closeFn, closeFn);
   }
@@ -360,12 +355,12 @@ export const unstable_prefetchRsc = (
   const fetchRscStore = unstable_enhanceFetchRscStore(defaultFetchRscStore);
   const prefetched = getClientPrefetchedEntries();
   const prefetchedEntry = prefetched.find(
-    (entry) => getPrefetchedRscPath(entry) === rscPath,
+    (entry) =>
+      getPrefetchedRscPath(entry) === rscPath &&
+      // rscParams is intentionally compared by reference.
+      getPrefetchedRscParams(entry) === rscParams,
   );
-  if (
-    prefetchedEntry &&
-    getPrefetchedRscParams(prefetchedEntry) === rscParams
-  ) {
+  if (prefetchedEntry) {
     return; // already prefetched
   }
   fetchRscInternal(fetchRscStore, rscPath, rscParams, true);
