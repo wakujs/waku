@@ -767,7 +767,7 @@ const InnerRouter = ({
   const elements = use(elementsPromise);
   const routeFromElements = getRouteFromElements(elements);
   const resolvedRoute =
-    routeFromElements?.path !== fallbackRoute.path
+    routeFromElements && routeFromElements.path !== fallbackRoute.path
       ? { ...routeFromElements, hash: fallbackRoute.hash }
       : fallbackRoute;
   const initialRouteRef = useRef(resolvedRoute);
