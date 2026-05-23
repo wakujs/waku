@@ -766,9 +766,10 @@ const InnerRouter = ({
   const elementsPromise = useElementsPromise();
   const elements = use(elementsPromise);
   const routeFromElements = getRouteFromElements(elements);
-  const resolvedRoute = routeFromElements
-    ? { ...routeFromElements, hash: fallbackRoute.hash }
-    : fallbackRoute;
+  const resolvedRoute =
+    routeFromElements?.path !== fallbackRoute.path
+      ? { ...routeFromElements, hash: fallbackRoute.hash }
+      : fallbackRoute;
   const initialRouteRef = useRef(resolvedRoute);
 
   if (import.meta.hot) {
