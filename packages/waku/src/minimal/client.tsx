@@ -217,6 +217,7 @@ const fetchRscInternal: FetchRscInternal = (
     });
   if (prefetchOnly) {
     const elements = createElements();
+    // Observe failed prefetches until a matching navigation consumes them.
     Promise.resolve(elements).catch(() => {});
     prefetchedEntries.push(
       createPrefetchedEntry(
