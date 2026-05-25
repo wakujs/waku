@@ -1,5 +1,6 @@
 const KEY_RSC_PATH = 'p';
 const KEY_RESPONSE = 'r';
+const KEY_ELEMENTS = 'e';
 const KEY_CLOSE = 'x';
 const KEY_RSC_PARAMS = 'q';
 const KEY_TEMPORARY_REFERENCES = 't';
@@ -8,6 +9,7 @@ const KEY_DEBUG_ID = 'd';
 export type INTERNAL_PrefetchedEntry = {
   [KEY_RSC_PATH]: string;
   [KEY_RESPONSE]: Promise<Response>;
+  [KEY_ELEMENTS]?: unknown;
   [KEY_CLOSE]?: () => void;
   [KEY_RSC_PARAMS]?: unknown;
   [KEY_TEMPORARY_REFERENCES]?: unknown;
@@ -19,9 +21,11 @@ export const createPrefetchedEntry = (
   response: Promise<Response>,
   rscParams?: unknown,
   temporaryReferences?: unknown,
+  elements?: unknown,
 ): INTERNAL_PrefetchedEntry => ({
   [KEY_RSC_PATH]: rscPath,
   [KEY_RESPONSE]: response,
+  ...(elements !== undefined ? { [KEY_ELEMENTS]: elements } : {}),
   ...(rscParams !== undefined ? { [KEY_RSC_PARAMS]: rscParams } : {}),
   ...(temporaryReferences !== undefined
     ? { [KEY_TEMPORARY_REFERENCES]: temporaryReferences }
@@ -33,6 +37,9 @@ export const getPrefetchedRscPath = (entry: INTERNAL_PrefetchedEntry) =>
 
 export const getPrefetchedResponse = (entry: INTERNAL_PrefetchedEntry) =>
   entry[KEY_RESPONSE];
+
+export const getPrefetchedElements = <T>(entry: INTERNAL_PrefetchedEntry) =>
+  entry[KEY_ELEMENTS] as T | undefined;
 
 export const getPrefetchedClose = (entry: INTERNAL_PrefetchedEntry) =>
   entry[KEY_CLOSE];

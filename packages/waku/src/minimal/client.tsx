@@ -17,6 +17,7 @@ import {
   createPrefetchedEntry,
   getPrefetchedClose,
   getPrefetchedDebugId,
+  getPrefetchedElements,
   getPrefetchedResponse,
   getPrefetchedRscParams,
   getPrefetchedRscPath,
@@ -207,23 +208,31 @@ const fetchRscInternal: FetchRscInternal = (
         : encodeReply(rscParams, { temporaryReferences }).then((body) =>
             fetchFn(url, { method: 'POST', body }),
           );
+  const createElements = () =>
+    createFromFetch<Elements>(checkStatus(responsePromise), {
+      callServer: (funcId: string, args: unknown[]) =>
+        unstable_callServerRsc(funcId, args, () => fetchRscStore),
+      debugChannel: debug?.debugChannel,
+      temporaryReferences,
+    });
   if (prefetchOnly) {
+    const elements = createElements();
+    Promise.resolve(elements).catch(() => {});
     prefetchedEntries.push(
       createPrefetchedEntry(
         rscPath,
         responsePromise,
         rscParams,
         temporaryReferences,
+        elements,
       ),
     );
     return undefined as never;
   }
-  const elements = createFromFetch<Elements>(checkStatus(responsePromise), {
-    callServer: (funcId: string, args: unknown[]) =>
-      unstable_callServerRsc(funcId, args, () => fetchRscStore),
-    debugChannel: debug?.debugChannel,
-    temporaryReferences,
-  });
+  const elements =
+    (prefetchedEntry &&
+      getPrefetchedElements<Promise<Elements>>(prefetchedEntry)) ||
+    createElements();
   if (import.meta.env?.WAKU_BUILD_ID) {
     Promise.resolve(elements).then(
       (data) => {
