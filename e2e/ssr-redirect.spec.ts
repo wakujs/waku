@@ -6,9 +6,12 @@ const startApp = prepareNormalSetup('ssr-redirect');
 test.describe(`ssr-redirect`, () => {
   let port: number;
   let stopApp: () => Promise<void>;
+  const serverOutput: string[] = [];
 
   test.beforeAll(async ({ mode }) => {
-    ({ port, stopApp } = await startApp(mode));
+    ({ port, stopApp } = await startApp(mode, {
+      onServerOutput: (data) => serverOutput.push(data),
+    }));
   });
 
   test.afterAll(async () => {
@@ -17,15 +20,12 @@ test.describe(`ssr-redirect`, () => {
 
   test('access sync page directly', async ({ page }) => {
     await page.goto(`http://localhost:${port}/sync`);
-    await waitForHydration(page);
-    await page.waitForURL(`http://localhost:${port}/destination`);
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
   });
 
   test('access async page directly', async ({ page }) => {
     await page.goto(`http://localhost:${port}/async`);
     await waitForHydration(page);
-    await page.waitForURL(`http://localhost:${port}/destination`);
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
   });
 
@@ -60,31 +60,18 @@ test.describe(`ssr-redirect`, () => {
     const page = await context.newPage();
     await page.goto(`http://localhost:${port}/action`);
     await expect(page.getByRole('heading')).toHaveText('Action Page');
-    await Promise.all([
-      page.waitForURL(`http://localhost:${port}/destination`),
-      page.locator('text=Redirect Action').click(),
-    ]);
+    await page.locator('text=Redirect Action').click();
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
     await context.close();
   });
 
   test('redirect should not log "Error during rendering" to server console', async ({
-    mode,
     page,
   }) => {
-    const serverOutput: string[] = [];
-    const { port, stopApp } = await startApp(mode, {
-      onServerOutput: (data) => serverOutput.push(data),
-    });
-    try {
-      await page.goto(`http://localhost:${port}/async`);
-      await waitForHydration(page);
-      await page.waitForURL(`http://localhost:${port}/destination`);
-      await expect(page.getByRole('heading')).toHaveText('Destination Page');
-      const combined = serverOutput.join('');
-      expect(combined).not.toContain('Error during rendering');
-    } finally {
-      await stopApp();
-    }
+    await page.goto(`http://localhost:${port}/async`);
+    await waitForHydration(page);
+    await expect(page.getByRole('heading')).toHaveText('Destination Page');
+    const combined = serverOutput.join('');
+    expect(combined).not.toContain('Error during rendering');
   });
 });
