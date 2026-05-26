@@ -138,21 +138,25 @@ test.describe(`multi platform builds`, () => {
         const temp = makeTempDir(project);
         const serverEntryFile = join(temp, 'src', 'waku.server.tsx');
         try {
-          // Per-entry absolute symlinks: cpSync would walk into NTFS junctions (Node 24.2+), and a single junction over node_modules breaks pnpm 11's relative workspace symlinks on Windows.
+          // Symlink each entry's realpath so the temp dir doesn't depend on pnpm's relative symlinks into the virtual store (https://github.com/pnpm/pnpm/issues/5717). Recurse into @scope dirs.
           const cwdNodeModules = join(cwd, 'node_modules');
           cpSync(cwd, temp, {
             recursive: true,
             filter: (src) => !src.startsWith(cwdNodeModules),
           });
-          const tempNodeModules = join(temp, 'node_modules');
-          mkdirSync(tempNodeModules);
-          for (const name of readdirSync(cwdNodeModules)) {
-            symlinkSync(
-              realpathSync(join(cwdNodeModules, name)),
-              join(tempNodeModules, name),
-              'junction',
-            );
-          }
+          const linkAll = (srcDir: string, destDir: string) => {
+            mkdirSync(destDir);
+            for (const entry of readdirSync(srcDir, { withFileTypes: true })) {
+              const srcPath = join(srcDir, entry.name);
+              const destPath = join(destDir, entry.name);
+              if (entry.isDirectory() && entry.name.startsWith('@')) {
+                linkAll(srcPath, destPath);
+              } else {
+                symlinkSync(realpathSync(srcPath), destPath, 'junction');
+              }
+            }
+          };
+          linkAll(cwdNodeModules, join(temp, 'node_modules'));
           ensureServerEntryWithAdapter(serverEntryFile, adapter);
           for (const name of clearDirOrFile) {
             rmSync(join(temp, name), { recursive: true, force: true });
