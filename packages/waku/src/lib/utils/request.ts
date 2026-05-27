@@ -32,7 +32,6 @@ export async function getInput(
     // server action: js
     const actionId = decodeFuncId(rscPath);
     if (actionId) {
-      validateServerActionRequest(req);
       const body = await getActionBody(req);
       const args = await decodeReply(body, { temporaryReferences });
       const action = await loadServerAction(actionId);
@@ -67,11 +66,10 @@ export async function getInput(
       contentType.startsWith('multipart/form-data')
     ) {
       // server action: no js (progressive enhancement)
-      validateServerActionRequest(req);
+      const formData = (await getActionBody(req)) as FormData;
       input = {
         type: 'action',
         fn: async () => {
-          const formData = (await getActionBody(req)) as FormData;
           const decodedAction = await decodeAction(formData);
           const result = await decodedAction();
           return await decodeFormState(result, formData);
@@ -123,6 +121,7 @@ function validateServerActionRequest(req: Request) {
 }
 
 async function getActionBody(req: Request) {
+  validateServerActionRequest(req);
   if (!req.body) {
     throw new Error('missing request body for server function');
   }
