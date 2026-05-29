@@ -444,7 +444,7 @@ export function unstable_defineRouter(fns: {
       } else if (item.type === 'slice') {
         if (item.isStatic && item.pathSpec) {
           throw new Error(
-            `defineRouter: static slice "${item.id}" cannot have a pathSpec` 
+            `defineRouter: static slice "${item.id}" cannot have a pathSpec`,
           );
         }
       }
