@@ -1,8 +1,12 @@
-// Replace control chars with spaces
+// Escape control chars: newlines become a visible "\n" and other control bytes become "\xNN".
 // https://cwe.mitre.org/data/definitions/117.html
-const CONTROL_CHAR = /\p{Cc}/gu;
 export const sanitizeLog = (value: unknown): string => {
   const str =
     value instanceof Error ? (value.stack ?? value.message) : String(value);
-  return str.replace(CONTROL_CHAR, ' ');
+  const CONTROL_CHAR = /\p{Cc}/gu;
+  return str.replace(CONTROL_CHAR, (char) =>
+    char === '\n'
+      ? '\\n'
+      : `\\x${char.charCodeAt(0).toString(16).padStart(2, '0')}`,
+  );
 };
