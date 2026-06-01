@@ -23,9 +23,7 @@ export function runWithContext<T>(req: Request, next: () => T): T {
 export function getContext() {
   const context = contextStorage.getStore();
   if (!context) {
-    throw new Error(
-      'Context is not available. This happens when INTERNAL_runWithContext was failed to invoke.',
-    );
+    throw new Error('Context is not available.');
   }
   return context;
 }
