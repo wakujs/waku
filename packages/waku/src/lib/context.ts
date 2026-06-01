@@ -8,7 +8,10 @@ type Context = {
 
 const contextStorage = new AsyncLocalStorage<Context>();
 
-export function INTERNAL_runWithContext<T>(req: Request, next: () => T): T {
+/**
+ * This is an internal function and not for public use.
+ */
+export function runWithContext<T>(req: Request, next: () => T): T {
   const context: Context = {
     req,
     nonce: undefined,
@@ -21,7 +24,7 @@ export function getContext() {
   const context = contextStorage.getStore();
   if (!context) {
     throw new Error(
-      'Context is not available. Make sure to use the context middleware.',
+      'Context is not available. This happens when INTERNAL_runWithContext was failed to invoke.',
     );
   }
   return context;
