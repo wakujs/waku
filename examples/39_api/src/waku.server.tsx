@@ -1,5 +1,5 @@
 import adapter from 'waku/adapters/default';
-import { unstable_runWithContext as runWithContext } from 'waku/internals';
+import { unstable_runWithRequest as runWithRequest } from 'waku/internals';
 import { Slot } from 'waku/minimal/client';
 import App from './components/App';
 
@@ -15,7 +15,7 @@ const stringToStream = (str: string): ReadableStream => {
 
 export default adapter({
   handleRequest: (input, { renderRsc, renderHtml }) =>
-    runWithContext(input.req, async () => {
+    runWithRequest(input.req, async () => {
       if (input.type === 'component') {
         return renderRsc({ App: <App name={input.rscPath || 'Waku'} /> });
       }

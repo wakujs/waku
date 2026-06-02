@@ -1,5 +1,5 @@
 import adapter from 'waku/adapters/default';
-import { unstable_runWithContext as runWithContext } from 'waku/internals';
+import { unstable_runWithRequest as runWithRequest } from 'waku/internals';
 import App from './components/App.js';
 
 const BUILD_MATADATA_KEY = 'metadata-key';
@@ -7,7 +7,7 @@ const BUILD_MATADATA_VALUE = 'metadata-value';
 
 export default adapter({
   handleRequest: (input, { renderRsc, loadBuildMetadata }) =>
-    runWithContext(input.req, async () => {
+    runWithRequest(input.req, async () => {
       if (input.type === 'component') {
         return renderRsc({
           App: (

@@ -1,37 +1,18 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 
-type Context = {
-  readonly req: Request;
-  nonce: string | undefined;
-  readonly data: Record<string, unknown>;
-};
-
-const contextStorage = new AsyncLocalStorage<Context>();
+const requestStorage = new AsyncLocalStorage<Request>();
 
 /**
  * This is an internal function and not for public use.
  */
-export function runWithContext<T>(req: Request, next: () => T): T {
-  const context: Context = {
-    req,
-    nonce: undefined,
-    data: {},
-  };
-  return contextStorage.run(context, next);
+export function runWithRequest<T>(req: Request, next: () => T): T {
+  return requestStorage.run(req, next);
 }
 
-export function getContext() {
-  const context = contextStorage.getStore();
-  if (!context) {
-    throw new Error('Context is not available.');
+export function getRequest(): Request {
+  const req = requestStorage.getStore();
+  if (!req) {
+    throw new Error('Request is not available.');
   }
-  return context;
-}
-
-export function getContextData(): Record<string, unknown> {
-  const context = contextStorage.getStore();
-  if (!context) {
-    return {};
-  }
-  return context.data;
+  return req;
 }
