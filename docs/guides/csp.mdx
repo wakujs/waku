@@ -23,39 +23,70 @@ Waku has 2 ways to set `nonce`.
 
 ### Hono Middleware
 
-Hono provides a [middleware](https://hono.dev/docs/middleware/builtin/secure-headers) which simplifies the setup of security headers. Set up a middleware in `src/middleware/nonce.ts`:
+Hono provides a [middleware](https://hono.dev/docs/middleware/builtin/secure-headers) which simplifies the setup of security headers. Set up a middleware in `src/middleware/nonce.ts` that enables Hono's [context storage](https://hono.dev/docs/middleware/builtin/context-storage) and generates the nonce:
 
 ```ts
 import type { MiddlewareHandler } from 'hono';
+import { every } from 'hono/combine';
+import { contextStorage } from 'hono/context-storage';
 import { NONCE, secureHeaders } from 'hono/secure-headers';
-import { unstable_getContext as getContext } from 'waku/server';
 
-const nonceMiddleware = (): MiddlewareHandler => {
-  const secure = secureHeaders({
-    contentSecurityPolicy: {
-      scriptSrc: ["'self'", NONCE],
-    },
-  });
-
-  return async (c, next) => {
-    await secure(c, async () => {
-      // Bridge Hono's nonce to Waku
-      const nonce = c.get('secureHeadersNonce');
-      if (nonce) {
-        const context = getContext();
-        context.nonce = nonce;
-      }
-      await next();
-    });
-  };
-};
+const nonceMiddleware = (): MiddlewareHandler =>
+  every(
+    contextStorage(),
+    secureHeaders({
+      contentSecurityPolicy: {
+        scriptSrc: ["'self'", NONCE],
+      },
+    }),
+  );
 
 export default nonceMiddleware;
 ```
 
-Behind the scenes, hono generates the `nonce`, passes it to `Content-Security-Policy` headers (you can add more here) and stores it in `secureHeadersNonce` context. We need to pass it again to Waku context so Waku can apply it to its inline script.
+Behind the scenes, hono generates the `nonce`, passes it to `Content-Security-Policy` headers (you can add more here) and stores it in the `secureHeadersNonce` context. To apply that nonce to Waku's inline scripts, bridge it with a handler interceptor that reads the nonce from Hono's context and calls `unstable_setNonce`.
 
-For more on request context and middleware data, see [Request Context](/guides/request-context).
+In managed mode (no `waku.server.tsx`), drop the interceptor in `src/pages/_interceptors/nonce.ts`:
+
+```ts
+import { getContext } from 'hono/context-storage';
+import type { HandlerInterceptor } from 'waku/router/server';
+import { unstable_setNonce as setNonce } from 'waku/router/server';
+
+const nonceInterceptor: HandlerInterceptor = (next) => {
+  const nonce = getContext().get('secureHeadersNonce');
+  if (typeof nonce === 'string') {
+    setNonce(nonce);
+  }
+  return next();
+};
+
+export default nonceInterceptor;
+```
+
+With a custom `waku.server.tsx` using `createPages`, register the same logic through `createInterceptor`:
+
+```ts
+import { getContext } from 'hono/context-storage';
+import { unstable_setNonce as setNonce } from 'waku/router/server';
+
+createPages(async ({ createPage, createInterceptor }) => {
+  createInterceptor((next) => {
+    const nonce = getContext().get('secureHeadersNonce');
+    if (typeof nonce === 'string') {
+      setNonce(nonce);
+    }
+    return next();
+  });
+  return [
+    // ...pages...
+  ];
+});
+```
+
+An interceptor wraps each render in both the request and build phases, so reading the nonce and calling `setNonce` runs inside the render scope where Waku picks it up.
+
+For more on request context and handler interceptors, see [Request Context](/guides/request-context).
 
 ### Pass nonce in `waku.server.entry`
 
@@ -63,6 +94,7 @@ If your adapter allows you to customize `handleRequest`, you can pass it manuall
 
 ```tsx
 import adapter from 'waku/adapters/default';
+import { unstable_runWithRequest as runWithRequest } from 'waku/internals';
 import { Slot } from 'waku/minimal/client';
 import App from './components/App.js';
 import { encodeBase64 } from 'hono/utils/encode';
@@ -78,29 +110,30 @@ const generateNonce = () => {
 const NONCE = generateNonce();
 
 export default adapter({
-  handleRequest: async (input, { renderRsc, renderHtml }) => {
-    if (input.type === 'component') {
-      return renderRsc({ App: <App /> });
-    }
-    if (input.type === 'custom' && input.pathname === '/') {
-      const response = await renderHtml(
-        await renderRsc({ App: <App /> }),
-        <Slot id="App" />,
-        {
-          rscPath: '',
-          nonce: NONCE,
-        },
-      );
+  handleRequest: (input, { renderRsc, renderHtml }) =>
+    runWithRequest(input.req, async () => {
+      if (input.type === 'component') {
+        return renderRsc({ App: <App /> });
+      }
+      if (input.type === 'custom' && input.pathname === '/') {
+        const response = await renderHtml(
+          await renderRsc({ App: <App /> }),
+          <Slot id="App" />,
+          {
+            rscPath: '',
+            nonce: NONCE,
+          },
+        );
 
-      // Set CSP header with the nonce
-      response.headers.set(
-        'Content-Security-Policy',
-        `script-src 'self' 'nonce-${NONCE}';`,
-      );
+        response.headers.set(
+          'Content-Security-Policy',
+          `script-src 'self' 'nonce-${NONCE}';`,
+        );
 
-      return response;
-    }
-  },
+        return response;
+      }
+      return null;
+    }),
   handleBuild: async () => {},
 });
 ```
