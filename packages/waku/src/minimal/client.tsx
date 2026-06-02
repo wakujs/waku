@@ -146,8 +146,10 @@ const requestRsc = (
   );
 };
 
+// `getStore` is read lazily when a server action fires: a prefetched tree is
+// decoded early but must act against the consuming navigation's store.
 const decodeRsc = (
-  fetchRscStore: Unstable_FetchRscStore,
+  getStore: () => Unstable_FetchRscStore,
   responsePromise: Promise<Response>,
   temporaryReferences: ReturnType<typeof createTemporaryReferenceSet>,
   debugChannel:
@@ -156,7 +158,7 @@ const decodeRsc = (
 ): Promise<Elements> =>
   createFromFetch<Elements>(checkStatus(responsePromise), {
     callServer: (funcId: string, args: unknown[]) =>
-      unstable_callServerRsc(funcId, args, () => fetchRscStore),
+      unstable_callServerRsc(funcId, args, getStore),
     debugChannel,
     temporaryReferences,
   });
@@ -194,15 +196,9 @@ const prefetchRscInternal = (
     rscParams,
     temporaryReferences,
   );
-  const elements = decodeRsc(
-    fetchRscStore,
-    responsePromise,
-    temporaryReferences,
-    undefined,
+  addPrefetchEntry(rscPath, rscParams, fetchRscStore, (getStore) =>
+    decodeRsc(getStore, responsePromise, temporaryReferences, undefined),
   );
-  // Mark as handled so an unconsumed prefetch's rejection stays quiet.
-  Promise.resolve(elements).catch(() => {});
-  addPrefetchEntry(rscPath, rscParams, elements);
 };
 
 const fetchRscElements = (
@@ -210,11 +206,13 @@ const fetchRscElements = (
   rscPath: string,
   rscParams: unknown,
 ): Promise<Elements> => {
-  const prefetched = consumePrefetchEntry(rscPath, rscParams);
+  const prefetched = consumePrefetchEntry<
+    Unstable_FetchRscStore,
+    Promise<Elements>
+  >(rscPath, rscParams, fetchRscStore);
   if (prefetched) {
-    const elements = prefetched.elements as Promise<Elements>;
-    reloadOnBuildIdMismatch(fetchRscStore, elements);
-    return elements;
+    reloadOnBuildIdMismatch(fetchRscStore, prefetched);
+    return prefetched;
   }
   const initial = consumeInitialRscEntry();
   const baseFetchFn = fetchRscStore[FETCH_FN] || fetch;
@@ -227,7 +225,7 @@ const fetchRscElements = (
     ? initial.response
     : requestRsc(fetchFn, rscPath, rscParams, temporaryReferences);
   const elements = decodeRsc(
-    fetchRscStore,
+    () => fetchRscStore,
     responsePromise,
     temporaryReferences,
     debug?.debugChannel,

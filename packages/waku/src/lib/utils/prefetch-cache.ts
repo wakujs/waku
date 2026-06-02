@@ -1,7 +1,7 @@
-// Client-side cache of prefetched navigations. Each entry holds the decoded
-// `elements` promise, so a prefetch warms the render and a later navigation
-// reuses it without re-fetching or re-decoding. The cache is bounded by both a
-// time-to-live and a maximum size to keep memory usage in check.
+// Client-side cache of prefetched navigations: a prefetch decodes the route
+// eagerly so a later navigation reuses it without re-fetching. Each entry keeps
+// a mutable store so the decoded tree's server actions bind to the consuming
+// navigation's store, not the prefetch's. Bounded by a ttl and a max size.
 
 /** How long (ms) a prefetched entry stays usable before it is discarded. */
 export const PREFETCH_TTL = 1000 * 60;
@@ -12,7 +12,7 @@ export const PREFETCH_LIMIT = 100;
 type PrefetchEntry = {
   rscPath: string;
   rscParams: unknown;
-  elements: unknown;
+  getElements: (store: never) => unknown;
   expireAt: number;
 };
 
@@ -33,14 +33,27 @@ const findFreshIndex = (
       entry.rscParams === rscParams,
   );
 
-export const addPrefetchEntry = (
+/**
+ * Decode and cache a prefetch. `getStore` returns the entry's currently bound
+ * store: the prefetch's now, the navigation's after `consumePrefetchEntry`.
+ */
+export const addPrefetchEntry = <Store, Elements>(
   rscPath: string,
   rscParams: unknown,
-  elements: unknown,
+  store: Store,
+  decode: (getStore: () => Store) => Elements,
 ): void => {
   const cache = getCache();
   const now = Date.now();
-  cache.push({ rscPath, rscParams, elements, expireAt: now + PREFETCH_TTL });
+  let currentStore = store;
+  const elements = decode(() => currentStore);
+  // Mark as handled so a prefetch that is never consumed stays quiet.
+  Promise.resolve(elements).catch(() => {});
+  const getElements = (nextStore: Store): Elements => {
+    currentStore = nextStore;
+    return elements;
+  };
+  cache.push({ rscPath, rscParams, getElements, expireAt: now + PREFETCH_TTL });
   while (
     cache.length > 0 &&
     (cache.length > PREFETCH_LIMIT || cache[0]!.expireAt <= now)
@@ -57,11 +70,19 @@ export const hasPrefetchEntry = (
   return findFreshIndex(cache, rscPath, rscParams, Date.now()) >= 0;
 };
 
-export const consumePrefetchEntry = (
+/**
+ * Consume a fresh prefetch, rebinding its decoded tree to the consumer's store.
+ */
+export const consumePrefetchEntry = <Store, Elements>(
   rscPath: string,
   rscParams: unknown,
-): PrefetchEntry | undefined => {
+  store: Store,
+): Elements | undefined => {
   const cache = getCache();
   const index = findFreshIndex(cache, rscPath, rscParams, Date.now());
-  return index >= 0 ? cache.splice(index, 1)[0] : undefined;
+  if (index < 0) {
+    return undefined;
+  }
+  const { getElements } = cache.splice(index, 1)[0]!;
+  return (getElements as (s: Store) => Elements)(store);
 };

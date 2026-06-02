@@ -7,10 +7,15 @@ import {
   unstable_withEnhanceFetchFn,
 } from '../src/minimal/client.js';
 
+type CallServer = (funcId: string, args: unknown[]) => Promise<unknown>;
+
 const mocks = vi.hoisted(() => ({
   createFromFetch:
     vi.fn<
-      (responsePromise: Promise<Response>) => Promise<Record<string, unknown>>
+      (
+        responsePromise: Promise<Response>,
+        options?: { callServer?: CallServer },
+      ) => Promise<Record<string, unknown>>
     >(),
   encodeReply:
     vi.fn<(value: unknown) => Promise<string | URLSearchParams | FormData>>(),
@@ -89,5 +94,36 @@ describe('minimal/client prefetch', () => {
       unstable_fetchRsc('R/fail.txt', rscParams, enhanceFetchStore),
     ).rejects.toThrow('decode failed');
     expect(mocks.createFromFetch).toHaveBeenCalledTimes(1);
+  });
+
+  test('server actions from a prefetched route use the navigation store', async () => {
+    // Capture the callServer baked into the prefetch-decoded elements.
+    let callServer: CallServer | undefined;
+    mocks.createFromFetch.mockImplementation((_responsePromise, options) => {
+      callServer ??= options?.callServer;
+      return Promise.resolve({ _value: null });
+    });
+
+    const prefetchFetch = vi.fn<typeof fetch>(async () => new Response('p'));
+    const navFetch = vi.fn<typeof fetch>(async () => new Response('n'));
+
+    unstable_prefetchRsc(
+      'R/page.txt',
+      undefined,
+      unstable_withEnhanceFetchFn(() => prefetchFetch),
+    );
+    // Navigate with a different store/fetch than the prefetch used.
+    await unstable_fetchRsc(
+      'R/page.txt',
+      undefined,
+      unstable_withEnhanceFetchFn(() => navFetch),
+    );
+
+    // A server action from the prefetched page must hit the navigation fetch,
+    // not the prefetch-time one.
+    await callServer!('actions#doThing', []);
+
+    expect(prefetchFetch).toHaveBeenCalledTimes(1); // only the prefetch request
+    expect(navFetch).toHaveBeenCalledTimes(1); // the server action request
   });
 });
