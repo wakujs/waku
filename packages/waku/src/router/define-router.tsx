@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { runWithContext } from '../lib/context.js';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { runWithRequest } from '../lib/context.js';
 import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
 import {
   getPathMapping,
@@ -10,11 +11,7 @@ import type { PathSpec } from '../lib/utils/path.js';
 import { base64ToBytes, bytesToBase64 } from '../lib/utils/stream.js';
 import { createTaskRunner } from '../lib/utils/task-runner.js';
 import { unstable_defineHandlers as defineHandlers } from '../minimal/server.js';
-import {
-  deserializeRsc,
-  unstable_getContext as getContext,
-  serializeRsc,
-} from '../server.js';
+import { deserializeRsc, serializeRsc } from '../server.js';
 import { INTERNAL_ServerRouter } from './client.js';
 import {
   HAS404_ID,
@@ -52,82 +49,68 @@ const parseRscParams = (
   return { query: '' };
 };
 
-const RSC_PATH_SYMBOL = Symbol('RSC_PATH');
-const RSC_PARAMS_SYMBOL = Symbol('RSC_PARAMS');
+export type HandlerInterceptor = <T>(next: () => Promise<T>) => Promise<T>;
+
+type Rerender = (rscPath: string, rscParams?: unknown) => void;
+
+type RouterStore = {
+  rscPath?: string;
+  rscParams?: unknown;
+  rerender?: Rerender;
+  nonce?: string;
+};
+const routerStorage = new AsyncLocalStorage<RouterStore>();
 
 const setRscPath = (rscPath: string) => {
-  try {
-    const context = getContext();
-    (context as unknown as Record<typeof RSC_PATH_SYMBOL, unknown>)[
-      RSC_PATH_SYMBOL
-    ] = rscPath;
-  } catch {
-    // ignore
+  const store = routerStorage.getStore();
+  if (store) {
+    store.rscPath = rscPath;
   }
 };
 
 const setRscParams = (rscParams: unknown) => {
-  try {
-    const context = getContext();
-    (context as unknown as Record<typeof RSC_PARAMS_SYMBOL, unknown>)[
-      RSC_PARAMS_SYMBOL
-    ] = rscParams;
-  } catch {
-    // ignore
+  const store = routerStorage.getStore();
+  if (store) {
+    store.rscParams = rscParams;
   }
 };
 
 export function unstable_getRscPath(): string | undefined {
-  try {
-    const context = getContext();
-    return (context as unknown as Record<typeof RSC_PATH_SYMBOL, string>)[
-      RSC_PATH_SYMBOL
-    ];
-  } catch {
-    return undefined;
-  }
+  return routerStorage.getStore()?.rscPath;
 }
 
 export function unstable_getRscParams(): unknown {
-  try {
-    const context = getContext();
-    return (context as unknown as Record<typeof RSC_PARAMS_SYMBOL, unknown>)[
-      RSC_PARAMS_SYMBOL
-    ];
-  } catch {
-    return undefined;
-  }
+  return routerStorage.getStore()?.rscParams;
 }
 
-const getNonce = () => {
-  try {
-    const context = getContext();
-    return context.nonce;
-  } catch {
-    return undefined;
-  }
-};
-
-const RERENDER_SYMBOL = Symbol('RERENDER');
-type Rerender = (rscPath: string, rscParams?: unknown) => void;
-
 const setRerender = (rerender: Rerender) => {
-  try {
-    const context = getContext();
-    (context as unknown as Record<typeof RERENDER_SYMBOL, Rerender>)[
-      RERENDER_SYMBOL
-    ] = rerender;
-  } catch {
-    // ignore
+  const store = routerStorage.getStore();
+  if (store) {
+    store.rerender = rerender;
   }
 };
 
 const getRerender = (): Rerender => {
-  const context = getContext();
-  return (context as unknown as Record<typeof RERENDER_SYMBOL, Rerender>)[
-    RERENDER_SYMBOL
-  ];
+  const rerender = routerStorage.getStore()?.rerender;
+  if (!rerender) {
+    throw new Error('Rerender is not available.');
+  }
+  return rerender;
 };
+
+/**
+ * Set the nonce applied to framework inline scripts for the current request.
+ * Call this from a handler interceptor (e.g. bridging a Hono middleware's
+ * generated nonce) before rendering.
+ */
+export function unstable_setNonce(nonce: string): void {
+  const store = routerStorage.getStore();
+  if (store) {
+    store.nonce = nonce;
+  }
+}
+
+const getNonce = (): string | undefined => routerStorage.getStore()?.nonce;
 
 const is404 = (pathSpec: PathSpec) =>
   pathSpec.length === 1 &&
@@ -424,7 +407,19 @@ globalThis.__WAKU_ROUTER_PREFETCH__ = (path, callback) => {
 export function unstable_defineRouter(fns: {
   getConfigs: () => Promise<Iterable<RuntimeConfig>>;
   unstable_skipBuild?: (routePath: string) => boolean;
+  unstable_interceptors?: HandlerInterceptor[];
 }) {
+  const runHandled = <T,>(req: Request, fn: () => Promise<T>): Promise<T> =>
+    runWithRequest(req, () =>
+      routerStorage.run(
+        {},
+        (fns.unstable_interceptors ?? []).reduceRight(
+          (next, interceptor) => () => interceptor(next),
+          fn,
+        ),
+      ),
+    );
+
   let cachedConfigs: RuntimeConfig[] | undefined;
   let cachedHas404 = false;
 
@@ -649,12 +644,12 @@ export function unstable_defineRouter(fns: {
   let cachedElementsForRequestInit: Promise<void> | undefined;
   let cachedPath2moduleIds: Record<string, string[]> | undefined;
 
-  const handleRequest: HandleRequest = (
+  const handleRequest: HandleRequest = async (
     input,
     { renderRsc, renderHtml, loadBuildMetadata },
-  ): Promise<ReadableStream | Response | 'fallback' | null | undefined> =>
-    runWithContext(input.req, async () => {
-      await initConfigs(loadBuildMetadata);
+  ): Promise<ReadableStream | Response | 'fallback' | null | undefined> => {
+    await initConfigs(loadBuildMetadata);
+    return runHandled(input.req, async () => {
       const getCachedElement = (cacheId: CacheId) => {
         const cachedBytes = cachedElementsForRequest.get(cacheId);
         if (!cachedBytes) {
@@ -885,6 +880,7 @@ export function unstable_defineRouter(fns: {
         }
       }
     });
+  };
 
   const handleBuild: HandleBuild = async ({
     renderRsc,
@@ -970,7 +966,7 @@ export function unstable_defineRouter(fns: {
       }
       const req = new Request(new URL(routePath, 'http://localhost:3000'));
       runTask(async () => {
-        await runWithContext(req, async () => {
+        await runHandled(req, async () => {
           const res = await item.handler(req, { params: {} });
           await generateFile(routePath, res.body || '').catch((e) => {
             if (e instanceof Error && 'code' in e && e.code === 'EEXIST') {
@@ -1034,7 +1030,7 @@ export function unstable_defineRouter(fns: {
       const rscPath = encodeRoutePath(routePath);
       const req = new Request(new URL(routePath, 'http://localhost:3000'));
       runTask(async () => {
-        await runWithContext(req, async () => {
+        await runHandled(req, async () => {
           const entries = await getEntriesForRoute(
             rscPath,
             undefined,
@@ -1116,7 +1112,7 @@ export function unstable_defineRouter(fns: {
       // dummy req for slice which is not determined at build time
       const req = new Request(new URL('http://localhost:3000'));
       runTask(async () => {
-        await runWithContext(req, async () => {
+        await runHandled(req, async () => {
           const sliceElement = await getSliceElement(
             item,
             getCachedElement,

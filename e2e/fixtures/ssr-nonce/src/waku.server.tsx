@@ -1,5 +1,5 @@
 import adapter from 'waku/adapters/default';
-import { unstable_runWithContext as runWithContext } from 'waku/internals';
+import { unstable_runWithRequest as runWithRequest } from 'waku/internals';
 import { Slot } from 'waku/minimal/client';
 import App from './components/App.js';
 
@@ -8,7 +8,7 @@ const TEST_NONCE = 'test-nonce-12345';
 
 export default adapter({
   handleRequest: (input, { renderRsc, renderHtml }) =>
-    runWithContext(input.req, async () => {
+    runWithRequest(input.req, async () => {
       if (input.type === 'component') {
         return renderRsc({ App: <App /> });
       }

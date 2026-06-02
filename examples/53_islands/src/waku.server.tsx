@@ -1,12 +1,12 @@
 import adapter from 'waku/adapters/default';
-import { unstable_runWithContext as runWithContext } from 'waku/internals';
+import { unstable_runWithRequest as runWithRequest } from 'waku/internals';
 import { Children, Slot } from 'waku/minimal/client';
 import App from './components/App';
 import Dynamic from './components/Dynamic';
 
 export default adapter({
   handleRequest: (input, { renderRsc, renderHtml }) =>
-    runWithContext(input.req, async () => {
+    runWithRequest(input.req, async () => {
       if (input.type === 'component') {
         if (input.rscPath === '') {
           return renderRsc({
@@ -40,14 +40,14 @@ export default adapter({
     rscPath2pathname,
     generateFile,
   }) => {
-    await runWithContext(
+    await runWithRequest(
       new Request(new URL('http://localhost:3000/')),
       async () => {
         const body = await renderRsc({ App: <App name="Waku" /> });
         await generateFile(rscPath2pathname(''), body);
       },
     );
-    await runWithContext(
+    await runWithRequest(
       new Request(new URL('http://localhost:3000/')),
       async () => {
         const res = await renderHtml(

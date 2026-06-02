@@ -1,12 +1,12 @@
 import adapter from 'waku/adapters/default';
-import { unstable_runWithContext as runWithContext } from 'waku/internals';
+import { unstable_runWithRequest as runWithRequest } from 'waku/internals';
 import { Slot } from 'waku/minimal/client';
 import App from './components/App.js';
 import TestApp from './components/test-app.js';
 
 export default adapter({
   handleRequest: (input, { renderRsc, renderHtml }) =>
-    runWithContext(input.req, async () => {
+    runWithRequest(input.req, async () => {
       if (input.type === 'component') {
         if (input.rscPath === 'test') {
           return renderRsc({ TestApp: <TestApp /> });
