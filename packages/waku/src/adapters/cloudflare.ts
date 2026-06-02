@@ -1,4 +1,5 @@
 import type { MiddlewareHandler } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { Hono } from 'hono/tiny';
 import {
   unstable_createServerEntryAdapter as createServerEntryAdapter,
@@ -9,11 +10,21 @@ import {
   unstable_consumeMultiplexedStream as consumeMultiplexedStream,
   unstable_honoMiddleware as honoMiddleware,
   unstable_produceMultiplexedStream as produceMultiplexedStream,
+  unstable_runWithContext as runWithContext,
 } from 'waku/internals';
 import type { BuildOptions } from './cloudflare-build-enhancer.js';
 
 const { DIST_PUBLIC } = constants;
-const { contextMiddleware, rscMiddleware, middlewareRunner } = honoMiddleware;
+const { rscMiddleware, middlewareRunner } = honoMiddleware;
+
+function contextMiddleware(): MiddlewareHandler {
+  return (c, next) => {
+    const req = c.req.raw;
+    return runWithContext(req, next);
+  };
+}
+
+const DEFAULT_BODY_LIMIT_MAX_SIZE = 100 * 1024 * 1024;
 
 const DO_NOT_BUNDLE = '';
 
@@ -26,9 +37,9 @@ const emptyStream = () =>
     },
   });
 
-function isWranglerDev(req: Request): boolean {
+function isProductionWorker(req: Request): boolean {
   // This header seems to only be set for production cloudflare workers
-  return !req.headers.get('cf-visitor');
+  return !!req.headers.get('cf-visitor');
 }
 
 function removeGzipEncoding(res: Response): Response {
@@ -56,12 +67,14 @@ export default createServerEntryAdapter(
       static?: boolean;
       handlers?: Record<string, unknown>;
       assetsDir?: string;
-      middlewareFns?: (() => MiddlewareHandler)[];
+      bodyLimit?: Parameters<typeof bodyLimit>[0] | false;
+      middlewareFns?: ((opts: { app: Hono }) => MiddlewareHandler)[];
       middlewareModules?: Record<string, () => Promise<unknown>>;
       internalPathToBuildStaticFiles?: string;
     },
   ) => {
     const {
+      bodyLimit: bodyLimitOptions,
       middlewareFns = [],
       middlewareModules = {},
       internalPathToBuildStaticFiles = '__waku_internal_build_static_files',
@@ -73,11 +86,16 @@ export default createServerEntryAdapter(
       }
       return c.text('404 Not Found', 404);
     });
+    if (bodyLimitOptions !== false) {
+      app.use(
+        bodyLimit(bodyLimitOptions ?? { maxSize: DEFAULT_BODY_LIMIT_MAX_SIZE }),
+      );
+    }
     app.use(contextMiddleware());
     for (const middlewareFn of middlewareFns) {
-      app.use(middlewareFn());
+      app.use(middlewareFn({ app }));
     }
-    app.use(middlewareRunner(middlewareModules as never));
+    app.use(middlewareRunner(middlewareModules as never, { app }));
     app.use(rscMiddleware({ processRequest }));
     const buildOptions: BuildOptions = {
       srcDir: config.srcDir,
@@ -96,7 +114,10 @@ export default createServerEntryAdapter(
       });
 
     const fetchFn = async (req: Request) => {
-      if (new URL(req.url).pathname === `/${internalPathToBuildStaticFiles}`) {
+      if (
+        new URL(req.url).pathname === `/${internalPathToBuildStaticFiles}` &&
+        !isProductionWorker(req)
+      ) {
         return new Response(buildBody());
       }
       let cloudflareContext;
@@ -119,7 +140,7 @@ export default createServerEntryAdapter(
         res = app.fetch(req);
       }
       // Workaround https://github.com/cloudflare/workers-sdk/issues/6577
-      if (import.meta.env?.PROD && isWranglerDev(req)) {
+      if (import.meta.env?.PROD && !isProductionWorker(req)) {
         if ('then' in res) {
           res = res.then((res) => removeGzipEncoding(res));
         } else {

@@ -10,9 +10,9 @@ import {
 import { buildMetadata } from 'virtual:vite-rsc-waku/build-metadata';
 import { config, isBuild } from 'virtual:vite-rsc-waku/config';
 import notFoundHtml from 'virtual:vite-rsc-waku/not-found';
-import { INTERNAL_setAllEnv } from '../../server.js';
 import { BUILD_METADATA_FILE, DIST_PUBLIC, DIST_SERVER } from '../constants.js';
-import { INTERNAL_runWithContext } from '../context.js';
+import { runWithContext } from '../context.js';
+import { setAllEnv } from '../env.js';
 import type {
   Unstable_CreateServerEntryAdapter as CreateServerEntryAdapter,
   Unstable_HandleBuild as HandleBuild,
@@ -21,6 +21,7 @@ import type {
   Unstable_ProcessRequest as ProcessRequest,
 } from '../types.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
+import { sanitizeLog } from '../utils/log.js';
 import { joinPath } from '../utils/path.js';
 import { DEBUG_ID_HEADER } from '../utils/react-debug-channel.js';
 import { createRenderUtils } from '../utils/render.js';
@@ -51,7 +52,9 @@ const toProcessRequest =
       loadServerAction,
     );
 
-    const debugId = req.headers.get(DEBUG_ID_HEADER.toLowerCase()) || undefined;
+    const debugId =
+      (import.meta.env.DEV && req.headers.get(DEBUG_ID_HEADER.toLowerCase())) ||
+      undefined;
     const debugChannels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as
       | Map<string, { readable: ReadableStream; writable: WritableStream }>
       | undefined;
@@ -83,7 +86,7 @@ const toProcessRequest =
       if (info) {
         message = (e as { message?: string } | undefined)?.message || String(e);
       } else {
-        console.warn(e);
+        console.warn(sanitizeLog(e));
         message = 'Internal Server Error';
       }
       const body = stringToStream(message);
@@ -141,7 +144,7 @@ const toProcessBuild =
       saveBuildMetadata: async (key, value) => {
         buildMetadata.set(key, value);
       },
-      withRequest: (req, fn) => INTERNAL_runWithContext(req, fn),
+      withRequest: (req, fn) => runWithContext(req, fn),
       generateFile: async (fileName, body) => {
         await emitFile(
           joinPath(DIST_PUBLIC, fileName),
@@ -175,7 +178,7 @@ export const createServerEntryAdapter: CreateServerEntryAdapter =
         handlers,
         processRequest,
         processBuild,
-        setAllEnv: INTERNAL_setAllEnv,
+        setAllEnv,
         config,
         isBuild,
         notFoundHtml,

@@ -189,9 +189,13 @@ const assertNonReservedSlotId = (slotId: SlotId) => {
   if (
     slotId === ROOT_SLOT_ID ||
     slotId.startsWith(ROUTE_SLOT_ID_PREFIX) ||
-    slotId.startsWith(SLICE_SLOT_ID_PREFIX)
+    slotId.startsWith(SLICE_SLOT_ID_PREFIX) ||
+    // Capitalized ids are reserved for define-router such as ROUTE_ID, IS_STATIC_ID, HAS404_ID
+    /^[A-Z]/.test(slotId)
   ) {
-    throw new Error('Element ID cannot be "root", "route:*" or "slice:*"');
+    throw new Error(
+      'Element ID cannot be "root", "route:*", "slice:*", or start with a capital letter',
+    );
   }
 };
 
@@ -441,6 +445,12 @@ export function unstable_defineRouter(fns: {
     configs.forEach((item) => {
       if (item.type === 'route') {
         Object.keys(item.elements).forEach(assertNonReservedSlotId);
+      } else if (item.type === 'slice') {
+        if (item.isStatic && item.pathSpec) {
+          throw new Error(
+            `defineRouter: static slice "${item.id}" cannot have a pathSpec`,
+          );
+        }
       }
     });
     cachedConfigs = configs;
