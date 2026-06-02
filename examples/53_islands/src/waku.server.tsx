@@ -38,17 +38,16 @@ export default adapter({
     renderRsc,
     renderHtml,
     rscPath2pathname,
-    withRequest,
     generateFile,
   }) => {
-    await withRequest(
+    await runWithContext(
       new Request(new URL('http://localhost:3000/')),
       async () => {
         const body = await renderRsc({ App: <App name="Waku" /> });
         await generateFile(rscPath2pathname(''), body);
       },
     );
-    await withRequest(
+    await runWithContext(
       new Request(new URL('http://localhost:3000/')),
       async () => {
         const res = await renderHtml(

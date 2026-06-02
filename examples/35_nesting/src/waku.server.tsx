@@ -38,11 +38,10 @@ export default adapter({
   handleBuild: async ({
     renderRsc,
     rscPath2pathname,
-    withRequest,
     generateFile,
     generateDefaultHtml,
   }) => {
-    await withRequest(
+    await runWithContext(
       new Request(new URL('http://localhost:3000/')),
       async () => {
         const body = await renderRsc({
@@ -53,7 +52,7 @@ export default adapter({
       },
     );
     for (const count of [1, 2, 3, 4, 5]) {
-      await withRequest(
+      await runWithContext(
         new Request(new URL('http://localhost:3000/')),
         async () => {
           const body = await renderRsc({ App: <App name="Waku" /> });
