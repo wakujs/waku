@@ -1024,7 +1024,15 @@ export function unstable_defineRouter(fns: {
         continue;
       }
       if (!routePath || !item.isStatic) {
-        runTask(() => cacheStaticElementsOfRoute(item, routePath));
+        const req = new Request(
+          new URL(
+            routePath ?? pathSpecAsString(item.path),
+            'http://localhost:3000',
+          ),
+        );
+        runTask(() =>
+          runHandled(req, () => cacheStaticElementsOfRoute(item, routePath)),
+        );
         continue;
       }
       const rscPath = encodeRoutePath(routePath);

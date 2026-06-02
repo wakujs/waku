@@ -2,11 +2,13 @@ import type { ReactNode } from 'react';
 import { createElement } from 'react';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { describe, expect, it, vi } from 'vitest';
+import { getRequest } from '../src/lib/context.js';
 import { createPages } from '../src/router/create-pages.js';
 import {
   type HandlerInterceptor,
   unstable_defineRouter,
 } from '../src/router/define-router.js';
+import { fsRouter } from '../src/router/fs-router.js';
 
 vi.mock('../src/server.js', () => ({
   deserializeRsc: vi.fn().mockResolvedValue(null),
@@ -56,6 +58,27 @@ const callHandleRequest = (
       loadBuildMetadata: vi.fn(),
     },
   );
+
+const callHandleBuild = (router: ReturnType<typeof unstable_defineRouter>) =>
+  router.handleBuild({
+    renderRsc: vi.fn().mockResolvedValue(makeStream()),
+    parseRsc: vi.fn(),
+    renderHtml: vi.fn().mockResolvedValue(new Response('ok')),
+    rscPath2pathname: (rscPath: string) => '/' + rscPath,
+    saveBuildMetadata: vi.fn().mockResolvedValue(undefined),
+    generateFile: vi.fn().mockResolvedValue(undefined),
+    generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
+    unstable_registerPrunableFile: vi.fn(),
+  });
+
+const orderingInterceptor =
+  (label: string, order: string[]): HandlerInterceptor =>
+  async (next) => {
+    order.push(`${label}:before`);
+    const res = await next();
+    order.push(`${label}:after`);
+    return res;
+  };
 
 describe('define-router handler interceptors', () => {
   it('runs interceptors around the handler in order (outermost first)', async () => {
@@ -119,5 +142,75 @@ describe('define-router handler interceptors', () => {
     await callHandleRequest(router, '/');
 
     expect(calls).toEqual(['intercept']);
+  });
+
+  it('runs createInterceptor interceptors in registration order (outermost first)', async () => {
+    const order: string[] = [];
+    const router = createPages(async ({ createPage, createInterceptor }) => {
+      createInterceptor(orderingInterceptor('a', order));
+      createInterceptor(orderingInterceptor('b', order));
+      return [
+        createPage({
+          render: 'dynamic',
+          path: '/',
+          component: () => createElement('div'),
+        }),
+      ];
+    });
+
+    await callHandleRequest(router, '/');
+
+    expect(order).toEqual(['a:before', 'b:before', 'b:after', 'a:after']);
+  });
+
+  it('registers fsRouter _interceptors in sorted order', async () => {
+    const order: string[] = [];
+    const router = fsRouter({
+      './pages/index.tsx': async () => ({
+        default: () => createElement('div'),
+      }),
+      './pages/_interceptors/a.ts': async () => ({
+        default: orderingInterceptor('a', order),
+      }),
+      './pages/_interceptors/b.ts': async () => ({
+        default: orderingInterceptor('b', order),
+      }),
+    });
+
+    await callHandleRequest(router, '/');
+
+    expect(order).toEqual(['a:before', 'b:before', 'b:after', 'a:after']);
+  });
+
+  it('runs interceptors around static build renders of dynamic routes', async () => {
+    const als = new AsyncLocalStorage<string>();
+    let seen: string | undefined;
+    let seenUrl: string | undefined;
+    const router = unstable_defineRouter({
+      getConfigs: async () => [
+        {
+          type: 'route' as const,
+          path: [{ type: 'literal' as const, name: 'dyn' }],
+          // dynamic route: its static root/layout elements still pre-render
+          isStatic: false,
+          rootElement: {
+            isStatic: true,
+            renderer: () => {
+              seen = als.getStore();
+              seenUrl = getRequest().url;
+              return 'root';
+            },
+          },
+          routeElement: { isStatic: false, renderer: () => 'route' },
+          elements: {},
+        },
+      ],
+      unstable_interceptors: [(next) => als.run('from-build', next)],
+    });
+
+    await callHandleBuild(router);
+
+    expect(seen).toBe('from-build');
+    expect(seenUrl).toContain('/dyn');
   });
 });

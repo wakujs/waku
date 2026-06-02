@@ -758,7 +758,7 @@ A handler interceptor wraps each render, in both the request and build phases, s
 type HandlerInterceptor = <T>(next: () => Promise<T>) => Promise<T>;
 ```
 
-Register interceptors with `createInterceptor` inside `createPages`. They compose as onion wrappers around `next`, in registration order.
+Register interceptors with `createInterceptor` inside `createPages`. They compose as onion wrappers around `next`: the first registered interceptor is the outermost, so it runs first on the way in and last on the way out.
 
 ```tsx
 // ./src/waku.server.tsx
@@ -786,7 +786,7 @@ const pages = createPages(async ({ createPage, createInterceptor }) => {
 export default adapter(pages);
 ```
 
-The `HandlerInterceptor` type is available from `waku/router/server`. The file-system router has an equivalent `src/pages/_interceptors/` convention.
+The `HandlerInterceptor` type is available from `waku/router/server`. The file-system router has an equivalent `src/pages/_interceptors/` convention, where modules are registered in sorted filename order (so the first becomes the outermost wrapper).
 
 See [Request Context](/guides/request-context) for seeding your own store and [Configure CSP](/guides/csp) for the nonce recipe.
 
