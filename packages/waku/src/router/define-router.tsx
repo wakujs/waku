@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { runWithContext } from '../lib/context.js';
 import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
 import {
   getPathMapping,
@@ -648,194 +649,147 @@ export function unstable_defineRouter(fns: {
   let cachedElementsForRequestInit: Promise<void> | undefined;
   let cachedPath2moduleIds: Record<string, string[]> | undefined;
 
-  const handleRequest: HandleRequest = async (
+  const handleRequest: HandleRequest = (
     input,
     { renderRsc, renderHtml, loadBuildMetadata },
-  ): Promise<ReadableStream | Response | 'fallback' | null | undefined> => {
-    await initConfigs(loadBuildMetadata);
-    const getCachedElement = (cacheId: CacheId) => {
-      const cachedBytes = cachedElementsForRequest.get(cacheId);
-      if (!cachedBytes) {
-        return undefined;
-      }
-      return cachedBytes.then((bytes) =>
-        deserializeRsc(bytes),
-      ) as Promise<ReactNode>;
-    };
-    const setCachedElement = (cacheId: CacheId, element: ReactNode) => {
-      const cachedBytes = cachedElementsForRequest.get(cacheId);
-      if (cachedBytes) {
-        return;
-      }
-      const bytes = serializeRsc(element);
-      cachedElementsForRequest.set(cacheId, bytes);
-    };
-    cachedElementsForRequestInit ??= (async () => {
-      const cachedElementsMetadata = await loadBuildMetadata(
-        'defineRouter:cachedElements',
-      );
-      if (cachedElementsMetadata) {
-        Object.entries(JSON.parse(cachedElementsMetadata)).forEach(
-          ([cacheId, str]) => {
-            cachedElementsForRequest.set(
-              cacheId,
-              Promise.resolve(base64ToBytes(str as string)),
-            );
-          },
-        );
-      }
-    })();
-    await cachedElementsForRequestInit;
-    const getPath2moduleIds = async () => {
-      if (!cachedPath2moduleIds) {
-        cachedPath2moduleIds = JSON.parse(
-          (await loadBuildMetadata('defineRouter:path2moduleIds')) || '{}',
-        );
-      }
-      return cachedPath2moduleIds!;
-    };
-
-    const pathConfigItem = getPathConfigItem(input.pathname);
-    if (pathConfigItem?.type === 'api') {
-      const url = new URL(input.req.url);
-      url.pathname = input.pathname;
-      const req = new Request(url, input.req);
-      const params = getPathMapping(pathConfigItem.path, input.pathname) ?? {};
-      return pathConfigItem.handler(req, { params });
-    }
-
-    const url = new URL(input.req.url);
-    const headers = Object.fromEntries(input.req.headers.entries());
-    const withRerender = async <T,>(fn: () => Promise<T>) => {
-      let elementsPromise: Promise<Record<string, unknown>> = Promise.resolve(
-        {},
-      );
-      let rendered = false;
-      const rerender = (rscPath: string, rscParams?: unknown) => {
-        if (rendered) {
-          throw new Error('already rendered');
+  ): Promise<ReadableStream | Response | 'fallback' | null | undefined> =>
+    runWithContext(input.req, async () => {
+      await initConfigs(loadBuildMetadata);
+      const getCachedElement = (cacheId: CacheId) => {
+        const cachedBytes = cachedElementsForRequest.get(cacheId);
+        if (!cachedBytes) {
+          return undefined;
         }
-        elementsPromise = Promise.all([
-          elementsPromise,
-          getEntriesForRoute(
-            rscPath,
-            rscParams,
-            headers,
-            getCachedElement,
-            setCachedElement,
-          ),
-        ]).then(([oldElements, newElements]) => {
-          if (newElements === null) {
-            console.warn('getEntries returned null');
-          }
-          return { ...oldElements, ...newElements };
-        });
+        return cachedBytes.then((bytes) =>
+          deserializeRsc(bytes),
+        ) as Promise<ReactNode>;
       };
-      setRerender(rerender);
-      try {
-        const value = await fn();
-        return { value, elements: await elementsPromise };
-      } finally {
-        rendered = true;
-      }
-    };
+      const setCachedElement = (cacheId: CacheId, element: ReactNode) => {
+        const cachedBytes = cachedElementsForRequest.get(cacheId);
+        if (cachedBytes) {
+          return;
+        }
+        const bytes = serializeRsc(element);
+        cachedElementsForRequest.set(cacheId, bytes);
+      };
+      cachedElementsForRequestInit ??= (async () => {
+        const cachedElementsMetadata = await loadBuildMetadata(
+          'defineRouter:cachedElements',
+        );
+        if (cachedElementsMetadata) {
+          Object.entries(JSON.parse(cachedElementsMetadata)).forEach(
+            ([cacheId, str]) => {
+              cachedElementsForRequest.set(
+                cacheId,
+                Promise.resolve(base64ToBytes(str as string)),
+              );
+            },
+          );
+        }
+      })();
+      await cachedElementsForRequestInit;
+      const getPath2moduleIds = async () => {
+        if (!cachedPath2moduleIds) {
+          cachedPath2moduleIds = JSON.parse(
+            (await loadBuildMetadata('defineRouter:path2moduleIds')) || '{}',
+          );
+        }
+        return cachedPath2moduleIds!;
+      };
 
-    if (input.type === 'component') {
-      const sliceId = decodeSliceId(input.rscPath);
-      if (sliceId !== null) {
-        // LIMITATION: This is a single slice request.
-        // Ideally, we should be able to respond with multiple slices in one request.
-        let sliceConfig: SliceConfig | undefined;
-        let sliceParams: Record<string, string | string[]> | undefined;
-        for (const item of getCachedConfigs()) {
-          if (item.type !== 'slice') {
-            continue;
+      const pathConfigItem = getPathConfigItem(input.pathname);
+      if (pathConfigItem?.type === 'api') {
+        const url = new URL(input.req.url);
+        url.pathname = input.pathname;
+        const req = new Request(url, input.req);
+        const params =
+          getPathMapping(pathConfigItem.path, input.pathname) ?? {};
+        return pathConfigItem.handler(req, { params });
+      }
+
+      const url = new URL(input.req.url);
+      const headers = Object.fromEntries(input.req.headers.entries());
+      const withRerender = async <T,>(fn: () => Promise<T>) => {
+        let elementsPromise: Promise<Record<string, unknown>> = Promise.resolve(
+          {},
+        );
+        let rendered = false;
+        const rerender = (rscPath: string, rscParams?: unknown) => {
+          if (rendered) {
+            throw new Error('already rendered');
           }
-          if (item.id === sliceId) {
-            sliceConfig = item;
-            break;
-          }
-          if (item.pathSpec) {
-            const mapping = getPathMapping(item.pathSpec, '/' + sliceId);
-            if (mapping) {
+          elementsPromise = Promise.all([
+            elementsPromise,
+            getEntriesForRoute(
+              rscPath,
+              rscParams,
+              headers,
+              getCachedElement,
+              setCachedElement,
+            ),
+          ]).then(([oldElements, newElements]) => {
+            if (newElements === null) {
+              console.warn('getEntries returned null');
+            }
+            return { ...oldElements, ...newElements };
+          });
+        };
+        setRerender(rerender);
+        try {
+          const value = await fn();
+          return { value, elements: await elementsPromise };
+        } finally {
+          rendered = true;
+        }
+      };
+
+      if (input.type === 'component') {
+        const sliceId = decodeSliceId(input.rscPath);
+        if (sliceId !== null) {
+          // LIMITATION: This is a single slice request.
+          // Ideally, we should be able to respond with multiple slices in one request.
+          let sliceConfig: SliceConfig | undefined;
+          let sliceParams: Record<string, string | string[]> | undefined;
+          for (const item of getCachedConfigs()) {
+            if (item.type !== 'slice') {
+              continue;
+            }
+            if (item.id === sliceId) {
               sliceConfig = item;
-              sliceParams = mapping;
               break;
             }
-          }
-        }
-        if (!sliceConfig) {
-          return null;
-        }
-        const sliceElement = await getSliceElement(
-          sliceConfig,
-          getCachedElement,
-          setCachedElement,
-          sliceId,
-          sliceParams,
-        );
-        return renderRsc({
-          [SLICE_SLOT_ID_PREFIX + sliceId]: sliceElement,
-          ...(sliceConfig.isStatic
-            ? {
-                // FIXME: hard-coded for now
-                [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + sliceId]: true,
+            if (item.pathSpec) {
+              const mapping = getPathMapping(item.pathSpec, '/' + sliceId);
+              if (mapping) {
+                sliceConfig = item;
+                sliceParams = mapping;
+                break;
               }
-            : {}),
-        });
-      }
-      const entries = await getEntriesForRoute(
-        input.rscPath,
-        input.rscParams,
-        headers,
-        getCachedElement,
-        setCachedElement,
-      );
-      if (!entries) {
-        return null;
-      }
-      return renderRsc(entries);
-    }
-
-    if (input.type === 'function') {
-      try {
-        const { value, elements } = await withRerender(() =>
-          input.fn(...input.args),
-        );
-        return renderRsc(elements, { value });
-      } catch (e) {
-        const info = getErrorInfo(e);
-        if (info?.location) {
-          const routePath = pathnameToRoutePath(info.location);
-          const rscPath = encodeRoutePath(routePath);
-          const entries = await getEntriesForRoute(
-            rscPath,
-            undefined,
-            headers,
+            }
+          }
+          if (!sliceConfig) {
+            return null;
+          }
+          const sliceElement = await getSliceElement(
+            sliceConfig,
             getCachedElement,
             setCachedElement,
+            sliceId,
+            sliceParams,
           );
-          if (!entries) {
-            unstable_notFound();
-          }
-          return renderRsc(entries);
+          return renderRsc({
+            [SLICE_SLOT_ID_PREFIX + sliceId]: sliceElement,
+            ...(sliceConfig.isStatic
+              ? {
+                  // FIXME: hard-coded for now
+                  [IS_STATIC_ID + ':' + SLICE_SLOT_ID_PREFIX + sliceId]: true,
+                }
+              : {}),
+          });
         }
-        throw e;
-      }
-    }
-
-    if (input.type === 'action' || input.type === 'custom') {
-      const renderIt = async (
-        pathname: string,
-        query: string,
-        status = 200,
-      ) => {
-        const routePath = pathnameToRoutePath(pathname);
-        const rscPath = encodeRoutePath(routePath);
-        const rscParams = new URLSearchParams({ query });
-        let entries = await getEntriesForRoute(
-          rscPath,
-          rscParams,
+        const entries = await getEntriesForRoute(
+          input.rscPath,
+          input.rscParams,
           headers,
           getCachedElement,
           setCachedElement,
@@ -843,52 +797,100 @@ export function unstable_defineRouter(fns: {
         if (!entries) {
           return null;
         }
-        const path2moduleIds = await getPath2moduleIds();
-        const route = { path: routePath, query, hash: '' };
-        const nonce = getNonce();
-        const html = <INTERNAL_ServerRouter route={route} />;
-        let formState: unknown;
-        if (input.type === 'action') {
-          const { value, elements } = await withRerender(() => input.fn());
-          formState = value;
-          entries = { ...entries, ...elements };
-        }
-        return renderHtml(await renderRsc(entries), html, {
-          rscPath,
-          formState,
-          status,
-          ...(nonce ? { nonce } : {}),
-          unstable_extraScriptContent: getRouterPrefetchCode(path2moduleIds),
-        });
-      };
-      const query = url.searchParams.toString();
-      if (pathConfigItem?.type === 'route' && pathConfigItem.noSsr) {
-        return 'fallback';
+        return renderRsc(entries);
       }
-      try {
-        if (pathConfigItem) {
-          return await renderIt(input.pathname, query);
-        }
-      } catch (e) {
-        const info = getErrorInfo(e);
-        if (info?.status !== 404) {
+
+      if (input.type === 'function') {
+        try {
+          const { value, elements } = await withRerender(() =>
+            input.fn(...input.args),
+          );
+          return renderRsc(elements, { value });
+        } catch (e) {
+          const info = getErrorInfo(e);
+          if (info?.location) {
+            const routePath = pathnameToRoutePath(info.location);
+            const rscPath = encodeRoutePath(routePath);
+            const entries = await getEntriesForRoute(
+              rscPath,
+              undefined,
+              headers,
+              getCachedElement,
+              setCachedElement,
+            );
+            if (!entries) {
+              unstable_notFound();
+            }
+            return renderRsc(entries);
+          }
           throw e;
         }
       }
-      if (has404()) {
-        return renderIt('/404', '', 404);
-      } else {
-        return null;
+
+      if (input.type === 'action' || input.type === 'custom') {
+        const renderIt = async (
+          pathname: string,
+          query: string,
+          status = 200,
+        ) => {
+          const routePath = pathnameToRoutePath(pathname);
+          const rscPath = encodeRoutePath(routePath);
+          const rscParams = new URLSearchParams({ query });
+          let entries = await getEntriesForRoute(
+            rscPath,
+            rscParams,
+            headers,
+            getCachedElement,
+            setCachedElement,
+          );
+          if (!entries) {
+            return null;
+          }
+          const path2moduleIds = await getPath2moduleIds();
+          const route = { path: routePath, query, hash: '' };
+          const nonce = getNonce();
+          const html = <INTERNAL_ServerRouter route={route} />;
+          let formState: unknown;
+          if (input.type === 'action') {
+            const { value, elements } = await withRerender(() => input.fn());
+            formState = value;
+            entries = { ...entries, ...elements };
+          }
+          return renderHtml(await renderRsc(entries), html, {
+            rscPath,
+            formState,
+            status,
+            ...(nonce ? { nonce } : {}),
+            unstable_extraScriptContent: getRouterPrefetchCode(path2moduleIds),
+          });
+        };
+        const query = url.searchParams.toString();
+        if (pathConfigItem?.type === 'route' && pathConfigItem.noSsr) {
+          return 'fallback';
+        }
+        try {
+          if (pathConfigItem) {
+            return await renderIt(input.pathname, query);
+          }
+        } catch (e) {
+          const info = getErrorInfo(e);
+          if (info?.status !== 404) {
+            throw e;
+          }
+        }
+        if (has404()) {
+          return renderIt('/404', '', 404);
+        } else {
+          return null;
+        }
       }
-    }
-  };
+    });
 
   const handleBuild: HandleBuild = async ({
     renderRsc,
     renderHtml,
     rscPath2pathname,
     saveBuildMetadata,
-    withRequest,
     generateFile,
     generateDefaultHtml,
     unstable_registerPrunableFile,
@@ -968,7 +970,7 @@ export function unstable_defineRouter(fns: {
       }
       const req = new Request(new URL(routePath, 'http://localhost:3000'));
       runTask(async () => {
-        await withRequest(req, async () => {
+        await runWithContext(req, async () => {
           const res = await item.handler(req, { params: {} });
           await generateFile(routePath, res.body || '').catch((e) => {
             if (e instanceof Error && 'code' in e && e.code === 'EEXIST') {
@@ -1032,7 +1034,7 @@ export function unstable_defineRouter(fns: {
       const rscPath = encodeRoutePath(routePath);
       const req = new Request(new URL(routePath, 'http://localhost:3000'));
       runTask(async () => {
-        await withRequest(req, async () => {
+        await runWithContext(req, async () => {
           const entries = await getEntriesForRoute(
             rscPath,
             undefined,
@@ -1114,7 +1116,7 @@ export function unstable_defineRouter(fns: {
       // dummy req for slice which is not determined at build time
       const req = new Request(new URL('http://localhost:3000'));
       runTask(async () => {
-        await withRequest(req, async () => {
+        await runWithContext(req, async () => {
           const sliceElement = await getSliceElement(
             item,
             getCachedElement,
