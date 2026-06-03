@@ -17,7 +17,7 @@ The APIs in this guide currently use `unstable_` names and may change.
 Use `unstable_getRequest` in server-only code to access the current `Request`:
 
 ```tsx
-import { unstable_getRequest as getRequest } from 'waku/server';
+import { unstable_getRequest as getRequest } from 'waku/router/server';
 
 const getCurrentPath = () => {
   const req = getRequest();
@@ -35,12 +35,14 @@ export default function Page() {
 
 `unstable_getRequest()` returns the original incoming request. Inside an API route handler, the handler's own `req` argument may have a rewritten URL (the route path with any prefix stripped), so `req.url` and `unstable_getRequest().url` can differ. Use the handler argument for routing-specific values and `unstable_getRequest()` for the original request.
 
+`unstable_getRequest` and `unstable_getHeaders` are exported from `waku/router/server` and are available wherever the router runs your code: renders (request and build), API route handlers, and interceptors. In the Minimal API, use `input.req` from `handleRequest` instead, and bring your own `AsyncLocalStorage` if you need it deeper in the tree.
+
 ## Read Request Headers
 
 For headers, use `unstable_getHeaders`:
 
 ```tsx
-import { unstable_getHeaders as getHeaders } from 'waku/server';
+import { unstable_getHeaders as getHeaders } from 'waku/router/server';
 
 export default function Page() {
   const headers = getHeaders();
@@ -80,7 +82,7 @@ In managed mode (no `waku.server.tsx`), seed the store from an interceptor in `s
 
 ```ts
 import type { HandlerInterceptor } from 'waku/router/server';
-import { unstable_getHeaders as getHeaders } from 'waku/server';
+import { unstable_getHeaders as getHeaders } from 'waku/router/server';
 import { runWithRequestData } from '../../lib/request-data.js';
 
 const requestDataInterceptor: HandlerInterceptor = (next) => {
@@ -94,7 +96,7 @@ export default requestDataInterceptor;
 With a custom `waku.server.tsx` using `createPages`, register the same logic through `createInterceptor`:
 
 ```ts
-import { unstable_getHeaders as getHeaders } from 'waku/server';
+import { unstable_getHeaders as getHeaders } from 'waku/router/server';
 import { runWithRequestData } from './lib/request-data.js';
 
 createPages(async ({ createPage, createInterceptor }) => {
@@ -130,7 +132,7 @@ Read a request cookie from server code with the `cookie` package:
 
 ```tsx
 import * as cookie from 'cookie';
-import { unstable_getHeaders as getHeaders } from 'waku/server';
+import { unstable_getHeaders as getHeaders } from 'waku/router/server';
 
 export default function Page() {
   const cookies = cookie.parse(getHeaders()['cookie'] ?? '');
@@ -184,7 +186,7 @@ On Cloudflare Workers, import bindings from `cloudflare:workers`. Use Waku reque
 
 ```tsx
 import { env } from 'cloudflare:workers'; // eslint-disable-line import/no-unresolved
-import { unstable_getRequest as getRequest } from 'waku/server';
+import { unstable_getRequest as getRequest } from 'waku/router/server';
 
 export default async function Page() {
   const req = getRequest();

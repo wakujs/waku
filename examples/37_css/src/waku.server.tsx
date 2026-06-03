@@ -1,35 +1,33 @@
 import adapter from 'waku/adapters/default';
-import { unstable_runWithRequest as runWithRequest } from 'waku/internals';
 import { Slot } from 'waku/minimal/client';
 import App from './components/app';
 import Layout from './components/layout';
 
 export default adapter({
-  handleRequest: (input, { renderRsc, renderHtml }) =>
-    runWithRequest(input.req, async () => {
-      if (input.type === 'component') {
-        return renderRsc({
+  handleRequest: async (input, { renderRsc, renderHtml }) => {
+    if (input.type === 'component') {
+      return renderRsc({
+        App: (
+          <Layout>
+            <App name={input.rscPath || 'Waku'} />
+          </Layout>
+        ),
+      });
+    }
+    if (input.type === 'custom' && input.pathname === '/') {
+      return renderHtml(
+        await renderRsc({
           App: (
             <Layout>
-              <App name={input.rscPath || 'Waku'} />
+              <App name="Waku" />
             </Layout>
           ),
-        });
-      }
-      if (input.type === 'custom' && input.pathname === '/') {
-        return renderHtml(
-          await renderRsc({
-            App: (
-              <Layout>
-                <App name="Waku" />
-              </Layout>
-            ),
-          }),
-          <Slot id="App" />,
-          { rscPath: '' },
-        );
-      }
-    }),
+        }),
+        <Slot id="App" />,
+        { rscPath: '' },
+      );
+    }
+  },
   handleBuild: async ({
     rscPath2pathname,
     renderRsc,

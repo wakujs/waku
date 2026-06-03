@@ -5,4 +5,3 @@ export {
   produceMultiplexedStream as unstable_produceMultiplexedStream,
   consumeMultiplexedStream as unstable_consumeMultiplexedStream,
 } from './lib/utils/stream.js';
-export { runWithRequest as unstable_runWithRequest } from './lib/context.js';

@@ -1,64 +1,52 @@
 import adapter from 'waku/adapters/default';
-import { unstable_runWithRequest as runWithRequest } from 'waku/internals';
 import { Children, Slot } from 'waku/minimal/client';
 import App from './components/App';
 import Dynamic from './components/Dynamic';
 
 export default adapter({
-  handleRequest: (input, { renderRsc, renderHtml }) =>
-    runWithRequest(input.req, async () => {
-      if (input.type === 'component') {
-        if (input.rscPath === '') {
-          return renderRsc({
-            App: <App name={input.rscPath || 'Waku'} />,
-          });
-        }
-        if (input.rscPath === 'dynamic-slices') {
-          return renderRsc({
-            'slice:dynamic': (
-              <Dynamic>
-                <Children />
-              </Dynamic>
-            ),
-          });
-        }
-        throw new Error('Unexpected rscPath: ' + input.rscPath);
+  handleRequest: async (input, { renderRsc, renderHtml }) => {
+    if (input.type === 'component') {
+      if (input.rscPath === '') {
+        return renderRsc({
+          App: <App name={input.rscPath || 'Waku'} />,
+        });
       }
-      if (input.type === 'custom' && input.pathname === '/') {
-        return renderHtml(
-          await renderRsc({ App: <App name="Waku" /> }),
-          <Slot id="App" />,
-          {
-            rscPath: '',
-          },
-        );
+      if (input.rscPath === 'dynamic-slices') {
+        return renderRsc({
+          'slice:dynamic': (
+            <Dynamic>
+              <Children />
+            </Dynamic>
+          ),
+        });
       }
-    }),
+      throw new Error('Unexpected rscPath: ' + input.rscPath);
+    }
+    if (input.type === 'custom' && input.pathname === '/') {
+      return renderHtml(
+        await renderRsc({ App: <App name="Waku" /> }),
+        <Slot id="App" />,
+        {
+          rscPath: '',
+        },
+      );
+    }
+  },
   handleBuild: async ({
     renderRsc,
     renderHtml,
     rscPath2pathname,
     generateFile,
   }) => {
-    await runWithRequest(
-      new Request(new URL('http://localhost:3000/')),
-      async () => {
-        const body = await renderRsc({ App: <App name="Waku" /> });
-        await generateFile(rscPath2pathname(''), body);
+    const body = await renderRsc({ App: <App name="Waku" /> });
+    await generateFile(rscPath2pathname(''), body);
+    const res = await renderHtml(
+      await renderRsc({ App: <App name="Waku" /> }),
+      <Slot id="App" />,
+      {
+        rscPath: '',
       },
     );
-    await runWithRequest(
-      new Request(new URL('http://localhost:3000/')),
-      async () => {
-        const res = await renderHtml(
-          await renderRsc({ App: <App name="Waku" /> }),
-          <Slot id="App" />,
-          {
-            rscPath: '',
-          },
-        );
-        await generateFile('index.html', res.body || '');
-      },
-    );
+    await generateFile('index.html', res.body || '');
   },
 });

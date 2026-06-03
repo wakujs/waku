@@ -1,6 +1,6 @@
 'use server';
 
-import { unstable_getRequest as getRequest } from 'waku/server';
+import { getRequest } from '../als';
 
 export const greet = async (name: string) => {
   await Promise.resolve();

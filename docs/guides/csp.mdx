@@ -94,7 +94,6 @@ If your adapter allows you to customize `handleRequest`, you can pass it manuall
 
 ```tsx
 import adapter from 'waku/adapters/default';
-import { unstable_runWithRequest as runWithRequest } from 'waku/internals';
 import { Slot } from 'waku/minimal/client';
 import App from './components/App.js';
 import { encodeBase64 } from 'hono/utils/encode';
@@ -110,30 +109,29 @@ const generateNonce = () => {
 const NONCE = generateNonce();
 
 export default adapter({
-  handleRequest: (input, { renderRsc, renderHtml }) =>
-    runWithRequest(input.req, async () => {
-      if (input.type === 'component') {
-        return renderRsc({ App: <App /> });
-      }
-      if (input.type === 'custom' && input.pathname === '/') {
-        const response = await renderHtml(
-          await renderRsc({ App: <App /> }),
-          <Slot id="App" />,
-          {
-            rscPath: '',
-            nonce: NONCE,
-          },
-        );
+  handleRequest: async (input, { renderRsc, renderHtml }) => {
+    if (input.type === 'component') {
+      return renderRsc({ App: <App /> });
+    }
+    if (input.type === 'custom' && input.pathname === '/') {
+      const response = await renderHtml(
+        await renderRsc({ App: <App /> }),
+        <Slot id="App" />,
+        {
+          rscPath: '',
+          nonce: NONCE,
+        },
+      );
 
-        response.headers.set(
-          'Content-Security-Policy',
-          `script-src 'self' 'nonce-${NONCE}';`,
-        );
+      response.headers.set(
+        'Content-Security-Policy',
+        `script-src 'self' 'nonce-${NONCE}';`,
+      );
 
-        return response;
-      }
-      return null;
-    }),
+      return response;
+    }
+    return null;
+  },
   handleBuild: async () => {},
 });
 ```

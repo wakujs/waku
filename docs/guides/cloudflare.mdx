@@ -135,7 +135,7 @@ For general Waku request context usage, see [Request Context](/guides/request-co
 
 ```ts
 import { env, waitUntil } from 'cloudflare:workers'; // eslint-disable-line import/no-unresolved
-import { unstable_getRequest as getRequest } from 'waku/server';
+import { unstable_getRequest as getRequest } from 'waku/router/server';
 
 const getData = async () => {
   const req = getRequest();

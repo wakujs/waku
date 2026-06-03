@@ -2,10 +2,10 @@ import type { ReactNode } from 'react';
 import { createElement } from 'react';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { describe, expect, it, vi } from 'vitest';
-import { getRequest } from '../src/lib/context.js';
 import { createPages } from '../src/router/create-pages.js';
 import {
   type HandlerInterceptor,
+  unstable_getRequest as getRequest,
   unstable_defineRouter,
 } from '../src/router/define-router.js';
 import { fsRouter } from '../src/router/fs-router.js';

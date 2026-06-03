@@ -1,7 +1,6 @@
 import adapter from 'waku/adapters/default';
-import { unstable_runWithRequest as runWithRequest } from 'waku/internals';
 import { Slot } from 'waku/minimal/client';
-import { runWithRerender } from './als';
+import { runWithRequest, runWithRerender } from './als';
 import App from './components2/App';
 
 export default adapter({

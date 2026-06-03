@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { runWithRequest } from '../lib/context.js';
 import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
 import {
   getPathMapping,
@@ -54,12 +53,30 @@ export type HandlerInterceptor = <T>(next: () => Promise<T>) => Promise<T>;
 type Rerender = (rscPath: string, rscParams?: unknown) => void;
 
 type RouterStore = {
+  req: Request;
   rscPath?: string;
   rscParams?: unknown;
   rerender?: Rerender;
   nonce?: string;
 };
 const routerStorage = new AsyncLocalStorage<RouterStore>();
+
+/**
+ * Access the request being handled. Available during a render, an API route
+ * handler, or a handler interceptor (request and build phases). Throws if called
+ * outside that scope.
+ */
+export function unstable_getRequest(): Request {
+  const store = routerStorage.getStore();
+  if (!store) {
+    throw new Error('Request is not available.');
+  }
+  return store.req;
+}
+
+export function unstable_getHeaders(): Readonly<Record<string, string>> {
+  return Object.fromEntries(unstable_getRequest().headers.entries());
+}
 
 const setRscPath = (rscPath: string) => {
   const store = routerStorage.getStore();
@@ -410,13 +427,11 @@ export function unstable_defineRouter(fns: {
   unstable_interceptors?: HandlerInterceptor[];
 }) {
   const runHandled = <T,>(req: Request, fn: () => Promise<T>): Promise<T> =>
-    runWithRequest(req, () =>
-      routerStorage.run(
-        {},
-        (fns.unstable_interceptors ?? []).reduceRight(
-          (next, interceptor) => () => interceptor(next),
-          fn,
-        ),
+    routerStorage.run(
+      { req },
+      (fns.unstable_interceptors ?? []).reduceRight(
+        (next, interceptor) => () => interceptor(next),
+        fn,
       ),
     );
 
