@@ -213,4 +213,39 @@ describe('define-router handler interceptors', () => {
     expect(seen).toBe('from-build');
     expect(seenUrl).toContain('/dyn');
   });
+
+  it('runs interceptors around the deferred static-route html render', async () => {
+    const als = new AsyncLocalStorage<string>();
+    let seenInHtml: string | undefined;
+    const router = unstable_defineRouter({
+      getConfigs: async () => [
+        {
+          type: 'route' as const,
+          path: [{ type: 'literal' as const, name: 'static' }],
+          isStatic: true,
+          rootElement: { isStatic: true, renderer: () => 'root' },
+          routeElement: { isStatic: true, renderer: () => 'route' },
+          elements: {},
+        },
+      ],
+      unstable_interceptors: [(next) => als.run('from-build', next)],
+    });
+
+    await router.handleBuild({
+      renderRsc: vi.fn().mockResolvedValue(makeStream()),
+      parseRsc: vi.fn(),
+      // The static HTML render is deferred; it must still run in scope.
+      renderHtml: vi.fn().mockImplementation(async () => {
+        seenInHtml = als.getStore();
+        return new Response('ok');
+      }),
+      rscPath2pathname: (rscPath: string) => '/' + rscPath,
+      saveBuildMetadata: vi.fn().mockResolvedValue(undefined),
+      generateFile: vi.fn().mockResolvedValue(undefined),
+      generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
+      unstable_registerPrunableFile: vi.fn(),
+    });
+
+    expect(seenInHtml).toBe('from-build');
+  });
 });

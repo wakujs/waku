@@ -33,6 +33,8 @@ export default function Page() {
 
 `getRequest()` throws if request context is not available. Call it during request handling, not in module scope.
 
+`unstable_getRequest()` returns the original incoming request. Inside an API route handler, the handler's own `req` argument may have a rewritten URL (the route path with any prefix stripped), so `req.url` and `unstable_getRequest().url` can differ. Use the handler argument for routing-specific values and `unstable_getRequest()` for the original request.
+
 ## Read Request Headers
 
 For headers, use `unstable_getHeaders`:

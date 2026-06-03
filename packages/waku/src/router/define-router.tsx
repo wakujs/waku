@@ -1062,22 +1062,26 @@ export function unstable_defineRouter(fns: {
           await generateFile(rscPath2pathname(rscPath), stream1);
           path2moduleIds[path2regexp(item.pathPattern || item.path)] =
             Array.from(moduleIds);
-          htmlRenderTasks.add(async () => {
-            const html = (
-              <INTERNAL_ServerRouter
-                route={{ path: routePath, query: '', hash: '' }}
-              />
-            );
-            const res = await renderHtml(stream2, html, {
-              rscPath,
-              unstable_extraScriptContent:
-                getRouterPrefetchCode(path2moduleIds),
-            });
-            await generateFile(
-              routePathToHtmlFilePath(routePath),
-              res.body || '',
-            );
-          });
+          htmlRenderTasks.add(() =>
+            // Run inside the same request/router/interceptor scope as the RSC
+            // render, so the deferred HTML render is consistent with it.
+            runHandled(req, async () => {
+              const html = (
+                <INTERNAL_ServerRouter
+                  route={{ path: routePath, query: '', hash: '' }}
+                />
+              );
+              const res = await renderHtml(stream2, html, {
+                rscPath,
+                unstable_extraScriptContent:
+                  getRouterPrefetchCode(path2moduleIds),
+              });
+              await generateFile(
+                routePathToHtmlFilePath(routePath),
+                res.body || '',
+              );
+            }),
+          );
         });
       });
     }
