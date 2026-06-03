@@ -270,7 +270,9 @@ const fetchRscInternal: FetchRscInternal = (
     prefetchOnly,
   );
   if (prefetchOnly) {
-    prefetchRscInternal(fetchRscStore, rscPath, rscParams);
+    if (!hasPrefetchEntry(rscPath, rscParams)) {
+      prefetchRscInternal(fetchRscStore, rscPath, rscParams);
+    }
     return undefined as never;
   }
   return fetchRscElements(fetchRscStore, rscPath, rscParams);
@@ -385,9 +387,6 @@ export const unstable_prefetchRsc = (
   ) => Unstable_FetchRscStore = (s) => s,
 ): void => {
   const fetchRscStore = unstable_enhanceFetchRscStore(defaultFetchRscStore);
-  if (hasPrefetchEntry(rscPath, rscParams)) {
-    return; // already prefetched
-  }
   fetchRscInternal(fetchRscStore, rscPath, rscParams, true);
 };
 
