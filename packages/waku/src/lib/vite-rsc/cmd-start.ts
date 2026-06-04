@@ -6,7 +6,7 @@ import { loadConfig, loadDotEnv } from './loader.js';
 loadDotEnv();
 
 export async function runStart(flags: { host?: string; port?: string }) {
-  // before vite.runnerImport: https://github.com/vitejs/vite/issues/20299
+  // set NODE_ENV before vite.runnerImport: https://github.com/vitejs/vite/issues/20299
   process.env.NODE_ENV ??= 'production';
   const config = await loadConfig();
   const host = flags.host;

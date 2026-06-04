@@ -79,7 +79,7 @@ async function startDevServer(
 }
 
 export async function runDev(flags: { host?: string; port?: string }) {
-  // before vite.runnerImport: https://github.com/vitejs/vite/issues/20299
+  // set NODE_ENV before vite.runnerImport: https://github.com/vitejs/vite/issues/20299
   process.env.NODE_ENV ??= 'development';
   const config = await loadConfig();
   const host = flags.host;

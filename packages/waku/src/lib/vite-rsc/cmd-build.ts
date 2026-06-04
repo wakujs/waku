@@ -7,7 +7,7 @@ import type { PreviewServer } from './preview.js';
 loadDotEnv();
 
 export async function runBuild() {
-  // before vite.runnerImport: https://github.com/vitejs/vite/issues/20299
+  // set NODE_ENV before vite.runnerImport: https://github.com/vitejs/vite/issues/20299
   process.env.NODE_ENV ??= 'production';
   const config = await loadConfig();
   const builder = await vite.createBuilder({
