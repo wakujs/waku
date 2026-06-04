@@ -2306,6 +2306,93 @@ describe('Router integration', () => {
       view.unmount();
     }
   });
+
+  test('useNavigationStatus stays idle when the Link uses unstable_startTransition', async () => {
+    // A custom unstable_startTransition replaces React's useTransition, so
+    // isPending never flips and the hook reports { pending: false } for that
+    // link even mid-navigation. This locks the documented limitation.
+    const navigation = createDeferred<Record<string, unknown>>();
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(
+      () => navigation.promise,
+    );
+    vi.mocked(useRefetch).mockReturnValue(refetch);
+    window.history.replaceState({}, '', '/one');
+
+    const PendingProbe = () => {
+      const { pending } = useNavigationStatus();
+      return pending ? (
+        <div data-testid="pending">Pending</div>
+      ) : (
+        <div data-testid="not-pending">Idle</div>
+      );
+    };
+
+    const view = await renderRouter(
+      { initialRoute: { path: '/one', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/one')]: (
+          <>
+            <h1>Page 1</h1>
+            <Link
+              to="/two"
+              unstable_startTransition={(fn) => {
+                void fn();
+              }}
+            >
+              Go to two
+              <PendingProbe />
+            </Link>
+          </>
+        ),
+        [unstable_getRouteSlotId('/two')]: <h1>Page 2</h1>,
+        [ROUTE_ID]: ['/one', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+
+    try {
+      const has = (testid: string) =>
+        view.container.querySelector(`[data-testid="${testid}"]`) !== null;
+
+      expect(has('not-pending')).toBe(true);
+
+      const link = Array.from(view.container.querySelectorAll('a')).find(
+        (anchor) => anchor.textContent?.includes('Go to two'),
+      ) as HTMLAnchorElement | undefined;
+      if (!link) {
+        throw new Error('expected link');
+      }
+      await act(async () => {
+        link.dispatchEvent(
+          new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            button: 0,
+          }),
+        );
+      });
+      await flush();
+
+      // Navigation is in flight (refetch not resolved), but the custom
+      // transition bypassed useTransition, so pending never flipped.
+      expect(refetch).toHaveBeenCalledTimes(1);
+      expect(has('pending')).toBe(false);
+      expect(has('not-pending')).toBe(true);
+      expect(view.container.textContent).toContain('Page 1');
+
+      await act(async () => {
+        navigation.resolve({
+          [ROUTE_ID]: ['/two', ''],
+          [IS_STATIC_ID]: false,
+        });
+        await flush();
+      });
+
+      expect(view.container.textContent).toContain('Page 2');
+    } finally {
+      view.unmount();
+    }
+  });
 });
 
 describe('INTERNAL_ServerRouter', () => {

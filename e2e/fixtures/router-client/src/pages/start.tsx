@@ -1,4 +1,5 @@
 import { Link } from 'waku';
+import { ResolveClientSuspenseButton } from '../components/client-suspense.js';
 import { NavIndicator } from '../components/nav-indicator.js';
 import { PushMissingButton, RouteState } from '../components/route-state.js';
 
@@ -42,6 +43,9 @@ export default function StartPage() {
           Go to a route with a client-only delay
           <NavIndicator name="client" />
         </Link>
+      </p>
+      <p>
+        <ResolveClientSuspenseButton />
       </p>
       <p>
         <Link to="/trigger-not-found" data-testid="go-trigger-not-found">

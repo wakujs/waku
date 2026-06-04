@@ -511,34 +511,26 @@ test.describe('router-client', () => {
   test('pending stays until a client-only async resolves, not just data loading', async ({
     page,
   }) => {
-    // No RSC delay here: the target route's RSC loads normally, but it renders a
-    // client component that suspends with no data fetch. Pending must persist
-    // until that client-only async resolves, proving it tracks the transition.
+    // The target route's RSC loads normally, but it renders a client component
+    // that suspends with no data fetch. Pending must persist until that
+    // client-only async resolves, proving it tracks the transition.
     await page.goto(`http://localhost:${port}/start`);
     await waitForHydration(page);
 
+    const rscResponse = page.waitForResponse('**/RSC/R/pending-client.txt**');
     await page.getByTestId('pending-client-link').click();
 
-    // Wait until the route's client component has loaded and is suspended; by
-    // now its RSC has already arrived. The pending indicator must STILL be
-    // visible here, which is the load-bearing assertion: it proves pending is
-    // held by the client-only suspense, not merely flashed during data loading.
-    // (A data-loading-only implementation would have cleared pending by now.)
-    await page.waitForFunction(
-      () =>
-        typeof (
-          globalThis as unknown as { __resolveClientSuspense?: () => void }
-        ).__resolveClientSuspense === 'function',
-    );
+    // Once the RSC has arrived the router's data loading is done, yet the
+    // pending indicator must STILL be visible because the client component is
+    // suspended. This is the load-bearing assertion: a data-loading-only
+    // implementation would have cleared pending by now.
+    await rscResponse;
     await expect(page.getByTestId('pending-client-indicator')).toBeVisible();
     await expect(page.getByTestId('client-suspense-content')).toHaveCount(0);
 
-    // Resolve the client-only async; the transition settles and pending clears.
-    await page.evaluate(() => {
-      (
-        globalThis as unknown as { __resolveClientSuspense?: () => void }
-      ).__resolveClientSuspense?.();
-    });
+    // Release the client-only async from the still-mounted start page; the
+    // transition settles and pending clears.
+    await page.getByTestId('resolve-client-suspense').click();
     await expect(page.getByTestId('client-suspense-content')).toBeVisible();
     await expect(page.getByTestId('pending-client-indicator')).toHaveCount(0);
   });

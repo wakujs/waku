@@ -8,6 +8,7 @@ import {
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useTransition,
@@ -329,10 +330,10 @@ type NavigationStatus = { pending?: boolean };
 const NavigationStatusContext = createContext<NavigationStatus>({});
 
 /**
- * Returns the navigation status of the enclosing `Link`.
- * `pending` is `true` while the navigation transition is in flight, including
- * until any async components in the destination route resolve. Returns an empty
- * object when called outside a `Link`.
+ * Returns the navigation status of the enclosing `Link`, like React's
+ * `useFormStatus`. `pending` is `true` while the navigation transition is in
+ * flight, until the destination route's async components resolve. Returns an
+ * empty object when called outside a `Link`.
  */
 export const useNavigationStatus_UNSTABLE = (): NavigationStatus =>
   useContext(NavigationStatusContext);
@@ -349,6 +350,12 @@ export type LinkProps = {
   scroll?: boolean;
   unstable_prefetchOnEnter?: boolean;
   unstable_prefetchOnView?: boolean;
+  /**
+   * Overrides how the navigation transition is started, e.g. to integrate the
+   * browser View Transitions API. When provided, React's `useTransition` is
+   * bypassed, so `useNavigationStatus_UNSTABLE()` stays `{ pending: false }` for
+   * this link.
+   */
   unstable_startTransition?: ((fn: TransitionFunction) => void) | undefined;
   ref?: Ref<HTMLAnchorElement> | undefined;
 } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'>;
@@ -443,8 +450,9 @@ export function Link({
         props.onMouseEnter?.(event);
       }
     : props.onMouseEnter;
+  const navigationStatus = useMemo(() => ({ pending: isPending }), [isPending]);
   return (
-    <NavigationStatusContext value={{ pending: isPending }}>
+    <NavigationStatusContext value={navigationStatus}>
       <a
         {...props}
         href={resolvedTo}
