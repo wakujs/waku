@@ -324,6 +324,19 @@ function useSharedRef<T>(
   return [managedRef, handleRef];
 }
 
+type NavigationStatus = { pending?: boolean };
+
+const NavigationStatusContext = createContext<NavigationStatus>({});
+
+/**
+ * Returns the navigation status of the enclosing `Link`.
+ * `pending` is `true` while the navigation transition is in flight, including
+ * until any async components in the destination route resolve. Returns an empty
+ * object when called outside a `Link`.
+ */
+export const useNavigationStatus_UNSTABLE = (): NavigationStatus =>
+  useContext(NavigationStatusContext);
+
 export type LinkProps = {
   to: InferredPaths;
   children: ReactNode;
@@ -334,8 +347,6 @@ export type LinkProps = {
    * - `undefined`: scroll on path/hash change (not on query-only change)
    */
   scroll?: boolean;
-  unstable_pending?: ReactNode;
-  unstable_notPending?: ReactNode;
   unstable_prefetchOnEnter?: boolean;
   unstable_prefetchOnView?: boolean;
   unstable_startTransition?: ((fn: TransitionFunction) => void) | undefined;
@@ -346,8 +357,6 @@ export function Link({
   to,
   children,
   scroll,
-  unstable_pending,
-  unstable_notPending,
   unstable_prefetchOnEnter,
   unstable_prefetchOnView,
   unstable_startTransition,
@@ -367,10 +376,7 @@ export function Link({
         throw new Error('Missing Router');
       };
   const [isPending, startTransition] = useTransition();
-  const startTransitionFn =
-    unstable_startTransition ||
-    ((unstable_pending || unstable_notPending) && startTransition) ||
-    ((fn: TransitionFunction) => fn());
+  const startTransitionFn = unstable_startTransition || startTransition;
   const [ref, setRef] = useSharedRef<HTMLAnchorElement>(refProp);
 
   useEffect(() => {
@@ -437,34 +443,19 @@ export function Link({
         props.onMouseEnter?.(event);
       }
     : props.onMouseEnter;
-  const ele = (
-    <a
-      {...props}
-      href={resolvedTo}
-      onClick={onClick}
-      onMouseEnter={onMouseEnter}
-      ref={setRef}
-    >
-      {children}
-    </a>
+  return (
+    <NavigationStatusContext value={{ pending: isPending }}>
+      <a
+        {...props}
+        href={resolvedTo}
+        onClick={onClick}
+        onMouseEnter={onMouseEnter}
+        ref={setRef}
+      >
+        {children}
+      </a>
+    </NavigationStatusContext>
   );
-  if (isPending && unstable_pending !== undefined) {
-    return (
-      <>
-        {ele}
-        {unstable_pending}
-      </>
-    );
-  }
-  if (!isPending && unstable_notPending !== undefined) {
-    return (
-      <>
-        {ele}
-        {unstable_notPending}
-      </>
-    );
-  }
-  return ele;
 }
 
 const notAvailableInServer = (name: string) => () => {
