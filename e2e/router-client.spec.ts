@@ -153,6 +153,30 @@ test.describe('router-client', () => {
     expect(lastScrollToCall?.top).toBeGreaterThan(100);
   });
 
+  test('non-ASCII hash link navigation scrolls to anchor target', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/start`);
+    await waitForHydration(page);
+    await installScrollToRecorder(page);
+
+    // Uses a `<Link>` (not router.push) to a non-ASCII fragment. `URL.hash`
+    // percent-encodes it, so the scroll lookup must decode before matching the
+    // element id (issue #2123).
+    await page.getByTestId('go-hash-japanese').click();
+
+    await expect(page.getByTestId('route-path')).toHaveText('/start');
+    await expect(page.getByTestId('route-query')).toHaveText('');
+    await expect(page).toHaveURL(
+      /\/start#%E6%97%A5%E6%9C%AC%E8%AA%9E%E8%A6%8B%E5%87%BA%E3%81%97$/,
+    );
+    const scrollToCalls = await getScrollToCalls(page);
+    const lastScrollToCall = scrollToCalls.at(-1);
+    expect(lastScrollToCall).toBeDefined();
+    expect(lastScrollToCall?.left).toBe(0);
+    expect(lastScrollToCall?.top).toBeGreaterThan(100);
+  });
+
   test('hash-only navigation preserves scroll when hash target is missing', async ({
     page,
   }) => {

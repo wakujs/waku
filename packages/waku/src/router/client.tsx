@@ -710,13 +710,24 @@ export function Slice({
   return <Slot id={slotId}>{children}</Slot>;
 }
 
+const getHashElement = (hash: string): HTMLElement | null => {
+  const raw = hash.slice(1);
+  let decoded = raw;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {
+    decoded = raw;
+  }
+  return document.getElementById(decoded) ?? document.getElementById(raw);
+};
+
 const scrollToRoute = (
   route: RouteProps,
   behavior: ScrollBehavior,
   scrollTopForMissingHash: boolean,
 ) => {
   if (route.hash) {
-    const element = document.getElementById(route.hash.slice(1));
+    const element = getHashElement(route.hash);
     if (!element) {
       if (!scrollTopForMissingHash) {
         return;
