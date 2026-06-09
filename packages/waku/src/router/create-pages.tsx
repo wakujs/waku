@@ -159,10 +159,14 @@ export type PathWithWildcard<
 > = PathWithSlug<Path, SlugKey | `...${WildSlugKey}`>;
 
 /**
- * Returns a `dynamic` slot's element tag (etag) so the client can reuse its
- * cached element while the tag is unchanged. Opaque to Waku, compared with
- * `===`. Return `undefined` for no tag: the element is always sent, and any tag
- * the client still holds for the slot is cleared.
+ * Returns a `dynamic` slot's element tag (etag). While the tag is unchanged the
+ * client reuses its cached element instead of receiving it again. Only consulted
+ * for dynamic slots.
+ *
+ * - Opaque to Waku; compared with `===`.
+ * - Keep it short (a hash or version): the client echoes its tags in a header.
+ * - Return `undefined` for no tag: the element is always sent, overriding the
+ *   client's cache for the slot.
  */
 type GetEtag<Props> = (props: Props) => Promise<string | undefined>;
 

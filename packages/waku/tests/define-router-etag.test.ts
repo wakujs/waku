@@ -47,9 +47,9 @@ const buildRouter = (elements: Record<string, ElementSpec>) =>
 
 // Drive a single RSC ("component") request and capture the entries record that
 // the router hands to renderRsc, so we can assert which slots were sent.
-const getEntries = async (
+const drive = async (
   router: ReturnType<typeof unstable_defineRouter>,
-  clientEtags?: Record<string, string>,
+  headers: Record<string, string>,
 ): Promise<Record<string, unknown>> => {
   let captured: Record<string, unknown> = {};
   await router.handleRequest(
@@ -58,11 +58,7 @@ const getEntries = async (
       pathname: '/foo',
       rscPath: encodeRoutePath('/foo'),
       rscParams: undefined,
-      req: new Request('http://localhost/foo', {
-        headers: clientEtags
-          ? { [SKIP_HEADER]: JSON.stringify(clientEtags) }
-          : {},
-      }),
+      req: new Request('http://localhost/foo', { headers }),
     },
     {
       renderRsc: vi.fn(async (entries: unknown) => {
@@ -76,6 +72,22 @@ const getEntries = async (
   );
   return captured;
 };
+
+const getEntries = (
+  router: ReturnType<typeof unstable_defineRouter>,
+  clientEtags?: Record<string, string>,
+): Promise<Record<string, unknown>> =>
+  drive(
+    router,
+    clientEtags ? { [SKIP_HEADER]: JSON.stringify(clientEtags) } : {},
+  );
+
+// Drive with a raw, un-serialized skip header (for legacy/malformed inputs).
+const getEntriesWithSkipHeader = (
+  router: ReturnType<typeof unstable_defineRouter>,
+  skipHeader: string,
+): Promise<Record<string, unknown>> =>
+  drive(router, { [SKIP_HEADER]: skipHeader });
 
 const etagKey = (slotId: string) => `${ETAG_ID_PREFIX}${slotId}`;
 
@@ -269,5 +281,73 @@ describe('define-router etags (element tag skip)', () => {
     const resent = await getEntries(router, { root: 'r1' });
     expect('root' in resent).toBe(true);
     expect(resent[etagKey('root')]).toBe('r2');
+  });
+
+  it('resolves each slot independently in one response', async () => {
+    let pageTag: string | undefined = 'p1';
+    let sliceTag: string | undefined = 's1';
+    const router = unstable_defineRouter({
+      getConfigs: async () => [
+        {
+          type: 'route' as const,
+          path: [{ type: 'literal' as const, name: 'foo' }],
+          isStatic: false,
+          rootElement: {
+            isStatic: false,
+            renderer: () => 'root',
+            getEtagFromOption: async () => 'r1',
+          },
+          routeElement: { isStatic: false, renderer: () => 'route' },
+          elements: {
+            page: {
+              isStatic: false,
+              renderer: () => createElement('div', null, 'page'),
+              getEtagFromOption: async () => pageTag,
+            },
+          },
+          slices: ['mySlice'],
+        },
+        {
+          type: 'slice' as const,
+          id: 'mySlice',
+          isStatic: false,
+          renderer: async () => createElement('div', null, 'slice'),
+          getEtagFromParams: async () => sliceTag,
+        },
+      ],
+    });
+
+    // root unchanged, page changed, slice loses its tag.
+    pageTag = 'p2';
+    sliceTag = undefined;
+    const entries = await getEntries(router, {
+      root: 'r1',
+      page: 'p1',
+      'slice:mySlice': 's1',
+    });
+
+    expect('root' in entries).toBe(false); // unchanged -> omitted
+    expect(entries.page).toBeDefined(); // changed -> re-sent
+    expect(entries[etagKey('page')]).toBe('p2');
+    expect(entries['slice:mySlice']).toBeDefined(); // lost tag -> re-sent
+    expect(entries[etagKey('slice:mySlice')]).toBe(''); // cleared
+  });
+
+  it('ignores a legacy, malformed, or non-string skip header', async () => {
+    const build = () =>
+      buildRouter({
+        page: { isStatic: true, renderer: () => createElement('div') },
+      });
+
+    // A valid map would skip the static slot; these never do.
+    for (const header of [
+      JSON.stringify(['page']), // legacy array of ids
+      'not json',
+      JSON.stringify({ page: 123 }), // non-string value
+    ]) {
+      const entries = await getEntriesWithSkipHeader(build(), header);
+      expect('page' in entries).toBe(true);
+      expect(entries[etagKey('page')]).toBe('static');
+    }
   });
 });
