@@ -423,6 +423,8 @@ export function Link({
           unstable_startTransition: startTransitionFn,
         });
       });
+    } else if (url.hash && scroll !== false) {
+      scrollToRoute(parseRoute(url), 'auto', false);
     }
   };
   const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
