@@ -836,6 +836,9 @@ export function unstable_defineRouter(fns: {
         if (sliceId !== null) {
           // LIMITATION: This is a single slice request.
           // Ideally, we should be able to respond with multiple slices in one request.
+          // The skip header is not consulted here; the etag skip only covers
+          // route-bundled slices. The etag is still sent to keep the client's
+          // tag fresh.
           let sliceConfig: SliceConfig | undefined;
           let sliceParams: Record<string, string | string[]> | undefined;
           for (const item of getCachedConfigs()) {
