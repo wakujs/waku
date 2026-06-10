@@ -164,7 +164,9 @@ export type PathWithWildcard<
  * for dynamic slots.
  *
  * - Opaque to Waku; compared with `===`.
- * - Keep it short (a hash or version): the client echoes its tags in a header.
+ * - Must change whenever the rendered content would.
+ * - Keep it a short ASCII string (a hash or version): the client echoes its
+ *   tags in a header.
  * - Return `undefined` for no tag: the element is always sent, overriding the
  *   client's cache for the slot.
  */

@@ -5,6 +5,7 @@ import {
   ETAG_ID_PREFIX,
   SKIP_HEADER,
   encodeRoutePath,
+  encodeSliceId,
 } from '../src/router/common.js';
 import { unstable_defineRouter } from '../src/router/define-router.js';
 
@@ -50,13 +51,14 @@ const buildRouter = (elements: Record<string, ElementSpec>) =>
 const drive = async (
   router: ReturnType<typeof unstable_defineRouter>,
   headers: Record<string, string>,
+  rscPath = encodeRoutePath('/foo'),
 ): Promise<Record<string, unknown>> => {
   let captured: Record<string, unknown> = {};
   await router.handleRequest(
     {
       type: 'component',
       pathname: '/foo',
-      rscPath: encodeRoutePath('/foo'),
+      rscPath,
       rscParams: undefined,
       req: new Request('http://localhost/foo', { headers }),
     },
@@ -248,6 +250,30 @@ describe('define-router etags (element tag skip)', () => {
     const resent = await getEntries(router, { [slot]: 'sv1' });
     expect(slot in resent).toBe(true);
     expect(resent[etagKey(slot)]).toBe('sv2');
+  });
+
+  it('resolves the etag before rendering on a slice request, so a concurrent invalidation cannot tag stale content', async () => {
+    const calls: string[] = [];
+    const router = unstable_defineRouter({
+      getConfigs: async () => [
+        {
+          type: 'slice' as const,
+          id: 'mySlice',
+          isStatic: false,
+          renderer: async () => {
+            calls.push('render');
+            return createElement('div', null, 'slice');
+          },
+          getEtagFromParams: async () => {
+            calls.push('etag');
+            return 'sv1';
+          },
+        },
+      ],
+    });
+
+    await drive(router, {}, encodeSliceId('mySlice'));
+    expect(calls).toEqual(['etag', 'render']);
   });
 
   it('applies the etag skip to the root element', async () => {

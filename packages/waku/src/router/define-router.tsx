@@ -710,7 +710,7 @@ export function unstable_defineRouter(fns: {
         return addEntry(
           SLICE_SLOT_ID_PREFIX + sliceId,
           sliceConfig.isStatic,
-          getSlotCacheId(SLICE_SLOT_ID_PREFIX + sliceConfig.id),
+          getSlotCacheId(SLICE_SLOT_ID_PREFIX + sliceId),
           () => sliceConfig.renderer(sliceConfig.params),
           () => sliceConfig.getEtagFromParams?.(sliceConfig.params),
         );
@@ -858,6 +858,9 @@ export function unstable_defineRouter(fns: {
           if (!sliceConfig) {
             return null;
           }
+          const sliceEtag = sliceConfig.isStatic
+            ? STATIC_ETAG
+            : await sliceConfig.getEtagFromParams?.(sliceParams);
           const sliceElement = await getSliceElement(
             sliceConfig,
             getCachedElement,
@@ -865,9 +868,6 @@ export function unstable_defineRouter(fns: {
             sliceId,
             sliceParams,
           );
-          const sliceEtag = sliceConfig.isStatic
-            ? STATIC_ETAG
-            : await sliceConfig.getEtagFromParams?.(sliceParams);
           return renderRsc({
             [SLICE_SLOT_ID_PREFIX + sliceId]: sliceElement,
             ...(sliceConfig.isStatic

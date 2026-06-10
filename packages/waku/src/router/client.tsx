@@ -817,11 +817,11 @@ const InnerRouter = ({
         }
         const etags: Record<string, string> = {};
         for (const [key, value] of Object.entries(elements)) {
-          // An empty tag is the server's signal to drop a now-stale tag.
+          // Drop empty (clear signal) and non-Latin1 (breaks fetch) tags.
           if (
             key.startsWith(ETAG_ID_PREFIX) &&
             typeof value === 'string' &&
-            value
+            /^[\u0020-\u00ff]+$/.test(value)
           ) {
             etags[key.slice(ETAG_ID_PREFIX.length)] = value;
           }
