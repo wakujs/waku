@@ -38,6 +38,7 @@ import {
   useRouter,
 } from '../src/router/client.js';
 import {
+  ETAG_ID_PREFIX,
   HAS404_ID,
   IS_STATIC_ID,
   ROUTE_ID,
@@ -1531,6 +1532,148 @@ describe('Router integration', () => {
     }
   });
 
+  test('hash-only push scrolls to a percent-encoded (non-ASCII) hash target', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
+      return;
+    });
+    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
+      window,
+      'scrollY',
+    );
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      value: 100,
+    });
+    // `%E6%97%A5...` is the percent-encoded form of the id "日本語見出し", which
+    // is how `URL.hash` (and therefore `route.hash`) represents a non-ASCII
+    // fragment. Use the encoded form explicitly so the test reproduces the bug
+    // regardless of how the test environment's URL parser encodes the fragment.
+    const encodedHash =
+      '%E6%97%A5%E6%9C%AC%E8%AA%9E%E8%A6%8B%E5%87%BA%E3%81%97';
+    const decodedId = '日本語見出し';
+    const hashTarget = document.createElement('div');
+    hashTarget.id = decodedId;
+    const getBoundingClientRectSpy = vi
+      .spyOn(hashTarget, 'getBoundingClientRect')
+      .mockReturnValue({ top: 30 } as DOMRect);
+    document.body.append(hashTarget);
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      if (!capture.router) {
+        throw new Error('router not initialized');
+      }
+
+      await act(async () => {
+        await capture.router!.push(`/start#${encodedHash}`);
+      });
+
+      expect(scrollToSpy).toHaveBeenCalledWith({
+        left: 0,
+        top: 130,
+        behavior: 'auto',
+      });
+      expect(decodeURIComponent(window.location.hash)).toBe(`#${decodedId}`);
+    } finally {
+      view.unmount();
+      getBoundingClientRectSpy.mockRestore();
+      hashTarget.remove();
+      if (scrollYDescriptor) {
+        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
+      } else {
+        Object.defineProperty(window, 'scrollY', {
+          configurable: true,
+          value: 0,
+        });
+      }
+    }
+  });
+
+  test('hash-only push prefers the raw hash id over the decoded id', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
+      return;
+    });
+    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
+      window,
+      'scrollY',
+    );
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      value: 100,
+    });
+    // Per the HTML fragment navigation algorithm, the raw fragment must be
+    // tried first and the percent-decoded form only as a fallback. With both
+    // ids present, `#a%20b` must scroll to `id="a%20b"`, not `id="a b"`.
+    const rawTarget = document.createElement('div');
+    rawTarget.id = 'a%20b';
+    const decodedTarget = document.createElement('div');
+    decodedTarget.id = 'a b';
+    const rawRectSpy = vi
+      .spyOn(rawTarget, 'getBoundingClientRect')
+      .mockReturnValue({ top: 30 } as DOMRect);
+    const decodedRectSpy = vi
+      .spyOn(decodedTarget, 'getBoundingClientRect')
+      .mockReturnValue({ top: 500 } as DOMRect);
+    document.body.append(rawTarget, decodedTarget);
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      if (!capture.router) {
+        throw new Error('router not initialized');
+      }
+
+      await act(async () => {
+        await capture.router!.push('/start#a%20b');
+      });
+
+      expect(scrollToSpy).toHaveBeenCalledWith({
+        left: 0,
+        top: 130,
+        behavior: 'auto',
+      });
+    } finally {
+      view.unmount();
+      rawRectSpy.mockRestore();
+      decodedRectSpy.mockRestore();
+      rawTarget.remove();
+      decodedTarget.remove();
+      if (scrollYDescriptor) {
+        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
+      } else {
+        Object.defineProperty(window, 'scrollY', {
+          configurable: true,
+          value: 0,
+        });
+      }
+    }
+  });
+
   test('hash-only push preserves scroll when hash target is missing', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
@@ -1966,8 +2109,12 @@ describe('Router integration', () => {
       [unstable_getRouteSlotId('/next')]: <Probe />,
       [ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
-      foo: true,
-      bar: true,
+      [`${ETAG_ID_PREFIX}foo`]: 'etag-foo',
+      [`${ETAG_ID_PREFIX}bar`]: 'etag-bar',
+      // An empty tag is the server's clear signal; it must not be sent back.
+      [`${ETAG_ID_PREFIX}cleared`]: '',
+      // A non-Latin1 tag would make fetch reject the header; it must be dropped.
+      [`${ETAG_ID_PREFIX}nonLatin1`]: 'tag-☃',
     };
 
     const view = await renderRouter(
@@ -1989,9 +2136,14 @@ describe('Router integration', () => {
       const headers = (requestInit?.headers ?? {}) as Record<string, string>;
       expect(headers).toBeDefined();
       expect(headers[SKIP_HEADER]).toBeTypeOf('string');
-      const skipped = JSON.parse(headers[SKIP_HEADER]! as string) as string[];
-      expect(skipped).toContain('foo');
-      expect(skipped).toContain('bar');
+      const skipped = JSON.parse(headers[SKIP_HEADER]! as string) as Record<
+        string,
+        string
+      >;
+      expect(skipped.foo).toBe('etag-foo');
+      expect(skipped.bar).toBe('etag-bar');
+      expect('cleared' in skipped).toBe(false);
+      expect('nonLatin1' in skipped).toBe(false);
       expect(capture.router.path).toBe('/next');
       expect(capture.router.query).toBe('');
     } finally {

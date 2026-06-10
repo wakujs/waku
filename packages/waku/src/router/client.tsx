@@ -38,6 +38,7 @@ import {
 } from '../minimal/client.js';
 import type { RouteConfig } from './base-types.js';
 import {
+  ETAG_ID_PREFIX,
   HAS404_ID,
   IS_STATIC_ID,
   ROUTE_ID,
@@ -712,13 +713,26 @@ export function Slice({
   return <Slot id={slotId}>{children}</Slot>;
 }
 
+const getHashElement = (hash: string): HTMLElement | null => {
+  const raw = hash.slice(1);
+  const rawElement = document.getElementById(raw);
+  if (rawElement) {
+    return rawElement;
+  }
+  try {
+    return document.getElementById(decodeURIComponent(raw));
+  } catch {
+    return null;
+  }
+};
+
 const scrollToRoute = (
   route: RouteProps,
   behavior: ScrollBehavior,
   scrollTopForMissingHash: boolean,
 ) => {
   if (route.hash) {
-    const element = document.getElementById(route.hash.slice(1));
+    const element = getHashElement(route.hash);
     if (!element) {
       if (!scrollTopForMissingHash) {
         return;
@@ -776,7 +790,7 @@ const InnerRouter = ({
   if (import.meta.hot) {
     const refetchRoute = () => {
       staticPathSetRef.current.clear();
-      cachedIdSetRef.current.clear();
+      cachedEtagsRef.current = {};
       const rscPath = encodeRoutePath(route.path);
       const rscParams = createRscParams(route.query);
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -796,7 +810,7 @@ const InnerRouter = ({
 
   const [has404, setHas404] = useState(false);
   const staticPathSetRef = useRef(new Set<string>());
-  const cachedIdSetRef = useRef(new Set<string>());
+  const cachedEtagsRef = useRef<Record<string, string>>({});
   // FIXME this "fetchingSlices" hack feels suboptimal.
   const fetchingSlicesRef = useRef(new Set<SliceId>());
   useEffect(() => {
@@ -806,7 +820,6 @@ const InnerRouter = ({
           [ROUTE_ID]: routeData,
           [IS_STATIC_ID]: isStatic,
           [HAS404_ID]: has404FromElements,
-          ...rest
         } = elements;
         if (has404FromElements) {
           setHas404(true);
@@ -817,7 +830,18 @@ const InnerRouter = ({
             staticPathSetRef.current.add(path);
           }
         }
-        cachedIdSetRef.current = new Set(Object.keys(rest));
+        const etags: Record<string, string> = {};
+        for (const [key, value] of Object.entries(elements)) {
+          // Drop empty (clear signal) and non-Latin1 (breaks fetch) tags.
+          if (
+            key.startsWith(ETAG_ID_PREFIX) &&
+            typeof value === 'string' &&
+            /^[\u0020-\u00ff]+$/.test(value)
+          ) {
+            etags[key.slice(ETAG_ID_PREFIX.length)] = value;
+          }
+        }
+        cachedEtagsRef.current = etags;
       },
       () => {},
     );
@@ -902,7 +926,7 @@ const InnerRouter = ({
             if (init.signal === undefined) {
               init.signal = abortController.signal;
             }
-            const skipStr = JSON.stringify(Array.from(cachedIdSetRef.current));
+            const skipStr = JSON.stringify(cachedEtagsRef.current);
             const headers = (init.headers ||= {});
             if (Array.isArray(headers)) {
               headers.push([SKIP_HEADER, skipStr]);
@@ -1018,7 +1042,7 @@ const InnerRouter = ({
     const skipHeaderEnhancer =
       (fetchFn: typeof fetch) =>
       (input: RequestInfo | URL, init: RequestInit = {}) => {
-        const skipStr = JSON.stringify(Array.from(cachedIdSetRef.current));
+        const skipStr = JSON.stringify(cachedEtagsRef.current);
         const headers = (init.headers ||= {});
         if (Array.isArray(headers)) {
           headers.push([SKIP_HEADER, skipStr]);
