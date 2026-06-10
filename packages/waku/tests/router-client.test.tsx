@@ -581,6 +581,7 @@ describe('useRouter + Link with context', () => {
       });
     } finally {
       view.unmount();
+      scrollToSpy.mockRestore();
       getBoundingClientRectSpy.mockRestore();
       hashTarget.remove();
       window.history.replaceState({}, '', '/');
@@ -639,6 +640,7 @@ describe('useRouter + Link with context', () => {
       expect(scrollToSpy).not.toHaveBeenCalled();
     } finally {
       view.unmount();
+      scrollToSpy.mockRestore();
       hashTarget.remove();
       window.history.replaceState({}, '', '/');
     }
