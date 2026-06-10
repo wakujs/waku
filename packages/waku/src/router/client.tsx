@@ -346,7 +346,7 @@ export type LinkProps = {
    * indicates if the link should scroll or not on navigation
    * - `true`: always scroll
    * - `false`: never scroll
-   * - `undefined`: scroll on path/hash change (not on query-only change)
+   * - `undefined`: scroll on path/hash change or repeated same-hash click (not query-only)
    */
   scroll?: boolean;
   unstable_prefetchOnEnter?: boolean;

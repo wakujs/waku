@@ -588,10 +588,7 @@ describe('useRouter + Link with context', () => {
       if (scrollYDescriptor) {
         Object.defineProperty(window, 'scrollY', scrollYDescriptor);
       } else {
-        Object.defineProperty(window, 'scrollY', {
-          configurable: true,
-          value: 0,
-        });
+        Reflect.deleteProperty(window, 'scrollY');
       }
     }
   });
