@@ -1476,6 +1476,78 @@ describe('Router integration', () => {
     }
   });
 
+  test('hash-only push prefers the raw hash id over the decoded id', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
+      return;
+    });
+    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
+      window,
+      'scrollY',
+    );
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      value: 100,
+    });
+    // Per the HTML fragment navigation algorithm, the raw fragment must be
+    // tried first and the percent-decoded form only as a fallback. With both
+    // ids present, `#a%20b` must scroll to `id="a%20b"`, not `id="a b"`.
+    const rawTarget = document.createElement('div');
+    rawTarget.id = 'a%20b';
+    const decodedTarget = document.createElement('div');
+    decodedTarget.id = 'a b';
+    const rawRectSpy = vi
+      .spyOn(rawTarget, 'getBoundingClientRect')
+      .mockReturnValue({ top: 30 } as DOMRect);
+    const decodedRectSpy = vi
+      .spyOn(decodedTarget, 'getBoundingClientRect')
+      .mockReturnValue({ top: 500 } as DOMRect);
+    document.body.append(rawTarget, decodedTarget);
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      if (!capture.router) {
+        throw new Error('router not initialized');
+      }
+
+      await act(async () => {
+        await capture.router!.push('/start#a%20b');
+      });
+
+      expect(scrollToSpy).toHaveBeenCalledWith({
+        left: 0,
+        top: 130,
+        behavior: 'auto',
+      });
+    } finally {
+      view.unmount();
+      rawRectSpy.mockRestore();
+      decodedRectSpy.mockRestore();
+      rawTarget.remove();
+      decodedTarget.remove();
+      if (scrollYDescriptor) {
+        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
+      } else {
+        Object.defineProperty(window, 'scrollY', {
+          configurable: true,
+          value: 0,
+        });
+      }
+    }
+  });
+
   test('hash-only push preserves scroll when hash target is missing', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);

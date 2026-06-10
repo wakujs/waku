@@ -29,6 +29,11 @@ export default function StartPage() {
         </Link>
       </p>
       <p>
+        <Link to="#日本語見出し" data-testid="go-hash-only-japanese">
+          Go hash only japanese
+        </Link>
+      </p>
+      <p>
         <Link
           to="/next?from=enter"
           unstable_prefetchOnEnter

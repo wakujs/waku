@@ -712,13 +712,15 @@ export function Slice({
 
 const getHashElement = (hash: string): HTMLElement | null => {
   const raw = hash.slice(1);
-  let decoded = raw;
-  try {
-    decoded = decodeURIComponent(raw);
-  } catch {
-    decoded = raw;
+  const rawElement = document.getElementById(raw);
+  if (rawElement) {
+    return rawElement;
   }
-  return document.getElementById(decoded) ?? document.getElementById(raw);
+  try {
+    return document.getElementById(decodeURIComponent(raw));
+  } catch {
+    return null;
+  }
 };
 
 const scrollToRoute = (
