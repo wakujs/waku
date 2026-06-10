@@ -16,8 +16,10 @@ export const Page = async ({ isHome = false, children }: PageProps) => {
       <Menu />
       <Background />
       <Fade always={true} />
-      <Navigation isHome={isHome} />
-      <Main>{children}</Main>
+      <div className="xl:flex xl:items-start">
+        <Navigation isHome={isHome} />
+        <Main>{children}</Main>
+      </div>
       <Credits />
       <Scroll />
     </>
