@@ -5,9 +5,9 @@
  * This is an internal function and not for public use.
  */
 export function setAllEnv(newEnv: Readonly<Record<string, string>>) {
-  (globalThis as any).__WAKU_SERVER_ENV__ = newEnv;
+  globalThis.__WAKU_SERVER_ENV__ = newEnv;
 }
 
 export function getEnv(key: string): string | undefined {
-  return (globalThis as any).__WAKU_SERVER_ENV__?.[key];
+  return globalThis.__WAKU_SERVER_ENV__?.[key];
 }
