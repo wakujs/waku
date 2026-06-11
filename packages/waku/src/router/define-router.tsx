@@ -197,6 +197,38 @@ const STATIC_ETAG = 'static';
 
 type CacheId = string;
 
+const createElementCache = (
+  onSerialize?: (cacheId: CacheId, serialized: string) => void,
+) => {
+  const cache = new Map<CacheId, Promise<Uint8Array>>();
+  return {
+    preload: (cacheId: CacheId, bytes: Uint8Array) => {
+      cache.set(cacheId, Promise.resolve(bytes));
+    },
+    getCachedElement: (cacheId: CacheId) => {
+      const cachedBytes = cache.get(cacheId);
+      if (!cachedBytes) {
+        return undefined;
+      }
+      return cachedBytes.then((bytes) =>
+        deserializeRsc(bytes),
+      ) as Promise<ReactNode>;
+    },
+    setCachedElement: (cacheId: CacheId, element: ReactNode) => {
+      if (cache.has(cacheId)) {
+        return;
+      }
+      const bytes = serializeRsc(element);
+      cache.set(cacheId, bytes);
+      if (onSerialize) {
+        return bytes.then((bytes) => {
+          onSerialize(cacheId, bytesToBase64(bytes));
+        });
+      }
+    },
+  };
+};
+
 const getSlotCacheId = (slotId: SlotId): CacheId => `slot/${slotId}`;
 const getPathSpecCacheId = (pathSpec: PathSpec): CacheId =>
   `pathSpec/${pathSpecKey(pathSpec)}`; // For routeElement
@@ -554,6 +586,28 @@ export function unstable_defineRouter(fns: {
     );
   };
 
+  const findSliceConfig = (
+    sliceId: string,
+  ):
+    | { sliceConfig: SliceConfig; params?: Record<string, string | string[]> }
+    | undefined => {
+    for (const item of getCachedConfigs()) {
+      if (item.type !== 'slice') {
+        continue;
+      }
+      if (item.id === sliceId) {
+        return { sliceConfig: item };
+      }
+      if (item.pathSpec) {
+        const params = getPathMapping(item.pathSpec, '/' + sliceId);
+        if (params) {
+          return { sliceConfig: item, params };
+        }
+      }
+    }
+    return undefined;
+  };
+
   const getSliceElement = async (
     sliceConfig: {
       id: string;
@@ -614,7 +668,6 @@ export function unstable_defineRouter(fns: {
       routePath,
       query: pathConfigItem.isStatic ? undefined : query,
     };
-    const configs = getCachedConfigs();
     const slices = pathConfigItem.slices || [];
     const sliceConfigMap = new Map<
       string,
@@ -629,20 +682,11 @@ export function unstable_defineRouter(fns: {
       }
     >();
     slices.forEach((sliceId) => {
-      const sliceConfig = configs.find(
-        (item): item is typeof item & { type: 'slice' } =>
-          item.type === 'slice' &&
-          (item.id === sliceId ||
-            (!!item.pathSpec &&
-              !!getPathMapping(item.pathSpec, '/' + sliceId))),
-      );
-      if (sliceConfig) {
-        const params = sliceConfig.pathSpec
-          ? getPathMapping(sliceConfig.pathSpec, '/' + sliceId)
-          : null;
+      const found = findSliceConfig(sliceId);
+      if (found) {
         sliceConfigMap.set(sliceId, {
-          ...sliceConfig,
-          ...(params ? { params } : {}),
+          ...found.sliceConfig,
+          ...(found.params ? { params: found.params } : {}),
         });
       }
     });
@@ -733,7 +777,7 @@ export function unstable_defineRouter(fns: {
   type HandleRequest = Parameters<typeof defineHandlers>[0]['handleRequest'];
   type HandleBuild = Parameters<typeof defineHandlers>[0]['handleBuild'];
 
-  const cachedElementsForRequest = new Map<CacheId, Promise<Uint8Array>>();
+  const requestElementCache = createElementCache();
   let cachedElementsForRequestInit: Promise<void> | undefined;
   let cachedPath2moduleIds: Record<string, string[]> | undefined;
 
@@ -743,23 +787,7 @@ export function unstable_defineRouter(fns: {
   ): Promise<ReadableStream | Response | 'fallback' | null | undefined> => {
     await initConfigs(loadBuildMetadata);
     return runHandled(input.req, async () => {
-      const getCachedElement = (cacheId: CacheId) => {
-        const cachedBytes = cachedElementsForRequest.get(cacheId);
-        if (!cachedBytes) {
-          return undefined;
-        }
-        return cachedBytes.then((bytes) =>
-          deserializeRsc(bytes),
-        ) as Promise<ReactNode>;
-      };
-      const setCachedElement = (cacheId: CacheId, element: ReactNode) => {
-        const cachedBytes = cachedElementsForRequest.get(cacheId);
-        if (cachedBytes) {
-          return;
-        }
-        const bytes = serializeRsc(element);
-        cachedElementsForRequest.set(cacheId, bytes);
-      };
+      const { getCachedElement, setCachedElement } = requestElementCache;
       cachedElementsForRequestInit ??= (async () => {
         const cachedElementsMetadata = await loadBuildMetadata(
           'defineRouter:cachedElements',
@@ -767,9 +795,9 @@ export function unstable_defineRouter(fns: {
         if (cachedElementsMetadata) {
           Object.entries(JSON.parse(cachedElementsMetadata)).forEach(
             ([cacheId, str]) => {
-              cachedElementsForRequest.set(
+              requestElementCache.preload(
                 cacheId,
-                Promise.resolve(base64ToBytes(str as string)),
+                base64ToBytes(str as string),
               );
             },
           );
@@ -797,6 +825,14 @@ export function unstable_defineRouter(fns: {
 
       const url = new URL(input.req.url);
       const headers = Object.fromEntries(input.req.headers.entries());
+      const getEntries = (rscPath: string, rscParams: unknown) =>
+        getEntriesForRoute(
+          rscPath,
+          rscParams,
+          headers,
+          getCachedElement,
+          setCachedElement,
+        );
       const withRerender = async <T,>(fn: () => Promise<T>) => {
         let elementsPromise: Promise<Record<string, unknown>> = Promise.resolve(
           {},
@@ -808,13 +844,7 @@ export function unstable_defineRouter(fns: {
           }
           elementsPromise = Promise.all([
             elementsPromise,
-            getEntriesForRoute(
-              rscPath,
-              rscParams,
-              headers,
-              getCachedElement,
-              setCachedElement,
-            ),
+            getEntries(rscPath, rscParams),
           ]).then(([oldElements, newElements]) => {
             if (newElements === null) {
               console.warn('getEntries returned null');
@@ -839,28 +869,11 @@ export function unstable_defineRouter(fns: {
           // The skip header is not consulted here; the etag skip only covers
           // route-bundled slices. The etag is still sent to keep the client's
           // tag fresh.
-          let sliceConfig: SliceConfig | undefined;
-          let sliceParams: Record<string, string | string[]> | undefined;
-          for (const item of getCachedConfigs()) {
-            if (item.type !== 'slice') {
-              continue;
-            }
-            if (item.id === sliceId) {
-              sliceConfig = item;
-              break;
-            }
-            if (item.pathSpec) {
-              const mapping = getPathMapping(item.pathSpec, '/' + sliceId);
-              if (mapping) {
-                sliceConfig = item;
-                sliceParams = mapping;
-                break;
-              }
-            }
-          }
-          if (!sliceConfig) {
+          const found = findSliceConfig(sliceId);
+          if (!found) {
             return null;
           }
+          const { sliceConfig, params: sliceParams } = found;
           const sliceEtag = sliceConfig.isStatic
             ? STATIC_ETAG
             : await sliceConfig.getEtagFromParams?.(sliceParams);
@@ -884,13 +897,7 @@ export function unstable_defineRouter(fns: {
               : {}),
           });
         }
-        const entries = await getEntriesForRoute(
-          input.rscPath,
-          input.rscParams,
-          headers,
-          getCachedElement,
-          setCachedElement,
-        );
+        const entries = await getEntries(input.rscPath, input.rscParams);
         if (!entries) {
           return null;
         }
@@ -908,13 +915,7 @@ export function unstable_defineRouter(fns: {
           if (info?.location) {
             const routePath = pathnameToRoutePath(info.location);
             const rscPath = encodeRoutePath(routePath);
-            const entries = await getEntriesForRoute(
-              rscPath,
-              undefined,
-              headers,
-              getCachedElement,
-              setCachedElement,
-            );
+            const entries = await getEntries(rscPath, undefined);
             if (!entries) {
               unstable_notFound();
             }
@@ -933,13 +934,7 @@ export function unstable_defineRouter(fns: {
           const routePath = pathnameToRoutePath(pathname);
           const rscPath = encodeRoutePath(routePath);
           const rscParams = new URLSearchParams({ query });
-          let entries = await getEntriesForRoute(
-            rscPath,
-            rscParams,
-            headers,
-            getCachedElement,
-            setCachedElement,
-          );
+          let entries = await getEntries(rscPath, rscParams);
           if (!entries) {
             return null;
           }
@@ -1024,28 +1019,12 @@ export function unstable_defineRouter(fns: {
         unstable_registerPrunableFile(srcPath);
       }
     }
-    const cachedElementsForBuild = new Map<CacheId, Promise<Uint8Array>>();
     const serializedCachedElements = new Map<CacheId, string>();
-    const getCachedElement = (cacheId: CacheId) => {
-      const cachedBytes = cachedElementsForBuild.get(cacheId);
-      if (!cachedBytes) {
-        return undefined;
-      }
-      return cachedBytes.then((bytes) =>
-        deserializeRsc(bytes),
-      ) as Promise<ReactNode>;
-    };
-    const setCachedElement = (cacheId: CacheId, element: ReactNode) => {
-      const cachedBytes = cachedElementsForBuild.get(cacheId);
-      if (cachedBytes) {
-        return;
-      }
-      const bytes = serializeRsc(element);
-      cachedElementsForBuild.set(cacheId, bytes);
-      return bytes.then((bytes) => {
-        serializedCachedElements.set(cacheId, bytesToBase64(bytes));
-      });
-    };
+    const { getCachedElement, setCachedElement } = createElementCache(
+      (cacheId, serialized) => {
+        serializedCachedElements.set(cacheId, serialized);
+      },
+    );
 
     // hard-coded concurrency limit
     const { runTask, waitForTasks } = createTaskRunner(500);
