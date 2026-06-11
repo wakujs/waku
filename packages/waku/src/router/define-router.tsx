@@ -218,10 +218,10 @@ const createElementCache = (
       if (cache.has(cacheId)) {
         return;
       }
-      const bytes = serializeRsc(element);
-      cache.set(cacheId, bytes);
+      const bytesPromise = serializeRsc(element);
+      cache.set(cacheId, bytesPromise);
       if (onSerialize) {
-        return bytes.then((bytes) => {
+        return bytesPromise.then((bytes) => {
           onSerialize(cacheId, bytesToBase64(bytes));
         });
       }
@@ -778,7 +778,7 @@ export function unstable_defineRouter(fns: {
   type HandleBuild = Parameters<typeof defineHandlers>[0]['handleBuild'];
 
   const requestElementCache = createElementCache();
-  let cachedElementsForRequestInit: Promise<void> | undefined;
+  let requestElementCacheInit: Promise<void> | undefined;
   let cachedPath2moduleIds: Record<string, string[]> | undefined;
 
   const handleRequest: HandleRequest = async (
@@ -788,7 +788,7 @@ export function unstable_defineRouter(fns: {
     await initConfigs(loadBuildMetadata);
     return runHandled(input.req, async () => {
       const { getCachedElement, setCachedElement } = requestElementCache;
-      cachedElementsForRequestInit ??= (async () => {
+      requestElementCacheInit ??= (async () => {
         const cachedElementsMetadata = await loadBuildMetadata(
           'defineRouter:cachedElements',
         );
@@ -803,7 +803,7 @@ export function unstable_defineRouter(fns: {
           );
         }
       })();
-      await cachedElementsForRequestInit;
+      await requestElementCacheInit;
       const getPath2moduleIds = async () => {
         if (!cachedPath2moduleIds) {
           cachedPath2moduleIds = JSON.parse(
@@ -825,7 +825,7 @@ export function unstable_defineRouter(fns: {
 
       const url = new URL(input.req.url);
       const headers = Object.fromEntries(input.req.headers.entries());
-      const getEntries = (rscPath: string, rscParams: unknown) =>
+      const getRouteEntries = (rscPath: string, rscParams: unknown) =>
         getEntriesForRoute(
           rscPath,
           rscParams,
@@ -844,7 +844,7 @@ export function unstable_defineRouter(fns: {
           }
           elementsPromise = Promise.all([
             elementsPromise,
-            getEntries(rscPath, rscParams),
+            getRouteEntries(rscPath, rscParams),
           ]).then(([oldElements, newElements]) => {
             if (newElements === null) {
               console.warn('getEntries returned null');
@@ -897,7 +897,7 @@ export function unstable_defineRouter(fns: {
               : {}),
           });
         }
-        const entries = await getEntries(input.rscPath, input.rscParams);
+        const entries = await getRouteEntries(input.rscPath, input.rscParams);
         if (!entries) {
           return null;
         }
@@ -915,7 +915,7 @@ export function unstable_defineRouter(fns: {
           if (info?.location) {
             const routePath = pathnameToRoutePath(info.location);
             const rscPath = encodeRoutePath(routePath);
-            const entries = await getEntries(rscPath, undefined);
+            const entries = await getRouteEntries(rscPath, undefined);
             if (!entries) {
               unstable_notFound();
             }
@@ -934,7 +934,7 @@ export function unstable_defineRouter(fns: {
           const routePath = pathnameToRoutePath(pathname);
           const rscPath = encodeRoutePath(routePath);
           const rscParams = new URLSearchParams({ query });
-          let entries = await getEntries(rscPath, rscParams);
+          let entries = await getRouteEntries(rscPath, rscParams);
           if (!entries) {
             return null;
           }
