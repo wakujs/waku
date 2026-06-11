@@ -147,7 +147,7 @@ export function environmentsPlugin(config: Required<Config>): Plugin {
             const mod: typeof import('../vite-entries/entry.server.js') =
               await environment.runner.import(entryId);
             await getRequestListener((req, ...args) =>
-              mod.INTERNAL_runFetch(process.env as never, req, ...args),
+              mod.INTERNAL_runFetch(process.env, req, ...args),
             )(req, res);
           } catch (e) {
             next(e);
