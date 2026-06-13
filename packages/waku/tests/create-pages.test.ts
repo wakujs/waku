@@ -1614,6 +1614,47 @@ describe('createPages pages and layouts', () => {
     );
   });
 
+  it('api wildcard route takes priority over standard wildcard page route', async () => {
+    const NotFoundPage = vi.fn();
+    const ApiHandler = vi.fn(async () => new Response('api'));
+    createPages(async ({ createPage, createApi }) => [
+      // Registered first so insertion order alone would put it ahead.
+      createPage({
+        render: 'dynamic',
+        path: '/[...notFound]',
+        component: NotFoundPage,
+      }),
+      createApi({
+        path: '/[...apiPath]',
+        render: 'dynamic',
+        handlers: {
+          GET: ApiHandler,
+        },
+      }),
+    ]);
+    const { getConfigs } = injectedFunctions();
+    const configs = Array.from(await getConfigs());
+    const apiRoute = configs.find(
+      (config) =>
+        config.type === 'api' &&
+        config.path.length === 1 &&
+        config.path[0]?.type === 'wildcard',
+    );
+    const wildcardPage = configs.find(
+      (config) =>
+        config.type === 'route' &&
+        config.path.length === 1 &&
+        config.path[0]?.type === 'wildcard',
+    );
+    expect(apiRoute).toBeDefined();
+    expect(wildcardPage).toBeDefined();
+    // The api wildcard must be checked before the catch-all page so the page
+    // does not shadow it (the router uses the first matching config).
+    expect(configs.indexOf(apiRoute!)).toBeLessThan(
+      configs.indexOf(wildcardPage!),
+    );
+  });
+
   it('fails if static paths do not match the slug pattern', async () => {
     createPages(async ({ createPage }) => [
       createPage({

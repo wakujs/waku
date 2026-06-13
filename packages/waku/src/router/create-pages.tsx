@@ -446,6 +446,21 @@ const routePriorityComparator = (
     return aHasWildcard ? 1 : -1;
   }
 
+  // If the routes are otherwise indistinguishable, fall back to the route
+  // type so the overall order is:
+  //   "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
+  // For non-wildcard routes, standard routes win over api routes; for wildcard
+  // routes, api routes win over standard routes. This prevents a catch-all page
+  // (e.g. `/[...notFound]`) from shadowing an api wildcard route since the first
+  // match is used. See https://github.com/wakujs/waku/issues/1448
+  if (a.type !== b.type) {
+    const aIsApi = a.type === 'api';
+    if (aHasWildcard) {
+      return aIsApi ? -1 : 1;
+    }
+    return aIsApi ? 1 : -1;
+  }
+
   // If all else is equal, routes have the same priority
   return 0;
 };
