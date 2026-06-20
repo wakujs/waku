@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { Suspense, act, createElement } from 'react';
+import { Suspense, act } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   afterAll,
@@ -49,7 +49,7 @@ vi.mock('react-server-dom-webpack/client', () => ({
 
 const wait = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-const resolvedThenable = <T>(value: T): Promise<T> =>
+const resolvedThenable = <T,>(value: T): Promise<T> =>
   Object.assign(Promise.resolve(value), {
     status: 'fulfilled' as const,
     value,
@@ -66,7 +66,7 @@ const clientStore = (() => {
   }
 })();
 
-const track = <T>(unregister: T): T => unregister;
+const track = <T,>(unregister: T): T => unregister;
 
 const stubFetch = () =>
   unstable_registerFetchEnhancer(
@@ -190,15 +190,11 @@ describe('minimal/client server actions', () => {
     const root = createRoot(container);
     await act(async () => {
       root.render(
-        createElement(
-          Root,
-          { initialRscPath: 'R/app.txt' },
-          createElement(
-            Suspense,
-            { fallback: null },
-            createElement(Slot, { id: 'App' }),
-          ),
-        ),
+        <Root initialRscPath="R/app.txt">
+          <Suspense fallback={null}>
+            <Slot id="App" />
+          </Suspense>
+        </Root>,
       );
     });
     expect(container.textContent).toBe('A');
