@@ -1067,6 +1067,42 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('registers its fetch enhancer and callServer listener once, and removes them on unmount (StrictMode)', async () => {
+    const warn = console.warn;
+    console.warn = () => {};
+    // The store is a module-level singleton; 'f' is FETCH_ENHANCERS, 'l' is
+    // CALL_SERVER_ELEMENTS_LISTENERS.
+    const store = useFetchRscStore_UNSTABLE() as unknown as Record<
+      string,
+      unknown
+    >;
+    console.warn = warn;
+    delete store.f;
+    delete store.l;
+    const size = (key: string) =>
+      (store[key] as Set<unknown> | undefined)?.size ?? 0;
+
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <div>start</div>,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: true,
+    };
+    const view = await renderRouterInStrictMode(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      elements,
+    );
+
+    // Registered exactly once despite StrictMode's mount/unmount/mount cycle.
+    expect(size('f')).toBe(1);
+    expect(size('l')).toBe(1);
+
+    view.unmount();
+
+    // Fully unregistered on unmount, so nothing leaks into later RSC requests.
+    expect(size('f')).toBe(0);
+    expect(size('l')).toBe(0);
+  });
+
   test('push performs refetch for dynamic routes and emits start/complete events', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);

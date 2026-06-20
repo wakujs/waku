@@ -223,6 +223,46 @@ describe('minimal/client server actions', () => {
       'Missing Root',
     );
   });
+
+  test('a server action from a consumed prefetched tree updates the active Root', async () => {
+    // The old per-Root store rebound a prefetched tree's actions to the
+    // consuming store; with a single store, the action must still update the
+    // mounted Root.
+    let callServer: CallServer | undefined;
+    mocks.createFromFetch.mockImplementation((_responsePromise, options) => {
+      callServer ??= options?.callServer;
+      return resolvedThenable({ App: 'prefetched' });
+    });
+    stubFetch();
+    unstable_prefetchRsc('R/page.txt', undefined);
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <Root initialRscPath="R/page.txt">
+          <Suspense fallback={null}>
+            <Slot id="App" />
+          </Suspense>
+        </Root>,
+      );
+    });
+    expect(container.textContent).toBe('prefetched');
+
+    mocks.createFromFetch.mockResolvedValueOnce({
+      _value: 'ok',
+      App: 'updated',
+    });
+    let value: unknown;
+    await act(async () => {
+      value = await callServer!('actions#do', []);
+    });
+
+    expect(value).toBe('ok');
+    expect(container.textContent).toBe('updated');
+
+    act(() => root.unmount());
+  });
 });
 
 describe('minimal/client build id mismatch', () => {

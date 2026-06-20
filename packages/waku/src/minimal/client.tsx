@@ -91,12 +91,12 @@ type SetElements = (
 type FetchEnhancer = (fetchFn: typeof fetch) => typeof fetch;
 type FetchEnhancers = Set<FetchEnhancer>;
 
-type TransformFetchRscInput = (
+type FetchRscInputTransformer = (
   rscPath: string,
   rscParams: unknown,
   prefetchOnly: boolean,
 ) => readonly [rscPath: string, rscParams: unknown, prefetchOnly: boolean];
-type FetchRscInputTransformers = Set<TransformFetchRscInput>;
+type FetchRscInputTransformers = Set<FetchRscInputTransformer>;
 
 type CallServerElementsListeners = Set<(elements: Elements) => void>;
 
@@ -381,7 +381,7 @@ let registerTransformerStoreArgWarned = false;
  * function that unregisters the transformer.
  */
 export function unstable_registerFetchRscInputTransformer(
-  transformFetchRscInput: TransformFetchRscInput,
+  transformFetchRscInput: FetchRscInputTransformer,
 ): Unregister;
 /**
  * @deprecated Pass only the transformer. The store argument is ignored and this
@@ -389,13 +389,13 @@ export function unstable_registerFetchRscInputTransformer(
  */
 export function unstable_registerFetchRscInputTransformer(
   store: FetchRscStore,
-  transformFetchRscInput: TransformFetchRscInput,
+  transformFetchRscInput: FetchRscInputTransformer,
 ): Unregister;
 export function unstable_registerFetchRscInputTransformer(
-  storeOrTransform: FetchRscStore | TransformFetchRscInput,
-  maybeTransform?: TransformFetchRscInput,
+  storeOrTransform: FetchRscStore | FetchRscInputTransformer,
+  maybeTransform?: FetchRscInputTransformer,
 ): Unregister {
-  let transformFetchRscInput: TransformFetchRscInput;
+  let transformFetchRscInput: FetchRscInputTransformer;
   if (typeof storeOrTransform === 'function') {
     transformFetchRscInput = storeOrTransform;
   } else {
@@ -482,11 +482,6 @@ export const Root = ({
   );
   useEffect(() => {
     fetchRscStore[SET_ELEMENTS] = setElements;
-    return () => {
-      if (fetchRscStore[SET_ELEMENTS] === setElements) {
-        delete fetchRscStore[SET_ELEMENTS];
-      }
-    };
   }, []);
   const refetch = useCallback<Refetch>(async (rscPath, rscParams, options) => {
     delete fetchRscStore[ENTRY];
