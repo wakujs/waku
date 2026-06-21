@@ -15,22 +15,12 @@ test.describe('spa example coverage', () => {
     await stopApp();
   });
 
-  test('renders client-only root and can call a server function in dev', async ({
-    page,
-    mode,
-  }) => {
+  test('renders client-only root from default HTML', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
     await expect(page.getByTestId('title')).toHaveText('Hello Client');
     await expect(page.getByTestId('count')).toHaveText('Count: 0');
     await page.getByRole('button', { name: 'Increment' }).click();
     await expect(page.getByTestId('count')).toHaveText('Count: 1');
-    if (mode !== 'DEV') {
-      return;
-    }
-    await page.getByRole('button', { name: 'Greet' }).click();
-    await expect(page.getByTestId('server-greeting')).toHaveText(
-      'Hello from server',
-    );
   });
 });

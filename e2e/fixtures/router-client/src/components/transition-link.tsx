@@ -7,7 +7,7 @@ const startTransition: ComponentProps<
   typeof Link
 >['unstable_startTransition'] = (callback) => {
   (window as unknown as Record<string, unknown>).__transitionStarted = true;
-  callback();
+  void callback();
 };
 
 export function TransitionLink() {

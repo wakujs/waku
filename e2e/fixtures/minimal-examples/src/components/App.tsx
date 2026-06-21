@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
 import { Children } from 'waku/minimal/client';
-import { Counter } from '@/components/Counter';
 import { CookieInfo } from './CookieInfo';
 import { Island } from './Island';
 import { JotaiApp } from './JotaiApp';
+// eslint-disable-next-line import/no-unresolved
+import { Counter } from '@/components/Counter';
 
 export function App({
   name,

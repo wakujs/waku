@@ -4,8 +4,9 @@ import * as cookie from 'cookie';
 import { contextStorage } from 'hono/context-storage';
 import adapter from 'waku/adapters/default';
 import { Children, Slot } from 'waku/minimal/client';
-import { App } from '@/components/App';
 import { DynamicIsland } from './components/DynamicIsland';
+// eslint-disable-next-line import/no-unresolved
+import { App } from '@/components/App';
 
 const cookieStorage = new AsyncLocalStorage<{
   count: number;
@@ -18,10 +19,18 @@ export const getItemCount = () => cookieStorage.getStore()?.itemCount ?? 0;
 const modeFromPathname = (
   pathname: string,
 ): 'basic' | 'children' | 'islands' | 'jotai' | 'cookie' => {
-  if (pathname === '/children') return 'children';
-  if (pathname === '/islands') return 'islands';
-  if (pathname === '/jotai') return 'jotai';
-  if (pathname === '/cookie') return 'cookie';
+  if (pathname === '/children') {
+    return 'children';
+  }
+  if (pathname === '/islands') {
+    return 'islands';
+  }
+  if (pathname === '/jotai') {
+    return 'jotai';
+  }
+  if (pathname === '/cookie') {
+    return 'cookie';
+  }
   return 'basic';
 };
 
