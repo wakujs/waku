@@ -185,6 +185,17 @@ describe('create-waku CLI with args', () => {
     expect(stdout).toContain('Setting up project...');
   }, 10000);
 
+  test('rejects an unknown template with a helpful message', () => {
+    const { stdout, stderr, exitCode } = run(
+      ['--project-name', projectName, '--template', 'does-not-exist'],
+      { cwd: import.meta.dirname, reject: false },
+    );
+    const output = stdout + stderr;
+    expect(output).toContain('Unknown template "does-not-exist"');
+    expect(output).toContain('--example');
+    expect(exitCode).not.toBe(0);
+  }, 10000);
+
   test(
     'accepts example option from command line',
     { timeout: 30000, retry: process.env.CI ? 3 : 0 },

@@ -105,6 +105,19 @@ async function doPrompts() {
 
   const templateNames = await getTemplateNames(templateRoot);
 
+  if (
+    !values.example &&
+    values.template &&
+    !templateNames.includes(values.template)
+  ) {
+    p.cancel(
+      `${pc.red('✖')} Unknown template "${values.template}". ` +
+        `Available templates: ${templateNames.join(', ')}. ` +
+        `Use --example <github-url> to scaffold from an example repository.`,
+    );
+    process.exit(1);
+  }
+
   const defaultProjectName = 'waku-project';
   let targetDir = values['project-name'] || defaultProjectName;
 
