@@ -51,7 +51,7 @@ const commands = {
 
 const templateRoot = path.join(
   fileURLToPath(import.meta.url),
-  '../../template',
+  '../../templates',
 );
 
 // FIXME is there a better way with prompts?
