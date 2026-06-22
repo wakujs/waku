@@ -25,6 +25,11 @@ describe('matchRouteParams', () => {
     });
   });
 
+  test('returns null for malformed percent-encoding', () => {
+    expect(matchRouteParams('/posts/[slug]', '/posts/%E0%A4%A')).toBeNull();
+    expect(matchRouteParams('/docs/[...path]', '/docs/ok/%E0%A4%A')).toBeNull();
+  });
+
   test('matches a prefixed slug', () => {
     expect(matchRouteParams('/@[name]', '/@foo')).toEqual({ name: 'foo' });
   });

@@ -3,11 +3,20 @@ import { getPathMapping, parsePathWithSlug } from '../../lib/utils/path.js';
 import type { RouteParams } from '../create-pages-utils/inferred-path-types.js';
 import type { RoutePattern } from './build-route-href.js';
 
+const safeDecodeURIComponent = (value: string): string | null => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+};
+
 /**
  * Match a concrete pathname against a route pattern and return its params, or
  * null when the pathname does not match. This is the inverse of buildRouteHref:
  * route groups are stripped, the existing matcher decides the match, and each
- * matched value is URL-decoded.
+ * matched value is URL-decoded. Malformed percent-encoding also yields null
+ * rather than throwing, since this runs during render.
  */
 export const matchRouteParams = <Pattern extends RoutePattern>(
   pattern: Pattern,
@@ -20,9 +29,23 @@ export const matchRouteParams = <Pattern extends RoutePattern>(
   }
   const params: Record<string, string | string[]> = {};
   for (const [key, value] of Object.entries(mapping)) {
-    params[key] = Array.isArray(value)
-      ? value.map((part) => decodeURIComponent(part))
-      : decodeURIComponent(value);
+    if (Array.isArray(value)) {
+      const decoded: string[] = [];
+      for (const part of value) {
+        const decodedPart = safeDecodeURIComponent(part);
+        if (decodedPart === null) {
+          return null;
+        }
+        decoded.push(decodedPart);
+      }
+      params[key] = decoded;
+    } else {
+      const decodedValue = safeDecodeURIComponent(value);
+      if (decodedValue === null) {
+        return null;
+      }
+      params[key] = decodedValue;
+    }
   }
   return params as RouteParams<Pattern>;
 };

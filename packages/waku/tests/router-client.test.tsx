@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { StrictMode, act, use } from 'react';
+import { StrictMode, act, use, useState } from 'react';
 import type { ReactElement } from 'react';
 import { preloadModule } from 'react-dom';
 import { createRoot } from 'react-dom/client';
@@ -590,6 +590,50 @@ describe('useRouter + Link with context', () => {
       return null;
     };
     expect(typeof TypeProbe).toBe('function');
+  });
+
+  test('useParams re-renders when the route path changes', async () => {
+    const capture = { params: undefined as unknown };
+    let setRoute:
+      | ((route: { path: string; query: string; hash: string }) => void)
+      | undefined;
+
+    const Probe = () => {
+      capture.params = useParams({ from: '/posts/[slug]' });
+      return null;
+    };
+
+    const Harness = () => {
+      const [route, setRouteState] = useState({
+        path: '/posts/a',
+        query: '',
+        hash: '',
+      });
+      setRoute = setRouteState;
+      return (
+        <RouterContext
+          value={{
+            route,
+            changeRoute: vi.fn(async () => {}),
+            prefetchRoute: vi.fn(),
+            routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+            fetchingSlices: new Set(),
+          }}
+        >
+          <Probe />
+        </RouterContext>
+      );
+    };
+
+    const view = await renderApp(<Harness />);
+    expect(capture.params).toEqual({ slug: 'a' });
+
+    await act(async () => {
+      setRoute!({ path: '/posts/b', query: '', hash: '' });
+    });
+    expect(capture.params).toEqual({ slug: 'b' });
+
+    view.unmount();
   });
 
   test('Link intercepts normal click and skips alt/defaultPrevented clicks', async () => {
