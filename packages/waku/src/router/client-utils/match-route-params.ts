@@ -15,8 +15,10 @@ const safeDecodeURIComponent = (value: string): string | null => {
  * Match a concrete pathname against a route pattern and return its params, or
  * null when the pathname does not match. This is the inverse of buildRouteHref:
  * route groups are stripped, the existing matcher decides the match, and each
- * matched value is URL-decoded. Malformed percent-encoding also yields null
- * rather than throwing, since this runs during render.
+ * matched segment is decoded once. The pathname must be the encoded form stored
+ * by the router (e.g. useRouter().path); a pre-decoded path would double-decode
+ * values containing "%". Malformed percent-encoding yields null rather than
+ * throwing, since this runs during render.
  */
 export const matchRouteParams = <Pattern extends RoutePattern>(
   pattern: Pattern,
