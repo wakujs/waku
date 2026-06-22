@@ -18,7 +18,9 @@ const safeDecodeURIComponent = (value: string): string | null => {
  * matched segment is decoded once. The pathname must be the encoded form stored
  * by the router (e.g. useRouter().path); a pre-decoded path would double-decode
  * values containing "%". Malformed percent-encoding yields null rather than
- * throwing, since this runs during render.
+ * throwing, since this runs during render. Catch-all matching follows the
+ * router: a prefixed terminal catch-all (/docs/[...path]) does not match its
+ * base (/docs), while a root catch-all (/[...path]) matches / as { path: [] }.
  */
 export const matchRouteParams = <Pattern extends RoutePattern>(
   pattern: Pattern,

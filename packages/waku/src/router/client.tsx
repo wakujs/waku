@@ -318,6 +318,13 @@ export function useRouter() {
   };
 }
 
+/**
+ * Read the current route's params, typed from the `from` pattern, or null when
+ * the current path does not match it. Re-renders when the route path changes.
+ * The result is memoized by path, so its identity changes on navigation to a
+ * different path; read its fields rather than using the object itself as an
+ * effect dependency.
+ */
 export function useParams_UNSTABLE<Pattern extends RoutePattern>({
   from,
 }: {
