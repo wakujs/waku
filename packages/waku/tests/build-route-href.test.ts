@@ -46,25 +46,20 @@ describe('buildRouteHref', () => {
 
   test('serializes an object search', () => {
     expect(
-      buildRouteHref({ to: '/about', search: { page: 2, q: 'x', ok: true } }),
+      buildRouteHref({
+        to: '/about',
+        search: { page: '2', q: 'x', ok: 'true' },
+      }),
     ).toBe('/about?page=2&q=x&ok=true');
   });
 
-  test('omits null/undefined search and supports arrays', () => {
+  test('omits undefined search and supports arrays', () => {
     expect(
       buildRouteHref({
         to: '/about',
-        search: { a: null, b: undefined, tag: ['x', 'y'] },
+        search: { a: undefined, tag: ['x', 'y'] },
       }),
     ).toBe('/about?tag=x&tag=y');
-  });
-
-  test('accepts string and URLSearchParams search', () => {
-    expect(buildRouteHref({ to: '/about', search: '?a=1' })).toBe('/about?a=1');
-    expect(buildRouteHref({ to: '/about', search: 'a=1' })).toBe('/about?a=1');
-    expect(
-      buildRouteHref({ to: '/about', search: new URLSearchParams({ a: '1' }) }),
-    ).toBe('/about?a=1');
   });
 
   test('appends a hash with or without a leading #', () => {
@@ -103,6 +98,14 @@ describe('buildRouteHref types', () => {
       buildRouteHref({ to: '/about', params: { slug: 'a' } });
       // @ts-expect-error unknown param name
       buildRouteHref({ to: '/posts/[slug]', params: { id: 'a' } });
+      buildRouteHref({ to: '/about', search: { page: '2', tags: ['a', 'b'] } });
+      buildRouteHref({ to: '/about', search: { page: undefined } });
+      // @ts-expect-error search values must be strings, not numbers
+      buildRouteHref({ to: '/about', search: { page: 2 } });
+      // @ts-expect-error search values are not nullable (use undefined to omit)
+      buildRouteHref({ to: '/about', search: { page: null } });
+      // @ts-expect-error search must be an object, not a query string
+      buildRouteHref({ to: '/about', search: 'page=2' });
     };
     expect(typeof assertTypes).toBe('function');
   });

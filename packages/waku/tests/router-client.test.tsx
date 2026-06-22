@@ -2231,7 +2231,7 @@ describe('Router integration', () => {
       };
       const skipStr = fetchSpy.mock.calls
         .map((call) => readHeader(call[1], SKIP_HEADER))
-        .find((value) => value != null);
+        .find((value) => value !== null && value !== undefined);
       expect(skipStr).toBeTypeOf('string');
       const skipped = JSON.parse(skipStr!) as Record<string, string>;
       expect(skipped.foo).toBe('etag-foo');

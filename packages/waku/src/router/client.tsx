@@ -463,7 +463,11 @@ export function Link({
     if (props.target && props.target.toLowerCase() !== '_self') {
       console.warn('[Link] `target` is discouraged. Use `<a>` for this case.');
     }
-    if (props.download != null && props.download !== false) {
+    if (
+      props.download !== undefined &&
+      props.download !== null &&
+      props.download !== false
+    ) {
       console.warn(
         '[Link] `download` is discouraged. Use `<a>` for this case.',
       );

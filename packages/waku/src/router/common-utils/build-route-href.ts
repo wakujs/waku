@@ -16,18 +16,9 @@ type RouteParams<Pattern extends RoutePattern> = {
     : ApiParams<Pattern>[Key];
 };
 
-type SearchValue =
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  | readonly (string | number | boolean)[];
+type SearchValue = string | readonly string[] | undefined;
 
-type BuildRouteHrefSearch =
-  | string
-  | URLSearchParams
-  | Record<string, SearchValue>;
+type BuildRouteHrefSearch = Record<string, SearchValue>;
 
 export type BuildRouteHrefTarget<Pattern extends RoutePattern> = {
   to: Pattern;
@@ -38,26 +29,20 @@ export type BuildRouteHrefTarget<Pattern extends RoutePattern> = {
   : { params: RouteParams<Pattern> });
 
 const serializeSearch = (search: BuildRouteHrefSearch | undefined): string => {
-  if (search == null) {
+  if (search === undefined) {
     return '';
-  }
-  if (typeof search === 'string') {
-    return search.startsWith('?') ? search.slice(1) : search;
-  }
-  if (search instanceof URLSearchParams) {
-    return search.toString();
   }
   const searchParams = new URLSearchParams();
   for (const [key, value] of Object.entries(search)) {
-    if (value == null) {
+    if (value === undefined) {
       continue;
     }
     if (Array.isArray(value)) {
       for (const item of value) {
-        searchParams.append(key, String(item));
+        searchParams.append(key, item);
       }
     } else {
-      searchParams.append(key, String(value));
+      searchParams.append(key, value as string);
     }
   }
   return searchParams.toString();
