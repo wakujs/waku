@@ -35,11 +35,12 @@ import {
   useRefetch,
 } from '../minimal/client.js';
 import type { RouteConfig } from './base-types.js';
-import { buildRouteHref } from './common-utils/build-route-href.js';
+import { buildRouteHref } from './client-utils/build-route-href.js';
 import type {
   BuildRouteHrefTarget,
   RoutePattern,
-} from './common-utils/build-route-href.js';
+} from './client-utils/build-route-href.js';
+import { matchRouteParams } from './client-utils/match-route-params.js';
 import {
   ETAG_ID_PREFIX,
   HAS404_ID,
@@ -51,6 +52,7 @@ import {
   pathnameToRoutePath,
 } from './common-utils/route-path.js';
 import type { RouteProps } from './common-utils/route-path.js';
+import type { RouteParams } from './create-pages-utils/inferred-path-types.js';
 
 type AllowTrailingSlash<Path extends string> = Path extends '/'
   ? Path
@@ -314,6 +316,15 @@ export function useRouter() {
     prefetch,
     unstable_events: router.routeChangeEvents,
   };
+}
+
+export function useParams_UNSTABLE<Pattern extends RoutePattern>({
+  from,
+}: {
+  from: Pattern;
+}): RouteParams<Pattern> | null {
+  const { path } = useRouter();
+  return useMemo(() => matchRouteParams(from, path), [from, path]);
 }
 
 function useSharedRef<T>(

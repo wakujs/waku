@@ -38,6 +38,7 @@ import {
   unstable_getSliceSlotId,
   unstable_parseRoute,
   useNavigationStatus_UNSTABLE as useNavigationStatus,
+  useParams_UNSTABLE as useParams,
   useRouter,
 } from '../src/router/client.js';
 import type { Unstable_InferredPaths } from '../src/router/client.js';
@@ -519,6 +520,76 @@ describe('useRouter + Link with context', () => {
     expect(pushedUrl?.href).toContain('/posts/a%20b%2Fc?tab=comments#top');
 
     view.unmount();
+  });
+
+  test('useParams returns decoded params for the matching route', async () => {
+    const capture = { params: undefined as unknown };
+    const Probe = () => {
+      capture.params = useParams({ from: '/posts/[slug]' });
+      return null;
+    };
+
+    const view = await renderApp(
+      <RouterContext
+        value={{
+          route: { path: '/posts/a%20b', query: '', hash: '' },
+          changeRoute: vi.fn(async () => {}),
+          prefetchRoute: vi.fn(),
+          routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set(),
+        }}
+      >
+        <Probe />
+      </RouterContext>,
+    );
+
+    expect(capture.params).toEqual({ slug: 'a b' });
+    view.unmount();
+  });
+
+  test('useParams returns null when the pattern does not match', async () => {
+    const capture = { params: undefined as unknown };
+    const Probe = () => {
+      capture.params = useParams({ from: '/posts/[slug]' });
+      return null;
+    };
+
+    const view = await renderApp(
+      <RouterContext
+        value={{
+          route: { path: '/about', query: '', hash: '' },
+          changeRoute: vi.fn(async () => {}),
+          prefetchRoute: vi.fn(),
+          routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set(),
+        }}
+      >
+        <Probe />
+      </RouterContext>,
+    );
+
+    expect(capture.params).toBeNull();
+    view.unmount();
+  });
+
+  test('useParams params are typed from the pattern', () => {
+    // Type-level assertions; the component is never rendered.
+    const TypeProbe = () => {
+      const slugParams = useParams({ from: '/posts/[slug]' });
+      if (slugParams) {
+        const slug: string = slugParams.slug;
+        void slug;
+        // @ts-expect-error unknown param name
+        void slugParams.id;
+      }
+      const catchAllParams = useParams({ from: '/docs/[...path]' });
+      if (catchAllParams) {
+        const path: string[] = catchAllParams.path;
+        void path;
+      }
+      return null;
+    };
+    expect(typeof TypeProbe).toBe('function');
   });
 
   test('Link intercepts normal click and skips alt/defaultPrevented clicks', async () => {
