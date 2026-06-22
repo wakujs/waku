@@ -451,6 +451,76 @@ describe('useRouter + Link with context', () => {
     view.unmount();
   });
 
+  test('push/replace execute a structured target through changeRoute', async () => {
+    const capture = { router: null as RouterApi | null };
+    const setRouter = (router: RouterApi) => {
+      capture.router = router;
+    };
+    const changeRoute = vi.fn(async () => {});
+
+    const Probe = () => {
+      setRouter(useRouter() as unknown as RouterApi);
+      return null;
+    };
+
+    const view = await renderApp(
+      <RouterContext
+        value={{
+          route: { path: '/start', query: '', hash: '' },
+          changeRoute,
+          prefetchRoute: vi.fn(),
+          routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set(),
+        }}
+      >
+        <Probe />
+      </RouterContext>,
+    );
+
+    if (!capture.router) {
+      throw new Error('router was not initialized');
+    }
+
+    await act(async () => {
+      await capture.router!.push({
+        to: '/posts/[slug]',
+        params: { slug: 'a b/c' },
+        search: { tab: 'comments' },
+        hash: 'top',
+      });
+      await capture.router!.replace({
+        to: '/posts/[slug]',
+        params: { slug: 'a b/c' },
+        search: { tab: 'comments' },
+        hash: 'top',
+      });
+    });
+
+    const expectedRoute = {
+      path: '/posts/a%20b%2Fc',
+      query: 'tab=comments',
+      hash: '#top',
+    };
+    expect(changeRoute).toHaveBeenNthCalledWith(
+      1,
+      expectedRoute,
+      expect.objectContaining({ mode: 'push', url: expect.any(URL) }),
+    );
+    expect(changeRoute).toHaveBeenNthCalledWith(
+      2,
+      expectedRoute,
+      expect.objectContaining({ mode: 'replace', url: expect.any(URL) }),
+    );
+    const pushedUrl = (
+      (changeRoute.mock.calls[0] as unknown[] | undefined)?.[1] as
+        | { url?: URL }
+        | undefined
+    )?.url;
+    expect(pushedUrl?.href).toContain('/posts/a%20b%2Fc?tab=comments#top');
+
+    view.unmount();
+  });
+
   test('Link intercepts normal click and skips alt/defaultPrevented clicks', async () => {
     const changeRoute = vi.fn(async () => {});
     const prefetchRoute = vi.fn();
