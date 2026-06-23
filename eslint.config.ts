@@ -56,6 +56,7 @@ export default defineConfig(
       ],
       'react/prop-types': 'off',
       curly: ['error', 'all'],
+      eqeqeq: ['error', 'always'],
       'sort-imports': [
         'error',
         {

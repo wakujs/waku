@@ -35,6 +35,12 @@ import {
   useRefetch,
 } from '../minimal/client.js';
 import type { RouteConfig } from './base-types.js';
+import { buildRouteHref } from './client-utils/build-route-href.js';
+import type {
+  BuildRouteHrefTarget,
+  RoutePattern,
+} from './client-utils/build-route-href.js';
+import { matchRouteParams } from './client-utils/match-route-params.js';
 import {
   ETAG_ID_PREFIX,
   HAS404_ID,
@@ -46,6 +52,7 @@ import {
   pathnameToRoutePath,
 } from './common-utils/route-path.js';
 import type { RouteProps } from './common-utils/route-path.js';
+import type { RouteParams } from './create-pages-utils/inferred-path-types.js';
 
 type AllowTrailingSlash<Path extends string> = Path extends '/'
   ? Path
@@ -65,6 +72,24 @@ type InferredPaths = RouteConfig extends {
 }
   ? AllowPathDecorators<UserPaths>
   : string;
+
+type NavigateOptions = {
+  /**
+   * indicates if the link should scroll or not on navigation
+   * - `true`: always scroll
+   * - `false`: never scroll
+   * - `undefined`: scroll on path/hash change (not on query-only change)
+   */
+  scroll?: boolean;
+};
+
+type Navigate = {
+  (to: InferredPaths, options?: NavigateOptions): Promise<void>;
+  <Pattern extends RoutePattern>(
+    target: BuildRouteHrefTarget<Pattern>,
+    options?: NavigateOptions,
+  ): Promise<void>;
+};
 
 const pathnameToCurrentRoutePath = (pathname: string) =>
   pathnameToRoutePath(
@@ -228,19 +253,14 @@ export function useRouter() {
   const { route, changeRoute, prefetchRoute } = router;
   const push = useCallback(
     async (
-      to: InferredPaths,
-      options?: {
-        /**
-         * indicates if the link should scroll or not on navigation
-         * - `true`: always scroll
-         * - `false`: never scroll
-         * - `undefined`: scroll on path/hash change (not on query-only change)
-         */
-        scroll?: boolean;
-      },
+      to: InferredPaths | BuildRouteHrefTarget<RoutePattern>,
+      options?: NavigateOptions,
     ) => {
-      to = addBase(to, import.meta.env.WAKU_CONFIG_BASE_PATH);
-      const url = new URL(to, window.location.href);
+      const href = typeof to === 'string' ? to : buildRouteHref(to);
+      const url = new URL(
+        addBase(href, import.meta.env.WAKU_CONFIG_BASE_PATH),
+        window.location.href,
+      );
       await changeRoute(parseRoute(url), {
         shouldScroll: options?.scroll ?? shouldScrollByDefault(url),
         mode: 'push',
@@ -248,22 +268,17 @@ export function useRouter() {
       });
     },
     [changeRoute],
-  );
+  ) as Navigate;
   const replace = useCallback(
     async (
-      to: InferredPaths,
-      options?: {
-        /**
-         * indicates if the link should scroll or not on navigation
-         * - `true`: always scroll
-         * - `false`: never scroll
-         * - `undefined`: scroll on path/hash change (not on query-only change)
-         */
-        scroll?: boolean;
-      },
+      to: InferredPaths | BuildRouteHrefTarget<RoutePattern>,
+      options?: NavigateOptions,
     ) => {
-      to = addBase(to, import.meta.env.WAKU_CONFIG_BASE_PATH);
-      const url = new URL(to, window.location.href);
+      const href = typeof to === 'string' ? to : buildRouteHref(to);
+      const url = new URL(
+        addBase(href, import.meta.env.WAKU_CONFIG_BASE_PATH),
+        window.location.href,
+      );
       await changeRoute(parseRoute(url), {
         shouldScroll: options?.scroll ?? shouldScrollByDefault(url),
         mode: 'replace',
@@ -271,7 +286,7 @@ export function useRouter() {
       });
     },
     [changeRoute],
-  );
+  ) as Navigate;
   const reload = useCallback(async () => {
     const url = new URL(window.location.href);
     await changeRoute(parseRoute(url), { shouldScroll: true, refetch: true });
@@ -301,6 +316,22 @@ export function useRouter() {
     prefetch,
     unstable_events: router.routeChangeEvents,
   };
+}
+
+/**
+ * Read the current route's params, typed from the `from` pattern, or null when
+ * the current path does not match it. Re-renders when the route path changes.
+ * The result is memoized by path, so its identity changes on navigation to a
+ * different path; read its fields rather than using the object itself as an
+ * effect dependency.
+ */
+export function useParams_UNSTABLE<Pattern extends RoutePattern>({
+  from,
+}: {
+  from: Pattern;
+}): RouteParams<Pattern> | null {
+  const { path } = useRouter();
+  return useMemo(() => matchRouteParams(from, path), [from, path]);
 }
 
 function useSharedRef<T>(
@@ -450,7 +481,11 @@ export function Link({
     if (props.target && props.target.toLowerCase() !== '_self') {
       console.warn('[Link] `target` is discouraged. Use `<a>` for this case.');
     }
-    if (props.download != null && props.download !== false) {
+    if (
+      props.download !== undefined &&
+      props.download !== null &&
+      props.download !== false
+    ) {
       console.warn(
         '[Link] `download` is discouraged. Use `<a>` for this case.',
       );
