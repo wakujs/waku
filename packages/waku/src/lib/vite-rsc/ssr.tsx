@@ -13,10 +13,7 @@ import { batchReadableStream } from '../utils/stream.js';
 function createFromReadableStream<T>(
   stream: ReadableStream<Uint8Array>,
 ): Promise<T> {
-  // In dev, React Flight emits debug chunks that can settle after the stream
-  // ends; letting React see EOF then rejects them as "Connection closed.". Keep
-  // the stream open in dev so every chunk settles on its own. Production payloads
-  // have no such trailing chunks, so the stream is used as-is.
+  // In DEV, keep the RSC stream open so late Flight debug chunks aren't rejected as "Connection closed." https://github.com/wakujs/waku/pull/2154
   return createFromReadableStreamBase<T>(
     import.meta.env.DEV
       ? stream.pipeThrough(

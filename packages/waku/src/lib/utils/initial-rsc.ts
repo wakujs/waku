@@ -29,8 +29,7 @@ export const createInitialRscEntryCode = (debugId: string | undefined) =>
         d.length = 0;
         d.push = f;
         ${
-          // In dev, keep the stream open so React Flight debug chunks that settle
-          // after the document is parsed are not rejected as "Connection closed.".
+          // In DEV, keep the RSC stream open so late Flight debug chunks aren't rejected as "Connection closed." https://github.com/wakujs/waku/pull/2154
           import.meta.env.DEV
             ? ''
             : `if (document.readyState === 'loading') {
