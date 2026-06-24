@@ -90,7 +90,7 @@
   },
   "license": "MIT",
   "engines": {
-    "node": "^26.0.0 || ^24.0.0 || ^22.13.0"
+    "node": "^26.0.0 || ^24.0.0 || ^22.15.0"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.6",
