@@ -13,11 +13,13 @@ import { batchReadableStream } from '../utils/stream.js';
 function createFromReadableStream<T>(
   stream: ReadableStream<Uint8Array>,
 ): Promise<T> {
-  // In DEV, keep the RSC stream open so late Flight debug chunks aren't rejected as "Connection closed." https://github.com/wakujs/waku/pull/2154
+  // DEV: hold the stream ~5s so React's late debug-channel chunks settle before close. https://github.com/wakujs/waku/pull/2154
   return createFromReadableStreamBase<T>(
     import.meta.env.DEV
       ? stream.pipeThrough(
-          new TransformStream({ flush: () => new Promise(() => {}) }),
+          new TransformStream({
+            flush: () => new Promise((r) => setTimeout(r, 5000)),
+          }),
         )
       : stream,
   );

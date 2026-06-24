@@ -16,6 +16,7 @@ export const consumeInitialRscEntry = (): InitialRscEntry | undefined => {
   return entry;
 };
 
+// DEV: hold the stream ~5s so React's late debug-channel chunks settle before close. https://github.com/wakujs/waku/pull/2154
 export const createInitialRscEntryCode = (debugId: string | undefined) =>
   `
   (() => {
@@ -28,15 +29,11 @@ export const createInitialRscEntryCode = (debugId: string | undefined) =>
         d.forEach(f);
         d.length = 0;
         d.push = f;
-        ${
-          // In DEV, keep the RSC stream open so late Flight debug chunks aren't rejected as "Connection closed." https://github.com/wakujs/waku/pull/2154
-          import.meta.env.DEV
-            ? ''
-            : `if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', () => c.close());
+        const close = ${import.meta.env.DEV ? '() => setTimeout(() => c.close(), 5000)' : '() => c.close()'};
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', close);
         } else {
-          c.close();
-        }`
+          close();
         }
       }
     })));
