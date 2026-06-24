@@ -5,7 +5,6 @@
 // This is exported only for global-types.ts. It is not a public API.
 export type InitialRscEntry = {
   response: Promise<Response>;
-  close: () => void;
   debugId?: string;
 };
 
@@ -29,13 +28,17 @@ export const createInitialRscEntryCode = (debugId: string | undefined) =>
         d.forEach(f);
         d.length = 0;
         d.push = f;
-        e.close = () => {
-          if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => c.close());
-          } else {
-            c.close();
-          }
-        };
+        ${
+          // In dev, keep the stream open so React Flight debug chunks that settle
+          // after the document is parsed are not rejected as "Connection closed.".
+          import.meta.env.DEV
+            ? ''
+            : `if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', () => c.close());
+        } else {
+          c.close();
+        }`
+        }
       }
     })));
     ${debugId ? `e.debugId = ${JSON.stringify(debugId)};` : ''}

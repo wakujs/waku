@@ -7,21 +7,23 @@ import htmlShell from 'virtual:vite-rsc-waku/html-shell';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
 import { sanitizeLog } from '../utils/log.js';
-import { waitForRootPrerequisites } from '../utils/rsc-stream.js';
 import { getBootstrapPreamble } from '../utils/ssr.js';
-import { batchReadableStream, deferReadableStream } from '../utils/stream.js';
+import { batchReadableStream } from '../utils/stream.js';
 
 function createFromReadableStream<T>(
   stream: ReadableStream<Uint8Array>,
 ): Promise<T> {
-  let resolve!: () => void;
-  const promise = new Promise<void>((r) => {
-    resolve = r;
-  });
-  const deferredStream = deferReadableStream(stream, promise);
-  const root = createFromReadableStreamBase<T>(deferredStream);
-  waitForRootPrerequisites(root).then(resolve, resolve);
-  return root;
+  // In dev, React Flight emits debug chunks that can settle after the stream
+  // ends; letting React see EOF then rejects them as "Connection closed.". Keep
+  // the stream open in dev so every chunk settles on its own. Production payloads
+  // have no such trailing chunks, so the stream is used as-is.
+  return createFromReadableStreamBase<T>(
+    import.meta.env.DEV
+      ? stream.pipeThrough(
+          new TransformStream({ flush: () => new Promise(() => {}) }),
+        )
+      : stream,
+  );
 }
 
 type RenderHtmlStream = (
