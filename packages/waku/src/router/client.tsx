@@ -380,6 +380,10 @@ export function Unstable_SearchCodecsProvider({
       : Object.values(searchCodecs);
     for (const value of values) {
       if (isCodec(value)) {
+        const existing = map.get(value.id);
+        if (existing && existing !== value) {
+          throw new Error(`Duplicate search codec id: "${value.id}"`);
+        }
         map.set(value.id, value);
       }
     }

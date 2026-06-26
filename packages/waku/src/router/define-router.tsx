@@ -549,8 +549,10 @@ const setupRouterSearchCodecs = (configs: readonly RuntimeConfig[]) => {
   (
     globalThis as { __WAKU_ROUTER_SEARCH_CODECS__?: Record<string, string> }
   ).__WAKU_ROUTER_SEARCH_CODECS__ = routePath2searchCodecId;
+  // escape `<` so the value cannot break out of the inline <script>
+  const json = JSON.stringify(routePath2searchCodecId).replace(/</g, '\\u003c');
   return `
-globalThis.__WAKU_ROUTER_SEARCH_CODECS__ = ${JSON.stringify(routePath2searchCodecId)};
+globalThis.__WAKU_ROUTER_SEARCH_CODECS__ = ${json};
 `;
 };
 

@@ -75,8 +75,10 @@ const parseSearchOrThrow = (
 ): Record<string, unknown> => {
   try {
     return codec.parse(query);
-  } catch {
-    throw createCustomError('Bad Request', { status: 400 });
+  } catch (cause) {
+    const err = createCustomError('Bad Request', { status: 400 });
+    err.cause = cause;
+    throw err;
   }
 };
 
@@ -644,6 +646,11 @@ export const createPages = <
     const sourceFile = page.unstable_sourceFile;
     const getEtag = page.unstable_getEtag;
     const searchCodec = page.unstable_searchCodec;
+    if (searchCodec && page.render === 'static') {
+      throw new Error(
+        `unstable_searchCodec is not supported on a static route (${page.path}); search params need a per-request query, so use render: 'dynamic'.`,
+      );
+    }
 
     const registerPageWithExactPath = () => {
       const routePath = pageRoutePath;

@@ -123,6 +123,22 @@ test.describe('fs-router', () => {
     );
   });
 
+  test('search params (grouped route, normalized path keys)', async ({
+    page,
+  }) => {
+    // a route inside a (group) is keyed by its groupless path everywhere; the
+    // client useSearch must resolve via the same normalized key in the
+    // route -> codec id map (the codec is shared with /search by id)
+    await page.goto(`http://localhost:${port}/grouped-search?q=hi&page=2`);
+    await waitForHydration(page);
+    await expect(page.getByTestId('grouped-server-search')).toHaveText(
+      '{"q":"hi","page":2}',
+    );
+    await expect(page.getByTestId('grouped-client-search')).toHaveText(
+      '{"q":"hi","page":2}',
+    );
+  });
+
   test('static-nested encoded path with trailing slash', async ({ page }) => {
     await page.goto(`http://localhost:${port}/static-nested/encoded%20path/`);
     await expect(

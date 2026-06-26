@@ -307,6 +307,22 @@ describe('router navigation method path typing', () => {
 });
 
 describe('router/client utilities', () => {
+  test('SearchCodecsProvider throws on a duplicate codec id', async () => {
+    const a = { id: 'dup', parse: () => ({}), serialize: () => '' } as const;
+    const b = {
+      id: 'dup',
+      parse: () => ({ x: 1 }),
+      serialize: () => '',
+    } as const;
+    await expect(
+      renderApp(
+        <Unstable_SearchCodecsProvider searchCodecs={[a, b]}>
+          <div />
+        </Unstable_SearchCodecsProvider>,
+      ),
+    ).rejects.toThrow(/Duplicate search codec id/);
+  });
+
   test('parses route path/query/hash and canonicalizes path from pathname', () => {
     const route = unstable_parseRoute(
       new URL('http://localhost/foo/index.html?count=2#hash'),

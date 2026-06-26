@@ -213,7 +213,9 @@ export interface ApiContext<Path extends string> {
  * typed `search` object and back, identified by a stable `id`. Waku provides
  * this contract and the integration; the implementation (a library, an adapter
  * for nuqs/zod, or a hand-written object) lives outside core. `parse` may throw
- * to reject a malformed query (the framework turns it into a 400).
+ * to reject a malformed query (the framework turns it into a 400). `serialize`
+ * must return an already URL-encoded query string (e.g. via
+ * `URLSearchParams.toString()`); it is placed after `?` in the href as-is.
  */
 export type Unstable_SearchCodec<Search extends Record<string, unknown>> = {
   id: string;

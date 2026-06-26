@@ -3374,6 +3374,29 @@ describe('createPages search codec', () => {
       thrown = e;
     }
     expect(getErrorInfo(thrown)?.status).toBe(400);
+    // the original parse error is preserved as the cause
+    expect((thrown as { cause?: Error }).cause?.message).toBe('invalid');
+  });
+
+  it('rejects unstable_searchCodec on a static route', async () => {
+    const codec = {
+      id: 'static-codec',
+      parse: () => ({}),
+      serialize: () => '',
+    } as const;
+    createPages(
+      async ({ createPage }) =>
+        [
+          createPage({
+            render: 'static',
+            path: '/static-search',
+            component: () => null,
+            unstable_searchCodec: codec,
+          }),
+        ] as never,
+    );
+    const { getConfigs } = injectedFunctions();
+    await expect(getConfigs()).rejects.toThrow(/static route/);
   });
 });
 
