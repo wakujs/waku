@@ -32,6 +32,7 @@ import {
   Router,
   unstable_RouterContext as RouterContext,
   Slice,
+  Unstable_SearchCodecsProvider,
   unstable_encodeRoutePath,
   unstable_encodeSliceId,
   unstable_getRouteSlotId,
@@ -49,6 +50,25 @@ import {
   ROUTE_ID,
   SKIP_HEADER,
 } from '../src/router/common-utils/route-path.js';
+
+const postsSearchCodec = {
+  id: 'posts-test',
+  parse: (query: string) => ({
+    tab: new URLSearchParams(query).get('tab') ?? '',
+  }),
+  serialize: (search: { tab: string }) =>
+    new URLSearchParams({ tab: search.tab }).toString(),
+} as const;
+
+declare module '../src/router/base-types.js' {
+  interface SearchCodecsConfig {
+    '/posts/[slug]': typeof postsSearchCodec;
+  }
+}
+
+(
+  globalThis as { __WAKU_ROUTER_SEARCH_CODECS__?: Record<string, string> }
+).__WAKU_ROUTER_SEARCH_CODECS__ = { '/posts/[slug]': 'posts-test' };
 
 type ElementsMap = Record<string, unknown>;
 type RouterApi = ReturnType<typeof useRouter>;
@@ -182,7 +202,11 @@ const renderRouter = async (
   elements: ElementsMap,
 ) => {
   testHoisted.elements = elements;
-  return renderApp(<Router {...(props || {})} />);
+  return renderApp(
+    <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+      <Router {...(props || {})} />
+    </Unstable_SearchCodecsProvider>,
+  );
 };
 
 const renderRouterInStrictMode = async (
@@ -192,7 +216,9 @@ const renderRouterInStrictMode = async (
   testHoisted.elements = elements;
   return renderApp(
     <StrictMode>
-      <Router {...(props || {})} />
+      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+        <Router {...(props || {})} />
+      </Unstable_SearchCodecsProvider>
     </StrictMode>,
   );
 };
@@ -465,17 +491,19 @@ describe('useRouter + Link with context', () => {
     };
 
     const view = await renderApp(
-      <RouterContext
-        value={{
-          route: { path: '/start', query: '', hash: '' },
-          changeRoute,
-          prefetchRoute: vi.fn(),
-          routeChangeEvents: { on: vi.fn(), off: vi.fn() },
-          fetchingSlices: new Set(),
-        }}
-      >
-        <Probe />
-      </RouterContext>,
+      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+        <RouterContext
+          value={{
+            route: { path: '/start', query: '', hash: '' },
+            changeRoute,
+            prefetchRoute: vi.fn(),
+            routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+            fetchingSlices: new Set(),
+          }}
+        >
+          <Probe />
+        </RouterContext>
+      </Unstable_SearchCodecsProvider>,
     );
 
     if (!capture.router) {
