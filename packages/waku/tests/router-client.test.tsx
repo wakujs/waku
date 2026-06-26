@@ -323,6 +323,27 @@ describe('router/client utilities', () => {
     ).rejects.toThrow(/Duplicate search codec id/);
   });
 
+  test('SearchCodecsProvider warns on and ignores non-codec values', async () => {
+    const codec = {
+      id: 'real',
+      parse: () => ({}),
+      serialize: () => '',
+    } as const;
+    const notCodec = { id: 3, first: 'react', last: 'js' };
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const view = await renderApp(
+      <Unstable_SearchCodecsProvider searchCodecs={{ codec, notCodec }}>
+        <div />
+      </Unstable_SearchCodecsProvider>,
+    );
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('not a search codec'),
+      notCodec,
+    );
+    warn.mockRestore();
+    view.unmount();
+  });
+
   test('parses route path/query/hash and canonicalizes path from pathname', () => {
     const route = unstable_parseRoute(
       new URL('http://localhost/foo/index.html?count=2#hash'),

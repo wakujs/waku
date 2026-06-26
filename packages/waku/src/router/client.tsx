@@ -363,8 +363,10 @@ export function useParams_UNSTABLE<Path extends RoutePath>({
 /**
  * Provide search codecs to `useSearch_UNSTABLE`, `useSetSearch_UNSTABLE`,
  * `push`, and `Link`. Render it in your root layout so the codecs are present in
- * both the SSR render and the browser. Accepts a module namespace, a record, or
- * an array; only codec-shaped values are kept.
+ * both the SSR render and the browser. Pass only search codecs: a codec-only
+ * module (via `import * as`), a record, or an array. A value that is not a codec
+ * is ignored with a warning, so keep helpers and constants out of the module you
+ * pass (or list the codecs explicitly).
  */
 export function Unstable_SearchCodecsProvider({
   searchCodecs,
@@ -379,13 +381,18 @@ export function Unstable_SearchCodecsProvider({
       ? searchCodecs
       : Object.values(searchCodecs);
     for (const value of values) {
-      if (isCodec(value)) {
-        const existing = map.get(value.id);
-        if (existing && existing !== value) {
-          throw new Error(`Duplicate search codec id: "${value.id}"`);
-        }
-        map.set(value.id, value);
+      if (!isCodec(value)) {
+        console.warn(
+          'Unstable_SearchCodecsProvider ignored a value that is not a search codec; pass only codecs (a codec-only module or an explicit array).',
+          value,
+        );
+        continue;
       }
+      const existing = map.get(value.id);
+      if (existing && existing !== value) {
+        throw new Error(`Duplicate search codec id: "${value.id}"`);
+      }
+      map.set(value.id, value);
     }
     return map;
   }, [searchCodecs]);

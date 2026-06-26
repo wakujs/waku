@@ -164,6 +164,8 @@ export const SearchCodecs = ({ children }: { children: ReactNode }) => (
 );
 ```
 
+Pass only codecs. `import * as` works when the module exports just codecs (types are erased); if the module also has non-codec exports, list the codecs explicitly instead, e.g. `searchCodecs={[searchCodec]}`. Non-codec values are ignored with a warning.
+
 Render it in your root layout so it wraps every page:
 
 ```tsx
