@@ -14,7 +14,7 @@ const parsers = {
 const loadSearch = createLoader(parsers);
 const serializeSearch = createSerializer(parsers);
 
-export type NuqsSearch = { q: string; page: number };
+type NuqsSearch = { q: string; page: number };
 
 export const nuqsSearchCodec = {
   id: 'nuqs',
@@ -24,4 +24,4 @@ export const nuqsSearchCodec = {
   // createSerializer prepends "?"; the codec returns the query without it
   serialize: (search: NuqsSearch): string =>
     serializeSearch(search).replace(/^\?/, ''),
-} as const satisfies Unstable_SearchCodec<NuqsSearch>;
+} satisfies Unstable_SearchCodec<NuqsSearch>;

@@ -6,7 +6,7 @@ const schema = z.object({
   page: z.coerce.number().int().min(1).default(1),
 });
 
-export type ZodSearch = z.infer<typeof schema>;
+type ZodSearch = z.infer<typeof schema>;
 
 export const zodSearchCodec = {
   id: 'zod',
@@ -14,4 +14,4 @@ export const zodSearchCodec = {
     schema.parse(Object.fromEntries(new URLSearchParams(query))),
   serialize: (search: ZodSearch): string =>
     new URLSearchParams({ q: search.q, page: String(search.page) }).toString(),
-} as const satisfies Unstable_SearchCodec<ZodSearch>;
+} satisfies Unstable_SearchCodec<ZodSearch>;
