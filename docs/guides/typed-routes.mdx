@@ -93,6 +93,70 @@ export const searchCodec = {
 
 `parse` may throw to reject a malformed query; Waku turns that into a 400.
 
+### Wrapping a validation library
+
+A codec is just `{ id, parse, serialize }`, so you can back it with a schema or query-state library instead of hand-writing the logic. Use the library for `parse` (validation and coercion) and let it (or `URLSearchParams`) build the query string in `serialize`.
+
+With [Zod](https://zod.dev):
+
+```ts
+// ./src/lib/search.ts
+import { z } from 'zod';
+import type { Unstable_SearchCodec } from 'waku/router';
+
+const schema = z.object({
+  q: z.string().default(''),
+  // `.catch` falls back instead of throwing; drop it to 400 on a bad value
+  page: z.coerce.number().int().min(1).catch(1),
+});
+
+type Search = z.infer<typeof schema>;
+
+export const searchCodec = {
+  id: 'search',
+  parse: (query: string): Search =>
+    schema.parse(Object.fromEntries(new URLSearchParams(query))),
+  serialize: (search: Search): string =>
+    new URLSearchParams({
+      q: search.q,
+      page: String(search.page),
+    }).toString(),
+} as const satisfies Unstable_SearchCodec<Search>;
+```
+
+With [nuqs](https://nuqs.dev) (its `nuqs/server` entry has no `'use client'`, so the codec stays isomorphic):
+
+```ts
+// ./src/lib/search.ts
+import {
+  createLoader,
+  createSerializer,
+  parseAsInteger,
+  parseAsString,
+} from 'nuqs/server';
+import type { Unstable_SearchCodec } from 'waku/router';
+
+const parsers = {
+  q: parseAsString.withDefault(''),
+  page: parseAsInteger.withDefault(1),
+};
+
+const loadSearch = createLoader(parsers);
+const serializeSearch = createSerializer(parsers);
+
+type Search = { q: string; page: number };
+
+export const searchCodec = {
+  id: 'search',
+  parse: (query: string): Search => loadSearch(new URLSearchParams(query)),
+  // createSerializer prepends "?"; the codec returns the query without it
+  serialize: (search: Search): string =>
+    serializeSearch(search).replace(/^\?/, ''),
+} as const satisfies Unstable_SearchCodec<Search>;
+```
+
+> **Using nuqs here differs from its own [server-side approach](https://nuqs.dev/docs/server-side).** With Waku, nuqs is only the parser/serializer (`nuqs/server`); the codec is registered with the router by `id`, so Waku runs `parse` as part of the request (typed `props.search`, same codec on the client). You don't wire up nuqs's own server pieces like `createSearchParamsCache` or `NuqsAdapter` / `useQueryState`.
+
 ### Attach the codec to a route
 
 Set it on the route's config, and map the route to the codec for typing.
