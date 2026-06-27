@@ -213,6 +213,19 @@ test.describe(`create-pages`, () => {
     );
   });
 
+  test('search params (typed structured redirect to a dynamic route with a codec)', async ({
+    request,
+  }) => {
+    // resolves the codec for a dynamic route (/items/[id]) and serializes both
+    // params and search into the Location (catches a route-key normalization
+    // mismatch, which would otherwise throw instead of redirecting)
+    const res = await request.get(`http://localhost:${port}/redirect-to-item`, {
+      maxRedirects: 0,
+    });
+    expect(res.status()).toBe(307);
+    expect(res.headers()['location']).toBe('/items/7?q=hi&page=2');
+  });
+
   test('dynamic', async ({ page }) => {
     await page.goto(`http://localhost:${port}/dynamic`);
     await expect(page.getByRole('navigation')).toHaveText('Dynamic Layout');

@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { Slice } from 'waku';
 import adapter from 'waku/adapters/default';
 import type { PathsForPages } from 'waku/router';
-import { createPages } from 'waku/router/server';
+import { createPages, unstable_redirect as redirect } from 'waku/router/server';
 import { DeeplyNestedLayout } from './components/DeeplyNestedLayout.js';
 import DynamicLayout from './components/DynamicLayout.js';
 import ErrorPage from './components/ErrorPage.js';
@@ -75,6 +75,26 @@ const pages: ReturnType<typeof createPages> = createPages(
       render: 'dynamic',
       path: '/redirect-to-search',
       component: RedirectToSearchPage,
+    }),
+
+    // a dynamic route that also has a search codec, to exercise the codec
+    // resolver for a slug route end to end (see /redirect-to-item)
+    createPage({
+      render: 'dynamic',
+      path: '/items/[id]',
+      component: () => <p>Item</p>,
+      unstable_searchCodec: demoSearchCodec,
+    }),
+
+    createPage({
+      render: 'dynamic',
+      path: '/redirect-to-item',
+      component: () =>
+        redirect({
+          to: '/items/[id]',
+          params: { id: '7' },
+          search: { q: 'hi', page: 2 },
+        }),
     }),
 
     createPage({
