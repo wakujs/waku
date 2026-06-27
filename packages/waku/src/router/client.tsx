@@ -1167,7 +1167,7 @@ const InnerRouter = ({
       if (options.instant && isStaticSlot(getRouteSlotId(nextRoute.path))) {
         const dataPromise = refetch(rscPath, rscParams, {
           signal: abortController.signal,
-          isEager: (key) => isMetaKey(key) || isStaticSlot(key),
+          unstable_isEager: (key) => isMetaKey(key) || isStaticSlot(key),
         });
         commitRoute(nextRoute);
         dataPromise.then(

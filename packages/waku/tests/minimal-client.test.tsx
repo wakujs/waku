@@ -340,14 +340,14 @@ describe('minimal/client eager merge', () => {
     });
     expect(container.textContent).toBe('CD1');
 
-    // Optimistic refetch: b refreshes the lazy slot AND introduces `extra` — a
+    // Optimistic refetch: b refreshes the lazy slot AND introduces `extra`, a
     // key the eager merge must not drop (e.g. a redirect target's slot).
     mocks.createFromFetch.mockReturnValueOnce(
       resolvedThenable({ dynamic: 'D2', extra: 'X' }),
     );
-    const isEager = (key: string) => key === 'cached';
+    const unstable_isEager = (key: string) => key === 'cached';
     await act(async () => {
-      await refetch!('R/next.txt', undefined, { isEager });
+      await refetch!('R/next.txt', undefined, { unstable_isEager });
     });
     await act(async () => {
       mountExtra();

@@ -122,7 +122,7 @@ type FetchRscOptions = {
 type Refetch = (
   rscPath: string,
   rscParams?: unknown,
-  options?: FetchRscOptions & { isEager?: (key: string) => boolean },
+  options?: FetchRscOptions & { unstable_isEager?: (key: string) => boolean },
 ) => Promise<Elements>;
 
 const getFetchFn = (): typeof fetch => {
@@ -437,6 +437,9 @@ const ElementsContext = createContext<Promise<Elements> | null>(null);
 /**
  * Client root. Seeds the initial elements, bridges the store to React state,
  * and provides the elements to `Slot` descendants.
+ *
+ * This API is technically unstable and may change or be removed,
+ * even though it does not carry the `unstable_` prefix.
  */
 export const Root = ({
   initialRscPath,
@@ -458,7 +461,7 @@ export const Root = ({
     const data = unstable_fetchRsc(rscPath, rscParams, options);
     const dataWithoutErrors = Promise.resolve(data).catch(() => ({}));
     setElements((prev) =>
-      mergeElementsPromise(prev, dataWithoutErrors, options?.isEager),
+      mergeElementsPromise(prev, dataWithoutErrors, options?.unstable_isEager),
     );
     return data;
   }, []);
@@ -472,11 +475,19 @@ export const Root = ({
   );
 };
 
+/**
+ * This API is technically unstable and may change or be removed,
+ * even though it does not carry the `unstable_` prefix.
+ */
 export const useRefetch = () => use(RefetchContext);
 
 const ChildrenContext = createContext<ReactNode>(undefined);
 const ChildrenContextProvider = memo(ChildrenContext);
 
+/**
+ * This API is technically unstable and may change or be removed,
+ * even though it does not carry the `unstable_` prefix.
+ */
 export const Children = () => use(ChildrenContext);
 
 export const useElementsPromise_UNSTABLE = () => {
@@ -500,6 +511,9 @@ export const useElementsPromise_UNSTABLE = () => {
  * ```
  *   <Root><Slot id="foo" /><Slot id="bar" /></Root>
  * ```
+ *
+ * This API is technically unstable and may change or be removed,
+ * even though it does not carry the `unstable_` prefix.
  */
 export const Slot = ({
   id,
