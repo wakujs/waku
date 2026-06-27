@@ -72,6 +72,48 @@ describe('define-router action requests', () => {
     );
   });
 
+  it('does not let catch-all api routes intercept function requests', async () => {
+    const apiHandler = vi.fn().mockResolvedValue(new Response('api'));
+    const actionFn = vi.fn().mockResolvedValue('action-result');
+    const { handleRequest } = unstable_defineRouter({
+      getConfigs: async () => [
+        {
+          type: 'api' as const,
+          path: [
+            { type: 'group' as const, name: 'bucket' },
+            { type: 'wildcard' as const, name: 'path' },
+          ],
+          isStatic: false,
+          handler: apiHandler,
+        },
+      ],
+    });
+
+    const renderRsc = vi.fn().mockResolvedValue(makeStream());
+
+    await handleRequest(
+      {
+        type: 'function',
+        pathname: '/RSC/F/actions/submit.txt',
+        fn: actionFn,
+        args: ['arg'],
+        req: new Request('http://localhost/RSC/F/actions/submit.txt', {
+          method: 'POST',
+        }),
+      },
+      {
+        renderRsc,
+        parseRsc: vi.fn(),
+        renderHtml: vi.fn(),
+        loadBuildMetadata: vi.fn(),
+      },
+    );
+
+    expect(apiHandler).not.toHaveBeenCalled();
+    expect(actionFn).toHaveBeenCalledWith('arg');
+    expect(renderRsc).toHaveBeenCalledWith({}, { value: 'action-result' });
+  });
+
   it('sets router initial route for 404 HTML', async () => {
     const { handleRequest } = unstable_defineRouter({
       getConfigs: async () => [
