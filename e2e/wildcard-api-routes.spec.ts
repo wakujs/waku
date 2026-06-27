@@ -22,8 +22,8 @@ test.describe('wildcard api routes', () => {
 
   test(`api route matches before wildcard route`, async ({ page }) => {
     // misc route matches wildcard:
-    await page.goto(`http://localhost:${port}/foo/bar`);
-    await expect(page.getByRole('heading', { name: '/foo/bar' })).toBeVisible();
+    await page.goto(`http://localhost:${port}/foo`);
+    await expect(page.getByRole('heading', { name: '/foo' })).toBeVisible();
 
     // api route request
     const response = await page.request.get(
@@ -77,5 +77,18 @@ test.describe('wildcard api routes', () => {
     );
     const text2 = await response2.text();
     expect(text2).toBe('/api root catch-all');
+  });
+
+  test('root catch-all api does not intercept client navigation', async ({
+    page,
+  }) => {
+    const response = await page.request.get(
+      `http://localhost:${port}/files/path/to/file.txt`,
+    );
+    expect(await response.text()).toBe('files:path/to/file.txt');
+
+    await page.goto(`http://localhost:${port}/`);
+    await page.getByRole('link', { name: 'About' }).click();
+    await expect(page.getByRole('heading', { name: 'About' })).toBeVisible();
   });
 });

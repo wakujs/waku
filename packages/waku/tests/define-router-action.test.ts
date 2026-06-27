@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { getErrorInfo } from '../src/lib/utils/custom-errors.js';
-import { ROUTE_ID } from '../src/router/common-utils/route-path.js';
+import {
+  ROUTE_ID,
+  encodeRoutePath,
+} from '../src/router/common-utils/route-path.js';
 import {
   unstable_defineRouter,
   unstable_redirect,
@@ -21,6 +24,54 @@ const makeStream = () =>
   });
 
 describe('define-router action requests', () => {
+  it('does not let catch-all api routes intercept component requests', async () => {
+    const apiHandler = vi.fn().mockResolvedValue(new Response('api'));
+    const { handleRequest } = unstable_defineRouter({
+      getConfigs: async () => [
+        {
+          type: 'api' as const,
+          path: [
+            { type: 'group' as const, name: 'bucket' },
+            { type: 'wildcard' as const, name: 'path' },
+          ],
+          isStatic: false,
+          handler: apiHandler,
+        },
+        {
+          type: 'route' as const,
+          path: [{ type: 'literal' as const, name: 'about' }],
+          isStatic: false,
+          rootElement: { isStatic: false, renderer: () => 'root' },
+          routeElement: { isStatic: false, renderer: () => 'route' },
+          elements: {},
+        },
+      ],
+    });
+
+    const renderRsc = vi.fn().mockResolvedValue(makeStream());
+
+    await handleRequest(
+      {
+        type: 'component',
+        pathname: '/RSC/R/about',
+        rscPath: encodeRoutePath('/about'),
+        rscParams: undefined,
+        req: new Request('http://localhost/RSC/R/about'),
+      },
+      {
+        renderRsc,
+        parseRsc: vi.fn(),
+        renderHtml: vi.fn(),
+        loadBuildMetadata: vi.fn(),
+      },
+    );
+
+    expect(apiHandler).not.toHaveBeenCalled();
+    expect(renderRsc).toHaveBeenCalledWith(
+      expect.objectContaining({ [ROUTE_ID]: ['/about', ''] }),
+    );
+  });
+
   it('sets router initial route for 404 HTML', async () => {
     const { handleRequest } = unstable_defineRouter({
       getConfigs: async () => [

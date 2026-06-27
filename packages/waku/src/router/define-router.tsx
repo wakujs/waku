@@ -848,7 +848,7 @@ export function unstable_defineRouter(fns: {
       };
 
       const pathConfigItem = getPathConfigItem(input.pathname);
-      if (pathConfigItem?.type === 'api') {
+      if (input.type === 'custom' && pathConfigItem?.type === 'api') {
         const url = new URL(input.req.url);
         url.pathname = input.pathname;
         const req = new Request(url, input.req);
@@ -966,6 +966,8 @@ export function unstable_defineRouter(fns: {
       }
 
       if (input.type === 'action' || input.type === 'custom') {
+        const routeConfigItem =
+          pathConfigItem?.type === 'route' ? pathConfigItem : undefined;
         const renderIt = async (
           pathname: string,
           query: string,
@@ -1004,11 +1006,11 @@ export function unstable_defineRouter(fns: {
           });
         };
         const query = url.searchParams.toString();
-        if (pathConfigItem?.type === 'route' && pathConfigItem.noSsr) {
+        if (routeConfigItem?.noSsr) {
           return 'fallback';
         }
         try {
-          if (pathConfigItem) {
+          if (routeConfigItem) {
             return await renderIt(input.pathname, query);
           }
         } catch (e) {
