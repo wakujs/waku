@@ -46,7 +46,7 @@ export default async function AccountPage() {
 
 The default is `307`.
 
-`redirect` also accepts the same typed target as `router.push` / `router.replace` — a structured `{ to, params, search, hash }` — so a dynamic route's params and a route's typed `search` are checked and serialized for you:
+`redirect` also accepts the same typed target as `router.push` / `router.replace`: a structured `{ to, params, search, hash }`, so a dynamic route's params and a route's typed `search` are checked and serialized for you:
 
 ```tsx
 redirect({ to: '/posts/[slug]', params: { slug: post.slug } });

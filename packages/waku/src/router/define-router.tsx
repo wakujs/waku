@@ -190,13 +190,16 @@ export function unstable_redirect<Path extends RoutePath = RoutePath>(
     typeof to === 'string'
       ? to
       : buildRouteHref(to, routerStorage.getStore()?.resolveSearchCodec);
+  // JSON.stringify escapes control chars (e.g. newlines) and quotes the value,
+  // so an attacker-controlled `location` can't forge log lines if the thrown
+  // Error is logged downstream (the rejected value often contains control chars).
   if (!location.startsWith('/') || location.startsWith('//')) {
-    throw new Error('Invalid redirect location');
+    throw new Error(`Invalid redirect location: ${JSON.stringify(location)}`);
   }
   for (let i = 0; i < location.length; ++i) {
     const charCode = location.charCodeAt(i);
     if (charCode < 0x20 || charCode === 0x7f || charCode === 0x5c) {
-      throw new Error('Invalid redirect location');
+      throw new Error(`Invalid redirect location: ${JSON.stringify(location)}`);
     }
   }
   throw createCustomError('Redirect', { status, location });
