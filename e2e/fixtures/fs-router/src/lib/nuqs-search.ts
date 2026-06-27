@@ -18,7 +18,9 @@ export type NuqsSearch = { q: string; page: number };
 
 export const nuqsSearchCodec = {
   id: 'nuqs',
-  parse: (query: string): NuqsSearch => loadSearch(new URLSearchParams(query)),
+  // { strict: true } makes the loader throw on a bad value -> Waku 400
+  parse: (query: string): NuqsSearch =>
+    loadSearch(new URLSearchParams(query), { strict: true }),
   // createSerializer prepends "?"; the codec returns the query without it
   serialize: (search: NuqsSearch): string =>
     serializeSearch(search).replace(/^\?/, ''),

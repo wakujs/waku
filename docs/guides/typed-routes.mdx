@@ -106,8 +106,9 @@ import type { Unstable_SearchCodec } from 'waku/router';
 
 const schema = z.object({
   q: z.string().default(''),
-  // `.catch` falls back instead of throwing; drop it to 400 on a bad value
-  page: z.coerce.number().int().min(1).catch(1),
+  // `.default` only fills a missing value; a bad value throws (-> 400).
+  // swap it for `.catch(1)` to fall back to 1 instead
+  page: z.coerce.number().int().min(1).default(1),
 });
 
 type Search = z.infer<typeof schema>;
@@ -148,7 +149,10 @@ type Search = { q: string; page: number };
 
 export const searchCodec = {
   id: 'search',
-  parse: (query: string): Search => loadSearch(new URLSearchParams(query)),
+  // nuqs loaders don't validate by default; `{ strict: true }` throws on a
+  // bad value (-> 400). drop it to fall back to the parser defaults instead
+  parse: (query: string): Search =>
+    loadSearch(new URLSearchParams(query), { strict: true }),
   // createSerializer prepends "?"; the codec returns the query without it
   serialize: (search: Search): string =>
     serializeSearch(search).replace(/^\?/, ''),

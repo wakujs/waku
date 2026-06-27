@@ -168,21 +168,10 @@ test.describe('fs-router', () => {
     );
   });
 
-  test('search params (nuqs codec falls back to defaults on a bad value)', async ({
-    page,
-  }) => {
-    // nuqs parsers are lenient: page=abc -> default 1, no 400 (unlike Zod above)
-    const res = await page.goto(
-      `http://localhost:${port}/nuqs-search?page=abc`,
-    );
-    expect(res?.status()).toBe(200);
-    await waitForHydration(page);
-    await expect(page.getByTestId('nuqs-server-search')).toHaveText(
-      '{"q":"","page":1}',
-    );
-    await expect(page.getByTestId('nuqs-client-search')).toHaveText(
-      '{"q":"","page":1}',
-    );
+  test('search params (nuqs codec rejects an invalid query with 400)', async () => {
+    // the codec loads with { strict: true }, so a bad value throws -> 400
+    const res = await fetch(`http://localhost:${port}/nuqs-search?page=abc`);
+    expect(res.status).toBe(400);
   });
 
   test('static-nested encoded path with trailing slash', async ({ page }) => {
