@@ -847,17 +847,6 @@ export function unstable_defineRouter(fns: {
         return cachedPath2moduleIds!;
       };
 
-      const pathConfigItem = getPathConfigItem(input.pathname);
-      if (input.type === 'custom' && pathConfigItem?.type === 'api') {
-        const url = new URL(input.req.url);
-        url.pathname = input.pathname;
-        const req = new Request(url, input.req);
-        const params =
-          getPathMapping(pathConfigItem.path, input.pathname) ?? {};
-        return pathConfigItem.handler(req, { params });
-      }
-
-      const url = new URL(input.req.url);
       const headers = Object.fromEntries(input.req.headers.entries());
       const withRerender = async <T,>(fn: () => Promise<T>) => {
         let elementsPromise: Promise<Record<string, unknown>> = Promise.resolve(
@@ -966,8 +955,15 @@ export function unstable_defineRouter(fns: {
       }
 
       if (input.type === 'action' || input.type === 'custom') {
-        const routeConfigItem =
-          pathConfigItem?.type === 'route' ? pathConfigItem : undefined;
+        const pathConfigItem = getPathConfigItem(input.pathname);
+        if (pathConfigItem?.type === 'api') {
+          const url = new URL(input.req.url);
+          url.pathname = input.pathname;
+          const req = new Request(url, input.req);
+          const params =
+            getPathMapping(pathConfigItem.path, input.pathname) ?? {};
+          return pathConfigItem.handler(req, { params });
+        }
         const renderIt = async (
           pathname: string,
           query: string,
@@ -1005,12 +1001,13 @@ export function unstable_defineRouter(fns: {
               setupRouterSearchCodecs(getCachedConfigs()),
           });
         };
+        const url = new URL(input.req.url);
         const query = url.searchParams.toString();
-        if (routeConfigItem?.noSsr) {
+        if (pathConfigItem?.noSsr) {
           return 'fallback';
         }
         try {
-          if (routeConfigItem) {
+          if (pathConfigItem) {
             return await renderIt(input.pathname, query);
           }
         } catch (e) {

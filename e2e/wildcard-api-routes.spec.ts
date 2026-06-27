@@ -91,4 +91,28 @@ test.describe('wildcard api routes', () => {
     await page.getByRole('link', { name: 'About' }).click();
     await expect(page.getByRole('heading', { name: 'About' })).toBeVisible();
   });
+
+  test('root catch-all api does not intercept no-js form actions', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      javaScriptEnabled: false,
+    });
+    const page = await context.newPage();
+    const submittedName = `No JS ${Date.now()}`;
+    try {
+      await page.goto(`http://localhost:${port}/files/action`);
+      await expect(
+        page.getByRole('heading', { name: 'Action under API wildcard' }),
+      ).toBeVisible();
+      await page.getByLabel('Name').fill(submittedName);
+      await page.getByRole('button', { name: 'Submit Action' }).click();
+      await expect(page.getByTestId('action-message')).toHaveText(
+        `Submitted: ${submittedName}`,
+      );
+    } finally {
+      await page.close();
+      await context.close();
+    }
+  });
 });
