@@ -17,6 +17,7 @@ import {
 import NestedBazPage from './components/NestedBazPage.js';
 import NestedLayout from './components/NestedLayout.js';
 import NoSsr from './components/NoSsr.js';
+import RedirectToSearchPage from './components/RedirectToSearchPage.js';
 import { RerenderActionPage } from './components/RerenderActionPage.js';
 import SearchPage from './components/SearchPage.js';
 import { Slice001 } from './components/slice001.js';
@@ -68,6 +69,12 @@ const pages: ReturnType<typeof createPages> = createPages(
       path: '/search',
       component: SearchPage,
       unstable_searchCodec: demoSearchCodec,
+    }),
+
+    createPage({
+      render: 'dynamic',
+      path: '/redirect-to-search',
+      component: RedirectToSearchPage,
     }),
 
     createPage({

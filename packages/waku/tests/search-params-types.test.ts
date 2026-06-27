@@ -1,7 +1,7 @@
 import { expectType } from 'ts-expect';
 import type { TypeEqual } from 'ts-expect';
 import { describe, expect, it } from 'vitest';
-import { buildRouteHref } from '../src/router/client-utils/build-route-href.js';
+import { buildRouteHref } from '../src/router/common-utils/build-route-href.js';
 import type {
   PropsForPages,
   RouteSearch,

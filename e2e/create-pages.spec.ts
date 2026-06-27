@@ -199,6 +199,20 @@ test.describe(`create-pages`, () => {
     expect(html).toContain('/search?q=linked');
   });
 
+  test('search params (typed structured redirect serializes search via server codec)', async ({
+    page,
+  }) => {
+    // unstable_redirect({ to: '/search', search }) is typed against /search's
+    // codec and serialized server-side via the codec-instance registry; the
+    // browser follows the 307 to the built href.
+    await page.goto(`http://localhost:${port}/redirect-to-search`);
+    await waitForHydration(page);
+    await expect(page).toHaveURL(/\/search\?q=hi&page=2$/);
+    await expect(page.getByTestId('server-search')).toHaveText(
+      '{"q":"hi","page":2}',
+    );
+  });
+
   test('dynamic', async ({ page }) => {
     await page.goto(`http://localhost:${port}/dynamic`);
     await expect(page.getByRole('navigation')).toHaveText('Dynamic Layout');
