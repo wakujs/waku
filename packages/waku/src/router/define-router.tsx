@@ -25,6 +25,7 @@ import {
   IS_STATIC_ID,
   ROUTE_ID,
   SKIP_HEADER,
+  STATIC_ETAG,
   decodeRoutePath,
   decodeSliceId,
   encodeRoutePath,
@@ -207,9 +208,6 @@ type SlotId = string;
 const ROOT_SLOT_ID = 'root';
 const ROUTE_SLOT_ID_PREFIX = 'route:';
 const SLICE_SLOT_ID_PREFIX = 'slice:';
-
-// The element tag (etag) used for every static slot; known without rendering.
-const STATIC_ETAG = 'static';
 
 type CacheId = string;
 

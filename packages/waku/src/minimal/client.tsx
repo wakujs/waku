@@ -79,13 +79,37 @@ const cache1 = new WeakMap();
 const mergeElementsPromise = (
   a: Promise<Elements>,
   b: Promise<Elements> | Elements,
+  isEager?: (key: string) => boolean,
 ): Promise<Elements> => {
-  const getResult = () =>
-    Promise.all([a, b]).then(([a, b]) => {
-      const nextElements = { ...a, ...b };
-      delete nextElements._value;
-      return nextElements;
+  const getResult = () => {
+    if (!isEager) {
+      return Promise.all([a, b]).then(([a, b]) => {
+        const nextElements = { ...a, ...b };
+        delete nextElements._value;
+        return nextElements;
+      });
+    }
+    return Promise.resolve(a).then((aRes) => {
+      const bPromise: Promise<Elements> = Promise.resolve(b);
+      const base: Elements = { ...aRes };
+      delete base._value;
+      return new Proxy(base, {
+        get(target, key: string) {
+          if (
+            key !== '_value' &&
+            !isEager(key) &&
+            // a lazy key still equal to aRes's value hasn't been streamed yet
+            target[key] === aRes[key]
+          ) {
+            target[key] = bPromise.then((bRes) =>
+              key in bRes ? bRes[key] : aRes[key],
+            );
+          }
+          return target[key];
+        },
+      });
     });
+  };
   const cache2 = getCached(() => new WeakMap(), cache1, a);
   return getCached(getResult, cache2, b);
 };
@@ -98,7 +122,7 @@ type FetchRscOptions = {
 type Refetch = (
   rscPath: string,
   rscParams?: unknown,
-  options?: FetchRscOptions,
+  options?: FetchRscOptions & { isEager?: (key: string) => boolean },
 ) => Promise<Elements>;
 
 const getFetchFn = (): typeof fetch => {
@@ -433,7 +457,9 @@ export const Root = ({
     delete fetchRscStore[ENTRY];
     const data = unstable_fetchRsc(rscPath, rscParams, options);
     const dataWithoutErrors = Promise.resolve(data).catch(() => ({}));
-    setElements((prev) => mergeElementsPromise(prev, dataWithoutErrors));
+    setElements((prev) =>
+      mergeElementsPromise(prev, dataWithoutErrors, options?.isEager),
+    );
     return data;
   }, []);
   return (

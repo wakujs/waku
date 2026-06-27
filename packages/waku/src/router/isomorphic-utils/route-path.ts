@@ -85,6 +85,7 @@ export const ROUTE_ID = 'ROUTE';
 export const IS_STATIC_ID = 'IS_STATIC';
 export const HAS404_ID = 'HAS404';
 export const ETAG_ID_PREFIX = 'ETAG:';
+export const STATIC_ETAG = 'static';
 
 // For HTTP header
 export const SKIP_HEADER = 'X-Waku-Router-Skip';

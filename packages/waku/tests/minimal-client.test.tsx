@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { Suspense, act } from 'react';
+import { Suspense, act, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   afterAll,
@@ -22,6 +22,7 @@ import {
   unstable_registerCallServerElementsListener,
   unstable_registerFetchEnhancer,
   unstable_registerFetchRscInputTransformer,
+  useRefetch,
 } from '../src/minimal/client.js';
 
 type CallServer = (funcId: string, args: unknown[]) => Promise<unknown>;
@@ -304,5 +305,57 @@ describe('minimal/client input transformer', () => {
 
     expect(transform).toHaveBeenCalledWith('R/original.txt', undefined, false);
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('rewritten');
+  });
+});
+
+describe('minimal/client eager merge', () => {
+  test('keeps a slot that b introduces but a never had', async () => {
+    // Cached a: a slot resolved eagerly + a slot resolved lazily. No `extra`.
+    mocks.createFromFetch.mockReturnValueOnce(
+      resolvedThenable({ _value: null, cached: 'C', dynamic: 'D1' }),
+    );
+    stubFetch();
+
+    let refetch: ReturnType<typeof useRefetch> | undefined;
+    let mountExtra: () => void = () => {};
+    const Probe = () => {
+      refetch = useRefetch();
+      const [extra, setExtra] = useState(false);
+      mountExtra = () => setExtra(true);
+      return extra ? <Slot id="extra" /> : null;
+    };
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <Root initialRscPath="R/app.txt">
+          <Suspense fallback={null}>
+            <Slot id="cached" />
+            <Slot id="dynamic" />
+            <Probe />
+          </Suspense>
+        </Root>,
+      );
+    });
+    expect(container.textContent).toBe('CD1');
+
+    // Optimistic refetch: b refreshes the lazy slot AND introduces `extra` — a
+    // key the eager merge must not drop (e.g. a redirect target's slot).
+    mocks.createFromFetch.mockReturnValueOnce(
+      resolvedThenable({ dynamic: 'D2', extra: 'X' }),
+    );
+    const isEager = (key: string) => key === 'cached';
+    await act(async () => {
+      await refetch!('R/next.txt', undefined, { isEager });
+    });
+    await act(async () => {
+      mountExtra();
+    });
+
+    // cached slot from a, dynamic streamed fresh, and the brand-new `extra`
+    expect(container.textContent).toBe('CD2X');
+
+    act(() => root.unmount());
   });
 });
