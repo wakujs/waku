@@ -1,4 +1,4 @@
-import type { ApiContext } from 'waku/router/server';
+import type { ApiContext } from 'waku/router';
 
 export function GET(
   _req: Request,
