@@ -89,9 +89,6 @@ const toProcessRequest =
       const body = stringToStream(message);
       const headers: { location?: string } = {};
       if (info?.location) {
-        // `unstable_redirect` returns an app-relative location; add basePath so
-        // it stays within the app (symmetric with removeBase on the incoming
-        // pathname). addBase is a no-op when basePath is '/'.
         headers.location = addBase(info.location, config.basePath);
       }
       return new Response(body, { status, headers });

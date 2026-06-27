@@ -190,9 +190,6 @@ export function unstable_redirect<Path extends RoutePath = RoutePath>(
     typeof to === 'string'
       ? to
       : buildRouteHref(to, routerStorage.getStore()?.resolveSearchCodec);
-  // JSON.stringify escapes control chars (e.g. newlines) and quotes the value,
-  // so an attacker-controlled `location` can't forge log lines if the thrown
-  // Error is logged downstream (the rejected value often contains control chars).
   if (!location.startsWith('/') || location.startsWith('//')) {
     throw new Error(`Invalid redirect location: ${JSON.stringify(location)}`);
   }
@@ -304,9 +301,6 @@ type RouteConfig = {
   >;
   noSsr?: boolean;
   slices?: string[];
-  // The codec instance (runtime-only; never serialized). The route -> codec-id
-  // map derives the id from `searchCodec.id`; the server `unstable_redirect`
-  // uses the instance to serialize a target route's `search`.
   searchCodec?: Unstable_SearchCodec<any>;
 };
 
