@@ -13,6 +13,7 @@ describe('PageProps route constraint', () => {
     expectType<TypeEqual<Props['foo'], string>>(true);
     expectType<TypeEqual<Props['path'], `/made/up/${string}`>>(true);
     expectType<TypeEqual<Props['query'], string>>(true);
-    expect(true).toBe(true);
+    const props: Props = { path: '/made/up/x', query: '', foo: 'x' };
+    expect(props.foo).toBe('x');
   });
 });
