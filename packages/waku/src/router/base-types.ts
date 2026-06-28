@@ -1,4 +1,6 @@
+import type { ReactNode } from 'react';
 import type {
+  LayoutPath,
   PagePath,
   PropsForPages,
 } from './create-pages-utils/inferred-path-types.js';
@@ -31,3 +33,14 @@ export type PageProps<
     ? string
     : PagePath<CreatePagesConfig>,
 > = PropsForPages<Path>;
+
+/**
+ * Props for layouts when using `createPages`. Adds the required `children` and
+ * drops `path`/`query`. Validated against the generated layout paths, which can
+ * include layout-only paths that have no co-located page.
+ */
+export type LayoutProps<
+  Path extends [LayoutPath<CreatePagesConfig>] extends [never]
+    ? string
+    : LayoutPath<CreatePagesConfig>,
+> = { children: ReactNode } & Omit<PropsForPages<Path>, 'path' | 'query'>;
