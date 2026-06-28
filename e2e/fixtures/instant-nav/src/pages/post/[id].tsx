@@ -10,5 +10,8 @@ export default async function Post({ id }: PageProps<'/post/[id]'>) {
 export const getConfig = async () => {
   return {
     render: 'dynamic',
+    // Etag keyed on the slug, so an instant revisit exercises dynamic-etag
+    // handling: a stale cached etag must not skip a since-changed slot.
+    unstable_getEtag: async ({ id }: { id: string }) => id,
   } as const;
 };

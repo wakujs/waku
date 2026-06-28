@@ -604,8 +604,6 @@ export function Link<Path extends RoutePath>({
       const route = parseRoute(url);
       prefetchRoute(route);
       if (unstable_instant) {
-        // Fire-and-forget; the error shows via route state. Only awaited
-        // push/replace observe the rejection.
         changeRoute(route, {
           shouldScroll: scroll ?? shouldScrollByDefault(url),
           mode: 'push',
@@ -980,11 +978,9 @@ const useElementsMetadata = (
   useEffect(() => {
     elementsPromise.then(
       (elements) => {
-        // With `unstable_instant`, the optimistic merge keeps metadata keys
-        // (ROUTE_ID, ETAG:*) from the previous elements bag, so these reflect
-        // the accumulated cache, not the fresh response. Fine for a revisit
-        // (static etags do not change); a redirect target's etags are not
-        // learned until a direct visit.
+        // Under `unstable_instant` the eager merge serves static etags and
+        // ROUTE_ID from the previous bag; a dynamic slot's etag stays a hole,
+        // so it is skipped here until it resolves rather than going stale.
         const {
           [ROUTE_ID]: routeData,
           [IS_STATIC_ID]: isStatic,
@@ -1177,9 +1173,13 @@ const InnerRouter = ({
         window.location.reload();
       };
       if (options.instant && isStaticSlot(getRouteSlotId(nextRoute.path))) {
+        const isEager = (key: string) =>
+          key.startsWith(ETAG_ID_PREFIX)
+            ? isStaticSlot(key.slice(ETAG_ID_PREFIX.length))
+            : isMetaKey(key) || isStaticSlot(key);
         const dataPromise = refetch(rscPath, rscParams, {
           signal: abortController.signal,
-          unstable_isEager: (key) => isMetaKey(key) || isStaticSlot(key),
+          unstable_isEager: isEager,
           onBuildIdMismatch,
         });
         commitRoute(nextRoute);
@@ -1208,8 +1208,6 @@ const InnerRouter = ({
             }
             routeChangeAbortRef.current = null;
             setErr(e);
-            // Rethrow so awaited push/replace observe the failure, matching
-            // non-instant navigation. The <Link> click swallows it.
             throw e;
           },
         );

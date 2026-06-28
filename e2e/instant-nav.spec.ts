@@ -137,4 +137,23 @@ test.describe('instant-nav', () => {
     // non-instant navigation that errors lands, and the error shows there.
     await expect(page).toHaveURL(/\/post\/1$/);
   });
+
+  // With a dynamic etag (unstable_getEtag), an instant revisit must not let a
+  // stale cached etag skip a since-changed slot and show another route's body.
+  test('instant revisit does not serve stale content with a dynamic etag', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/post/1`);
+    await waitForHydration(page);
+    await expect(page.getByTestId('post-body')).toHaveText('Post 1');
+
+    await page.getByTestId('link-post-2').click();
+    await expect(page.getByTestId('post-body')).toHaveText('Post 2');
+
+    await page.getByTestId('link-post-1').click();
+    await expect(page.getByTestId('post-body')).toHaveText('Post 1');
+
+    await page.getByTestId('link-post-2').click();
+    await expect(page.getByTestId('post-body')).toHaveText('Post 2');
+  });
 });
