@@ -290,8 +290,12 @@ describe('router navigation method path typing', () => {
   test('prefetch, push, and replace accept the same targets (route href or structured)', () => {
     // prefetch now mirrors push/replace: a typed route href or a structured
     // target. RouteConfig.paths is not augmented here, so RouteHref is `string`
-    // and an arbitrary string is still accepted as a href; the structured form
-    // is what these assertions exercise.
+    // and a computed string is still accepted; the rejection of computed
+    // strings in a typed-route app is proven in the augmented e2e fixtures
+    // (use-router/router-target-typing.ts, create-pages/redirect-typing.ts).
+    // Parameters<> on an overloaded type resolves the structured overload, so
+    // this equality asserts the structured form matches; the closure below
+    // exercises the href form.
     type PrefetchArg = Parameters<RouterApi['prefetch']>[0];
     type PushArg = Parameters<RouterApi['push']>[0];
     expectType<TypeEqual<PrefetchArg, PushArg>>(true);
@@ -588,6 +592,62 @@ describe('useRouter + Link with context', () => {
     expect(pushedUrl?.href).toContain('/posts/a%20b%2Fc?tab=comments#top');
 
     view.unmount();
+  });
+
+  test('prefetch resolves string and structured targets under a basePath', async () => {
+    vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/base/');
+    try {
+      expect(import.meta.env.WAKU_CONFIG_BASE_PATH).toBe('/base/');
+      const capture = { router: null as RouterApi | null };
+      const prefetchRoute = vi.fn();
+      const Probe = () => {
+        capture.router = useRouter() as unknown as RouterApi;
+        return null;
+      };
+
+      const view = await renderApp(
+        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+          <RouterContext
+            value={{
+              route: { path: '/start', query: '', hash: '' },
+              changeRoute: vi.fn(async () => {}),
+              prefetchRoute,
+              routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+              fetchingSlices: new Set(),
+            }}
+          >
+            <Probe />
+          </RouterContext>
+        </Unstable_SearchCodecsProvider>,
+      );
+
+      if (!capture.router) {
+        throw new Error('router was not initialized');
+      }
+
+      await act(async () => {
+        capture.router!.prefetch('/static');
+        capture.router!.prefetch({
+          to: '/posts/[slug]',
+          params: { slug: 'a' },
+        });
+      });
+
+      expect(prefetchRoute).toHaveBeenNthCalledWith(1, {
+        path: '/static',
+        query: '',
+        hash: '',
+      });
+      expect(prefetchRoute).toHaveBeenNthCalledWith(2, {
+        path: '/posts/a',
+        query: '',
+        hash: '',
+      });
+
+      view.unmount();
+    } finally {
+      vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/');
+    }
   });
 
   test('useParams returns decoded params for the matching route', async () => {
