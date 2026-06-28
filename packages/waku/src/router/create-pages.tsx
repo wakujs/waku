@@ -266,7 +266,10 @@ export type CreateLayout = <Path extends string>(
         render: 'dynamic';
         path: Path;
         component: FunctionComponent<
-          { children: ReactNode } & Omit<PropsForPages<Path>, 'path' | 'query'>
+          { children: ReactNode } & Omit<
+            PropsForPages<Path>,
+            'path' | 'query' | 'search'
+          >
         >;
         unstable_sourceFile?: string | undefined;
       }
@@ -274,7 +277,10 @@ export type CreateLayout = <Path extends string>(
         render: 'static';
         path: Path;
         component: FunctionComponent<
-          { children: ReactNode } & Omit<PropsForPages<Path>, 'path' | 'query'>
+          { children: ReactNode } & Omit<
+            PropsForPages<Path>,
+            'path' | 'query' | 'search'
+          >
         >;
         unstable_sourceFile?: string | undefined;
       }
@@ -286,7 +292,9 @@ export type CreateLayout = <Path extends string>(
      * Per-render element tag (etag) for a `dynamic` layout. Ignored for `static`
      * layouts.
      */
-    unstable_getEtag?: GetEtag<Omit<PropsForPages<Path>, 'path' | 'query'>>;
+    unstable_getEtag?: GetEtag<
+      Omit<PropsForPages<Path>, 'path' | 'query' | 'search'>
+    >;
   },
 ) => void;
 

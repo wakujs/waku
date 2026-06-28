@@ -19,6 +19,11 @@ describe('LayoutProps', () => {
     expectType<TypeEqual<'query' extends keyof Props ? true : false, false>>(
       true,
     );
+    // parent-path-only scope: a child page param (bbb of /foo/[aaa]/[bbb])
+    // never leaks into the layout's props
+    expectType<TypeEqual<'bbb' extends keyof Props ? true : false, false>>(
+      true,
+    );
     const props: Props = { children: null, aaa: 'x' };
     expect(props.aaa).toBe('x');
   });
