@@ -291,8 +291,8 @@ describe('router navigation method path typing', () => {
     // prefetch now mirrors push/replace: a typed route href or a structured
     // target. RouteConfig.paths is not augmented here, so RouteHref is `string`
     // and a computed string is still accepted; the rejection of computed
-    // strings in a typed-route app is proven in the augmented e2e fixtures
-    // (use-router/router-target-typing.ts, create-pages/redirect-typing.ts).
+    // strings in a typed-route app is proven in the augmented fs-router
+    // fixture (router-target-typing.ts, redirect-typing.ts).
     // Parameters<> on an overloaded type resolves the structured overload, so
     // this equality asserts the structured form matches; the closure below
     // exercises the href form.

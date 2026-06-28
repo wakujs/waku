@@ -4,16 +4,16 @@ import type { Unstable_RouteHref } from 'waku/router/client';
 type Router = ReturnType<typeof useRouter>;
 
 // Type-level assertions only; this function is never called. RouteConfig.paths
-// is augmented in this fixture, so RouteHref is a literal union: a computed
-// string is rejected, and callers pass a known href, a structured target, or
-// cast via `as Unstable_RouteHref`.
+// is augmented by the generated pages.gen.ts, so RouteHref is a literal union:
+// a computed string is rejected, and callers pass a known href, a structured
+// target, or cast via `as Unstable_RouteHref`.
 export function assertRouterTargetTyping(router: Router, computed: string) {
-  void router.prefetch('/static');
-  void router.push('/static');
-  void router.replace('/static');
-  void router.prefetch({ to: '/dynamic' });
-  void router.push({ to: '/dynamic' });
-  void router.replace({ to: '/dynamic' });
+  void router.prefetch('/bar');
+  void router.push('/bar');
+  void router.replace('/bar');
+  void router.prefetch({ to: '/nested/[name]', params: { name: 'x' } });
+  void router.push({ to: '/nested/[name]', params: { name: 'x' } });
+  void router.replace({ to: '/nested/[name]', params: { name: 'x' } });
 
   // @ts-expect-error a computed string is not a known route href
   void router.prefetch(computed);
