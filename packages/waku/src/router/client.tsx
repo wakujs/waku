@@ -86,6 +86,11 @@ type Navigate = {
   ): Promise<void>;
 };
 
+type Prefetch = {
+  (to: RouteHref): void;
+  <Path extends RoutePath>(target: BuildRouteHrefTarget<Path>): void;
+};
+
 const pathnameToCurrentRoutePath = (pathname: string) =>
   pathnameToRoutePath(
     removeBase(pathname, import.meta.env.WAKU_CONFIG_BASE_PATH),
@@ -164,7 +169,7 @@ const createRscParams = (query: string): URLSearchParams => {
 };
 
 const createSkipHeaderEnhancer =
-  (cachedEtagsRef: { current: Record<string, string> }) =>
+  (cachedEtagsRef: { current: Record<string, string | typeof STATIC_ETAG> }) =>
   (fetchFn: typeof fetch) =>
   (input: RequestInfo | URL, init: RequestInit = {}) => {
     const skipStr = JSON.stringify(cachedEtagsRef.current);
@@ -322,12 +327,17 @@ export function useRouter() {
     window.history.forward();
   }, []);
   const prefetch = useCallback(
-    (to: RouteHref) => {
-      const url = new URL(to, window.location.href);
+    (to: RouteHref | BuildRouteHrefTarget<RoutePath>) => {
+      const href =
+        typeof to === 'string' ? to : buildRouteHref(to, resolveCodec);
+      const url = new URL(
+        addBase(href, import.meta.env.WAKU_CONFIG_BASE_PATH),
+        window.location.href,
+      );
       prefetchRoute(parseRoute(url));
     },
-    [prefetchRoute],
-  );
+    [prefetchRoute, resolveCodec],
+  ) as Prefetch;
   return {
     ...route,
     push,
@@ -890,8 +900,7 @@ export function Slice({
   const needsToFetchSlice =
     props.lazy &&
     (!(slotId in elements) ||
-      // FIXME: hard-coded for now
-      elements[IS_STATIC_ID + ':' + slotId] !== true);
+      elements[ETAG_ID_PREFIX + slotId] !== STATIC_ETAG);
   useEffect(() => {
     // FIXME this works because of subtle timing behavior.
     if (needsToFetchSlice && !fetchingSlices.has(id)) {
@@ -974,7 +983,9 @@ const useElementsMetadata = (
 ) => {
   const [has404, setHas404] = useState(false);
   const staticPathSetRef = useRef(new Set<string>());
-  const cachedEtagsRef = useRef<Record<string, string>>({});
+  const cachedEtagsRef = useRef<Record<string, string | typeof STATIC_ETAG>>(
+    {},
+  );
   useEffect(() => {
     elementsPromise.then(
       (elements) => {
@@ -995,13 +1006,14 @@ const useElementsMetadata = (
             staticPathSetRef.current.add(path);
           }
         }
-        const etags: Record<string, string> = {};
+        const etags: Record<string, string | typeof STATIC_ETAG> = {};
         for (const [key, value] of Object.entries(elements)) {
-          // Drop empty (clear signal) and non-Latin1 (breaks fetch) tags.
+          // Keep the static sentinel; for string tags drop empty (clear
+          // signal) and non-Latin1 (breaks fetch).
           if (
             key.startsWith(ETAG_ID_PREFIX) &&
-            typeof value === 'string' &&
-            /^[\u0020-\u00ff]+$/.test(value)
+            (value === STATIC_ETAG ||
+              (typeof value === 'string' && /^[\u0020-\u00ff]+$/.test(value)))
           ) {
             etags[key.slice(ETAG_ID_PREFIX.length)] = value;
           }

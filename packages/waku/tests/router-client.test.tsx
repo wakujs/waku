@@ -42,13 +42,13 @@ import {
   useParams_UNSTABLE as useParams,
   useRouter,
 } from '../src/router/client.js';
-import type { Unstable_RouteHref } from '../src/router/client.js';
 import {
   ETAG_ID_PREFIX,
   HAS404_ID,
   IS_STATIC_ID,
   ROUTE_ID,
   SKIP_HEADER,
+  STATIC_ETAG,
 } from '../src/router/isomorphic-utils/route-path.js';
 
 const postsSearchCodec = {
@@ -288,19 +288,27 @@ afterEach(() => {
 });
 
 describe('router navigation method path typing', () => {
-  test('prefetch is string-only; push/replace also accept structured targets', () => {
+  test('prefetch, push, and replace accept the same targets (route href or structured)', () => {
+    // prefetch now mirrors push/replace: a typed route href or a structured
+    // target. RouteConfig.paths is not augmented here, so RouteHref is `string`
+    // and a computed string is still accepted; the rejection of computed
+    // strings in a typed-route app is proven in the augmented fs-router
+    // fixture (router-target-typing.ts, redirect-typing.ts).
+    // Parameters<> on an overloaded type resolves the structured overload, so
+    // this equality asserts the structured form matches; the closure below
+    // exercises the href form.
     type PrefetchArg = Parameters<RouterApi['prefetch']>[0];
-    expectType<TypeEqual<PrefetchArg, Unstable_RouteHref>>(true);
+    type PushArg = Parameters<RouterApi['push']>[0];
+    expectType<TypeEqual<PrefetchArg, PushArg>>(true);
 
     // Type-level assertions; the closure is never invoked.
     const assertTypes = (router: RouterApi) => {
       void router.prefetch('/x');
       void router.push('/x');
       void router.replace('/x');
+      void router.prefetch({ to: '/posts/[slug]', params: { slug: 'a' } });
       void router.push({ to: '/posts/[slug]', params: { slug: 'a' } });
       void router.replace({ to: '/posts/[slug]', params: { slug: 'a' } });
-      // @ts-expect-error prefetch does not accept a structured target
-      void router.prefetch({ to: '/posts/[slug]', params: { slug: 'a' } });
     };
     expect(typeof assertTypes).toBe('function');
   });
@@ -585,6 +593,62 @@ describe('useRouter + Link with context', () => {
     expect(pushedUrl?.href).toContain('/posts/a%20b%2Fc?tab=comments#top');
 
     view.unmount();
+  });
+
+  test('prefetch resolves string and structured targets under a basePath', async () => {
+    vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/base/');
+    try {
+      expect(import.meta.env.WAKU_CONFIG_BASE_PATH).toBe('/base/');
+      const capture = { router: null as RouterApi | null };
+      const prefetchRoute = vi.fn();
+      const Probe = () => {
+        capture.router = useRouter() as unknown as RouterApi;
+        return null;
+      };
+
+      const view = await renderApp(
+        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+          <RouterContext
+            value={{
+              route: { path: '/start', query: '', hash: '' },
+              changeRoute: vi.fn(async () => {}),
+              prefetchRoute,
+              routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+              fetchingSlices: new Set(),
+            }}
+          >
+            <Probe />
+          </RouterContext>
+        </Unstable_SearchCodecsProvider>,
+      );
+
+      if (!capture.router) {
+        throw new Error('router was not initialized');
+      }
+
+      await act(async () => {
+        capture.router!.prefetch('/static');
+        capture.router!.prefetch({
+          to: '/posts/[slug]',
+          params: { slug: 'a' },
+        });
+      });
+
+      expect(prefetchRoute).toHaveBeenNthCalledWith(1, {
+        path: '/static',
+        query: '',
+        hash: '',
+      });
+      expect(prefetchRoute).toHaveBeenNthCalledWith(2, {
+        path: '/posts/a',
+        query: '',
+        hash: '',
+      });
+
+      view.unmount();
+    } finally {
+      vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/');
+    }
   });
 
   test('useParams returns decoded params for the matching route', async () => {
@@ -1187,7 +1251,7 @@ describe('Slice', () => {
     const slotId = unstable_getSliceSlotId('slice-1');
     const elements = {
       [slotId]: <div>loaded</div>,
-      [`${IS_STATIC_ID}:${slotId}`]: true,
+      [`${ETAG_ID_PREFIX}${slotId}`]: STATIC_ETAG,
     };
 
     const view = await renderWithMinimalRoot(
@@ -1216,7 +1280,7 @@ describe('Slice', () => {
     const slotId = unstable_getSliceSlotId('slice-1');
     const elements = {
       [slotId]: <div>loaded</div>,
-      [`${IS_STATIC_ID}:${slotId}`]: false,
+      [`${ETAG_ID_PREFIX}${slotId}`]: 'v1',
     };
 
     const view = await renderWithMinimalRoot(
