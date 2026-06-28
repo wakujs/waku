@@ -24,4 +24,5 @@ export function assertRouterTargetTyping(router: Router, computed: string) {
 
   void router.prefetch(computed as Unstable_RouteHref);
   void router.push(computed as Unstable_RouteHref);
+  void router.replace(computed as Unstable_RouteHref);
 }
