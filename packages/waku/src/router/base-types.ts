@@ -3,6 +3,7 @@ import type {
   LayoutPath,
   PagePath,
   PropsForPages,
+  RouteParams,
 } from './create-pages-utils/inferred-path-types.js';
 import type { Prettify } from './create-pages-utils/util-types.js';
 
@@ -36,18 +37,13 @@ export type PageProps<
 > = PropsForPages<Path>;
 
 /**
- * Props for layouts when using `createPages`. Adds the required `children` and
- * keeps only the layout's own route params: a layout receives neither `path`,
- * `query`, nor `search` at runtime. Validated against the generated layout
- * paths, which can include layout-only paths that have no co-located page.
+ * Props for layouts when using `createPages`. Adds the required `children` to
+ * the layout's own route params (a layout receives neither `path`, `query`, nor
+ * `search` at runtime). Validated against the generated layout paths, which can
+ * include layout-only paths that have no co-located page.
  */
 export type LayoutProps<
   Path extends [LayoutPath<CreatePagesConfig>] extends [never]
     ? string
     : LayoutPath<CreatePagesConfig>,
-> = Prettify<
-  { children: ReactNode } & Omit<
-    PropsForPages<Path>,
-    'path' | 'query' | 'search'
-  >
->;
+> = Prettify<{ children: ReactNode } & RouteParams<Path>>;

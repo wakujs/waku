@@ -17,6 +17,7 @@ import type {
   AnyPage,
   GetSlugs,
   PropsForPages,
+  RouteParams,
   Unstable_SearchCodec,
 } from './create-pages-utils/inferred-path-types.js';
 import { unstable_defineRouter } from './define-router.js';
@@ -266,10 +267,7 @@ export type CreateLayout = <Path extends string>(
         render: 'dynamic';
         path: Path;
         component: FunctionComponent<
-          { children: ReactNode } & Omit<
-            PropsForPages<Path>,
-            'path' | 'query' | 'search'
-          >
+          { children: ReactNode } & RouteParams<Path>
         >;
         unstable_sourceFile?: string | undefined;
       }
@@ -277,10 +275,7 @@ export type CreateLayout = <Path extends string>(
         render: 'static';
         path: Path;
         component: FunctionComponent<
-          { children: ReactNode } & Omit<
-            PropsForPages<Path>,
-            'path' | 'query' | 'search'
-          >
+          { children: ReactNode } & RouteParams<Path>
         >;
         unstable_sourceFile?: string | undefined;
       }
@@ -292,9 +287,7 @@ export type CreateLayout = <Path extends string>(
      * Per-render element tag (etag) for a `dynamic` layout. Ignored for `static`
      * layouts.
      */
-    unstable_getEtag?: GetEtag<
-      Omit<PropsForPages<Path>, 'path' | 'query' | 'search'>
-    >;
+    unstable_getEtag?: GetEtag<RouteParams<Path>>;
   },
 ) => void;
 
