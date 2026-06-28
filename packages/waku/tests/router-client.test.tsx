@@ -48,6 +48,7 @@ import {
   IS_STATIC_ID,
   ROUTE_ID,
   SKIP_HEADER,
+  STATIC_ETAG,
 } from '../src/router/isomorphic-utils/route-path.js';
 
 const postsSearchCodec = {
@@ -1250,7 +1251,7 @@ describe('Slice', () => {
     const slotId = unstable_getSliceSlotId('slice-1');
     const elements = {
       [slotId]: <div>loaded</div>,
-      [`${IS_STATIC_ID}:${slotId}`]: true,
+      [`${ETAG_ID_PREFIX}${slotId}`]: STATIC_ETAG,
     };
 
     const view = await renderWithMinimalRoot(
@@ -1279,7 +1280,7 @@ describe('Slice', () => {
     const slotId = unstable_getSliceSlotId('slice-1');
     const elements = {
       [slotId]: <div>loaded</div>,
-      [`${IS_STATIC_ID}:${slotId}`]: false,
+      [`${ETAG_ID_PREFIX}${slotId}`]: 'v1',
     };
 
     const view = await renderWithMinimalRoot(
