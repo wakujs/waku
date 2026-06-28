@@ -42,7 +42,6 @@ import {
   useParams_UNSTABLE as useParams,
   useRouter,
 } from '../src/router/client.js';
-import type { Unstable_RouteHref } from '../src/router/client.js';
 import {
   ETAG_ID_PREFIX,
   HAS404_ID,
@@ -288,26 +287,23 @@ afterEach(() => {
 });
 
 describe('router navigation method path typing', () => {
-  test('prefetch takes a route href or any string; push/replace also accept structured targets', () => {
-    // prefetch accepts a typed route href plus a `(string & {})` escape hatch
-    // (so computed/dynamic hrefs work). The escape hatch only widens the type
-    // when routes are augmented and RouteHref is a literal union; in this test
-    // RouteConfig.paths is not augmented, so RouteHref is `string`.
+  test('prefetch, push, and replace accept the same targets (route href or structured)', () => {
+    // prefetch now mirrors push/replace: a typed route href or a structured
+    // target. RouteConfig.paths is not augmented here, so RouteHref is `string`
+    // and an arbitrary string is still accepted as a href; the structured form
+    // is what these assertions exercise.
     type PrefetchArg = Parameters<RouterApi['prefetch']>[0];
-    expectType<TypeEqual<PrefetchArg, Unstable_RouteHref | (string & {})>>(
-      true,
-    );
+    type PushArg = Parameters<RouterApi['push']>[0];
+    expectType<TypeEqual<PrefetchArg, PushArg>>(true);
 
     // Type-level assertions; the closure is never invoked.
-    const assertTypes = (router: RouterApi, computed: string) => {
+    const assertTypes = (router: RouterApi) => {
       void router.prefetch('/x');
-      void router.prefetch(computed); // escape hatch: any string href
       void router.push('/x');
       void router.replace('/x');
+      void router.prefetch({ to: '/posts/[slug]', params: { slug: 'a' } });
       void router.push({ to: '/posts/[slug]', params: { slug: 'a' } });
       void router.replace({ to: '/posts/[slug]', params: { slug: 'a' } });
-      // @ts-expect-error prefetch does not accept a structured target
-      void router.prefetch({ to: '/posts/[slug]', params: { slug: 'a' } });
     };
     expect(typeof assertTypes).toBe('function');
   });
