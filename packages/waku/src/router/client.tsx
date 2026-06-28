@@ -604,12 +604,14 @@ export function Link<Path extends RoutePath>({
       const route = parseRoute(url);
       prefetchRoute(route);
       if (unstable_instant) {
-        void changeRoute(route, {
+        // Fire-and-forget; the error shows via route state. Only awaited
+        // push/replace observe the rejection.
+        changeRoute(route, {
           shouldScroll: scroll ?? shouldScrollByDefault(url),
           mode: 'push',
           url,
           instant: true,
-        });
+        }).catch(() => {});
       } else {
         startTransitionFn(async () => {
           await changeRoute(route, {
@@ -978,6 +980,11 @@ const useElementsMetadata = (
   useEffect(() => {
     elementsPromise.then(
       (elements) => {
+        // With `unstable_instant`, the optimistic merge keeps metadata keys
+        // (ROUTE_ID, ETAG:*) from the previous elements bag, so these reflect
+        // the accumulated cache, not the fresh response. Fine for a revisit
+        // (static etags do not change); a redirect target's etags are not
+        // learned until a direct visit.
         const {
           [ROUTE_ID]: routeData,
           [IS_STATIC_ID]: isStatic,
@@ -1164,13 +1171,19 @@ const InnerRouter = ({
       }
       const rscPath = encodeRoutePath(nextRoute.path);
       const rscParams = createRscParams(nextRoute.query);
+      const targetUrl = url || getRouteUrl(nextRoute);
+      const onBuildIdMismatch = () => {
+        window.history.pushState(window.history.state, '', targetUrl);
+        window.location.reload();
+      };
       if (options.instant && isStaticSlot(getRouteSlotId(nextRoute.path))) {
         const dataPromise = refetch(rscPath, rscParams, {
           signal: abortController.signal,
           unstable_isEager: (key) => isMetaKey(key) || isStaticSlot(key),
+          onBuildIdMismatch,
         });
         commitRoute(nextRoute);
-        dataPromise.then(
+        return dataPromise.then(
           (elements) => {
             if (isAborted()) {
               return;
@@ -1195,18 +1208,16 @@ const InnerRouter = ({
             }
             routeChangeAbortRef.current = null;
             setErr(e);
+            // Rethrow so awaited push/replace observe the failure, matching
+            // non-instant navigation. The <Link> click swallows it.
+            throw e;
           },
         );
-        return;
       }
       try {
-        const targetUrl = url || getRouteUrl(nextRoute);
         const elements = await refetch(rscPath, rscParams, {
           signal: abortController.signal,
-          onBuildIdMismatch: () => {
-            window.history.pushState(window.history.state, '', targetUrl);
-            window.location.reload();
-          },
+          onBuildIdMismatch,
         });
         const redirect = getRedirect(elements);
         if (redirect) {
@@ -1224,8 +1235,7 @@ const InnerRouter = ({
         // Write URL synchronously
         // React may rollback transition state updates when the render throws
         if (mode && window.location.pathname === prevPathname) {
-          const urlToWrite = url || getRouteUrl(nextRoute);
-          writeUrlToHistory(mode, urlToWrite);
+          writeUrlToHistory(mode, targetUrl);
         }
         setErr(e);
         throw e;

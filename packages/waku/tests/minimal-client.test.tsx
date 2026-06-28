@@ -358,4 +358,50 @@ describe('minimal/client eager merge', () => {
 
     act(() => root.unmount());
   });
+
+  test('serves an eager key from a even when b has a fresh value', async () => {
+    // The eager merge keeps eager keys (metadata/etags) from `a`, even when
+    // `b` carries a fresh value for them; only non-eager (hole) keys stream
+    // from `b`. This is why an instant navigation reuses the cached metadata
+    // bag instead of the fresh response.
+    mocks.createFromFetch.mockReturnValueOnce(
+      resolvedThenable({ _value: null, eager: 'A1', hole: 'H1' }),
+    );
+    stubFetch();
+
+    let refetch: ReturnType<typeof useRefetch> | undefined;
+    const Probe = () => {
+      refetch = useRefetch();
+      return null;
+    };
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <Root initialRscPath="R/app.txt">
+          <Suspense fallback={null}>
+            <Slot id="eager" />
+            <Slot id="hole" />
+            <Probe />
+          </Suspense>
+        </Root>,
+      );
+    });
+    expect(container.textContent).toBe('A1H1');
+
+    // b refreshes BOTH keys, but only the hole may change.
+    mocks.createFromFetch.mockReturnValueOnce(
+      resolvedThenable({ eager: 'A2', hole: 'H2' }),
+    );
+    const unstable_isEager = (key: string) => key === 'eager';
+    await act(async () => {
+      await refetch!('R/next.txt', undefined, { unstable_isEager });
+    });
+
+    // eager stays A1 (from a), hole streams H2 (from b).
+    expect(container.textContent).toBe('A1H2');
+
+    act(() => root.unmount());
+  });
 });

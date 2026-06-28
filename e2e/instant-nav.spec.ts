@@ -133,5 +133,8 @@ test.describe('instant-nav', () => {
     await page.getByTestId('link-post-1').click();
     await expect(page.locator('body')).toContainText(/error/i);
     await expect(page.getByTestId('page-skeleton')).toBeHidden();
+    // The optimistic commit already moved to the target URL, the same place a
+    // non-instant navigation that errors lands, and the error shows there.
+    await expect(page).toHaveURL(/\/post\/1$/);
   });
 });
