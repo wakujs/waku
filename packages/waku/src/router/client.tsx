@@ -1434,4 +1434,6 @@ export type Unstable_BuildRouteHrefTarget<Path extends RoutePath> =
 export type Unstable_RouteParams<Path extends RoutePath> = RouteParams<Path>;
 export type Unstable_RouteSearch<Path extends RoutePath> = RouteSearch<Path>;
 export const unstable_buildRouteHref = buildRouteHref;
+export const unstable_matchRouteParams = matchRouteParams;
+export const unstable_useResolveSearchCodec = useResolveSearchCodec;
 export const unstable_parseRoute = parseRoute;
