@@ -1,5 +1,8 @@
-import { getGrouplessPath } from '../../lib/utils/create-pages.js';
-import { getPathMapping, parsePathWithSlug } from '../../lib/utils/path.js';
+import {
+  unstable_getGrouplessPath as getGrouplessPath,
+  unstable_getPathMapping as getPathMapping,
+  unstable_parsePathWithSlug as parsePathWithSlug,
+} from '../../minimal/server.js';
 import type { CreatePagesConfig, RouteConfig } from '../base-types.js';
 import type {
   PagePath,

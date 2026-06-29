@@ -1,18 +1,20 @@
 import type { ReactNode } from 'react';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { base64ToBytes, bytesToBase64 } from '../lib/utils/base64-web.js';
-import { createCustomError, getErrorInfo } from '../lib/utils/custom-errors.js';
 import {
-  getPathMapping,
-  path2regexp,
-  pathSpecAsString,
-} from '../lib/utils/path.js';
-import type { PathSpec } from '../lib/utils/path.js';
-import { createTaskRunner } from '../lib/utils/task-runner.js';
-import { unstable_defineHandlers as defineHandlers } from '../minimal/server.js';
+  unstable_base64ToBytes as base64ToBytes,
+  unstable_bytesToBase64 as bytesToBase64,
+  unstable_createCustomError as createCustomError,
+  unstable_defineHandlers as defineHandlers,
+  unstable_getErrorInfo as getErrorInfo,
+  unstable_getPathMapping as getPathMapping,
+  unstable_path2regexp as path2regexp,
+  unstable_pathSpecAsString as pathSpecAsString,
+} from '../minimal/server.js';
+import type { Unstable_PathSpec as PathSpec } from '../minimal/server.js';
 import { deserializeRsc, serializeRsc } from '../server.js';
 import { INTERNAL_ServerRouter } from './client.js';
 import type { Unstable_SearchCodec } from './create-pages-utils/inferred-path-types.js';
+import { createTaskRunner } from './define-router-utils/task-runner.js';
 import { buildRouteHref } from './isomorphic-utils/build-route-href.js';
 import type {
   BuildRouteHrefTarget,

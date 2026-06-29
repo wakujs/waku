@@ -1,17 +1,17 @@
 import { createElement } from 'react';
 import type { FunctionComponent, ReactElement, ReactNode } from 'react';
-import { getGrouplessPath } from '../lib/utils/create-pages.js';
-import { createCustomError } from '../lib/utils/custom-errors.js';
-import {
-  countSlugsAndWildcards,
-  getPathMapping,
-  joinPath,
-  parseExactPath,
-  parsePathWithSlug,
-  pathSpecAsString,
-} from '../lib/utils/path.js';
-import type { PathSpec } from '../lib/utils/path.js';
 import { Children, Slot } from '../minimal/client.js';
+import {
+  unstable_countSlugsAndWildcards as countSlugsAndWildcards,
+  unstable_createCustomError as createCustomError,
+  unstable_getGrouplessPath as getGrouplessPath,
+  unstable_getPathMapping as getPathMapping,
+  unstable_joinPath as joinPath,
+  unstable_parseExactPath as parseExactPath,
+  unstable_parsePathWithSlug as parsePathWithSlug,
+  unstable_pathSpecAsString as pathSpecAsString,
+} from '../minimal/server.js';
+import type { Unstable_PathSpec as PathSpec } from '../minimal/server.js';
 import { ErrorBoundary } from '../router/client.js';
 import type {
   AnyPage,
