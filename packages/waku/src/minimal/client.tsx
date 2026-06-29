@@ -99,7 +99,7 @@ export const unstable_isImmutableElement = (
   slotId: string,
 ): boolean => elements[ETAG_ID_PREFIX + slotId] === IMMUTABLE_ETAG;
 
-// TODO(daishi) do we still this?
+// TODO(daishi) do we still need this?
 const getCached = <T,>(c: () => T, m: WeakMap<WeakKey, T>, k: object): T =>
   (m.has(k) ? m : m.set(k, c())).get(k) as T;
 

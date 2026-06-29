@@ -183,13 +183,27 @@ describe('unstable_buildElements', () => {
     expect(Object.keys(elements).sort()).toEqual(['changed', 'immut', 'stale']);
     expect(etags).toEqual({ changed: 'v2', immut: IMMUTABLE_ETAG, stale: '' });
   });
+
+  it('treats an empty-string getEtag as no etag, not the clear sentinel', async () => {
+    const render = () => Promise.resolve('el');
+    const { elements, etags } = await buildElements(
+      {},
+      { empty: { getEtag: () => Promise.resolve(''), render } },
+    );
+
+    expect(elements).toEqual({ empty: 'el' });
+    expect(etags).toEqual({});
+  });
 });
 
 describe('isValidEtag', () => {
-  it('accepts the sentinel and header-safe strings, rejects empty and non-Latin1', () => {
+  it('accepts the sentinel and printable Latin-1, rejects empty, control, and non-Latin1', () => {
     expect(isValidEtag(IMMUTABLE_ETAG)).toBe(true);
     expect(isValidEtag('v1')).toBe(true);
+    expect(isValidEtag('café')).toBe(true);
     expect(isValidEtag('')).toBe(false);
+    expect(isValidEtag('tag\x7f')).toBe(false);
+    expect(isValidEtag('tag\x80')).toBe(false);
     expect(isValidEtag('tag-☃')).toBe(false);
     expect(isValidEtag(123)).toBe(false);
   });

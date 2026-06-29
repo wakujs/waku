@@ -7,10 +7,12 @@ export const IMMUTABLE_ETAG = 1;
 export type Etag = string | typeof IMMUTABLE_ETAG;
 export type Etags = Record<string, Etag>;
 
-// '' clears a tag; a non-Latin1 string cannot ride in a header
+// '' clears a tag; only printable Latin-1 (no control chars) is header-safe
 export const isValidEtag = (value: unknown): value is Etag =>
   value === IMMUTABLE_ETAG ||
-  (typeof value === 'string' && value !== '' && /^[ -ÿ]+$/.test(value));
+  (typeof value === 'string' &&
+    value !== '' &&
+    /^[\x20-\x7e\xa0-\xff]+$/.test(value));
 
 export const parseClientEtags = (serialized: string | null): Etags => {
   if (!serialized) {

@@ -34,9 +34,10 @@ export const unstable_buildElements = async (
   const etags: Etags = {};
   await Promise.all(
     Object.entries(elementSources).map(async ([slotId, elementSource]) => {
+      // '' is the reserved clear sentinel, so an empty getEtag means no etag
       const etag = elementSource.immutable
         ? IMMUTABLE_ETAG
-        : await elementSource.getEtag?.();
+        : (await elementSource.getEtag?.()) || undefined;
       if (etag !== undefined && etag === clientEtags[slotId]) {
         return;
       }
