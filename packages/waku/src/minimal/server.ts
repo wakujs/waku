@@ -2,7 +2,7 @@ import type {
   Unstable_Handlers as Handlers,
   Unstable_ServerEntry as ServerEntry,
 } from '../lib/types.js';
-import { IMMUTABLE_ETAG } from '../lib/utils/etags.js';
+import { IMMUTABLE_ETAG, isValidEtag } from '../lib/utils/etags.js';
 import type { Etags } from '../lib/utils/etags.js';
 
 export function unstable_defineHandlers(handlers: Handlers) {
@@ -34,10 +34,11 @@ export const unstable_buildElements = async (
   const etags: Etags = {};
   await Promise.all(
     Object.entries(elementSources).map(async ([slotId, elementSource]) => {
-      // '' is the reserved clear sentinel, so an empty getEtag means no etag
-      const etag = elementSource.immutable
+      // keep only header-safe etags; '' (the clear sentinel) and invalid mean no etag
+      const rawEtag = elementSource.immutable
         ? IMMUTABLE_ETAG
-        : (await elementSource.getEtag?.()) || undefined;
+        : await elementSource.getEtag?.();
+      const etag = isValidEtag(rawEtag) ? rawEtag : undefined;
       if (etag !== undefined && etag === clientEtags[slotId]) {
         return;
       }

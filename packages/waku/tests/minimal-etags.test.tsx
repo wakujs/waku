@@ -184,14 +184,17 @@ describe('unstable_buildElements', () => {
     expect(etags).toEqual({ changed: 'v2', immut: IMMUTABLE_ETAG, stale: '' });
   });
 
-  it('treats an empty-string getEtag as no etag, not the clear sentinel', async () => {
+  it('drops empty or invalid getEtag results server-side (no etag, not the clear sentinel)', async () => {
     const render = () => Promise.resolve('el');
     const { elements, etags } = await buildElements(
       {},
-      { empty: { getEtag: () => Promise.resolve(''), render } },
+      {
+        empty: { getEtag: () => Promise.resolve(''), render },
+        control: { getEtag: () => Promise.resolve('tag\x7f'), render },
+      },
     );
 
-    expect(elements).toEqual({ empty: 'el' });
+    expect(elements).toEqual({ empty: 'el', control: 'el' });
     expect(etags).toEqual({});
   });
 });
