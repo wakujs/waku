@@ -1,10 +1,7 @@
-import {
-  unstable_getGrouplessPath as getGrouplessPath,
-  unstable_getPathMapping as getPathMapping,
-  unstable_parsePathWithSlug as parsePathWithSlug,
-} from '../../minimal/server.js';
+import { unstable_getGrouplessPath as getGrouplessPath } from '../../minimal/server.js';
 import type { RouteParams } from '../create-pages-utils/inferred-path-types.js';
 import type { RoutePath } from './build-route-href.js';
+import { getPathMapping, parsePathWithSlug } from './path-spec.js';
 
 const safeDecodeURIComponent = (value: string): string | null => {
   try {

@@ -6,14 +6,11 @@ import {
   unstable_createCustomError as createCustomError,
   unstable_defineHandlers as defineHandlers,
   unstable_getErrorInfo as getErrorInfo,
-  unstable_getPathMapping as getPathMapping,
-  unstable_path2regexp as path2regexp,
-  unstable_pathSpecAsString as pathSpecAsString,
 } from '../minimal/server.js';
-import type { Unstable_PathSpec as PathSpec } from '../minimal/server.js';
 import { deserializeRsc, serializeRsc } from '../server.js';
 import { INTERNAL_ServerRouter } from './client.js';
 import type { Unstable_SearchCodec } from './create-pages-utils/inferred-path-types.js';
+import { path2regexp } from './define-router-utils/path-spec.js';
 import { createTaskRunner } from './define-router-utils/task-runner.js';
 import { buildRouteHref } from './isomorphic-utils/build-route-href.js';
 import type {
@@ -21,6 +18,11 @@ import type {
   RouteHref,
   RoutePath,
 } from './isomorphic-utils/build-route-href.js';
+import {
+  getPathMapping,
+  pathSpecAsString,
+} from './isomorphic-utils/path-spec.js';
+import type { PathSpec } from './isomorphic-utils/path-spec.js';
 import {
   ETAG_ID_PREFIX,
   HAS404_ID,

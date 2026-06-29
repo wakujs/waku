@@ -18,16 +18,6 @@ export {
   bytesToBase64 as unstable_bytesToBase64,
 } from '../lib/utils/base64-web.js';
 export {
-  countSlugsAndWildcards as unstable_countSlugsAndWildcards,
-  getPathMapping as unstable_getPathMapping,
-  joinPath as unstable_joinPath,
-  parseExactPath as unstable_parseExactPath,
-  parsePathWithSlug as unstable_parsePathWithSlug,
-  path2regexp as unstable_path2regexp,
-  pathSpecAsString as unstable_pathSpecAsString,
-} from '../lib/utils/path.js';
-export type { PathSpec as Unstable_PathSpec } from '../lib/utils/path.js';
-export {
   createCustomError as unstable_createCustomError,
   getErrorInfo as unstable_getErrorInfo,
 } from '../lib/utils/custom-errors.js';
