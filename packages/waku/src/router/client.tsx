@@ -1032,6 +1032,17 @@ const InnerRouter = ({
     useElementsMetadata(elementsPromise);
   // FIXME this "fetchingSlices" hack feels suboptimal.
   const fetchingSlicesRef = useRef(new Set<SliceId>());
+  // A ref (not a module-level map) so it is scoped to the router instance and
+  // reset on remount.
+  const prefetchCacheRef = useRef(
+    new Map<
+      string,
+      {
+        promise: Promise<Record<string, unknown>>;
+        resolved?: Record<string, unknown>;
+      }
+    >(),
+  );
 
   const refetch = useRefetch();
   const [route, setRoute] = useState(() => ({
@@ -1148,11 +1159,22 @@ const InnerRouter = ({
         window.location.reload();
       };
       if (options.instant && isStaticSlot(getRouteSlotId(nextRoute.path))) {
-        const isEager = (key: string) => isMetaKey(key) || isStaticSlot(key);
+        const isSwr = (key: string) => isMetaKey(key) || isStaticSlot(key);
+        // An in-flight or absent prefetch fetches fresh instead — an instant
+        // nav must not wait.
+        const cached = prefetchCacheRef.current.get(rscPath);
         const dataPromise = refetch(rscPath, rscParams, {
           signal: abortController.signal,
-          unstable_isEager: isEager,
+          unstable_isSwr: isSwr,
           onBuildIdMismatch,
+          ...(cached?.resolved
+            ? {
+                unstable_prefetched: {
+                  elements: cached.resolved,
+                  complete: true,
+                },
+              }
+            : null),
         });
         commitRoute(nextRoute);
         return dataPromise.then(
@@ -1184,10 +1206,24 @@ const InnerRouter = ({
           },
         );
       }
+      // Consume the prefetch so a later navigation to the same path (maybe a
+      // different query) does not serve a stale one.
+      const cached = prefetchCacheRef.current.get(rscPath);
+      if (cached) {
+        prefetchCacheRef.current.delete(rscPath);
+      }
       try {
         const elements = await refetch(rscPath, rscParams, {
           signal: abortController.signal,
           onBuildIdMismatch,
+          ...(cached
+            ? {
+                unstable_prefetched: {
+                  elements: cached.resolved ?? cached.promise,
+                  complete: true,
+                },
+              }
+            : null),
         });
         const redirect = getRedirect(elements);
         if (redirect) {
@@ -1212,7 +1248,13 @@ const InnerRouter = ({
       }
       commitInTransition();
     },
-    [emitRouteChangeEvent, refetch, staticPathSetRef, resolvedElementsRef],
+    [
+      emitRouteChangeEvent,
+      refetch,
+      staticPathSetRef,
+      resolvedElementsRef,
+      prefetchCacheRef,
+    ],
   );
   const applyChangeRouteData = useCallback(
     async (routeData: unknown, isStatic: unknown) => {
@@ -1257,12 +1299,35 @@ const InnerRouter = ({
       }
       const rscPath = encodeRoutePath(route.path);
       const rscParams = createRscParams(route.query);
-      prefetchRsc(rscPath, rscParams);
+      // Dedupe per rscPath so a click that re-prefetches before an instant nav
+      // keeps an already-resolved shell instead of replacing it with an
+      // in-flight one (which would lose the instant shell).
+      const cache = prefetchCacheRef.current;
+      if (!cache.has(rscPath)) {
+        const promise = prefetchRsc(rscPath, rscParams);
+        const entry = { promise } as {
+          promise: Promise<Record<string, unknown>>;
+          resolved?: Record<string, unknown>;
+        };
+        cache.set(rscPath, entry);
+        promise.then(
+          (resolved) => {
+            if (cache.get(rscPath) === entry) {
+              entry.resolved = resolved;
+            }
+          },
+          () => {
+            if (cache.get(rscPath) === entry) {
+              cache.delete(rscPath);
+            }
+          },
+        );
+      }
       globalThis.__WAKU_ROUTER_PREFETCH__?.(route.path, (id) => {
         preloadModule(id, { as: 'script' });
       });
     },
-    [staticPathSetRef],
+    [staticPathSetRef, prefetchCacheRef],
   );
 
   useEffect(() => {
