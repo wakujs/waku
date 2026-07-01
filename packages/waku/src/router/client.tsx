@@ -1167,8 +1167,7 @@ const InnerRouter = ({
           cacheKey,
           Date.now(),
         );
-        // TODO(daishi) a resolved static shell is consumed here; a follow-up
-        // could keep it so repeat instant navs reuse it.
+        // TODO(daishi) keep the resolved shell for repeat instant navs.
         if (cached) {
           prefetchCacheRef.current.delete(cacheKey);
         }
@@ -1230,10 +1229,11 @@ const InnerRouter = ({
         const elements = await refetch(rscPath, rscParams, {
           signal: abortController.signal,
           onBuildIdMismatch,
-          ...(cached
+          // Reuse only resolved prefetches; an in-flight one isn't abortable.
+          ...(cached?.resolved
             ? {
                 unstable_prefetched: {
-                  elements: cached.resolved ?? cached.promise,
+                  elements: cached.resolved,
                   complete: true,
                 },
               }

@@ -407,6 +407,7 @@ export const unstable_prefetchRsc = (
   rscPath: string,
   rscParams?: unknown,
 ): Promise<Elements> => {
+  // Transformers must be prefetchOnly-agnostic (prefetches reused as navs).
   [rscPath, rscParams] = applyInputTransformers(rscPath, rscParams, true);
   const temporaryReferences = createTemporaryReferenceSet();
   const responsePromise = requestRsc(

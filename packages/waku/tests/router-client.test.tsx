@@ -2395,6 +2395,49 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('non-instant nav does not reuse an in-flight prefetch', async () => {
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
+      [ROUTE_ID]: ['/next', ''],
+      [IS_STATIC_ID]: true,
+    }));
+    vi.mocked(useRefetch).mockReturnValue(refetch);
+
+    // Never resolves: the prefetch stays in-flight (no abort signal), so it
+    // must not become the navigation's data source.
+    const pending = createDeferred<Record<string, unknown>>();
+    vi.mocked(prefetchRsc).mockReturnValue(pending.promise);
+
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      ...instantNavElements(),
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+    };
+
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      elements,
+    );
+    if (!capture.router) {
+      throw new Error('router not initialized');
+    }
+
+    await act(async () => {
+      capture.router!.prefetch('/next');
+    });
+    await act(async () => {
+      await capture.router!.push('/next');
+    });
+
+    expect(refetch).toHaveBeenCalledWith(
+      unstable_encodeRoutePath('/next'),
+      expect.any(URLSearchParams),
+      expect.not.objectContaining({ unstable_prefetched: expect.anything() }),
+    );
+
+    view.unmount();
+  });
+
   test('popstate honors route interceptor return false', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
