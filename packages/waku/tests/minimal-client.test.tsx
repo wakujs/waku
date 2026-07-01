@@ -484,6 +484,31 @@ describe('minimal/client refetch scenarios', () => {
     view.unmount();
   });
 
+  test('reusing a complete prefetch re-checks the build id', async () => {
+    vi.stubEnv('WAKU_BUILD_ID', 'build-1');
+    const view = await mount(
+      { _value: null, page: 'P1', _buildId: 'build-1' },
+      () => (
+        <Suspense fallback={null}>
+          <Slot id="page" />
+        </Suspense>
+      ),
+    );
+    const onBuildIdMismatch = vi.fn();
+    await act(async () => {
+      await view.refetch()('R/done.txt', undefined, {
+        unstable_prefetched: {
+          elements: { _value: null, page: 'P2', _buildId: 'build-2' },
+          complete: true,
+        },
+        onBuildIdMismatch,
+      });
+      await wait();
+    });
+    expect(onBuildIdMismatch).toHaveBeenCalledTimes(1);
+    view.unmount();
+  });
+
   test('new key: a slot b introduces suspends, then shows b', async () => {
     let mountExtra = () => {};
     const view = await mount({ _value: null, main: 'M1' }, (ref) => {

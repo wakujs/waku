@@ -453,9 +453,13 @@ export const Root = ({
     const { unstable_isSwr: isSwr, unstable_prefetched: prefetched } =
       options ?? {};
     delete fetchRscStore[ENTRY];
-    const data = prefetched?.complete
-      ? Promise.resolve(prefetched.elements)
-      : unstable_fetchRsc(rscPath, rscParams, options);
+    let data: Promise<Elements>;
+    if (prefetched?.complete) {
+      data = Promise.resolve(prefetched.elements);
+      reloadOnBuildIdMismatch(data, options?.onBuildIdMismatch);
+    } else {
+      data = unstable_fetchRsc(rscPath, rscParams, options);
+    }
     const dataWithoutErrors = Promise.resolve(data).catch(() => ({}));
     setElements((prev) => mergeElementsPromise(prev, dataWithoutErrors, isSwr));
     return data;

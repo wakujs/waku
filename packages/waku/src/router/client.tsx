@@ -60,6 +60,13 @@ import {
   getRouteSearchCodecId,
   isCodec,
 } from './isomorphic-utils/search-codec-registry.js';
+import type { PrefetchCache, PrefetchEntry } from './prefetch-cache.js';
+import {
+  PREFETCH_TTL,
+  getPrefetch,
+  prefetchCacheKey,
+  setPrefetch,
+} from './prefetch-cache.js';
 
 type NavigateOptions = {
   /**
@@ -1034,15 +1041,7 @@ const InnerRouter = ({
   const fetchingSlicesRef = useRef(new Set<SliceId>());
   // A ref (not a module-level map) so it is scoped to the router instance and
   // reset on remount.
-  const prefetchCacheRef = useRef(
-    new Map<
-      string,
-      {
-        promise: Promise<Record<string, unknown>>;
-        resolved?: Record<string, unknown>;
-      }
-    >(),
-  );
+  const prefetchCacheRef = useRef<PrefetchCache>(new Map());
 
   const refetch = useRefetch();
   const [route, setRoute] = useState(() => ({
@@ -1162,7 +1161,17 @@ const InnerRouter = ({
         const isSwr = (key: string) => isMetaKey(key) || isStaticSlot(key);
         // An in-flight or absent prefetch fetches fresh instead — an instant
         // nav must not wait.
-        const cached = prefetchCacheRef.current.get(rscPath);
+        const cacheKey = prefetchCacheKey(rscPath, nextRoute.query);
+        const cached = getPrefetch(
+          prefetchCacheRef.current,
+          cacheKey,
+          Date.now(),
+        );
+        // TODO(daishi) a resolved static shell is consumed here; a follow-up
+        // could keep it so repeat instant navs reuse it.
+        if (cached) {
+          prefetchCacheRef.current.delete(cacheKey);
+        }
         const dataPromise = refetch(rscPath, rscParams, {
           signal: abortController.signal,
           unstable_isSwr: isSwr,
@@ -1206,11 +1215,16 @@ const InnerRouter = ({
           },
         );
       }
-      // Consume the prefetch so a later navigation to the same path (maybe a
-      // different query) does not serve a stale one.
-      const cached = prefetchCacheRef.current.get(rscPath);
+      // Consume the prefetch (matched by path and query) so it is not reused by
+      // a later navigation.
+      const cacheKey = prefetchCacheKey(rscPath, nextRoute.query);
+      const cached = getPrefetch(
+        prefetchCacheRef.current,
+        cacheKey,
+        Date.now(),
+      );
       if (cached) {
-        prefetchCacheRef.current.delete(rscPath);
+        prefetchCacheRef.current.delete(cacheKey);
       }
       try {
         const elements = await refetch(rscPath, rscParams, {
@@ -1299,26 +1313,27 @@ const InnerRouter = ({
       }
       const rscPath = encodeRoutePath(route.path);
       const rscParams = createRscParams(route.query);
-      // Dedupe per rscPath so a click that re-prefetches before an instant nav
-      // keeps an already-resolved shell instead of replacing it with an
+      // Dedupe per (path, query) so a click that re-prefetches before an instant
+      // nav keeps an already-resolved shell instead of replacing it with an
       // in-flight one (which would lose the instant shell).
       const cache = prefetchCacheRef.current;
-      if (!cache.has(rscPath)) {
+      const key = prefetchCacheKey(rscPath, route.query);
+      if (!getPrefetch(cache, key, Date.now())) {
         const promise = prefetchRsc(rscPath, rscParams);
-        const entry = { promise } as {
-          promise: Promise<Record<string, unknown>>;
-          resolved?: Record<string, unknown>;
+        const entry: PrefetchEntry = {
+          promise,
+          expireAt: Date.now() + PREFETCH_TTL,
         };
-        cache.set(rscPath, entry);
+        setPrefetch(cache, key, entry);
         promise.then(
           (resolved) => {
-            if (cache.get(rscPath) === entry) {
+            if (cache.get(key) === entry) {
               entry.resolved = resolved;
             }
           },
           () => {
-            if (cache.get(rscPath) === entry) {
-              cache.delete(rscPath);
+            if (cache.get(key) === entry) {
+              cache.delete(key);
             }
           },
         );

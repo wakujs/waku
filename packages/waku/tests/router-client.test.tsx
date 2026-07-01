@@ -2347,6 +2347,54 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('instant nav does not reuse a prefetch for a different query', async () => {
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
+      [ROUTE_ID]: ['/next', ''],
+      [IS_STATIC_ID]: true,
+    }));
+    vi.mocked(useRefetch).mockReturnValue(refetch);
+
+    const shell = {
+      [unstable_getRouteSlotId('/next')]: <div>next-shell</div>,
+      [ROUTE_ID]: ['/next', ''],
+      [IS_STATIC_ID]: true,
+    };
+    vi.mocked(prefetchRsc).mockReturnValue(resolvedThenable(shell));
+
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      ...instantNavElements(),
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+    };
+
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      elements,
+    );
+    if (!capture.router) {
+      throw new Error('router not initialized');
+    }
+
+    // Prefetch the target for one query, then instant-navigate with another.
+    await act(async () => {
+      capture.router!.prefetch('/next?q=a');
+      await flush();
+    });
+    await act(async () => {
+      await capture.router!.push('/next?q=b', { unstable_instant: true });
+    });
+
+    // The q=a shell must not be served for the q=b navigation.
+    expect(refetch).toHaveBeenCalledWith(
+      unstable_encodeRoutePath('/next'),
+      expect.any(URLSearchParams),
+      expect.not.objectContaining({ unstable_prefetched: expect.anything() }),
+    );
+
+    view.unmount();
+  });
+
   test('popstate honors route interceptor return false', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
