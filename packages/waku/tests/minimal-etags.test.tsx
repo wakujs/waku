@@ -159,7 +159,7 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
     });
     await flush();
 
-    // the _etag: key follows its slot's swr-ness through the merge Proxy, so a
+    // the _etag: key follows its slot's swr-ness through the eager merge, so a
     // pinned static slot's etag stays a concrete value and survives in the cache
     expect(fetchRscStore[CACHED_ETAGS]?.page).toBe(IMMUTABLE_ETAG);
 
