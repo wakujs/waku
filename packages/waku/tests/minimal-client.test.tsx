@@ -508,6 +508,81 @@ describe('minimal/client eager merge', () => {
     act(() => root.unmount());
   });
 
+  test('a superseded refetch does not commit onto the newer state', async () => {
+    // If another refetch commits between the eager merge and the response,
+    // the stale response's second commit must leave the newer state as is:
+    // grafting onto it would re-render it and plant stale keys.
+    mocks.createFromFetch.mockReturnValueOnce(
+      resolvedThenable({ _value: null, eager: 'A1', hole: 'H1' }),
+    );
+    stubFetch();
+
+    let refetch: ReturnType<typeof useRefetch> | undefined;
+    let elementsPromise: Promise<Record<string, unknown>> | undefined;
+    const Probe = () => {
+      refetch = useRefetch();
+      elementsPromise = useElementsPromise_UNSTABLE();
+      return null;
+    };
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <Root initialRscPath="R/app.txt">
+          <Probe />
+        </Root>,
+      );
+    });
+
+    let resolveB1: (value: Record<string, unknown>) => void = () => {};
+    mocks.createFromFetch.mockReturnValueOnce(
+      new Promise<Record<string, unknown>>((resolve) => {
+        resolveB1 = resolve;
+      }),
+    );
+    let refetched1: Promise<unknown> | undefined;
+    await act(async () => {
+      refetched1 = refetch!('R/first.txt', undefined, {
+        unstable_isSwr: (key) => key === 'eager',
+      });
+    });
+
+    let resolveB2: (value: Record<string, unknown>) => void = () => {};
+    mocks.createFromFetch.mockReturnValueOnce(
+      new Promise<Record<string, unknown>>((resolve) => {
+        resolveB2 = resolve;
+      }),
+    );
+    let refetched2: Promise<unknown> | undefined;
+    await act(async () => {
+      refetched2 = refetch!('R/second.txt', undefined, {
+        unstable_isSwr: (key) => key === 'eager',
+      });
+    });
+    const midPromise = elementsPromise!;
+
+    // the superseded response resolves with a key the state has never seen
+    await act(async () => {
+      resolveB1({ hole: 'H1x', stale: 'S' });
+      await refetched1;
+    });
+    expect(elementsPromise).toBe(midPromise);
+    const midElements = await elementsPromise!;
+    expect('stale' in midElements).toBe(false);
+
+    await act(async () => {
+      resolveB2({ hole: 'H2', fresh: 'F' });
+      await refetched2;
+    });
+    const finalElements = await elementsPromise!;
+    expect('stale' in finalElements).toBe(false);
+    expect(finalElements.fresh).toBe('F');
+    await expect(finalElements.hole).resolves.toBe('H2');
+
+    act(() => root.unmount());
+  });
+
   test('merges keys only b introduces in a second commit', async () => {
     // The rare case (e.g. a rerendered route's elements): commit-2 adds the
     // new keys while every already-delivered key keeps its exact value.

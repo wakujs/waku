@@ -98,27 +98,22 @@ const getCached = <T,>(c: () => T, m: WeakMap<WeakKey, T>, k: object): T =>
   (m.has(k) ? m : m.set(k, c())).get(k) as T;
 
 const resolvedMergeResults = new WeakMap<Promise<Elements>, Elements>();
-const trackResolved = (p: Promise<Elements>): Promise<Elements> => {
-  p.then(
-    (m) => resolvedMergeResults.set(p, m),
-    () => {},
-  );
-  return p;
-};
+const swrMergeSources = new WeakMap<Promise<Elements>, Promise<Elements>>();
 
 const mergeCache = new WeakMap();
 const mergeElementsPromise = (
   a: Promise<Elements>,
   b: Promise<Elements> | Elements,
 ): Promise<Elements> => {
-  const getResult = () =>
-    trackResolved(
-      Promise.all([a, b]).then(([a, b]) => {
-        const nextElements = { ...a, ...b };
-        delete nextElements._value;
-        return nextElements;
-      }),
-    );
+  const getResult = () => {
+    const result: Promise<Elements> = Promise.all([a, b]).then(([a, b]) => {
+      const nextElements = { ...a, ...b };
+      delete nextElements._value;
+      resolvedMergeResults.set(result, nextElements);
+      return nextElements;
+    });
+    return result;
+  };
   const cache2 = getCached(() => new WeakMap(), mergeCache, a);
   return getCached(getResult, cache2, b);
 };
@@ -129,34 +124,41 @@ const swrElementsPromise = (
   b: Promise<Elements>,
   isSwr: (key: string) => boolean,
 ): Promise<Elements> => {
-  const getResult = () =>
-    trackResolved(
-      Promise.resolve(a).then((aRes) => {
-        const nextElements: Elements = {};
-        for (const key of Object.keys(aRes)) {
-          if (key === '_value') {
-            continue;
-          }
-          // an _etag:<slot> key follows its slot's swr-ness, not its own
-          const swr = key.startsWith(ETAG_ID_PREFIX)
-            ? isSwr(key.slice(ETAG_ID_PREFIX.length))
-            : isSwr(key);
-          nextElements[key] = swr
-            ? aRes[key]
-            : b.then((bRes) => (key in bRes ? bRes[key] : aRes[key]));
+  const getResult = () => {
+    const result: Promise<Elements> = Promise.resolve(a).then((aRes) => {
+      const nextElements: Elements = {};
+      for (const key of Object.keys(aRes)) {
+        if (key === '_value') {
+          continue;
         }
-        return nextElements;
-      }),
-    );
+        // an _etag:<slot> key follows its slot's swr-ness, not its own
+        const swr = key.startsWith(ETAG_ID_PREFIX)
+          ? isSwr(key.slice(ETAG_ID_PREFIX.length))
+          : isSwr(key);
+        nextElements[key] = swr
+          ? aRes[key]
+          : b.then((bRes) => (key in bRes ? bRes[key] : aRes[key]));
+      }
+      resolvedMergeResults.set(result, nextElements);
+      return nextElements;
+    });
+    return result;
+  };
   const cache2 = getCached(() => new WeakMap(), swrCache, a);
-  return getCached(getResult, cache2, b);
+  const result = getCached(getResult, cache2, b);
+  swrMergeSources.set(result, b);
+  return result;
 };
 
 const swrNewKeysCache = new WeakMap();
 const swrNewKeysElementsPromise = (
   prev: Promise<Elements>,
+  b: Promise<Elements>,
   bRes: Elements,
 ): Promise<Elements> => {
+  if (swrMergeSources.get(prev) !== b) {
+    return prev;
+  }
   const prevRes = resolvedMergeResults.get(prev);
   if (
     prevRes &&
@@ -165,21 +167,19 @@ const swrNewKeysElementsPromise = (
     return prev;
   }
   const getResult = () =>
-    trackResolved(
-      Promise.resolve(prev).then((prevRes) => {
-        const newKeys = Object.keys(bRes).filter(
-          (key) => key !== '_value' && !(key in prevRes),
-        );
-        if (!newKeys.length) {
-          return prevRes;
-        }
-        const nextElements = { ...prevRes };
-        for (const key of newKeys) {
-          nextElements[key] = bRes[key];
-        }
-        return nextElements;
-      }),
-    );
+    Promise.resolve(prev).then((prevRes) => {
+      const newKeys = Object.keys(bRes).filter(
+        (key) => key !== '_value' && !(key in prevRes),
+      );
+      if (!newKeys.length) {
+        return prevRes;
+      }
+      const nextElements = { ...prevRes };
+      for (const key of newKeys) {
+        nextElements[key] = bRes[key];
+      }
+      return nextElements;
+    });
   const cache2 = getCached(() => new WeakMap(), swrNewKeysCache, prev);
   return getCached(getResult, cache2, bRes);
 };
@@ -510,7 +510,9 @@ export const Root = ({
     if (isSwr) {
       setElements((prev) => swrElementsPromise(prev, dataWithoutErrors, isSwr));
       return Promise.resolve(data).then((resolved) => {
-        setElements((prev) => swrNewKeysElementsPromise(prev, resolved));
+        setElements((prev) =>
+          swrNewKeysElementsPromise(prev, dataWithoutErrors, resolved),
+        );
         return resolved;
       });
     }
