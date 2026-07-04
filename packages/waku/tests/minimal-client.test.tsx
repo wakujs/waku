@@ -508,6 +508,64 @@ describe('minimal/client eager merge', () => {
     act(() => root.unmount());
   });
 
+  test('merges new keys even while the previous elements are still streaming', async () => {
+    // The response can resolve before the previous elements do. The second
+    // commit cannot inspect a pending state synchronously, so it chains on
+    // it instead; this is safe because a pending state has never rendered.
+    let resolveInitial: (value: Record<string, unknown>) => void = () => {};
+    mocks.createFromFetch.mockReturnValueOnce(
+      new Promise<Record<string, unknown>>((resolve) => {
+        resolveInitial = resolve;
+      }),
+    );
+    stubFetch();
+
+    let refetch: ReturnType<typeof useRefetch> | undefined;
+    let elementsPromise: Promise<Record<string, unknown>> | undefined;
+    const Probe = () => {
+      refetch = useRefetch();
+      elementsPromise = useElementsPromise_UNSTABLE();
+      return null;
+    };
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <Root initialRscPath="R/app.txt">
+          <Suspense fallback={null}>
+            <Slot id="eager" />
+            <Slot id="hole" />
+          </Suspense>
+          <Probe />
+        </Root>,
+      );
+    });
+
+    mocks.createFromFetch.mockReturnValueOnce(
+      resolvedThenable({ eager: 'A2', hole: 'H2', extra: 'X' }),
+    );
+    let refetched: unknown;
+    await act(async () => {
+      refetched = await refetch!('R/next.txt', undefined, {
+        unstable_isSwr: (key) => key === 'eager',
+      });
+    });
+    expect(refetched).toEqual({ eager: 'A2', hole: 'H2', extra: 'X' });
+
+    await act(async () => {
+      resolveInitial({ _value: null, eager: 'A1', hole: 'H1' });
+    });
+
+    expect(container.textContent).toBe('A1H2');
+    const finalElements = await elementsPromise!;
+    expect(finalElements.eager).toBe('A1');
+    expect(finalElements.extra).toBe('X');
+    await expect(finalElements.hole).resolves.toBe('H2');
+
+    act(() => root.unmount());
+  });
+
   test('a superseded refetch does not commit onto the newer state', async () => {
     // If another refetch commits between the eager merge and the response,
     // the stale response's second commit must leave the newer state as is:

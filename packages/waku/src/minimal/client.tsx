@@ -105,15 +105,12 @@ const mergeElementsPromise = (
   a: Promise<Elements>,
   b: Promise<Elements> | Elements,
 ): Promise<Elements> => {
-  const getResult = () => {
-    const result: Promise<Elements> = Promise.all([a, b]).then(([a, b]) => {
+  const getResult = () =>
+    Promise.all([a, b]).then(([a, b]) => {
       const nextElements = { ...a, ...b };
       delete nextElements._value;
-      resolvedMergeResults.set(result, nextElements);
       return nextElements;
     });
-    return result;
-  };
   const cache2 = getCached(() => new WeakMap(), mergeCache, a);
   return getCached(getResult, cache2, b);
 };
