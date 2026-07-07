@@ -4,13 +4,25 @@
 
 type Elements = Record<string, unknown>;
 
+export type PrefetchMode = 'always' | 'once';
+
+export type PrefetchOptions = {
+  mode?: PrefetchMode;
+  ttl?: number;
+};
+
 export type PrefetchEntry = {
   promise: Promise<Elements>;
-  resolved?: Elements;
   expireAt: number;
 };
 
 export type PrefetchCache = Map<string, PrefetchEntry>;
+
+// Session store of prefetched responses, keyed by rscPath alone. Entries are
+// only served under the etag protocol: they paint immutable slots (which
+// cannot vary by query) and fall back for a dynamic slot only when the
+// server omits it, which proves the stored copy current.
+export type PrefetchedElementsStore = Map<string, Elements>;
 
 export const PREFETCH_TTL = 1000 * 60;
 export const PREFETCH_LIMIT = 100;
@@ -46,4 +58,14 @@ export const setPrefetch = (
     cache.delete(oldest);
   }
   cache.set(key, entry);
+};
+
+/** Merge a prefetched response into the session store. */
+export const mergePrefetchedElements = (
+  store: PrefetchedElementsStore,
+  rscPath: string,
+  elements: Elements,
+): void => {
+  const existing = store.get(rscPath);
+  store.set(rscPath, existing ? { ...existing, ...elements } : elements);
 };

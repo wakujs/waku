@@ -60,10 +60,14 @@ import {
   getRouteSearchCodecId,
   isCodec,
 } from './isomorphic-utils/search-codec-registry.js';
-import type { PrefetchCache, PrefetchEntry } from './prefetch-cache.js';
 import {
   PREFETCH_TTL,
+  type PrefetchCache,
+  type PrefetchEntry,
+  type PrefetchOptions,
+  type PrefetchedElementsStore,
   getPrefetch,
+  mergePrefetchedElements,
   prefetchCacheKey,
   setPrefetch,
 } from './prefetch-cache.js';
@@ -92,8 +96,11 @@ type Navigate = {
 };
 
 type Prefetch = {
-  (to: RouteHref): void;
-  <Path extends RoutePath>(target: BuildRouteHrefTarget<Path>): void;
+  (to: RouteHref, options?: PrefetchOptions): void;
+  <Path extends RoutePath>(
+    target: BuildRouteHrefTarget<Path>,
+    options?: PrefetchOptions,
+  ): void;
 };
 
 const pathnameToCurrentRoutePath = (pathname: string) =>
@@ -188,7 +195,7 @@ type ChangeRouteEvent = 'start' | 'complete';
 
 type ChangeRouteCallback = (route: RouteProps) => void;
 
-type PrefetchRoute = (route: RouteProps) => void;
+type PrefetchRoute = (route: RouteProps, options?: PrefetchOptions) => void;
 
 type SliceId = string;
 
@@ -313,14 +320,17 @@ export function useRouter() {
     window.history.forward();
   }, []);
   const prefetch = useCallback(
-    (to: RouteHref | BuildRouteHrefTarget<RoutePath>) => {
+    (
+      to: RouteHref | BuildRouteHrefTarget<RoutePath>,
+      options?: PrefetchOptions,
+    ) => {
       const href =
         typeof to === 'string' ? to : buildRouteHref(to, resolveCodec);
       const url = new URL(
         addBase(href, import.meta.env.WAKU_CONFIG_BASE_PATH),
         window.location.href,
       );
-      prefetchRoute(parseRoute(url));
+      prefetchRoute(parseRoute(url), options);
     },
     [prefetchRoute, resolveCodec],
   ) as Prefetch;
@@ -529,8 +539,8 @@ export type LinkProps<Path extends RoutePath> = {
    * away and stream the dynamic parts in.
    */
   unstable_instant?: boolean;
-  unstable_prefetchOnEnter?: boolean;
-  unstable_prefetchOnView?: boolean;
+  unstable_prefetchOnEnter?: PrefetchOptions;
+  unstable_prefetchOnView?: PrefetchOptions;
   /**
    * Overrides how the navigation transition is started, e.g. to integrate the
    * browser View Transitions API. When provided, React's `useTransition` is
@@ -580,7 +590,7 @@ export function Link<Path extends RoutePath>({
           if (entry.isIntersecting) {
             const url = new URL(resolvedTo, window.location.href);
             if (router && url.href !== window.location.href) {
-              router.prefetchRoute(parseRoute(url));
+              router.prefetchRoute(parseRoute(url), unstable_prefetchOnView);
             }
           }
         });
@@ -598,7 +608,7 @@ export function Link<Path extends RoutePath>({
     const url = new URL(resolvedTo, window.location.href);
     if (url.href !== window.location.href) {
       const route = parseRoute(url);
-      prefetchRoute(route);
+      preloadRouteModules(route.path);
       if (unstable_instant) {
         changeRoute(route, {
           shouldScroll: scroll ?? shouldScrollByDefault(url),
@@ -644,7 +654,7 @@ export function Link<Path extends RoutePath>({
     ? (event: MouseEvent<HTMLAnchorElement>) => {
         const url = new URL(resolvedTo, window.location.href);
         if (url.href !== window.location.href) {
-          prefetchRoute(parseRoute(url));
+          prefetchRoute(parseRoute(url), unstable_prefetchOnEnter);
         }
         props.onMouseEnter?.(event);
       }
@@ -858,6 +868,12 @@ const ThrowError = ({ error }: { error: unknown }) => {
 const getRouteSlotId = (path: string) => 'route:' + path;
 const getSliceSlotId = (id: SliceId) => 'slice:' + id;
 
+const preloadRouteModules = (path: string) => {
+  globalThis.__WAKU_ROUTER_PREFETCH__?.(path, (id) => {
+    preloadModule(id, { as: 'script' });
+  });
+};
+
 export function Slice({
   id,
   children,
@@ -1038,6 +1054,7 @@ const InnerRouter = ({
     useElementsMetadata(elementsPromise);
   // FIXME this "fetchingSlices" hack feels suboptimal.
   const fetchingSlicesRef = useRef(new Set<SliceId>());
+  const prefetchedElementsStoreRef = useRef<PrefetchedElementsStore>(new Map());
   // A ref (not a module-level map) so it is scoped to the router instance and
   // reset on remount.
   const prefetchCacheRef = useRef<PrefetchCache>(new Map());
@@ -1156,87 +1173,76 @@ const InnerRouter = ({
         window.history.pushState(window.history.state, '', targetUrl);
         window.location.reload();
       };
-      if (options.instant && isStaticSlot(getRouteSlotId(nextRoute.path))) {
-        const isSwr = (key: string) => isMetaKey(key) || isStaticSlot(key);
-        // An in-flight or absent prefetch fetches fresh instead — an instant
-        // nav must not wait.
-        const cacheKey = prefetchCacheKey(rscPath, nextRoute.query);
-        const cached = getPrefetch(
-          prefetchCacheRef.current,
-          cacheKey,
-          Date.now(),
-        );
-        // TODO(daishi) keep the resolved shell for repeat instant navs.
-        if (cached) {
-          prefetchCacheRef.current.delete(cacheKey);
+      if (options.instant) {
+        const prefetchedElements =
+          prefetchedElementsStoreRef.current.get(rscPath);
+        const routeSlotId = getRouteSlotId(nextRoute.path);
+        if (
+          isStaticSlot(routeSlotId) ||
+          (prefetchedElements &&
+            isImmutableElement(prefetchedElements, routeSlotId))
+        ) {
+          const pin = (key: string) => isMetaKey(key) || isStaticSlot(key);
+          const cacheKey = prefetchCacheKey(rscPath, nextRoute.query);
+          const cached = getPrefetch(
+            prefetchCacheRef.current,
+            cacheKey,
+            Date.now(),
+          );
+          const dataPromise = refetch(rscPath, rscParams, {
+            signal: abortController.signal,
+            unstable_swr: {
+              pin,
+              ...(prefetchedElements ? { base: prefetchedElements } : null),
+            },
+            onBuildIdMismatch,
+            ...(cached ? { unstable_prefetched: cached.promise } : null),
+          });
+          commitRoute(nextRoute);
+          return dataPromise.then(
+            (elements) => {
+              if (isAborted()) {
+                return;
+              }
+              routeChangeAbortRef.current = null;
+              const redirect = getRedirect(elements);
+              if (redirect) {
+                routeRef.current = redirect;
+                setRoute(redirect);
+                if (redirect.path !== '/404') {
+                  setPendingHistory({
+                    mode: 'replace',
+                    url: getRouteUrl(redirect),
+                  });
+                }
+              }
+              emitRouteChangeEvent('complete', redirect ?? nextRoute);
+            },
+            (e) => {
+              if (isAborted()) {
+                return;
+              }
+              routeChangeAbortRef.current = null;
+              setErr(e);
+              throw e;
+            },
+          );
         }
-        const dataPromise = refetch(rscPath, rscParams, {
-          signal: abortController.signal,
-          unstable_isSwr: isSwr,
-          onBuildIdMismatch,
-          ...(cached?.resolved
-            ? {
-                unstable_prefetched: {
-                  elements: cached.resolved,
-                  complete: true,
-                },
-              }
-            : null),
-        });
-        commitRoute(nextRoute);
-        return dataPromise.then(
-          (elements) => {
-            if (isAborted()) {
-              return;
-            }
-            routeChangeAbortRef.current = null;
-            const redirect = getRedirect(elements);
-            if (redirect) {
-              routeRef.current = redirect;
-              setRoute(redirect);
-              if (redirect.path !== '/404') {
-                setPendingHistory({
-                  mode: 'replace',
-                  url: getRouteUrl(redirect),
-                });
-              }
-            }
-            emitRouteChangeEvent('complete', redirect ?? nextRoute);
-          },
-          (e) => {
-            if (isAborted()) {
-              return;
-            }
-            routeChangeAbortRef.current = null;
-            setErr(e);
-            throw e;
-          },
-        );
       }
-      // Consume the prefetch (matched by path and query) so it is not reused by
-      // a later navigation.
+      // Reuse a prefetch (matched by path and query) within its ttl; an
+      // in-flight one is adopted as the data source (it resolves no later
+      // than a fresh request, and prefetches are not abortable anyway).
       const cacheKey = prefetchCacheKey(rscPath, nextRoute.query);
       const cached = getPrefetch(
         prefetchCacheRef.current,
         cacheKey,
         Date.now(),
       );
-      if (cached) {
-        prefetchCacheRef.current.delete(cacheKey);
-      }
       try {
         const elements = await refetch(rscPath, rscParams, {
           signal: abortController.signal,
           onBuildIdMismatch,
-          // Reuse only resolved prefetches; an in-flight one isn't abortable.
-          ...(cached?.resolved
-            ? {
-                unstable_prefetched: {
-                  elements: cached.resolved,
-                  complete: true,
-                },
-              }
-            : null),
+          ...(cached ? { unstable_prefetched: cached.promise } : null),
         });
         const redirect = getRedirect(elements);
         if (redirect) {
@@ -1267,6 +1273,7 @@ const InnerRouter = ({
       staticPathSetRef,
       resolvedElementsRef,
       prefetchCacheRef,
+      prefetchedElementsStoreRef,
     ],
   );
   const applyChangeRouteData = useCallback(
@@ -1306,29 +1313,32 @@ const InnerRouter = ({
   }, [applyChangeRouteData]);
 
   const prefetchRoute: PrefetchRoute = useCallback(
-    (route) => {
+    (route, options) => {
+      preloadRouteModules(route.path);
       if (staticPathSetRef.current.has(route.path)) {
         return;
       }
       const rscPath = encodeRoutePath(route.path);
       const rscParams = createRscParams(route.query);
-      // Dedupe per (path, query) so a click that re-prefetches before an instant
-      // nav keeps an already-resolved shell instead of replacing it with an
-      // in-flight one (which would lose the instant shell).
+      const store = prefetchedElementsStoreRef.current;
+      if (options?.mode === 'once' && store.has(rscPath)) {
+        return;
+      }
+      // Dedupe per (path, query) so a repeat trigger within the ttl keeps an
+      // already-resolved response instead of replacing it with an in-flight
+      // one (which would lose the instant shell).
       const cache = prefetchCacheRef.current;
       const key = prefetchCacheKey(rscPath, route.query);
       if (!getPrefetch(cache, key, Date.now())) {
         const promise = prefetchRsc(rscPath, rscParams);
         const entry: PrefetchEntry = {
           promise,
-          expireAt: Date.now() + PREFETCH_TTL,
+          expireAt: Date.now() + (options?.ttl ?? PREFETCH_TTL),
         };
         setPrefetch(cache, key, entry);
         promise.then(
           (resolved) => {
-            if (cache.get(key) === entry) {
-              entry.resolved = resolved;
-            }
+            mergePrefetchedElements(store, rscPath, resolved);
           },
           () => {
             if (cache.get(key) === entry) {
@@ -1337,11 +1347,8 @@ const InnerRouter = ({
           },
         );
       }
-      globalThis.__WAKU_ROUTER_PREFETCH__?.(route.path, (id) => {
-        preloadModule(id, { as: 'script' });
-      });
     },
-    [staticPathSetRef, prefetchCacheRef],
+    [staticPathSetRef, prefetchCacheRef, prefetchedElementsStoreRef],
   );
 
   useEffect(() => {
@@ -1459,6 +1466,7 @@ export type Unstable_ChangeRoute = ChangeRoute;
 export type Unstable_ChangeRouteEvent = ChangeRouteEvent;
 export type Unstable_ChangeRouteCallback = ChangeRouteCallback;
 export type Unstable_PrefetchRoute = PrefetchRoute;
+export type Unstable_PrefetchOptions = PrefetchOptions;
 export type Unstable_SliceId = SliceId;
 export type Unstable_RouteHref = RouteHref;
 export type Unstable_RoutePath = RoutePath;
