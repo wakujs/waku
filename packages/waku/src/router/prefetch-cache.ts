@@ -61,18 +61,40 @@ export const setPrefetch = (
   cache.set(key, entry);
 };
 
+/** Reserve a route in the store while its first prefetch is in flight. */
+export const reservePrefetchedElements = (
+  store: PrefetchedElementsStore,
+  rscPath: string,
+): void => {
+  if (store.has(rscPath)) {
+    return;
+  }
+  if (store.size >= PREFETCH_LIMIT) {
+    const oldestKey = store.keys().next().value;
+    if (oldestKey !== undefined) {
+      store.delete(oldestKey);
+    }
+  }
+  store.set(rscPath, null);
+};
+
+/** Release a reservation that was never fulfilled. */
+export const releasePrefetchedElements = (
+  store: PrefetchedElementsStore,
+  rscPath: string,
+): void => {
+  if (store.get(rscPath) === null) {
+    store.delete(rscPath);
+  }
+};
+
 /** Merge a prefetched response into the session store. */
 export const mergePrefetchedElements = (
   store: PrefetchedElementsStore,
   rscPath: string,
   elements: Elements,
 ): void => {
-  if (!store.has(rscPath) && store.size >= PREFETCH_LIMIT) {
-    const oldestKey = store.keys().next().value;
-    if (oldestKey !== undefined) {
-      store.delete(oldestKey);
-    }
-  }
+  reservePrefetchedElements(store, rscPath);
   const existing = store.get(rscPath);
   store.set(rscPath, existing ? { ...existing, ...elements } : elements);
 };

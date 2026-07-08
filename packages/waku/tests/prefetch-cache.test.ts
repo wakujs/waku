@@ -5,6 +5,8 @@ import {
   getPrefetch,
   mergePrefetchedElements,
   prefetchCacheKey,
+  releasePrefetchedElements,
+  reservePrefetchedElements,
   setPrefetch,
 } from '../src/router/prefetch-cache.js';
 import type {
@@ -64,6 +66,9 @@ describe('router prefetch cache', () => {
   it('bounds the store at PREFETCH_LIMIT, evicting the oldest first', () => {
     const store: PrefetchedElementsStore = new Map();
     for (let i = 0; i < PREFETCH_LIMIT + 5; i += 1) {
+      // the flow the router follows: reserve at fetch start, merge on
+      // resolution
+      reservePrefetchedElements(store, `/p${i}`);
       mergePrefetchedElements(store, `/p${i}`, { i });
     }
     expect(store.size).toBe(PREFETCH_LIMIT);
@@ -75,5 +80,26 @@ describe('router prefetch cache', () => {
     mergePrefetchedElements(store, '/p5', { j: 1 });
     expect(store.size).toBe(PREFETCH_LIMIT);
     expect(store.has('/p5')).toBe(true);
+  });
+
+  it('replaces a reservation with the resolved response', () => {
+    const store: PrefetchedElementsStore = new Map();
+    reservePrefetchedElements(store, '/p');
+    expect(store.get('/p')).toBe(null);
+    reservePrefetchedElements(store, '/p');
+    expect(store.size).toBe(1);
+    mergePrefetchedElements(store, '/p', { a: 1 });
+    expect(store.get('/p')).toEqual({ a: 1 });
+  });
+
+  it('releases only an unfulfilled reservation', () => {
+    const store: PrefetchedElementsStore = new Map();
+    reservePrefetchedElements(store, '/p');
+    releasePrefetchedElements(store, '/p');
+    expect(store.has('/p')).toBe(false);
+    reservePrefetchedElements(store, '/p');
+    mergePrefetchedElements(store, '/p', { a: 1 });
+    releasePrefetchedElements(store, '/p');
+    expect(store.get('/p')).toEqual({ a: 1 });
   });
 });

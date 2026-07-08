@@ -69,6 +69,8 @@ import {
   getPrefetch,
   mergePrefetchedElements,
   prefetchCacheKey,
+  releasePrefetchedElements,
+  reservePrefetchedElements,
   setPrefetch,
 } from './prefetch-cache.js';
 
@@ -1351,9 +1353,7 @@ const InnerRouter = ({
           expireAt: Date.now() + (options?.ttl ?? PREFETCH_TTL),
         };
         setPrefetch(cache, key, entry);
-        if (!store.has(rscPath)) {
-          store.set(rscPath, null);
-        }
+        reservePrefetchedElements(store, rscPath);
         promise.then(
           (resolved) => {
             mergePrefetchedElements(store, rscPath, resolved);
@@ -1362,9 +1362,7 @@ const InnerRouter = ({
             if (cache.get(key) === entry) {
               cache.delete(key);
             }
-            if (store.get(rscPath) === null) {
-              store.delete(rscPath);
-            }
+            releasePrefetchedElements(store, rscPath);
           },
         );
       }

@@ -48,6 +48,7 @@ import {
   IS_STATIC_ID,
   ROUTE_ID,
 } from '../src/router/isomorphic-utils/route-path.js';
+import { PREFETCH_LIMIT } from '../src/router/prefetch-cache.js';
 
 const postsSearchCodec = {
   id: 'posts-test',
@@ -2525,6 +2526,48 @@ describe('Router integration', () => {
     });
 
     expect(prefetchRsc).toHaveBeenCalledTimes(1);
+
+    view.unmount();
+  });
+
+  test('an evicted route can be warmed once again', async () => {
+    // The store is bounded, so "once" holds while the route stays in it: a
+    // route evicted by newer prefetches is fetched again on a later trigger.
+    vi.mocked(prefetchRsc).mockImplementation(((rscPath: string) =>
+      resolvedThenable({
+        [ROUTE_ID]: [rscPath, ''],
+        [IS_STATIC_ID]: false,
+      })) as never);
+
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      ...instantNavElements(),
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+    };
+
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      elements,
+    );
+    if (!capture.router) {
+      throw new Error('router not initialized');
+    }
+
+    await act(async () => {
+      for (let i = 0; i < PREFETCH_LIMIT + 1; i += 1) {
+        capture.router!.prefetch(`/p${i}`, { mode: 'once' });
+      }
+      await flush();
+    });
+    expect(prefetchRsc).toHaveBeenCalledTimes(PREFETCH_LIMIT + 1);
+
+    await act(async () => {
+      // /p0 was evicted by the overflowing prefetches above
+      capture.router!.prefetch('/p0', { mode: 'once' });
+      await flush();
+    });
+    expect(prefetchRsc).toHaveBeenCalledTimes(PREFETCH_LIMIT + 2);
 
     view.unmount();
   });
