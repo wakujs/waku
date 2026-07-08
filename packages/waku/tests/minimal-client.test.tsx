@@ -567,6 +567,55 @@ describe('minimal/client eager merge', () => {
     act(() => root.unmount());
   });
 
+  test('an overlapping key falls back to the base when the response omits it', async () => {
+    // The base's etag is what rides the request for keys the base holds, so
+    // an omission proves the base copy current: the fallback must serve the
+    // base copy, not a possibly older live one.
+    mocks.createFromFetch.mockReturnValueOnce(
+      resolvedThenable({ _value: null, eager: 'A1', shared: 'LIVE' }),
+    );
+    stubFetch();
+
+    let refetch: ReturnType<typeof useRefetch> | undefined;
+    let elementsPromise: Promise<Record<string, unknown>> | undefined;
+    const Probe = () => {
+      refetch = useRefetch();
+      elementsPromise = useElementsPromise_UNSTABLE();
+      return null;
+    };
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <Root initialRscPath="R/app.txt">
+          <Suspense fallback={null}>
+            <Slot id="eager" />
+            <Slot id="shared" />
+          </Suspense>
+          <Probe />
+        </Root>,
+      );
+    });
+    expect(container.textContent).toBe('A1LIVE');
+
+    mocks.createFromFetch.mockReturnValueOnce(resolvedThenable({}));
+    await act(async () => {
+      await refetch!('R/next.txt', undefined, {
+        unstable_swr: {
+          pin: (key) => key === 'eager',
+          base: { shared: 'BASE' },
+        },
+      });
+    });
+
+    expect(container.textContent).toBe('A1BASE');
+    const finalElements = await elementsPromise!;
+    await expect(finalElements.shared).resolves.toBe('BASE');
+
+    act(() => root.unmount());
+  });
+
   test('a superseded refetch does not commit onto the newer state', async () => {
     // If another refetch commits between the eager merge and the response,
     // the stale response's second commit must leave the newer state as is:

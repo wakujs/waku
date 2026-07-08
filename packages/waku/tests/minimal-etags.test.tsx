@@ -193,6 +193,8 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
           base: {
             widget: <div>w</div>,
             [`${ETAG_ID_PREFIX}widget`]: 'etag-widget',
+            page: <div>p</div>,
+            [`${ETAG_ID_PREFIX}page`]: 'etag-page-2',
           },
         },
       });
@@ -204,6 +206,9 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
     );
     const sent = JSON.parse(headers.get(ETAGS_HEADER) ?? '{}');
     expect(sent.widget).toBe('etag-widget');
+    // for a key the base holds, the base's etag is claimed: an omission then
+    // proves the base copy current, and the merge falls back to it
+    expect(sent.page).toBe('etag-page-2');
 
     view.unmount();
   });

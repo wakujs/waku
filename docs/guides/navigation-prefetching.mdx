@@ -86,7 +86,7 @@ export const Nav = () => (
 - `unstable_prefetchOnEnter` starts prefetching when the pointer enters the link.
 - `unstable_prefetchOnView` starts prefetching when the link enters the viewport.
 
-Both props take an options object:
+Both props take an options object. Passing an empty object enables prefetching with the defaults; omitting the prop disables it.
 
 - `mode: 'always'` (the default) fetches on the first trigger and dedupes repeat triggers for the same path and query within the `ttl`. Within the `ttl`, navigation reuses the prefetched response without another request.
 - `mode: 'once'` fetches a route only once per session, ignoring the query. Its main purpose is to warm the route's static parts, which cannot change within a build, so instant navigation can paint them even on the route's first visit.

@@ -21,8 +21,9 @@ export type PrefetchCache = Map<string, PrefetchEntry>;
 // Session store of prefetched responses, keyed by rscPath alone. Entries are
 // only served under the etag protocol: they paint immutable slots (which
 // cannot vary by query) and fall back for a dynamic slot only when the
-// server omits it, which proves the stored copy current.
-export type PrefetchedElementsStore = Map<string, Elements>;
+// server omits it, which proves the stored copy current. A null entry marks
+// a route whose first prefetch is still in flight.
+export type PrefetchedElementsStore = Map<string, Elements | null>;
 
 export const PREFETCH_TTL = 1000 * 60;
 export const PREFETCH_LIMIT = 100;
@@ -66,6 +67,12 @@ export const mergePrefetchedElements = (
   rscPath: string,
   elements: Elements,
 ): void => {
+  if (!store.has(rscPath) && store.size >= PREFETCH_LIMIT) {
+    const oldestKey = store.keys().next().value;
+    if (oldestKey !== undefined) {
+      store.delete(oldestKey);
+    }
+  }
   const existing = store.get(rscPath);
   store.set(rscPath, existing ? { ...existing, ...elements } : elements);
 };

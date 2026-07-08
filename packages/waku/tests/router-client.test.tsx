@@ -2499,6 +2499,72 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('mode once dedupes concurrent prefetches by rscPath', async () => {
+    const pending = createDeferred<Record<string, unknown>>();
+    vi.mocked(prefetchRsc).mockReturnValue(pending.promise);
+
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      ...instantNavElements(),
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+    };
+
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      elements,
+    );
+    if (!capture.router) {
+      throw new Error('router not initialized');
+    }
+
+    await act(async () => {
+      // the first request is still in flight when the second trigger fires
+      capture.router!.prefetch('/next?q=a', { mode: 'once' });
+      capture.router!.prefetch('/next?q=b', { mode: 'once' });
+    });
+
+    expect(prefetchRsc).toHaveBeenCalledTimes(1);
+
+    view.unmount();
+  });
+
+  test('mode once retries after a failed prefetch', async () => {
+    vi.mocked(prefetchRsc)
+      .mockReturnValueOnce(Promise.reject(new Error('network')))
+      .mockReturnValueOnce(
+        resolvedThenable({ [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: false }),
+      );
+
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      ...instantNavElements(),
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+    };
+
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      elements,
+    );
+    if (!capture.router) {
+      throw new Error('router not initialized');
+    }
+
+    await act(async () => {
+      capture.router!.prefetch('/next', { mode: 'once' });
+      await flush();
+    });
+    await act(async () => {
+      capture.router!.prefetch('/next?q=b', { mode: 'once' });
+      await flush();
+    });
+
+    expect(prefetchRsc).toHaveBeenCalledTimes(2);
+
+    view.unmount();
+  });
+
   test('prefetch honors a per-call ttl', async () => {
     vi.mocked(prefetchRsc).mockReturnValue(
       resolvedThenable({ [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: false }),

@@ -580,8 +580,11 @@ export function Link<Path extends RoutePath>({
   const startTransitionFn = unstable_startTransition || startTransition;
   const [ref, setRef] = useSharedRef<HTMLAnchorElement>(refProp);
 
+  const prefetchOnView = !!unstable_prefetchOnView;
+  const prefetchOnViewMode = unstable_prefetchOnView?.mode;
+  const prefetchOnViewTtl = unstable_prefetchOnView?.ttl;
   useEffect(() => {
-    if (!unstable_prefetchOnView || !ref.current) {
+    if (!prefetchOnView || !ref.current) {
       return;
     }
     const observer = new IntersectionObserver(
@@ -590,7 +593,12 @@ export function Link<Path extends RoutePath>({
           if (entry.isIntersecting) {
             const url = new URL(resolvedTo, window.location.href);
             if (router && url.href !== window.location.href) {
-              router.prefetchRoute(parseRoute(url), unstable_prefetchOnView);
+              router.prefetchRoute(parseRoute(url), {
+                ...(prefetchOnViewMode ? { mode: prefetchOnViewMode } : {}),
+                ...(prefetchOnViewTtl !== undefined
+                  ? { ttl: prefetchOnViewTtl }
+                  : {}),
+              });
             }
           }
         });
@@ -603,7 +611,14 @@ export function Link<Path extends RoutePath>({
     return () => {
       observer.disconnect();
     };
-  }, [unstable_prefetchOnView, router, resolvedTo, ref]);
+  }, [
+    prefetchOnView,
+    prefetchOnViewMode,
+    prefetchOnViewTtl,
+    router,
+    resolvedTo,
+    ref,
+  ]);
   const internalOnClick = () => {
     const url = new URL(resolvedTo, window.location.href);
     if (url.href !== window.location.href) {
@@ -1193,10 +1208,10 @@ const InnerRouter = ({
             signal: abortController.signal,
             unstable_swr: {
               pin,
-              ...(prefetchedElements ? { base: prefetchedElements } : null),
+              ...(prefetchedElements ? { base: prefetchedElements } : {}),
             },
             onBuildIdMismatch,
-            ...(cached ? { unstable_prefetched: cached.promise } : null),
+            ...(cached ? { unstable_prefetched: cached.promise } : {}),
           });
           commitRoute(nextRoute);
           return dataPromise.then(
@@ -1242,7 +1257,7 @@ const InnerRouter = ({
         const elements = await refetch(rscPath, rscParams, {
           signal: abortController.signal,
           onBuildIdMismatch,
-          ...(cached ? { unstable_prefetched: cached.promise } : null),
+          ...(cached ? { unstable_prefetched: cached.promise } : {}),
         });
         const redirect = getRedirect(elements);
         if (redirect) {
@@ -1336,6 +1351,9 @@ const InnerRouter = ({
           expireAt: Date.now() + (options?.ttl ?? PREFETCH_TTL),
         };
         setPrefetch(cache, key, entry);
+        if (!store.has(rscPath)) {
+          store.set(rscPath, null);
+        }
         promise.then(
           (resolved) => {
             mergePrefetchedElements(store, rscPath, resolved);
@@ -1343,6 +1361,9 @@ const InnerRouter = ({
           () => {
             if (cache.get(key) === entry) {
               cache.delete(key);
+            }
+            if (store.get(rscPath) === null) {
+              store.delete(rscPath);
             }
           },
         );

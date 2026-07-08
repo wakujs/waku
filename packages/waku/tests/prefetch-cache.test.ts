@@ -3,12 +3,14 @@ import {
   PREFETCH_LIMIT,
   PREFETCH_TTL,
   getPrefetch,
+  mergePrefetchedElements,
   prefetchCacheKey,
   setPrefetch,
 } from '../src/router/prefetch-cache.js';
 import type {
   PrefetchCache,
   PrefetchEntry,
+  PrefetchedElementsStore,
 } from '../src/router/prefetch-cache.js';
 
 const entry = (expireAt: number): PrefetchEntry => ({
@@ -50,5 +52,28 @@ describe('router prefetch cache', () => {
 
   it('has a positive ttl', () => {
     expect(PREFETCH_TTL).toBeGreaterThan(0);
+  });
+
+  it('merges responses for the same rscPath in the store', () => {
+    const store: PrefetchedElementsStore = new Map();
+    mergePrefetchedElements(store, '/p', { a: 1 });
+    mergePrefetchedElements(store, '/p', { b: 2 });
+    expect(store.get('/p')).toEqual({ a: 1, b: 2 });
+  });
+
+  it('bounds the store at PREFETCH_LIMIT, evicting the oldest first', () => {
+    const store: PrefetchedElementsStore = new Map();
+    for (let i = 0; i < PREFETCH_LIMIT + 5; i += 1) {
+      mergePrefetchedElements(store, `/p${i}`, { i });
+    }
+    expect(store.size).toBe(PREFETCH_LIMIT);
+    expect(store.has('/p0')).toBe(false);
+    expect(store.has('/p4')).toBe(false);
+    expect(store.has('/p5')).toBe(true);
+    expect(store.has(`/p${PREFETCH_LIMIT + 4}`)).toBe(true);
+    // merging into an existing entry does not evict
+    mergePrefetchedElements(store, '/p5', { j: 1 });
+    expect(store.size).toBe(PREFETCH_LIMIT);
+    expect(store.has('/p5')).toBe(true);
   });
 });

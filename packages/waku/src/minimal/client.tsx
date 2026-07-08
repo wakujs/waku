@@ -135,7 +135,13 @@ const swrElementsPromise = (
           : pin(key);
         nextElements[key] = pinned
           ? aRes[key]
-          : b.then((bRes) => (key in bRes ? bRes[key] : aRes[key]));
+          : b.then((bRes) =>
+              key in bRes
+                ? bRes[key]
+                : base && key in base
+                  ? base[key]
+                  : aRes[key],
+            );
       }
       if (base) {
         for (const key of Object.keys(base)) {
