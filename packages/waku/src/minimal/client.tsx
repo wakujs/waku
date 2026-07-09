@@ -115,6 +115,9 @@ const mergeElementsPromise = (
   return getCached(getResult, cache2, b);
 };
 
+const slotIdOf = (key: string) =>
+  key.startsWith(ETAG_ID_PREFIX) ? key.slice(ETAG_ID_PREFIX.length) : key;
+
 const swrCache = new WeakMap();
 const swrElementsPromise = (
   a: Promise<Elements>,
@@ -124,42 +127,29 @@ const swrElementsPromise = (
 ): Promise<Elements> => {
   const getResult = () => {
     const result: Promise<Elements> = Promise.resolve(a).then((aRes) => {
+      const holeFor = (key: string) =>
+        b.then((bRes) =>
+          key in bRes ? bRes[key] : base && key in base ? base[key] : aRes[key],
+        );
       const nextElements: Elements = {};
       for (const key of Object.keys(aRes)) {
         if (key === '_value') {
           continue;
         }
         // an _etag:<slot> key follows its slot's swr-ness, not its own
-        const pinned = key.startsWith(ETAG_ID_PREFIX)
-          ? pin(key.slice(ETAG_ID_PREFIX.length))
-          : pin(key);
-        nextElements[key] = pinned
-          ? aRes[key]
-          : b.then((bRes) =>
-              key in bRes
-                ? bRes[key]
-                : base && key in base
-                  ? base[key]
-                  : aRes[key],
-            );
+        nextElements[key] = pin(slotIdOf(key)) ? aRes[key] : holeFor(key);
       }
       if (base) {
         for (const key of Object.keys(base)) {
           if (key === '_value' || key in nextElements) {
             continue;
           }
-          let slotId = key;
-          if (slotId.startsWith(ETAG_ID_PREFIX)) {
-            slotId = slotId.slice(ETAG_ID_PREFIX.length);
-          }
           // pin only what the base proves immutable; pinning a mutable
           // base key would eagerly serve possibly-stale content
-          if (unstable_isImmutableElement(base, slotId)) {
+          if (unstable_isImmutableElement(base, slotIdOf(key))) {
             nextElements[key] = base[key];
           } else {
-            nextElements[key] = b.then((bRes) =>
-              key in bRes ? bRes[key] : base[key],
-            );
+            nextElements[key] = holeFor(key);
           }
         }
       }

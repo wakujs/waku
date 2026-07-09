@@ -61,17 +61,12 @@ import {
   isCodec,
 } from './isomorphic-utils/search-codec-registry.js';
 import {
-  PREFETCH_TTL,
   type PrefetchCache,
-  type PrefetchEntry,
   type PrefetchOptions,
   type PrefetchedElementsStore,
   getPrefetch,
-  mergePrefetchedElements,
   prefetchCacheKey,
-  releasePrefetchedElements,
-  reservePrefetchedElements,
-  setPrefetch,
+  startPrefetch,
 } from './prefetch-cache.js';
 
 type NavigateOptions = {
@@ -1190,6 +1185,14 @@ const InnerRouter = ({
         window.history.pushState(window.history.state, '', targetUrl);
         window.location.reload();
       };
+      // Reuse a prefetch (matched by path and query) within its ttl; an
+      // in-flight one is adopted as the data source (it resolves no later
+      // than a fresh request, and prefetches are not abortable anyway).
+      const cached = getPrefetch(
+        prefetchCacheRef.current,
+        prefetchCacheKey(rscPath, nextRoute.query),
+        Date.now(),
+      );
       if (options.instant) {
         const prefetchedElements =
           prefetchedElementsStoreRef.current.get(rscPath);
@@ -1200,12 +1203,6 @@ const InnerRouter = ({
             isImmutableElement(prefetchedElements, routeSlotId))
         ) {
           const pin = (key: string) => isMetaKey(key) || isStaticSlot(key);
-          const cacheKey = prefetchCacheKey(rscPath, nextRoute.query);
-          const cached = getPrefetch(
-            prefetchCacheRef.current,
-            cacheKey,
-            Date.now(),
-          );
           const dataPromise = refetch(rscPath, rscParams, {
             signal: abortController.signal,
             unstable_swr: {
@@ -1246,15 +1243,6 @@ const InnerRouter = ({
           );
         }
       }
-      // Reuse a prefetch (matched by path and query) within its ttl; an
-      // in-flight one is adopted as the data source (it resolves no later
-      // than a fresh request, and prefetches are not abortable anyway).
-      const cacheKey = prefetchCacheKey(rscPath, nextRoute.query);
-      const cached = getPrefetch(
-        prefetchCacheRef.current,
-        cacheKey,
-        Date.now(),
-      );
       try {
         const elements = await refetch(rscPath, rscParams, {
           signal: abortController.signal,
@@ -1337,35 +1325,14 @@ const InnerRouter = ({
       }
       const rscPath = encodeRoutePath(route.path);
       const rscParams = createRscParams(route.query);
-      const store = prefetchedElementsStoreRef.current;
-      if (options?.mode === 'once' && store.has(rscPath)) {
-        return;
-      }
-      // Dedupe per (path, query) so a repeat trigger within the ttl keeps an
-      // already-resolved response instead of replacing it with an in-flight
-      // one (which would lose the instant shell).
-      const cache = prefetchCacheRef.current;
-      const key = prefetchCacheKey(rscPath, route.query);
-      if (!getPrefetch(cache, key, Date.now())) {
-        const promise = prefetchRsc(rscPath, rscParams);
-        const entry: PrefetchEntry = {
-          promise,
-          expireAt: Date.now() + (options?.ttl ?? PREFETCH_TTL),
-        };
-        setPrefetch(cache, key, entry);
-        reservePrefetchedElements(store, rscPath);
-        promise.then(
-          (resolved) => {
-            mergePrefetchedElements(store, rscPath, resolved);
-          },
-          () => {
-            if (cache.get(key) === entry) {
-              cache.delete(key);
-            }
-            releasePrefetchedElements(store, rscPath);
-          },
-        );
-      }
+      startPrefetch(
+        prefetchCacheRef.current,
+        prefetchedElementsStoreRef.current,
+        rscPath,
+        route.query,
+        () => prefetchRsc(rscPath, rscParams),
+        options,
+      );
     },
     [staticPathSetRef, prefetchCacheRef, prefetchedElementsStoreRef],
   );

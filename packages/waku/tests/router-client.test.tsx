@@ -2574,7 +2574,7 @@ describe('Router integration', () => {
 
   test('mode once retries after a failed prefetch', async () => {
     vi.mocked(prefetchRsc)
-      .mockReturnValueOnce(Promise.reject(new Error('network')))
+      .mockImplementationOnce(() => Promise.reject(new Error('network')))
       .mockReturnValueOnce(
         resolvedThenable({ [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: false }),
       );

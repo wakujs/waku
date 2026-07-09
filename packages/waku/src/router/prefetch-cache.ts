@@ -62,7 +62,7 @@ export const setPrefetch = (
 };
 
 /** Reserve a route in the store while its first prefetch is in flight. */
-export const reservePrefetchedElements = (
+const reservePrefetchedElements = (
   store: PrefetchedElementsStore,
   rscPath: string,
 ): void => {
@@ -79,7 +79,7 @@ export const reservePrefetchedElements = (
 };
 
 /** Release a reservation that was never fulfilled. */
-export const releasePrefetchedElements = (
+const releasePrefetchedElements = (
   store: PrefetchedElementsStore,
   rscPath: string,
 ): void => {
@@ -89,7 +89,7 @@ export const releasePrefetchedElements = (
 };
 
 /** Merge a prefetched response into the session store. */
-export const mergePrefetchedElements = (
+const mergePrefetchedElements = (
   store: PrefetchedElementsStore,
   rscPath: string,
   elements: Elements,
@@ -97,4 +97,43 @@ export const mergePrefetchedElements = (
   reservePrefetchedElements(store, rscPath);
   const existing = store.get(rscPath);
   store.set(rscPath, existing ? { ...existing, ...elements } : elements);
+};
+
+/** Start a prefetch unless the mode or an entry within its ttl dedupes it. */
+export const startPrefetch = (
+  cache: PrefetchCache,
+  store: PrefetchedElementsStore,
+  rscPath: string,
+  query: string,
+  fetchElements: () => Promise<Elements>,
+  options: PrefetchOptions | undefined,
+): void => {
+  if (options?.mode === 'once' && store.has(rscPath)) {
+    return;
+  }
+  // Dedupe per (path, query), so a repeat trigger within the ttl keeps an
+  // already-resolved response instead of replacing it with an in-flight one.
+  const key = prefetchCacheKey(rscPath, query);
+  const now = Date.now();
+  if (getPrefetch(cache, key, now)) {
+    return;
+  }
+  const promise = fetchElements();
+  const entry: PrefetchEntry = {
+    promise,
+    expireAt: now + (options?.ttl ?? PREFETCH_TTL),
+  };
+  setPrefetch(cache, key, entry);
+  reservePrefetchedElements(store, rscPath);
+  promise.then(
+    (resolved) => {
+      mergePrefetchedElements(store, rscPath, resolved);
+    },
+    () => {
+      if (cache.get(key) === entry) {
+        cache.delete(key);
+      }
+      releasePrefetchedElements(store, rscPath);
+    },
+  );
 };
