@@ -141,7 +141,7 @@ describe('getInput server action request validation', () => {
       makeConfig(),
       undefined,
       vi.fn(),
-      vi.fn().mockResolvedValue(null),
+      vi.fn().mockReturnValue(null),
       vi.fn(),
       vi.fn(),
     );
