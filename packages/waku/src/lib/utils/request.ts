@@ -79,8 +79,7 @@ export async function getInput(
           const formData = (await getActionBody(req)) as FormData;
           const decodedAction = await decodeAction(formData);
           if (typeof decodedAction !== 'function') {
-            // multipart/form-data POST without an action reference
-            // (e.g. crawlers or vulnerability scanners probing arbitrary paths)
+            // multipart/form-data POST without an action reference (e.g. crawlers)
             throw createCustomError('Bad Request', { status: 400 });
           }
           const result = await decodedAction();
