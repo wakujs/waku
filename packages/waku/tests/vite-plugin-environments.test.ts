@@ -11,7 +11,7 @@ const runConfigHook = async (config: Config): Promise<UserConfig> => {
     throw new Error('Plugin config is not defined');
   }
   return (await hook.call(
-    undefined,
+    {} as never,
     {},
     {
       command: 'build',
