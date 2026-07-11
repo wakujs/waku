@@ -1308,7 +1308,12 @@ const InnerRouter = ({
         prefetchedElementsStoreRef.current,
         rscPath,
         route.query,
-        () => prefetchRsc(rscPath, rscParams),
+        () => {
+          const base = prefetchedElementsStoreRef.current.get(rscPath);
+          return prefetchRsc(rscPath, rscParams, {
+            ...(base ? { unstable_base: base } : {}),
+          });
+        },
         options,
       );
     },

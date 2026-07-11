@@ -240,11 +240,15 @@ const requestRsc = (
   rscParams: unknown,
   temporaryReferences: ReturnType<typeof createTemporaryReferenceSet>,
   signal: AbortSignal | undefined,
+  extraEtags?: Etags,
 ): Promise<Response> => {
   const url = BASE_RSC_PATH + encodeRscPath(rscPath);
   const init: RequestInit = {
     headers: {
-      [ETAGS_HEADER]: serializeClientEtags(fetchRscStore[CACHED_ETAGS] ?? {}),
+      [ETAGS_HEADER]: serializeClientEtags({
+        ...fetchRscStore[CACHED_ETAGS],
+        ...extraEtags,
+      }),
     },
   };
   if (signal) {
@@ -472,9 +476,18 @@ export const unstable_fetchRsc = (
 export const unstable_prefetchRsc = (
   rscPath: string,
   rscParams?: unknown,
+  options?: {
+    /**
+     * Elements the client already holds for this path. Their etags are sent
+     * with the request, so the server can omit any the client holds current.
+     * The caller is responsible for keeping every copy it claims.
+     */
+    unstable_base?: Elements;
+  },
 ): Promise<Elements> => {
   // Transformers must be prefetchOnly-agnostic (prefetches reused as navs).
   [rscPath, rscParams] = applyInputTransformers(rscPath, rscParams, true);
+  const base = options?.unstable_base;
   const temporaryReferences = createTemporaryReferenceSet();
   const responsePromise = requestRsc(
     getFetchFn(),
@@ -482,6 +495,7 @@ export const unstable_prefetchRsc = (
     rscParams,
     temporaryReferences,
     undefined,
+    base ? collectCachedEtags(base) : undefined,
   );
   return decodeRsc(responsePromise, temporaryReferences, undefined);
 };
