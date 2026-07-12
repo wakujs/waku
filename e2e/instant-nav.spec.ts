@@ -1,5 +1,5 @@
 import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect } from '@playwright/test';
 import { prepareNormalSetup, test, waitForHydration } from './utils.js';
@@ -302,6 +302,7 @@ const hmrFixtureDir = join(
   dirname(fixtureSrc),
   `instant-nav-hmr-tmp-${process.pid}`,
 );
+const distDir = join(fixtureSrc, 'dist');
 const startHmrApp = prepareNormalSetup('instant-nav', {
   fixtureDir: hmrFixtureDir,
 });
@@ -318,7 +319,7 @@ test.describe('instant-nav hmr', () => {
   test.beforeAll(async ({ mode }) => {
     cpSync(fixtureSrc, hmrFixtureDir, {
       recursive: true,
-      filter: (src) => !src.includes('dist'),
+      filter: (src) => src !== distDir && !src.startsWith(distDir + sep),
     });
     ({ port, stopApp } = await startHmrApp(mode));
   });
