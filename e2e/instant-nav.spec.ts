@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect } from '@playwright/test';
 import { prepareNormalSetup, test, waitForHydration } from './utils.js';
@@ -290,56 +291,81 @@ test.describe('instant-nav', () => {
     await page.getByTestId('link-post-2').click();
     await expect(page.getByTestId('post-body')).toHaveText('Post 2');
   });
+});
 
-  test('an HMR update invalidates stored prefetches', async ({
-    page,
-    mode,
-  }) => {
-    test.skip(mode !== 'DEV', 'HMR is only available in development mode');
-    const layoutFile = fileURLToPath(
-      new URL('./fixtures/instant-nav/src/pages/_layout.tsx', import.meta.url),
-    );
+// The hmr test edits its fixture, so it runs against a worker-local copy. A
+// sibling directory keeps the fixture's relative node_modules links valid.
+const fixtureSrc = fileURLToPath(
+  new URL('./fixtures/instant-nav', import.meta.url),
+);
+const hmrFixtureDir = join(
+  dirname(fixtureSrc),
+  `instant-nav-hmr-tmp-${process.pid}`,
+);
+const startHmrApp = prepareNormalSetup('instant-nav', {
+  fixtureDir: hmrFixtureDir,
+});
+
+test.describe('instant-nav hmr', () => {
+  test.skip(
+    ({ mode }) => mode !== 'DEV',
+    'HMR is only available in development mode',
+  );
+
+  let port: number;
+  let stopApp: (() => Promise<void>) | undefined;
+
+  test.beforeAll(async ({ mode }) => {
+    cpSync(fixtureSrc, hmrFixtureDir, {
+      recursive: true,
+      filter: (src) => !src.includes('dist'),
+    });
+    ({ port, stopApp } = await startHmrApp(mode));
+  });
+
+  test.afterAll(async () => {
+    await stopApp?.();
+    rmSync(hmrFixtureDir, { recursive: true, force: true });
+  });
+
+  test('an HMR update invalidates stored prefetches', async ({ page }) => {
+    const layoutFile = join(hmrFixtureDir, 'src/pages/_layout.tsx');
     const original = readFileSync(layoutFile, 'utf-8');
-    try {
-      const bodies: string[] = [];
-      page.on('response', (response) => {
-        if (response.url().includes('R/slow')) {
-          const index = bodies.length;
-          bodies.push('pending');
-          response.text().then(
-            (text) => {
-              bodies[index] = text;
-            },
-            () => {},
-          );
-        }
-      });
-      await page.goto(`http://localhost:${port}/post/1`);
-      await waitForHydration(page);
-      // the view prefetch stores /slow's pre-edit template
-      await expect.poll(() => bodies.length).toBe(1);
+    const bodies: string[] = [];
+    page.on('response', (response) => {
+      if (response.url().includes('R/slow')) {
+        const index = bodies.length;
+        bodies.push('pending');
+        response.text().then(
+          (text) => {
+            bodies[index] = text;
+          },
+          () => {},
+        );
+      }
+    });
+    await page.goto(`http://localhost:${port}/post/1`);
+    await waitForHydration(page);
+    // the view prefetch stores /slow's pre-edit template
+    await expect.poll(() => bodies.length).toBe(1);
 
-      writeFileSync(
-        layoutFile,
-        original.replace(
-          '<nav data-testid="nav">',
-          '<nav data-testid="nav"><span data-testid="hmr-marker">v2</span>',
-        ),
-      );
-      await expect(page.getByTestId('hmr-marker')).toBeVisible();
+    writeFileSync(
+      layoutFile,
+      original.replace(
+        '<nav data-testid="nav">',
+        '<nav data-testid="nav"><span data-testid="hmr-marker">v2</span>',
+      ),
+    );
+    await expect(page.getByTestId('hmr-marker')).toBeVisible();
 
-      // the stored template predates the edit, so its etags must not ride
-      // the navigation: the response has to carry the fresh route template
-      await page.getByTestId('link-slow').click();
-      await expect(page.getByTestId('slow-body')).toHaveText('Slow page');
-      await expect.poll(() => bodies.length).toBeGreaterThanOrEqual(2);
-      await expect.poll(() => bodies[1]).not.toBe('pending');
-      expect(bodies[1]).toContain('route:/slow');
-      expect(bodies[1]).toContain('hmr-marker');
-      await expect(page.getByTestId('hmr-marker')).toBeVisible();
-    } finally {
-      writeFileSync(layoutFile, original);
-      await page.waitForTimeout(300);
-    }
+    // the stored template predates the edit, so its etags must not ride
+    // the navigation: the response has to carry the fresh route template
+    await page.getByTestId('link-slow').click();
+    await expect(page.getByTestId('slow-body')).toHaveText('Slow page');
+    await expect.poll(() => bodies.length).toBeGreaterThanOrEqual(2);
+    await expect.poll(() => bodies[1]).not.toBe('pending');
+    expect(bodies[1]).toContain('route:/slow');
+    expect(bodies[1]).toContain('hmr-marker');
+    await expect(page.getByTestId('hmr-marker')).toBeVisible();
   });
 });
