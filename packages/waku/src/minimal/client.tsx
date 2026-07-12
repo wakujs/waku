@@ -479,8 +479,9 @@ export const unstable_prefetchRsc = (
   options?: {
     /**
      * Elements the client already holds for this path. Their etags are sent
-     * with the request, so the server can omit any the client holds current.
-     * The caller is responsible for keeping every copy it claims.
+     * with the request, so the server can omit any the client holds current,
+     * and the returned elements are the response merged over the base, so a
+     * caller cannot claim copies it does not keep.
      */
     unstable_base?: Elements;
   },
@@ -497,7 +498,11 @@ export const unstable_prefetchRsc = (
     undefined,
     base ? collectCachedEtags(base) : undefined,
   );
-  return decodeRsc(responsePromise, temporaryReferences, undefined);
+  const data = decodeRsc(responsePromise, temporaryReferences, undefined);
+  if (!base) {
+    return data;
+  }
+  return Promise.resolve(data).then((response) => ({ ...base, ...response }));
 };
 
 const RefetchContext = createContext<Refetch>(() => {

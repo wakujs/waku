@@ -191,6 +191,41 @@ test.describe('instant-nav', () => {
     await expect.poll(() => hoverRequests.length).toBe(2);
   });
 
+  test('a repeat prefetch omits what the store holds current', async ({
+    page,
+  }) => {
+    const bodies: string[] = [];
+    page.on('response', (response) => {
+      if (response.url().includes('R/hover')) {
+        const index = bodies.length;
+        bodies.push('pending');
+        response.text().then(
+          (text) => {
+            bodies[index] = text;
+          },
+          () => {},
+        );
+      }
+    });
+    await page.goto(`http://localhost:${port}/post/1`);
+    await waitForHydration(page);
+
+    await page.getByTestId('link-hover').hover();
+    await expect.poll(() => bodies.length).toBe(1);
+    await expect.poll(() => bodies[0]).toContain('route:/hover');
+
+    // after the ttl (600), the repeat prefetch sends the stored etags, so
+    // the server omits the route template it already proved current
+    await page.waitForTimeout(700);
+    await page.getByTestId('link-post-1').hover();
+    await page.getByTestId('link-hover').hover();
+    await expect.poll(() => bodies.length).toBe(2);
+    await expect.poll(() => bodies[1]).not.toBe('pending');
+    expect(bodies[1]).not.toContain('route:/hover');
+    expect(bodies[1]).toContain('hover-body');
+    expect(bodies[0]).toContain('hover-body');
+  });
+
   // The optimistic commit happens before the response, so it reconciles a
   // server redirect once the response lands.
   test('a redirected instant navigation reconciles to the target', async ({
