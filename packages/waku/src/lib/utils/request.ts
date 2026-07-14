@@ -4,6 +4,7 @@ import type { Unstable_HandleRequest as HandleRequest } from '../types.js';
 import { decodeFuncId, decodeRscPath } from '../utils/rsc-path.js';
 import { createCustomError } from './custom-errors.js';
 import { ETAGS_HEADER, parseClientEtags } from './etags.js';
+import { FORM_ACTION_QUERY_PARAM } from './form-action.js';
 import { removeBase } from './path.js';
 
 type HandleRequestInput = Parameters<HandleRequest>[0];
@@ -68,6 +69,7 @@ export async function getInput(
   } else if (req.method === 'POST') {
     const contentType = req.headers.get('content-type');
     if (
+      url.searchParams.has(FORM_ACTION_QUERY_PARAM) &&
       typeof contentType === 'string' &&
       contentType.startsWith('multipart/form-data')
     ) {

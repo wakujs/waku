@@ -68,6 +68,7 @@ const toProcessRequest =
       import.meta.env.WAKU_BUILD_ID ?? '',
       debugChannel,
       debugId,
+      req.url,
     );
 
     let res: Awaited<ReturnType<typeof handleRequest>>;

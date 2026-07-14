@@ -199,6 +199,15 @@ The `input` argument is one of the following shapes:
 | `action`     | Server action submissions                                            | `fn`                   |
 | `custom`     | Ordinary HTTP requests such as document requests or custom endpoints | none                   |
 
+`action` is detected without reading the request body: waku appends a
+`__waku_action=1` query parameter to the form target of every progressively
+enhanced server-action form it renders, and only multipart `POST` requests
+carrying that parameter are classified as `action`. Any other `POST` —
+including plain HTML forms and requests from crawlers — arrives as `custom`
+with an untouched, streamable body. Calling `input.fn()` on a marked request
+whose form data contains no server action reference rejects with a `400`
+error.
+
 Every input also includes:
 
 - `pathname`: pathname from the request URL
@@ -591,6 +600,16 @@ if (
   );
 }
 ```
+
+Forms submit without JavaScript for actions used directly
+(`<form action={fn}>`), bound in server components (`fn.bind(null, arg)`), and
+bound in client components. One combination is limited: when the same action
+appears on a page both unbound and bound in a client component, the no-JS
+fallback for the bound form may drop its bound arguments (waku logs a warning
+during SSR when this happens). Bind arguments in a server component or pass
+them as hidden form fields instead. This follows from a React limitation and
+resolves automatically once React provides a stable identity to custom
+form-action encoders.
 
 ### Pitfalls
 

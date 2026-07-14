@@ -20,6 +20,10 @@ import {
   serializeClientEtags,
 } from '../lib/utils/etags.js';
 import type { Etags } from '../lib/utils/etags.js';
+import {
+  addFormActionMarker,
+  createFormActionEncoder,
+} from '../lib/utils/form-action.js';
 import { consumeInitialRscEntry } from '../lib/utils/initial-rsc.js';
 import { setupDebugChannel } from '../lib/utils/react-debug-channel.js';
 import { encodeFuncId, encodeRscPath } from '../lib/utils/rsc-path.js';
@@ -275,6 +279,16 @@ const decodeRsc = (
       unstable_callServerRsc(funcId, args),
     debugChannel,
     temporaryReferences,
+    encodeFormAction: createFormActionEncoder(
+      () =>
+        typeof window === 'undefined'
+          ? addFormActionMarker('', '')
+          : addFormActionMarker(
+              window.location.pathname,
+              window.location.search,
+            ),
+      encodeReply,
+    ),
   });
 
 const reloadOnBuildIdMismatch = (

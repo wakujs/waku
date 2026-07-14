@@ -105,6 +105,63 @@ describe('getInput server action request validation', () => {
     expect(input.type).toBe('function');
   });
 
+  it('classifies marked multipart posts as actions and resolves the form state', async () => {
+    const formData = new FormData();
+    formData.set('key', 'value');
+    const decodedAction = vi.fn().mockResolvedValue('action-result');
+    const decodeFormState = vi.fn().mockResolvedValue(['form-state']);
+
+    const input = await getInput(
+      new Request('https://app.test/?__waku_action=1', {
+        method: 'POST',
+        body: formData,
+        headers: { origin: 'https://app.test' },
+      }),
+      makeConfig(),
+      undefined,
+      vi.fn(),
+      vi.fn().mockResolvedValue(decodedAction),
+      decodeFormState,
+      vi.fn(),
+    );
+
+    expect(input.type).toBe('action');
+    if (input.type !== 'action') {
+      throw new Error('unreachable');
+    }
+    await expect(input.fn()).resolves.toEqual(['form-state']);
+    expect(decodedAction).toHaveBeenCalledTimes(1);
+    expect(decodeFormState).toHaveBeenCalledWith(
+      'action-result',
+      expect.any(FormData),
+    );
+  });
+
+  it('classifies unmarked multipart posts as custom with an untouched body', async () => {
+    const formData = new FormData();
+    formData.set('key', 'value');
+
+    const input = await getInput(
+      new Request('https://app.test/', {
+        method: 'POST',
+        body: formData,
+        headers: { origin: 'https://evil.test' },
+      }),
+      makeConfig(),
+      undefined,
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+    );
+
+    expect(input.type).toBe('custom');
+    expect(input.req.bodyUsed).toBe(false);
+    await expect(
+      input.req.formData().then((body) => body.get('key')),
+    ).resolves.toBe('value');
+  });
+
   it('rejects cross-origin form action requests', async () => {
     const formData = new FormData();
     formData.set('key', 'value');
@@ -112,7 +169,7 @@ describe('getInput server action request validation', () => {
     await expect(
       getStatus(
         getInput(
-          new Request('https://app.test/', {
+          new Request('https://app.test/?__waku_action=1', {
             method: 'POST',
             body: formData,
             headers: { origin: 'https://evil.test' },
@@ -133,7 +190,7 @@ describe('getInput server action request validation', () => {
     formData.set('key', 'value');
 
     const input = await getInput(
-      new Request('https://app.test/', {
+      new Request('https://app.test/?__waku_action=1', {
         method: 'POST',
         body: formData,
         headers: { origin: 'https://app.test' },

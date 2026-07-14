@@ -1,17 +1,26 @@
 import { type ReactNode, captureOwnerStack, use } from 'react';
-import { createFromReadableStream as createFromReadableStreamBase } from '@vitejs/plugin-rsc/ssr';
+import {
+  createFromReadableStream as createFromReadableStreamBase,
+  encodeReply,
+} from '@vitejs/plugin-rsc/ssr';
 import type { ReactFormState } from 'react-dom/client';
 import { renderToReadableStream } from 'react-dom/server.edge';
 import { injectRSCPayload } from 'rsc-html-stream/server';
 import htmlShell from 'virtual:vite-rsc-waku/html-shell';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
+import {
+  addFormActionMarker,
+  createFormActionEncoder,
+} from '../utils/form-action.js';
+import type { EncodeReply } from '../utils/form-action.js';
 import { sanitizeLog } from '../utils/log.js';
 import { getBootstrapPreamble } from '../utils/ssr.js';
 import { batchReadableStream } from '../utils/stream.js';
 
 function createFromReadableStream<T>(
   stream: ReadableStream<Uint8Array>,
+  options?: Parameters<typeof createFromReadableStreamBase>[1],
 ): Promise<T> {
   // DEV: hold the stream ~5s so React's late debug-channel chunks settle before close. https://github.com/wakujs/waku/pull/2154
   return createFromReadableStreamBase<T>(
@@ -22,6 +31,7 @@ function createFromReadableStream<T>(
           }),
         )
       : stream,
+    options,
   );
 }
 
@@ -34,6 +44,7 @@ type RenderHtmlStream = (
     nonce: string | undefined;
     extraScriptContent: string | undefined;
     debugId: string | undefined;
+    formActionUrl: string | undefined;
   },
 ) => Promise<{ stream: ReadableStream; status: number | undefined }>;
 
@@ -55,13 +66,23 @@ export const renderHtmlStream: RenderHtmlStream = async (
   let elementsPromise: Promise<RscElementsPayload>;
   let htmlPromise: Promise<RscHtmlPayload>;
 
+  const formActionUrl = options.formActionUrl ?? addFormActionMarker('', '');
+  const encodeFormAction = createFormActionEncoder(
+    () => formActionUrl,
+    encodeReply as EncodeReply,
+  );
+
   // deserialize RSC stream back to React VDOM
   function SsrRoot() {
     // RSC stream needs to be deserialized inside SSR component.
     // This is for ReactDomServer preinit/preload (e.g. client reference modulepreload, css)
     // https://github.com/facebook/react/pull/31799#discussion_r1886166075
-    elementsPromise ??= createFromReadableStream<RscElementsPayload>(stream1);
-    htmlPromise ??= createFromReadableStream<RscHtmlPayload>(rscHtmlStream);
+    elementsPromise ??= createFromReadableStream<RscElementsPayload>(stream1, {
+      encodeFormAction,
+    });
+    htmlPromise ??= createFromReadableStream<RscHtmlPayload>(rscHtmlStream, {
+      encodeFormAction,
+    });
     return (
       <INTERNAL_ServerRoot elementsPromise={elementsPromise}>
         {use(htmlPromise)}

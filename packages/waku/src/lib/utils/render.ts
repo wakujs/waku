@@ -4,6 +4,7 @@ import type {
   Unstable_RenderRsc,
 } from '../types.js';
 import { ETAG_ID_PREFIX } from './etags.js';
+import { addFormActionMarker } from './form-action.js';
 import { sanitizeLog } from './log.js';
 
 const validateRscElementIds = (elements: Record<string, unknown>) => {
@@ -33,6 +34,7 @@ export function createRenderUtils(
   buildId: string,
   debugChannel?: { readable?: ReadableStream; writable?: WritableStream },
   debugId?: string,
+  requestUrl?: string,
 ): {
   renderRsc: Unstable_RenderRsc;
   parseRsc: Unstable_ParseRsc;
@@ -94,12 +96,16 @@ export function createRenderUtils(
       const rscHtmlStream = renderToReadableStream(html, {
         onError,
       });
+      const url = requestUrl ? new URL(requestUrl) : undefined;
       const htmlResult = await renderHtmlStream(elementsStream, rscHtmlStream, {
         rscPath: options.rscPath,
         formState: options.formState as never,
         nonce: options.nonce,
         extraScriptContent: options.unstable_extraScriptContent,
         debugId,
+        formActionUrl: url
+          ? addFormActionMarker(url.pathname, url.search)
+          : undefined,
       });
       return new Response(htmlResult.stream, {
         status: htmlResult.status || options.status || 200,
