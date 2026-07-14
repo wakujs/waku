@@ -53,6 +53,18 @@ describe('form action marker', () => {
     ).toBe(true);
     expect(hasFormActionMarker(new URL('https://a.test/foo?a=1'))).toBe(false);
   });
+
+  it('is idempotent for already-marked queries', () => {
+    expect(addFormActionMarker('/foo', '?__waku_action=1')).toBe(
+      '/foo?__waku_action=1',
+    );
+    expect(addFormActionMarker('/foo', '?a=1&__waku_action=1')).toBe(
+      '/foo?a=1&__waku_action=1',
+    );
+    const once = addFormActionMarker('/foo', '?a=1');
+    const twice = addFormActionMarker('/foo', once.slice(once.indexOf('?')));
+    expect(twice).toBe(once);
+  });
 });
 
 describe('createFormActionEncoder', () => {
@@ -100,6 +112,32 @@ describe('createFormActionEncoder', () => {
     const fields = await renderUntilSettled(encode, 'act#a', () => stableBound);
     expect(fields.name).toMatch(/^\$ACTION_REF_/);
     expect([...fields.data!.values()][1]).toBe(JSON.stringify([7]));
+  });
+
+  it('derives distinct prefixes for files with equal metadata but different contents', async () => {
+    const fileEncodeReply = (contents: string) => async (value: unknown) => {
+      const { id } = value as { id: string };
+      const data = new FormData();
+      data.append('0', JSON.stringify({ id, bound: '$@1' }));
+      data.append(
+        '1',
+        new File([contents], 'upload.bin', {
+          type: 'application/octet-stream',
+        }),
+      );
+      return data;
+    };
+    const run = async (contents: string) => {
+      const encode = createFormActionEncoder(
+        () => '/p?__waku_action=1',
+        fileEncodeReply(contents),
+      );
+      const chunk = makeFlightChunk([contents]);
+      return renderUntilSettled(encode, 'act#a', () => chunk);
+    };
+    const a = await run('AAAA');
+    const b = await run('BBBB');
+    expect(a.name).not.toBe(b.name);
   });
 
   it('derives identical prefixes for identical content', async () => {

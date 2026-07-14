@@ -205,8 +205,9 @@ enhanced server-action form it renders, and only multipart `POST` requests
 carrying that parameter are classified as `action`. Any other `POST` —
 including plain HTML forms and requests from crawlers — arrives as `custom`
 with an untouched, streamable body. Calling `input.fn()` on a marked request
-whose form data contains no server action reference rejects with a `400`
-error.
+whose form data contains no server action reference resolves without form
+state, so the page renders normally — a plain HTML form can inherit the
+marker from the document URL after a no-JS action submission.
 
 Every input also includes:
 

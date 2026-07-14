@@ -322,6 +322,15 @@ test.describe(`create-pages`, () => {
         `Submitted: ${submittedName}`,
       );
       await expect(page.locator('body')).not.toContainText('getRerender');
+      // a plain multipart form inherits the marked document URL after a
+      // no-JS action; it must render the page normally, not fail
+      await page.getByTestId('plain-form-submit').click();
+      await expect(
+        page.getByRole('heading', { name: 'Rerender Action' }),
+      ).toBeVisible();
+      await expect(page.getByTestId('rerender-action-message')).toHaveText(
+        `Submitted: ${submittedName}`,
+      );
     } finally {
       await page.close();
       await context.close();

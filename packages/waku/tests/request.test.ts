@@ -185,7 +185,7 @@ describe('getInput server action request validation', () => {
     ).resolves.toBe(403);
   });
 
-  it('rejects form action requests without an action reference', async () => {
+  it('falls through to a page render for marked posts without an action reference', async () => {
     const formData = new FormData();
     formData.set('key', 'value');
 
@@ -207,7 +207,7 @@ describe('getInput server action request validation', () => {
     if (input.type !== 'action') {
       throw new Error('unreachable');
     }
-    await expect(getStatus(input.fn())).resolves.toBe(400);
+    await expect(input.fn()).resolves.toBeUndefined();
   });
 });
 

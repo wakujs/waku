@@ -3,8 +3,17 @@ export const FORM_ACTION_QUERY_PARAM = '__waku_action';
 export const hasFormActionMarker = (url: URL): boolean =>
   url.searchParams.has(FORM_ACTION_QUERY_PARAM);
 
-export const addFormActionMarker = (pathname: string, search: string): string =>
-  pathname + (search ? search + '&' : '?') + FORM_ACTION_QUERY_PARAM + '=1';
+export const addFormActionMarker = (
+  pathname: string,
+  search: string,
+): string => {
+  if (search && new URLSearchParams(search).has(FORM_ACTION_QUERY_PARAM)) {
+    return pathname + search;
+  }
+  return (
+    pathname + (search ? search + '&' : '?') + FORM_ACTION_QUERY_PARAM + '=1'
+  );
+};
 
 type CustomFormAction = {
   name?: string;
@@ -23,6 +32,7 @@ type EncodingEntry = {
   status: 'pending' | 'fulfilled' | 'rejected';
   boundArgs?: unknown[];
   value?: FormData;
+  prefix?: string;
   reason?: unknown;
   then?: (onFulfilled: () => void, onRejected: () => void) => void;
 };
@@ -37,6 +47,28 @@ type EncodingEntry = {
 // identity (a singleton substitute, or the reference itself), the heuristic
 // becomes exact and the limitation disappears with no changes needed here.
 // https://github.com/facebook/react/issues/TODO
+const digestPrefix = async (
+  actionId: string,
+  data: FormData,
+): Promise<string> => {
+  const parts: (string | Blob)[] = [actionId, '\0'];
+  for (const [key, value] of data) {
+    parts.push(key, '\0');
+    if (typeof value === 'string') {
+      parts.push(value, '\0');
+    } else {
+      parts.push(value.name, '\0', value.type, '\0', value, '\0');
+    }
+  }
+  const digest = await crypto.subtle.digest(
+    'SHA-256',
+    await new Blob(parts).arrayBuffer(),
+  );
+  return Array.from(new Uint8Array(digest).slice(0, 10))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+};
+
 const isFlightChunk = (value: object): boolean =>
   typeof (value as { status?: unknown }).status === 'string';
 
@@ -55,26 +87,6 @@ export function createFormActionEncoder(
     action: getActionUrl(),
   });
 
-  const hashPrefix = (actionId: string, data: FormData): string => {
-    let hash = 0x811c9dc5;
-    const mix = (s: string) => {
-      for (let i = 0; i < s.length; i++) {
-        hash ^= s.charCodeAt(i);
-        hash = Math.imul(hash, 0x01000193);
-      }
-    };
-    mix(actionId);
-    data.forEach((value, key) => {
-      mix(key);
-      mix(
-        typeof value === 'string'
-          ? value
-          : `${value.name}:${value.size}:${value.type}`,
-      );
-    });
-    return (hash >>> 0).toString(36);
-  };
-
   const serve = (actionId: string, entry: EncodingEntry): CustomFormAction => {
     if (entry.status === 'rejected') {
       throw entry.reason;
@@ -85,7 +97,7 @@ export function createFormActionEncoder(
     if (!entry.boundArgs!.length) {
       return unboundFields(actionId);
     }
-    const prefix = hashPrefix(actionId, entry.value!);
+    const prefix = entry.prefix!;
     const data = new FormData();
     entry.value!.forEach((value, key) => {
       data.append('$ACTION_' + prefix + ':' + key, value);
@@ -114,28 +126,27 @@ export function createFormActionEncoder(
         }
         return encodeReply({ id: actionId, bound: Promise.resolve(boundArgs) });
       })
-      .then(
-        (body) => {
-          if (body !== null) {
-            if (typeof body === 'string') {
-              const data = new FormData();
-              data.append('0', body);
-              entry.value = data;
-            } else if (body instanceof URLSearchParams) {
-              const data = new FormData();
-              body.forEach((value, key) => data.append(key, value));
-              entry.value = data;
-            } else {
-              entry.value = body;
-            }
+      .then(async (body) => {
+        if (body !== null) {
+          if (typeof body === 'string') {
+            const data = new FormData();
+            data.append('0', body);
+            entry.value = data;
+          } else if (body instanceof URLSearchParams) {
+            const data = new FormData();
+            body.forEach((value, key) => data.append(key, value));
+            entry.value = data;
+          } else {
+            entry.value = body;
           }
-          entry.status = 'fulfilled';
-        },
-        (reason) => {
-          entry.status = 'rejected';
-          entry.reason = reason;
-        },
-      );
+          entry.prefix = await digestPrefix(actionId, entry.value);
+        }
+        entry.status = 'fulfilled';
+      })
+      .catch((reason) => {
+        entry.status = 'rejected';
+        entry.reason = reason;
+      });
     entry.then = (onFulfilled, onRejected) => {
       done.then(onFulfilled, onRejected);
     };
