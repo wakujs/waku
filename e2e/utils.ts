@@ -12,7 +12,7 @@ import {
 import { createRequire } from 'node:module';
 import { createConnection, createServer } from 'node:net';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { error, info } from '@actions/core';
@@ -294,10 +294,15 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
       standaloneDirMap.set(packageManager, standaloneDir);
       const copyLabel = `[e2e] copy fixture (${fixtureName})`;
       console.time(copyLabel);
+      const excludedDirs = [
+        join(fixtureDir, 'node_modules'),
+        join(fixtureDir, 'dist'),
+      ];
       cpSync(fixtureDir, standaloneDir, {
-        filter: (src) => {
-          return !src.includes('node_modules') && !src.includes('dist');
-        },
+        filter: (src) =>
+          excludedDirs.every(
+            (dir) => src !== dir && !src.startsWith(dir + sep),
+          ),
         recursive: true,
       });
       console.timeEnd(copyLabel);
