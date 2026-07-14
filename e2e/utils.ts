@@ -341,16 +341,37 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
                 break;
               }
               case 'pnpm': {
-                pkg.pnpm = { overrides: pnpmOverrides };
+                pkg.packageManager = rootPkg.packageManager;
+                // Temporary until @vitejs/plugin-rsc is a registry release
+                // again: waku's pkg.pr.new URL dependency is an exotic
+                // subdependency, which pnpm blocks on CI by default.
+                const workspaceYaml = join(
+                  standaloneDir,
+                  'pnpm-workspace.yaml',
+                );
+                const existingWorkspaceYaml = existsSync(workspaceYaml)
+                  ? readFileSync(workspaceYaml, 'utf8').trimEnd() + '\n'
+                  : '';
+                writeFileSync(
+                  workspaceYaml,
+                  existingWorkspaceYaml +
+                    [
+                      'blockExoticSubdeps: false',
+                      'overrides:',
+                      ...Object.entries(pnpmOverrides).map(
+                        ([key, value]) =>
+                          `  ${JSON.stringify(key)}: ${JSON.stringify(value)}`,
+                      ),
+                      '',
+                    ].join('\n'),
+                  'utf8',
+                );
                 break;
               }
               case 'yarn': {
                 pkg.resolutions = pnpmOverrides;
                 break;
               }
-            }
-            if (packageManager === 'pnpm') {
-              pkg.packageManager = rootPkg.packageManager;
             }
           }
           writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
