@@ -32,7 +32,6 @@ type EncodingEntry = {
   status: 'pending' | 'fulfilled' | 'rejected';
   boundArgs?: unknown[];
   value?: FormData;
-  prefix?: string;
   reason?: unknown;
   then?: (onFulfilled: () => void, onRejected: () => void) => void;
 };

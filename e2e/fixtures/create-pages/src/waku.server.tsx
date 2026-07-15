@@ -19,6 +19,10 @@ import NestedLayout from './components/NestedLayout.js';
 import NoSsr from './components/NoSsr.js';
 import RedirectToSearchPage from './components/RedirectToSearchPage.js';
 import { RerenderActionPage } from './components/RerenderActionPage.js';
+import {
+  StaticActionPage,
+  StaticActionResultPage,
+} from './components/StaticActionPage.js';
 import SearchPage from './components/SearchPage.js';
 import { Slice001 } from './components/slice001.js';
 import { Slice002 } from './components/slice002.js';
@@ -411,6 +415,18 @@ const pages: ReturnType<typeof createPages> = createPages(
       render: 'dynamic',
       path: '/rerender-action',
       component: RerenderActionPage,
+    }),
+
+    createPage({
+      render: 'static',
+      path: '/static-action',
+      component: StaticActionPage,
+    }),
+
+    createPage({
+      render: 'dynamic',
+      path: '/static-action-result',
+      component: StaticActionResultPage,
     }),
 
     createLayout({

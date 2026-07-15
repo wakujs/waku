@@ -1005,6 +1005,23 @@ export function unstable_defineRouter(fns: {
             await withRerender(() => input.fn());
             const location = new URL(input.req.url);
             location.searchParams.delete(FORM_ACTION_QUERY_PARAM);
+            // statically prerendered form targets cannot carry runtime
+            // search params; restore them from the same-page referer
+            const referer = input.req.headers.get('referer');
+            if (referer) {
+              try {
+                const refererUrl = new URL(referer, location);
+                refererUrl.searchParams.delete(FORM_ACTION_QUERY_PARAM);
+                if (
+                  refererUrl.origin === location.origin &&
+                  refererUrl.pathname === location.pathname
+                ) {
+                  location.search = refererUrl.search;
+                }
+              } catch {
+                // ignore malformed referers
+              }
+            }
             return new Response(null, {
               status: 303,
               headers: { location: location.pathname + location.search },

@@ -37,12 +37,14 @@ export default createServerEntryAdapter(
       return c.text('404 Not Found', 404);
     });
     if (isBuild) {
-      app.use(
-        `${config.basePath}*`,
-        serveStatic({
-          root: path.join(config.distDir, DIST_PUBLIC),
-          rewriteRequestPath: (path) => path.slice(config.basePath.length - 1),
-        }),
+      const serveStaticHandler = serveStatic({
+        root: path.join(config.distDir, DIST_PUBLIC),
+        rewriteRequestPath: (path) => path.slice(config.basePath.length - 1),
+      });
+      app.use(`${config.basePath}*`, (c, next) =>
+        c.req.method === 'GET' || c.req.method === 'HEAD'
+          ? serveStaticHandler(c, next)
+          : next(),
       );
     }
     if (bodyLimitOptions !== false) {

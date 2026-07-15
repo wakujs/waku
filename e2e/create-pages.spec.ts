@@ -305,6 +305,26 @@ test.describe(`create-pages`, () => {
     await expect(page.locator('body')).not.toContainText('getRerender');
   });
 
+  test('static page actions keep runtime search params without js', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+    try {
+      await page.goto(`http://localhost:${port}/static-action?view=archived`);
+      await page.getByLabel('Static Name').fill('kept');
+      await page.getByTestId('static-action-submit').click();
+      await expect(page).toHaveURL(
+        `http://localhost:${port}/static-action?view=archived`,
+      );
+      await page.goto(`http://localhost:${port}/static-action-result`);
+      await expect(page.getByTestId('static-action-result')).toHaveText('kept');
+    } finally {
+      await page.close();
+      await context.close();
+    }
+  });
+
   test('server action rerenders route without js', async ({ browser }) => {
     const context = await browser.newContext({
       javaScriptEnabled: false,

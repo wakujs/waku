@@ -308,6 +308,60 @@ describe('define-router action requests', () => {
     expect(res.headers.get('location')).toBe('/?a=1');
   });
 
+  it('restores runtime search params from a same-page referer', async () => {
+    const { handleRequest } = unstable_defineRouter({
+      getConfigs: async () => [
+        {
+          type: 'route' as const,
+          path: [],
+          isStatic: false,
+          rootElement: { isStatic: false, renderer: () => 'root' },
+          routeElement: { isStatic: false, renderer: () => 'route' },
+          elements: {
+            'page:/': { isStatic: false, renderer: () => 'page:content' },
+          },
+        },
+      ],
+    });
+    const utils = {
+      renderRsc: vi.fn().mockResolvedValue(makeStream()),
+      parseRsc: vi.fn(),
+      renderHtml: vi.fn(),
+      loadBuildMetadata: vi.fn(),
+    };
+    const run = async (referer?: string) => {
+      const res = await handleRequest(
+        {
+          type: 'action',
+          fn: async () => undefined,
+          pathname: '/',
+          req: new Request('http://localhost/?__waku_action=1', {
+            method: 'POST',
+            ...(referer ? { headers: { referer } } : {}),
+          }),
+        },
+        utils,
+      );
+      if (!(res instanceof Response)) {
+        throw new Error('unreachable');
+      }
+      return res.headers.get('location');
+    };
+
+    await expect(run('http://localhost/?view=archived')).resolves.toBe(
+      '/?view=archived',
+    );
+    await expect(
+      run('http://localhost/?__waku_action=1&view=archived'),
+    ).resolves.toBe('/?view=archived');
+    await expect(run('http://evil.test/?view=archived')).resolves.toBe('/');
+    await expect(run('http://localhost/other?view=archived')).resolves.toBe(
+      '/',
+    );
+    await expect(run('not a url')).resolves.toBe('/');
+    await expect(run()).resolves.toBe('/');
+  });
+
   it('lets api routes handle action requests when no route matches', async () => {
     const apiHandler = vi.fn().mockResolvedValue(new Response('api'));
     const actionFn = vi.fn();

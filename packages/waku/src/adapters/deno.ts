@@ -43,7 +43,14 @@ export default createServerEntryAdapter(
       return c.text('404 Not Found', 404);
     });
     if (serveStatic) {
-      app.use(serveStatic({ root: path.join(config.distDir, DIST_PUBLIC) }));
+      const serveStaticHandler = serveStatic({
+        root: path.join(config.distDir, DIST_PUBLIC),
+      });
+      app.use((c, next) =>
+        c.req.method === 'GET' || c.req.method === 'HEAD'
+          ? serveStaticHandler(c, next)
+          : next(),
+      );
     }
     if (bodyLimitOptions !== false) {
       app.use(

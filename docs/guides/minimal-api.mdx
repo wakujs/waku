@@ -229,6 +229,16 @@ const [state, formAction] = useActionState(
 The no-JS submission then posts to the permalink, runs the action, and the
 `303` redirect lands on the clean URL (`/account`).
 
+Statically prerendered pages bake a relative `?__waku_action=1` form target
+at build time, and a query-only relative reference replaces the document's
+query — so the action request itself does not carry runtime search params
+(`/catalog?page=2` posts to `/catalog?__waku_action=1`). The router restores
+them on the redirect from the same-origin, same-path `Referer` header, so
+the user lands back on `/catalog?page=2` (a Minimal API handler can mirror
+this by reading the `Referer` header before building the redirect). Clients that suppress the referrer
+land on the plain path instead, and server actions on static pages should
+not rely on reading runtime search params from the request URL.
+
 Every input also includes:
 
 - `pathname`: pathname from the request URL
