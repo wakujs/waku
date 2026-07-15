@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { FORM_ACTION_QUERY_PARAM } from '../lib/utils/form-action.js';
 import {
   unstable_base64ToBytes as base64ToBytes,
   unstable_buildElements as buildElements,
@@ -15,7 +16,6 @@ import type {
 import { deserializeRsc, serializeRsc } from '../server.js';
 import { INTERNAL_ServerRouter } from './client.js';
 import type { Unstable_SearchCodec } from './create-pages-utils/inferred-path-types.js';
-import { FORM_ACTION_QUERY_PARAM } from '../lib/utils/form-action.js';
 import { path2regexp } from './define-router-utils/path-spec.js';
 import { createTaskRunner } from './define-router-utils/task-runner.js';
 import { buildRouteHref } from './isomorphic-utils/build-route-href.js';
@@ -988,7 +988,7 @@ export function unstable_defineRouter(fns: {
           const routePath = pathnameToRoutePath(pathname);
           const rscPath = encodeRoutePath(routePath);
           const rscParams = new URLSearchParams({ query });
-          let entries = await getEntriesForRoute(
+          const entries = await getEntriesForRoute(
             rscPath,
             rscParams,
             clientEtags,

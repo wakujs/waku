@@ -1,3 +1,5 @@
+import { HydrationSentinel } from './HydrationSentinel.js';
+
 let submitted = 'none';
 
 export const getSubmitted = () => submitted;
@@ -14,6 +16,7 @@ export const StaticActionResultPage = () => (
 export const StaticActionPage = () => (
   <div>
     <h2>Static Action</h2>
+    <HydrationSentinel />
     <form action={submitStatic}>
       <input name="name" aria-label="Static Name" />
       <button type="submit" data-testid="static-action-submit">

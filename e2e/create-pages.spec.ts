@@ -305,7 +305,11 @@ test.describe(`create-pages`, () => {
     await expect(page.locator('body')).not.toContainText('getRerender');
   });
 
-  test('static page action forms are inert without js', async ({ browser }) => {
+  test('static page action forms are inert without js', async ({
+    browser,
+    mode,
+  }) => {
+    test.skip(mode !== 'PRD', 'the static fallback only exists in builds');
     const context = await browser.newContext({ javaScriptEnabled: false });
     const page = await context.newPage();
     try {
@@ -325,23 +329,47 @@ test.describe(`create-pages`, () => {
 
   test('static page actions submitted before hydration are replayed', async ({
     browser,
+    request,
+    mode,
   }) => {
+    test.skip(mode !== 'PRD', 'the static fallback only exists in builds');
     const context = await browser.newContext();
-    await context.route('**/assets/**', async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+    let releaseHydration!: () => void;
+    const hydrationGate = new Promise<void>((resolve) => {
+      releaseHydration = resolve;
+    });
+    await context.route('**/*', async (route) => {
+      if (route.request().resourceType() !== 'script') {
+        await route.continue();
+        return;
+      }
+      await hydrationGate;
       await route.continue();
     });
     const page = await context.newPage();
     try {
       await page.goto(`http://localhost:${port}/static-action`, {
-        waitUntil: 'domcontentloaded',
+        waitUntil: 'commit',
       });
+      // hydration is gated: the page must still be static
+      await expect(page.getByTestId('hydration-state')).toHaveText('pending');
       await page.getByLabel('Static Name').fill('replayed');
       await page.getByTestId('static-action-submit').click();
-      await page.goto(`http://localhost:${port}/static-action-result`);
-      await expect(page.getByTestId('static-action-result')).toHaveText(
-        'replayed',
+      // queued, not executed: the server has not run the action
+      const before = await request.get(
+        `http://localhost:${port}/static-action-result`,
       );
+      expect(await before.text()).not.toContain('replayed');
+      releaseHydration();
+      await expect(page.getByTestId('hydration-state')).toHaveText('hydrated');
+      await expect
+        .poll(async () => {
+          const res = await request.get(
+            `http://localhost:${port}/static-action-result`,
+          );
+          return await res.text();
+        })
+        .toContain('replayed');
     } finally {
       await page.close();
       await context.close();
