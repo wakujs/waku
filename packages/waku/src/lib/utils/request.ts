@@ -81,8 +81,6 @@ export async function getInput(
           const formData = (await getActionBody(req)) as FormData;
           const decodedAction = await decodeAction(formData);
           if (typeof decodedAction !== 'function') {
-            // marked POST without an action reference: a plain form can
-            // inherit the marker from the document URL after a no-JS action
             return undefined;
           }
           const result = await decodedAction();

@@ -74,21 +74,8 @@ declare module 'react-server-dom-webpack/client' {
     args: A,
   ) => Promise<T>;
 
-  type CustomFormAction = {
-    name?: string;
-    action?: string;
-    encType?: string;
-    method?: string;
-    target?: string;
-    data?: FormData | null;
-  };
-
   type Options<T> = {
     callServer?: CallServerCallback<T>;
-    encodeFormAction?: (
-      actionId: string,
-      boundPromise: Promise<unknown[]>,
-    ) => CustomFormAction;
     debugChannel?:
       { writable?: WritableStream; readable?: ReadableStream } | undefined;
     findSourceMapURL?: (filename: string, environmentName: string) => string;

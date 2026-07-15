@@ -44,6 +44,14 @@ export type Unstable_HandleRequest = (
       }
     | {
         type: 'action';
+        /**
+         * Consumes the request body. `req` is untouched until `fn` is
+         * called. Resolves the decoded form state, or `undefined` when
+         * the action produced none or the form data contains no server
+         * action reference. Respond with a 303 redirect to the URL
+         * without the action marker when there is no form state, so the
+         * marker never persists in the document URL.
+         */
         fn: () => Promise<unknown>;
       }
     | { type: 'custom' }

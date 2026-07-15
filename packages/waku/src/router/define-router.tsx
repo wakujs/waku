@@ -15,6 +15,7 @@ import type {
 import { deserializeRsc, serializeRsc } from '../server.js';
 import { INTERNAL_ServerRouter } from './client.js';
 import type { Unstable_SearchCodec } from './create-pages-utils/inferred-path-types.js';
+import { FORM_ACTION_QUERY_PARAM } from '../lib/utils/form-action.js';
 import { path2regexp } from './define-router-utils/path-spec.js';
 import { createTaskRunner } from './define-router-utils/task-runner.js';
 import { buildRouteHref } from './isomorphic-utils/build-route-href.js';
@@ -1005,6 +1006,14 @@ export function unstable_defineRouter(fns: {
             const { value, entries: rerendered } = await withRerender(() =>
               input.fn(),
             );
+            if (value == null) {
+              const location = new URL(input.req.url);
+              location.searchParams.delete(FORM_ACTION_QUERY_PARAM);
+              return new Response(null, {
+                status: 303,
+                headers: { location: location.pathname + location.search },
+              });
+            }
             formState = value;
             entries = {
               elements: { ...entries.elements, ...rerendered.elements },

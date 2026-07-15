@@ -1,6 +1,7 @@
 import adapter from 'waku/adapters/default';
 import { Slot } from 'waku/minimal/client';
 import App from './components/App.js';
+import { MixedForms, receivePlainPost } from './components/MixedForms.js';
 import TestApp from './components/test-app.js';
 
 export default adapter({
@@ -9,13 +10,47 @@ export default adapter({
       if (input.rscPath === 'test') {
         return renderRsc({ TestApp: <TestApp /> });
       }
+      if (input.rscPath === 'mixed-forms') {
+        return renderRsc({ MixedForms: <MixedForms /> });
+      }
       return renderRsc({ App: <App name={input.rscPath || 'Waku'} /> });
     }
     if (input.type === 'function') {
       const value = await input.fn(...input.args);
       return renderRsc({}, { value });
     }
+    if (input.type === 'action' && input.pathname === '/mixed-forms') {
+      const formState = await input.fn();
+      if (formState == null) {
+        const location = new URL(input.req.url);
+        location.searchParams.delete('__waku_action');
+        return new Response(null, {
+          status: 303,
+          headers: { location: location.pathname + location.search },
+        });
+      }
+      return renderHtml(
+        await renderRsc({ MixedForms: <MixedForms /> }),
+        <Slot id="MixedForms" />,
+        {
+          rscPath: 'mixed-forms',
+          formState: formState as never,
+        },
+      );
+    }
     if (input.type === 'custom') {
+      if (input.pathname === '/mixed-forms') {
+        if (input.req.method === 'POST') {
+          receivePlainPost(await input.req.formData());
+        }
+        return renderHtml(
+          await renderRsc({ MixedForms: <MixedForms /> }),
+          <Slot id="MixedForms" />,
+          {
+            rscPath: 'mixed-forms',
+          },
+        );
+      }
       if (input.pathname === '/') {
         return renderHtml(
           await renderRsc({ App: <App name="Waku" /> }),

@@ -15,6 +15,28 @@ test.describe(`ssr-basic`, () => {
     await stopApp();
   });
 
+  test('plain multipart form reaches the custom branch after a no-js action', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+    try {
+      await page.goto(`http://localhost:${port}/mixed-forms`);
+      await page.getByLabel('Name').fill('nojs');
+      await page.getByTestId('action-submit').click();
+      await expect(page.getByTestId('echo')).toHaveText('action:nojs');
+      expect(page.url()).not.toContain('__waku_action');
+      await page.getByTestId('plain-submit').click();
+      await expect(page.getByTestId('echo')).toHaveText('custom:plain-value');
+      await page.getByTestId('bound-submit').click();
+      await expect(page.getByTestId('echo')).toHaveText('action:bound');
+      expect(page.url()).not.toContain('__waku_action');
+    } finally {
+      await page.close();
+      await context.close();
+    }
+  });
+
   test('increase counter', async ({ page }) => {
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);

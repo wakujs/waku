@@ -282,6 +282,47 @@ describe('define-router action requests', () => {
     );
   });
 
+  it('redirects no-js actions without form state to the unmarked url', async () => {
+    const { handleRequest } = unstable_defineRouter({
+      getConfigs: async () => [
+        {
+          type: 'route' as const,
+          path: [],
+          isStatic: false,
+          rootElement: { isStatic: false, renderer: () => 'root' },
+          routeElement: { isStatic: false, renderer: () => 'route' },
+          elements: {
+            'page:/': { isStatic: false, renderer: () => 'page:content' },
+          },
+        },
+      ],
+    });
+
+    const res = await handleRequest(
+      {
+        type: 'action',
+        fn: async () => undefined,
+        pathname: '/',
+        req: new Request('http://localhost/?a=1&__waku_action=1', {
+          method: 'POST',
+        }),
+      },
+      {
+        renderRsc: vi.fn().mockResolvedValue(makeStream()),
+        parseRsc: vi.fn(),
+        renderHtml: vi.fn(),
+        loadBuildMetadata: vi.fn(),
+      },
+    );
+
+    expect(res).toBeInstanceOf(Response);
+    if (!(res instanceof Response)) {
+      throw new Error('unreachable');
+    }
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toBe('/?a=1');
+  });
+
   it('lets api routes handle action requests when no route matches', async () => {
     const apiHandler = vi.fn().mockResolvedValue(new Response('api'));
     const actionFn = vi.fn();

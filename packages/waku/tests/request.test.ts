@@ -185,7 +185,7 @@ describe('getInput server action request validation', () => {
     ).resolves.toBe(403);
   });
 
-  it('falls through to a page render for marked posts without an action reference', async () => {
+  it('resolves marked posts without an action reference as undefined', async () => {
     const formData = new FormData();
     formData.set('key', 'value');
 

@@ -20,12 +20,6 @@ export function RerenderActionPage() {
         <input id="rerender-action-name" name="name" required />
         <button type="submit">Submit Rerender</button>
       </form>
-      <form method="post" encType="multipart/form-data">
-        <input name="plain-field" defaultValue="plain-value" />
-        <button type="submit" data-testid="plain-form-submit">
-          Submit Plain
-        </button>
-      </form>
     </div>
   );
 }

@@ -47,27 +47,6 @@ type EncodingEntry = {
 // identity (a singleton substitute, or the reference itself), the heuristic
 // becomes exact and the limitation disappears with no changes needed here.
 // https://github.com/facebook/react/issues/TODO
-const digestPrefix = async (
-  actionId: string,
-  data: FormData,
-): Promise<string> => {
-  const parts: (string | Blob)[] = [actionId, '\0'];
-  for (const [key, value] of data) {
-    parts.push(key, '\0');
-    if (typeof value === 'string') {
-      parts.push(value, '\0');
-    } else {
-      parts.push(value.name, '\0', value.type, '\0', value, '\0');
-    }
-  }
-  const digest = await crypto.subtle.digest(
-    'SHA-256',
-    await new Blob(parts).arrayBuffer(),
-  );
-  return Array.from(new Uint8Array(digest).slice(0, 10))
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
-};
 
 const isFlightChunk = (value: object): boolean =>
   typeof (value as { status?: unknown }).status === 'string';
@@ -77,6 +56,7 @@ export function createFormActionEncoder(
   encodeReply: EncodeReply,
 ): (actionId: string, boundPromise: Promise<unknown[]>) => CustomFormAction {
   const entriesByBoundPromise = new WeakMap<object, EncodingEntry>();
+  let prefixCounter = 0;
   const confirmedUnboundActionIds = new Set<string>();
 
   const unboundFields = (actionId: string): CustomFormAction => ({
@@ -97,7 +77,7 @@ export function createFormActionEncoder(
     if (!entry.boundArgs!.length) {
       return unboundFields(actionId);
     }
-    const prefix = entry.prefix!;
+    const prefix = 'W' + prefixCounter++;
     const data = new FormData();
     entry.value!.forEach((value, key) => {
       data.append('$ACTION_' + prefix + ':' + key, value);
@@ -139,7 +119,6 @@ export function createFormActionEncoder(
           } else {
             entry.value = body;
           }
-          entry.prefix = await digestPrefix(actionId, entry.value);
         }
         entry.status = 'fulfilled';
       })

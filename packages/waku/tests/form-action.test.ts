@@ -114,44 +114,17 @@ describe('createFormActionEncoder', () => {
     expect([...fields.data!.values()][1]).toBe(JSON.stringify([7]));
   });
 
-  it('derives distinct prefixes for files with equal metadata but different contents', async () => {
-    const fileEncodeReply = (contents: string) => async (value: unknown) => {
-      const { id } = value as { id: string };
-      const data = new FormData();
-      data.append('0', JSON.stringify({ id, bound: '$@1' }));
-      data.append(
-        '1',
-        new File([contents], 'upload.bin', {
-          type: 'application/octet-stream',
-        }),
-      );
-      return data;
-    };
-    const run = async (contents: string) => {
-      const encode = createFormActionEncoder(
-        () => '/p?__waku_action=1',
-        fileEncodeReply(contents),
-      );
-      const chunk = makeFlightChunk([contents]);
-      return renderUntilSettled(encode, 'act#a', () => chunk);
-    };
-    const a = await run('AAAA');
-    const b = await run('BBBB');
+  it('assigns a distinct field namespace to every served form', async () => {
+    const encode = createFormActionEncoder(
+      () => '/p?__waku_action=1',
+      encodeReplyMock,
+    );
+    const chunk = makeFlightChunk([1]);
+    const a = await renderUntilSettled(encode, 'act#a', () => chunk);
+    const b = encode('act#a', chunk);
+    expect(a.name).toMatch(/^\$ACTION_REF_/);
+    expect(b.name).toMatch(/^\$ACTION_REF_/);
     expect(a.name).not.toBe(b.name);
-  });
-
-  it('derives identical prefixes for identical content', async () => {
-    const run = () => {
-      const encode = createFormActionEncoder(
-        () => '/p?__waku_action=1',
-        encodeReplyMock,
-      );
-      const chunk = makeFlightChunk([1]);
-      return renderUntilSettled(encode, 'act#a', () => chunk);
-    };
-    const a = await run();
-    const b = await run();
-    expect(a.name).toBe(b.name);
   });
 
   it('warns when dual usage drops bound arguments (known limitation)', async () => {
