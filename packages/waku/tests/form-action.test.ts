@@ -114,6 +114,13 @@ describe('createFormActionEncoder', () => {
     expect([...fields.data!.values()][1]).toBe(JSON.stringify([7]));
   });
 
+  it('throws for static renders so React falls back to hydration replay', () => {
+    const encode = createFormActionEncoder(() => undefined, encodeReplyMock);
+    expect(() => encode('act#a', Promise.resolve([]))).toThrow(
+      'dynamic render',
+    );
+  });
+
   it('assigns a distinct field namespace to every served form', async () => {
     const encode = createFormActionEncoder(
       () => '/p?__waku_action=1',

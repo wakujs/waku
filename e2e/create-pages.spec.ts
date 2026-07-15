@@ -305,20 +305,43 @@ test.describe(`create-pages`, () => {
     await expect(page.locator('body')).not.toContainText('getRerender');
   });
 
-  test('static page actions keep runtime search params without js', async ({
-    browser,
-  }) => {
+  test('static page action forms are inert without js', async ({ browser }) => {
     const context = await browser.newContext({ javaScriptEnabled: false });
     const page = await context.newPage();
     try {
       await page.goto(`http://localhost:${port}/static-action?view=archived`);
-      await page.getByLabel('Static Name').fill('kept');
+      await page.getByLabel('Static Name').fill('nojs');
       await page.getByTestId('static-action-submit').click();
-      await expect(page).toHaveURL(
+      await page.waitForTimeout(500);
+      // no navigation: static pages do not participate in no-JS actions
+      expect(page.url()).toBe(
         `http://localhost:${port}/static-action?view=archived`,
       );
+    } finally {
+      await page.close();
+      await context.close();
+    }
+  });
+
+  test('static page actions submitted before hydration are replayed', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext();
+    await context.route('**/assets/**', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await route.continue();
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto(`http://localhost:${port}/static-action`, {
+        waitUntil: 'domcontentloaded',
+      });
+      await page.getByLabel('Static Name').fill('replayed');
+      await page.getByTestId('static-action-submit').click();
       await page.goto(`http://localhost:${port}/static-action-result`);
-      await expect(page.getByTestId('static-action-result')).toHaveText('kept');
+      await expect(page.getByTestId('static-action-result')).toHaveText(
+        'replayed',
+      );
     } finally {
       await page.close();
       await context.close();

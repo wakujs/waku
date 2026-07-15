@@ -9,10 +9,7 @@ import { injectRSCPayload } from 'rsc-html-stream/server';
 import htmlShell from 'virtual:vite-rsc-waku/html-shell';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
-import {
-  addFormActionMarker,
-  createFormActionEncoder,
-} from '../utils/form-action.js';
+import { createFormActionEncoder } from '../utils/form-action.js';
 import type { EncodeReply } from '../utils/form-action.js';
 import { sanitizeLog } from '../utils/log.js';
 import { getBootstrapPreamble } from '../utils/ssr.js';
@@ -66,7 +63,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
   let elementsPromise: Promise<RscElementsPayload>;
   let htmlPromise: Promise<RscHtmlPayload>;
 
-  const formActionUrl = options.formActionUrl ?? addFormActionMarker('', '');
+  const formActionUrl = options.formActionUrl;
   const encodeFormAction = createFormActionEncoder(
     () => formActionUrl,
     encodeReply as EncodeReply,

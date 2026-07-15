@@ -51,7 +51,7 @@ const isFlightChunk = (value: object): boolean =>
   typeof (value as { status?: unknown }).status === 'string';
 
 export function createFormActionEncoder(
-  getActionUrl: () => string,
+  getActionUrl: () => string | undefined,
   encodeReply: EncodeReply,
 ): (actionId: string, boundPromise: Promise<unknown[]>) => CustomFormAction {
   const entriesByBoundPromise = new WeakMap<object, EncodingEntry>();
@@ -63,7 +63,7 @@ export function createFormActionEncoder(
     method: 'POST',
     encType: 'multipart/form-data',
     data: null,
-    action: getActionUrl(),
+    action: getActionUrl()!,
   });
 
   const serve = (actionId: string, entry: EncodingEntry): CustomFormAction => {
@@ -86,7 +86,7 @@ export function createFormActionEncoder(
       method: 'POST',
       encType: 'multipart/form-data',
       data,
-      action: getActionUrl(),
+      action: getActionUrl()!,
     };
   };
 
@@ -149,6 +149,11 @@ export function createFormActionEncoder(
   };
 
   return (actionId, boundPromise) => {
+    if (getActionUrl() === undefined) {
+      // statically prerendered pages have no request URL to mark; React
+      // falls back to hydration-replayed submissions
+      throw new Error('No-JS server actions require a dynamic render');
+    }
     const cached = entriesByBoundPromise.get(boundPromise);
     if (cached) {
       return serve(actionId, cached);
