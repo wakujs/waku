@@ -24,6 +24,12 @@ async function submitStateful(prev: string, _formData: FormData) {
   return `updated:${prev}`;
 }
 
+async function submitPermalink(prev: string, _formData: FormData) {
+  'use server';
+  echo = 'action:permalink';
+  return `updated:${prev}`;
+}
+
 export const MixedForms = () => (
   <html>
     <head>
@@ -44,6 +50,11 @@ export const MixedForms = () => (
         </button>
       </form>
       <StatefulForm action={submitStateful} />
+      <StatefulForm
+        action={submitPermalink}
+        idPrefix="permalink"
+        permalink="/mixed-forms?__waku_action=1"
+      />
       <form method="post" encType="multipart/form-data">
         <input name="plain-field" defaultValue="plain-value" />
         <button type="submit" data-testid="plain-submit">

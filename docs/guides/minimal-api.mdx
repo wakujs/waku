@@ -214,6 +214,21 @@ As a consequence, `useActionState` form state is delivered to clients with
 JavaScript (via the function call path), not to no-JS submissions — the
 action itself still runs.
 
+When passing the `permalink` argument to `useActionState`, include the
+marker in the URL, because React replaces the generated form target with
+the permalink string verbatim:
+
+```tsx
+const [state, formAction] = useActionState(
+  update,
+  initial,
+  '/account?__waku_action=1',
+);
+```
+
+The no-JS submission then posts to the permalink, runs the action, and the
+`303` redirect lands on the clean URL (`/account`).
+
 Every input also includes:
 
 - `pathname`: pathname from the request URL
@@ -254,19 +269,18 @@ if (input.type === 'function') {
 }
 ```
 
-`action` requests often re-render HTML and pass `formState`:
+`action` requests run the decoded server action and respond with a redirect
+(see the progressive enhancement section below):
 
 ```tsx
 if (input.type === 'action' && input.pathname === '/') {
-  const formState = await input.fn();
-  return renderHtml(
-    await renderRsc({ App: <App name="Waku" /> }),
-    <Slot id="App" />,
-    {
-      rscPath: '',
-      formState,
-    },
-  );
+  await input.fn();
+  const location = new URL(input.req.url);
+  location.searchParams.delete('__waku_action');
+  return new Response(null, {
+    status: 303,
+    headers: { location: location.pathname + location.search },
+  });
 }
 ```
 

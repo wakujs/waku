@@ -39,6 +39,12 @@ test.describe(`ssr-basic`, () => {
       await expect(page.getByTestId('stateful-state')).toHaveText('initial');
       await page.getByTestId('plain-submit').click();
       await expect(page.getByTestId('echo')).toHaveText('custom:plain-value');
+      // useActionState with a permalink: React replaces the form target
+      // with the permalink verbatim, so it must carry the marker
+      await page.getByTestId('permalink-submit').click();
+      await expect(page.getByTestId('echo')).toHaveText('action:permalink');
+      expect(page.url()).not.toContain('__waku_action');
+      expect(new URL(page.url()).pathname).toBe('/mixed-forms');
     } finally {
       await page.close();
       await context.close();
