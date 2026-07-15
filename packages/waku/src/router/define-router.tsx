@@ -1001,31 +1001,20 @@ export function unstable_defineRouter(fns: {
           const route = { path: routePath, query, hash: '' };
           const nonce = getNonce();
           const html = <INTERNAL_ServerRouter route={route} />;
-          let formState: unknown;
           if (input.type === 'action') {
-            const { value, entries: rerendered } = await withRerender(() =>
-              input.fn(),
-            );
-            if (value == null) {
-              const location = new URL(input.req.url);
-              location.searchParams.delete(FORM_ACTION_QUERY_PARAM);
-              return new Response(null, {
-                status: 303,
-                headers: { location: location.pathname + location.search },
-              });
-            }
-            formState = value;
-            entries = {
-              elements: { ...entries.elements, ...rerendered.elements },
-              etags: { ...entries.etags, ...rerendered.etags },
-            };
+            await withRerender(() => input.fn());
+            const location = new URL(input.req.url);
+            location.searchParams.delete(FORM_ACTION_QUERY_PARAM);
+            return new Response(null, {
+              status: 303,
+              headers: { location: location.pathname + location.search },
+            });
           }
           return renderHtml(
             await renderRsc(entries.elements, { etags: entries.etags }),
             html,
             {
               rscPath,
-              formState,
               status,
               ...(nonce ? { nonce } : {}),
               unstable_extraScriptContent:

@@ -20,23 +20,13 @@ export default adapter({
       return renderRsc({}, { value });
     }
     if (input.type === 'action' && input.pathname === '/mixed-forms') {
-      const formState = await input.fn();
-      if (formState == null) {
-        const location = new URL(input.req.url);
-        location.searchParams.delete('__waku_action');
-        return new Response(null, {
-          status: 303,
-          headers: { location: location.pathname + location.search },
-        });
-      }
-      return renderHtml(
-        await renderRsc({ MixedForms: <MixedForms /> }),
-        <Slot id="MixedForms" />,
-        {
-          rscPath: 'mixed-forms',
-          formState: formState as never,
-        },
-      );
+      await input.fn();
+      const location = new URL(input.req.url);
+      location.searchParams.delete('__waku_action');
+      return new Response(null, {
+        status: 303,
+        headers: { location: location.pathname + location.search },
+      });
     }
     if (input.type === 'custom') {
       if (input.pathname === '/mixed-forms') {

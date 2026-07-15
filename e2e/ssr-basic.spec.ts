@@ -31,6 +31,14 @@ test.describe(`ssr-basic`, () => {
       await page.getByTestId('bound-submit').click();
       await expect(page.getByTestId('echo')).toHaveText('action:bound');
       expect(page.url()).not.toContain('__waku_action');
+      // useActionState: the action runs, the response redirects (PRG), and
+      // the returned state is not delivered without JS
+      await page.getByTestId('stateful-submit').click();
+      await expect(page.getByTestId('echo')).toHaveText('action:stateful');
+      expect(page.url()).not.toContain('__waku_action');
+      await expect(page.getByTestId('stateful-state')).toHaveText('initial');
+      await page.getByTestId('plain-submit').click();
+      await expect(page.getByTestId('echo')).toHaveText('custom:plain-value');
     } finally {
       await page.close();
       await context.close();

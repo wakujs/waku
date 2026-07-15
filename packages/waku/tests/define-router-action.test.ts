@@ -201,20 +201,13 @@ describe('define-router action requests', () => {
     );
 
     expect(res).toBeInstanceOf(Response);
-    expect(renderPage).toHaveBeenCalledTimes(2);
-    expect(renderRsc).toHaveBeenCalledWith(
-      expect.objectContaining({
-        'page:/': 'page:after',
-      }),
-      { etags: {} },
-    );
-    expect(renderHtml).toHaveBeenCalledWith(
-      expect.any(ReadableStream),
-      expect.anything(),
-      expect.objectContaining({
-        formState: 'form-state',
-      }),
-    );
+    if (!(res instanceof Response)) {
+      throw new Error('unreachable');
+    }
+    expect(message).toBe('after');
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toBe('/');
+    expect(renderHtml).not.toHaveBeenCalled();
   });
 
   it('does not let catch-all api routes intercept no-JS form actions', async () => {
@@ -265,24 +258,16 @@ describe('define-router action requests', () => {
     );
 
     expect(res).toBeInstanceOf(Response);
+    if (!(res instanceof Response)) {
+      throw new Error('unreachable');
+    }
     expect(apiHandler).not.toHaveBeenCalled();
-    expect(renderPage).toHaveBeenCalledTimes(2);
-    expect(renderRsc).toHaveBeenCalledWith(
-      expect.objectContaining({
-        'page:/': 'page:after',
-      }),
-      { etags: {} },
-    );
-    expect(renderHtml).toHaveBeenCalledWith(
-      expect.any(ReadableStream),
-      expect.anything(),
-      expect.objectContaining({
-        formState: 'form-state',
-      }),
-    );
+    expect(message).toBe('after');
+    expect(res.status).toBe(303);
+    expect(renderHtml).not.toHaveBeenCalled();
   });
 
-  it('redirects no-js actions without form state to the unmarked url', async () => {
+  it('redirects no-js actions to the unmarked url', async () => {
     const { handleRequest } = unstable_defineRouter({
       getConfigs: async () => [
         {

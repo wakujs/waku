@@ -206,11 +206,13 @@ carrying that parameter are classified as `action`. Any other `POST` —
 including plain HTML forms and requests from crawlers — arrives as `custom`
 with an untouched, streamable body. `input.fn()` resolves the decoded
 form state, or `undefined` when the action produced none or the form data
-contains no server action reference. Respond to `undefined` with a `303`
-redirect to the URL without the marker (Post/Redirect/Get): the marker then
-never persists in the document URL, so plain forms on the page keep
-submitting unmarked and arrive as `custom`. Only render the POST response
-directly when there is form state to deliver (`useActionState`).
+contains no server action reference. Always respond with a `303` redirect to
+the URL without the marker (Post/Redirect/Get): the marker then never
+persists in the document URL, so plain forms on the page keep submitting
+unmarked and arrive as `custom`, and a refresh never resubmits the action.
+As a consequence, `useActionState` form state is delivered to clients with
+JavaScript (via the function call path), not to no-JS submissions — the
+action itself still runs.
 
 Every input also includes:
 
@@ -593,8 +595,8 @@ if (
   (input.type === 'action' || input.type === 'custom') &&
   input.pathname === '/'
 ) {
-  const formState = input.type === 'action' ? await input.fn() : undefined;
-  if (input.type === 'action' && formState == null) {
+  if (input.type === 'action') {
+    await input.fn();
     const location = new URL(input.req.url);
     location.searchParams.delete('__waku_action');
     return new Response(null, {
@@ -607,7 +609,6 @@ if (
     <Slot id="App" />,
     {
       rscPath: '',
-      formState,
     },
   );
 }
