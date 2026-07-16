@@ -204,12 +204,15 @@ The `input` argument is one of the following shapes:
 enhanced server-action form it renders, and only multipart `POST` requests
 carrying that parameter are classified as `action`. Any other `POST` —
 including plain HTML forms and requests from crawlers — arrives as `custom`
-with an untouched, streamable body. `input.fn()` resolves the decoded
-form state, or `undefined` when the action produced none or the form data
-contains no server action reference. Always respond with a `303` redirect to
-the URL without the marker (Post/Redirect/Get): the marker then never
-persists in the document URL, so plain forms on the page keep submitting
-unmarked and arrive as `custom`, and a refresh never resubmits the action.
+with an untouched, streamable body. `input.fn()` consumes the request body
+and resolves the decoded form state, or `undefined` when the action produced
+none or the form data contains no server action reference.
+
+Always respond with a `303` redirect to the URL without the marker
+(Post/Redirect/Get). The marker then never persists in the document URL, so
+plain forms on the page keep submitting unmarked and arrive as `custom`, and
+a refresh never resubmits the action.
+
 As a consequence, `useActionState` form state is delivered to clients with
 JavaScript (via the function call path), not to no-JS submissions — the
 action itself still runs.

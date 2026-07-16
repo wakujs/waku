@@ -6,14 +6,10 @@ export const hasFormActionMarker = (url: URL): boolean =>
 export const addFormActionMarker = (
   pathname: string,
   search: string,
-): string => {
-  if (search && new URLSearchParams(search).has(FORM_ACTION_QUERY_PARAM)) {
-    return pathname + search;
-  }
-  return (
-    pathname + (search ? search + '&' : '?') + FORM_ACTION_QUERY_PARAM + '=1'
-  );
-};
+): string =>
+  search && new URLSearchParams(search).has(FORM_ACTION_QUERY_PARAM)
+    ? pathname + search
+    : pathname + (search ? search + '&' : '?') + FORM_ACTION_QUERY_PARAM + '=1';
 
 type CustomFormAction = {
   name?: string;
@@ -28,143 +24,122 @@ export type EncodeReply = (
   value: unknown,
 ) => Promise<string | URLSearchParams | FormData>;
 
-type EncodingEntry = {
-  status: 'pending' | 'fulfilled' | 'rejected';
-  boundArgs?: unknown[];
-  value?: FormData;
-  reason?: unknown;
-  then?: (onFulfilled: () => void, onRejected: () => void) => void;
+// `data` is the encoded payload, `null` for unbound references, absent while
+// encoding is pending
+type Entry = {
+  promise: Promise<void>;
+  data?: FormData | null;
+  error?: unknown;
 };
 
-// React substitutes a fresh `Promise.resolve([])` on every `$$FORM_ACTION`
-// call for unbound server references, while payload-bound references carry a
-// stable flight chunk (a thenable with a string `status`). The chunk check and
-// the id-keyed set below exist to converge across Fizz suspension retries
-// despite that unstable identity; they cannot distinguish an unbound retry
-// from the first call of a client-side `.bind()`, hence the dropped-arguments
-// warning. Once React gives custom encodeFormAction implementations a stable
-// identity (a singleton substitute, or the reference itself), the heuristic
-// becomes exact and the limitation disappears with no changes needed here.
-// https://github.com/facebook/react/issues/TODO
+const toFormData = (body: string | URLSearchParams | FormData): FormData => {
+  if (body instanceof FormData) {
+    return body;
+  }
+  const data = new FormData();
+  if (typeof body === 'string') {
+    data.append('0', body);
+  } else {
+    body.forEach((value, key) => data.append(key, value));
+  }
+  return data;
+};
 
+// a flight chunk is a thenable with a string `status`
 const isFlightChunk = (value: object): boolean =>
   typeof (value as { status?: unknown }).status === 'string';
 
-export function createFormActionEncoder(
+// React calls the encoder with a fresh `Promise.resolve([])` on every render
+// for unbound references, but with a stable flight chunk for payload-bound
+// ones. Caching by that identity converges across Fizz suspension retries;
+// the id-keyed set covers the unbound case, at the cost of not being able to
+// tell an unbound retry from the first render of a client-side `.bind()`
+// (hence the warning). A stable identity from React would make this exact.
+export const createFormActionEncoder = (
   getActionUrl: () => string | undefined,
   encodeReply: EncodeReply,
-): (actionId: string, boundPromise: Promise<unknown[]>) => CustomFormAction {
-  const entriesByBoundPromise = new WeakMap<object, EncodingEntry>();
-  let prefixCounter = 0;
-  const confirmedUnboundActionIds = new Set<string>();
+) => {
+  const entries = new WeakMap<object, Entry>();
+  const unboundIds = new Set<string>();
+  let count = 0;
 
-  const unboundFields = (actionId: string): CustomFormAction => ({
-    name: '$ACTION_ID_' + actionId,
+  const fields = (name: string, data: FormData | null): CustomFormAction => ({
+    name,
     method: 'POST',
     encType: 'multipart/form-data',
-    data: null,
+    data,
     action: getActionUrl()!,
   });
 
-  const serve = (actionId: string, entry: EncodingEntry): CustomFormAction => {
-    if (entry.status === 'rejected') {
-      throw entry.reason;
-    }
-    if (entry.status !== 'fulfilled') {
-      throw entry;
-    }
-    if (!entry.boundArgs!.length) {
-      return unboundFields(actionId);
-    }
-    const prefix = 'W' + prefixCounter++;
-    const data = new FormData();
-    entry.value!.forEach((value, key) => {
-      data.append('$ACTION_' + prefix + ':' + key, value);
-    });
-    return {
-      name: '$ACTION_REF_' + prefix,
-      method: 'POST',
-      encType: 'multipart/form-data',
-      data,
-      action: getActionUrl()!,
-    };
-  };
-
-  const startEncoding = (
-    actionId: string,
-    boundPromise: Promise<unknown[]>,
-  ): EncodingEntry => {
-    const entry: EncodingEntry = { status: 'pending' };
-    const done = Promise.resolve(boundPromise)
-      .then((args) => {
-        const boundArgs = Array.isArray(args) ? args : [];
-        entry.boundArgs = boundArgs;
-        if (!boundArgs.length) {
-          confirmedUnboundActionIds.add(actionId);
-          return null;
-        }
-        return encodeReply({ id: actionId, bound: Promise.resolve(boundArgs) });
-      })
-      .then(async (body) => {
-        if (body !== null) {
-          if (typeof body === 'string') {
-            const data = new FormData();
-            data.append('0', body);
-            entry.value = data;
-          } else if (body instanceof URLSearchParams) {
-            const data = new FormData();
-            body.forEach((value, key) => data.append(key, value));
-            entry.value = data;
-          } else {
-            entry.value = body;
+  const start = (actionId: string, boundPromise: Promise<unknown[]>): Entry => {
+    const entry: Entry = {
+      // flight chunks are not spec-compliant thenables; re-wrap before chaining
+      promise: Promise.resolve(boundPromise)
+        .then((args) => {
+          if (!Array.isArray(args) || !args.length) {
+            unboundIds.add(actionId);
+            return null;
           }
-        }
-        entry.status = 'fulfilled';
-      })
-      .catch((reason) => {
-        entry.status = 'rejected';
-        entry.reason = reason;
-      });
-    entry.then = (onFulfilled, onRejected) => {
-      done.then(onFulfilled, onRejected);
+          return encodeReply({ id: actionId, bound: Promise.resolve(args) });
+        })
+        .then(
+          (body) => {
+            entry.data = body === null ? null : toFormData(body);
+          },
+          (error) => {
+            entry.error = error;
+          },
+        ),
     };
-    entriesByBoundPromise.set(boundPromise, entry);
+    entries.set(boundPromise, entry);
     return entry;
   };
 
-  const warnIfArgumentsDropped = (
-    actionId: string,
-    boundPromise: Promise<unknown[]>,
-  ) => {
-    Promise.resolve(boundPromise).then(
-      (args) => {
-        if (Array.isArray(args) && args.length) {
-          console.warn(
-            `The no-JS fallback for a form using the server action "${actionId}" dropped its bound arguments because the same action is also used unbound on this page. Bind arguments in a server component or pass them as hidden form fields to support no-JS submissions.`,
-          );
-        }
-      },
-      () => {},
+  const serve = (actionId: string, entry: Entry): CustomFormAction => {
+    if ('error' in entry) {
+      throw entry.error;
+    }
+    if (!('data' in entry)) {
+      throw entry.promise;
+    }
+    if (entry.data === null) {
+      return fields('$ACTION_ID_' + actionId, null);
+    }
+    const prefix = 'W' + count++;
+    const data = new FormData();
+    entry.data.forEach((value, key) =>
+      data.append('$ACTION_' + prefix + ':' + key, value),
     );
+    return fields('$ACTION_REF_' + prefix, data);
   };
 
-  return (actionId, boundPromise) => {
+  return (
+    actionId: string,
+    boundPromise: Promise<unknown[]>,
+  ): CustomFormAction => {
     if (getActionUrl() === undefined) {
-      // statically prerendered pages have no request URL to mark; React
-      // falls back to hydration-replayed submissions
+      // static renders have no URL to mark; React falls back to replaying
+      // pre-hydration submissions once hydration completes
       throw new Error('No-JS server actions require a dynamic render');
     }
-    const cached = entriesByBoundPromise.get(boundPromise);
-    if (cached) {
-      return serve(actionId, cached);
+    const entry = entries.get(boundPromise);
+    if (entry) {
+      return serve(actionId, entry);
     }
-    if (
-      !isFlightChunk(boundPromise) &&
-      confirmedUnboundActionIds.has(actionId)
-    ) {
-      warnIfArgumentsDropped(actionId, boundPromise);
-      return unboundFields(actionId);
+    if (!isFlightChunk(boundPromise) && unboundIds.has(actionId)) {
+      // ambiguous: an unbound retry, or a client-side bind sharing the action
+      Promise.resolve(boundPromise).then(
+        (args) => {
+          if (Array.isArray(args) && args.length) {
+            console.warn(
+              `The no-JS fallback for a form using the server action "${actionId}" dropped its bound arguments because the same action is also used unbound on this page. Bind arguments in a server component or pass them as hidden form fields to support no-JS submissions.`,
+            );
+          }
+        },
+        () => {},
+      );
+      return fields('$ACTION_ID_' + actionId, null);
     }
-    return serve(actionId, startEncoding(actionId, boundPromise));
+    return serve(actionId, start(actionId, boundPromise));
   };
-}
+};
