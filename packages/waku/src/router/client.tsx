@@ -1150,9 +1150,29 @@ const InnerRouter = ({
         }
         return undefined;
       };
-      const commitInTransition = (followed: boolean) => {
+      const targetUrl = url ?? getRouteUrl(nextRoute);
+      const commitNavigation = (destination: {
+        route: RouteProps;
+        routeUrl: URL;
+        elements?: Awaited<ReturnType<typeof refetch>>;
+      }) => {
         if (isAborted()) {
           return;
+        }
+        const followed = !isSameRoute(destination.route, nextRoute);
+        if (followed) {
+          nextRoute = destination.route;
+          url = mode ? destination.routeUrl : undefined;
+        }
+        if (destination.elements) {
+          const redirect = getRedirect(destination.elements);
+          if (redirect) {
+            nextRoute = redirect;
+            if (mode) {
+              mode = redirect.path === '/404' ? undefined : 'push';
+              url = undefined;
+            }
+          }
         }
         const commit = () => {
           commitRoute(nextRoute);
@@ -1166,10 +1186,9 @@ const InnerRouter = ({
         }
       };
       if (staticPathSetRef.current.has(nextRoute.path) || !shouldRefetch) {
-        commitInTransition(false);
+        commitNavigation({ route: nextRoute, routeUrl: targetUrl });
         return;
       }
-      const targetUrl = url ?? getRouteUrl(nextRoute);
       const fetchRoute = (route: RouteProps, routeUrl: URL) => {
         const rscPath = encodeRoutePath(route.path);
         // Reuse a prefetch (matched by path and query) within its ttl; an
@@ -1192,7 +1211,7 @@ const InnerRouter = ({
       const resolveFollowingErrors = async (
         route: RouteProps,
         routeUrl: URL,
-        errorToFollow?: unknown,
+        errorToFollow: unknown,
       ) => {
         for (let hops = 0; hops <= MAX_ERROR_HOPS; hops++) {
           if (errorToFollow) {
@@ -1202,7 +1221,12 @@ const InnerRouter = ({
               : undefined;
             if (redirectUrl) {
               if (redirectUrl.origin !== window.location.origin) {
-                return { externalUrl: redirectUrl };
+                if (mode && window.location.href !== targetUrl.href) {
+                  writeUrlToHistory(mode, targetUrl);
+                  setPendingHistory(null);
+                }
+                window.location.replace(redirectUrl.href);
+                return undefined;
               }
               route = parseRoute(redirectUrl);
               routeUrl = redirectUrl;
@@ -1240,34 +1264,6 @@ const InnerRouter = ({
         throw new Error('too many redirect or 404 follows', {
           cause: errorToFollow,
         });
-      };
-      const finishWith = (
-        resolved: Awaited<ReturnType<typeof resolveFollowingErrors>>,
-      ) => {
-        if ('externalUrl' in resolved) {
-          if (mode && window.location.href !== targetUrl.href) {
-            writeUrlToHistory(mode, targetUrl);
-            setPendingHistory(null);
-          }
-          window.location.replace(resolved.externalUrl.href);
-          return;
-        }
-        const followed = !isSameRoute(resolved.route, nextRoute);
-        if (followed) {
-          nextRoute = resolved.route;
-          url = mode ? resolved.routeUrl : undefined;
-        }
-        if (resolved.elements) {
-          const redirect = getRedirect(resolved.elements);
-          if (redirect) {
-            nextRoute = redirect;
-            if (mode) {
-              mode = redirect.path === '/404' ? undefined : 'push';
-              url = undefined;
-            }
-          }
-        }
-        commitInTransition(followed);
       };
       if (options.instant) {
         const rscPath = encodeRoutePath(nextRoute.path);
@@ -1330,7 +1326,14 @@ const InnerRouter = ({
             }
             mode = mode && 'replace';
             try {
-              finishWith(await resolveFollowingErrors(nextRoute, targetUrl, e));
+              const destination = await resolveFollowingErrors(
+                nextRoute,
+                targetUrl,
+                e,
+              );
+              if (destination) {
+                commitNavigation(destination);
+              }
             } catch (e2) {
               if (isAborted()) {
                 return;
@@ -1344,7 +1347,14 @@ const InnerRouter = ({
         }
       }
       try {
-        finishWith(await resolveFollowingErrors(nextRoute, targetUrl));
+        const destination = await resolveFollowingErrors(
+          nextRoute,
+          targetUrl,
+          undefined,
+        );
+        if (destination) {
+          commitNavigation(destination);
+        }
       } catch (e) {
         if (isAborted()) {
           return;
