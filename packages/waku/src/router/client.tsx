@@ -3,7 +3,6 @@
 import {
   Component,
   createContext,
-  startTransition,
   use,
   useCallback,
   useContext,
@@ -160,14 +159,11 @@ const isSameRoute = (next: RouteProps, prev: RouteProps) =>
 
 const MAX_ERROR_HOPS = 20;
 
-const classifyRedirectLocation = (location: string, base: string | URL) => {
+const parseRedirectUrl = (location: string, base: string | URL) => {
   const url = new URL(location, base);
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    return undefined;
-  }
-  return url.origin === window.location.origin
-    ? ({ kind: 'internal', url } as const)
-    : ({ kind: 'external', url } as const);
+  return url.protocol === 'http:' || url.protocol === 'https:'
+    ? url
+    : undefined;
 };
 
 const shouldScrollForRouteChange = (next: RouteProps, prev: RouteProps) =>
@@ -798,15 +794,14 @@ const Redirect = ({
     }
     handledErrorSet.add(error as object);
 
-    const target = classifyRedirectLocation(to, window.location.href);
-    if (!target) {
+    const url = parseRedirectUrl(to, window.location.href);
+    if (!url) {
       return;
     }
-    if (target.kind === 'external') {
-      window.location.replace(target.url.href);
+    if (url.origin !== window.location.origin) {
+      window.location.replace(url.href);
       return;
     }
-    const url = target.url;
     changeRoute(parseRoute(url), {
       shouldScroll: url.pathname !== window.location.pathname,
       mode: 'replace',
@@ -1155,25 +1150,26 @@ const InnerRouter = ({
         }
         return undefined;
       };
-      const commitInTransition = (followed = false) => {
+      const commitInTransition = (followed: boolean) => {
         if (isAborted()) {
           return;
         }
-        const transitionFn = followed ? startTransition : startTransitionFn;
-        void transitionFn(() => {
+        const commit = () => {
           commitRoute(nextRoute);
           routeChangeAbortRef.current = null;
           emitRouteChangeEvent('complete', nextRoute);
-        });
+        };
+        if (followed) {
+          commit();
+        } else {
+          void startTransitionFn(commit);
+        }
       };
       if (staticPathSetRef.current.has(nextRoute.path) || !shouldRefetch) {
-        commitInTransition();
+        commitInTransition(false);
         return;
       }
-      const targetUrl =
-        url instanceof URL
-          ? url
-          : new URL(url || getRouteUrl(nextRoute), window.location.href);
+      const targetUrl = url ?? getRouteUrl(nextRoute);
       const fetchRoute = (route: RouteProps, routeUrl: URL) => {
         const rscPath = encodeRoutePath(route.path);
         // Reuse a prefetch (matched by path and query) within its ttl; an
@@ -1193,39 +1189,31 @@ const InnerRouter = ({
           ...(cached ? { unstable_prefetched: cached.promise } : {}),
         });
       };
-      const followTarget = (
-        e: unknown,
-        attemptedUrl: URL,
-        route: RouteProps,
-      ) => {
-        const info = getErrorInfo(e);
-        if (info?.location) {
-          return classifyRedirectLocation(info.location, attemptedUrl);
-        }
-        if (info?.status === 404 && has404 && route.path !== '/404') {
-          return { kind: '404' } as const;
-        }
-        return undefined;
-      };
       const resolveFollowingErrors = async (
         route: RouteProps,
         routeUrl: URL,
         errorToFollow?: unknown,
       ) => {
-        for (let hops = errorToFollow ? 1 : 0; hops <= MAX_ERROR_HOPS; hops++) {
+        for (let hops = 0; hops <= MAX_ERROR_HOPS; hops++) {
           if (errorToFollow) {
-            const target = followTarget(errorToFollow, routeUrl, route);
-            if (!target) {
-              throw errorToFollow;
-            }
-            if (target.kind === 'external') {
-              return { externalUrl: target.url };
-            }
-            if (target.kind === 'internal') {
-              route = parseRoute(target.url);
-              routeUrl = target.url;
-            } else {
+            const info = getErrorInfo(errorToFollow);
+            const redirectUrl = info?.location
+              ? parseRedirectUrl(info.location, routeUrl)
+              : undefined;
+            if (redirectUrl) {
+              if (redirectUrl.origin !== window.location.origin) {
+                return { externalUrl: redirectUrl };
+              }
+              route = parseRoute(redirectUrl);
+              routeUrl = redirectUrl;
+            } else if (
+              info?.status === 404 &&
+              has404 &&
+              route.path !== '/404'
+            ) {
               route = parseRoute(new URL('/404', window.location.href));
+            } else {
+              throw errorToFollow;
             }
             errorToFollow = undefined;
           }
@@ -1335,11 +1323,6 @@ const InnerRouter = ({
           } catch (e) {
             if (isAborted()) {
               return;
-            }
-            if (!followTarget(e, targetUrl, nextRoute)) {
-              routeChangeAbortRef.current = null;
-              setErr(e);
-              throw e;
             }
             if (mode && window.location.href !== targetUrl.href) {
               writeUrlToHistory(mode, targetUrl);
