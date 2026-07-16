@@ -190,7 +190,6 @@ const createRscParams = (query: string): URLSearchParams => {
 
 type ChangeRouteOptions = {
   shouldScroll: boolean;
-  scroll?: boolean | undefined;
   refetch?: boolean; // true: force refetch, false: don't refetch, undefined: auto-decide based on route change
   mode?: undefined | 'push' | 'replace';
   url?: URL | undefined;
@@ -305,7 +304,6 @@ export function useRouter() {
       const url = resolveRouteUrl(to, resolveCodec);
       await changeRoute(parseRoute(url), {
         shouldScroll: options?.scroll ?? shouldScrollByDefault(url),
-        scroll: options?.scroll,
         mode: 'push',
         url,
         instant: options?.unstable_instant,
@@ -321,7 +319,6 @@ export function useRouter() {
       const url = resolveRouteUrl(to, resolveCodec);
       await changeRoute(parseRoute(url), {
         shouldScroll: options?.scroll ?? shouldScrollByDefault(url),
-        scroll: options?.scroll,
         mode: 'replace',
         url,
         instant: options?.unstable_instant,
@@ -480,7 +477,6 @@ export function useSetSearch_UNSTABLE<Path extends RoutePath>({
       url.search = nextQuery;
       await changeRoute(parseRoute(url), {
         shouldScroll: options?.scroll ?? false,
-        scroll: options?.scroll,
         mode: options?.history ?? 'push',
         url,
       });
@@ -636,7 +632,6 @@ export function Link<Path extends RoutePath>({
       if (unstable_instant) {
         changeRoute(route, {
           shouldScroll: scroll ?? shouldScrollByDefault(url),
-          scroll,
           mode: 'push',
           url,
           instant: true,
@@ -645,7 +640,6 @@ export function Link<Path extends RoutePath>({
         startTransitionFn(async () => {
           await changeRoute(route, {
             shouldScroll: scroll ?? shouldScrollByDefault(url),
-            scroll,
             mode: 'push',
             url,
             startTransition: startTransitionFn,
@@ -1137,8 +1131,6 @@ const InnerRouter = ({
       const routeBeforeChange = routeRef.current;
       const shouldRefetch =
         options.refetch ?? !isSameRoute(nextRoute, routeBeforeChange);
-      let shouldScroll = options.shouldScroll;
-      let followedError = false;
       const isStaticSlot = (key: string) =>
         isImmutableElement(resolvedElementsRef.current, key);
       const commitRoute = (route: RouteProps) => {
@@ -1146,7 +1138,7 @@ const InnerRouter = ({
         routeRef.current = route;
         setRoute(route);
         setErr(null);
-        setPendingScroll(shouldScroll ? { pathChanged } : null);
+        setPendingScroll(options.shouldScroll ? { pathChanged } : null);
         setPendingHistory(mode ? { mode, url } : null);
       };
       const getRedirect = (
@@ -1163,13 +1155,11 @@ const InnerRouter = ({
         }
         return undefined;
       };
-      const commitInTransition = () => {
+      const commitInTransition = (followed = false) => {
         if (isAborted()) {
           return;
         }
-        const transitionFn = followedError
-          ? startTransition
-          : startTransitionFn;
+        const transitionFn = followed ? startTransition : startTransitionFn;
         void transitionFn(() => {
           commitRoute(nextRoute);
           routeChangeAbortRef.current = null;
@@ -1180,6 +1170,10 @@ const InnerRouter = ({
         commitInTransition();
         return;
       }
+      const targetUrl =
+        url instanceof URL
+          ? url
+          : new URL(url || getRouteUrl(nextRoute), window.location.href);
       const fetchRoute = (route: RouteProps, routeUrl: URL) => {
         const rscPath = encodeRoutePath(route.path);
         // Reuse a prefetch (matched by path and query) within its ttl; an
@@ -1213,20 +1207,11 @@ const InnerRouter = ({
         }
         return undefined;
       };
-      type Resolved =
-        | {
-            route: RouteProps;
-            routeUrl: URL;
-            via404: boolean;
-            elements?: Awaited<ReturnType<typeof refetch>>;
-          }
-        | { externalUrl: URL };
       const resolveFollowingErrors = async (
         route: RouteProps,
         routeUrl: URL,
         errorToFollow?: unknown,
-      ): Promise<Resolved> => {
-        let via404 = false;
+      ) => {
         for (let hops = errorToFollow ? 1 : 0; hops <= MAX_ERROR_HOPS; hops++) {
           if (errorToFollow) {
             const target = followTarget(errorToFollow, routeUrl, route);
@@ -1236,7 +1221,6 @@ const InnerRouter = ({
             if (target.kind === 'external') {
               return { externalUrl: target.url };
             }
-            via404 = target.kind === '404';
             if (target.kind === 'internal') {
               route = parseRoute(target.url);
               routeUrl = target.url;
@@ -1250,11 +1234,14 @@ const InnerRouter = ({
             (staticPathSetRef.current.has(route.path) ||
               isSameRoute(route, routeBeforeChange))
           ) {
-            return { route, routeUrl, via404 };
+            return { route, routeUrl };
           }
           try {
-            const elements = await fetchRoute(route, routeUrl);
-            return { route, routeUrl, via404, elements };
+            return {
+              route,
+              routeUrl,
+              elements: await fetchRoute(route, routeUrl),
+            };
           } catch (e) {
             if (isAborted()) {
               throw e;
@@ -1266,11 +1253,34 @@ const InnerRouter = ({
           cause: errorToFollow,
         });
       };
-      const targetUrl =
-        url instanceof URL
-          ? url
-          : new URL(url || getRouteUrl(nextRoute), window.location.href);
-      let resolved: Resolved | undefined;
+      const finishWith = (
+        resolved: Awaited<ReturnType<typeof resolveFollowingErrors>>,
+      ) => {
+        if ('externalUrl' in resolved) {
+          if (mode && window.location.href !== targetUrl.href) {
+            writeUrlToHistory(mode, targetUrl);
+            setPendingHistory(null);
+          }
+          window.location.replace(resolved.externalUrl.href);
+          return;
+        }
+        const followed = !isSameRoute(resolved.route, nextRoute);
+        if (followed) {
+          nextRoute = resolved.route;
+          url = mode ? resolved.routeUrl : undefined;
+        }
+        if (resolved.elements) {
+          const redirect = getRedirect(resolved.elements);
+          if (redirect) {
+            nextRoute = redirect;
+            if (mode) {
+              mode = redirect.path === '/404' ? undefined : 'push';
+              url = undefined;
+            }
+          }
+        }
+        commitInTransition(followed);
+      };
       if (options.instant) {
         const rscPath = encodeRoutePath(nextRoute.path);
         const prefetchedElements =
@@ -1322,7 +1332,6 @@ const InnerRouter = ({
               }
             }
             emitRouteChangeEvent('complete', redirect ?? nextRoute);
-            return;
           } catch (e) {
             if (isAborted()) {
               return;
@@ -1336,8 +1345,9 @@ const InnerRouter = ({
               writeUrlToHistory(mode, targetUrl);
               setPendingHistory(null);
             }
+            mode = mode && 'replace';
             try {
-              resolved = await resolveFollowingErrors(nextRoute, targetUrl, e);
+              finishWith(await resolveFollowingErrors(nextRoute, targetUrl, e));
             } catch (e2) {
               if (isAborted()) {
                 return;
@@ -1346,58 +1356,25 @@ const InnerRouter = ({
               setErr(e2);
               throw e2;
             }
-            if (!('externalUrl' in resolved)) {
-              mode = resolved.via404 ? undefined : mode && 'replace';
-            }
           }
+          return;
         }
       }
-      if (!resolved) {
-        try {
-          resolved = await resolveFollowingErrors(nextRoute, targetUrl, 0);
-        } catch (e) {
-          if (isAborted()) {
-            return;
-          }
-          routeChangeAbortRef.current = null;
-          // Write URL synchronously
-          // React may rollback transition state updates when the render throws
-          if (mode && window.location.pathname === prevPathname) {
-            writeUrlToHistory(mode, targetUrl);
-          }
-          setErr(e);
-          throw e;
+      try {
+        finishWith(await resolveFollowingErrors(nextRoute, targetUrl));
+      } catch (e) {
+        if (isAborted()) {
+          return;
         }
-      }
-      if ('externalUrl' in resolved) {
-        if (mode && window.location.href !== targetUrl.href) {
+        routeChangeAbortRef.current = null;
+        // Write URL synchronously
+        // React may rollback transition state updates when the render throws
+        if (mode && window.location.pathname === prevPathname) {
           writeUrlToHistory(mode, targetUrl);
-          setPendingHistory(null);
         }
-        window.location.replace(resolved.externalUrl.href);
-        return;
+        setErr(e);
+        throw e;
       }
-      if (!isSameRoute(resolved.route, nextRoute)) {
-        followedError = true;
-        nextRoute = resolved.route;
-        url = mode ? resolved.routeUrl : undefined;
-        shouldScroll =
-          options.scroll ??
-          (resolved.via404
-            ? true
-            : shouldScrollForRouteChange(nextRoute, routeBeforeChange));
-      }
-      if (resolved.elements) {
-        const redirect = getRedirect(resolved.elements);
-        if (redirect) {
-          nextRoute = redirect;
-          if (mode) {
-            mode = redirect.path === '/404' ? undefined : 'push';
-            url = undefined;
-          }
-        }
-      }
-      commitInTransition();
     },
     [
       emitRouteChangeEvent,

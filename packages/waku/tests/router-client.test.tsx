@@ -3824,7 +3824,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('a redirect back to the current route does not scroll', async () => {
+  test('a redirect back to the current route scrolls like the attempted navigation', async () => {
     const scrollToSpy = vi
       .spyOn(window, 'scrollTo')
       .mockImplementation(() => {});
@@ -3839,7 +3839,7 @@ describe('Router integration', () => {
       await flush();
     });
     expect(capture.router!.path).toBe('/start');
-    expect(scrollToSpy).not.toHaveBeenCalled();
+    expect(scrollToSpy).toHaveBeenCalled();
     scrollToSpy.mockRestore();
     view.unmount();
   });
