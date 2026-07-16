@@ -3916,12 +3916,60 @@ describe('Router integration', () => {
       slots: ['/404'],
       meta: { [HAS404_ID]: true },
     });
+    window.history.replaceState(null, '', '/start');
+    const lengthBefore = window.history.length;
     await act(async () => {
       await router.push('/missing');
       await flush();
     });
     expect(refetch).toHaveBeenCalledTimes(2);
     expect(capture.router!.path).toBe('/404');
+    // the address bar keeps the requested url as one new entry
+    expect(window.location.pathname).toBe('/missing');
+    expect(window.history.length).toBe(lengthBefore + 1);
+    view.unmount();
+  });
+
+  test('a redirect that lands on a missing route goes to the 404 route', async () => {
+    const { view, refetch, capture, router } = await renderFollowRouter({
+      responses: [
+        { reject: { status: 307, location: '/gone' } },
+        { reject: { status: 404 } },
+        { resolve: { [ROUTE_ID]: ['/404', ''], [IS_STATIC_ID]: false } },
+      ],
+      slots: ['/404'],
+      meta: { [HAS404_ID]: true },
+    });
+    await act(async () => {
+      await router.push('/moved');
+      await flush();
+    });
+    expect(refetch).toHaveBeenCalledTimes(3);
+    expect(capture.router!.path).toBe('/404');
+    view.unmount();
+  });
+
+  test('a query-only navigation that redirects to another pathname keeps its scroll', async () => {
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const { view, capture, router } = await renderFollowRouter({
+      responses: [
+        { reject: { status: 307, location: '/login' } },
+        { resolve: { [ROUTE_ID]: ['/login', ''], [IS_STATIC_ID]: false } },
+      ],
+      slots: ['/login'],
+    });
+    window.history.replaceState(null, '', '/start?page=1');
+    await act(async () => {
+      await router.push('/start?page=2');
+      await flush();
+    });
+    // the attempted query update does not scroll, and the redirect
+    // inherits that decision
+    expect(capture.router!.path).toBe('/login');
+    expect(scrollToSpy).not.toHaveBeenCalled();
+    scrollToSpy.mockRestore();
     view.unmount();
   });
 
