@@ -159,8 +159,6 @@ const isSameRoute = (next: RouteProps, prev: RouteProps) =>
 
 const MAX_ERROR_HOPS = 20;
 
-const handledErrorSet = new WeakSet<object>();
-
 const parseRedirectUrl = (location: string, base: string | URL) => {
   const url = new URL(location, base);
   return url.protocol === 'http:' || url.protocol === 'https:'
@@ -747,10 +745,12 @@ const FollowError = ({
   error,
   has404,
   reset,
+  handledErrorSet,
 }: {
   error: unknown;
   has404: boolean;
   reset: () => void;
+  handledErrorSet: WeakSet<object>;
 }) => {
   const { route, changeRoute } = useRouterOrThrow();
   const targetRef = useRef<RouteProps>(undefined);
@@ -800,7 +800,7 @@ const FollowError = ({
         handledErrorSet.delete(error as object);
         console.log('Error while following the error:', err);
       });
-  }, [error, has404, reset, changeRoute]);
+  }, [error, has404, reset, changeRoute, handledErrorSet]);
   const info = getErrorInfo(error);
   return info?.status === 404 && !has404 ? <h1>Not Found</h1> : null;
 };
@@ -809,6 +809,7 @@ class CustomErrorHandler extends Component<
   { has404: boolean; children?: ReactNode },
   { error: unknown | null }
 > {
+  private handledErrorSet = new WeakSet();
   constructor(props: { has404: boolean; children?: ReactNode }) {
     super(props);
     this.state = { error: null };
@@ -830,6 +831,7 @@ class CustomErrorHandler extends Component<
             error={error}
             has404={this.props.has404}
             reset={this.reset}
+            handledErrorSet={this.handledErrorSet}
           />
         );
       }
