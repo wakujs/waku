@@ -4034,10 +4034,12 @@ describe('Router integration', () => {
 
     const initialRoute = { path: '/start', query: '', hash: '' };
     const view = await renderApp(
-      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
-        <Router initialRoute={initialRoute} />
-        <Router initialRoute={initialRoute} />
-      </Unstable_SearchCodecsProvider>,
+      <StrictMode>
+        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+          <Router initialRoute={initialRoute} />
+          <Router initialRoute={initialRoute} />
+        </Unstable_SearchCodecsProvider>
+      </StrictMode>,
     );
     await flush();
 
@@ -4046,8 +4048,8 @@ describe('Router integration', () => {
     expect(
       (view.container.textContent?.match(/found-page/g) ?? []).length,
     ).toBe(2);
-    // strict-mode style replay within a handler stays deduplicated
-    expect(getRefetchMock().mock.calls.length).toBeLessThanOrEqual(2);
+    // exactly one navigation per router, even under strict-mode replay
+    expect(getRefetchMock()).toHaveBeenCalledTimes(2);
 
     view.unmount();
   });
