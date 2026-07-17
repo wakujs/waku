@@ -1007,9 +1007,13 @@ const InnerRouter = ({
   const [err, setErr] = useState<unknown>(null);
   const routeRef = useRef(committed.route);
   useEffect(() => {
+    const initialRoute = initialRouteRef.current;
+    if (!isSameRoute(routeRef.current, initialRoute, true)) {
+      return;
+    }
     const route = {
-      ...initialRouteRef.current,
-      hash: window.location.hash || initialRouteRef.current.hash,
+      ...initialRoute,
+      hash: window.location.hash || initialRoute.hash,
     };
     routeRef.current = route;
     setCommitted((prev) =>
