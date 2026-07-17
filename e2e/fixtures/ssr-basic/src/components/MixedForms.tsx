@@ -1,3 +1,4 @@
+import { unstable_patchPermalink as patchPermalink } from 'waku/client';
 import { StatefulForm } from './StatefulForm.js';
 
 let echo = 'none';
@@ -53,7 +54,7 @@ export const MixedForms = () => (
       <StatefulForm
         action={submitPermalink}
         idPrefix="permalink"
-        permalink="/mixed-forms?__waku_action=1"
+        permalink={patchPermalink('/mixed-forms')}
       />
       <form method="post" encType="multipart/form-data">
         <input name="plain-field" defaultValue="plain-value" />

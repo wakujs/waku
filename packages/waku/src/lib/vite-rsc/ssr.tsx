@@ -10,7 +10,7 @@ import htmlShell from 'virtual:vite-rsc-waku/html-shell';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
 import { createFormActionEncoder } from '../utils/form-action.js';
-import type { EncodeReply } from '../utils/form-action.js';
+import type { EncodeReply } from '../utils/patch-encode-form-action.js';
 import { sanitizeLog } from '../utils/log.js';
 import { getBootstrapPreamble } from '../utils/ssr.js';
 import { batchReadableStream } from '../utils/stream.js';

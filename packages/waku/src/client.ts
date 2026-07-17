@@ -1,5 +1,7 @@
 import { getErrorInfo } from './lib/utils/custom-errors.js';
 
+export { patchPermalink as unstable_patchPermalink } from './lib/utils/form-action.js';
+
 /**
  * Experimental, the name and the behavior might change.
  */

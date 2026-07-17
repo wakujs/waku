@@ -3,6 +3,7 @@ import {
   addFormActionMarker,
   createFormActionEncoder,
   hasFormActionMarker,
+  patchPermalink,
 } from '../src/lib/utils/form-action.js';
 
 const encodeReplyMock = async (value: unknown) => {
@@ -52,6 +53,19 @@ describe('form action marker', () => {
       hasFormActionMarker(new URL('https://a.test/foo?a=1&__waku_action=1')),
     ).toBe(true);
     expect(hasFormActionMarker(new URL('https://a.test/foo?a=1'))).toBe(false);
+  });
+
+  it('patches permalinks with the marker', () => {
+    expect(patchPermalink('/account')).toBe('/account?__waku_action=1');
+    expect(patchPermalink('/account?tab=1')).toBe(
+      '/account?tab=1&__waku_action=1',
+    );
+    expect(patchPermalink('/account?tab=1#top')).toBe(
+      '/account?tab=1&__waku_action=1#top',
+    );
+    expect(patchPermalink(patchPermalink('/account'))).toBe(
+      '/account?__waku_action=1',
+    );
   });
 
   it('is idempotent for already-marked queries', () => {

@@ -217,15 +217,18 @@ As a consequence, `useActionState` form state is delivered to clients with
 JavaScript (via the function call path), not to no-JS submissions — the
 action itself still runs.
 
-When passing the `permalink` argument to `useActionState`, include the
-marker in the URL, because React replaces the generated form target with
-the permalink string verbatim:
+When passing the `permalink` argument to `useActionState`, wrap it with
+`unstable_patchPermalink` from `waku/client`, because React replaces the
+generated form target with the permalink string verbatim and the marker
+must be part of it:
 
 ```tsx
+import { unstable_patchPermalink as patchPermalink } from 'waku/client';
+
 const [state, formAction] = useActionState(
   update,
   initial,
-  '/account?__waku_action=1',
+  patchPermalink('/account'),
 );
 ```
 
