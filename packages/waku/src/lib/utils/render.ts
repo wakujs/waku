@@ -32,9 +32,9 @@ export function createRenderUtils(
     typeof import('../vite-entries/entry.ssr.js')
   >,
   buildId: string,
+  requestUrl: string | undefined,
   debugChannel?: { readable?: ReadableStream; writable?: WritableStream },
   debugId?: string,
-  requestUrl?: string,
 ): {
   renderRsc: Unstable_RenderRsc;
   parseRsc: Unstable_ParseRsc;
@@ -96,16 +96,13 @@ export function createRenderUtils(
       const rscHtmlStream = renderToReadableStream(html, {
         onError,
       });
-      const url = requestUrl ? new URL(requestUrl) : undefined;
       const htmlResult = await renderHtmlStream(elementsStream, rscHtmlStream, {
         rscPath: options.rscPath,
         formState: options.formState as never,
         nonce: options.nonce,
         extraScriptContent: options.unstable_extraScriptContent,
         debugId,
-        formActionUrl: url
-          ? addFormActionMarker(url.pathname, url.search)
-          : undefined,
+        formActionUrl: requestUrl ? addFormActionMarker(requestUrl) : undefined,
       });
       return new Response(htmlResult.stream, {
         status: htmlResult.status || options.status || 200,

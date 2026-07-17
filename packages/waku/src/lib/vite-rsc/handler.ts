@@ -66,9 +66,9 @@ const toProcessRequest =
       createFromReadableStream,
       loadSsrEntryModule,
       import.meta.env.WAKU_BUILD_ID ?? '',
+      req.url,
       debugChannel,
       debugId,
-      req.url,
     );
 
     let res: Awaited<ReturnType<typeof handleRequest>>;
@@ -122,6 +122,7 @@ const toProcessBuild =
       createFromReadableStream,
       loadSsrEntryModule,
       import.meta.env.WAKU_BUILD_ID ?? '',
+      undefined,
     );
 
     let fallbackHtml: string | undefined;

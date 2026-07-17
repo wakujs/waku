@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   addFormActionMarker,
-  createFormActionEncoder,
+  createEncodeFormAction,
   hasFormActionMarker,
   patchPermalink,
 } from '../src/lib/utils/form-action.js';
@@ -18,7 +18,7 @@ const makeFlightChunk = (value: unknown[]): Promise<unknown[]> =>
   Object.assign(Promise.resolve(value), { status: 'fulfilled', value });
 
 const renderUntilSettled = async (
-  encode: ReturnType<typeof createFormActionEncoder>,
+  encode: ReturnType<typeof createEncodeFormAction>,
   actionId: string,
   makeBoundPromise: () => Promise<unknown[]>,
 ) => {
@@ -45,10 +45,8 @@ const renderUntilSettled = async (
 
 describe('form action marker', () => {
   it('adds and detects the marker, preserving an existing query', () => {
-    expect(addFormActionMarker('/foo', '')).toBe('/foo?__waku_action=1');
-    expect(addFormActionMarker('/foo', '?a=1')).toBe(
-      '/foo?a=1&__waku_action=1',
-    );
+    expect(addFormActionMarker('/foo')).toBe('/foo?__waku_action=1');
+    expect(addFormActionMarker('/foo?a=1')).toBe('/foo?a=1&__waku_action=1');
     expect(
       hasFormActionMarker(new URL('https://a.test/foo?a=1&__waku_action=1')),
     ).toBe(true);
@@ -69,21 +67,20 @@ describe('form action marker', () => {
   });
 
   it('is idempotent for already-marked queries', () => {
-    expect(addFormActionMarker('/foo', '?__waku_action=1')).toBe(
+    expect(addFormActionMarker('/foo?__waku_action=1')).toBe(
       '/foo?__waku_action=1',
     );
-    expect(addFormActionMarker('/foo', '?a=1&__waku_action=1')).toBe(
+    expect(addFormActionMarker('/foo?a=1&__waku_action=1')).toBe(
       '/foo?a=1&__waku_action=1',
     );
-    const once = addFormActionMarker('/foo', '?a=1');
-    const twice = addFormActionMarker('/foo', once.slice(once.indexOf('?')));
-    expect(twice).toBe(once);
+    const once = addFormActionMarker('/foo?a=1');
+    expect(addFormActionMarker(once)).toBe(once);
   });
 });
 
-describe('createFormActionEncoder', () => {
+describe('createEncodeFormAction', () => {
   it('serves unbound references synchronously despite unstable promise identity', async () => {
-    const encode = createFormActionEncoder(() => '/p?__waku_action=1', vi.fn());
+    const encode = createEncodeFormAction('/p?__waku_action=1', vi.fn());
     const fields = await renderUntilSettled(encode, 'act#a', () =>
       Promise.resolve([]),
     );
@@ -101,8 +98,8 @@ describe('createFormActionEncoder', () => {
   });
 
   it('serves payload-bound references with prefixed reply fields', async () => {
-    const encode = createFormActionEncoder(
-      () => '/p?__waku_action=1',
+    const encode = createEncodeFormAction(
+      '/p?__waku_action=1',
       encodeReplyMock,
     );
     const chunk = makeFlightChunk([42, 'hello']);
@@ -118,8 +115,8 @@ describe('createFormActionEncoder', () => {
   });
 
   it('serves client-side bound references via their stable promise identity', async () => {
-    const encode = createFormActionEncoder(
-      () => '/p?__waku_action=1',
+    const encode = createEncodeFormAction(
+      '/p?__waku_action=1',
       encodeReplyMock,
     );
     const stableBound = Promise.resolve([7]);
@@ -129,15 +126,15 @@ describe('createFormActionEncoder', () => {
   });
 
   it('throws for static renders so React falls back to hydration replay', () => {
-    const encode = createFormActionEncoder(() => undefined, encodeReplyMock);
+    const encode = createEncodeFormAction(undefined, encodeReplyMock);
     expect(() => encode('act#a', Promise.resolve([]))).toThrow(
       'dynamic render',
     );
   });
 
   it('assigns a distinct field namespace to every served form', async () => {
-    const encode = createFormActionEncoder(
-      () => '/p?__waku_action=1',
+    const encode = createEncodeFormAction(
+      '/p?__waku_action=1',
       encodeReplyMock,
     );
     const chunk = makeFlightChunk([1]);
@@ -151,8 +148,8 @@ describe('createFormActionEncoder', () => {
   it('warns when dual usage drops bound arguments (known limitation)', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
-      const encode = createFormActionEncoder(
-        () => '/p?__waku_action=1',
+      const encode = createEncodeFormAction(
+        '/p?__waku_action=1',
         encodeReplyMock,
       );
       await renderUntilSettled(encode, 'act#a', () => Promise.resolve([]));

@@ -1,15 +1,10 @@
-// Patches an `encodeFormAction` callback written against the composition
-// API proposed to React (an `encodeDefault` third parameter) to work with
-// the current two-parameter callback, by porting React's default
-// progressive-enhancement encoding. Delete this file once React provides
-// `encodeDefault` natively.
+// Patches an `encodeFormAction` callback that expects the `encodeDefault`
+// third parameter proposed to React, by porting React's default encoding:
 // https://github.com/facebook/react/blob/8b2e903a7447d370eb77bb117bc4c0ae240ce831/packages/react-client/src/ReactFlightReplyClient.js#L927-L1009
-//
-// Adaptations: the callback receives no reference identity, so the cache is
-// keyed by the bound-arguments promise and unbound references (which get a
-// fresh resolved promise per render) are inferred; the Fizz-provided
-// `identifierPrefix` is replaced by a local counter; and the private
-// `processReply` is reached through the public `encodeReply`.
+// Delete this file once React provides `encodeDefault`. Adapted to what the
+// callback receives: identity is inferred from the bound-arguments promise,
+// a local counter replaces the Fizz `identifierPrefix`, and the public
+// `encodeReply` replaces the private `processReply`.
 
 export type ReactCustomFormAction = {
   name?: string;
@@ -20,9 +15,7 @@ export type ReactCustomFormAction = {
   data?: FormData | null;
 };
 
-export type EncodeReply = (
-  value: unknown,
-) => Promise<string | URLSearchParams | FormData>;
+export type EncodeReply = (value: unknown) => Promise<string | FormData>;
 
 // fulfills with `null` for a reference whose arguments resolve empty
 type EncodedThenable = Promise<FormData | null> & {
@@ -67,22 +60,14 @@ export const patchEncodeFormAction = (
       })
       .then(
         (body) => {
-          let data: FormData | null = null;
-          if (body !== null) {
-            if (body instanceof FormData) {
-              data = body;
-            } else {
-              data = new FormData();
-              if (typeof body === 'string') {
-                data.append('0', body);
-              } else {
-                body.forEach((value, key) => data!.append(key, value));
-              }
-            }
+          if (typeof body === 'string') {
+            const data = new FormData();
+            data.append('0', body);
+            body = data;
           }
           thenable.status = 'fulfilled';
-          thenable.value = data;
-          return data;
+          thenable.value = body;
+          return body;
         },
         (reason) => {
           thenable.status = 'rejected';
@@ -129,7 +114,7 @@ export const patchEncodeFormAction = (
         (args) => {
           if (Array.isArray(args) && args.length) {
             console.warn(
-              `The no-JS fallback for a form using the server action "${id}" dropped its bound arguments because the same action is also used unbound on this page. Bind arguments in a server component or pass them as hidden form fields to support no-JS submissions.`,
+              `The no-JS fallback dropped bound arguments for "${id}" because the same action is also used unbound. Bind in a server component or use hidden form fields.`,
             );
           }
         },

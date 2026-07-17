@@ -4,7 +4,7 @@ import type { Unstable_HandleRequest as HandleRequest } from '../types.js';
 import { decodeFuncId, decodeRscPath } from '../utils/rsc-path.js';
 import { createCustomError } from './custom-errors.js';
 import { ETAGS_HEADER, parseClientEtags } from './etags.js';
-import { FORM_ACTION_QUERY_PARAM } from './form-action.js';
+import { hasFormActionMarker } from './form-action.js';
 import { removeBase } from './path.js';
 
 type HandleRequestInput = Parameters<HandleRequest>[0];
@@ -69,18 +69,16 @@ export async function getInput(
   } else if (req.method === 'POST') {
     const contentType = req.headers.get('content-type');
     if (
-      url.searchParams.has(FORM_ACTION_QUERY_PARAM) &&
-      typeof contentType === 'string' &&
-      contentType.startsWith('multipart/form-data')
+      hasFormActionMarker(url) &&
+      contentType?.startsWith('multipart/form-data')
     ) {
-      // server action: no js (progressive enhancement)
       validateServerActionRequest(req);
       input = {
         type: 'action',
         fn: async () => {
           const formData = (await getActionBody(req)) as FormData;
           const decodedAction = await decodeAction(formData);
-          if (typeof decodedAction !== 'function') {
+          if (!decodedAction) {
             return undefined;
           }
           const result = await decodedAction();
