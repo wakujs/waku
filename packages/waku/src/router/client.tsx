@@ -1116,6 +1116,7 @@ const InnerRouter = ({
           routeRef.current = value.route;
           setCommitted(value);
           setErr(null);
+          abortRef.current = null;
           emitRouteChangeEvent('complete', value.route);
         };
         if (isSameRoute(destination.route, nextRoute)) {
@@ -1188,6 +1189,7 @@ const InnerRouter = ({
                     : { mode: 'replace', url: getRouteUrl(redirect) },
               }));
             }
+            abortRef.current = null;
             emitRouteChangeEvent('complete', redirect ?? nextRoute);
           } catch (e) {
             if (isAborted()) {
@@ -1218,6 +1220,7 @@ const InnerRouter = ({
                 return;
               }
               setErr(e2);
+              abortRef.current = null;
               throw e2;
             }
           }
@@ -1245,6 +1248,7 @@ const InnerRouter = ({
           writeUrlToHistory(mode, targetUrl);
         }
         setErr(e);
+        abortRef.current = null;
         throw e;
       }
     },
