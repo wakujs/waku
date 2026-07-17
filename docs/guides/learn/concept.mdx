@@ -12,7 +12,7 @@ Everything you will build in this series follows from five ideas. Hold onto thes
 
 ### 1. Server components first
 
-Components are server components unless you say otherwise. They execute on the server, can be `async`, and can fetch data, read files, or query databases directly. Their output, not their code, is sent to the browser. When you need interactivity, you add `'use client'` to a file, and that component (plus everything it imports) becomes a client component running in the browser.
+Components are server components by default. They execute on the server, can be `async`, and can fetch data, read files, or query databases directly. Their output, not their code, is sent to the browser. When you need interactivity, you add `'use client'` to a file; that module and everything it imports, directly or transitively, become client code running in the browser.
 
 ### 2. Static first
 
