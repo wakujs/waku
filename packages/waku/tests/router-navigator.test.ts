@@ -30,14 +30,16 @@ const makeDeps = (
       fetchRoute.mockResolvedValueOnce(response.resolve);
     }
   }
+  const leaveApp = vi.fn();
   const deps: ResolveDeps = {
     fetchRoute,
     isKnownStatic: () => false,
     has404: true,
     isAborted: () => false,
+    leaveApp,
     ...overrides,
   };
-  return { deps, fetchRoute };
+  return { deps, fetchRoute, leaveApp };
 };
 
 const urlOf = (path: string) => new URL(path, window.location.origin);
@@ -111,6 +113,24 @@ describe('navigator', () => {
     expect(fetchRoute).toHaveBeenCalledTimes(1);
     expect(destination?.route.path).toBe('/static-page');
     expect(destination?.elements).toBeUndefined();
+  });
+
+  test('a cross origin redirect leaves through the app, not directly', async () => {
+    const { deps, fetchRoute, leaveApp } = makeDeps([
+      { reject: { status: 307, location: 'https://auth.example.com/login' } },
+    ]);
+    const destination = await resolveFollowingErrors(
+      deps,
+      route('/protected'),
+      urlOf('/protected'),
+      route('/dashboard'),
+      undefined,
+    );
+    expect(destination).toBeUndefined();
+    expect(fetchRoute).toHaveBeenCalledTimes(1);
+    expect(leaveApp).toHaveBeenCalledWith(
+      new URL('https://auth.example.com/login'),
+    );
   });
 });
 

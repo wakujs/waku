@@ -43,16 +43,7 @@ export const parseRedirectUrl = (location: string, base: string | URL) => {
 
 const MAX_ERROR_HOPS = 20;
 
-// --- the navigation pipeline ---
-
-export type Intent = {
-  route: RouteProps;
-  url?: URL | undefined;
-  history?: 'push' | 'replace' | undefined;
-  shouldScroll: boolean;
-  instant?: boolean | undefined;
-  transition?: ((fn: () => void) => void) | undefined;
-};
+// --- the resolver ---
 
 export type Destination = {
   route: RouteProps;
@@ -68,6 +59,7 @@ export type ResolveDeps = {
   isKnownStatic: (path: string) => boolean;
   has404: boolean;
   isAborted: () => boolean;
+  leaveApp: (url: URL) => void;
 };
 
 export const resolveFollowingErrors = async (
@@ -85,7 +77,7 @@ export const resolveFollowingErrors = async (
         : undefined;
       if (redirectUrl) {
         if (redirectUrl.origin !== window.location.origin) {
-          window.location.replace(redirectUrl.href);
+          deps.leaveApp(redirectUrl);
           return undefined;
         }
         route = parseRoute(redirectUrl);
@@ -131,9 +123,7 @@ export const writeUrlToHistory = (mode: 'push' | 'replace', url: URL) => {
   }
 };
 
-// --- the committed navigation state (one state, one layout effect) ---
-// Answers the TODO in the previous implementation about combining the
-// route, pendingHistory, and pendingScroll states.
+// --- the committed value ---
 
 export type Committed = {
   route: RouteProps;
@@ -141,7 +131,7 @@ export type Committed = {
   scroll: { pathChanged: boolean } | null;
 };
 
-export type NavigationOutcome = {
+export const deriveCommitted = (outcome: {
   destination: Destination;
   attempted: RouteProps;
   routeBefore: RouteProps;
@@ -152,11 +142,7 @@ export type NavigationOutcome = {
     elements: Record<string, unknown>,
     route: RouteProps,
   ) => RouteProps | undefined;
-};
-
-// Derives the immutable committed value for a resolved navigation,
-// including a server side redirect carried by the elements.
-export const deriveCommitted = (outcome: NavigationOutcome): Committed => {
+}): Committed => {
   const { destination, attempted, routeBefore } = outcome;
   const followed = !isSameRoute(destination.route, attempted);
   const redirect =

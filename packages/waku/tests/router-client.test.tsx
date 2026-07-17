@@ -4203,6 +4203,32 @@ describe('Router integration', () => {
     }
   });
 
+  test('a cross origin redirect on push keeps the attempted history entry', async () => {
+    const { view, router } = await renderFollowRouter({
+      responses: [
+        { reject: { status: 307, location: 'http://elsewhere.test/login' } },
+      ],
+      slots: [],
+    });
+    const replaceLocationSpy = vi
+      .spyOn(window.location, 'replace')
+      .mockImplementation(() => {});
+    window.history.replaceState(null, '', '/dashboard');
+    const lengthBefore = window.history.length;
+    await act(async () => {
+      await router.push('/protected');
+      await flush();
+    });
+    // the attempted url is pushed first, so Back returns to /dashboard
+    expect(window.location.pathname).toBe('/protected');
+    expect(window.history.length).toBe(lengthBefore + 1);
+    expect(replaceLocationSpy).toHaveBeenCalledWith(
+      'http://elsewhere.test/login',
+    );
+    replaceLocationSpy.mockRestore();
+    view.unmount();
+  });
+
   test('redirect error with a different origin leaves the app', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);

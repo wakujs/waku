@@ -1062,6 +1062,15 @@ const InnerRouter = ({
       const abortController = new AbortController();
       abortRef.current = abortController;
       const isAborted = () => abortController.signal.aborted;
+      emitRouteChangeEvent('start', nextRoute);
+      const startTransitionFn =
+        options.startTransition || ((fn: TransitionFunction) => fn());
+      const prevPathname = window.location.pathname;
+      let mode = options.mode;
+      const routeBefore = routeRef.current;
+      const shouldRefetch =
+        options.refetch ?? !isSameRoute(nextRoute, routeBefore);
+      const targetUrl = options.url ?? getRouteUrl(nextRoute);
       const resolveDeps = {
         fetchRoute: (route: RouteProps, routeUrl: URL) => {
           const rscPath = encodeRoutePath(route.path);
@@ -1082,16 +1091,14 @@ const InnerRouter = ({
         isKnownStatic: (path: string) => staticPathSetRef.current.has(path),
         has404,
         isAborted,
+        leaveApp: (url: URL) => {
+          if (mode && window.location.href !== targetUrl.href) {
+            writeUrlToHistory(mode, targetUrl);
+            setCommitted((prev) => ({ ...prev, history: null }));
+          }
+          window.location.replace(url.href);
+        },
       };
-      emitRouteChangeEvent('start', nextRoute);
-      const startTransitionFn =
-        options.startTransition || ((fn: TransitionFunction) => fn());
-      const prevPathname = window.location.pathname;
-      let mode = options.mode;
-      const routeBefore = routeRef.current;
-      const shouldRefetch =
-        options.refetch ?? !isSameRoute(nextRoute, routeBefore);
-      const targetUrl = options.url ?? getRouteUrl(nextRoute);
       const finish = (destination: Destination) => {
         if (isAborted()) {
           return;
