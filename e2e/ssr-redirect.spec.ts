@@ -116,6 +116,13 @@ test.describe(`ssr-redirect`, () => {
           (window as unknown as { __diagBodies?: string[] }).__diagBodies ?? [],
       );
       await testInfo.attach('rsc-bodies', { body: bodies.join('\n---\n') });
+      const flightRows = await page.evaluate(() =>
+        [...document.scripts]
+          .map((el) => el.textContent || '')
+          .filter((text) => text.includes('__FLIGHT_DATA'))
+          .join('\n---\n'),
+      );
+      await testInfo.attach('flight-rows', { body: flightRows });
       await testInfo.attach('page-console', { body: pageLogs.join('\n') });
       await testInfo.attach('page-network', {
         body: [...pendingRequests.entries()]
