@@ -45,16 +45,35 @@ test.describe(`ssr-redirect`, () => {
       const fetches: string[] = [];
       (window as unknown as { __diagFetches: string[] }).__diagFetches =
         fetches;
+      (window as unknown as { __diagBodies: string[] }).__diagBodies = [];
       const origFetch = window.fetch.bind(window);
       window.fetch = async (...args) => {
         const url = String(args[0] instanceof Request ? args[0].url : args[0]);
-        fetches.push(`fetch ${url} ...`);
+        const index = fetches.push(`${url} ...`) - 1;
         try {
           const res = await origFetch(...args);
-          fetches.push(`fetch ${url} ${res.status}`);
+          if (url.includes('/RSC/')) {
+            res
+              .clone()
+              .text()
+              .then(
+                (text) => {
+                  fetches[index] =
+                    `${url} ${res.status} body[${text.length}] hasSlot=${text.includes('route:/')}`;
+                  (
+                    window as unknown as { __diagBodies: string[] }
+                  ).__diagBodies.push(`${url}\n${text}`);
+                },
+                () => {
+                  fetches[index] = `${url} ${res.status} body unread`;
+                },
+              );
+          } else {
+            fetches[index] = `${url} ${res.status}`;
+          }
           return res;
         } catch (e) {
-          fetches.push(`fetch ${url} threw ${e}`);
+          fetches[index] = `${url} threw ${e}`;
           throw e;
         }
       };
@@ -88,10 +107,15 @@ test.describe(`ssr-redirect`, () => {
         .map(([url, state]) => `${state} ${url}`);
       await testInfo.attach('summary', {
         body: [
-          JSON.stringify(summary, null, 1),
+          JSON.stringify(summary),
           'pending: ' + JSON.stringify(stillPending),
         ].join('\n'),
       });
+      const bodies = await page.evaluate(
+        () =>
+          (window as unknown as { __diagBodies?: string[] }).__diagBodies ?? [],
+      );
+      await testInfo.attach('rsc-bodies', { body: bodies.join('\n---\n') });
       await testInfo.attach('page-console', { body: pageLogs.join('\n') });
       await testInfo.attach('page-network', {
         body: [...pendingRequests.entries()]
