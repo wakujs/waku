@@ -6,7 +6,7 @@ import TestApp from './components/test-app.js';
 
 export default adapter({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
-    if (input.type === 'component') {
+    if (input.type === 'rsc') {
       if (input.rscPath === 'test') {
         return renderRsc({ TestApp: <TestApp /> });
       }
@@ -15,30 +15,25 @@ export default adapter({
       }
       return renderRsc({ App: <App name={input.rscPath || 'Waku'} /> });
     }
-    if (input.type === 'function') {
+    if (input.type === 'call') {
       const value = await input.fn(...input.args);
       return renderRsc({}, { value });
     }
-    if (input.type === 'action' && input.pathname === '/mixed-forms') {
-      const result = await input.fn();
-      if (!result.action) {
-        receivePlainPost(result.formData);
-      }
-      return renderHtml(
-        await renderRsc({ MixedForms: <MixedForms /> }),
-        <Slot id="MixedForms" />,
-        {
-          rscPath: 'mixed-forms',
-          formState: (result.action ? result.formState : undefined) as never,
-        },
-      );
-    }
-    if (input.type === 'custom') {
+    if (input.type === 'http') {
       if (input.pathname === '/mixed-forms') {
+        let formState: unknown;
+        if (input.tryAction) {
+          const result = await input.tryAction();
+          if (result.action) {
+            formState = result.formState;
+          } else {
+            receivePlainPost(result.formData);
+          }
+        }
         return renderHtml(
           await renderRsc({ MixedForms: <MixedForms /> }),
           <Slot id="MixedForms" />,
-          { rscPath: 'mixed-forms' },
+          { rscPath: 'mixed-forms', formState: formState as never },
         );
       }
       if (input.pathname === '/') {

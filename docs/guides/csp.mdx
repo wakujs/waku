@@ -108,7 +108,7 @@ const generateNonce = () => {
 
 export default adapter({
   handleRequest: async (input, { renderRsc, renderHtml }) => {
-    if (input.type === 'component') {
+    if (input.type === 'rsc') {
       return renderRsc({ App: <App /> });
     }
     if (input.type === 'custom' && input.pathname === '/') {

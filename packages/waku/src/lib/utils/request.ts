@@ -39,7 +39,7 @@ export async function getInput(
       const args = await decodeReply(body, { temporaryReferences });
       const action = await loadServerAction(actionId);
       input = {
-        type: 'function',
+        type: 'call',
         fn: action as never,
         args,
         pathname,
@@ -57,7 +57,7 @@ export async function getInput(
         });
       }
       input = {
-        type: 'component',
+        type: 'rsc',
         rscPath,
         rscParams,
         pathname,
@@ -71,11 +71,11 @@ export async function getInput(
       typeof contentType === 'string' &&
       contentType.startsWith('multipart/form-data')
     ) {
-      // server action: no js (progressive enhancement)
+      // possibly a no-js server action submission (progressive enhancement)
       validateServerActionRequest(req);
       input = {
-        type: 'action',
-        fn: async () => {
+        type: 'http',
+        tryAction: async () => {
           const formData = (await getActionBody(req)) as FormData;
           const decodedAction = await decodeAction(formData);
           if (typeof decodedAction !== 'function') {
@@ -92,7 +92,7 @@ export async function getInput(
     } else {
       // POST API request
       input = {
-        type: 'custom',
+        type: 'http',
         pathname,
         req,
         etags,
@@ -101,7 +101,7 @@ export async function getInput(
   } else {
     // SSR
     input = {
-      type: 'custom',
+      type: 'http',
       pathname,
       req,
       etags,

@@ -40,7 +40,7 @@ describe('getInput server action request validation', () => {
   it('accepts same-origin server function requests', async () => {
     const input = await makeInput(makeRequest({ origin: 'https://app.test' }));
 
-    expect(input.type).toBe('function');
+    expect(input.type).toBe('call');
   });
 
   it('rejects server function requests with non-POST methods', async () => {
@@ -84,13 +84,13 @@ describe('getInput server action request validation', () => {
       makeRequest({ 'sec-fetch-site': 'same-origin' }),
     );
 
-    expect(input.type).toBe('function');
+    expect(input.type).toBe('call');
   });
 
   it('accepts user-initiated server function requests (sec-fetch-site: none)', async () => {
     const input = await makeInput(makeRequest({ 'sec-fetch-site': 'none' }));
 
-    expect(input.type).toBe('function');
+    expect(input.type).toBe('call');
   });
 
   it('accepts server function requests after middleware rewrites origin', async () => {
@@ -102,7 +102,7 @@ describe('getInput server action request validation', () => {
       }),
     );
 
-    expect(input.type).toBe('function');
+    expect(input.type).toBe('call');
   });
 
   it('rejects cross-origin form action requests', async () => {
@@ -146,11 +146,11 @@ describe('getInput server action request validation', () => {
       vi.fn(),
     );
 
-    expect(input.type).toBe('action');
-    if (input.type !== 'action') {
+    expect(input.type).toBe('http');
+    if (input.type !== 'http') {
       throw new Error('unreachable');
     }
-    const result = await input.fn();
+    const result = await input.tryAction!();
     expect(result).toMatchObject({ action: false });
     if (result.action) {
       throw new Error('unreachable');
