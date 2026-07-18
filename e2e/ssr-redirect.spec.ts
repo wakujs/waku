@@ -18,6 +18,25 @@ test.describe(`ssr-redirect`, () => {
     await stopApp();
   });
 
+  const pageLogs: string[] = [];
+  test.beforeEach(({ page }) => {
+    pageLogs.length = 0;
+    page.on('console', (msg) => pageLogs.push(msg.text()));
+    page.on('pageerror', (err) => pageLogs.push(`pageerror: ${err}`));
+  });
+  test.afterEach(async ({ page }, testInfo) => {
+    if (testInfo.status !== testInfo.expectedStatus) {
+      await testInfo.attach('page-console', { body: pageLogs.join('\n') });
+      await testInfo.attach('page-html', {
+        body: await page.content(),
+        contentType: 'text/html',
+      });
+      await testInfo.attach('server-output', {
+        body: serverOutput.join('').slice(-20000),
+      });
+    }
+  });
+
   test('access sync page directly', async ({ page }) => {
     await page.goto(`http://localhost:${port}/sync`);
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
