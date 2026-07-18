@@ -66,6 +66,10 @@ test.describe(`ssr-redirect`, () => {
         const scripts = [...document.scripts].map((el) => el.textContent || '');
         const rows = scripts.filter((t) => t.includes('__FLIGHT_DATA'));
         return {
+          bodyChildren: [...document.body.children].map(
+            (el) =>
+              `${el.tagName.toLowerCase()}:${(el.textContent || '').length}`,
+          ),
           location:
             window.location.pathname +
             window.location.search +
