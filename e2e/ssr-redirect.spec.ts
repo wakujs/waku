@@ -19,26 +19,71 @@ test.describe(`ssr-redirect`, () => {
   });
 
   const pageLogs: string[] = [];
-  const networkLogs: string[] = [];
-  test.beforeEach(({ page }) => {
+  const pendingRequests = new Map<string, string>();
+  test.beforeEach(async ({ page }) => {
     pageLogs.length = 0;
-    networkLogs.length = 0;
+    pendingRequests.clear();
     page.on('console', (msg) => pageLogs.push(msg.text()));
     page.on('pageerror', (err) => pageLogs.push(`pageerror: ${err}`));
-    page.on('request', (req) =>
-      networkLogs.push(`-> ${req.method()} ${req.url()}`),
-    );
+    page.on('request', (req) => pendingRequests.set(req.url(), 'pending'));
     page.on('response', (res) =>
-      networkLogs.push(`<- ${res.status()} ${res.url()}`),
+      pendingRequests.set(res.url(), String(res.status())),
     );
     page.on('requestfailed', (req) =>
-      networkLogs.push(`xx ${req.url()} ${req.failure()?.errorText}`),
+      pendingRequests.set(
+        req.url(),
+        `failed ${req.failure()?.errorText ?? ''}`,
+      ),
     );
+    await page.addInitScript(() => {
+      const fetches: string[] = [];
+      (window as unknown as { __diagFetches: string[] }).__diagFetches =
+        fetches;
+      const origFetch = window.fetch.bind(window);
+      window.fetch = async (...args) => {
+        const url = String(args[0] instanceof Request ? args[0].url : args[0]);
+        fetches.push(`fetch ${url} ...`);
+        try {
+          const res = await origFetch(...args);
+          fetches.push(`fetch ${url} ${res.status}`);
+          return res;
+        } catch (e) {
+          fetches.push(`fetch ${url} threw ${e}`);
+          throw e;
+        }
+      };
+    });
   });
   test.afterEach(async ({ page }, testInfo) => {
     if (testInfo.status !== testInfo.expectedStatus) {
+      const summary = await page.evaluate(() => {
+        const scripts = [...document.scripts].map((el) => el.textContent || '');
+        const rows = scripts.filter((t) => t.includes('__FLIGHT_DATA'));
+        return {
+          readyState: document.readyState,
+          headings: document.querySelectorAll('h1,h2,h3').length,
+          flightRowScripts: rows.length,
+          flightHasLocation: rows.some((t) => t.includes('location')),
+          flightHasDestination: rows.some((t) => t.includes('destination')),
+          fetches: (window as unknown as { __diagFetches?: string[] })
+            .__diagFetches,
+        };
+      });
+      const stillPending = [...pendingRequests.entries()]
+        .filter(([, state]) => state === 'pending')
+        .map(([url]) => url);
+      await testInfo.attach('summary', {
+        body: [
+          JSON.stringify(summary, null, 1),
+          'pending: ' + JSON.stringify(stillPending),
+        ].join('\n'),
+      });
       await testInfo.attach('page-console', { body: pageLogs.join('\n') });
-      await testInfo.attach('page-network', { body: networkLogs.join('\n') });
+      await testInfo.attach('page-network', {
+        body: [...pendingRequests.entries()]
+          .map(([url, state]) => `${state} ${url}`)
+          .join('\n'),
+      });
       await testInfo.attach('page-html', {
         body: await page.content(),
         contentType: 'text/html',
