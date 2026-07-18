@@ -201,13 +201,20 @@ describe('define-router action requests', () => {
     );
 
     expect(res).toBeInstanceOf(Response);
-    if (!(res instanceof Response)) {
-      throw new Error('unreachable');
-    }
     expect(message).toBe('after');
-    expect(res.status).toBe(303);
-    expect(res.headers.get('location')).toBe('/');
-    expect(renderHtml).not.toHaveBeenCalled();
+    expect(renderRsc).toHaveBeenCalledWith(
+      expect.objectContaining({
+        'page:/': 'page:after',
+      }),
+      { etags: {} },
+    );
+    expect(renderHtml).toHaveBeenCalledWith(
+      expect.any(ReadableStream),
+      expect.anything(),
+      expect.objectContaining({
+        formState: 'form-state',
+      }),
+    );
   });
 
   it('does not let catch-all api routes intercept no-JS form actions', async () => {
@@ -258,54 +265,15 @@ describe('define-router action requests', () => {
     );
 
     expect(res).toBeInstanceOf(Response);
-    if (!(res instanceof Response)) {
-      throw new Error('unreachable');
-    }
     expect(apiHandler).not.toHaveBeenCalled();
     expect(message).toBe('after');
-    expect(res.status).toBe(303);
-    expect(renderHtml).not.toHaveBeenCalled();
-  });
-
-  it('redirects no-js actions to the unmarked url', async () => {
-    const { handleRequest } = unstable_defineRouter({
-      getConfigs: async () => [
-        {
-          type: 'route' as const,
-          path: [],
-          isStatic: false,
-          rootElement: { isStatic: false, renderer: () => 'root' },
-          routeElement: { isStatic: false, renderer: () => 'route' },
-          elements: {
-            'page:/': { isStatic: false, renderer: () => 'page:content' },
-          },
-        },
-      ],
-    });
-
-    const res = await handleRequest(
-      {
-        type: 'action',
-        fn: async () => undefined,
-        pathname: '/',
-        req: new Request('http://localhost/?a=1&__waku_action=1', {
-          method: 'POST',
-        }),
-      },
-      {
-        renderRsc: vi.fn().mockResolvedValue(makeStream()),
-        parseRsc: vi.fn(),
-        renderHtml: vi.fn(),
-        loadBuildMetadata: vi.fn(),
-      },
+    expect(renderHtml).toHaveBeenCalledWith(
+      expect.any(ReadableStream),
+      expect.anything(),
+      expect.objectContaining({
+        formState: 'form-state',
+      }),
     );
-
-    expect(res).toBeInstanceOf(Response);
-    if (!(res instanceof Response)) {
-      throw new Error('unreachable');
-    }
-    expect(res.status).toBe(303);
-    expect(res.headers.get('location')).toBe('/?a=1');
   });
 
   it('lets api routes handle action requests when no route matches', async () => {

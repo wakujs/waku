@@ -20,13 +20,15 @@ export default adapter({
       return renderRsc({}, { value });
     }
     if (input.type === 'action' && input.pathname === '/mixed-forms') {
-      await input.fn();
-      const location = new URL(input.req.url);
-      location.searchParams.delete('__waku_action');
-      return new Response(null, {
-        status: 303,
-        headers: { location: location.pathname + location.search },
-      });
+      const formState = await input.fn();
+      return renderHtml(
+        await renderRsc({ MixedForms: <MixedForms /> }),
+        <Slot id="MixedForms" />,
+        {
+          rscPath: 'mixed-forms',
+          formState: formState as never,
+        },
+      );
     }
     if (input.type === 'custom') {
       if (input.pathname === '/mixed-forms') {

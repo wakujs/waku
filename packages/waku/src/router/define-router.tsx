@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { FORM_ACTION_QUERY_PARAM } from '../lib/utils/form-action.js';
 import {
   unstable_base64ToBytes as base64ToBytes,
   unstable_buildElements as buildElements,
@@ -955,7 +954,7 @@ export function unstable_defineRouter(fns: {
           if (info?.location) {
             const routePath = pathnameToRoutePath(info.location);
             const rscPath = encodeRoutePath(routePath);
-            const entries = await getEntriesForRoute(
+            let entries = await getEntriesForRoute(
               rscPath,
               undefined,
               clientEtags,
@@ -988,7 +987,7 @@ export function unstable_defineRouter(fns: {
           const routePath = pathnameToRoutePath(pathname);
           const rscPath = encodeRoutePath(routePath);
           const rscParams = new URLSearchParams({ query });
-          const entries = await getEntriesForRoute(
+          let entries = await getEntriesForRoute(
             rscPath,
             rscParams,
             clientEtags,
@@ -1001,20 +1000,23 @@ export function unstable_defineRouter(fns: {
           const route = { path: routePath, query, hash: '' };
           const nonce = getNonce();
           const html = <INTERNAL_ServerRouter route={route} />;
+          let formState: unknown;
           if (input.type === 'action') {
-            await withRerender(() => input.fn());
-            const location = new URL(input.req.url);
-            location.searchParams.delete(FORM_ACTION_QUERY_PARAM);
-            return new Response(null, {
-              status: 303,
-              headers: { location: location.pathname + location.search },
-            });
+            const { value, entries: rerendered } = await withRerender(() =>
+              input.fn(),
+            );
+            formState = value;
+            entries = {
+              elements: { ...entries.elements, ...rerendered.elements },
+              etags: { ...entries.etags, ...rerendered.etags },
+            };
           }
           return renderHtml(
             await renderRsc(entries.elements, { etags: entries.etags }),
             html,
             {
               rscPath,
+              formState,
               status,
               ...(nonce ? { nonce } : {}),
               unstable_extraScriptContent:
@@ -1186,7 +1188,7 @@ export function unstable_defineRouter(fns: {
       const req = new Request(new URL(routePath, 'http://localhost:3000'));
       runTask(async () => {
         await runHandled(req, async () => {
-          const entries = await getEntriesForRoute(
+          let entries = await getEntriesForRoute(
             rscPath,
             undefined,
             {},

@@ -208,14 +208,16 @@ with an untouched, streamable body. `input.fn()` consumes the request body
 and resolves the decoded form state, or `undefined` when the action produced
 none or the form data contains no server action reference.
 
-Always respond with a `303` redirect to the URL without the marker
-(Post/Redirect/Get). The marker then never persists in the document URL, so
-plain forms on the page keep submitting unmarked and arrive as `custom`, and
-a refresh never resubmits the action.
+Render the POST response directly with the form state, as in traditional
+HTTP: the submission stays a single round trip and `useActionState` shows
+the returned state without JavaScript, matching React's behavior.
 
-As a consequence, `useActionState` form state is delivered to clients with
-JavaScript (via the function call path), not to no-JS submissions — the
-action itself still runs.
+The marker then stays in the document URL after a no-JS submission. A plain
+multipart form without an explicit `action` on that document inherits it and
+is classified as `action`; its form data contains no server action
+reference, so `input.fn()` resolves `undefined` and the body is not
+delivered. Give such forms an explicit unmarked `action` to keep them on the
+`custom` path.
 
 When passing the `permalink` argument to `useActionState`, wrap it with
 `unstable_patchPermalink` from `waku/client`, because React replaces the
@@ -232,8 +234,8 @@ const [state, formAction] = useActionState(
 );
 ```
 
-The no-JS submission then posts to the permalink, runs the action, and the
-`303` redirect lands on the clean URL (`/account`).
+The no-JS submission then posts to the permalink and the response renders
+there with the returned state, which is React's MPA form flow.
 
 Statically prerendered pages do not participate in no-JS server actions:
 there is no request URL to derive a marked form target from, so the encoder
@@ -282,18 +284,20 @@ if (input.type === 'function') {
 }
 ```
 
-`action` requests run the decoded server action and respond with a redirect
-(see the progressive enhancement section below):
+`action` requests run the decoded server action and render HTML with the
+form state (see the progressive enhancement section below):
 
 ```tsx
 if (input.type === 'action' && input.pathname === '/') {
-  await input.fn();
-  const location = new URL(input.req.url);
-  location.searchParams.delete('__waku_action');
-  return new Response(null, {
-    status: 303,
-    headers: { location: location.pathname + location.search },
-  });
+  const formState = await input.fn();
+  return renderHtml(
+    await renderRsc({ App: <App name="Waku" /> }),
+    <Slot id="App" />,
+    {
+      rscPath: '',
+      formState,
+    },
+  );
 }
 ```
 
@@ -622,20 +626,13 @@ if (
   (input.type === 'action' || input.type === 'custom') &&
   input.pathname === '/'
 ) {
-  if (input.type === 'action') {
-    await input.fn();
-    const location = new URL(input.req.url);
-    location.searchParams.delete('__waku_action');
-    return new Response(null, {
-      status: 303,
-      headers: { location: location.pathname + location.search },
-    });
-  }
+  const formState = input.type === 'action' ? await input.fn() : undefined;
   return renderHtml(
     await renderRsc({ App: <App name="Waku" /> }),
     <Slot id="App" />,
     {
       rscPath: '',
+      formState,
     },
   );
 }

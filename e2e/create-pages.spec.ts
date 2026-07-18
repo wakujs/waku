@@ -393,7 +393,7 @@ test.describe(`create-pages`, () => {
         `Submitted: ${submittedName}`,
       );
       await expect(page.locator('body')).not.toContainText('getRerender');
-      expect(page.url()).not.toContain('__waku_action');
+      expect(page.url()).toContain('__waku_action');
     } finally {
       await page.close();
       await context.close();
