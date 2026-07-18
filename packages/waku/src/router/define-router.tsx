@@ -954,7 +954,7 @@ export function unstable_defineRouter(fns: {
           if (info?.location) {
             const routePath = pathnameToRoutePath(info.location);
             const rscPath = encodeRoutePath(routePath);
-            let entries = await getEntriesForRoute(
+            const entries = await getEntriesForRoute(
               rscPath,
               undefined,
               clientEtags,
@@ -1188,7 +1188,7 @@ export function unstable_defineRouter(fns: {
       const req = new Request(new URL(routePath, 'http://localhost:3000'));
       runTask(async () => {
         await runHandled(req, async () => {
-          let entries = await getEntriesForRoute(
+          const entries = await getEntriesForRoute(
             rscPath,
             undefined,
             {},
