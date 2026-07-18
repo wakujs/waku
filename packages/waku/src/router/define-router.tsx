@@ -1005,7 +1005,7 @@ export function unstable_defineRouter(fns: {
             const { value, entries: rerendered } = await withRerender(() =>
               input.fn(),
             );
-            formState = value;
+            formState = value.action ? value.formState : undefined;
             entries = {
               elements: { ...entries.elements, ...rerendered.elements },
               etags: { ...entries.etags, ...rerendered.etags },

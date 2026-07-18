@@ -44,7 +44,10 @@ export type Unstable_HandleRequest = (
       }
     | {
         type: 'action';
-        fn: () => Promise<unknown>;
+        fn: () => Promise<
+          | { action: true; formState: unknown }
+          | { action: false; formData: FormData }
+        >;
       }
     | { type: 'custom' }
   ) & {

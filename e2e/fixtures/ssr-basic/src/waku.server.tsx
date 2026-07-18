@@ -1,6 +1,7 @@
 import adapter from 'waku/adapters/default';
 import { Slot } from 'waku/minimal/client';
 import App from './components/App.js';
+import { MixedForms, receivePlainPost } from './components/MixedForms.js';
 import TestApp from './components/test-app.js';
 
 export default adapter({
@@ -9,13 +10,37 @@ export default adapter({
       if (input.rscPath === 'test') {
         return renderRsc({ TestApp: <TestApp /> });
       }
+      if (input.rscPath === 'mixed-forms') {
+        return renderRsc({ MixedForms: <MixedForms /> });
+      }
       return renderRsc({ App: <App name={input.rscPath || 'Waku'} /> });
     }
     if (input.type === 'function') {
       const value = await input.fn(...input.args);
       return renderRsc({}, { value });
     }
+    if (input.type === 'action' && input.pathname === '/mixed-forms') {
+      const result = await input.fn();
+      if (!result.action) {
+        receivePlainPost(result.formData);
+      }
+      return renderHtml(
+        await renderRsc({ MixedForms: <MixedForms /> }),
+        <Slot id="MixedForms" />,
+        {
+          rscPath: 'mixed-forms',
+          formState: (result.action ? result.formState : undefined) as never,
+        },
+      );
+    }
     if (input.type === 'custom') {
+      if (input.pathname === '/mixed-forms') {
+        return renderHtml(
+          await renderRsc({ MixedForms: <MixedForms /> }),
+          <Slot id="MixedForms" />,
+          { rscPath: 'mixed-forms' },
+        );
+      }
       if (input.pathname === '/') {
         return renderHtml(
           await renderRsc({ App: <App name="Waku" /> }),

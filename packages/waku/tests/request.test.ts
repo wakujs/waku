@@ -128,7 +128,7 @@ describe('getInput server action request validation', () => {
     ).resolves.toBe(403);
   });
 
-  it('rejects form action requests without an action reference', async () => {
+  it('resolves form action requests without an action reference as form data', async () => {
     const formData = new FormData();
     formData.set('key', 'value');
 
@@ -150,7 +150,12 @@ describe('getInput server action request validation', () => {
     if (input.type !== 'action') {
       throw new Error('unreachable');
     }
-    await expect(getStatus(input.fn())).resolves.toBe(400);
+    const result = await input.fn();
+    expect(result).toMatchObject({ action: false });
+    if (result.action) {
+      throw new Error('unreachable');
+    }
+    expect(result.formData.get('key')).toBe('value');
   });
 });
 

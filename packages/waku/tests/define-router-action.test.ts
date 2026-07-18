@@ -187,7 +187,7 @@ describe('define-router action requests', () => {
         fn: async () => {
           message = 'after';
           unstable_rerenderRoute('/');
-          return 'form-state';
+          return { action: true as const, formState: 'form-state' };
         },
         pathname: '/',
         req: new Request('http://localhost/', { method: 'POST' }),
@@ -251,7 +251,7 @@ describe('define-router action requests', () => {
         fn: async () => {
           message = 'after';
           unstable_rerenderRoute('/');
-          return 'form-state';
+          return { action: true as const, formState: 'form-state' };
         },
         pathname: '/',
         req: new Request('http://localhost/', { method: 'POST' }),

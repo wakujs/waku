@@ -239,11 +239,20 @@ if (input.type === 'function') {
 }
 ```
 
-`action` requests often re-render HTML and pass `formState`:
+`action` requests often re-render HTML and pass `formState`. `input.fn()`
+resolves `{ action: true, formState }` for a decoded server action, or
+`{ action: false, formData }` with the parsed form data when the multipart
+body contains no server action reference (a plain HTML form or a crawler) —
+route that to the same logic as a custom `POST`:
 
 ```tsx
 if (input.type === 'action' && input.pathname === '/') {
-  const formState = await input.fn();
+  const result = await input.fn();
+  if (!result.action) {
+    // an ordinary multipart form: treat it like a custom POST
+    await handlePost(result.formData);
+  }
+  const formState = result.action ? result.formState : undefined;
   return renderHtml(
     await renderRsc({ App: <App name="Waku" /> }),
     <Slot id="App" />,
@@ -580,7 +589,8 @@ if (
   (input.type === 'action' || input.type === 'custom') &&
   input.pathname === '/'
 ) {
-  const formState = input.type === 'action' ? await input.fn() : undefined;
+  const result = input.type === 'action' ? await input.fn() : undefined;
+  const formState = result?.action ? result.formState : undefined;
   return renderHtml(
     await renderRsc({ App: <App name="Waku" /> }),
     <Slot id="App" />,
