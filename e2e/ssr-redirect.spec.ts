@@ -19,14 +19,26 @@ test.describe(`ssr-redirect`, () => {
   });
 
   const pageLogs: string[] = [];
+  const networkLogs: string[] = [];
   test.beforeEach(({ page }) => {
     pageLogs.length = 0;
+    networkLogs.length = 0;
     page.on('console', (msg) => pageLogs.push(msg.text()));
     page.on('pageerror', (err) => pageLogs.push(`pageerror: ${err}`));
+    page.on('request', (req) =>
+      networkLogs.push(`-> ${req.method()} ${req.url()}`),
+    );
+    page.on('response', (res) =>
+      networkLogs.push(`<- ${res.status()} ${res.url()}`),
+    );
+    page.on('requestfailed', (req) =>
+      networkLogs.push(`xx ${req.url()} ${req.failure()?.errorText}`),
+    );
   });
   test.afterEach(async ({ page }, testInfo) => {
     if (testInfo.status !== testInfo.expectedStatus) {
       await testInfo.attach('page-console', { body: pageLogs.join('\n') });
+      await testInfo.attach('page-network', { body: networkLogs.join('\n') });
       await testInfo.attach('page-html', {
         body: await page.content(),
         contentType: 'text/html',
