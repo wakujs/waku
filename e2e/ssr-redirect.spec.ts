@@ -25,9 +25,15 @@ test.describe(`ssr-redirect`, () => {
     pendingRequests.clear();
     page.on('console', (msg) => pageLogs.push(msg.text()));
     page.on('pageerror', (err) => pageLogs.push(`pageerror: ${err}`));
-    page.on('request', (req) => pendingRequests.set(req.url(), 'pending'));
+    page.on('request', (req) => pendingRequests.set(req.url(), 'no-response'));
     page.on('response', (res) =>
-      pendingRequests.set(res.url(), String(res.status())),
+      pendingRequests.set(res.url(), `body-open ${res.status()}`),
+    );
+    page.on('requestfinished', (req) =>
+      pendingRequests.set(
+        req.url(),
+        (pendingRequests.get(req.url()) ?? '').replace('body-open', 'done'),
+      ),
     );
     page.on('requestfailed', (req) =>
       pendingRequests.set(
@@ -60,6 +66,10 @@ test.describe(`ssr-redirect`, () => {
         const scripts = [...document.scripts].map((el) => el.textContent || '');
         const rows = scripts.filter((t) => t.includes('__FLIGHT_DATA'));
         return {
+          location:
+            window.location.pathname +
+            window.location.search +
+            window.location.hash,
           readyState: document.readyState,
           headings: document.querySelectorAll('h1,h2,h3').length,
           flightRowScripts: rows.length,
@@ -70,8 +80,8 @@ test.describe(`ssr-redirect`, () => {
         };
       });
       const stillPending = [...pendingRequests.entries()]
-        .filter(([, state]) => state === 'pending')
-        .map(([url]) => url);
+        .filter(([, state]) => !state.startsWith('done'))
+        .map(([url, state]) => `${state} ${url}`);
       await testInfo.attach('summary', {
         body: [
           JSON.stringify(summary, null, 1),
