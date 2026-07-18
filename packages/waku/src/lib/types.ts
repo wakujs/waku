@@ -42,10 +42,6 @@ export type Unstable_HandleRequest = (
         fn: (...args: unknown[]) => Promise<unknown>;
         args: unknown[];
       }
-    | {
-        type: 'action';
-        fn: () => Promise<unknown>;
-      }
     | { type: 'custom' }
   ) & {
     pathname: string;
@@ -57,6 +53,10 @@ export type Unstable_HandleRequest = (
     parseRsc: Unstable_ParseRsc;
     renderHtml: Unstable_RenderHtml;
     loadBuildMetadata: (key: string) => Promise<string | undefined>;
+    decodeAction: (
+      formData: FormData,
+    ) => Promise<(() => Promise<unknown>) | null>;
+    decodeFormState: (result: unknown, formData: FormData) => Promise<unknown>;
   },
 ) => Promise<ReadableStream | Response | 'fallback' | null | undefined>;
 

@@ -1,4 +1,3 @@
-import type { ReactFormState } from 'react-dom/client';
 import type { Config } from '../../config.js';
 import type { Unstable_HandleRequest as HandleRequest } from '../types.js';
 import { decodeFuncId, decodeRscPath } from '../utils/rsc-path.js';
@@ -16,11 +15,6 @@ export async function getInput(
     body: string | FormData,
     options?: object,
   ) => Promise<unknown[]>,
-  decodeAction: (body: FormData) => Promise<() => Promise<void>> | null,
-  decodeFormState: (
-    actionResult: unknown,
-    body: FormData,
-  ) => Promise<ReactFormState | undefined>,
   loadServerAction: (id: string) => Promise<unknown>,
 ) {
   const url = new URL(req.url);
@@ -66,31 +60,8 @@ export async function getInput(
       };
     }
   } else if (req.method === 'POST') {
-    const contentType = req.headers.get('content-type');
-    if (
-      typeof contentType === 'string' &&
-      contentType.startsWith('multipart/form-data')
-    ) {
-      // server action: no js (progressive enhancement)
-      validateServerActionRequest(req);
-      input = {
-        type: 'action',
-        fn: async () => {
-          const formData = (await getActionBody(req)) as FormData;
-          const decodedAction = await decodeAction(formData);
-          if (typeof decodedAction !== 'function') {
-            // multipart/form-data POST without an action reference (e.g. crawlers)
-            throw createCustomError('Bad Request', { status: 400 });
-          }
-          const result = await decodedAction();
-          return await decodeFormState(result, formData);
-        },
-        pathname,
-        req,
-        etags,
-      };
-    } else {
-      // POST API request
+    {
+      // POST request (including no-JS server action submissions)
       input = {
         type: 'custom',
         pathname,
@@ -110,7 +81,7 @@ export async function getInput(
   return input;
 }
 
-function validateServerActionRequest(req: Request) {
+export function validateServerActionRequest(req: Request) {
   if (req.method !== 'POST') {
     throw createCustomError('Method Not Allowed', { status: 405 });
   }

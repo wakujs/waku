@@ -831,7 +831,7 @@ export function unstable_defineRouter(fns: {
 
   const handleRequest: HandleRequest = async (
     input,
-    { renderRsc, renderHtml, loadBuildMetadata },
+    { renderRsc, renderHtml, loadBuildMetadata, decodeAction, decodeFormState },
   ): Promise<ReadableStream | Response | 'fallback' | null | undefined> => {
     await initConfigs(loadBuildMetadata);
     return runHandled(input.req, async () => {
@@ -969,7 +969,7 @@ export function unstable_defineRouter(fns: {
         }
       }
 
-      if (input.type === 'action' || input.type === 'custom') {
+      if (input.type === 'custom') {
         const pathConfigItem = getPathConfigItem(input.pathname);
         if (pathConfigItem?.type === 'api') {
           const url = new URL(input.req.url);
@@ -1001,15 +1001,25 @@ export function unstable_defineRouter(fns: {
           const nonce = getNonce();
           const html = <INTERNAL_ServerRouter route={route} />;
           let formState: unknown;
-          if (input.type === 'action') {
-            const { value, entries: rerendered } = await withRerender(() =>
-              input.fn(),
-            );
-            formState = value;
-            entries = {
-              elements: { ...entries.elements, ...rerendered.elements },
-              etags: { ...entries.etags, ...rerendered.etags },
-            };
+          if (
+            input.req.method === 'POST' &&
+            input.req.headers
+              .get('content-type')
+              ?.startsWith('multipart/form-data')
+          ) {
+            // no-JS server action submission (progressive enhancement)
+            const formData = await input.req.formData();
+            const action = await decodeAction(formData);
+            if (action) {
+              const { value, entries: rerendered } = await withRerender(() =>
+                action(),
+              );
+              formState = await decodeFormState(value, formData);
+              entries = {
+                elements: { ...entries.elements, ...rerendered.elements },
+                etags: { ...entries.etags, ...rerendered.etags },
+              };
+            }
           }
           return renderHtml(
             await renderRsc(entries.elements, { etags: entries.etags }),

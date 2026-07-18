@@ -23,6 +23,12 @@ const makeStream = () =>
     },
   });
 
+const makeActionRequest = (url: string) => {
+  const body = new FormData();
+  body.set('key', 'value');
+  return new Request(url, { method: 'POST', body });
+};
+
 describe('define-router action requests', () => {
   it('does not let catch-all api routes intercept component requests', async () => {
     const apiHandler = vi.fn().mockResolvedValue(new Response('api'));
@@ -63,6 +69,8 @@ describe('define-router action requests', () => {
         parseRsc: vi.fn(),
         renderHtml: vi.fn(),
         loadBuildMetadata: vi.fn(),
+        decodeAction: vi.fn(async () => null),
+        decodeFormState: vi.fn(async () => undefined),
       },
     );
 
@@ -107,6 +115,8 @@ describe('define-router action requests', () => {
         parseRsc: vi.fn(),
         renderHtml: vi.fn(),
         loadBuildMetadata: vi.fn(),
+        decodeAction: vi.fn(async () => null),
+        decodeFormState: vi.fn(async () => undefined),
       },
     );
 
@@ -146,6 +156,8 @@ describe('define-router action requests', () => {
         parseRsc: vi.fn(),
         renderHtml,
         loadBuildMetadata: vi.fn(),
+        decodeAction: vi.fn(async () => null),
+        decodeFormState: vi.fn(async () => undefined),
       },
     );
 
@@ -183,20 +195,20 @@ describe('define-router action requests', () => {
 
     const res = await handleRequest(
       {
-        type: 'action',
-        fn: async () => {
-          message = 'after';
-          unstable_rerenderRoute('/');
-          return 'form-state';
-        },
+        type: 'custom',
         pathname: '/',
-        req: new Request('http://localhost/', { method: 'POST' }),
+        req: makeActionRequest('http://localhost/'),
       },
       {
         renderRsc,
         parseRsc: vi.fn(),
         renderHtml,
         loadBuildMetadata: vi.fn(),
+        decodeAction: vi.fn(async () => async () => {
+          message = 'after';
+          unstable_rerenderRoute('/');
+        }),
+        decodeFormState: vi.fn(async () => 'form-state'),
       },
     );
 
@@ -247,20 +259,20 @@ describe('define-router action requests', () => {
 
     const res = await handleRequest(
       {
-        type: 'action',
-        fn: async () => {
-          message = 'after';
-          unstable_rerenderRoute('/');
-          return 'form-state';
-        },
+        type: 'custom',
         pathname: '/',
-        req: new Request('http://localhost/', { method: 'POST' }),
+        req: makeActionRequest('http://localhost/'),
       },
       {
         renderRsc,
         parseRsc: vi.fn(),
         renderHtml,
         loadBuildMetadata: vi.fn(),
+        decodeAction: vi.fn(async () => async () => {
+          message = 'after';
+          unstable_rerenderRoute('/');
+        }),
+        decodeFormState: vi.fn(async () => 'form-state'),
       },
     );
 
@@ -284,7 +296,7 @@ describe('define-router action requests', () => {
 
   it('lets api routes handle action requests when no route matches', async () => {
     const apiHandler = vi.fn().mockResolvedValue(new Response('api'));
-    const actionFn = vi.fn();
+    const decodeAction = vi.fn(async () => null);
     const { handleRequest } = unstable_defineRouter({
       getConfigs: async () => [
         {
@@ -301,25 +313,25 @@ describe('define-router action requests', () => {
 
     const res = await handleRequest(
       {
-        type: 'action',
-        fn: actionFn,
+        type: 'custom',
         pathname: '/api/form-data',
-        req: new Request('http://localhost/api/form-data', {
-          method: 'POST',
-        }),
+        req: makeActionRequest('http://localhost/api/form-data'),
       },
       {
         renderRsc: vi.fn(),
         parseRsc: vi.fn(),
         renderHtml: vi.fn(),
         loadBuildMetadata: vi.fn(),
+        decodeAction,
+        decodeFormState: vi.fn(async () => undefined),
       },
     );
 
     expect(res).toBeInstanceOf(Response);
     expect(await (res as Response).text()).toBe('api');
     expect(apiHandler).toHaveBeenCalledTimes(1);
-    expect(actionFn).not.toHaveBeenCalled();
+    // the body is never parsed for api routes
+    expect(decodeAction).not.toHaveBeenCalled();
   });
 });
 

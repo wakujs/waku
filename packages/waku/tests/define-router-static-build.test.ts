@@ -319,6 +319,8 @@ describe('define-router handleBuild', () => {
       parseRsc: vi.fn().mockResolvedValue({ 'page:/foo': null }),
       renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
       loadBuildMetadata,
+      decodeAction: vi.fn(async () => null),
+      decodeFormState: vi.fn(async () => undefined),
     };
     const makeReq = () => ({
       type: 'component' as const,

@@ -24,7 +24,7 @@ import { sanitizeLog } from '../utils/log.js';
 import { addBase, joinPath } from '../utils/path.js';
 import { DEBUG_ID_HEADER } from '../utils/react-debug-channel.js';
 import { createRenderUtils } from '../utils/render.js';
-import { getInput } from '../utils/request.js';
+import { getInput, validateServerActionRequest } from '../utils/request.js';
 import { encodeRscPath } from '../utils/rsc-path.js';
 import { stringToStream } from '../utils/stream.js';
 
@@ -46,8 +46,6 @@ const toProcessRequest =
       config,
       temporaryReferences,
       decodeReply,
-      decodeAction,
-      decodeFormState,
       loadServerAction,
     );
 
@@ -75,6 +73,11 @@ const toProcessRequest =
       res = await handleRequest(input, {
         ...renderUtils,
         loadBuildMetadata: async (key: string) => buildMetadata.get(key),
+        decodeAction: async (formData) => {
+          validateServerActionRequest(req);
+          return (await decodeAction(formData)) ?? null;
+        },
+        decodeFormState,
       });
     } catch (e) {
       const info = getErrorInfo(e);

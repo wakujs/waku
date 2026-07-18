@@ -196,7 +196,6 @@ The `input` argument is one of the following shapes:
 | ------------ | -------------------------------------------------------------------- | ---------------------- |
 | `component`  | RSC payload fetches initiated by `Root` or `useRefetch`              | `rscPath`, `rscParams` |
 | `function`   | Server function calls                                                | `fn`, `args`           |
-| `action`     | Server action submissions                                            | `fn`                   |
 | `custom`     | Ordinary HTTP requests such as document requests or custom endpoints | none                   |
 
 Every input also includes:
@@ -239,22 +238,6 @@ if (input.type === 'function') {
 }
 ```
 
-`action` requests often re-render HTML and pass `formState`:
-
-```tsx
-if (input.type === 'action' && input.pathname === '/') {
-  const formState = await input.fn();
-  return renderHtml(
-    await renderRsc({ App: <App name="Waku" /> }),
-    <Slot id="App" />,
-    {
-      rscPath: '',
-      formState,
-    },
-  );
-}
-```
-
 `custom` requests are where you implement document rendering and custom endpoints:
 
 ```tsx
@@ -273,12 +256,14 @@ if (input.type === 'custom' && input.pathname === '/api/hello') {
 
 The `utils` argument provides these helpers:
 
-| Utility                                     | Purpose                                                                                                                          |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `renderRsc(elements, options?)`             | Render an RSC payload as a `ReadableStream`. Object keys become RSC IDs; use `options.value` for a server function result.       |
-| `parseRsc(stream)`                          | Parse an RSC stream back into an elements object. Useful when you need to inspect an RSC payload rather than stream it directly. |
-| `renderHtml(elementsStream, html, options)` | Render the full HTML response that boots the client.                                                                             |
-| `loadBuildMetadata(key)`                    | Read metadata saved during `handleBuild`.                                                                                        |
+| Utility                                     | Purpose                                                                                                                                                                                          |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `renderRsc(elements, options?)`             | Render an RSC payload as a `ReadableStream`. Object keys become RSC IDs; use `options.value` for a server function result.                                                                       |
+| `parseRsc(stream)`                          | Parse an RSC stream back into an elements object. Useful when you need to inspect an RSC payload rather than stream it directly.                                                                 |
+| `renderHtml(elementsStream, html, options)` | Render the full HTML response that boots the client.                                                                                                                                             |
+| `loadBuildMetadata(key)`                    | Read metadata saved during `handleBuild`.                                                                                                                                                        |
+| `decodeAction(formData)`                    | Decode a no-JS server action submission from multipart form data; resolves the action to invoke, or `null` when the form data contains no server action reference. Validates the request origin. |
+| `decodeFormState(result, formData)`         | Derive the `useActionState` form state from an action result, for passing to `renderHtml`.                                                                                                       |
 
 `handleRequest` may return any of the following:
 
@@ -573,14 +558,33 @@ if (input.type === 'function') {
 
 #### Server actions with progressive enhancement
 
-Server actions often return HTML rather than a bare RSC payload so that the same flow works with or without JavaScript:
+A form submitted without JavaScript arrives as an ordinary multipart `POST`
+on the `custom` path, with an untouched, streamable body. When your handler
+decides the request is a form submission, decode it with the utils:
+`decodeAction` resolves the server action to invoke, or `null` when the
+form data contains no server action reference (a plain HTML form or a
+crawler), and `decodeFormState` derives the `useActionState` state from the
+action result. Render the response directly, as in traditional HTTP: the
+submission stays a single round trip and the returned state renders without
+JavaScript, matching React's behavior. `useActionState` permalinks need no
+special handling.
 
 ```tsx
-if (
-  (input.type === 'action' || input.type === 'custom') &&
-  input.pathname === '/'
-) {
-  const formState = input.type === 'action' ? await input.fn() : undefined;
+if (input.type === 'custom' && input.pathname === '/') {
+  let formState;
+  if (
+    input.req.method === 'POST' &&
+    input.req.headers.get('content-type')?.startsWith('multipart/form-data')
+  ) {
+    const formData = await input.req.formData();
+    const action = await decodeAction(formData);
+    if (action) {
+      formState = await decodeFormState(await action(), formData);
+    } else {
+      // an ordinary multipart form: treat it like any custom POST
+      await handlePost(formData);
+    }
+  }
   return renderHtml(
     await renderRsc({ App: <App name="Waku" /> }),
     <Slot id="App" />,

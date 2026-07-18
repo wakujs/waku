@@ -85,6 +85,8 @@ const drive = async (
       parseRsc: vi.fn(),
       renderHtml: vi.fn(),
       loadBuildMetadata: vi.fn(),
+      decodeAction: vi.fn(async () => null),
+      decodeFormState: vi.fn(async () => undefined),
     },
   );
   return captured;

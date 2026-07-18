@@ -56,6 +56,8 @@ const callHandleRequest = (
       parseRsc: vi.fn(),
       renderHtml: vi.fn().mockResolvedValue(new Response('ok')),
       loadBuildMetadata: vi.fn(),
+      decodeAction: vi.fn(async () => null),
+      decodeFormState: vi.fn(async () => undefined),
     },
   );
 
