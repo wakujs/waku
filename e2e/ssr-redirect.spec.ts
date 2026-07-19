@@ -83,8 +83,20 @@ test.describe(`ssr-redirect`, () => {
     if (testInfo.status !== testInfo.expectedStatus) {
       const summary = await page.evaluate(() => {
         const scripts = [...document.scripts].map((el) => el.textContent || '');
-        const rows = scripts.filter((t) => t.includes('__FLIGHT_DATA'));
+        const rows = scripts.filter((t) =>
+          t.trimStart().startsWith('(self.__FLIGHT_DATA'),
+        );
+        const rowKinds = rows.map((t) => {
+          const m = t.match(/push\("(.*)"\)/s);
+          const text = m ? m[1]!.replace(/\\n/g, '\n') : '';
+          return text
+            .split('\n')
+            .map((line) => (line.match(/^([0-9a-f]+:.)/) || [])[1])
+            .filter((kind) => kind !== undefined)
+            .join(' ');
+        });
         return {
+          rowKinds,
           bodyChildren: [...document.body.children].map(
             (el) =>
               `${el.tagName.toLowerCase()}:${(el.textContent || '').length}`,
@@ -119,7 +131,7 @@ test.describe(`ssr-redirect`, () => {
       const flightRows = await page.evaluate(() =>
         [...document.scripts]
           .map((el) => el.textContent || '')
-          .filter((text) => text.includes('__FLIGHT_DATA'))
+          .filter((text) => text.trimStart().startsWith('(self.__FLIGHT_DATA'))
           .join('\n---\n'),
       );
       await testInfo.attach('flight-rows', { body: flightRows });
