@@ -114,6 +114,26 @@ test.describe(`ssr-redirect`, () => {
             .__diagFetches,
         };
       });
+      const recovery = await page.evaluate(async () => {
+        const g = globalThis as unknown as {
+          __WAKU_REFETCH_ROUTE__?: () => void;
+          __WAKU_RSC_RELOAD_LISTENERS__?: unknown[];
+        };
+        const before = {
+          refetchRoute: typeof g.__WAKU_REFETCH_ROUTE__,
+          listeners: g.__WAKU_RSC_RELOAD_LISTENERS__?.length ?? 0,
+        };
+        g.__WAKU_REFETCH_ROUTE__?.();
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        return {
+          ...before,
+          headingAfterRefetch:
+            document.querySelector('h1')?.textContent ?? null,
+        };
+      });
+      await testInfo.attach('recovery-probe', {
+        body: JSON.stringify(recovery),
+      });
       const stillPending = [...pendingRequests.entries()]
         .filter(([, state]) => !state.startsWith('done'))
         .map(([url, state]) => `${state} ${url}`);
