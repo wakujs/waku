@@ -111,7 +111,7 @@ export default adapter({
     if (input.type === 'rsc') {
       return renderRsc({ App: <App /> });
     }
-    if (input.type === 'custom' && input.pathname === '/') {
+    if (input.type === 'http' && input.pathname === '/') {
       const nonce = generateNonce();
       const response = await renderHtml(
         await renderRsc({ App: <App /> }),
