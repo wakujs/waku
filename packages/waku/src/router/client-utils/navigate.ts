@@ -29,14 +29,10 @@ export const getRouteUrl = (route: RouteProps): URL => {
   return nextUrl;
 };
 
-export const isSameRoute = (
-  next: RouteProps,
-  prev: RouteProps,
-  ignoreHash?: boolean,
-) =>
+export const isSameRoute = (next: RouteProps, prev: RouteProps) =>
   next.path === prev.path &&
   next.query === prev.query &&
-  (!!ignoreHash || next.hash === prev.hash);
+  next.hash === prev.hash;
 
 export const parseRedirectUrl = (location: string, base: string | URL) => {
   const url = new URL(location, base);

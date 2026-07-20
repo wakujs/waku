@@ -162,7 +162,7 @@ export function rscDevtoolsPlugin(): Plugin {
       };
 
       return () => {
-        server.middlewares.use((req, _res, next) => {
+        server.middlewares.use((req, res, next) => {
           const clientDebugId = req.headers[DEBUG_ID_HEADER.toLowerCase()];
           const hasClientDebugId = typeof clientDebugId === 'string';
           const isHtmlRequest = req.headers.accept?.includes('text/html');
@@ -178,6 +178,13 @@ export function rscDevtoolsPlugin(): Plugin {
             setRequestHeader(req, DEBUG_ID_HEADER, debugId);
           }
           registerDebugChannel(debugId);
+          res.on('close', () => {
+            const session = sessions.get(debugId);
+            if (session) {
+              session.ended = true;
+              cleanupIfEnded(debugId, session);
+            }
+          });
           next();
         });
       };

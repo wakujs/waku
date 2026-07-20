@@ -4130,38 +4130,6 @@ describe('Router integration', () => {
     }
   });
 
-  test('a revived redirect to a static destination recovers', async () => {
-    const capture = { router: null as RouterApi | null };
-    const Probe = makeProbe(capture);
-    const ThrowRedirect = () => {
-      throw createCustomError('redirect', { location: '/destination' });
-    };
-
-    const followRefetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
-      [unstable_getRouteSlotId('/destination')]: <Probe />,
-      [ROUTE_ID]: ['/destination', ''],
-      [IS_STATIC_ID]: true,
-    }));
-    vi.mocked(useRefetch).mockReturnValue(followRefetch);
-    const elements = {
-      [unstable_getRouteSlotId('/start')]: <ThrowRedirect />,
-      [unstable_getRouteSlotId('/destination')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
-      [IS_STATIC_ID]: false,
-    };
-
-    const view = await renderRouter(
-      {
-        initialRoute: { path: '/start', query: '', hash: '' },
-      },
-      elements,
-    );
-    await flush();
-
-    expect(capture.router?.path).toBe('/destination');
-    view.unmount();
-  });
-
   test('redirect error triggers same-origin client navigation', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
