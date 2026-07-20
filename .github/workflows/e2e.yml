@@ -81,19 +81,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shared: [1, 2, 3, 4]
+        # TEMPORARY while hunting the macOS flake: only the shard that
+        # carries the flaky revival tests, on macOS only. Revert before merge.
+        shared: [1]
         shardTotal: [4]
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        version: [26.0.0, 24.0.0, 22.15.0]
-        exclude:
-          - os: macos-latest
-            version: 24.0.0
-          - os: windows-latest
-            version: 24.0.0
-          - os: macos-latest
-            version: 22.15.0
-          - os: windows-latest
-            version: 22.15.0
+        os: [macos-latest]
+        version: [26.0.0]
 
     runs-on: ${{ matrix.os }}
     steps:
