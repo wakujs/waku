@@ -757,6 +757,11 @@ const FollowError = ({
     // ensure a single re-fetch per error on StrictMode
     // https://github.com/wakujs/waku/pull/1512
     if (handledErrorSet.has(error as object)) {
+      if (isSameRoute(route, targetRef.current)) {
+        // the follow committed before this instance mounted
+        targetRef.current = undefined;
+        reset();
+      }
       return;
     }
     handledErrorSet.add(error as object);
@@ -779,7 +784,7 @@ const FollowError = ({
         handledErrorSet.delete(error as object);
         console.log('Error while following the error:', err);
       });
-  }, [error, has404, reset, changeRoute, handledErrorSet]);
+  }, [error, has404, route, reset, changeRoute, handledErrorSet]);
   const info = getErrorInfo(error);
   return info?.status === 404 && !has404 ? <h1>Not Found</h1> : null;
 };
