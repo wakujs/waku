@@ -153,19 +153,28 @@ describe('react debug channel', () => {
     ]);
   });
 
-  test('plugin injects the initial html debug id and buffers until ready', async () => {
-    const { hotListeners, sent, middleware } = await setupPlugin();
-
+  test('plugin registers nothing for an html request', async () => {
+    const { middleware } = await setupPlugin();
     const req: Req = {
       headers: { accept: 'text/html' },
       rawHeaders: ['Accept', 'text/html'],
     };
     middleware(req, makeRes(), () => {});
+    expect(req.headers[DEBUG_ID_HEADER.toLowerCase()]).toBeUndefined();
+    expect(
+      ((globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<string, unknown>)
+        ?.size ?? 0,
+    ).toBe(0);
+  });
 
-    const debugId = req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
-    expect(typeof debugId).toBe('string');
-    expect(req.rawHeaders).toContain(DEBUG_ID_HEADER);
-    expect(req.rawHeaders).toContain(debugId);
+  test('plugin buffers a client session until ready', async () => {
+    const { hotListeners, sent, middleware } = await setupPlugin();
+
+    const debugId = 'test-debug-id';
+    const req: Req = {
+      headers: { [DEBUG_ID_HEADER.toLowerCase()]: debugId },
+    };
+    middleware(req, makeRes(), () => {});
 
     const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
       string,
@@ -220,13 +229,11 @@ describe('react debug channel', () => {
 
   test('plugin flushes buffered initial chunks even if ready arrives after server close', async () => {
     const { hotListeners, sent, middleware } = await setupPlugin();
+    const debugId = 'test-debug-id';
     const req: Req = {
-      headers: { accept: 'text/html' },
-      rawHeaders: ['Accept', 'text/html'],
+      headers: { [DEBUG_ID_HEADER.toLowerCase()]: debugId },
     };
     middleware(req, makeRes(), () => {});
-
-    const debugId = req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
     const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
       string,
       {
@@ -262,13 +269,11 @@ describe('react debug channel', () => {
 
   test('plugin sends done immediately when stream closes after ready', async () => {
     const { hotListeners, sent, middleware } = await setupPlugin();
+    const debugId = 'test-debug-id';
     const req: Req = {
-      headers: { accept: 'text/html' },
-      rawHeaders: ['Accept', 'text/html'],
+      headers: { [DEBUG_ID_HEADER.toLowerCase()]: debugId },
     };
     middleware(req, makeRes(), () => {});
-
-    const debugId = req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
     const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
       string,
       {
@@ -297,14 +302,12 @@ describe('react debug channel', () => {
 
   test('the response closing concludes a session whose writable never closes', async () => {
     const { hotListeners, sent, middleware } = await setupPlugin();
+    const debugId = 'test-debug-id';
     const req: Req = {
-      headers: { accept: 'text/html' },
-      rawHeaders: ['Accept', 'text/html'],
+      headers: { [DEBUG_ID_HEADER.toLowerCase()]: debugId },
     };
     const res = makeRes();
     middleware(req, res, () => {});
-
-    const debugId = req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
     const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
       string,
       { writable?: WritableStream<Uint8Array> }

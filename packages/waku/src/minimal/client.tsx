@@ -321,7 +321,7 @@ const fetchRscElements = (
   const initial = consumeInitialRscEntry();
   const baseFetchFn = getFetchFn();
   const debug = import.meta.hot
-    ? setupDebugChannel(baseFetchFn, !!initial, initial?.debugId)
+    ? setupDebugChannel(baseFetchFn, !!initial)
     : undefined;
   const fetchFn = debug?.fetchFn || baseFetchFn;
   const temporaryReferences = createTemporaryReferenceSet();
