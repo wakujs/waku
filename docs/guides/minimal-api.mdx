@@ -243,7 +243,10 @@ the input carries `tryAction`. Calling it consumes the request body
 and resolves `{ action: true, formState }` for a decoded server action, or
 `{ action: false, formData }` with the parsed form data when the body
 contains no server action reference (a plain HTML form or a crawler) —
-route that to your ordinary `POST` handling. Requests without
+route that to your ordinary `POST` handling. `tryAction` is memoized, so
+calling it again returns the same result, and it rejects cross-origin
+requests only when they carry an action reference: an ordinary
+cross-origin form post is delivered as form data. Requests without
 `tryAction` cannot be action submissions, and their body stays
 untouched unless you read it:
 

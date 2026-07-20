@@ -105,27 +105,82 @@ describe('getInput server action request validation', () => {
     expect(input.type).toBe('call');
   });
 
-  it('rejects cross-origin form action requests', async () => {
+  it('delivers cross-origin multipart posts without an action reference', async () => {
     const formData = new FormData();
     formData.set('key', 'value');
 
-    await expect(
-      getStatus(
-        getInput(
-          new Request('https://app.test/', {
-            method: 'POST',
-            body: formData,
-            headers: { origin: 'https://evil.test' },
-          }),
-          makeConfig(),
-          undefined,
-          vi.fn(),
-          vi.fn(),
-          vi.fn(),
-          vi.fn(),
-        ),
-      ),
-    ).resolves.toBe(403);
+    const input = await getInput(
+      new Request('https://app.test/', {
+        method: 'POST',
+        body: formData,
+        headers: { origin: 'https://evil.test' },
+      }),
+      makeConfig(),
+      undefined,
+      vi.fn(),
+      vi.fn().mockResolvedValue(null),
+      vi.fn(),
+      vi.fn(),
+    );
+
+    if (input.type !== 'http') {
+      throw new Error('unreachable');
+    }
+    await expect(input.tryAction!()).resolves.toMatchObject({ action: false });
+  });
+
+  it('rejects cross-origin posts only when an action is decoded', async () => {
+    const formData = new FormData();
+    formData.set('key', 'value');
+    const decodedAction = vi.fn();
+
+    const input = await getInput(
+      new Request('https://app.test/', {
+        method: 'POST',
+        body: formData,
+        headers: { origin: 'https://evil.test' },
+      }),
+      makeConfig(),
+      undefined,
+      vi.fn(),
+      vi.fn().mockResolvedValue(decodedAction),
+      vi.fn(),
+      vi.fn(),
+    );
+
+    if (input.type !== 'http') {
+      throw new Error('unreachable');
+    }
+    await expect(getStatus(input.tryAction!())).resolves.toBe(403);
+    expect(decodedAction).not.toHaveBeenCalled();
+  });
+
+  it('memoizes tryAction across calls', async () => {
+    const formData = new FormData();
+    formData.set('key', 'value');
+    const decodeAction = vi.fn().mockResolvedValue(null);
+
+    const input = await getInput(
+      new Request('https://app.test/', {
+        method: 'POST',
+        body: formData,
+        headers: { origin: 'https://app.test' },
+      }),
+      makeConfig(),
+      undefined,
+      vi.fn(),
+      decodeAction,
+      vi.fn(),
+      vi.fn(),
+    );
+
+    if (input.type !== 'http') {
+      throw new Error('unreachable');
+    }
+    const first = input.tryAction!();
+    expect(input.tryAction!()).toBe(first);
+    await first;
+    expect(decodeAction).toHaveBeenCalledTimes(1);
   });
 
   it('resolves form action requests without an action reference as form data', async () => {

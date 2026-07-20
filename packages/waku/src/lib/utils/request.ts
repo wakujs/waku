@@ -72,19 +72,26 @@ export async function getInput(
       contentType.startsWith('multipart/form-data')
     ) {
       // possibly a no-js server action submission (progressive enhancement)
-      validateServerActionRequest(req);
+      let parsing:
+        | Promise<
+            | { action: true; formState: unknown }
+            | { action: false; formData: FormData }
+          >
+        | undefined;
       input = {
         type: 'http',
-        tryAction: async () => {
-          const formData = (await getActionBody(req)) as FormData;
-          const decodedAction = await decodeAction(formData);
-          if (typeof decodedAction !== 'function') {
-            return { action: false as const, formData };
-          }
-          const result = await decodedAction();
-          const formState = await decodeFormState(result, formData);
-          return { action: true as const, formState };
-        },
+        tryAction: () =>
+          (parsing ??= (async () => {
+            const formData = (await getActionBody(req)) as FormData;
+            const decodedAction = await decodeAction(formData);
+            if (typeof decodedAction !== 'function') {
+              return { action: false as const, formData };
+            }
+            validateServerActionRequest(req);
+            const result = await decodedAction();
+            const formState = await decodeFormState(result, formData);
+            return { action: true as const, formState };
+          })()),
         pathname,
         req,
         etags,
