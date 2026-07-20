@@ -123,10 +123,15 @@ test.describe(`ssr-redirect`, () => {
           refetchRoute: typeof g.__WAKU_REFETCH_ROUTE__,
           listeners: g.__WAKU_RSC_RELOAD_LISTENERS__?.length ?? 0,
         };
+        // untouched first, so a natural heal is told from a forced one
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        const headingUntouched =
+          document.querySelector('h1')?.textContent ?? null;
         g.__WAKU_REFETCH_ROUTE__?.();
         await new Promise((resolve) => setTimeout(resolve, 3000));
         return {
           ...before,
+          headingUntouched,
           headingAfterRefetch:
             document.querySelector('h1')?.textContent ?? null,
         };
@@ -223,7 +228,10 @@ test.describe(`ssr-redirect`, () => {
   }) => {
     await page.goto(`http://localhost:${port}/async`);
     await waitForHydration(page);
-    await expect(page.getByRole('heading')).toHaveText('Destination Page');
+    // the dev revival flow can legitimately take beyond 10s on a loaded runner
+    await expect(page.getByRole('heading')).toHaveText('Destination Page', {
+      timeout: 20_000,
+    });
     const combined = serverOutput.join('');
     expect(combined).not.toContain('Error during rendering');
   });

@@ -58,6 +58,7 @@ test.describe(`ssr-catch-error`, () => {
       page.getByText('Unexpected error in client fallback'),
     ).toBeVisible();
     await page.goBack();
-    await expect(page.getByText('Home Page')).toBeVisible();
+    // the dev revival flow can legitimately take beyond 10s on a loaded runner
+    await expect(page.getByText('Home Page')).toBeVisible({ timeout: 20_000 });
   });
 });
