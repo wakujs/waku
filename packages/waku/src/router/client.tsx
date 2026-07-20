@@ -735,11 +735,6 @@ const FollowError = ({
     }
   }, [route, reset]);
   useEffect(() => {
-    // ensure a single re-fetch per error on StrictMode
-    // https://github.com/wakujs/waku/pull/1512
-    if (handledErrorSet.has(error as object)) {
-      return;
-    }
     const info = getErrorInfo(error);
     const url = info?.location
       ? parseRedirectUrl(info.location, window.location.href)
@@ -749,13 +744,23 @@ const FollowError = ({
     if (!url) {
       return;
     }
-    handledErrorSet.add(error as object);
     if (url.origin !== window.location.origin) {
-      window.location.replace(url.href);
+      if (!handledErrorSet.has(error as object)) {
+        handledErrorSet.add(error as object);
+        window.location.replace(url.href);
+      }
       return;
     }
-    const target = parseRoute(url);
-    targetRef.current = target;
+    // arm the arrival reset even when another instance already follows this
+    // error, since hydration recovery can remount the boundary mid follow
+    targetRef.current = parseRoute(url);
+    // ensure a single re-fetch per error on StrictMode
+    // https://github.com/wakujs/waku/pull/1512
+    if (handledErrorSet.has(error as object)) {
+      return;
+    }
+    handledErrorSet.add(error as object);
+    const target = targetRef.current;
     changeRoute(
       target,
       info?.location
