@@ -728,6 +728,7 @@ const FollowError = ({
 }) => {
   const { route, changeRoute } = useRouterOrThrow();
   const targetRef = useRef<RouteProps>(undefined);
+  const startedRef = useRef(false);
   useEffect(() => {
     if (targetRef.current && isSameRoute(route, targetRef.current)) {
       targetRef.current = undefined;
@@ -735,11 +736,6 @@ const FollowError = ({
     }
   }, [route, reset]);
   useEffect(() => {
-    // ensure a single re-fetch per error on StrictMode
-    // https://github.com/wakujs/waku/pull/1512
-    if (handledErrorSet.has(error as object)) {
-      return;
-    }
     const info = getErrorInfo(error);
     const url = info?.location
       ? parseRedirectUrl(info.location, window.location.href)
@@ -749,13 +745,29 @@ const FollowError = ({
     if (!url) {
       return;
     }
-    handledErrorSet.add(error as object);
     if (url.origin !== window.location.origin) {
-      window.location.replace(url.href);
+      if (!handledErrorSet.has(error as object)) {
+        handledErrorSet.add(error as object);
+        window.location.replace(url.href);
+      }
       return;
     }
-    const target = parseRoute(url);
-    targetRef.current = target;
+    // arm the arrival reset even when another instance already follows this
+    // error, since hydration recovery can remount the boundary mid follow
+    targetRef.current = parseRoute(url);
+    // ensure a single re-fetch per error on StrictMode
+    // https://github.com/wakujs/waku/pull/1512
+    if (startedRef.current || handledErrorSet.has(error as object)) {
+      if (isSameRoute(route, targetRef.current)) {
+        // the follow committed before this instance mounted
+        targetRef.current = undefined;
+        reset();
+      }
+      return;
+    }
+    startedRef.current = true;
+    handledErrorSet.add(error as object);
+    const target = targetRef.current;
     changeRoute(
       target,
       info?.location
@@ -774,7 +786,7 @@ const FollowError = ({
         handledErrorSet.delete(error as object);
         console.log('Error while following the error:', err);
       });
-  }, [error, has404, reset, changeRoute, handledErrorSet]);
+  }, [error, has404, route, reset, changeRoute, handledErrorSet]);
   const info = getErrorInfo(error);
   return info?.status === 404 && !has404 ? <h1>Not Found</h1> : null;
 };
