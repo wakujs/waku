@@ -116,11 +116,13 @@ const createWsDebugChannel = (debugId: string) => {
 export const setupDebugChannel = (
   baseFetchFn: typeof fetch,
   prefetched: boolean,
+  debugId?: string,
 ) => {
   if (prefetched) {
-    // An initial entry's debug session belongs to the server render, which
-    // may have aborted without concluding the session, and a channel that
-    // never concludes starves React's row resolution. No channel here.
+    if (debugId) {
+      const debugChannel = createWsDebugChannel(debugId);
+      return { debugChannel };
+    }
     return {};
   }
 

@@ -8,14 +8,6 @@ import { rscDevtoolsPlugin } from '../src/lib/vite-plugins/rsc-devtools.js';
 
 const enc = new TextEncoder();
 
-const makeRes = () => {
-  const listeners = new Map<string, () => void>();
-  return {
-    on: (event: string, cb: () => void) => listeners.set(event, cb),
-    emitClose: () => listeners.get('close')?.(),
-  };
-};
-
 const wait = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 type Middleware = (
@@ -131,7 +123,7 @@ describe('react debug channel', () => {
         'text/x-component',
       ],
     };
-    middleware(req, makeRes(), () => {});
+    middleware(req, {}, () => {});
 
     const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
       string,
@@ -153,28 +145,19 @@ describe('react debug channel', () => {
     ]);
   });
 
-  test('plugin registers nothing for an html request', async () => {
-    const { middleware } = await setupPlugin();
+  test('plugin injects the initial html debug id and buffers until ready', async () => {
+    const { hotListeners, sent, middleware } = await setupPlugin();
+
     const req: Req = {
       headers: { accept: 'text/html' },
       rawHeaders: ['Accept', 'text/html'],
     };
-    middleware(req, makeRes(), () => {});
-    expect(req.headers[DEBUG_ID_HEADER.toLowerCase()]).toBeUndefined();
-    expect(
-      ((globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<string, unknown>)
-        ?.size ?? 0,
-    ).toBe(0);
-  });
+    middleware(req, {}, () => {});
 
-  test('plugin buffers a client session until ready', async () => {
-    const { hotListeners, sent, middleware } = await setupPlugin();
-
-    const debugId = 'test-debug-id';
-    const req: Req = {
-      headers: { [DEBUG_ID_HEADER.toLowerCase()]: debugId },
-    };
-    middleware(req, makeRes(), () => {});
+    const debugId = req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
+    expect(typeof debugId).toBe('string');
+    expect(req.rawHeaders).toContain(DEBUG_ID_HEADER);
+    expect(req.rawHeaders).toContain(debugId);
 
     const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
       string,
@@ -229,11 +212,13 @@ describe('react debug channel', () => {
 
   test('plugin flushes buffered initial chunks even if ready arrives after server close', async () => {
     const { hotListeners, sent, middleware } = await setupPlugin();
-    const debugId = 'test-debug-id';
     const req: Req = {
-      headers: { [DEBUG_ID_HEADER.toLowerCase()]: debugId },
+      headers: { accept: 'text/html' },
+      rawHeaders: ['Accept', 'text/html'],
     };
-    middleware(req, makeRes(), () => {});
+    middleware(req, {}, () => {});
+
+    const debugId = req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
     const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
       string,
       {
@@ -269,11 +254,13 @@ describe('react debug channel', () => {
 
   test('plugin sends done immediately when stream closes after ready', async () => {
     const { hotListeners, sent, middleware } = await setupPlugin();
-    const debugId = 'test-debug-id';
     const req: Req = {
-      headers: { [DEBUG_ID_HEADER.toLowerCase()]: debugId },
+      headers: { accept: 'text/html' },
+      rawHeaders: ['Accept', 'text/html'],
     };
-    middleware(req, makeRes(), () => {});
+    middleware(req, {}, () => {});
+
+    const debugId = req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
     const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
       string,
       {
@@ -297,33 +284,6 @@ describe('react debug channel', () => {
         event: DEBUG_DATA_EVENT,
         data: { i: debugId, d: true },
       },
-    ]);
-  });
-
-  test('the response closing concludes a session whose writable never closes', async () => {
-    const { hotListeners, sent, middleware } = await setupPlugin();
-    const debugId = 'test-debug-id';
-    const req: Req = {
-      headers: { [DEBUG_ID_HEADER.toLowerCase()]: debugId },
-    };
-    const res = makeRes();
-    middleware(req, res, () => {});
-    const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
-      string,
-      { writable?: WritableStream<Uint8Array> }
-    >;
-    const writer = channels.get(debugId)!.writable!.getWriter();
-    await writer.write(enc.encode('reply'));
-    // the render aborted, so the writable is never closed; the response ends
-    res.emitClose();
-    await wait();
-    expect(sent).toEqual([]);
-
-    hotListeners.get(DEBUG_CMD_EVENT)?.({ i: debugId });
-    await wait();
-    expect(sent).toEqual([
-      { event: DEBUG_DATA_EVENT, data: { i: debugId, b: btoa('reply') } },
-      { event: DEBUG_DATA_EVENT, data: { i: debugId, d: true } },
     ]);
   });
 });

@@ -11,6 +11,28 @@ import {
 const getDebugChannels = () =>
   (globalThis.__WAKU_DEBUG_CHANNELS__ ||= new Map());
 
+const setRequestHeader = (
+  req: {
+    headers: Record<string, string | string[] | undefined>;
+    rawHeaders?: string[];
+  },
+  name: string,
+  value: string,
+) => {
+  const lowerName = name.toLowerCase();
+  req.headers[lowerName] = value;
+  if (!req.rawHeaders) {
+    return;
+  }
+  for (let i = 0; i < req.rawHeaders.length; i += 2) {
+    if (req.rawHeaders[i]?.toLowerCase() === lowerName) {
+      req.rawHeaders[i + 1] = value;
+      return;
+    }
+  }
+  req.rawHeaders.push(name, value);
+};
+
 type Session = {
   pendingChunks?: Uint8Array[];
   ended: boolean;
@@ -140,18 +162,22 @@ export function rscDevtoolsPlugin(): Plugin {
       };
 
       return () => {
-        server.middlewares.use((req, res, next) => {
-          const debugId = req.headers[DEBUG_ID_HEADER.toLowerCase()];
-          if (typeof debugId === 'string') {
-            registerDebugChannel(debugId);
-            res.on('close', () => {
-              const session = sessions.get(debugId);
-              if (session) {
-                session.ended = true;
-                cleanupIfEnded(debugId, session);
-              }
-            });
+        server.middlewares.use((req, _res, next) => {
+          const clientDebugId = req.headers[DEBUG_ID_HEADER.toLowerCase()];
+          const hasClientDebugId = typeof clientDebugId === 'string';
+          const isHtmlRequest = req.headers.accept?.includes('text/html');
+          if (!hasClientDebugId && !isHtmlRequest) {
+            next();
+            return;
           }
+
+          const debugId = hasClientDebugId
+            ? clientDebugId
+            : crypto.randomUUID();
+          if (!hasClientDebugId) {
+            setRequestHeader(req, DEBUG_ID_HEADER, debugId);
+          }
+          registerDebugChannel(debugId);
           next();
         });
       };

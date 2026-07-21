@@ -735,6 +735,11 @@ const FollowError = ({
     }
   }, [route, reset]);
   useEffect(() => {
+    // ensure a single re-fetch per error on StrictMode
+    // https://github.com/wakujs/waku/pull/1512
+    if (handledErrorSet.has(error as object)) {
+      return;
+    }
     const info = getErrorInfo(error);
     const url = info?.location
       ? parseRedirectUrl(info.location, window.location.href)
@@ -744,28 +749,13 @@ const FollowError = ({
     if (!url) {
       return;
     }
-    if (url.origin !== window.location.origin) {
-      if (!handledErrorSet.has(error as object)) {
-        handledErrorSet.add(error as object);
-        window.location.replace(url.href);
-      }
-      return;
-    }
-    // arm the arrival reset even when another instance already follows this
-    // error, since hydration recovery can remount the boundary mid follow
-    targetRef.current = parseRoute(url);
-    // ensure a single re-fetch per error on StrictMode
-    // https://github.com/wakujs/waku/pull/1512
-    if (handledErrorSet.has(error as object)) {
-      if (isSameRoute(route, targetRef.current)) {
-        // the follow committed before this instance mounted
-        targetRef.current = undefined;
-        reset();
-      }
-      return;
-    }
     handledErrorSet.add(error as object);
-    const target = targetRef.current;
+    if (url.origin !== window.location.origin) {
+      window.location.replace(url.href);
+      return;
+    }
+    const target = parseRoute(url);
+    targetRef.current = target;
     changeRoute(
       target,
       info?.location
@@ -784,7 +774,7 @@ const FollowError = ({
         handledErrorSet.delete(error as object);
         console.log('Error while following the error:', err);
       });
-  }, [error, has404, route, reset, changeRoute, handledErrorSet]);
+  }, [error, has404, reset, changeRoute, handledErrorSet]);
   const info = getErrorInfo(error);
   return info?.status === 404 && !has404 ? <h1>Not Found</h1> : null;
 };
