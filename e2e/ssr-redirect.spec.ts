@@ -70,10 +70,7 @@ test.describe(`ssr-redirect`, () => {
   }) => {
     await page.goto(`http://localhost:${port}/async`);
     await waitForHydration(page);
-    // the dev revival flow can legitimately take beyond 10s on a loaded runner
-    await expect(page.getByRole('heading')).toHaveText('Destination Page', {
-      timeout: 20_000,
-    });
+    await expect(page.getByRole('heading')).toHaveText('Destination Page');
     const combined = serverOutput.join('');
     expect(combined).not.toContain('Error during rendering');
   });
