@@ -22,12 +22,12 @@ import {
   getResolveSearchCodec,
   getRscParams,
   getRscPath,
-  runWithRouterContext,
+  runWithRouterStore,
   setNonce,
   setRerender,
   setRscParams,
   setRscPath,
-} from './define-router-utils/request-context.js';
+} from './define-router-utils/request-store.js';
 import { createTaskRunner } from './define-router-utils/task-runner.js';
 import { buildRouteHref } from './isomorphic-utils/build-route-href.js';
 import type {
@@ -520,7 +520,7 @@ export function unstable_defineRouter(fns: {
   unstable_interceptors?: HandlerInterceptor[];
 }) {
   const runHandled = <T,>(req: Request, fn: () => Promise<T>): Promise<T> =>
-    runWithRouterContext(
+    runWithRouterStore(
       { req, resolveSearchCodec },
       (fns.unstable_interceptors ?? []).reduceRight(
         (next, interceptor) => () => interceptor(next),

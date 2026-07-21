@@ -7,37 +7,37 @@ import {
   getResolveSearchCodec,
   getRscParams,
   getRscPath,
-  runWithRouterContext,
+  runWithRouterStore,
   setNonce,
   setRerender,
   setRscParams,
   setRscPath,
-} from '../src/router/define-router-utils/request-context.js';
+} from '../src/router/define-router-utils/request-store.js';
 
 const makeRequest = (url = 'http://localhost:3000/', init?: RequestInit) =>
   new Request(url, init);
 
-describe('request-context', () => {
-  it('getRequest throws outside a router context', () => {
+describe('request-store', () => {
+  it('getRequest throws outside a router store', () => {
     expect(() => getRequest()).toThrow('Request is not available.');
   });
 
-  it('getRequest returns the current request inside a context', () => {
+  it('getRequest returns the current request inside a store', () => {
     const req = makeRequest();
-    expect(runWithRouterContext({ req }, () => getRequest())).toBe(req);
+    expect(runWithRouterStore({ req }, () => getRequest())).toBe(req);
   });
 
   it('getHeaders reads the request headers as a plain object', () => {
     const req = makeRequest('http://localhost:3000/', {
       headers: { 'x-test': 'value' },
     });
-    const headers = runWithRouterContext({ req }, () => getHeaders());
+    const headers = runWithRouterStore({ req }, () => getHeaders());
     expect(headers['x-test']).toBe('value');
   });
 
-  it('nested async work sees the same request context', async () => {
+  it('nested async work sees the same request store', async () => {
     const req = makeRequest();
-    const seen = await runWithRouterContext({ req }, async () => {
+    const seen = await runWithRouterStore({ req }, async () => {
       await Promise.resolve();
       return (async () => {
         await Promise.resolve();
@@ -47,9 +47,9 @@ describe('request-context', () => {
     expect(seen).toBe(req);
   });
 
-  it('rsc path and params can be set and read within one context', () => {
+  it('rsc path and params can be set and read within one store', () => {
     const req = makeRequest();
-    const result = runWithRouterContext({ req }, () => {
+    const result = runWithRouterStore({ req }, () => {
       setRscPath('R/foo');
       setRscParams({ query: 'a=1' });
       return { rscPath: getRscPath(), rscParams: getRscParams() };
@@ -57,14 +57,14 @@ describe('request-context', () => {
     expect(result).toEqual({ rscPath: 'R/foo', rscParams: { query: 'a=1' } });
   });
 
-  it('rsc path and params are undefined without a context', () => {
+  it('rsc path and params are undefined without a store', () => {
     expect(getRscPath()).toBeUndefined();
     expect(getRscParams()).toBeUndefined();
   });
 
-  it('context state does not leak between two concurrent contexts', async () => {
+  it('store state does not leak between two concurrent stores', async () => {
     const run = (req: Request, path: string, delay: number) =>
-      runWithRouterContext({ req }, async () => {
+      runWithRouterStore({ req }, async () => {
         setRscPath(path);
         await new Promise((resolve) => setTimeout(resolve, delay));
         return getRscPath();
@@ -79,7 +79,7 @@ describe('request-context', () => {
 
   it('getRerender throws until a rerender is set, then returns it', () => {
     const req = makeRequest();
-    runWithRouterContext({ req }, () => {
+    runWithRouterStore({ req }, () => {
       expect(() => getRerender()).toThrow('Rerender is not available.');
       const rerender = vi.fn();
       setRerender(rerender);
@@ -88,25 +88,25 @@ describe('request-context', () => {
     });
   });
 
-  it('nonce round-trips within a context', () => {
+  it('nonce round-trips within a store', () => {
     const req = makeRequest();
-    const nonce = runWithRouterContext({ req }, () => {
+    const nonce = runWithRouterStore({ req }, () => {
       setNonce('nonce-1');
       return getNonce();
     });
     expect(nonce).toBe('nonce-1');
   });
 
-  it('getResolveSearchCodec returns the resolver provided to the context', () => {
+  it('getResolveSearchCodec returns the resolver provided to the store', () => {
     const req = makeRequest();
     const resolveSearchCodec = vi.fn(() => undefined);
-    const resolver = runWithRouterContext({ req, resolveSearchCodec }, () =>
+    const resolver = runWithRouterStore({ req, resolveSearchCodec }, () =>
       getResolveSearchCodec(),
     );
     expect(resolver).toBe(resolveSearchCodec);
   });
 
-  it('setters are no-ops outside a context', () => {
+  it('setters are no-ops outside a store', () => {
     expect(() => setRscPath('R/x')).not.toThrow();
     expect(() => setNonce('n')).not.toThrow();
     expect(getRscPath()).toBeUndefined();

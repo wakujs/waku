@@ -3,7 +3,7 @@ import type { Unstable_SearchCodec } from '../isomorphic-utils/search-codec-regi
 
 export type Rerender = (rscPath: string, rscParams?: unknown) => void;
 
-export type RouterContext = {
+export type RouterStore = {
   req: Request;
   rscPath?: string;
   rscParams?: unknown;
@@ -14,12 +14,10 @@ export type RouterContext = {
   ) => Unstable_SearchCodec<any> | undefined;
 };
 
-const routerStorage = new AsyncLocalStorage<RouterContext>();
+const routerStorage = new AsyncLocalStorage<RouterStore>();
 
-export const runWithRouterContext = <T>(
-  context: RouterContext,
-  fn: () => T,
-): T => routerStorage.run(context, fn);
+export const runWithRouterStore = <T>(store: RouterStore, fn: () => T): T =>
+  routerStorage.run(store, fn);
 
 /**
  * Access the request being handled. Available during a render, an API route
