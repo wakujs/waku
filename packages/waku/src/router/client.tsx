@@ -719,22 +719,14 @@ const FollowError = ({
   error,
   has404,
   reset,
-  handledErrorSet,
+  followPromiseMap,
 }: {
   error: unknown;
   has404: boolean;
   reset: () => void;
-  handledErrorSet: WeakSet<object>;
+  followPromiseMap: WeakMap<object, Promise<unknown>>;
 }) => {
-  const { route, changeRoute } = useRouterOrThrow();
-  const targetRef = useRef<RouteProps>(undefined);
-  const startedRef = useRef(false);
-  useEffect(() => {
-    if (targetRef.current && isSameRoute(route, targetRef.current)) {
-      targetRef.current = undefined;
-      reset();
-    }
-  }, [route, reset]);
+  const { changeRoute } = useRouterOrThrow();
   useEffect(() => {
     const info = getErrorInfo(error);
     const url = info?.location
@@ -745,48 +737,40 @@ const FollowError = ({
     if (!url) {
       return;
     }
+    // one follow per error, shared across StrictMode re-runs and across
+    // boundary instances replaced while the follow is in flight; reset rides
+    // the promise, so whichever instance is mounted when the follow lands
+    // gets unlatched
+    if (followPromiseMap.has(error as object)) {
+      return;
+    }
     if (url.origin !== window.location.origin) {
-      if (!handledErrorSet.has(error as object)) {
-        handledErrorSet.add(error as object);
-        window.location.replace(url.href);
-      }
+      followPromiseMap.set(error as object, Promise.resolve());
+      window.location.replace(url.href);
       return;
     }
-    // arm the arrival reset even when another instance already follows this
-    // error, since hydration recovery can remount the boundary mid follow
-    targetRef.current = parseRoute(url);
-    // ensure a single re-fetch per error on StrictMode
-    // https://github.com/wakujs/waku/pull/1512
-    if (startedRef.current || handledErrorSet.has(error as object)) {
-      if (isSameRoute(route, targetRef.current)) {
-        // the follow committed before this instance mounted
-        targetRef.current = undefined;
-        reset();
-      }
-      return;
-    }
-    startedRef.current = true;
-    handledErrorSet.add(error as object);
-    const target = targetRef.current;
-    changeRoute(
-      target,
-      info?.location
-        ? {
-            shouldScroll: url.pathname !== window.location.pathname,
-            mode: 'replace',
-            url,
-          }
-        : { shouldScroll: true },
-    )
-      .then(() => {
-        handledErrorSet.delete(error as object);
-      })
-      .catch((err) => {
-        targetRef.current = undefined;
-        handledErrorSet.delete(error as object);
-        console.log('Error while following the error:', err);
-      });
-  }, [error, has404, route, reset, changeRoute, handledErrorSet]);
+    followPromiseMap.set(
+      error as object,
+      changeRoute(
+        parseRoute(url),
+        info?.location
+          ? {
+              shouldScroll: url.pathname !== window.location.pathname,
+              mode: 'replace',
+              url,
+            }
+          : { shouldScroll: true },
+      )
+        .then(() => {
+          followPromiseMap.delete(error as object);
+          reset();
+        })
+        .catch((err) => {
+          followPromiseMap.delete(error as object);
+          console.log('Error while following the error:', err);
+        }),
+    );
+  }, [error, has404, reset, changeRoute, followPromiseMap]);
   const info = getErrorInfo(error);
   return info?.status === 404 && !has404 ? <h1>Not Found</h1> : null;
 };
@@ -795,7 +779,7 @@ class CustomErrorHandler extends Component<
   { has404: boolean; children?: ReactNode },
   { error: unknown | null }
 > {
-  private handledErrorSet = new WeakSet();
+  private followPromiseMap = new WeakMap<object, Promise<unknown>>();
   constructor(props: { has404: boolean; children?: ReactNode }) {
     super(props);
     this.state = { error: null };
@@ -817,7 +801,7 @@ class CustomErrorHandler extends Component<
             error={error}
             has404={this.props.has404}
             reset={this.reset}
-            handledErrorSet={this.handledErrorSet}
+            followPromiseMap={this.followPromiseMap}
           />
         );
       }
