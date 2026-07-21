@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import type { Unstable_SearchCodec } from '../create-pages-utils/inferred-path-types.js';
+import type { Unstable_SearchCodec } from '../isomorphic-utils/search-codec-registry.js';
 
 export type Rerender = (rscPath: string, rscParams?: unknown) => void;
 
