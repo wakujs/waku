@@ -25,7 +25,7 @@ export const ClientLayout = ({ children }: { children: ReactNode }) => {
   // re-catch a stale error kept in the elements cache and latch again before
   // the fresh navigation commits. Keying the boundary on the rendered route
   // resets it after each commit, which makes the recovery deterministic.
-  const { path } = useRouter();
+  const { path, query } = useRouter();
   return (
     <div>
       <ul>
@@ -39,13 +39,19 @@ export const ClientLayout = ({ children }: { children: ReactNode }) => {
           <Link to="/invalid">Invalid page</Link>
         </li>
         <li>
+          <Link to="/dynamic?fail=1">Invalid query</Link>
+        </li>
+        <li>
           <Link to="/suspense">/suspense</Link>
         </li>
         <li>
           <Link to="/no-error">/no-error</Link>
         </li>
       </ul>
-      <ErrorBoundary FallbackComponent={FallbackComponent} resetKeys={[path]}>
+      <ErrorBoundary
+        FallbackComponent={FallbackComponent}
+        resetKeys={[path, query]}
+      >
         {children}
       </ErrorBoundary>
     </div>
