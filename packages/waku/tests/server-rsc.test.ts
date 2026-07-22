@@ -43,9 +43,10 @@ vi.mock('react-server-dom-webpack/server.edge', () => ({
   renderToReadableStream: rsdwServer.renderToReadableStream,
 }));
 
-describe('waku/server RSC helpers', () => {
+describe('waku/rsc serialization helpers', () => {
   test('serializeRsc and deserializeRsc operate on one element', async () => {
-    const { deserializeRsc, serializeRsc } = await import('../src/server.js');
+    const { serializeRsc } = await import('../src/rsc/serialize.js');
+    const { deserializeRsc } = await import('../src/rsc/deserialize.js');
 
     const bytes = await serializeRsc('cached element');
     expect(decoder.decode(bytes)).toBe('cached element');

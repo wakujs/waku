@@ -291,11 +291,11 @@ if (input.type === 'http' && input.pathname === '/api/hello') {
 
 The `utils` argument provides these helpers:
 
-| Utility                                     | Purpose                                                                                                                          |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `renderRsc(elements, options?)`             | Render an RSC payload as a `ReadableStream`. Object keys become RSC IDs; use `options.value` for a server function result.       |
-| `renderHtml(elementsStream, html, options)` | Render the full HTML response that boots the client.                                                                             |
-| `loadBuildMetadata(key)`                    | Read metadata saved during `handleBuild`.                                                                                        |
+| Utility                                     | Purpose                                                                                                                    |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `renderRsc(elements, options?)`             | Render an RSC payload as a `ReadableStream`. Object keys become RSC IDs; use `options.value` for a server function result. |
+| `renderHtml(elementsStream, html, options)` | Render the full HTML response that boots the client.                                                                       |
+| `loadBuildMetadata(key)`                    | Read metadata saved during `handleBuild`.                                                                                  |
 
 `handleRequest` may return any of the following:
 
