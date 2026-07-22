@@ -568,6 +568,7 @@ export function unstable_defineRouter(fns: {
           const entries = await routeEntries.getEntriesForSlice(
             item.id,
             buildElementCache,
+            { sliceConfig: item },
           );
           if (!entries) {
             return;

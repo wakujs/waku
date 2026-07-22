@@ -226,4 +226,37 @@ describe('getEntriesForSlice', () => {
 
     expect(await routeEntries.getEntriesForSlice('nope', cache)).toBeNull();
   });
+
+  it('uses a preResolved config so an earlier pathSpec slice cannot shadow an exact static slice', async () => {
+    const dynamicRenderer = vi.fn(async () => 'DYNAMIC');
+    const staticRenderer = vi.fn(async () => 'STATIC');
+    const dynamicSlice = {
+      type: 'slice',
+      id: 'foo/dyn',
+      isStatic: false,
+      pathSpec: [
+        { type: 'literal', name: 'foo' },
+        { type: 'group', name: 'x' },
+      ],
+      renderer: dynamicRenderer,
+    } as unknown as RuntimeConfig;
+    const staticSlice = slice('foo/bar', {
+      isStatic: true,
+      renderer: staticRenderer,
+    });
+    // the slug slice precedes the exact static slice in config order
+    const { routeEntries, cache } = await setup([dynamicSlice, staticSlice]);
+
+    // resolving by id alone matches the earlier slug slice (the shadow)
+    await routeEntries.getEntriesForSlice('foo/bar', cache);
+    expect(dynamicRenderer).toHaveBeenCalledTimes(1);
+    expect(staticRenderer).not.toHaveBeenCalled();
+
+    // the build path passes the already-resolved static config instead
+    await routeEntries.getEntriesForSlice('foo/bar', createElementCache(), {
+      sliceConfig: staticSlice as never,
+    });
+    expect(staticRenderer).toHaveBeenCalledTimes(1);
+    expect(dynamicRenderer).toHaveBeenCalledTimes(1);
+  });
 });

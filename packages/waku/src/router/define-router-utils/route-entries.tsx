@@ -14,6 +14,7 @@ import type { ConfigRegistry } from './config-registry.js';
 import type {
   GetEtagFromParams,
   RendererOption,
+  SliceConfig,
   SlotId,
 } from './config-types.js';
 import {
@@ -193,8 +194,12 @@ export const createRouteEntries = (configRegistry: ConfigRegistry) => {
   const getEntriesForSlice = async (
     sliceId: string,
     elementCache: ElementCache,
+    preResolved?: {
+      sliceConfig: SliceConfig;
+      params?: Record<string, string | string[]>;
+    },
   ): Promise<RouteEntries | null> => {
-    const found = configRegistry.findSliceConfig(sliceId);
+    const found = preResolved ?? configRegistry.findSliceConfig(sliceId);
     if (!found) {
       return null;
     }
