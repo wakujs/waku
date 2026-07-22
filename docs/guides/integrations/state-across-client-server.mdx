@@ -78,6 +78,12 @@ export default async function Page() {
     </>
   );
 }
+
+export const getConfig = async () => {
+  return {
+    render: 'dynamic',
+  } as const;
+};
 ```
 
 For file-system-router apps, wrap the route tree with `RouterProvider`:
@@ -90,7 +96,15 @@ import { RouterProvider } from 'waku-jotai/router';
 export default function RootLayout({ children }: { children: ReactNode }) {
   return <RouterProvider>{children}</RouterProvider>;
 }
+
+export const getConfig = async () => {
+  return {
+    render: 'dynamic',
+  } as const;
+};
 ```
+
+Every page or layout that reads `getStore()` or mounts `RouterProvider` must render dynamically: the store is request-scoped and the atom values arrive with each RSC request, so a static render would bake in build-time values.
 
 If you use the Minimal API, use `Provider` and `getStore` from `waku-jotai/minimal`. Unlike `RouterProvider`, this `Provider` needs the RSC request identity as props:
 
