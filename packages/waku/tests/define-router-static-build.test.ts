@@ -424,7 +424,6 @@ describe('define-router handleBuild', () => {
 
     await handleBuild({
       renderRsc: () => Promise.resolve(makeStream()),
-      parseRsc: vi.fn().mockResolvedValue({}),
       renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
       rscPath2pathname: (rscPath: string) => `dist/${rscPath}.txt`,
       saveBuildMetadata: vi.fn(async (key: string, value: string) => {
