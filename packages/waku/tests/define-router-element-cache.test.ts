@@ -6,18 +6,15 @@ import {
   getSlotCacheId,
 } from '../src/router/define-router-utils/element-cache.js';
 import type { PathSpec } from '../src/router/isomorphic-utils/path-spec.js';
-import { serializeRsc } from '../src/rsc/serialize.js';
+import { serializeRsc } from '../src/server.js';
 
 // Reversible stand-ins so a round-trip through the cache is observable.
-vi.mock('../src/rsc/serialize.js', () => ({
-  serializeRsc: vi.fn(async (el: unknown) =>
-    new TextEncoder().encode(JSON.stringify(el)),
-  ),
-}));
-
-vi.mock('../src/rsc/deserialize.js', () => ({
+vi.mock('../src/server.js', () => ({
   deserializeRsc: vi.fn(async (bytes: Uint8Array) =>
     JSON.parse(new TextDecoder().decode(bytes)),
+  ),
+  serializeRsc: vi.fn(async (el: unknown) =>
+    new TextEncoder().encode(JSON.stringify(el)),
   ),
 }));
 

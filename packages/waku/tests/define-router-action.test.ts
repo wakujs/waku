@@ -10,12 +10,9 @@ import {
   encodeRoutePath,
 } from '../src/router/isomorphic-utils/route-path.js';
 
-vi.mock('../src/rsc/serialize.js', () => ({
-  serializeRsc: vi.fn().mockResolvedValue(new Uint8Array([1])),
-}));
-
-vi.mock('../src/rsc/deserialize.js', () => ({
+vi.mock('../src/server.js', () => ({
   deserializeRsc: vi.fn().mockResolvedValue(null),
+  serializeRsc: vi.fn().mockResolvedValue(new Uint8Array([1])),
 }));
 
 const makeStream = () =>

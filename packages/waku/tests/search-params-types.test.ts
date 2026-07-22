@@ -10,12 +10,9 @@ import { buildRouteHref } from '../src/router/isomorphic-utils/build-route-href.
 
 // define-router pulls in server.js (react-server-dom-webpack); mock it so this
 // pure type/codec test loads without the `react-server` condition.
-vi.mock('../src/rsc/serialize.js', () => ({
-  serializeRsc: vi.fn().mockResolvedValue(new Uint8Array([1])),
-}));
-
-vi.mock('../src/rsc/deserialize.js', () => ({
+vi.mock('../src/server.js', () => ({
   deserializeRsc: vi.fn().mockResolvedValue(null),
+  serializeRsc: vi.fn().mockResolvedValue(new Uint8Array([1])),
 }));
 
 type Search = { page: number; nested: { a: string } };

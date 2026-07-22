@@ -37,14 +37,6 @@
       "types": "./dist/server.d.ts",
       "default": "./dist/server.js"
     },
-    "./rsc/serialize": {
-      "types": "./dist/rsc/serialize.d.ts",
-      "default": "./dist/rsc/serialize.js"
-    },
-    "./rsc/deserialize": {
-      "types": "./dist/rsc/deserialize.d.ts",
-      "default": "./dist/rsc/deserialize.js"
-    },
     "./adapter-builders": {
       "types": "./dist/adapter-builders.d.ts",
       "default": "./dist/adapter-builders.js"

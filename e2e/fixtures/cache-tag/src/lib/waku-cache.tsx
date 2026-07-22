@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
-import { deserializeRsc } from 'waku/rsc/deserialize';
-import { serializeRsc } from 'waku/rsc/serialize';
+import { deserializeRsc, serializeRsc } from 'waku/server';
 
 // A minimal reference implementation of a "waku-cache"-style server cache. It
 // wraps a component so its rendered subtree is serialized to RSC bytes once and

@@ -7,12 +7,9 @@ import { pathSpecAsString } from '../src/router/isomorphic-utils/path-spec.js';
 import type { PathSpec } from '../src/router/isomorphic-utils/path-spec.js';
 
 // element-cache (pulled in transitively) imports these; the registry never uses them.
-vi.mock('../src/rsc/serialize.js', () => ({
-  serializeRsc: vi.fn(),
-}));
-
-vi.mock('../src/rsc/deserialize.js', () => ({
+vi.mock('../src/server.js', () => ({
   deserializeRsc: vi.fn(),
+  serializeRsc: vi.fn(),
 }));
 vi.mock('../src/minimal/server.js', () => ({
   unstable_bytesToBase64: vi.fn(),
