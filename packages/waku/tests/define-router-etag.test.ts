@@ -82,7 +82,6 @@ const drive = async (
           return makeStream();
         },
       ),
-      parseRsc: vi.fn(),
       renderHtml: vi.fn(),
       loadBuildMetadata: vi.fn(),
     },
