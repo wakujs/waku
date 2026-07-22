@@ -77,7 +77,6 @@ describe('define-router handleBuild', () => {
 
     await handleBuild({
       renderRsc,
-      parseRsc: vi.fn().mockResolvedValue({}),
       renderHtml,
       rscPath2pathname: (rscPath: string) => `dist/${rscPath}.txt`,
       saveBuildMetadata: vi.fn().mockResolvedValue(undefined),
@@ -134,7 +133,6 @@ describe('define-router handleBuild', () => {
     const saveBuildMetadata = vi.fn().mockResolvedValue(undefined);
     await handleBuild({
       renderRsc: () => Promise.resolve(makeStream()),
-      parseRsc: vi.fn().mockResolvedValue({}),
       renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
       rscPath2pathname: (rscPath: string) => `dist/${rscPath}.txt`,
       saveBuildMetadata,
@@ -197,7 +195,6 @@ describe('define-router handleBuild', () => {
     const saveBuildMetadata = vi.fn().mockResolvedValue(undefined);
     await handleBuild({
       renderRsc: () => Promise.resolve(makeStream()),
-      parseRsc: vi.fn().mockResolvedValue({}),
       renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
       rscPath2pathname: (rscPath: string) => `dist/${rscPath}.txt`,
       saveBuildMetadata,
@@ -255,7 +252,6 @@ describe('define-router handleBuild', () => {
     await expect(
       handleBuild({
         renderRsc: () => Promise.resolve(makeStream()),
-        parseRsc: vi.fn(),
         renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
         rscPath2pathname: (rscPath: string) => `dist/${rscPath}.txt`,
         saveBuildMetadata: vi.fn().mockResolvedValue(undefined),
@@ -292,7 +288,6 @@ describe('define-router handleBuild', () => {
     });
     await buildRouter.handleBuild({
       renderRsc: () => Promise.resolve(makeStream()),
-      parseRsc: vi.fn().mockResolvedValue({}),
       renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
       rscPath2pathname: (rscPath: string) => `dist/${rscPath}.txt`,
       saveBuildMetadata: buildSave,
@@ -320,7 +315,6 @@ describe('define-router handleBuild', () => {
     const utils = {
       renderRsc: vi.fn().mockResolvedValue(makeStream()),
       renderRscForParse: vi.fn().mockResolvedValue(makeStream()),
-      parseRsc: vi.fn().mockResolvedValue({ 'page:/foo': null }),
       renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
       loadBuildMetadata,
     };
@@ -382,7 +376,6 @@ describe('define-router handleBuild', () => {
 
     await handleBuild({
       renderRsc: () => Promise.resolve(makeStream()),
-      parseRsc: vi.fn().mockResolvedValue({}),
       renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
       rscPath2pathname: (rscPath: string) => `dist/${rscPath}.txt`,
       saveBuildMetadata: vi.fn().mockResolvedValue(undefined),
