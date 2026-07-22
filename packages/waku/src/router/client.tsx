@@ -1029,10 +1029,12 @@ const InnerRouter = ({
   );
 
   const abortRef = useRef<AbortController | null>(null);
+  const applyElementsRef = useRef<(() => void) | null>(null);
 
   const changeRoute: ChangeRoute = useCallback(
     async (nextRoute, options) => {
       abortRef.current?.abort();
+      applyElementsRef.current = null;
       const abortController = new AbortController();
       abortRef.current = abortController;
       const isAborted = () => abortController.signal.aborted;
@@ -1059,6 +1061,9 @@ const InnerRouter = ({
               window.history.pushState(window.history.state, '', routeUrl);
               window.location.reload();
             },
+            unstable_onApply: (apply) => {
+              applyElementsRef.current = apply;
+            },
             ...(cached ? { unstable_prefetched: cached.promise } : {}),
           });
         },
@@ -1077,6 +1082,8 @@ const InnerRouter = ({
         if (isAborted()) {
           return;
         }
+        const applyElements = applyElementsRef.current;
+        applyElementsRef.current = null;
         const value = deriveCommitted({
           destination,
           attempted: nextRoute,
@@ -1094,8 +1101,12 @@ const InnerRouter = ({
           emitRouteChangeEvent('complete', value.route);
         };
         if (isSameRoute(destination.route, nextRoute)) {
-          void startTransitionFn(commit);
+          void startTransitionFn(() => {
+            applyElements?.();
+            commit();
+          });
         } else {
+          applyElements?.();
           commit();
         }
       };

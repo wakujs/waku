@@ -920,6 +920,47 @@ describe('minimal/client refetch scenarios', () => {
     };
   };
 
+  test('unstable_onApply provides an apply callback once data resolves', async () => {
+    const view = await mount({ _value: null, main: 'M1' }, () => (
+      <Suspense fallback={<span>loading</span>}>
+        <Slot id="main" />
+      </Suspense>
+    ));
+    expect(view.container.textContent).toBe('M1');
+
+    let apply: (() => void) | undefined;
+    let resolveB: (value: Record<string, unknown>) => void = () => {};
+    mocks.createFromFetch.mockReturnValueOnce(
+      new Promise<Record<string, unknown>>((resolve) => {
+        resolveB = resolve;
+      }),
+    );
+    await act(async () => {
+      void view.refetch()('R/next.txt', undefined, {
+        unstable_onApply: (a) => {
+          apply = a;
+        },
+      });
+    });
+    // not called while the data is pending
+    expect(apply).toBeUndefined();
+
+    await act(async () => {
+      resolveB({ main: 'M2' });
+      await wait();
+    });
+    expect(apply).toBeDefined();
+    expect(view.container.textContent).toBe('M2');
+
+    // applying again in a later batch keeps the same merged content
+    await act(async () => {
+      apply!();
+    });
+    expect(view.container.textContent).toBe('M2');
+
+    view.unmount();
+  });
+
   test('suspend: a default slot suspends on b, then shows b', async () => {
     const view = await mount({ _value: null, main: 'M1' }, () => (
       <Suspense fallback={<span>loading</span>}>

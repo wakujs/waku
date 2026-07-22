@@ -212,6 +212,7 @@ type Refetch = (
       pin: (key: string) => boolean;
       base?: Elements;
     };
+    unstable_onApply?: (apply: () => void) => void;
   },
 ) => Promise<Elements>;
 
@@ -564,6 +565,15 @@ export const Root = ({
       });
     }
     setElements((prev) => mergeElementsPromise(prev, dataWithoutErrors));
+    const onApply = options?.unstable_onApply;
+    if (onApply) {
+      return Promise.resolve(data).then((resolved) => {
+        onApply(() => {
+          setElements((prev) => mergeElementsPromise(prev, resolved));
+        });
+        return resolved;
+      });
+    }
     return data;
   }, []);
   return (
