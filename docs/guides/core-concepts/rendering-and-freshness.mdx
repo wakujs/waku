@@ -96,7 +96,7 @@ export default async function ProductPage() {
 }
 ```
 
-The page is prerendered at build time with the fallback in place; the slice executes on each request and streams in. This is the shape for catalogs with live inventory, articles with personalized panels, and similar mostly-static pages.
+The page is prerendered at build time with the fallback in place. After hydration, the browser requests the slice separately; the slice executes on the server for that request and replaces the fallback. This is the shape for catalogs with live inventory, articles with personalized panels, and similar mostly-static pages.
 
 ## Explicit caching
 
@@ -106,7 +106,7 @@ When measurement shows repeated, expensive dynamic work, you can cache exactly t
 
 ## Client navigation and prefetching
 
-During client-side navigation, the router reuses prefetched RSC payloads of static routes so that moving between pages is fast. This is a browser-side navigation optimization: it does not create a server data cache, and dynamic routes still execute on the server per request. See [Navigation Prefetching](/guides/navigation-prefetching) and [Router Fetch Strategy](/guides/router-fetch-strategy) for the details and the experimental tuning APIs.
+During client-side navigation, the router reuses prefetched RSC payloads so that moving between pages is fast. This is a browser-side navigation optimization: it does not create a server data cache. Static payloads can be reused freely because they change only with a deploy. An explicitly prefetched dynamic response may also be reused until its prefetch TTL expires (60 seconds by default), so a navigation shortly after a prefetch may not issue a new request; whenever a request does reach the server, it renders fresh. See [Navigation Prefetching](/guides/navigation-prefetching) and [Router Fetch Strategy](/guides/router-fetch-strategy) for the details and the experimental tuning APIs.
 
 ## HTTP and infrastructure caches
 
@@ -118,7 +118,7 @@ Several caches can exist around a Waku app. They are separate layers with separa
 - **Application cache**: the explicit layer described above, if you add one.
 - **Client or SDK caches**: database drivers and API clients may cache internally.
 
-Waku does not manage these for you, which also means none of them can silently change what your server code computes.
+Waku does not control these caches; they can affect whether a request reaches your server at all, and what data your dependencies return when it does.
 
 ## Choosing
 
