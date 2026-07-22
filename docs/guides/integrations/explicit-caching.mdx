@@ -79,7 +79,7 @@ const ProductCard = async ({ id }: { id: string }) => {
 };
 
 const { Component, getEtag } = cache.rsc(ProductCard, {
-  key: ({ id }) => ['ProductCard', id],
+  key: ({ id }) => ['product', id, 'card'],
   ttl: 60_000,
 });
 
@@ -99,13 +99,15 @@ await cache.invalidate({ key: ['product'] }); // every product entry
 
 A common place to call `invalidate` is wherever you handle a mutation, such as a server action or an API route. This is the only invalidation in a Waku app, and it exists only because you added the cache.
 
+Include every value that can affect the output in the cache key: the user, tenant, locale, permissions, and anything else read from request context rather than from arguments or props. The cache returns entries purely by key, so a missing dimension replays one request's output to another, and a process-local store does not make this safe. Do not cache request-specific or sensitive subtrees unless the key safely scopes them. The same applies to `cache.fn` when the wrapped function depends on context that is not part of its arguments.
+
 ## Etags: skipping unchanged payloads
 
 The client keeps a small cache of etags for the elements it currently holds. Each slot in an RSC response (a page, a layout, a slice) can carry an etag; the client remembers them and sends them back with the next navigation fetch in the `X-Waku-Etags` header. The server compares them and omits any slot whose etag still matches, so the response carries only what changed, and the client keeps the elements it already has for the omitted slots.
 
 Static slots are marked immutable, which is how the router knows it can always reuse them. Dynamic slots have no etag by default, so they are always re-sent: without one, the server cannot know whether the content changed.
 
-A dynamic route can opt in through `getConfig`'s `unstable_getEtag`, and this is where waku-cache fits: `cache.rsc` returns a `getEtag` that hashes the cached subtree, so the tag stays stable while the entry is fresh and changes exactly on invalidation or TTL expiry:
+A dynamic route can opt in through `getConfig`'s `unstable_getEtag`, and this is where waku-cache fits: `cache.rsc` returns a `getEtag` that hashes the cached subtree's serialized bytes. The tag stays stable while the cached bytes are unchanged; after invalidation or TTL expiry the entry is regenerated, and the tag changes only when the serialized content changes:
 
 ```tsx
 export const getConfig = () => {
