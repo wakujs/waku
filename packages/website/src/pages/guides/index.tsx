@@ -10,10 +10,10 @@ import type { GuideFrontmatter } from '../../types';
 const GUIDE_CATEGORY_ORDER = [
   'Getting Started',
   'Learn',
-  'Core Concepts',
   'Advanced Setup',
   'Routing and Navigation',
   'Runtime and Middleware',
+  'Integrations',
   'Low-level APIs',
   'Deployment',
 ];
