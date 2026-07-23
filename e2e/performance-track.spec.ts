@@ -5,12 +5,17 @@ import { prepareNormalSetup, test } from './utils.js';
 const startApp = prepareNormalSetup('performance-track');
 
 test.describe('performance-track', () => {
-  // Server Components performance tracks are flaky and require a Chromium trace
-  // plus a React build that emits them, so this is opt-in via
-  // `TEST_PERFORMANCE_TRACK=1` for local runs and is not exercised in CI.
-  test.skip(!process.env.TEST_PERFORMANCE_TRACK);
+  // The "Server Components" performance track is a Chromium + dev feature. On
+  // Waku's pinned React (19.2.x) each component shows up as a named marker in
+  // the track rather than a duration span (spans need React 19.3+), so we
+  // assert the markers are present. They only appear because patch-rsdw
+  // recovers React's debug info for Waku's plain-object RSC payload, so this
+  // exercises that patch end to end.
   test.skip(({ browserName }) => browserName !== 'chromium', 'Chromium only');
   test.skip(({ mode }) => mode !== 'DEV', 'Dev only');
+  // The track entries land after React's deferred performance flush, whose
+  // timing varies on loaded CI runners, so retry rather than flake.
+  test.describe.configure({ retries: process.env.CI ? 2 : 0 });
 
   test('emits server component performance tracks', async ({ page }) => {
     const { port, stopApp } = await startApp('DEV');
@@ -24,7 +29,7 @@ test.describe('performance-track', () => {
         page.getByText('HomeSlowServerComponent resolved after 500ms'),
       ).toBeVisible();
       await waitForPerformanceFlush(page);
-      const initialSpans = collectServerComponentSpans(
+      const initialNames = serverComponentTrackNames(
         await stopTracing(session),
       );
 
@@ -36,24 +41,22 @@ test.describe('performance-track', () => {
         page.getByText('AboutSlowServerComponent resolved after 500ms'),
       ).toBeVisible();
       await waitForPerformanceFlush(page);
-      const navigationSpans = collectServerComponentSpans(
+      const navigationNames = serverComponentTrackNames(
         await stopTracing(session),
       );
 
-      // Each route uses a distinctly named component, so the SSR phase can only
-      // be satisfied by Home spans and the navigation phase only by About
-      // spans; a broken path in one cannot be masked by the other or by an
-      // About prefetch. Each renders the nested pair (300ms, then 500ms).
-      const homeSpans = initialSpans.filter(
-        (span) => span.name === 'HomeSlowServerComponent',
+      // Each route renders a distinctly named component twice (300ms, 500ms),
+      // so each phase must contribute its own two track entries. The per-route
+      // name means neither phase can be satisfied by the other, or by an About
+      // prefetch landing in the initial trace.
+      const homeEntries = initialNames.filter(
+        (name) => name === 'HomeSlowServerComponent',
       );
-      const aboutSpans = navigationSpans.filter(
-        (span) => span.name === 'AboutSlowServerComponent',
+      const aboutEntries = navigationNames.filter(
+        (name) => name === 'AboutSlowServerComponent',
       );
-      for (const spans of [homeSpans, aboutSpans]) {
-        expect(spans.length).toBeGreaterThanOrEqual(2);
-        expect(spans.every((span) => span.duration >= 200)).toBe(true);
-      }
+      expect(homeEntries.length).toBeGreaterThanOrEqual(2);
+      expect(aboutEntries.length).toBeGreaterThanOrEqual(2);
     } finally {
       await stopApp();
     }
@@ -63,7 +66,7 @@ test.describe('performance-track', () => {
 async function waitForPerformanceFlush(page: Page): Promise<void> {
   // React flushes performance info on a deferred task with no DOM signal.
   // eslint-disable-next-line playwright/no-wait-for-timeout
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(2000);
 }
 
 //
@@ -78,20 +81,10 @@ async function waitForPerformanceFlush(page: Page): Promise<void> {
 interface TraceEvent {
   cat: string;
   name: string;
-  ph: string;
-  ts: number;
-  pid?: number;
-  id?: string;
-  id2?: { local?: string };
-  args?: unknown;
 }
 
-// A named Server Components track entry with its measured duration (ms),
-// derived from paired begin/end trace events.
-interface ServerComponentSpan {
-  name: string;
-  duration: number;
-}
+// React prefixes each track entry name with a zero-width space.
+const zeroWidthSpace = String.fromCharCode(0x200b);
 
 async function startTracing(session: CDPSession): Promise<void> {
   await session.send('Tracing.start', {
@@ -100,51 +93,16 @@ async function startTracing(session: CDPSession): Promise<void> {
   });
 }
 
-function collectServerComponentSpans(
-  events: TraceEvent[],
-): ServerComponentSpan[] {
-  const ends = new Map<string, TraceEvent>();
-  for (const event of events) {
-    if (event.ph !== 'e') {
-      continue;
-    }
-    const key = asyncEventKey(event);
-    if (key !== undefined) {
-      ends.set(key, event);
-    }
-  }
+// Names React wrote to the "Server Components" performance track. Entries live
+// in the `blink.user_timing` category and reference the track in their args.
+function serverComponentTrackNames(events: TraceEvent[]): string[] {
   return events
     .filter(
       (event) =>
-        event.ph === 'b' &&
-        JSON.stringify(event.args)?.includes('Server Components') === true,
+        event.cat.includes('blink.user_timing') &&
+        JSON.stringify(event).includes('Server Components'),
     )
-    .flatMap((event) => {
-      const key = asyncEventKey(event);
-      if (key === undefined) {
-        return [];
-      }
-      const end = ends.get(key);
-      return [
-        {
-          name: event.name.replaceAll('\u200b', ''),
-          duration: ((end?.ts ?? event.ts) - event.ts) / 1000,
-        },
-      ];
-    });
-}
-
-// Chromium pairs nestable async events by category, name, and id (a local id is
-// only unique within its emitting process, so it is scoped by pid). Events with
-// no usable id are dropped rather than collapsed onto a shared key.
-function asyncEventKey(event: TraceEvent): string | undefined {
-  const localId = event.id2?.local;
-  const id = localId ?? event.id;
-  if (id === undefined) {
-    return undefined;
-  }
-  const scope = localId !== undefined ? event.pid : undefined;
-  return [event.cat, event.name, scope, id].join('\u0000');
+    .map((event) => event.name.split(zeroWidthSpace).join(''));
 }
 
 async function stopTracing(session: CDPSession): Promise<TraceEvent[]> {
