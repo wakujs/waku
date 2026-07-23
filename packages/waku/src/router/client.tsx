@@ -49,7 +49,6 @@ import {
   deriveNav,
   getRouteUrl,
   isSameRoute,
-  parseRedirectUrl,
   parseRoute,
   pathnameToCurrentRoutePath,
   pinForSwr,
@@ -163,7 +162,7 @@ type ChangeRouteOptions = {
   url?: URL | undefined;
   startTransition?: ((fn: TransitionFunction) => void) | undefined;
   instant?: boolean | undefined;
-  following?: boolean | undefined; // this navigation follows a render-time error
+  following?: unknown; // a render-time error this navigation follows
 };
 
 type ChangeRoute = (
@@ -731,32 +730,18 @@ const FollowError = ({
   const { changeRoute } = useRouterOrThrow();
   useEffect(() => {
     const info = getErrorInfo(error);
-    const url = info?.location
-      ? parseRedirectUrl(info.location, window.location.href)
-      : has404
-        ? new URL('/404', window.location.href)
-        : undefined;
-    if (!url) {
+    if (!info?.location && !(info?.status === 404 && has404)) {
       return;
     }
     if (followPromiseMap.has(error as object)) {
       return;
     }
-    if (url.origin !== window.location.origin) {
-      followPromiseMap.set(error as object, Promise.resolve());
-      window.location.replace(url.href);
-      return;
-    }
-    const shouldScroll = info?.location
-      ? url.pathname !== window.location.pathname
-      : true;
     followPromiseMap.set(
       error as object,
-      // following: the commit writes the url, even if the target redirects again
-      changeRoute(parseRoute(url), {
-        shouldScroll,
-        following: true,
-        ...(info?.location ? { mode: 'replace' as const, url } : {}),
+      changeRoute(parseRoute(new URL(window.location.href)), {
+        shouldScroll: true,
+        following: error,
+        ...(info?.location ? { mode: 'replace' as const } : {}),
       })
         .then(() => {
           followPromiseMap.delete(error as object);
@@ -1082,7 +1067,9 @@ const InnerRouter = ({
           routeBefore,
           history: mode,
           historyUrl: options.url,
-          shouldScroll: options.shouldScroll,
+          shouldScroll: options.following
+            ? destination.route.path !== routeBefore.path
+            : options.shouldScroll,
           getServerRedirect,
         });
         const commit = () => {
@@ -1110,11 +1097,14 @@ const InnerRouter = ({
           commit();
         }
       };
-      if (staticPathSetRef.current.has(nextRoute.path) || !shouldRefetch) {
+      if (
+        !options.following &&
+        (staticPathSetRef.current.has(nextRoute.path) || !shouldRefetch)
+      ) {
         finish({ route: nextRoute, routeUrl: targetUrl });
         return;
       }
-      if (options.instant) {
+      if (!options.following && options.instant) {
         const rscPath = encodeRoutePath(nextRoute.path);
         const prefetchedElements =
           prefetchedElementsStoreRef.current.get(rscPath);
@@ -1228,11 +1218,13 @@ const InnerRouter = ({
           nextRoute,
           targetUrl,
           routeBefore,
-          undefined,
+          options.following,
         );
-        if (destination) {
-          finish(destination);
+        if (!destination) {
+          // left the app; keep a follow pending so its boundary does not reset
+          return options.following ? new Promise<never>(() => {}) : undefined;
         }
+        finish(destination);
       } catch (e) {
         if (isAborted()) {
           return;
