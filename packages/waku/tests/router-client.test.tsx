@@ -4294,6 +4294,50 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a render-time redirect whose target also redirects reconciles the url to the final route', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const ThrowRedirect = () => {
+      throw createCustomError('redirect', { status: 307, location: '/login' });
+    };
+
+    const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+
+    getRefetchMock().mockImplementation(((rscPath: string) =>
+      rscPath === unstable_encodeRoutePath('/login')
+        ? Promise.reject(
+            createCustomError('redirect', {
+              status: 307,
+              location: '/dashboard',
+            }),
+          )
+        : Promise.resolve({})) as never);
+
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <ThrowRedirect />,
+      [unstable_getRouteSlotId('/dashboard')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    // the first follow redirects again, so let both follows settle
+    await flush();
+    await flush();
+    await flush();
+
+    expect(capture.router?.path).toBe('/dashboard');
+    expect(window.location.pathname).toBe('/dashboard');
+    expect(replaceStateSpy).toHaveBeenCalled();
+
+    view.unmount();
+  });
+
   test('redirect error with cross-origin location uses window.location.replace', async () => {
     const ThrowRedirect = () => {
       throw createCustomError('redirect', {

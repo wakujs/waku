@@ -163,6 +163,7 @@ type ChangeRouteOptions = {
   url?: URL | undefined;
   startTransition?: ((fn: TransitionFunction) => void) | undefined;
   instant?: boolean | undefined;
+  following?: boolean | undefined; // this navigation follows a render-time error
 };
 
 type ChangeRoute = (
@@ -749,14 +750,16 @@ const FollowError = ({
     const shouldScroll = info?.location
       ? url.pathname !== window.location.pathname
       : true;
-    if (info?.location) {
-      // The redirect target's URL should show; write it now rather than through
-      // the committed nav, whose render can churn while the follow resolves.
-      writeUrlToHistory('replace', url);
-    }
     followPromiseMap.set(
       error as object,
-      changeRoute(parseRoute(url), { shouldScroll })
+      // `following` makes the commit write history imperatively (the follow's
+      // render churns, so a layout-effect write is unreliable) and reconcile the
+      // URL to the final destination even when the target itself redirects.
+      changeRoute(parseRoute(url), {
+        shouldScroll,
+        following: true,
+        ...(info?.location ? { mode: 'replace' as const } : {}),
+      })
         .then(() => {
           followPromiseMap.delete(error as object);
           reset();
@@ -1090,7 +1093,17 @@ const InnerRouter = ({
             mergeElements({ [ROUTE_ID]: [route.path, route.query] });
           }
           routeRef.current = route;
-          setNav(nextNav);
+          if (options.following && nextNav.history) {
+            // Reconcile the URL to the final destination now; the follow's
+            // render churns, so the layout-effect history write is unreliable.
+            writeUrlToHistory(
+              nextNav.history.mode,
+              nextNav.history.url || getRouteUrl(route),
+            );
+            setNav({ ...nextNav, history: null });
+          } else {
+            setNav(nextNav);
+          }
           setErr(null);
           abortRef.current = null;
           emitRouteChangeEvent('complete', route);
