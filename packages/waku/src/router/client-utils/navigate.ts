@@ -72,6 +72,9 @@ export const resolveFollowingErrors = async (
   routeBefore: RouteProps,
   errorToFollow: unknown,
 ): Promise<Destination | undefined> => {
+  // A follow starts from an error rendered on routeBefore; redirecting back
+  // there cannot recover, since the erroring elements would render again.
+  const following = errorToFollow !== undefined;
   for (let hops = errorToFollow ? 1 : 0; hops <= MAX_ERROR_HOPS; hops++) {
     if (errorToFollow) {
       const info = getErrorInfo(errorToFollow);
@@ -85,6 +88,9 @@ export const resolveFollowingErrors = async (
         }
         route = parseRoute(redirectUrl);
         routeUrl = redirectUrl;
+        if (following && isSameRoute(route, routeBefore)) {
+          throw new Error('detected a redirect loop', { cause: errorToFollow });
+        }
       } else if (info?.status === 404 && deps.has404 && route.path !== '/404') {
         route = parseRoute(new URL('/404', window.location.href));
       } else {

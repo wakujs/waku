@@ -84,6 +84,52 @@ describe('navigator', () => {
     expect(destination?.routeUrl.pathname).toBe('/missing');
   });
 
+  test('a followed redirect back to the current route is a loop', async () => {
+    const { deps, fetchRoute } = makeDeps([]);
+    await expect(
+      resolveFollowingErrors(
+        deps,
+        route('/foo'),
+        urlOf('/foo'),
+        route('/foo'),
+        createCustomError('redirect', { status: 307, location: '/foo' }),
+      ),
+    ).rejects.toThrow('detected a redirect loop');
+    expect(fetchRoute).not.toHaveBeenCalled();
+  });
+
+  test('a followed redirect chain returning to the current route is a loop', async () => {
+    const { deps, fetchRoute } = makeDeps([
+      { reject: { status: 307, location: '/foo' } },
+    ]);
+    await expect(
+      resolveFollowingErrors(
+        deps,
+        route('/foo'),
+        urlOf('/foo'),
+        route('/foo'),
+        createCustomError('redirect', { status: 307, location: '/bar' }),
+      ),
+    ).rejects.toThrow('detected a redirect loop');
+    expect(fetchRoute).toHaveBeenCalledTimes(1);
+  });
+
+  test('a plain navigation may still resolve back to the current route', async () => {
+    const { deps, fetchRoute } = makeDeps([
+      { reject: { status: 307, location: '/current' } },
+    ]);
+    const destination = await resolveFollowingErrors(
+      deps,
+      route('/next'),
+      urlOf('/next'),
+      route('/current'),
+      undefined,
+    );
+    expect(destination?.route.path).toBe('/current');
+    expect(destination?.elements).toBeUndefined();
+    expect(fetchRoute).toHaveBeenCalledTimes(1);
+  });
+
   test('a cycle stops at the hop limit with the cause attached', async () => {
     const { deps, fetchRoute } = makeDeps([]);
     fetchRoute.mockImplementation(() =>
