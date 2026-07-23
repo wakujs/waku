@@ -752,9 +752,7 @@ const FollowError = ({
       : true;
     followPromiseMap.set(
       error as object,
-      // `following` makes the commit write history imperatively (the follow's
-      // render churns, so a layout-effect write is unreliable) and reconcile the
-      // URL to the final destination even when the target itself redirects.
+      // following: the commit writes the url, even if the target redirects again
       changeRoute(parseRoute(url), {
         shouldScroll,
         following: true,
@@ -969,8 +967,7 @@ const InnerRouter = ({
   const mergeElements = useMergeElements();
   const [nav, setNav] = useState<Nav>(() => ({
     query: initialRouteRef.current.query,
-    // The first render ignores the hash, which the server does not know, to
-    // avoid a hydration error; the effect below restores it.
+    // hydrate without the hash the server does not know; an effect restores it
     hash: '',
     history: null,
     scroll: null,
@@ -1094,10 +1091,8 @@ const InnerRouter = ({
           }
           routeRef.current = route;
           if (options.following && nextNav.history) {
-            // Reconcile the URL to the final destination now; the follow's
-            // render churns, so the layout-effect history write is unreliable.
-            // Always replace: a follow corrects the current entry, and pushing
-            // would leave the redirecting route reachable with Back.
+            // A follow's render churns, so write the url now, and always
+            // replace so Back skips the redirecting route.
             writeUrlToHistory(
               'replace',
               nextNav.history.url || getRouteUrl(route),
@@ -1156,8 +1151,7 @@ const InnerRouter = ({
             },
           );
           routeRef.current = nextRoute;
-          // Instant nav paints the target right away, so its URL is written
-          // now (imperatively); a later error follow can supersede it.
+          // instant nav paints the target right away, so write its url now
           const optimisticNav = deriveNav({
             destination: { route: nextRoute, routeUrl: targetUrl },
             attempted: nextRoute,
