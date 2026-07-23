@@ -758,7 +758,7 @@ const FollowError = ({
       changeRoute(parseRoute(url), {
         shouldScroll,
         following: true,
-        ...(info?.location ? { mode: 'replace' as const } : {}),
+        ...(info?.location ? { mode: 'replace' as const, url } : {}),
       })
         .then(() => {
           followPromiseMap.delete(error as object);
@@ -1096,8 +1096,10 @@ const InnerRouter = ({
           if (options.following && nextNav.history) {
             // Reconcile the URL to the final destination now; the follow's
             // render churns, so the layout-effect history write is unreliable.
+            // Always replace: a follow corrects the current entry, and pushing
+            // would leave the redirecting route reachable with Back.
             writeUrlToHistory(
-              nextNav.history.mode,
+              'replace',
               nextNav.history.url || getRouteUrl(route),
             );
             setNav({ ...nextNav, history: null });
