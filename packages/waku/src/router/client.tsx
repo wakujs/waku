@@ -994,7 +994,10 @@ const InnerRouter = ({
   useLayoutEffect(() => {
     const route = routeRef.current;
     if (nav.history) {
-      writeUrlToHistory(nav.history.mode, nav.history.url || getRouteUrl(route));
+      writeUrlToHistory(
+        nav.history.mode,
+        nav.history.url || getRouteUrl(route),
+      );
     }
     if (nav.scroll) {
       scrollToRoute(
