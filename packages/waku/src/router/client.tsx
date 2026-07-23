@@ -144,16 +144,8 @@ const isAltClick = (event: MouseEvent<HTMLAnchorElement>) =>
   event.button !== 0 ||
   !!(event.metaKey || event.altKey || event.ctrlKey || event.shiftKey);
 
-let savedRscParams: [query: string, rscParams: URLSearchParams] | undefined;
-
-const createRscParams = (query: string): URLSearchParams => {
-  if (savedRscParams && savedRscParams[0] === query) {
-    return savedRscParams[1];
-  }
-  const rscParams = new URLSearchParams({ query });
-  savedRscParams = [query, rscParams];
-  return rscParams;
-};
+const createRscParams = (query: string): URLSearchParams =>
+  new URLSearchParams({ query });
 
 type ChangeRouteOptions = {
   shouldScroll: boolean;

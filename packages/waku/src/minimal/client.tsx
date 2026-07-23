@@ -460,6 +460,12 @@ const registerHmrRefetch = (refetch: () => void) => {
   globalThis.__WAKU_REFETCH_RSC__ = reload;
 };
 
+const sameRscParams = (a: unknown, b: unknown) =>
+  a === b ||
+  (a instanceof URLSearchParams &&
+    b instanceof URLSearchParams &&
+    a.toString() === b.toString());
+
 /** Fetch elements for an RSC path, reusing a cached or prefetched result. */
 export const unstable_fetchRsc = (
   rscPath: string,
@@ -474,7 +480,7 @@ export const unstable_fetchRsc = (
     });
   }
   const entry = fetchRscStore[ENTRY];
-  if (entry && entry[0] === rscPath && entry[1] === rscParams) {
+  if (entry && entry[0] === rscPath && sameRscParams(entry[1], rscParams)) {
     return entry[2];
   }
   const data = fetchRscElements(rscPath, rscParams, options);
