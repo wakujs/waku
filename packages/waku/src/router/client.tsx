@@ -83,12 +83,8 @@ import {
   isCodec,
 } from './isomorphic-utils/search-codec-registry.js';
 import {
-  type PrefetchCache,
   type PrefetchOptions,
-  type PrefetchedElementsStore,
-  getPrefetch,
-  prefetchCacheKey,
-  startPrefetch,
+  createPrefetchManager,
 } from './prefetch-cache.js';
 
 type NavigateOptions = {
@@ -942,10 +938,9 @@ const InnerRouter = ({
   }, [elements]);
   // FIXME this "fetchingSlices" hack feels suboptimal.
   const fetchingSlicesRef = useRef(new Set<SliceId>());
-  const prefetchedElementsStoreRef = useRef<PrefetchedElementsStore>(new Map());
-  // A ref (not a module-level map) so it is scoped to the router instance and
-  // reset on remount.
-  const prefetchCacheRef = useRef<PrefetchCache>(new Map());
+  // A ref (not a module-level store) so it is scoped to the router instance
+  // and reset on remount.
+  const prefetchManagerRef = useRef(createPrefetchManager());
 
   const refetch = useRefetch();
   const mergeElements = useMergeElements();
@@ -1000,8 +995,7 @@ const InnerRouter = ({
       // The etag cache is cleared by minimal's own reload listener, which Root
       // registers (via unstable_fetchRsc) ahead of this one, so it runs first.
       const refetchRoute = () => {
-        prefetchCacheRef.current = new Map();
-        prefetchedElementsStoreRef.current = new Map();
+        prefetchManagerRef.current.clear();
         staticPathSetRef.current.clear();
         const route = routeRef.current;
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -1036,11 +1030,7 @@ const InnerRouter = ({
       const resolveDeps = {
         fetchRoute: (route: RouteProps, routeUrl: URL) => {
           const rscPath = encodeRoutePath(route.path);
-          const cached = getPrefetch(
-            prefetchCacheRef.current,
-            prefetchCacheKey(rscPath, route.query),
-            Date.now(),
-          );
+          const cached = prefetchManagerRef.current.get(rscPath, route.query);
           return refetch(rscPath, createRscParams(route.query), {
             signal: abortController.signal,
             onBuildIdMismatch: () => {
@@ -1111,7 +1101,7 @@ const InnerRouter = ({
       if (!options.following && options.instant) {
         const rscPath = encodeRoutePath(nextRoute.path);
         const prefetchedElements =
-          prefetchedElementsStoreRef.current.get(rscPath);
+          prefetchManagerRef.current.getElements(rscPath);
         const routeSlotId = getRouteSlotId(nextRoute.path);
         if (
           canCommitInstantly(
@@ -1121,10 +1111,9 @@ const InnerRouter = ({
           )
         ) {
           const pin = pinForSwr(() => resolvedElementsRef.current);
-          const cached = getPrefetch(
-            prefetchCacheRef.current,
-            prefetchCacheKey(rscPath, nextRoute.query),
-            Date.now(),
+          const cached = prefetchManagerRef.current.get(
+            rscPath,
+            nextRoute.query,
           );
           const dataPromise = refetch(
             rscPath,
@@ -1243,8 +1232,7 @@ const InnerRouter = ({
       emitRouteChangeEvent,
       staticPathSetRef,
       resolvedElementsRef,
-      prefetchCacheRef,
-      prefetchedElementsStoreRef,
+      prefetchManagerRef,
     ],
   );
 
@@ -1291,9 +1279,7 @@ const InnerRouter = ({
         return;
       }
       const rscPath = encodeRoutePath(route.path);
-      startPrefetch(
-        prefetchCacheRef.current,
-        prefetchedElementsStoreRef.current,
+      prefetchManagerRef.current.prefetch(
         rscPath,
         route.query,
         (base) =>
@@ -1303,7 +1289,7 @@ const InnerRouter = ({
         options,
       );
     },
-    [staticPathSetRef, prefetchCacheRef, prefetchedElementsStoreRef],
+    [staticPathSetRef, prefetchManagerRef],
   );
 
   useEffect(() => {

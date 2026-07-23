@@ -99,6 +99,35 @@ const mergePrefetchedElements = (
   store.set(rscPath, existing ? { ...existing, ...elements } : elements);
 };
 
+/** One store for prefetched routes; the router does not see the two caches. */
+export type PrefetchManager = {
+  prefetch: (
+    rscPath: string,
+    query: string,
+    fetchElements: (base: Elements | undefined) => Promise<Elements>,
+    options: PrefetchOptions | undefined,
+  ) => void;
+  get: (rscPath: string, query: string) => PrefetchEntry | undefined;
+  getElements: (rscPath: string) => Elements | undefined;
+  clear: () => void;
+};
+
+export const createPrefetchManager = (): PrefetchManager => {
+  const cache: PrefetchCache = new Map();
+  const store: PrefetchedElementsStore = new Map();
+  return {
+    prefetch: (rscPath, query, fetchElements, options) =>
+      startPrefetch(cache, store, rscPath, query, fetchElements, options),
+    get: (rscPath, query) =>
+      getPrefetch(cache, prefetchCacheKey(rscPath, query), Date.now()),
+    getElements: (rscPath) => store.get(rscPath) ?? undefined,
+    clear: () => {
+      cache.clear();
+      store.clear();
+    },
+  };
+};
+
 /** Start a prefetch unless the mode or an entry within its ttl dedupes it. */
 export const startPrefetch = (
   cache: PrefetchCache,
