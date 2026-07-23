@@ -728,20 +728,24 @@ const FollowError = ({
   followPromiseMap: WeakMap<object, Promise<unknown>>;
 }) => {
   const { route, changeRoute } = useRouterOrThrow();
-  const routeAtCatchRef = useRef(route);
+  const [routeAtCatch] = useState(route);
+  const followed = !isSameRoute(route, routeAtCatch);
   useEffect(() => {
     // The route derives from the elements, so a change means the followed
     // route slot is committed; resetting earlier re-renders the broken one.
-    if (!isSameRoute(route, routeAtCatchRef.current)) {
+    // The map entry is cleared here so the same error follows again if a
+    // later navigation revives it.
+    if (followed) {
+      followPromiseMap.delete(error as object);
       reset();
     }
-  }, [route, reset]);
+  }, [followed, error, reset, followPromiseMap]);
   useEffect(() => {
     const info = getErrorInfo(error);
     if (!info?.location && !(info?.status === 404 && has404)) {
       return;
     }
-    if (followPromiseMap.has(error as object)) {
+    if (followed || followPromiseMap.has(error as object)) {
       return;
     }
     followPromiseMap.set(
@@ -750,16 +754,12 @@ const FollowError = ({
         shouldScroll: true,
         following: error,
         ...(info?.location ? { mode: 'replace' as const } : {}),
-      })
-        .then(() => {
-          followPromiseMap.delete(error as object);
-        })
-        .catch((err) => {
-          followPromiseMap.delete(error as object);
-          console.log('Error while following the error:', err);
-        }),
+      }).catch((err) => {
+        followPromiseMap.delete(error as object);
+        console.log('Error while following the error:', err);
+      }),
     );
-  }, [error, has404, changeRoute, followPromiseMap]);
+  }, [error, has404, followed, changeRoute, followPromiseMap]);
   const info = getErrorInfo(error);
   return info?.status === 404 && !has404 ? <h1>Not Found</h1> : null;
 };
