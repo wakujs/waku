@@ -897,30 +897,6 @@ const scrollToRoute = (
   });
 };
 
-const useElementsMetadata = (
-  elementsPromise: ReturnType<typeof useElementsPromise>,
-) => {
-  const [has404, setHas404] = useState(false);
-  const staticPathSetRef = useRef(new Set<string>());
-  const resolvedElementsRef = useRef<Record<string, unknown>>({});
-  useEffect(() => {
-    elementsPromise.then(
-      (elements) => {
-        resolvedElementsRef.current = elements;
-        if (has404FromElements(elements)) {
-          setHas404(true);
-        }
-        const route = getRouteFromElements(elements);
-        if (route && isStaticFromElements(elements)) {
-          staticPathSetRef.current.add(route.path);
-        }
-      },
-      () => {},
-    );
-  }, [elementsPromise]);
-  return { has404, staticPathSetRef, resolvedElementsRef };
-};
-
 const defaultRouteInterceptor = (route: RouteProps) => route;
 
 const InnerRouter = ({
@@ -939,8 +915,17 @@ const InnerRouter = ({
       : fallbackRoute;
   const initialRouteRef = useRef(resolvedRoute);
 
-  const { has404, staticPathSetRef, resolvedElementsRef } =
-    useElementsMetadata(elementsPromise);
+  // meta keys persist across merges, so they read from the current elements
+  const has404 = has404FromElements(elements);
+  const staticPathSetRef = useRef(new Set<string>());
+  const resolvedElementsRef = useRef(elements);
+  useEffect(() => {
+    resolvedElementsRef.current = elements;
+    const route = getRouteFromElements(elements);
+    if (route && isStaticFromElements(elements)) {
+      staticPathSetRef.current.add(route.path);
+    }
+  }, [elements]);
   // FIXME this "fetchingSlices" hack feels suboptimal.
   const fetchingSlicesRef = useRef(new Set<SliceId>());
   const prefetchedElementsStoreRef = useRef<PrefetchedElementsStore>(new Map());
