@@ -179,6 +179,23 @@ describe('deriveNav', () => {
     expect(nav.history?.url?.pathname).toBe('/login');
   });
 
+  test('a server side redirect keeps a replace intent', () => {
+    const { nav } = deriveNav({
+      destination: {
+        route: route('/login'),
+        routeUrl: urlOf('/login'),
+        elements: {},
+      },
+      attempted: route('/login'),
+      routeBefore: route('/start'),
+      history: 'replace',
+      historyUrl: urlOf('/login'),
+      shouldScroll: false,
+      getServerRedirect: () => route('/dashboard'),
+    });
+    expect(nav.history?.mode).toBe('replace');
+  });
+
   test('a server side redirect to the 404 route drops the history write', () => {
     const { route: derived, nav } = deriveNav({
       destination: {

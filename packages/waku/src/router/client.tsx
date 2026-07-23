@@ -1091,10 +1091,9 @@ const InnerRouter = ({
           }
           routeRef.current = route;
           if (options.following && nextNav.history) {
-            // A follow's render churns, so write the url now, and always
-            // replace so Back skips the redirecting route.
+            // a follow's render churns, so write the url now
             writeUrlToHistory(
-              'replace',
+              nextNav.history.mode,
               nextNav.history.url || getRouteUrl(route),
             );
             setNav({ ...nextNav, history: null });

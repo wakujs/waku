@@ -156,11 +156,8 @@ export const deriveNav = (outcome: {
     destination.elements &&
     outcome.getServerRedirect(destination.elements, destination.route);
   const route = redirect || destination.route;
-  const mode = redirect
-    ? redirect.path === '/404'
-      ? undefined
-      : outcome.history && 'push'
-    : outcome.history;
+  const mode =
+    redirect && redirect.path === '/404' ? undefined : outcome.history;
   const url = redirect
     ? undefined
     : followed
