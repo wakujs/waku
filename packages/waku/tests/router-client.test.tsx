@@ -4417,6 +4417,54 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a followed redirect that redirects again keeps the base path', async () => {
+    vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/docs/');
+    try {
+      window.history.replaceState({}, '', '/docs/start');
+      const capture = { router: null as RouterApi | null };
+      const Probe = makeProbe(capture);
+      const ThrowRedirect = () => {
+        throw createCustomError('redirect', {
+          status: 307,
+          location: '/docs/login',
+        });
+      };
+
+      const pushStateSpy = vi.spyOn(window.history, 'pushState');
+
+      getRefetchMock().mockImplementation(((rscPath: string) =>
+        Promise.resolve(
+          rscPath === unstable_encodeRoutePath('/login')
+            ? { [ROUTE_ID]: ['/dashboard', ''] }
+            : {},
+        )) as never);
+
+      const elements = {
+        [unstable_getRouteSlotId('/start')]: <ThrowRedirect />,
+        [unstable_getRouteSlotId('/dashboard')]: <Probe />,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      };
+
+      const view = await renderRouter(
+        {
+          initialRoute: { path: '/start', query: '', hash: '' },
+        },
+        elements,
+      );
+      await flush();
+      await flush();
+
+      expect(capture.router?.path).toBe('/dashboard');
+      expect(window.location.pathname).toBe('/docs/dashboard');
+      expect(pushStateSpy).not.toHaveBeenCalled();
+
+      view.unmount();
+    } finally {
+      vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/');
+    }
+  });
+
   test('redirect error with cross-origin location uses window.location.replace', async () => {
     const ThrowRedirect = () => {
       throw createCustomError('redirect', {

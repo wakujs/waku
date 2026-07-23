@@ -1,4 +1,5 @@
 import {
+  unstable_addBase as addBase,
   unstable_getErrorInfo as getErrorInfo,
   unstable_isImmutableElement as isImmutableElement,
   unstable_removeBase as removeBase,
@@ -25,7 +26,7 @@ export const parseRoute = (url: URL): RouteProps => {
 
 export const getRouteUrl = (route: RouteProps): URL => {
   const nextUrl = new URL(window.location.href);
-  nextUrl.pathname = route.path;
+  nextUrl.pathname = addBase(route.path, import.meta.env.WAKU_CONFIG_BASE_PATH);
   nextUrl.search = route.query;
   nextUrl.hash = route.hash;
   return nextUrl;
