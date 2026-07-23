@@ -125,15 +125,17 @@ export const writeUrlToHistory = (mode: 'push' | 'replace', url: URL) => {
   }
 };
 
-// --- the committed value ---
+// --- client-only navigation state ---
 
-export type Committed = {
-  route: RouteProps;
+// The route is derived from the elements' ROUTE_ID; only the client-only intent
+// the server does not know is stored here.
+export type Nav = {
+  hash: string;
   history: { mode: 'push' | 'replace'; url: URL | undefined } | null;
   scroll: { pathChanged: boolean } | null;
 };
 
-export const deriveCommitted = (outcome: {
+export const deriveNav = (outcome: {
   destination: Destination;
   attempted: RouteProps;
   routeBefore: RouteProps;
@@ -144,7 +146,7 @@ export const deriveCommitted = (outcome: {
     elements: Record<string, unknown>,
     route: RouteProps,
   ) => RouteProps | undefined;
-}): Committed => {
+}): { route: RouteProps; nav: Nav } => {
   const { destination, attempted, routeBefore } = outcome;
   const followed = !isSameRoute(destination.route, attempted);
   const redirect =
@@ -163,19 +165,19 @@ export const deriveCommitted = (outcome: {
       : outcome.historyUrl;
   return {
     route,
-    history: mode ? { mode, url } : null,
-    scroll: outcome.shouldScroll
-      ? { pathChanged: route.path !== routeBefore.path }
-      : null,
+    nav: {
+      hash: route.hash,
+      history: mode ? { mode, url } : null,
+      scroll: outcome.shouldScroll
+        ? { pathChanged: route.path !== routeBefore.path }
+        : null,
+    },
   };
 };
 
-export const applyServerRedirect = (
-  prev: Committed,
-  redirect: RouteProps,
-): Committed => ({
+export const applyServerRedirect = (prev: Nav, redirect: RouteProps): Nav => ({
   ...prev,
-  route: redirect,
+  hash: redirect.hash,
   history:
     redirect.path === '/404'
       ? null
