@@ -21,25 +21,36 @@ test.describe('performance-track', () => {
       await startTracing(session);
       await page.goto(`http://localhost:${port}/`);
       await expect(
-        page.getByText('SlowServerComponent resolved after 500ms'),
+        page.getByText('HomeSlowServerComponent resolved after 500ms'),
       ).toBeVisible();
       await waitForPerformanceFlush(page);
-      const initialSpans = await stopTracingAndCollectSlowSpans(session);
+      const initialSpans = collectServerComponentSpans(
+        await stopTracing(session),
+      );
 
       // Trace the client navigation and its on-demand RSC request on its own.
       await startTracing(session);
       await page.getByRole('link', { name: 'About' }).click();
       await expect(page.getByRole('heading', { name: 'About' })).toBeVisible();
       await expect(
-        page.getByText('SlowServerComponent resolved after 500ms'),
+        page.getByText('AboutSlowServerComponent resolved after 500ms'),
       ).toBeVisible();
       await waitForPerformanceFlush(page);
-      const navigationSpans = await stopTracingAndCollectSlowSpans(session);
+      const navigationSpans = collectServerComponentSpans(
+        await stopTracing(session),
+      );
 
-      // Assert each phase independently so a broken SSR or navigation path
-      // cannot be hidden by spans from the other. Each renders the nested
-      // SlowServerComponent pair (300ms outer, 500ms inner).
-      for (const spans of [initialSpans, navigationSpans]) {
+      // Each route uses a distinctly named component, so the SSR phase can only
+      // be satisfied by Home spans and the navigation phase only by About
+      // spans; a broken path in one cannot be masked by the other or by an
+      // About prefetch. Each renders the nested pair (300ms, then 500ms).
+      const homeSpans = initialSpans.filter(
+        (span) => span.name === 'HomeSlowServerComponent',
+      );
+      const aboutSpans = navigationSpans.filter(
+        (span) => span.name === 'AboutSlowServerComponent',
+      );
+      for (const spans of [homeSpans, aboutSpans]) {
         expect(spans.length).toBeGreaterThanOrEqual(2);
         expect(spans.every((span) => span.duration >= 200)).toBe(true);
       }
@@ -89,15 +100,6 @@ async function startTracing(session: CDPSession): Promise<void> {
   });
 }
 
-async function stopTracingAndCollectSlowSpans(
-  session: CDPSession,
-): Promise<ServerComponentSpan[]> {
-  const events = await stopTracing(session);
-  return collectServerComponentSpans(events).filter(
-    (span) => span.name === 'SlowServerComponent',
-  );
-}
-
 function collectServerComponentSpans(
   events: TraceEvent[],
 ): ServerComponentSpan[] {
@@ -115,7 +117,7 @@ function collectServerComponentSpans(
     .filter(
       (event) =>
         event.ph === 'b' &&
-        JSON.stringify(event.args).includes('Server Components'),
+        JSON.stringify(event.args)?.includes('Server Components') === true,
     )
     .flatMap((event) => {
       const key = asyncEventKey(event);
