@@ -4465,6 +4465,39 @@ describe('Router integration', () => {
     }
   });
 
+  test('a self redirect surfaces a redirect loop error instead of a blank page', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const ThrowRedirect = () => {
+      throw createCustomError('redirect', { status: 307, location: '/start' });
+    };
+
+    testHoisted.elements = {
+      [unstable_getRouteSlotId('/start')]: <ThrowRedirect />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    try {
+      const view = await renderApp(
+        <ErrorBoundary>
+          <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+            <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
+          </Unstable_SearchCodecsProvider>
+        </ErrorBoundary>,
+      );
+      await flush();
+      await flush();
+
+      expect(view.container.textContent).toContain('detected a redirect loop');
+
+      view.unmount();
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
+  });
+
   test('redirect error with cross-origin location uses window.location.replace', async () => {
     const ThrowRedirect = () => {
       throw createCustomError('redirect', {

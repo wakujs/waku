@@ -720,11 +720,13 @@ const FollowError = ({
   error,
   has404,
   reset,
+  fail,
   followPromiseMap,
 }: {
   error: unknown;
   has404: boolean;
   reset: () => void;
+  fail: (original: unknown, error: unknown) => void;
   followPromiseMap: WeakMap<object, Promise<unknown>>;
 }) => {
   const { route, changeRoute } = useRouterOrThrow();
@@ -756,10 +758,10 @@ const FollowError = ({
         ...(info?.location ? { mode: 'replace' as const } : {}),
       }).catch((err) => {
         followPromiseMap.delete(error as object);
-        console.log('Error while following the error:', err);
+        fail(error, err);
       }),
     );
-  }, [error, has404, followed, changeRoute, followPromiseMap]);
+  }, [error, has404, followed, changeRoute, fail, followPromiseMap]);
   const info = getErrorInfo(error);
   return info?.status === 404 && !has404 ? <h1>Not Found</h1> : null;
 };
@@ -773,12 +775,16 @@ class CustomErrorHandler extends Component<
     super(props);
     this.state = { error: null };
     this.reset = this.reset.bind(this);
+    this.fail = this.fail.bind(this);
   }
   static getDerivedStateFromError(error: unknown) {
     return { error };
   }
   reset() {
     this.setState({ error: null });
+  }
+  fail(original: unknown, error: unknown) {
+    this.setState((state) => (state.error === original ? { error } : null));
   }
   render() {
     const { error } = this.state;
@@ -790,6 +796,7 @@ class CustomErrorHandler extends Component<
             error={error}
             has404={this.props.has404}
             reset={this.reset}
+            fail={this.fail}
             followPromiseMap={this.followPromiseMap}
           />
         );
