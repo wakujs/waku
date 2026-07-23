@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   PREFETCH_LIMIT,
   PREFETCH_TTL,
+  createPrefetchManager,
   getPrefetch,
   prefetchCacheKey,
   setPrefetch,
@@ -154,6 +155,26 @@ describe('router prefetch cache', () => {
       startAndReject(cache, store, '/p', 'q=c'),
     ).resolves.toBeUndefined();
     expect(store.get('/p')).toEqual({ a: 1 });
+  });
+
+  it('a prefetch in flight at clear() completes into a detached store', async () => {
+    const manager = createPrefetchManager();
+    let resolveFetch!: (elements: Record<string, unknown>) => void;
+    manager.prefetch(
+      '/p',
+      '',
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }),
+      undefined,
+    );
+    manager.clear();
+    resolveFetch({ a: 1 });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(manager.getElements('/p')).toBeUndefined();
+    expect(manager.get('/p', '')).toBeUndefined();
   });
 });
 

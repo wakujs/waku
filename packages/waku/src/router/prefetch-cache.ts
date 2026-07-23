@@ -113,8 +113,8 @@ export type PrefetchManager = {
 };
 
 export const createPrefetchManager = (): PrefetchManager => {
-  const cache: PrefetchCache = new Map();
-  const store: PrefetchedElementsStore = new Map();
+  let cache: PrefetchCache = new Map();
+  let store: PrefetchedElementsStore = new Map();
   return {
     prefetch: (rscPath, query, fetchElements, options) =>
       startPrefetch(cache, store, rscPath, query, fetchElements, options),
@@ -122,8 +122,9 @@ export const createPrefetchManager = (): PrefetchManager => {
       getPrefetch(cache, prefetchCacheKey(rscPath, query), Date.now()),
     getElements: (rscPath) => store.get(rscPath) ?? undefined,
     clear: () => {
-      cache.clear();
-      store.clear();
+      // replace the maps so an in-flight prefetch completes into detached ones
+      cache = new Map();
+      store = new Map();
     },
   };
 };
