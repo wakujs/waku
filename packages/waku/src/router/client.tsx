@@ -1157,14 +1157,7 @@ const InnerRouter = ({
             if (isAborted()) {
               return;
             }
-            if (mode && window.location.href !== targetUrl.href) {
-              writeUrlToHistory(mode, targetUrl);
-              setNav((prev) => ({
-                ...prev,
-                history: null,
-                scroll: null,
-              }));
-            }
+            // the url was already written optimistically, so a follow replaces
             mode = mode && 'replace';
             try {
               const destination = await resolveFollowingErrors(
