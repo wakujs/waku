@@ -72,8 +72,6 @@ export const resolveFollowingErrors = async (
   routeBefore: RouteProps,
   errorToFollow: unknown,
 ): Promise<Destination | undefined> => {
-  // A follow starts from an error rendered on routeBefore; redirecting back
-  // there cannot recover, since the erroring elements would render again.
   const following = errorToFollow !== undefined;
   for (let hops = errorToFollow ? 1 : 0; hops <= MAX_ERROR_HOPS; hops++) {
     if (errorToFollow) {

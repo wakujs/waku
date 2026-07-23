@@ -158,7 +158,7 @@ type ChangeRouteOptions = {
   url?: URL | undefined;
   startTransition?: ((fn: TransitionFunction) => void) | undefined;
   instant?: boolean | undefined;
-  following?: unknown; // a render-time error this navigation follows
+  errorToFollow?: unknown;
 };
 
 type ChangeRoute = (
@@ -726,38 +726,37 @@ const FollowError = ({
   followPromiseMap: WeakMap<object, Promise<unknown>>;
 }) => {
   const { route, changeRoute } = useRouterOrThrow();
-  const [routeAtCatch] = useState(route);
-  const followed = !isSameRoute(route, routeAtCatch);
+  const routeAtCatchRef = useRef(route);
   useEffect(() => {
-    // The route derives from the elements, so a change means the followed
-    // route slot is committed; resetting earlier re-renders the broken one.
-    // The map entry is cleared here so the same error follows again if a
-    // later navigation revives it.
-    if (followed) {
+    // reset once the followed route commits; a revived error follows again
+    if (!isSameRoute(route, routeAtCatchRef.current)) {
       followPromiseMap.delete(error as object);
       reset();
     }
-  }, [followed, error, reset, followPromiseMap]);
+  }, [route, error, reset, followPromiseMap]);
   useEffect(() => {
     const info = getErrorInfo(error);
     if (!info?.location && !(info?.status === 404 && has404)) {
       return;
     }
-    if (followed || followPromiseMap.has(error as object)) {
+    if (
+      !isSameRoute(route, routeAtCatchRef.current) ||
+      followPromiseMap.has(error as object)
+    ) {
       return;
     }
     followPromiseMap.set(
       error as object,
       changeRoute(parseRoute(new URL(window.location.href)), {
         shouldScroll: true,
-        following: error,
+        errorToFollow: error,
         ...(info?.location ? { mode: 'replace' as const } : {}),
       }).catch((err) => {
         followPromiseMap.delete(error as object);
         fail(error, err);
       }),
     );
-  }, [error, has404, followed, changeRoute, fail, followPromiseMap]);
+  }, [route, error, has404, changeRoute, fail, followPromiseMap]);
   const info = getErrorInfo(error);
   return info?.status === 404 && !has404 ? <h1>Not Found</h1> : null;
 };
@@ -1061,7 +1060,7 @@ const InnerRouter = ({
           routeBefore,
           history: mode,
           historyUrl: options.url,
-          shouldScroll: options.following
+          shouldScroll: options.errorToFollow
             ? destination.route.path !== routeBefore.path
             : options.shouldScroll,
           getServerRedirect,
@@ -1071,7 +1070,7 @@ const InnerRouter = ({
             mergeElements({ [ROUTE_ID]: [route.path, route.query] });
           }
           routeRef.current = route;
-          if (options.following && nextNav.history) {
+          if (options.errorToFollow && nextNav.history) {
             // a follow's render churns, so write the url now
             writeUrlToHistory(
               nextNav.history.mode,
@@ -1092,13 +1091,13 @@ const InnerRouter = ({
         }
       };
       if (
-        !options.following &&
+        !options.errorToFollow &&
         (staticPathSetRef.current.has(nextRoute.path) || !shouldRefetch)
       ) {
         finish({ route: nextRoute, routeUrl: targetUrl });
         return;
       }
-      if (!options.following && options.instant) {
+      if (!options.errorToFollow && options.instant) {
         const rscPath = encodeRoutePath(nextRoute.path);
         const prefetchedElements =
           prefetchManagerRef.current.getElements(rscPath);
@@ -1204,11 +1203,13 @@ const InnerRouter = ({
           nextRoute,
           targetUrl,
           routeBefore,
-          options.following,
+          options.errorToFollow,
         );
         if (!destination) {
           // left the app; keep a follow pending so its boundary does not reset
-          return options.following ? new Promise<never>(() => {}) : undefined;
+          return options.errorToFollow
+            ? new Promise<never>(() => {})
+            : undefined;
         }
         finish(destination);
       } catch (e) {
