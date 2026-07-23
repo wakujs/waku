@@ -76,19 +76,14 @@ type IntersectionObserverMockInstance = IntersectionObserver & {
   callback: IntersectionObserverCallback;
 };
 
-// Elements the mocked `Root` provides for the current render. Hoisted so the
-// `vi.mock` factory can read it. The mocked Root keeps them in state and
-// `setElements` (set once mounted) merges a fetched response in, so the derived
-// route follows a navigation the way it does with the real minimal client.
+// Hoisted so the `vi.mock` factory can read it. `elements` is the initial
+// elements a mocked Root seeds; `inner` is the shared, configurable refetch
+// mock tests observe. Each mocked Root keeps its OWN elements state (see the
+// factory), so independent Roots behave independently like the real client.
 const testHoisted = vi.hoisted(() => ({
   elements: {} as Record<string, unknown>,
-  elementsValue: {} as Record<string, unknown>,
-  // synchronous merge of a value (used for route metadata with no fetch)
-  setElements: null as ((data: Record<string, unknown>) => void) | null,
-  // eager merge of a pending fetch: elements suspend until it resolves, like the
-  // real client, so a transition stays pending across the fetch
-  mergeElementsAsync: null as
-    ((data: Promise<Record<string, unknown>>) => void) | null,
+  inner: null as
+    ((...args: unknown[]) => Promise<Record<string, unknown>>) | null,
 }));
 
 const createDeferred = <T,>() => {
@@ -130,54 +125,27 @@ const withRouteMeta = (
   return { ...data, [ROUTE_ID]: [routePath, query] };
 };
 
-// The refetch the router calls (`outer`) merges its response into the mocked
-// Root's elements so the derived route follows; tests configure and inspect the
-// underlying `inner` mock (getRefetchMock(), or the fn passed to installRefetch).
+// Per-root elements state, wired to each mocked Root through context so a
+// refetch or merge targets the Root that made it (see the factory).
+type RootStore = {
+  applySync: (data: Record<string, unknown>) => void;
+  applyAsync: (data: Promise<Record<string, unknown>>) => void;
+};
 type RefetchInner = ReturnType<typeof useRefetch>;
 type MockedRefetch = ReturnType<typeof vi.fn<RefetchInner>>;
-type RefetchMock = RefetchInner & { inner: MockedRefetch };
 
-const wrapRefetch = (inner: MockedRefetch): RefetchMock => {
-  const call = (
-    rscPath: string,
-    ...rest: [rscParams?: unknown, options?: unknown]
-  ) => {
-    // Merge synchronously (in the caller's transition) with a pending promise
-    // so the elements suspend until the response lands, like the real client;
-    // a failed fetch leaves the elements unchanged (the router follows it).
-    const dataPromise = Promise.resolve(
-      (inner as (...args: unknown[]) => Promise<Record<string, unknown>>)(
-        rscPath,
-        ...rest,
-      ),
-    ).then((result) => withRouteMeta(result, rscPath, rest[0]));
-    testHoisted.mergeElementsAsync?.(dataPromise.catch(() => ({})));
-    return dataPromise;
-  };
-  const outer = vi.fn(call) as unknown as RefetchMock;
-  outer.inner = inner;
-  return outer;
-};
-
-const createRefetchMock = (): RefetchMock =>
-  wrapRefetch(vi.fn<RefetchInner>(async () => ({})));
-
-// Install a test-provided refetch behind the merging wrapper. Returns the same
-// fn so the test keeps configuring/inspecting it.
+// Install a test-provided refetch as the shared inner mock the mocked Roots
+// wrap. Returns it so the test keeps configuring/inspecting it.
 const installRefetch = (inner: MockedRefetch) => {
-  vi.mocked(useRefetch).mockReturnValue(wrapRefetch(inner));
+  testHoisted.inner = inner as unknown as typeof testHoisted.inner;
   return inner;
 };
 
-const getRefetchMock = () => {
-  const results = vi.mocked(useRefetch).mock.results;
-  for (let index = results.length - 1; index >= 0; index -= 1) {
-    const result = results[index];
-    if (result?.type === 'return') {
-      return (result.value as RefetchMock).inner;
-    }
+const getRefetchMock = (): MockedRefetch => {
+  if (!testHoisted.inner) {
+    throw new Error('refetch mock not initialized');
   }
-  throw new Error('useRefetch was not called');
+  return testHoisted.inner as unknown as MockedRefetch;
 };
 
 const getIntersectionObserverMockInstance = () => {
@@ -233,44 +201,76 @@ vi.mock('../src/minimal/client.js', async () => {
       value,
     });
 
+  // Each mocked Root provides its own store through this context, so a refetch
+  // or merge from within a Root targets that Root's elements state.
+  const StoreContext = React.createContext<RootStore | null>(null);
+
   const StatefulRoot = (props: { children?: ReactNode }) => {
-    const [elements, setElements] = React.useState<
-      Promise<Record<string, unknown>>
-    >(() => {
-      testHoisted.elementsValue = {
+    const valueRef = React.useRef<Record<string, unknown>>(undefined);
+    if (!valueRef.current) {
+      valueRef.current = {
         root: React.createElement(actual.Children),
         ...testHoisted.elements,
       };
-      return makeThenable(testHoisted.elementsValue);
-    });
-    // Assigned during render (not in an effect) so it is available before
-    // descendant effects run, e.g. a redirect follow triggered on first render.
-    testHoisted.setElements = (data) => {
-      testHoisted.elementsValue = { ...testHoisted.elementsValue, ...data };
-      setElements(makeThenable(testHoisted.elementsValue));
-    };
-    testHoisted.mergeElementsAsync = (dataPromise) => {
-      const pending = dataPromise.then((data) => {
-        testHoisted.elementsValue = { ...testHoisted.elementsValue, ...data };
-        return testHoisted.elementsValue;
-      });
-      setElements(pending);
-    };
+    }
+    const [elements, setElements] = React.useState<
+      Promise<Record<string, unknown>>
+    >(() => makeThenable(valueRef.current!));
+    const storeRef = React.useRef<RootStore>(undefined);
+    if (!storeRef.current) {
+      storeRef.current = {
+        // synchronous merge of a value (route metadata with no fetch)
+        applySync: (data) => {
+          valueRef.current = { ...valueRef.current, ...data };
+          setElements(makeThenable(valueRef.current));
+        },
+        // eager merge of a pending fetch: elements suspend until it resolves,
+        // like the real client, so a transition stays pending across the fetch
+        applyAsync: (dataPromise) => {
+          setElements(
+            dataPromise.then((data) => {
+              valueRef.current = { ...valueRef.current, ...data };
+              return valueRef.current!;
+            }),
+          );
+        },
+      };
+    }
     // A boundary so a merge that suspends (pending fetch) shows a fallback
     // instead of crashing on a non-transition update; the real app supplies its
     // own boundaries.
     return React.createElement(
-      React.Suspense,
-      { fallback: null },
-      actual.INTERNAL_ServerRoot({
-        elementsPromise: elements,
-        children: props.children,
-      }),
+      StoreContext.Provider,
+      { value: storeRef.current },
+      React.createElement(
+        React.Suspense,
+        { fallback: null },
+        actual.INTERNAL_ServerRoot({
+          elementsPromise: elements,
+          children: props.children,
+        }),
+      ),
     );
   };
 
-  const mockMergeElements = (partial: Record<string, unknown>) => {
-    testHoisted.setElements?.(partial);
+  // Per-root refetch: calls the shared inner mock, then merges the response into
+  // this Root's own store.
+  const useMockRefetch = () => {
+    const store = React.use(StoreContext);
+    return React.useMemo(
+      () =>
+        (
+          rscPath: string,
+          ...rest: [rscParams?: unknown, options?: unknown]
+        ) => {
+          const dataPromise = Promise.resolve(
+            testHoisted.inner!(rscPath, ...rest),
+          ).then((result) => withRouteMeta(result, rscPath, rest[0]));
+          store?.applyAsync(dataPromise.catch(() => ({})));
+          return dataPromise;
+        },
+      [store],
+    );
   };
 
   return {
@@ -278,11 +278,14 @@ vi.mock('../src/minimal/client.js', async () => {
     Root: vi.fn((props: Parameters<typeof actual.Root>[0]) =>
       React.createElement(StatefulRoot, props),
     ),
-    // The router uses this to write route metadata when no fetch carries it;
-    // route it to the mocked Root's elements state.
-    useMergeElements_UNSTABLE: () => mockMergeElements,
+    // The router writes route metadata here when no fetch carries it; route it
+    // to the calling Root's own store.
+    useMergeElements_UNSTABLE: () => {
+      const store = React.use(StoreContext);
+      return store ? store.applySync : () => {};
+    },
     unstable_prefetchRsc: vi.fn(),
-    useRefetch: vi.fn(),
+    useRefetch: vi.fn(useMockRefetch),
   };
 });
 
@@ -358,12 +361,10 @@ beforeEach(() => {
 
   delete (globalThis as Record<string, unknown>).__WAKU_PREFETCHED__;
   testHoisted.elements = {};
-  testHoisted.elementsValue = {};
-  testHoisted.setElements = null;
-  testHoisted.mergeElementsAsync = null;
-
-  vi.mocked(useRefetch).mockReset();
-  vi.mocked(useRefetch).mockReturnValue(createRefetchMock());
+  // Fresh shared refetch mock per test; the mocked useRefetch (a per-root hook)
+  // wraps it, so its implementation must stay intact (do not mockReset it).
+  testHoisted.inner = vi.fn(async () => ({}));
+  vi.mocked(useRefetch).mockClear();
   vi.mocked(preloadModule).mockClear();
   vi.mocked(prefetchRsc).mockReset();
   // prefetchRsc returns the decoded Promise<Elements>; default to an empty
@@ -4135,11 +4136,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  // fixme: the harness serves one shared elements store (a single mocked Root
-  // setter), so two <Router>s cannot each recover independently here. The
-  // recovery itself is covered by the single-router 404/redirect follow tests
-  // and by e2e; this only pins the two-router strict-mode dedup.
-  test.skip('two routers recover from the same revived 404 error', async () => {
+  test('two routers recover from the same revived 404 error', async () => {
     const captureA = { router: null as RouterApi | null };
     const ProbeA = makeProbe(captureA);
     const sharedError = createCustomError('not-found', { status: 404 });
