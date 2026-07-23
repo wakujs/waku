@@ -24,7 +24,7 @@ Both the initial SSR render and later client navigations contribute spans.
 
 This feature relies on React development internals, which Waku patches so that its RSC payload keeps the debug information React needs to build the track. That patch targets a specific React version, so mismatched versions are the usual cause of missing spans:
 
-- Keep `react`, `react-dom`, and `react-server-dom-webpack` on the version Waku pins, and make sure all three match each other.
+- Use matching versions of `react`, `react-dom`, and `react-server-dom-webpack`, and track the React release Waku is built against (its own dependencies are on the `19.2` line). A different React release is the usual cause of missing spans.
 - Some React versions emit the timing **markers** but drop the moved debug information during the client performance flush, so you may see track markers without named component spans.
 
 This is a development-only, best-effort aid; it has no effect on production builds.

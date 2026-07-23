@@ -1,4 +1,4 @@
-import type { CDPSession } from '@playwright/test';
+import type { CDPSession, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 import { prepareNormalSetup, test } from './utils.js';
 
@@ -16,35 +16,44 @@ test.describe('performance-track', () => {
     const { port, stopApp } = await startApp('DEV');
     try {
       const session = await page.context().newCDPSession(page);
-      await startTracing(session);
 
+      // Trace the initial SSR render on its own.
+      await startTracing(session);
       await page.goto(`http://localhost:${port}/`);
-      // Wait for the innermost step so the whole waterfall has resolved.
       await expect(
         page.getByText('SlowServerComponent resolved after 500ms'),
       ).toBeVisible();
+      await waitForPerformanceFlush(page);
+      const initialSpans = await stopTracingAndCollectSlowSpans(session);
+
+      // Trace the client navigation and its on-demand RSC request on its own.
+      await startTracing(session);
       await page.getByRole('link', { name: 'About' }).click();
       await expect(page.getByRole('heading', { name: 'About' })).toBeVisible();
       await expect(
         page.getByText('SlowServerComponent resolved after 500ms'),
       ).toBeVisible();
-      // Wait for React's deferred performance flush, which has no DOM signal.
-      // eslint-disable-next-line playwright/no-wait-for-timeout
-      await page.waitForTimeout(1000);
+      await waitForPerformanceFlush(page);
+      const navigationSpans = await stopTracingAndCollectSlowSpans(session);
 
-      const spans = await stopTracingAndCollectServerComponentSpans(session);
-      const slowSpans = spans.filter(
-        (span) => span.name === 'SlowServerComponent',
-      );
-      // Home and About each render a nested pair of SlowServerComponent spans;
-      // client navigation may also prefetch About, so assert the floor.
-      expect(slowSpans.length).toBeGreaterThanOrEqual(4);
-      expect(slowSpans.every((span) => span.duration >= 200)).toBe(true);
+      // Assert each phase independently so a broken SSR or navigation path
+      // cannot be hidden by spans from the other. Each renders the nested
+      // SlowServerComponent pair (300ms outer, 500ms inner).
+      for (const spans of [initialSpans, navigationSpans]) {
+        expect(spans.length).toBeGreaterThanOrEqual(2);
+        expect(spans.every((span) => span.duration >= 200)).toBe(true);
+      }
     } finally {
       await stopApp();
     }
   });
 });
+
+async function waitForPerformanceFlush(page: Page): Promise<void> {
+  // React flushes performance info on a deferred task with no DOM signal.
+  // eslint-disable-next-line playwright/no-wait-for-timeout
+  await page.waitForTimeout(1000);
+}
 
 //
 // CDP tracing helpers
@@ -56,9 +65,11 @@ test.describe('performance-track', () => {
 // this minimal shape follows Chrome's Trace Event Format instead:
 // https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU
 interface TraceEvent {
+  cat: string;
   name: string;
   ph: string;
   ts: number;
+  pid?: number;
   id?: string;
   id2?: { local?: string };
   args?: unknown;
@@ -78,25 +89,60 @@ async function startTracing(session: CDPSession): Promise<void> {
   });
 }
 
-async function stopTracingAndCollectServerComponentSpans(
+async function stopTracingAndCollectSlowSpans(
   session: CDPSession,
 ): Promise<ServerComponentSpan[]> {
   const events = await stopTracing(session);
-  const ends = new Map(
-    events
-      .filter((event) => event.ph === 'e')
-      .map((event) => [traceId(event), event]),
+  return collectServerComponentSpans(events).filter(
+    (span) => span.name === 'SlowServerComponent',
   );
+}
+
+function collectServerComponentSpans(
+  events: TraceEvent[],
+): ServerComponentSpan[] {
+  const ends = new Map<string, TraceEvent>();
+  for (const event of events) {
+    if (event.ph !== 'e') {
+      continue;
+    }
+    const key = asyncEventKey(event);
+    if (key !== undefined) {
+      ends.set(key, event);
+    }
+  }
   return events
     .filter(
       (event) =>
         event.ph === 'b' &&
         JSON.stringify(event.args).includes('Server Components'),
     )
-    .map((event) => ({
-      name: event.name.replaceAll('\u200b', ''),
-      duration: ((ends.get(traceId(event))?.ts ?? event.ts) - event.ts) / 1000,
-    }));
+    .flatMap((event) => {
+      const key = asyncEventKey(event);
+      if (key === undefined) {
+        return [];
+      }
+      const end = ends.get(key);
+      return [
+        {
+          name: event.name.replaceAll('\u200b', ''),
+          duration: ((end?.ts ?? event.ts) - event.ts) / 1000,
+        },
+      ];
+    });
+}
+
+// Chromium pairs nestable async events by category, name, and id (a local id is
+// only unique within its emitting process, so it is scoped by pid). Events with
+// no usable id are dropped rather than collapsed onto a shared key.
+function asyncEventKey(event: TraceEvent): string | undefined {
+  const localId = event.id2?.local;
+  const id = localId ?? event.id;
+  if (id === undefined) {
+    return undefined;
+  }
+  const scope = localId !== undefined ? event.pid : undefined;
+  return [event.cat, event.name, scope, id].join('\u0000');
 }
 
 async function stopTracing(session: CDPSession): Promise<TraceEvent[]> {
@@ -121,8 +167,4 @@ async function stopTracing(session: CDPSession): Promise<TraceEvent[]> {
   }
   await session.send('IO.close', { handle: stream });
   return (JSON.parse(trace) as { traceEvents: TraceEvent[] }).traceEvents;
-}
-
-function traceId(event: TraceEvent): string | undefined {
-  return event.id2?.local ?? event.id;
 }
