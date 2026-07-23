@@ -970,20 +970,22 @@ const InnerRouter = ({
     }
   }, [nav]);
 
-  if (import.meta.hot) {
-    // The etag cache is cleared by minimal's own reload listener, which Root
-    // registers (via unstable_fetchRsc) ahead of this one, so it runs first.
-    const refetchRoute = () => {
-      prefetchCacheRef.current = new Map();
-      prefetchedElementsStoreRef.current = new Map();
-      staticPathSetRef.current.clear();
-      const route = routeRef.current;
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      refetch(encodeRoutePath(route.path), createRscParams(route.query));
-    };
-    upsertRscReloadListener(globalThis.__WAKU_REFETCH_ROUTE__, refetchRoute);
-    globalThis.__WAKU_REFETCH_ROUTE__ = refetchRoute;
-  }
+  useEffect(() => {
+    if (import.meta.hot) {
+      // The etag cache is cleared by minimal's own reload listener, which Root
+      // registers (via unstable_fetchRsc) ahead of this one, so it runs first.
+      const refetchRoute = () => {
+        prefetchCacheRef.current = new Map();
+        prefetchedElementsStoreRef.current = new Map();
+        staticPathSetRef.current.clear();
+        const route = routeRef.current;
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        refetch(encodeRoutePath(route.path), createRscParams(route.query));
+      };
+      upsertRscReloadListener(globalThis.__WAKU_REFETCH_ROUTE__, refetchRoute);
+      globalThis.__WAKU_REFETCH_ROUTE__ = refetchRoute;
+    }
+  }, [refetch]);
 
   const [[routeChangeEvents, emitRouteChangeEvent]] = useState(
     createRouteChangeListeners,
