@@ -727,7 +727,15 @@ const FollowError = ({
   reset: () => void;
   followPromiseMap: WeakMap<object, Promise<unknown>>;
 }) => {
-  const { changeRoute } = useRouterOrThrow();
+  const { route, changeRoute } = useRouterOrThrow();
+  const routeAtCatchRef = useRef(route);
+  useEffect(() => {
+    // The route derives from the elements, so a change means the followed
+    // route slot is committed; resetting earlier re-renders the broken one.
+    if (!isSameRoute(route, routeAtCatchRef.current)) {
+      reset();
+    }
+  }, [route, reset]);
   useEffect(() => {
     const info = getErrorInfo(error);
     if (!info?.location && !(info?.status === 404 && has404)) {
@@ -745,14 +753,13 @@ const FollowError = ({
       })
         .then(() => {
           followPromiseMap.delete(error as object);
-          reset();
         })
         .catch((err) => {
           followPromiseMap.delete(error as object);
           console.log('Error while following the error:', err);
         }),
     );
-  }, [error, has404, reset, changeRoute, followPromiseMap]);
+  }, [error, has404, changeRoute, followPromiseMap]);
   const info = getErrorInfo(error);
   return info?.status === 404 && !has404 ? <h1>Not Found</h1> : null;
 };
@@ -979,7 +986,10 @@ const InnerRouter = ({
   }, [nav]);
 
   useEffect(() => {
-    if (import.meta.hot) {
+    if (!import.meta.hot) {
+      return;
+    }
+    {
       // The etag cache is cleared by minimal's own reload listener, which Root
       // registers (via unstable_fetchRsc) ahead of this one, so it runs first.
       const refetchRoute = () => {
