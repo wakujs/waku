@@ -21,6 +21,31 @@ const waku = fileURLToPath(
 );
 const guidesDir = fileURLToPath(new URL('../docs/guides', import.meta.url));
 
+const loadGuide = (fileName: string) => {
+  const source = readFileSync(`${guidesDir}/${fileName}`, 'utf8').replace(
+    /\r\n?/g,
+    '\n',
+  );
+  const frontmatterMatch = source.match(
+    /^---\n(?<frontmatter>[\s\S]*?)\n---\n*/,
+  );
+  const frontmatter = frontmatterMatch?.groups?.frontmatter;
+  const slug = frontmatter
+    ?.match(/^slug: (?<value>.+)$/m)
+    ?.groups?.value?.trim();
+  const title = frontmatter
+    ?.match(/^title: (?<value>.+)$/m)
+    ?.groups?.value?.trim();
+  if (!frontmatterMatch || !slug || !title) {
+    throw new Error(`Invalid guide frontmatter: ${fileName}`);
+  }
+  return {
+    slug,
+    title,
+    content: source.slice(frontmatterMatch[0].length).trim(),
+  };
+};
+
 test.describe('website smoke test', () => {
   let port: number;
   let cp: ChildProcess;
@@ -58,11 +83,13 @@ test.describe('website smoke test', () => {
     }).filter((fileName) => fileName.endsWith('.mdx'));
 
     for (const fileName of guideFileNames) {
-      const guide = readFileSync(`${guidesDir}/${fileName}`, 'utf8').replace(
-        /\r\n?/g,
-        '\n',
-      );
+      const { slug, title, content: guideContent } = loadGuide(fileName);
+      const guide = `# ${title}\n\nSource: https://waku.gg/guides/${slug}\n\n${guideContent}`;
       expect(content).toContain(guide);
     }
+
+    expect(content.indexOf('# Quick Start\n')).toBeLessThan(
+      content.indexOf('# What is Waku?\n'),
+    );
   });
 });

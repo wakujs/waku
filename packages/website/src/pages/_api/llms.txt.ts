@@ -10,7 +10,12 @@ export const GET = async () => {
     '⛩️ The minimal React framework\n\n## Introduction',
   );
   readme = readme.replace(/\n## Community[\s\S]*$/, '\n');
-  const guides = loadGuides();
+  const guides = (await loadGuides())
+    .map(
+      (guide) =>
+        `# ${guide.title}\n\nSource: https://waku.gg/guides/${guide.slug}\n\n${guide.content.trim()}`,
+    )
+    .join('\n\n---\n\n');
   return new Response(`${readme}\n# Guides\n\n${guides}`, {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
