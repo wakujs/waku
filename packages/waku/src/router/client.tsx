@@ -985,11 +985,11 @@ const InnerRouter = ({
     }
   }, [nav]);
 
-  useEffect(() => {
-    if (!import.meta.hot) {
-      return;
-    }
-    {
+  if (import.meta.hot) {
+    // import.meta.hot is a build time constant, so the hook order is stable
+    // and production builds drop the whole block.
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useEffect(() => {
       // The etag cache is cleared by minimal's own reload listener, which Root
       // registers (via unstable_fetchRsc) ahead of this one, so it runs first.
       const refetchRoute = () => {
@@ -1002,8 +1002,8 @@ const InnerRouter = ({
       };
       upsertRscReloadListener(globalThis.__WAKU_REFETCH_ROUTE__, refetchRoute);
       globalThis.__WAKU_REFETCH_ROUTE__ = refetchRoute;
-    }
-  }, [refetch]);
+    }, [refetch]);
+  }
 
   const [[routeChangeEvents, emitRouteChangeEvent]] = useState(
     createRouteChangeListeners,
