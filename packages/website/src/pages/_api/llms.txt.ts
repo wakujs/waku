@@ -1,7 +1,7 @@
-import { loadReadme } from '../../lib/load-docs';
+import { loadGuides, loadReadme } from '../../lib/load-docs';
 
 /**
- * Serves consolidated README.md as plain text for LLMs
+ * Serves consolidated documentation as plain text for LLMs
  */
 export const GET = async () => {
   let readme = loadReadme();
@@ -10,7 +10,8 @@ export const GET = async () => {
     '⛩️ The minimal React framework\n\n## Introduction',
   );
   readme = readme.replace(/\n## Community[\s\S]*$/, '\n');
-  return new Response(readme, {
+  const guides = loadGuides();
+  return new Response(`${readme}\n# Guides\n\n${guides}`, {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
     },
