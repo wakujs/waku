@@ -250,13 +250,15 @@ describe('pinForSwr', () => {
 
 describe('applyServerRedirect', () => {
   const prev = {
+    query: '',
     hash: '',
     history: { mode: 'push', url: undefined },
     scroll: { pathChanged: true },
   } as const;
 
   test('replaces history with the redirect url and keeps the scroll intent', () => {
-    const next = applyServerRedirect(prev, route('/b'));
+    const next = applyServerRedirect(prev, route('/b', 'x=1'));
+    expect(next.query).toBe('x=1');
     expect(next.history?.mode).toBe('replace');
     expect(next.history?.url?.pathname).toBe('/b');
     expect(next.scroll).toEqual({ pathChanged: true });

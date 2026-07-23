@@ -746,18 +746,17 @@ const FollowError = ({
       window.location.replace(url.href);
       return;
     }
+    const shouldScroll = info?.location
+      ? url.pathname !== window.location.pathname
+      : true;
+    if (info?.location) {
+      // The redirect target's URL should show; write it now rather than through
+      // the committed nav, whose render can churn while the follow resolves.
+      writeUrlToHistory('replace', url);
+    }
     followPromiseMap.set(
       error as object,
-      changeRoute(
-        parseRoute(url),
-        info?.location
-          ? {
-              shouldScroll: url.pathname !== window.location.pathname,
-              mode: 'replace',
-              url,
-            }
-          : { shouldScroll: true },
-      )
+      changeRoute(parseRoute(url), { shouldScroll })
         .then(() => {
           followPromiseMap.delete(error as object);
           reset();
@@ -966,6 +965,7 @@ const InnerRouter = ({
   const refetch = useRefetch();
   const mergeElements = useMergeElements();
   const [nav, setNav] = useState<Nav>(() => ({
+    query: initialRouteRef.current.query,
     // The first render ignores the hash, which the server does not know, to
     // avoid a hydration error; the effect below restores it.
     hash: '',
@@ -973,13 +973,13 @@ const InnerRouter = ({
     scroll: null,
   }));
   const [err, setErr] = useState<unknown>(null);
-  const currentRoute: RouteProps = routeFromElements
-    ? {
-        path: routeFromElements.path,
-        query: routeFromElements.query,
-        hash: nav.hash,
-      }
-    : { ...initialRouteRef.current, hash: nav.hash };
+  const currentRoute: RouteProps = {
+    path: routeFromElements
+      ? routeFromElements.path
+      : initialRouteRef.current.path,
+    query: nav.query,
+    hash: nav.hash,
+  };
   const routeRef = useRef(currentRoute);
   useEffect(() => {
     const hash = window.location.hash || initialRouteRef.current.hash;
@@ -987,13 +987,16 @@ const InnerRouter = ({
     setNav((prev) =>
       prev.hash === hash && !prev.history && !prev.scroll
         ? prev
-        : { hash, history: null, scroll: null },
+        : { ...prev, hash, history: null, scroll: null },
     );
     setErr(null);
   }, []);
   useLayoutEffect(() => {
+    const route = routeRef.current;
+    if (nav.history) {
+      writeUrlToHistory(nav.history.mode, nav.history.url || getRouteUrl(route));
+    }
     if (nav.scroll) {
-      const route = routeRef.current;
       scrollToRoute(
         route,
         nav.scroll.pathChanged ? 'instant' : 'auto',
@@ -1084,12 +1087,6 @@ const InnerRouter = ({
             mergeElements({ [ROUTE_ID]: [route.path, route.query] });
           }
           routeRef.current = route;
-          if (nextNav.history) {
-            writeUrlToHistory(
-              nextNav.history.mode,
-              nextNav.history.url || getRouteUrl(route),
-            );
-          }
           setNav(nextNav);
           setErr(null);
           abortRef.current = null;
@@ -1141,6 +1138,8 @@ const InnerRouter = ({
             },
           );
           routeRef.current = nextRoute;
+          // Instant nav paints the target right away, so its URL is written
+          // now (imperatively); a later error follow can supersede it.
           const optimisticNav = deriveNav({
             destination: { route: nextRoute, routeUrl: targetUrl },
             attempted: nextRoute,
@@ -1156,7 +1155,7 @@ const InnerRouter = ({
               optimisticNav.history.url || getRouteUrl(nextRoute),
             );
           }
-          setNav(optimisticNav);
+          setNav({ ...optimisticNav, history: null });
           setErr(null);
           try {
             const elements = await dataPromise;
@@ -1169,7 +1168,10 @@ const InnerRouter = ({
               if (redirect.path !== '/404') {
                 writeUrlToHistory('replace', getRouteUrl(redirect));
               }
-              setNav((prev) => applyServerRedirect(prev, redirect));
+              setNav((prev) => ({
+                ...applyServerRedirect(prev, redirect),
+                history: null,
+              }));
             }
             abortRef.current = null;
             emitRouteChangeEvent('complete', redirect ?? nextRoute);

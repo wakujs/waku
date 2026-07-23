@@ -127,9 +127,11 @@ export const writeUrlToHistory = (mode: 'push' | 'replace', url: URL) => {
 
 // --- client-only navigation state ---
 
-// The route is derived from the elements' ROUTE_ID; only the client-only intent
-// the server does not know is stored here.
+// The route path is derived from the elements' ROUTE_ID. The query and hash are
+// kept here because they are client-owned: a static route does not echo the URL
+// query, and the server never sees the hash.
 export type Nav = {
+  query: string;
   hash: string;
   history: { mode: 'push' | 'replace'; url: URL | undefined } | null;
   scroll: { pathChanged: boolean } | null;
@@ -166,6 +168,7 @@ export const deriveNav = (outcome: {
   return {
     route,
     nav: {
+      query: route.query,
       hash: route.hash,
       history: mode ? { mode, url } : null,
       scroll: outcome.shouldScroll
@@ -177,6 +180,7 @@ export const deriveNav = (outcome: {
 
 export const applyServerRedirect = (prev: Nav, redirect: RouteProps): Nav => ({
   ...prev,
+  query: redirect.query,
   hash: redirect.hash,
   history:
     redirect.path === '/404'
