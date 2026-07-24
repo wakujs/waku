@@ -120,25 +120,20 @@ const mergeElementsPromise = (
 };
 
 // an hmr refresh replaces server keys and carries the client's symbol keys
-const refreshCache = new WeakMap();
 const refreshElementsPromise = (
   a: Promise<Elements>,
   b: Promise<Elements>,
-): Promise<Elements> => {
-  const getResult = () =>
-    Promise.all([a, b]).then(([aRes, bRes]) => {
-      const nextElements = { ...bRes };
-      delete nextElements._value;
-      for (const key of Reflect.ownKeys(aRes)) {
-        if (typeof key === 'symbol') {
-          nextElements[key] = aRes[key];
-        }
+): Promise<Elements> =>
+  Promise.all([a, b]).then(([aRes, bRes]) => {
+    const nextElements = { ...bRes };
+    delete nextElements._value;
+    for (const key of Reflect.ownKeys(aRes)) {
+      if (typeof key === 'symbol') {
+        nextElements[key] = aRes[key];
       }
-      return nextElements;
-    });
-  const cache2 = getCached(() => new WeakMap(), refreshCache, a);
-  return getCached(getResult, cache2, b);
-};
+    }
+    return nextElements;
+  });
 
 const slotIdOf = <K extends string | symbol>(key: K): K =>
   typeof key === 'string' && key.startsWith(ETAG_ID_PREFIX)
