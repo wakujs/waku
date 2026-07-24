@@ -1056,6 +1056,14 @@ const InnerRouter = ({
             : options.shouldScroll,
           getServerRedirect,
         });
+        if (
+          options.errorToFollow !== undefined &&
+          isSameRoute(route, routeBefore)
+        ) {
+          throw new Error('detected a redirect loop', {
+            cause: options.errorToFollow,
+          });
+        }
         const commit = () => {
           if (!destination.elements) {
             mergeElements({ [ROUTE_ID]: [route.path, route.query] });
