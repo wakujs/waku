@@ -26,6 +26,7 @@ import {
   unstable_prefetchRsc as prefetchRsc,
   useRefetch,
 } from '../src/minimal/client.js';
+import { PREFETCH_LIMIT } from '../src/router/client-utils/prefetch-cache.js';
 import {
   ErrorBoundary,
   INTERNAL_ServerRouter,
@@ -49,7 +50,6 @@ import {
   ROUTE_ID,
   decodeRoutePath,
 } from '../src/router/isomorphic-utils/route-path.js';
-import { PREFETCH_LIMIT } from '../src/router/client-utils/prefetch-cache.js';
 
 const postsSearchCodec = {
   id: 'posts-test',
