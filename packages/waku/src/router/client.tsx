@@ -122,6 +122,11 @@ const parseRouteFromLocation = (): RouteProps => {
   return parseRoute(new URL(window.location.href));
 };
 
+const reloadWithUrl = (url: URL) => {
+  window.history.pushState(window.history.state, '', url);
+  window.location.reload();
+};
+
 const shouldScrollByDefault = (url: URL) =>
   pathnameToCurrentRoutePath(url.pathname) !==
     pathnameToCurrentRoutePath(window.location.pathname) ||
@@ -291,8 +296,10 @@ export function useRouter() {
     [changeRoute, resolveCodec],
   ) as Navigate;
   const reload = useCallback(async () => {
-    const url = new URL(window.location.href);
-    await changeRoute(parseRoute(url), { shouldScroll: true, refetch: true });
+    await changeRoute(parseRouteFromLocation(), {
+      shouldScroll: true,
+      refetch: true,
+    });
   }, [changeRoute]);
   const back = useCallback(() => {
     // FIXME is this correct?
@@ -747,7 +754,7 @@ const FollowError = ({
     }
     followPromiseMap.set(
       error as object,
-      changeRoute(parseRoute(new URL(window.location.href)), {
+      changeRoute(parseRouteFromLocation(), {
         shouldScroll: true,
         errorToFollow: error,
         ...(info?.location ? { mode: 'replace' as const } : {}),
@@ -1023,10 +1030,7 @@ const InnerRouter = ({
           const cached = prefetchManager.get(rscPath, route.query);
           return refetch(rscPath, createRscParams(route.query), {
             signal: abortController.signal,
-            onBuildIdMismatch: () => {
-              window.history.pushState(window.history.state, '', routeUrl);
-              window.location.reload();
-            },
+            onBuildIdMismatch: () => reloadWithUrl(routeUrl),
             ...(cached ? { unstable_prefetched: cached.promise } : {}),
           });
         },
@@ -1118,10 +1122,7 @@ const InnerRouter = ({
                 ...(prefetchedElements ? { base: prefetchedElements } : {}),
                 overlay: { [ROUTE_ID]: [nextRoute.path, nextRoute.query] },
               },
-              onBuildIdMismatch: () => {
-                window.history.pushState(window.history.state, '', targetUrl);
-                window.location.reload();
-              },
+              onBuildIdMismatch: () => reloadWithUrl(targetUrl),
               ...(cached ? { unstable_prefetched: cached.promise } : {}),
             },
           );
@@ -1241,15 +1242,12 @@ const InnerRouter = ({
       ) {
         return;
       }
-      const url = new URL(window.location.href);
-      url.pathname = path;
-      url.search = query;
-      url.hash = '';
-      await changeRoute(parseRoute(url), {
+      const route = { path, query, hash: '' };
+      await changeRoute(route, {
         refetch: false,
         shouldScroll: false,
         mode: path === '/404' ? undefined : 'push',
-        url,
+        url: getRouteUrl(route),
       });
     },
     [changeRoute],
@@ -1286,9 +1284,7 @@ const InnerRouter = ({
 
   useEffect(() => {
     const callback = () => {
-      const nextRoute = routeInterceptor(
-        parseRoute(new URL(window.location.href)),
-      );
+      const nextRoute = routeInterceptor(parseRouteFromLocation());
       if (!nextRoute) {
         return;
       }

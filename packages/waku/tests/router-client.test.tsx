@@ -1557,6 +1557,42 @@ describe('Router integration', () => {
     expect(size('l')).toBe(0);
   });
 
+  test('a server function route update keeps the base path', async () => {
+    vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/docs/');
+    try {
+      window.history.replaceState({}, '', '/docs/start');
+      const elements = {
+        [unstable_getRouteSlotId('/start')]: <div>start</div>,
+        [unstable_getRouteSlotId('/next')]: <div>next</div>,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      };
+      const view = await renderRouter(
+        { initialRoute: { path: '/start', query: '', hash: '' } },
+        elements,
+      );
+
+      const store = fetchRscStore as unknown as Record<string, unknown>;
+      const listeners = store.l as Set<
+        (elements: Record<string, unknown>) => void
+      >;
+      expect(listeners.size).toBe(1);
+      await act(async () => {
+        for (const listener of listeners) {
+          listener({ [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: false });
+        }
+        await flush();
+      });
+      await flush();
+
+      expect(window.location.pathname).toBe('/docs/next');
+
+      view.unmount();
+    } finally {
+      vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/');
+    }
+  });
+
   test('push performs refetch for dynamic routes and emits start/complete events', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
