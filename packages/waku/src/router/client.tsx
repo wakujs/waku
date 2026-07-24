@@ -1289,11 +1289,13 @@ const InnerRouter = ({
         return;
       }
       const route = { path, query, hash: '' };
+      const is404 = path === '/404';
       await changeRouteInTransition(changeRoute, route, {
         refetch: false,
         shouldScroll: false,
-        push: path !== '/404',
-        url: getRouteUrl(route),
+        push: !is404,
+        // the 404 route keeps the url the user is on
+        url: is404 ? new URL(window.location.href) : getRouteUrl(route),
       });
     },
     [changeRoute],

@@ -1620,6 +1620,42 @@ describe('Router integration', () => {
     }
   });
 
+  test('a server function 404 keeps the attempted url', async () => {
+    window.history.replaceState({}, '', '/start?a=1');
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/404')]: <Probe />,
+      [ROUTE_ID]: ['/start', 'a=1'],
+      [IS_STATIC_ID]: false,
+      [HAS404_ID]: true,
+    };
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: 'a=1', hash: '' } },
+      elements,
+    );
+
+    const store = fetchRscStore as unknown as Record<string, unknown>;
+    const listeners = store.l as Set<
+      (elements: Record<string, unknown>) => void
+    >;
+    await act(async () => {
+      for (const listener of listeners) {
+        listener({ [ROUTE_ID]: ['/404', ''], [IS_STATIC_ID]: false });
+      }
+      await flush();
+    });
+    await flush();
+
+    expect(capture.router?.path).toBe('/404');
+    expect(window.location.pathname + window.location.search).toBe(
+      '/start?a=1',
+    );
+
+    view.unmount();
+  });
+
   test('push performs refetch for dynamic routes and emits start/complete events', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
