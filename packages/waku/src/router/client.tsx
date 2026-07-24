@@ -988,7 +988,6 @@ const InnerRouter = ({
   if (import.meta.hot) {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
-      // minimal's reload listener, registered first by Root, clears the etags
       const refetchRoute = () => {
         prefetchManager.clear();
         staticPathSetRef.current.clear();

@@ -1,142 +1,172 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   PREFETCH_LIMIT,
   PREFETCH_TTL,
   createPrefetchManager,
-  getPrefetch,
-  prefetchCacheKey,
-  setPrefetch,
-  startPrefetch,
 } from '../src/router/prefetch-cache.js';
-import type {
-  PrefetchCache,
-  PrefetchEntry,
-  PrefetchedElementsStore,
-} from '../src/router/prefetch-cache.js';
+import type { PrefetchManager } from '../src/router/prefetch-cache.js';
 
-const entry = (expireAt: number): PrefetchEntry => ({
-  promise: Promise.resolve({}),
-  expireAt,
-});
+type Elements = Record<string, unknown>;
 
-describe('router prefetch cache', () => {
-  it('keys distinctly by path and query', () => {
-    expect(prefetchCacheKey('/x', 'a=1')).toBe(prefetchCacheKey('/x', 'a=1'));
-    expect(prefetchCacheKey('/x', 'a=1')).not.toBe(
-      prefetchCacheKey('/x', 'a=2'),
-    );
-    expect(prefetchCacheKey('/x', '')).not.toBe(prefetchCacheKey('/y', ''));
+const pending = () => new Promise<Elements>(() => {});
+
+const settle = async (
+  manager: PrefetchManager,
+  rscPath: string,
+  query: string,
+  elements: Elements,
+) => {
+  let resolveFetch: (value: Elements) => void = () => {};
+  manager.prefetch(
+    rscPath,
+    query,
+    () =>
+      new Promise<Elements>((resolve) => {
+        resolveFetch = resolve;
+      }),
+    undefined,
+  );
+  resolveFetch(elements);
+  await Promise.resolve();
+  await Promise.resolve();
+};
+
+const reject = async (
+  manager: PrefetchManager,
+  rscPath: string,
+  query: string,
+) => {
+  let rejectFetch: (reason: unknown) => void = () => {};
+  manager.prefetch(
+    rscPath,
+    query,
+    () =>
+      new Promise<Elements>((_resolve, rejectPromise) => {
+        rejectFetch = rejectPromise;
+      }),
+    undefined,
+  );
+  rejectFetch(new Error('network'));
+  await Promise.resolve();
+  await Promise.resolve();
+};
+
+describe('router prefetch manager', () => {
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  it('returns a fresh entry and evicts an expired one on read', () => {
-    const cache: PrefetchCache = new Map();
-    const key = prefetchCacheKey('/x', '');
-    setPrefetch(cache, key, entry(1000));
-    expect(getPrefetch(cache, key, 999)).toBeDefined();
-    expect(getPrefetch(cache, key, 1000)).toBeUndefined();
-    expect(cache.has(key)).toBe(false);
-  });
-
-  it('bounds the cache at PREFETCH_LIMIT, evicting the oldest first', () => {
-    const cache: PrefetchCache = new Map();
-    for (let i = 0; i < PREFETCH_LIMIT + 5; i += 1) {
-      setPrefetch(cache, prefetchCacheKey('/p', String(i)), entry(Infinity));
-    }
-    expect(cache.size).toBe(PREFETCH_LIMIT);
-    expect(cache.has(prefetchCacheKey('/p', '0'))).toBe(false);
-    expect(cache.has(prefetchCacheKey('/p', '4'))).toBe(false);
-    expect(cache.has(prefetchCacheKey('/p', '5'))).toBe(true);
-    expect(cache.has(prefetchCacheKey('/p', String(PREFETCH_LIMIT + 4)))).toBe(
-      true,
-    );
-  });
-
-  it('has a positive ttl', () => {
+  it('has a positive default ttl', () => {
     expect(PREFETCH_TTL).toBeGreaterThan(0);
   });
 
+  it('dedupes by path and query within the ttl', () => {
+    const manager = createPrefetchManager();
+    let calls = 0;
+    const fetcher = () => {
+      calls += 1;
+      return pending();
+    };
+    manager.prefetch('/x', 'a=1', fetcher, undefined);
+    manager.prefetch('/x', 'a=1', fetcher, undefined);
+    manager.prefetch('/x', 'a=2', fetcher, undefined);
+    manager.prefetch('/y', 'a=1', fetcher, undefined);
+    expect(calls).toBe(3);
+  });
+
+  it('expires an entry after its ttl', () => {
+    vi.useFakeTimers();
+    const manager = createPrefetchManager();
+    let calls = 0;
+    const fetcher = () => {
+      calls += 1;
+      return pending();
+    };
+    manager.prefetch('/x', '', fetcher, { ttl: 1000 });
+    expect(manager.get('/x', '')).toBeDefined();
+    vi.advanceTimersByTime(1001);
+    expect(manager.get('/x', '')).toBeUndefined();
+    manager.prefetch('/x', '', fetcher, { ttl: 1000 });
+    expect(calls).toBe(2);
+  });
+
+  it('bounds the cache at PREFETCH_LIMIT, evicting the oldest first', () => {
+    const manager = createPrefetchManager();
+    for (let i = 0; i < PREFETCH_LIMIT + 5; i += 1) {
+      manager.prefetch('/p', String(i), pending, undefined);
+    }
+    expect(manager.get('/p', '0')).toBeUndefined();
+    expect(manager.get('/p', '4')).toBeUndefined();
+    expect(manager.get('/p', '5')).toBeDefined();
+    expect(manager.get('/p', String(PREFETCH_LIMIT + 4))).toBeDefined();
+  });
+
   it('merges responses for the same rscPath in the store', async () => {
-    const cache: PrefetchCache = new Map();
-    const store: PrefetchedElementsStore = new Map();
-    await startAndSettle(cache, store, '/p', 'q=a', { a: 1 });
-    await startAndSettle(cache, store, '/p', 'q=b', { b: 2 });
-    expect(store.get('/p')).toEqual({ a: 1, b: 2 });
+    const manager = createPrefetchManager();
+    await settle(manager, '/p', 'q=a', { a: 1 });
+    await settle(manager, '/p', 'q=b', { b: 2 });
+    expect(manager.getElements('/p')).toEqual({ a: 1, b: 2 });
   });
 
   it('bounds the store at PREFETCH_LIMIT, evicting the oldest first', async () => {
-    const cache: PrefetchCache = new Map();
-    const store: PrefetchedElementsStore = new Map();
+    const manager = createPrefetchManager();
     for (let i = 0; i < PREFETCH_LIMIT + 5; i += 1) {
-      await startAndSettle(cache, store, `/p${i}`, '', { i });
+      await settle(manager, `/p${i}`, '', { i });
     }
-    expect(store.size).toBe(PREFETCH_LIMIT);
-    expect(store.has('/p0')).toBe(false);
-    expect(store.has('/p4')).toBe(false);
-    expect(store.has('/p5')).toBe(true);
-    expect(store.has(`/p${PREFETCH_LIMIT + 4}`)).toBe(true);
-    // merging into an existing entry does not evict
-    await startAndSettle(cache, store, '/p5', 'q=b', { j: 1 });
-    expect(store.size).toBe(PREFETCH_LIMIT);
-    expect(store.has('/p5')).toBe(true);
+    expect(manager.getElements('/p0')).toBeUndefined();
+    expect(manager.getElements('/p4')).toBeUndefined();
+    expect(manager.getElements('/p5')).toBeDefined();
+    expect(manager.getElements(`/p${PREFETCH_LIMIT + 4}`)).toBeDefined();
+    // merging into an existing entry does not evict another one
+    await settle(manager, '/p5', 'q=b', { j: 1 });
+    expect(manager.getElements('/p5')).toEqual({ i: 5, j: 1 });
+    expect(manager.getElements('/p6')).toBeDefined();
   });
 
-  it('reserves the route while the first prefetch is in flight', async () => {
-    const cache: PrefetchCache = new Map();
-    const store: PrefetchedElementsStore = new Map();
+  it('mode once skips a route that is already stored or in flight', async () => {
+    const manager = createPrefetchManager();
     let fetched = 0;
-    let resolveFetch: (value: Record<string, unknown>) => void = () => {};
-    const fetchElements = () => {
+    let resolveFetch: (value: Elements) => void = () => {};
+    const fetcher = () => {
       fetched += 1;
-      return new Promise<Record<string, unknown>>((resolve) => {
+      return new Promise<Elements>((resolve) => {
         resolveFetch = resolve;
       });
     };
-    startPrefetch(cache, store, '/p', 'q=a', fetchElements, {
-      mode: 'once',
-    });
-    startPrefetch(cache, store, '/p', 'q=b', fetchElements, {
-      mode: 'once',
-    });
+    manager.prefetch('/p', 'q=a', fetcher, { mode: 'once' });
+    manager.prefetch('/p', 'q=b', fetcher, { mode: 'once' });
     expect(fetched).toBe(1);
     resolveFetch({ a: 1 });
     await Promise.resolve();
-    expect(store.get('/p')).toEqual({ a: 1 });
+    expect(manager.getElements('/p')).toEqual({ a: 1 });
   });
 
   it('passes the stored entry to the fetcher as the base', async () => {
-    const cache: PrefetchCache = new Map();
-    const store: PrefetchedElementsStore = new Map();
-    await startAndSettle(cache, store, '/p', 'q=a', { a: 1 });
+    const manager = createPrefetchManager();
+    await settle(manager, '/p', 'q=a', { a: 1 });
     let received: unknown = 'unset';
-    startPrefetch(
-      cache,
-      store,
+    manager.prefetch(
       '/p',
       'q=b',
       (base) => {
         received = base;
-        return new Promise(() => {});
+        return pending();
       },
       undefined,
     );
     expect(received).toEqual({ a: 1 });
   });
 
-  it('passes no base while the first prefetch is in flight', async () => {
-    const cache: PrefetchCache = new Map();
-    const store: PrefetchedElementsStore = new Map();
-    startPrefetch(cache, store, '/p', 'q=a', () => new Promise(() => {}), {
-      mode: 'always',
-    });
+  it('passes no base while the first prefetch is in flight', () => {
+    const manager = createPrefetchManager();
+    manager.prefetch('/p', 'q=a', pending, { mode: 'always' });
     let received: unknown = 'unset';
-    startPrefetch(
-      cache,
-      store,
+    manager.prefetch(
       '/p',
       'q=b',
       (base) => {
         received = base;
-        return new Promise(() => {});
+        return pending();
       },
       undefined,
     );
@@ -144,22 +174,17 @@ describe('router prefetch cache', () => {
   });
 
   it('releases only an unfulfilled reservation', async () => {
-    const cache: PrefetchCache = new Map();
-    const store: PrefetchedElementsStore = new Map();
-    await expect(
-      startAndReject(cache, store, '/p', 'q=a'),
-    ).resolves.toBeUndefined();
-    expect(store.has('/p')).toBe(false);
-    await startAndSettle(cache, store, '/p', 'q=b', { a: 1 });
-    await expect(
-      startAndReject(cache, store, '/p', 'q=c'),
-    ).resolves.toBeUndefined();
-    expect(store.get('/p')).toEqual({ a: 1 });
+    const manager = createPrefetchManager();
+    await reject(manager, '/p', 'q=a');
+    expect(manager.getElements('/p')).toBeUndefined();
+    await settle(manager, '/p', 'q=b', { a: 1 });
+    await reject(manager, '/p', 'q=c');
+    expect(manager.getElements('/p')).toEqual({ a: 1 });
   });
 
   it('a prefetch in flight at clear() completes into a detached store', async () => {
     const manager = createPrefetchManager();
-    let resolveFetch!: (elements: Record<string, unknown>) => void;
+    let resolveFetch!: (elements: Elements) => void;
     manager.prefetch(
       '/p',
       '',
@@ -177,50 +202,3 @@ describe('router prefetch cache', () => {
     expect(manager.get('/p', '')).toBeUndefined();
   });
 });
-
-const startAndSettle = async (
-  cache: PrefetchCache,
-  store: PrefetchedElementsStore,
-  rscPath: string,
-  query: string,
-  elements: Record<string, unknown>,
-) => {
-  let resolveFetch: (value: Record<string, unknown>) => void = () => {};
-  startPrefetch(
-    cache,
-    store,
-    rscPath,
-    query,
-    () =>
-      new Promise<Record<string, unknown>>((resolve) => {
-        resolveFetch = resolve;
-      }),
-    undefined,
-  );
-  resolveFetch(elements);
-  await Promise.resolve();
-  await Promise.resolve();
-};
-
-const startAndReject = async (
-  cache: PrefetchCache,
-  store: PrefetchedElementsStore,
-  rscPath: string,
-  query: string,
-) => {
-  let rejectFetch: (reason: unknown) => void = () => {};
-  startPrefetch(
-    cache,
-    store,
-    rscPath,
-    query,
-    () =>
-      new Promise<Record<string, unknown>>((_resolve, reject) => {
-        rejectFetch = reject;
-      }),
-    undefined,
-  );
-  rejectFetch(new Error('network'));
-  await Promise.resolve();
-  await Promise.resolve();
-};
