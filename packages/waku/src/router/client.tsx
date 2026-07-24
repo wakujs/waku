@@ -937,7 +937,6 @@ const InnerRouter = ({
   }, [elements]);
   // FIXME this "fetchingSlices" hack feels suboptimal.
   const fetchingSlicesRef = useRef(new Set<SliceId>());
-  // a ref, not a module store, so it is scoped to the router instance
   const prefetchManager = useRef(createPrefetchManager()).current;
 
   const refetch = useRefetch();
