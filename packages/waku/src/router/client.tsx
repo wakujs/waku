@@ -937,9 +937,8 @@ const InnerRouter = ({
   }, [elements]);
   // FIXME this "fetchingSlices" hack feels suboptimal.
   const fetchingSlicesRef = useRef(new Set<SliceId>());
-  // A ref (not a module-level store) so it is scoped to the router instance
-  // and reset on remount.
-  const prefetchManagerRef = useRef(createPrefetchManager());
+  // a ref, not a module store, so it is scoped to the router instance
+  const prefetchManager = useRef(createPrefetchManager()).current;
 
   const refetch = useRefetch();
   const mergeElements = useMergeElements();
@@ -987,18 +986,14 @@ const InnerRouter = ({
   }, [nav]);
 
   if (import.meta.hot) {
-    // import.meta.hot is a build time constant, so the hook order is stable
-    // and production builds drop the whole block.
     // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
-      // The etag cache is cleared by minimal's own reload listener, which Root
-      // registers (via unstable_fetchRsc) ahead of this one, so it runs first.
+      // minimal's reload listener, registered first by Root, clears the etags
       const refetchRoute = () => {
-        prefetchManagerRef.current.clear();
+        prefetchManager.clear();
         staticPathSetRef.current.clear();
         const route = routeRef.current;
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        refetch(encodeRoutePath(route.path), createRscParams(route.query));
+        void refetch(encodeRoutePath(route.path), createRscParams(route.query));
       };
       upsertRscReloadListener(globalThis.__WAKU_REFETCH_ROUTE__, refetchRoute);
       globalThis.__WAKU_REFETCH_ROUTE__ = refetchRoute;
@@ -1029,7 +1024,7 @@ const InnerRouter = ({
       const resolveDeps = {
         fetchRoute: (route: RouteProps, routeUrl: URL) => {
           const rscPath = encodeRoutePath(route.path);
-          const cached = prefetchManagerRef.current.get(rscPath, route.query);
+          const cached = prefetchManager.get(rscPath, route.query);
           return refetch(rscPath, createRscParams(route.query), {
             signal: abortController.signal,
             onBuildIdMismatch: () => {
@@ -1099,8 +1094,7 @@ const InnerRouter = ({
       }
       if (!options.errorToFollow && options.instant) {
         const rscPath = encodeRoutePath(nextRoute.path);
-        const prefetchedElements =
-          prefetchManagerRef.current.getElements(rscPath);
+        const prefetchedElements = prefetchManager.getElements(rscPath);
         const routeSlotId = getRouteSlotId(nextRoute.path);
         if (
           canCommitInstantly(
@@ -1110,10 +1104,7 @@ const InnerRouter = ({
           )
         ) {
           const pin = pinForSwr(() => resolvedElementsRef.current);
-          const cached = prefetchManagerRef.current.get(
-            rscPath,
-            nextRoute.query,
-          );
+          const cached = prefetchManager.get(rscPath, nextRoute.query);
           const dataPromise = refetch(
             rscPath,
             createRscParams(nextRoute.query),
@@ -1206,10 +1197,7 @@ const InnerRouter = ({
           options.errorToFollow,
         );
         if (!destination) {
-          // left the app; keep a follow pending so its boundary does not reset
-          return options.errorToFollow
-            ? new Promise<never>(() => {})
-            : undefined;
+          return;
         }
         finish(destination);
       } catch (e) {
@@ -1233,7 +1221,7 @@ const InnerRouter = ({
       emitRouteChangeEvent,
       staticPathSetRef,
       resolvedElementsRef,
-      prefetchManagerRef,
+      prefetchManager,
     ],
   );
 
@@ -1280,7 +1268,7 @@ const InnerRouter = ({
         return;
       }
       const rscPath = encodeRoutePath(route.path);
-      prefetchManagerRef.current.prefetch(
+      prefetchManager.prefetch(
         rscPath,
         route.query,
         (base) =>
@@ -1290,7 +1278,7 @@ const InnerRouter = ({
         options,
       );
     },
-    [staticPathSetRef, prefetchManagerRef],
+    [staticPathSetRef, prefetchManager],
   );
 
   useEffect(() => {
