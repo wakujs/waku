@@ -5038,9 +5038,14 @@ describe('Router integration', () => {
 
   test('a hung probe falls back to the error path', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockImplementation(() => new Promise<Response>(() => {}));
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
+      (_input, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('Aborted', 'AbortError')),
+          );
+        }),
+    );
     const assignSpy = vi
       .spyOn(window.location, 'assign')
       .mockImplementation(() => {});
@@ -5082,6 +5087,7 @@ describe('Router integration', () => {
       });
       expect(rejected).toBeInstanceOf(TypeError);
       expect(assignSpy).not.toHaveBeenCalled();
+      expect(fetchSpy.mock.calls[0]![1]!.signal!.aborted).toBe(true);
       expect(view.container.textContent).toContain(
         'Caught an unexpected error',
       );

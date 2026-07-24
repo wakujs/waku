@@ -1206,19 +1206,23 @@ const InnerRouter = ({
         }
         if (!info && e instanceof TypeError) {
           // a probe tells a dead server from a cors blocked redirect
-          const alive = await Promise.race([
-            fetch(targetUrl, {
-              method: 'HEAD',
-              redirect: 'manual',
-              signal: abortController.signal,
-            }).then(
-              () => true,
-              () => false,
-            ),
-            new Promise<boolean>((resolve) => {
-              setTimeout(() => resolve(false), PROBE_TIMEOUT);
-            }),
-          ]);
+          const probeController = new AbortController();
+          abortController.signal.addEventListener('abort', () =>
+            probeController.abort(),
+          );
+          const timer = setTimeout(
+            () => probeController.abort(),
+            PROBE_TIMEOUT,
+          );
+          const alive = await fetch(targetUrl, {
+            method: 'HEAD',
+            redirect: 'manual',
+            signal: probeController.signal,
+          }).then(
+            () => true,
+            () => false,
+          );
+          clearTimeout(timer);
           if (isAborted()) {
             return;
           }
