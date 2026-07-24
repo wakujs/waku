@@ -3,8 +3,9 @@ import {
   PREFETCH_LIMIT,
   PREFETCH_TTL,
   createPrefetchManager,
-} from '../src/router/prefetch-cache.js';
-import type { PrefetchManager } from '../src/router/prefetch-cache.js';
+} from '../src/router/client-utils/prefetch-cache.js';
+
+type PrefetchManager = ReturnType<typeof createPrefetchManager>;
 
 type Elements = Record<string, unknown>;
 

@@ -100,7 +100,7 @@ const mergePrefetchedElements = (
 };
 
 /** One store for prefetched routes; the router does not see the two caches. */
-export type PrefetchManager = {
+type PrefetchManager = {
   prefetch: (
     rscPath: string,
     query: string,

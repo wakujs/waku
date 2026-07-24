@@ -56,6 +56,10 @@ import {
   writeUrlToHistory,
 } from './client-utils/navigate.js';
 import type { Destination, Nav } from './client-utils/navigate.js';
+import {
+  type PrefetchOptions,
+  createPrefetchManager,
+} from './client-utils/prefetch-cache.js';
 import type {
   RouteParams,
   RouteSearch,
@@ -82,10 +86,6 @@ import {
   getRouteSearchCodecId,
   isCodec,
 } from './isomorphic-utils/search-codec-registry.js';
-import {
-  type PrefetchOptions,
-  createPrefetchManager,
-} from './prefetch-cache.js';
 
 type NavigateOptions = {
   /**
@@ -995,7 +995,7 @@ const InnerRouter = ({
       };
       upsertRscReloadListener(globalThis.__WAKU_REFETCH_ROUTE__, refetchRoute);
       globalThis.__WAKU_REFETCH_ROUTE__ = refetchRoute;
-    }, [refetch]);
+    }, [refetch, prefetchManager]);
   }
 
   const [[routeChangeEvents, emitRouteChangeEvent]] = useState(
