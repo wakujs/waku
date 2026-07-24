@@ -649,7 +649,7 @@ describe('useRouter + Link with context', () => {
       { path: '/start', query: 'query=1', hash: '' },
       expect.objectContaining({
         shouldScroll: false,
-        push: true,
+        history: 'push',
         url: expect.any(URL),
       }),
     );
@@ -657,13 +657,13 @@ describe('useRouter + Link with context', () => {
       2,
       { path: '/start', query: 'query=2', hash: '' },
       expect.not.objectContaining({
-        push: true,
+        history: 'push',
       }),
     );
     expect(changeRoute).toHaveBeenNthCalledWith(
       3,
       { path: '/start', query: '', hash: '' },
-      { shouldScroll: true, refetch: true },
+      { shouldScroll: true, refetch: true, history: 'replace' },
     );
     const firstUrl = (
       (changeRoute.mock.calls[0] as unknown[] | undefined)?.[1] as
@@ -746,12 +746,12 @@ describe('useRouter + Link with context', () => {
     expect(changeRoute).toHaveBeenNthCalledWith(
       1,
       expectedRoute,
-      expect.objectContaining({ push: true, url: expect.any(URL) }),
+      expect.objectContaining({ history: 'push', url: expect.any(URL) }),
     );
     expect(changeRoute).toHaveBeenNthCalledWith(
       2,
       expectedRoute,
-      expect.not.objectContaining({ push: true }),
+      expect.not.objectContaining({ history: 'push' }),
     );
     const pushedUrl = (
       (changeRoute.mock.calls[0] as unknown[] | undefined)?.[1] as
@@ -976,7 +976,7 @@ describe('useRouter + Link with context', () => {
       { path: '/next', query: '', hash: '' },
       expect.objectContaining({
         shouldScroll: true,
-        push: true,
+        history: 'push',
         url: expect.any(URL),
       }),
     );
@@ -1296,7 +1296,7 @@ describe('useRouter + Link with context', () => {
     expect(changeRoute).toHaveBeenCalledWith(
       { path: '/next', query: '', hash: '' },
       expect.objectContaining({
-        push: true,
+        history: 'push',
       }),
     );
 
@@ -3097,6 +3097,37 @@ describe('Router integration', () => {
     );
     expect(capture.router?.path).toBe('/intercepted');
     expect(capture.router?.query).toBe('from=interceptor');
+
+    view.unmount();
+  });
+
+  test('popstate leaves the url the browser restored alone', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: true,
+    };
+
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      elements,
+    );
+
+    // a trailing slash and a percent-encoded space both survive the round trip
+    // through parseRoute, which the address bar must not be rewritten with
+    window.history.pushState({}, '', '/start/?q=hello%20world');
+    await act(async () => {
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      await flush();
+    });
+
+    expect(window.location.pathname + window.location.search).toBe(
+      '/start/?q=hello%20world',
+    );
+    expect(capture.router?.query).toBe('q=hello+world');
 
     view.unmount();
   });

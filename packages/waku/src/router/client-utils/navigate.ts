@@ -56,7 +56,9 @@ export const NAV_ID = Symbol('waku-router-nav');
 export type NavState = {
   url: string; // pathname + search + hash, with the base path
   attempted: readonly [path: string, query: string];
-  push: boolean; // consumed by the reconciler on the first write
+  // null leaves history alone (the browser already wrote it); a push turns into
+  // a replace once the reconciler has written
+  history: 'push' | 'replace' | null;
   scroll: { pathChanged: boolean } | null; // consumed by the reconciler
   scrollIntent: boolean; // the attempt's decision, for a follow to inherit
 };
@@ -68,11 +70,15 @@ export const getNavState = (
 export const makeNavState = (
   route: RouteProps,
   url: URL,
-  options: { push: boolean; scroll: boolean; pathChanged: boolean },
+  options: {
+    history: 'push' | 'replace' | null;
+    scroll: boolean;
+    pathChanged: boolean;
+  },
 ): NavState => ({
   url: url.pathname + url.search + url.hash,
   attempted: [route.path, route.query],
-  push: options.push,
+  history: options.history,
   scroll: options.scroll ? { pathChanged: options.pathChanged } : null,
   scrollIntent: options.scroll,
 });

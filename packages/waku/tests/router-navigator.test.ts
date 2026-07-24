@@ -30,20 +30,20 @@ const withNav = (
 describe('makeNavState', () => {
   test('captures the url, the attempted route and the intents', () => {
     const nav = makeNavState(route('/a', 'x=1'), urlOf('/a?x=1#top'), {
-      push: true,
+      history: 'push',
       scroll: true,
       pathChanged: true,
     });
     expect(nav.url).toBe('/a?x=1#top');
     expect(nav.attempted).toEqual(['/a', 'x=1']);
-    expect(nav.push).toBe(true);
+    expect(nav.history).toBe('push');
     expect(nav.scroll).toEqual({ pathChanged: true });
     expect(nav.scrollIntent).toBe(true);
   });
 
   test('no scroll intent when scrolling is off', () => {
     const nav = makeNavState(route('/a'), urlOf('/a'), {
-      push: false,
+      history: 'replace',
       scroll: false,
       pathChanged: true,
     });
@@ -66,7 +66,7 @@ describe('deriveCommitted', () => {
 
   test('path from the elements, query and hash from the nav url', () => {
     const nav = makeNavState(route('/a', 'x=1'), urlOf('/a?x=1#top'), {
-      push: false,
+      history: 'replace',
       scroll: false,
       pathChanged: false,
     });
@@ -79,7 +79,7 @@ describe('deriveCommitted', () => {
 
   test('a static response does not echo the query; the nav url keeps it', () => {
     const nav = makeNavState(route('/a', 'x=1'), urlOf('/a?x=1'), {
-      push: false,
+      history: 'replace',
       scroll: false,
       pathChanged: false,
     });
@@ -94,7 +94,7 @@ describe('deriveCommitted', () => {
 
   test('a server redirect moves the route and the url', () => {
     const nav = makeNavState(route('/a'), urlOf('/a'), {
-      push: true,
+      history: 'push',
       scroll: false,
       pathChanged: true,
     });
@@ -109,7 +109,7 @@ describe('deriveCommitted', () => {
     vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/docs/');
     try {
       const nav = makeNavState(route('/a'), urlOf('/docs/a'), {
-        push: false,
+        history: 'replace',
         scroll: false,
         pathChanged: false,
       });
@@ -123,7 +123,7 @@ describe('deriveCommitted', () => {
 
   test('a server redirect to the 404 route keeps the attempted url', () => {
     const nav = makeNavState(route('/missing'), urlOf('/missing'), {
-      push: false,
+      history: 'replace',
       scroll: false,
       pathChanged: true,
     });

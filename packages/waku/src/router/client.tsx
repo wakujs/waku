@@ -160,7 +160,7 @@ const createRscParams = (query: string): URLSearchParams => {
 type ChangeRouteOptions = {
   shouldScroll: boolean;
   refetch?: boolean; // true: force refetch, false: don't refetch, undefined: auto-decide based on route change
-  push?: boolean;
+  history: 'push' | 'replace' | null;
   url?: URL | undefined;
   instant?: boolean | undefined;
 };
@@ -289,7 +289,7 @@ export function useRouter() {
       const url = resolveRouteUrl(to, resolveCodec);
       await changeRouteInTransition(changeRoute, parseRoute(url), {
         shouldScroll: options?.scroll ?? shouldScrollByDefault(url),
-        push: true,
+        history: 'push',
         url,
         instant: options?.unstable_instant,
       });
@@ -304,6 +304,7 @@ export function useRouter() {
       const url = resolveRouteUrl(to, resolveCodec);
       await changeRouteInTransition(changeRoute, parseRoute(url), {
         shouldScroll: options?.scroll ?? shouldScrollByDefault(url),
+        history: 'replace',
         url,
         instant: options?.unstable_instant,
       });
@@ -314,6 +315,7 @@ export function useRouter() {
     await changeRouteInTransition(changeRoute, parseRouteFromLocation(), {
       shouldScroll: true,
       refetch: true,
+      history: 'replace',
     });
   }, [changeRoute]);
   const back = useCallback(() => {
@@ -463,7 +465,7 @@ export function useSetSearch_UNSTABLE<Path extends RoutePath>({
       url.search = nextQuery;
       await changeRouteInTransition(changeRoute, parseRoute(url), {
         shouldScroll: options?.scroll ?? false,
-        push: (options?.history ?? 'push') === 'push',
+        history: options?.history ?? 'push',
         url,
       });
     },
@@ -624,7 +626,7 @@ export function Link<Path extends RoutePath>({
       if (unstable_instant) {
         changeRoute(route, {
           shouldScroll: scroll ?? shouldScrollByDefault(url),
-          push: true,
+          history: 'push',
           url,
           instant: true,
         }).catch(() => {});
@@ -632,7 +634,7 @@ export function Link<Path extends RoutePath>({
         startTransitionFn(async () => {
           await changeRoute(route, {
             shouldScroll: scroll ?? shouldScrollByDefault(url),
-            push: true,
+            history: 'push',
             url,
           });
         });
@@ -836,6 +838,7 @@ const FollowError = ({
         changeRoute(target, {
           shouldScroll:
             navRef.current?.scrollIntent ?? target.path !== caught.path,
+          history: 'replace',
           url,
         }).then(
           (followable) => {
@@ -1082,10 +1085,10 @@ const InnerRouter = ({
       return;
     }
     reconciledRef.current = { nav, href: committedUrl.href };
-    if (nav.push && window.location.href !== committedUrl.href) {
-      nav.push = false; // consumed, so a later commit does not push again
+    if (nav.history === 'push' && window.location.href !== committedUrl.href) {
+      nav.history = 'replace'; // consumed, so a later commit does not push again
       window.history.pushState(window.history.state, '', committedUrl);
-    } else {
+    } else if (nav.history) {
       window.history.replaceState(window.history.state, '', committedUrl);
     }
     if (nav.scroll) {
@@ -1134,7 +1137,7 @@ const InnerRouter = ({
       const routeBefore = routeRef.current;
       const targetUrl = options.url ?? getRouteUrl(nextRoute);
       const navState = makeNavState(nextRoute, targetUrl, {
-        push: !!options.push,
+        history: options.history,
         scroll: options.shouldScroll,
         pathChanged: nextRoute.path !== routeBefore.path,
       });
@@ -1197,7 +1200,7 @@ const InnerRouter = ({
           abortRef.current = null;
           // a fetch level redirect may leave waku; the browser follows it
           const url = new URL(info.location, targetUrl);
-          if (navState.push) {
+          if (navState.history === 'push') {
             window.location.assign(url.href);
           } else {
             window.location.replace(url.href);
@@ -1229,7 +1232,7 @@ const InnerRouter = ({
           if (alive) {
             abortRef.current = null;
             // the browser retries the url itself and follows any redirect
-            if (navState.push) {
+            if (navState.history === 'push') {
               window.location.assign(targetUrl.href);
             } else {
               window.location.replace(targetUrl.href);
@@ -1240,7 +1243,7 @@ const InnerRouter = ({
         abortRef.current = null;
         // write the url now; an unrecoverable rethrow discards the commit
         if (window.location.href !== targetUrl.href) {
-          if (navState.push) {
+          if (navState.history === 'push') {
             window.history.pushState(window.history.state, '', targetUrl);
           } else {
             window.history.replaceState(window.history.state, '', targetUrl);
@@ -1249,7 +1252,7 @@ const InnerRouter = ({
         mergeElements({
           [NAV_ID]: {
             ...navState,
-            push: false,
+            history: null, // the url above is already written
             scroll: null,
             // attempted mirrors routeBefore; the stale ROUTE_ID must not
             // read as a server redirect
@@ -1289,13 +1292,12 @@ const InnerRouter = ({
         return;
       }
       const route = { path, query, hash: '' };
-      const is404 = path === '/404';
       await changeRouteInTransition(changeRoute, route, {
         refetch: false,
         shouldScroll: false,
-        push: !is404,
-        // the 404 route keeps the url the user is on
-        url: is404 ? new URL(window.location.href) : getRouteUrl(route),
+        // the 404 route renders where the user already is
+        history: path === '/404' ? null : 'push',
+        url: getRouteUrl(route),
       });
     },
     [changeRoute],
@@ -1339,6 +1341,7 @@ const InnerRouter = ({
       startTransition(() => {
         changeRoute(nextRoute, {
           shouldScroll: shouldScrollForRouteChange(nextRoute, routeRef.current),
+          history: null, // the browser already moved the address bar
         }).catch((err) => {
           console.log('Error while navigating back:', err);
         });
