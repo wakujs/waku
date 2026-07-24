@@ -1207,8 +1207,9 @@ const InnerRouter = ({
           }
           return;
         }
-        if (!info && e instanceof TypeError) {
-          // a probe tells a dead server from a cors blocked redirect
+        if (!info) {
+          // no waku error means no usable response; a probe tells a dead
+          // server from a fetch that never reached one
           const probeController = new AbortController();
           abortController.signal.addEventListener('abort', () =>
             probeController.abort(),

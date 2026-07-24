@@ -2384,6 +2384,10 @@ describe('Router integration', () => {
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
     refetch.mockRejectedValueOnce(new Error('refetch failed'));
     installRefetch(refetch);
+    // the probe finds nothing, so the failure stays in the app
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockRejectedValue(new TypeError('Failed to fetch'));
     const historyPushSpy = vi.spyOn(window.history, 'pushState');
 
     const elements = {
@@ -2422,6 +2426,7 @@ describe('Router integration', () => {
       );
     } finally {
       consoleErrorSpy.mockRestore();
+      fetchSpy.mockRestore();
       view.unmount();
     }
   });
@@ -5176,6 +5181,31 @@ describe('Router integration', () => {
     expect(assignSpy).toHaveBeenCalledTimes(1);
     expect(assignSpy.mock.calls[0]![0]).toContain('/protected');
     expect(capture.router!.path).toBe('/start');
+    assignSpy.mockRestore();
+    fetchSpy.mockRestore();
+    view.unmount();
+  });
+
+  test('a failure without a waku error also retries as a browser navigation', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(''));
+    const assignSpy = vi
+      .spyOn(window.location, 'assign')
+      .mockImplementation(() => {});
+    const { view, refetch, router } = await renderFollowRouter({
+      responses: [],
+    });
+    // a payload the client could not decode carries no server status
+    refetch.mockImplementationOnce(() =>
+      Promise.reject(new Error('could not decode')),
+    );
+    await act(async () => {
+      await router.push('/protected').catch(() => {});
+      await flush();
+    });
+    expect(assignSpy).toHaveBeenCalledTimes(1);
+    expect(assignSpy.mock.calls[0]![0]).toContain('/protected');
     assignSpy.mockRestore();
     fetchSpy.mockRestore();
     view.unmount();
