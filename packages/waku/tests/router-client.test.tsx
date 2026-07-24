@@ -298,12 +298,28 @@ vi.mock('../src/minimal/client.js', async () => {
         rscPath: string,
         ...rest: [rscParams?: unknown, options?: unknown]
       ) => {
-        const overlay = (
-          rest[1] as { unstable_overlay?: Record<string, unknown> } | undefined
-        )?.unstable_overlay;
+        const options = rest[1] as
+          | {
+              unstable_overlay?: Record<string, unknown>;
+              unstable_swr?: unknown;
+            }
+          | undefined;
+        const overlay = options?.unstable_overlay;
         const dataPromise = Promise.resolve(
           testHoisted.inner!(rscPath, ...rest),
         ).then((result) => withRouteMeta(result, rscPath, rest[0]));
+        if (options?.unstable_swr) {
+          // like minimal's swr merge: the overlay lands right away and the
+          // record keeps rendering while the response streams into its holes
+          if (overlay) {
+            store?.applySync(overlay);
+          }
+          dataPromise.then(
+            (result) => store?.applySync({ ...result, ...overlay }),
+            () => {},
+          );
+          return dataPromise;
+        }
         // like minimal's refetch: the overlay merges atomically on success
         store?.applyAsync(
           dataPromise.then(
@@ -2595,6 +2611,47 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('instant nav paints the target and writes the url before the response', async () => {
+    const pending = createDeferred<Record<string, unknown>>();
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(() => pending.promise);
+    installRefetch(refetch);
+
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      ...instantNavElements(),
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/next')]: <Probe />,
+    };
+
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      elements,
+    );
+    if (!capture.router) {
+      throw new Error('router not initialized');
+    }
+
+    let pushed: Promise<void> | undefined;
+    await act(async () => {
+      pushed = capture.router!.push('/next', { unstable_instant: true });
+      await flush();
+    });
+
+    expect(window.location.pathname).toBe('/next');
+    expect(capture.router?.path).toBe('/next');
+
+    await act(async () => {
+      pending.resolve({ [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: true });
+      await pushed;
+      await flush();
+    });
+
+    expect(window.location.pathname).toBe('/next');
+
+    view.unmount();
+  });
+
   test('instant nav adopts an in-flight prefetch as its data source', async () => {
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
       [ROUTE_ID]: ['/next', ''],
@@ -4390,6 +4447,51 @@ describe('Router integration', () => {
     // the address bar keeps the requested url as one new entry
     expect(window.location.pathname).toBe('/missing');
     expect(window.history.length).toBe(lengthBefore + 1);
+    view.unmount();
+  });
+
+  test('a follow into a known static route does not fetch it', async () => {
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>();
+    refetch
+      .mockResolvedValueOnce({ [ROUTE_ID]: ['/a', ''], [IS_STATIC_ID]: false })
+      .mockImplementationOnce(() =>
+        Promise.reject(createCustomError('follow-error', { status: 404 })),
+      );
+    installRefetch(refetch);
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    // starting on a static /404 records it as static, so the follow below can
+    // serve it without a request
+    const view = await renderRouter(
+      { initialRoute: { path: '/404', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/404')]: <Probe />,
+        [unstable_getRouteSlotId('/a')]: <Probe />,
+        [ROUTE_ID]: ['/404', ''],
+        [IS_STATIC_ID]: true,
+        [HAS404_ID]: true,
+      },
+    );
+    if (!capture.router) {
+      throw new Error('router not initialized');
+    }
+
+    await act(async () => {
+      await capture.router!.push('/a');
+      await flush();
+    });
+    await act(async () => {
+      await capture.router!.push('/missing').catch(() => {});
+      for (let i = 0; i < 4; i += 1) {
+        await flush();
+      }
+    });
+
+    // /a and the failed /missing; the follow serves the static /404
+    expect(refetch).toHaveBeenCalledTimes(2);
+    expect(capture.router.path).toBe('/404');
+    expect(window.location.pathname).toBe('/missing');
+
     view.unmount();
   });
 
