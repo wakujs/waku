@@ -81,14 +81,11 @@ export const makeRouterState = (
 });
 
 // a server redirect moves route and url; the 404 route keeps the attempted url
-export const getCommitted = (
+export const resolveCommitted = (
   elements: Record<string | symbol, unknown>,
+  routerState: RouterState,
   fallbackPath: string,
-): { routerState: RouterState; route: RouteProps; url: URL } | undefined => {
-  const routerState = getRouterState(elements);
-  if (!routerState) {
-    return undefined;
-  }
+): { route: RouteProps; url: URL } => {
   const stateUrl = new URL(routerState.url, window.location.href);
   const redirect = getServerRedirect(elements, {
     path: routerState.attempted[0],
@@ -96,10 +93,9 @@ export const getCommitted = (
     hash: '',
   });
   if (redirect && redirect.path !== '/404') {
-    return { routerState, route: redirect, url: getRouteUrl(redirect) };
+    return { route: redirect, url: getRouteUrl(redirect) };
   }
   return {
-    routerState,
     route: {
       path:
         redirect?.path ?? getRouteFromElements(elements)?.path ?? fallbackPath,

@@ -51,7 +51,6 @@ import {
 import {
   ROUTER_STATE_ID,
   canCommitInstantly,
-  getCommitted,
   getRouteUrl,
   getRouterState,
   isSameRoute,
@@ -60,6 +59,7 @@ import {
   parseRoute,
   pathnameToCurrentRoutePath,
   pinForSwr,
+  resolveCommitted,
 } from './client-utils/router-state.js';
 import type { RouterState } from './client-utils/router-state.js';
 import type {
@@ -1065,7 +1065,9 @@ const InnerRouter = ({
     setRestoredHash(window.location.hash || initialHash);
   }, [initialHash]);
 
-  const committed = getCommitted(elements, initialRoute.path);
+  const routerState = getRouterState(elements);
+  const committed =
+    routerState && resolveCommitted(elements, routerState, initialRoute.path);
   const currentRoute = committed
     ? committed.route
     : { ...initialRoute, hash: restoredHash };
@@ -1075,10 +1077,10 @@ const InnerRouter = ({
   >(undefined);
   useLayoutEffect(() => {
     routeRef.current = currentRoute;
-    if (!committed) {
+    if (!routerState || !committed) {
       return;
     }
-    const { routerState, url: committedUrl } = committed;
+    const committedUrl = committed.url;
     const stateChanged = routerState !== reconciledRef.current?.routerState;
     if (!stateChanged && committedUrl.href === reconciledRef.current?.href) {
       return;
@@ -1340,7 +1342,7 @@ const InnerRouter = ({
     <RouterContext
       value={{
         route: currentRoute,
-        routerState: getRouterState(elements),
+        routerState,
         changeRoute,
         prefetchRoute,
         routeChangeEvents,
