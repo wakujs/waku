@@ -80,9 +80,7 @@ export const makeRouterState = (
   scrollIntent: options.scroll,
 });
 
-// What the record commits to: the route to render and the url to show, or
-// undefined before the client has navigated. A server redirect moves both; the
-// 404 route keeps the attempted url.
+// a server redirect moves route and url; the 404 route keeps the attempted url
 export const getCommittedRoute = (
   elements: Record<string | symbol, unknown>,
   fallbackPath: string,
