@@ -242,13 +242,17 @@ const useResolveSearchCodec = () => {
   );
 };
 
-// a transition, so the eager elements merge suspends without blanking the tree
-const changeRouteInTransition = (
+const dispatchChangeRoute = (
   changeRoute: ChangeRoute,
   route: RouteProps,
   options: ChangeRouteOptions,
-): Promise<void> =>
-  new Promise<void>((resolve, reject) => {
+): Promise<void> => {
+  if (options.instant) {
+    // instant paints from the cache; a transition would hold that back
+    return changeRoute(route, options).then(() => undefined);
+  }
+  // a transition, so the eager elements merge suspends without blanking the tree
+  return new Promise<void>((resolve, reject) => {
     startTransition(() => {
       try {
         changeRoute(route, options).then(() => resolve(), reject);
@@ -257,6 +261,7 @@ const changeRouteInTransition = (
       }
     });
   });
+};
 
 const useRouterOrThrow = () => {
   const router = useContext(RouterContext);
@@ -290,7 +295,7 @@ export function useRouter() {
       options?: NavigateOptions,
     ) => {
       const url = resolveRouteUrl(to, resolveCodec);
-      await changeRouteInTransition(changeRoute, parseRoute(url), {
+      await dispatchChangeRoute(changeRoute, parseRoute(url), {
         shouldScroll: options?.scroll ?? shouldScrollByDefault(url),
         history: 'push',
         url,
@@ -305,7 +310,7 @@ export function useRouter() {
       options?: NavigateOptions,
     ) => {
       const url = resolveRouteUrl(to, resolveCodec);
-      await changeRouteInTransition(changeRoute, parseRoute(url), {
+      await dispatchChangeRoute(changeRoute, parseRoute(url), {
         shouldScroll: options?.scroll ?? shouldScrollByDefault(url),
         history: 'replace',
         url,
@@ -315,7 +320,7 @@ export function useRouter() {
     [changeRoute, resolveCodec],
   ) as Navigate;
   const reload = useCallback(async () => {
-    await changeRouteInTransition(changeRoute, parseRouteFromLocation(), {
+    await dispatchChangeRoute(changeRoute, parseRouteFromLocation(), {
       shouldScroll: true,
       refetch: true,
       history: 'replace',
@@ -466,7 +471,7 @@ export function useSetSearch_UNSTABLE<Path extends RoutePath>({
       const nextQuery = codec.serialize({ ...prev, ...partial });
       const url = new URL(window.location.href);
       url.search = nextQuery;
-      await changeRouteInTransition(changeRoute, parseRoute(url), {
+      await dispatchChangeRoute(changeRoute, parseRoute(url), {
         shouldScroll: options?.scroll ?? false,
         history: options?.history ?? 'push',
         url,
@@ -1266,7 +1271,7 @@ const InnerRouter = ({
         return;
       }
       const route = { path, query, hash: '' };
-      await changeRouteInTransition(changeRoute, route, {
+      await dispatchChangeRoute(changeRoute, route, {
         refetch: false,
         shouldScroll: false,
         // the 404 route renders where the user already is
