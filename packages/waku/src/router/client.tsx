@@ -1301,13 +1301,14 @@ const InnerRouter = ({
   );
   useEffect(() => {
     const listener = (elements: Record<string, unknown>) => {
+      learnStaticPath(elements);
       const { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic } = elements;
       applyChangeRouteData(routeData, isStatic).catch((err) => {
         console.log('Error while handling route updates:', err);
       });
     };
     return registerCallServerElementsListener(listener);
-  }, [applyChangeRouteData]);
+  }, [applyChangeRouteData, learnStaticPath]);
 
   const prefetchRoute: PrefetchRoute = useCallback(
     (route, options) => {

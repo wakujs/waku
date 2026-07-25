@@ -1636,6 +1636,50 @@ describe('Router integration', () => {
     }
   });
 
+  test('a server function response marks a static route as static', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
+    installRefetch(refetch);
+
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [unstable_getRouteSlotId('/next')]: <Probe />,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+
+    const store = fetchRscStore as unknown as Record<string, unknown>;
+    const listeners = store.l as Set<
+      (elements: Record<string, unknown>) => void
+    >;
+    await act(async () => {
+      for (const listener of listeners) {
+        listener({ [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: true });
+      }
+      await flush();
+    });
+    expect(capture.router?.path).toBe('/next');
+
+    await act(async () => {
+      await capture.router!.push('/start');
+      await flush();
+    });
+    refetch.mockClear();
+    await act(async () => {
+      await capture.router!.push('/next');
+      await flush();
+    });
+
+    // the response said /next is static, so going back to it needs no request
+    expect(refetch).not.toHaveBeenCalled();
+
+    view.unmount();
+  });
+
   test('a server function 404 keeps the attempted url', async () => {
     window.history.replaceState({}, '', '/start?a=1');
     const capture = { router: null as RouterApi | null };
