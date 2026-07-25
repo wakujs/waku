@@ -129,6 +129,27 @@ const mergeElementsPromise = (
   return getCached(getResult, cache2, b);
 };
 
+// an hmr refresh replaces server keys and carries the client's symbol keys.
+// the cache keeps a replayed updater returning the same promise; without it
+// the tree never settles on the refreshed record (hot-reload.dev.spec.ts).
+const refreshCache = new WeakMap();
+const refreshElementsPromise = (
+  a: Promise<Elements>,
+  b: Promise<Elements>,
+): Promise<Elements> => {
+  const getResult = () =>
+    Promise.all([a, b]).then(([aRes, bRes]) => {
+      const nextElements = { ...bRes };
+      delete nextElements._value;
+      for (const key of Object.getOwnPropertySymbols(aRes)) {
+        nextElements[key] = aRes[key];
+      }
+      return nextElements;
+    });
+  const cache2 = getCached(() => new WeakMap(), refreshCache, a);
+  return getCached(getResult, cache2, b);
+};
+
 const slotIdOf = <K extends string | symbol>(key: K): K =>
   typeof key === 'string' && key.startsWith(ETAG_ID_PREFIX)
     ? (key.slice(ETAG_ID_PREFIX.length) as K)
@@ -479,17 +500,7 @@ export const unstable_fetchRsc = (
       delete fetchRscStore[ENTRY];
       const data = unstable_fetchRsc(rscPath, rscParams, options);
       const setElements = getSetElements();
-      // a refresh replaces the server keys and carries the client's symbols
-      setElements((prev) =>
-        Promise.all([prev, data]).then(([prevRes, dataRes]) => {
-          const nextElements: Elements = { ...dataRes };
-          delete nextElements._value;
-          for (const key of Object.getOwnPropertySymbols(prevRes)) {
-            nextElements[key] = prevRes[key];
-          }
-          return nextElements;
-        }),
-      );
+      setElements((prev) => refreshElementsPromise(prev, data));
     };
     unstable_upsertRscReloadListener(
       globalThis.__WAKU_REFETCH_RSC__,
