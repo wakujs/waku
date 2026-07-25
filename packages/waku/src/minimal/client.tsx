@@ -58,7 +58,18 @@ const BASE_RSC_PATH = `${import.meta.env?.WAKU_CONFIG_BASE_PATH ?? '/'}${
 const checkStatus = async (
   responsePromise: Promise<Response>,
 ): Promise<Response> => {
-  const response = await responsePromise;
+  let response: Response;
+  try {
+    response = await responsePromise;
+  } catch (e) {
+    if ((e as Error | undefined)?.name === 'AbortError') {
+      throw e;
+    }
+    // the transport failed, so nothing can be told about the server
+    throw createCustomError(String((e as Error | undefined)?.message ?? e), {
+      noResponse: true,
+    });
+  }
   if (
     response.redirected &&
     !new URL(response.url).pathname.startsWith(BASE_RSC_PATH)

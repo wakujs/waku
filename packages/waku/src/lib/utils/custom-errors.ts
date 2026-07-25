@@ -1,6 +1,8 @@
 type ErrorInfo = {
   status?: number;
   location?: string;
+  // set by the client when the request produced no response at all
+  noResponse?: boolean;
 };
 
 const isErrorInfo = (x: unknown): x is ErrorInfo => {
@@ -11,6 +13,9 @@ const isErrorInfo = (x: unknown): x is ErrorInfo => {
     return false;
   }
   if ('location' in x && typeof (x as ErrorInfo).location !== 'string') {
+    return false;
+  }
+  if ('noResponse' in x && typeof (x as ErrorInfo).noResponse !== 'boolean') {
     return false;
   }
   return true;

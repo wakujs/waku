@@ -13,6 +13,7 @@ import {
   test,
   vi,
 } from 'vitest';
+import { getErrorInfo } from '../src/lib/utils/custom-errors.js';
 import { ETAG_ID_PREFIX, IMMUTABLE_ETAG } from '../src/lib/utils/etags.js';
 import { fetchRscStore } from '../src/minimal/client-utils/fetch-store.js';
 import {
@@ -154,6 +155,38 @@ describe('minimal/client prefetch', () => {
 
     expect(prefetchFetch).toHaveBeenCalledTimes(1); // only the prefetch request
     expect(actionFetch).toHaveBeenCalledTimes(1); // the server action request
+  });
+});
+
+describe('minimal/client transport failures', () => {
+  test('a request that never got a response is marked as such', async () => {
+    track(
+      unstable_registerFetchEnhancer(() => () => {
+        return Promise.reject(new TypeError('Failed to fetch'));
+      }),
+    );
+
+    const error = await unstable_fetchRsc('R/next.txt').catch(
+      (e: unknown) => e,
+    );
+
+    expect(getErrorInfo(error)).toEqual({ noResponse: true });
+    expect((error as Error).message).toBe('Failed to fetch');
+  });
+
+  test('an aborted request passes through untouched', async () => {
+    track(
+      unstable_registerFetchEnhancer(() => () => {
+        return Promise.reject(new DOMException('Aborted', 'AbortError'));
+      }),
+    );
+
+    const error = await unstable_fetchRsc('R/next.txt').catch(
+      (e: unknown) => e,
+    );
+
+    expect((error as Error).name).toBe('AbortError');
+    expect(getErrorInfo(error)).toBeNull();
   });
 });
 
