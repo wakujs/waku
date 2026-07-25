@@ -2,13 +2,13 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { ETAG_ID_PREFIX, IMMUTABLE_ETAG } from '../src/lib/utils/etags.js';
 import {
-  NAV_ID,
+  ROUTER_STATE_ID,
   canCommitInstantly,
   deriveCommitted,
-  getNavState,
-  makeNavState,
+  getRouterState,
+  makeRouterState,
   pinForSwr,
-} from '../src/router/client-utils/navigate.js';
+} from '../src/router/client-utils/router-state.js';
 import {
   IS_STATIC_ID,
   ROUTE_ID,
@@ -22,70 +22,81 @@ const route = (path: string, query = '', hash = '') => ({ path, query, hash });
 
 const urlOf = (path: string) => new URL(path, window.location.origin);
 
-const withNav = (
+const withRouterState = (
   elements: Record<string, unknown>,
-  nav: ReturnType<typeof makeNavState>,
-) => ({ ...elements, [NAV_ID]: nav });
+  routerState: ReturnType<typeof makeRouterState>,
+) => ({ ...elements, [ROUTER_STATE_ID]: routerState });
 
-describe('makeNavState', () => {
+describe('makeRouterState', () => {
   test('captures the url, the attempted route and the intents', () => {
-    const nav = makeNavState(route('/a', 'x=1'), urlOf('/a?x=1#top'), {
-      history: 'push',
-      scroll: true,
-      pathChanged: true,
-    });
-    expect(nav.url).toBe('/a?x=1#top');
-    expect(nav.attempted).toEqual(['/a', 'x=1']);
-    expect(nav.history).toBe('push');
-    expect(nav.scroll).toEqual({ pathChanged: true });
-    expect(nav.scrollIntent).toBe(true);
+    const routerState = makeRouterState(
+      route('/a', 'x=1'),
+      urlOf('/a?x=1#top'),
+      {
+        history: 'push',
+        scroll: true,
+        pathChanged: true,
+      },
+    );
+    expect(routerState.url).toBe('/a?x=1#top');
+    expect(routerState.attempted).toEqual(['/a', 'x=1']);
+    expect(routerState.history).toBe('push');
+    expect(routerState.scroll).toEqual({ pathChanged: true });
+    expect(routerState.scrollIntent).toBe(true);
   });
 
   test('no scroll intent when scrolling is off', () => {
-    const nav = makeNavState(route('/a'), urlOf('/a'), {
+    const routerState = makeRouterState(route('/a'), urlOf('/a'), {
       history: 'replace',
       scroll: false,
       pathChanged: true,
     });
-    expect(nav.scroll).toBeNull();
-    expect(nav.scrollIntent).toBe(false);
+    expect(routerState.scroll).toBeNull();
+    expect(routerState.scrollIntent).toBe(false);
   });
 });
 
 describe('deriveCommitted', () => {
-  test('falls back to the given route without nav state', () => {
+  test('falls back to the given route without routerState state', () => {
     const {
       route: derived,
-      nav,
+      routerState,
       url,
     } = deriveCommitted({ [ROUTE_ID]: ['/a', ''] }, route('/fallback'));
     expect(derived).toEqual(route('/fallback'));
-    expect(nav).toBeUndefined();
+    expect(routerState).toBeUndefined();
     expect(url).toBeUndefined();
   });
 
-  test('path from the elements, query and hash from the nav url', () => {
-    const nav = makeNavState(route('/a', 'x=1'), urlOf('/a?x=1#top'), {
-      history: 'replace',
-      scroll: false,
-      pathChanged: false,
-    });
-    const elements = withNav({ [ROUTE_ID]: ['/a', 'x=1'] }, nav);
+  test('path from the elements, query and hash from the routerState url', () => {
+    const routerState = makeRouterState(
+      route('/a', 'x=1'),
+      urlOf('/a?x=1#top'),
+      {
+        history: 'replace',
+        scroll: false,
+        pathChanged: false,
+      },
+    );
+    const elements = withRouterState(
+      { [ROUTE_ID]: ['/a', 'x=1'] },
+      routerState,
+    );
     const { route: derived, url } = deriveCommitted(elements, route('/f'));
     expect(derived).toEqual(route('/a', 'x=1', '#top'));
     expect(url?.pathname).toBe('/a');
-    expect(getNavState(elements)).toBe(nav);
+    expect(getRouterState(elements)).toBe(routerState);
   });
 
-  test('a static response does not echo the query; the nav url keeps it', () => {
-    const nav = makeNavState(route('/a', 'x=1'), urlOf('/a?x=1'), {
+  test('a static response does not echo the query; the routerState url keeps it', () => {
+    const routerState = makeRouterState(route('/a', 'x=1'), urlOf('/a?x=1'), {
       history: 'replace',
       scroll: false,
       pathChanged: false,
     });
-    const elements = withNav(
+    const elements = withRouterState(
       { [ROUTE_ID]: ['/a', ''], [IS_STATIC_ID]: true },
-      nav,
+      routerState,
     );
     const { route: derived, url } = deriveCommitted(elements, route('/f'));
     expect(derived.query).toBe('x=1');
@@ -93,12 +104,15 @@ describe('deriveCommitted', () => {
   });
 
   test('a server redirect moves the route and the url', () => {
-    const nav = makeNavState(route('/a'), urlOf('/a'), {
+    const routerState = makeRouterState(route('/a'), urlOf('/a'), {
       history: 'push',
       scroll: false,
       pathChanged: true,
     });
-    const elements = withNav({ [ROUTE_ID]: ['/b', 'y=2'] }, nav);
+    const elements = withRouterState(
+      { [ROUTE_ID]: ['/b', 'y=2'] },
+      routerState,
+    );
     const { route: derived, url } = deriveCommitted(elements, route('/f'));
     expect(derived).toEqual(route('/b', 'y=2'));
     expect(url?.pathname).toBe('/b');
@@ -108,12 +122,12 @@ describe('deriveCommitted', () => {
   test('a server redirect keeps the base path in the url', () => {
     vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/docs/');
     try {
-      const nav = makeNavState(route('/a'), urlOf('/docs/a'), {
+      const routerState = makeRouterState(route('/a'), urlOf('/docs/a'), {
         history: 'replace',
         scroll: false,
         pathChanged: false,
       });
-      const elements = withNav({ [ROUTE_ID]: ['/b', ''] }, nav);
+      const elements = withRouterState({ [ROUTE_ID]: ['/b', ''] }, routerState);
       const { url } = deriveCommitted(elements, route('/f'));
       expect(url?.pathname).toBe('/docs/b');
     } finally {
@@ -122,12 +136,12 @@ describe('deriveCommitted', () => {
   });
 
   test('a server redirect to the 404 route keeps the attempted url', () => {
-    const nav = makeNavState(route('/missing'), urlOf('/missing'), {
+    const routerState = makeRouterState(route('/missing'), urlOf('/missing'), {
       history: 'replace',
       scroll: false,
       pathChanged: true,
     });
-    const elements = withNav({ [ROUTE_ID]: ['/404', ''] }, nav);
+    const elements = withRouterState({ [ROUTE_ID]: ['/404', ''] }, routerState);
     const { route: derived, url } = deriveCommitted(elements, route('/f'));
     expect(derived.path).toBe('/404');
     expect(url?.pathname).toBe('/missing');

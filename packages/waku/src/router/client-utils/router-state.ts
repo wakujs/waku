@@ -47,13 +47,13 @@ export const parseRedirectUrl = (location: string, base: string | URL) => {
     : undefined;
 };
 
-// --- client-only navigation state, stored in the elements record ---
+// --- client-only router state, stored in the elements record ---
 
-// the client owned navigation state; the server's ROUTE_ID owns the path
-export const NAV_ID = Symbol('waku-router-nav');
+// the client owned router state; the server's ROUTE_ID owns the path
+export const ROUTER_STATE_ID = Symbol('waku-router-state');
 
 // merges carry this object by reference; the consumed flags rely on identity
-export type NavState = {
+export type RouterState = {
   url: string; // pathname + search + hash, with the base path
   attempted: readonly [path: string, query: string];
   // null leaves history alone (the browser already wrote it); a push turns into
@@ -63,11 +63,12 @@ export type NavState = {
   scrollIntent: boolean; // the attempt's decision, for a follow to inherit
 };
 
-export const getNavState = (
+export const getRouterState = (
   elements: Record<string | symbol, unknown>,
-): NavState | undefined => elements[NAV_ID] as NavState | undefined;
+): RouterState | undefined =>
+  elements[ROUTER_STATE_ID] as RouterState | undefined;
 
-export const makeNavState = (
+export const makeRouterState = (
   route: RouteProps,
   url: URL,
   options: {
@@ -75,7 +76,7 @@ export const makeNavState = (
     scroll: boolean;
     pathChanged: boolean;
   },
-): NavState => ({
+): RouterState => ({
   url: url.pathname + url.search + url.hash,
   attempted: [route.path, route.query],
   history: options.history,
@@ -87,20 +88,24 @@ export const makeNavState = (
 export const deriveCommitted = (
   elements: Record<string | symbol, unknown>,
   fallbackRoute: RouteProps,
-): { route: RouteProps; nav: NavState | undefined; url: URL | undefined } => {
-  const nav = getNavState(elements);
+): {
+  route: RouteProps;
+  routerState: RouterState | undefined;
+  url: URL | undefined;
+} => {
+  const routerState = getRouterState(elements);
   const routeFromElements = getRouteFromElements(elements);
-  if (!nav) {
-    return { route: fallbackRoute, nav: undefined, url: undefined };
+  if (!routerState) {
+    return { route: fallbackRoute, routerState: undefined, url: undefined };
   }
-  const navUrl = new URL(nav.url, window.location.href);
+  const stateUrl = new URL(routerState.url, window.location.href);
   const redirect = getServerRedirect(elements, {
-    path: nav.attempted[0],
-    query: nav.attempted[1],
+    path: routerState.attempted[0],
+    query: routerState.attempted[1],
     hash: '',
   });
   if (redirect && redirect.path !== '/404') {
-    return { route: redirect, nav, url: getRouteUrl(redirect) };
+    return { route: redirect, routerState, url: getRouteUrl(redirect) };
   }
   return {
     route: {
@@ -109,11 +114,11 @@ export const deriveCommitted = (
         : routeFromElements
           ? routeFromElements.path
           : fallbackRoute.path,
-      query: navUrl.searchParams.toString(),
-      hash: navUrl.hash,
+      query: stateUrl.searchParams.toString(),
+      hash: stateUrl.hash,
     },
-    nav,
-    url: navUrl,
+    routerState,
+    url: stateUrl,
   };
 };
 

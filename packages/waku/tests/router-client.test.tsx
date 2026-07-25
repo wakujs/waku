@@ -2553,7 +2553,7 @@ describe('Router integration', () => {
     [`${ETAG_ID_PREFIX}${unstable_getRouteSlotId('/next')}`]: IMMUTABLE_ETAG,
   });
 
-  test('instant nav reuses a prefetched response as data source and base', async () => {
+  test('instant routerState reuses a prefetched response as data source and base', async () => {
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
       [ROUTE_ID]: ['/next', ''],
       [IS_STATIC_ID]: true,
@@ -2611,7 +2611,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('instant nav paints the target and writes the url before the response', async () => {
+  test('instant routerState paints the target and writes the url before the response', async () => {
     const pending = createDeferred<Record<string, unknown>>();
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(() => pending.promise);
     installRefetch(refetch);
@@ -2652,7 +2652,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('instant nav adopts an in-flight prefetch as its data source', async () => {
+  test('instant routerState adopts an in-flight prefetch as its data source', async () => {
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
       [ROUTE_ID]: ['/next', ''],
       [IS_STATIC_ID]: true,
@@ -2699,7 +2699,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('instant nav does not reuse a prefetch for a different query', async () => {
+  test('instant routerState does not reuse a prefetch for a different query', async () => {
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
       [ROUTE_ID]: ['/next', ''],
       [IS_STATIC_ID]: true,
@@ -2749,7 +2749,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('non-instant nav adopts an in-flight prefetch as its data source', async () => {
+  test('non-instant routerState adopts an in-flight prefetch as its data source', async () => {
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
       [ROUTE_ID]: ['/next', ''],
       [IS_STATIC_ID]: true,
@@ -3028,7 +3028,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('instant nav serves stored statics on a first visit', async () => {
+  test('instant routerState serves stored statics on a first visit', async () => {
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
       [ROUTE_ID]: ['/fresh', ''],
       [IS_STATIC_ID]: false,

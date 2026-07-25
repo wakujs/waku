@@ -45,22 +45,22 @@ import {
   isStaticFromElements,
 } from './client-utils/elements-meta.js';
 import {
-  NAV_ID,
+  type PrefetchOptions,
+  createPrefetchManager,
+} from './client-utils/prefetch-cache.js';
+import {
+  ROUTER_STATE_ID,
   canCommitInstantly,
   deriveCommitted,
   getRouteUrl,
   isSameRoute,
-  makeNavState,
+  makeRouterState,
   parseRedirectUrl,
   parseRoute,
   pathnameToCurrentRoutePath,
   pinForSwr,
-} from './client-utils/navigate.js';
-import type { NavState } from './client-utils/navigate.js';
-import {
-  type PrefetchOptions,
-  createPrefetchManager,
-} from './client-utils/prefetch-cache.js';
+} from './client-utils/router-state.js';
+import type { RouterState } from './client-utils/router-state.js';
 import type {
   RouteParams,
   RouteSearch,
@@ -215,7 +215,7 @@ const createRouteChangeListeners = (): [
 // This is an internal thing, not a public API
 const RouterContext = createContext<{
   route: RouteProps;
-  nav?: NavState | undefined;
+  routerState?: RouterState | undefined;
   changeRoute: ChangeRoute;
   prefetchRoute: PrefetchRoute;
   routeChangeEvents: Record<
@@ -752,7 +752,7 @@ const FollowError = ({
   countHop: () => number;
   followPromiseMap: WeakMap<object, Promise<unknown>>;
 }) => {
-  const { route, nav, changeRoute } = useRouterOrThrow();
+  const { route, routerState, changeRoute } = useRouterOrThrow();
   const { path: routePath, query: routeQuery } = route;
   const caughtAtRef = useRef<readonly [string, string] | undefined>(undefined);
   if (caughtAtRef.current === undefined) {
@@ -761,10 +761,10 @@ const FollowError = ({
   const dispatchedRef = useRef<readonly [string, string] | undefined>(
     undefined,
   );
-  const navRef = useRef(nav);
+  const routerStateRef = useRef(routerState);
   useEffect(() => {
-    navRef.current = nav;
-  }, [nav]);
+    routerStateRef.current = routerState;
+  }, [routerState]);
   useEffect(() => {
     const [caughtPath, caughtQuery] = caughtAtRef.current!;
     // a route change means the followed slot is committed; safe to reset
@@ -775,8 +775,8 @@ const FollowError = ({
     const dispatched = dispatchedRef.current;
     if (
       dispatched &&
-      nav?.attempted[0] === dispatched[0] &&
-      nav?.attempted[1] === dispatched[1]
+      routerState?.attempted[0] === dispatched[0] &&
+      routerState?.attempted[1] === dispatched[1]
     ) {
       if (dispatched[0] === routePath && dispatched[1] === routeQuery) {
         // the follow bounced back to the rendered route; it can render
@@ -786,12 +786,12 @@ const FollowError = ({
         fail(error, new Error('detected a redirect loop', { cause: error }));
       }
     }
-  }, [routePath, routeQuery, nav, reset, fail, error]);
+  }, [routePath, routeQuery, routerState, reset, fail, error]);
   useEffect(() => {
     const info = getErrorInfo(error);
     // the attempted url may not have reached the address bar yet
-    const attemptedUrl = navRef.current
-      ? new URL(navRef.current.url, window.location.href)
+    const attemptedUrl = routerStateRef.current
+      ? new URL(routerStateRef.current.url, window.location.href)
       : new URL(window.location.href);
     let target: RouteProps;
     let url: URL;
@@ -835,7 +835,7 @@ const FollowError = ({
         error as object,
         changeRoute(target, {
           shouldScroll:
-            navRef.current?.scrollIntent ?? target.path !== caught.path,
+            routerStateRef.current?.scrollIntent ?? target.path !== caught.path,
           history: 'replace',
           url,
         }).then(
@@ -1065,33 +1065,36 @@ const InnerRouter = ({
   }, [initialHash]);
 
   const derived = deriveCommitted(elements, initialRoute);
-  const { nav, url: committedUrl } = derived;
-  const currentRoute = nav
+  const { routerState, url: committedUrl } = derived;
+  const currentRoute = routerState
     ? derived.route
     : { ...derived.route, hash: restoredHash };
   const routeRef = useRef(currentRoute);
-  const reconciledRef = useRef<{ nav: NavState; href: string } | undefined>(
-    undefined,
-  );
+  const reconciledRef = useRef<
+    { routerState: RouterState; href: string } | undefined
+  >(undefined);
   useLayoutEffect(() => {
     routeRef.current = currentRoute;
-    if (!nav || !committedUrl) {
+    if (!routerState || !committedUrl) {
       return;
     }
-    const navChanged = nav !== reconciledRef.current?.nav;
-    if (!navChanged && committedUrl.href === reconciledRef.current?.href) {
+    const stateChanged = routerState !== reconciledRef.current?.routerState;
+    if (!stateChanged && committedUrl.href === reconciledRef.current?.href) {
       return;
     }
-    reconciledRef.current = { nav, href: committedUrl.href };
-    if (nav.history === 'push' && window.location.href !== committedUrl.href) {
-      nav.history = 'replace'; // consumed, so a later commit does not push again
+    reconciledRef.current = { routerState, href: committedUrl.href };
+    if (
+      routerState.history === 'push' &&
+      window.location.href !== committedUrl.href
+    ) {
+      routerState.history = 'replace'; // consumed, so a later commit does not push again
       window.history.pushState(window.history.state, '', committedUrl);
-    } else if (nav.history) {
+    } else if (routerState.history) {
       window.history.replaceState(window.history.state, '', committedUrl);
     }
-    if (nav.scroll) {
-      const scroll = nav.scroll;
-      nav.scroll = null; // consumed, so a later commit does not scroll again
+    if (routerState.scroll) {
+      const scroll = routerState.scroll;
+      routerState.scroll = null; // consumed, so a later commit does not scroll again
       scrollToRoute(
         currentRoute,
         scroll.pathChanged ? 'instant' : 'auto',
@@ -1134,7 +1137,7 @@ const InnerRouter = ({
       emitRouteChangeEvent('start', nextRoute);
       const routeBefore = routeRef.current;
       const targetUrl = options.url ?? getRouteUrl(nextRoute);
-      const navState = makeNavState(nextRoute, targetUrl, {
+      const routerState = makeRouterState(nextRoute, targetUrl, {
         history: options.history,
         scroll: options.shouldScroll,
         pathChanged: nextRoute.path !== routeBefore.path,
@@ -1145,7 +1148,7 @@ const InnerRouter = ({
       if (staticPathSet.has(nextRoute.path) || !shouldRefetch) {
         mergeElements({
           [ROUTE_ID]: [nextRoute.path, nextRoute.query],
-          [NAV_ID]: navState,
+          [ROUTER_STATE_ID]: routerState,
         });
         abortRef.current = null;
         emitRouteChangeEvent('complete', nextRoute);
@@ -1164,8 +1167,8 @@ const InnerRouter = ({
       const dataPromise = refetch(rscPath, createRscParams(nextRoute.query), {
         signal: abortController.signal,
         unstable_overlay: {
-          [NAV_ID]: navState,
-          // instant nav paints from the cache, so route meta comes with it
+          [ROUTER_STATE_ID]: routerState,
+          // instant routerState paints from the cache, so route meta comes with it
           ...(instant ? { [ROUTE_ID]: [nextRoute.path, nextRoute.query] } : {}),
         },
         ...(instant
@@ -1198,7 +1201,7 @@ const InnerRouter = ({
           abortRef.current = null;
           // a fetch level redirect may leave waku; the browser follows it
           const url = new URL(info.location, targetUrl);
-          if (navState.history === 'push') {
+          if (routerState.history === 'push') {
             window.location.assign(url.href);
           } else {
             window.location.replace(url.href);
@@ -1208,15 +1211,15 @@ const InnerRouter = ({
         abortRef.current = null;
         // write the url now; an unrecoverable rethrow discards the commit
         if (window.location.href !== targetUrl.href) {
-          if (navState.history === 'push') {
+          if (routerState.history === 'push') {
             window.history.pushState(window.history.state, '', targetUrl);
           } else {
             window.history.replaceState(window.history.state, '', targetUrl);
           }
         }
         mergeElements({
-          [NAV_ID]: {
-            ...navState,
+          [ROUTER_STATE_ID]: {
+            ...routerState,
             history: null, // the url above is already written
             scroll: null,
             // attempted mirrors routeBefore; the stale ROUTE_ID must not
@@ -1333,7 +1336,7 @@ const InnerRouter = ({
     <RouterContext
       value={{
         route: currentRoute,
-        nav,
+        routerState,
         changeRoute,
         prefetchRoute,
         routeChangeEvents,
