@@ -480,7 +480,7 @@ export const unstable_fetchRsc = (
       delete fetchRscStore[ENTRY];
       const data = unstable_fetchRsc(rscPath, rscParams, options);
       // a refresh replaces the server keys and carries the client's symbols
-      getSetElements()((prev: Promise<Elements>) =>
+      getSetElements()((prev) =>
         Promise.all([prev, data]).then(([prevRes, dataRes]) => {
           const nextElements: Elements = { ...dataRes };
           delete nextElements._value;
