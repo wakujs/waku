@@ -24,18 +24,11 @@ const isErrorInfo = (x: unknown): x is ErrorInfo => {
 const prefix = '__WAKU_CUSTOM_ERROR__;';
 
 // This is an internal API and not for public use
-export const createCustomError = (message: string, errorInfo: ErrorInfo) =>
-  markCustomError(new Error(message), errorInfo);
-
-// Adds the info to an error as it is, so its type and stack survive.
-// This is an internal API and not for public use
-export function markCustomError<T>(err: T, errorInfo: ErrorInfo): T | Error {
-  if (typeof err !== 'object' || err === null) {
-    return createCustomError(String(err), errorInfo);
-  }
+export const createCustomError = (message: string, errorInfo: ErrorInfo) => {
+  const err = new Error(message);
   (err as { digest?: string }).digest = prefix + JSON.stringify(errorInfo);
   return err;
-}
+};
 
 export const getErrorInfo = (err: unknown) => {
   const digest = (err as { digest?: string } | undefined)?.digest;

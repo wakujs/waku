@@ -11,10 +11,7 @@ import {
 } from 'react';
 import type { ReactNode } from 'react';
 import RSDWClient from 'react-server-dom-webpack/client';
-import {
-  createCustomError,
-  markCustomError,
-} from '../lib/utils/custom-errors.js';
+import { createCustomError } from '../lib/utils/custom-errors.js';
 import {
   ETAGS_HEADER,
   ETAG_ID_PREFIX,
@@ -69,7 +66,9 @@ const checkStatus = async (
       throw e;
     }
     // the transport failed, so nothing can be told about the server
-    throw markCustomError(e, { noResponse: true });
+    throw createCustomError(String((e as Error | undefined)?.message ?? e), {
+      noResponse: true,
+    });
   }
   if (
     response.redirected &&

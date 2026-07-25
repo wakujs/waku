@@ -160,10 +160,9 @@ describe('minimal/client prefetch', () => {
 
 describe('minimal/client transport failures', () => {
   test('a request that never got a response is marked as such', async () => {
-    const networkError = new TypeError('Failed to fetch');
     track(
       unstable_registerFetchEnhancer(() => () => {
-        return Promise.reject(networkError);
+        return Promise.reject(new TypeError('Failed to fetch'));
       }),
     );
 
@@ -171,9 +170,8 @@ describe('minimal/client transport failures', () => {
       (e: unknown) => e,
     );
 
-    // the original error is marked, not replaced, so its type and stack survive
-    expect(error).toBe(networkError);
     expect(getErrorInfo(error)).toEqual({ noResponse: true });
+    expect((error as Error).message).toBe('Failed to fetch');
   });
 
   test('an aborted request passes through untouched', async () => {
