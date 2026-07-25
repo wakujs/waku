@@ -49,15 +49,17 @@ import {
   createPrefetchManager,
 } from './client-utils/prefetch-cache.js';
 import {
-  ROUTER_STATE_ID,
-  canCommitInstantly,
   getRouteUrl,
-  getRouterState,
   isSameRoute,
-  makeRouterState,
   parseRedirectUrl,
   parseRoute,
   pathnameToCurrentRoutePath,
+} from './client-utils/route-url.js';
+import {
+  ROUTER_STATE_ID,
+  canCommitInstantly,
+  getRouterState,
+  makeRouterState,
   pinForSwr,
   resolveCommitted,
 } from './client-utils/router-state.js';
