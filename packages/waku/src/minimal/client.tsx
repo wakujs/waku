@@ -474,7 +474,7 @@ export const unstable_fetchRsc = (
   options?: FetchRscOptions,
 ): Promise<Elements> => {
   if (import.meta.hot) {
-    const refetchRsc = () => {
+    const refetchRscOnHmr = () => {
       fetchRscStore[CACHED_ETAGS] = {};
       delete fetchRscStore[ENTRY];
       const data = unstable_fetchRsc(rscPath, rscParams, options);
@@ -483,10 +483,8 @@ export const unstable_fetchRsc = (
         Promise.all([prev, data]).then(([prevRes, dataRes]) => {
           const nextElements: Elements = { ...dataRes };
           delete nextElements._value;
-          for (const key of Reflect.ownKeys(prevRes)) {
-            if (typeof key === 'symbol') {
-              nextElements[key] = prevRes[key];
-            }
+          for (const key of Object.getOwnPropertySymbols(prevRes)) {
+            nextElements[key] = prevRes[key];
           }
           return nextElements;
         }),
@@ -494,9 +492,9 @@ export const unstable_fetchRsc = (
     };
     unstable_upsertRscReloadListener(
       globalThis.__WAKU_REFETCH_RSC__,
-      refetchRsc,
+      refetchRscOnHmr,
     );
-    globalThis.__WAKU_REFETCH_RSC__ = refetchRsc;
+    globalThis.__WAKU_REFETCH_RSC__ = refetchRscOnHmr;
   }
   const entry = fetchRscStore[ENTRY];
   if (entry && entry[0] === rscPath && entry[1] === rscParams) {

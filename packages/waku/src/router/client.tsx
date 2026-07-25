@@ -1106,7 +1106,7 @@ const InnerRouter = ({
   if (import.meta.hot) {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
-      const refetchRoute = () => {
+      const refetchRouteOnHmr = () => {
         prefetchManager.clear();
         staticPathSet.clear();
         const route = routeRef.current;
@@ -1117,8 +1117,11 @@ const InnerRouter = ({
           );
         });
       };
-      upsertRscReloadListener(globalThis.__WAKU_REFETCH_ROUTE__, refetchRoute);
-      globalThis.__WAKU_REFETCH_ROUTE__ = refetchRoute;
+      upsertRscReloadListener(
+        globalThis.__WAKU_REFETCH_ROUTE__,
+        refetchRouteOnHmr,
+      );
+      globalThis.__WAKU_REFETCH_ROUTE__ = refetchRouteOnHmr;
     }, [refetch, prefetchManager, staticPathSet]);
   }
 
