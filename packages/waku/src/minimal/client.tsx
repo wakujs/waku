@@ -474,7 +474,7 @@ export const unstable_fetchRsc = (
   options?: FetchRscOptions,
 ): Promise<Elements> => {
   if (import.meta.hot) {
-    const reload = () => {
+    const refetchRsc = () => {
       fetchRscStore[CACHED_ETAGS] = {};
       delete fetchRscStore[ENTRY];
       const data = unstable_fetchRsc(rscPath, rscParams, options);
@@ -492,8 +492,11 @@ export const unstable_fetchRsc = (
         }),
       );
     };
-    unstable_upsertRscReloadListener(globalThis.__WAKU_REFETCH_RSC__, reload);
-    globalThis.__WAKU_REFETCH_RSC__ = reload;
+    unstable_upsertRscReloadListener(
+      globalThis.__WAKU_REFETCH_RSC__,
+      refetchRsc,
+    );
+    globalThis.__WAKU_REFETCH_RSC__ = refetchRsc;
   }
   const entry = fetchRscStore[ENTRY];
   if (entry && entry[0] === rscPath && entry[1] === rscParams) {
