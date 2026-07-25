@@ -1094,11 +1094,15 @@ const InnerRouter = ({
       return;
     }
     reconciledRef.current = { routerState, href: url.href };
-    if (routerState.history === 'push' && window.location.href !== url.href) {
-      routerState.history = 'replace'; // consumed, so a later commit does not push again
-      window.history.pushState(window.history.state, '', url);
-    } else if (routerState.history) {
-      window.history.replaceState(window.history.state, '', url);
+    // the state carries the url that should show, so a null history still
+    // writes when the destination moved away from it
+    if (window.location.href !== url.href) {
+      if (routerState.history === 'push') {
+        routerState.history = 'replace'; // consumed, so a later commit does not push again
+        window.history.pushState(window.history.state, '', url);
+      } else {
+        window.history.replaceState(window.history.state, '', url);
+      }
     }
     if (routerState.scroll) {
       const scroll = routerState.scroll;
@@ -1271,12 +1275,13 @@ const InnerRouter = ({
         return;
       }
       const route = { path, query, hash: '' };
+      const is404 = path === '/404';
       await dispatchChangeRoute(changeRoute, route, {
         refetch: false,
         shouldScroll: false,
         // the 404 route renders where the user already is
-        history: path === '/404' ? null : 'push',
-        url: getRouteUrl(route),
+        history: is404 ? null : 'push',
+        url: is404 ? new URL(window.location.href) : getRouteUrl(route),
       });
     },
     [changeRoute],
@@ -1313,7 +1318,8 @@ const InnerRouter = ({
 
   useEffect(() => {
     const callback = () => {
-      const nextRoute = routeInterceptor(parseRouteFromLocation());
+      const popped = parseRouteFromLocation();
+      const nextRoute = routeInterceptor(popped);
       if (!nextRoute) {
         return;
       }
@@ -1321,6 +1327,10 @@ const InnerRouter = ({
         changeRoute(nextRoute, {
           shouldScroll: shouldScrollForRouteChange(nextRoute, routeRef.current),
           history: null, // the browser already moved the address bar
+          // keep the url it moved to; an interceptor rewrite needs a new one
+          url: isSameRoute(nextRoute, popped)
+            ? new URL(window.location.href)
+            : getRouteUrl(nextRoute),
         }).catch((err) => {
           console.log('Error while navigating back:', err);
         });

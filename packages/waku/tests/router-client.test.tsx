@@ -3189,6 +3189,40 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('popstate that lands on another route moves the url with it', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
+      [ROUTE_ID]: ['/new', ''],
+      [IS_STATIC_ID]: false,
+    }));
+    installRefetch(refetch);
+
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/new')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      elements,
+    );
+
+    // the browser restored /old, but the server redirects it to /new
+    window.history.pushState({}, '', '/old');
+    await act(async () => {
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      await flush();
+    });
+
+    expect(capture.router?.path).toBe('/new');
+    expect(window.location.pathname).toBe('/new');
+
+    view.unmount();
+  });
+
   test('popstate query-only transition preserves scroll behavior', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
