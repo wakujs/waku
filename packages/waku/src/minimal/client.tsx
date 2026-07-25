@@ -62,13 +62,11 @@ const checkStatus = async (
   try {
     response = await responsePromise;
   } catch (e) {
-    if ((e as Error | undefined)?.name === 'AbortError') {
-      throw e;
+    if (e instanceof TypeError) {
+      // fetch reports a network error as a TypeError, so no response arrived
+      throw createCustomError(e.message, { unstable_networkError: true });
     }
-    // the transport failed, so nothing can be told about the server
-    throw createCustomError(String((e as Error | undefined)?.message ?? e), {
-      noResponse: true,
-    });
+    throw e;
   }
   if (
     response.redirected &&

@@ -1,8 +1,8 @@
 type ErrorInfo = {
   status?: number;
   location?: string;
-  // set by the client when the request produced no response at all
-  noResponse?: boolean;
+  // set by the client when the fetch failed with a network error
+  unstable_networkError?: boolean;
 };
 
 const isErrorInfo = (x: unknown): x is ErrorInfo => {
@@ -15,7 +15,10 @@ const isErrorInfo = (x: unknown): x is ErrorInfo => {
   if ('location' in x && typeof (x as ErrorInfo).location !== 'string') {
     return false;
   }
-  if ('noResponse' in x && typeof (x as ErrorInfo).noResponse !== 'boolean') {
+  if (
+    'unstable_networkError' in x &&
+    typeof (x as ErrorInfo).unstable_networkError !== 'boolean'
+  ) {
     return false;
   }
   return true;

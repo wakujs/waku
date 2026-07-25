@@ -159,7 +159,7 @@ describe('minimal/client prefetch', () => {
 });
 
 describe('minimal/client transport failures', () => {
-  test('a request that never got a response is marked as such', async () => {
+  test('a network error is marked as such', async () => {
     track(
       unstable_registerFetchEnhancer(() => () => {
         return Promise.reject(new TypeError('Failed to fetch'));
@@ -170,23 +170,35 @@ describe('minimal/client transport failures', () => {
       (e: unknown) => e,
     );
 
-    expect(getErrorInfo(error)).toEqual({ noResponse: true });
+    expect(getErrorInfo(error)).toEqual({ unstable_networkError: true });
     expect((error as Error).message).toBe('Failed to fetch');
   });
 
-  test('an aborted request passes through untouched', async () => {
+  test('any other failure passes through untouched', async () => {
+    const unregisterAbort = unstable_registerFetchEnhancer(() => () => {
+      return Promise.reject(new DOMException('Aborted', 'AbortError'));
+    });
+    const aborted = await unstable_fetchRsc('R/next.txt').catch(
+      (e: unknown) => e,
+    );
+    unregisterAbort();
+
+    expect((aborted as Error).name).toBe('AbortError');
+    expect(getErrorInfo(aborted)).toBeNull();
+
+    // an app's own failure (a fetch enhancer, an unserializable argument)
+    // reaches the caller as it is
+    const appError = new Error('could not serialize');
     track(
       unstable_registerFetchEnhancer(() => () => {
-        return Promise.reject(new DOMException('Aborted', 'AbortError'));
+        return Promise.reject(appError);
       }),
     );
-
-    const error = await unstable_fetchRsc('R/next.txt').catch(
+    const thrown = await unstable_fetchRsc('R/other.txt').catch(
       (e: unknown) => e,
     );
 
-    expect((error as Error).name).toBe('AbortError');
-    expect(getErrorInfo(error)).toBeNull();
+    expect(thrown).toBe(appError);
   });
 });
 
