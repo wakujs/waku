@@ -4,7 +4,7 @@ import { ETAG_ID_PREFIX, IMMUTABLE_ETAG } from '../src/lib/utils/etags.js';
 import {
   ROUTER_STATE_ID,
   canCommitInstantly,
-  deriveCommitted,
+  getCommittedRoute,
   getRouterState,
   makeRouterState,
   pinForSwr,
@@ -56,16 +56,11 @@ describe('makeRouterState', () => {
   });
 });
 
-describe('deriveCommitted', () => {
-  test('falls back to the given route without routerState state', () => {
-    const {
-      route: derived,
-      routerState,
-      url,
-    } = deriveCommitted({ [ROUTE_ID]: ['/a', ''] }, route('/fallback'));
-    expect(derived).toEqual(route('/fallback'));
-    expect(routerState).toBeUndefined();
-    expect(url).toBeUndefined();
+describe('getCommittedRoute', () => {
+  test('commits nothing until the client has navigated', () => {
+    expect(getCommittedRoute({ [ROUTE_ID]: ['/a', ''] }, '/fallback')).toBe(
+      undefined,
+    );
   });
 
   test('path from the elements, query and hash from the routerState url', () => {
@@ -82,9 +77,9 @@ describe('deriveCommitted', () => {
       { [ROUTE_ID]: ['/a', 'x=1'] },
       routerState,
     );
-    const { route: derived, url } = deriveCommitted(elements, route('/f'));
-    expect(derived).toEqual(route('/a', 'x=1', '#top'));
-    expect(url?.pathname).toBe('/a');
+    const { route: committedRoute, url } = getCommittedRoute(elements, '/f')!;
+    expect(committedRoute).toEqual(route('/a', 'x=1', '#top'));
+    expect(url.pathname).toBe('/a');
     expect(getRouterState(elements)).toBe(routerState);
   });
 
@@ -98,9 +93,9 @@ describe('deriveCommitted', () => {
       { [ROUTE_ID]: ['/a', ''], [IS_STATIC_ID]: true },
       routerState,
     );
-    const { route: derived, url } = deriveCommitted(elements, route('/f'));
-    expect(derived.query).toBe('x=1');
-    expect(url?.search).toBe('?x=1');
+    const { route: committedRoute, url } = getCommittedRoute(elements, '/f')!;
+    expect(committedRoute.query).toBe('x=1');
+    expect(url.search).toBe('?x=1');
   });
 
   test('a server redirect moves the route and the url', () => {
@@ -113,10 +108,10 @@ describe('deriveCommitted', () => {
       { [ROUTE_ID]: ['/b', 'y=2'] },
       routerState,
     );
-    const { route: derived, url } = deriveCommitted(elements, route('/f'));
-    expect(derived).toEqual(route('/b', 'y=2'));
-    expect(url?.pathname).toBe('/b');
-    expect(url?.search).toBe('?y=2');
+    const { route: committedRoute, url } = getCommittedRoute(elements, '/f')!;
+    expect(committedRoute).toEqual(route('/b', 'y=2'));
+    expect(url.pathname).toBe('/b');
+    expect(url.search).toBe('?y=2');
   });
 
   test('a server redirect keeps the base path in the url', () => {
@@ -128,8 +123,8 @@ describe('deriveCommitted', () => {
         pathChanged: false,
       });
       const elements = withRouterState({ [ROUTE_ID]: ['/b', ''] }, routerState);
-      const { url } = deriveCommitted(elements, route('/f'));
-      expect(url?.pathname).toBe('/docs/b');
+      const { url } = getCommittedRoute(elements, '/f')!;
+      expect(url.pathname).toBe('/docs/b');
     } finally {
       vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/');
     }
@@ -142,9 +137,9 @@ describe('deriveCommitted', () => {
       pathChanged: true,
     });
     const elements = withRouterState({ [ROUTE_ID]: ['/404', ''] }, routerState);
-    const { route: derived, url } = deriveCommitted(elements, route('/f'));
-    expect(derived.path).toBe('/404');
-    expect(url?.pathname).toBe('/missing');
+    const { route: committedRoute, url } = getCommittedRoute(elements, '/f')!;
+    expect(committedRoute.path).toBe('/404');
+    expect(url.pathname).toBe('/missing');
   });
 });
 

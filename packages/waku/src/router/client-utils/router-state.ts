@@ -80,19 +80,16 @@ export const makeRouterState = (
   scrollIntent: options.scroll,
 });
 
-// a server redirect moves route and url; the 404 route keeps the attempted url
-export const deriveCommitted = (
+// What the record commits to: the route to render and the url to show, or
+// undefined before the client has navigated. A server redirect moves both; the
+// 404 route keeps the attempted url.
+export const getCommittedRoute = (
   elements: Record<string | symbol, unknown>,
-  fallbackRoute: RouteProps,
-): {
-  route: RouteProps;
-  routerState: RouterState | undefined;
-  url: URL | undefined;
-} => {
+  fallbackPath: string,
+): { routerState: RouterState; route: RouteProps; url: URL } | undefined => {
   const routerState = getRouterState(elements);
-  const routeFromElements = getRouteFromElements(elements);
   if (!routerState) {
-    return { route: fallbackRoute, routerState: undefined, url: undefined };
+    return undefined;
   }
   const stateUrl = new URL(routerState.url, window.location.href);
   const redirect = getServerRedirect(elements, {
@@ -101,19 +98,16 @@ export const deriveCommitted = (
     hash: '',
   });
   if (redirect && redirect.path !== '/404') {
-    return { route: redirect, routerState, url: getRouteUrl(redirect) };
+    return { routerState, route: redirect, url: getRouteUrl(redirect) };
   }
   return {
+    routerState,
     route: {
-      path: redirect
-        ? redirect.path
-        : routeFromElements
-          ? routeFromElements.path
-          : fallbackRoute.path,
+      path:
+        redirect?.path ?? getRouteFromElements(elements)?.path ?? fallbackPath,
       query: stateUrl.searchParams.toString(),
       hash: stateUrl.hash,
     },
-    routerState,
     url: stateUrl,
   };
 };
