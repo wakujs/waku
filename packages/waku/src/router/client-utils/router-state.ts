@@ -42,8 +42,8 @@ export const makeRouterState = (
   scrollIntent: options.scroll,
 });
 
-// a server redirect moves route and url; the 404 route keeps the attempted url
-export const resolveCommitted = (
+// a redirect to the 404 route keeps the url that was attempted
+export const resolveServerRedirect = (
   elements: Record<string | symbol, unknown>,
   routerState: RouterState,
   fallbackPath: string,

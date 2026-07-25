@@ -61,7 +61,7 @@ import {
   getRouterState,
   makeRouterState,
   pinForSwr,
-  resolveCommitted,
+  resolveServerRedirect,
 } from './client-utils/router-state.js';
 import type { RouterState } from './client-utils/router-state.js';
 import type {
@@ -1068,10 +1068,11 @@ const InnerRouter = ({
   }, [initialHash]);
 
   const routerState = getRouterState(elements);
-  const committed =
-    routerState && resolveCommitted(elements, routerState, initialRoute.path);
-  const currentRoute = committed
-    ? committed.route
+  const destination =
+    routerState &&
+    resolveServerRedirect(elements, routerState, initialRoute.path);
+  const currentRoute = destination
+    ? destination.route
     : { ...initialRoute, hash: restoredHash };
   const routeRef = useRef(currentRoute);
   const reconciledRef = useRef<
@@ -1079,23 +1080,20 @@ const InnerRouter = ({
   >(undefined);
   useLayoutEffect(() => {
     routeRef.current = currentRoute;
-    if (!routerState || !committed) {
+    if (!routerState || !destination) {
       return;
     }
-    const committedUrl = committed.url;
+    const { url } = destination;
     const stateChanged = routerState !== reconciledRef.current?.routerState;
-    if (!stateChanged && committedUrl.href === reconciledRef.current?.href) {
+    if (!stateChanged && url.href === reconciledRef.current?.href) {
       return;
     }
-    reconciledRef.current = { routerState, href: committedUrl.href };
-    if (
-      routerState.history === 'push' &&
-      window.location.href !== committedUrl.href
-    ) {
+    reconciledRef.current = { routerState, href: url.href };
+    if (routerState.history === 'push' && window.location.href !== url.href) {
       routerState.history = 'replace'; // consumed, so a later commit does not push again
-      window.history.pushState(window.history.state, '', committedUrl);
+      window.history.pushState(window.history.state, '', url);
     } else if (routerState.history) {
-      window.history.replaceState(window.history.state, '', committedUrl);
+      window.history.replaceState(window.history.state, '', url);
     }
     if (routerState.scroll) {
       const scroll = routerState.scroll;

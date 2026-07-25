@@ -7,7 +7,7 @@ import {
   getRouterState,
   makeRouterState,
   pinForSwr,
-  resolveCommitted,
+  resolveServerRedirect,
 } from '../src/router/client-utils/router-state.js';
 import {
   IS_STATIC_ID,
@@ -68,7 +68,7 @@ describe('getRouterState', () => {
   });
 });
 
-describe('resolveCommitted', () => {
+describe('resolveServerRedirect', () => {
   test('path from the elements, query and hash from the routerState url', () => {
     const routerState = makeRouterState(
       route('/a', 'x=1'),
@@ -80,12 +80,12 @@ describe('resolveCommitted', () => {
       },
     );
     const elements = { [ROUTE_ID]: ['/a', 'x=1'] };
-    const { route: committedRoute, url } = resolveCommitted(
+    const { route: resolvedRoute, url } = resolveServerRedirect(
       elements,
       routerState,
       '/f',
     );
-    expect(committedRoute).toEqual(route('/a', 'x=1', '#top'));
+    expect(resolvedRoute).toEqual(route('/a', 'x=1', '#top'));
     expect(url.pathname).toBe('/a');
   });
 
@@ -96,12 +96,12 @@ describe('resolveCommitted', () => {
       pathChanged: false,
     });
     const elements = { [ROUTE_ID]: ['/a', ''], [IS_STATIC_ID]: true };
-    const { route: committedRoute, url } = resolveCommitted(
+    const { route: resolvedRoute, url } = resolveServerRedirect(
       elements,
       routerState,
       '/f',
     );
-    expect(committedRoute.query).toBe('x=1');
+    expect(resolvedRoute.query).toBe('x=1');
     expect(url.search).toBe('?x=1');
   });
 
@@ -112,12 +112,12 @@ describe('resolveCommitted', () => {
       pathChanged: true,
     });
     const elements = { [ROUTE_ID]: ['/b', 'y=2'] };
-    const { route: committedRoute, url } = resolveCommitted(
+    const { route: resolvedRoute, url } = resolveServerRedirect(
       elements,
       routerState,
       '/f',
     );
-    expect(committedRoute).toEqual(route('/b', 'y=2'));
+    expect(resolvedRoute).toEqual(route('/b', 'y=2'));
     expect(url.pathname).toBe('/b');
     expect(url.search).toBe('?y=2');
   });
@@ -131,7 +131,7 @@ describe('resolveCommitted', () => {
         pathChanged: false,
       });
       const elements = { [ROUTE_ID]: ['/b', ''] };
-      const { url } = resolveCommitted(elements, routerState, '/f');
+      const { url } = resolveServerRedirect(elements, routerState, '/f');
       expect(url.pathname).toBe('/docs/b');
     } finally {
       vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/');
@@ -145,12 +145,12 @@ describe('resolveCommitted', () => {
       pathChanged: true,
     });
     const elements = { [ROUTE_ID]: ['/404', ''] };
-    const { route: committedRoute, url } = resolveCommitted(
+    const { route: resolvedRoute, url } = resolveServerRedirect(
       elements,
       routerState,
       '/f',
     );
-    expect(committedRoute.path).toBe('/404');
+    expect(resolvedRoute.path).toBe('/404');
     expect(url.pathname).toBe('/missing');
   });
 });
