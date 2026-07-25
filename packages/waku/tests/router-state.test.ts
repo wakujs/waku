@@ -4,7 +4,7 @@ import { ETAG_ID_PREFIX, IMMUTABLE_ETAG } from '../src/lib/utils/etags.js';
 import {
   ROUTER_STATE_ID,
   canCommitInstantly,
-  getCommittedRoute,
+  getCommitted,
   getRouterState,
   makeRouterState,
   pinForSwr,
@@ -56,9 +56,9 @@ describe('makeRouterState', () => {
   });
 });
 
-describe('getCommittedRoute', () => {
+describe('getCommitted', () => {
   test('commits nothing until the client has navigated', () => {
-    expect(getCommittedRoute({ [ROUTE_ID]: ['/a', ''] }, '/fallback')).toBe(
+    expect(getCommitted({ [ROUTE_ID]: ['/a', ''] }, '/fallback')).toBe(
       undefined,
     );
   });
@@ -77,7 +77,7 @@ describe('getCommittedRoute', () => {
       { [ROUTE_ID]: ['/a', 'x=1'] },
       routerState,
     );
-    const { route: committedRoute, url } = getCommittedRoute(elements, '/f')!;
+    const { route: committedRoute, url } = getCommitted(elements, '/f')!;
     expect(committedRoute).toEqual(route('/a', 'x=1', '#top'));
     expect(url.pathname).toBe('/a');
     expect(getRouterState(elements)).toBe(routerState);
@@ -93,7 +93,7 @@ describe('getCommittedRoute', () => {
       { [ROUTE_ID]: ['/a', ''], [IS_STATIC_ID]: true },
       routerState,
     );
-    const { route: committedRoute, url } = getCommittedRoute(elements, '/f')!;
+    const { route: committedRoute, url } = getCommitted(elements, '/f')!;
     expect(committedRoute.query).toBe('x=1');
     expect(url.search).toBe('?x=1');
   });
@@ -108,7 +108,7 @@ describe('getCommittedRoute', () => {
       { [ROUTE_ID]: ['/b', 'y=2'] },
       routerState,
     );
-    const { route: committedRoute, url } = getCommittedRoute(elements, '/f')!;
+    const { route: committedRoute, url } = getCommitted(elements, '/f')!;
     expect(committedRoute).toEqual(route('/b', 'y=2'));
     expect(url.pathname).toBe('/b');
     expect(url.search).toBe('?y=2');
@@ -123,7 +123,7 @@ describe('getCommittedRoute', () => {
         pathChanged: false,
       });
       const elements = withRouterState({ [ROUTE_ID]: ['/b', ''] }, routerState);
-      const { url } = getCommittedRoute(elements, '/f')!;
+      const { url } = getCommitted(elements, '/f')!;
       expect(url.pathname).toBe('/docs/b');
     } finally {
       vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/');
@@ -137,7 +137,7 @@ describe('getCommittedRoute', () => {
       pathChanged: true,
     });
     const elements = withRouterState({ [ROUTE_ID]: ['/404', ''] }, routerState);
-    const { route: committedRoute, url } = getCommittedRoute(elements, '/f')!;
+    const { route: committedRoute, url } = getCommitted(elements, '/f')!;
     expect(committedRoute.path).toBe('/404');
     expect(url.pathname).toBe('/missing');
   });

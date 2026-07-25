@@ -51,8 +51,9 @@ import {
 import {
   ROUTER_STATE_ID,
   canCommitInstantly,
-  getCommittedRoute,
+  getCommitted,
   getRouteUrl,
+  getRouterState,
   isSameRoute,
   makeRouterState,
   parseRedirectUrl,
@@ -1064,7 +1065,7 @@ const InnerRouter = ({
     setRestoredHash(window.location.hash || initialHash);
   }, [initialHash]);
 
-  const committed = getCommittedRoute(elements, initialRoute.path);
+  const committed = getCommitted(elements, initialRoute.path);
   const currentRoute = committed
     ? committed.route
     : { ...initialRoute, hash: restoredHash };
@@ -1339,7 +1340,7 @@ const InnerRouter = ({
     <RouterContext
       value={{
         route: currentRoute,
-        routerState: committed?.routerState,
+        routerState: getRouterState(elements),
         changeRoute,
         prefetchRoute,
         routeChangeEvents,

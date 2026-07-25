@@ -81,7 +81,7 @@ export const makeRouterState = (
 });
 
 // a server redirect moves route and url; the 404 route keeps the attempted url
-export const getCommittedRoute = (
+export const getCommitted = (
   elements: Record<string | symbol, unknown>,
   fallbackPath: string,
 ): { routerState: RouterState; route: RouteProps; url: URL } | undefined => {
