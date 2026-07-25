@@ -842,8 +842,9 @@ const FollowError = ({
       followPromiseMap.set(
         error as object,
         changeRoute(target, {
-          shouldScroll:
-            routerStateRef.current?.scrollIntent ?? target.path !== caught.path,
+          shouldScroll: routerStateRef.current
+            ? routerStateRef.current.scroll !== null
+            : target.path !== caught.path,
           history: 'replace',
           url,
         }).then(
@@ -1091,8 +1092,10 @@ const InnerRouter = ({
     ? destination.route
     : { ...initialRoute, hash: restoredHash };
   const routeRef = useRef(currentRoute);
+  // what the last reconcile did; a state reconciles again when its destination
+  // moves, so the push and the scroll must not repeat
   const reconciledRef = useRef<
-    { routerState: RouterState; href: string } | undefined
+    { routerState: RouterState; href: string; pushed: boolean } | undefined
   >(undefined);
   useLayoutEffect(() => {
     routeRef.current = currentRoute;
@@ -1100,28 +1103,31 @@ const InnerRouter = ({
       return;
     }
     const { url } = destination;
-    const stateChanged = routerState !== reconciledRef.current?.routerState;
-    if (!stateChanged && url.href === reconciledRef.current?.href) {
+    const reconciled =
+      reconciledRef.current?.routerState === routerState
+        ? reconciledRef.current
+        : undefined;
+    if (reconciled?.href === url.href) {
       return;
     }
-    reconciledRef.current = { routerState, href: url.href };
+    let pushed = reconciled?.pushed ?? false;
     // the state carries the url that should show, so a null history still
     // writes when the destination moved away from it
     if (window.location.href !== url.href) {
-      if (routerState.history === 'push') {
-        routerState.history = 'replace'; // consumed, so a later commit does not push again
+      if (routerState.history === 'push' && !pushed) {
+        pushed = true;
         window.history.pushState(window.history.state, '', url);
       } else {
         window.history.replaceState(window.history.state, '', url);
       }
     }
-    if (routerState.scroll) {
-      const scroll = routerState.scroll;
-      routerState.scroll = null; // consumed, so a later commit does not scroll again
+    reconciledRef.current = { routerState, href: url.href, pushed };
+    if (routerState.scroll && !reconciled) {
+      const { pathChanged } = routerState.scroll;
       scrollToRoute(
         currentRoute,
-        scroll.pathChanged ? 'instant' : 'auto',
-        scroll.pathChanged,
+        pathChanged ? 'instant' : 'auto',
+        pathChanged,
       );
     }
   });

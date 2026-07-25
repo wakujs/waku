@@ -10,15 +10,13 @@ import { getRouteUrl } from './route-url.js';
 // the client owned router state; the server's ROUTE_ID owns the path
 export const ROUTER_STATE_ID = Symbol('waku-router-state');
 
-// merges carry this object by reference; the consumed flags rely on identity
+// merges carry this object by reference; the reconciler keys off its identity
 export type RouterState = {
-  url: string; // pathname + search + hash, with the base path
-  attempted: readonly [path: string, query: string];
-  // null leaves history alone (the browser already wrote it); a push turns into
-  // a replace once the reconciler has written
-  history: 'push' | 'replace' | null;
-  scroll: { pathChanged: boolean } | null; // consumed by the reconciler
-  scrollIntent: boolean; // the attempt's decision, for a follow to inherit
+  readonly url: string; // pathname + search + hash, with the base path
+  readonly attempted: readonly [path: string, query: string];
+  // null leaves history alone: the browser already wrote it
+  readonly history: 'push' | 'replace' | null;
+  readonly scroll: { readonly pathChanged: boolean } | null;
 };
 
 export const getRouterState = (
@@ -39,7 +37,6 @@ export const makeRouterState = (
   attempted: [route.path, route.query],
   history: options.history,
   scroll: options.scroll ? { pathChanged: options.pathChanged } : null,
-  scrollIntent: options.scroll,
 });
 
 // a redirect to the 404 route keeps the url that was attempted

@@ -42,7 +42,6 @@ describe('makeRouterState', () => {
     expect(routerState.attempted).toEqual(['/a', 'x=1']);
     expect(routerState.history).toBe('push');
     expect(routerState.scroll).toEqual({ pathChanged: true });
-    expect(routerState.scrollIntent).toBe(true);
   });
 
   test('no scroll intent when scrolling is off', () => {
@@ -52,7 +51,6 @@ describe('makeRouterState', () => {
       pathChanged: true,
     });
     expect(routerState.scroll).toBeNull();
-    expect(routerState.scrollIntent).toBe(false);
   });
 });
 
