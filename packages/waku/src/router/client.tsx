@@ -136,14 +136,8 @@ const shouldScrollByDefault = (url: URL) =>
     pathnameToCurrentRoutePath(window.location.pathname) ||
   url.hash !== window.location.hash;
 
-const isPathChange = (next: RouteProps, prev: RouteProps) =>
-  next.path !== prev.path;
-
-const isHashChange = (next: RouteProps, prev: RouteProps) =>
-  next.hash !== prev.hash;
-
 const shouldScrollForRouteChange = (next: RouteProps, prev: RouteProps) =>
-  isPathChange(next, prev) || isHashChange(next, prev);
+  next.path !== prev.path || next.hash !== prev.hash;
 
 const isAltClick = (event: MouseEvent<HTMLAnchorElement>) =>
   event.button !== 0 ||
