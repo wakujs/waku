@@ -2652,7 +2652,65 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('instant routerState adopts an in-flight prefetch as its data source', async () => {
+  test('an instant nav from a static route does not mark the target static', async () => {
+    const pending = createDeferred<Record<string, unknown>>();
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
+      [ROUTE_ID]: ['/next', ''],
+      [IS_STATIC_ID]: false,
+    }));
+    refetch.mockImplementationOnce(() => pending.promise);
+    installRefetch(refetch);
+
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      ...instantNavElements(),
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/next')]: <Probe />,
+      // the route being left is static, the instant target is not
+      [IS_STATIC_ID]: true,
+    };
+
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      elements,
+    );
+    if (!capture.router) {
+      throw new Error('router not initialized');
+    }
+
+    // the instant commit lands before the response: /next's route id sits next
+    // to /start's pinned static flag
+    let pushed: Promise<void> | undefined;
+    await act(async () => {
+      pushed = capture.router!.push('/next', { unstable_instant: true });
+      await flush();
+    });
+    await act(async () => {
+      pending.resolve({ [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: false });
+      await pushed;
+      await flush();
+    });
+    await act(async () => {
+      await capture.router!.push('/start');
+      await flush();
+    });
+    refetch.mockClear();
+    await act(async () => {
+      await capture.router!.push('/next');
+      await flush();
+    });
+
+    expect(refetch).toHaveBeenCalledWith(
+      unstable_encodeRoutePath('/next'),
+      expect.any(URLSearchParams),
+      expect.anything(),
+    );
+
+    view.unmount();
+  });
+
+  test('instant nav adopts an in-flight prefetch as its data source', async () => {
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
       [ROUTE_ID]: ['/next', ''],
       [IS_STATIC_ID]: true,

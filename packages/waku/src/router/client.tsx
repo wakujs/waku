@@ -1052,14 +1052,25 @@ const InnerRouter = ({
   // meta keys persist across merges, so they read from the current elements
   const has404 = has404FromElements(elements);
   const staticPathSet = useRef(new Set<string>()).current;
+  // only a response tells a route's staticness; a record mid navigation pairs
+  // the target route id with the previous route's pinned flag
+  const learnStaticPath = useCallback(
+    (responseElements: Record<string, unknown>) => {
+      const route = getRouteFromElements(responseElements);
+      if (route && isStaticFromElements(responseElements)) {
+        staticPathSet.add(route.path);
+      }
+    },
+    [staticPathSet],
+  );
+  const initialElements = useRef(elements).current;
+  useEffect(() => {
+    learnStaticPath(initialElements);
+  }, [initialElements, learnStaticPath]);
   const resolvedElementsRef = useRef(elements);
   useEffect(() => {
     resolvedElementsRef.current = elements;
-    const route = getRouteFromElements(elements);
-    if (route && isStaticFromElements(elements)) {
-      staticPathSet.add(route.path);
-    }
-  }, [elements, staticPathSet]);
+  }, [elements]);
   const prefetchManager = useRef(createPrefetchManager()).current;
 
   const refetch = useRefetch();
@@ -1203,6 +1214,7 @@ const InnerRouter = ({
           return;
         }
         abortRef.current = null;
+        learnStaticPath(resolved);
         emitRouteChangeEvent(
           'complete',
           getServerRedirect(resolved, nextRoute) ?? nextRoute,
@@ -1256,6 +1268,7 @@ const InnerRouter = ({
       has404,
       emitRouteChangeEvent,
       staticPathSet,
+      learnStaticPath,
       resolvedElementsRef,
       prefetchManager,
     ],
