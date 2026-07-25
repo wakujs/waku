@@ -11,8 +11,6 @@ import {
   isMetaKey,
 } from './elements-meta.js';
 
-// --- pure route and url helpers ---
-
 export const pathnameToCurrentRoutePath = (pathname: string) =>
   pathnameToRoutePath(
     removeBase(pathname, import.meta.env.WAKU_CONFIG_BASE_PATH),
@@ -46,8 +44,6 @@ export const parseRedirectUrl = (location: string, base: string | URL) => {
     ? url
     : undefined;
 };
-
-// --- client-only router state, stored in the elements record ---
 
 // the client owned router state; the server's ROUTE_ID owns the path
 export const ROUTER_STATE_ID = Symbol('waku-router-state');
@@ -121,8 +117,6 @@ export const deriveCommitted = (
     url: stateUrl,
   };
 };
-
-// --- instant navigation ---
 
 export const canCommitInstantly = (
   routeSlotId: string,
