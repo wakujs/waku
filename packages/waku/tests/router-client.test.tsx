@@ -2384,10 +2384,6 @@ describe('Router integration', () => {
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
     refetch.mockRejectedValueOnce(new Error('refetch failed'));
     installRefetch(refetch);
-    // the probe finds nothing, so the failure stays in the app
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockRejectedValue(new TypeError('Failed to fetch'));
     const historyPushSpy = vi.spyOn(window.history, 'pushState');
 
     const elements = {
@@ -2426,7 +2422,6 @@ describe('Router integration', () => {
       );
     } finally {
       consoleErrorSpy.mockRestore();
-      fetchSpy.mockRestore();
       view.unmount();
     }
   });
@@ -5161,198 +5156,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('a network error on push retries as a browser navigation', async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(new Response(''));
-    const assignSpy = vi
-      .spyOn(window.location, 'assign')
-      .mockImplementation(() => {});
-    const { view, refetch, capture, router } = await renderFollowRouter({
-      responses: [],
-    });
-    refetch.mockImplementationOnce(() =>
-      Promise.reject(new TypeError('Failed to fetch')),
-    );
-    await act(async () => {
-      await router.push('/protected').catch(() => {});
-      await flush();
-    });
-    expect(assignSpy).toHaveBeenCalledTimes(1);
-    expect(assignSpy.mock.calls[0]![0]).toContain('/protected');
-    expect(capture.router!.path).toBe('/start');
-    assignSpy.mockRestore();
-    fetchSpy.mockRestore();
-    view.unmount();
-  });
-
-  test('a failure without a waku error also retries as a browser navigation', async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(new Response(''));
-    const assignSpy = vi
-      .spyOn(window.location, 'assign')
-      .mockImplementation(() => {});
-    const { view, refetch, router } = await renderFollowRouter({
-      responses: [],
-    });
-    // a payload the client could not decode carries no server status
-    refetch.mockImplementationOnce(() =>
-      Promise.reject(new Error('could not decode')),
-    );
-    await act(async () => {
-      await router.push('/protected').catch(() => {});
-      await flush();
-    });
-    expect(assignSpy).toHaveBeenCalledTimes(1);
-    expect(assignSpy.mock.calls[0]![0]).toContain('/protected');
-    assignSpy.mockRestore();
-    fetchSpy.mockRestore();
-    view.unmount();
-  });
-
-  test('a network error on replace retries without a new entry', async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(new Response(''));
-    const replaceLocationSpy = vi
-      .spyOn(window.location, 'replace')
-      .mockImplementation(() => {});
-    const { view, refetch, router } = await renderFollowRouter({
-      responses: [],
-    });
-    refetch.mockImplementationOnce(() =>
-      Promise.reject(new TypeError('Failed to fetch')),
-    );
-    await act(async () => {
-      await router.replace('/protected').catch(() => {});
-      await flush();
-    });
-    expect(replaceLocationSpy).toHaveBeenCalledTimes(1);
-    expect(replaceLocationSpy.mock.calls[0]![0]).toContain('/protected');
-    replaceLocationSpy.mockRestore();
-    fetchSpy.mockRestore();
-    view.unmount();
-  });
-
-  test('a hung probe falls back to the error path', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
-      (_input, init) =>
-        new Promise<Response>((_resolve, reject) => {
-          init?.signal?.addEventListener('abort', () =>
-            reject(new DOMException('Aborted', 'AbortError')),
-          );
-        }),
-    );
-    const assignSpy = vi
-      .spyOn(window.location, 'assign')
-      .mockImplementation(() => {});
-    const capture = { router: null as RouterApi | null };
-    const Probe = makeProbe(capture);
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
-    refetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
-    installRefetch(refetch);
-
-    testHoisted.elements = {
-      [unstable_getRouteSlotId('/start')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
-      [IS_STATIC_ID]: false,
-    };
-    const consoleErrorSpy = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-    const view = await renderApp(
-      <ErrorBoundary>
-        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
-          <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
-        </Unstable_SearchCodecsProvider>
-      </ErrorBoundary>,
-    );
-    try {
-      if (!capture.router) {
-        throw new Error('router not initialized');
-      }
-      let rejected: unknown;
-      await act(async () => {
-        capture.router!.push('/protected').catch((e: unknown) => {
-          rejected = e;
-        });
-        await flush();
-      });
-      await act(async () => {
-        vi.advanceTimersByTime(3001);
-        await flush();
-      });
-      expect(rejected).toBeInstanceOf(TypeError);
-      expect(assignSpy).not.toHaveBeenCalled();
-      expect(fetchSpy.mock.calls[0]![1]!.signal!.aborted).toBe(true);
-      expect(view.container.textContent).toContain(
-        'Caught an unexpected error',
-      );
-    } finally {
-      consoleErrorSpy.mockRestore();
-      assignSpy.mockRestore();
-      fetchSpy.mockRestore();
-      vi.useRealTimers();
-      view.unmount();
-    }
-  });
-
-  test('a superseded navigation ignores a late probe result', async () => {
-    let resolveProbe!: (response: Response) => void;
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
-      () =>
-        new Promise<Response>((resolve) => {
-          resolveProbe = resolve;
-        }),
-    );
-    const assignSpy = vi
-      .spyOn(window.location, 'assign')
-      .mockImplementation(() => {});
-    const replaceLocationSpy = vi
-      .spyOn(window.location, 'replace')
-      .mockImplementation(() => {});
-    const { view, refetch, capture, router } = await renderFollowRouter({
-      responses: [],
-      slots: ['/b'],
-    });
-    refetch
-      .mockImplementationOnce(() =>
-        Promise.reject(new TypeError('Failed to fetch')),
-      )
-      .mockImplementationOnce(() =>
-        Promise.resolve({ [ROUTE_ID]: ['/b', ''], [IS_STATIC_ID]: false }),
-      );
-    let pushA: Promise<unknown> | undefined;
-    await act(async () => {
-      pushA = router.push('/a');
-      pushA.catch(() => {});
-      await flush();
-    });
-    await act(async () => {
-      await router.push('/b');
-      await flush();
-    });
-    expect(capture.router!.path).toBe('/b');
-    await act(async () => {
-      resolveProbe(new Response(''));
-      await pushA;
-      await flush();
-    });
-    expect(assignSpy).not.toHaveBeenCalled();
-    expect(replaceLocationSpy).not.toHaveBeenCalled();
-    expect(capture.router!.path).toBe('/b');
-    assignSpy.mockRestore();
-    replaceLocationSpy.mockRestore();
-    fetchSpy.mockRestore();
-    view.unmount();
-  });
-
-  test('a network error with the server unreachable stays an error', async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockRejectedValue(new TypeError('Failed to fetch'));
+  test('a network error stays an error instead of leaving the app', async () => {
     const assignSpy = vi
       .spyOn(window.location, 'assign')
       .mockImplementation(() => {});
@@ -5394,7 +5198,6 @@ describe('Router integration', () => {
     } finally {
       consoleErrorSpy.mockRestore();
       assignSpy.mockRestore();
-      fetchSpy.mockRestore();
       view.unmount();
     }
   });

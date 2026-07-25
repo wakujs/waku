@@ -250,8 +250,9 @@ test.describe('instant-nav', () => {
     await expect(page.getByTestId('complete-count')).toHaveText('3');
   });
 
-  // ...and retries as a browser navigation instead of sticking on the skeleton.
-  test('a failed instant navigation retries as a browser navigation', async ({
+  // ...and hands a redirected instant navigation to the browser instead of
+  // sticking on the skeleton.
+  test('an instant navigation redirected off the rsc endpoint leaves the app', async ({
     page,
   }) => {
     await page.goto(`http://localhost:${port}/post/1`);
@@ -261,11 +262,14 @@ test.describe('instant-nav', () => {
     await page.getByTestId('link-post-2').click();
     await expect(page.getByTestId('post-body')).toHaveText('Post 2');
 
-    // Fail the RSC fetch, then instant-revisit /post/1 (its shell is cached).
-    await page.route('**/RSC/**', (route) => route.abort());
+    // An auth proxy in front of the app answers the RSC request with a
+    // redirect to a page, then instant-revisit /post/1 (its shell is cached).
+    await page.route('**/RSC/**', (route) =>
+      route.fulfill({ status: 302, headers: { location: '/post/1' } }),
+    );
     await page.getByTestId('link-post-1').click();
-    // The router falls back to a document request for the attempted url,
-    // which does not go through the blocked RSC endpoint.
+    // The browser follows the redirect as a document request, which is the
+    // only way to land on a page that has no rsc payload.
     await expect(page).toHaveURL(/\/post\/1$/);
     await expect(page.getByTestId('post-body')).toHaveText('Post 1');
     await expect(page.getByTestId('page-skeleton')).toBeHidden();

@@ -737,8 +737,6 @@ export class ErrorBoundary extends Component<
 
 const MAX_FOLLOW_HOPS = 20;
 
-const PROBE_TIMEOUT = 3000;
-
 const FollowError = ({
   error,
   has404,
@@ -1206,40 +1204,6 @@ const InnerRouter = ({
             window.location.replace(url.href);
           }
           return;
-        }
-        if (!info) {
-          // no waku error means no usable response; a probe tells a dead
-          // server from a fetch that never reached one
-          const probeController = new AbortController();
-          abortController.signal.addEventListener('abort', () =>
-            probeController.abort(),
-          );
-          const timer = setTimeout(
-            () => probeController.abort(),
-            PROBE_TIMEOUT,
-          );
-          const alive = await fetch(targetUrl, {
-            method: 'HEAD',
-            redirect: 'manual',
-            signal: probeController.signal,
-          }).then(
-            () => true,
-            () => false,
-          );
-          clearTimeout(timer);
-          if (isAborted()) {
-            return;
-          }
-          if (alive) {
-            abortRef.current = null;
-            // the browser retries the url itself and follows any redirect
-            if (navState.history === 'push') {
-              window.location.assign(targetUrl.href);
-            } else {
-              window.location.replace(targetUrl.href);
-            }
-            return;
-          }
         }
         abortRef.current = null;
         // write the url now; an unrecoverable rethrow discards the commit
