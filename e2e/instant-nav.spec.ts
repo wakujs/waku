@@ -250,9 +250,8 @@ test.describe('instant-nav', () => {
     await expect(page.getByTestId('complete-count')).toHaveText('3');
   });
 
-  // ...and hands a redirected instant navigation to the browser instead of
-  // sticking on the skeleton.
-  test('an instant navigation redirected off the rsc endpoint leaves the app', async ({
+  // ...and surfaces a fetch error instead of getting stuck on the skeleton.
+  test('a failed instant navigation surfaces the error instead of sticking', async ({
     page,
   }) => {
     await page.goto(`http://localhost:${port}/post/1`);
@@ -262,17 +261,14 @@ test.describe('instant-nav', () => {
     await page.getByTestId('link-post-2').click();
     await expect(page.getByTestId('post-body')).toHaveText('Post 2');
 
-    // An auth proxy in front of the app answers the RSC request with a
-    // redirect to a page, then instant-revisit /post/1 (its shell is cached).
-    await page.route('**/RSC/**', (route) =>
-      route.fulfill({ status: 302, headers: { location: '/post/1' } }),
-    );
+    // Fail the RSC fetch, then instant-revisit /post/1 (its shell is cached).
+    await page.route('**/RSC/**', (route) => route.abort());
     await page.getByTestId('link-post-1').click();
-    // The browser follows the redirect as a document request, which is the
-    // only way to land on a page that has no rsc payload.
-    await expect(page).toHaveURL(/\/post\/1$/);
-    await expect(page.getByTestId('post-body')).toHaveText('Post 1');
+    await expect(page.locator('body')).toContainText(/error/i);
     await expect(page.getByTestId('page-skeleton')).toBeHidden();
+    // The optimistic commit already moved to the target URL, the same place a
+    // non-instant navigation that errors lands, and the error shows there.
+    await expect(page).toHaveURL(/\/post\/1$/);
   });
 
   // With a dynamic etag (unstable_getEtag), an instant revisit must not let a
