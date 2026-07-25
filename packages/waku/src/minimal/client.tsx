@@ -86,6 +86,7 @@ const checkStatus = async (
   return response;
 };
 
+// only the client adds symbol keys; a decoded server payload has string keys
 type Elements = Record<string | symbol, unknown>;
 
 const collectCachedEtags = (elements: Elements): Etags => {
