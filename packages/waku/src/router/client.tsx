@@ -776,6 +776,7 @@ const FollowError = ({
     const dispatched = dispatchedRef.current;
     if (
       dispatched &&
+      !routerState?.failed && // a failed follow committed no route
       routerState?.attempted[0] === dispatched[0] &&
       routerState?.attempted[1] === dispatched[1]
     ) {
@@ -1248,9 +1249,7 @@ const InnerRouter = ({
             ...routerState,
             history: null, // the url above is already written
             scroll: null,
-            // attempted mirrors routeBefore; the stale ROUTE_ID must not
-            // read as a server redirect
-            attempted: [routeBefore.path, routeBefore.query],
+            failed: true,
           },
         });
         setErr(e);

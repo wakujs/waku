@@ -17,6 +17,7 @@ export type RouterState = {
   // null leaves history alone: the browser already wrote it
   readonly history: 'push' | 'replace' | null;
   readonly scroll: { readonly pathChanged: boolean } | null;
+  readonly failed?: boolean; // the fetch never landed, so the route id is stale
 };
 
 export const getRouterState = (
@@ -46,11 +47,13 @@ export const resolveServerRedirect = (
   fallbackPath: string,
 ): { route: RouteProps; url: URL } => {
   const stateUrl = new URL(routerState.url, window.location.href);
-  const redirect = getServerRedirect(elements, {
-    path: routerState.attempted[0],
-    query: routerState.attempted[1],
-    hash: '',
-  });
+  const redirect = routerState.failed
+    ? undefined
+    : getServerRedirect(elements, {
+        path: routerState.attempted[0],
+        query: routerState.attempted[1],
+        hash: '',
+      });
   if (redirect && redirect.path !== '/404') {
     return { route: redirect, url: getRouteUrl(redirect) };
   }
