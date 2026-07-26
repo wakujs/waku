@@ -4063,6 +4063,33 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a redirect location is an app path, so the base path is added', async () => {
+    vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/docs/');
+    try {
+      window.history.replaceState({}, '', '/docs/start');
+      const { view, capture, router } = await renderFollowRouter({
+        responses: [
+          { redirect: { from: '/moved', location: '/next' } },
+          { resolve: { [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: false } },
+        ],
+        slots: ['/next'],
+      });
+      await act(async () => {
+        await router.push('/moved').catch(() => {});
+        for (let i = 0; i < 4; i += 1) {
+          await flush();
+        }
+      });
+
+      expect(capture.router!.path).toBe('/next');
+      expect(window.location.pathname).toBe('/docs/next');
+
+      view.unmount();
+    } finally {
+      vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/');
+    }
+  });
+
   test('a redirect keeps an explicit scroll false option', async () => {
     const scrollToSpy = vi
       .spyOn(window, 'scrollTo')
@@ -4950,7 +4977,7 @@ describe('Router integration', () => {
       const Probe = makeProbe(capture);
       const ThrowRedirectErrorObject = createCustomError('redirect', {
         status: 307,
-        location: '/docs/login',
+        location: '/login', // an app path; the base path is the client's job
       });
       const ThrowRedirect = () => {
         throw ThrowRedirectErrorObject;
@@ -5034,7 +5061,7 @@ describe('Router integration', () => {
       const Probe = makeProbe(capture);
       const ThrowRedirectErrorObject = createCustomError('redirect', {
         status: 307,
-        location: '/docs/login',
+        location: '/login', // an app path; the base path is the client's job
       });
       const ThrowRedirect = () => {
         throw ThrowRedirectErrorObject;

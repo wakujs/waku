@@ -83,6 +83,7 @@ import {
   encodeSliceId,
   getRouteSlotId,
   getSliceSlotId,
+  pathnameToRoutePath,
 } from './isomorphic-utils/route-path.js';
 import type { RouteProps } from './isomorphic-utils/route-path.js';
 import {
@@ -806,8 +807,18 @@ const FollowError = ({
         window.location.replace(parsed.href);
         return;
       }
-      target = parseRoute(parsed);
-      url = parsed;
+      if (info.location.startsWith('/')) {
+        // an app location has no base path; the browser url gets it back
+        target = {
+          path: pathnameToRoutePath(parsed.pathname),
+          query: parsed.searchParams.toString(),
+          hash: parsed.hash,
+        };
+        url = getRouteUrl(target);
+      } else {
+        target = parseRoute(parsed);
+        url = parsed;
+      }
     } else if (info?.status === 404 && has404) {
       target = { path: '/404', query: '', hash: '' };
       // the 404 route renders while the url keeps the attempted location
