@@ -240,16 +240,19 @@ const dispatchChangeRoute = (
   changeRoute: ChangeRoute,
   route: RouteProps,
   options: ChangeRouteOptions,
+  startTransitionFn: (fn: TransitionFunction) => void = startTransition,
 ): Promise<void> => {
   if (options.instant) {
     // instant paints from the cache; a transition would hold that back
     return changeRoute(route, options).then(() => undefined);
   }
-  // a transition, so the eager elements merge suspends without blanking the tree
+  // a transition, so the eager elements merge suspends without blanking the
+  // tree, and it stays pending until the navigation settles
   return new Promise<void>((resolve, reject) => {
-    startTransition(() => {
+    startTransitionFn(async () => {
       try {
-        changeRoute(route, options).then(() => resolve(), reject);
+        await changeRoute(route, options);
+        resolve();
       } catch (e) {
         reject(e);
       }
@@ -283,35 +286,35 @@ export function useRouter() {
   const router = useRouterOrThrow();
   const { route, changeRoute, prefetchRoute } = router;
   const resolveCodec = useResolveSearchCodec();
-  const push = useCallback(
-    async (
+  const navigate = useCallback(
+    (
+      history: 'push' | 'replace',
       to: RouteHref | BuildRouteHrefTarget<RoutePath>,
       options?: NavigateOptions,
     ) => {
       const url = resolveRouteUrl(to, resolveCodec);
-      await dispatchChangeRoute(changeRoute, parseRoute(url), {
+      return dispatchChangeRoute(changeRoute, parseRoute(url), {
         shouldScroll: options?.scroll ?? shouldScrollByDefault(url),
-        history: 'push',
+        history,
         url,
         instant: options?.unstable_instant,
       });
     },
     [changeRoute, resolveCodec],
+  );
+  const push = useCallback(
+    (
+      to: RouteHref | BuildRouteHrefTarget<RoutePath>,
+      options?: NavigateOptions,
+    ) => navigate('push', to, options),
+    [navigate],
   ) as Navigate;
   const replace = useCallback(
-    async (
+    (
       to: RouteHref | BuildRouteHrefTarget<RoutePath>,
       options?: NavigateOptions,
-    ) => {
-      const url = resolveRouteUrl(to, resolveCodec);
-      await dispatchChangeRoute(changeRoute, parseRoute(url), {
-        shouldScroll: options?.scroll ?? shouldScrollByDefault(url),
-        history: 'replace',
-        url,
-        instant: options?.unstable_instant,
-      });
-    },
-    [changeRoute, resolveCodec],
+    ) => navigate('replace', to, options),
+    [navigate],
   ) as Navigate;
   const reload = useCallback(async () => {
     await dispatchChangeRoute(changeRoute, parseRouteFromLocation(), {
@@ -625,22 +628,18 @@ export function Link<Path extends RoutePath>({
     if (url.href !== window.location.href) {
       const route = parseRoute(url);
       preloadRouteModules(route.path);
-      if (unstable_instant) {
-        changeRoute(route, {
+      // a click has no caller to reject to; the boundary shows the failure
+      dispatchChangeRoute(
+        changeRoute,
+        route,
+        {
           shouldScroll: scroll ?? shouldScrollByDefault(url),
           history: 'push',
           url,
-          instant: true,
-        }).catch(() => {});
-      } else {
-        startTransitionFn(async () => {
-          await changeRoute(route, {
-            shouldScroll: scroll ?? shouldScrollByDefault(url),
-            history: 'push',
-            url,
-          });
-        });
-      }
+          instant: unstable_instant,
+        },
+        startTransitionFn,
+      ).catch(() => {});
     } else if (url.hash && scroll !== false) {
       scrollToRoute(parseRoute(url), 'auto', false);
     }
