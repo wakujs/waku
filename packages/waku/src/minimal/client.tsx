@@ -68,9 +68,11 @@ const checkStatus = async (
     }
     throw e;
   }
+  const redirectedTo = response.redirected ? new URL(response.url) : undefined;
   if (
-    response.redirected &&
-    !new URL(response.url).pathname.startsWith(BASE_RSC_PATH)
+    redirectedTo &&
+    (redirectedTo.origin !== window.location.origin ||
+      !redirectedTo.pathname.startsWith(BASE_RSC_PATH))
   ) {
     // redirected off the rsc endpoint; the navigation layer follows it
     throw createCustomError('redirected rsc request', {

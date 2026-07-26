@@ -159,6 +159,39 @@ describe('minimal/client prefetch', () => {
 });
 
 describe('minimal/client transport failures', () => {
+  const redirectedResponse = (url: string) =>
+    ({
+      redirected: true,
+      url,
+      ok: true,
+      status: 200,
+      text: async () => '',
+    }) as unknown as Response;
+
+  test('a redirect within the rsc endpoint is decoded as the payload', async () => {
+    track(
+      unstable_registerFetchEnhancer(
+        () => async () =>
+          redirectedResponse(`${window.location.origin}/RSC/R/exists.txt`),
+      ),
+    );
+
+    await expect(unstable_fetchRsc('R/redirect.txt')).resolves.toBeDefined();
+  });
+
+  test('a redirect to another origin leaves the rsc endpoint', async () => {
+    const url = 'https://login.example/RSC/R/next.txt';
+    track(
+      unstable_registerFetchEnhancer(() => async () => redirectedResponse(url)),
+    );
+
+    const error = await unstable_fetchRsc('R/next.txt').catch(
+      (e: unknown) => e,
+    );
+
+    expect(getErrorInfo(error)).toEqual({ status: 307, location: url });
+  });
+
   test('a network error is marked as such', async () => {
     track(
       unstable_registerFetchEnhancer(() => () => {
