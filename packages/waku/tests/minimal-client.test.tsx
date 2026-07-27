@@ -179,6 +179,19 @@ describe('minimal/client transport failures', () => {
     await expect(unstable_fetchRsc('R/redirect.txt')).resolves.toBeDefined();
   });
 
+  test('a redirect off the rsc endpoint leaves it, same origin or not', async () => {
+    const url = `${window.location.origin}/login`;
+    track(
+      unstable_registerFetchEnhancer(() => async () => redirectedResponse(url)),
+    );
+
+    const error = await unstable_fetchRsc('R/next.txt').catch(
+      (e: unknown) => e,
+    );
+
+    expect(getErrorInfo(error)).toEqual({ status: 307, location: url });
+  });
+
   test('a redirect to another origin leaves the rsc endpoint', async () => {
     const url = 'https://login.example/RSC/R/next.txt';
     track(
@@ -583,6 +596,82 @@ describe('minimal/client eager merge', () => {
     expect(finalElements.hole).toBe(holeThenable);
     expect(finalElements.eager).toBe('A1');
     await expect(finalElements.hole).resolves.toBe('H2');
+
+    act(() => root.unmount());
+  });
+
+  test('an overlay lands with the response it came with', async () => {
+    mocks.createFromFetch.mockReturnValueOnce(
+      resolvedThenable({ _value: null, page: 'A' }),
+    );
+    stubFetch();
+
+    let refetch: ReturnType<typeof useRefetch> | undefined;
+    let elementsPromise: Promise<Record<string, unknown>> | undefined;
+    const Probe = () => {
+      refetch = useRefetch();
+      elementsPromise = useElementsPromise_UNSTABLE();
+      return null;
+    };
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <Root initialRscPath="R/app.txt">
+          <Probe />
+        </Root>,
+      );
+    });
+
+    mocks.createFromFetch.mockReturnValueOnce(resolvedThenable({ page: 'B' }));
+    await act(async () => {
+      await refetch!('R/next.txt', undefined, {
+        unstable_overlay: { nav: 'from the client' },
+      });
+    });
+
+    const merged = await elementsPromise!;
+    expect(merged.page).toBe('B');
+    expect(merged.nav).toBe('from the client');
+
+    act(() => root.unmount());
+  });
+
+  test('an overlay is dropped when the response fails', async () => {
+    mocks.createFromFetch.mockReturnValueOnce(
+      resolvedThenable({ _value: null, page: 'A' }),
+    );
+    stubFetch();
+
+    let refetch: ReturnType<typeof useRefetch> | undefined;
+    let elementsPromise: Promise<Record<string, unknown>> | undefined;
+    const Probe = () => {
+      refetch = useRefetch();
+      elementsPromise = useElementsPromise_UNSTABLE();
+      return null;
+    };
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <Root initialRscPath="R/app.txt">
+          <Probe />
+        </Root>,
+      );
+    });
+
+    mocks.createFromFetch.mockRejectedValueOnce(new Error('rejected'));
+    await act(async () => {
+      await refetch!('R/next.txt', undefined, {
+        unstable_overlay: { nav: 'from the client' },
+      }).catch(() => {});
+    });
+
+    const merged = await elementsPromise!;
+    expect(merged.page).toBe('A');
+    expect('nav' in merged).toBe(false);
 
     act(() => root.unmount());
   });
