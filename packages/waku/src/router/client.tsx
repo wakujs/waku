@@ -107,6 +107,11 @@ type NavigateOptions = {
   unstable_instant?: boolean;
 };
 
+/**
+ * Resolves once the response for the requested route has been handled. It does
+ * not wait for a redirect or 404 follow that starts afterwards, nor for React
+ * to finish rendering the destination.
+ */
 type Navigate = {
   (to: RouteHref, options?: NavigateOptions): Promise<void>;
   <Path extends RoutePath>(

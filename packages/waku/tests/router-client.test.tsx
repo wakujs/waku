@@ -4908,6 +4908,31 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('push resolves before the 404 follow it hands to the boundary', async () => {
+    const { view, refetch, capture, router } = await renderFollowRouter({
+      responses: [
+        { reject: { status: 404 } },
+        { resolve: { [ROUTE_ID]: ['/404', ''], [IS_STATIC_ID]: false } },
+      ],
+      slots: ['/404'],
+      meta: { [HAS404_ID]: true },
+    });
+    let callsWhenSettled = 0;
+    const record = () => {
+      callsWhenSettled = refetch.mock.calls.length;
+    };
+    await act(async () => {
+      await router.push('/missing').then(record, record);
+      await flush();
+      await flush();
+    });
+    // the promise covers the route it was given, not the follow that comes after
+    expect(callsWhenSettled).toBe(1);
+    expect(refetch).toHaveBeenCalledTimes(2);
+    expect(capture.router!.path).toBe('/404');
+    view.unmount();
+  });
+
   test('a 404 follow fetches the 404 route with the attempted query', async () => {
     const { view, refetch, capture, router } = await renderFollowRouter({
       responses: [
