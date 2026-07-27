@@ -4807,6 +4807,58 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a chained redirect that only adds a hash is still followed', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const toNext = createCustomError('redirect', {
+      status: 307,
+      location: '/next',
+    });
+    const toHash = createCustomError('redirect', {
+      status: 307,
+      location: '/next#section',
+    });
+    const ThrowToNext = () => {
+      throw toNext;
+    };
+    const ThrowToHash = () => {
+      throw toHash;
+    };
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>();
+    refetch
+      .mockResolvedValueOnce({
+        [unstable_getRouteSlotId('/next')]: <ThrowToHash />,
+        [ROUTE_ID]: ['/next', ''],
+        [IS_STATIC_ID]: false,
+      })
+      .mockResolvedValueOnce({
+        [unstable_getRouteSlotId('/next')]: <Probe />,
+        [ROUTE_ID]: ['/next', ''],
+        [IS_STATIC_ID]: false,
+      });
+    installRefetch(refetch);
+
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <ThrowToNext />,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    await act(async () => {
+      for (let i = 0; i < 6; i += 1) {
+        await flush();
+      }
+    });
+
+    // the second target differs from the first only by its hash
+    expect(view.container.textContent).not.toContain('follow target failed');
+    expect(window.location.hash).toBe('#section');
+
+    view.unmount();
+  });
+
   test('a 404 route that itself 404s stops instead of hitting the hop limit', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);

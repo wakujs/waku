@@ -772,6 +772,7 @@ const FollowError = ({
   const dispatchedRef = useRef<readonly [string, string] | undefined>(
     undefined,
   );
+  const failedTargetRef = useRef<RouteProps | undefined>(undefined);
   const routerStateRef = useRef(routerState);
   useEffect(() => {
     routerStateRef.current = routerState;
@@ -853,13 +854,11 @@ const FollowError = ({
       fail(error, new Error('detected a redirect loop', { cause: error }));
       return;
     }
-    const dispatchedBefore = dispatchedRef.current;
+    // a target that already failed cannot be the way out of this error
     if (
-      dispatchedBefore &&
-      dispatchedBefore[0] === target.path &&
-      dispatchedBefore[1] === target.query
+      failedTargetRef.current &&
+      isSameRoute(target, failedTargetRef.current)
     ) {
-      // the target this error already went to failed as well
       fail(error, new Error('the follow target failed too', { cause: error }));
       return;
     }
@@ -887,11 +886,13 @@ const FollowError = ({
             // error or one revived from the record, and must follow again
             followPromiseMap.delete(error as object);
             if (followable !== undefined) {
+              failedTargetRef.current = target;
               fail(error, followable);
             }
           },
           (err) => {
             followPromiseMap.delete(error as object);
+            failedTargetRef.current = target;
             fail(error, err);
           },
         ),
