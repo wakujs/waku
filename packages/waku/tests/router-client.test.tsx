@@ -1788,6 +1788,40 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a followed redirect emits events for the attempt and the follow', async () => {
+    const { view, capture, router } = await renderFollowRouter({
+      responses: [
+        { redirect: { from: '/moved', location: '/next' } },
+        { resolve: { [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: false } },
+      ],
+      slots: ['/next'],
+    });
+    const events: string[] = [];
+    capture.router!.unstable_events.on('start', (route) =>
+      events.push(`start ${route.path}`),
+    );
+    capture.router!.unstable_events.on('complete', (route) =>
+      events.push(`complete ${route.path}`),
+    );
+
+    await act(async () => {
+      await router.push('/moved').catch(() => {});
+      for (let i = 0; i < 4; i += 1) {
+        await flush();
+      }
+    });
+
+    // the attempt reports its own fetch, then the follow reports the landing
+    expect(events).toEqual([
+      'start /moved',
+      'complete /moved',
+      'start /next',
+      'complete /next',
+    ]);
+
+    view.unmount();
+  });
+
   test('push performs refetch for dynamic routes and emits start/complete events', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);

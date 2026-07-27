@@ -1,7 +1,8 @@
 type ErrorInfo = {
   status?: number;
   location?: string;
-  // set by the client when the fetch failed with a network error
+  // set by the client when the fetch failed with a network error; nothing in
+  // waku reads it, it is there for an app to decide its own recovery
   unstable_networkError?: boolean;
 };
 

@@ -217,6 +217,7 @@ const swrNewKeysElementsPromise = (
   if (swrMergeSources.get(prev) !== b) {
     return prev;
   }
+  // Object.keys, so a client only symbol key keeps the value it was given
   const overlayKeys = overlay
     ? Object.keys(overlay).filter((key) => key in bRes)
     : [];
