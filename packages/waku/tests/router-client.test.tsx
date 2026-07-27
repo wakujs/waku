@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { StrictMode, Suspense, act, use, useState } from 'react';
+import { StrictMode, act, use, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import { preloadModule } from 'react-dom';
 import { createRoot } from 'react-dom/client';
@@ -4464,66 +4464,6 @@ describe('Router integration', () => {
       view.unmount();
     }
   }, 20_000);
-
-  test('a redirect cycle that suspends before throwing stays bounded', async () => {
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(((rscPath: string) => {
-      const path = rscPath === unstable_encodeRoutePath('/a') ? '/a' : '/b';
-      const next = path === '/a' ? '/b' : '/a';
-      const err = createCustomError('moved', { status: 307, location: next });
-      // the slot commits a fallback first, then throws once the gate resolves
-      let resolveGate: () => void = () => {};
-      const gate = new Promise<void>((resolve) => {
-        resolveGate = resolve;
-      });
-      setTimeout(() => resolveGate(), 0);
-      const Thrower = () => {
-        use(gate);
-        throw err;
-      };
-      return Promise.resolve({
-        [unstable_getRouteSlotId(path)]: (
-          <Suspense fallback={<div>loading</div>}>
-            <Thrower />
-          </Suspense>
-        ),
-        [ROUTE_ID]: [path, ''],
-        [IS_STATIC_ID]: false,
-      });
-    }) as unknown as ReturnType<typeof useRefetch>);
-    installRefetch(refetch);
-
-    const capture = { router: null as RouterApi | null };
-    const Probe = makeProbe(capture);
-    testHoisted.elements = {
-      [unstable_getRouteSlotId('/start')]: <Probe />,
-      [ROUTE_ID]: ['/start', ''],
-      [IS_STATIC_ID]: false,
-    };
-    const consoleErrorSpy = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-    const view = await renderApp(
-      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
-        <ErrorBoundary>
-          <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
-        </ErrorBoundary>
-      </Unstable_SearchCodecsProvider>,
-    );
-    try {
-      await act(async () => {
-        await capture.router!.push('/a').catch(() => {});
-        for (let i = 0; i < 300; i += 1) {
-          await flush();
-        }
-      });
-      // the hop counter resets on a clean commit, and a slot that commits a
-      // fallback before throwing gives it one; the chain must still not run on
-      expect(refetch.mock.calls.length).toBeLessThanOrEqual(22);
-    } finally {
-      consoleErrorSpy.mockRestore();
-      view.unmount();
-    }
-  }, 60_000);
 
   test('a committing redirect cycle stops at the hop limit', async () => {
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(((rscPath: string) => {

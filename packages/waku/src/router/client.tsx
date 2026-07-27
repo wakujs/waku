@@ -739,6 +739,10 @@ export class ErrorBoundary extends Component<
 
 const MAX_FOLLOW_HOPS = 20;
 
+// a hop that commits a suspense fallback before it throws resets the chain
+// count, so the boundary caps its follows for good as well
+const MAX_TOTAL_FOLLOWS = 100;
+
 const FollowError = ({
   error,
   has404,
@@ -751,7 +755,7 @@ const FollowError = ({
   has404: boolean;
   reset: () => void;
   fail: (original: unknown, error: unknown) => void;
-  countHop: () => number;
+  countHop: () => boolean;
   followPromiseMap: WeakMap<object, Promise<unknown>>;
 }) => {
   const { route, routerState, changeRoute } = useRouterOrThrow();
@@ -838,7 +842,7 @@ const FollowError = ({
       fail(error, new Error('detected a redirect loop', { cause: error }));
       return;
     }
-    if (countHop() > MAX_FOLLOW_HOPS) {
+    if (!countHop()) {
       fail(
         error,
         new Error('too many redirect or 404 follows', { cause: error }),
@@ -878,6 +882,7 @@ class CustomErrorHandler extends Component<
 > {
   private followPromiseMap = new WeakMap<object, Promise<unknown>>();
   private followHops = 0;
+  private totalFollows = 0;
   constructor(props: { has404: boolean; children?: ReactNode }) {
     super(props);
     this.state = { error: null };
@@ -893,12 +898,15 @@ class CustomErrorHandler extends Component<
   }
   countHop() {
     this.followHops += 1;
-    return this.followHops;
+    this.totalFollows += 1;
+    return (
+      this.followHops <= MAX_FOLLOW_HOPS &&
+      this.totalFollows <= MAX_TOTAL_FOLLOWS
+    );
   }
-  // a clean commit settles the chain; a rendering cycle would keep the count
   componentDidUpdate() {
-    // a chain that redirects on every render never commits an error free
-    // state, so this counts its hops; reset() alone would not, because each
+    // a chain that redirects during render never commits an error free state,
+    // so its hops accumulate; reset() alone would not count them, because a
     // hop does change the route
     if (this.state.error === null) {
       this.followHops = 0;
