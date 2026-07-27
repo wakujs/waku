@@ -1176,10 +1176,11 @@ const InnerRouter = ({
         staticPathSet.clear();
         const route = routeRef.current;
         startTransition(() => {
+          // the reload clears the set, so the response has to teach it again
           void refetch(
             encodeRoutePath(route.path),
             createRscParams(route.query),
-          );
+          ).then(learnStaticPath, () => {});
         });
       };
       upsertRscReloadListener(
@@ -1187,7 +1188,7 @@ const InnerRouter = ({
         refetchRouteOnHmr,
       );
       globalThis.__WAKU_REFETCH_ROUTE__ = refetchRouteOnHmr;
-    }, [refetch, prefetchManager, staticPathSet]);
+    }, [refetch, prefetchManager, staticPathSet, learnStaticPath]);
   }
 
   const [[routeChangeEvents, emitRouteChangeEvent]] = useState(
