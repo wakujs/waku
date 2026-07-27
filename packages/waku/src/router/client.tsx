@@ -221,6 +221,7 @@ const RouterContext = createContext<{
     'on' | 'off',
     (event: ChangeRouteEvent, handler: ChangeRouteCallback) => void
   >;
+  fetchingSlices: Set<SliceId>;
 } | null>(null);
 
 const SearchCodecsContext = createContext<ReadonlyMap<string, AnyCodec>>(
@@ -975,17 +976,6 @@ const preloadRouteModules = (path: string) => {
   });
 };
 
-// in flight slice fetches; the refetch identity scopes them per Root
-const fetchingSlicesMap = new WeakMap<object, Set<SliceId>>();
-const getFetchingSlices = (refetch: object): Set<SliceId> => {
-  let set = fetchingSlicesMap.get(refetch);
-  if (!set) {
-    set = new Set();
-    fetchingSlicesMap.set(refetch, set);
-  }
-  return set;
-};
-
 export function Slice({
   id,
   children,
@@ -1002,6 +992,7 @@ export function Slice({
       fallback: ReactNode;
     }
 )) {
+  const { fetchingSlices } = useRouterOrThrow();
   const refetch = useRefetch();
   const slotId = getSliceSlotId(id);
   const elementsPromise = useElementsPromise();
@@ -1010,7 +1001,6 @@ export function Slice({
     props.lazy &&
     (!(slotId in elements) || !isImmutableElement(elements, slotId));
   useEffect(() => {
-    const fetchingSlices = getFetchingSlices(refetch);
     if (needsToFetchSlice && !fetchingSlices.has(id)) {
       fetchingSlices.add(id);
       const rscPath = encodeSliceId(id);
@@ -1022,7 +1012,7 @@ export function Slice({
           fetchingSlices.delete(id);
         });
     }
-  }, [refetch, id, needsToFetchSlice]);
+  }, [fetchingSlices, refetch, id, needsToFetchSlice]);
   if (props.lazy && !(slotId in elements)) {
     // FIXME the fallback doesn't show on refetch after the first one.
     return props.fallback;
@@ -1206,6 +1196,8 @@ const InnerRouter = ({
     createRouteChangeListeners,
   );
 
+  // FIXME this "fetchingSlices" hack feels suboptimal.
+  const fetchingSlices = useRef(new Set<SliceId>()).current;
   const followBudget = useRef<FollowBudget>({ spent: 0 }).current;
   const abortRef = useRef<AbortController | null>(null);
 
@@ -1444,6 +1436,7 @@ const InnerRouter = ({
         routerState,
         changeRoute,
         prefetchRoute,
+        fetchingSlices,
         routeChangeEvents,
       }}
     >
@@ -1494,6 +1487,7 @@ export function INTERNAL_ServerRouter({ route }: { route: RouteProps }) {
           changeRoute: notAvailableInServer('changeRoute'),
           prefetchRoute: notAvailableInServer('prefetchRoute'),
           routeChangeEvents: MOCK_ROUTE_CHANGE_LISTENER,
+          fetchingSlices: new Set<SliceId>(),
         }}
       >
         {rootElement}

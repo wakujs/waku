@@ -685,6 +685,7 @@ describe('useRouter + Link with context', () => {
           changeRoute,
           prefetchRoute,
           routeChangeEvents,
+          fetchingSlices: new Set<string>(),
         }}
       >
         <Probe />
@@ -782,6 +783,7 @@ describe('useRouter + Link with context', () => {
             changeRoute,
             prefetchRoute: vi.fn(),
             routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+            fetchingSlices: new Set<string>(),
           }}
         >
           <Probe />
@@ -851,6 +853,7 @@ describe('useRouter + Link with context', () => {
               changeRoute: vi.fn(async () => {}),
               prefetchRoute,
               routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+              fetchingSlices: new Set<string>(),
             }}
           >
             <Probe />
@@ -909,6 +912,7 @@ describe('useRouter + Link with context', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
           routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set<string>(),
         }}
       >
         <Probe />
@@ -933,6 +937,7 @@ describe('useRouter + Link with context', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
           routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set<string>(),
         }}
       >
         <Probe />
@@ -988,6 +993,7 @@ describe('useRouter + Link with context', () => {
             changeRoute: vi.fn(async () => {}),
             prefetchRoute: vi.fn(),
             routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+            fetchingSlices: new Set<string>(),
           }}
         >
           <Probe />
@@ -1017,6 +1023,7 @@ describe('useRouter + Link with context', () => {
           changeRoute,
           prefetchRoute,
           routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set<string>(),
         }}
       >
         <>
@@ -1107,6 +1114,7 @@ describe('useRouter + Link with context', () => {
           changeRoute,
           prefetchRoute,
           routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set<string>(),
         }}
       >
         <Link to="/start#target" data-testid="hash-link">
@@ -1167,6 +1175,7 @@ describe('useRouter + Link with context', () => {
           changeRoute,
           prefetchRoute,
           routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set<string>(),
         }}
       >
         <Link to="/start#target" scroll={false} data-testid="hash-link">
@@ -1209,6 +1218,7 @@ describe('useRouter + Link with context', () => {
           changeRoute,
           prefetchRoute,
           routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set<string>(),
         }}
       >
         <>
@@ -1283,6 +1293,7 @@ describe('useRouter + Link with context', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute,
           routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set<string>(),
         }}
       >
         <Link
@@ -1341,6 +1352,7 @@ describe('useRouter + Link with context', () => {
           changeRoute,
           prefetchRoute,
           routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set<string>(),
         }}
       >
         <Link to="/next" unstable_startTransition={unstableStartTransition}>
@@ -1379,6 +1391,7 @@ describe('useRouter + Link with context', () => {
       changeRoute: vi.fn(async () => {}),
       prefetchRoute: vi.fn(),
       routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+      fetchingSlices: new Set<string>(),
     };
 
     const objectRef: { current: HTMLAnchorElement | null } = { current: null };
@@ -1411,9 +1424,9 @@ describe('useRouter + Link with context', () => {
 });
 
 describe('Slice', () => {
-  test('throws without a Root', async () => {
+  test('throws without a Router', async () => {
     await expect(renderApp(<Slice id="slice-1" />)).rejects.toThrow(
-      'Missing Root component',
+      'Missing Router',
     );
   });
 
@@ -1430,6 +1443,7 @@ describe('Slice', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
           routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set<string>(),
         }}
       >
         <Slice id="slice-1" />
@@ -1449,6 +1463,7 @@ describe('Slice', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
           routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set<string>(),
         }}
       >
         <>
@@ -1490,6 +1505,7 @@ describe('Slice', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
           routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set<string>(),
         }}
       >
         <Slice id="slice-1" lazy fallback={<div>fallback</div>} />
@@ -1518,6 +1534,7 @@ describe('Slice', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
           routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set<string>(),
         }}
       >
         <Slice id="slice-1" lazy fallback={<div>fallback</div>} />
@@ -1546,6 +1563,7 @@ describe('Slice', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
           routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set<string>(),
         }}
       >
         <Slice id="slice-1" lazy fallback={<div>fallback</div>} />
