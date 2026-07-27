@@ -3849,6 +3849,61 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a rejected redirect to an unusable protocol never reaches the browser', async () => {
+    const assignSpy = vi
+      .spyOn(window.location, 'assign')
+      .mockImplementation(() => {});
+    const replaceLocationSpy = vi
+      .spyOn(window.location, 'replace')
+      .mockImplementation(() => {});
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
+    refetch.mockImplementationOnce(() =>
+      Promise.reject(
+        createCustomError('moved', {
+          status: 307,
+          location: 'javascript:alert(1)',
+        }),
+      ),
+    );
+    installRefetch(refetch);
+
+    testHoisted.elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const view = await renderApp(
+      <ErrorBoundary>
+        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+          <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
+        </Unstable_SearchCodecsProvider>
+      </ErrorBoundary>,
+    );
+    try {
+      await act(async () => {
+        await capture.router!.push('/moved').catch(() => {});
+        await flush();
+        await flush();
+      });
+
+      expect(assignSpy).not.toHaveBeenCalled();
+      expect(replaceLocationSpy).not.toHaveBeenCalled();
+      expect(view.container.textContent).toContain(
+        'cannot follow a redirect to javascript:alert(1)',
+      );
+    } finally {
+      consoleErrorSpy.mockRestore();
+      assignSpy.mockRestore();
+      replaceLocationSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('a rejected redirect resolves a relative location against the attempted url', async () => {
     const assignSpy = vi
       .spyOn(window.location, 'assign')

@@ -1281,14 +1281,17 @@ const InnerRouter = ({
           return;
         }
         const info = getErrorInfo(e);
-        if (info?.location) {
+        // a fetch level redirect may leave waku; the browser follows it, so
+        // only a location the browser should navigate to gets there
+        const redirectUrl = info?.location
+          ? parseRedirectUrl(info.location, targetUrl)
+          : undefined;
+        if (redirectUrl) {
           abortRef.current = null;
-          // a fetch level redirect may leave waku; the browser follows it
-          const url = new URL(info.location, targetUrl);
           if (routerState.history === 'push') {
-            window.location.assign(url.href);
+            window.location.assign(redirectUrl.href);
           } else {
-            window.location.replace(url.href);
+            window.location.replace(redirectUrl.href);
           }
           return;
         }
