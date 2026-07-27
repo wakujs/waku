@@ -5227,6 +5227,106 @@ describe('Router integration', () => {
     }
   });
 
+  test('a redirect the client cannot follow surfaces instead of blanking', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const ThrowRedirectErrorObject = createCustomError('redirect', {
+      status: 307,
+      location: 'mailto:someone@example.com',
+    });
+    const ThrowRedirect = () => {
+      throw ThrowRedirectErrorObject;
+    };
+    testHoisted.elements = {
+      [unstable_getRouteSlotId('/start')]: <ThrowRedirect />,
+      [unstable_getRouteSlotId('/next')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const view = await renderApp(
+      <ErrorBoundary>
+        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+          <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
+        </Unstable_SearchCodecsProvider>
+      </ErrorBoundary>,
+    );
+    try {
+      await flush();
+      await flush();
+
+      expect(view.container.textContent).toContain(
+        'cannot follow a redirect to mailto:someone@example.com',
+      );
+    } finally {
+      consoleErrorSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
+  test('a session of followed redirects does not exhaust the budget', async () => {
+    // the follow budget bounds one navigation, so a long session of ordinary
+    // redirects must not run it down
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(((rscPath: string) => {
+      if (rscPath !== unstable_encodeRoutePath('/moved')) {
+        return Promise.resolve({});
+      }
+      const err = createCustomError('moved', {
+        status: 307,
+        location: '/next',
+      });
+      const Thrower = () => {
+        throw err;
+      };
+      return Promise.resolve({
+        [unstable_getRouteSlotId('/moved')]: <Thrower />,
+        [ROUTE_ID]: ['/moved', ''],
+        [IS_STATIC_ID]: false,
+      });
+    }) as unknown as ReturnType<typeof useRefetch>);
+    installRefetch(refetch);
+
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    testHoisted.elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/next')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const view = await renderApp(
+      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+        <ErrorBoundary>
+          <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
+        </ErrorBoundary>
+      </Unstable_SearchCodecsProvider>,
+    );
+    try {
+      for (let i = 0; i < 110; i += 1) {
+        await act(async () => {
+          await capture.router!.push('/moved').catch(() => {});
+          await flush();
+          await flush();
+        });
+        await act(async () => {
+          await capture.router!.push('/start').catch(() => {});
+          await flush();
+        });
+      }
+
+      expect(view.container.textContent).not.toContain('too many redirect');
+      expect(capture.router!.path).toBe('/start');
+    } finally {
+      consoleErrorSpy.mockRestore();
+      view.unmount();
+    }
+  }, 60_000);
+
   test('a redirect that only adds a hash is followed, not a loop', async () => {
     const consoleErrorSpy = vi
       .spyOn(console, 'error')

@@ -805,8 +805,14 @@ const FollowError = ({
     if (info?.location) {
       const parsed = parseRedirectUrl(info.location, attemptedUrl);
       if (!parsed) {
-        // an unusable protocol; the boundary shows the error instead of a blank
-        fail(error, error);
+        // a plain error carries no location, so the boundary stops following
+        // it and shows it instead of a blank slot
+        fail(
+          error,
+          new Error(`cannot follow a redirect to ${info.location}`, {
+            cause: error,
+          }),
+        );
         return;
       }
       if (parsed.origin !== window.location.origin) {
