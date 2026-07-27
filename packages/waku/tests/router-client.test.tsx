@@ -5227,6 +5227,42 @@ describe('Router integration', () => {
     }
   });
 
+  test('a protocol relative redirect is not treated as an app path', async () => {
+    vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/docs/');
+    try {
+      window.history.replaceState({}, '', '/docs/start');
+      const capture = { router: null as RouterApi | null };
+      const Probe = makeProbe(capture);
+      // same origin, so the router follows it rather than leaving the app
+      const ThrowRedirectErrorObject = createCustomError('redirect', {
+        status: 307,
+        location: `//${window.location.host}/docs/login`,
+      });
+      const ThrowRedirect = () => {
+        throw ThrowRedirectErrorObject;
+      };
+
+      const view = await renderRouter(
+        { initialRoute: { path: '/start', query: '', hash: '' } },
+        {
+          [unstable_getRouteSlotId('/start')]: <ThrowRedirect />,
+          [unstable_getRouteSlotId('/login')]: <Probe />,
+          [ROUTE_ID]: ['/start', ''],
+          [IS_STATIC_ID]: false,
+        },
+      );
+      await flush();
+      await flush();
+
+      expect(capture.router?.path).toBe('/login');
+      expect(window.location.pathname).toBe('/docs/login');
+
+      view.unmount();
+    } finally {
+      vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/');
+    }
+  });
+
   test('a redirect the client cannot follow surfaces instead of blanking', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
