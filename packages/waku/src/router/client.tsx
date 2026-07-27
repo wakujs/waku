@@ -871,11 +871,15 @@ const FollowError = ({
           follow: true,
         }).then(
           (followable) => {
+            // the same error object can be thrown again, by a module scoped
+            // error or one revived from the record, and must follow again
+            followPromiseMap.delete(error as object);
             if (followable !== undefined) {
               fail(error, followable);
             }
           },
           (err) => {
+            followPromiseMap.delete(error as object);
             fail(error, err);
           },
         ),

@@ -5227,6 +5227,53 @@ describe('Router integration', () => {
     }
   });
 
+  test('one router follows the same revived error twice', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    // a module scoped error, or one revived from the cached elements, is the
+    // same object every time it is thrown
+    const RedirectErrorObject = createCustomError('redirect', {
+      status: 307,
+      location: '/login',
+    });
+    const ThrowRedirect = () => {
+      throw RedirectErrorObject;
+    };
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
+    installRefetch(refetch);
+
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <ThrowRedirect />,
+        [unstable_getRouteSlotId('/login')]: <Probe />,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    await flush();
+    await flush();
+    expect(view.container.textContent).toContain('/login');
+
+    // back to the route that throws it, with the very same error object
+    refetch.mockResolvedValueOnce({
+      [unstable_getRouteSlotId('/start')]: <ThrowRedirect />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    });
+    await act(async () => {
+      await capture.router!.push('/start').catch(() => {});
+      for (let i = 0; i < 4; i += 1) {
+        await flush();
+      }
+    });
+
+    // the followed route renders again instead of a blank slot
+    expect(view.container.textContent).toContain('/login');
+
+    view.unmount();
+  });
+
   test('a protocol relative redirect is not treated as an app path', async () => {
     vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/docs/');
     try {
