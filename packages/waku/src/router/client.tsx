@@ -161,6 +161,7 @@ type ChangeRouteOptions = {
   history: 'push' | 'replace' | null;
   url?: URL | undefined;
   instant?: boolean | undefined;
+  follow?: boolean | undefined; // dispatched by the error boundary, not a user
 };
 
 /** Resolves with a followable error instead of rejecting: a follow is a handoff. */
@@ -740,8 +741,10 @@ export class ErrorBoundary extends Component<
 const MAX_FOLLOW_HOPS = 20;
 
 // a hop that commits a suspense fallback before it throws resets the chain
-// count, so the boundary caps its follows for good as well
-const MAX_TOTAL_FOLLOWS = 100;
+// count, so the follows one navigation may spend are capped as well
+const MAX_FOLLOWS_PER_NAVIGATION = 100;
+
+type FollowBudget = { spent: number };
 
 const FollowError = ({
   error,
@@ -865,6 +868,7 @@ const FollowError = ({
             : target.path !== caught.path,
           history: 'replace',
           url,
+          follow: true,
         }).then(
           (followable) => {
             if (followable !== undefined) {
@@ -883,13 +887,16 @@ const FollowError = ({
 };
 
 class CustomErrorHandler extends Component<
-  { has404: boolean; children?: ReactNode },
+  { has404: boolean; budget: FollowBudget; children?: ReactNode },
   { error: unknown | null }
 > {
   private followPromiseMap = new WeakMap<object, Promise<unknown>>();
   private followHops = 0;
-  private totalFollows = 0;
-  constructor(props: { has404: boolean; children?: ReactNode }) {
+  constructor(props: {
+    has404: boolean;
+    budget: FollowBudget;
+    children?: ReactNode;
+  }) {
     super(props);
     this.state = { error: null };
     this.reset = this.reset.bind(this);
@@ -904,10 +911,10 @@ class CustomErrorHandler extends Component<
   }
   countHop() {
     this.followHops += 1;
-    this.totalFollows += 1;
+    this.props.budget.spent += 1;
     return (
       this.followHops <= MAX_FOLLOW_HOPS &&
-      this.totalFollows <= MAX_TOTAL_FOLLOWS
+      this.props.budget.spent <= MAX_FOLLOWS_PER_NAVIGATION
     );
   }
   componentDidUpdate() {
@@ -1183,6 +1190,7 @@ const InnerRouter = ({
     createRouteChangeListeners,
   );
 
+  const followBudget = useRef<FollowBudget>({ spent: 0 }).current;
   const abortRef = useRef<AbortController | null>(null);
 
   const changeRoute: ChangeRoute = useCallback(
@@ -1192,6 +1200,9 @@ const InnerRouter = ({
       abortRef.current = abortController;
       const isAborted = () => abortController.signal.aborted;
       emitRouteChangeEvent('start', nextRoute);
+      if (!options.follow) {
+        followBudget.spent = 0; // a navigation of its own starts a fresh budget
+      }
       const routeBefore = routeRef.current;
       const targetUrl = options.url ?? getRouteUrl(nextRoute);
       const routerState = makeRouterState(nextRoute, targetUrl, {
@@ -1307,6 +1318,7 @@ const InnerRouter = ({
       emitRouteChangeEvent,
       staticPathSet,
       learnStaticPath,
+      followBudget,
       resolvedElementsRef,
       prefetchManager,
     ],
@@ -1402,7 +1414,9 @@ const InnerRouter = ({
     );
   const rootElement = (
     <Slot id="root">
-      <CustomErrorHandler has404={has404}>{routeElement}</CustomErrorHandler>
+      <CustomErrorHandler has404={has404} budget={followBudget}>
+        {routeElement}
+      </CustomErrorHandler>
     </Slot>
   );
   return (
