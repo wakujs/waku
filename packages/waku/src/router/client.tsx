@@ -1291,7 +1291,12 @@ const InnerRouter = ({
           : undefined;
         if (redirectUrl) {
           abortRef.current = null;
-          if (routerState.history === 'push') {
+          // an instant commit already pushed the attempted url, so pushing
+          // again would cost the navigation a second entry
+          if (
+            routerState.history === 'push' &&
+            window.location.href !== targetUrl.href
+          ) {
             window.location.assign(redirectUrl.href);
           } else {
             window.location.replace(redirectUrl.href);

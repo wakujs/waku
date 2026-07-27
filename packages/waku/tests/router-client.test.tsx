@@ -2802,6 +2802,51 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a redirect after the url already moved replaces instead of pushing', async () => {
+    const assignSpy = vi
+      .spyOn(window.location, 'assign')
+      .mockImplementation(() => {});
+    const replaceLocationSpy = vi
+      .spyOn(window.location, 'replace')
+      .mockImplementation(() => {});
+    // an instant commit writes the attempted url before the response lands
+    window.history.replaceState({}, '', '/next?x=1');
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(() =>
+      Promise.reject(
+        createCustomError('moved', { status: 307, location: '/login' }),
+      ),
+    );
+    installRefetch(refetch);
+
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    if (!capture.router) {
+      throw new Error('router not initialized');
+    }
+
+    await act(async () => {
+      await capture.router!.push('/next?x=1').catch(() => {});
+      await flush();
+    });
+
+    // that entry already exists, so the redirect must not add another
+    expect(assignSpy).not.toHaveBeenCalled();
+    expect(replaceLocationSpy).toHaveBeenCalledTimes(1);
+    expect(replaceLocationSpy.mock.calls[0]![0]).toContain('/login');
+
+    assignSpy.mockRestore();
+    replaceLocationSpy.mockRestore();
+    view.unmount();
+  });
+
   test('an instant nav to a static route keeps the query', async () => {
     // A static payload does not echo the query. The meta the eager pass pins
     // is the route being left, so without a refresh the record would call this
