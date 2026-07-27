@@ -852,6 +852,16 @@ const FollowError = ({
       fail(error, new Error('detected a redirect loop', { cause: error }));
       return;
     }
+    const dispatchedBefore = dispatchedRef.current;
+    if (
+      dispatchedBefore &&
+      dispatchedBefore[0] === target.path &&
+      dispatchedBefore[1] === target.query
+    ) {
+      // the target this error already went to failed as well
+      fail(error, new Error('the follow target failed too', { cause: error }));
+      return;
+    }
     if (!countHop()) {
       fail(
         error,

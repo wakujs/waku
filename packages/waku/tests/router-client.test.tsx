@@ -4789,6 +4789,48 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a 404 route that itself 404s stops instead of hitting the hop limit', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(() =>
+      Promise.reject(createCustomError('nf', { status: 404 })),
+    );
+    installRefetch(refetch);
+
+    testHoisted.elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/404')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+      [HAS404_ID]: true,
+    };
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const view = await renderApp(
+      <ErrorBoundary>
+        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+          <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
+        </Unstable_SearchCodecsProvider>
+      </ErrorBoundary>,
+    );
+    try {
+      await act(async () => {
+        await capture.router!.push('/missing').catch(() => {});
+        for (let i = 0; i < 8; i += 1) {
+          await flush();
+        }
+      });
+
+      // one request for /missing, one for /404, then it gives up
+      expect(refetch).toHaveBeenCalledTimes(2);
+      expect(view.container.textContent).toContain('the follow target failed');
+    } finally {
+      consoleErrorSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('a 404 follow scrolls to the top like the navigation it replaces', async () => {
     const scrollToSpy = vi
       .spyOn(window, 'scrollTo')
