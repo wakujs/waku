@@ -4908,6 +4908,28 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a 404 follow fetches the 404 route with the attempted query', async () => {
+    const { view, refetch, capture, router } = await renderFollowRouter({
+      responses: [
+        { reject: { status: 404 } },
+        { resolve: { [ROUTE_ID]: ['/404', 'foo=bar'], [IS_STATIC_ID]: false } },
+      ],
+      slots: ['/404'],
+      meta: { [HAS404_ID]: true },
+    });
+    await act(async () => {
+      await router.push('/missing?foo=bar').catch(() => {});
+      await flush();
+      await flush();
+    });
+    expect(refetch.mock.calls[1]?.[0]).toBe(unstable_encodeRoutePath('/404'));
+    // the server renders the 404 page for the query it was asked for
+    const params = refetch.mock.calls[1]?.[1] as URLSearchParams;
+    expect(params.get('query')).toBe('foo=bar');
+    expect(capture.router!.query).toBe('foo=bar');
+    view.unmount();
+  });
+
   test('a chained redirect that only adds a hash is still followed', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);

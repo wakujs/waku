@@ -789,7 +789,6 @@ const FollowError = ({
       routerState?.attempted[0] === dispatched[0] &&
       routerState?.attempted[1] === dispatched[1]
     ) {
-      // path only: a 404 renders with the attempted query, not the asked one
       if (dispatched[0] === routePath) {
         reset();
       } else {
@@ -834,7 +833,12 @@ const FollowError = ({
         url = parsed;
       }
     } else if (info?.status === 404 && has404) {
-      target = { path: '/404', query: '', hash: '' };
+      // the same query a direct request would render the 404 page with
+      target = {
+        path: '/404',
+        query: attemptedUrl.searchParams.toString(),
+        hash: '',
+      };
       // the 404 route renders while the url keeps the attempted location
       url = attemptedUrl;
     } else {
