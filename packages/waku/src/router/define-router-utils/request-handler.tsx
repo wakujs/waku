@@ -234,7 +234,8 @@ export const createRequestHandler = ({
           }
         }
         if (configRegistry.has404()) {
-          return renderPage('/404', '', 404);
+          // the 404 page renders for the url that was asked for, query and all
+          return renderPage('/404', query, 404);
         } else {
           return null;
         }
