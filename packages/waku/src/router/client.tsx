@@ -1205,8 +1205,17 @@ const InnerRouter = ({
         signal: abortController.signal,
         unstable_overlay: {
           [ROUTER_STATE_ID]: routerState,
-          // instant routerState paints from the cache, so route meta comes with it
-          ...(instant ? { [ROUTE_ID]: [nextRoute.path, nextRoute.query] } : {}),
+          // instant nav paints from the cache, so route meta comes with it.
+          // meta is pinned, and only an overlay key is refreshed from the
+          // response, so both keys have to ride here to avoid going stale
+          ...(instant
+            ? {
+                [ROUTE_ID]: [nextRoute.path, nextRoute.query],
+                [IS_STATIC_ID]: isStaticFromElements(
+                  resolvedElementsRef.current,
+                ),
+              }
+            : {}),
         },
         ...(instant
           ? {

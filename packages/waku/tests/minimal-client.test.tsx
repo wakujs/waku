@@ -587,6 +587,66 @@ describe('minimal/client eager merge', () => {
     act(() => root.unmount());
   });
 
+  test('an overlay key takes the response value once it lands', async () => {
+    // How the router keeps pinned meta fresh: a pinned key is never refreshed,
+    // so the keys it needs current ride in the overlay instead.
+    mocks.createFromFetch.mockReturnValueOnce(
+      resolvedThenable({
+        _value: null,
+        ROUTE: ['/start', ''],
+        IS_STATIC: false,
+      }),
+    );
+    stubFetch();
+
+    let refetch: ReturnType<typeof useRefetch> | undefined;
+    let elementsPromise: Promise<Record<string, unknown>> | undefined;
+    const Probe = () => {
+      refetch = useRefetch();
+      elementsPromise = useElementsPromise_UNSTABLE();
+      return null;
+    };
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <Root initialRscPath="R/app.txt">
+          <Probe />
+        </Root>,
+      );
+    });
+
+    let resolveB: (value: Record<string, unknown>) => void = () => {};
+    mocks.createFromFetch.mockReturnValueOnce(
+      new Promise<Record<string, unknown>>((resolve) => {
+        resolveB = resolve;
+      }),
+    );
+    let refetched: Promise<unknown> | undefined;
+    await act(async () => {
+      refetched = refetch!('R/next.txt', undefined, {
+        unstable_overlay: { ROUTE: ['/next', 'x=1'], IS_STATIC: false },
+        unstable_swr: {
+          pin: (key) => key === 'ROUTE' || key === 'IS_STATIC',
+        },
+      });
+    });
+    // the eager commit paints the overlay
+    expect((await elementsPromise!).ROUTE).toEqual(['/next', 'x=1']);
+
+    await act(async () => {
+      resolveB({ ROUTE: ['/next', ''], IS_STATIC: true });
+      await refetched;
+    });
+
+    const finalElements = await elementsPromise!;
+    expect(finalElements.ROUTE).toEqual(['/next', '']);
+    expect(finalElements.IS_STATIC).toBe(true);
+
+    act(() => root.unmount());
+  });
+
   test('merges new keys even while the previous elements are still streaming', async () => {
     // The response can resolve before the previous elements do. The second
     // commit cannot inspect a pending state synchronously, so it chains on

@@ -2744,6 +2744,45 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('an instant nav to a static route keeps the query', async () => {
+    // A static payload does not echo the query. The meta the eager pass pins
+    // is the route being left, so without a refresh the record would call this
+    // a server redirect and drop ?x=1 from the address bar.
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
+      [ROUTE_ID]: ['/next', ''],
+      [IS_STATIC_ID]: true,
+    }));
+    installRefetch(refetch);
+
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      ...instantNavElements(),
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/next')]: <Probe />,
+    };
+
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      elements,
+    );
+    if (!capture.router) {
+      throw new Error('router not initialized');
+    }
+
+    await act(async () => {
+      await capture.router!.push('/next?x=1', { unstable_instant: true });
+      await flush();
+      await flush();
+    });
+
+    expect(capture.router.path).toBe('/next');
+    expect(capture.router.query).toBe('x=1');
+    expect(window.location.pathname + window.location.search).toBe('/next?x=1');
+
+    view.unmount();
+  });
+
   test('an instant nav from a static route does not mark the target static', async () => {
     const pending = createDeferred<Record<string, unknown>>();
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
