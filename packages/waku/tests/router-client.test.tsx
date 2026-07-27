@@ -255,16 +255,17 @@ vi.mock('../src/minimal/client.js', async () => {
     let merged = byResult.get(result);
     if (!merged) {
       merged = Promise.resolve(prev).then((prevRes) => {
-        const next = { ...prevRes };
+        const next: Record<string | symbol, unknown> = { ...prevRes };
+        const from: Record<string | symbol, unknown> = result;
         for (const key of Reflect.ownKeys(result)) {
           if (key === '_value') {
             continue;
           }
           if (!(key in prevRes) || (overlay && key in overlay) || !pin(key)) {
-            next[key] = result[key];
+            next[key] = from[key];
           }
         }
-        return next;
+        return next as Record<string, unknown>;
       });
       byResult.set(result, merged);
     }
