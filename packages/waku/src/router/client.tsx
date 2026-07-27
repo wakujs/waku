@@ -801,13 +801,16 @@ const FollowError = ({
     if (info?.location) {
       const parsed = parseRedirectUrl(info.location, attemptedUrl);
       if (!parsed) {
+        // an unusable protocol; the boundary shows the error instead of a blank
+        fail(error, error);
         return;
       }
       if (parsed.origin !== window.location.origin) {
         window.location.replace(parsed.href);
         return;
       }
-      if (info.location.startsWith('/')) {
+      // a protocol-relative location is another origin's, never an app path
+      if (info.location.startsWith('/') && !info.location.startsWith('//')) {
         // an app location has no base path; the browser url gets it back
         target = {
           path: pathnameToRoutePath(parsed.pathname),
@@ -894,6 +897,9 @@ class CustomErrorHandler extends Component<
   }
   // a clean commit settles the chain; a rendering cycle would keep the count
   componentDidUpdate() {
+    // a chain that redirects on every render never commits an error free
+    // state, so this counts its hops; reset() alone would not, because each
+    // hop does change the route
     if (this.state.error === null) {
       this.followHops = 0;
     }
