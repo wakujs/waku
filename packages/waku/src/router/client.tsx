@@ -1158,7 +1158,7 @@ const InnerRouter = ({
       }
     }
     reconciledRef.current = { routerState, href: url.href, pushed };
-    if (routerState.scroll && !reconciled) {
+    if (routerState.scroll && !reconciled && !routerState.failed) {
       const { pathChanged } = routerState.scroll;
       scrollToRoute(
         currentRoute,
@@ -1304,7 +1304,6 @@ const InnerRouter = ({
           [ROUTER_STATE_ID]: {
             ...routerState,
             history: null, // the url above is already written
-            scroll: null,
             failed: true,
           },
         });

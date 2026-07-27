@@ -4701,6 +4701,35 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a 404 follow scrolls to the top like the navigation it replaces', async () => {
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const { view, capture, router } = await renderFollowRouter({
+      responses: [
+        { reject: { status: 404 } },
+        { resolve: { [ROUTE_ID]: ['/404', ''], [IS_STATIC_ID]: false } },
+      ],
+      slots: ['/404'],
+      meta: { [HAS404_ID]: true },
+    });
+    scrollToSpy.mockClear();
+
+    await act(async () => {
+      await router.push('/missing').catch(() => {});
+      await flush();
+      await flush();
+    });
+
+    expect(capture.router!.path).toBe('/404');
+    // the user asked for a new path, so the 404 page starts at the top, and
+    // the failed commit on the way there does not scroll of its own
+    expect(scrollToSpy).toHaveBeenCalledTimes(1);
+
+    scrollToSpy.mockRestore();
+    view.unmount();
+  });
+
   test('a follow into a known static route does not fetch it', async () => {
     const refetch = vi.fn<ReturnType<typeof useRefetch>>();
     refetch
