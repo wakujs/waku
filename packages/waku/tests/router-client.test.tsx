@@ -4980,6 +4980,110 @@ describe('Router integration', () => {
     }
   });
 
+  test('a retry after a failed navigation fetches again', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
+    refetch.mockRejectedValueOnce(new Error('boom'));
+    installRefetch(refetch);
+
+    // an error boundary in the root layout, the documented pattern: the
+    // router keeps rendering after a navigation fails
+    testHoisted.elements = {
+      root: (
+        <ErrorBoundary>
+          <Children />
+        </ErrorBoundary>
+      ),
+      [unstable_getRouteSlotId('/list')]: <Probe />,
+      [ROUTE_ID]: ['/list', ''],
+      [IS_STATIC_ID]: false,
+    };
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const view = await renderApp(
+      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+        <Router initialRoute={{ path: '/list', query: '', hash: '' }} />
+      </Unstable_SearchCodecsProvider>,
+    );
+    try {
+      await act(async () => {
+        await capture.router!.push('/detail?id=5').catch(() => {});
+        await flush();
+      });
+      refetch.mockClear();
+
+      // the failed navigation must not make /list?id=5 look already loaded
+      await act(async () => {
+        await capture.router!.push('/list?id=5').catch(() => {});
+        await flush();
+      });
+
+      expect(refetch).toHaveBeenCalledTimes(1);
+    } finally {
+      consoleErrorSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
+  test('a second 404 with a query lands on the 404 route again', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(((rscPath: string) =>
+      rscPath === unstable_encodeRoutePath('/404')
+        ? Promise.resolve({
+            [unstable_getRouteSlotId('/404')]: <Probe />,
+            [ROUTE_ID]: ['/404', ''],
+            [IS_STATIC_ID]: false,
+          })
+        : Promise.reject(
+            createCustomError('nf', { status: 404 }),
+          )) as unknown as ReturnType<typeof useRefetch>);
+    installRefetch(refetch);
+
+    testHoisted.elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/404')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+      [HAS404_ID]: true,
+    };
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const view = await renderApp(
+      <ErrorBoundary>
+        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+          <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
+        </Unstable_SearchCodecsProvider>
+      </ErrorBoundary>,
+    );
+    try {
+      await act(async () => {
+        await capture.router!.push('/missing').catch(() => {});
+        for (let i = 0; i < 4; i += 1) {
+          await flush();
+        }
+      });
+      expect(view.container.textContent).toContain('/404|');
+
+      // now on /404, a second miss whose url carries a query
+      await act(async () => {
+        await capture.router!.push('/missing2?x=1').catch(() => {});
+        for (let i = 0; i < 4; i += 1) {
+          await flush();
+        }
+      });
+
+      expect(view.container.textContent).not.toContain('redirect loop');
+      expect(view.container.textContent).toContain('/404|');
+    } finally {
+      consoleErrorSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('a 404 follow scrolls to the top like the navigation it replaces', async () => {
     const scrollToSpy = vi
       .spyOn(window, 'scrollTo')

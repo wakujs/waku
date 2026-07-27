@@ -791,7 +791,9 @@ const FollowError = ({
       routerState?.attempted[0] === dispatched[0] &&
       routerState?.attempted[1] === dispatched[1]
     ) {
-      if (dispatched[0] === routePath && dispatched[1] === routeQuery) {
+      // the path is the only axis to compare: a 404 keeps the attempted
+      // query, so the rendered query is not the one the follow asked for
+      if (dispatched[0] === routePath) {
         // the follow bounced back to the rendered route; it can render
         reset();
       } else {
@@ -1136,7 +1138,11 @@ const InnerRouter = ({
     { routerState: RouterState; href: string; pushed: boolean } | undefined
   >(undefined);
   useLayoutEffect(() => {
-    routeRef.current = currentRoute;
+    if (!routerState?.failed) {
+      // a failed navigation renders the route it came from with the url it
+      // tried; publishing that pair would make a retry look like a no op
+      routeRef.current = currentRoute;
+    }
     if (!routerState || !destination) {
       return;
     }
