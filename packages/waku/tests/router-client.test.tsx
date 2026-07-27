@@ -194,6 +194,8 @@ vi.mock('react-server-dom-webpack/client', () => ({
   },
 }));
 
+// This hand models minimal's merge semantics; minimal-client.test.tsx holds
+// the tests that keep the model honest (see its overlay cases).
 vi.mock('../src/minimal/client.js', async () => {
   const actual = await vi.importActual<
     typeof import('../src/minimal/client.js')
@@ -722,8 +724,10 @@ describe('useRouter + Link with context', () => {
     expect(changeRoute).toHaveBeenNthCalledWith(
       2,
       { path: '/start', query: 'query=2', hash: '' },
-      expect.not.objectContaining({
-        history: 'push',
+      expect.objectContaining({
+        shouldScroll: false,
+        history: 'replace',
+        url: expect.any(URL),
       }),
     );
     expect(changeRoute).toHaveBeenNthCalledWith(
@@ -823,7 +827,7 @@ describe('useRouter + Link with context', () => {
     expect(changeRoute).toHaveBeenNthCalledWith(
       2,
       expectedRoute,
-      expect.not.objectContaining({ history: 'push' }),
+      expect.objectContaining({ history: 'replace', url: expect.any(URL) }),
     );
     const pushedUrl = (
       (changeRoute.mock.calls[0] as unknown[] | undefined)?.[1] as
@@ -1456,6 +1460,7 @@ describe('Slice', () => {
   });
 
   test('lazy slice fetches once, dedupes, and clears in-flight set on completion', async () => {
+    const fetchingSlices = new Set<string>();
     const view = await renderWithMinimalRoot(
       <RouterContext
         value={{
@@ -1463,7 +1468,7 @@ describe('Slice', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
           routeChangeEvents: { on: vi.fn(), off: vi.fn() },
-          fetchingSlices: new Set<string>(),
+          fetchingSlices,
         }}
       >
         <>
@@ -1487,6 +1492,8 @@ describe('Slice', () => {
     expect(view.container.textContent).toContain('loading 2');
     expect(refetch).toHaveBeenCalledTimes(1);
     expect(refetch).toHaveBeenCalledWith(unstable_encodeSliceId('slice-1'));
+    // released when it settles, so the slice can be fetched again later
+    expect(fetchingSlices.size).toBe(0);
 
     view.unmount();
   });
@@ -1551,6 +1558,8 @@ describe('Slice', () => {
   });
 
   test('logs refetch failures and clears fetching set', async () => {
+    const fetchingSlices = new Set<string>();
+
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
     refetch.mockRejectedValueOnce(new Error('slice failed'));
@@ -1563,7 +1572,7 @@ describe('Slice', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
           routeChangeEvents: { on: vi.fn(), off: vi.fn() },
-          fetchingSlices: new Set<string>(),
+          fetchingSlices,
         }}
       >
         <Slice id="slice-1" lazy fallback={<div>fallback</div>} />
@@ -1575,6 +1584,8 @@ describe('Slice', () => {
       'Failed to fetch slice:',
       expect.any(Error),
     );
+    // a failed fetch releases the id too, so a retry is possible
+    expect(fetchingSlices.size).toBe(0);
 
     view.unmount();
   });
@@ -3474,6 +3485,7 @@ describe('Router integration', () => {
     expect(window.location.pathname + window.location.search).toBe(
       '/start/?q=hello%20world',
     );
+    expect(getRefetchMock()).toHaveBeenCalledTimes(1);
 
     view.unmount();
   });
@@ -3942,6 +3954,7 @@ describe('Router integration', () => {
     expect(assignSpy).toHaveBeenCalledTimes(1);
     expect(assignSpy.mock.calls[0]![0]).toContain('/next');
     expect(capture.router!.path).toBe('/start');
+    expect(window.location.pathname).toBe('/start');
     assignSpy.mockRestore();
     view.unmount();
   });
@@ -4203,7 +4216,8 @@ describe('Router integration', () => {
     // the visible navigation is from /start, so the page scrolls even
     // though the redirect keeps the attempted pathname
     expect(capture.router.query).toBe('login=1');
-    expect(scrollToSpy).toHaveBeenCalled();
+    // twice: the attempted commit, then the follow
+    expect(scrollToSpy).toHaveBeenCalledTimes(2);
 
     scrollToSpy.mockRestore();
     view.unmount();
@@ -4440,7 +4454,8 @@ describe('Router integration', () => {
     });
 
     expect(capture.router.query).toBe('page=3');
-    expect(scrollToSpy).toHaveBeenCalled();
+    // twice: the attempted commit, then the follow
+    expect(scrollToSpy).toHaveBeenCalledTimes(2);
 
     scrollToSpy.mockRestore();
     view.unmount();
@@ -4591,6 +4606,7 @@ describe('Router integration', () => {
         }
       });
       expect(view.container.textContent).toContain('detected a redirect loop');
+      expect(refetch).toHaveBeenCalledTimes(1);
     } finally {
       consoleErrorSpy.mockRestore();
       view.unmount();
@@ -4645,6 +4661,8 @@ describe('Router integration', () => {
       expect(view.container.textContent).toContain(
         'too many redirect or 404 follows',
       );
+      // the per chain cap fires, not the per navigation budget
+      expect(refetch).toHaveBeenCalledTimes(21);
     } finally {
       consoleErrorSpy.mockRestore();
       view.unmount();
@@ -4695,6 +4713,8 @@ describe('Router integration', () => {
       expect(view.container.textContent).toContain(
         'too many redirect or 404 follows',
       );
+      // the per chain cap fires, not the per navigation budget
+      expect(refetch).toHaveBeenCalledTimes(21);
     } finally {
       consoleErrorSpy.mockRestore();
       view.unmount();
@@ -4760,7 +4780,8 @@ describe('Router integration', () => {
     // the visible navigation is /start -> /account/profile?login=1, so
     // the redirect scrolls even though it only changed the query
     expect(capture.router.query).toBe('login=1');
-    expect(scrollToSpy).toHaveBeenCalled();
+    // twice: the attempted commit, then the follow
+    expect(scrollToSpy).toHaveBeenCalledTimes(2);
 
     scrollToSpy.mockRestore();
     view.unmount();
@@ -4770,7 +4791,7 @@ describe('Router integration', () => {
     const scrollToSpy = vi
       .spyOn(window, 'scrollTo')
       .mockImplementation(() => {});
-    const { view, capture, router } = await renderFollowRouter({
+    const { view, refetch, router } = await renderFollowRouter({
       responses: [
         { redirect: { from: '/a', location: '/start' } },
         { resolve: { [ROUTE_ID]: ['/start', ''], [IS_STATIC_ID]: false } },
@@ -4783,8 +4804,9 @@ describe('Router integration', () => {
       await flush();
       await flush();
     });
-    expect(capture.router!.path).toBe('/start');
-    expect(scrollToSpy).toHaveBeenCalled();
+    expect(view.container.textContent).toContain('/start|');
+    expect(refetch).toHaveBeenCalledTimes(2);
+    expect(scrollToSpy).toHaveBeenCalledTimes(2);
     scrollToSpy.mockRestore();
     view.unmount();
   });
@@ -4932,7 +4954,7 @@ describe('Router integration', () => {
     });
 
     // the second target differs from the first only by its hash
-    expect(view.container.textContent).not.toContain('follow target failed');
+    expect(view.container.textContent).toContain('/next|');
     expect(window.location.hash).toBe('#section');
 
     view.unmount();
@@ -6009,7 +6031,10 @@ describe('Router integration', () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
-    refetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    // the shape checkStatus gives a network failure
+    refetch.mockRejectedValueOnce(
+      createCustomError('Failed to fetch', { unstable_networkError: true }),
+    );
     installRefetch(refetch);
 
     testHoisted.elements = {

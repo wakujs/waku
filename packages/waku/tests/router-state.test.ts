@@ -67,6 +67,24 @@ describe('getRouterState', () => {
 });
 
 describe('resolveServerRedirect', () => {
+  test('a failed navigation reads no redirect from the stale route id', () => {
+    const attempt = makeRouterState(route('/missing'), urlOf('/missing'), {
+      history: 'push',
+      scroll: true,
+      pathChanged: true,
+    });
+    const elements = { [ROUTE_ID]: ['/a', ''] };
+
+    // the record still holds the route the client came from
+    expect(resolveServerRedirect(elements, attempt, '/f').url.pathname).toBe(
+      '/a',
+    );
+    expect(
+      resolveServerRedirect(elements, { ...attempt, failed: true }, '/f').url
+        .pathname,
+    ).toBe('/missing');
+  });
+
   test('path from the elements, query and hash from the routerState url', () => {
     const routerState = makeRouterState(
       route('/a', 'x=1'),
@@ -189,6 +207,8 @@ describe('pinForSwr', () => {
   test('pins meta keys and immutable slots, not mutable ones', () => {
     const pin = pinForSwr(() => immutable('layout:/'));
     expect(pin(ROUTE_ID)).toBe(true);
+    // the client's own state rides the merge instead of becoming a hole
+    expect(pin(ROUTER_STATE_ID)).toBe(true);
     expect(pin('layout:/')).toBe(true);
     expect(pin('page:/a')).toBe(false);
   });

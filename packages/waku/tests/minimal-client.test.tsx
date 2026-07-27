@@ -165,7 +165,7 @@ describe('minimal/client transport failures', () => {
       url,
       ok: true,
       status: 200,
-      text: async () => '',
+      text: async () => 'the payload',
     }) as unknown as Response;
 
   test('a redirect within the rsc endpoint is decoded as the payload', async () => {
@@ -176,7 +176,10 @@ describe('minimal/client transport failures', () => {
       ),
     );
 
-    await expect(unstable_fetchRsc('R/redirect.txt')).resolves.toBeDefined();
+    // decoded from the response the redirect landed on
+    await expect(unstable_fetchRsc('R/redirect.txt')).resolves.toMatchObject({
+      text: 'the payload',
+    });
   });
 
   test('a redirect off the rsc endpoint leaves it, same origin or not', async () => {
