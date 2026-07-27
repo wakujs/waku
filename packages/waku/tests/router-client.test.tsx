@@ -130,6 +130,11 @@ const withRouteMeta = (
 type RootStore = {
   applySync: (data: Record<string, unknown>) => void;
   applyAsync: (data: Promise<Record<string, unknown>>) => void;
+  applySwr: (
+    result: Record<string, unknown>,
+    overlay: Record<string, unknown> | undefined,
+    pin: (key: string | symbol) => boolean,
+  ) => void;
 };
 type RefetchInner = ReturnType<typeof useRefetch>;
 type MockedRefetch = ReturnType<typeof vi.fn<RefetchInner>>;
@@ -229,6 +234,43 @@ vi.mock('../src/minimal/client.js', async () => {
     return result;
   };
 
+  // A pinned key keeps the previous value: the eager pass held it instead of
+  // leaving a hole, and minimal's second pass only refreshes new and overlay
+  // keys. That staleness is real and the router has to plan for it.
+  const chainSwrCache = new WeakMap<
+    object,
+    WeakMap<object, Promise<Record<string, unknown>>>
+  >();
+  const chainSwr = (
+    prev: Promise<Record<string, unknown>>,
+    result: Record<string, unknown>,
+    overlay: Record<string, unknown> | undefined,
+    pin: (key: string | symbol) => boolean,
+  ): Promise<Record<string, unknown>> => {
+    let byResult = chainSwrCache.get(prev);
+    if (!byResult) {
+      byResult = new WeakMap();
+      chainSwrCache.set(prev, byResult);
+    }
+    let merged = byResult.get(result);
+    if (!merged) {
+      merged = Promise.resolve(prev).then((prevRes) => {
+        const next = { ...prevRes };
+        for (const key of Reflect.ownKeys(result)) {
+          if (key === '_value') {
+            continue;
+          }
+          if (!(key in prevRes) || (overlay && key in overlay) || !pin(key)) {
+            next[key] = result[key];
+          }
+        }
+        return next;
+      });
+      byResult.set(result, merged);
+    }
+    return merged;
+  };
+
   // Each mocked Root provides its own store through this context, so a refetch
   // or merge from within a Root targets that Root's elements state.
   const StoreContext = React.createContext<RootStore | null>(null);
@@ -259,6 +301,11 @@ vi.mock('../src/minimal/client.js', async () => {
         // like the real client, so a transition stays pending across the fetch
         applyAsync: (dataPromise) => {
           setElements((prev) => chainMerge(prev, dataPromise));
+        },
+        // the swr response landing: minimal refreshes the keys the eager pass
+        // left as holes plus the overlay keys, and keeps the pinned ones
+        applySwr: (result, overlay, pin) => {
+          setElements((prev) => chainSwr(prev, result, overlay, pin));
         },
       };
     }
@@ -301,21 +348,22 @@ vi.mock('../src/minimal/client.js', async () => {
         const options = rest[1] as
           | {
               unstable_overlay?: Record<string, unknown>;
-              unstable_swr?: unknown;
+              unstable_swr?: { pin: (key: string | symbol) => boolean };
             }
           | undefined;
         const overlay = options?.unstable_overlay;
+        const swr = options?.unstable_swr;
         const dataPromise = Promise.resolve(
           testHoisted.inner!(rscPath, ...rest),
         ).then((result) => withRouteMeta(result, rscPath, rest[0]));
-        if (options?.unstable_swr) {
+        if (swr) {
           // like minimal's swr merge: the overlay lands right away and the
           // record keeps rendering while the response streams into its holes
           if (overlay) {
             store?.applySync(overlay);
           }
           dataPromise.then(
-            (result) => store?.applySync({ ...result, ...overlay }),
+            (result) => store?.applySwr(result, overlay, swr.pin),
             () => {},
           );
           return dataPromise;
