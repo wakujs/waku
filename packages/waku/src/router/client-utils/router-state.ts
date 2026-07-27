@@ -47,8 +47,7 @@ export const resolveServerRedirect = (
   fallbackPath: string,
 ): { route: RouteProps; url: URL } => {
   const stateUrl = new URL(routerState.url, window.location.href);
-  // a failed navigation reports the route the record still holds with the url
-  // it tried; nothing landed, so there is no redirect to read
+  // nothing landed on a failed navigation, so there is no redirect to read
   const redirect = routerState.failed
     ? undefined
     : getServerRedirect(elements, {

@@ -131,9 +131,8 @@ const mergeElementsPromise = (
   return getCached(getResult, cache2, b);
 };
 
-// an hmr refresh replaces server keys and carries the client's symbol keys.
-// the cache keeps a replayed updater returning the same promise; without it
-// the tree never settles on the refreshed record (hot-reload.dev.spec.ts).
+// a replayed updater has to return the same promise, or the tree never
+// settles on the refreshed record (hot-reload.dev.spec.ts)
 const refreshCache = new WeakMap();
 const refreshElementsPromise = (
   a: Promise<Elements>,

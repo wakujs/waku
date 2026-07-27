@@ -249,8 +249,7 @@ const dispatchChangeRoute = (
     // instant paints from the cache; a transition would hold that back
     return changeRoute(route, options).then(() => undefined);
   }
-  // a transition, so the eager elements merge suspends without blanking the
-  // tree, and it stays pending until the navigation settles
+  // a transition keeps the tree up while the eager merge suspends
   return new Promise<void>((resolve, reject) => {
     startTransitionFn(async () => {
       try {
@@ -742,8 +741,7 @@ export class ErrorBoundary extends Component<
 
 const MAX_FOLLOW_HOPS = 20;
 
-// a hop that commits a suspense fallback before it throws resets the chain
-// count, so the follows one navigation may spend are capped as well
+// followHops resets when a hop commits, so it alone cannot bound a chain
 const MAX_FOLLOWS_PER_NAVIGATION = 100;
 
 type FollowBudget = { spent: number };
@@ -791,13 +789,10 @@ const FollowError = ({
       routerState?.attempted[0] === dispatched[0] &&
       routerState?.attempted[1] === dispatched[1]
     ) {
-      // the path is the only axis to compare: a 404 keeps the attempted
-      // query, so the rendered query is not the one the follow asked for
+      // path only: a 404 renders with the attempted query, not the asked one
       if (dispatched[0] === routePath) {
-        // the follow bounced back to the rendered route; it can render
         reset();
       } else {
-        // the followed navigation committed without moving the route: a loop
         fail(error, new Error('detected a redirect loop', { cause: error }));
       }
     }
@@ -813,8 +808,6 @@ const FollowError = ({
     if (info?.location) {
       const parsed = parseRedirectUrl(info.location, attemptedUrl);
       if (!parsed) {
-        // a plain error carries no location, so the boundary stops following
-        // it and shows it instead of a blank slot
         fail(
           error,
           new Error(`cannot follow a redirect to ${info.location}`, {
@@ -850,13 +843,11 @@ const FollowError = ({
     if (followPromiseMap.has(error as object)) {
       return;
     }
-    // redirecting back to the route the error came from cannot recover
     const caught = parseRoute(attemptedUrl);
     if (isSameRoute(target, caught)) {
       fail(error, new Error('detected a redirect loop', { cause: error }));
       return;
     }
-    // a target that already failed cannot be the way out of this error
     if (
       failedTargetRef.current &&
       isSameRoute(target, failedTargetRef.current)
@@ -884,8 +875,7 @@ const FollowError = ({
           follow: true,
         }).then(
           (followable) => {
-            // the same error object can be thrown again, by a module scoped
-            // error or one revived from the record, and must follow again
+            // a module scoped error is thrown again, so let it follow again
             followPromiseMap.delete(error as object);
             if (followable !== undefined) {
               failedTargetRef.current = target;
@@ -937,13 +927,12 @@ class CustomErrorHandler extends Component<
     );
   }
   componentDidUpdate() {
-    // a chain that redirects during render never commits an error free state,
-    // so its hops accumulate; reset() alone would not count them, because a
-    // hop does change the route
+    // clearing in reset() would let a chain that redirects on render run free
     if (this.state.error === null) {
       this.followHops = 0;
     }
   }
+  // error is a wrapper: the original still carries a location and would follow
   fail(original: unknown, error: unknown) {
     this.setState((state) => (state.error === original ? { error } : null));
   }
@@ -1090,11 +1079,9 @@ const InnerRouter = ({
   const initialHash = useRef(resolvedRoute.hash).current;
   const initialRoute = useRef({ ...resolvedRoute, hash: '' }).current;
 
-  // meta keys persist across merges, so they read from the current elements
   const has404 = has404FromElements(elements);
   const staticPathSet = useRef(new Set<string>()).current;
-  // only a response tells a route's staticness; a record mid navigation pairs
-  // the target route id with the previous route's pinned flag
+  // a record mid navigation pairs the new route id with the old static flag
   const learnStaticPath = useCallback(
     (responseElements: Record<string, unknown>) => {
       const route = getRouteFromElements(responseElements);
@@ -1117,8 +1104,7 @@ const InnerRouter = ({
   const refetch = useRefetch();
   const mergeElements = useMergeElements();
   const [err, setErr] = useState<unknown>(null);
-  // the hash appears after hydration; an empty one bails out, leaving
-  // hydrating suspense boundaries undisturbed
+  // starts empty so hydration matches the server, then the effect fills it
   const [restoredHash, setRestoredHash] = useState('');
   useEffect(() => {
     setRestoredHash(window.location.hash || initialHash);
@@ -1132,8 +1118,7 @@ const InnerRouter = ({
     ? destination.route
     : { ...initialRoute, hash: restoredHash };
   const routeRef = useRef(currentRoute);
-  // what the last reconcile did; a state reconciles again when its destination
-  // moves, so the push and the scroll must not repeat
+  // what the last reconcile did, so a second pass does not repeat it
   const reconciledRef = useRef<
     { routerState: RouterState; href: string; pushed: boolean } | undefined
   >(undefined);
@@ -1155,8 +1140,7 @@ const InnerRouter = ({
       return;
     }
     let pushed = reconciled?.pushed ?? false;
-    // the state carries the url that should show, so a null history still
-    // writes when the destination moved away from it
+    // history null still writes: the state's url is the one that should show
     if (window.location.href !== url.href) {
       if (routerState.history === 'push' && !pushed) {
         pushed = true;
@@ -1251,9 +1235,7 @@ const InnerRouter = ({
         signal: abortController.signal,
         unstable_overlay: {
           [ROUTER_STATE_ID]: routerState,
-          // instant nav paints from the cache, so route meta comes with it.
-          // meta is pinned, and only an overlay key is refreshed from the
-          // response, so both keys have to ride here to avoid going stale
+          // meta is pinned, so an instant nav has to carry it or it goes stale
           ...(instant
             ? {
                 [ROUTE_ID]: [nextRoute.path, nextRoute.query],
@@ -1290,8 +1272,7 @@ const InnerRouter = ({
           return;
         }
         const info = getErrorInfo(e);
-        // a fetch level redirect may leave waku; the browser follows it, so
-        // only a location the browser should navigate to gets there
+        // a fetch level redirect may leave waku, so the browser takes it on
         const redirectUrl = info?.location
           ? parseRedirectUrl(info.location, targetUrl)
           : undefined;
