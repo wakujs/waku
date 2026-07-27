@@ -323,6 +323,7 @@ export function useRouter() {
       shouldScroll: true,
       refetch: true,
       history: 'replace',
+      url: new URL(window.location.href), // reloading moves nothing
     });
   }, [changeRoute]);
   const back = useCallback(() => {
