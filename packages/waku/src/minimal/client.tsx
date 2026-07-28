@@ -321,7 +321,6 @@ const decodeRsc = (
   temporaryReferences: ReturnType<typeof createTemporaryReferenceSet>,
   debugChannel:
     ReturnType<typeof setupDebugChannel>['debugChannel'] | undefined,
-  // react's thenable returns nothing from then, so chaining needs a real one
 ): Promise<Elements> =>
   Promise.resolve(
     createFromFetch<Elements>(checkStatus(responsePromise), {

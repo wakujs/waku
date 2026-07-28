@@ -32,7 +32,6 @@ export const isSameRoute = (next: RouteProps, prev: RouteProps) =>
   next.query === prev.query &&
   next.hash === prev.hash;
 
-// the hash is client only, so it never changes what the server sends
 export const isSameRscRoute = (next: RouteProps, prev: RouteProps) =>
   next.path === prev.path && next.query === prev.query;
 

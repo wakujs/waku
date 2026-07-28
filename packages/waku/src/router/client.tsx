@@ -540,7 +540,6 @@ const prefetchIfNotCurrent = (
     return;
   }
   const route = parseRoute(new URL(resolvedTo, window.location.href));
-  // the address bar can hold a route the router never committed
   if (!isSameRscRoute(route, router.route)) {
     router.prefetchRoute(route, options);
   }
@@ -894,7 +893,6 @@ const FollowError = ({
           history: 'replace',
           url,
           follow: true,
-          // the elements it holds are the ones that threw
           refetch: true,
         }).then(
           (followable) => {
