@@ -1187,6 +1187,7 @@ const InnerRouter = ({
   const fetchingSlices = useRef(new Set<SliceId>()).current;
   const followBudget = useRef<FollowBudget>({ spent: 0 }).current;
   const abortRef = useRef<AbortController | null>(null);
+  const changeRouteRef = useRef<ChangeRoute | null>(null);
 
   const changeRoute: ChangeRoute = useCallback(
     async (nextRoute, options) => {
@@ -1291,6 +1292,29 @@ const InnerRouter = ({
           return;
         }
         abortRef.current = null;
+        const follow =
+          info?.status === 404 && has404
+            ? resolveFollow(e, targetUrl, has404)
+            : undefined;
+        const looping =
+          follow?.type === 'route' && isSameRoute(follow.target, nextRoute);
+        if (follow?.type === 'route' && !looping && changeRouteRef.current) {
+          return changeRouteRef.current(follow.target, {
+            shouldScroll: options.shouldScroll,
+            history: routerState.history,
+            url: follow.url,
+            follow: true,
+            refetch: true,
+          });
+        }
+        const failure = looping
+          ? new Error(
+              options.follow
+                ? 'the follow target failed too'
+                : 'detected a redirect loop',
+              { cause: e },
+            )
+          : e;
         // write the url now; an unrecoverable rethrow discards the commit
         if (window.location.href !== targetUrl.href) {
           if (routerState.history === 'push') {
@@ -1306,12 +1330,8 @@ const InnerRouter = ({
             failed: true,
           },
         });
-        setErr(e);
-        if (info?.status === 404 && has404) {
-          // a followable outcome; the boundary takes it from here
-          return e;
-        }
-        throw e;
+        setErr(failure);
+        throw failure;
       }
     },
     [
@@ -1326,6 +1346,10 @@ const InnerRouter = ({
       prefetchManager,
     ],
   );
+
+  useEffect(() => {
+    changeRouteRef.current = changeRoute;
+  }, [changeRoute]);
 
   const applyChangeRouteData = useCallback(
     async (routeData: unknown, isStatic: unknown) => {

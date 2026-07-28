@@ -5024,7 +5024,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('push resolves before the 404 follow it hands to the boundary', async () => {
+  test('push settles only once the 404 it follows has landed', async () => {
     const { view, refetch, capture, router } = await renderFollowRouter({
       responses: [
         { reject: { status: 404 } },
@@ -5042,8 +5042,7 @@ describe('Router integration', () => {
       await flush();
       await flush();
     });
-    // the promise covers the route it was given, not the follow that comes after
-    expect(callsWhenSettled).toBe(1);
+    expect(callsWhenSettled).toBe(2);
     expect(refetch).toHaveBeenCalledTimes(2);
     expect(capture.router!.path).toBe('/404');
     view.unmount();
