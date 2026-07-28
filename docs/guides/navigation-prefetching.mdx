@@ -163,7 +163,7 @@ export const PostButton = () => {
 };
 ```
 
-Both return a promise that resolves once the response for the route you asked for has been handled. They do not wait for a redirect or a 404 page that the response leads to, and they do not wait for React to finish rendering the destination.
+Both return a promise that resolves once the navigation you asked for has been handled: after the response when the route needs one, and right away when it does not, such as a static route or the route you are already on. They do not wait for a redirect or a 404 page that the response leads to, and they do not wait for React to finish rendering the destination.
 
 When the shell is cached, the layout and the `Loading...` fallback appear with no round trip, and the post's content streams into the fallback once the server responds. When the shell is **not** cached, the navigation falls back to normal behavior: the current page stays put until the response arrives, so there is no blank flash.
 

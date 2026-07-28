@@ -108,9 +108,10 @@ type NavigateOptions = {
 };
 
 /**
- * Resolves once the response for the requested route has been handled. It does
- * not wait for a redirect or 404 follow that starts afterwards, nor for React
- * to finish rendering the destination.
+ * Resolves once the requested navigation has been handled: after its response
+ * when the route needs one, right away when it does not. It does not wait for
+ * a redirect or 404 follow that starts afterwards, nor for React to finish
+ * rendering the destination.
  */
 type Navigate = {
   (to: RouteHref, options?: NavigateOptions): Promise<void>;
