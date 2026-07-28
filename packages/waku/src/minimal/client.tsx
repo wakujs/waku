@@ -349,21 +349,21 @@ const reloadOnBuildIdMismatch = (
 const abortable = (
   elements: Promise<Elements>,
   signal: AbortSignal | undefined,
-): Promise<Elements> =>
-  signal
-    ? Promise.race([
-        elements,
-        new Promise<never>((_resolve, reject) => {
-          if (signal.aborted) {
-            reject(signal.reason);
-          } else {
-            signal.addEventListener('abort', () => reject(signal.reason), {
-              once: true,
-            });
-          }
-        }),
-      ])
-    : elements;
+): Promise<Elements> => {
+  if (!signal) {
+    return elements;
+  }
+  if (signal.aborted) {
+    return Promise.reject(signal.reason);
+  }
+  return new Promise<Elements>((resolve, reject) => {
+    const abort = () => reject(signal.reason);
+    signal.addEventListener('abort', abort, { once: true });
+    elements
+      .then(resolve, reject)
+      .finally(() => signal.removeEventListener('abort', abort));
+  });
+};
 
 const applyInputTransformers = (
   rscPath: string,

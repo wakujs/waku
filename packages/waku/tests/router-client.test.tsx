@@ -3818,6 +3818,8 @@ describe('Router integration', () => {
       expect(capture.router?.path).toBe('/start');
       expect(capture.router?.hash).toBe('#missing');
       expect(scrollToSpy).not.toHaveBeenCalled();
+      // back and forward between hashes stay on the client too
+      expect(getRefetchMock()).not.toHaveBeenCalled();
     } finally {
       view.unmount();
     }
