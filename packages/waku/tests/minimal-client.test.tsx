@@ -1189,7 +1189,7 @@ describe('minimal/client refetch scenarios', () => {
     mocks.createFromFetch.mockClear();
     await act(async () => {
       await view.refetch()('R/done.txt', undefined, {
-        unstable_prefetched: { _value: null, page: 'P2' },
+        unstable_prefetched: Promise.resolve({ _value: null, page: 'P2' }),
       });
     });
     expect(view.container.textContent).toBe('P2');
@@ -1219,7 +1219,7 @@ describe('minimal/client refetch scenarios', () => {
     controller.abort();
     await act(async () => {
       await view.refetch()('R/next.txt', undefined, {
-        unstable_prefetched: { _value: null, page: 'P2' },
+        unstable_prefetched: Promise.resolve({ _value: null, page: 'P2' }),
       });
       await wait();
     });
@@ -1242,7 +1242,11 @@ describe('minimal/client refetch scenarios', () => {
     const onBuildIdMismatch = vi.fn();
     await act(async () => {
       await view.refetch()('R/done.txt', undefined, {
-        unstable_prefetched: { _value: null, page: 'P2', _buildId: 'build-2' },
+        unstable_prefetched: Promise.resolve({
+          _value: null,
+          page: 'P2',
+          _buildId: 'build-2',
+        }),
         onBuildIdMismatch,
       });
       await wait();

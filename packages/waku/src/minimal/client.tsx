@@ -258,7 +258,7 @@ type Refetch = (
   rscPath: string,
   rscParams?: unknown,
   options?: FetchRscOptions & {
-    unstable_prefetched?: Elements | Promise<Elements>;
+    unstable_prefetched?: Promise<Elements>;
     unstable_overlay?: Elements;
     unstable_swr?: {
       pin: (key: string | symbol) => boolean;
@@ -616,10 +616,9 @@ export const Root = ({
     delete fetchRscStore[ENTRY];
     let data: Promise<Elements>;
     if (prefetched) {
-      const adopted = Promise.resolve(prefetched);
-      reloadOnBuildIdMismatch(adopted, options?.onBuildIdMismatch);
+      reloadOnBuildIdMismatch(prefetched, options?.onBuildIdMismatch);
       // without this an aborted navigation keeps the elements chain waiting
-      data = abortable(adopted, options?.signal);
+      data = abortable(prefetched, options?.signal);
     } else {
       if (swr?.base) {
         fetchRscStore[CACHED_ETAGS] = {
