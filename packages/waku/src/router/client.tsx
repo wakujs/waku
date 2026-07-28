@@ -123,6 +123,11 @@ type Navigate = {
   ): Promise<void>;
 };
 
+/**
+ * Fetches whatever it is given, including the route already on screen, so it
+ * can warm the cache for a later reload. `<Link>` prefetching is automatic, so
+ * that one skips a target the router is already showing.
+ */
 type Prefetch = {
   (to: RouteHref, options?: PrefetchOptions): void;
   <Path extends RoutePath>(
