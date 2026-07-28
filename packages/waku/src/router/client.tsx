@@ -884,6 +884,8 @@ const FollowError = ({
           history: 'replace',
           url,
           follow: true,
+          // the elements it holds are the ones that threw
+          refetch: true,
         }).then(
           (followable) => {
             // a module scoped error is thrown again, so let it follow again
@@ -1224,8 +1226,11 @@ const InnerRouter = ({
         scroll: options.shouldScroll,
         pathChanged: nextRoute.path !== routeBefore.path,
       });
+      // the hash is client only, so it never changes what the server sends
       const shouldRefetch =
-        options.refetch ?? !isSameRoute(nextRoute, routeBefore);
+        options.refetch ??
+        (nextRoute.path !== routeBefore.path ||
+          nextRoute.query !== routeBefore.query);
       setErr(null);
       if (staticPathSet.has(nextRoute.path) || !shouldRefetch) {
         mergeElements({

@@ -2358,6 +2358,8 @@ describe('Router integration', () => {
       });
       expect(window.location.hash).toBe('#target');
       expect(capture.router.hash).toBe('#target');
+      // the hash never reaches the server, so there is nothing to fetch
+      expect(getRefetchMock()).not.toHaveBeenCalled();
     } finally {
       view.unmount();
       getBoundingClientRectSpy.mockRestore();
