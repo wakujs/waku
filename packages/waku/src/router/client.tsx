@@ -44,6 +44,7 @@ import {
   has404FromElements,
   isStaticFromElements,
 } from './client-utils/elements-meta.js';
+import { resolveFollow } from './client-utils/follow.js';
 import {
   type PrefetchOptions,
   createPrefetchManager,
@@ -84,7 +85,6 @@ import {
   encodeSliceId,
   getRouteSlotId,
   getSliceSlotId,
-  pathnameToRoutePath,
 } from './isomorphic-utils/route-path.js';
 import type { RouteProps } from './isomorphic-utils/route-path.js';
 import {
@@ -813,53 +813,28 @@ const FollowError = ({
     }
   }, [routePath, routeQuery, routerState, reset, fail, error]);
   useEffect(() => {
-    const info = getErrorInfo(error);
     // the attempted url may not have reached the address bar yet
     const attemptedUrl = routerStateRef.current
       ? new URL(routerStateRef.current.url, window.location.href)
       : new URL(window.location.href);
-    let target: RouteProps;
-    let url: URL;
-    if (info?.location) {
-      const parsed = parseRedirectUrl(info.location, attemptedUrl);
-      if (!parsed) {
-        fail(
-          error,
-          new Error(`cannot follow a redirect to ${info.location}`, {
-            cause: error,
-          }),
-        );
-        return;
-      }
-      if (parsed.origin !== window.location.origin) {
-        window.location.replace(parsed.href);
-        return;
-      }
-      // a protocol-relative location is another origin's, never an app path
-      if (info.location.startsWith('/') && !info.location.startsWith('//')) {
-        // an app location has no base path; the browser url gets it back
-        target = {
-          path: pathnameToRoutePath(parsed.pathname),
-          query: parsed.searchParams.toString(),
-          hash: parsed.hash,
-        };
-        url = getRouteUrl(target);
-      } else {
-        target = parseRoute(parsed);
-        url = parsed;
-      }
-    } else if (info?.status === 404 && has404) {
-      // the same query a direct request would render the 404 page with
-      target = {
-        path: '/404',
-        query: attemptedUrl.searchParams.toString(),
-        hash: '',
-      };
-      // the 404 route renders while the url keeps the attempted location
-      url = attemptedUrl;
-    } else {
+    const follow = resolveFollow(error, attemptedUrl, has404);
+    if (follow.type === 'none') {
       return;
     }
+    if (follow.type === 'unfollowable') {
+      fail(
+        error,
+        new Error(`cannot follow a redirect to ${follow.location}`, {
+          cause: error,
+        }),
+      );
+      return;
+    }
+    if (follow.type === 'leave') {
+      window.location.replace(follow.url.href);
+      return;
+    }
+    const { target, url } = follow;
     if (followPromiseMap.has(error as object)) {
       return;
     }
