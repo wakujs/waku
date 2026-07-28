@@ -44,7 +44,7 @@ import {
   has404FromElements,
   isStaticFromElements,
 } from './client-utils/elements-meta.js';
-import { resolveFollow } from './client-utils/follow.js';
+import { resolveErrorRoute } from './client-utils/error-route.js';
 import {
   type PrefetchOptions,
   createPrefetchManager,
@@ -817,24 +817,24 @@ const FollowError = ({
     const attemptedUrl = routerStateRef.current
       ? new URL(routerStateRef.current.url, window.location.href)
       : new URL(window.location.href);
-    const follow = resolveFollow(error, attemptedUrl, has404);
-    if (follow.type === 'none') {
+    const errorRoute = resolveErrorRoute(error, attemptedUrl, has404);
+    if (errorRoute.type === 'none') {
       return;
     }
-    if (follow.type === 'unfollowable') {
+    if (errorRoute.type === 'unfollowable') {
       fail(
         error,
-        new Error(`cannot follow a redirect to ${follow.location}`, {
+        new Error(`cannot follow a redirect to ${errorRoute.location}`, {
           cause: error,
         }),
       );
       return;
     }
-    if (follow.type === 'leave') {
-      window.location.replace(follow.url.href);
+    if (errorRoute.type === 'leave') {
+      window.location.replace(errorRoute.url.href);
       return;
     }
-    const { target, url } = follow;
+    const { target, url } = errorRoute;
     if (followPromiseMap.has(error as object)) {
       return;
     }
@@ -1292,17 +1292,22 @@ const InnerRouter = ({
           return;
         }
         abortRef.current = null;
-        const follow =
+        const errorRoute =
           info?.status === 404 && has404
-            ? resolveFollow(e, targetUrl, has404)
+            ? resolveErrorRoute(e, targetUrl, has404)
             : undefined;
         const looping =
-          follow?.type === 'route' && isSameRoute(follow.target, nextRoute);
-        if (follow?.type === 'route' && !looping && changeRouteRef.current) {
-          return changeRouteRef.current(follow.target, {
+          errorRoute?.type === 'route' &&
+          isSameRoute(errorRoute.target, nextRoute);
+        if (
+          errorRoute?.type === 'route' &&
+          !looping &&
+          changeRouteRef.current
+        ) {
+          return changeRouteRef.current(errorRoute.target, {
             shouldScroll: options.shouldScroll,
             history: routerState.history,
-            url: follow.url,
+            url: errorRoute.url,
             follow: true,
             refetch: true,
           });

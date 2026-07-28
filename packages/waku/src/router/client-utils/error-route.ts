@@ -5,17 +5,17 @@ import {
 } from '../isomorphic-utils/route-path.js';
 import { getRouteUrl, parseRedirectUrl, parseRoute } from './route-url.js';
 
-export type Follow =
+export type ErrorRoute =
   | { type: 'route'; target: RouteProps; url: URL }
   | { type: 'leave'; url: URL }
   | { type: 'unfollowable'; location: string }
   | { type: 'none' };
 
-export const resolveFollow = (
+export const resolveErrorRoute = (
   error: unknown,
   attemptedUrl: URL,
   has404: boolean,
-): Follow => {
+): ErrorRoute => {
   const info = getErrorInfo(error);
   if (info?.location) {
     const parsed = parseRedirectUrl(info.location, attemptedUrl);
