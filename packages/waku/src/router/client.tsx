@@ -51,6 +51,7 @@ import {
 import {
   getRouteUrl,
   isSameRoute,
+  isSameRscRoute,
   parseRedirectUrl,
   parseRoute,
   pathnameToCurrentRoutePath,
@@ -530,9 +531,9 @@ const prefetchIfNotCurrent = (
   resolvedTo: string,
   options: PrefetchOptions | undefined,
 ) => {
-  const url = new URL(resolvedTo, window.location.href);
-  if (router && url.href !== window.location.href) {
-    router.prefetchRoute(parseRoute(url), options);
+  const route = parseRoute(new URL(resolvedTo, window.location.href));
+  if (router && !isSameRscRoute(route, parseRouteFromLocation())) {
+    router.prefetchRoute(route, options);
   }
 };
 
@@ -1226,11 +1227,8 @@ const InnerRouter = ({
         scroll: options.shouldScroll,
         pathChanged: nextRoute.path !== routeBefore.path,
       });
-      // the hash is client only, so it never changes what the server sends
       const shouldRefetch =
-        options.refetch ??
-        (nextRoute.path !== routeBefore.path ||
-          nextRoute.query !== routeBefore.query);
+        options.refetch ?? !isSameRscRoute(nextRoute, routeBefore);
       setErr(null);
       if (staticPathSet.has(nextRoute.path) || !shouldRefetch) {
         mergeElements({

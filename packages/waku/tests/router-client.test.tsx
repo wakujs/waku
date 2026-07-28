@@ -2750,6 +2750,36 @@ describe('Router integration', () => {
     }
   });
 
+  test('a hover prefetch skips a link that only adds a hash', async () => {
+    const prefetchRoute = vi.fn();
+    const view = await renderApp(
+      <RouterContext
+        value={{
+          route: { path: '/start', query: '', hash: '' },
+          changeRoute: vi.fn(async () => {}),
+          prefetchRoute,
+          routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set<string>(),
+        }}
+      >
+        <Link to="/start#target" unstable_prefetchOnEnter={{}}>
+          target
+        </Link>
+      </RouterContext>,
+    );
+
+    const link = view.container.querySelector('a');
+    if (!link) {
+      throw new Error('expected link');
+    }
+    link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+
+    // the hash never reaches the server, so there is nothing to prefetch
+    expect(prefetchRoute).not.toHaveBeenCalled();
+
+    view.unmount();
+  });
+
   // The instant shell: a prefetch for the target is adopted via
   // `unstable_prefetched` as the navigation's data source, while the eager
   // merge paints the static shell and the base.
