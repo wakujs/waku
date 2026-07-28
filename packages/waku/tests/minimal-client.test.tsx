@@ -1198,8 +1198,8 @@ describe('minimal/client refetch scenarios', () => {
     view.unmount();
   });
 
-  // react's createFromFetch hands back a pending thenable whose `then`
-  // returns nothing, so an adopted prefetch is not always a real promise
+  // createFromFetch says it returns a promise, but hands back a pending
+  // thenable whose `then` returns nothing
   const pendingThenable = (value: Record<string, unknown>) => {
     const resolvers: ((v: Record<string, unknown>) => void)[] = [];
     return {
@@ -1207,33 +1207,24 @@ describe('minimal/client refetch scenarios', () => {
         then(resolve: (v: Record<string, unknown>) => void) {
           resolvers.push(resolve);
         },
-      } as PromiseLike<Record<string, unknown>>,
+      } as unknown as Promise<Record<string, unknown>>,
       settle: () => resolvers.forEach((resolve) => resolve(value)),
     };
   };
 
-  test('an adopted prefetch may be a thenable, not a promise', async () => {
-    const view = await mount({ _value: null, page: 'P1' }, () => (
-      <Suspense fallback={null}>
-        <Slot id="page" />
-      </Suspense>
-    ));
-    const controller = new AbortController();
+  test('a decoded payload comes back chainable, not as react gave it', async () => {
     const { thenable, settle } = pendingThenable({ _value: null, page: 'P2' });
-    await act(async () => {
-      view
-        .refetch()('R/next.txt', undefined, {
-          unstable_prefetched: thenable,
-          signal: controller.signal,
-        })
-        .catch(() => {});
-      await wait();
-      settle();
-      await wait();
-    });
+    mocks.createFromFetch.mockReturnValue(thenable);
+    track(stubFetch());
 
-    expect(view.container.textContent).toBe('P2');
-    view.unmount();
+    // a thenable would return undefined from then, so this would throw
+    const chained = unstable_fetchRsc('R/next.txt')
+      .then((elements) => elements)
+      .finally(() => {});
+    await wait();
+    settle();
+
+    await expect(chained).resolves.toMatchObject({ page: 'P2' });
   });
 
   test('aborting a navigation releases the prefetch it adopted', async () => {
@@ -1279,15 +1270,14 @@ describe('minimal/client refetch scenarios', () => {
     );
     const onBuildIdMismatch = vi.fn();
     const controller = new AbortController();
-    const { thenable, settle } = pendingThenable({
-      _value: null,
-      page: 'P2',
-      _buildId: 'build-2',
+    let settle = () => {};
+    const prefetched = new Promise<Record<string, unknown>>((resolve) => {
+      settle = () => resolve({ _value: null, page: 'P2', _buildId: 'build-2' });
     });
     await act(async () => {
       view
         .refetch()('R/done.txt', undefined, {
-          unstable_prefetched: thenable,
+          unstable_prefetched: prefetched,
           signal: controller.signal,
           onBuildIdMismatch,
         })

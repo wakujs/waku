@@ -258,7 +258,7 @@ type Refetch = (
   rscPath: string,
   rscParams?: unknown,
   options?: FetchRscOptions & {
-    unstable_prefetched?: PromiseLike<Elements>;
+    unstable_prefetched?: Promise<Elements>;
     unstable_overlay?: Elements;
     unstable_swr?: {
       pin: (key: string | symbol) => boolean;
@@ -350,20 +350,19 @@ const reloadOnBuildIdMismatch = (
 };
 
 const abortable = (
-  elements: PromiseLike<Elements>,
+  elements: Promise<Elements>,
   signal: AbortSignal | undefined,
 ): Promise<Elements> => {
   if (!signal) {
-    return Promise.resolve(elements);
+    return elements;
+  }
+  if (signal.aborted) {
+    return Promise.reject(signal.reason);
   }
   return new Promise<Elements>((resolve, reject) => {
     const abort = () => reject(signal.reason);
-    if (signal.aborted) {
-      abort();
-    } else {
-      signal.addEventListener('abort', abort, { once: true });
-    }
-    Promise.resolve(elements)
+    signal.addEventListener('abort', abort, { once: true });
+    elements
       .then(resolve, reject)
       .finally(() => signal.removeEventListener('abort', abort));
   });
