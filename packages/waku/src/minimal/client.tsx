@@ -619,7 +619,6 @@ export const Root = ({
     delete fetchRscStore[ENTRY];
     let data: Promise<Elements>;
     if (prefetched) {
-      // an aborted navigation must not hold the chain or reload the url it left
       data = abortable(prefetched, options?.signal);
       reloadOnBuildIdMismatch(data, options?.onBuildIdMismatch);
     } else {
