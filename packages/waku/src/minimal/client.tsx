@@ -322,13 +322,16 @@ const decodeRsc = (
   temporaryReferences: ReturnType<typeof createTemporaryReferenceSet>,
   debugChannel:
     ReturnType<typeof setupDebugChannel>['debugChannel'] | undefined,
+  // react's thenable returns nothing from then, so chaining needs a real one
 ): Promise<Elements> =>
-  createFromFetch<Elements>(checkStatus(responsePromise), {
-    callServer: (funcId: string, args: unknown[]) =>
-      unstable_callServerRsc(funcId, args),
-    debugChannel,
-    temporaryReferences,
-  });
+  Promise.resolve(
+    createFromFetch<Elements>(checkStatus(responsePromise), {
+      callServer: (funcId: string, args: unknown[]) =>
+        unstable_callServerRsc(funcId, args),
+      debugChannel,
+      temporaryReferences,
+    }),
+  );
 
 const reloadOnBuildIdMismatch = (
   elements: Promise<Elements>,
