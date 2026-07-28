@@ -1198,6 +1198,44 @@ describe('minimal/client refetch scenarios', () => {
     view.unmount();
   });
 
+  // react's createFromFetch hands back a pending thenable whose `then`
+  // returns nothing, so an adopted prefetch is not always a real promise
+  const pendingThenable = (value: Record<string, unknown>) => {
+    const resolvers: ((v: Record<string, unknown>) => void)[] = [];
+    return {
+      thenable: {
+        then(resolve: (v: Record<string, unknown>) => void) {
+          resolvers.push(resolve);
+        },
+      } as unknown as Promise<Record<string, unknown>>,
+      settle: () => resolvers.forEach((resolve) => resolve(value)),
+    };
+  };
+
+  test('an adopted prefetch may be a thenable, not a promise', async () => {
+    const view = await mount({ _value: null, page: 'P1' }, () => (
+      <Suspense fallback={null}>
+        <Slot id="page" />
+      </Suspense>
+    ));
+    const controller = new AbortController();
+    const { thenable, settle } = pendingThenable({ _value: null, page: 'P2' });
+    await act(async () => {
+      view
+        .refetch()('R/next.txt', undefined, {
+          unstable_prefetched: thenable,
+          signal: controller.signal,
+        })
+        .catch(() => {});
+      await wait();
+      settle();
+      await wait();
+    });
+
+    expect(view.container.textContent).toBe('P2');
+    view.unmount();
+  });
+
   test('aborting a navigation releases the prefetch it adopted', async () => {
     const view = await mount({ _value: null, page: 'P1' }, () => (
       <Suspense fallback={null}>

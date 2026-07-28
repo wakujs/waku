@@ -353,13 +353,15 @@ const abortable = (
   if (!signal) {
     return elements;
   }
-  if (signal.aborted) {
-    return Promise.reject(signal.reason);
-  }
   return new Promise<Elements>((resolve, reject) => {
     const abort = () => reject(signal.reason);
-    signal.addEventListener('abort', abort, { once: true });
-    elements
+    if (signal.aborted) {
+      abort();
+    } else {
+      signal.addEventListener('abort', abort, { once: true });
+    }
+    // Promise.resolve, because a decoded payload is a thenable, not a promise
+    Promise.resolve(elements)
       .then(resolve, reject)
       .finally(() => signal.removeEventListener('abort', abort));
   });
