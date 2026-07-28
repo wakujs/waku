@@ -258,7 +258,8 @@ type Refetch = (
   rscPath: string,
   rscParams?: unknown,
   options?: FetchRscOptions & {
-    unstable_prefetched?: Promise<Elements>;
+    // react's decoded payload is a thenable, not a promise
+    unstable_prefetched?: PromiseLike<Elements>;
     unstable_overlay?: Elements;
     unstable_swr?: {
       pin: (key: string | symbol) => boolean;
@@ -347,11 +348,11 @@ const reloadOnBuildIdMismatch = (
 };
 
 const abortable = (
-  elements: Promise<Elements>,
+  elements: PromiseLike<Elements>,
   signal: AbortSignal | undefined,
 ): Promise<Elements> => {
   if (!signal) {
-    return elements;
+    return Promise.resolve(elements);
   }
   return new Promise<Elements>((resolve, reject) => {
     const abort = () => reject(signal.reason);
@@ -360,7 +361,6 @@ const abortable = (
     } else {
       signal.addEventListener('abort', abort, { once: true });
     }
-    // Promise.resolve, because a decoded payload is a thenable, not a promise
     Promise.resolve(elements)
       .then(resolve, reject)
       .finally(() => signal.removeEventListener('abort', abort));
@@ -618,9 +618,10 @@ export const Root = ({
     delete fetchRscStore[ENTRY];
     let data: Promise<Elements>;
     if (prefetched) {
-      reloadOnBuildIdMismatch(prefetched, options?.onBuildIdMismatch);
-      // without this an aborted navigation keeps the elements chain waiting
+      // without this an aborted navigation keeps the elements chain waiting,
+      // and a stale build arriving late reloads the url it walked away from
       data = abortable(prefetched, options?.signal);
+      reloadOnBuildIdMismatch(data, options?.onBuildIdMismatch);
     } else {
       if (swr?.base) {
         fetchRscStore[CACHED_ETAGS] = {

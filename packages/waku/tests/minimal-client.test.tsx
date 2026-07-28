@@ -1207,7 +1207,7 @@ describe('minimal/client refetch scenarios', () => {
         then(resolve: (v: Record<string, unknown>) => void) {
           resolvers.push(resolve);
         },
-      } as unknown as Promise<Record<string, unknown>>,
+      } as PromiseLike<Record<string, unknown>>,
       settle: () => resolvers.forEach((resolve) => resolve(value)),
     };
   };
@@ -1264,6 +1264,45 @@ describe('minimal/client refetch scenarios', () => {
 
     // the abandoned prefetch never settles, so the chain must not wait on it
     expect(view.container.textContent).toBe('P2');
+    view.unmount();
+  });
+
+  test('an aborted navigation does not act on its prefetch build id', async () => {
+    vi.stubEnv('WAKU_BUILD_ID', 'build-1');
+    const view = await mount(
+      { _value: null, page: 'P1', _buildId: 'build-1' },
+      () => (
+        <Suspense fallback={null}>
+          <Slot id="page" />
+        </Suspense>
+      ),
+    );
+    const onBuildIdMismatch = vi.fn();
+    const controller = new AbortController();
+    const { thenable, settle } = pendingThenable({
+      _value: null,
+      page: 'P2',
+      _buildId: 'build-2',
+    });
+    await act(async () => {
+      view
+        .refetch()('R/done.txt', undefined, {
+          unstable_prefetched: thenable,
+          signal: controller.signal,
+          onBuildIdMismatch,
+        })
+        .catch(() => {});
+      await wait();
+    });
+
+    controller.abort();
+    await act(async () => {
+      // the stale build arrives after the user moved on
+      settle();
+      await wait();
+    });
+
+    expect(onBuildIdMismatch).not.toHaveBeenCalled();
     view.unmount();
   });
 
