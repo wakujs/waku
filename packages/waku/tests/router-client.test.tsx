@@ -1833,6 +1833,52 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a start listener that navigates beats the navigation it interrupted', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [unstable_getRouteSlotId('/a')]: <Probe />,
+        [unstable_getRouteSlotId('/b')]: <Probe />,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    const refetch = getRefetchMock();
+    for (const path of ['/a', '/b']) {
+      refetch.mockResolvedValueOnce({
+        [ROUTE_ID]: [path, ''],
+        [IS_STATIC_ID]: true,
+      });
+      await act(async () => {
+        await capture.router!.push(path as never);
+      });
+    }
+
+    const events: string[] = [];
+    capture.router!.unstable_events.on('start', (route) => {
+      events.push(`start ${route.path}`);
+      if (route.path === '/a') {
+        void capture.router!.push('/b' as never);
+      }
+    });
+    capture.router!.unstable_events.on('complete', (route) =>
+      events.push(`complete ${route.path}`),
+    );
+
+    await act(async () => {
+      await capture.router!.push('/a' as never);
+      await flush();
+    });
+
+    expect(events).toEqual(['start /a', 'start /b', 'complete /b']);
+    expect(capture.router!.path).toBe('/b');
+    expect(window.location.pathname).toBe('/b');
+    view.unmount();
+  });
+
   test('push performs refetch for dynamic routes and emits start/complete events', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);

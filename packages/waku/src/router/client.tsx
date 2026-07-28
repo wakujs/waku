@@ -1208,6 +1208,10 @@ const InnerRouter = ({
       abortRef.current = abortController;
       const isAborted = () => abortController.signal.aborted;
       emitRouteChangeEvent('start', nextRoute);
+      // a start listener can navigate synchronously, which aborts this one
+      if (isAborted()) {
+        return;
+      }
       if (!options.follow) {
         followBudget.spent = 0; // a navigation of its own starts a fresh budget
       }
