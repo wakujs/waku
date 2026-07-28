@@ -258,7 +258,6 @@ type Refetch = (
   rscPath: string,
   rscParams?: unknown,
   options?: FetchRscOptions & {
-    // react's decoded payload is a thenable, not a promise
     unstable_prefetched?: PromiseLike<Elements>;
     unstable_overlay?: Elements;
     unstable_swr?: {
@@ -621,8 +620,7 @@ export const Root = ({
     delete fetchRscStore[ENTRY];
     let data: Promise<Elements>;
     if (prefetched) {
-      // without this an aborted navigation keeps the elements chain waiting,
-      // and a stale build arriving late reloads the url it walked away from
+      // an aborted navigation must not hold the chain or reload the url it left
       data = abortable(prefetched, options?.signal);
       reloadOnBuildIdMismatch(data, options?.onBuildIdMismatch);
     } else {
