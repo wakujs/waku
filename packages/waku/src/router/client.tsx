@@ -527,19 +527,23 @@ function useSharedRef<T>(
 }
 
 const prefetchIfNotCurrent = (
-  router: { prefetchRoute: PrefetchRoute } | null,
+  router: { route: RouteProps; prefetchRoute: PrefetchRoute } | null,
   resolvedTo: string,
   options: PrefetchOptions | undefined,
 ) => {
+  if (!router) {
+    return;
+  }
   const route = parseRoute(new URL(resolvedTo, window.location.href));
-  if (router && !isSameRscRoute(route, parseRouteFromLocation())) {
+  // the address bar can hold a route the router never committed
+  if (!isSameRscRoute(route, router.route)) {
     router.prefetchRoute(route, options);
   }
 };
 
 const usePrefetchOnView = (
   ref: RefObject<HTMLAnchorElement | null>,
-  router: { prefetchRoute: PrefetchRoute } | null,
+  router: { route: RouteProps; prefetchRoute: PrefetchRoute } | null,
   resolvedTo: string,
   options: PrefetchOptions | undefined,
 ) => {

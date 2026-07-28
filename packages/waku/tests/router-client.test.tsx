@@ -2780,6 +2780,42 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a hover prefetch compares with the route on screen, not the address bar', async () => {
+    // an interceptor or a failed navigation leaves the two apart
+    window.history.replaceState({}, '', '/blocked');
+    const prefetchRoute = vi.fn();
+    const view = await renderApp(
+      <RouterContext
+        value={{
+          route: { path: '/start', query: '', hash: '' },
+          changeRoute: vi.fn(async () => {}),
+          prefetchRoute,
+          routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set<string>(),
+        }}
+      >
+        <Link to="/start#target" unstable_prefetchOnEnter={{}}>
+          shown
+        </Link>
+        <Link to="/blocked#target" unstable_prefetchOnEnter={{}}>
+          in the url
+        </Link>
+      </RouterContext>,
+    );
+
+    const links = view.container.querySelectorAll('a');
+    links[0]!.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    expect(prefetchRoute).not.toHaveBeenCalled();
+
+    links[1]!.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    expect(prefetchRoute).toHaveBeenCalledWith(
+      { path: '/blocked', query: '', hash: '#target' },
+      {},
+    );
+
+    view.unmount();
+  });
+
   // The instant shell: a prefetch for the target is adopted via
   // `unstable_prefetched` as the navigation's data source, while the eager
   // merge paints the static shell and the base.
