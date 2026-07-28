@@ -1198,6 +1198,37 @@ describe('minimal/client refetch scenarios', () => {
     view.unmount();
   });
 
+  test('aborting a navigation releases the prefetch it adopted', async () => {
+    const view = await mount({ _value: null, page: 'P1' }, () => (
+      <Suspense fallback={null}>
+        <Slot id="page" />
+      </Suspense>
+    ));
+    const controller = new AbortController();
+    const pending = new Promise<Record<string, unknown>>(() => {});
+    await act(async () => {
+      view
+        .refetch()('R/pending.txt', undefined, {
+          unstable_prefetched: pending,
+          signal: controller.signal,
+        })
+        .catch(() => {});
+      await wait();
+    });
+
+    controller.abort();
+    await act(async () => {
+      await view.refetch()('R/next.txt', undefined, {
+        unstable_prefetched: { _value: null, page: 'P2' },
+      });
+      await wait();
+    });
+
+    // the abandoned prefetch never settles, so the chain must not wait on it
+    expect(view.container.textContent).toBe('P2');
+    view.unmount();
+  });
+
   test('adopting prefetched elements re-checks the build id', async () => {
     vi.stubEnv('WAKU_BUILD_ID', 'build-1');
     const view = await mount(

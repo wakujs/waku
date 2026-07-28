@@ -346,6 +346,25 @@ const reloadOnBuildIdMismatch = (
   );
 };
 
+const abortable = (
+  elements: Promise<Elements>,
+  signal: AbortSignal | undefined,
+): Promise<Elements> =>
+  signal
+    ? Promise.race([
+        elements,
+        new Promise<never>((_resolve, reject) => {
+          if (signal.aborted) {
+            reject(signal.reason);
+          } else {
+            signal.addEventListener('abort', () => reject(signal.reason), {
+              once: true,
+            });
+          }
+        }),
+      ])
+    : elements;
+
 const applyInputTransformers = (
   rscPath: string,
   rscParams: unknown,
@@ -597,8 +616,10 @@ export const Root = ({
     delete fetchRscStore[ENTRY];
     let data: Promise<Elements>;
     if (prefetched) {
-      data = Promise.resolve(prefetched);
-      reloadOnBuildIdMismatch(data, options?.onBuildIdMismatch);
+      const adopted = Promise.resolve(prefetched);
+      reloadOnBuildIdMismatch(adopted, options?.onBuildIdMismatch);
+      // without this an aborted navigation keeps the elements chain waiting
+      data = abortable(adopted, options?.signal);
     } else {
       if (swr?.base) {
         fetchRscStore[CACHED_ETAGS] = {
