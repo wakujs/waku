@@ -1871,12 +1871,52 @@ describe('Router integration', () => {
       await flushUntil(() => events.length >= 4);
     });
 
-    // every start reaches a terminal event, whichever order they interleave in
-    expect(events.filter((e) => e.startsWith('start')).length).toBe(2);
-    expect(events).toContain('error /slow');
-    expect(events).toContain('complete /fast');
+    // the superseded one closes before the winner announces itself, so a
+    // listener that flips a boolean is never left showing the wrong state
+    expect(events).toEqual([
+      'start /slow',
+      'error /slow',
+      'start /fast',
+      'complete /fast',
+    ]);
 
     view.unmount();
+  });
+
+  test('a listener that throws does not break the navigation', async () => {
+    const { view, capture, router } = await renderFollowRouter({
+      responses: [
+        { resolve: { [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: false } },
+      ],
+      slots: ['/next'],
+    });
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    try {
+      const events: string[] = [];
+      capture.router!.unstable_events.on('start', () => {
+        throw new Error('listener blew up');
+      });
+      for (const name of ['start', 'complete', 'error'] as const) {
+        capture.router!.unstable_events.on(name, (route) =>
+          events.push(`${name} ${route.path}`),
+        );
+      }
+
+      await act(async () => {
+        await router.push('/next').catch(() => {});
+        await flushUntil(() => events.length >= 2);
+      });
+
+      // the thrower is reported and the other listeners still see the whole run
+      expect(events).toEqual(['start /next', 'complete /next']);
+      expect(capture.router!.path).toBe('/next');
+      expect(consoleErrorSpy).toHaveBeenCalled();
+    } finally {
+      consoleErrorSpy.mockRestore();
+      view.unmount();
+    }
   });
 
   test('a 404 follow reports one navigation that landed on the 404 route', async () => {

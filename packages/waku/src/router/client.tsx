@@ -209,8 +209,12 @@ const createRouteChangeListeners = (): [
     if (!eventListenersSet.size) {
       return;
     }
-    for (const listener of eventListenersSet) {
-      listener(route);
+    for (const listener of [...eventListenersSet]) {
+      try {
+        listener(route);
+      } catch (e) {
+        console.error('Error in a route change listener:', e);
+      }
     }
   };
   return [
@@ -1193,19 +1197,24 @@ const InnerRouter = ({
   const fetchingSlices = useRef(new Set<SliceId>()).current;
   const followBudget = useRef<FollowBudget>({ spent: 0 }).current;
   const abortRef = useRef<AbortController | null>(null);
+  const announcedRef = useRef<RouteProps | null>(null);
 
   const changeRoute: ChangeRoute = useCallback(
     async function changeRoute(nextRoute, options) {
+      const superseded = abortRef.current ? announcedRef.current : null;
       abortRef.current?.abort();
       const abortController = new AbortController();
       abortRef.current = abortController;
       const isAborted = () => abortController.signal.aborted;
+      if (superseded) {
+        emitRouteChangeEvent('error', superseded);
+      }
       if (options.follow !== 'inline') {
+        announcedRef.current = nextRoute;
         emitRouteChangeEvent('start', nextRoute);
       }
       // a start listener can navigate synchronously, which aborts this one
       if (isAborted()) {
-        emitRouteChangeEvent('error', nextRoute);
         return;
       }
       if (!options.follow) {
@@ -1268,7 +1277,6 @@ const InnerRouter = ({
       try {
         const resolved = await dataPromise;
         if (isAborted()) {
-          emitRouteChangeEvent('error', nextRoute);
           return;
         }
         abortRef.current = null;
@@ -1279,7 +1287,6 @@ const InnerRouter = ({
         );
       } catch (e) {
         if (isAborted()) {
-          emitRouteChangeEvent('error', nextRoute);
           return;
         }
         const info = getErrorInfo(e);
