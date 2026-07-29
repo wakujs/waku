@@ -176,7 +176,7 @@ type ChangeRouteOptions = {
   history: 'push' | 'replace' | null;
   url?: URL | undefined;
   instant?: boolean | undefined;
-  follow?: 'inline' | 'boundary' | undefined;
+  follow?: 'continues' | 'announces' | undefined;
 };
 
 type ChangeRoute = (
@@ -885,7 +885,7 @@ const FollowError = ({
             : target.path !== caught.path,
           history: 'replace',
           url,
-          follow: 'boundary',
+          follow: 'announces',
           refetch: true,
         }).then(
           () => {
@@ -1217,7 +1217,7 @@ const InnerRouter = ({
       if (isAborted()) {
         return;
       }
-      if (options.follow !== 'inline') {
+      if (options.follow !== 'continues') {
         announcedRef.current = nextRoute;
         emitRouteChangeEvent('start', nextRoute);
       }
@@ -1333,7 +1333,7 @@ const InnerRouter = ({
             shouldScroll: options.shouldScroll,
             history: null,
             url: errorRoute.url,
-            follow: 'inline',
+            follow: 'continues',
             refetch: true,
           });
         }
