@@ -2021,7 +2021,7 @@ describe('Router integration', () => {
     }
   });
 
-  test('a listener registered after a navigating one sees it out of order', async () => {
+  test('a listener that navigates does not reorder events for others', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(((rscPath: string) => {
@@ -2062,12 +2062,12 @@ describe('Router integration', () => {
         await flushUntil(() => events.includes('complete /b'));
       });
 
-      // documented caveat: the nested navigation is served before the rest of
-      // the emit reaches listeners registered after the one that navigated
+      // the nested navigation's events queue behind the emit that caused them,
+      // so this listener sees the same order as one registered first
       expect(events).toEqual([
+        'start /a',
         'error /a',
         'start /b',
-        'start /a',
         'complete /b',
       ]);
     } finally {

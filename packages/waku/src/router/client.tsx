@@ -204,23 +204,39 @@ const createRouteChangeListeners = (): [
     complete: new Set(),
     error: new Set(),
   };
+  const queued: [ChangeRouteEvent, RouteProps][] = [];
+  let dispatching = false;
   const emit = (event: ChangeRouteEvent, route: RouteProps) => {
-    const eventListenersSet = listeners[event];
-    if (!eventListenersSet.size) {
+    queued.push([event, route]);
+    if (dispatching) {
       return;
     }
-    for (const listener of [...eventListenersSet]) {
-      if (!eventListenersSet.has(listener)) {
-        continue;
+    dispatching = true;
+    try {
+      let next = queued.shift();
+      while (next) {
+        const [queuedEvent, queuedRoute] = next;
+        const eventListenersSet = listeners[queuedEvent];
+        const report = (e: unknown) => {
+          console.error(
+            `Error in a route change '${queuedEvent}' listener:`,
+            e,
+          );
+        };
+        for (const listener of [...eventListenersSet]) {
+          if (!eventListenersSet.has(listener)) {
+            continue;
+          }
+          try {
+            Promise.resolve(listener(queuedRoute)).catch(report);
+          } catch (e) {
+            report(e);
+          }
+        }
+        next = queued.shift();
       }
-      const report = (e: unknown) => {
-        console.error(`Error in a route change '${event}' listener:`, e);
-      };
-      try {
-        Promise.resolve(listener(route)).catch(report);
-      } catch (e) {
-        report(e);
-      }
+    } finally {
+      dispatching = false;
     }
   };
   return [
