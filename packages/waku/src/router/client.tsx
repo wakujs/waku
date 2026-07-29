@@ -111,9 +111,11 @@ type NavigateOptions = {
 /**
  * Resolves once the requested navigation has been handled: after its response
  * when the route needs one, right away when it does not, and when a newer
- * navigation supersedes it. It covers a 404 the response leads to, but not a
- * redirect thrown while rendering, and it does not wait for React to render the
- * destination, so the address bar may still show the previous url.
+ * navigation supersedes it. A response that came back 404 is covered, because
+ * the 404 page is fetched first; anything the destination throws while
+ * rendering is followed after it resolves. It rejects when the navigation
+ * fails, and it does not wait for React to render, so the address bar may still
+ * show the previous url.
  */
 type Navigate = {
   (to: RouteHref, options?: NavigateOptions): Promise<void>;
@@ -174,7 +176,7 @@ type ChangeRouteOptions = {
   history: 'push' | 'replace' | null;
   url?: URL | undefined;
   instant?: boolean | undefined;
-  follow?: boolean | undefined; // dispatched by the error boundary, not a user
+  follow?: boolean | undefined;
 };
 
 type ChangeRoute = (
@@ -785,7 +787,7 @@ const FollowError = ({
   const dispatchedRef = useRef<readonly [string, string] | undefined>(
     undefined,
   );
-  const failedTargetRef = useRef<RouteProps | undefined>(undefined);
+  const stateAtDispatchRef = useRef<RouterState | undefined>(undefined);
   const routerStateRef = useRef(routerState);
   useEffect(() => {
     routerStateRef.current = routerState;
@@ -800,14 +802,17 @@ const FollowError = ({
     const dispatched = dispatchedRef.current;
     if (
       dispatched &&
-      !routerState?.failed && // a failed follow committed no route
-      routerState?.attempted[0] === dispatched[0] &&
-      routerState?.attempted[1] === dispatched[1]
+      routerState &&
+      routerState !== stateAtDispatchRef.current &&
+      !routerState.failed
     ) {
-      if (dispatched[0] === routePath) {
-        reset();
+      const landed =
+        routerState.attempted[0] === dispatched[0] &&
+        routerState.attempted[1] === dispatched[1];
+      if (landed && dispatched[0] !== routePath) {
+        fail(error, new Error('detected a navigation loop', { cause: error }));
       } else {
-        fail(error, new Error('detected a redirect loop', { cause: error }));
+        reset();
       }
     }
   }, [routePath, routeQuery, routerState, reset, fail, error]);
@@ -839,14 +844,7 @@ const FollowError = ({
     }
     const caught = parseRoute(attemptedUrl);
     if (isSameRoute(target, caught)) {
-      fail(error, new Error('detected a redirect loop', { cause: error }));
-      return;
-    }
-    if (
-      failedTargetRef.current &&
-      isSameRoute(target, failedTargetRef.current)
-    ) {
-      fail(error, new Error('the follow target failed too', { cause: error }));
+      fail(error, new Error('detected a navigation loop', { cause: error }));
       return;
     }
     if (!countHop()) {
@@ -857,6 +855,7 @@ const FollowError = ({
       return;
     }
     dispatchedRef.current = [target.path, target.query];
+    stateAtDispatchRef.current = routerStateRef.current;
     startTransition(() => {
       followPromiseMap.set(
         error as object,
@@ -875,7 +874,6 @@ const FollowError = ({
           },
           (err) => {
             followPromiseMap.delete(error as object);
-            failedTargetRef.current = target;
             fail(error, err);
           },
         ),
@@ -1182,10 +1180,9 @@ const InnerRouter = ({
   const fetchingSlices = useRef(new Set<SliceId>()).current;
   const followBudget = useRef<FollowBudget>({ spent: 0 }).current;
   const abortRef = useRef<AbortController | null>(null);
-  const changeRouteRef = useRef<ChangeRoute | null>(null);
 
   const changeRoute: ChangeRoute = useCallback(
-    async (nextRoute, options) => {
+    async function changeRoute(nextRoute, options) {
       abortRef.current?.abort();
       const abortController = new AbortController();
       abortRef.current = abortController;
@@ -1287,29 +1284,6 @@ const InnerRouter = ({
           return;
         }
         abortRef.current = null;
-        const errorRoute =
-          info?.status === 404 && has404
-            ? resolveErrorRoute(e, targetUrl, has404)
-            : undefined;
-        const looping =
-          errorRoute?.type === 'route' &&
-          isSameRoute(errorRoute.target, nextRoute);
-        if (
-          errorRoute?.type === 'route' &&
-          !looping &&
-          changeRouteRef.current
-        ) {
-          return changeRouteRef.current(errorRoute.target, {
-            shouldScroll: options.shouldScroll,
-            history: routerState.history,
-            url: errorRoute.url,
-            follow: true,
-            refetch: true,
-          });
-        }
-        const failure = looping
-          ? new Error('detected a redirect loop', { cause: e })
-          : e;
         // write the url now; an unrecoverable rethrow discards the commit
         if (window.location.href !== targetUrl.href) {
           if (routerState.history === 'push') {
@@ -1317,6 +1291,20 @@ const InnerRouter = ({
           } else {
             window.history.replaceState(window.history.state, '', targetUrl);
           }
+        }
+        const errorRoute = resolveErrorRoute(e, targetUrl, has404);
+        let failure = e;
+        if (errorRoute.type === 'route') {
+          if (!isSameRoute(errorRoute.target, nextRoute)) {
+            return changeRoute(errorRoute.target, {
+              shouldScroll: options.shouldScroll,
+              history: null,
+              url: errorRoute.url,
+              follow: true,
+              refetch: true,
+            });
+          }
+          failure = new Error('detected a navigation loop', { cause: e });
         }
         mergeElements({
           [ROUTER_STATE_ID]: {
@@ -1341,10 +1329,6 @@ const InnerRouter = ({
       prefetchManager,
     ],
   );
-
-  useEffect(() => {
-    changeRouteRef.current = changeRoute;
-  }, [changeRoute]);
 
   const applyChangeRouteData = useCallback(
     async (routeData: unknown, isStatic: unknown) => {

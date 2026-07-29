@@ -4721,7 +4721,9 @@ describe('Router integration', () => {
           await flush();
         }
       });
-      expect(view.container.textContent).toContain('detected a redirect loop');
+      expect(view.container.textContent).toContain(
+        'detected a navigation loop',
+      );
       expect(refetch).toHaveBeenCalledTimes(1);
     } finally {
       consoleErrorSpy.mockRestore();
@@ -5122,6 +5124,49 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a follow that lands on 404 lets the boundary render again', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const toGone = createCustomError('redirect', {
+      status: 307,
+      location: '/gone',
+    });
+    const ThrowToGone = () => {
+      throw toGone;
+    };
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(((rscPath: string) =>
+      rscPath === unstable_encodeRoutePath('/404')
+        ? Promise.resolve({
+            [unstable_getRouteSlotId('/404')]: <Probe />,
+            [ROUTE_ID]: ['/404', ''],
+            [IS_STATIC_ID]: false,
+          })
+        : Promise.reject(
+            createCustomError('nf', { status: 404 }),
+          )) as unknown as ReturnType<typeof useRefetch>);
+    installRefetch(refetch);
+
+    testHoisted.elements = {
+      [unstable_getRouteSlotId('/404')]: <ThrowToGone />,
+      [ROUTE_ID]: ['/404', ''],
+      [IS_STATIC_ID]: false,
+      [HAS404_ID]: true,
+    };
+    const view = await renderApp(
+      <ErrorBoundary>
+        <Router initialRoute={{ path: '/404', query: '', hash: '' }} />
+      </ErrorBoundary>,
+    );
+    await act(async () => {
+      for (let i = 0; i < 6; i += 1) {
+        await flush();
+      }
+    });
+
+    expect(view.container.textContent).toContain('/404|');
+    view.unmount();
+  });
+
   test('a 404 route that itself 404s stops instead of hitting the hop limit', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
@@ -5157,7 +5202,9 @@ describe('Router integration', () => {
 
       // one request for /missing, one for /404, then it gives up
       expect(refetch).toHaveBeenCalledTimes(2);
-      expect(view.container.textContent).toContain('detected a redirect loop');
+      expect(view.container.textContent).toContain(
+        'detected a navigation loop',
+      );
     } finally {
       consoleErrorSpy.mockRestore();
       view.unmount();
@@ -5815,7 +5862,9 @@ describe('Router integration', () => {
       await flush();
       await flush();
 
-      expect(view.container.textContent).toContain('detected a redirect loop');
+      expect(view.container.textContent).toContain(
+        'detected a navigation loop',
+      );
 
       view.unmount();
     } finally {
@@ -6046,7 +6095,7 @@ describe('Router integration', () => {
       await flush();
 
       expect(view.container.textContent).not.toContain(
-        'detected a redirect loop',
+        'detected a navigation loop',
       );
       expect(view.container.textContent).toContain('Start Section');
       expect(window.location.hash).toBe('#section');
@@ -6093,7 +6142,9 @@ describe('Router integration', () => {
       await flush();
       await flush();
 
-      expect(view.container.textContent).toContain('detected a redirect loop');
+      expect(view.container.textContent).toContain(
+        'detected a navigation loop',
+      );
 
       view.unmount();
     } finally {

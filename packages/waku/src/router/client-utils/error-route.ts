@@ -1,7 +1,7 @@
 import { unstable_getErrorInfo as getErrorInfo } from '../../minimal/client.js';
 import {
-  pathnameToRoutePath,
   type RouteProps,
+  pathnameToRoutePath,
 } from '../isomorphic-utils/route-path.js';
 import { getRouteUrl, parseRedirectUrl, parseRoute } from './route-url.js';
 
@@ -25,9 +25,7 @@ export const resolveErrorRoute = (
     if (parsed.origin !== window.location.origin) {
       return { type: 'leave', url: parsed };
     }
-    // a protocol-relative location is another origin's, never an app path
     if (info.location.startsWith('/') && !info.location.startsWith('//')) {
-      // an app location has no base path; the browser url gets it back
       const target = {
         path: pathnameToRoutePath(parsed.pathname),
         query: parsed.searchParams.toString(),
@@ -38,13 +36,11 @@ export const resolveErrorRoute = (
     return { type: 'route', target: parseRoute(parsed), url: parsed };
   }
   if (info?.status === 404 && has404) {
-    // the same query a direct request would render the 404 page with
     const target = {
       path: '/404',
       query: attemptedUrl.searchParams.toString(),
       hash: '',
     };
-    // the 404 route renders while the url keeps the attempted location
     return { type: 'route', target, url: attemptedUrl };
   }
   return { type: 'none' };
