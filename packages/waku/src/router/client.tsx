@@ -111,9 +111,9 @@ type NavigateOptions = {
 /**
  * Resolves once the requested navigation has been handled: after its response
  * when the route needs one, right away when it does not, and when a newer
- * navigation supersedes it. It does not wait for a redirect or 404 follow that
- * starts afterwards, nor for React to render the destination, so the address
- * bar may still show the previous url.
+ * navigation supersedes it. It covers a 404 the response leads to, but not a
+ * redirect thrown while rendering, and it does not wait for React to render the
+ * destination, so the address bar may still show the previous url.
  */
 type Navigate = {
   (to: RouteHref, options?: NavigateOptions): Promise<void>;
@@ -177,11 +177,10 @@ type ChangeRouteOptions = {
   follow?: boolean | undefined; // dispatched by the error boundary, not a user
 };
 
-/** Resolves with a followable error instead of rejecting: a follow is a handoff. */
 type ChangeRoute = (
   route: RouteProps,
   options: ChangeRouteOptions,
-) => Promise<unknown>;
+) => Promise<void>;
 
 type ChangeRouteEvent = 'start' | 'complete';
 
@@ -260,7 +259,7 @@ const dispatchChangeRoute = (
 ): Promise<void> => {
   if (options.instant) {
     // instant paints from the cache; a transition would hold that back
-    return changeRoute(route, options).then(() => undefined);
+    return changeRoute(route, options);
   }
   // a transition keeps the tree up while the eager merge suspends
   return new Promise<void>((resolve, reject) => {
@@ -870,13 +869,9 @@ const FollowError = ({
           follow: true,
           refetch: true,
         }).then(
-          (followable) => {
+          () => {
             // a module scoped error is thrown again, so let it follow again
             followPromiseMap.delete(error as object);
-            if (followable !== undefined) {
-              failedTargetRef.current = target;
-              fail(error, followable);
-            }
           },
           (err) => {
             followPromiseMap.delete(error as object);
