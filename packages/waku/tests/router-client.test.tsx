@@ -5124,6 +5124,61 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a start listener navigating back does not spin the boundary', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const toNext = createCustomError('redirect', {
+      status: 307,
+      location: '/next',
+    });
+    const ThrowToNext = () => {
+      throw toNext;
+    };
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>((() =>
+      Promise.resolve({
+        [unstable_getRouteSlotId('/a')]: <ThrowToNext />,
+        [ROUTE_ID]: ['/a', ''],
+        [IS_STATIC_ID]: false,
+      })) as unknown as ReturnType<typeof useRefetch>);
+    installRefetch(refetch);
+
+    testHoisted.elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/next')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const view = await renderApp(
+      <ErrorBoundary>
+        <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
+      </ErrorBoundary>,
+    );
+    try {
+      let dispatches = 0;
+      capture.router?.unstable_events.on('start', (route) => {
+        if (route.path === '/next') {
+          dispatches += 1;
+          void capture.router!.push('/a' as never).catch(() => {});
+        }
+      });
+      await act(async () => {
+        await capture.router!.push('/a' as never).catch(() => {});
+        for (let i = 0; i < 12; i += 1) {
+          await flush();
+        }
+      });
+
+      // the interrupted follow must not re-arm itself forever
+      expect(dispatches).toBeLessThan(4);
+    } finally {
+      consoleErrorSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('a follow that lands on 404 lets the boundary render again', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);

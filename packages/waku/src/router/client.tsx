@@ -809,9 +809,16 @@ const FollowError = ({
       const landed =
         routerState.attempted[0] === dispatched[0] &&
         routerState.attempted[1] === dispatched[1];
-      if (landed && dispatched[0] !== routePath) {
-        fail(error, new Error('detected a navigation loop', { cause: error }));
-      } else {
+      if (landed) {
+        if (dispatched[0] === routePath) {
+          reset();
+        } else {
+          fail(
+            error,
+            new Error('detected a navigation loop', { cause: error }),
+          );
+        }
+      } else if (routerState.follow) {
         reset();
       }
     }
@@ -1201,6 +1208,7 @@ const InnerRouter = ({
         history: options.history,
         scroll: options.shouldScroll,
         pathChanged: nextRoute.path !== routeBefore.path,
+        follow: options.follow,
       });
       const shouldRefetch =
         options.refetch ?? !isSameRscRoute(nextRoute, routeBefore);
