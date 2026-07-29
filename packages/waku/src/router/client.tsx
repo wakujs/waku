@@ -213,10 +213,13 @@ const createRouteChangeListeners = (): [
       if (!eventListenersSet.has(listener)) {
         continue;
       }
-      try {
-        listener(route);
-      } catch (e) {
+      const report = (e: unknown) => {
         console.error(`Error in a route change '${event}' listener:`, e);
+      };
+      try {
+        Promise.resolve(listener(route)).catch(report);
+      } catch (e) {
+        report(e);
       }
     }
   };

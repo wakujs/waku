@@ -2021,6 +2021,92 @@ describe('Router integration', () => {
     }
   });
 
+  test('a listener registered after a navigating one sees it out of order', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(((rscPath: string) => {
+      const path = rscPath === unstable_encodeRoutePath('/b') ? '/b' : '/a';
+      return Promise.resolve({
+        [unstable_getRouteSlotId(path)]: <Probe />,
+        [ROUTE_ID]: [path, ''],
+        [IS_STATIC_ID]: false,
+      });
+    }) as unknown as ReturnType<typeof useRefetch>);
+    installRefetch(refetch);
+
+    testHoisted.elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+    const view = await renderApp(
+      <Router initialRoute={{ path: '/start', query: '', hash: '' }} />,
+    );
+    try {
+      const events: string[] = [];
+      let redirected = false;
+      capture.router!.unstable_events.on('start', (route) => {
+        if (route.path === '/a' && !redirected) {
+          redirected = true;
+          void capture.router!.push('/b' as never).catch(() => {});
+        }
+      });
+      for (const name of ['start', 'complete', 'error'] as const) {
+        capture.router!.unstable_events.on(name, (route) =>
+          events.push(`${name} ${route.path}`),
+        );
+      }
+
+      await act(async () => {
+        await capture.router!.push('/a' as never).catch(() => {});
+        await flushUntil(() => events.includes('complete /b'));
+      });
+
+      // documented caveat: the nested navigation is served before the rest of
+      // the emit reaches listeners registered after the one that navigated
+      expect(events).toEqual([
+        'error /a',
+        'start /b',
+        'start /a',
+        'complete /b',
+      ]);
+    } finally {
+      view.unmount();
+    }
+  });
+
+  test('an async listener that rejects is reported like a sync one', async () => {
+    const { view, capture, router } = await renderFollowRouter({
+      responses: [
+        { resolve: { [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: false } },
+      ],
+      slots: ['/next'],
+    });
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    try {
+      const events: string[] = [];
+      capture.router!.unstable_events.on('start', async () => {
+        throw new Error('async listener blew up');
+      });
+      capture.router!.unstable_events.on('complete', (route) =>
+        events.push(`complete ${route.path}`),
+      );
+
+      await act(async () => {
+        await router.push('/next').catch(() => {});
+        await flushUntil(() => events.length > 0);
+      });
+
+      expect(events).toEqual(['complete /next']);
+      expect(consoleErrorSpy).toHaveBeenCalled();
+    } finally {
+      consoleErrorSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('a listener removed during an emit is not called', async () => {
     const { view, capture, router } = await renderFollowRouter({
       responses: [
