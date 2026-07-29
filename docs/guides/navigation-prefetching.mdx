@@ -210,6 +210,37 @@ export const NavLink = () => (
 
 `useNavigationStatus_UNSTABLE()` must be called from a Client Component rendered inside the `<Link>`, which means the indicator lives inside the `<a>`. Keep it non-interactive and `aria-hidden` (as above), since it becomes part of the link's accessible name and click target; to render pending UI outside the anchor, drive it from route-change events instead. Called outside any `<Link>`, the hook returns an empty object (not `{ pending: false }`).
 
+## Route Change Events
+
+To drive pending UI from outside a `<Link>`, subscribe to route change events:
+
+```tsx
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'waku';
+
+export const ProgressBar = () => {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    const start = () => setBusy(true);
+    const stop = () => setBusy(false);
+    router.unstable_events.on('start', start);
+    router.unstable_events.on('complete', stop);
+    router.unstable_events.on('error', stop);
+    return () => {
+      router.unstable_events.off('start', start);
+      router.unstable_events.off('complete', stop);
+      router.unstable_events.off('error', stop);
+    };
+  }, [router]);
+  return busy ? <span>Loading...</span> : null;
+};
+```
+
+Every `start` is followed by exactly one `complete` or `error`, so a spinner started on `start` always stops. `complete` carries the route that ended up showing, which is not always the one you asked for: a server redirect or a missing page reports where it landed. `error` fires when the navigation fails, and also when a newer navigation supersedes it. A redirect that leaves the app is the one case with no closing event, because the browser is already loading the next page.
+
 ## Custom Transitions
 
 For advanced navigation effects, pass `unstable_startTransition` to control how Waku starts the route transition. One common use case is integrating the browser View Transitions API:

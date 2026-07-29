@@ -1807,6 +1807,78 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a failed navigation ends with an error event', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>((() =>
+      Promise.reject(
+        createCustomError('boom', { status: 500 }),
+      )) as unknown as ReturnType<typeof useRefetch>);
+    installRefetch(refetch);
+
+    testHoisted.elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const view = await renderApp(
+      <ErrorBoundary>
+        <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
+      </ErrorBoundary>,
+    );
+    try {
+      const events: string[] = [];
+      for (const name of ['start', 'complete', 'error'] as const) {
+        capture.router!.unstable_events.on(name, (route) =>
+          events.push(`${name} ${route.path}`),
+        );
+      }
+
+      await act(async () => {
+        await capture.router!.push('/next' as never).catch(() => {});
+        await flushUntil(() => events.length >= 2);
+      });
+
+      expect(events).toEqual(['start /next', 'error /next']);
+    } finally {
+      consoleErrorSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
+  test('a superseded navigation ends with an error event', async () => {
+    const { view, capture, router } = await renderFollowRouter({
+      responses: [
+        { resolve: { [ROUTE_ID]: ['/slow', ''], [IS_STATIC_ID]: false } },
+        { resolve: { [ROUTE_ID]: ['/fast', ''], [IS_STATIC_ID]: false } },
+      ],
+      slots: ['/slow', '/fast'],
+    });
+    const events: string[] = [];
+    for (const name of ['start', 'complete', 'error'] as const) {
+      capture.router!.unstable_events.on(name, (route) =>
+        events.push(`${name} ${route.path}`),
+      );
+    }
+
+    await act(async () => {
+      const slow = router.push('/slow').catch(() => {});
+      await router.push('/fast').catch(() => {});
+      await slow;
+      await flushUntil(() => events.length >= 4);
+    });
+
+    // every start reaches a terminal event, whichever order they interleave in
+    expect(events.filter((e) => e.startsWith('start')).length).toBe(2);
+    expect(events).toContain('error /slow');
+    expect(events).toContain('complete /fast');
+
+    view.unmount();
+  });
+
   test('a 404 follow reports one navigation that landed on the 404 route', async () => {
     const { view, capture, router } = await renderFollowRouter({
       responses: [

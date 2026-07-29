@@ -184,7 +184,7 @@ type ChangeRoute = (
   options: ChangeRouteOptions,
 ) => Promise<void>;
 
-type ChangeRouteEvent = 'start' | 'complete';
+type ChangeRouteEvent = 'start' | 'complete' | 'error';
 
 type ChangeRouteCallback = (route: RouteProps) => void;
 
@@ -202,6 +202,7 @@ const createRouteChangeListeners = (): [
   const listeners: Record<ChangeRouteEvent, Set<ChangeRouteCallback>> = {
     start: new Set(),
     complete: new Set(),
+    error: new Set(),
   };
   const emit = (event: ChangeRouteEvent, route: RouteProps) => {
     const eventListenersSet = listeners[event];
@@ -1204,6 +1205,7 @@ const InnerRouter = ({
       }
       // a start listener can navigate synchronously, which aborts this one
       if (isAborted()) {
+        emitRouteChangeEvent('error', nextRoute);
         return;
       }
       if (!options.follow) {
@@ -1266,6 +1268,7 @@ const InnerRouter = ({
       try {
         const resolved = await dataPromise;
         if (isAborted()) {
+          emitRouteChangeEvent('error', nextRoute);
           return;
         }
         abortRef.current = null;
@@ -1276,6 +1279,7 @@ const InnerRouter = ({
         );
       } catch (e) {
         if (isAborted()) {
+          emitRouteChangeEvent('error', nextRoute);
           return;
         }
         const info = getErrorInfo(e);
@@ -1331,6 +1335,7 @@ const InnerRouter = ({
           },
         });
         setErr(failure);
+        emitRouteChangeEvent('error', nextRoute);
         throw failure;
       }
     },
