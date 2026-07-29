@@ -216,7 +216,7 @@ const createRouteChangeListeners = (): [
       try {
         listener(route);
       } catch (e) {
-        console.error('Error in a route change listener:', e);
+        console.error(`Error in a route change '${event}' listener:`, e);
       }
     }
   };

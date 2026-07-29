@@ -1937,6 +1937,55 @@ describe('Router integration', () => {
     }
   });
 
+  test('a 404 follow that fails closes with the route it was fetching', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>();
+    refetch
+      .mockImplementationOnce(() =>
+        Promise.reject(createCustomError('nf', { status: 404 })),
+      )
+      .mockImplementationOnce(() =>
+        Promise.reject(createCustomError('boom', { status: 500 })),
+      );
+    installRefetch(refetch);
+
+    testHoisted.elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/404')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+      [HAS404_ID]: true,
+    };
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const view = await renderApp(
+      <ErrorBoundary>
+        <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
+      </ErrorBoundary>,
+    );
+    try {
+      const events: string[] = [];
+      for (const name of ['start', 'complete', 'error'] as const) {
+        capture.router!.unstable_events.on(name, (route) =>
+          events.push(`${name} ${route.path}`),
+        );
+      }
+
+      await act(async () => {
+        await capture.router!.push('/missing' as never).catch(() => {});
+        await flushUntil(() => events.length >= 2);
+      });
+
+      // the start still closes, carrying the route the follow was fetching
+      expect(events).toEqual(['start /missing', 'error /404']);
+    } finally {
+      consoleErrorSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('a navigation after a finished one reports no error', async () => {
     const { view, capture, router } = await renderFollowRouter({
       responses: [

@@ -245,7 +245,7 @@ export const NavigationLogger = () => {
 
 Unless the browser takes over the page, every `start` is followed by exactly one `complete` or `error`, and they never interleave: when a second navigation supersedes one that is still running, the first one's `error` arrives before the second one's `start`.
 
-`complete` carries the route the response landed on, which is not always the one you asked for, because the server can redirect or send the 404 page. It fires when the response has been handled, not when React has finished rendering it. `error` means the navigation failed or was superseded. A listener that throws is reported to the console and does not affect the navigation or the other listeners.
+`complete` carries the route the response landed on, which is not always the one you asked for, because the server can redirect or send the 404 page. It fires when the response has been handled, not when React has finished rendering it. `error` means the navigation failed or was superseded. A superseded one reports the route it announced; a failed one reports the route it was fetching, which is the 404 page when the follow to it failed. A listener that throws is reported to the console and does not affect the navigation or the other listeners. A listener that navigates is served immediately, so listeners registered after it see the new navigation before the rest of the current one.
 
 A redirect carried by the response is the case where the browser takes over: it emits no closing event, because a full page load is already under way.
 
