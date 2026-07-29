@@ -779,10 +779,12 @@ const FollowError = ({
   followPromiseMap: WeakMap<object, Promise<unknown>>;
 }) => {
   const { route, routerState, changeRoute } = useRouterOrThrow();
-  const { path: routePath, query: routeQuery } = route;
-  const caughtAtRef = useRef<readonly [string, string] | undefined>(undefined);
+  const { path: routePath, query: routeQuery, hash: routeHash } = route;
+  const caughtAtRef = useRef<readonly [string, string, string] | undefined>(
+    undefined,
+  );
   if (caughtAtRef.current === undefined) {
-    caughtAtRef.current = [routePath, routeQuery];
+    caughtAtRef.current = [routePath, routeQuery, routeHash];
   }
   const dispatchedRef = useRef<readonly [string, string] | undefined>(
     undefined,
@@ -793,9 +795,13 @@ const FollowError = ({
     routerStateRef.current = routerState;
   }, [routerState]);
   useEffect(() => {
-    const [caughtPath, caughtQuery] = caughtAtRef.current!;
+    const [caughtPath, caughtQuery, caughtHash] = caughtAtRef.current!;
     // a route change means the followed slot is committed; safe to reset
-    if (routePath !== caughtPath || routeQuery !== caughtQuery) {
+    if (
+      routePath !== caughtPath ||
+      routeQuery !== caughtQuery ||
+      routeHash !== caughtHash
+    ) {
       reset();
       return;
     }
@@ -816,7 +822,7 @@ const FollowError = ({
         fail(error, new Error('detected a navigation loop', { cause: error }));
       }
     }
-  }, [routePath, routeQuery, routerState, reset, fail, error]);
+  }, [routePath, routeQuery, routeHash, routerState, reset, fail, error]);
   useEffect(() => {
     // the attempted url may not have reached the address bar yet
     const attemptedUrl = routerStateRef.current

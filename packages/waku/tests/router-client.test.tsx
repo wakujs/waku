@@ -5124,6 +5124,63 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a hash change gives the caught route another render', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const toNext = createCustomError('redirect', {
+      status: 307,
+      location: '/next',
+    });
+    const ThrowUntilHash = () => {
+      const router = useRouter() as unknown as RouterApi;
+      if (!router.hash) {
+        throw toNext;
+      }
+      return <div>ready</div>;
+    };
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>((() =>
+      Promise.resolve({
+        [unstable_getRouteSlotId('/a')]: <ThrowUntilHash />,
+        [ROUTE_ID]: ['/a', ''],
+        [IS_STATIC_ID]: false,
+      })) as unknown as ReturnType<typeof useRefetch>);
+    installRefetch(refetch);
+
+    testHoisted.elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/next')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const view = await renderApp(
+      <ErrorBoundary>
+        <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
+      </ErrorBoundary>,
+    );
+    try {
+      capture.router?.unstable_events.on('start', (route) => {
+        if (route.path === '/next') {
+          void capture.router!.push('/a#ready' as never).catch(() => {});
+        }
+      });
+      await act(async () => {
+        await capture.router!.push('/a' as never).catch(() => {});
+        for (let i = 0; i < 12; i += 1) {
+          await flush();
+        }
+      });
+
+      expect(view.container.textContent).toContain('ready');
+      expect(view.container.textContent).not.toContain('navigation loop');
+    } finally {
+      consoleErrorSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('a start listener navigating back does not spin the boundary', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
