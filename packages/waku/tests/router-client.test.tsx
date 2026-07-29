@@ -1807,6 +1807,34 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a 404 follow reports one navigation that landed on the 404 route', async () => {
+    const { view, capture, router } = await renderFollowRouter({
+      responses: [
+        { reject: { status: 404 } },
+        { resolve: { [ROUTE_ID]: ['/404', ''], [IS_STATIC_ID]: false } },
+      ],
+      slots: ['/404'],
+      meta: { [HAS404_ID]: true },
+    });
+    const events: string[] = [];
+    capture.router!.unstable_events.on('start', (route) =>
+      events.push(`start ${route.path}`),
+    );
+    capture.router!.unstable_events.on('complete', (route) =>
+      events.push(`complete ${route.path}`),
+    );
+
+    await act(async () => {
+      await router.push('/missing').catch(() => {});
+      await flushUntil(() => events.length >= 2);
+    });
+
+    // the follow finishes the navigation the user asked for, it is not a new one
+    expect(events).toEqual(['start /missing', 'complete /404']);
+
+    view.unmount();
+  });
+
   test('a followed redirect emits events for the attempt and the follow', async () => {
     const { view, capture, router } = await renderFollowRouter({
       responses: [

@@ -176,7 +176,7 @@ type ChangeRouteOptions = {
   history: 'push' | 'replace' | null;
   url?: URL | undefined;
   instant?: boolean | undefined;
-  follow?: boolean | undefined;
+  follow?: 'inline' | 'boundary' | undefined;
 };
 
 type ChangeRoute = (
@@ -877,7 +877,7 @@ const FollowError = ({
             : target.path !== caught.path,
           history: 'replace',
           url,
-          follow: true,
+          follow: 'boundary',
           refetch: true,
         }).then(
           () => {
@@ -1199,7 +1199,9 @@ const InnerRouter = ({
       const abortController = new AbortController();
       abortRef.current = abortController;
       const isAborted = () => abortController.signal.aborted;
-      emitRouteChangeEvent('start', nextRoute);
+      if (options.follow !== 'inline') {
+        emitRouteChangeEvent('start', nextRoute);
+      }
       // a start listener can navigate synchronously, which aborts this one
       if (isAborted()) {
         return;
@@ -1313,7 +1315,7 @@ const InnerRouter = ({
             shouldScroll: options.shouldScroll,
             history: null,
             url: errorRoute.url,
-            follow: true,
+            follow: 'inline',
             refetch: true,
           });
         }
