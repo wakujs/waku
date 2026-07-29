@@ -5124,6 +5124,57 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a server redirect back to the caught query is a loop', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const toPage2 = createCustomError('redirect', {
+      status: 307,
+      location: '/products?page=2',
+    });
+    const ThrowToPage2 = () => {
+      throw toPage2;
+    };
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>((() =>
+      Promise.resolve({
+        [unstable_getRouteSlotId('/products')]: <ThrowToPage2 />,
+        // the response sends us back to the query we came from
+        [ROUTE_ID]: ['/products', 'page=1'],
+        [IS_STATIC_ID]: false,
+      })) as unknown as ReturnType<typeof useRefetch>);
+    installRefetch(refetch);
+
+    testHoisted.elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/products')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const view = await renderApp(
+      <ErrorBoundary>
+        <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
+      </ErrorBoundary>,
+    );
+    try {
+      await act(async () => {
+        await capture.router!.push('/products?page=1' as never).catch(() => {});
+        for (let i = 0; i < 12; i += 1) {
+          await flush();
+        }
+      });
+
+      expect(view.container.textContent).toContain(
+        'detected a navigation loop',
+      );
+      expect(refetch.mock.calls.length).toBeLessThan(5);
+    } finally {
+      consoleErrorSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('a hash change gives the caught route another render', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
