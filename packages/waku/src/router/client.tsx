@@ -1308,12 +1308,7 @@ const InnerRouter = ({
           });
         }
         const failure = looping
-          ? new Error(
-              options.follow
-                ? 'the follow target failed too'
-                : 'detected a redirect loop',
-              { cause: e },
-            )
+          ? new Error('detected a redirect loop', { cause: e })
           : e;
         // write the url now; an unrecoverable rethrow discards the commit
         if (window.location.href !== targetUrl.href) {

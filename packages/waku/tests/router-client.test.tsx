@@ -5157,7 +5157,7 @@ describe('Router integration', () => {
 
       // one request for /missing, one for /404, then it gives up
       expect(refetch).toHaveBeenCalledTimes(2);
-      expect(view.container.textContent).toContain('the follow target failed');
+      expect(view.container.textContent).toContain('detected a redirect loop');
     } finally {
       consoleErrorSpy.mockRestore();
       view.unmount();
