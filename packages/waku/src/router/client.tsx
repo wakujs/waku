@@ -809,17 +809,11 @@ const FollowError = ({
       const landed =
         routerState.attempted[0] === dispatched[0] &&
         routerState.attempted[1] === dispatched[1];
-      if (landed) {
-        if (dispatched[0] === routePath) {
-          reset();
-        } else {
-          fail(
-            error,
-            new Error('detected a navigation loop', { cause: error }),
-          );
-        }
-      } else if (routerState.follow) {
+      const arrived = landed ? dispatched[0] === routePath : routerState.follow;
+      if (arrived) {
         reset();
+      } else {
+        fail(error, new Error('detected a navigation loop', { cause: error }));
       }
     }
   }, [routePath, routeQuery, routerState, reset, fail, error]);

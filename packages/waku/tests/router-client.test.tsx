@@ -5171,8 +5171,11 @@ describe('Router integration', () => {
         }
       });
 
-      // the interrupted follow must not re-arm itself forever
+      // the interrupted follow must stop, and say so instead of going blank
       expect(dispatches).toBeLessThan(4);
+      expect(view.container.textContent).toContain(
+        'detected a navigation loop',
+      );
     } finally {
       consoleErrorSpy.mockRestore();
       view.unmount();
