@@ -1415,7 +1415,7 @@ const InnerRouter = ({
       learnStaticPath(elements);
       const { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic } = elements;
       applyChangeRouteData(routeData, isStatic).catch((err) => {
-        console.log('Error while handling route updates:', err);
+        console.error('Error while handling route updates:', err);
       });
     };
     return registerCallServerElementsListener(listener);
@@ -1457,7 +1457,7 @@ const InnerRouter = ({
             ? new URL(window.location.href)
             : getRouteUrl(nextRoute),
         }).catch((err) => {
-          console.log('Error while navigating back:', err);
+          console.error('Error while navigating back:', err);
         });
       });
     };
