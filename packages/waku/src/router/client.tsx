@@ -210,6 +210,9 @@ const createRouteChangeListeners = (): [
       return;
     }
     for (const listener of [...eventListenersSet]) {
+      if (!eventListenersSet.has(listener)) {
+        continue;
+      }
       try {
         listener(route);
       } catch (e) {
@@ -1207,13 +1210,17 @@ const InnerRouter = ({
       abortRef.current = abortController;
       const isAborted = () => abortController.signal.aborted;
       if (superseded) {
+        announcedRef.current = null;
         emitRouteChangeEvent('error', superseded);
+      }
+      // a listener can navigate synchronously, which aborts this one
+      if (isAborted()) {
+        return;
       }
       if (options.follow !== 'inline') {
         announcedRef.current = nextRoute;
         emitRouteChangeEvent('start', nextRoute);
       }
-      // a start listener can navigate synchronously, which aborts this one
       if (isAborted()) {
         return;
       }

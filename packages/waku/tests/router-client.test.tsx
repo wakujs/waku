@@ -1857,28 +1857,142 @@ describe('Router integration', () => {
       ],
       slots: ['/slow', '/fast'],
     });
-    const events: string[] = [];
-    for (const name of ['start', 'complete', 'error'] as const) {
-      capture.router!.unstable_events.on(name, (route) =>
-        events.push(`${name} ${route.path}`),
-      );
+    try {
+      const events: string[] = [];
+      for (const name of ['start', 'complete', 'error'] as const) {
+        capture.router!.unstable_events.on(name, (route) =>
+          events.push(`${name} ${route.path}`),
+        );
+      }
+
+      await act(async () => {
+        const slow = router.push('/slow').catch(() => {});
+        await router.push('/fast').catch(() => {});
+        await slow;
+        await flushUntil(() => events.length >= 4);
+      });
+
+      // the superseded one closes before the winner announces itself, so a
+      // listener that flips a boolean is never left showing the wrong state
+      expect(events).toEqual([
+        'start /slow',
+        'error /slow',
+        'start /fast',
+        'complete /fast',
+      ]);
+    } finally {
+      view.unmount();
     }
+  });
+
+  test('an error listener that navigates does not double the terminal', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(((rscPath: string) => {
+      const path = ['/a', '/b', '/c'].find(
+        (p) => rscPath === unstable_encodeRoutePath(p),
+      );
+      return Promise.resolve({
+        [unstable_getRouteSlotId(path!)]: <Probe />,
+        [ROUTE_ID]: [path, ''],
+        [IS_STATIC_ID]: false,
+      });
+    }) as unknown as ReturnType<typeof useRefetch>);
+    installRefetch(refetch);
+
+    testHoisted.elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+    const view = await renderApp(
+      <Router initialRoute={{ path: '/start', query: '', hash: '' }} />,
+    );
+    try {
+      const events: string[] = [];
+      for (const name of ['start', 'complete', 'error'] as const) {
+        capture.router!.unstable_events.on(name, (route) =>
+          events.push(`${name} ${route.path}`),
+        );
+      }
+      capture.router!.unstable_events.on('error', () => {
+        void capture.router!.push('/c' as never).catch(() => {});
+      });
+
+      await act(async () => {
+        const a = capture.router!.push('/a' as never).catch(() => {});
+        await capture.router!.push('/b' as never).catch(() => {});
+        await a;
+        await flushUntil(() => events.some((e) => e.startsWith('complete')));
+      });
+
+      // /a closes once, and /b never announces itself because /c replaced it
+      expect(events.filter((e) => e === 'error /a')).toHaveLength(1);
+      expect(events).not.toContain('start /b');
+      expect(events.filter((e) => e.startsWith('complete'))).toEqual([
+        'complete /c',
+      ]);
+    } finally {
+      view.unmount();
+    }
+  });
+
+  test('a navigation after a finished one reports no error', async () => {
+    const { view, capture, router } = await renderFollowRouter({
+      responses: [
+        { resolve: { [ROUTE_ID]: ['/a', ''], [IS_STATIC_ID]: false } },
+        { resolve: { [ROUTE_ID]: ['/b', ''], [IS_STATIC_ID]: false } },
+      ],
+      slots: ['/a', '/b'],
+    });
+    try {
+      const events: string[] = [];
+      for (const name of ['start', 'complete', 'error'] as const) {
+        capture.router!.unstable_events.on(name, (route) =>
+          events.push(`${name} ${route.path}`),
+        );
+      }
+
+      await act(async () => {
+        await router.push('/a').catch(() => {});
+        await flushUntil(() => events.includes('complete /a'));
+        await router.push('/b').catch(() => {});
+        await flushUntil(() => events.includes('complete /b'));
+      });
+
+      // the first one already closed, so the second must not supersede it
+      expect(events).toEqual([
+        'start /a',
+        'complete /a',
+        'start /b',
+        'complete /b',
+      ]);
+    } finally {
+      view.unmount();
+    }
+  });
+
+  test('a listener removed during an emit is not called', async () => {
+    const { view, capture, router } = await renderFollowRouter({
+      responses: [
+        { resolve: { [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: false } },
+      ],
+      slots: ['/next'],
+    });
+    const called: string[] = [];
+    const doomed = () => called.push('doomed');
+    capture.router!.unstable_events.on('start', () => {
+      called.push('first');
+      capture.router!.unstable_events.off('start', doomed);
+    });
+    capture.router!.unstable_events.on('start', doomed);
 
     await act(async () => {
-      const slow = router.push('/slow').catch(() => {});
-      await router.push('/fast').catch(() => {});
-      await slow;
-      await flushUntil(() => events.length >= 4);
+      await router.push('/next').catch(() => {});
+      await flushUntil(() => called.length > 0);
     });
 
-    // the superseded one closes before the winner announces itself, so a
-    // listener that flips a boolean is never left showing the wrong state
-    expect(events).toEqual([
-      'start /slow',
-      'error /slow',
-      'start /fast',
-      'complete /fast',
-    ]);
+    expect(called).toEqual(['first']);
 
     view.unmount();
   });
@@ -1928,23 +2042,25 @@ describe('Router integration', () => {
       slots: ['/404'],
       meta: { [HAS404_ID]: true },
     });
-    const events: string[] = [];
-    capture.router!.unstable_events.on('start', (route) =>
-      events.push(`start ${route.path}`),
-    );
-    capture.router!.unstable_events.on('complete', (route) =>
-      events.push(`complete ${route.path}`),
-    );
+    try {
+      const events: string[] = [];
+      capture.router!.unstable_events.on('start', (route) =>
+        events.push(`start ${route.path}`),
+      );
+      capture.router!.unstable_events.on('complete', (route) =>
+        events.push(`complete ${route.path}`),
+      );
 
-    await act(async () => {
-      await router.push('/missing').catch(() => {});
-      await flushUntil(() => events.length >= 2);
-    });
+      await act(async () => {
+        await router.push('/missing').catch(() => {});
+        await flushUntil(() => events.length >= 2);
+      });
 
-    // the follow finishes the navigation the user asked for, it is not a new one
-    expect(events).toEqual(['start /missing', 'complete /404']);
-
-    view.unmount();
+      // the follow finishes the navigation it was asked for, not a new one
+      expect(events).toEqual(['start /missing', 'complete /404']);
+    } finally {
+      view.unmount();
+    }
   });
 
   test('a followed redirect emits events for the attempt and the follow', async () => {
