@@ -1301,19 +1301,22 @@ const InnerRouter = ({
           }
         }
         const errorRoute = resolveErrorRoute(e, targetUrl, has404);
-        let failure = e;
-        if (errorRoute.type === 'route') {
-          if (!isSameRscRoute(errorRoute.target, nextRoute)) {
-            return dispatchChangeRoute(changeRoute, errorRoute.target, {
-              shouldScroll: options.shouldScroll,
-              history: null,
-              url: errorRoute.url,
-              follow: true,
-              refetch: true,
-            });
-          }
-          failure = new Error('detected a navigation loop', { cause: e });
+        if (
+          errorRoute.type === 'route' &&
+          !isSameRscRoute(errorRoute.target, nextRoute)
+        ) {
+          return dispatchChangeRoute(changeRoute, errorRoute.target, {
+            shouldScroll: options.shouldScroll,
+            history: null,
+            url: errorRoute.url,
+            follow: true,
+            refetch: true,
+          });
         }
+        const failure =
+          errorRoute.type === 'route'
+            ? new Error('detected a navigation loop', { cause: e })
+            : e;
         mergeElements({
           [ROUTER_STATE_ID]: {
             ...routerState,
