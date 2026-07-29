@@ -431,6 +431,14 @@ const flush = async () => {
   });
 };
 
+// flushing a fixed number of times makes a test depend on how fast the machine
+// schedules; wait for the state the assertion is about instead
+const flushUntil = async (settled: () => boolean, max = 40) => {
+  for (let i = 0; i < max && !settled(); i += 1) {
+    await flush();
+  }
+};
+
 const renderRouter = async (
   props: Parameters<typeof Router>[0],
   elements: ElementsMap,
@@ -5111,11 +5119,9 @@ describe('Router integration', () => {
         [IS_STATIC_ID]: false,
       },
     );
-    await act(async () => {
-      for (let i = 0; i < 6; i += 1) {
-        await flush();
-      }
-    });
+    await flushUntil(() =>
+      (view.container.textContent ?? '').includes('/next|'),
+    );
 
     // the second target differs from the first only by its hash
     expect(view.container.textContent).toContain('/next|');
@@ -5151,7 +5157,7 @@ describe('Router integration', () => {
     try {
       await act(async () => {
         await capture.router!.push('/404#frag' as never).catch(() => {});
-        for (let i = 0; i < 6; i += 1) {
+        for (let i = 0; i < 20; i += 1) {
           await flush();
         }
       });
@@ -5200,9 +5206,11 @@ describe('Router integration', () => {
     try {
       await act(async () => {
         await capture.router!.push('/products?page=1' as never).catch(() => {});
-        for (let i = 0; i < 12; i += 1) {
-          await flush();
-        }
+        await flushUntil(() =>
+          (view.container.textContent ?? '').includes(
+            'detected a navigation loop',
+          ),
+        );
       });
 
       expect(view.container.textContent).toContain(
@@ -5259,9 +5267,9 @@ describe('Router integration', () => {
       });
       await act(async () => {
         await capture.router!.push('/a' as never).catch(() => {});
-        for (let i = 0; i < 12; i += 1) {
-          await flush();
-        }
+        await flushUntil(() =>
+          (view.container.textContent ?? '').includes('ready'),
+        );
       });
 
       expect(view.container.textContent).toContain('ready');
@@ -5314,9 +5322,11 @@ describe('Router integration', () => {
       });
       await act(async () => {
         await capture.router!.push('/a' as never).catch(() => {});
-        for (let i = 0; i < 12; i += 1) {
-          await flush();
-        }
+        await flushUntil(() =>
+          (view.container.textContent ?? '').includes(
+            'detected a navigation loop',
+          ),
+        );
       });
 
       // the interrupted follow must stop, and say so instead of going blank
@@ -5363,11 +5373,9 @@ describe('Router integration', () => {
         <Router initialRoute={{ path: '/404', query: '', hash: '' }} />
       </ErrorBoundary>,
     );
-    await act(async () => {
-      for (let i = 0; i < 6; i += 1) {
-        await flush();
-      }
-    });
+    await flushUntil(() =>
+      (view.container.textContent ?? '').includes('/404|'),
+    );
 
     expect(view.container.textContent).toContain('/404|');
     view.unmount();
