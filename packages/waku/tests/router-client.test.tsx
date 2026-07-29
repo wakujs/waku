@@ -5124,6 +5124,46 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a hash on the 404 route does not cost a second identical fetch', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>((() =>
+      Promise.reject(
+        createCustomError('nf', { status: 404 }),
+      )) as unknown as ReturnType<typeof useRefetch>);
+    installRefetch(refetch);
+
+    testHoisted.elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/404')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+      [HAS404_ID]: true,
+    };
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const view = await renderApp(
+      <ErrorBoundary>
+        <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
+      </ErrorBoundary>,
+    );
+    try {
+      await act(async () => {
+        await capture.router!.push('/404#frag' as never).catch(() => {});
+        for (let i = 0; i < 6; i += 1) {
+          await flush();
+        }
+      });
+
+      // the hash never reaches the server, so the retry would be identical
+      expect(refetch).toHaveBeenCalledTimes(1);
+    } finally {
+      consoleErrorSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('a server redirect back to the caught query is a loop', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);

@@ -1303,8 +1303,8 @@ const InnerRouter = ({
         const errorRoute = resolveErrorRoute(e, targetUrl, has404);
         let failure = e;
         if (errorRoute.type === 'route') {
-          if (!isSameRoute(errorRoute.target, nextRoute)) {
-            return changeRoute(errorRoute.target, {
+          if (!isSameRscRoute(errorRoute.target, nextRoute)) {
+            return dispatchChangeRoute(changeRoute, errorRoute.target, {
               shouldScroll: options.shouldScroll,
               history: null,
               url: errorRoute.url,
