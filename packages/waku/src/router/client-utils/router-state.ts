@@ -18,7 +18,6 @@ export type RouterState = {
   readonly history: 'push' | 'replace' | null;
   readonly scroll: { readonly pathChanged: boolean } | null;
   readonly failed?: boolean; // the fetch never landed, so the route id is stale
-  readonly follow?: boolean;
 };
 
 export const getRouterState = (
@@ -33,14 +32,12 @@ export const makeRouterState = (
     history: 'push' | 'replace' | null;
     scroll: boolean;
     pathChanged: boolean;
-    follow?: boolean | undefined;
   },
 ): RouterState => ({
   url: url.pathname + url.search + url.hash,
   attempted: [route.path, route.query],
   history: options.history,
   scroll: options.scroll ? { pathChanged: options.pathChanged } : null,
-  ...(options.follow ? { follow: true } : {}),
 });
 
 // a redirect to the 404 route keeps the url that was attempted

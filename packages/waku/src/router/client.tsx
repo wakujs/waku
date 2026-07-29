@@ -786,7 +786,7 @@ const FollowError = ({
   if (caughtAtRef.current === undefined) {
     caughtAtRef.current = [routePath, routeQuery, routeHash];
   }
-  const dispatchedRef = useRef<readonly [string, string] | undefined>(
+  const dispatchedRef = useRef<{ route: RouteProps; url: string } | undefined>(
     undefined,
   );
   const stateAtDispatchRef = useRef<RouterState | undefined>(undefined);
@@ -813,9 +813,11 @@ const FollowError = ({
       !routerState.failed
     ) {
       const landed =
-        routerState.attempted[0] === dispatched[0] &&
-        routerState.attempted[1] === dispatched[1];
-      const arrived = landed ? dispatched[0] === routePath : routerState.follow;
+        routerState.attempted[0] === dispatched.route.path &&
+        routerState.attempted[1] === dispatched.route.query;
+      const arrived = landed
+        ? dispatched.route.path === routePath
+        : routerState.url === dispatched.url;
       if (arrived) {
         reset();
       } else {
@@ -861,7 +863,10 @@ const FollowError = ({
       );
       return;
     }
-    dispatchedRef.current = [target.path, target.query];
+    dispatchedRef.current = {
+      route: target,
+      url: url.pathname + url.search + url.hash,
+    };
     stateAtDispatchRef.current = routerStateRef.current;
     startTransition(() => {
       followPromiseMap.set(
@@ -1208,7 +1213,6 @@ const InnerRouter = ({
         history: options.history,
         scroll: options.shouldScroll,
         pathChanged: nextRoute.path !== routeBefore.path,
-        follow: options.follow,
       });
       const shouldRefetch =
         options.refetch ?? !isSameRscRoute(nextRoute, routeBefore);
