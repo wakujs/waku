@@ -9,8 +9,6 @@ function getRecoveryBuildId(): string | undefined {
   return buildId;
 }
 
-const MAX_RECOVERY_RELOADS = 3;
-
 // Must run before the bootstrap `import()`. https://github.com/wakujs/waku/issues/2238
 // The entry chunk fails while the SSR HTML is still streaming, and reloading
 // mid-parse is unreliable, so the reload waits for the document to finish.
@@ -22,17 +20,15 @@ function getVersionSkewRecoveryCode(): string {
   }
   return `
     window.addEventListener('vite:preloadError', function (e) {
-      var key = 'waku:preload-error-attempts:' + ${JSON.stringify(buildId)};
-      var attempts = 0;
+      var key = 'waku:preload-error-build-id';
+      var alreadyTried = false;
       try {
-        attempts = Number(sessionStorage.getItem(key)) || 0;
+        alreadyTried = sessionStorage.getItem(key) === ${JSON.stringify(buildId)};
+        sessionStorage.setItem(key, ${JSON.stringify(buildId)});
       } catch {}
-      if (attempts >= ${MAX_RECOVERY_RELOADS}) {
+      if (alreadyTried) {
         return;
       }
-      try {
-        sessionStorage.setItem(key, String(attempts + 1));
-      } catch {}
       e.preventDefault();
       var reload = function () {
         window.location.reload();

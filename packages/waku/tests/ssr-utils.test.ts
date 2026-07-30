@@ -132,33 +132,23 @@ describe('version skew recovery code', () => {
     const e = preloadError();
     expect(win.location.reload).toHaveBeenCalledTimes(1);
     expect(e.preventDefault).toHaveBeenCalledTimes(1);
-    expect(backing.get('waku:preload-error-attempts:test-build')).toBe('1');
+    expect(backing.get('waku:preload-error-build-id')).toBe('test-build');
   });
 
-  it('retries when a previous reload did not fix the failure', () => {
-    // e.g. the reload lands on the same edge that is still serving stale assets
-    const { win, backing, preloadError } = runRecoveryCode();
-    backing.set('waku:preload-error-attempts:test-build', '1');
+  it('gives up after one attempt, so a broken build cannot reload forever', () => {
+    const { win, preloadError } = runRecoveryCode();
+    preloadError();
     const e = preloadError();
     expect(win.location.reload).toHaveBeenCalledTimes(1);
-    expect(e.preventDefault).toHaveBeenCalledTimes(1);
-    expect(backing.get('waku:preload-error-attempts:test-build')).toBe('2');
-  });
-
-  it('gives up after 3 attempts per build id', () => {
-    const { win, backing, preloadError } = runRecoveryCode();
-    backing.set('waku:preload-error-attempts:test-build', '3');
-    const e = preloadError();
-    expect(win.location.reload).not.toHaveBeenCalled();
     expect(e.preventDefault).not.toHaveBeenCalled();
   });
 
-  it('counts attempts separately per build id', () => {
+  it('allows one attempt per build id', () => {
     const { win, backing, preloadError } = runRecoveryCode();
-    backing.set('waku:preload-error-attempts:previous-build', '3');
+    backing.set('waku:preload-error-build-id', 'previous-build');
     preloadError();
     expect(win.location.reload).toHaveBeenCalledTimes(1);
-    expect(backing.get('waku:preload-error-attempts:test-build')).toBe('1');
+    expect(backing.get('waku:preload-error-build-id')).toBe('test-build');
   });
 
   it('still recovers when sessionStorage is unavailable', () => {
