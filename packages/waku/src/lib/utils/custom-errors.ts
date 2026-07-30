@@ -1,7 +1,7 @@
 type ErrorInfo = {
   status?: number;
   location?: string;
-  unstable_offRscEndpoint?: boolean;
+  unstable_redirected?: boolean;
   // set by the client, read by no one in waku: an app decides its own recovery
   unstable_networkError?: boolean;
 };
@@ -23,8 +23,8 @@ const isErrorInfo = (x: unknown): x is ErrorInfo => {
     return false;
   }
   if (
-    'unstable_offRscEndpoint' in x &&
-    typeof (x as ErrorInfo).unstable_offRscEndpoint !== 'boolean'
+    'unstable_redirected' in x &&
+    typeof (x as ErrorInfo).unstable_redirected !== 'boolean'
   ) {
     return false;
   }

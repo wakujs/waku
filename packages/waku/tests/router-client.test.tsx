@@ -3348,7 +3348,7 @@ describe('Router integration', () => {
         createCustomError('moved', {
           status: 307,
           location: '/login',
-          unstable_offRscEndpoint: true,
+          unstable_redirected: true,
         }),
       ),
     );
@@ -4437,7 +4437,7 @@ describe('Router integration', () => {
       } else if ('reject' in response) {
         // the shape checkStatus gives a fetch redirected off the rsc endpoint
         const info = response.reject.location
-          ? { ...response.reject, unstable_offRscEndpoint: true }
+          ? { ...response.reject, unstable_redirected: true }
           : response.reject;
         refetch.mockImplementationOnce(() =>
           Promise.reject(createCustomError('follow-error', info)),
@@ -4563,7 +4563,7 @@ describe('Router integration', () => {
         createCustomError('moved', {
           status: 307,
           location: 'login',
-          unstable_offRscEndpoint: true,
+          unstable_redirected: true,
         }),
       ),
     );
@@ -4619,7 +4619,7 @@ describe('Router integration', () => {
         createCustomError('moved', {
           status: 307,
           location: 'login',
-          unstable_offRscEndpoint: true,
+          unstable_redirected: true,
         }),
       ),
     );
@@ -6308,7 +6308,7 @@ describe('Router integration', () => {
             createCustomError('redirect', {
               status: 307,
               location: '/dashboard',
-              unstable_offRscEndpoint: true,
+              unstable_redirected: true,
             }),
           )
         : Promise.resolve({})) as never);

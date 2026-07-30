@@ -54,11 +54,11 @@ describe('resolveErrorRoute', () => {
     expect(errorRoute.type === 'route' && errorRoute.target.path).toBe('/next');
   });
 
-  test('a same origin url left the rsc endpoint, so the browser takes it', () => {
+  test('a same origin url from a redirected response is left to the browser', () => {
     const error = createCustomError('redirected rsc request', {
       status: 307,
       location: `${window.location.origin}/next`,
-      unstable_offRscEndpoint: true,
+      unstable_redirected: true,
     });
 
     const errorRoute = resolveErrorRoute(error, attempted('/from'), false);

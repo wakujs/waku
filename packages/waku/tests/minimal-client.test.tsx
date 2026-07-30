@@ -195,7 +195,7 @@ describe('minimal/client transport failures', () => {
     expect(getErrorInfo(error)).toEqual({
       status: 307,
       location: url,
-      unstable_offRscEndpoint: true,
+      unstable_redirected: true,
     });
   });
 
@@ -212,7 +212,7 @@ describe('minimal/client transport failures', () => {
     expect(getErrorInfo(error)).toEqual({
       status: 307,
       location: url,
-      unstable_offRscEndpoint: true,
+      unstable_redirected: true,
     });
   });
 
