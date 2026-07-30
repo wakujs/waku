@@ -1,12 +1,35 @@
+import { DEV_BUILD_ID } from '../constants.js';
 import { createInitialRscEntryCode } from './initial-rsc.js';
 
-// Must run before the bootstrap `import()` so entry chunk failures are recoverable. https://github.com/wakujs/waku/issues/2238
+function getRecoveryBuildId(): string | undefined {
+  const buildId = import.meta.env?.WAKU_BUILD_ID;
+  if (!buildId || buildId === DEV_BUILD_ID) {
+    return undefined;
+  }
+  return buildId;
+}
+
+// Must run before the bootstrap `import()`. https://github.com/wakujs/waku/issues/2238
 function getVersionSkewRecoveryCode(): string {
-  if (!import.meta.env?.WAKU_BUILD_ID) {
+  const buildId = getRecoveryBuildId();
+  if (!buildId) {
     return '';
   }
   return `
-    window.addEventListener('vite:preloadError', () => {
+    window.addEventListener('vite:preloadError', function (e) {
+      var buildId = ${JSON.stringify(buildId)};
+      var key = 'waku:preload-error-build-id';
+      var alreadyTried = false;
+      try {
+        alreadyTried = sessionStorage.getItem(key) === buildId;
+        if (!alreadyTried) {
+          sessionStorage.setItem(key, buildId);
+        }
+      } catch {}
+      if (alreadyTried) {
+        return;
+      }
+      e.preventDefault();
       window.location.reload();
     });
   `;
@@ -17,7 +40,7 @@ function getVersionSkewRecoveryCode(): string {
 const BOOTSTRAP_IMPORT_RE = /^(import\("(?:[^"\\]|\\.)*"\));?$/;
 
 export function wrapBootstrapScriptContent(content: string): string {
-  if (!import.meta.env?.WAKU_BUILD_ID) {
+  if (!getRecoveryBuildId()) {
     return content;
   }
   const match = BOOTSTRAP_IMPORT_RE.exec(content.trim());

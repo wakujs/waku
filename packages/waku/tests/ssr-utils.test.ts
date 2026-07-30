@@ -52,6 +52,14 @@ describe('wrapBootstrapScriptContent', () => {
     const content = 'import("/assets/index-abc123.js")';
     expect(wrapBootstrapScriptContent(content)).toBe(content);
   });
+
+  it('is a no-op in dev, even though the dev bootstrap matches the shape', () => {
+    // The dev bootstrap `import("/@id/__x00__virtual:...")` matches the regex,
+    // but recovery must stay production-only. https://github.com/wakujs/waku/issues/2238
+    vi.stubEnv('WAKU_BUILD_ID', 'dev');
+    const content = 'import("/@id/__x00__virtual:vite-rsc/browser-entry")';
+    expect(wrapBootstrapScriptContent(content)).toBe(content);
+  });
 });
 
 describe('version skew recovery code', () => {
@@ -63,7 +71,81 @@ describe('version skew recovery code', () => {
     expect(() => new Function(code)).not.toThrow();
   });
 
+  const runRecoveryCode = (options?: {
+    sessionStorage?: Pick<Storage, 'getItem' | 'setItem'>;
+  }) => {
+    vi.stubEnv('WAKU_BUILD_ID', 'test-build');
+    const code = getBootstrapPreamble({ hydrate: false, initialRsc: false });
+    const listeners = new Map<string, ((e: unknown) => void)[]>();
+    const win = {
+      addEventListener: (type: string, fn: (e: unknown) => void) => {
+        listeners.set(type, [...(listeners.get(type) ?? []), fn]);
+      },
+      location: { reload: vi.fn() },
+    };
+    const backing = new Map<string, string>();
+    const storage = options?.sessionStorage ?? {
+      getItem: (k: string) => backing.get(k) ?? null,
+      setItem: (k: string, v: string) => void backing.set(k, v),
+    };
+    new Function('window', 'sessionStorage', code)(win, storage);
+    const preloadError = () => {
+      const e = { preventDefault: vi.fn() };
+      for (const fn of listeners.get('vite:preloadError') ?? []) {
+        fn(e);
+      }
+      return e;
+    };
+    return { win, backing, preloadError };
+  };
+
+  it('reloads and marks the event handled on a genuine preload error', () => {
+    const { win, backing, preloadError } = runRecoveryCode();
+    const e = preloadError();
+    expect(win.location.reload).toHaveBeenCalledTimes(1);
+    expect(e.preventDefault).toHaveBeenCalledTimes(1);
+    expect(backing.get('waku:preload-error-build-id')).toBe('test-build');
+  });
+
+  it('reloads at most once per build id across page loads', () => {
+    const { win, preloadError } = runRecoveryCode({
+      sessionStorage: {
+        // simulate a previous page load that already reloaded for this build
+        getItem: () => 'test-build',
+        setItem: () => {},
+      },
+    });
+    const e = preloadError();
+    expect(win.location.reload).not.toHaveBeenCalled();
+    expect(e.preventDefault).not.toHaveBeenCalled();
+  });
+
+  it('reloads at most once within a page lifetime', () => {
+    const { win, preloadError } = runRecoveryCode();
+    preloadError();
+    preloadError();
+    expect(win.location.reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('still recovers when sessionStorage is unavailable', () => {
+    const throwing = () => {
+      throw new Error('sessionStorage is disabled');
+    };
+    const { win, preloadError } = runRecoveryCode({
+      sessionStorage: { getItem: throwing, setItem: throwing },
+    });
+    preloadError();
+    expect(win.location.reload).toHaveBeenCalledTimes(1);
+  });
+
   it('emits nothing without a build id', () => {
+    expect(getBootstrapPreamble({ hydrate: false, initialRsc: false })).toBe(
+      '',
+    );
+  });
+
+  it('emits nothing in dev', () => {
+    vi.stubEnv('WAKU_BUILD_ID', 'dev');
     expect(getBootstrapPreamble({ hydrate: false, initialRsc: false })).toBe(
       '',
     );
