@@ -24,6 +24,21 @@ import type { RouteEntries, createRouteEntries } from './route-entries.js';
 type HandleRequest = Parameters<typeof defineHandlers>[0]['handleRequest'];
 type HandlerInput = Parameters<HandleRequest>[0];
 
+const parseInternalRedirect = (location: string) => {
+  if (
+    !location.startsWith('/') ||
+    location.startsWith('//') ||
+    location.includes('#')
+  ) {
+    return undefined;
+  }
+  const url = new URL(location, 'http://localhost:3000');
+  return {
+    path: pathnameToRoutePath(url.pathname),
+    query: url.searchParams.toString(),
+  };
+};
+
 export const createRequestHandler = ({
   configRegistry,
   routeEntries,
@@ -156,22 +171,21 @@ export const createRequestHandler = ({
           const { value, entries } = await withRerender(() => fn(...args));
           return renderRsc(entries.elements, { value, etags: entries.etags });
         } catch (e) {
-          const info = getErrorInfo(e);
-          if (info?.location) {
-            const routePath = pathnameToRoutePath(info.location);
-            const rscPath = encodeRoutePath(routePath);
-            const entries = await routeEntries.getEntriesForRoute(
-              rscPath,
-              undefined,
-              clientEtags,
-              requestElementCache,
-            );
-            if (!entries) {
-              throw createCustomError('Not Found', { status: 404 });
-            }
-            return renderRsc(entries.elements, { etags: entries.etags });
+          const location = getErrorInfo(e)?.location;
+          const target = location ? parseInternalRedirect(location) : undefined;
+          if (!target) {
+            throw e;
           }
-          throw e;
+          const entries = await routeEntries.getEntriesForRoute(
+            encodeRoutePath(target.path),
+            new URLSearchParams({ query: target.query }),
+            clientEtags,
+            requestElementCache,
+          );
+          if (!entries) {
+            throw createCustomError('Not Found', { status: 404 });
+          }
+          return renderRsc(entries.elements, { etags: entries.etags });
         }
       };
 

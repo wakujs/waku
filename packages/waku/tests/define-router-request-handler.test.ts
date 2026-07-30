@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { unstable_createCustomError } from '../src/minimal/server.js';
 import { unstable_defineRouter } from '../src/router/define-router.js';
 import {
   ROUTE_ID,
@@ -38,6 +39,14 @@ const rscInput = (rscPath: string, rscParams?: unknown) => ({
   rscPath,
   rscParams,
   req: new Request('http://localhost/RSC/' + rscPath),
+});
+
+const callInput = (fn: () => Promise<unknown>) => ({
+  type: 'call' as const,
+  pathname: '/RSC/F/x.txt',
+  fn,
+  args: [],
+  req: new Request('http://localhost/RSC/F/x.txt', { method: 'POST' }),
 });
 
 const dynamicRoute = (name: string) => ({
@@ -86,16 +95,10 @@ describe('request dispatch', () => {
     });
     const utils = makeUtils();
     await handleRequest(
-      {
-        type: 'call',
-        pathname: '/RSC/F/x.txt',
-        fn: async () => {
-          unstable_rerenderRoute('/');
-          return 'fn-value';
-        },
-        args: [],
-        req: new Request('http://localhost/RSC/F/x.txt', { method: 'POST' }),
-      },
+      callInput(async () => {
+        unstable_rerenderRoute('/');
+        return 'fn-value';
+      }),
       utils,
     );
     expect(utils.renderRsc).toHaveBeenCalledWith(
@@ -104,21 +107,54 @@ describe('request dispatch', () => {
     );
   });
 
+  it('keeps the query of a server-function redirect', async () => {
+    const { handleRequest } = unstable_defineRouter({
+      getConfigs: async () => [dynamicRoute('/dest')],
+    });
+    const utils = makeUtils();
+    await handleRequest(
+      callInput(async () => {
+        unstable_redirect('/dest?a=1' as never);
+      }),
+      utils,
+    );
+    expect(utils.renderRsc).toHaveBeenCalledWith(
+      expect.objectContaining({ [ROUTE_ID]: ['/dest', 'a=1'] }),
+      { etags: {} },
+    );
+  });
+
+  it.each(['https://example.com/x', '//example.com/x', '/dest#frag'])(
+    'leaves a server-function redirect to %s for the browser to follow',
+    async (location) => {
+      const { handleRequest } = unstable_defineRouter({
+        getConfigs: async () => [dynamicRoute('/dest')],
+      });
+      const utils = makeUtils();
+      await expect(
+        handleRequest(
+          callInput(async () => {
+            throw unstable_createCustomError('Redirect', {
+              status: 307,
+              location,
+            });
+          }),
+          utils,
+        ),
+      ).rejects.toThrow('Redirect');
+      expect(utils.renderRsc).not.toHaveBeenCalled();
+    },
+  );
+
   it('responds to a server-function redirect with the destination route', async () => {
     const { handleRequest } = unstable_defineRouter({
       getConfigs: async () => [dynamicRoute('/dest')],
     });
     const utils = makeUtils();
     await handleRequest(
-      {
-        type: 'call',
-        pathname: '/RSC/F/x.txt',
-        fn: async () => {
-          unstable_redirect('/dest', 303);
-        },
-        args: [],
-        req: new Request('http://localhost/RSC/F/x.txt', { method: 'POST' }),
-      },
+      callInput(async () => {
+        unstable_redirect('/dest', 303);
+      }),
       utils,
     );
     expect(utils.renderRsc).toHaveBeenCalledWith(
