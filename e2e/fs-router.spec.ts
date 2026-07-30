@@ -134,6 +134,51 @@ test.describe('fs-router', () => {
     expect(currentEntryRequests).toBeGreaterThanOrEqual(1);
   });
 
+  test('stops reloading when the entry chunk stays broken', async ({
+    page,
+    mode,
+  }) => {
+    // https://github.com/wakujs/waku/issues/2238
+    // eslint-disable-next-line playwright/no-skipped-test
+    test.skip(mode === 'DEV', 'covers the production bootstrap import only');
+    const staleEntry = '/assets/index-stale-build.js';
+    let navigations = 0;
+    page.on('framenavigated', (frame) => {
+      if (frame === page.mainFrame()) {
+        navigations++;
+      }
+    });
+    // Unlike the test above, every document points at the missing chunk, so
+    // recovery can never succeed. Without the retry marker this reloads
+    // forever, so what matters is that the count settles rather than its
+    // exact value.
+    await page.route(`http://localhost:${port}/`, async (route) => {
+      const response = await route.fetch();
+      const html = await response.text();
+      await route.fulfill({
+        response,
+        headers: { ...response.headers(), 'cache-control': 'no-store' },
+        body: html.replaceAll(/\/assets\/index-[\w-]+\.js/g, staleEntry),
+      });
+    });
+    await page.route(`**${staleEntry}`, (route) =>
+      route.fulfill({
+        status: 404,
+        headers: { 'cache-control': 'no-store' },
+        body: '',
+      }),
+    );
+    await page.goto(`http://localhost:${port}`);
+    // eslint-disable-next-line playwright/no-wait-for-timeout
+    await page.waitForTimeout(2000);
+    const settled = navigations;
+    // eslint-disable-next-line playwright/no-wait-for-timeout
+    await page.waitForTimeout(2000);
+    expect(navigations).toBe(settled);
+    expect(settled).toBeGreaterThanOrEqual(2);
+    expect(settled).toBeLessThan(5);
+  });
+
   test('foo with trailing slash', async ({ page }) => {
     await page.goto(`http://localhost:${port}/foo/`);
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
