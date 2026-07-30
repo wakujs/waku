@@ -1325,8 +1325,6 @@ const InnerRouter = ({
       emitRouteChangeEvent,
       staticPathSet,
       learnStaticPath,
-      followCountRef,
-      resolvedElementsRef,
       prefetchManager,
     ],
   );
