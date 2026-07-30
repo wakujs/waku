@@ -124,6 +124,22 @@ describe('request dispatch', () => {
     );
   });
 
+  it('leaves a server-function redirect to a non-route for the browser', async () => {
+    const { handleRequest } = unstable_defineRouter({
+      getConfigs: async () => [dynamicRoute('/dest'), dynamicRoute('/404')],
+    });
+    const utils = makeUtils();
+    await expect(
+      handleRequest(
+        callInput(async () => {
+          unstable_redirect('/nowhere' as never);
+        }),
+        utils,
+      ),
+    ).rejects.toThrow('Redirect');
+    expect(utils.renderRsc).not.toHaveBeenCalled();
+  });
+
   it.each(['https://example.com/x', '//example.com/x', '/dest#frag'])(
     'leaves a server-function redirect to %s for the browser to follow',
     async (location) => {

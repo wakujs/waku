@@ -1,6 +1,5 @@
 import {
   unstable_base64ToBytes as base64ToBytes,
-  unstable_createCustomError as createCustomError,
   unstable_getErrorInfo as getErrorInfo,
 } from '../../minimal/server.js';
 import type { unstable_defineHandlers as defineHandlers } from '../../minimal/server.js';
@@ -183,7 +182,7 @@ export const createRequestHandler = ({
             requestElementCache,
           );
           if (!entries) {
-            throw createCustomError('Not Found', { status: 404 });
+            throw e;
           }
           return renderRsc(entries.elements, { etags: entries.etags });
         }
