@@ -784,8 +784,6 @@ export class ErrorBoundary extends Component<
 
 const MAX_FOLLOWS_PER_NAVIGATION = 20;
 
-type FollowCount = { current: number };
-
 const isFollowable = (error: unknown) => {
   const info = getErrorInfo(error);
   return info?.status === 404 || !!info?.location;
@@ -921,12 +919,16 @@ const FollowError = ({
 };
 
 class CustomErrorHandler extends Component<
-  { has404: boolean; follows: FollowCount; children?: ReactNode },
+  {
+    has404: boolean;
+    followCount: RefObject<number>;
+    children?: ReactNode;
+  },
   { error: unknown | null }
 > {
   constructor(props: {
     has404: boolean;
-    follows: FollowCount;
+    followCount: RefObject<number>;
     children?: ReactNode;
   }) {
     super(props);
@@ -942,8 +944,8 @@ class CustomErrorHandler extends Component<
     this.setState({ error: null });
   }
   countFollow() {
-    this.props.follows.current += 1;
-    return this.props.follows.current <= MAX_FOLLOWS_PER_NAVIGATION;
+    this.props.followCount.current += 1;
+    return this.props.followCount.current <= MAX_FOLLOWS_PER_NAVIGATION;
   }
   // error is a wrapper: the original still carries a location and would follow
   fail(original: unknown, error: unknown) {
@@ -1200,7 +1202,7 @@ const InnerRouter = ({
 
   // FIXME this "fetchingSlices" hack feels suboptimal.
   const fetchingSlices = useRef(new Set<SliceId>()).current;
-  const followCount = useRef<FollowCount>({ current: 0 }).current;
+  const followCountRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const announcedRef = useRef<RouteProps | null>(null);
 
@@ -1225,7 +1227,7 @@ const InnerRouter = ({
         return;
       }
       if (!options.isFollow) {
-        followCount.current = 0;
+        followCountRef.current = 0;
       }
       const routeBefore = routeRef.current;
       const targetUrl = options.url ?? getRouteUrl(nextRoute);
@@ -1323,7 +1325,7 @@ const InnerRouter = ({
       emitRouteChangeEvent,
       staticPathSet,
       learnStaticPath,
-      followCount,
+      followCountRef,
       resolvedElementsRef,
       prefetchManager,
     ],
@@ -1423,7 +1425,7 @@ const InnerRouter = ({
     );
   const rootElement = (
     <Slot id="root">
-      <CustomErrorHandler has404={has404} follows={followCount}>
+      <CustomErrorHandler has404={has404} followCount={followCountRef}>
         {routeElement}
       </CustomErrorHandler>
     </Slot>
