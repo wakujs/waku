@@ -23,15 +23,16 @@ import type { RouteEntries, createRouteEntries } from './route-entries.js';
 type HandleRequest = Parameters<typeof defineHandlers>[0]['handleRequest'];
 type HandlerInput = Parameters<HandleRequest>[0];
 
-const parseInternalRedirect = (location: string) => {
+const parseInternalRedirect = (location: string, base: string) => {
   if (
     !location.startsWith('/') ||
     location.startsWith('//') ||
-    location.includes('#')
+    location.includes('#') ||
+    location.includes('\\')
   ) {
     return undefined;
   }
-  const url = new URL(location, 'http://localhost:3000');
+  const url = new URL(location, base);
   return {
     path: pathnameToRoutePath(url.pathname),
     query: url.searchParams.toString(),
@@ -171,7 +172,9 @@ export const createRequestHandler = ({
           return renderRsc(entries.elements, { value, etags: entries.etags });
         } catch (e) {
           const location = getErrorInfo(e)?.location;
-          const target = location ? parseInternalRedirect(location) : undefined;
+          const target = location
+            ? parseInternalRedirect(location, input.req.url)
+            : undefined;
           if (!target) {
             throw e;
           }

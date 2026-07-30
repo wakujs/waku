@@ -77,7 +77,7 @@ const checkStatus = async (
     throw createCustomError('redirected rsc request', {
       status: 307,
       location: response.url,
-      unstable_offEndpoint: true,
+      unstable_offRscEndpoint: true,
     });
   }
   if (!response.ok) {

@@ -110,11 +110,11 @@ type NavigateOptions = {
 /**
  * Resolves once the requested navigation has been handled: after its response
  * when the route needs one, right away when it does not, and when a newer
- * navigation supersedes it. It rejects when the navigation fails, including a
- * response that came back 404, and it never waits for a follow: a 404 or
- * anything the destination throws while rendering is followed by a navigation
- * of its own. It does not wait for React to render either, so the address bar
- * may still show the previous url.
+ * navigation supersedes it. It rejects when the navigation fails, when a
+ * redirect hands the page to the browser, and when a missing route gets no
+ * answer from a waku server (a waku server sends the 404 page instead, which
+ * resolves). It never waits for a follow, and it does not wait for React to
+ * render, so the address bar may still show the previous url.
  */
 type Navigate = {
   (to: RouteHref, options?: NavigateOptions): Promise<void>;
@@ -175,7 +175,7 @@ type ChangeRouteOptions = {
   history: 'push' | 'replace' | null;
   url?: URL | undefined;
   instant?: boolean | undefined;
-  follow?: boolean | undefined;
+  keepFollowBudget?: boolean | undefined;
 };
 
 type ChangeRoute = (
@@ -782,9 +782,14 @@ export class ErrorBoundary extends Component<
   }
 }
 
-const MAX_FOLLOW_HOPS = 20;
+const MAX_FOLLOWS_PER_NAVIGATION = 20;
 
 type FollowBudget = { spent: number };
+
+const isFollowable = (error: unknown) => {
+  const info = getErrorInfo(error);
+  return info?.status === 404 || !!info?.location;
+};
 
 const FollowError = ({
   error,
@@ -811,7 +816,7 @@ const FollowError = ({
     undefined,
   );
   const stateAtDispatchRef = useRef<RouterState | undefined>(undefined);
-  const followedRef = useRef<unknown>(null);
+  const followingRef = useRef<unknown>(null);
   const routerStateRef = useRef(routerState);
   useEffect(() => {
     routerStateRef.current = routerState;
@@ -853,9 +858,10 @@ const FollowError = ({
       ? new URL(routerStateRef.current.url, window.location.href)
       : new URL(window.location.href);
     const errorRoute = resolveErrorRoute(error, attemptedUrl, has404);
-    if (errorRoute.type === 'none') {
+    if (errorRoute.type === 'none' || followingRef.current === error) {
       return;
     }
+    followingRef.current = error;
     if (errorRoute.type === 'unfollowable') {
       fail(
         error,
@@ -870,9 +876,6 @@ const FollowError = ({
       return;
     }
     const { target, url } = errorRoute;
-    if (followedRef.current === error) {
-      return;
-    }
     const attempted = routerStateRef.current?.attempted;
     const caught = attempted
       ? { path: attempted[0], query: attempted[1], hash: '' }
@@ -893,8 +896,6 @@ const FollowError = ({
       url: url.pathname + url.search + url.hash,
     };
     stateAtDispatchRef.current = routerStateRef.current;
-    // the same error object can be thrown again, so this clears when it settles
-    followedRef.current = error;
     startTransition(() => {
       changeRoute(target, {
         shouldScroll: routerStateRef.current
@@ -902,14 +903,14 @@ const FollowError = ({
           : target.path !== caught.path,
         history: 'replace',
         url,
-        follow: true,
+        keepFollowBudget: true,
         refetch: true,
       }).then(
         () => {
-          followedRef.current = null;
+          followingRef.current = null;
         },
         (err) => {
-          followedRef.current = null;
+          followingRef.current = null;
           fail(error, err);
         },
       );
@@ -942,7 +943,7 @@ class CustomErrorHandler extends Component<
   }
   countHop() {
     this.props.budget.spent += 1;
-    return this.props.budget.spent <= MAX_FOLLOW_HOPS;
+    return this.props.budget.spent <= MAX_FOLLOWS_PER_NAVIGATION;
   }
   // error is a wrapper: the original still carries a location and would follow
   fail(original: unknown, error: unknown) {
@@ -951,8 +952,7 @@ class CustomErrorHandler extends Component<
   render() {
     const { error } = this.state;
     if (error !== null) {
-      const info = getErrorInfo(error);
-      if (info?.status === 404 || info?.location) {
+      if (isFollowable(error)) {
         return (
           <FollowError
             error={error}
@@ -1224,8 +1224,8 @@ const InnerRouter = ({
       if (isAborted()) {
         return;
       }
-      if (!options.follow) {
-        followBudget.spent = 0; // a navigation of its own starts a fresh budget
+      if (!options.keepFollowBudget) {
+        followBudget.spent = 0;
       }
       const routeBefore = routeRef.current;
       const targetUrl = options.url ?? getRouteUrl(nextRoute);
@@ -1359,7 +1359,9 @@ const InnerRouter = ({
       learnStaticPath(elements);
       const { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic } = elements;
       applyChangeRouteData(routeData, isStatic).catch((err) => {
-        console.error('Error while handling route updates:', err);
+        if (!isFollowable(err)) {
+          console.error('Error while handling route updates:', err);
+        }
       });
     };
     return registerCallServerElementsListener(listener);
@@ -1401,7 +1403,9 @@ const InnerRouter = ({
             ? new URL(window.location.href)
             : getRouteUrl(nextRoute),
         }).catch((err) => {
-          console.error('Error while navigating back:', err);
+          if (!isFollowable(err)) {
+            console.error('Error while navigating back:', err);
+          }
         });
       });
     };

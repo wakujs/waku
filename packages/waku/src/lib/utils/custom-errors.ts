@@ -1,10 +1,9 @@
 type ErrorInfo = {
   status?: number;
   location?: string;
+  unstable_offRscEndpoint?: boolean;
   // set by the client, read by no one in waku: an app decides its own recovery
   unstable_networkError?: boolean;
-  // the rsc fetch landed outside the rsc endpoint, so its location is a url
-  unstable_offEndpoint?: boolean;
 };
 
 const isErrorInfo = (x: unknown): x is ErrorInfo => {
@@ -24,8 +23,8 @@ const isErrorInfo = (x: unknown): x is ErrorInfo => {
     return false;
   }
   if (
-    'unstable_offEndpoint' in x &&
-    typeof (x as ErrorInfo).unstable_offEndpoint !== 'boolean'
+    'unstable_offRscEndpoint' in x &&
+    typeof (x as ErrorInfo).unstable_offRscEndpoint !== 'boolean'
   ) {
     return false;
   }

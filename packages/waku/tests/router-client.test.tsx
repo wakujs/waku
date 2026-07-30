@@ -3348,7 +3348,7 @@ describe('Router integration', () => {
         createCustomError('moved', {
           status: 307,
           location: '/login',
-          unstable_offEndpoint: true,
+          unstable_offRscEndpoint: true,
         }),
       ),
     );
@@ -3368,12 +3368,14 @@ describe('Router integration', () => {
       throw new Error('router not initialized');
     }
 
+    const lengthBefore = window.history.length;
     await act(async () => {
       await capture.router!.push('/next?x=1').catch(() => {});
       await flush();
     });
 
     // that entry already exists, so the redirect must not add another
+    expect(window.history.length).toBe(lengthBefore);
     expect(assignSpy).not.toHaveBeenCalled();
     expect(replaceLocationSpy).toHaveBeenCalledTimes(1);
     expect(replaceLocationSpy.mock.calls[0]![0]).toContain('/login');
@@ -4435,7 +4437,7 @@ describe('Router integration', () => {
       } else if ('reject' in response) {
         // the shape checkStatus gives a fetch redirected off the rsc endpoint
         const info = response.reject.location
-          ? { ...response.reject, unstable_offEndpoint: true }
+          ? { ...response.reject, unstable_offRscEndpoint: true }
           : response.reject;
         refetch.mockImplementationOnce(() =>
           Promise.reject(createCustomError('follow-error', info)),
@@ -4476,11 +4478,13 @@ describe('Router integration', () => {
     const { view, refetch, capture, router } = await renderFollowRouter({
       responses: [{ reject: { status: 307, location: '/next' } }],
     });
+    const lengthBefore = window.history.length;
     await act(async () => {
       await router.push('/moved').catch(() => {});
       await flush();
       await flush();
     });
+    expect(window.history.length).toBe(lengthBefore + 1);
     expect(refetch).toHaveBeenCalledTimes(1);
     expect(replaceLocationSpy).toHaveBeenCalledTimes(1);
     expect(replaceLocationSpy.mock.calls[0]![0]).toContain('/next');
@@ -4559,7 +4563,7 @@ describe('Router integration', () => {
         createCustomError('moved', {
           status: 307,
           location: 'login',
-          unstable_offEndpoint: true,
+          unstable_offRscEndpoint: true,
         }),
       ),
     );
@@ -4615,7 +4619,7 @@ describe('Router integration', () => {
         createCustomError('moved', {
           status: 307,
           location: 'login',
-          unstable_offEndpoint: true,
+          unstable_offRscEndpoint: true,
         }),
       ),
     );
@@ -6304,7 +6308,7 @@ describe('Router integration', () => {
             createCustomError('redirect', {
               status: 307,
               location: '/dashboard',
-              unstable_offEndpoint: true,
+              unstable_offRscEndpoint: true,
             }),
           )
         : Promise.resolve({})) as never);
@@ -6884,8 +6888,8 @@ describe('Router integration', () => {
   });
 
   test('a network error stays an error instead of leaving the app', async () => {
-    const assignSpy = vi
-      .spyOn(window.location, 'assign')
+    const replaceLocationSpy = vi
+      .spyOn(window.location, 'replace')
       .mockImplementation(() => {});
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
@@ -6921,13 +6925,13 @@ describe('Router integration', () => {
         );
         await flush();
       });
-      expect(assignSpy).not.toHaveBeenCalled();
+      expect(replaceLocationSpy).not.toHaveBeenCalled();
       expect(view.container.textContent).toContain(
         'Caught an unexpected error',
       );
     } finally {
       consoleErrorSpy.mockRestore();
-      assignSpy.mockRestore();
+      replaceLocationSpy.mockRestore();
       view.unmount();
     }
   });

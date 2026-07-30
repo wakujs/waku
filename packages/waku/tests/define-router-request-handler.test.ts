@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { unstable_createCustomError } from '../src/minimal/server.js';
+import {
+  unstable_createCustomError,
+  unstable_getErrorInfo,
+} from '../src/minimal/server.js';
 import { unstable_defineRouter } from '../src/router/define-router.js';
 import {
   ROUTE_ID,
@@ -8,6 +11,7 @@ import {
 } from '../src/router/isomorphic-utils/route-path.js';
 import {
   unstable_getRequest,
+  unstable_notFound,
   unstable_redirect,
   unstable_rerenderRoute,
   unstable_setNonce,
@@ -140,24 +144,29 @@ describe('request dispatch', () => {
     expect(utils.renderRsc).not.toHaveBeenCalled();
   });
 
-  it.each(['https://example.com/x', '//example.com/x', '/dest#frag'])(
+  it.each([
+    'https://example.com/dest',
+    '//example.com/dest',
+    '/dest#frag',
+    '/\\example.com/dest',
+  ])(
     'leaves a server-function redirect to %s for the browser to follow',
     async (location) => {
       const { handleRequest } = unstable_defineRouter({
         getConfigs: async () => [dynamicRoute('/dest')],
       });
       const utils = makeUtils();
-      await expect(
-        handleRequest(
-          callInput(async () => {
-            throw unstable_createCustomError('Redirect', {
-              status: 307,
-              location,
-            });
-          }),
-          utils,
-        ),
-      ).rejects.toThrow('Redirect');
+      const err = await handleRequest(
+        callInput(async () => {
+          throw unstable_createCustomError('Redirect', {
+            status: 307,
+            location,
+          });
+        }),
+        utils,
+      ).catch((e: unknown) => e);
+      // the browser can only follow it if the response keeps both of these
+      expect(unstable_getErrorInfo(err)).toEqual({ status: 307, location });
       expect(utils.renderRsc).not.toHaveBeenCalled();
     },
   );
@@ -225,6 +234,47 @@ describe('request dispatch', () => {
       expect.objectContaining({ [ROUTE_ID]: ['/404', 'foo=bar'] }),
       expect.anything(),
     );
+  });
+
+  it('answers a route that renders not found with the 404 payload', async () => {
+    const notFound = {
+      ...dynamicRoute('/gone'),
+      routeElement: {
+        isStatic: false,
+        renderer: () => {
+          unstable_notFound();
+        },
+      },
+    };
+    const { handleRequest } = unstable_defineRouter({
+      getConfigs: async () => [notFound, dynamicRoute('/404')],
+    });
+    const utils = makeUtils();
+    await handleRequest(rscInput(encodeRoutePath('/gone')), utils);
+    expect(utils.renderRsc).toHaveBeenCalledWith(
+      expect.objectContaining({ [ROUTE_ID]: ['/404', ''] }),
+      expect.anything(),
+    );
+  });
+
+  it('propagates a non-404 failure from a route render', async () => {
+    const boom = {
+      ...dynamicRoute('/boom'),
+      routeElement: {
+        isStatic: false,
+        renderer: () => {
+          throw new Error('kaboom');
+        },
+      },
+    };
+    const { handleRequest } = unstable_defineRouter({
+      getConfigs: async () => [boom, dynamicRoute('/404')],
+    });
+    const utils = makeUtils();
+    await expect(
+      handleRequest(rscInput(encodeRoutePath('/boom')), utils),
+    ).rejects.toThrow('kaboom');
+    expect(utils.renderRsc).not.toHaveBeenCalled();
   });
 
   it('renders the 404 route with the query that was asked for', async () => {

@@ -54,6 +54,21 @@ describe('resolveErrorRoute', () => {
     expect(errorRoute.type === 'route' && errorRoute.target.path).toBe('/next');
   });
 
+  test('a same origin url left the rsc endpoint, so the browser takes it', () => {
+    const error = createCustomError('redirected rsc request', {
+      status: 307,
+      location: `${window.location.origin}/next`,
+      unstable_offRscEndpoint: true,
+    });
+
+    const errorRoute = resolveErrorRoute(error, attempted('/from'), false);
+
+    expect(errorRoute.type).toBe('leave');
+    expect(errorRoute.type === 'leave' && errorRoute.url.pathname).toBe(
+      '/next',
+    );
+  });
+
   test('another origin leaves the app', () => {
     const error = createCustomError('redirect', {
       status: 307,
