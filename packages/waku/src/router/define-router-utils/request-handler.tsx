@@ -182,22 +182,22 @@ export const createRequestHandler = ({
             throw e;
           }
           const redirectRoute = resolveInternalRoute(location, input.req.url);
-          const entries = !redirectRoute
-            ? null
-            : await routeEntries
-                .getEntriesForRoute(
-                  encodeRoutePath(redirectRoute.path),
-                  new URLSearchParams({ query: redirectRoute.query }),
-                  clientEtags,
-                  requestElementCache,
-                )
-                .catch((e: unknown) => {
-                  const info = getErrorInfo(e);
-                  if (info?.location || info?.status === 404) {
-                    return null;
-                  }
-                  throw e;
-                });
+          const entries =
+            redirectRoute &&
+            (await routeEntries
+              .getEntriesForRoute(
+                encodeRoutePath(redirectRoute.path),
+                new URLSearchParams({ query: redirectRoute.query }),
+                clientEtags,
+                requestElementCache,
+              )
+              .catch((e: unknown) => {
+                const info = getErrorInfo(e);
+                if (info?.location || info?.status === 404) {
+                  return null;
+                }
+                throw e;
+              }));
           if (!entries) {
             // 303 keeps the browser from sending the action body along
             throw createCustomError('Redirect', { status: 303, location });
