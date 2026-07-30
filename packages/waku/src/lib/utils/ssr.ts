@@ -11,6 +11,8 @@ function getRecoveryBuildId(): string | undefined {
 
 // Must run before the bootstrap `import()`. https://github.com/wakujs/waku/issues/2238
 // Reloading while the SSR HTML is still streaming is unreliable.
+// Recovery is skipped unless the retry marker persists, because without it a
+// broken build would reload forever.
 function getVersionSkewRecoveryCode(): string {
   const buildId = getRecoveryBuildId();
   if (!buildId) {
@@ -19,12 +21,14 @@ function getVersionSkewRecoveryCode(): string {
   return `
     window.addEventListener('vite:preloadError', function (e) {
       var key = 'waku:preload-error-build-id';
-      var alreadyTried = false;
+      var canRetry = false;
       try {
-        alreadyTried = sessionStorage.getItem(key) === ${JSON.stringify(buildId)};
+        canRetry = sessionStorage.getItem(key) !== ${JSON.stringify(buildId)};
         sessionStorage.setItem(key, ${JSON.stringify(buildId)});
-      } catch {}
-      if (alreadyTried) {
+      } catch {
+        canRetry = false;
+      }
+      if (!canRetry) {
         return;
       }
       e.preventDefault();

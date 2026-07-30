@@ -151,15 +151,31 @@ describe('version skew recovery code', () => {
     expect(backing.get('waku:preload-error-build-id')).toBe('test-build');
   });
 
-  it('still recovers when sessionStorage is unavailable', () => {
+  // Failing open here would reload forever, because the next document load
+  // cannot tell that it already retried.
+  it('does not reload when sessionStorage is unavailable', () => {
     const throwing = () => {
       throw new Error('sessionStorage is disabled');
     };
     const { win, preloadError } = runRecoveryCode({
       sessionStorage: { getItem: throwing, setItem: throwing },
     });
+    const e = preloadError();
+    expect(win.location.reload).not.toHaveBeenCalled();
+    expect(e.preventDefault).not.toHaveBeenCalled();
+  });
+
+  it('does not reload when the marker cannot be persisted', () => {
+    const { win, preloadError } = runRecoveryCode({
+      sessionStorage: {
+        getItem: () => null,
+        setItem: () => {
+          throw new Error('quota exceeded');
+        },
+      },
+    });
     preloadError();
-    expect(win.location.reload).toHaveBeenCalledTimes(1);
+    expect(win.location.reload).not.toHaveBeenCalled();
   });
 
   it('emits nothing without a build id', () => {
