@@ -278,6 +278,73 @@ describe('request dispatch', () => {
     expect(utils.renderRsc).not.toHaveBeenCalled();
   });
 
+  it('gives up quietly when the 404 route renders not found', async () => {
+    const recursive = {
+      ...dynamicRoute('/404'),
+      routeElement: {
+        isStatic: false,
+        renderer: () => {
+          unstable_notFound();
+        },
+      },
+    };
+    const { handleRequest } = unstable_defineRouter({
+      getConfigs: async () => [recursive],
+    });
+    const utils = makeUtils();
+    const res = await handleRequest(
+      rscInput(encodeRoutePath('/missing')),
+      utils,
+    );
+    expect(res).toBeNull();
+    expect(utils.renderRsc).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a broken 404 route instead of reporting no route', async () => {
+    const broken = {
+      ...dynamicRoute('/404'),
+      routeElement: {
+        isStatic: false,
+        renderer: () => {
+          throw new Error('the 404 page is broken');
+        },
+      },
+    };
+    const { handleRequest } = unstable_defineRouter({
+      getConfigs: async () => [broken],
+    });
+    await expect(
+      handleRequest(rscInput(encodeRoutePath('/missing')), makeUtils()),
+    ).rejects.toThrow('the 404 page is broken');
+  });
+
+  it('hands off a server-function redirect whose destination redirects', async () => {
+    const onward = {
+      ...dynamicRoute('/dest'),
+      routeElement: {
+        isStatic: false,
+        renderer: () => {
+          unstable_redirect('/onward' as never);
+        },
+      },
+    };
+    const { handleRequest } = unstable_defineRouter({
+      getConfigs: async () => [onward],
+    });
+    const utils = makeUtils();
+    const err = await handleRequest(
+      callInput(async () => {
+        unstable_redirect('/dest');
+      }),
+      utils,
+    ).catch((e: unknown) => e);
+    // still 303, so the action body is not replayed onto the next hop either
+    expect(unstable_getErrorInfo(err)).toEqual({
+      status: 303,
+      location: '/dest',
+    });
+  });
+
   it('renders the 404 route with the query that was asked for', async () => {
     const { handleRequest } = unstable_defineRouter({
       getConfigs: async () => [dynamicRoute('/404')],

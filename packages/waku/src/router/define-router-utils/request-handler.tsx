@@ -156,7 +156,12 @@ export const createRequestHandler = ({
               clientEtags,
               requestElementCache,
             )
-            .catch(() => null);
+            .catch((e) => {
+              if (getErrorInfo(e)?.status !== 404) {
+                throw e;
+              }
+              return null;
+            });
         }
         if (!entries) {
           return null;
@@ -183,12 +188,19 @@ export const createRequestHandler = ({
           if (!target) {
             throw handOff();
           }
-          const entries = await routeEntries.getEntriesForRoute(
-            encodeRoutePath(target.path),
-            new URLSearchParams({ query: target.query }),
-            clientEtags,
-            requestElementCache,
-          );
+          const entries = await routeEntries
+            .getEntriesForRoute(
+              encodeRoutePath(target.path),
+              new URLSearchParams({ query: target.query }),
+              clientEtags,
+              requestElementCache,
+            )
+            .catch((e: unknown) => {
+              if (getErrorInfo(e)?.location) {
+                throw handOff();
+              }
+              throw e;
+            });
           if (!entries) {
             throw handOff();
           }
