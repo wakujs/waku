@@ -73,6 +73,7 @@ describe('version skew recovery code', () => {
 
   const runRecoveryCode = (options?: {
     sessionStorage?: Pick<Storage, 'getItem' | 'setItem'>;
+    readyState?: DocumentReadyState;
   }) => {
     vi.stubEnv('WAKU_BUILD_ID', 'test-build');
     const code = getBootstrapPreamble({ hydrate: false, initialRsc: false });
@@ -83,12 +84,23 @@ describe('version skew recovery code', () => {
       },
       location: { reload: vi.fn() },
     };
+    const docListeners = new Map<string, (() => void)[]>();
+    const doc = {
+      readyState: options?.readyState ?? 'complete',
+      addEventListener: (type: string, fn: () => void) => {
+        docListeners.set(type, [...(docListeners.get(type) ?? []), fn]);
+      },
+    };
     const backing = new Map<string, string>();
     const storage = options?.sessionStorage ?? {
       getItem: (k: string) => backing.get(k) ?? null,
       setItem: (k: string, v: string) => void backing.set(k, v),
     };
-    new Function('window', 'sessionStorage', code)(win, storage);
+    new Function('window', 'document', 'sessionStorage', code)(
+      win,
+      doc,
+      storage,
+    );
     const preloadError = () => {
       const e = { preventDefault: vi.fn() };
       for (const fn of listeners.get('vite:preloadError') ?? []) {
@@ -96,8 +108,24 @@ describe('version skew recovery code', () => {
       }
       return e;
     };
-    return { win, backing, preloadError };
+    const domContentLoaded = () => {
+      for (const fn of docListeners.get('DOMContentLoaded') ?? []) {
+        fn();
+      }
+    };
+    return { win, backing, preloadError, domContentLoaded };
   };
+
+  it('waits for the document before reloading mid-stream', () => {
+    const { win, preloadError, domContentLoaded } = runRecoveryCode({
+      readyState: 'loading',
+    });
+    const e = preloadError();
+    expect(e.preventDefault).toHaveBeenCalledTimes(1);
+    expect(win.location.reload).not.toHaveBeenCalled();
+    domContentLoaded();
+    expect(win.location.reload).toHaveBeenCalledTimes(1);
+  });
 
   it('reloads and marks the event handled on a genuine preload error', () => {
     const { win, backing, preloadError } = runRecoveryCode();
@@ -108,7 +136,7 @@ describe('version skew recovery code', () => {
   });
 
   it('retries when a previous reload did not fix the failure', () => {
-    // e.g. WebKit can serve a cached 404 for the entry chunk again on reload
+    // e.g. the reload lands on the same edge that is still serving stale assets
     const { win, backing, preloadError } = runRecoveryCode();
     backing.set('waku:preload-error-attempts:test-build', '1');
     const e = preloadError();

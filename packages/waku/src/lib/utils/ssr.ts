@@ -12,6 +12,9 @@ function getRecoveryBuildId(): string | undefined {
 const MAX_RECOVERY_RELOADS = 3;
 
 // Must run before the bootstrap `import()`. https://github.com/wakujs/waku/issues/2238
+// The entry chunk fails while the SSR HTML is still streaming, and reloading
+// mid-parse is unreliable, so the reload waits for the document to finish.
+// Note the emitted code is newline-stripped, so it cannot carry `//` comments.
 function getVersionSkewRecoveryCode(): string {
   const buildId = getRecoveryBuildId();
   if (!buildId) {
@@ -31,7 +34,14 @@ function getVersionSkewRecoveryCode(): string {
         sessionStorage.setItem(key, String(attempts + 1));
       } catch {}
       e.preventDefault();
-      window.location.reload();
+      var reload = function () {
+        window.location.reload();
+      };
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', reload);
+      } else {
+        reload();
+      }
     });
   `;
 }
