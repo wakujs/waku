@@ -87,12 +87,18 @@ test.describe('fs-router', () => {
       }
     });
     // 404 the entry chunk exactly once, simulating a deploy-window skew
-    // between the HTML and the asset it references.
+    // between the HTML and the asset it references. `no-store` keeps engines
+    // (WebKit) from replaying the cached 404 on reload; 404 is heuristically
+    // cacheable per RFC 9111.
     let blockedOnce = false;
     await page.route('**/assets/index-*.js', async (route) => {
       if (!blockedOnce) {
         blockedOnce = true;
-        await route.fulfill({ status: 404, body: '' });
+        await route.fulfill({
+          status: 404,
+          headers: { 'cache-control': 'no-store' },
+          body: '',
+        });
         return;
       }
       await route.continue();

@@ -104,27 +104,33 @@ describe('version skew recovery code', () => {
     const e = preloadError();
     expect(win.location.reload).toHaveBeenCalledTimes(1);
     expect(e.preventDefault).toHaveBeenCalledTimes(1);
-    expect(backing.get('waku:preload-error-build-id')).toBe('test-build');
+    expect(backing.get('waku:preload-error-attempts:test-build')).toBe('1');
   });
 
-  it('reloads at most once per build id across page loads', () => {
-    const { win, preloadError } = runRecoveryCode({
-      sessionStorage: {
-        // simulate a previous page load that already reloaded for this build
-        getItem: () => 'test-build',
-        setItem: () => {},
-      },
-    });
+  it('retries when a previous reload did not fix the failure', () => {
+    // e.g. WebKit can serve a cached 404 for the entry chunk again on reload
+    const { win, backing, preloadError } = runRecoveryCode();
+    backing.set('waku:preload-error-attempts:test-build', '1');
+    const e = preloadError();
+    expect(win.location.reload).toHaveBeenCalledTimes(1);
+    expect(e.preventDefault).toHaveBeenCalledTimes(1);
+    expect(backing.get('waku:preload-error-attempts:test-build')).toBe('2');
+  });
+
+  it('gives up after 3 attempts per build id', () => {
+    const { win, backing, preloadError } = runRecoveryCode();
+    backing.set('waku:preload-error-attempts:test-build', '3');
     const e = preloadError();
     expect(win.location.reload).not.toHaveBeenCalled();
     expect(e.preventDefault).not.toHaveBeenCalled();
   });
 
-  it('reloads at most once within a page lifetime', () => {
-    const { win, preloadError } = runRecoveryCode();
-    preloadError();
+  it('counts attempts separately per build id', () => {
+    const { win, backing, preloadError } = runRecoveryCode();
+    backing.set('waku:preload-error-attempts:previous-build', '3');
     preloadError();
     expect(win.location.reload).toHaveBeenCalledTimes(1);
+    expect(backing.get('waku:preload-error-attempts:test-build')).toBe('1');
   });
 
   it('still recovers when sessionStorage is unavailable', () => {

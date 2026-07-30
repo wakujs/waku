@@ -9,6 +9,8 @@ function getRecoveryBuildId(): string | undefined {
   return buildId;
 }
 
+const MAX_RECOVERY_RELOADS = 3;
+
 // Must run before the bootstrap `import()`. https://github.com/wakujs/waku/issues/2238
 function getVersionSkewRecoveryCode(): string {
   const buildId = getRecoveryBuildId();
@@ -17,18 +19,17 @@ function getVersionSkewRecoveryCode(): string {
   }
   return `
     window.addEventListener('vite:preloadError', function (e) {
-      var buildId = ${JSON.stringify(buildId)};
-      var key = 'waku:preload-error-build-id';
-      var alreadyTried = false;
+      var key = 'waku:preload-error-attempts:' + ${JSON.stringify(buildId)};
+      var attempts = 0;
       try {
-        alreadyTried = sessionStorage.getItem(key) === buildId;
-        if (!alreadyTried) {
-          sessionStorage.setItem(key, buildId);
-        }
+        attempts = Number(sessionStorage.getItem(key)) || 0;
       } catch {}
-      if (alreadyTried) {
+      if (attempts >= ${MAX_RECOVERY_RELOADS}) {
         return;
       }
+      try {
+        sessionStorage.setItem(key, String(attempts + 1));
+      } catch {}
       e.preventDefault();
       window.location.reload();
     });
