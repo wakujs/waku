@@ -1,5 +1,6 @@
 import {
   unstable_base64ToBytes as base64ToBytes,
+  unstable_createCustomError as createCustomError,
   unstable_getErrorInfo as getErrorInfo,
 } from '../../minimal/server.js';
 import type { unstable_defineHandlers as defineHandlers } from '../../minimal/server.js';
@@ -24,15 +25,13 @@ type HandleRequest = Parameters<typeof defineHandlers>[0]['handleRequest'];
 type HandlerInput = Parameters<HandleRequest>[0];
 
 const parseInternalRedirect = (location: string, base: string) => {
-  if (
-    !location.startsWith('/') ||
-    location.startsWith('//') ||
-    location.includes('#') ||
-    location.includes('\\')
-  ) {
+  if (!location.startsWith('/') || location.includes('#')) {
     return undefined;
   }
   const url = new URL(location, base);
+  if (url.origin !== new URL(base).origin) {
+    return undefined;
+  }
   return {
     path: pathnameToRoutePath(url.pathname),
     query: url.searchParams.toString(),
@@ -150,12 +149,14 @@ export const createRequestHandler = ({
           }
         }
         if (!entries && configRegistry.has404()) {
-          entries = await routeEntries.getEntriesForRoute(
-            encodeRoutePath('/404'),
-            rscParams,
-            clientEtags,
-            requestElementCache,
-          );
+          entries = await routeEntries
+            .getEntriesForRoute(
+              encodeRoutePath('/404'),
+              rscParams,
+              clientEtags,
+              requestElementCache,
+            )
+            .catch(() => null);
         }
         if (!entries) {
           return null;
@@ -172,11 +173,15 @@ export const createRequestHandler = ({
           return renderRsc(entries.elements, { value, etags: entries.etags });
         } catch (e) {
           const location = getErrorInfo(e)?.location;
-          const target = location
-            ? parseInternalRedirect(location, input.req.url)
-            : undefined;
-          if (!target) {
+          if (!location) {
             throw e;
+          }
+          // the action arguments must not be replayed onto the destination
+          const handOff = () =>
+            createCustomError('Redirect', { status: 303, location });
+          const target = parseInternalRedirect(location, input.req.url);
+          if (!target) {
+            throw handOff();
           }
           const entries = await routeEntries.getEntriesForRoute(
             encodeRoutePath(target.path),
@@ -185,7 +190,7 @@ export const createRequestHandler = ({
             requestElementCache,
           );
           if (!entries) {
-            throw e;
+            throw handOff();
           }
           return renderRsc(entries.elements, { etags: entries.etags });
         }

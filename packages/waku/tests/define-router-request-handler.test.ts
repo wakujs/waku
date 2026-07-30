@@ -149,6 +149,7 @@ describe('request dispatch', () => {
     '//example.com/dest',
     '/dest#frag',
     '/\\example.com/dest',
+    '/\t/evil.com/dest',
   ])(
     'leaves a server-function redirect to %s for the browser to follow',
     async (location) => {
@@ -165,8 +166,8 @@ describe('request dispatch', () => {
         }),
         utils,
       ).catch((e: unknown) => e);
-      // the browser can only follow it if the response keeps both of these
-      expect(unstable_getErrorInfo(err)).toEqual({ status: 307, location });
+      // 303 so the follow is a GET and the action body is not replayed
+      expect(unstable_getErrorInfo(err)).toEqual({ status: 303, location });
       expect(utils.renderRsc).not.toHaveBeenCalled();
     },
   );

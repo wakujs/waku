@@ -83,7 +83,7 @@ export default function NewPostPage() {
 }
 ```
 
-Waku renders the destination into the same response, so the client does not make a second request. That only works for a target it can render: a path on this site, without a hash. Anything else, including a target that is not a route at all, is sent back as a real HTTP redirect for the browser to follow, which costs a full page load.
+Waku renders the destination into the same response, so the client does not make a second request. That only works for a target it can render: a path on this site, without a hash. Anything else, including a target that is not a route at all, is handed to the browser, which costs a full page load.
 
 ## Render Not Found for Missing Data
 
