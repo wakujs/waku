@@ -53,7 +53,6 @@ import {
   getRouteUrl,
   isSameRoute,
   isSameRscRoute,
-  parseRedirectUrl,
   parseRoute,
   pathnameToCurrentRoutePath,
 } from './client-utils/route-url.js';
@@ -111,11 +110,11 @@ type NavigateOptions = {
 /**
  * Resolves once the requested navigation has been handled: after its response
  * when the route needs one, right away when it does not, and when a newer
- * navigation supersedes it. A response that came back 404 is covered, because
- * the 404 page is fetched first; anything the destination throws while
- * rendering is followed after it resolves. It rejects when the navigation
- * fails, and it does not wait for React to render, so the address bar may still
- * show the previous url.
+ * navigation supersedes it. It rejects when the navigation fails, including a
+ * response that came back 404, and it never waits for a follow: a 404 or
+ * anything the destination throws while rendering is followed by a navigation
+ * of its own. It does not wait for React to render either, so the address bar
+ * may still show the previous url.
  */
 type Navigate = {
   (to: RouteHref, options?: NavigateOptions): Promise<void>;
@@ -176,7 +175,7 @@ type ChangeRouteOptions = {
   history: 'push' | 'replace' | null;
   url?: URL | undefined;
   instant?: boolean | undefined;
-  follow?: 'continues' | 'announces' | undefined;
+  follow?: boolean | undefined;
 };
 
 type ChangeRoute = (
@@ -878,8 +877,11 @@ const FollowError = ({
     if (followPromiseMap.has(error as object)) {
       return;
     }
-    const caught = parseRoute(attemptedUrl);
-    if (isSameRoute(target, caught)) {
+    const attempted = routerStateRef.current?.attempted;
+    const caught = attempted
+      ? { path: attempted[0], query: attempted[1], hash: '' }
+      : parseRoute(attemptedUrl);
+    if (isSameRscRoute(target, caught) && url.href === attemptedUrl.href) {
       fail(error, new Error('detected a navigation loop', { cause: error }));
       return;
     }
@@ -904,7 +906,7 @@ const FollowError = ({
             : target.path !== caught.path,
           history: 'replace',
           url,
-          follow: 'announces',
+          follow: true,
           refetch: true,
         }).then(
           () => {
@@ -1236,10 +1238,8 @@ const InnerRouter = ({
       if (isAborted()) {
         return;
       }
-      if (options.follow !== 'continues') {
-        announcedRef.current = nextRoute;
-        emitRouteChangeEvent('start', nextRoute);
-      }
+      announcedRef.current = nextRoute;
+      emitRouteChangeEvent('start', nextRoute);
       if (isAborted()) {
         return;
       }
@@ -1315,25 +1315,6 @@ const InnerRouter = ({
         if (isAborted()) {
           return;
         }
-        const info = getErrorInfo(e);
-        // a fetch level redirect may leave waku, so the browser takes it on
-        const redirectUrl = info?.location
-          ? parseRedirectUrl(info.location, targetUrl)
-          : undefined;
-        if (redirectUrl) {
-          abortRef.current = null;
-          // an instant commit already pushed the attempted url, so pushing
-          // again would cost the navigation a second entry
-          if (
-            routerState.history === 'push' &&
-            window.location.href !== targetUrl.href
-          ) {
-            window.location.assign(redirectUrl.href);
-          } else {
-            window.location.replace(redirectUrl.href);
-          }
-          return;
-        }
         abortRef.current = null;
         // write the url now; an unrecoverable rethrow discards the commit
         if (window.location.href !== targetUrl.href) {
@@ -1343,23 +1324,6 @@ const InnerRouter = ({
             window.history.replaceState(window.history.state, '', targetUrl);
           }
         }
-        const errorRoute = resolveErrorRoute(e, targetUrl, has404);
-        if (
-          errorRoute.type === 'route' &&
-          !isSameRscRoute(errorRoute.target, nextRoute)
-        ) {
-          return dispatchChangeRoute(changeRoute, errorRoute.target, {
-            shouldScroll: options.shouldScroll,
-            history: null,
-            url: errorRoute.url,
-            follow: 'continues',
-            refetch: true,
-          });
-        }
-        const failure =
-          errorRoute.type === 'route'
-            ? new Error('detected a navigation loop', { cause: e })
-            : e;
         mergeElements({
           [ROUTER_STATE_ID]: {
             ...routerState,
@@ -1367,15 +1331,14 @@ const InnerRouter = ({
             failed: true,
           },
         });
-        setErr(failure);
+        setErr(e);
         emitRouteChangeEvent('error', nextRoute);
-        throw failure;
+        throw e;
       }
     },
     [
       refetch,
       mergeElements,
-      has404,
       emitRouteChangeEvent,
       staticPathSet,
       learnStaticPath,
