@@ -210,14 +210,17 @@ describe('getBootstrapPreamble', () => {
     ).not.toContain('__WAKU_INITIAL_RSC__');
   });
 
-  it('emits parseable JS after whitespace stripping', () => {
+  it('strips indentation but keeps line boundaries', () => {
+    // Joining the lines without a separator would let a line comment in any
+    // emitted snippet comment out the rest of the script.
     vi.stubEnv('WAKU_BUILD_ID', 'test-build');
     const preamble = getBootstrapPreamble({
       hydrate: true,
       initialRsc: true,
       debugId: 'debug-1',
     });
-    expect(preamble).not.toContain('\n');
+    expect(preamble).not.toMatch(/^\s|\n\s|\n\n/);
+    expect(preamble.split('\n').length).toBeGreaterThan(1);
     expect(() => new Function(preamble)).not.toThrow();
   });
 
