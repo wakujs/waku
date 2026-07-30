@@ -42,11 +42,15 @@ export function getBootstrapPreamble(options: {
   return `
     ${getVersionSkewRecoveryCode()}
     ${options.hydrate ? 'globalThis.__WAKU_HYDRATE__ = true;' : ''}
-    ${options.initialRsc ? `
+    ${
+      options.initialRsc
+        ? `
     globalThis.__WAKU_INITIAL_RSC__ = ${createInitialRscEntryCode(
       options.debugId,
     )};
-    ` : ''}
+    `
+        : ''
+    }
   `
     .split('\n')
     .map((line) => line.trim())

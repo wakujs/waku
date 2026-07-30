@@ -144,11 +144,10 @@ export async function renderHtmlFallback() {
   const html = htmlShell.replace(
     '</body>',
     () =>
-    `<script>${
-        getBootstrapPreamble({
-          hydrate: false,
-          initialRsc: false,
-        })}${bootstrapScriptContent}</script></body>`,
+      `<script>${getBootstrapPreamble({
+        hydrate: false,
+        initialRsc: false,
+      })}${bootstrapScriptContent}</script></body>`,
   );
   return html;
 }
