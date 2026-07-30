@@ -318,6 +318,33 @@ describe('request dispatch', () => {
     ).rejects.toThrow('the 404 page is broken');
   });
 
+  it('hands off a server-function redirect whose destination is not found', async () => {
+    const gone = {
+      ...dynamicRoute('/dest'),
+      routeElement: {
+        isStatic: false,
+        renderer: () => {
+          unstable_notFound();
+        },
+      },
+    };
+    const { handleRequest } = unstable_defineRouter({
+      getConfigs: async () => [gone, dynamicRoute('/404')],
+    });
+    const utils = makeUtils();
+    const err = await handleRequest(
+      callInput(async () => {
+        unstable_redirect('/dest');
+      }),
+      utils,
+    ).catch((e: unknown) => e);
+    // the browser still lands on /dest, which renders its own 404 there
+    expect(unstable_getErrorInfo(err)).toEqual({
+      status: 303,
+      location: '/dest',
+    });
+  });
+
   it('hands off a server-function redirect whose destination redirects', async () => {
     const onward = {
       ...dynamicRoute('/dest'),

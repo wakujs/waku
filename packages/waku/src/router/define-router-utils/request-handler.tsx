@@ -192,7 +192,8 @@ export const createRequestHandler = ({
                   requestElementCache,
                 )
                 .catch((e: unknown) => {
-                  if (getErrorInfo(e)?.location) {
+                  const info = getErrorInfo(e);
+                  if (info?.location || info?.status === 404) {
                     return null;
                   }
                   throw e;
