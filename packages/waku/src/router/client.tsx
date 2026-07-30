@@ -784,9 +784,6 @@ export class ErrorBoundary extends Component<
 
 const MAX_FOLLOW_HOPS = 20;
 
-// followHops resets when a hop commits, so it alone cannot bound a chain
-const MAX_FOLLOWS_PER_NAVIGATION = 100;
-
 type FollowBudget = { spent: number };
 
 const FollowError = ({
@@ -795,14 +792,12 @@ const FollowError = ({
   reset,
   fail,
   countHop,
-  followPromiseMap,
 }: {
   error: unknown;
   has404: boolean;
   reset: () => void;
   fail: (original: unknown, error: unknown) => void;
   countHop: () => boolean;
-  followPromiseMap: WeakMap<object, Promise<unknown>>;
 }) => {
   const { route, routerState, changeRoute } = useRouterOrThrow();
   const { path: routePath, query: routeQuery, hash: routeHash } = route;
@@ -816,6 +811,7 @@ const FollowError = ({
     undefined,
   );
   const stateAtDispatchRef = useRef<RouterState | undefined>(undefined);
+  const followedRef = useRef<unknown>(null);
   const routerStateRef = useRef(routerState);
   useEffect(() => {
     routerStateRef.current = routerState;
@@ -874,7 +870,7 @@ const FollowError = ({
       return;
     }
     const { target, url } = errorRoute;
-    if (followPromiseMap.has(error as object)) {
+    if (followedRef.current === error) {
       return;
     }
     const attempted = routerStateRef.current?.attempted;
@@ -897,30 +893,28 @@ const FollowError = ({
       url: url.pathname + url.search + url.hash,
     };
     stateAtDispatchRef.current = routerStateRef.current;
+    // the same error object can be thrown again, so this clears when it settles
+    followedRef.current = error;
     startTransition(() => {
-      followPromiseMap.set(
-        error as object,
-        changeRoute(target, {
-          shouldScroll: routerStateRef.current
-            ? routerStateRef.current.scroll !== null
-            : target.path !== caught.path,
-          history: 'replace',
-          url,
-          follow: true,
-          refetch: true,
-        }).then(
-          () => {
-            // a module scoped error is thrown again, so let it follow again
-            followPromiseMap.delete(error as object);
-          },
-          (err) => {
-            followPromiseMap.delete(error as object);
-            fail(error, err);
-          },
-        ),
+      changeRoute(target, {
+        shouldScroll: routerStateRef.current
+          ? routerStateRef.current.scroll !== null
+          : target.path !== caught.path,
+        history: 'replace',
+        url,
+        follow: true,
+        refetch: true,
+      }).then(
+        () => {
+          followedRef.current = null;
+        },
+        (err) => {
+          followedRef.current = null;
+          fail(error, err);
+        },
       );
     });
-  }, [error, has404, fail, countHop, changeRoute, followPromiseMap]);
+  }, [error, has404, fail, countHop, changeRoute]);
   const info = getErrorInfo(error);
   return info?.status === 404 && !has404 ? <h1>Not Found</h1> : null;
 };
@@ -929,8 +923,6 @@ class CustomErrorHandler extends Component<
   { has404: boolean; budget: FollowBudget; children?: ReactNode },
   { error: unknown | null }
 > {
-  private followPromiseMap = new WeakMap<object, Promise<unknown>>();
-  private followHops = 0;
   constructor(props: {
     has404: boolean;
     budget: FollowBudget;
@@ -949,18 +941,8 @@ class CustomErrorHandler extends Component<
     this.setState({ error: null });
   }
   countHop() {
-    this.followHops += 1;
     this.props.budget.spent += 1;
-    return (
-      this.followHops <= MAX_FOLLOW_HOPS &&
-      this.props.budget.spent <= MAX_FOLLOWS_PER_NAVIGATION
-    );
-  }
-  componentDidUpdate() {
-    // clearing in reset() would let a chain that redirects on render run free
-    if (this.state.error === null) {
-      this.followHops = 0;
-    }
+    return this.props.budget.spent <= MAX_FOLLOW_HOPS;
   }
   // error is a wrapper: the original still carries a location and would follow
   fail(original: unknown, error: unknown) {
@@ -978,7 +960,6 @@ class CustomErrorHandler extends Component<
             reset={this.reset}
             fail={this.fail}
             countHop={this.countHop}
-            followPromiseMap={this.followPromiseMap}
           />
         );
       }

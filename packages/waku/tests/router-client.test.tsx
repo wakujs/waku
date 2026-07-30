@@ -5203,7 +5203,7 @@ describe('Router integration', () => {
       expect(view.container.textContent).toContain(
         'too many redirect or 404 follows',
       );
-      // the per chain cap fires, not the per navigation budget
+      // a follow never resets the budget, so committing each hop still caps
       expect(refetch).toHaveBeenCalledTimes(21);
     } finally {
       consoleErrorSpy.mockRestore();
@@ -5255,7 +5255,7 @@ describe('Router integration', () => {
       expect(view.container.textContent).toContain(
         'too many redirect or 404 follows',
       );
-      // the per chain cap fires, not the per navigation budget
+      // a follow never resets the budget, so committing each hop still caps
       expect(refetch).toHaveBeenCalledTimes(21);
     } finally {
       consoleErrorSpy.mockRestore();
@@ -6849,12 +6849,18 @@ describe('Router integration', () => {
   });
 
   test('a cross origin rejected redirect hard navigates on push', async () => {
-    const { view, router } = await renderFollowRouter({
+    const { view, capture, router } = await renderFollowRouter({
       responses: [
         { reject: { status: 307, location: 'http://elsewhere.test/login' } },
       ],
       slots: [],
     });
+    const events: string[] = [];
+    for (const name of ['start', 'complete', 'error'] as const) {
+      capture.router!.unstable_events.on(name, (route) =>
+        events.push(`${name} ${route.path}`),
+      );
+    }
     const replaceLocationSpy = vi
       .spyOn(window.location, 'replace')
       .mockImplementation(() => {});
@@ -6868,6 +6874,8 @@ describe('Router integration', () => {
     // the attempted entry is written, then the browser leaves from it
     expect(window.location.pathname).toBe('/protected');
     expect(window.history.length).toBe(lengthBefore + 1);
+    // leaving still closes the navigation it was asked for
+    expect(events).toEqual(['start /protected', 'error /protected']);
     expect(replaceLocationSpy).toHaveBeenCalledWith(
       'http://elsewhere.test/login',
     );
