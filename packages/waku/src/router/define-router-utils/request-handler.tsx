@@ -181,13 +181,13 @@ export const createRequestHandler = ({
           if (!location) {
             throw e;
           }
-          const target = resolveInternalRoute(location, input.req.url);
-          const entries = !target
+          const redirectRoute = resolveInternalRoute(location, input.req.url);
+          const entries = !redirectRoute
             ? null
             : await routeEntries
                 .getEntriesForRoute(
-                  encodeRoutePath(target.path),
-                  new URLSearchParams({ query: target.query }),
+                  encodeRoutePath(redirectRoute.path),
+                  new URLSearchParams({ query: redirectRoute.query }),
                   clientEtags,
                   requestElementCache,
                 )
