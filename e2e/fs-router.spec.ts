@@ -80,35 +80,58 @@ test.describe('fs-router', () => {
     // The dev bootstrap imports a virtual module, not a hashed asset.
     // eslint-disable-next-line playwright/no-skipped-test
     test.skip(mode === 'DEV', 'covers the production bootstrap import only');
+    const staleEntry = '/assets/index-stale-build.js';
     let navigations = 0;
+    let staleEntryRequests = 0;
+    let currentEntryRequests = 0;
     page.on('framenavigated', (frame) => {
       if (frame === page.mainFrame()) {
         navigations++;
       }
     });
-    // 404 the entry chunk exactly once, simulating a deploy-window skew
-    // between the HTML and the asset it references. `no-store` keeps engines
-    // (WebKit) from replaying the cached 404 on reload; 404 is heuristically
-    // cacheable per RFC 9111.
-    let blockedOnce = false;
-    await page.route('**/assets/index-*.js', async (route) => {
-      if (!blockedOnce) {
-        blockedOnce = true;
-        await route.fulfill({
-          status: 404,
-          headers: { 'cache-control': 'no-store' },
-          body: '',
-        });
+    page.on('request', (request) => {
+      const { pathname } = new URL(request.url());
+      if (pathname === staleEntry) {
+        staleEntryRequests++;
+      } else if (/^\/assets\/index-[\w-]+\.js$/.test(pathname)) {
+        currentEntryRequests++;
+      }
+    });
+    // Model a deploy-window skew. The first document is the old build, so it
+    // points at an entry chunk that is no longer deployed. The reload gets the
+    // current document, pointing at the chunk that really is deployed. The
+    // entry hash appears in a modulepreload link as well as in the bootstrap
+    // import, so rewrite every occurrence.
+    let firstDocument = true;
+    await page.route(`http://localhost:${port}/`, async (route) => {
+      if (!firstDocument) {
+        await route.continue();
         return;
       }
-      await route.continue();
+      firstDocument = false;
+      const response = await route.fetch();
+      const html = await response.text();
+      await route.fulfill({
+        response,
+        headers: { ...response.headers(), 'cache-control': 'no-store' },
+        body: html.replaceAll(/\/assets\/index-[\w-]+\.js/g, staleEntry),
+      });
     });
+    await page.route(`**${staleEntry}`, (route) =>
+      route.fulfill({
+        status: 404,
+        headers: { 'cache-control': 'no-store' },
+        body: '',
+      }),
+    );
     await page.goto(`http://localhost:${port}`);
     await expect
       .poll(() => navigations, { timeout: 10_000 })
       .toBeGreaterThanOrEqual(2);
     await waitForHydration(page);
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+    expect(staleEntryRequests).toBeGreaterThanOrEqual(1);
+    expect(currentEntryRequests).toBeGreaterThanOrEqual(1);
   });
 
   test('foo with trailing slash', async ({ page }) => {
