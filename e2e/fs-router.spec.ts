@@ -86,29 +86,20 @@ test.describe('fs-router', () => {
         navigations++;
       }
     });
-    // 404 the entry chunk exactly once, simulating a deploy-window skew
-    // between the HTML and the asset it references. `no-store` keeps engines
-    // (WebKit) from replaying the cached 404 on reload; 404 is heuristically
-    // cacheable per RFC 9111.
-    let blockedOnce = false;
-    await page.route('**/assets/index-*.js', async (route) => {
-      if (!blockedOnce) {
-        blockedOnce = true;
-        await route.fulfill({
-          status: 404,
-          headers: { 'cache-control': 'no-store' },
-          body: '',
-        });
-        return;
-      }
-      await route.continue();
+    // Fail the entry chunk exactly once, simulating a deploy-window skew
+    // between the HTML and the asset it references. `times: 1` drops the route
+    // after that, so the reload refetches with no interception at all. Abort
+    // rather than respond 404, because a 404 is heuristically cacheable per
+    // RFC 9111 and WebKit replays it on the reload.
+    await page.route('**/assets/index-*.js', (route) => route.abort(), {
+      times: 1,
     });
     await page.goto(`http://localhost:${port}`);
-    await expect
-      .poll(() => navigations, { timeout: 10_000 })
-      .toBeGreaterThanOrEqual(2);
+    // The first document cannot hydrate, so getting here at all means the
+    // recovery listener reloaded the page.
     await waitForHydration(page);
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+    expect(navigations).toBeGreaterThanOrEqual(2);
   });
 
   test('foo with trailing slash', async ({ page }) => {
