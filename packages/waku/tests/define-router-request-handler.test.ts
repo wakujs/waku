@@ -32,6 +32,14 @@ const makeUtils = (loadBuildMetadata = vi.fn()) => ({
   loadBuildMetadata,
 });
 
+const rscInput = (rscPath: string, rscParams?: unknown) => ({
+  type: 'rsc' as const,
+  pathname: '/RSC/' + rscPath,
+  rscPath,
+  rscParams,
+  req: new Request('http://localhost/RSC/' + rscPath),
+});
+
 const dynamicRoute = (name: string) => ({
   type: 'route' as const,
   path: name === '/' ? [] : [{ type: 'literal' as const, name: name.slice(1) }],
@@ -47,13 +55,7 @@ describe('request dispatch', () => {
       getConfigs: async () => [dynamicRoute('/about')],
     });
     const res = await handleRequest(
-      {
-        type: 'rsc',
-        pathname: '/RSC/R/missing',
-        rscPath: encodeRoutePath('/missing'),
-        rscParams: undefined,
-        req: new Request('http://localhost/RSC/R/missing'),
-      },
+      rscInput(encodeRoutePath('/missing')),
       makeUtils(),
     );
     expect(res).toBeNull();
@@ -71,16 +73,7 @@ describe('request dispatch', () => {
       ],
     });
     const utils = makeUtils();
-    await handleRequest(
-      {
-        type: 'rsc',
-        pathname: '/RSC/S/sidebar',
-        rscPath: encodeSliceId('sidebar'),
-        rscParams: undefined,
-        req: new Request('http://localhost/RSC/S/sidebar'),
-      },
-      utils,
-    );
+    await handleRequest(rscInput(encodeSliceId('sidebar')), utils);
     expect(utils.renderRsc).toHaveBeenCalledWith(
       expect.objectContaining({ 'slice:sidebar': 'SIDEBAR' }),
       expect.anything(),
@@ -161,6 +154,25 @@ describe('request dispatch', () => {
     const [apiReq, apiContext] = apiHandler.mock.calls[0]!;
     expect(new URL(apiReq.url).pathname).toBe('/api/hello');
     expect(apiContext).toEqual({ params: { slug: 'hello' } });
+  });
+
+  it('answers an rsc request for a missing route with the 404 payload', async () => {
+    const { handleRequest } = unstable_defineRouter({
+      getConfigs: async () => [dynamicRoute('/404')],
+    });
+    const utils = makeUtils();
+    const res = await handleRequest(
+      rscInput(
+        encodeRoutePath('/missing'),
+        new URLSearchParams({ query: 'foo=bar' }),
+      ),
+      utils,
+    );
+    expect(res).not.toBeNull();
+    expect(utils.renderRsc).toHaveBeenCalledWith(
+      expect.objectContaining({ [ROUTE_ID]: ['/404', 'foo=bar'] }),
+      expect.anything(),
+    );
   });
 
   it('renders the 404 route with the query that was asked for', async () => {

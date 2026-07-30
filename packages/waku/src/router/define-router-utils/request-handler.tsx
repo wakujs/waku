@@ -121,12 +121,27 @@ export const createRequestHandler = ({
           }
           return renderRsc(entries.elements, { etags: entries.etags });
         }
-        const entries = await routeEntries.getEntriesForRoute(
-          rscPath,
-          rscParams,
-          clientEtags,
-          requestElementCache,
-        );
+        let entries: RouteEntries | null = null;
+        try {
+          entries = await routeEntries.getEntriesForRoute(
+            rscPath,
+            rscParams,
+            clientEtags,
+            requestElementCache,
+          );
+        } catch (e) {
+          if (getErrorInfo(e)?.status !== 404) {
+            throw e;
+          }
+        }
+        if (!entries && configRegistry.has404()) {
+          entries = await routeEntries.getEntriesForRoute(
+            encodeRoutePath('/404'),
+            rscParams,
+            clientEtags,
+            requestElementCache,
+          );
+        }
         if (!entries) {
           return null;
         }
