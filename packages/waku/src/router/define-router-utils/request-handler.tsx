@@ -24,7 +24,7 @@ import type { RouteEntries, createRouteEntries } from './route-entries.js';
 type HandleRequest = Parameters<typeof defineHandlers>[0]['handleRequest'];
 type HandlerInput = Parameters<HandleRequest>[0];
 
-const parseInternalRedirect = (location: string, base: string) => {
+const resolveInternalRoute = (location: string, base: string) => {
   if (!location.startsWith('/') || location.includes('#')) {
     return undefined;
   }
@@ -181,7 +181,7 @@ export const createRequestHandler = ({
           if (!location) {
             throw e;
           }
-          const target = parseInternalRedirect(location, input.req.url);
+          const target = resolveInternalRoute(location, input.req.url);
           const entries = !target
             ? null
             : await routeEntries

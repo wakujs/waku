@@ -878,7 +878,7 @@ const FollowError = ({
     const { target, url } = errorRoute;
     const attempted = routerStateRef.current?.attempted;
     const caught = attempted
-      ? { path: attempted[0], query: attempted[1], hash: '' }
+      ? { path: attempted[0], query: attempted[1] }
       : parseRoute(attemptedUrl);
     if (isSameRscRoute(target, caught) && url.href === attemptedUrl.href) {
       fail(error, new Error('detected a navigation loop', { cause: error }));
