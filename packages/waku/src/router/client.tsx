@@ -175,7 +175,7 @@ type ChangeRouteOptions = {
   history: 'push' | 'replace' | null;
   url?: URL | undefined;
   instant?: boolean | undefined;
-  keepFollowBudget?: boolean | undefined;
+  isFollow?: boolean | undefined;
 };
 
 type ChangeRoute = (
@@ -784,7 +784,7 @@ export class ErrorBoundary extends Component<
 
 const MAX_FOLLOWS_PER_NAVIGATION = 20;
 
-type FollowBudget = { spent: number };
+type FollowCount = { current: number };
 
 const isFollowable = (error: unknown) => {
   const info = getErrorInfo(error);
@@ -796,13 +796,13 @@ const FollowError = ({
   has404,
   reset,
   fail,
-  countHop,
+  countFollow,
 }: {
   error: unknown;
   has404: boolean;
   reset: () => void;
   fail: (original: unknown, error: unknown) => void;
-  countHop: () => boolean;
+  countFollow: () => boolean;
 }) => {
   const { route, routerState, changeRoute } = useRouterOrThrow();
   const { path: routePath, query: routeQuery, hash: routeHash } = route;
@@ -884,7 +884,7 @@ const FollowError = ({
       fail(error, new Error('detected a navigation loop', { cause: error }));
       return;
     }
-    if (!countHop()) {
+    if (!countFollow()) {
       fail(
         error,
         new Error('too many redirect or 404 follows', { cause: error }),
@@ -903,7 +903,7 @@ const FollowError = ({
           : target.path !== caught.path,
         history: 'replace',
         url,
-        keepFollowBudget: true,
+        isFollow: true,
         refetch: true,
       }).then(
         () => {
@@ -915,25 +915,25 @@ const FollowError = ({
         },
       );
     });
-  }, [error, has404, fail, countHop, changeRoute]);
+  }, [error, has404, fail, countFollow, changeRoute]);
   const info = getErrorInfo(error);
   return info?.status === 404 && !has404 ? <h1>Not Found</h1> : null;
 };
 
 class CustomErrorHandler extends Component<
-  { has404: boolean; budget: FollowBudget; children?: ReactNode },
+  { has404: boolean; follows: FollowCount; children?: ReactNode },
   { error: unknown | null }
 > {
   constructor(props: {
     has404: boolean;
-    budget: FollowBudget;
+    follows: FollowCount;
     children?: ReactNode;
   }) {
     super(props);
     this.state = { error: null };
     this.reset = this.reset.bind(this);
     this.fail = this.fail.bind(this);
-    this.countHop = this.countHop.bind(this);
+    this.countFollow = this.countFollow.bind(this);
   }
   static getDerivedStateFromError(error: unknown) {
     return { error };
@@ -941,9 +941,9 @@ class CustomErrorHandler extends Component<
   reset() {
     this.setState({ error: null });
   }
-  countHop() {
-    this.props.budget.spent += 1;
-    return this.props.budget.spent <= MAX_FOLLOWS_PER_NAVIGATION;
+  countFollow() {
+    this.props.follows.current += 1;
+    return this.props.follows.current <= MAX_FOLLOWS_PER_NAVIGATION;
   }
   // error is a wrapper: the original still carries a location and would follow
   fail(original: unknown, error: unknown) {
@@ -959,7 +959,7 @@ class CustomErrorHandler extends Component<
             has404={this.props.has404}
             reset={this.reset}
             fail={this.fail}
-            countHop={this.countHop}
+            countFollow={this.countFollow}
           />
         );
       }
@@ -1200,7 +1200,7 @@ const InnerRouter = ({
 
   // FIXME this "fetchingSlices" hack feels suboptimal.
   const fetchingSlices = useRef(new Set<SliceId>()).current;
-  const followBudget = useRef<FollowBudget>({ spent: 0 }).current;
+  const followCount = useRef<FollowCount>({ current: 0 }).current;
   const abortRef = useRef<AbortController | null>(null);
   const announcedRef = useRef<RouteProps | null>(null);
 
@@ -1224,8 +1224,8 @@ const InnerRouter = ({
       if (isAborted()) {
         return;
       }
-      if (!options.keepFollowBudget) {
-        followBudget.spent = 0;
+      if (!options.isFollow) {
+        followCount.current = 0;
       }
       const routeBefore = routeRef.current;
       const targetUrl = options.url ?? getRouteUrl(nextRoute);
@@ -1323,7 +1323,7 @@ const InnerRouter = ({
       emitRouteChangeEvent,
       staticPathSet,
       learnStaticPath,
-      followBudget,
+      followCount,
       resolvedElementsRef,
       prefetchManager,
     ],
@@ -1423,7 +1423,7 @@ const InnerRouter = ({
     );
   const rootElement = (
     <Slot id="root">
-      <CustomErrorHandler has404={has404} budget={followBudget}>
+      <CustomErrorHandler has404={has404} follows={followCount}>
         {routeElement}
       </CustomErrorHandler>
     </Slot>

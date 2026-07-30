@@ -181,28 +181,25 @@ export const createRequestHandler = ({
           if (!location) {
             throw e;
           }
-          // the action arguments must not be replayed onto the destination
-          const handOff = () =>
-            createCustomError('Redirect', { status: 303, location });
           const target = parseInternalRedirect(location, input.req.url);
-          if (!target) {
-            throw handOff();
-          }
-          const entries = await routeEntries
-            .getEntriesForRoute(
-              encodeRoutePath(target.path),
-              new URLSearchParams({ query: target.query }),
-              clientEtags,
-              requestElementCache,
-            )
-            .catch((e: unknown) => {
-              if (getErrorInfo(e)?.location) {
-                throw handOff();
-              }
-              throw e;
-            });
+          const entries = !target
+            ? null
+            : await routeEntries
+                .getEntriesForRoute(
+                  encodeRoutePath(target.path),
+                  new URLSearchParams({ query: target.query }),
+                  clientEtags,
+                  requestElementCache,
+                )
+                .catch((e: unknown) => {
+                  if (getErrorInfo(e)?.location) {
+                    return null;
+                  }
+                  throw e;
+                });
           if (!entries) {
-            throw handOff();
+            // 303 keeps the browser from sending the action body along
+            throw createCustomError('Redirect', { status: 303, location });
           }
           return renderRsc(entries.elements, { etags: entries.etags });
         }
