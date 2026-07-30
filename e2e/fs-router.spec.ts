@@ -72,6 +72,39 @@ test.describe('fs-router', () => {
     await expect(page).toHaveURL(`http://localhost:${port}/foo`);
   });
 
+  test('recovers when the entry chunk itself fails to load', async ({
+    page,
+    mode,
+  }) => {
+    // https://github.com/wakujs/waku/issues/2238
+    // The dev bootstrap imports a virtual module, not a hashed asset.
+    // eslint-disable-next-line playwright/no-skipped-test
+    test.skip(mode === 'DEV', 'covers the production bootstrap import only');
+    let navigations = 0;
+    page.on('framenavigated', (frame) => {
+      if (frame === page.mainFrame()) {
+        navigations++;
+      }
+    });
+    // 404 the entry chunk exactly once, simulating a deploy-window skew
+    // between the HTML and the asset it references.
+    let blockedOnce = false;
+    await page.route('**/assets/index-*.js', async (route) => {
+      if (!blockedOnce) {
+        blockedOnce = true;
+        await route.fulfill({ status: 404, body: '' });
+        return;
+      }
+      await route.continue();
+    });
+    await page.goto(`http://localhost:${port}`);
+    await expect
+      .poll(() => navigations, { timeout: 10_000 })
+      .toBeGreaterThanOrEqual(2);
+    await waitForHydration(page);
+    await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+  });
+
   test('foo with trailing slash', async ({ page }) => {
     await page.goto(`http://localhost:${port}/foo/`);
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();

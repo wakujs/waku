@@ -7,7 +7,10 @@ import htmlShell from 'virtual:vite-rsc-waku/html-shell';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
 import { sanitizeLog } from '../utils/log.js';
-import { getBootstrapPreamble } from '../utils/ssr.js';
+import {
+  getBootstrapPreamble,
+  wrapBootstrapScriptContent,
+} from '../utils/ssr.js';
 import { batchReadableStream } from '../utils/stream.js';
 
 function createFromReadableStream<T>(
@@ -78,6 +81,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
       bootstrapScriptContent:
         getBootstrapPreamble({
           hydrate: true,
+          initialRsc: true,
           debugId: options.debugId,
         }) +
         bootstrapScriptContent +
@@ -118,6 +122,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
       bootstrapScriptContent:
         getBootstrapPreamble({
           hydrate: false,
+          initialRsc: true,
         }) +
         bootstrapScriptContent +
         (options.extraScriptContent || ''),
@@ -138,11 +143,18 @@ export async function renderHtmlFallback() {
   const bootstrapScriptContent = await loadBootstrapScriptContent();
   const html = htmlShell.replace(
     '</body>',
-    () => `<script>${bootstrapScriptContent}</script></body>`,
+    () =>
+    `<script>${
+        getBootstrapPreamble({
+          hydrate: false,
+          initialRsc: false,
+        })}${bootstrapScriptContent}</script></body>`,
   );
   return html;
 }
 
-function loadBootstrapScriptContent(): Promise<string> {
-  return import.meta.viteRsc.loadBootstrapScriptContent('index');
+async function loadBootstrapScriptContent(): Promise<string> {
+  return wrapBootstrapScriptContent(
+    await import.meta.viteRsc.loadBootstrapScriptContent('index'),
+  );
 }
