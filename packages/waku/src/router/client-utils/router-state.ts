@@ -17,6 +17,7 @@ export type RouterState = {
   // null leaves history alone: the browser already wrote it
   readonly history: 'push' | 'replace' | null;
   readonly scroll: { readonly pathChanged: boolean } | null;
+  readonly followCount: number; // follows since the last navigation of its own
   readonly failed?: boolean; // the fetch never landed, so the route id is stale
   readonly error?: unknown; // what failed, when failed is set
   // the reconciler writes this back, so a second pass does not repeat itself
@@ -35,12 +36,14 @@ export const makeRouterState = (
     history: 'push' | 'replace' | null;
     scroll: boolean;
     pathChanged: boolean;
+    followCount: number;
   },
 ): RouterState => ({
   url: url.pathname + url.search + url.hash,
   attempted: [route.path, route.query],
   history: options.history,
   scroll: options.scroll ? { pathChanged: options.pathChanged } : null,
+  followCount: options.followCount,
 });
 
 // a redirect to the 404 route keeps the url that was attempted
