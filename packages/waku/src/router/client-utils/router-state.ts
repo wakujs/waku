@@ -18,6 +18,7 @@ export type RouterState = {
   readonly history: 'push' | 'replace' | null;
   readonly scroll: { readonly pathChanged: boolean } | null;
   readonly failed?: boolean; // the fetch never landed, so the route id is stale
+  readonly error?: unknown; // what failed, when failed is set
 };
 
 export const getRouterState = (

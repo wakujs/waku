@@ -1108,7 +1108,6 @@ const InnerRouter = ({
 
   const refetch = useRefetch();
   const mergeElements = useMergeElements();
-  const [err, setErr] = useState<unknown>(null);
   // starts empty so hydration matches the server, then the effect fills it
   const [restoredHash, setRestoredHash] = useState('');
   useEffect(() => {
@@ -1230,7 +1229,6 @@ const InnerRouter = ({
       });
       const shouldRefetch =
         options.refetch ?? !isSameRscRoute(nextRoute, routeBefore);
-      setErr(null);
       if (staticPathSet.has(nextRoute.path) || !shouldRefetch) {
         mergeElements({
           [ROUTE_ID]: [nextRoute.path, nextRoute.query],
@@ -1304,9 +1302,9 @@ const InnerRouter = ({
             ...routerState,
             history: null, // the url above is already written
             failed: true,
+            error: e,
           },
         });
-        setErr(e);
         emitRouteChangeEvent('error', nextRoute);
         throw e;
       }
@@ -1407,12 +1405,11 @@ const InnerRouter = ({
     };
   }, [changeRoute, routeInterceptor]);
 
-  const routeElement =
-    err !== null ? (
-      <ThrowError error={err} />
-    ) : (
-      <Slot id={getRouteSlotId(currentRoute.path)} />
-    );
+  const routeElement = routerState?.failed ? (
+    <ThrowError error={routerState.error} />
+  ) : (
+    <Slot id={getRouteSlotId(currentRoute.path)} />
+  );
   const rootElement = (
     <Slot id="root">
       <CustomErrorHandler has404={has404} followCount={followCountRef}>
