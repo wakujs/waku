@@ -1068,11 +1068,11 @@ const InnerRouter = ({
     routeFromElements && routeFromElements.path !== fallbackRoute.path
       ? { ...routeFromElements, hash: fallbackRoute.hash }
       : fallbackRoute;
-  const initialHash = useRef(resolvedRoute.hash).current;
-  const initialRoute = useRef({ ...resolvedRoute, hash: '' }).current;
+  const [initialHash] = useState(() => resolvedRoute.hash);
+  const [initialRoute] = useState(() => ({ ...resolvedRoute, hash: '' }));
 
   const has404 = has404FromElements(elements);
-  const staticPathSet = useRef(new Set<string>()).current;
+  const [staticPathSet] = useState(() => new Set<string>());
   // a record mid navigation pairs the new route id with the old static flag
   const learnStaticPath = useCallback(
     (responseElements: Record<string, unknown>) => {
@@ -1083,7 +1083,7 @@ const InnerRouter = ({
     },
     [staticPathSet],
   );
-  const initialElements = useRef(elements).current;
+  const [initialElements] = useState(() => elements);
   useEffect(() => {
     learnStaticPath(initialElements);
   }, [initialElements, learnStaticPath]);
@@ -1091,7 +1091,7 @@ const InnerRouter = ({
   useEffect(() => {
     resolvedElementsRef.current = elements;
   }, [elements]);
-  const prefetchManager = useRef(createPrefetchManager()).current;
+  const [prefetchManager] = useState(createPrefetchManager);
 
   const refetch = useRefetch();
   const mergeElements = useMergeElements();
@@ -1184,7 +1184,7 @@ const InnerRouter = ({
   );
 
   // FIXME this "fetchingSlices" hack feels suboptimal.
-  const fetchingSlices = useRef(new Set<SliceId>()).current;
+  const [fetchingSlices] = useState(() => new Set<SliceId>());
   // it exists while a terminal event is owed; announced says start went out
   const pendingNavigationRef = useRef<{
     controller: AbortController;
