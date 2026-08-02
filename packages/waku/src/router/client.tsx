@@ -803,18 +803,17 @@ const FollowError = ({
 }) => {
   const { route, routerState, changeRoute } = useRouterOrThrow();
   const { path: routePath, query: routeQuery, hash: routeHash } = route;
-  const caughtAtRef = useRef<readonly [string, string, string] | undefined>(
-    undefined,
-  );
-  if (caughtAtRef.current === undefined) {
-    caughtAtRef.current = [routePath, routeQuery, routeHash];
-  }
-  const dispatchedRef = useRef<{ route: RouteProps; url: string } | undefined>(
-    undefined,
-  );
-  const stateAtDispatchRef = useRef<RouterState | undefined>(undefined);
+  const [caughtAt] = useState<readonly [string, string, string]>(() => [
+    routePath,
+    routeQuery,
+    routeHash,
+  ]);
+  const dispatchedRef = useRef<
+    | { route: RouteProps; url: string; from: RouterState | undefined }
+    | undefined
+  >(undefined);
   useEffect(() => {
-    const [caughtPath, caughtQuery, caughtHash] = caughtAtRef.current!;
+    const [caughtPath, caughtQuery, caughtHash] = caughtAt;
     // a route change means the followed slot is committed; safe to reset
     if (
       routePath !== caughtPath ||
@@ -828,7 +827,7 @@ const FollowError = ({
     if (
       dispatched &&
       routerState &&
-      routerState !== stateAtDispatchRef.current &&
+      routerState !== dispatched.from &&
       !routerState.failed
     ) {
       const landed =
@@ -843,7 +842,16 @@ const FollowError = ({
         fail(error, new Error('detected a navigation loop', { cause: error }));
       }
     }
-  }, [routePath, routeQuery, routeHash, routerState, reset, fail, error]);
+  }, [
+    routePath,
+    routeQuery,
+    routeHash,
+    routerState,
+    reset,
+    fail,
+    error,
+    caughtAt,
+  ]);
   const followCaughtError = useEffectEvent(() => {
     // the attempted url may not have reached the address bar yet
     const attemptedUrl = routerState
@@ -885,8 +893,8 @@ const FollowError = ({
     dispatchedRef.current = {
       route: target,
       url: url.pathname + url.search + url.hash,
+      from: routerState,
     };
-    stateAtDispatchRef.current = routerState;
     startTransition(() => {
       changeRoute(target, {
         shouldScroll: routerState
