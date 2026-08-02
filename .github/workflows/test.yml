@@ -40,7 +40,7 @@ jobs:
         with:
           node-version: ${{ matrix.version }}
           cache: ${{ !inputs.react_version && 'pnpm' || '' }}
-      - name: Override React versions and install
+      - name: Override React versions
         if: ${{ inputs.react_version }}
         env:
           REACT_VERSION: ${{ inputs.react_version }}

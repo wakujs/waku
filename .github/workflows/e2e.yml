@@ -125,7 +125,7 @@ jobs:
           cache: ${{ !inputs.react_version && 'pnpm' || '' }}
       - if: runner.os == 'Windows'
         run: choco install yq -y
-      - name: Override React versions and install
+      - name: Override React versions
         if: ${{ inputs.react_version }}
         env:
           REACT_VERSION: ${{ inputs.react_version }}
