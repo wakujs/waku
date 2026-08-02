@@ -8,6 +8,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useEffectEvent,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -812,10 +813,6 @@ const FollowError = ({
     undefined,
   );
   const stateAtDispatchRef = useRef<RouterState | undefined>(undefined);
-  const routerStateRef = useRef(routerState);
-  useEffect(() => {
-    routerStateRef.current = routerState;
-  }, [routerState]);
   useEffect(() => {
     const [caughtPath, caughtQuery, caughtHash] = caughtAtRef.current!;
     // a route change means the followed slot is committed; safe to reset
@@ -847,10 +844,10 @@ const FollowError = ({
       }
     }
   }, [routePath, routeQuery, routeHash, routerState, reset, fail, error]);
-  useEffect(() => {
+  const followCaughtError = useEffectEvent(() => {
     // the attempted url may not have reached the address bar yet
-    const attemptedUrl = routerStateRef.current
-      ? new URL(routerStateRef.current.url, window.location.href)
+    const attemptedUrl = routerState
+      ? new URL(routerState.url, window.location.href)
       : new URL(window.location.href);
     const errorRoute = resolveErrorRoute(error, attemptedUrl, has404);
     if (errorRoute.type === 'none') {
@@ -870,7 +867,7 @@ const FollowError = ({
       return;
     }
     const { target, url } = errorRoute;
-    const attempted = routerStateRef.current?.attempted;
+    const attempted = routerState?.attempted;
     const caught = attempted
       ? { path: attempted[0], query: attempted[1] }
       : parseRoute(attemptedUrl);
@@ -878,9 +875,7 @@ const FollowError = ({
       fail(error, new Error('detected a navigation loop', { cause: error }));
       return;
     }
-    if (
-      (routerStateRef.current?.followCount ?? 0) >= MAX_FOLLOWS_PER_NAVIGATION
-    ) {
+    if ((routerState?.followCount ?? 0) >= MAX_FOLLOWS_PER_NAVIGATION) {
       fail(
         error,
         new Error('too many redirect or 404 follows', { cause: error }),
@@ -891,11 +886,11 @@ const FollowError = ({
       route: target,
       url: url.pathname + url.search + url.hash,
     };
-    stateAtDispatchRef.current = routerStateRef.current;
+    stateAtDispatchRef.current = routerState;
     startTransition(() => {
       changeRoute(target, {
-        shouldScroll: routerStateRef.current
-          ? routerStateRef.current.scroll !== null
+        shouldScroll: routerState
+          ? routerState.scroll !== null
           : target.path !== caught.path,
         history: 'replace',
         url,
@@ -905,7 +900,10 @@ const FollowError = ({
         fail(error, err);
       });
     });
-  }, [error, has404, fail, changeRoute]);
+  });
+  useEffect(() => {
+    followCaughtError();
+  }, [error, has404]);
   const info = getErrorInfo(error);
   return info?.status === 404 && !has404 ? <h1>Not Found</h1> : null;
 };
