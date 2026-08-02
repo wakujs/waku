@@ -814,7 +814,6 @@ const FollowError = ({
     undefined,
   );
   const stateAtDispatchRef = useRef<RouterState | undefined>(undefined);
-  const followingRef = useRef<unknown>(null);
   const routerStateRef = useRef(routerState);
   useEffect(() => {
     routerStateRef.current = routerState;
@@ -856,10 +855,9 @@ const FollowError = ({
       ? new URL(routerStateRef.current.url, window.location.href)
       : new URL(window.location.href);
     const errorRoute = resolveErrorRoute(error, attemptedUrl, has404);
-    if (errorRoute.type === 'none' || followingRef.current === error) {
+    if (errorRoute.type === 'none') {
       return;
     }
-    followingRef.current = error;
     if (errorRoute.type === 'unfollowable') {
       fail(
         error,
@@ -903,15 +901,9 @@ const FollowError = ({
         url,
         isFollow: true,
         refetch: true,
-      }).then(
-        () => {
-          followingRef.current = null;
-        },
-        (err) => {
-          followingRef.current = null;
-          fail(error, err);
-        },
-      );
+      }).catch((err: unknown) => {
+        fail(error, err);
+      });
     });
   }, [error, has404, fail, countFollow, changeRoute]);
   const info = getErrorInfo(error);

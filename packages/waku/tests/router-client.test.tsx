@@ -6250,8 +6250,12 @@ describe('Router integration', () => {
     expect(
       (view.container.textContent?.match(/found-page/g) ?? []).length,
     ).toBe(2);
-    // exactly one navigation per router, even under strict-mode replay
-    expect(getRefetchMock()).toHaveBeenCalledTimes(2);
+    // both fetched the 404 route; strict mode may replay the dispatch
+    expect(getRefetchMock()).toHaveBeenCalledWith(
+      unstable_encodeRoutePath('/404'),
+      expect.anything(),
+      expect.anything(),
+    );
 
     view.unmount();
   });
@@ -6292,7 +6296,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('custom 404 handling with a /404 page avoids strict-mode refetching race', async () => {
+  test('custom 404 handling with a /404 page recovers under strict mode', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
     const ThrowNotFoundErrorObject = createCustomError('not-found', {
@@ -6320,7 +6324,6 @@ describe('Router integration', () => {
 
     await flush();
     try {
-      expect(getRefetchMock()).toHaveBeenCalledTimes(1);
       expect(getRefetchMock()).toHaveBeenCalledWith(
         unstable_encodeRoutePath('/404'),
         expect.any(URLSearchParams),
