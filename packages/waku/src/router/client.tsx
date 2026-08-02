@@ -1110,13 +1110,19 @@ const InnerRouter = ({
   const currentRoute = destination
     ? destination.route
     : { ...initialRoute, hash: restoredHash };
-  const routeRef = useRef(currentRoute);
+  // a failed navigation leaves the route id alone, so this stays committed
+  const committedRoute = useCallback((): RouteProps => {
+    const committed = resolvedElementsRef.current;
+    const route = getRouteFromElements(committed) ?? initialRoute;
+    const state = getRouterState(committed);
+    // a failed state holds the url it tried, which is not where we are
+    const url = state?.failed ? undefined : state?.url;
+    return {
+      ...route,
+      hash: url ? new URL(url, window.location.href).hash : '',
+    };
+  }, [initialRoute]);
   useLayoutEffect(() => {
-    if (!routerState?.failed) {
-      // a failed navigation renders the route it came from with the url it
-      // tried; publishing that pair would make a retry look like a no op
-      routeRef.current = currentRoute;
-    }
     if (!routerState || !destination) {
       return;
     }
@@ -1152,7 +1158,7 @@ const InnerRouter = ({
       const refetchRouteOnHmr = () => {
         prefetchManager.clear();
         staticPathSet.clear();
-        const route = routeRef.current;
+        const route = committedRoute();
         startTransition(() => {
           // the reload clears the set, so the response has to teach it again
           void refetch(
@@ -1166,7 +1172,13 @@ const InnerRouter = ({
         refetchRouteOnHmr,
       );
       globalThis.__WAKU_REFETCH_ROUTE__ = refetchRouteOnHmr;
-    }, [refetch, prefetchManager, staticPathSet, learnStaticPath]);
+    }, [
+      refetch,
+      prefetchManager,
+      staticPathSet,
+      learnStaticPath,
+      committedRoute,
+    ]);
   }
 
   const [[routeChangeEvents, emitRouteChangeEvent]] = useState(
@@ -1198,7 +1210,7 @@ const InnerRouter = ({
       if (isAborted()) {
         return;
       }
-      const routeBefore = routeRef.current;
+      const routeBefore = committedRoute();
       const targetUrl = options.url ?? getRouteUrl(nextRoute);
       const routerState = makeRouterState(nextRoute, targetUrl, {
         history: options.history,
@@ -1291,6 +1303,7 @@ const InnerRouter = ({
       }
     },
     [
+      committedRoute,
       refetch,
       mergeElements,
       emitRouteChangeEvent,
@@ -1306,7 +1319,7 @@ const InnerRouter = ({
         return;
       }
       const [path, query] = routeData as [string, string];
-      const currentRoute = routeRef.current;
+      const currentRoute = committedRoute();
       if (
         currentRoute.path === path &&
         (isStatic || currentRoute.query === query)
@@ -1323,7 +1336,7 @@ const InnerRouter = ({
         url: is404 ? new URL(window.location.href) : getRouteUrl(route),
       });
     },
-    [changeRoute],
+    [changeRoute, committedRoute],
   );
   useEffect(() => {
     const listener = (elements: Record<string, unknown>) => {
@@ -1367,7 +1380,7 @@ const InnerRouter = ({
       }
       startTransition(() => {
         changeRoute(nextRoute, {
-          shouldScroll: shouldScrollForRouteChange(nextRoute, routeRef.current),
+          shouldScroll: shouldScrollForRouteChange(nextRoute, committedRoute()),
           history: null, // the browser already moved the address bar
           // keep the url it moved to; an interceptor rewrite needs a new one
           url: isSameRoute(nextRoute, popped)
@@ -1384,7 +1397,7 @@ const InnerRouter = ({
     return () => {
       window.removeEventListener('popstate', callback);
     };
-  }, [changeRoute, routeInterceptor]);
+  }, [changeRoute, routeInterceptor, committedRoute]);
 
   const routeElement = routerState?.failed ? (
     <ThrowError error={routerState.error} />
