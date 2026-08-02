@@ -1185,25 +1185,32 @@ const InnerRouter = ({
 
   // FIXME this "fetchingSlices" hack feels suboptimal.
   const fetchingSlices = useRef(new Set<SliceId>()).current;
-  const abortRef = useRef<AbortController | null>(null);
-  const announcedRef = useRef<RouteProps | null>(null);
+  // it exists while a terminal event is owed; announced says start went out
+  const pendingNavigationRef = useRef<{
+    controller: AbortController;
+    route: RouteProps;
+    announced: boolean;
+  } | null>(null);
 
   const changeRoute: ChangeRoute = useCallback(
     async function changeRoute(nextRoute, options) {
-      const superseded = abortRef.current ? announcedRef.current : null;
-      abortRef.current?.abort();
-      const abortController = new AbortController();
-      abortRef.current = abortController;
-      const isAborted = () => abortController.signal.aborted;
-      if (superseded) {
-        announcedRef.current = null;
-        emitRouteChangeEvent('error', superseded);
+      const superseded = pendingNavigationRef.current;
+      superseded?.controller.abort();
+      const pending = {
+        controller: new AbortController(),
+        route: nextRoute,
+        announced: false,
+      };
+      pendingNavigationRef.current = pending;
+      const isAborted = () => pending.controller.signal.aborted;
+      if (superseded?.announced) {
+        emitRouteChangeEvent('error', superseded.route);
       }
       // a listener can navigate synchronously, which aborts this one
       if (isAborted()) {
         return;
       }
-      announcedRef.current = nextRoute;
+      pending.announced = true;
       emitRouteChangeEvent('start', nextRoute);
       if (isAborted()) {
         return;
@@ -1225,7 +1232,7 @@ const InnerRouter = ({
           [ROUTE_ID]: [nextRoute.path, nextRoute.query],
           [ROUTER_STATE_ID]: routerState,
         });
-        abortRef.current = null;
+        pendingNavigationRef.current = null;
         emitRouteChangeEvent('complete', nextRoute);
         return;
       }
@@ -1240,7 +1247,7 @@ const InnerRouter = ({
           prefetchedElements,
         );
       const dataPromise = refetch(rscPath, createRscParams(nextRoute.query), {
-        signal: abortController.signal,
+        signal: pending.controller.signal,
         unstable_overlay: {
           [ROUTER_STATE_ID]: routerState,
           // meta is pinned, so an instant nav has to carry it or it goes stale
@@ -1269,7 +1276,7 @@ const InnerRouter = ({
         if (isAborted()) {
           return;
         }
-        abortRef.current = null;
+        pendingNavigationRef.current = null;
         learnStaticPath(resolved);
         emitRouteChangeEvent(
           'complete',
@@ -1279,7 +1286,7 @@ const InnerRouter = ({
         if (isAborted()) {
           return;
         }
-        abortRef.current = null;
+        pendingNavigationRef.current = null;
         // write the url now; an unrecoverable rethrow discards the commit
         if (window.location.href !== targetUrl.href) {
           if (routerState.history === 'push') {
