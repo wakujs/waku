@@ -19,6 +19,8 @@ export type RouterState = {
   readonly scroll: { readonly pathChanged: boolean } | null;
   readonly failed?: boolean; // the fetch never landed, so the route id is stale
   readonly error?: unknown; // what failed, when failed is set
+  // the reconciler writes this back, so a second pass does not repeat itself
+  applied?: { href: string; pushed: boolean };
 };
 
 export const getRouterState = (

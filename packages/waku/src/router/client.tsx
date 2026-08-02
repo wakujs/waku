@@ -1122,10 +1122,6 @@ const InnerRouter = ({
     ? destination.route
     : { ...initialRoute, hash: restoredHash };
   const routeRef = useRef(currentRoute);
-  // what the last reconcile did, so a second pass does not repeat it
-  const reconciledRef = useRef<
-    { routerState: RouterState; href: string; pushed: boolean } | undefined
-  >(undefined);
   useLayoutEffect(() => {
     if (!routerState?.failed) {
       // a failed navigation renders the route it came from with the url it
@@ -1136,14 +1132,11 @@ const InnerRouter = ({
       return;
     }
     const { url } = destination;
-    const reconciled =
-      reconciledRef.current?.routerState === routerState
-        ? reconciledRef.current
-        : undefined;
-    if (reconciled?.href === url.href) {
+    const { applied } = routerState;
+    if (applied?.href === url.href) {
       return;
     }
-    let pushed = reconciled?.pushed ?? false;
+    let pushed = applied?.pushed ?? false;
     // history null still writes: the state's url is the one that should show
     if (window.location.href !== url.href) {
       if (routerState.history === 'push' && !pushed) {
@@ -1153,8 +1146,8 @@ const InnerRouter = ({
         window.history.replaceState(window.history.state, '', url);
       }
     }
-    reconciledRef.current = { routerState, href: url.href, pushed };
-    if (routerState.scroll && !reconciled && !routerState.failed) {
+    routerState.applied = { href: url.href, pushed };
+    if (routerState.scroll && !applied && !routerState.failed) {
       const { pathChanged } = routerState.scroll;
       scrollToRoute(
         currentRoute,
