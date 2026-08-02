@@ -5897,6 +5897,98 @@ describe('Router integration', () => {
     }
   });
 
+  test('a retry from a still mounted nav after a failure fetches again', async () => {
+    const capture = { router: null as RouterApi | null };
+    const navCapture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const NavProbe = makeProbe(navCapture);
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
+    refetch.mockRejectedValueOnce(new Error('boom'));
+    installRefetch(refetch);
+
+    testHoisted.elements = {
+      root: (
+        <>
+          <NavProbe />
+          <ErrorBoundary>
+            <Children />
+          </ErrorBoundary>
+        </>
+      ),
+      [unstable_getRouteSlotId('/list')]: <Probe />,
+      [ROUTE_ID]: ['/list', ''],
+      [IS_STATIC_ID]: false,
+    };
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const view = await renderApp(
+      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+        <Router initialRoute={{ path: '/list', query: '', hash: '' }} />
+      </Unstable_SearchCodecsProvider>,
+    );
+    try {
+      await act(async () => {
+        await navCapture.router!.push('/detail?id=5').catch(() => {});
+        await flush();
+      });
+      refetch.mockClear();
+
+      await act(async () => {
+        await navCapture.router!.push('/list?id=5').catch(() => {});
+        await flush();
+      });
+
+      expect(refetch).toHaveBeenCalledTimes(1);
+    } finally {
+      consoleErrorSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
+  test('an unrelated re-render does not scroll again', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const bump = { fn: null as null | (() => void) };
+    const Bump = () => {
+      const [, setN] = useState(0);
+      bump.fn = () => setN((n) => n + 1);
+      return (
+        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+          <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
+        </Unstable_SearchCodecsProvider>
+      );
+    };
+    testHoisted.elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/b')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+    const view = await renderApp(<Bump />);
+    try {
+      await act(async () => {
+        await capture.router!.push('/b');
+        await flush();
+      });
+      expect(scrollToSpy).toHaveBeenCalledTimes(1);
+      scrollToSpy.mockClear();
+      await act(async () => {
+        bump.fn!();
+        await flush();
+      });
+      expect(scrollToSpy).not.toHaveBeenCalled();
+    } finally {
+      scrollToSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('a second 404 with a query lands on the 404 route again', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
