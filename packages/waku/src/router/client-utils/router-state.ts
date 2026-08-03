@@ -17,7 +17,7 @@ export type RouterState = {
   // null leaves history alone: the browser already wrote it
   readonly history: 'push' | 'replace' | null;
   readonly scroll: { readonly pathChanged: boolean } | null;
-  readonly followCount: number; // follows since the last navigation of its own
+  readonly followCount: number;
   // set when the fetch never landed, so the route id is stale
   readonly failure?: { readonly error: unknown };
   // the reconciler writes this back on the same object, never on a copy

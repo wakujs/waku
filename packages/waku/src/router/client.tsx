@@ -1116,16 +1116,14 @@ const InnerRouter = ({
   const currentRoute = destination
     ? destination.route
     : { ...initialRoute, hash: restoredHash };
-  // a failed navigation leaves the route id alone, so this stays committed
   const committedRoute = useCallback((): RouteProps => {
     const committed = resolvedElementsRef.current;
     const route = getRouteFromElements(committed) ?? initialRoute;
     const state = getRouterState(committed);
-    // a failed state holds the url it tried, which is not where we are
-    const url = state?.failure ? undefined : state?.url;
+    const landedUrl = state?.failure ? undefined : state?.url;
     return {
       ...route,
-      hash: url ? new URL(url, window.location.href).hash : '',
+      hash: landedUrl ? new URL(landedUrl, window.location.href).hash : '',
     };
   }, [initialRoute]);
   useLayoutEffect(() => {
@@ -1193,11 +1191,10 @@ const InnerRouter = ({
 
   // FIXME this "fetchingSlices" hack feels suboptimal.
   const [fetchingSlices] = useState(() => new Set<SliceId>());
-  // it exists while a terminal event is owed; announced says start went out
   const pendingNavigationRef = useRef<{
     controller: AbortController;
     route: RouteProps;
-    announced: boolean;
+    startEmitted: boolean;
   } | null>(null);
 
   const changeRoute: ChangeRoute = useCallback(
@@ -1207,18 +1204,18 @@ const InnerRouter = ({
       const pending = {
         controller: new AbortController(),
         route: nextRoute,
-        announced: false,
+        startEmitted: false,
       };
       pendingNavigationRef.current = pending;
       const isAborted = () => pending.controller.signal.aborted;
-      if (superseded?.announced) {
+      if (superseded?.startEmitted) {
         emitRouteChangeEvent('error', superseded.route);
       }
       // a listener can navigate synchronously, which aborts this one
       if (isAborted()) {
         return;
       }
-      pending.announced = true;
+      pending.startEmitted = true;
       emitRouteChangeEvent('start', nextRoute);
       if (isAborted()) {
         return;
