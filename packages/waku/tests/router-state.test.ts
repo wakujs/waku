@@ -80,8 +80,11 @@ describe('resolveServerRedirect', () => {
       '/a',
     );
     expect(
-      resolveServerRedirect(elements, { ...attempt, failed: true }, '/f').url
-        .pathname,
+      resolveServerRedirect(
+        elements,
+        { ...attempt, failure: { error: new Error('x') } },
+        '/f',
+      ).url.pathname,
     ).toBe('/missing');
   });
 

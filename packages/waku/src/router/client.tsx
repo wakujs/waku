@@ -828,7 +828,7 @@ const FollowError = ({
       dispatched &&
       routerState &&
       routerState !== dispatched.from &&
-      !routerState.failed
+      !routerState.failure
     ) {
       const landed =
         routerState.attempted[0] === dispatched.route.path &&
@@ -1122,7 +1122,7 @@ const InnerRouter = ({
     const route = getRouteFromElements(committed) ?? initialRoute;
     const state = getRouterState(committed);
     // a failed state holds the url it tried, which is not where we are
-    const url = state?.failed ? undefined : state?.url;
+    const url = state?.failure ? undefined : state?.url;
     return {
       ...route,
       hash: url ? new URL(url, window.location.href).hash : '',
@@ -1148,7 +1148,7 @@ const InnerRouter = ({
       }
     }
     routerState.applied = { href: url.href, pushed };
-    if (routerState.scroll && !applied && !routerState.failed) {
+    if (routerState.scroll && !applied && !routerState.failure) {
       const { pathChanged } = routerState.scroll;
       scrollToRoute(
         currentRoute,
@@ -1307,8 +1307,7 @@ const InnerRouter = ({
           [ROUTER_STATE_ID]: {
             ...routerState,
             history: null, // the url above is already written
-            failed: true,
-            error: e,
+            failure: { error: e },
           },
         });
         emitRouteChangeEvent('error', nextRoute);
@@ -1412,8 +1411,8 @@ const InnerRouter = ({
     };
   }, [changeRoute, routeInterceptor, committedRoute]);
 
-  const routeElement = routerState?.failed ? (
-    <ThrowError error={routerState.error} />
+  const routeElement = routerState?.failure ? (
+    <ThrowError error={routerState.failure.error} />
   ) : (
     <Slot id={getRouteSlotId(currentRoute.path)} />
   );

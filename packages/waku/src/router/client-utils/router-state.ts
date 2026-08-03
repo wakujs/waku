@@ -18,9 +18,9 @@ export type RouterState = {
   readonly history: 'push' | 'replace' | null;
   readonly scroll: { readonly pathChanged: boolean } | null;
   readonly followCount: number; // follows since the last navigation of its own
-  readonly failed?: boolean; // the fetch never landed, so the route id is stale
-  readonly error?: unknown; // what failed, when failed is set
-  // the reconciler writes this back, so a second pass does not repeat itself
+  // set when the fetch never landed, so the route id is stale
+  readonly failure?: { readonly error: unknown };
+  // the reconciler writes this back on the same object, never on a copy
   applied?: { href: string; pushed: boolean };
 };
 
@@ -54,7 +54,7 @@ export const resolveServerRedirect = (
 ): { route: RouteProps; url: URL } => {
   const stateUrl = new URL(routerState.url, window.location.href);
   // nothing landed on a failed navigation, so there is no redirect to read
-  const redirect = routerState.failed
+  const redirect = routerState.failure
     ? undefined
     : getServerRedirect(elements, {
         path: routerState.attempted[0],
