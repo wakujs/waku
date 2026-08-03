@@ -798,10 +798,7 @@ export class ErrorBoundary extends Component<
 
 const MAX_FOLLOWS_PER_NAVIGATION = 20;
 
-const appliedByState = new WeakMap<
-  RouterState,
-  { href: string; pushed: boolean }
->();
+const appliedByState = new WeakMap<RouterState, { pushed: boolean }>();
 
 const isFollowable = (error: unknown) => {
   const info = getErrorInfo(error);
@@ -1122,12 +1119,17 @@ const InnerRouter = ({
   }, []);
 
   const routerState = getRouterState(elements);
-  const destination =
-    routerState &&
-    resolveServerRedirect(elements, routerState, initialRoute.path);
-  const currentRoute = destination
-    ? destination.route
-    : { ...initialRoute, hash: restoredHash };
+  const destination = useMemo(
+    () =>
+      routerState &&
+      resolveServerRedirect(elements, routerState, initialRoute.path),
+    [elements, routerState, initialRoute],
+  );
+  const currentRoute = useMemo(
+    () =>
+      destination ? destination.route : { ...initialRoute, hash: restoredHash },
+    [destination, initialRoute, restoredHash],
+  );
   const committedRoute = useCallback((): RouteProps => {
     const committed = resolvedElementsRef.current;
     const state = getRouterState(committed);
@@ -1148,9 +1150,6 @@ const InnerRouter = ({
     }
     const { url } = destination;
     const applied = appliedByState.get(routerState);
-    if (applied?.href === url.href) {
-      return;
-    }
     const wasPushed = applied?.pushed ?? false;
     // history null still writes: the state's url is the one that should show
     const pushed =
@@ -1158,7 +1157,7 @@ const InnerRouter = ({
         url,
         routerState.history === 'push' && !wasPushed ? 'push' : 'replace',
       ) || wasPushed;
-    appliedByState.set(routerState, { href: url.href, pushed });
+    appliedByState.set(routerState, { pushed });
     if (routerState.scroll && !applied && !routerState.failure) {
       const { pathChanged } = routerState.scroll;
       scrollToRoute(
@@ -1167,7 +1166,7 @@ const InnerRouter = ({
         pathChanged,
       );
     }
-  });
+  }, [routerState, destination, currentRoute]);
 
   useEffect(() => {
     if (import.meta.hot) {
