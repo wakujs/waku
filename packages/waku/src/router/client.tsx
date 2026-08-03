@@ -808,17 +808,14 @@ const FollowError = ({
 }) => {
   const { route, routerState, changeRoute } = useRouterOrThrow();
   const { path: routePath, query: routeQuery, hash: routeHash } = route;
-  const [caughtAt] = useState<readonly [string, string, string]>(() => [
-    routePath,
-    routeQuery,
-    routeHash,
-  ]);
+  const caughtAtRef = useRef<readonly [string, string, string]>(undefined);
+  caughtAtRef.current ??= [routePath, routeQuery, routeHash];
   const dispatchedRef = useRef<
     | { route: RouteProps; url: string; from: RouterState | undefined }
     | undefined
   >(undefined);
   useEffect(() => {
-    const [caughtPath, caughtQuery, caughtHash] = caughtAt;
+    const [caughtPath, caughtQuery, caughtHash] = caughtAtRef.current!;
     // a route change means the followed slot is committed; safe to reset
     if (
       routePath !== caughtPath ||
@@ -847,16 +844,7 @@ const FollowError = ({
         fail(error, new Error('detected a navigation loop', { cause: error }));
       }
     }
-  }, [
-    routePath,
-    routeQuery,
-    routeHash,
-    routerState,
-    reset,
-    fail,
-    error,
-    caughtAt,
-  ]);
+  }, [routePath, routeQuery, routeHash, routerState, reset, fail, error]);
   const followCaughtError = useEffectEvent(() => {
     // the attempted url may not have reached the address bar yet
     const attemptedUrl = routerState
