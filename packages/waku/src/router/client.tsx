@@ -142,17 +142,15 @@ const parseRouteFromLocation = (): RouteProps => {
   return parseRoute(new URL(window.location.href));
 };
 
-// returns whether it pushed, so a second pass can downgrade to replace
-const commitHistory = (url: URL, mode: 'push' | 'replace' | null): boolean => {
+const commitHistory = (url: URL, mode: 'push' | 'replace' | null): void => {
   if (window.location.href === url.href) {
-    return false;
+    return;
   }
   if (mode === 'push') {
     window.history.pushState(window.history.state, '', url);
-    return true;
+  } else {
+    window.history.replaceState(window.history.state, '', url);
   }
-  window.history.replaceState(window.history.state, '', url);
-  return false;
 };
 
 const reloadWithUrl = (url: URL) => {
@@ -704,7 +702,7 @@ export function Link<Path extends RoutePath>({
         startTransitionFn,
       ).catch(() => {});
     } else if (url.hash && scroll !== false) {
-      scrollToRoute(parseRoute(url), 'auto', false);
+      scrollToHash(url.hash, 'auto', false);
     }
   };
   const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
@@ -801,7 +799,7 @@ export class ErrorBoundary extends Component<
 
 const MAX_FOLLOWS_PER_NAVIGATION = 20;
 
-const appliedByState = new WeakMap<RouterState, { pushed: boolean }>();
+const appliedStates = new WeakSet<RouterState>();
 
 const isFollowable = (error: unknown) => {
   const info = getErrorInfo(error);
@@ -1031,13 +1029,13 @@ const getHashElement = (hash: string): HTMLElement | null => {
   }
 };
 
-const scrollToRoute = (
-  route: RouteProps,
+const scrollToHash = (
+  hash: string,
   behavior: ScrollBehavior,
   scrollTopForMissingHash: boolean,
 ) => {
-  if (route.hash) {
-    const element = getHashElement(route.hash);
+  if (hash) {
+    const element = getHashElement(hash);
     if (!element) {
       if (!scrollTopForMissingHash) {
         return;
@@ -1147,29 +1145,24 @@ const InnerRouter = ({
     }
     return resolveServerRedirect(committed, state, initialRoute.path).route;
   }, [initialRoute, restoredHash]);
+  const destinationHref = destination?.url.href;
+  const currentHash = currentRoute.hash;
   useLayoutEffect(() => {
-    if (!routerState || !destination) {
+    if (!routerState || !destinationHref) {
       return;
     }
-    const { url } = destination;
-    const applied = appliedByState.get(routerState);
-    const wasPushed = applied?.pushed ?? false;
+    const applied = appliedStates.has(routerState);
+    appliedStates.add(routerState);
     // history null still writes: the state's url is the one that should show
-    const pushed =
-      commitHistory(
-        url,
-        routerState.history === 'push' && !wasPushed ? 'push' : 'replace',
-      ) || wasPushed;
-    appliedByState.set(routerState, { pushed });
+    commitHistory(
+      new URL(destinationHref),
+      applied ? 'replace' : routerState.history,
+    );
     if (routerState.scroll && !applied && !routerState.failure) {
       const { pathChanged } = routerState.scroll;
-      scrollToRoute(
-        currentRoute,
-        pathChanged ? 'instant' : 'auto',
-        pathChanged,
-      );
+      scrollToHash(currentHash, pathChanged ? 'instant' : 'auto', pathChanged);
     }
-  }, [routerState, destination, currentRoute]);
+  }, [routerState, destinationHref, currentHash]);
 
   useEffect(() => {
     if (import.meta.hot) {
