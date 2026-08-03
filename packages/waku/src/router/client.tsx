@@ -1071,6 +1071,7 @@ const InnerRouter = ({
       : fallbackRoute;
   const initialHashRef = useRef<string>(undefined);
   initialHashRef.current ??= resolvedRoute.hash;
+  // state, not a ref: it is read during render
   const [initialRoute] = useState(() => ({ ...resolvedRoute, hash: '' }));
 
   const has404 = has404FromElements(elements);
@@ -1185,6 +1186,7 @@ const InnerRouter = ({
   );
 
   // FIXME this "fetchingSlices" hack feels suboptimal.
+  // state, not a ref: it is read during render
   const [fetchingSlices] = useState(() => new Set<SliceId>());
   const pendingNavigationRef = useRef<{
     controller: AbortController;
