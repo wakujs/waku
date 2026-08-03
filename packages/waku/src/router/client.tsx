@@ -142,6 +142,19 @@ const parseRouteFromLocation = (): RouteProps => {
   return parseRoute(new URL(window.location.href));
 };
 
+// returns whether it pushed, so a second pass can downgrade to replace
+const commitHistory = (url: URL, mode: 'push' | 'replace' | null): boolean => {
+  if (window.location.href === url.href) {
+    return false;
+  }
+  if (mode === 'push') {
+    window.history.pushState(window.history.state, '', url);
+    return true;
+  }
+  window.history.replaceState(window.history.state, '', url);
+  return false;
+};
+
 const reloadWithUrl = (url: URL) => {
   window.history.pushState(window.history.state, '', url);
   window.location.reload();
@@ -1138,16 +1151,13 @@ const InnerRouter = ({
     if (applied?.href === url.href) {
       return;
     }
-    let pushed = applied?.pushed ?? false;
+    const wasPushed = applied?.pushed ?? false;
     // history null still writes: the state's url is the one that should show
-    if (window.location.href !== url.href) {
-      if (routerState.history === 'push' && !pushed) {
-        pushed = true;
-        window.history.pushState(window.history.state, '', url);
-      } else {
-        window.history.replaceState(window.history.state, '', url);
-      }
-    }
+    const pushed =
+      commitHistory(
+        url,
+        routerState.history === 'push' && !wasPushed ? 'push' : 'replace',
+      ) || wasPushed;
     appliedByState.set(routerState, { href: url.href, pushed });
     if (routerState.scroll && !applied && !routerState.failure) {
       const { pathChanged } = routerState.scroll;
@@ -1291,13 +1301,7 @@ const InnerRouter = ({
         }
         pendingNavigationRef.current = null;
         // write the url now; an unrecoverable rethrow discards the commit
-        if (window.location.href !== targetUrl.href) {
-          if (routerState.history === 'push') {
-            window.history.pushState(window.history.state, '', targetUrl);
-          } else {
-            window.history.replaceState(window.history.state, '', targetUrl);
-          }
-        }
+        commitHistory(targetUrl, routerState.history);
         mergeElements({
           [ROUTER_STATE_ID]: {
             ...routerState,
