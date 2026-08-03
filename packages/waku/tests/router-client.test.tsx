@@ -4048,6 +4048,51 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a server rewrite drops the attempted hash from the committed route', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
+      [ROUTE_ID]: ['/z', ''],
+      [IS_STATIC_ID]: false,
+    }));
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/z')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      elements,
+    );
+    try {
+      // asked for a hash, but the server answered with a different route
+      await act(async () => {
+        await capture.router!.push('/y#frag');
+        await flush();
+      });
+      expect(capture.router?.path).toBe('/z');
+      expect(window.location.hash).toBe('');
+      scrollToSpy.mockClear();
+
+      window.history.pushState({}, '', '/z');
+      await act(async () => {
+        window.dispatchEvent(new PopStateEvent('popstate'));
+        await flush();
+      });
+
+      // nothing moved, so the attempted '#frag' must not still count as committed
+      expect(scrollToSpy).not.toHaveBeenCalled();
+    } finally {
+      scrollToSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('popstate that lands on another route moves the url with it', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);

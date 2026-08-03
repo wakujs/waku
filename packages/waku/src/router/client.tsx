@@ -785,6 +785,11 @@ export class ErrorBoundary extends Component<
 
 const MAX_FOLLOWS_PER_NAVIGATION = 20;
 
+const appliedByState = new WeakMap<
+  RouterState,
+  { href: string; pushed: boolean }
+>();
+
 const isFollowable = (error: unknown) => {
   const info = getErrorInfo(error);
   return info?.status === 404 || !!info?.location;
@@ -1118,20 +1123,24 @@ const InnerRouter = ({
     : { ...initialRoute, hash: restoredHash };
   const committedRoute = useCallback((): RouteProps => {
     const committed = resolvedElementsRef.current;
-    const route = getRouteFromElements(committed) ?? initialRoute;
     const state = getRouterState(committed);
-    const landedUrl = state?.failure ? undefined : state?.url;
-    return {
-      ...route,
-      hash: landedUrl ? new URL(landedUrl, window.location.href).hash : '',
-    };
-  }, [initialRoute]);
+    if (!state) {
+      return { ...initialRoute, hash: restoredHash };
+    }
+    if (state.failure) {
+      return {
+        ...(getRouteFromElements(committed) ?? initialRoute),
+        hash: state.failure.hash,
+      };
+    }
+    return resolveServerRedirect(committed, state, initialRoute.path).route;
+  }, [initialRoute, restoredHash]);
   useLayoutEffect(() => {
     if (!routerState || !destination) {
       return;
     }
     const { url } = destination;
-    const { applied } = routerState;
+    const applied = appliedByState.get(routerState);
     if (applied?.href === url.href) {
       return;
     }
@@ -1145,7 +1154,7 @@ const InnerRouter = ({
         window.history.replaceState(window.history.state, '', url);
       }
     }
-    routerState.applied = { href: url.href, pushed };
+    appliedByState.set(routerState, { href: url.href, pushed });
     if (routerState.scroll && !applied && !routerState.failure) {
       const { pathChanged } = routerState.scroll;
       scrollToRoute(
@@ -1156,9 +1165,8 @@ const InnerRouter = ({
     }
   });
 
-  if (import.meta.hot) {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useEffect(() => {
+  useEffect(() => {
+    if (import.meta.hot) {
       const refetchRouteOnHmr = () => {
         prefetchManager.clear();
         staticPathSet.clear();
@@ -1176,14 +1184,14 @@ const InnerRouter = ({
         refetchRouteOnHmr,
       );
       globalThis.__WAKU_REFETCH_ROUTE__ = refetchRouteOnHmr;
-    }, [
-      refetch,
-      prefetchManager,
-      staticPathSet,
-      learnStaticPath,
-      committedRoute,
-    ]);
-  }
+    }
+  }, [
+    refetch,
+    prefetchManager,
+    staticPathSet,
+    learnStaticPath,
+    committedRoute,
+  ]);
 
   const [[routeChangeEvents, emitRouteChangeEvent]] = useState(
     createRouteChangeListeners,
@@ -1304,7 +1312,7 @@ const InnerRouter = ({
           [ROUTER_STATE_ID]: {
             ...routerState,
             history: null, // the url above is already written
-            failure: { error: e },
+            failure: { error: e, hash: routeBefore.hash },
           },
         });
         emitRouteChangeEvent('error', nextRoute);
