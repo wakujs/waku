@@ -4596,6 +4596,53 @@ describe('Router integration', () => {
     }
   });
 
+  test('an instant nav scrolls once, not again when the response lands', async () => {
+    let land: (() => void) | undefined;
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(
+      () =>
+        new Promise((resolve) => {
+          land = () =>
+            resolve({
+              [ROUTE_ID]: ['/next', ''],
+              [IS_STATIC_ID]: false,
+            });
+        }),
+    );
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        ...instantNavElements(),
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+      },
+    );
+    try {
+      const pushed = capture.router!.push('/next', {
+        unstable_instant: true,
+      });
+      await act(async () => {
+        await flush();
+      });
+      await act(async () => {
+        land!();
+        await pushed;
+        await flush();
+      });
+
+      // the shell commit scrolls; the response landing must not scroll again
+      expect(scrollToSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      scrollToSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('an instant nav whose response rewrites the route pushes once', async () => {
     let land: (() => void) | undefined;
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(
@@ -6235,6 +6282,60 @@ describe('Router integration', () => {
       expect(refetch).toHaveBeenCalledTimes(1);
     } finally {
       consoleErrorSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
+  test('an unrelated element merge does not scroll or push again', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const grab = { refetch: null as null | ReturnType<typeof useRefetch> };
+    const Grabber = () => {
+      grab.refetch = useRefetch();
+      return null;
+    };
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const pushSpy = vi.spyOn(window.history, 'pushState');
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: (
+          <>
+            <Probe />
+            <Grabber />
+          </>
+        ),
+        [unstable_getRouteSlotId('/b')]: (
+          <>
+            <Probe />
+            <Grabber />
+          </>
+        ),
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    try {
+      await act(async () => {
+        await capture.router!.push('/b');
+        await flush();
+      });
+      expect(scrollToSpy).toHaveBeenCalledTimes(1);
+      expect(pushSpy).toHaveBeenCalledTimes(1);
+      refetch.mockResolvedValueOnce({ 'sidebar:/': <div>fresh</div> });
+      await act(async () => {
+        await grab.refetch!('sidebar');
+        await flush();
+      });
+      expect(scrollToSpy).toHaveBeenCalledTimes(1);
+      expect(pushSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      scrollToSpy.mockRestore();
+      pushSpy.mockRestore();
       view.unmount();
     }
   });
