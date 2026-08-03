@@ -3663,6 +3663,52 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('the prefetch cache survives an unrelated re-render', async () => {
+    const shell = {
+      [unstable_getRouteSlotId('/next')]: <div>next-shell</div>,
+      [ROUTE_ID]: ['/next', ''],
+      [IS_STATIC_ID]: false,
+    };
+    vi.mocked(prefetchRsc).mockReturnValue(resolvedThenable(shell));
+
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const bump = { fn: null as null | (() => void) };
+    const Bump = () => {
+      const [, setN] = useState(0);
+      bump.fn = () => setN((n) => n + 1);
+      return (
+        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+          <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
+        </Unstable_SearchCodecsProvider>
+      );
+    };
+    testHoisted.elements = {
+      ...instantNavElements(),
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+    };
+    const view = await renderApp(<Bump />);
+    try {
+      await act(async () => {
+        capture.router!.prefetch('/next', { mode: 'once' });
+        await flush();
+      });
+      await act(async () => {
+        bump.fn!();
+        await flush();
+      });
+      await act(async () => {
+        capture.router!.prefetch('/next?q=a', { mode: 'once' });
+        await flush();
+      });
+
+      // a per render manager would forget the first prefetch and fetch again
+      expect(prefetchRsc).toHaveBeenCalledTimes(1);
+    } finally {
+      view.unmount();
+    }
+  });
+
   test('a repeat prefetch claims the stored response as its base', async () => {
     const first = {
       [unstable_getRouteSlotId('/next')]: <div>next-shell</div>,
@@ -6295,12 +6341,13 @@ describe('Router integration', () => {
     expect(
       (view.container.textContent?.match(/found-page/g) ?? []).length,
     ).toBe(2);
-    // both fetched the 404 route; strict mode may replay the dispatch
     expect(getRefetchMock()).toHaveBeenCalledWith(
       unstable_encodeRoutePath('/404'),
       expect.anything(),
       expect.anything(),
     );
+    // one per router, doubled by the strict mode replay we accept
+    expect(getRefetchMock()).toHaveBeenCalledTimes(4);
 
     view.unmount();
   });
@@ -6369,6 +6416,8 @@ describe('Router integration', () => {
 
     await flush();
     try {
+      // doubled by the strict mode replay we accept, and no more than that
+      expect(getRefetchMock()).toHaveBeenCalledTimes(2);
       expect(getRefetchMock()).toHaveBeenCalledWith(
         unstable_encodeRoutePath('/404'),
         expect.any(URLSearchParams),
