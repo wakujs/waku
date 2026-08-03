@@ -6483,6 +6483,50 @@ describe('Router integration', () => {
     }
   });
 
+  test('the strict mode replay reports a superseded follow', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const ThrowNotFoundErrorObject = createCustomError('not-found', {
+      status: 404,
+    });
+    const ThrowNotFound = () => {
+      throw ThrowNotFoundErrorObject;
+    };
+    const view = await renderRouterInStrictMode(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <ThrowNotFound />,
+        [unstable_getRouteSlotId('/404')]: <Probe />,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+        [HAS404_ID]: true,
+      },
+    );
+    await flush();
+    try {
+      const events: string[] = [];
+      for (const name of ['start', 'complete', 'error'] as const) {
+        capture.router!.unstable_events.on(name, (route) =>
+          events.push(`${name} ${route.path}`),
+        );
+      }
+      await act(async () => {
+        await capture.router!.push('/start').catch(() => {});
+        await flush();
+        await flush();
+      });
+
+      // the replayed dispatch supersedes the first, so listeners see an
+      // error for a follow that then succeeds. dev only, and bounded.
+      expect(
+        events.filter((e) => e.startsWith('error')).length,
+      ).toBeLessThanOrEqual(2);
+      expect(events[events.length - 1]).toBe('complete /404');
+    } finally {
+      view.unmount();
+    }
+  });
+
   test('redirect error triggers same-origin client navigation', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);

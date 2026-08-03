@@ -1101,7 +1101,7 @@ const InnerRouter = ({
     learnStaticPath(initialElements);
   }, [initialElements, learnStaticPath]);
   const resolvedElementsRef = useRef(elements);
-  useEffect(() => {
+  useLayoutEffect(() => {
     resolvedElementsRef.current = elements;
   }, [elements]);
   const [prefetchManager] = useState(createPrefetchManager);
