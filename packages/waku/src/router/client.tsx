@@ -1069,38 +1069,43 @@ const InnerRouter = ({
     routeFromElements && routeFromElements.path !== fallbackRoute.path
       ? { ...routeFromElements, hash: fallbackRoute.hash }
       : fallbackRoute;
-  const [initialHash] = useState(() => resolvedRoute.hash);
+  const initialHashRef = useRef<string>(undefined);
+  initialHashRef.current ??= resolvedRoute.hash;
   const [initialRoute] = useState(() => ({ ...resolvedRoute, hash: '' }));
 
   const has404 = has404FromElements(elements);
-  const [staticPathSet] = useState(() => new Set<string>());
+  const staticPathSetRef = useRef<Set<string>>(undefined);
+  staticPathSetRef.current ??= new Set();
   // a record mid navigation pairs the new route id with the old static flag
   const learnStaticPath = useCallback(
     (responseElements: Record<string, unknown>) => {
       const route = getRouteFromElements(responseElements);
       if (route && isStaticFromElements(responseElements)) {
-        staticPathSet.add(route.path);
+        staticPathSetRef.current!.add(route.path);
       }
     },
-    [staticPathSet],
+    [],
   );
-  const [initialElements] = useState(() => elements);
+  const initialElementsRef = useRef<typeof elements>(undefined);
+  initialElementsRef.current ??= elements;
   useEffect(() => {
-    learnStaticPath(initialElements);
-  }, [initialElements, learnStaticPath]);
+    learnStaticPath(initialElementsRef.current!);
+  }, [learnStaticPath]);
   const resolvedElementsRef = useRef(elements);
   useLayoutEffect(() => {
     resolvedElementsRef.current = elements;
   }, [elements]);
-  const [prefetchManager] = useState(createPrefetchManager);
+  const prefetchManagerRef =
+    useRef<ReturnType<typeof createPrefetchManager>>(undefined);
+  prefetchManagerRef.current ??= createPrefetchManager();
 
   const refetch = useRefetch();
   const mergeElements = useMergeElements();
   // starts empty so hydration matches the server, then the effect fills it
   const [restoredHash, setRestoredHash] = useState('');
   useEffect(() => {
-    setRestoredHash(window.location.hash || initialHash);
-  }, [initialHash]);
+    setRestoredHash(window.location.hash || initialHashRef.current!);
+  }, []);
 
   const routerState = getRouterState(elements);
   const destination =
@@ -1156,8 +1161,8 @@ const InnerRouter = ({
   useEffect(() => {
     if (import.meta.hot) {
       const refetchRouteOnHmr = () => {
-        prefetchManager.clear();
-        staticPathSet.clear();
+        prefetchManagerRef.current!.clear();
+        staticPathSetRef.current!.clear();
         const route = committedRoute();
         startTransition(() => {
           // the reload clears the set, so the response has to teach it again
@@ -1173,13 +1178,7 @@ const InnerRouter = ({
       );
       globalThis.__WAKU_REFETCH_ROUTE__ = refetchRouteOnHmr;
     }
-  }, [
-    refetch,
-    prefetchManager,
-    staticPathSet,
-    learnStaticPath,
-    committedRoute,
-  ]);
+  }, [refetch, learnStaticPath, committedRoute]);
 
   const [[routeChangeEvents, emitRouteChangeEvent]] = useState(
     createRouteChangeListeners,
@@ -1228,7 +1227,7 @@ const InnerRouter = ({
       });
       const shouldRefetch =
         options.refetch ?? !isSameRscRoute(nextRoute, routeBefore);
-      if (staticPathSet.has(nextRoute.path) || !shouldRefetch) {
+      if (staticPathSetRef.current!.has(nextRoute.path) || !shouldRefetch) {
         mergeElements({
           [ROUTE_ID]: [nextRoute.path, nextRoute.query],
           [ROUTER_STATE_ID]: routerState,
@@ -1238,8 +1237,9 @@ const InnerRouter = ({
         return;
       }
       const rscPath = encodeRoutePath(nextRoute.path);
-      const cached = prefetchManager.get(rscPath, nextRoute.query);
-      const prefetchedElements = prefetchManager.getElements(rscPath);
+      const cached = prefetchManagerRef.current!.get(rscPath, nextRoute.query);
+      const prefetchedElements =
+        prefetchManagerRef.current!.getElements(rscPath);
       const instant =
         options.instant &&
         canCommitInstantly(
@@ -1312,9 +1312,7 @@ const InnerRouter = ({
       refetch,
       mergeElements,
       emitRouteChangeEvent,
-      staticPathSet,
       learnStaticPath,
-      prefetchManager,
     ],
   );
 
@@ -1356,25 +1354,22 @@ const InnerRouter = ({
     return registerCallServerElementsListener(listener);
   }, [applyChangeRouteData, learnStaticPath]);
 
-  const prefetchRoute: PrefetchRoute = useCallback(
-    (route, options) => {
-      preloadRouteModules(route.path);
-      if (staticPathSet.has(route.path)) {
-        return;
-      }
-      const rscPath = encodeRoutePath(route.path);
-      prefetchManager.prefetch(
-        rscPath,
-        route.query,
-        (base) =>
-          prefetchRsc(rscPath, createRscParams(route.query), {
-            ...(base ? { unstable_base: base } : {}),
-          }),
-        options,
-      );
-    },
-    [staticPathSet, prefetchManager],
-  );
+  const prefetchRoute: PrefetchRoute = useCallback((route, options) => {
+    preloadRouteModules(route.path);
+    if (staticPathSetRef.current!.has(route.path)) {
+      return;
+    }
+    const rscPath = encodeRoutePath(route.path);
+    prefetchManagerRef.current!.prefetch(
+      rscPath,
+      route.query,
+      (base) =>
+        prefetchRsc(rscPath, createRscParams(route.query), {
+          ...(base ? { unstable_base: base } : {}),
+        }),
+      options,
+    );
+  }, []);
 
   useEffect(() => {
     const callback = () => {
