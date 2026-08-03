@@ -18,9 +18,11 @@ export type RouterState = {
   readonly history: 'push' | 'replace' | null;
   readonly scroll: { readonly pathChanged: boolean } | null;
   readonly followCount: number;
-  // set when the fetch never landed: the route id is stale, and hash is the
-  // one still on screen rather than the one it tried
-  readonly failure?: { readonly error: unknown; readonly hash: string };
+  // set when the fetch never landed, so the route id is stale
+  readonly failure?: {
+    readonly error: unknown;
+    readonly committedHash: string;
+  };
 };
 
 export const getRouterState = (

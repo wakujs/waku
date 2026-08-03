@@ -1130,7 +1130,7 @@ const InnerRouter = ({
     if (state.failure) {
       return {
         ...(getRouteFromElements(committed) ?? initialRoute),
-        hash: state.failure.hash,
+        hash: state.failure.committedHash,
       };
     }
     return resolveServerRedirect(committed, state, initialRoute.path).route;
@@ -1312,7 +1312,7 @@ const InnerRouter = ({
           [ROUTER_STATE_ID]: {
             ...routerState,
             history: null, // the url above is already written
-            failure: { error: e, hash: routeBefore.hash },
+            failure: { error: e, committedHash: routeBefore.hash },
           },
         });
         emitRouteChangeEvent('error', nextRoute);
