@@ -1558,6 +1558,35 @@ describe('useRouter + Link with context', () => {
     expect(callbackRef).toHaveBeenCalledTimes(1);
     expect(callbackCleanup).toHaveBeenCalledTimes(1);
   });
+
+  test('Link callback ref without cleanup receives null on unmount', async () => {
+    const callbackRef = vi.fn<(node: HTMLAnchorElement | null) => void>();
+
+    const view = await renderApp(
+      <RouterContext
+        value={{
+          route: { path: '/start', query: '', hash: '' },
+          changeRoute: vi.fn(async () => {}),
+          prefetchRoute: vi.fn(),
+          routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set<string>(),
+        }}
+      >
+        <Link to="/next" ref={callbackRef}>
+          next
+        </Link>
+      </RouterContext>,
+    );
+
+    const link = view.container.querySelector('a');
+    expect(callbackRef).toHaveBeenCalledTimes(1);
+    expect(callbackRef).toHaveBeenCalledWith(link);
+
+    view.unmount();
+
+    expect(callbackRef).toHaveBeenCalledTimes(2);
+    expect(callbackRef).toHaveBeenLastCalledWith(null);
+  });
 });
 
 describe('Slice', () => {
