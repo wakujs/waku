@@ -535,7 +535,7 @@ export function useSetSearch_UNSTABLE<Path extends RoutePath>({
   );
 }
 
-// Keeps ref.current mutation out of render scope for react-hooks/immutability.
+// HACK: Keeps ref.current mutation out of render scope for react-hooks/immutability.
 const assignRef = <T,>(ref: RefObject<T | null>, node: T | null): void => {
   ref.current = node;
 };
