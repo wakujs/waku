@@ -4442,6 +4442,54 @@ describe('Router integration', () => {
     }
   });
 
+  test('an instant nav whose response rewrites the route pushes once', async () => {
+    let land: (() => void) | undefined;
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(
+      () =>
+        new Promise((resolve) => {
+          land = () =>
+            resolve({
+              [ROUTE_ID]: ['/streamed', ''],
+              [IS_STATIC_ID]: false,
+            });
+        }),
+    );
+    installRefetch(refetch);
+
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        ...instantNavElements(),
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [unstable_getRouteSlotId('/streamed')]: <Probe />,
+      },
+    );
+    const historyPushSpy = vi.spyOn(window.history, 'pushState');
+    try {
+      // commits the attempted url first, then the response moves the route
+      const pushed = capture.router!.push('/next', {
+        unstable_instant: true,
+      });
+      await act(async () => {
+        await flush();
+      });
+      await act(async () => {
+        land!();
+        await pushed;
+        await flush();
+      });
+
+      expect(capture.router?.path).toBe('/streamed');
+      // the second reconcile must replace the entry it already pushed
+      expect(historyPushSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      historyPushSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('changeRoute applies route rewrite from refetch result', async () => {
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
       [ROUTE_ID]: ['/streamed', 'x=1'],
