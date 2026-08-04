@@ -1010,17 +1010,24 @@ export function Slice({
   return <Slot id={slotId}>{children}</Slot>;
 }
 
+const decodeHash = (raw: string) => {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+};
+
 const getHashElement = (hash: string): HTMLElement | null => {
   const raw = hash.slice(1);
-  const rawElement = document.getElementById(raw);
-  if (rawElement) {
-    return rawElement;
+  for (const name of new Set([raw, decodeHash(raw)])) {
+    const element =
+      document.getElementById(name) ?? document.getElementsByName(name)[0];
+    if (element) {
+      return element;
+    }
   }
-  try {
-    return document.getElementById(decodeURIComponent(raw));
-  } catch {
-    return null;
-  }
+  return raw.toLowerCase() === 'top' ? document.body : null;
 };
 
 const scrollToHash = (
@@ -1134,6 +1141,10 @@ const InnerRouter = ({
     [initialRoute, restoredHash],
   );
   const appliedRef = useRef<RouterState>(undefined);
+  const awaitedHashRef = useRef<{
+    hash: string;
+    behavior: ScrollBehavior;
+  } | null>(null);
   const destinationHref = destination?.url.href;
   const currentHash = currentRoute.hash;
   useLayoutEffect(() => {
@@ -1149,9 +1160,23 @@ const InnerRouter = ({
     appliedRef.current = routerState;
     if (routerState.scroll && !applied && !routerState.failure) {
       const { pathChanged } = routerState.scroll;
-      scrollToHash(currentHash, pathChanged ? 'instant' : 'auto', pathChanged);
+      const behavior = pathChanged ? 'instant' : 'auto';
+      scrollToHash(currentHash, behavior, pathChanged);
+      // an instant nav paints before its response, so the target may be absent
+      awaitedHashRef.current =
+        currentHash && !getHashElement(currentHash)
+          ? { hash: currentHash, behavior }
+          : null;
     }
   }, [routerState, destinationHref, currentHash]);
+
+  useEffect(() => {
+    const awaited = awaitedHashRef.current;
+    if (awaited && getHashElement(awaited.hash)) {
+      awaitedHashRef.current = null;
+      scrollToHash(awaited.hash, awaited.behavior, false);
+    }
+  });
 
   useEffect(() => {
     if (import.meta.hot) {
