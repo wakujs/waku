@@ -6401,8 +6401,8 @@ describe('Router integration', () => {
       });
       expect(scrollToSpy).toHaveBeenCalledTimes(1);
       expect(pushSpy).toHaveBeenCalledTimes(1);
-      // this merge suspends the root, so the router remounts and the layout
-      // effect runs again for the same state. a ref could not remember that.
+      // this merge suspends the root, so React replays the layout effect for
+      // a state it has already applied
       refetch.mockResolvedValueOnce({ 'sidebar:/': <div>fresh</div> });
       await act(async () => {
         await grab.refetch!('sidebar');
