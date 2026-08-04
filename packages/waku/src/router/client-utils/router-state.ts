@@ -14,7 +14,6 @@ export const ROUTER_STATE_ID = Symbol('waku-router-state');
 export type RouterState = {
   readonly url: string; // pathname + search + hash, with the base path
   readonly attempted: readonly [path: string, query: string];
-  // null leaves history alone: the browser already wrote it
   readonly history: 'push' | 'replace' | null;
   readonly scroll: { readonly pathChanged: boolean } | null;
   readonly followCount: number;

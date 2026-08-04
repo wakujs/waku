@@ -1142,12 +1142,12 @@ const InnerRouter = ({
       return;
     }
     const applied = appliedStates.has(routerState);
-    appliedStates.add(routerState);
     // history null still writes: the state's url is the one that should show
     commitHistory(
       new URL(destinationHref),
       applied ? 'replace' : routerState.history,
     );
+    appliedStates.add(routerState);
     if (routerState.scroll && !applied && !routerState.failure) {
       const { pathChanged } = routerState.scroll;
       scrollToHash(currentHash, pathChanged ? 'instant' : 'auto', pathChanged);

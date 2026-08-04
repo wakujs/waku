@@ -4668,6 +4668,7 @@ describe('Router integration', () => {
       },
     );
     const historyPushSpy = vi.spyOn(window.history, 'pushState');
+    const historyReplaceSpy = vi.spyOn(window.history, 'replaceState');
     try {
       // commits the attempted url first, then the response moves the route
       const pushed = capture.router!.push('/next', {
@@ -4683,9 +4684,14 @@ describe('Router integration', () => {
       });
 
       expect(capture.router?.path).toBe('/streamed');
+      expect(window.location.pathname).toBe('/streamed');
       // the second reconcile must replace the entry it already pushed
       expect(historyPushSpy).toHaveBeenCalledTimes(1);
+      expect(String(historyReplaceSpy.mock.lastCall?.[2])).toContain(
+        '/streamed',
+      );
     } finally {
+      historyReplaceSpy.mockRestore();
       historyPushSpy.mockRestore();
       view.unmount();
     }
@@ -6395,6 +6401,8 @@ describe('Router integration', () => {
       });
       expect(scrollToSpy).toHaveBeenCalledTimes(1);
       expect(pushSpy).toHaveBeenCalledTimes(1);
+      // this merge suspends the root, so the router remounts and the layout
+      // effect runs again for the same state. a ref could not remember that.
       refetch.mockResolvedValueOnce({ 'sidebar:/': <div>fresh</div> });
       await act(async () => {
         await grab.refetch!('sidebar');
