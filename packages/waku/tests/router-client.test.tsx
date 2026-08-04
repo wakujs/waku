@@ -3065,6 +3065,70 @@ describe('Router integration', () => {
     }
   });
 
+  test('a malformed escape does not spoil the rest of a hash target', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
+      window,
+      'scrollY',
+    );
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      value: 100,
+    });
+    const getBoundingClientRectSpy = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        return { top: this.id === 'foo bar%ZZ' ? 40 : 0 } as DOMRect;
+      });
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [unstable_getRouteSlotId('/next')]: (
+          <>
+            <Probe />
+            <div id="foo bar%ZZ">target</div>
+          </>
+        ),
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    try {
+      document.body.append(view.container);
+      // %20 decodes, %ZZ is not an escape and stays as written
+      await act(async () => {
+        await capture.router!.push('/next#foo%20bar%ZZ');
+        await flush();
+      });
+
+      expect(scrollToSpy).toHaveBeenLastCalledWith({
+        left: 0,
+        top: 140,
+        behavior: 'instant',
+      });
+    } finally {
+      view.container.remove();
+      view.unmount();
+      getBoundingClientRectSpy.mockRestore();
+      scrollToSpy.mockRestore();
+      if (scrollYDescriptor) {
+        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
+      } else {
+        Object.defineProperty(window, 'scrollY', {
+          configurable: true,
+          value: 0,
+        });
+      }
+    }
+  });
+
   test('a percent encoded #top still means the top of the document', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);

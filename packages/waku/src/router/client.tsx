@@ -1008,13 +1008,16 @@ export function Slice({
   return <Slot id={slotId}>{children}</Slot>;
 }
 
-const decodeHash = (raw: string) => {
-  try {
-    return decodeURIComponent(raw);
-  } catch {
-    return raw;
-  }
-};
+// percent decoding leaves a malformed escape alone instead of giving up on the
+// whole fragment, and a run decodes together so multi byte characters survive
+const decodeHash = (raw: string) =>
+  raw.replace(/(?:%[0-9A-Fa-f]{2})+/g, (escapes) => {
+    try {
+      return decodeURIComponent(escapes);
+    } catch {
+      return escapes;
+    }
+  });
 
 const getHashElement = (hash: string): HTMLElement | null => {
   const raw = hash.slice(1);
