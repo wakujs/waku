@@ -45,7 +45,7 @@ import {
   has404FromElements,
   isStaticFromElements,
 } from './client-utils/elements-meta.js';
-import { resolveErrorRoute } from './client-utils/error-route.js';
+import { isFollowable, resolveErrorRoute } from './client-utils/error-route.js';
 import {
   type PrefetchOptions,
   createPrefetchManager,
@@ -799,11 +799,6 @@ export class ErrorBoundary extends Component<
 }
 
 const MAX_FOLLOWS_PER_NAVIGATION = 20;
-
-const isFollowable = (error: unknown) => {
-  const info = getErrorInfo(error);
-  return info?.status === 404 || !!info?.location;
-};
 
 const appliedStates = new WeakSet<RouterState>();
 
