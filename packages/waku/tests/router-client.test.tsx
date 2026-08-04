@@ -6286,6 +6286,75 @@ describe('Router integration', () => {
     }
   });
 
+  test('an instant retry already at its url replaces the entry a failure wrote', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    let land: (() => void) | undefined;
+    const refetch = vi.fn<RefetchInner>();
+    refetch.mockRejectedValueOnce(createCustomError('nf', { status: 404 }));
+    refetch.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          land = () =>
+            resolve({
+              [ROUTE_ID]: ['/other', ''],
+              [IS_STATIC_ID]: false,
+            });
+        }),
+    );
+    installRefetch(refetch);
+    const pushSpy = vi.spyOn(window.history, 'pushState');
+    const replaceSpy = vi.spyOn(window.history, 'replaceState');
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const nextSlotId = unstable_getRouteSlotId('/next');
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [nextSlotId]: <div>next</div>,
+        [unstable_getRouteSlotId('/other')]: <div>other</div>,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+        [`${ETAG_ID_PREFIX}${nextSlotId}`]: IMMUTABLE_ETAG,
+        [HAS404_ID]: false,
+      },
+    );
+    try {
+      // the failure writes /next itself, and with no 404 route to follow to
+      // the router stays mounted, so the retry starts already at its url
+      await act(async () => {
+        await expect(capture.router!.push('/next')).rejects.toBeTruthy();
+        await flush();
+      });
+      expect(window.location.pathname).toBe('/next');
+      pushSpy.mockClear();
+      replaceSpy.mockClear();
+
+      const retried = capture.router!.push('/next', {
+        unstable_instant: true,
+        scroll: false,
+      });
+      await act(async () => {
+        await flush();
+      });
+      await act(async () => {
+        land!();
+        await retried;
+        await flush();
+      });
+      expect(window.location.pathname).toBe('/other');
+      expect(pushSpy).not.toHaveBeenCalled();
+      expect(replaceSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      consoleErrorSpy.mockRestore();
+      pushSpy.mockRestore();
+      replaceSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('an unrelated element merge does not scroll or push again', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
