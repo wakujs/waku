@@ -800,8 +800,6 @@ export class ErrorBoundary extends Component<
 
 const MAX_FOLLOWS_PER_NAVIGATION = 20;
 
-const appliedStates = new WeakSet<RouterState>();
-
 const FollowError = ({
   error,
   has404,
@@ -1135,19 +1133,20 @@ const InnerRouter = ({
       }),
     [initialRoute, restoredHash],
   );
+  const appliedRef = useRef<RouterState>(undefined);
   const destinationHref = destination?.url.href;
   const currentHash = currentRoute.hash;
   useLayoutEffect(() => {
     if (!routerState || !destinationHref) {
       return;
     }
-    const applied = appliedStates.has(routerState);
+    const applied = appliedRef.current === routerState;
     // history null still writes: the state's url is the one that should show
     commitHistory(
       new URL(destinationHref),
       applied ? 'replace' : routerState.history,
     );
-    appliedStates.add(routerState);
+    appliedRef.current = routerState;
     if (routerState.scroll && !applied && !routerState.failure) {
       const { pathChanged } = routerState.scroll;
       scrollToHash(currentHash, pathChanged ? 'instant' : 'auto', pathChanged);
