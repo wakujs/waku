@@ -76,6 +76,28 @@ export const resolveServerRedirect = (
   };
 };
 
+/**
+ * The route that actually landed, which a navigation measures itself against.
+ * A failed one keeps the hash that is still on screen, unlike the route the
+ * router paints, which takes its hash from the attempted url.
+ */
+export const getSettledRoute = (
+  elements: Record<string | symbol, unknown>,
+  fallback: RouteProps,
+): RouteProps => {
+  const routerState = getRouterState(elements);
+  if (!routerState) {
+    return fallback;
+  }
+  if (routerState.failure) {
+    return {
+      ...(getRouteFromElements(elements) ?? fallback),
+      hash: routerState.failure.committedHash,
+    };
+  }
+  return resolveServerRedirect(elements, routerState, fallback.path).route;
+};
+
 export const canCommitInstantly = (
   routeSlotId: string,
   resolvedElements: Record<string, unknown>,

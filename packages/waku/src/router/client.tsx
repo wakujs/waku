@@ -61,6 +61,7 @@ import {
   ROUTER_STATE_ID,
   canCommitInstantly,
   getRouterState,
+  getSettledRoute,
   makeRouterState,
   pinForSwr,
   resolveServerRedirect,
@@ -799,12 +800,12 @@ export class ErrorBoundary extends Component<
 
 const MAX_FOLLOWS_PER_NAVIGATION = 20;
 
-const appliedStates = new WeakSet<RouterState>();
-
 const isFollowable = (error: unknown) => {
   const info = getErrorInfo(error);
   return info?.status === 404 || !!info?.location;
 };
+
+const appliedStates = new WeakSet<RouterState>();
 
 const FollowError = ({
   error,
@@ -1131,20 +1132,14 @@ const InnerRouter = ({
       destination ? destination.route : { ...initialRoute, hash: restoredHash },
     [destination, initialRoute, restoredHash],
   );
-  const committedRoute = useCallback((): RouteProps => {
-    const committed = resolvedElementsRef.current;
-    const state = getRouterState(committed);
-    if (!state) {
-      return { ...initialRoute, hash: restoredHash };
-    }
-    if (state.failure) {
-      return {
-        ...(getRouteFromElements(committed) ?? initialRoute),
-        hash: state.failure.committedHash,
-      };
-    }
-    return resolveServerRedirect(committed, state, initialRoute.path).route;
-  }, [initialRoute, restoredHash]);
+  const committedRoute = useCallback(
+    (): RouteProps =>
+      getSettledRoute(resolvedElementsRef.current, {
+        ...initialRoute,
+        hash: restoredHash,
+      }),
+    [initialRoute, restoredHash],
+  );
   const destinationHref = destination?.url.href;
   const currentHash = currentRoute.hash;
   useLayoutEffect(() => {
