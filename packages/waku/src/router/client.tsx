@@ -1020,7 +1020,8 @@ const decodeHash = (raw: string) =>
 
 const getHashElement = (hash: string): HTMLElement | null => {
   const raw = hash.slice(1);
-  for (const name of new Set([raw, decodeHash(raw)])) {
+  const decoded = decodeHash(raw);
+  for (const name of new Set([raw, decoded])) {
     const byId = document.getElementById(name);
     if (byId) {
       return byId;
@@ -1032,9 +1033,7 @@ const getHashElement = (hash: string): HTMLElement | null => {
       }
     }
   }
-  return decodeHash(raw).toLowerCase() === 'top'
-    ? document.documentElement
-    : null;
+  return decoded.toLowerCase() === 'top' ? document.documentElement : null;
 };
 
 // a slot can resolve without re-rendering the router, so watch the dom
@@ -1167,7 +1166,7 @@ const InnerRouter = ({
   const currentRoute = destination ? destination.route : routeFallback;
   // only the current state is reconciled, so one slot is enough
   const appliedRef = useRef<RouterState>(undefined);
-  const settledRoute = useCallback(
+  const readSettledRoute = useCallback(
     (): RouteProps =>
       getSettledRoute(resolvedElementsRef.current, routeFallback),
     [routeFallback],
@@ -1191,16 +1190,14 @@ const InnerRouter = ({
       awaitedHashRef.current?.stop();
       awaitedHashRef.current = null;
     }
-    if (applied) {
+    if (applied || !routerState.scroll || routerState.failure) {
       return;
     }
-    if (routerState.scroll && !routerState.failure) {
-      const { pathChanged } = routerState.scroll;
-      const behavior = pathChanged ? 'instant' : 'auto';
-      scrollToHash(currentHash, behavior, pathChanged);
-      if (currentHash && !getHashElement(currentHash)) {
-        awaitedHashRef.current = awaitHashElement(currentHash, behavior);
-      }
+    const { pathChanged } = routerState.scroll;
+    const behavior = pathChanged ? 'instant' : 'auto';
+    scrollToHash(currentHash, behavior, pathChanged);
+    if (currentHash && !getHashElement(currentHash)) {
+      awaitedHashRef.current = awaitHashElement(currentHash, behavior);
     }
   }, [routerState, destinationHref, currentHash]);
 
@@ -1211,12 +1208,12 @@ const InnerRouter = ({
       const refetchRouteOnHmr = () => {
         prefetchManagerRef.current!.clear();
         staticPathSetRef.current!.clear();
-        const route = settledRoute();
+        const settledRoute = readSettledRoute();
         startTransition(() => {
           // the reload clears the set, so the response has to teach it again
           void refetch(
-            encodeRoutePath(route.path),
-            createRscParams(route.query),
+            encodeRoutePath(settledRoute.path),
+            createRscParams(settledRoute.query),
           ).then(learnStaticPath, () => {});
         });
       };
@@ -1226,7 +1223,7 @@ const InnerRouter = ({
       );
       globalThis.__WAKU_REFETCH_ROUTE__ = refetchRouteOnHmr;
     }
-  }, [refetch, learnStaticPath, settledRoute]);
+  }, [refetch, learnStaticPath, readSettledRoute]);
 
   const [[routeChangeEvents, emitRouteChangeEvent]] = useState(
     createRouteChangeListeners,
@@ -1264,18 +1261,18 @@ const InnerRouter = ({
       if (isAborted()) {
         return;
       }
-      const routeBefore = settledRoute();
+      const settledRoute = readSettledRoute();
       const targetUrl = options.url ?? getRouteUrl(nextRoute);
       const routerState = makeRouterState(nextRoute, targetUrl, {
         history: options.history,
         scroll: options.shouldScroll,
-        pathChanged: nextRoute.path !== routeBefore.path,
+        pathChanged: nextRoute.path !== settledRoute.path,
         followCount: options.isFollow
           ? (getRouterState(resolvedElementsRef.current)?.followCount ?? 0) + 1
           : 0,
       });
       const shouldRefetch =
-        options.refetch ?? !isSameRscRoute(nextRoute, routeBefore);
+        options.refetch ?? !isSameRscRoute(nextRoute, settledRoute);
       if (staticPathSetRef.current!.has(nextRoute.path) || !shouldRefetch) {
         mergeElements({
           [ROUTE_ID]: [nextRoute.path, nextRoute.query],
@@ -1343,7 +1340,7 @@ const InnerRouter = ({
           [ROUTER_STATE_ID]: {
             ...routerState,
             history: null, // the url above is already written
-            failure: { error: e, committedHash: routeBefore.hash },
+            failure: { error: e, committedHash: settledRoute.hash },
           },
         });
         emitRouteChangeEvent('error', nextRoute);
@@ -1351,7 +1348,7 @@ const InnerRouter = ({
       }
     },
     [
-      settledRoute,
+      readSettledRoute,
       refetch,
       mergeElements,
       emitRouteChangeEvent,
@@ -1365,8 +1362,11 @@ const InnerRouter = ({
         return;
       }
       const [path, query] = routeData as [string, string];
-      const settled = settledRoute();
-      if (settled.path === path && (isStatic || settled.query === query)) {
+      const settledRoute = readSettledRoute();
+      if (
+        settledRoute.path === path &&
+        (isStatic || settledRoute.query === query)
+      ) {
         return;
       }
       const route = { path, query, hash: '' };
@@ -1379,7 +1379,7 @@ const InnerRouter = ({
         url: is404 ? new URL(window.location.href) : getRouteUrl(route),
       });
     },
-    [changeRoute, settledRoute],
+    [changeRoute, readSettledRoute],
   );
   useEffect(() => {
     const listener = (elements: Record<string, unknown>) => {
@@ -1420,7 +1420,10 @@ const InnerRouter = ({
       }
       startTransition(() => {
         changeRoute(nextRoute, {
-          shouldScroll: shouldScrollForRouteChange(nextRoute, settledRoute()),
+          shouldScroll: shouldScrollForRouteChange(
+            nextRoute,
+            readSettledRoute(),
+          ),
           history: null, // the browser already moved the address bar
           // keep the url it moved to; an interceptor rewrite needs a new one
           url: isSameRoute(nextRoute, popped)
@@ -1437,7 +1440,7 @@ const InnerRouter = ({
     return () => {
       window.removeEventListener('popstate', callback);
     };
-  }, [changeRoute, routeInterceptor, settledRoute]);
+  }, [changeRoute, routeInterceptor, readSettledRoute]);
 
   const routeElement = routerState?.failure ? (
     <ThrowError error={routerState.failure.error} />
