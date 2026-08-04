@@ -150,7 +150,7 @@ const commitHistory = (url: URL, mode: 'push' | 'replace' | null): void => {
     window.history.pushState(window.history.state, '', url);
     return;
   }
-  // 'replace' and null both write: null means the url should still show
+  // null still writes: the state url is the one that should show
   window.history.replaceState(window.history.state, '', url);
 };
 
@@ -1165,7 +1165,7 @@ const InnerRouter = ({
     [elements, routerState, initialRoute],
   );
   const currentRoute = destination ? destination.route : routeFallback;
-  // only the current state is reconciled; a single slot is enough to skip repeats
+  // only the current state is reconciled, so one slot is enough
   const appliedRef = useRef<RouterState>(undefined);
   const settledRoute = useCallback(
     (): RouteProps =>

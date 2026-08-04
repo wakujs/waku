@@ -46,14 +46,12 @@ export const makeRouterState = (
   followCount: options.followCount,
 });
 
-// a redirect to the 404 route keeps the url that was requested
 export const resolveServerRedirect = (
   elements: Record<string | symbol, unknown>,
   routerState: RouterState,
   fallbackPath: string,
 ): { route: RouteProps; url: URL } => {
   const stateUrl = new URL(routerState.url, window.location.href);
-  // nothing landed on a failed navigation, so there is no redirect to read
   const redirect = routerState.failure
     ? undefined
     : getServerRedirect(elements, {
@@ -76,8 +74,7 @@ export const resolveServerRedirect = (
 };
 
 /**
- * The route that actually landed, which a navigation measures itself against.
- * A failed one keeps the hash that is still on screen, unlike the route the
+ * A failed navigation keeps the hash still on screen, unlike the route the
  * router paints, which takes its hash from the requested url.
  */
 export const getSettledRoute = (
