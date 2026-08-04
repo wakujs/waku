@@ -13,7 +13,7 @@ export const ROUTER_STATE_ID = Symbol('waku-router-state');
 // merges carry this object by reference; the reconciler keys off its identity
 export type RouterState = {
   readonly url: string; // pathname + search + hash, with the base path
-  readonly attempted: readonly [path: string, query: string];
+  readonly requested: readonly [path: string, query: string];
   readonly history: 'push' | 'replace' | null;
   readonly scroll: { readonly pathChanged: boolean } | null;
   readonly followCount: number;
@@ -40,13 +40,13 @@ export const makeRouterState = (
   },
 ): RouterState => ({
   url: url.pathname + url.search + url.hash,
-  attempted: [route.path, route.query],
+  requested: [route.path, route.query],
   history: options.history,
   scroll: options.scroll ? { pathChanged: options.pathChanged } : null,
   followCount: options.followCount,
 });
 
-// a redirect to the 404 route keeps the url that was attempted
+// a redirect to the 404 route keeps the url that was requested
 export const resolveServerRedirect = (
   elements: Record<string | symbol, unknown>,
   routerState: RouterState,
@@ -57,8 +57,8 @@ export const resolveServerRedirect = (
   const redirect = routerState.failure
     ? undefined
     : getServerRedirect(elements, {
-        path: routerState.attempted[0],
-        query: routerState.attempted[1],
+        path: routerState.requested[0],
+        query: routerState.requested[1],
         hash: '',
       });
   if (redirect && redirect.path !== '/404') {
@@ -78,7 +78,7 @@ export const resolveServerRedirect = (
 /**
  * The route that actually landed, which a navigation measures itself against.
  * A failed one keeps the hash that is still on screen, unlike the route the
- * router paints, which takes its hash from the attempted url.
+ * router paints, which takes its hash from the requested url.
  */
 export const getSettledRoute = (
   elements: Record<string | symbol, unknown>,

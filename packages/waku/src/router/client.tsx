@@ -838,8 +838,8 @@ const FollowError = ({
       !routerState.failure
     ) {
       const landed =
-        routerState.attempted[0] === dispatched.route.path &&
-        routerState.attempted[1] === dispatched.route.query;
+        routerState.requested[0] === dispatched.route.path &&
+        routerState.requested[1] === dispatched.route.query;
       const arrived = landed
         ? dispatched.route.path === routePath
         : routerState.url === dispatched.url;
@@ -851,11 +851,11 @@ const FollowError = ({
     }
   }, [routePath, routeQuery, routeHash, routerState, reset, fail, error]);
   const followCaughtError = useEffectEvent(() => {
-    // the attempted url may not have reached the address bar yet
-    const attemptedUrl = routerState
+    // the requested url may not have reached the address bar yet
+    const requestedUrl = routerState
       ? new URL(routerState.url, window.location.href)
       : new URL(window.location.href);
-    const errorRoute = resolveErrorRoute(error, attemptedUrl, has404);
+    const errorRoute = resolveErrorRoute(error, requestedUrl, has404);
     if (errorRoute.type === 'none') {
       return;
     }
@@ -873,11 +873,11 @@ const FollowError = ({
       return;
     }
     const { target, url } = errorRoute;
-    const attempted = routerState?.attempted;
-    const caught = attempted
-      ? { path: attempted[0], query: attempted[1] }
-      : parseRoute(attemptedUrl);
-    if (isSameRscRoute(target, caught) && url.href === attemptedUrl.href) {
+    const requested = routerState?.requested;
+    const caught = requested
+      ? { path: requested[0], query: requested[1] }
+      : parseRoute(requestedUrl);
+    if (isSameRscRoute(target, caught) && url.href === requestedUrl.href) {
       fail(error, new Error('detected a navigation loop', { cause: error }));
       return;
     }

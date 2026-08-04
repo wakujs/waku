@@ -1926,7 +1926,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('a server function 404 keeps the attempted url', async () => {
+  test('a server function 404 keeps the requested url', async () => {
     window.history.replaceState({}, '', '/start?a=1');
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
@@ -3710,7 +3710,7 @@ describe('Router integration', () => {
     const replaceLocationSpy = vi
       .spyOn(window.location, 'replace')
       .mockImplementation(() => {});
-    // an instant commit writes the attempted url before the response lands
+    // an instant commit writes the requested url before the response lands
     window.history.replaceState({}, '', '/next?x=1');
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(() =>
       Promise.reject(
@@ -4463,7 +4463,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('a server rewrite drops the attempted hash from the committed route', async () => {
+  test('a server rewrite drops the requested hash from the committed route', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
@@ -4500,7 +4500,7 @@ describe('Router integration', () => {
         await flush();
       });
 
-      // nothing moved, so the attempted '#frag' must not still count as committed
+      // nothing moved, so the requested '#frag' must not still count as committed
       expect(scrollToSpy).not.toHaveBeenCalled();
     } finally {
       scrollToSpy.mockRestore();
@@ -4885,7 +4885,7 @@ describe('Router integration', () => {
     const historyPushSpy = vi.spyOn(window.history, 'pushState');
     const historyReplaceSpy = vi.spyOn(window.history, 'replaceState');
     try {
-      // commits the attempted url first, then the response moves the route
+      // commits the requested url first, then the response moves the route
       const pushed = capture.router!.push('/next', {
         unstable_instant: true,
       });
@@ -5050,7 +5050,7 @@ describe('Router integration', () => {
     expect(replaceLocationSpy).toHaveBeenCalledTimes(1);
     expect(replaceLocationSpy.mock.calls[0]![0]).toContain('/next');
     expect(capture.router!.path).toBe('/start');
-    // the attempted entry is written first, so leaving it keeps /start behind
+    // the requested entry is written first, so leaving it keeps /start behind
     expect(window.location.pathname).toBe('/moved');
     replaceLocationSpy.mockRestore();
     view.unmount();
@@ -5111,7 +5111,7 @@ describe('Router integration', () => {
     }
   });
 
-  test('a rejected redirect resolves a relative location against the attempted url', async () => {
+  test('a rejected redirect resolves a relative location against the requested url', async () => {
     const assignSpy = vi
       .spyOn(window.location, 'assign')
       .mockImplementation(() => {});
@@ -5217,7 +5217,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('an instant 404 keeps the attempted url in the address bar', async () => {
+  test('an instant 404 keeps the requested url in the address bar', async () => {
     const refetch = vi.fn<ReturnType<typeof useRefetch>>();
     refetch
       .mockImplementationOnce(() =>
@@ -5261,7 +5261,7 @@ describe('Router integration', () => {
       await flush();
     });
 
-    // the 404 route renders while the address bar keeps the attempted url
+    // the 404 route renders while the address bar keeps the requested url
     expect(capture.router.path).toBe('/404');
     expect(window.location.pathname).toBe('/account/profile');
     expect(window.history.length).toBe(lengthBefore + 1);
@@ -5269,7 +5269,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('a redirect that keeps the attempted pathname still scrolls', async () => {
+  test('a redirect that keeps the requested pathname still scrolls', async () => {
     const scrollToSpy = vi
       .spyOn(window, 'scrollTo')
       .mockImplementation(() => {});
@@ -5319,9 +5319,9 @@ describe('Router integration', () => {
     });
 
     // the visible navigation is from /start, so the page scrolls even
-    // though the redirect keeps the attempted pathname
+    // though the redirect keeps the requested pathname
     expect(capture.router.query).toBe('login=1');
-    // twice: the attempted commit, then the follow
+    // twice: the requested commit, then the follow
     expect(scrollToSpy).toHaveBeenCalledTimes(2);
 
     scrollToSpy.mockRestore();
@@ -5376,7 +5376,7 @@ describe('Router integration', () => {
       await flush();
     });
 
-    // the attempted entry is written once, then replaced by the redirect
+    // the requested entry is written once, then replaced by the redirect
     expect(capture.router.path).toBe('/login');
     expect(window.location.pathname).toBe('/login');
     expect(window.history.length).toBe(lengthBefore + 1);
@@ -5384,7 +5384,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('a slow redirect after an instant error writes one attempted entry', async () => {
+  test('a slow redirect after an instant error writes one requested entry', async () => {
     const RedirectErrorObject = createCustomError('moved', {
       status: 307,
       location: 'login',
@@ -5435,7 +5435,7 @@ describe('Router integration', () => {
       pushPromise = capture.router!.push('/account/profile', {
         unstable_instant: true,
       });
-      // flush the attempted route's commit while the redirect is pending
+      // flush the requested route's commit while the redirect is pending
       await flush();
       await flush();
     });
@@ -5559,7 +5559,7 @@ describe('Router integration', () => {
     });
 
     expect(capture.router.query).toBe('page=3');
-    // twice: the attempted commit, then the follow
+    // twice: the requested commit, then the follow
     expect(scrollToSpy).toHaveBeenCalledTimes(2);
 
     scrollToSpy.mockRestore();
@@ -5887,14 +5887,14 @@ describe('Router integration', () => {
     // the visible navigation is /start -> /account/profile?login=1, so
     // the redirect scrolls even though it only changed the query
     expect(capture.router.query).toBe('login=1');
-    // twice: the attempted commit, then the follow
+    // twice: the requested commit, then the follow
     expect(scrollToSpy).toHaveBeenCalledTimes(2);
 
     scrollToSpy.mockRestore();
     view.unmount();
   });
 
-  test('a redirect back to the current route scrolls like the attempted navigation', async () => {
+  test('a redirect back to the current route scrolls like the requested navigation', async () => {
     const scrollToSpy = vi
       .spyOn(window, 'scrollTo')
       .mockImplementation(() => {});
@@ -6044,7 +6044,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('a 404 follow fetches the 404 route with the attempted query', async () => {
+  test('a 404 follow fetches the 404 route with the requested query', async () => {
     const { view, refetch, capture, router } = await renderFollowRouter({
       responses: [
         { reject: { status: 404 } },
@@ -6848,7 +6848,7 @@ describe('Router integration', () => {
       await flush();
       await flush();
     });
-    // the attempted query update does not scroll, and the redirect
+    // the requested query update does not scroll, and the redirect
     // inherits that decision
     expect(capture.router!.path).toBe('/login');
     expect(scrollToSpy).not.toHaveBeenCalled();
@@ -7703,7 +7703,7 @@ describe('Router integration', () => {
       await flush();
       await flush();
     });
-    // the attempted entry is written, then the browser leaves from it
+    // the requested entry is written, then the browser leaves from it
     expect(window.location.pathname).toBe('/protected');
     expect(window.history.length).toBe(lengthBefore + 1);
     // leaving still closes the navigation it was asked for
