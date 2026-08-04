@@ -3001,6 +3001,137 @@ describe('Router integration', () => {
     }
   });
 
+  test('a reader who scrolls is not pulled to a late hash target', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const nextSlotId = unstable_getRouteSlotId('/next');
+    let land: (() => void) | undefined;
+    const refetch = vi.fn<RefetchInner>(
+      () =>
+        new Promise((resolve) => {
+          land = () =>
+            resolve({
+              extra: <div id="target">target</div>,
+              [ROUTE_ID]: ['/next', ''],
+              [IS_STATIC_ID]: false,
+            });
+        }),
+    );
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [nextSlotId]: (
+          <>
+            <Probe />
+            <Slot id="extra" />
+          </>
+        ),
+        extra: <div>placeholder</div>,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+        [`${ETAG_ID_PREFIX}${nextSlotId}`]: IMMUTABLE_ETAG,
+      },
+    );
+    try {
+      document.body.append(view.container);
+      const pushed = capture.router!.push('/next#target', {
+        unstable_instant: true,
+      });
+      await act(async () => {
+        await flush();
+      });
+      scrollToSpy.mockClear();
+
+      // the reader takes over before the target arrives
+      window.dispatchEvent(new Event('wheel'));
+      await act(async () => {
+        land!();
+        await pushed;
+        await flush();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(document.getElementById('target')).not.toBeNull();
+      expect(scrollToSpy).not.toHaveBeenCalled();
+    } finally {
+      view.container.remove();
+      view.unmount();
+      scrollToSpy.mockRestore();
+    }
+  });
+
+  test('a percent encoded #top still means the top of the document', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
+      window,
+      'scrollY',
+    );
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      value: 100,
+    });
+    const getBoundingClientRectSpy = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        return {
+          top: this === document.documentElement ? -100 : 0,
+        } as DOMRect;
+      });
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [unstable_getRouteSlotId('/next')]: <Probe />,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    try {
+      document.body.append(view.container);
+      await act(async () => {
+        await capture.router!.push('/next');
+        await flush();
+      });
+      scrollToSpy.mockClear();
+
+      await act(async () => {
+        await capture.router!.push('/next#%74op');
+        await flush();
+      });
+
+      expect(scrollToSpy).toHaveBeenCalledTimes(1);
+      expect(scrollToSpy).toHaveBeenLastCalledWith({
+        left: 0,
+        top: 0,
+        behavior: 'auto',
+      });
+    } finally {
+      view.container.remove();
+      view.unmount();
+      getBoundingClientRectSpy.mockRestore();
+      scrollToSpy.mockRestore();
+      if (scrollYDescriptor) {
+        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
+      } else {
+        Object.defineProperty(window, 'scrollY', {
+          configurable: true,
+          value: 0,
+        });
+      }
+    }
+  });
+
   test('a hash target can be an old style name anchor', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);

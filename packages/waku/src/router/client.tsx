@@ -1030,7 +1030,39 @@ const getHashElement = (hash: string): HTMLElement | null => {
       }
     }
   }
-  return raw.toLowerCase() === 'top' ? document.documentElement : null;
+  return decodeHash(raw).toLowerCase() === 'top'
+    ? document.documentElement
+    : null;
+};
+
+/**
+ * Streamed content can bring the target in long after the scroll, and a slot
+ * resolving on its own does not re-render the router, so this watches the dom
+ * rather than react. It gives up as soon as the reader scrolls themselves.
+ */
+const awaitHashElement = (hash: string, behavior: ScrollBehavior) => {
+  const stop = () => {
+    observer.disconnect();
+    window.removeEventListener('wheel', stop);
+    window.removeEventListener('touchmove', stop);
+    window.removeEventListener('keydown', stop);
+  };
+  const observer = new MutationObserver(() => {
+    if (getHashElement(hash)) {
+      stop();
+      scrollToHash(hash, behavior, false);
+    }
+  });
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['id', 'name'],
+  });
+  window.addEventListener('wheel', stop, { passive: true });
+  window.addEventListener('touchmove', stop, { passive: true });
+  window.addEventListener('keydown', stop);
+  return { hash, stop };
 };
 
 const scrollToHash = (
@@ -1142,10 +1174,9 @@ const InnerRouter = ({
       getSettledRoute(resolvedElementsRef.current, routeFallback),
     [routeFallback],
   );
-  const awaitedHashRef = useRef<{
-    hash: string;
-    behavior: ScrollBehavior;
-  } | null>(null);
+  const awaitedHashRef = useRef<ReturnType<typeof awaitHashElement> | null>(
+    null,
+  );
   const destinationHref = destination?.url.href;
   const currentHash = currentRoute.hash;
   useLayoutEffect(() => {
@@ -1159,6 +1190,7 @@ const InnerRouter = ({
     );
     appliedRef.current = routerState;
     if (!applied || awaitedHashRef.current?.hash !== currentHash) {
+      awaitedHashRef.current?.stop();
       awaitedHashRef.current = null;
     }
     if (applied) {
@@ -1169,18 +1201,12 @@ const InnerRouter = ({
       const behavior = pathChanged ? 'instant' : 'auto';
       scrollToHash(currentHash, behavior, pathChanged);
       if (currentHash && !getHashElement(currentHash)) {
-        awaitedHashRef.current = { hash: currentHash, behavior };
+        awaitedHashRef.current = awaitHashElement(currentHash, behavior);
       }
     }
   }, [routerState, destinationHref, currentHash]);
 
-  useEffect(() => {
-    const awaited = awaitedHashRef.current;
-    if (awaited && getHashElement(awaited.hash)) {
-      awaitedHashRef.current = null;
-      scrollToHash(awaited.hash, awaited.behavior, false);
-    }
-  });
+  useEffect(() => () => awaitedHashRef.current?.stop(), []);
 
   useEffect(() => {
     if (import.meta.hot) {
