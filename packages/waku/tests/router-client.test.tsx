@@ -2834,6 +2834,111 @@ describe('Router integration', () => {
     }
   });
 
+  test('a server rewrite drops a hash target the response did not keep', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const nextSlotId = unstable_getRouteSlotId('/next');
+    let land: (() => void) | undefined;
+    const refetch = vi.fn<RefetchInner>(
+      () =>
+        new Promise((resolve) => {
+          land = () =>
+            resolve({
+              [unstable_getRouteSlotId('/rewritten')]: (
+                <>
+                  <Probe />
+                  <div id="intro">intro</div>
+                </>
+              ),
+              [ROUTE_ID]: ['/rewritten', ''],
+              [IS_STATIC_ID]: false,
+            });
+        }),
+    );
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [nextSlotId]: <div>shell</div>,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+        [`${ETAG_ID_PREFIX}${nextSlotId}`]: IMMUTABLE_ETAG,
+      },
+    );
+    try {
+      document.body.append(view.container);
+      const pushed = capture.router!.push('/next#intro', {
+        unstable_instant: true,
+      });
+      await act(async () => {
+        await flush();
+      });
+      scrollToSpy.mockClear();
+
+      // the rewritten route has an #intro of its own, but it was never asked for
+      await act(async () => {
+        land!();
+        await pushed;
+        await flush();
+      });
+
+      expect(capture.router!.path).toBe('/rewritten');
+      expect(scrollToSpy).not.toHaveBeenCalled();
+    } finally {
+      view.container.remove();
+      view.unmount();
+      scrollToSpy.mockRestore();
+    }
+  });
+
+  test('a named element that is not an anchor is not a hash target', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [unstable_getRouteSlotId('/next')]: (
+          <>
+            <Probe />
+            <input name="section" readOnly />
+          </>
+        ),
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    try {
+      document.body.append(view.container);
+      await act(async () => {
+        await capture.router!.push('/next');
+        await flush();
+      });
+      scrollToSpy.mockClear();
+
+      // same path, so a real target would scroll and a miss does nothing
+      await act(async () => {
+        await capture.router!.push('/next#section');
+        await flush();
+      });
+
+      expect(scrollToSpy).not.toHaveBeenCalled();
+    } finally {
+      view.container.remove();
+      view.unmount();
+      scrollToSpy.mockRestore();
+    }
+  });
+
   test('a later navigation drops a hash target that never arrived', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
@@ -2977,8 +3082,10 @@ describe('Router integration', () => {
     const getBoundingClientRectSpy = vi
       .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       .mockImplementation(function (this: HTMLElement) {
-        // the document is scrolled down, so the body starts above the viewport
-        return { top: this === document.body ? -100 : 0 } as DOMRect;
+        // the document is scrolled down, so the root starts above the viewport
+        return {
+          top: this === document.documentElement ? -100 : 0,
+        } as DOMRect;
       });
     const view = await renderRouter(
       { initialRoute: { path: '/start', query: '', hash: '' } },

@@ -1019,13 +1019,18 @@ const decodeHash = (raw: string) => {
 const getHashElement = (hash: string): HTMLElement | null => {
   const raw = hash.slice(1);
   for (const name of new Set([raw, decodeHash(raw)])) {
-    const element =
-      document.getElementById(name) ?? document.getElementsByName(name)[0];
-    if (element) {
-      return element;
+    const byId = document.getElementById(name);
+    if (byId) {
+      return byId;
+    }
+    // the spec names anchors only, so a meta or an input is not a target
+    for (const named of document.getElementsByName(name)) {
+      if (named.localName === 'a') {
+        return named;
+      }
     }
   }
-  return raw.toLowerCase() === 'top' ? document.body : null;
+  return raw.toLowerCase() === 'top' ? document.documentElement : null;
 };
 
 const scrollToHash = (
@@ -1153,10 +1158,12 @@ const InnerRouter = ({
       applied ? 'replace' : routerState.history,
     );
     appliedRef.current = routerState;
+    if (!applied || awaitedHashRef.current?.hash !== currentHash) {
+      awaitedHashRef.current = null;
+    }
     if (applied) {
       return;
     }
-    awaitedHashRef.current = null;
     if (routerState.scroll && !routerState.failure) {
       const { pathChanged } = routerState.scroll;
       const behavior = pathChanged ? 'instant' : 'auto';
