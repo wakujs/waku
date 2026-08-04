@@ -850,10 +850,10 @@ const FollowError = ({
   }, [routePath, routeQuery, routeHash, routerState, reset, fail, error]);
   const followCaughtError = useEffectEvent(() => {
     // the requested url may not have reached the address bar yet
-    const requestedUrl = routerState
+    const stateUrl = routerState
       ? new URL(routerState.url, window.location.href)
       : new URL(window.location.href);
-    const errorRoute = resolveErrorRoute(error, requestedUrl, has404);
+    const errorRoute = resolveErrorRoute(error, stateUrl, has404);
     if (errorRoute.type === 'none') {
       return;
     }
@@ -874,8 +874,8 @@ const FollowError = ({
     const requested = routerState?.requested;
     const caught = requested
       ? { path: requested[0], query: requested[1] }
-      : parseRoute(requestedUrl);
-    if (isSameRscRoute(target, caught) && url.href === requestedUrl.href) {
+      : parseRoute(stateUrl);
+    if (isSameRscRoute(target, caught) && url.href === stateUrl.href) {
       fail(error, new Error('detected a navigation loop', { cause: error }));
       return;
     }
