@@ -380,11 +380,9 @@ export function useRouter() {
     });
   }, [changeRoute]);
   const back = useCallback(() => {
-    // FIXME is this correct?
     window.history.back();
   }, []);
   const forward = useCallback(() => {
-    // FIXME is this correct?
     window.history.forward();
   }, []);
   const prefetch = useCallback(
