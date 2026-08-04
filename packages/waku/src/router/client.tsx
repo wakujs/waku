@@ -1008,8 +1008,7 @@ export function Slice({
   return <Slot id={slotId}>{children}</Slot>;
 }
 
-// percent decoding leaves a malformed escape alone instead of giving up on the
-// whole fragment, and a run decodes together so multi byte characters survive
+// a run decodes together, so a multi byte character survives
 const decodeHash = (raw: string) =>
   raw.replace(/(?:%[0-9A-Fa-f]{2})+/g, (escapes) => {
     try {
@@ -1026,7 +1025,7 @@ const getHashElement = (hash: string): HTMLElement | null => {
     if (byId) {
       return byId;
     }
-    // the spec names anchors only, so a meta or an input is not a target
+    // the spec counts anchors only, not a meta or an input
     for (const named of document.getElementsByName(name)) {
       if (named.localName === 'a') {
         return named;
@@ -1038,11 +1037,7 @@ const getHashElement = (hash: string): HTMLElement | null => {
     : null;
 };
 
-/**
- * Streamed content can bring the target in long after the scroll, and a slot
- * resolving on its own does not re-render the router, so this watches the dom
- * rather than react. It gives up as soon as the reader scrolls themselves.
- */
+// a slot can resolve without re-rendering the router, so watch the dom
 const awaitHashElement = (hash: string, behavior: ScrollBehavior) => {
   const stop = () => {
     observer.disconnect();
