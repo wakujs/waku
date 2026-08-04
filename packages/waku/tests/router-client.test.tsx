@@ -2834,6 +2834,68 @@ describe('Router integration', () => {
     }
   });
 
+  test('a later navigation drops a hash target that never arrived', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const grab = { refetch: null as null | ReturnType<typeof useRefetch> };
+    const Grabber = () => {
+      grab.refetch = useRefetch();
+      return null;
+    };
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [unstable_getRouteSlotId('/a')]: (
+          <>
+            <Probe />
+            <Grabber />
+          </>
+        ),
+        [unstable_getRouteSlotId('/b')]: (
+          <>
+            <Probe />
+            <Grabber />
+            <Slot id="late" />
+          </>
+        ),
+        late: <div>nothing yet</div>,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    try {
+      document.body.append(view.container);
+      // the target never shows up on /a
+      await act(async () => {
+        await capture.router!.push('/a#target');
+        await flush();
+      });
+      await act(async () => {
+        await capture.router!.push('/b', { scroll: false });
+        await flush();
+      });
+      scrollToSpy.mockClear();
+
+      refetch.mockResolvedValueOnce({ late: <div id="target">target</div> });
+      await act(async () => {
+        await grab.refetch!('late');
+        await flush();
+      });
+
+      expect(scrollToSpy).not.toHaveBeenCalled();
+    } finally {
+      view.container.remove();
+      view.unmount();
+      scrollToSpy.mockRestore();
+    }
+  });
+
   test('a hash target can be an old style name anchor', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);

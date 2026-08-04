@@ -1153,14 +1153,17 @@ const InnerRouter = ({
       applied ? 'replace' : routerState.history,
     );
     appliedRef.current = routerState;
-    if (routerState.scroll && !applied && !routerState.failure) {
+    if (applied) {
+      return;
+    }
+    awaitedHashRef.current = null;
+    if (routerState.scroll && !routerState.failure) {
       const { pathChanged } = routerState.scroll;
       const behavior = pathChanged ? 'instant' : 'auto';
       scrollToHash(currentHash, behavior, pathChanged);
-      awaitedHashRef.current =
-        currentHash && !getHashElement(currentHash)
-          ? { hash: currentHash, behavior }
-          : null;
+      if (currentHash && !getHashElement(currentHash)) {
+        awaitedHashRef.current = { hash: currentHash, behavior };
+      }
     }
   }, [routerState, destinationHref, currentHash]);
 
