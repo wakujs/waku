@@ -6,6 +6,7 @@ export default async function HomePage() {
       <h1>Home Page</h1>
       <Link to="/sync">Sync Page</Link>
       <Link to="/async">Async Page</Link>
+      <Link to="/external-page">External Page</Link>
     </div>
   );
 }

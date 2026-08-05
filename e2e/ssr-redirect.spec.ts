@@ -46,6 +46,33 @@ test.describe(`ssr-redirect`, () => {
     }
   });
 
+  test('a render that redirects off the origin sends the browser there', async ({
+    page,
+  }) => {
+    // the fixture page names this port, so the second origin is predictable
+    const hits: string[] = [];
+    const other = createServer((req, res) => {
+      hits.push(req.url ?? '');
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end('<html><body><h1>Other Origin</h1></body></html>');
+    });
+    await new Promise<void>((resolve, reject) => {
+      other.on('error', reject);
+      other.listen(39876, '127.0.0.1', resolve);
+    });
+    try {
+      await page.goto(`http://localhost:${port}/`);
+      await waitForHydration(page);
+      await page.locator("a[href='/external-page']").click();
+      await page.waitForURL('http://127.0.0.1:39876/from-render');
+      await expect(page.getByRole('heading')).toHaveText('Other Origin');
+      // the browser goes there once, instead of fetching it and then going
+      expect(hits.filter((u) => u === '/from-render')).toHaveLength(1);
+    } finally {
+      await new Promise<void>((resolve) => other.close(() => resolve()));
+    }
+  });
+
   test('access sync page directly', async ({ page }) => {
     await page.goto(`http://localhost:${port}/sync`);
     await expect(page.getByRole('heading')).toHaveText('Destination Page');

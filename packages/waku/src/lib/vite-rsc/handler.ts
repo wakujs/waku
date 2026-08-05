@@ -88,8 +88,9 @@ const toProcessRequest =
     } catch (e) {
       const info = getErrorInfo(e);
       const leavingFor = info?.location && leavesTheApp(info.location, req);
-      if (leavingFor && input.type === 'call') {
-        // a fetch cannot read a redirect off the origin, so say where to go
+      // a fetch cannot read a redirect off the origin, so say where to go.
+      // a document request is a real navigation, so it keeps the 3xx
+      if (leavingFor && input.type !== 'http') {
         return new Response(
           await renderUtils.renderRsc(
             {},
