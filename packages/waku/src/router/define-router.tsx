@@ -52,13 +52,9 @@ export function unstable_notFound(): never {
 }
 
 /**
- * Redirect to a route of this application, given as a typed href or a
- * structured `{ to, params, search, hash }`, or away from it, given as an
- * absolute http or https url. A route href must start with a single `/`.
- *
- * Any http or https url is accepted, so a target built from user input has to
- * be checked against your own allowlist first, or the page becomes an open
- * redirect.
+ * Redirect within the app, or away from it with an absolute http or https
+ * url. An external target is not validated, so check one built from user
+ * input against your own allowlist.
  */
 export function unstable_redirect<Path extends RoutePath = RoutePath>(
   to:

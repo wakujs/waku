@@ -37,7 +37,6 @@ type RscRoute = Pick<RouteProps, 'path' | 'query'>;
 export const isSameRscRoute = (next: RscRoute, prev: RscRoute) =>
   next.path === prev.path && next.query === prev.query;
 
-// only a scheme a browser can navigate to, never javascript: or data:
 export const parseRedirectUrl = (location: string, base: string | URL) => {
   let url: URL;
   try {
