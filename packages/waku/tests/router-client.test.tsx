@@ -421,6 +421,18 @@ const renderApp = async (element: ReactElement) => {
   };
 };
 
+const stubScrollY = (value: number) => {
+  const descriptor = Object.getOwnPropertyDescriptor(window, 'scrollY');
+  Object.defineProperty(window, 'scrollY', { configurable: true, value });
+  return () => {
+    if (descriptor) {
+      Object.defineProperty(window, 'scrollY', descriptor);
+    } else {
+      Reflect.deleteProperty(window, 'scrollY');
+    }
+  };
+};
+
 const flush = async () => {
   await act(async () => {
     await new Promise<void>((resolve) => setTimeout(resolve));
@@ -1142,14 +1154,7 @@ describe('useRouter + Link with context', () => {
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
       return;
     });
-    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'scrollY',
-    );
-    Object.defineProperty(window, 'scrollY', {
-      configurable: true,
-      value: 100,
-    });
+    const restoreScrollY = stubScrollY(100);
     const hashTarget = document.createElement('div');
     hashTarget.id = 'target';
     const getBoundingClientRectSpy = vi
@@ -1198,11 +1203,7 @@ describe('useRouter + Link with context', () => {
       getBoundingClientRectSpy.mockRestore();
       hashTarget.remove();
       window.history.replaceState({}, '', '/');
-      if (scrollYDescriptor) {
-        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
-      } else {
-        Reflect.deleteProperty(window, 'scrollY');
-      }
+      restoreScrollY();
     }
   });
 
@@ -2680,14 +2681,7 @@ describe('Router integration', () => {
         hash: window.location.hash,
       });
     });
-    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'scrollY',
-    );
-    Object.defineProperty(window, 'scrollY', {
-      configurable: true,
-      value: 100,
-    });
+    const restoreScrollY = stubScrollY(100);
     const getBoundingClientRectSpy = vi
       .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       .mockImplementation(function (this: HTMLElement) {
@@ -2738,14 +2732,7 @@ describe('Router integration', () => {
     } finally {
       view.unmount();
       getBoundingClientRectSpy.mockRestore();
-      if (scrollYDescriptor) {
-        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
-      } else {
-        Object.defineProperty(window, 'scrollY', {
-          configurable: true,
-          value: 0,
-        });
-      }
+      restoreScrollY();
     }
   });
 
@@ -2769,14 +2756,7 @@ describe('Router integration', () => {
     const scrollToSpy = vi
       .spyOn(window, 'scrollTo')
       .mockImplementation(() => {});
-    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'scrollY',
-    );
-    Object.defineProperty(window, 'scrollY', {
-      configurable: true,
-      value: 100,
-    });
+    const restoreScrollY = stubScrollY(100);
     const getBoundingClientRectSpy = vi
       .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       .mockImplementation(function (this: HTMLElement) {
@@ -2823,14 +2803,7 @@ describe('Router integration', () => {
       view.unmount();
       getBoundingClientRectSpy.mockRestore();
       scrollToSpy.mockRestore();
-      if (scrollYDescriptor) {
-        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
-      } else {
-        Object.defineProperty(window, 'scrollY', {
-          configurable: true,
-          value: 0,
-        });
-      }
+      restoreScrollY();
     }
   });
 
@@ -3073,14 +3046,7 @@ describe('Router integration', () => {
     const scrollToSpy = vi
       .spyOn(window, 'scrollTo')
       .mockImplementation(() => {});
-    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'scrollY',
-    );
-    Object.defineProperty(window, 'scrollY', {
-      configurable: true,
-      value: 100,
-    });
+    const restoreScrollY = stubScrollY(100);
     const getBoundingClientRectSpy = vi
       .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       .mockImplementation(function (this: HTMLElement) {
@@ -3118,14 +3084,7 @@ describe('Router integration', () => {
       view.unmount();
       getBoundingClientRectSpy.mockRestore();
       scrollToSpy.mockRestore();
-      if (scrollYDescriptor) {
-        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
-      } else {
-        Object.defineProperty(window, 'scrollY', {
-          configurable: true,
-          value: 0,
-        });
-      }
+      restoreScrollY();
     }
   });
 
@@ -3137,14 +3096,7 @@ describe('Router integration', () => {
     const scrollToSpy = vi
       .spyOn(window, 'scrollTo')
       .mockImplementation(() => {});
-    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'scrollY',
-    );
-    Object.defineProperty(window, 'scrollY', {
-      configurable: true,
-      value: 100,
-    });
+    const restoreScrollY = stubScrollY(100);
     const getBoundingClientRectSpy = vi
       .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       .mockImplementation(function (this: HTMLElement) {
@@ -3185,14 +3137,7 @@ describe('Router integration', () => {
       view.unmount();
       getBoundingClientRectSpy.mockRestore();
       scrollToSpy.mockRestore();
-      if (scrollYDescriptor) {
-        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
-      } else {
-        Object.defineProperty(window, 'scrollY', {
-          configurable: true,
-          value: 0,
-        });
-      }
+      restoreScrollY();
     }
   });
 
@@ -3202,14 +3147,7 @@ describe('Router integration', () => {
     const scrollToSpy = vi
       .spyOn(window, 'scrollTo')
       .mockImplementation(() => {});
-    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'scrollY',
-    );
-    Object.defineProperty(window, 'scrollY', {
-      configurable: true,
-      value: 100,
-    });
+    const restoreScrollY = stubScrollY(100);
     const getBoundingClientRectSpy = vi
       .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       .mockImplementation(function (this: HTMLElement) {
@@ -3247,14 +3185,7 @@ describe('Router integration', () => {
       view.unmount();
       getBoundingClientRectSpy.mockRestore();
       scrollToSpy.mockRestore();
-      if (scrollYDescriptor) {
-        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
-      } else {
-        Object.defineProperty(window, 'scrollY', {
-          configurable: true,
-          value: 0,
-        });
-      }
+      restoreScrollY();
     }
   });
 
@@ -3266,14 +3197,7 @@ describe('Router integration', () => {
     const scrollToSpy = vi
       .spyOn(window, 'scrollTo')
       .mockImplementation(() => {});
-    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'scrollY',
-    );
-    Object.defineProperty(window, 'scrollY', {
-      configurable: true,
-      value: 100,
-    });
+    const restoreScrollY = stubScrollY(100);
     const getBoundingClientRectSpy = vi
       .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       .mockImplementation(function (this: HTMLElement) {
@@ -3316,14 +3240,7 @@ describe('Router integration', () => {
       view.unmount();
       getBoundingClientRectSpy.mockRestore();
       scrollToSpy.mockRestore();
-      if (scrollYDescriptor) {
-        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
-      } else {
-        Object.defineProperty(window, 'scrollY', {
-          configurable: true,
-          value: 0,
-        });
-      }
+      restoreScrollY();
     }
   });
 
@@ -3348,14 +3265,7 @@ describe('Router integration', () => {
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
       return;
     });
-    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'scrollY',
-    );
-    Object.defineProperty(window, 'scrollY', {
-      configurable: true,
-      value: 100,
-    });
+    const restoreScrollY = stubScrollY(100);
     const getBoundingClientRectSpy = vi
       .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       .mockImplementation(function (this: HTMLElement) {
@@ -3400,14 +3310,7 @@ describe('Router integration', () => {
     } finally {
       view.unmount();
       getBoundingClientRectSpy.mockRestore();
-      if (scrollYDescriptor) {
-        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
-      } else {
-        Object.defineProperty(window, 'scrollY', {
-          configurable: true,
-          value: 0,
-        });
-      }
+      restoreScrollY();
     }
   });
 
@@ -3461,14 +3364,7 @@ describe('Router integration', () => {
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
       return;
     });
-    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'scrollY',
-    );
-    Object.defineProperty(window, 'scrollY', {
-      configurable: true,
-      value: 100,
-    });
+    const restoreScrollY = stubScrollY(100);
     const hashTarget = document.createElement('div');
     hashTarget.id = 'target';
     const getBoundingClientRectSpy = vi
@@ -3504,14 +3400,7 @@ describe('Router integration', () => {
       view.unmount();
       getBoundingClientRectSpy.mockRestore();
       hashTarget.remove();
-      if (scrollYDescriptor) {
-        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
-      } else {
-        Object.defineProperty(window, 'scrollY', {
-          configurable: true,
-          value: 0,
-        });
-      }
+      restoreScrollY();
     }
   });
 
@@ -3527,14 +3416,7 @@ describe('Router integration', () => {
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
       return;
     });
-    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'scrollY',
-    );
-    Object.defineProperty(window, 'scrollY', {
-      configurable: true,
-      value: 100,
-    });
+    const restoreScrollY = stubScrollY(100);
     // `%E6%97%A5...` is the percent-encoded form of the id "日本語見出し", which
     // is how `URL.hash` (and therefore `route.hash`) represents a non-ASCII
     // fragment. Use the encoded form explicitly so the test reproduces the bug
@@ -3574,14 +3456,7 @@ describe('Router integration', () => {
       view.unmount();
       getBoundingClientRectSpy.mockRestore();
       hashTarget.remove();
-      if (scrollYDescriptor) {
-        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
-      } else {
-        Object.defineProperty(window, 'scrollY', {
-          configurable: true,
-          value: 0,
-        });
-      }
+      restoreScrollY();
     }
   });
 
@@ -3597,14 +3472,7 @@ describe('Router integration', () => {
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
       return;
     });
-    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'scrollY',
-    );
-    Object.defineProperty(window, 'scrollY', {
-      configurable: true,
-      value: 100,
-    });
+    const restoreScrollY = stubScrollY(100);
     // Per the HTML fragment navigation algorithm, the raw fragment must be
     // tried first and the percent-decoded form only as a fallback. With both
     // ids present, `#a%20b` must scroll to `id="a%20b"`, not `id="a b"`.
@@ -3646,14 +3514,7 @@ describe('Router integration', () => {
       decodedRectSpy.mockRestore();
       rawTarget.remove();
       decodedTarget.remove();
-      if (scrollYDescriptor) {
-        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
-      } else {
-        Object.defineProperty(window, 'scrollY', {
-          configurable: true,
-          value: 0,
-        });
-      }
+      restoreScrollY();
     }
   });
 
@@ -4949,14 +4810,7 @@ describe('Router integration', () => {
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
       return;
     });
-    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'scrollY',
-    );
-    Object.defineProperty(window, 'scrollY', {
-      configurable: true,
-      value: 100,
-    });
+    const restoreScrollY = stubScrollY(100);
     const hashTarget = document.createElement('div');
     hashTarget.id = 'target';
     const getBoundingClientRectSpy = vi
@@ -4984,14 +4838,7 @@ describe('Router integration', () => {
       view.unmount();
       getBoundingClientRectSpy.mockRestore();
       hashTarget.remove();
-      if (scrollYDescriptor) {
-        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
-      } else {
-        Object.defineProperty(window, 'scrollY', {
-          configurable: true,
-          value: 0,
-        });
-      }
+      restoreScrollY();
     }
   });
 
