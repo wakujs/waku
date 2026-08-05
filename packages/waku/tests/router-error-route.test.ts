@@ -113,6 +113,20 @@ describe('resolveErrorRoute', () => {
     });
   });
 
+  test('a location that is not a url cannot be followed either', () => {
+    const error = createCustomError('redirect', {
+      status: 307,
+      location: 'https://[',
+    });
+
+    const errorRoute = resolveErrorRoute(error, requested('/from'), false);
+
+    expect(errorRoute).toEqual({
+      type: 'unfollowable',
+      location: 'https://[',
+    });
+  });
+
   test('a 404 goes to the 404 route with the requested query and url', () => {
     const error = createCustomError('nf', { status: 404 });
 

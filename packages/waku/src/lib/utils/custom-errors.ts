@@ -64,12 +64,7 @@ export const navigableRedirect = (
   baseUrl: string,
 ): URL | undefined => {
   const info = getErrorInfo(err);
-  if (
-    !info?.location ||
-    !info.status ||
-    info.status < 300 ||
-    info.status > 399
-  ) {
+  if (!info?.location) {
     return undefined;
   }
   let url: URL;

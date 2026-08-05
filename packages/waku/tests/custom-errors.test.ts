@@ -38,14 +38,20 @@ describe('navigableRedirect', () => {
     );
   });
 
-  test('a status that is not a redirect stays an error', () => {
-    expect(navigableRedirect(redirectTo('/login', 410), base)).toBeUndefined();
+  test('a location is the redirect, whatever the status says', () => {
+    // the client follows a location without reading the status, so a throw
+    // before the render must not decide it differently
+    expect(navigableRedirect(redirectTo('/login', 410), base)?.pathname).toBe(
+      '/login',
+    );
     expect(
-      navigableRedirect(
-        createCustomError('nope', { location: '/login' }),
-        base,
-      ),
-    ).toBeUndefined();
+      navigableRedirect(createCustomError('nope', { location: '/login' }), base)
+        ?.pathname,
+    ).toBe('/login');
+  });
+
+  test('a location that is not a url at all', () => {
+    expect(navigableRedirect(redirectTo('https://['), base)).toBeUndefined();
   });
 
   test('nothing to navigate to without a location', () => {

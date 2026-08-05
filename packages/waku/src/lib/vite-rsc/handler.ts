@@ -98,7 +98,9 @@ const toProcessRequest =
       }
       const body = stringToStream(message);
       const headers: { location?: string } = {};
-      if (info?.location) {
+      // a browser ignores a Location a browser cannot navigate to, but a
+      // command line follower does not, so it is never sent
+      if (info?.location && navigableRedirect(e, req.url)) {
         headers.location = addBase(info.location, config.basePath);
       }
       return new Response(body, { status, headers });
