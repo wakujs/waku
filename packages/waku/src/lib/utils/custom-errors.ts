@@ -1,5 +1,3 @@
-import { addBase } from './path.js';
-
 type ErrorInfo = {
   status?: number;
   location?: string;
@@ -57,39 +55,4 @@ export const getErrorInfo = (err: unknown) => {
     // ignore
   }
   return null;
-};
-
-/**
- * Where the browser must go for this error, or undefined if there is nowhere
- * it may go. Only a scheme a browser can navigate to, never javascript: or
- * data:, and never the raw location, so a control character in it cannot
- * reach a header.
- */
-export const resolveRedirectLocation = (
-  err: unknown,
-  requestUrl: string,
-  basePath: string,
-): string | undefined => {
-  const location = getErrorInfo(err)?.location;
-  if (!location) {
-    return undefined;
-  }
-  let target: URL;
-  try {
-    target = new URL(location, requestUrl);
-  } catch {
-    return undefined;
-  }
-  if (target.protocol !== 'http:' && target.protocol !== 'https:') {
-    return undefined;
-  }
-  // requestUrl takes its scheme from the socket, so naming one here would send
-  // an https app behind a proxy back to http
-  const path = target.pathname + target.search + target.hash;
-  if (target.host !== new URL(requestUrl).host) {
-    return /^[a-z][a-z\d+.-]*:/i.test(location)
-      ? target.href
-      : '//' + target.host + path;
-  }
-  return location.startsWith('/') ? addBase(path, basePath) : path;
 };

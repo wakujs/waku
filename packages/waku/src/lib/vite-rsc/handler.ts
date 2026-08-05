@@ -18,13 +18,11 @@ import type {
   Unstable_ProcessBuild as ProcessBuild,
   Unstable_ProcessRequest as ProcessRequest,
 } from '../types.js';
-import {
-  getErrorInfo,
-  resolveRedirectLocation,
-} from '../utils/custom-errors.js';
+import { getErrorInfo } from '../utils/custom-errors.js';
 import { sanitizeLog } from '../utils/log.js';
 import { joinPath } from '../utils/path.js';
 import { DEBUG_ID_HEADER } from '../utils/react-debug-channel.js';
+import { resolveRedirectLocation } from '../utils/redirect.js';
 import { createRenderUtils } from '../utils/render.js';
 import { getInput } from '../utils/request.js';
 import { encodeRscPath } from '../utils/rsc-path.js';
@@ -79,14 +77,19 @@ const toProcessRequest =
       });
     } catch (e) {
       const info = getErrorInfo(e);
-      const leaveFor = resolveRedirectLocation(e, req.url, config.basePath);
+      const documentLocation = info?.location
+        ? resolveRedirectLocation(info.location, req.url, config.basePath)
+        : undefined;
       // a document request is a real navigation, so it keeps the 3xx
-      if (leaveFor && input.type !== 'http') {
-        return new Response(await renderUtils.renderRsc({}, { leaveFor }), {
-          // it answers 200 like any payload, so say who it belongs to before a
-          // shared cache serves one user's redirect to everyone
-          headers: { 'cache-control': 'private, no-store' },
-        });
+      if (documentLocation && input.type !== 'http') {
+        return new Response(
+          await renderUtils.renderRsc({}, { documentLocation }),
+          {
+            // a 200 like any payload, so a shared cache must be told not to
+            // hand one user's redirect to the next
+            headers: { 'cache-control': 'private, no-store' },
+          },
+        );
       }
       const status = info?.status || 500;
       let message: string;
@@ -97,9 +100,8 @@ const toProcessRequest =
         message = 'Internal Server Error';
       }
       const body = stringToStream(message);
-      // a browser ignores a Location it cannot navigate to, but a command line
-      // follower does not, so a rejected scheme is never sent
-      const headers = leaveFor ? { location: leaveFor } : {};
+      // a command line follower will follow a Location a browser ignores
+      const headers = documentLocation ? { location: documentLocation } : {};
       return new Response(body, { status, headers });
     }
 
