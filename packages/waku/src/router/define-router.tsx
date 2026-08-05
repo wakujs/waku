@@ -52,18 +52,26 @@ export function unstable_notFound(): never {
 }
 
 /**
- * Redirect within the current application. Accepts the same target as
- * `router.push` / `router.replace`: a typed route href or a structured
- * `{ to, params, search, hash }`. The resolved location must start with a
- * single `/`.
+ * Redirect to a route of this application, given as a typed href or a
+ * structured `{ to, params, search, hash }`, or away from it, given as an
+ * absolute http or https url. A route href must start with a single `/`.
  */
 export function unstable_redirect<Path extends RoutePath = RoutePath>(
-  to: RouteHref | BuildRouteHrefTarget<Path>,
+  to:
+    | RouteHref
+    | `http://${string}`
+    | `https://${string}`
+    | BuildRouteHrefTarget<Path>,
   status: 303 | 307 | 308 = 307,
 ): never {
   const location =
     typeof to === 'string' ? to : buildRouteHref(to, getResolveSearchCodec());
-  if (!location.startsWith('/') || location.startsWith('//')) {
+  const leavesTheApp =
+    location.startsWith('http://') || location.startsWith('https://');
+  if (
+    !leavesTheApp &&
+    (!location.startsWith('/') || location.startsWith('//'))
+  ) {
     throw new Error(`Invalid redirect location: ${JSON.stringify(location)}`);
   }
   for (let i = 0; i < location.length; ++i) {

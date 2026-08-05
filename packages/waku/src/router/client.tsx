@@ -1192,7 +1192,9 @@ const InnerRouter = ({
         signal: pending.controller.signal,
         unstable_overlay: {
           [ROUTER_STATE_ID]: routerState,
-          // meta is pinned, so an instant nav has to carry it or it goes stale
+          // meta is pinned, so an instant nav has to carry it or it goes stale.
+          // TODO if the response leaves the app instead, this entry is one the
+          // reader never saw, and back returns to it and redirects again
           ...(instant
             ? {
                 [ROUTE_ID]: [nextRoute.path, nextRoute.query],

@@ -1,11 +1,8 @@
-import { unstable_createCustomError as createCustomError } from 'waku/minimal/server';
+import { unstable_redirect as redirect } from 'waku/router/server';
 
 // the port the spec listens on for the second origin
 export default async function ExternalPage() {
-  throw createCustomError('leaving', {
-    status: 303,
-    location: 'http://127.0.0.1:39876/from-render',
-  });
+  redirect('http://127.0.0.1:39876/from-render', 303);
 }
 
 export const getConfig = () => {

@@ -333,8 +333,14 @@ describe('unstable_redirect', () => {
     });
   });
 
+  it('accepts an absolute http or https redirect', () => {
+    expect(getRedirectInfo('https://example.com/next')).toEqual({
+      status: 303,
+      location: 'https://example.com/next',
+    });
+  });
+
   it.each([
-    'https://example.com/',
     '//example.com/',
     '/\\example.com/',
     'login',
