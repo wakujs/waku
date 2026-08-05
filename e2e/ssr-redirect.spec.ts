@@ -1,3 +1,5 @@
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { expect } from '@playwright/test';
 import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
@@ -16,6 +18,32 @@ test.describe(`ssr-redirect`, () => {
 
   test.afterAll(async () => {
     await stopApp();
+  });
+
+  test('a server action can send the browser to another origin', async ({
+    page,
+  }) => {
+    // a second origin that sends no cors headers, which a fetch cannot read
+    const other = createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end('<html><body><h1>Other Origin</h1></body></html>');
+    });
+    await new Promise<void>((resolve) => other.listen(0, '127.0.0.1', resolve));
+    const otherPort = (other.address() as AddressInfo).port;
+    const otherOrigin = `http://127.0.0.1:${otherPort}`;
+    try {
+      await page.goto(`http://localhost:${port}/external-action`);
+      await waitForHydration(page);
+      await expect(page.getByRole('heading')).toHaveText(
+        'External Action Page',
+      );
+      await page.getByTestId('to').fill(`${otherOrigin}/landed`);
+      await page.locator('text=Leave').click();
+      await page.waitForURL(`${otherOrigin}/landed`);
+      await expect(page.getByRole('heading')).toHaveText('Other Origin');
+    } finally {
+      await new Promise<void>((resolve) => other.close(() => resolve()));
+    }
   });
 
   test('access sync page directly', async ({ page }) => {
