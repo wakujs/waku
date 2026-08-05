@@ -1037,7 +1037,7 @@ const getHashElement = (hash: string): HTMLElement | null => {
 };
 
 // a slot can resolve without re-rendering the router, so watch the dom
-const awaitHashElement = (hash: string, behavior: ScrollBehavior) => {
+const watchForHashElement = (hash: string, behavior: ScrollBehavior) => {
   const stop = () => {
     observer.disconnect();
     window.removeEventListener('wheel', stop);
@@ -1166,12 +1166,7 @@ const InnerRouter = ({
   const currentRoute = destination ? destination.route : routeFallback;
   // only the current state is reconciled, so one slot is enough
   const appliedRef = useRef<RouterState>(undefined);
-  const readSettledRoute = useCallback(
-    (): RouteProps =>
-      getSettledRoute(resolvedElementsRef.current, routeFallback),
-    [routeFallback],
-  );
-  const awaitedHashRef = useRef<ReturnType<typeof awaitHashElement> | null>(
+  const hashWatchRef = useRef<ReturnType<typeof watchForHashElement> | null>(
     null,
   );
   const destinationHref = destination?.url.href;
@@ -1186,9 +1181,9 @@ const InnerRouter = ({
       applied ? 'replace' : routerState.history,
     );
     appliedRef.current = routerState;
-    if (!applied || awaitedHashRef.current?.hash !== currentHash) {
-      awaitedHashRef.current?.stop();
-      awaitedHashRef.current = null;
+    if (!applied || hashWatchRef.current?.hash !== currentHash) {
+      hashWatchRef.current?.stop();
+      hashWatchRef.current = null;
     }
     if (applied || !routerState.scroll || routerState.failure) {
       return;
@@ -1197,18 +1192,21 @@ const InnerRouter = ({
     const behavior = pathChanged ? 'instant' : 'auto';
     scrollToHash(currentHash, behavior, pathChanged);
     if (currentHash && !getHashElement(currentHash)) {
-      awaitedHashRef.current = awaitHashElement(currentHash, behavior);
+      hashWatchRef.current = watchForHashElement(currentHash, behavior);
     }
   }, [routerState, destinationHref, currentHash]);
 
-  useEffect(() => () => awaitedHashRef.current?.stop(), []);
+  useEffect(() => () => hashWatchRef.current?.stop(), []);
 
   useEffect(() => {
     if (import.meta.hot) {
       const refetchRouteOnHmr = () => {
         prefetchManagerRef.current!.clear();
         staticPathSetRef.current!.clear();
-        const settledRoute = readSettledRoute();
+        const settledRoute = getSettledRoute(
+          resolvedElementsRef.current,
+          routeFallback,
+        );
         startTransition(() => {
           // the reload clears the set, so the response has to teach it again
           void refetch(
@@ -1223,7 +1221,7 @@ const InnerRouter = ({
       );
       globalThis.__WAKU_REFETCH_ROUTE__ = refetchRouteOnHmr;
     }
-  }, [refetch, learnStaticPath, readSettledRoute]);
+  }, [refetch, learnStaticPath, routeFallback]);
 
   const [[routeChangeEvents, emitRouteChangeEvent]] = useState(
     createRouteChangeListeners,
@@ -1261,7 +1259,10 @@ const InnerRouter = ({
       if (isAborted()) {
         return;
       }
-      const settledRoute = readSettledRoute();
+      const settledRoute = getSettledRoute(
+        resolvedElementsRef.current,
+        routeFallback,
+      );
       const targetUrl = options.url ?? getRouteUrl(nextRoute);
       const routerState = makeRouterState(nextRoute, targetUrl, {
         history: options.history,
@@ -1348,7 +1349,7 @@ const InnerRouter = ({
       }
     },
     [
-      readSettledRoute,
+      routeFallback,
       refetch,
       mergeElements,
       emitRouteChangeEvent,
@@ -1362,7 +1363,10 @@ const InnerRouter = ({
         return;
       }
       const [path, query] = routeData as [string, string];
-      const settledRoute = readSettledRoute();
+      const settledRoute = getSettledRoute(
+        resolvedElementsRef.current,
+        routeFallback,
+      );
       if (
         settledRoute.path === path &&
         (isStatic || settledRoute.query === query)
@@ -1379,7 +1383,7 @@ const InnerRouter = ({
         url: is404 ? new URL(window.location.href) : getRouteUrl(route),
       });
     },
-    [changeRoute, readSettledRoute],
+    [changeRoute, routeFallback],
   );
   useEffect(() => {
     const listener = (elements: Record<string, unknown>) => {
@@ -1422,7 +1426,7 @@ const InnerRouter = ({
         changeRoute(nextRoute, {
           shouldScroll: shouldScrollForRouteChange(
             nextRoute,
-            readSettledRoute(),
+            getSettledRoute(resolvedElementsRef.current, routeFallback),
           ),
           history: null, // the browser already moved the address bar
           // keep the url it moved to; an interceptor rewrite needs a new one
@@ -1440,7 +1444,7 @@ const InnerRouter = ({
     return () => {
       window.removeEventListener('popstate', callback);
     };
-  }, [changeRoute, routeInterceptor, readSettledRoute]);
+  }, [changeRoute, routeInterceptor, routeFallback]);
 
   const routeElement = routerState?.failure ? (
     <ThrowError error={routerState.failure.error} />
