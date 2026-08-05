@@ -81,7 +81,7 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
     }),
     {
       // the renderer throws before anything streams, so the rsc request is
-      // answered with a real redirect that the browser has to follow
+      // answered with the destination route instead of a redirect
       type: 'route' as const,
       pattern: '^/moved$',
       path: [{ type: 'literal', name: 'moved' } as const],

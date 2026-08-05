@@ -144,7 +144,35 @@ export const createRequestHandler = ({
             requestElementCache,
           );
         } catch (e) {
-          if (getErrorInfo(e)?.status !== 404) {
+          const info = getErrorInfo(e);
+          if (info?.location) {
+            // a fetch cannot use a redirect, so answer with the destination
+            const redirectRoute = resolveInternalRoute(
+              info.location,
+              input.req.url,
+            );
+            const redirected =
+              redirectRoute &&
+              (await routeEntries
+                .getEntriesForRoute(
+                  encodeRoutePath(redirectRoute.path),
+                  new URLSearchParams({ query: redirectRoute.query }),
+                  clientEtags,
+                  requestElementCache,
+                )
+                .catch((e: unknown) => {
+                  const info = getErrorInfo(e);
+                  if (info?.location || info?.status === 404) {
+                    return null;
+                  }
+                  throw e;
+                }));
+            if (!redirected) {
+              throw e;
+            }
+            return renderRsc(redirected.elements, { etags: redirected.etags });
+          }
+          if (info?.status !== 404) {
             throw e;
           }
         }

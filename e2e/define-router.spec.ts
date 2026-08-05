@@ -172,7 +172,7 @@ test.describe(`define-router`, () => {
     expect(await res.text()).toBe('');
   });
 
-  test('a redirected rsc request hands the page to the browser', async ({
+  test('a pre render redirect resolves as a soft navigation', async ({
     page,
   }) => {
     await page.goto(`http://localhost:${port}/`);
@@ -185,12 +185,12 @@ test.describe(`define-router`, () => {
 
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');
     expect(page.url()).toBe(`http://localhost:${port}/foo`);
-    // the marker is gone only if the document was replaced, not soft navigated
+    // the marker survives only if the document was kept, not replaced
     expect(
       await page.evaluate(
         () => (window as unknown as { __beforeMoved?: true }).__beforeMoved,
       ),
-    ).toBeUndefined();
+    ).toBe(true);
   });
 
   test('api hi with POST', async () => {
