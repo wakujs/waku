@@ -297,39 +297,21 @@ describe('minimal/client server actions', () => {
     act(() => root.unmount());
   });
 
-  test('a document location from the prefetch cache is reported too', async () => {
-    mocks.createFromFetch.mockResolvedValueOnce({ App: 'A' });
+  test('a document location fails the prefetch that decoded it', async () => {
+    // the router holds this promise, and its rejection is what makes the
+    // click leave rather than commit a payload that is not elements
+    mocks.createFromFetch.mockResolvedValueOnce({
+      _location: 'https://other.example/prefetched',
+    });
     stubFetch();
 
-    let refetch: ReturnType<typeof useRefetch> | undefined;
-    const Probe = () => {
-      refetch = useRefetch();
-      return null;
-    };
-    const container = document.createElement('div');
-    const root = createRoot(container);
-    await act(async () => {
-      root.render(
-        <Root initialRscPath="R/app.txt">
-          <Suspense fallback={null}>
-            <Slot id="App" />
-            <Probe />
-          </Suspense>
-        </Root>,
-      );
-    });
-
-    // a warm entry never goes through fetchRsc, so it needs its own tagging
-    const error = await refetch!('R/next.txt', undefined, {
-      unstable_prefetched: Promise.resolve({
-        _location: 'https://other.example/prefetched',
-      }),
-    }).catch((e: unknown) => e);
+    const error = await unstable_prefetchRsc('R/next.txt').catch(
+      (e: unknown) => e,
+    );
 
     expect(getErrorInfo(error)).toEqual({
       unstable_documentLocation: 'https://other.example/prefetched',
     });
-    act(() => root.unmount());
   });
 
   test('a document location is reported as an error, not merged', async () => {

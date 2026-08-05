@@ -168,7 +168,7 @@ const swrElementsPromise = (
       }
       if (base) {
         for (const key of Object.keys(base)) {
-          if (key === '_value' || key === '_location' || key in nextElements) {
+          if (key === '_value' || key in nextElements) {
             continue;
           }
           // pin only what the base proves immutable; pinning a mutable
@@ -317,7 +317,15 @@ const decodeRsc = (
       debugChannel,
       temporaryReferences,
     }),
-  );
+  ).then((data) => {
+    if (typeof data._location !== 'string') {
+      return data;
+    }
+    // no fetch can follow this, so it fails here and the browser goes instead
+    throw createCustomError('document navigation', {
+      unstable_documentLocation: data._location,
+    });
+  });
 
 const reloadOnBuildIdMismatch = (
   elements: Promise<Elements>,
@@ -335,17 +343,6 @@ const reloadOnBuildIdMismatch = (
     () => {},
   );
 };
-
-// no fetch can follow this, so it fails here and the browser goes instead
-const failOnDocumentLocation = (elements: Promise<Elements>) =>
-  elements.then((data) => {
-    if (typeof data._location !== 'string') {
-      return data;
-    }
-    throw createCustomError('document navigation', {
-      unstable_documentLocation: data._location,
-    });
-  });
 
 const abortable = (
   elements: Promise<Elements>,
@@ -412,7 +409,7 @@ const fetchRscElements = (
     debug?.debugChannel,
   );
   reloadOnBuildIdMismatch(elements, options?.onBuildIdMismatch);
-  return failOnDocumentLocation(elements);
+  return elements;
 };
 
 /**
@@ -571,10 +568,7 @@ export const unstable_prefetchRsc = (
   if (!base) {
     return data;
   }
-  return Promise.resolve(data).then((response) => {
-    const { _location: _stale, ...kept } = base;
-    return { ...kept, ...response };
-  });
+  return Promise.resolve(data).then((response) => ({ ...base, ...response }));
 };
 
 const RefetchContext = createContext<Refetch>(() => {
@@ -620,7 +614,7 @@ export const Root = ({
     delete fetchRscStore[ENTRY];
     let data: Promise<Elements>;
     if (prefetched) {
-      data = failOnDocumentLocation(abortable(prefetched, options?.signal));
+      data = abortable(prefetched, options?.signal);
       reloadOnBuildIdMismatch(data, options?.onBuildIdMismatch);
     } else {
       if (swr?.base) {
