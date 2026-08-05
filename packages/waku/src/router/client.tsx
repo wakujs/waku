@@ -1095,15 +1095,15 @@ const InnerRouter = ({
     if (!owed) {
       return;
     }
-    const deliver = () => {
+    const settle = () => {
       owedHashRef.current = null;
     };
     if (getHashElement(owed)) {
-      deliver();
+      settle();
       scrollToHash(owed, 'instant', false);
       return;
     }
-    const watch = watchForHashElement(owed, 'instant', deliver);
+    const watch = watchForHashElement(owed, 'instant', settle);
     hashWatchRef.current = watch;
     return () => {
       watch.stop();

@@ -53,24 +53,30 @@ export const getHashElement = (hash: string): HTMLElement | null => {
 export const watchForHashElement = (
   hash: string,
   behavior: ScrollBehavior,
-  onScrolled?: () => void,
+  onSettled?: () => void,
 ) => {
+  // stop is for the caller putting the watch down, and stays silent so a
+  // replayed effect can pick it up again. settle is the target reached or
+  // the reader taking over, which nobody should reopen
   const stop = () => {
     observer.disconnect();
-    window.removeEventListener('wheel', stop);
-    window.removeEventListener('touchmove', stop);
-    window.removeEventListener('keydown', stopOnScrollKey);
+    window.removeEventListener('wheel', settle);
+    window.removeEventListener('touchmove', settle);
+    window.removeEventListener('keydown', settleOnScrollKey);
   };
-  const stopOnScrollKey = (event: KeyboardEvent) => {
+  const settle = () => {
+    stop();
+    onSettled?.();
+  };
+  const settleOnScrollKey = (event: KeyboardEvent) => {
     if (scrollsThePage(event)) {
-      stop();
+      settle();
     }
   };
   const observer = new MutationObserver(() => {
     if (getHashElement(hash)) {
-      stop();
+      settle();
       scrollToHash(hash, behavior, false);
-      onScrolled?.();
     }
   });
   observer.observe(document.body, {
@@ -79,9 +85,9 @@ export const watchForHashElement = (
     attributes: true,
     attributeFilter: ['id', 'name'],
   });
-  window.addEventListener('wheel', stop, { passive: true });
-  window.addEventListener('touchmove', stop, { passive: true });
-  window.addEventListener('keydown', stopOnScrollKey);
+  window.addEventListener('wheel', settle, { passive: true });
+  window.addEventListener('touchmove', settle, { passive: true });
+  window.addEventListener('keydown', settleOnScrollKey);
   return { hash, stop };
 };
 
