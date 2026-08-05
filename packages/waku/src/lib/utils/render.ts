@@ -50,8 +50,8 @@ export function createRenderUtils(
       if (options && 'value' in options) {
         data._value = options.value;
       }
-      if (options?.leaveFor) {
-        data._location = options.leaveFor;
+      if (options?.documentLocation) {
+        data._location = options.documentLocation;
       }
       if (options?.etags) {
         for (const [slotId, etag] of Object.entries(options.etags)) {

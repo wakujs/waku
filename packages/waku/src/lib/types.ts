@@ -9,8 +9,7 @@ export type Unstable_RenderRsc = (
   options?: {
     value?: unknown;
     etags?: Etags;
-    /** A redirect no route could answer; the client navigates the document. */
-    leaveFor?: string;
+    documentLocation?: string;
     unstable_clientModuleCallback?: (ids: string[]) => void;
   },
 ) => Promise<ReadableStream>;

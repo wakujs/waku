@@ -17,10 +17,13 @@ const makeRenderUtils = () => {
 };
 
 describe('createRenderUtils', () => {
-  test('carries a leave location', async () => {
+  test('carries a document location', async () => {
     const { renderToReadableStream, renderUtils } = makeRenderUtils();
 
-    await renderUtils.renderRsc({}, { leaveFor: 'https://other.example/x' });
+    await renderUtils.renderRsc(
+      {},
+      { documentLocation: 'https://other.example/x' },
+    );
 
     expect(renderToReadableStream).toHaveBeenCalledWith(
       { _location: 'https://other.example/x' },
