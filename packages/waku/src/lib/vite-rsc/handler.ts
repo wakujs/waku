@@ -18,9 +18,12 @@ import type {
   Unstable_ProcessBuild as ProcessBuild,
   Unstable_ProcessRequest as ProcessRequest,
 } from '../types.js';
-import { getErrorInfo, navigableRedirect } from '../utils/custom-errors.js';
+import {
+  getErrorInfo,
+  resolveRedirectLocation,
+} from '../utils/custom-errors.js';
 import { sanitizeLog } from '../utils/log.js';
-import { addBase, joinPath } from '../utils/path.js';
+import { joinPath } from '../utils/path.js';
 import { DEBUG_ID_HEADER } from '../utils/react-debug-channel.js';
 import { createRenderUtils } from '../utils/render.js';
 import { getInput } from '../utils/request.js';
@@ -76,17 +79,14 @@ const toProcessRequest =
       });
     } catch (e) {
       const info = getErrorInfo(e);
+      const leaveFor = resolveRedirectLocation(e, req.url, config.basePath);
       // a document request is a real navigation, so it keeps the 3xx
-      const target =
-        input.type !== 'http' ? navigableRedirect(e, req.url) : undefined;
-      if (target) {
-        // staying on this origin keeps the location relative, so the base is
-        // applied once and a proxy's scheme is the browser's to decide
-        const leaveFor =
-          target.origin === new URL(req.url).origin
-            ? addBase(info!.location!, config.basePath)
-            : target.href;
-        return new Response(await renderUtils.renderRsc({}, { leaveFor }));
+      if (leaveFor && input.type !== 'http') {
+        return new Response(await renderUtils.renderRsc({}, { leaveFor }), {
+          // it answers 200 like any payload, so say who it belongs to before a
+          // shared cache serves one user's redirect to everyone
+          headers: { 'cache-control': 'private, no-store' },
+        });
       }
       const status = info?.status || 500;
       let message: string;
@@ -97,12 +97,9 @@ const toProcessRequest =
         message = 'Internal Server Error';
       }
       const body = stringToStream(message);
-      const headers: { location?: string } = {};
-      // a browser ignores a Location a browser cannot navigate to, but a
-      // command line follower does not, so it is never sent
-      if (info?.location && navigableRedirect(e, req.url)) {
-        headers.location = addBase(info.location, config.basePath);
-      }
+      // a browser ignores a Location it cannot navigate to, but a command line
+      // follower does not, so a rejected scheme is never sent
+      const headers = leaveFor ? { location: leaveFor } : {};
       return new Response(body, { status, headers });
     }
 

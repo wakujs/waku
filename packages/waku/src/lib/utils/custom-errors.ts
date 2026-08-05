@@ -1,3 +1,5 @@
+import { addBase } from './path.js';
+
 type ErrorInfo = {
   status?: number;
   location?: string;
@@ -57,23 +59,37 @@ export const getErrorInfo = (err: unknown) => {
   return null;
 };
 
-// a redirect the client must navigate itself, resolved against the request.
-// only a scheme a browser can navigate to, never javascript: or data:
-export const navigableRedirect = (
+/**
+ * Where the browser must go for this error, or undefined if there is nowhere
+ * it may go. Only a scheme a browser can navigate to, never javascript: or
+ * data:, and never the raw location, so a control character in it cannot
+ * reach a header.
+ */
+export const resolveRedirectLocation = (
   err: unknown,
-  baseUrl: string,
-): URL | undefined => {
-  const info = getErrorInfo(err);
-  if (!info?.location) {
+  requestUrl: string,
+  basePath: string,
+): string | undefined => {
+  const location = getErrorInfo(err)?.location;
+  if (!location) {
     return undefined;
   }
-  let url: URL;
+  let target: URL;
   try {
-    url = new URL(info.location, baseUrl);
+    target = new URL(location, requestUrl);
   } catch {
     return undefined;
   }
-  return url.protocol === 'http:' || url.protocol === 'https:'
-    ? url
-    : undefined;
+  if (target.protocol !== 'http:' && target.protocol !== 'https:') {
+    return undefined;
+  }
+  // requestUrl takes its scheme from the socket, so naming one here would send
+  // an https app behind a proxy back to http; the browser keeps its own
+  const path = target.pathname + target.search + target.hash;
+  if (target.host !== new URL(requestUrl).host) {
+    return /^[a-z][a-z\d+.-]*:/i.test(location)
+      ? target.href
+      : '//' + target.host + path;
+  }
+  return location.startsWith('/') ? addBase(path, basePath) : path;
 };
