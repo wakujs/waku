@@ -169,7 +169,7 @@ It does not wait for a follow. Anything your page throws while rendering, such a
 
 A missing route depends on who answers the request. A Waku server sends the 404 page as the response, so the promise resolves and the route you land on is `/404`. Where no Waku server answers, such as a static export or a CDN serving its own 404, the request fails and the client fetches the 404 page itself: there the promise **rejects** and the 404 page arrives from a second navigation.
 
-The promise also rejects when the navigation fails outright, and when a redirect carried by the response hands the page to the browser. Catch it if you call these programmatically, or an auth redirect at the fetch layer will surface as an unhandled rejection. It does not wait for React to finish rendering the destination, so the address bar may still show the previous URL when it resolves.
+The promise also rejects when the navigation fails outright, and when a redirect thrown while rendering hands the page to the browser. A redirect the server resolves before rendering starts is carried by the response instead, and there the promise resolves; the browser leaves once that response lands. Catch it if you call these programmatically, or an auth redirect at the fetch layer will surface as an unhandled rejection. It does not wait for React to finish rendering the destination, so the address bar may still show the previous URL when it resolves.
 
 When the shell is cached, the layout and the `Loading...` fallback appear with no round trip, and the post's content streams into the fallback once the server responds. When the shell is **not** cached, the navigation falls back to normal behavior: the current page stays put until the response arrives, so there is no blank flash.
 
@@ -253,7 +253,7 @@ A follow is a navigation of its own, so it opens its own `start`. A late `unstab
 
 A listener that throws is reported to the console and does not affect the navigation or the other listeners. A listener that navigates gets a navigation right away, and its events queue behind the one being delivered, so every listener sees the same order whenever it subscribed.
 
-A redirect carried by the response hands the page to the browser. It still reports `error` for the navigation it was asked to make, and the full page load follows.
+A redirect that leaves the app hands the page to the browser. One thrown while rendering reports `error` for the navigation it was asked to make, and the full page load follows. One the server resolves before rendering starts arrives in the response instead, so the navigation reports `complete` and the browser leaves after it.
 
 For a spinner, prefer `useNavigationStatus_UNSTABLE()` above. A `start` listener runs inside the navigation's transition, so state you set there is batched with the navigation itself and may not paint on its own.
 
