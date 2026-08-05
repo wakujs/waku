@@ -33,8 +33,8 @@ export const resolveErrorRoute = (
     if (!parsed) {
       return { type: 'unfollowable', location };
     }
-    // for a document location the server already decided that no route
-    // answers it, so its origin does not matter
+    // a document location was already resolved on the server, so it leaves
+    // whatever its origin
     if (documentLocation || parsed.origin !== window.location.origin) {
       return { type: 'leave', url: parsed };
     }

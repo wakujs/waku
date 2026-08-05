@@ -84,7 +84,7 @@ export const resolveRedirectLocation = (
     return undefined;
   }
   // requestUrl takes its scheme from the socket, so naming one here would send
-  // an https app behind a proxy back to http; the browser keeps its own
+  // an https app behind a proxy back to http
   const path = target.pathname + target.search + target.hash;
   if (target.host !== new URL(requestUrl).host) {
     return /^[a-z][a-z\d+.-]*:/i.test(location)
