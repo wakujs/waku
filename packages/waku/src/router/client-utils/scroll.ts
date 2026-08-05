@@ -13,6 +13,15 @@ const SCROLL_KEYS = new Set([
   'End',
 ]);
 
+const EDITING =
+  "input, textarea, select, [contenteditable]:not([contenteditable='false'])";
+
+// the same keys move a caret rather than the page when someone is editing
+const scrollsThePage = (event: KeyboardEvent) =>
+  !event.defaultPrevented &&
+  SCROLL_KEYS.has(event.key) &&
+  !(event.target as HTMLElement | null)?.closest?.(EDITING);
+
 const decodeHash = (raw: string) =>
   raw.replace(/(?:%[0-9A-Fa-f]{2})+/g, (escapes) => {
     try {
@@ -48,9 +57,8 @@ export const watchForHashElement = (hash: string, behavior: ScrollBehavior) => {
     window.removeEventListener('touchmove', stop);
     window.removeEventListener('keydown', stopOnScrollKey);
   };
-  // tabbing or typing is not a reader taking over the scroll position
   const stopOnScrollKey = (event: KeyboardEvent) => {
-    if (SCROLL_KEYS.has(event.key)) {
+    if (scrollsThePage(event)) {
       stop();
     }
   };

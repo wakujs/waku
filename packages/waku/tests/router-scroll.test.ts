@@ -132,6 +132,48 @@ describe('watchForHashElement', () => {
     }
   });
 
+  test('a scroll key inside an editable does not give up', async () => {
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const host = append('<input /><div contenteditable="true"></div>');
+    const watch = watchForHashElement('#late', 'instant');
+    try {
+      const input = host.querySelector('input')!;
+      const editable = host.querySelector('div')!;
+      input.dispatchEvent(
+        new KeyboardEvent('keydown', { key: ' ', bubbles: true }),
+      );
+      editable.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'End', bubbles: true }),
+      );
+      append('<div id="late">here</div>');
+      await settle();
+      // the watch survived both, so the target still won
+      expect(scrollTo).toHaveBeenCalledTimes(1);
+    } finally {
+      watch.stop();
+      scrollTo.mockRestore();
+    }
+  });
+
+  test('a key whose default was already handled does not give up', async () => {
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const watch = watchForHashElement('#late', 'instant');
+    try {
+      const event = new KeyboardEvent('keydown', {
+        key: 'PageDown',
+        cancelable: true,
+      });
+      event.preventDefault();
+      window.dispatchEvent(event);
+      append(`<div id="late">here</div>`);
+      await settle();
+      expect(scrollTo).toHaveBeenCalledTimes(1);
+    } finally {
+      watch.stop();
+      scrollTo.mockRestore();
+    }
+  });
+
   test('stop ends the watch', async () => {
     const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     const watch = watchForHashElement('#late', 'instant');

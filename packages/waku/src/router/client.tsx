@@ -1063,15 +1063,6 @@ const InnerRouter = ({
     setRestoredHash(window.location.hash || initialHashRef.current!);
   }, []);
 
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (!hash || getHashElement(hash)) {
-      return;
-    }
-    // the browser stops looking for the target once the document has loaded
-    return watchForHashElement(hash, 'instant').stop;
-  }, []);
-
   const routeFallback = useMemo(
     () => ({ ...initialRoute, hash: restoredHash }),
     [initialRoute, restoredHash],
@@ -1089,6 +1080,21 @@ const InnerRouter = ({
   const hashWatchRef = useRef<ReturnType<typeof watchForHashElement> | null>(
     null,
   );
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash || hashWatchRef.current || getHashElement(hash)) {
+      return;
+    }
+    // the browser stops looking for the target once the document has loaded
+    const watch = watchForHashElement(hash, 'instant');
+    hashWatchRef.current = watch;
+    return () => {
+      watch.stop();
+      if (hashWatchRef.current === watch) {
+        hashWatchRef.current = null;
+      }
+    };
+  }, []);
   const destinationHref = destination?.url.href;
   const currentHash = currentRoute.hash;
   useLayoutEffect(() => {
