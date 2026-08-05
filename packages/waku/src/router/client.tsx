@@ -1080,13 +1080,30 @@ const InnerRouter = ({
   const hashWatchRef = useRef<ReturnType<typeof watchForHashElement> | null>(
     null,
   );
+  const owedHashRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    const hash = window.location.hash;
-    if (!hash || hashWatchRef.current || getHashElement(hash)) {
+    if (hashWatchRef.current) {
       return;
     }
-    // the browser stops looking for the target once the document has loaded
-    const watch = watchForHashElement(hash, 'instant');
+    if (owedHashRef.current === undefined) {
+      // the browser stops looking once the document has loaded, so whatever
+      // it left unreached is ours to deliver
+      const hash = window.location.hash;
+      owedHashRef.current = hash && !getHashElement(hash) ? hash : null;
+    }
+    const owed = owedHashRef.current;
+    if (!owed) {
+      return;
+    }
+    const deliver = () => {
+      owedHashRef.current = null;
+    };
+    if (getHashElement(owed)) {
+      deliver();
+      scrollToHash(owed, 'instant', false);
+      return;
+    }
+    const watch = watchForHashElement(owed, 'instant', deliver);
     hashWatchRef.current = watch;
     return () => {
       watch.stop();
@@ -1110,6 +1127,7 @@ const InnerRouter = ({
     if (!applied || hashWatchRef.current?.hash !== currentHash) {
       hashWatchRef.current?.stop();
       hashWatchRef.current = null;
+      owedHashRef.current = null;
     }
     if (applied || !routerState.scroll || routerState.failure) {
       return;

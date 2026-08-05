@@ -50,7 +50,11 @@ export const getHashElement = (hash: string): HTMLElement | null => {
 };
 
 // a slot can resolve without re-rendering the router, so watch the dom
-export const watchForHashElement = (hash: string, behavior: ScrollBehavior) => {
+export const watchForHashElement = (
+  hash: string,
+  behavior: ScrollBehavior,
+  onScrolled?: () => void,
+) => {
   const stop = () => {
     observer.disconnect();
     window.removeEventListener('wheel', stop);
@@ -66,6 +70,7 @@ export const watchForHashElement = (hash: string, behavior: ScrollBehavior) => {
     if (getHashElement(hash)) {
       stop();
       scrollToHash(hash, behavior, false);
+      onScrolled?.();
     }
   });
   observer.observe(document.body, {
