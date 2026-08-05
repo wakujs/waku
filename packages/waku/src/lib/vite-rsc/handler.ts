@@ -18,7 +18,7 @@ import type {
   Unstable_ProcessBuild as ProcessBuild,
   Unstable_ProcessRequest as ProcessRequest,
 } from '../types.js';
-import { getErrorInfo } from '../utils/custom-errors.js';
+import { getErrorInfo, navigableRedirect } from '../utils/custom-errors.js';
 import { sanitizeLog } from '../utils/log.js';
 import { addBase, joinPath } from '../utils/path.js';
 import { DEBUG_ID_HEADER } from '../utils/react-debug-channel.js';
@@ -34,17 +34,6 @@ function loadSsrEntryModule() {
     typeof import('../vite-entries/entry.ssr.js')
   >('ssr', 'index');
 }
-
-// a same origin location is still inside the app, so the router keeps it
-const leavesTheApp = (location: string, req: Request) => {
-  let url: URL;
-  try {
-    url = new URL(location, req.url);
-  } catch {
-    return undefined;
-  }
-  return url.origin === new URL(req.url).origin ? undefined : url.href;
-};
 
 const toProcessRequest =
   (handleRequest: HandleRequest): ProcessRequest =>
@@ -87,16 +76,11 @@ const toProcessRequest =
       });
     } catch (e) {
       const info = getErrorInfo(e);
-      const leavingFor = info?.location && leavesTheApp(info.location, req);
-      // a fetch cannot read a redirect off the origin, so say where to go.
       // a document request is a real navigation, so it keeps the 3xx
-      if (leavingFor && input.type !== 'http') {
-        return new Response(
-          await renderUtils.renderRsc(
-            {},
-            { leaveFor: { location: leavingFor, history: 'push' } },
-          ),
-        );
+      const leaveFor =
+        input.type !== 'http' ? navigableRedirect(e, req.url) : undefined;
+      if (leaveFor) {
+        return new Response(await renderUtils.renderRsc({}, { leaveFor }));
       }
       const status = info?.status || 500;
       let message: string;

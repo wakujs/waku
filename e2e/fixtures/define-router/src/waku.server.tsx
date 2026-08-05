@@ -108,6 +108,33 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
       elements: {},
     },
     {
+      // a location no route can answer: the client has to navigate it itself
+      type: 'route' as const,
+      pattern: '^/moved-hash$',
+      path: [{ type: 'literal', name: 'moved-hash' } as const],
+      isStatic: false,
+      rootElement: {
+        isStatic: true,
+        renderer: () => (
+          <html>
+            <head>
+              <title>Waku example</title>
+            </head>
+            <body>
+              <Children />
+            </body>
+          </html>
+        ),
+      },
+      routeElement: {
+        isStatic: false,
+        renderer: () => {
+          redirect('/foo#bottom');
+        },
+      },
+      elements: {},
+    },
+    {
       type: 'api',
       path: [
         { type: 'literal', name: 'api' },

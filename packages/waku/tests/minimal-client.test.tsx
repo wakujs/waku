@@ -313,15 +313,68 @@ describe('minimal/client server actions', () => {
     });
     mocks.createFromFetch.mockResolvedValueOnce({
       _value: undefined,
-      _location: ['https://other.example/next', 'push'],
+      _location: 'https://other.example/next',
     });
     stubFetch();
     try {
       await unstable_callServerRsc('actions#do', []);
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(assign).toHaveBeenCalledWith('https://other.example/next');
-      expect(replace).not.toHaveBeenCalled();
     } finally {
+      if (original) {
+        Object.defineProperty(window, 'location', original);
+      }
+    }
+  });
+
+  test('a leave that arrives from the prefetch cache still leaves', async () => {
+    const assign = vi.fn();
+    const original = Object.getOwnPropertyDescriptor(window, 'location');
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        ...window.location,
+        set href(url: string) {
+          assign(url);
+        },
+      },
+    });
+    mocks.createFromFetch.mockResolvedValueOnce({ App: 'A' });
+    stubFetch();
+
+    let refetch: ReturnType<typeof useRefetch> | undefined;
+    const Probe = () => {
+      refetch = useRefetch();
+      return null;
+    };
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    try {
+      await act(async () => {
+        root.render(
+          <Root initialRscPath="R/app.txt">
+            <Suspense fallback={null}>
+              <Slot id="App" />
+              <Probe />
+            </Suspense>
+          </Root>,
+        );
+      });
+
+      // the response never goes through fetchRsc, so the leave has to be
+      // wired where a prefetched promise is consumed
+      await act(async () => {
+        await refetch!('R/next.txt', undefined, {
+          unstable_prefetched: Promise.resolve({
+            _location: 'https://other.example/prefetched',
+          }),
+        });
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(assign).toHaveBeenCalledWith('https://other.example/prefetched');
+    } finally {
+      act(() => root.unmount());
       if (original) {
         Object.defineProperty(window, 'location', original);
       }

@@ -48,3 +48,29 @@ export const getErrorInfo = (err: unknown) => {
   }
   return null;
 };
+
+// a redirect the client must navigate itself, resolved against the request.
+// only a scheme a browser can navigate to, never javascript: or data:
+export const navigableRedirect = (
+  err: unknown,
+  baseUrl: string,
+): string | undefined => {
+  const info = getErrorInfo(err);
+  if (
+    !info?.location ||
+    !info.status ||
+    info.status < 300 ||
+    info.status > 399
+  ) {
+    return undefined;
+  }
+  let url: URL;
+  try {
+    url = new URL(info.location, baseUrl);
+  } catch {
+    return undefined;
+  }
+  return url.protocol === 'http:' || url.protocol === 'https:'
+    ? url.href
+    : undefined;
+};

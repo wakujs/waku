@@ -113,6 +113,7 @@ const mergeElementsPromise = (
     Promise.all([a, b]).then(([a, b]) => {
       const nextElements = { ...a, ...b };
       delete nextElements._value;
+      delete nextElements._location;
       return nextElements;
     });
   const cache2 = getCached(() => new WeakMap(), mergeCache, a);
@@ -130,6 +131,7 @@ const refreshElementsPromise = (
     Promise.all([a, b]).then(([aRes, bRes]) => {
       const nextElements = { ...bRes };
       delete nextElements._value;
+      delete nextElements._location;
       for (const key of Object.getOwnPropertySymbols(aRes)) {
         nextElements[key] = aRes[key];
       }
@@ -160,7 +162,7 @@ const swrElementsPromise = (
         );
       const nextElements: Elements = {};
       for (const key of Reflect.ownKeys(aRes)) {
-        if (key === '_value') {
+        if (key === '_value' || key === '_location') {
           continue;
         }
         // an _etag:<slot> key follows its slot's swr-ness, not its own
@@ -168,7 +170,7 @@ const swrElementsPromise = (
       }
       if (base) {
         for (const key of Object.keys(base)) {
-          if (key === '_value' || key in nextElements) {
+          if (key === '_value' || key === '_location' || key in nextElements) {
             continue;
           }
           // pin only what the base proves immutable; pinning a mutable
@@ -240,7 +242,6 @@ const swrNewKeysElementsPromise = (
 type FetchRscOptions = {
   signal?: AbortSignal;
   onBuildIdMismatch?: () => void;
-  onLeave?: (location: string, history: 'push' | 'replace') => void;
 };
 
 type Refetch = (
@@ -338,24 +339,11 @@ const reloadOnBuildIdMismatch = (
 };
 
 // the app said to go somewhere a fetch cannot follow, so the browser goes
-const leaveForLocation = (
-  elements: Promise<Elements>,
-  onLeave: FetchRscOptions['onLeave'],
-) => {
+const leaveForLocation = (elements: Promise<Elements>) => {
   Promise.resolve(elements).then(
     (data) => {
-      const leaveFor = data._location as
-        [string, 'push' | 'replace'] | undefined;
-      if (!leaveFor) {
-        return;
-      }
-      const [location, history] = leaveFor;
-      if (onLeave) {
-        onLeave(location, history);
-      } else if (history === 'replace') {
-        window.location.replace(location);
-      } else {
-        window.location.href = location;
+      if (typeof data._location === 'string') {
+        window.location.href = data._location;
       }
     },
     () => {},
@@ -427,7 +415,7 @@ const fetchRscElements = (
     debug?.debugChannel,
   );
   reloadOnBuildIdMismatch(elements, options?.onBuildIdMismatch);
-  leaveForLocation(elements, options?.onLeave);
+  leaveForLocation(elements);
   return elements;
 };
 
@@ -635,6 +623,7 @@ export const Root = ({
     if (prefetched) {
       data = abortable(prefetched, options?.signal);
       reloadOnBuildIdMismatch(data, options?.onBuildIdMismatch);
+      leaveForLocation(data);
     } else {
       if (swr?.base) {
         fetchRscStore[CACHED_ETAGS] = {

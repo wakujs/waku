@@ -51,7 +51,7 @@ export function createRenderUtils(
         data._value = options.value;
       }
       if (options?.leaveFor) {
-        data._location = [options.leaveFor.location, options.leaveFor.history];
+        data._location = options.leaveFor;
       }
       if (options?.etags) {
         for (const [slotId, etag] of Object.entries(options.etags)) {

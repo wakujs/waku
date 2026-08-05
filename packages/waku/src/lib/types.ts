@@ -9,9 +9,8 @@ export type Unstable_RenderRsc = (
   options?: {
     value?: unknown;
     etags?: Etags;
-    // the app is leaving for this url, so the client navigates instead of
-    // following a redirect the browser would not let it read
-    leaveFor?: { location: string; history: 'push' | 'replace' };
+    // a redirect no route could answer; the client navigates the document
+    leaveFor?: string;
     unstable_clientModuleCallback?: (ids: string[]) => void;
   },
 ) => Promise<ReadableStream>;

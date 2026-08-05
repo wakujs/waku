@@ -193,6 +193,19 @@ test.describe(`define-router`, () => {
     ).toBe(true);
   });
 
+  test('a redirect no route can answer navigates the document', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+
+    await page.locator("a[href='/moved-hash']").click();
+
+    // the router cannot resolve it, so the browser has to go there itself
+    await page.waitForURL(`http://localhost:${port}/foo#bottom`);
+    await expect(page.getByTestId('foo-title')).toHaveText('Foo');
+  });
+
   test('api hi with POST', async () => {
     const res = await fetch(`http://localhost:${port}/api/hi`, {
       method: 'POST',

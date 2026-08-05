@@ -17,16 +17,13 @@ const makeRenderUtils = () => {
 };
 
 describe('createRenderUtils', () => {
-  test('carries a leave location and its history intent', async () => {
+  test('carries a leave location', async () => {
     const { renderToReadableStream, renderUtils } = makeRenderUtils();
 
-    await renderUtils.renderRsc(
-      {},
-      { leaveFor: { location: 'https://other.example/x', history: 'push' } },
-    );
+    await renderUtils.renderRsc({}, { leaveFor: 'https://other.example/x' });
 
     expect(renderToReadableStream).toHaveBeenCalledWith(
-      { _location: ['https://other.example/x', 'push'] },
+      { _location: 'https://other.example/x' },
       expect.anything(),
       expect.anything(),
     );
