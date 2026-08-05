@@ -1,12 +1,18 @@
 /** @vitest-environment happy-dom */
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   getHashElement,
   scrollToHash,
+  shouldScrollByDefault,
+  shouldScrollForRouteChange,
   watchForHashElement,
-} from '../src/router/client-utils/hash-scroll.js';
+} from '../src/router/client-utils/scroll.js';
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+beforeEach(() => {
+  vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/');
+});
 
 afterEach(() => {
   document.body.innerHTML = '';
@@ -136,6 +142,27 @@ describe('watchForHashElement', () => {
       expect(scrollTo).not.toHaveBeenCalled();
     } finally {
       scrollTo.mockRestore();
+    }
+  });
+});
+
+describe('scroll policy', () => {
+  test('a route change scrolls on a new path or a new hash', () => {
+    const at = (path: string, hash = '') => ({ path, query: '', hash });
+    expect(shouldScrollForRouteChange(at('/b'), at('/a'))).toBe(true);
+    expect(shouldScrollForRouteChange(at('/a', '#x'), at('/a'))).toBe(true);
+    expect(shouldScrollForRouteChange(at('/a'), at('/a'))).toBe(false);
+  });
+
+  test('by default a query only move does not scroll', () => {
+    window.history.replaceState({}, '', '/a?x=1#top');
+    try {
+      const url = (href: string) => new URL(href, window.location.origin);
+      expect(shouldScrollByDefault(url('/a?x=2#top'))).toBe(false);
+      expect(shouldScrollByDefault(url('/a?x=1#other'))).toBe(true);
+      expect(shouldScrollByDefault(url('/b?x=1#top'))).toBe(true);
+    } finally {
+      window.history.replaceState({}, '', '/');
     }
   });
 });

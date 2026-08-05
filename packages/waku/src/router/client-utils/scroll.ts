@@ -1,3 +1,6 @@
+import type { RouteProps } from '../isomorphic-utils/route-path.js';
+import { pathnameToCurrentRoutePath } from './route-url.js';
+
 const SCROLL_KEYS = new Set([
   ' ',
   'ArrowDown',
@@ -103,3 +106,13 @@ export const scrollToHash = (
     behavior,
   });
 };
+
+export const shouldScrollByDefault = (url: URL) =>
+  pathnameToCurrentRoutePath(url.pathname) !==
+    pathnameToCurrentRoutePath(window.location.pathname) ||
+  url.hash !== window.location.hash;
+
+export const shouldScrollForRouteChange = (
+  next: RouteProps,
+  prev: RouteProps,
+) => next.path !== prev.path || next.hash !== prev.hash;

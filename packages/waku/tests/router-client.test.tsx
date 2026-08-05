@@ -2974,6 +2974,56 @@ describe('Router integration', () => {
     }
   });
 
+  test('a first load aims at a target that streams in after it', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const grab = { refetch: null as null | ReturnType<typeof useRefetch> };
+    const Grabber = () => {
+      grab.refetch = useRefetch();
+      return null;
+    };
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    window.history.replaceState({}, '', '/start#late');
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '#late' } },
+      {
+        [unstable_getRouteSlotId('/start')]: (
+          <>
+            <Probe />
+            <Grabber />
+            <Slot id="extra" />
+          </>
+        ),
+        extra: <div>placeholder</div>,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    try {
+      document.body.append(view.container);
+      // the browser found nothing to scroll to, and then the target arrived
+      expect(scrollToSpy).not.toHaveBeenCalled();
+
+      refetch.mockResolvedValueOnce({ extra: <div id="late">late</div> });
+      await act(async () => {
+        await grab.refetch!('extra');
+        await flush();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(scrollToSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      view.container.remove();
+      view.unmount();
+      scrollToSpy.mockRestore();
+      window.history.replaceState({}, '', '/');
+    }
+  });
+
   test('a reader who scrolls is not pulled to a late hash target', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);

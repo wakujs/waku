@@ -47,11 +47,6 @@ import {
 } from './client-utils/elements-meta.js';
 import { isFollowable, resolveErrorRoute } from './client-utils/error-route.js';
 import {
-  getHashElement,
-  scrollToHash,
-  watchForHashElement,
-} from './client-utils/hash-scroll.js';
-import {
   type PrefetchOptions,
   createPrefetchManager,
 } from './client-utils/prefetch-cache.js';
@@ -60,7 +55,6 @@ import {
   isSameRoute,
   isSameRscRoute,
   parseRoute,
-  pathnameToCurrentRoutePath,
 } from './client-utils/route-url.js';
 import {
   ROUTER_STATE_ID,
@@ -72,6 +66,13 @@ import {
   resolveServerRedirect,
 } from './client-utils/router-state.js';
 import type { RouterState } from './client-utils/router-state.js';
+import {
+  getHashElement,
+  scrollToHash,
+  shouldScrollByDefault,
+  shouldScrollForRouteChange,
+  watchForHashElement,
+} from './client-utils/scroll.js';
 import type {
   RouteParams,
   RouteSearch,
@@ -163,14 +164,6 @@ const reloadWithUrl = (url: URL) => {
   window.history.pushState(window.history.state, '', url);
   window.location.reload();
 };
-
-const shouldScrollByDefault = (url: URL) =>
-  pathnameToCurrentRoutePath(url.pathname) !==
-    pathnameToCurrentRoutePath(window.location.pathname) ||
-  url.hash !== window.location.hash;
-
-const shouldScrollForRouteChange = (next: RouteProps, prev: RouteProps) =>
-  next.path !== prev.path || next.hash !== prev.hash;
 
 const isAltClick = (event: MouseEvent<HTMLAnchorElement>) =>
   event.button !== 0 ||
@@ -1068,6 +1061,15 @@ const InnerRouter = ({
   const [restoredHash, setRestoredHash] = useState('');
   useEffect(() => {
     setRestoredHash(window.location.hash || initialHashRef.current!);
+  }, []);
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash || getHashElement(hash)) {
+      return;
+    }
+    // the browser stops looking for the target once the document has loaded
+    return watchForHashElement(hash, 'instant').stop;
   }, []);
 
   const routeFallback = useMemo(
