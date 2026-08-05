@@ -13,7 +13,11 @@ export type ErrorRoute =
 
 export const isFollowable = (error: unknown) => {
   const info = getErrorInfo(error);
-  return info?.status === 404 || !!info?.location;
+  return (
+    info?.status === 404 ||
+    !!info?.location ||
+    !!info?.unstable_documentLocation
+  );
 };
 
 export const resolveErrorRoute = (
@@ -22,6 +26,16 @@ export const resolveErrorRoute = (
   has404: boolean,
 ): ErrorRoute => {
   const info = getErrorInfo(error);
+  if (info?.unstable_documentLocation) {
+    const parsed = parseRedirectUrl(
+      info.unstable_documentLocation,
+      requestedUrl,
+    );
+    // the server already decided no route answers it, so origin does not matter
+    return parsed
+      ? { type: 'leave', url: parsed }
+      : { type: 'unfollowable', location: info.unstable_documentLocation };
+  }
   if (info?.location) {
     const parsed = parseRedirectUrl(info.location, requestedUrl);
     if (!parsed) {

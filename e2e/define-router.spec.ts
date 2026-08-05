@@ -193,6 +193,22 @@ test.describe(`define-router`, () => {
     ).toBe(true);
   });
 
+  test('leaving replaces the entry, so back does not bounce', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    const before = await page.evaluate(() => history.length);
+
+    await page.locator("a[href='/moved-hash']").click();
+    await page.waitForURL(`http://localhost:${port}/foo#bottom`);
+
+    // the entry the reader never saw is replaced, not stacked
+    expect(await page.evaluate(() => history.length)).toBe(before + 1);
+    await page.goBack();
+    await expect(page.getByRole('heading').first()).not.toHaveText('Foo');
+  });
+
   test('a redirect no route can answer navigates the document', async ({
     page,
   }) => {

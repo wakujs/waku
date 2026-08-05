@@ -297,48 +297,7 @@ describe('minimal/client server actions', () => {
     act(() => root.unmount());
   });
 
-  test('a server action can send the browser off the origin', async () => {
-    const assign = vi.fn();
-    const replace = vi.fn();
-    const original = Object.getOwnPropertyDescriptor(window, 'location');
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: {
-        ...window.location,
-        replace,
-        set href(url: string) {
-          assign(url);
-        },
-      },
-    });
-    mocks.createFromFetch.mockResolvedValueOnce({
-      _value: undefined,
-      _location: 'https://other.example/next',
-    });
-    stubFetch();
-    try {
-      await unstable_callServerRsc('actions#do', []);
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      expect(assign).toHaveBeenCalledWith('https://other.example/next');
-    } finally {
-      if (original) {
-        Object.defineProperty(window, 'location', original);
-      }
-    }
-  });
-
-  test('a leave that arrives from the prefetch cache still leaves', async () => {
-    const assign = vi.fn();
-    const original = Object.getOwnPropertyDescriptor(window, 'location');
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: {
-        ...window.location,
-        set href(url: string) {
-          assign(url);
-        },
-      },
-    });
+  test('a document location from the prefetch cache is reported too', async () => {
     mocks.createFromFetch.mockResolvedValueOnce({ App: 'A' });
     stubFetch();
 
@@ -349,36 +308,46 @@ describe('minimal/client server actions', () => {
     };
     const container = document.createElement('div');
     const root = createRoot(container);
-    try {
-      await act(async () => {
-        root.render(
-          <Root initialRscPath="R/app.txt">
-            <Suspense fallback={null}>
-              <Slot id="App" />
-              <Probe />
-            </Suspense>
-          </Root>,
-        );
-      });
+    await act(async () => {
+      root.render(
+        <Root initialRscPath="R/app.txt">
+          <Suspense fallback={null}>
+            <Slot id="App" />
+            <Probe />
+          </Suspense>
+        </Root>,
+      );
+    });
 
-      // the response never goes through fetchRsc, so the leave has to be
-      // wired where a prefetched promise is consumed
-      await act(async () => {
-        await refetch!('R/next.txt', undefined, {
-          unstable_prefetched: Promise.resolve({
-            _location: 'https://other.example/prefetched',
-          }),
-        });
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      });
+    // a warm entry never goes through fetchRsc, so it needs its own tagging
+    const error = await refetch!('R/next.txt', undefined, {
+      unstable_prefetched: Promise.resolve({
+        _location: 'https://other.example/prefetched',
+      }),
+    }).catch((e: unknown) => e);
 
-      expect(assign).toHaveBeenCalledWith('https://other.example/prefetched');
-    } finally {
-      act(() => root.unmount());
-      if (original) {
-        Object.defineProperty(window, 'location', original);
-      }
-    }
+    expect(getErrorInfo(error)).toEqual({
+      status: 307,
+      unstable_documentLocation: 'https://other.example/prefetched',
+    });
+    act(() => root.unmount());
+  });
+
+  test('a document location is reported as an error, not merged', async () => {
+    // minimal only tags it; deciding what a location means is the router's
+    mocks.createFromFetch.mockResolvedValueOnce({
+      _location: 'https://other.example/next',
+    });
+    stubFetch();
+
+    const error = await unstable_fetchRsc('R/next.txt').catch(
+      (e: unknown) => e,
+    );
+
+    expect(getErrorInfo(error)).toEqual({
+      status: 307,
+      unstable_documentLocation: 'https://other.example/next',
+    });
   });
 
   test('a server action returning elements throws when no Root is mounted', async () => {

@@ -10,6 +10,26 @@ beforeEach(() => {
 const requested = (href: string) => new URL(href, window.location.href);
 
 describe('resolveErrorRoute', () => {
+  test('a document location leaves, whatever its origin', () => {
+    const sameOrigin = createCustomError('document navigation', {
+      status: 307,
+      unstable_documentLocation: '/api/logout',
+    });
+    const other = createCustomError('document navigation', {
+      status: 307,
+      unstable_documentLocation: 'https://other.example/next',
+    });
+
+    // the server already decided no route answers it
+    expect(resolveErrorRoute(sameOrigin, requested('/from'), false)).toEqual({
+      type: 'leave',
+      url: expect.any(URL),
+    });
+    expect(
+      resolveErrorRoute(other, requested('/from'), false).type === 'leave',
+    ).toBe(true);
+  });
+
   test('an app path redirect keeps the route and rebuilds its url', () => {
     const error = createCustomError('redirect', {
       status: 307,

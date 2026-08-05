@@ -48,7 +48,10 @@ test.describe(`ssr-redirect`, () => {
 
   test('a render that redirects off the origin does not fetch it first', async ({
     page,
+    mode,
   }) => {
+    // strict mode replays the effect that leaves, so dev cannot count hits
+    test.skip(mode === 'DEV', 'the leave effect is replayed in dev');
     // the fixture page names this port, so the second origin is predictable
     const hits: string[] = [];
     const other = createServer((req, res) => {
@@ -75,7 +78,9 @@ test.describe(`ssr-redirect`, () => {
 
   test('a redirect thrown after the stream opens still leaves', async ({
     page,
+    mode,
   }) => {
+    test.skip(mode === 'DEV', 'the leave effect is replayed in dev');
     const hits: string[] = [];
     const other = createServer((req, res) => {
       hits.push(req.url ?? '');
@@ -94,8 +99,7 @@ test.describe(`ssr-redirect`, () => {
         timeout: 10_000,
       });
       await expect(page.getByRole('heading')).toHaveText('Other Origin');
-      // strict mode replays the boundary effect, so the count is not stable
-      expect(hits).toContain('/from-late');
+      expect(hits.filter((u) => u === '/from-late')).toHaveLength(1);
     } finally {
       await new Promise<void>((resolve) => other.close(() => resolve()));
     }

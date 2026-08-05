@@ -341,16 +341,17 @@ const reloadOnBuildIdMismatch = (
 };
 
 // the app said to go somewhere a fetch cannot follow, so the browser goes
-const leaveForLocation = (elements: Promise<Elements>) => {
-  Promise.resolve(elements).then(
-    (data) => {
-      if (typeof data._location === 'string') {
-        window.location.href = data._location;
-      }
-    },
-    () => {},
-  );
-};
+// the server could not answer with a route, so this is not elements at all
+const tagDocumentLocation = (elements: Promise<Elements>) =>
+  elements.then((data) => {
+    if (typeof data._location !== 'string') {
+      return data;
+    }
+    throw createCustomError('document navigation', {
+      status: 307,
+      unstable_documentLocation: data._location,
+    });
+  });
 
 const abortable = (
   elements: Promise<Elements>,
@@ -417,8 +418,7 @@ const fetchRscElements = (
     debug?.debugChannel,
   );
   reloadOnBuildIdMismatch(elements, options?.onBuildIdMismatch);
-  leaveForLocation(elements);
-  return elements;
+  return tagDocumentLocation(elements);
 };
 
 /**
@@ -626,9 +626,8 @@ export const Root = ({
     delete fetchRscStore[ENTRY];
     let data: Promise<Elements>;
     if (prefetched) {
-      data = abortable(prefetched, options?.signal);
+      data = tagDocumentLocation(abortable(prefetched, options?.signal));
       reloadOnBuildIdMismatch(data, options?.onBuildIdMismatch);
-      leaveForLocation(data);
     } else {
       if (swr?.base) {
         fetchRscStore[CACHED_ETAGS] = {
