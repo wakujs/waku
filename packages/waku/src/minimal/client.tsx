@@ -68,18 +68,6 @@ const checkStatus = async (
     }
     throw e;
   }
-  const redirectedTo = response.redirected ? new URL(response.url) : undefined;
-  if (
-    redirectedTo &&
-    (redirectedTo.origin !== window.location.origin ||
-      !redirectedTo.pathname.startsWith(BASE_RSC_PATH))
-  ) {
-    throw createCustomError('redirected rsc request', {
-      status: 307,
-      location: response.url,
-      unstable_redirected: true,
-    });
-  }
   if (!response.ok) {
     throw createCustomError((await response.text()) || response.statusText, {
       status: response.status,

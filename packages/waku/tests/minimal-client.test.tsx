@@ -207,37 +207,16 @@ describe('minimal/client transport failures', () => {
     expect(getErrorInfo(error)).toEqual({ status: 307 });
   });
 
-  test('a redirect off the rsc endpoint leaves it, same origin or not', async () => {
-    const url = `${window.location.origin}/login`;
+  test('a redirected response is decoded like any other', async () => {
+    // where the response came from does not matter, only what it carries
+    const url = 'https://login.example/anywhere';
     track(
       unstable_registerFetchEnhancer(() => async () => redirectedResponse(url)),
     );
+    mocks.createFromFetch.mockResolvedValueOnce({ App: 'ok' });
 
-    const error = await unstable_fetchRsc('R/next.txt').catch(
-      (e: unknown) => e,
-    );
-
-    expect(getErrorInfo(error)).toEqual({
-      status: 307,
-      location: url,
-      unstable_redirected: true,
-    });
-  });
-
-  test('a redirect to another origin leaves the rsc endpoint', async () => {
-    const url = 'https://login.example/RSC/R/next.txt';
-    track(
-      unstable_registerFetchEnhancer(() => async () => redirectedResponse(url)),
-    );
-
-    const error = await unstable_fetchRsc('R/next.txt').catch(
-      (e: unknown) => e,
-    );
-
-    expect(getErrorInfo(error)).toEqual({
-      status: 307,
-      location: url,
-      unstable_redirected: true,
+    await expect(unstable_fetchRsc('R/next.txt')).resolves.toEqual({
+      App: 'ok',
     });
   });
 

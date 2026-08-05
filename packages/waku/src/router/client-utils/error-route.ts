@@ -27,7 +27,7 @@ export const resolveErrorRoute = (
     if (!parsed) {
       return { type: 'unfollowable', location: info.location };
     }
-    if (info.unstable_redirected || parsed.origin !== window.location.origin) {
+    if (parsed.origin !== window.location.origin) {
       return { type: 'leave', url: parsed };
     }
     if (info.location.startsWith('/') && !info.location.startsWith('//')) {

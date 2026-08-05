@@ -3870,8 +3870,7 @@ describe('Router integration', () => {
       Promise.reject(
         createCustomError('moved', {
           status: 307,
-          location: '/login',
-          unstable_redirected: true,
+          location: 'https://other.example/login',
         }),
       ),
     );
@@ -5136,12 +5135,8 @@ describe('Router integration', () => {
           [IS_STATIC_ID]: false,
         });
       } else if ('reject' in response) {
-        // the shape checkStatus gives a fetch redirected off the rsc endpoint
-        const info = response.reject.location
-          ? { ...response.reject, unstable_redirected: true }
-          : response.reject;
         refetch.mockImplementationOnce(() =>
-          Promise.reject(createCustomError('follow-error', info)),
+          Promise.reject(createCustomError('follow-error', response.reject)),
         );
       } else {
         refetch.mockResolvedValueOnce(response.resolve);
@@ -5177,7 +5172,9 @@ describe('Router integration', () => {
       .spyOn(window.location, 'replace')
       .mockImplementation(() => {});
     const { view, refetch, capture, router } = await renderFollowRouter({
-      responses: [{ reject: { status: 307, location: '/next' } }],
+      responses: [
+        { reject: { status: 307, location: 'https://other.example/next' } },
+      ],
     });
     const lengthBefore = window.history.length;
     await act(async () => {
@@ -5251,62 +5248,6 @@ describe('Router integration', () => {
     }
   });
 
-  test('a rejected redirect resolves a relative location against the requested url', async () => {
-    const assignSpy = vi
-      .spyOn(window.location, 'assign')
-      .mockImplementation(() => {});
-    const replaceLocationSpy = vi
-      .spyOn(window.location, 'replace')
-      .mockImplementation(() => {});
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>();
-    refetch.mockImplementationOnce(() =>
-      Promise.reject(
-        createCustomError('moved', {
-          status: 307,
-          location: 'login',
-          unstable_redirected: true,
-        }),
-      ),
-    );
-    installRefetch(refetch);
-
-    const capture = { router: null as RouterApi | null };
-    const Probe = makeProbe(capture);
-    const profileSlotId = unstable_getRouteSlotId('/account/profile');
-    const elements = {
-      [unstable_getRouteSlotId('/start')]: <Probe />,
-      [profileSlotId]: <div>profile</div>,
-      [ROUTE_ID]: ['/start', ''],
-      [IS_STATIC_ID]: false,
-      [`${ETAG_ID_PREFIX}${profileSlotId}`]: IMMUTABLE_ETAG,
-    };
-
-    const view = await renderRouter(
-      { initialRoute: { path: '/start', query: '', hash: '' } },
-      elements,
-    );
-    if (!capture.router) {
-      throw new Error('router not initialized');
-    }
-
-    await act(async () => {
-      await capture
-        .router!.push('/account/profile', { unstable_instant: true })
-        .catch(() => {});
-      await flush();
-      await flush();
-    });
-
-    // the commit races the rejection, so either write style can happen
-    const calls = [...assignSpy.mock.calls, ...replaceLocationSpy.mock.calls];
-    expect(calls).toHaveLength(1);
-    expect(calls[0]![0]).toContain('/account/login');
-
-    assignSpy.mockRestore();
-    replaceLocationSpy.mockRestore();
-    view.unmount();
-  });
-
   test('a rejected redirect on replace navigates without a new entry', async () => {
     const assignSpy = vi
       .spyOn(window.location, 'assign')
@@ -5319,8 +5260,7 @@ describe('Router integration', () => {
       Promise.reject(
         createCustomError('moved', {
           status: 307,
-          location: 'login',
-          unstable_redirected: true,
+          location: 'https://other.example/login',
         }),
       ),
     );
@@ -5349,7 +5289,9 @@ describe('Router integration', () => {
     });
 
     expect(replaceLocationSpy).toHaveBeenCalledTimes(1);
-    expect(replaceLocationSpy.mock.calls[0]![0]).toContain('/account/login');
+    expect(replaceLocationSpy.mock.calls[0]![0]).toBe(
+      'https://other.example/login',
+    );
     expect(assignSpy).not.toHaveBeenCalled();
 
     assignSpy.mockRestore();
@@ -7352,8 +7294,7 @@ describe('Router integration', () => {
         ? Promise.reject(
             createCustomError('redirect', {
               status: 307,
-              location: '/dashboard',
-              unstable_redirected: true,
+              location: 'https://other.example/dashboard',
             }),
           )
         : Promise.resolve({})) as never);
