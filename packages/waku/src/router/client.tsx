@@ -1004,7 +1004,6 @@ export function Slice({
   return <Slot id={slotId}>{children}</Slot>;
 }
 
-// a run decodes together, so a multi byte character survives
 const defaultRouteInterceptor = (route: RouteProps) => route;
 
 const InnerRouter = ({

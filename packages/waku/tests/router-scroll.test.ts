@@ -12,6 +12,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   document.body.innerHTML = '';
 });
 
