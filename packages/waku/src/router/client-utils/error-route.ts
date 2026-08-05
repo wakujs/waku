@@ -26,25 +26,19 @@ export const resolveErrorRoute = (
   has404: boolean,
 ): ErrorRoute => {
   const info = getErrorInfo(error);
-  if (info?.unstable_documentLocation) {
-    const parsed = parseRedirectUrl(
-      info.unstable_documentLocation,
-      requestedUrl,
-    );
-    // the server already decided no route answers it, so origin does not matter
-    return parsed
-      ? { type: 'leave', url: parsed }
-      : { type: 'unfollowable', location: info.unstable_documentLocation };
-  }
-  if (info?.location) {
-    const parsed = parseRedirectUrl(info.location, requestedUrl);
+  const documentLocation = info?.unstable_documentLocation;
+  const location = documentLocation ?? info?.location;
+  if (location) {
+    const parsed = parseRedirectUrl(location, requestedUrl);
     if (!parsed) {
-      return { type: 'unfollowable', location: info.location };
+      return { type: 'unfollowable', location };
     }
-    if (parsed.origin !== window.location.origin) {
+    // for a document location the server already decided that no route
+    // answers it, so its origin does not matter
+    if (documentLocation || parsed.origin !== window.location.origin) {
       return { type: 'leave', url: parsed };
     }
-    if (info.location.startsWith('/') && !info.location.startsWith('//')) {
+    if (location.startsWith('/') && !location.startsWith('//')) {
       const target = {
         path: pathnameToRoutePath(parsed.pathname),
         query: parsed.searchParams.toString(),

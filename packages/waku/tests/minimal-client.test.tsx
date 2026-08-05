@@ -327,7 +327,6 @@ describe('minimal/client server actions', () => {
     }).catch((e: unknown) => e);
 
     expect(getErrorInfo(error)).toEqual({
-      status: 307,
       unstable_documentLocation: 'https://other.example/prefetched',
     });
     act(() => root.unmount());
@@ -345,7 +344,6 @@ describe('minimal/client server actions', () => {
     );
 
     expect(getErrorInfo(error)).toEqual({
-      status: 307,
       unstable_documentLocation: 'https://other.example/next',
     });
   });

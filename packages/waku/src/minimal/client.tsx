@@ -113,7 +113,6 @@ const mergeElementsPromise = (
     Promise.all([a, b]).then(([a, b]) => {
       const nextElements = { ...a, ...b };
       delete nextElements._value;
-      delete nextElements._location;
       return nextElements;
     });
   const cache2 = getCached(() => new WeakMap(), mergeCache, a);
@@ -131,7 +130,6 @@ const refreshElementsPromise = (
     Promise.all([a, b]).then(([aRes, bRes]) => {
       const nextElements = { ...bRes };
       delete nextElements._value;
-      delete nextElements._location;
       for (const key of Object.getOwnPropertySymbols(aRes)) {
         nextElements[key] = aRes[key];
       }
@@ -162,7 +160,7 @@ const swrElementsPromise = (
         );
       const nextElements: Elements = {};
       for (const key of Reflect.ownKeys(aRes)) {
-        if (key === '_value' || key === '_location') {
+        if (key === '_value') {
           continue;
         }
         // an _etag:<slot> key follows its slot's swr-ness, not its own
@@ -214,16 +212,14 @@ const swrNewKeysElementsPromise = (
   if (
     prevRes &&
     !overlayKeys.length &&
-    !Object.keys(bRes).some(
-      (key) => key !== '_value' && key !== '_location' && !(key in prevRes),
-    )
+    !Object.keys(bRes).some((key) => key !== '_value' && !(key in prevRes))
   ) {
     return prev;
   }
   const getResult = () =>
     Promise.resolve(prev).then((prevRes) => {
       const newKeys = Object.keys(bRes).filter(
-        (key) => key !== '_value' && key !== '_location' && !(key in prevRes),
+        (key) => key !== '_value' && !(key in prevRes),
       );
       if (!newKeys.length && !overlayKeys.length) {
         return prevRes;
@@ -340,15 +336,13 @@ const reloadOnBuildIdMismatch = (
   );
 };
 
-// the app said to go somewhere a fetch cannot follow, so the browser goes
-// the server could not answer with a route, so this is not elements at all
-const tagDocumentLocation = (elements: Promise<Elements>) =>
+// no fetch can follow this, so it fails here and the browser goes instead
+const failOnDocumentLocation = (elements: Promise<Elements>) =>
   elements.then((data) => {
     if (typeof data._location !== 'string') {
       return data;
     }
     throw createCustomError('document navigation', {
-      status: 307,
       unstable_documentLocation: data._location,
     });
   });
@@ -418,7 +412,7 @@ const fetchRscElements = (
     debug?.debugChannel,
   );
   reloadOnBuildIdMismatch(elements, options?.onBuildIdMismatch);
-  return tagDocumentLocation(elements);
+  return failOnDocumentLocation(elements);
 };
 
 /**
@@ -432,11 +426,11 @@ export const unstable_callServerRsc = async (
   const rscPath = encodeFuncId(funcId);
   const rscParams =
     args.length === 1 && args[0] instanceof URLSearchParams ? args[0] : args;
-  const {
-    _value: value,
-    _location: _leave,
-    ...data
-  } = await fetchRscElements(rscPath, rscParams, undefined);
+  const { _value: value, ...data } = await fetchRscElements(
+    rscPath,
+    rscParams,
+    undefined,
+  );
   if (Object.keys(data).length) {
     const setElements = getSetElements();
     const callServerElementsListeners =
@@ -626,7 +620,7 @@ export const Root = ({
     delete fetchRscStore[ENTRY];
     let data: Promise<Elements>;
     if (prefetched) {
-      data = tagDocumentLocation(abortable(prefetched, options?.signal));
+      data = failOnDocumentLocation(abortable(prefetched, options?.signal));
       reloadOnBuildIdMismatch(data, options?.onBuildIdMismatch);
     } else {
       if (swr?.base) {
