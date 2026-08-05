@@ -47,6 +47,11 @@ import {
 } from './client-utils/elements-meta.js';
 import { isFollowable, resolveErrorRoute } from './client-utils/error-route.js';
 import {
+  getHashElement,
+  scrollToHash,
+  watchForHashElement,
+} from './client-utils/hash-scroll.js';
+import {
   type PrefetchOptions,
   createPrefetchManager,
 } from './client-utils/prefetch-cache.js';
@@ -1009,93 +1014,6 @@ export function Slice({
 }
 
 // a run decodes together, so a multi byte character survives
-const decodeHash = (raw: string) =>
-  raw.replace(/(?:%[0-9A-Fa-f]{2})+/g, (escapes) => {
-    try {
-      return decodeURIComponent(escapes);
-    } catch {
-      return escapes;
-    }
-  });
-
-const getHashElement = (hash: string): HTMLElement | null => {
-  const raw = hash.slice(1);
-  const decoded = decodeHash(raw);
-  for (const name of new Set([raw, decoded])) {
-    const byId = document.getElementById(name);
-    if (byId) {
-      return byId;
-    }
-    // the spec counts anchors only, not a meta or an input
-    for (const named of document.getElementsByName(name)) {
-      if (named.localName === 'a') {
-        return named;
-      }
-    }
-  }
-  return decoded.toLowerCase() === 'top' ? document.documentElement : null;
-};
-
-// a slot can resolve without re-rendering the router, so watch the dom
-const watchForHashElement = (hash: string, behavior: ScrollBehavior) => {
-  const stop = () => {
-    observer.disconnect();
-    window.removeEventListener('wheel', stop);
-    window.removeEventListener('touchmove', stop);
-    window.removeEventListener('keydown', stop);
-  };
-  const observer = new MutationObserver(() => {
-    if (getHashElement(hash)) {
-      stop();
-      scrollToHash(hash, behavior, false);
-    }
-  });
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['id', 'name'],
-  });
-  window.addEventListener('wheel', stop, { passive: true });
-  window.addEventListener('touchmove', stop, { passive: true });
-  window.addEventListener('keydown', stop);
-  return { hash, stop };
-};
-
-const scrollToHash = (
-  hash: string,
-  behavior: ScrollBehavior,
-  scrollTopForMissingHash: boolean,
-) => {
-  if (hash) {
-    const element = getHashElement(hash);
-    if (!element) {
-      if (!scrollTopForMissingHash) {
-        return;
-      }
-      window.scrollTo({
-        left: 0,
-        top: 0,
-        behavior,
-      });
-      return;
-    }
-    const scrollMarginTop =
-      Number.parseFloat(window.getComputedStyle(element).scrollMarginTop) || 0;
-    window.scrollTo({
-      left: 0,
-      top:
-        element.getBoundingClientRect().top + window.scrollY - scrollMarginTop,
-      behavior,
-    });
-    return;
-  }
-  window.scrollTo({
-    left: 0,
-    top: 0,
-    behavior,
-  });
-};
 
 const defaultRouteInterceptor = (route: RouteProps) => route;
 
