@@ -35,6 +35,17 @@ function loadSsrEntryModule() {
   >('ssr', 'index');
 }
 
+// a same origin location is still inside the app, so the router keeps it
+const leavesTheApp = (location: string, req: Request) => {
+  let url: URL;
+  try {
+    url = new URL(location, req.url);
+  } catch {
+    return undefined;
+  }
+  return url.origin === new URL(req.url).origin ? undefined : url.href;
+};
+
 const toProcessRequest =
   (handleRequest: HandleRequest): ProcessRequest =>
   async (req) => {
@@ -76,6 +87,16 @@ const toProcessRequest =
       });
     } catch (e) {
       const info = getErrorInfo(e);
+      const leavingFor = info?.location && leavesTheApp(info.location, req);
+      if (leavingFor && input.type === 'call') {
+        // a fetch cannot read a redirect off the origin, so say where to go
+        return new Response(
+          await renderUtils.renderRsc(
+            {},
+            { leaveFor: { location: leavingFor, history: 'push' } },
+          ),
+        );
+      }
       const status = info?.status || 500;
       let message: string;
       if (info) {

@@ -17,6 +17,21 @@ const makeRenderUtils = () => {
 };
 
 describe('createRenderUtils', () => {
+  test('carries a leave location and its history intent', async () => {
+    const { renderToReadableStream, renderUtils } = makeRenderUtils();
+
+    await renderUtils.renderRsc(
+      {},
+      { leaveFor: { location: 'https://other.example/x', history: 'push' } },
+    );
+
+    expect(renderToReadableStream).toHaveBeenCalledWith(
+      { _location: ['https://other.example/x', 'push'] },
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
   test('adds server function value with the renderRsc value option', async () => {
     const { renderToReadableStream, renderUtils } = makeRenderUtils();
 
