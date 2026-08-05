@@ -96,7 +96,13 @@ const mergePrefetchedElements = (
 ): void => {
   reservePrefetchedElements(store, rscPath);
   const existing = store.get(rscPath);
-  store.set(rscPath, existing ? { ...existing, ...elements } : elements);
+  if (!existing) {
+    store.set(rscPath, elements);
+    return;
+  }
+  // a redirect the newer response dropped must not survive the merge
+  const { _location: _stale, ...kept } = existing;
+  store.set(rscPath, { ...kept, ...elements });
 };
 
 /** One store for prefetched routes; the router does not see the two caches. */

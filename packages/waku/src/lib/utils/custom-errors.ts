@@ -54,7 +54,7 @@ export const getErrorInfo = (err: unknown) => {
 export const navigableRedirect = (
   err: unknown,
   baseUrl: string,
-): string | undefined => {
+): URL | undefined => {
   const info = getErrorInfo(err);
   if (
     !info?.location ||
@@ -71,6 +71,6 @@ export const navigableRedirect = (
     return undefined;
   }
   return url.protocol === 'http:' || url.protocol === 'https:'
-    ? url.href
+    ? url
     : undefined;
 };

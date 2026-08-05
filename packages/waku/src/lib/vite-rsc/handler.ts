@@ -77,9 +77,15 @@ const toProcessRequest =
     } catch (e) {
       const info = getErrorInfo(e);
       // a document request is a real navigation, so it keeps the 3xx
-      const leaveFor =
+      const target =
         input.type !== 'http' ? navigableRedirect(e, req.url) : undefined;
-      if (leaveFor) {
+      if (target) {
+        // staying on this origin keeps the location relative, so the base is
+        // applied once and a proxy's scheme is the browser's to decide
+        const leaveFor =
+          target.origin === new URL(req.url).origin
+            ? addBase(info!.location!, config.basePath)
+            : target.href;
         return new Response(await renderUtils.renderRsc({}, { leaveFor }));
       }
       const status = info?.status || 500;

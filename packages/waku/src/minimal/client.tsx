@@ -214,14 +214,16 @@ const swrNewKeysElementsPromise = (
   if (
     prevRes &&
     !overlayKeys.length &&
-    !Object.keys(bRes).some((key) => key !== '_value' && !(key in prevRes))
+    !Object.keys(bRes).some(
+      (key) => key !== '_value' && key !== '_location' && !(key in prevRes),
+    )
   ) {
     return prev;
   }
   const getResult = () =>
     Promise.resolve(prev).then((prevRes) => {
       const newKeys = Object.keys(bRes).filter(
-        (key) => key !== '_value' && !(key in prevRes),
+        (key) => key !== '_value' && key !== '_location' && !(key in prevRes),
       );
       if (!newKeys.length && !overlayKeys.length) {
         return prevRes;
@@ -575,7 +577,10 @@ export const unstable_prefetchRsc = (
   if (!base) {
     return data;
   }
-  return Promise.resolve(data).then((response) => ({ ...base, ...response }));
+  return Promise.resolve(data).then((response) => {
+    const { _location: _stale, ...kept } = base;
+    return { ...kept, ...response };
+  });
 };
 
 const RefetchContext = createContext<Refetch>(() => {

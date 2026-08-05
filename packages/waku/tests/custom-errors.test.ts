@@ -11,12 +11,19 @@ const redirectTo = (location: string, status = 307) =>
 
 describe('navigableRedirect', () => {
   test('resolves a location against the request', () => {
-    expect(navigableRedirect(redirectTo('/login'), base)).toBe(
+    expect(navigableRedirect(redirectTo('/login'), base)?.href).toBe(
       'https://app.example/login',
     );
-    expect(navigableRedirect(redirectTo('https://other.example/x'), base)).toBe(
-      'https://other.example/x',
-    );
+    expect(
+      navigableRedirect(redirectTo('https://other.example/x'), base)?.href,
+    ).toBe('https://other.example/x');
+  });
+
+  test('a same origin target keeps its path for the caller to base', () => {
+    // the handler applies the base path, so the url must not be absolutised
+    const target = navigableRedirect(redirectTo('/login'), base);
+    expect(target?.origin).toBe('https://app.example');
+    expect(target?.pathname).toBe('/login');
   });
 
   test('refuses a scheme the browser must not navigate to', () => {
