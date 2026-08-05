@@ -1122,7 +1122,6 @@ const InnerRouter = ({
     createRouteChangeListeners,
   );
 
-  // FIXME this "fetchingSlices" hack feels suboptimal.
   // state, not a ref: it is read during render
   const [fetchingSlices] = useState(() => new Set<SliceId>());
   const pendingNavigationRef = useRef<{
