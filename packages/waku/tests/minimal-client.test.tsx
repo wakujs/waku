@@ -318,6 +318,37 @@ describe('minimal/client server actions', () => {
     act(() => root.unmount());
   });
 
+  test('a server action can send the browser off the origin', async () => {
+    const assign = vi.fn();
+    const replace = vi.fn();
+    const original = Object.getOwnPropertyDescriptor(window, 'location');
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        ...window.location,
+        replace,
+        set href(url: string) {
+          assign(url);
+        },
+      },
+    });
+    mocks.createFromFetch.mockResolvedValueOnce({
+      _value: undefined,
+      _location: ['https://other.example/next', 'push'],
+    });
+    stubFetch();
+    try {
+      await unstable_callServerRsc('actions#do', []);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(assign).toHaveBeenCalledWith('https://other.example/next');
+      expect(replace).not.toHaveBeenCalled();
+    } finally {
+      if (original) {
+        Object.defineProperty(window, 'location', original);
+      }
+    }
+  });
+
   test('a server action returning elements throws when no Root is mounted', async () => {
     // The merge must fail loudly (not silently drop) when there is no
     // `SET_ELEMENTS` bridge, so timing/wiring bugs surface.

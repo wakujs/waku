@@ -252,6 +252,7 @@ const swrNewKeysElementsPromise = (
 type FetchRscOptions = {
   signal?: AbortSignal;
   onBuildIdMismatch?: () => void;
+  onLeave?: (location: string, history: 'push' | 'replace') => void;
 };
 
 type Refetch = (
@@ -348,6 +349,31 @@ const reloadOnBuildIdMismatch = (
   );
 };
 
+// the app said to go somewhere a fetch cannot follow, so the browser goes
+const leaveForLocation = (
+  elements: Promise<Elements>,
+  onLeave: FetchRscOptions['onLeave'],
+) => {
+  Promise.resolve(elements).then(
+    (data) => {
+      const leaveFor = data._location as
+        [string, 'push' | 'replace'] | undefined;
+      if (!leaveFor) {
+        return;
+      }
+      const [location, history] = leaveFor;
+      if (onLeave) {
+        onLeave(location, history);
+      } else if (history === 'replace') {
+        window.location.replace(location);
+      } else {
+        window.location.href = location;
+      }
+    },
+    () => {},
+  );
+};
+
 const abortable = (
   elements: Promise<Elements>,
   signal: AbortSignal | undefined,
@@ -413,6 +439,7 @@ const fetchRscElements = (
     debug?.debugChannel,
   );
   reloadOnBuildIdMismatch(elements, options?.onBuildIdMismatch);
+  leaveForLocation(elements, options?.onLeave);
   return elements;
 };
 
@@ -427,11 +454,11 @@ export const unstable_callServerRsc = async (
   const rscPath = encodeFuncId(funcId);
   const rscParams =
     args.length === 1 && args[0] instanceof URLSearchParams ? args[0] : args;
-  const { _value: value, ...data } = await fetchRscElements(
-    rscPath,
-    rscParams,
-    undefined,
-  );
+  const {
+    _value: value,
+    _location: _leave,
+    ...data
+  } = await fetchRscElements(rscPath, rscParams, undefined);
   if (Object.keys(data).length) {
     const setElements = getSetElements();
     const callServerElementsListeners =
