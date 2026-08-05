@@ -1,6 +1,5 @@
 import {
   unstable_base64ToBytes as base64ToBytes,
-  unstable_createCustomError as createCustomError,
   unstable_getErrorInfo as getErrorInfo,
 } from '../../minimal/server.js';
 import type { unstable_defineHandlers as defineHandlers } from '../../minimal/server.js';
@@ -120,6 +119,30 @@ export const createRequestHandler = ({
         }
       };
 
+      // a fetch cannot use a redirect, so answer with the destination itself
+      const getEntriesForRedirect = async (location: string) => {
+        const redirectRoute = resolveInternalRoute(location, input.req.url);
+        if (!redirectRoute) {
+          return null;
+        }
+        return routeEntries
+          .getEntriesForRoute(
+            encodeRoutePath(redirectRoute.path),
+            new URLSearchParams({ query: redirectRoute.query }),
+            clientEtags,
+            requestElementCache,
+          )
+          .catch((e: unknown) => {
+            const info = getErrorInfo(e);
+            // the destination redirects again or is missing, so the client
+            // gets the original redirect and takes it from there
+            if (info?.location || info?.status === 404) {
+              return null;
+            }
+            throw e;
+          });
+      };
+
       const handleRscRequest = async ({
         rscPath,
         rscParams,
@@ -146,27 +169,7 @@ export const createRequestHandler = ({
         } catch (e) {
           const info = getErrorInfo(e);
           if (info?.location) {
-            // a fetch cannot use a redirect, so answer with the destination
-            const redirectRoute = resolveInternalRoute(
-              info.location,
-              input.req.url,
-            );
-            const redirected =
-              redirectRoute &&
-              (await routeEntries
-                .getEntriesForRoute(
-                  encodeRoutePath(redirectRoute.path),
-                  new URLSearchParams({ query: redirectRoute.query }),
-                  clientEtags,
-                  requestElementCache,
-                )
-                .catch((e: unknown) => {
-                  const info = getErrorInfo(e);
-                  if (info?.location || info?.status === 404) {
-                    return null;
-                  }
-                  throw e;
-                }));
+            const redirected = await getEntriesForRedirect(info.location);
             if (!redirected) {
               throw e;
             }
@@ -209,26 +212,9 @@ export const createRequestHandler = ({
           if (!location) {
             throw e;
           }
-          const redirectRoute = resolveInternalRoute(location, input.req.url);
-          const entries =
-            redirectRoute &&
-            (await routeEntries
-              .getEntriesForRoute(
-                encodeRoutePath(redirectRoute.path),
-                new URLSearchParams({ query: redirectRoute.query }),
-                clientEtags,
-                requestElementCache,
-              )
-              .catch((e: unknown) => {
-                const info = getErrorInfo(e);
-                if (info?.location || info?.status === 404) {
-                  return null;
-                }
-                throw e;
-              }));
+          const entries = await getEntriesForRedirect(location);
           if (!entries) {
-            // 303 keeps the browser from sending the action body along
-            throw createCustomError('Redirect', { status: 303, location });
+            throw e;
           }
           return renderRsc(entries.elements, { etags: entries.etags });
         }

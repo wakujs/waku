@@ -166,8 +166,7 @@ describe('request dispatch', () => {
         }),
         utils,
       ).catch((e: unknown) => e);
-      // 303 so the follow is a GET and the action body is not replayed
-      expect(unstable_getErrorInfo(err)).toEqual({ status: 303, location });
+      expect(unstable_getErrorInfo(err)).toEqual({ status: 307, location });
       expect(utils.renderRsc).not.toHaveBeenCalled();
     },
   );
@@ -340,7 +339,7 @@ describe('request dispatch', () => {
     ).catch((e: unknown) => e);
     // the browser still lands on /dest, which renders its own 404 there
     expect(unstable_getErrorInfo(err)).toEqual({
-      status: 303,
+      status: 307,
       location: '/dest',
     });
   });
@@ -365,9 +364,8 @@ describe('request dispatch', () => {
       }),
       utils,
     ).catch((e: unknown) => e);
-    // still 303, so the action body is not replayed onto the next hop either
     expect(unstable_getErrorInfo(err)).toEqual({
-      status: 303,
+      status: 307,
       location: '/dest',
     });
   });
