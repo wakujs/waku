@@ -1,8 +1,8 @@
 type ErrorInfo = {
   status?: number;
   location?: string;
-  // reach this by navigating the document; no route can answer it
-  unstable_documentLocation?: string;
+  // no route can answer the location, so the client navigates the document
+  unstable_leave?: boolean;
   // set by the client, read by no one in waku: an app decides its own recovery
   unstable_networkError?: boolean;
 };
@@ -18,8 +18,8 @@ const isErrorInfo = (x: unknown): x is ErrorInfo => {
     return false;
   }
   if (
-    'unstable_documentLocation' in x &&
-    typeof (x as ErrorInfo).unstable_documentLocation !== 'string'
+    'unstable_leave' in x &&
+    typeof (x as ErrorInfo).unstable_leave !== 'boolean'
   ) {
     return false;
   }

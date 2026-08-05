@@ -310,7 +310,8 @@ describe('minimal/client server actions', () => {
     );
 
     expect(getErrorInfo(error)).toEqual({
-      unstable_documentLocation: 'https://other.example/prefetched',
+      location: 'https://other.example/prefetched',
+      unstable_leave: true,
     });
   });
 
@@ -326,7 +327,8 @@ describe('minimal/client server actions', () => {
     );
 
     expect(getErrorInfo(error)).toEqual({
-      unstable_documentLocation: 'https://other.example/next',
+      location: 'https://other.example/next',
+      unstable_leave: true,
     });
   });
 

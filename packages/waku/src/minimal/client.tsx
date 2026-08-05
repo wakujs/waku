@@ -323,7 +323,8 @@ const decodeRsc = (
     }
     // no fetch can follow this, so it fails here and the browser goes instead
     throw createCustomError('document navigation', {
-      unstable_documentLocation: data._location,
+      location: data._location,
+      unstable_leave: true,
     });
   });
 

@@ -13,11 +13,7 @@ export type ErrorRoute =
 
 export const isFollowable = (error: unknown) => {
   const info = getErrorInfo(error);
-  return (
-    info?.status === 404 ||
-    !!info?.location ||
-    !!info?.unstable_documentLocation
-  );
+  return info?.status === 404 || !!info?.location;
 };
 
 export const resolveErrorRoute = (
@@ -26,16 +22,14 @@ export const resolveErrorRoute = (
   has404: boolean,
 ): ErrorRoute => {
   const info = getErrorInfo(error);
-  const documentLocation = info?.unstable_documentLocation;
-  const location = documentLocation ?? info?.location;
+  const location = info?.location;
   if (location) {
     const parsed = parseRedirectUrl(location, requestedUrl);
     if (!parsed) {
       return { type: 'unfollowable', location };
     }
-    // a document location was already resolved on the server, so it leaves
-    // whatever its origin
-    if (documentLocation || parsed.origin !== window.location.origin) {
+    // the server already resolved it, so it leaves whatever its origin
+    if (info.unstable_leave || parsed.origin !== window.location.origin) {
       return { type: 'leave', url: parsed };
     }
     if (location.startsWith('/') && !location.startsWith('//')) {

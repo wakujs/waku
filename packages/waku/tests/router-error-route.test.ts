@@ -12,12 +12,12 @@ const requested = (href: string) => new URL(href, window.location.href);
 describe('resolveErrorRoute', () => {
   test('a document location leaves, whatever its origin', () => {
     const sameOrigin = createCustomError('document navigation', {
-      status: 307,
-      unstable_documentLocation: '/api/logout',
+      location: '/api/logout',
+      unstable_leave: true,
     });
     const other = createCustomError('document navigation', {
-      status: 307,
-      unstable_documentLocation: 'https://other.example/next',
+      location: 'https://other.example/next',
+      unstable_leave: true,
     });
 
     // the server already decided no route answers it
