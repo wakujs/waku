@@ -89,7 +89,13 @@ const toProcessRequest =
         );
       }
       const isRefusedLocation = !!info?.location && !documentLocation;
-      const status = isRefusedLocation ? 500 : info?.status || 500;
+      const isDocumentPost = input.type === 'http' && req.method === 'POST';
+      // 307 and 308 resend the body to the destination
+      const status = isRefusedLocation
+        ? 500
+        : documentLocation && isDocumentPost
+          ? 303
+          : info?.status || 500;
       let message: string;
       if (info) {
         message = (e as { message?: string } | undefined)?.message || String(e);

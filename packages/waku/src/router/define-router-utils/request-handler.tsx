@@ -1,6 +1,5 @@
 import {
   unstable_base64ToBytes as base64ToBytes,
-  unstable_createCustomError as createCustomError,
   unstable_getErrorInfo as getErrorInfo,
 } from '../../minimal/server.js';
 import type { unstable_defineHandlers as defineHandlers } from '../../minimal/server.js';
@@ -267,17 +266,8 @@ export const createRequestHandler = ({
           const html = <INTERNAL_ServerRouter route={route} />;
           let formState: unknown;
           if (tryAction) {
-            const { value, entries: rerendered } = await withRerender(
-              tryAction,
-            ).catch((e: unknown) => {
-              const info = getErrorInfo(e);
-              // the browser follows this itself, and 307 and 308 resend the
-              // body it just submitted
-              if (info?.location) {
-                throw createCustomError('Redirect', { ...info, status: 303 });
-              }
-              throw e;
-            });
+            const { value, entries: rerendered } =
+              await withRerender(tryAction);
             formState = value.action ? value.formState : undefined;
             entries = {
               elements: { ...entries.elements, ...rerendered.elements },
