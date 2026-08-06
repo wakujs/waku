@@ -1019,8 +1019,7 @@ const InnerRouter = ({
     routeFromElements && routeFromElements.path !== fallbackRoute.path
       ? { ...routeFromElements, hash: fallbackRoute.hash }
       : fallbackRoute;
-  const initialHashRef = useRef<string>(undefined);
-  initialHashRef.current ??= resolvedRoute.hash;
+  const initialHashRef = useRef(resolvedRoute.hash);
   // state, not a ref: it is read during render
   const [initialRoute] = useState(() => ({ ...resolvedRoute, hash: '' }));
 
@@ -1054,7 +1053,7 @@ const InnerRouter = ({
   // starts empty so hydration matches the server, then the effect fills it
   const [restoredHash, setRestoredHash] = useState('');
   useEffect(() => {
-    setRestoredHash(window.location.hash || initialHashRef.current!);
+    setRestoredHash(window.location.hash || initialHashRef.current);
   }, []);
 
   const routeFallback = useMemo(
