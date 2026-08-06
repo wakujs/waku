@@ -1,7 +1,6 @@
 type ErrorInfo = {
   status?: number;
   location?: string;
-  // no route can answer the location, so the client navigates the document
   unstable_leave?: boolean;
   // set by the client, read by no one in waku: an app decides its own recovery
   unstable_networkError?: boolean;

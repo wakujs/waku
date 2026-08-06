@@ -47,7 +47,18 @@ export const parseRedirectUrl = (location: string, base: string | URL) => {
   } catch {
     return undefined;
   }
-  return url.protocol === 'http:' || url.protocol === 'https:'
-    ? url
-    : undefined;
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return undefined;
+  }
+  url.username = '';
+  url.password = '';
+  // a location the server never resolved can name this host over plaintext,
+  // and the browser is the one that knows the scheme it is on
+  if (url.protocol === 'http:' && url.host === window.location.host) {
+    url.protocol = window.location.protocol;
+  }
+  return url;
 };
+
+export const redactCredentials = (location: string) =>
+  location.replace(/\/\/[^/@]*@/, '//');

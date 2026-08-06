@@ -8,6 +8,7 @@ import {
   isInsideBase,
   parseRedirectUrl,
   parseRoute,
+  redactCredentials,
 } from './route-url.js';
 
 export type ErrorRoute =
@@ -15,9 +16,6 @@ export type ErrorRoute =
   | { type: 'leave'; url: URL }
   | { type: 'unfollowable'; location: string }
   | { type: 'none' };
-
-const redactCredentials = (location: string) =>
-  location.replace(/\/\/[^/@]*@/, '//');
 
 export const isFollowable = (error: unknown) => {
   const info = getErrorInfo(error);
@@ -35,13 +33,6 @@ export const resolveErrorRoute = (
     const parsed = parseRedirectUrl(location, requestedUrl);
     if (!parsed) {
       return { type: 'unfollowable', location: redactCredentials(location) };
-    }
-    parsed.username = '';
-    parsed.password = '';
-    // a streamed location arrives as the app wrote it, and this end knows the
-    // scheme the browser is really on
-    if (parsed.protocol === 'http:' && parsed.host === window.location.host) {
-      parsed.protocol = window.location.protocol;
     }
     if (info.unstable_leave || parsed.origin !== window.location.origin) {
       return { type: 'leave', url: parsed };
