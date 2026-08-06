@@ -178,7 +178,7 @@ export const createServerEntryAdapter: CreateServerEntryAdapter =
         handlers,
         processRequest,
         processBuild,
-        INTERNAL_setAllEnv,
+        setAllEnv: INTERNAL_setAllEnv,
         config,
         isBuild,
         notFoundHtml,

@@ -64,7 +64,7 @@ function removeGzipEncoding(res: Response): Response {
 
 export default createServerEntryAdapter(
   (
-    { processRequest, processBuild, INTERNAL_setAllEnv, config, notFoundHtml },
+    { processRequest, processBuild, setAllEnv, config, notFoundHtml },
     options?: {
       static?: boolean;
       handlers?: Record<string, unknown>;
@@ -190,7 +190,7 @@ export default createServerEntryAdapter(
       defaultExport: {
         ...options?.handlers,
         fetch(req: Request, env: Record<string, unknown>) {
-          INTERNAL_setAllEnv(env);
+          setAllEnv(env);
           return fetchFn(req);
         },
       },
