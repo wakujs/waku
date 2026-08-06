@@ -77,10 +77,11 @@ TypeScript types, and `unstable_` for other values and functions.
 
 ### For AI agents
 
-Agent instruction files such as `AGENTS.md` should tell agents to read this
-file. Treat the rules below as hard constraints, not style tips. Here,
-compression means reducing the concepts a reader must hold in mind, not making
-code terse or public documentation incomplete.
+If you use a coding agent, configure your local instruction file, such as
+`AGENTS.md`, to tell the agent to read this file. Treat the rules below as hard
+constraints, not style tips. Here, compression means reducing the concepts a
+reader must hold in mind, not making code terse or public documentation
+incomplete.
 
 #### Scope and design
 
