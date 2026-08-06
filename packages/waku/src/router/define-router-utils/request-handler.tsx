@@ -127,7 +127,12 @@ export const createRequestHandler = ({
         }
         // the browser would have asked for the destination itself, so an
         // interceptor guarding it has to be given that request and not this one
-        const destination = new Request(new URL(location, input.req.url), {
+        const url = new URL(input.req.url);
+        const base = url.pathname.slice(
+          0,
+          url.pathname.length - input.pathname.length,
+        );
+        const destination = new Request(new URL(base + location, url), {
           headers: input.req.headers,
         });
         return runHandled(destination, () =>

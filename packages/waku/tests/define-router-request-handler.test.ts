@@ -367,6 +367,43 @@ describe('request dispatch', () => {
     expect(seen[seen.length - 1]).toBe('/dest');
   });
 
+  it('keeps the base path on the destination it asks about', async () => {
+    const seen: string[] = [];
+    const moved = {
+      ...dynamicRoute('/moved'),
+      routeElement: {
+        isStatic: false,
+        renderer: () => {
+          unstable_redirect('/dest' as never);
+        },
+      },
+    };
+    const { handleRequest } = unstable_defineRouter({
+      getConfigs: async () => [moved, dynamicRoute('/dest')],
+      unstable_interceptors: [
+        async (next) => {
+          seen.push(new URL(unstable_getRequest().url).pathname);
+          return next();
+        },
+      ],
+    });
+    const rscPath = encodeRoutePath('/moved');
+
+    await handleRequest(
+      {
+        type: 'rsc' as const,
+        // the app is mounted under /docs, so getInput strips it from pathname
+        pathname: '/RSC/' + rscPath,
+        rscPath,
+        rscParams: undefined,
+        req: new Request('http://localhost/docs/RSC/' + rscPath),
+      },
+      makeUtils(),
+    );
+
+    expect(seen[seen.length - 1]).toBe('/docs/dest');
+  });
+
   it('hands off a route redirect the destination cannot answer', async () => {
     const moved = {
       ...dynamicRoute('/moved'),
