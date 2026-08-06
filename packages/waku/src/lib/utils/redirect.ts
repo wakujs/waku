@@ -20,6 +20,8 @@ export const resolveRedirectLocation = (
   requestUrl: string,
   basePath: string,
 ): string | undefined => {
+  // a header strips these, so classify what will actually be sent
+  location = location.trim();
   const locationType = getLocationType(location);
   if (locationType === 'relative') {
     return hasControlCharacter(location) ? undefined : location;

@@ -28,6 +28,14 @@ describe('resolveRedirectLocation', () => {
     );
   });
 
+  test('whitespace a header would strip does not hide another host', () => {
+    // ' //evil' is not relative once the header has trimmed it
+    expect(resolve(' //other.example/x')).toBe('//other.example/x');
+    expect(resolve('  https://other.example/x  ')).toBe(
+      'https://other.example/x',
+    );
+  });
+
   test('a relative location is left for the browser to resolve', () => {
     // an rsc request is not the page that threw it, so this end cannot say
     // what 'login' is relative to
