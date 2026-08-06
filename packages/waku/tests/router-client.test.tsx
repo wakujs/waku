@@ -7375,16 +7375,16 @@ describe('Router integration', () => {
     window.history.replaceState({}, '', '/one');
     let inCustomTransition = false;
     let mergeInsideTransition: boolean | undefined;
-    let customCommit: (() => void) | undefined;
+    const customCommits: Array<() => void> = [];
     const customTransition = vi.fn((fn: () => void) => {
-      customCommit = () => {
+      customCommits.push(() => {
         inCustomTransition = true;
         try {
           fn();
         } finally {
           inCustomTransition = false;
         }
-      };
+      });
     });
 
     const PendingProbe = () => {
@@ -7408,7 +7408,6 @@ describe('Router integration', () => {
             </Link>
           </>
         ),
-        [unstable_getRouteSlotId('/two')]: <h1>Page 2</h1>,
         [ROUTE_ID]: ['/one', ''],
         [IS_STATIC_ID]: false,
       },
@@ -7450,8 +7449,9 @@ describe('Router integration', () => {
 
       await act(async () => {
         navigation.resolve({
+          [unstable_getRouteSlotId('/two')]: <h1>Page 2</h1>,
           [ROUTE_ID]: ['/two', ''],
-          [IS_STATIC_ID]: false,
+          [IS_STATIC_ID]: true,
         });
         await flush();
       });
@@ -7459,7 +7459,27 @@ describe('Router integration', () => {
       expect(customTransition).toHaveBeenCalledTimes(1);
       expect(view.container.textContent).toContain('Page 1');
       await act(async () => {
-        customCommit?.();
+        link.dispatchEvent(
+          new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            button: 0,
+          }),
+        );
+        await flush();
+      });
+
+      // The first response is static, but its delayed commit has not run. A
+      // newer navigation must fetch it again instead of trusting missing data.
+      expect(refetch).toHaveBeenCalledTimes(2);
+      expect(customTransition).toHaveBeenCalledTimes(2);
+      await act(async () => {
+        customCommits[0]?.();
+        await flush();
+      });
+      expect(view.container.textContent).toContain('Page 1');
+      await act(async () => {
+        customCommits[1]?.();
         await flush();
       });
 

@@ -1194,12 +1194,13 @@ const InnerRouter = ({
         if (controller.signal.aborted) {
           return;
         }
-        addToStaticPathSet(resolved);
         if (instant) {
+          addToStaticPathSet(resolved);
           pendingNavigationRef.current = null;
         } else {
           commit(() => {
             mergeElements({ ...resolved, [ROUTER_STATE_ID]: routerState });
+            addToStaticPathSet(resolved);
           }, options.startTransition || startTransition);
         }
       } catch (e) {
