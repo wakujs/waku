@@ -39,7 +39,8 @@ The minimal API is small, but it exposes both server-side handlers and client-si
 | `waku/minimal/client` | `useRefetch_UNSTABLE`        | Fetching and merging another RSC payload.                             |
 | `waku/minimal/client` | `unstable_*` helpers         | Building router-like abstractions.                                    |
 
-Examples below often import these as shorter names.
+Examples below often import these as shorter names. Deprecated aliases without
+the `_UNSTABLE` suffix still exist for one migration window.
 This guide does not document every exported helper from `waku/minimal/client`;
 undocumented exports are for Waku internals or custom integrations.
 
