@@ -593,9 +593,9 @@ export type LinkProps<Path extends RoutePath> = {
 
 /**
  * Client-side navigation link. Renders an `<a>`; click handling pushes through
- * the router unless the click is modified, prevented, or targets another window.
- * Failures surface through the router error boundary rather than a returned
- * promise.
+ * the router unless the click is modified or prevented. A non-`_self` `target`
+ * is discouraged and still routes in place (use `<a>` instead). Failures
+ * surface through the router error boundary rather than a returned promise.
  */
 export function Link<Path extends RoutePath>({
   to,
@@ -1289,8 +1289,10 @@ export function Router({
 }: {
   initialRoute?: RouteProps;
   /**
-   * Rewrite or block the route before navigation commits. Return `false` to
-   * cancel; otherwise return the route to use.
+   * Intercepts browser history navigation (back/forward) before it commits;
+   * programmatic navigation and `Link` clicks are not intercepted. Return
+   * `false` to ignore the pop (the address bar has already moved); otherwise
+   * return the route to render.
    */
   unstable_routeInterceptor?: (route: RouteProps) => RouteProps | false;
 }) {
