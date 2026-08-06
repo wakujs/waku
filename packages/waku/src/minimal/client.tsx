@@ -37,6 +37,10 @@ import type {
   FetchRscInputTransformer,
   SetElements,
 } from './client-utils/fetch-store.js';
+import {
+  abortable,
+  reloadOnBuildIdMismatch,
+} from './client-utils/rsc-promise.js';
 
 const { createFromFetch, encodeReply, createTemporaryReferenceSet } =
   RSDWClient;
@@ -331,42 +335,6 @@ const decodeRsc = (
     }),
   );
 
-const reloadOnBuildIdMismatch = (
-  elements: Promise<Elements>,
-  onBuildIdMismatch: (() => void) | undefined,
-) => {
-  if (!import.meta.env?.WAKU_BUILD_ID) {
-    return;
-  }
-  Promise.resolve(elements).then(
-    (data) => {
-      if (data._buildId !== import.meta.env.WAKU_BUILD_ID) {
-        (onBuildIdMismatch ?? (() => window.location.reload()))();
-      }
-    },
-    () => {},
-  );
-};
-
-const abortable = (
-  elements: Promise<Elements>,
-  signal: AbortSignal | undefined,
-): Promise<Elements> => {
-  if (!signal) {
-    return elements;
-  }
-  if (signal.aborted) {
-    return Promise.reject(signal.reason);
-  }
-  return new Promise<Elements>((resolve, reject) => {
-    const abort = () => reject(signal.reason);
-    signal.addEventListener('abort', abort, { once: true });
-    elements
-      .then(resolve, reject)
-      .finally(() => signal.removeEventListener('abort', abort));
-  });
-};
-
 const applyInputTransformers = (
   rscPath: string,
   rscParams: unknown,
@@ -523,7 +491,6 @@ export const unstable_fetchRsc = (
   if (import.meta.hot) {
     const refetchRscOnHmr = () => {
       fetchRscStore[CACHED_ETAGS] = {};
-      delete fetchRscStore[ENTRY];
       const data = unstable_fetchRsc(rscPath, rscParams, options);
       const setElements = getSetElements();
       setElements((prev) => refreshElementsPromise(prev, data));
@@ -614,6 +581,11 @@ export const Root_UNSTABLE = ({
     fetchRscStore[SET_ELEMENTS] = setElements;
   }, []);
   useEffect(() => {
+    if (fetchRscStore[ENTRY]?.[2] === elements) {
+      delete fetchRscStore[ENTRY];
+    }
+  }, [elements]);
+  useEffect(() => {
     elements.then(updateCachedEtags, () => {});
   }, [elements]);
   const refetch = useCallback<Refetch>(async (rscPath, rscParams, options) => {
@@ -622,7 +594,6 @@ export const Root_UNSTABLE = ({
       unstable_overlay: overlay,
       unstable_swr: swr,
     } = options ?? {};
-    delete fetchRscStore[ENTRY];
     let data: Promise<Elements>;
     if (prefetched) {
       data = abortable(prefetched, options?.signal);

@@ -510,6 +510,7 @@ afterAll(() => {
 
 beforeEach(() => {
   window.history.replaceState({}, '', '/start');
+  vi.stubEnv('WAKU_BUILD_ID', '');
 
   delete (globalThis as Record<string, unknown>).__WAKU_PREFETCHED__;
   testHoisted.elements = {};
@@ -3569,10 +3570,81 @@ describe('Router integration', () => {
         expect(refetch).not.toHaveBeenCalled();
         expect(fetchRsc).not.toHaveBeenCalled();
       }
+      expect(window.location.pathname).toBe('/next');
 
       view.unmount();
     });
   }
+
+  test('superseding a navigation releases an adopted prefetch', async () => {
+    const pending = createDeferred<Record<string, unknown>>();
+    vi.mocked(prefetchRsc).mockReturnValue(pending.promise);
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [unstable_getRouteSlotId('/next')]: <Probe />,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    try {
+      await act(async () => {
+        capture.router!.prefetch('/slow');
+      });
+      await act(async () => {
+        const superseded = capture.router!.push('/slow');
+        await Promise.resolve();
+        const active = capture.router!.push('/next');
+        await Promise.all([superseded, active]);
+      });
+
+      expect(capture.router?.path).toBe('/next');
+    } finally {
+      pending.resolve({});
+      view.unmount();
+    }
+  });
+
+  test('adopting a prefetch checks its build id', async () => {
+    vi.stubEnv('WAKU_BUILD_ID', 'build-1');
+    const reloadSpy = vi
+      .spyOn(window.location, 'reload')
+      .mockImplementation(() => {});
+    vi.mocked(prefetchRsc).mockReturnValue(
+      resolvedThenable({
+        [unstable_getRouteSlotId('/next')]: <div>next</div>,
+        [ROUTE_ID]: ['/next', ''],
+        [IS_STATIC_ID]: false,
+        _buildId: 'build-2',
+      }),
+    );
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    try {
+      await act(async () => {
+        capture.router!.prefetch('/next');
+        await flush();
+        await capture.router!.push('/next');
+        await flush();
+      });
+
+      expect(reloadSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      reloadSpy.mockRestore();
+      view.unmount();
+    }
+  });
 
   test('instant nav does not reuse a prefetch for a different query', async () => {
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({

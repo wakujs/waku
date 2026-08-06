@@ -26,6 +26,10 @@ import type {
 } from 'react';
 import { preloadModule } from 'react-dom';
 import {
+  abortable,
+  reloadOnBuildIdMismatch,
+} from '../minimal/client-utils/rsc-promise.js';
+import {
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
   unstable_addBase as addBase,
@@ -163,25 +167,9 @@ const reloadWithUrl = (url: URL) => {
   window.location.reload();
 };
 
-const abortable = <T,>(
-  promise: Promise<T>,
-  signal: AbortSignal,
-): Promise<T> => {
-  if (signal.aborted) {
-    return Promise.reject(signal.reason);
-  }
-  return new Promise<T>((resolve, reject) => {
-    const abort = () => reject(signal.reason);
-    signal.addEventListener('abort', abort, { once: true });
-    promise
-      .then(resolve, reject)
-      .finally(() => signal.removeEventListener('abort', abort));
-  });
-};
+type Elements = Record<string | symbol, unknown>;
 
-type Elements = Awaited<ReturnType<typeof fetchRsc>>;
-
-const fetchRoute = async (
+const fetchRoute = (
   rscPath: string,
   rscParams: URLSearchParams,
   {
@@ -194,18 +182,14 @@ const fetchRoute = async (
     onBuildIdMismatch: () => void;
   },
 ): Promise<Elements> => {
-  const elements = await (prefetched
+  const elements = prefetched
     ? abortable(prefetched, signal)
     : fetchRsc(rscPath, rscParams, {
         signal,
         onBuildIdMismatch,
-      }));
-  if (
-    prefetched &&
-    import.meta.env?.WAKU_BUILD_ID &&
-    elements._buildId !== import.meta.env.WAKU_BUILD_ID
-  ) {
-    onBuildIdMismatch();
+      });
+  if (prefetched) {
+    reloadOnBuildIdMismatch(elements, onBuildIdMismatch);
   }
   return elements;
 };

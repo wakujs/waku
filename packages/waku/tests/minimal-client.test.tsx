@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { Suspense, act, useState } from 'react';
+import { StrictMode, Suspense, act, useState } from 'react';
 import type { ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
@@ -139,6 +139,39 @@ describe('minimal/client prefetch', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(mocks.createFromFetch).toHaveBeenCalledTimes(2);
+  });
+
+  test('Root dedupes its initial fetch only during mounting', () => {
+    mocks.createFromFetch.mockReturnValue(
+      resolvedThenable({ _value: null, App: 'app' }),
+    );
+    stubFetch();
+    const rscParams = { value: 1 };
+    const render = (container: Element) => {
+      const root = createRoot(container);
+      act(() => {
+        root.render(
+          <StrictMode>
+            <Root initialRscPath="R/app.txt" initialRscParams={rscParams}>
+              <Suspense fallback={null}>
+                <Slot id="App" />
+              </Suspense>
+            </Root>
+          </StrictMode>,
+        );
+      });
+      return root;
+    };
+
+    const firstContainer = document.createElement('div');
+    const firstRoot = render(firstContainer);
+    expect(mocks.createFromFetch).toHaveBeenCalledTimes(1);
+    act(() => firstRoot.unmount());
+
+    const secondContainer = document.createElement('div');
+    const secondRoot = render(secondContainer);
+    expect(mocks.createFromFetch).toHaveBeenCalledTimes(2);
+    act(() => secondRoot.unmount());
   });
 
   test('server actions use the current fetch, not the one a prefetch decoded with', async () => {

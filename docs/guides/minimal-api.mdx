@@ -546,7 +546,6 @@ const Counter = () => {
 Important behavior:
 
 - `refetch(...)` requests a new RSC payload for the given `rscPath` and optional `rscParams`.
-- Each call issues a new RSC request.
 - The returned payload is merged into the current element map by key.
 - If you return only `InnerApp`, previously rendered elements such as `App` stay mounted.
 - If the refetch fails, the existing element map stays in place.
