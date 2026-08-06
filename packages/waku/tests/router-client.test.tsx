@@ -1860,6 +1860,40 @@ describe('Router integration', () => {
     }
   });
 
+  test('a server function update for the settled route does not navigate', async () => {
+    window.history.replaceState({}, '', '/start#section');
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '#section' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    const pushStateSpy = vi.spyOn(window.history, 'pushState');
+
+    try {
+      const store = fetchRscStore as unknown as Record<string, unknown>;
+      const listeners = store.l as Set<
+        (elements: Record<string, unknown>) => void
+      >;
+      await act(async () => {
+        for (const listener of listeners) {
+          listener({ [ROUTE_ID]: ['/start', ''], [IS_STATIC_ID]: false });
+        }
+        await flush();
+      });
+
+      expect(capture.router?.hash).toBe('#section');
+      expect(pushStateSpy).not.toHaveBeenCalled();
+    } finally {
+      pushStateSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('a server function response marks a static route as static', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
@@ -4601,6 +4635,9 @@ describe('Router integration', () => {
     responses: (
       | { reject: { status: number; location?: string } }
       | { redirect: { from: string; fromQuery?: string; location: string } }
+      | {
+          deferred: ReturnType<typeof createDeferred<Record<string, unknown>>>;
+        }
       | { resolve: Record<string, unknown> }
     )[];
     slots?: string[];
@@ -4632,6 +4669,8 @@ describe('Router integration', () => {
         refetch.mockImplementationOnce(() =>
           Promise.reject(createCustomError('follow-error', info)),
         );
+      } else if ('deferred' in response) {
+        refetch.mockImplementationOnce(() => response.deferred.promise);
       } else {
         refetch.mockResolvedValueOnce(response.resolve);
       }
@@ -4659,6 +4698,41 @@ describe('Router integration', () => {
       throw new Error('router not initialized');
     }
     return { view, refetch, capture, router: capture.router };
+  };
+
+  const renderInterruptedFollow = async (caughtSlot: ReactNode) => {
+    const pendingFollow = createDeferred<Record<string, unknown>>();
+    const refetch = vi
+      .fn<ReturnType<typeof useRefetch>>()
+      .mockResolvedValueOnce({
+        [unstable_getRouteSlotId('/a')]: caughtSlot,
+        [ROUTE_ID]: ['/a', ''],
+        [IS_STATIC_ID]: false,
+      })
+      .mockImplementation(() => pendingFollow.promise);
+    installRefetch(refetch);
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    testHoisted.elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+    const view = await renderApp(
+      <ErrorBoundary>
+        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+          <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
+        </Unstable_SearchCodecsProvider>
+      </ErrorBoundary>,
+    );
+    if (!capture.router) {
+      throw new Error('router not initialized');
+    }
+    await act(async () => {
+      await capture.router!.push('/a').catch(() => {});
+      await flushUntil(() => refetch.mock.calls.length === 2);
+    });
+    return { view, router: capture.router, refetch, pendingFollow };
   };
 
   test('a rejected fetch redirect hard navigates with a new entry', async () => {
@@ -5618,6 +5692,83 @@ describe('Router integration', () => {
     expect(capture.router.path).toBe('/other');
 
     view.unmount();
+  });
+
+  test('a hash change lets the caught route render again', async () => {
+    const redirect = createCustomError('redirect', {
+      status: 307,
+      location: '/next',
+    });
+    const ThrowUntilHash = () => {
+      const router = useRouter() as unknown as RouterApi;
+      if (!router.hash) {
+        throw redirect;
+      }
+      return <div>ready</div>;
+    };
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const { view, router, pendingFollow } = await renderInterruptedFollow(
+      <ThrowUntilHash />,
+    );
+
+    try {
+      await act(async () => {
+        await router.push('/a#ready').catch(() => {});
+        pendingFollow.resolve({
+          [ROUTE_ID]: ['/a', ''],
+          [IS_STATIC_ID]: false,
+        });
+        await flushUntil(() =>
+          (view.container.textContent ?? '').includes('ready'),
+        );
+      });
+
+      expect(view.container.textContent).toContain('ready');
+      expect(view.container.textContent).not.toContain('navigation loop');
+    } finally {
+      consoleErrorSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
+  test('an interrupted redirect follow reports a navigation loop', async () => {
+    const redirect = createCustomError('redirect', {
+      status: 307,
+      location: '/next',
+    });
+    const ThrowRedirect = () => {
+      throw redirect;
+    };
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const { view, router, refetch, pendingFollow } =
+      await renderInterruptedFollow(<ThrowRedirect />);
+
+    try {
+      await act(async () => {
+        await router.push('/a').catch(() => {});
+        pendingFollow.resolve({
+          [ROUTE_ID]: ['/a', ''],
+          [IS_STATIC_ID]: false,
+        });
+        await flushUntil(() =>
+          (view.container.textContent ?? '').includes(
+            'detected a navigation loop',
+          ),
+        );
+      });
+
+      expect(view.container.textContent).toContain(
+        'detected a navigation loop',
+      );
+      expect(refetch).toHaveBeenCalledTimes(2);
+    } finally {
+      consoleErrorSpy.mockRestore();
+      view.unmount();
+    }
   });
 
   test('a 404 error on navigation goes to the 404 route inline', async () => {
@@ -7222,6 +7373,74 @@ describe('Router integration', () => {
       await flush();
     });
     expect(signal!.aborted).toBe(false);
+    view.unmount();
+  });
+
+  test('a non-fetching navigation aborts an active fetch', async () => {
+    const pending = createDeferred<Record<string, unknown>>();
+    const { view, router, refetch } = await renderFollowRouter({
+      responses: [{ deferred: pending }],
+    });
+    const pushes: Promise<void>[] = [];
+
+    await act(async () => {
+      pushes.push(router.push('/slow'));
+      await Promise.resolve();
+    });
+    const { signal } = refetch.mock.calls[0]![2]!;
+    await act(async () => {
+      await router.push('/start');
+    });
+
+    expect(signal?.aborted).toBe(true);
+
+    pending.resolve({ [ROUTE_ID]: ['/slow', ''], [IS_STATIC_ID]: false });
+    await pushes[0];
+    view.unmount();
+  });
+
+  test('a late superseded response cannot release the active fetch', async () => {
+    const first = createDeferred<Record<string, unknown>>();
+    const second = createDeferred<Record<string, unknown>>();
+    const third = createDeferred<Record<string, unknown>>();
+    const { view, router, refetch } = await renderFollowRouter({
+      responses: [
+        { deferred: first },
+        { deferred: second },
+        { deferred: third },
+      ],
+      slots: ['/first', '/second', '/third'],
+    });
+    const pushes: Promise<void>[] = [];
+    const startPush = async (path: string) => {
+      await act(async () => {
+        pushes.push(router.push(path));
+        await Promise.resolve();
+      });
+    };
+
+    await startPush('/first');
+    const firstSignal = refetch.mock.calls[0]![2]!.signal!;
+    await startPush('/second');
+    const secondSignal = refetch.mock.calls[1]![2]!.signal!;
+    expect(firstSignal.aborted).toBe(true);
+
+    await act(async () => {
+      first.resolve({ [ROUTE_ID]: ['/first', ''], [IS_STATIC_ID]: false });
+      await pushes[0];
+      await flush();
+    });
+    await startPush('/third');
+
+    expect(secondSignal.aborted).toBe(true);
+    expect(refetch.mock.calls[2]![2]!.signal?.aborted).toBe(false);
+
+    await act(async () => {
+      second.resolve({ [ROUTE_ID]: ['/second', ''], [IS_STATIC_ID]: false });
+      third.resolve({ [ROUTE_ID]: ['/third', ''], [IS_STATIC_ID]: false });
+      await Promise.all(pushes);
+      await flush();
+    });
     view.unmount();
   });
 

@@ -1052,8 +1052,7 @@ const InnerRouter = ({
   const changeRoute: ChangeRoute = useCallback(
     async function changeRoute(nextRoute, options) {
       pendingNavigationRef.current?.abort();
-      const controller = new AbortController();
-      pendingNavigationRef.current = controller;
+      pendingNavigationRef.current = null;
       const settledRoute = getSettledRoute(
         resolvedElementsRef.current,
         routeFallback,
@@ -1074,9 +1073,10 @@ const InnerRouter = ({
           [ROUTE_ID]: [nextRoute.path, nextRoute.query],
           [ROUTER_STATE_ID]: routerState,
         });
-        pendingNavigationRef.current = null;
         return;
       }
+      const controller = new AbortController();
+      pendingNavigationRef.current = controller;
       const rscPath = encodeRoutePath(nextRoute.path);
       const cached = prefetchManagerRef.current!.get(rscPath, nextRoute.query);
       const prefetchedElements =
