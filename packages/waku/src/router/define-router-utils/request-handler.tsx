@@ -132,8 +132,12 @@ export const createRequestHandler = ({
           0,
           url.pathname.length - input.pathname.length,
         );
+        const headers = new Headers(input.req.headers);
+        for (const name of ['content-type', 'content-length']) {
+          headers.delete(name);
+        }
         const destination = new Request(new URL(base + location, url), {
-          headers: input.req.headers,
+          headers,
         });
         return runHandled(destination, () =>
           routeEntries.getEntriesForRoute(
@@ -178,7 +182,7 @@ export const createRequestHandler = ({
           );
         } catch (e) {
           const info = getErrorInfo(e);
-          if (info?.location) {
+          if (info?.location && info.status !== 404) {
             const redirected = await getEntriesForRedirect(info.location);
             if (!redirected) {
               throw e;
