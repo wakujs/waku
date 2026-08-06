@@ -147,6 +147,18 @@ describe('resolveErrorRoute', () => {
     });
   });
 
+  test('an unfollowable location does not carry credentials into the message', () => {
+    const error = createCustomError('redirect', {
+      status: 307,
+      location: 'ftp://user:pw@host/x',
+    });
+
+    expect(resolveErrorRoute(error, requested('/from'), false)).toEqual({
+      type: 'unfollowable',
+      location: 'ftp://host/x',
+    });
+  });
+
   test('a location that is not a url cannot be followed either', () => {
     const error = createCustomError('redirect', {
       status: 307,

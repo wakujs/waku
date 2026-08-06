@@ -16,6 +16,9 @@ export type ErrorRoute =
   | { type: 'unfollowable'; location: string }
   | { type: 'none' };
 
+const redactCredentials = (location: string) =>
+  location.replace(/\/\/[^/@]*@/, '//');
+
 export const isFollowable = (error: unknown) => {
   const info = getErrorInfo(error);
   return info?.status === 404 || !!info?.location;
@@ -31,7 +34,7 @@ export const resolveErrorRoute = (
   if (location) {
     const parsed = parseRedirectUrl(location, requestedUrl);
     if (!parsed) {
-      return { type: 'unfollowable', location };
+      return { type: 'unfollowable', location: redactCredentials(location) };
     }
     parsed.username = '';
     parsed.password = '';

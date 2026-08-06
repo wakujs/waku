@@ -38,10 +38,10 @@ test.describe(`ssr-redirect`, () => {
   });
 
   test.afterAll(async () => {
-    await stopApp();
     delete process.env.WAKU_E2E_EXTERNAL_ORIGIN;
     other.closeAllConnections();
     await new Promise<void>((resolve) => other.close(() => resolve()));
+    await stopApp();
   });
 
   test('a server action can send the browser to another origin', async ({
