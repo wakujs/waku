@@ -620,6 +620,7 @@ export type LinkProps<Path extends RoutePath> = {
   /**
    * Overrides how the destination is committed, e.g. to integrate the browser
    * View Transitions API. It runs after required route data is ready. When
+   * `unstable_instant` can commit immediately from cache, this is ignored. When
    * provided, React's `useTransition` is bypassed, so
    * `useNavigationStatus_UNSTABLE()` stays `{ pending: false }` for this link.
    */
