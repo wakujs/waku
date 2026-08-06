@@ -220,7 +220,7 @@ export const PendingLink = <Path extends RoutePath>({
 );
 ```
 
-Use `PendingLink` where a link needs an indicator. Keep the indicator non-interactive and `aria-hidden` (as above) so it does not affect the link's accessible name or click target.
+Use `PendingLink` where a link needs an indicator. Keep the indicator non-interactive and `aria-hidden` (as above) so it does not affect the link's accessible name or introduce a nested interactive target.
 
 `useNavigationStatus_UNSTABLE()` must be called from a Client Component rendered inside the `<Link>` because the status belongs to the nearest link. It does not observe programmatic navigation, browser back and forward, instant navigation, or a link with a custom transition. Called outside any `<Link>`, the hook returns an empty object (not `{ pending: false }`).
 
