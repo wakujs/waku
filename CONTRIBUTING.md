@@ -83,7 +83,7 @@ constraints, not style tips. Here, compression means reducing the concepts a
 reader must hold in mind, not making code terse or public documentation
 incomplete.
 
-#### Scope and design
+### Scope and design
 
 - Fix behavior in the layer that owns it. Do not spread a special case across
   unrelated modules.
@@ -108,7 +108,7 @@ incomplete.
 - Keep platform-specific behavior in adapters. Do not import Node APIs into
   browser or isomorphic modules.
 
-#### Implementation
+### Implementation
 
 - Prefer direct control flow, early returns, and native platform APIs.
 - Use `const` unless a binding must be reassigned. Local mutation of an array,
@@ -131,7 +131,7 @@ incomplete.
 - Await or return promises. Do not leave asynchronous work floating.
 - Normalize configuration and optional inputs once near the boundary.
 
-#### TypeScript
+### TypeScript
 
 - Prefer inference for local implementation details and explicit types for
   public contracts or important boundaries.
@@ -142,7 +142,7 @@ incomplete.
   weaken types throughout the caller to satisfy one integration point.
 - Use `import type` for type-only imports.
 
-#### Comments and documentation
+### Comments and documentation
 
 - If the code already says it, omit the comment.
 - Comment why a branch exists, which invariant must be preserved, or which
@@ -161,7 +161,7 @@ incomplete.
   use lean or no JSDoc unless the types cannot express an important contract.
 - Do not add narrating JSDoc that merely restates a symbol's name or type.
 
-#### Tests
+### Tests
 
 - Reproduce a reported bug before describing it as confirmed.
 - Every regression test must fail when its production fix is removed.
