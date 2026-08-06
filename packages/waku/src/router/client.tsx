@@ -29,6 +29,7 @@ import {
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
   unstable_addBase as addBase,
+  unstable_fetchRsc as fetchRsc,
   unstable_getErrorInfo as getErrorInfo,
   unstable_isImmutableElement as isImmutableElement,
   unstable_prefetchRsc as prefetchRsc,
@@ -162,6 +163,53 @@ const reloadWithUrl = (url: URL) => {
   window.location.reload();
 };
 
+const abortable = <T,>(
+  promise: Promise<T>,
+  signal: AbortSignal,
+): Promise<T> => {
+  if (signal.aborted) {
+    return Promise.reject(signal.reason);
+  }
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(signal.reason);
+    signal.addEventListener('abort', abort, { once: true });
+    promise
+      .then(resolve, reject)
+      .finally(() => signal.removeEventListener('abort', abort));
+  });
+};
+
+type Elements = Awaited<ReturnType<typeof fetchRsc>>;
+
+const fetchRoute = async (
+  rscPath: string,
+  rscParams: URLSearchParams,
+  {
+    signal,
+    prefetched,
+    onBuildIdMismatch,
+  }: {
+    signal: AbortSignal;
+    prefetched?: Promise<Elements>;
+    onBuildIdMismatch: () => void;
+  },
+): Promise<Elements> => {
+  const elements = await (prefetched
+    ? abortable(prefetched, signal)
+    : fetchRsc(rscPath, rscParams, {
+        signal,
+        onBuildIdMismatch,
+      }));
+  if (
+    prefetched &&
+    import.meta.env?.WAKU_BUILD_ID &&
+    elements._buildId !== import.meta.env.WAKU_BUILD_ID
+  ) {
+    onBuildIdMismatch();
+  }
+  return elements;
+};
+
 const isAltClick = (event: MouseEvent<HTMLAnchorElement>) =>
   event.button !== 0 ||
   !!(event.metaKey || event.altKey || event.ctrlKey || event.shiftKey);
@@ -228,7 +276,7 @@ const dispatchChangeRoute = (
     // instant paints from the cache; a transition would hold that back
     return changeRoute(route, options);
   }
-  // a transition keeps the tree up while the eager merge suspends
+  // a transition keeps the current tree up while the destination loads
   return new Promise<void>((resolve, reject) => {
     startTransitionFn(async () => {
       try {
@@ -1088,31 +1136,28 @@ const InnerRouter = ({
           resolvedElementsRef.current,
           prefetchedElements,
         );
-      const dataPromise = refetch(rscPath, createRscParams(nextRoute.query), {
-        signal: controller.signal,
-        unstable_overlay: {
-          [ROUTER_STATE_ID]: routerState,
-          // meta is pinned, so an instant nav has to carry it or it goes stale
-          ...(instant
-            ? {
-                [ROUTE_ID]: [nextRoute.path, nextRoute.query],
-                [IS_STATIC_ID]: isStaticFromElements(
-                  resolvedElementsRef.current,
-                ),
-              }
-            : {}),
-        },
-        ...(instant
-          ? {
-              unstable_swr: {
-                pin: pinForSwr(() => resolvedElementsRef.current),
-                ...(prefetchedElements ? { base: prefetchedElements } : {}),
-              },
-            }
-          : {}),
-        onBuildIdMismatch: () => reloadWithUrl(targetUrl),
-        ...(cached ? { unstable_prefetched: cached.promise } : {}),
-      });
+      const rscParams = createRscParams(nextRoute.query);
+      const dataPromise = instant
+        ? refetch(rscPath, rscParams, {
+            signal: controller.signal,
+            unstable_overlay: {
+              [ROUTER_STATE_ID]: routerState,
+              // meta is pinned, so an instant nav has to carry it or it goes stale
+              [ROUTE_ID]: [nextRoute.path, nextRoute.query],
+              [IS_STATIC_ID]: isStaticFromElements(resolvedElementsRef.current),
+            },
+            unstable_swr: {
+              pin: pinForSwr(() => resolvedElementsRef.current),
+              ...(prefetchedElements ? { base: prefetchedElements } : {}),
+            },
+            onBuildIdMismatch: () => reloadWithUrl(targetUrl),
+            ...(cached ? { unstable_prefetched: cached.promise } : {}),
+          })
+        : fetchRoute(rscPath, rscParams, {
+            signal: controller.signal,
+            ...(cached ? { prefetched: cached.promise } : {}),
+            onBuildIdMismatch: () => reloadWithUrl(targetUrl),
+          });
       try {
         const resolved = await dataPromise;
         if (controller.signal.aborted) {
@@ -1120,6 +1165,11 @@ const InnerRouter = ({
         }
         pendingNavigationRef.current = null;
         addToStaticPathSet(resolved);
+        if (!instant) {
+          startTransition(() => {
+            mergeElements({ ...resolved, [ROUTER_STATE_ID]: routerState });
+          });
+        }
       } catch (e) {
         if (controller.signal.aborted) {
           return;

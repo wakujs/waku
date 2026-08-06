@@ -24,6 +24,7 @@ import {
   INTERNAL_ServerRoot,
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
+  unstable_fetchRsc as fetchRsc,
   unstable_prefetchRsc as prefetchRsc,
   useRefetch_UNSTABLE as useRefetch,
 } from '../src/minimal/client.js';
@@ -78,13 +79,15 @@ type IntersectionObserverMockInstance = IntersectionObserver & {
 };
 
 // Hoisted so the `vi.mock` factory can read it. `elements` is the initial
-// elements a mocked Root seeds; `inner` is the shared, configurable refetch
-// mock tests observe. Each mocked Root keeps its OWN elements state (see the
-// factory), so independent Roots behave independently like the real client.
+// elements a mocked Root seeds; `inner` is the shared, configurable RSC
+// request mock tests observe. Each mocked Root keeps its OWN elements state
+// (see the factory), so independent Roots behave independently like the real
+// client.
 const testHoisted = vi.hoisted(() => ({
   elements: {} as Record<string, unknown>,
   inner: null as
     ((...args: unknown[]) => Promise<Record<string, unknown>>) | null,
+  mergeTypes: [] as Array<'sync' | 'async' | 'swr'>,
 }));
 
 const createDeferred = <T,>() => {
@@ -299,16 +302,19 @@ vi.mock('../src/minimal/client.js', async () => {
         // cached per (prev, data) like minimal's merge helpers, so React
         // rebasing the updater re-runs it idempotently.
         applySync: (data) => {
+          testHoisted.mergeTypes.push('sync');
           setElements((prev) => chainMerge(prev, data));
         },
         // eager merge of a pending fetch: elements suspend until it resolves,
         // like the real client, so a transition stays pending across the fetch
         applyAsync: (dataPromise) => {
+          testHoisted.mergeTypes.push('async');
           setElements((prev) => chainMerge(prev, dataPromise));
         },
         // the swr response landing: minimal refreshes the keys the eager pass
         // left as holes plus the overlay keys, and keeps the pinned ones
         applySwr: (result, overlay, pin) => {
+          testHoisted.mergeTypes.push('swr');
           setElements((prev) => chainSwr(prev, result, overlay, pin));
         },
       };
@@ -399,6 +405,12 @@ vi.mock('../src/minimal/client.js', async () => {
       const store = React.use(StoreContext);
       return store ? store.applySync : noopMergeElements;
     },
+    unstable_fetchRsc: vi.fn(
+      (rscPath: string, rscParams?: unknown, options?: unknown) =>
+        Promise.resolve(testHoisted.inner!(rscPath, rscParams, options)).then(
+          (result) => withRouteMeta(result, rscPath, rscParams),
+        ),
+    ),
     unstable_prefetchRsc: vi.fn(),
     useRefetch_UNSTABLE: vi.fn(useMockRefetch),
   };
@@ -501,9 +513,11 @@ beforeEach(() => {
 
   delete (globalThis as Record<string, unknown>).__WAKU_PREFETCHED__;
   testHoisted.elements = {};
-  // Fresh shared refetch mock per test; the mocked useRefetch (a per-root hook)
-  // wraps it, so its implementation must stay intact (do not mockReset it).
+  testHoisted.mergeTypes.length = 0;
+  // Fresh shared request mock per test; the mocked fetch and useRefetch wrap
+  // it, so their implementations must stay intact (do not mockReset them).
   testHoisted.inner = vi.fn(async () => ({}));
+  vi.mocked(fetchRsc).mockClear();
   vi.mocked(useRefetch).mockClear();
   vi.mocked(preloadModule).mockClear();
   vi.mocked(prefetchRsc).mockReset();
@@ -1944,6 +1958,45 @@ describe('Router integration', () => {
     expect(capture.router.hash).toBe('#h');
 
     view.unmount();
+  });
+
+  test('normal navigation merges only after the fetch resolves', async () => {
+    const pending = createDeferred<Record<string, unknown>>();
+    installRefetch(vi.fn<RefetchInner>(() => pending.promise));
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [unstable_getRouteSlotId('/next')]: <Probe />,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    try {
+      let pushed: Promise<void> | undefined;
+      await act(async () => {
+        pushed = capture.router!.push('/next');
+        await Promise.resolve();
+      });
+
+      expect(fetchRsc).toHaveBeenCalledTimes(1);
+      expect(testHoisted.mergeTypes).toEqual([]);
+      expect(capture.router?.path).toBe('/start');
+      expect(window.location.pathname).toBe('/start');
+
+      await act(async () => {
+        pending.resolve({ [IS_STATIC_ID]: false });
+        await pushed;
+      });
+
+      expect(testHoisted.mergeTypes).toEqual(['sync']);
+      expect(capture.router?.path).toBe('/next');
+      expect(window.location.pathname).toBe('/next');
+    } finally {
+      view.unmount();
+    }
   });
 
   // (Removed) The old test 'committing a route whose slot has not arrived
@@ -3504,13 +3557,18 @@ describe('Router integration', () => {
         await pushed;
       });
 
-      expect(refetch).toHaveBeenCalledWith(
-        unstable_encodeRoutePath('/next'),
-        expect.any(URLSearchParams),
-        expect.objectContaining({
-          unstable_prefetched: pending.promise,
-        }),
-      );
+      if (instant) {
+        expect(refetch).toHaveBeenCalledWith(
+          unstable_encodeRoutePath('/next'),
+          expect.any(URLSearchParams),
+          expect.objectContaining({
+            unstable_prefetched: pending.promise,
+          }),
+        );
+      } else {
+        expect(refetch).not.toHaveBeenCalled();
+        expect(fetchRsc).not.toHaveBeenCalled();
+      }
 
       view.unmount();
     });

@@ -511,7 +511,10 @@ export const unstable_upsertRscReloadListener = (
   }
 };
 
-/** Fetch elements for an RSC path, reusing a cached or prefetched result. */
+/**
+ * Fetch and decode elements for an RSC path. Each call starts a new request;
+ * consumers own prefetching and response reuse.
+ */
 export const unstable_fetchRsc = (
   rscPath: string,
   rscParams?: unknown,
@@ -531,11 +534,18 @@ export const unstable_fetchRsc = (
     );
     globalThis.__WAKU_REFETCH_RSC__ = refetchRscOnHmr;
   }
+  return fetchRscElements(rscPath, rscParams, options);
+};
+
+const getInitialRsc = (
+  rscPath: string,
+  rscParams: unknown,
+): Promise<Elements> => {
   const entry = fetchRscStore[ENTRY];
   if (entry && entry[0] === rscPath && entry[1] === rscParams) {
     return entry[2];
   }
-  const data = fetchRscElements(rscPath, rscParams, options);
+  const data = unstable_fetchRsc(rscPath, rscParams);
   fetchRscStore[ENTRY] = [rscPath, rscParams, data];
   return data;
 };
@@ -598,7 +608,7 @@ export const Root_UNSTABLE = ({
   children: ReactNode;
 }) => {
   const [elements, setElements] = useState(() =>
-    unstable_fetchRsc(initialRscPath || '', initialRscParams),
+    getInitialRsc(initialRscPath || '', initialRscParams),
   );
   useEffect(() => {
     fetchRscStore[SET_ELEMENTS] = setElements;

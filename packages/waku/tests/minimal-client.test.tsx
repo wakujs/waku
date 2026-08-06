@@ -129,6 +129,18 @@ describe('minimal/client prefetch', () => {
     expect(mocks.createFromFetch).toHaveBeenCalledTimes(2);
   });
 
+  test('each fetch issues a new request for the same input', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response('x'));
+    track(unstable_registerFetchEnhancer(() => fetchMock));
+    const rscParams = new URLSearchParams({ query: 'x=1' });
+
+    await unstable_fetchRsc('R/next.txt', rscParams);
+    await unstable_fetchRsc('R/next.txt', rscParams);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(mocks.createFromFetch).toHaveBeenCalledTimes(2);
+  });
+
   test('server actions use the current fetch, not the one a prefetch decoded with', async () => {
     // Capture the callServer baked into the prefetch-decoded elements.
     let callServer: CallServer | undefined;
