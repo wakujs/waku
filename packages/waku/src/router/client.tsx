@@ -260,7 +260,6 @@ const createRouteChangeListeners = (): [
   ];
 };
 
-// This is an internal thing, not a public API
 const RouterContext = createContext<{
   route: RouteProps;
   routerState?: RouterState | undefined;
@@ -1026,8 +1025,7 @@ const InnerRouter = ({
     routeFromElements && routeFromElements.path !== fallbackRoute.path
       ? { ...routeFromElements, hash: fallbackRoute.hash }
       : fallbackRoute;
-  const initialHashRef = useRef<string>(undefined);
-  initialHashRef.current ??= resolvedRoute.hash;
+  const initialHashRef = useRef(resolvedRoute.hash);
   // state, not a ref: it is read during render
   const [initialRoute] = useState(() => ({ ...resolvedRoute, hash: '' }));
 
@@ -1035,7 +1033,7 @@ const InnerRouter = ({
   const staticPathSetRef = useRef<Set<string>>(undefined);
   staticPathSetRef.current ??= new Set();
   // a record mid navigation pairs the new route id with the old static flag
-  const learnStaticPath = useCallback(
+  const addToStaticPathSet = useCallback(
     (responseElements: Record<string, unknown>) => {
       const route = getRouteFromElements(responseElements);
       if (route && isStaticFromElements(responseElements)) {
@@ -1044,11 +1042,10 @@ const InnerRouter = ({
     },
     [],
   );
-  const initialElementsRef = useRef<typeof elements>(undefined);
-  initialElementsRef.current ??= elements;
+  const initialElementsRef = useRef(elements);
   useEffect(() => {
-    learnStaticPath(initialElementsRef.current!);
-  }, [learnStaticPath]);
+    addToStaticPathSet(initialElementsRef.current);
+  }, [addToStaticPathSet]);
   const resolvedElementsRef = useRef(elements);
   useLayoutEffect(() => {
     resolvedElementsRef.current = elements;
@@ -1062,7 +1059,7 @@ const InnerRouter = ({
   // starts empty so hydration matches the server, then the effect fills it
   const [restoredHash, setRestoredHash] = useState('');
   useEffect(() => {
-    setRestoredHash(window.location.hash || initialHashRef.current!);
+    setRestoredHash(window.location.hash || initialHashRef.current);
   }, []);
 
   const routeFallback = useMemo(
@@ -1113,7 +1110,7 @@ const InnerRouter = ({
           void refetch(
             encodeRoutePath(settledRoute.path),
             createRscParams(settledRoute.query),
-          ).then(learnStaticPath, () => {});
+          ).then(addToStaticPathSet, () => {});
         });
       };
       upsertRscReloadListener(
@@ -1122,7 +1119,7 @@ const InnerRouter = ({
       );
       globalThis.__WAKU_REFETCH_ROUTE__ = refetchRouteOnHmr;
     }
-  }, [refetch, learnStaticPath, routeFallback]);
+  }, [refetch, addToStaticPathSet, routeFallback]);
 
   const [[routeChangeEvents, emitRouteChangeEvent]] = useState(
     createRouteChangeListeners,
@@ -1150,7 +1147,7 @@ const InnerRouter = ({
       if (superseded?.startEmitted) {
         emitRouteChangeEvent('error', superseded.route);
       }
-      // a listener can navigate synchronously, which aborts this one
+      // a start listener can navigate synchronously, which aborts this one
       if (isAborted()) {
         return;
       }
@@ -1225,7 +1222,7 @@ const InnerRouter = ({
           return;
         }
         pendingNavigationRef.current = null;
-        learnStaticPath(resolved);
+        addToStaticPathSet(resolved);
         emitRouteChangeEvent(
           'complete',
           getServerRedirect(resolved, nextRoute) ?? nextRoute,
@@ -1253,7 +1250,7 @@ const InnerRouter = ({
       refetch,
       mergeElements,
       emitRouteChangeEvent,
-      learnStaticPath,
+      addToStaticPathSet,
     ],
   );
 
@@ -1287,7 +1284,7 @@ const InnerRouter = ({
   );
   useEffect(() => {
     const listener = (elements: Record<string, unknown>) => {
-      learnStaticPath(elements);
+      addToStaticPathSet(elements);
       const { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic } = elements;
       applyChangeRouteData(routeData, isStatic).catch((err) => {
         if (!isFollowable(err)) {
@@ -1296,7 +1293,7 @@ const InnerRouter = ({
       });
     };
     return registerCallServerElementsListener(listener);
-  }, [applyChangeRouteData, learnStaticPath]);
+  }, [applyChangeRouteData, addToStaticPathSet]);
 
   const prefetchRoute: PrefetchRoute = useCallback((route, options) => {
     preloadRouteModules(route.path);
@@ -1421,8 +1418,8 @@ export function INTERNAL_ServerRouter({ route }: { route: RouteProps }) {
   );
 }
 
-// Expose internal APIs
-// Subject to change without notice
+// Internal APIs exposed for other Waku packages and integrations.
+// Subject to change without notice.
 export type Unstable_RouteProps = RouteProps;
 export const unstable_HAS404_ID = HAS404_ID;
 export const unstable_IS_STATIC_ID = IS_STATIC_ID;
