@@ -694,21 +694,6 @@ describe('useRouter + Link with context', () => {
     );
   };
 
-  const RemountablePrefetchOnViewLink = () => {
-    const [key, setKey] = useState(0);
-    return (
-      <>
-        <button
-          data-testid="remount-link"
-          onClick={() => setKey((current) => current + 1)}
-        />
-        <Link key={key} to="/next" unstable_prefetchOnView={{}}>
-          next
-        </Link>
-      </>
-    );
-  };
-
   test('throws without RouterContext', async () => {
     const UseRouterComponent = () => {
       useRouter();
@@ -3953,52 +3938,59 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('instant nav adopts an in-flight prefetch as its data source', async () => {
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
-      [ROUTE_ID]: ['/next', ''],
-      [IS_STATIC_ID]: true,
-    }));
-    installRefetch(refetch);
+  // Adoption is not instant-gated: an in-flight prefetch is the data source
+  // for both instant and non-instant navigations (avoids a duplicate fetch).
+  for (const instant of [true, false] as const) {
+    test(`${instant ? 'instant' : 'non-instant'} nav adopts an in-flight prefetch as its data source`, async () => {
+      const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
+        [ROUTE_ID]: ['/next', ''],
+        [IS_STATIC_ID]: true,
+      }));
+      installRefetch(refetch);
 
-    // Still in flight at navigation time: it started earlier than a fresh
-    // request could, so the navigation adopts it instead of duplicating it.
-    const pending = createDeferred<Record<string, unknown>>();
-    vi.mocked(prefetchRsc).mockReturnValue(pending.promise);
+      // Still in flight at navigation time: it started earlier than a fresh
+      // request could, so the navigation adopts it instead of duplicating it.
+      const pending = createDeferred<Record<string, unknown>>();
+      vi.mocked(prefetchRsc).mockReturnValue(pending.promise);
 
-    const capture = { router: null as RouterApi | null };
-    const Probe = makeProbe(capture);
-    const elements = {
-      ...instantNavElements(),
-      [unstable_getRouteSlotId('/start')]: <Probe />,
-    };
+      const capture = { router: null as RouterApi | null };
+      const Probe = makeProbe(capture);
+      const elements = {
+        ...instantNavElements(),
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+      };
 
-    const view = await renderRouter(
-      { initialRoute: { path: '/start', query: '', hash: '' } },
-      elements,
-    );
-    if (!capture.router) {
-      throw new Error('router not initialized');
-    }
+      const view = await renderRouter(
+        { initialRoute: { path: '/start', query: '', hash: '' } },
+        elements,
+      );
+      if (!capture.router) {
+        throw new Error('router not initialized');
+      }
 
-    await act(async () => {
-      capture.router!.prefetch('/next');
+      await act(async () => {
+        capture.router!.prefetch('/next');
+      });
+      await act(async () => {
+        const pushed = capture.router!.push(
+          '/next',
+          instant ? { unstable_instant: true } : undefined,
+        );
+        pending.resolve({ [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: true });
+        await pushed;
+      });
+
+      expect(refetch).toHaveBeenCalledWith(
+        unstable_encodeRoutePath('/next'),
+        expect.any(URLSearchParams),
+        expect.objectContaining({
+          unstable_prefetched: pending.promise,
+        }),
+      );
+
+      view.unmount();
     });
-    await act(async () => {
-      const pushed = capture.router!.push('/next', { unstable_instant: true });
-      pending.resolve({ [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: true });
-      await pushed;
-    });
-
-    expect(refetch).toHaveBeenCalledWith(
-      unstable_encodeRoutePath('/next'),
-      expect.any(URLSearchParams),
-      expect.objectContaining({
-        unstable_prefetched: pending.promise,
-      }),
-    );
-
-    view.unmount();
-  });
+  }
 
   test('instant nav does not reuse a prefetch for a different query', async () => {
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
@@ -4492,6 +4484,9 @@ describe('Router integration', () => {
   test('popstate leaves the url the browser restored alone', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
+      return;
+    });
 
     const elements = {
       [unstable_getRouteSlotId('/start')]: <Probe />,
@@ -4504,20 +4499,25 @@ describe('Router integration', () => {
       elements,
     );
 
-    // a trailing slash and a percent-encoded space both survive the round trip
-    // through parseRoute, which the address bar must not be rewritten with
-    window.history.pushState({}, '', '/start/?q=hello%20world');
-    await act(async () => {
-      window.dispatchEvent(new PopStateEvent('popstate'));
-      await flush();
-    });
+    try {
+      // a trailing slash and a percent-encoded space both survive the round trip
+      // through parseRoute, which the address bar must not be rewritten with
+      window.history.pushState({}, '', '/start/?q=hello%20world');
+      await act(async () => {
+        window.dispatchEvent(new PopStateEvent('popstate'));
+        await flush();
+      });
 
-    expect(window.location.pathname + window.location.search).toBe(
-      '/start/?q=hello%20world',
-    );
-    expect(capture.router?.query).toBe('q=hello+world');
-
-    view.unmount();
+      expect(window.location.pathname + window.location.search).toBe(
+        '/start/?q=hello%20world',
+      );
+      expect(capture.router?.query).toBe('q=hello+world');
+      // query-only popstate must not scroll (#1959)
+      expect(scrollToSpy).not.toHaveBeenCalled();
+    } finally {
+      scrollToSpy.mockRestore();
+      view.unmount();
+    }
   });
 
   test('a server rewrite drops the requested hash from the committed route', async () => {
@@ -4670,6 +4670,35 @@ describe('Router integration', () => {
         top: 0,
         behavior: 'instant',
       });
+    } finally {
+      view.unmount();
+    }
+  });
+
+  test('popstate hash-only transition commits hash without refetch', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+
+    const view = await renderRouter(
+      {
+        initialRoute: { path: '/start', query: '', hash: '' },
+      },
+      elements,
+    );
+    try {
+      window.history.pushState({}, '', '/start#missing');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      await flush();
+
+      expect(capture.router?.path).toBe('/start');
+      expect(capture.router?.hash).toBe('#missing');
+      // same-path hash-only back/forward stays on the client
+      expect(getRefetchMock()).not.toHaveBeenCalled();
     } finally {
       view.unmount();
     }
