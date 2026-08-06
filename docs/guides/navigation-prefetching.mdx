@@ -199,14 +199,17 @@ export const PendingIndicator = () => {
 ```
 
 ```tsx
-import type { ComponentProps } from 'react';
 import { Link as WakuLink } from 'waku';
+import type {
+  LinkProps,
+  Unstable_RoutePath as RoutePath,
+} from 'waku/router/client';
 import { PendingIndicator } from './pending-indicator';
 
-export const Link = ({
+export const Link = <Path extends RoutePath>({
   children,
   ...props
-}: ComponentProps<typeof WakuLink>) => (
+}: LinkProps<Path>) => (
   <WakuLink {...props}>
     {children}
     <PendingIndicator />
@@ -237,7 +240,9 @@ export const NavigationLogger = () => {
 };
 ```
 
-The effect runs for the initial route and whenever the current route fields change. It observes the current route, not the start or failure of a navigation. Programmatic `push`, `replace`, and `reload` calls return promises, so handle their completion or errors at the call site when needed.
+The effect runs for the initial route and whenever the current route fields change. It observes the current route, not the start or failure of a navigation.
+
+Programmatic `push`, `replace`, and `reload` calls return promises for handling direct errors at the call site. Do not treat resolution as a committed-route signal: a newer navigation can supersede the request, and redirects or other follows may continue after it settles. Observe the route fields above when you need the destination that was committed.
 
 ## Custom Transitions
 
