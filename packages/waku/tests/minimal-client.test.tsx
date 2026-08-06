@@ -141,15 +141,15 @@ describe('minimal/client prefetch', () => {
     expect(mocks.createFromFetch).toHaveBeenCalledTimes(2);
   });
 
-  test('Root dedupes its initial fetch only during mounting', () => {
+  test('Root dedupes its initial fetch only during mounting', async () => {
     mocks.createFromFetch.mockReturnValue(
       resolvedThenable({ _value: null, App: 'app' }),
     );
     stubFetch();
     const rscParams = { value: 1 };
-    const render = (container: Element) => {
+    const render = async (container: Element) => {
       const root = createRoot(container);
-      act(() => {
+      await act(async () => {
         root.render(
           <StrictMode>
             <Root initialRscPath="R/app.txt" initialRscParams={rscParams}>
@@ -164,12 +164,12 @@ describe('minimal/client prefetch', () => {
     };
 
     const firstContainer = document.createElement('div');
-    const firstRoot = render(firstContainer);
+    const firstRoot = await render(firstContainer);
     expect(mocks.createFromFetch).toHaveBeenCalledTimes(1);
     act(() => firstRoot.unmount());
 
     const secondContainer = document.createElement('div');
-    const secondRoot = render(secondContainer);
+    const secondRoot = await render(secondContainer);
     expect(mocks.createFromFetch).toHaveBeenCalledTimes(2);
     act(() => secondRoot.unmount());
   });
@@ -252,37 +252,16 @@ describe('minimal/client transport failures', () => {
     expect(getErrorInfo(error)).toEqual({ status: 307 });
   });
 
-  test('a redirect off the rsc endpoint leaves it, same origin or not', async () => {
-    const url = `${window.location.origin}/login`;
+  test('a redirected response is decoded like any other', async () => {
+    // where the response came from does not matter, only what it carries
+    const url = 'https://login.example/anywhere';
     track(
       unstable_registerFetchEnhancer(() => async () => redirectedResponse(url)),
     );
+    mocks.createFromFetch.mockResolvedValueOnce({ App: 'ok' });
 
-    const error = await unstable_fetchRsc('R/next.txt').catch(
-      (e: unknown) => e,
-    );
-
-    expect(getErrorInfo(error)).toEqual({
-      status: 307,
-      location: url,
-      unstable_redirected: true,
-    });
-  });
-
-  test('a redirect to another origin leaves the rsc endpoint', async () => {
-    const url = 'https://login.example/RSC/R/next.txt';
-    track(
-      unstable_registerFetchEnhancer(() => async () => redirectedResponse(url)),
-    );
-
-    const error = await unstable_fetchRsc('R/next.txt').catch(
-      (e: unknown) => e,
-    );
-
-    expect(getErrorInfo(error)).toEqual({
-      status: 307,
-      location: url,
-      unstable_redirected: true,
+    await expect(unstable_fetchRsc('R/next.txt')).resolves.toEqual({
+      App: 'ok',
     });
   });
 
@@ -361,6 +340,41 @@ describe('minimal/client server actions', () => {
     expect(listener).toHaveBeenCalledWith({ App: 'B' });
 
     act(() => root.unmount());
+  });
+
+  test('a document location fails the prefetch that decoded it', async () => {
+    // the router holds this promise, and its rejection is what makes the
+    // click leave rather than commit a payload that is not elements
+    mocks.createFromFetch.mockResolvedValueOnce({
+      _location: 'https://other.example/prefetched',
+    });
+    stubFetch();
+
+    const error = await unstable_prefetchRsc('R/next.txt').catch(
+      (e: unknown) => e,
+    );
+
+    expect(getErrorInfo(error)).toEqual({
+      location: 'https://other.example/prefetched',
+      unstable_leave: true,
+    });
+  });
+
+  test('a document location is reported as an error, not merged', async () => {
+    // minimal only tags it; deciding what a location means is the router's
+    mocks.createFromFetch.mockResolvedValueOnce({
+      _location: 'https://other.example/next',
+    });
+    stubFetch();
+
+    const error = await unstable_fetchRsc('R/next.txt').catch(
+      (e: unknown) => e,
+    );
+
+    expect(getErrorInfo(error)).toEqual({
+      location: 'https://other.example/next',
+      unstable_leave: true,
+    });
   });
 
   test('a server action returning elements throws when no Root is mounted', async () => {

@@ -72,18 +72,6 @@ const checkStatus = async (
     }
     throw e;
   }
-  const redirectedTo = response.redirected ? new URL(response.url) : undefined;
-  if (
-    redirectedTo &&
-    (redirectedTo.origin !== window.location.origin ||
-      !redirectedTo.pathname.startsWith(BASE_RSC_PATH))
-  ) {
-    throw createCustomError('redirected rsc request', {
-      status: 307,
-      location: response.url,
-      unstable_redirected: true,
-    });
-  }
   if (!response.ok) {
     throw createCustomError((await response.text()) || response.statusText, {
       status: response.status,
@@ -333,7 +321,16 @@ const decodeRsc = (
       debugChannel,
       temporaryReferences,
     }),
-  );
+  ).then((data) => {
+    if (typeof data._location !== 'string') {
+      return data;
+    }
+    // no fetch can follow this, so it fails here and the browser goes instead
+    throw createCustomError('document navigation', {
+      location: data._location,
+      unstable_leave: true,
+    });
+  });
 
 const applyInputTransformers = (
   rscPath: string,

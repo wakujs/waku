@@ -770,6 +770,7 @@ const FollowError = ({
   const { path: routePath, query: routeQuery, hash: routeHash } = route;
   const caughtAtRef = useRef<readonly [string, string, string]>(undefined);
   caughtAtRef.current ??= [routePath, routeQuery, routeHash];
+  const leftRef = useRef<string>(undefined);
   const dispatchedRef = useRef<
     | { route: RouteProps; url: string; from: RouterState | undefined }
     | undefined
@@ -824,7 +825,15 @@ const FollowError = ({
       return;
     }
     if (errorRoute.type === 'leave') {
-      window.location.replace(errorRoute.url.href);
+      // every leave replaces, so a navigation that already wrote its url does
+      // not stack an entry the reader never saw. An action leave drops the
+      // page it was on, which a form post without javascript would have kept
+      if (leftRef.current !== errorRoute.url.href) {
+        // dev replays the effect, and firefox cancels a navigation that is
+        // replaced while the first is still in flight
+        leftRef.current = errorRoute.url.href;
+        window.location.replace(errorRoute.url.href);
+      }
       return;
     }
     const { target, url } = errorRoute;
@@ -1268,6 +1277,8 @@ const InnerRouter = ({
   ) : (
     <Slot id={getRouteSlotId(currentRoute.path)} />
   );
+  // TODO the root layout renders outside this, so a followable error thrown by
+  // an action it calls is never followed
   const rootElement = (
     <Slot id="root">
       <CustomErrorHandler has404={has404}>{routeElement}</CustomErrorHandler>
