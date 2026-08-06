@@ -161,4 +161,14 @@ describe('resolveErrorRoute', () => {
       type: 'none',
     });
   });
+  test('a same origin url outside the base path leaves', () => {
+    vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/docs/');
+    const error = createCustomError('redirect', {
+      status: 307,
+      location: `${window.location.origin}/login`,
+    });
+    expect(resolveErrorRoute(error, requested('/docs/from'), false).type).toBe(
+      'leave',
+    );
+  });
 });

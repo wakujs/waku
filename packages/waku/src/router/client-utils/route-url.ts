@@ -10,6 +10,9 @@ export const pathnameToCurrentRoutePath = (pathname: string) =>
     removeBase(pathname, import.meta.env.WAKU_CONFIG_BASE_PATH),
   );
 
+export const isInsideBase = (url: URL) =>
+  url.pathname.startsWith(import.meta.env.WAKU_CONFIG_BASE_PATH);
+
 export const parseRoute = (url: URL): RouteProps => {
   const { pathname, searchParams, hash } = url;
   return {

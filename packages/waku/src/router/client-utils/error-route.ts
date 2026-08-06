@@ -3,7 +3,12 @@ import {
   type RouteProps,
   pathnameToRoutePath,
 } from '../isomorphic-utils/route-path.js';
-import { getRouteUrl, parseRedirectUrl, parseRoute } from './route-url.js';
+import {
+  getRouteUrl,
+  isInsideBase,
+  parseRedirectUrl,
+  parseRoute,
+} from './route-url.js';
 
 export type ErrorRoute =
   | { type: 'route'; target: RouteProps; url: URL }
@@ -39,6 +44,11 @@ export const resolveErrorRoute = (
         hash: parsed.hash,
       };
       return { type: 'route', target, url: getRouteUrl(target) };
+    }
+    // an absolute url carries the base path, and parsing one from outside it
+    // would throw, so the browser takes it instead
+    if (!isInsideBase(parsed)) {
+      return { type: 'leave', url: parsed };
     }
     return { type: 'route', target: parseRoute(parsed), url: parsed };
   }
