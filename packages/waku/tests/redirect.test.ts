@@ -28,6 +28,28 @@ describe('resolveRedirectLocation', () => {
     );
   });
 
+  test('a relative location is left for the browser to resolve', () => {
+    // an rsc request is not the page that threw it, so this end cannot say
+    // what 'login' is relative to
+    expect(resolve('login')).toBe('login');
+    expect(resolve('../up')).toBe('../up');
+    expect(resolve('log\r\nin')).toBeUndefined();
+  });
+
+  test('an authority names the whole path, so it takes no base', () => {
+    expect(resolve('//app.example/login', '/base/')).toBe('/login');
+    expect(resolve('http://app.example/login', '/base/')).toBe('/login');
+  });
+
+  test('credentials never reach a header', () => {
+    expect(resolve('https://user:pw@app.example/x')).toBe(
+      'https://app.example/x',
+    );
+    expect(resolve('https://user:pw@other.example/x')).toBe(
+      'https://other.example/x',
+    );
+  });
+
   test('another host keeps the scheme it named', () => {
     expect(resolve('https://other.example/x')).toBe('https://other.example/x');
   });
