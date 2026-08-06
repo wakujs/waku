@@ -340,6 +340,33 @@ describe('request dispatch', () => {
     );
   });
 
+  it('asks interceptors about the destination, not the route that moved', async () => {
+    const seen: string[] = [];
+    const moved = {
+      ...dynamicRoute('/moved'),
+      routeElement: {
+        isStatic: false,
+        renderer: () => {
+          unstable_redirect('/dest' as never);
+        },
+      },
+    };
+    const { handleRequest } = unstable_defineRouter({
+      getConfigs: async () => [moved, dynamicRoute('/dest')],
+      unstable_interceptors: [
+        async (next) => {
+          seen.push(new URL(unstable_getRequest().url).pathname);
+          return next();
+        },
+      ],
+    });
+
+    await handleRequest(rscInput(encodeRoutePath('/moved')), makeUtils());
+
+    // a guard on /dest would never run if it only saw the request for /moved
+    expect(seen[seen.length - 1]).toBe('/dest');
+  });
+
   it('hands off a route redirect the destination cannot answer', async () => {
     const moved = {
       ...dynamicRoute('/moved'),

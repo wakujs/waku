@@ -125,22 +125,27 @@ export const createRequestHandler = ({
         if (!redirectRoute) {
           return null;
         }
-        return routeEntries
-          .getEntriesForRoute(
+        // the browser would have asked for the destination itself, so an
+        // interceptor guarding it has to be given that request and not this one
+        const destination = new Request(new URL(location, input.req.url), {
+          headers: input.req.headers,
+        });
+        return runHandled(destination, () =>
+          routeEntries.getEntriesForRoute(
             encodeRoutePath(redirectRoute.path),
             new URLSearchParams({ query: redirectRoute.query }),
             clientEtags,
             requestElementCache,
-          )
-          .catch((e: unknown) => {
-            const info = getErrorInfo(e);
-            // the destination redirects again or is missing, so the client
-            // gets the original redirect and takes it from there
-            if (info?.location || info?.status === 404) {
-              return null;
-            }
-            throw e;
-          });
+          ),
+        ).catch((e: unknown) => {
+          const info = getErrorInfo(e);
+          // the destination redirects again or is missing, so the client
+          // gets the original redirect and takes it from there
+          if (info?.location || info?.status === 404) {
+            return null;
+          }
+          throw e;
+        });
       };
 
       const handleRscRequest = async ({
