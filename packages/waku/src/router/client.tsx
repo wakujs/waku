@@ -793,9 +793,12 @@ const FollowError = ({
       return;
     }
     if (errorRoute.type === 'leave') {
-      // the effect replays in dev, and replacing again while the first
-      // navigation is in flight cancels it in firefox
+      // every leave replaces, so a navigation that already wrote its url does
+      // not stack an entry the reader never saw. An action leave drops the
+      // page it was on, which a form post without javascript would have kept
       if (leftRef.current !== errorRoute.url.href) {
+        // dev replays the effect, and firefox cancels a navigation that is
+        // replaced while the first is still in flight
         leftRef.current = errorRoute.url.href;
         window.location.replace(errorRoute.url.href);
       }
