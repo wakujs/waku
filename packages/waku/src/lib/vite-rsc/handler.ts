@@ -91,10 +91,13 @@ const toProcessRequest =
           },
         );
       }
-      // a browser resends the body on 307 and 308, and a no-js form action is
-      // followed by the browser itself, so the destination is asked with GET
+      // a browser resends the body on 307 and 308, and a no-js form submission
+      // is followed by the browser itself, so the destination is asked with
+      // GET. Any other post keeps the status it asked for
       const status =
-        documentLocation && req.method === 'POST' ? 303 : info?.status || 500;
+        documentLocation && input.type === 'http' && input.tryAction
+          ? 303
+          : info?.status || 500;
       let message: string;
       if (info) {
         message = (e as { message?: string } | undefined)?.message || String(e);
