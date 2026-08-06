@@ -3228,6 +3228,39 @@ describe('Router integration', () => {
     [`${ETAG_ID_PREFIX}${unstable_getRouteSlotId('/next')}`]: IMMUTABLE_ETAG,
   });
 
+  test('instant Link bypasses a custom transition for a known static route', async () => {
+    const customTransition = vi.fn<(fn: () => void) => void>();
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: (
+          <Link
+            to="/start?updated=1"
+            unstable_instant
+            unstable_startTransition={customTransition}
+          >
+            update query
+          </Link>
+        ),
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: true,
+      },
+    );
+
+    try {
+      await act(async () => {
+        view.container.querySelector('a')?.click();
+        await flush();
+      });
+
+      expect(customTransition).not.toHaveBeenCalled();
+      expect(window.location.search).toBe('?updated=1');
+      expect(getRefetchMock()).not.toHaveBeenCalled();
+    } finally {
+      view.unmount();
+    }
+  });
+
   test('instant nav reuses a prefetched response as data source and base', async () => {
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
       [ROUTE_ID]: ['/next', ''],

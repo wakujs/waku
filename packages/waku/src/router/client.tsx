@@ -1147,7 +1147,7 @@ const InnerRouter = ({
       pendingNavigationRef.current = { controller };
       const commit = (
         update: () => void,
-        transition = options.startTransition,
+        transition: ChangeRouteOptions['startTransition'],
         state = routerState,
       ) => {
         const callback = () => {
@@ -1164,12 +1164,15 @@ const InnerRouter = ({
         }
       };
       if (staticPathSetRef.current!.has(nextRoute.path) || !shouldRefetch) {
-        commit(() => {
-          mergeElements({
-            [ROUTE_ID]: [nextRoute.path, nextRoute.query],
-            [ROUTER_STATE_ID]: routerState,
-          });
-        });
+        commit(
+          () => {
+            mergeElements({
+              [ROUTE_ID]: [nextRoute.path, nextRoute.query],
+              [ROUTER_STATE_ID]: routerState,
+            });
+          },
+          options.instant ? undefined : options.startTransition,
+        );
         return;
       }
       const rscPath = encodeRoutePath(nextRoute.path);
