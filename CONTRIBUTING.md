@@ -41,8 +41,10 @@ More examples can be found in the [waku-examples](https://github.com/wakujs/waku
 Run the checks relevant to your changes:
 
 ```shell
+pnpm run compile
 pnpm run test:unit
 pnpm run test:lint
+pnpm exec playwright install --with-deps
 pnpm run e2e
 ```
 
@@ -64,19 +66,21 @@ To try an app with an experimental version of Waku, change the `waku` dependency
 
 ## Coding rules and conventions
 
-Keep changes focused and code direct. Prefer fewer concepts, respect existing
-module boundaries, and preserve observable behavior. Public APIs need explicit
-types and useful JSDoc; implementation details should generally rely on
-inference and avoid narrating comments. Add focused tests for changed behavior.
+In short, keep changes focused and code direct. Prefer fewer concepts, respect
+existing module boundaries, and preserve observable behavior. Public APIs need
+explicit types and useful JSDoc; implementation details should generally rely
+on inference and avoid narrating comments. Add focused tests for changed
+behavior.
 
 Unstable APIs use `_UNSTABLE` for React components and hooks, `Unstable_` for
 TypeScript types, and `unstable_` for other values and functions.
 
 ### For AI agents
 
-Configure agent instruction files such as `AGENTS.md` to tell agents to read
-this file. Treat the rules below as hard constraints, not style tips. Prefer
-compression over completeness.
+Agent instruction files such as `AGENTS.md` should tell agents to read this
+file. Treat the rules below as hard constraints, not style tips. Here,
+compression means reducing the concepts a reader must hold in mind, not making
+code terse or public documentation incomplete.
 
 #### Scope and design
 
@@ -121,7 +125,8 @@ compression over completeness.
   states.
 - Prefer plain functions and objects. Use a class only when required by a
   framework or platform contract.
-- Prefer `while` or recursion to `for (;;)`.
+- Use `while (true)`, never `for (;;)`. Use recursion when the problem is
+  naturally recursive and the call depth is safe.
 - Await or return promises. Do not leave asynchronous work floating.
 - Normalize configuration and optional inputs once near the boundary.
 
@@ -144,9 +149,9 @@ compression over completeness.
 - Do not restate names or repeat the same fact in multiple places.
 - `TODO`, `FIXME`, and `HACK` are acceptable when they describe an unresolved
   issue. Remove them only when the issue is actually resolved.
-- Public APIs should have complete JSDoc suitable for editor documentation,
-  including behavior, parameters, return values, important caveats, and useful
-  examples.
+- Public APIs should have complete JSDoc suitable for editor documentation.
+  Cover the behavior, parameters, return values, caveats, and examples needed to
+  use the API correctly. Public API documentation does not need to be short.
 - Document non-obvious behavior and caveats without enumerating every edge case
   already captured by tests.
 - Public unstable APIs should have the same useful editor documentation as
