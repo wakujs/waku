@@ -216,6 +216,7 @@ type ChangeRouteOptions = {
   url?: URL | undefined;
   instant?: boolean | undefined;
   isFollow?: boolean | undefined;
+  startTransition?: ((fn: TransitionFunction) => void) | undefined;
 };
 
 type ChangeRoute = (
@@ -258,6 +259,9 @@ const dispatchChangeRoute = (
 ): Promise<void> => {
   if (options.instant) {
     // instant paints from the cache; a transition would hold that back
+    return changeRoute(route, options);
+  }
+  if (options.startTransition) {
     return changeRoute(route, options);
   }
   // a transition keeps the current tree up while the destination loads
@@ -607,10 +611,10 @@ export type LinkProps<Path extends RoutePath> = {
   unstable_prefetchOnEnter?: PrefetchOptions;
   unstable_prefetchOnView?: PrefetchOptions;
   /**
-   * Overrides how the navigation transition is started, e.g. to integrate the
-   * browser View Transitions API. When provided, React's `useTransition` is
-   * bypassed, so `useNavigationStatus_UNSTABLE()` stays `{ pending: false }` for
-   * this link.
+   * Overrides how the destination is committed, e.g. to integrate the browser
+   * View Transitions API. It runs after required route data is ready. When
+   * provided, React's `useTransition` is bypassed, so
+   * `useNavigationStatus_UNSTABLE()` stays `{ pending: false }` for this link.
    */
   unstable_startTransition?: ((fn: TransitionFunction) => void) | undefined;
   ref?: Ref<HTMLAnchorElement> | undefined;
@@ -636,7 +640,6 @@ export function Link<Path extends RoutePath>({
         throw new Error('Missing Router');
       };
   const [isPending, startTransition] = useTransition();
-  const startTransitionFn = unstable_startTransition || startTransition;
   const [ref, setRef] = useSharedRef<HTMLAnchorElement>(refProp);
 
   usePrefetchOnView(ref, router, resolvedTo, unstable_prefetchOnView);
@@ -654,8 +657,11 @@ export function Link<Path extends RoutePath>({
           history: 'push',
           url,
           instant: unstable_instant,
+          startTransition: unstable_instant
+            ? undefined
+            : unstable_startTransition,
         },
-        startTransitionFn,
+        startTransition,
       ).catch(() => {});
     } else if (url.hash && scroll !== false) {
       scrollToHash(url.hash, 'auto', false);
@@ -1109,15 +1115,34 @@ const InnerRouter = ({
       });
       const shouldRefetch =
         options.refetch ?? !isSameRscRoute(nextRoute, settledRoute);
+      const controller = new AbortController();
+      pendingNavigationRef.current = controller;
+      const commit = (
+        update: () => void,
+        transition = options.startTransition,
+      ) => {
+        const callback = () => {
+          if (controller.signal.aborted) {
+            return;
+          }
+          pendingNavigationRef.current = null;
+          update();
+        };
+        if (transition) {
+          transition(callback);
+        } else {
+          callback();
+        }
+      };
       if (staticPathSetRef.current!.has(nextRoute.path) || !shouldRefetch) {
-        mergeElements({
-          [ROUTE_ID]: [nextRoute.path, nextRoute.query],
-          [ROUTER_STATE_ID]: routerState,
+        commit(() => {
+          mergeElements({
+            [ROUTE_ID]: [nextRoute.path, nextRoute.query],
+            [ROUTER_STATE_ID]: routerState,
+          });
         });
         return;
       }
-      const controller = new AbortController();
-      pendingNavigationRef.current = controller;
       const rscPath = encodeRoutePath(nextRoute.path);
       const cached = prefetchManagerRef.current!.get(rscPath, nextRoute.query);
       const prefetchedElements =
@@ -1156,26 +1181,28 @@ const InnerRouter = ({
         if (controller.signal.aborted) {
           return;
         }
-        pendingNavigationRef.current = null;
         addToStaticPathSet(resolved);
-        if (!instant) {
-          startTransition(() => {
+        if (instant) {
+          pendingNavigationRef.current = null;
+        } else {
+          commit(() => {
             mergeElements({ ...resolved, [ROUTER_STATE_ID]: routerState });
-          });
+          }, options.startTransition || startTransition);
         }
       } catch (e) {
         if (controller.signal.aborted) {
           return;
         }
-        pendingNavigationRef.current = null;
-        // write the url now; an unrecoverable rethrow discards the commit
-        commitHistory(targetUrl, routerState.history);
-        mergeElements({
-          [ROUTER_STATE_ID]: {
-            ...routerState,
-            history: null, // the url above is already written
-            failure: { error: e, committedHash: settledRoute.hash },
-          },
+        commit(() => {
+          // write the url now; an unrecoverable rethrow discards the commit
+          commitHistory(targetUrl, routerState.history);
+          mergeElements({
+            [ROUTER_STATE_ID]: {
+              ...routerState,
+              history: null, // the url above is already written
+              failure: { error: e, committedHash: settledRoute.hash },
+            },
+          });
         });
         throw e;
       }

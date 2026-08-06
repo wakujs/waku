@@ -88,6 +88,7 @@ const testHoisted = vi.hoisted(() => ({
   inner: null as
     ((...args: unknown[]) => Promise<Record<string, unknown>>) | null,
   mergeTypes: [] as Array<'sync' | 'async' | 'swr'>,
+  onMerge: null as (() => void) | null,
 }));
 
 const createDeferred = <T,>() => {
@@ -302,6 +303,7 @@ vi.mock('../src/minimal/client.js', async () => {
         // cached per (prev, data) like minimal's merge helpers, so React
         // rebasing the updater re-runs it idempotently.
         applySync: (data) => {
+          testHoisted.onMerge?.();
           testHoisted.mergeTypes.push('sync');
           setElements((prev) => chainMerge(prev, data));
         },
@@ -515,6 +517,7 @@ beforeEach(() => {
   delete (globalThis as Record<string, unknown>).__WAKU_PREFETCHED__;
   testHoisted.elements = {};
   testHoisted.mergeTypes.length = 0;
+  testHoisted.onMerge = null;
   // Fresh shared request mock per test; the mocked fetch and useRefetch wrap
   // it, so their implementations must stay intact (do not mockReset them).
   testHoisted.inner = vi.fn(async () => ({}));
@@ -1410,50 +1413,6 @@ describe('useRouter + Link with context', () => {
 
     const observer = getIntersectionObserverMockInstance();
     expect(observer.observe).toHaveBeenCalledWith(link);
-    view.unmount();
-  });
-
-  test('Link uses unstable_startTransition override for navigation', async () => {
-    const changeRoute = vi.fn(async () => {});
-    const prefetchRoute = vi.fn();
-    const unstableStartTransition = vi.fn((fn: () => void) => fn());
-
-    const view = await renderApp(
-      <RouterContext
-        value={{
-          route: { path: '/start', query: '', hash: '' },
-          changeRoute,
-          prefetchRoute,
-          fetchingSlices: new Set<string>(),
-        }}
-      >
-        <Link to="/next" unstable_startTransition={unstableStartTransition}>
-          next
-        </Link>
-      </RouterContext>,
-    );
-
-    const link = view.container.querySelector('a');
-    if (!link) {
-      throw new Error('expected link');
-    }
-    link.dispatchEvent(
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-        button: 0,
-      }),
-    );
-    await flush();
-
-    expect(unstableStartTransition).toHaveBeenCalledTimes(1);
-    expect(changeRoute).toHaveBeenCalledWith(
-      { path: '/next', query: '', hash: '' },
-      expect.objectContaining({
-        history: 'push',
-      }),
-    );
-
     view.unmount();
   });
 
@@ -7414,6 +7373,19 @@ describe('Router integration', () => {
     );
     installRefetch(refetch);
     window.history.replaceState({}, '', '/one');
+    let inCustomTransition = false;
+    let mergeInsideTransition: boolean | undefined;
+    let customCommit: (() => void) | undefined;
+    const customTransition = vi.fn((fn: () => void) => {
+      customCommit = () => {
+        inCustomTransition = true;
+        try {
+          fn();
+        } finally {
+          inCustomTransition = false;
+        }
+      };
+    });
 
     const PendingProbe = () => {
       const { pending } = useNavigationStatus();
@@ -7430,12 +7402,7 @@ describe('Router integration', () => {
         [unstable_getRouteSlotId('/one')]: (
           <>
             <h1>Page 1</h1>
-            <Link
-              to="/two"
-              unstable_startTransition={(fn) => {
-                void fn();
-              }}
-            >
+            <Link to="/two" unstable_startTransition={customTransition}>
               Go to two
               <PendingProbe />
             </Link>
@@ -7448,6 +7415,9 @@ describe('Router integration', () => {
     );
 
     try {
+      testHoisted.onMerge = () => {
+        mergeInsideTransition = inCustomTransition;
+      };
       const has = (testid: string) =>
         view.container.querySelector(`[data-testid="${testid}"]`) !== null;
 
@@ -7476,6 +7446,7 @@ describe('Router integration', () => {
       expect(has('pending')).toBe(false);
       expect(has('not-pending')).toBe(true);
       expect(view.container.textContent).toContain('Page 1');
+      expect(customTransition).not.toHaveBeenCalled();
 
       await act(async () => {
         navigation.resolve({
@@ -7485,7 +7456,15 @@ describe('Router integration', () => {
         await flush();
       });
 
+      expect(customTransition).toHaveBeenCalledTimes(1);
+      expect(view.container.textContent).toContain('Page 1');
+      await act(async () => {
+        customCommit?.();
+        await flush();
+      });
+
       expect(view.container.textContent).toContain('Page 2');
+      expect(mergeInsideTransition).toBe(true);
     } finally {
       view.unmount();
     }

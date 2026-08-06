@@ -251,7 +251,7 @@ Catch the promises returned by programmatic `push`, `replace`, and `reload` call
 
 ## Custom Transitions
 
-For advanced navigation effects, pass `unstable_startTransition` to control how Waku starts the route transition. One common use case is integrating the browser View Transitions API:
+For advanced navigation effects, pass `unstable_startTransition` to control how Waku commits the destination. Waku waits for required route data before starting the custom transition. One common use case is integrating the browser View Transitions API:
 
 ```tsx
 'use client';
