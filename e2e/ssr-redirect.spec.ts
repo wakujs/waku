@@ -54,7 +54,7 @@ test.describe(`ssr-redirect`, () => {
     // the fixture page names this port, so the second origin is predictable
     const hits: string[] = [];
     const other = createServer((req, res) => {
-      hits.push(`${req.headers['sec-fetch-mode'] ?? 'none'} ${req.url}`);
+      hits.push(`${req.headers.origin ?? 'none'} ${req.url}`);
       res.writeHead(200, { 'content-type': 'text/html' });
       res.end('<html><body><h1>Other Origin</h1></body></html>');
     });
@@ -68,11 +68,43 @@ test.describe(`ssr-redirect`, () => {
       await page.locator("a[href='/external-page']").click();
       await page.waitForURL('http://127.0.0.1:39876/from-render');
       await expect(page.getByRole('heading')).toHaveText('Other Origin');
-      // a fetch would arrive as cors, and could not have been read anyway
-      expect(hits).toContain('navigate /from-render');
-      expect(hits.filter((hit) => !hit.startsWith('navigate '))).toEqual([]);
+      // only a fetch sends an origin, and it could not have read the answer
+      expect(hits).toContain('none /from-render');
+      expect(hits.filter((hit) => !hit.startsWith('none '))).toEqual([]);
     } finally {
       // the browser holds the connection open, and the next test wants the port
+      other.closeAllConnections();
+      await new Promise<void>((resolve) => other.close(() => resolve()));
+    }
+  });
+
+  test('a no js form that leaves does not replay the post', async ({
+    browser,
+  }) => {
+    const hits: string[] = [];
+    const other = createServer((req, res) => {
+      hits.push(`${req.method} ${req.url}`);
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end('<html><body><h1>Other Origin</h1></body></html>');
+    });
+    await new Promise<void>((resolve, reject) => {
+      other.on('error', reject);
+      other.listen(39878, '127.0.0.1', resolve);
+    });
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+    try {
+      await page.goto(`http://localhost:${port}/external-action`);
+      await page.getByTestId('to').fill('http://127.0.0.1:39878/landed');
+      await page.locator('text=Leave').click();
+      await page.waitForURL('http://127.0.0.1:39878/landed');
+      await expect(page.getByRole('heading')).toHaveText('Other Origin');
+      // a 307 would send the form body to the other site along with it
+      expect(hits.filter((hit) => hit.endsWith(' /landed'))).toEqual([
+        'GET /landed',
+      ]);
+    } finally {
+      await context.close();
       other.closeAllConnections();
       await new Promise<void>((resolve) => other.close(() => resolve()));
     }
@@ -83,7 +115,7 @@ test.describe(`ssr-redirect`, () => {
   }) => {
     const hits: string[] = [];
     const other = createServer((req, res) => {
-      hits.push(`${req.headers['sec-fetch-mode'] ?? 'none'} ${req.url}`);
+      hits.push(`${req.headers.origin ?? 'none'} ${req.url}`);
       res.writeHead(200, { 'content-type': 'text/html' });
       res.end('<html><body><h1>Other Origin</h1></body></html>');
     });
@@ -100,8 +132,8 @@ test.describe(`ssr-redirect`, () => {
         timeout: 10_000,
       });
       await expect(page.getByRole('heading')).toHaveText('Other Origin');
-      expect(hits).toContain('navigate /from-late');
-      expect(hits.filter((hit) => !hit.startsWith('navigate '))).toEqual([]);
+      expect(hits).toContain('none /from-late');
+      expect(hits.filter((hit) => !hit.startsWith('none '))).toEqual([]);
     } finally {
       // the browser holds the connection open, and the next test wants the port
       other.closeAllConnections();

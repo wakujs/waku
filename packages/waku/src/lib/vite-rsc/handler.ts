@@ -91,7 +91,13 @@ const toProcessRequest =
           },
         );
       }
-      const status = info?.status || 500;
+      // a browser resends the body on 307 and 308, and a no-js form action is
+      // followed by the browser itself, so another site must not receive it
+      const leavesTheSite =
+        !!documentLocation &&
+        new URL(documentLocation, req.url).host !== new URL(req.url).host;
+      const status =
+        leavesTheSite && req.method === 'POST' ? 303 : info?.status || 500;
       let message: string;
       if (info) {
         message = (e as { message?: string } | undefined)?.message || String(e);
