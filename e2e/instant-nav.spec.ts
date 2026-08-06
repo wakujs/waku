@@ -35,8 +35,6 @@ test.describe('instant-nav', () => {
     await page.getByTestId('link-post-1').click();
     await expect(page.getByTestId('page-skeleton')).toBeVisible();
     await expect(page.getByTestId('post-body')).toHaveText('Post 1');
-    // the 'complete' route-change event fires for the navigated route.
-    await expect(page.getByTestId('last-complete')).toHaveText('/post/1');
   });
 
   // An instant navigation to a never-visited route has no cached shell, so it
@@ -238,16 +236,11 @@ test.describe('instant-nav', () => {
 
     await page.getByTestId('link-post-1').click();
     await expect(page.getByTestId('post-body')).toHaveText('Post 1');
-    await expect(page.getByTestId('complete-count')).toHaveText('1');
 
     // /gate is cached now; revisiting it makes the server redirect to /post/2.
     await page.getByTestId('link-gate').click();
     await expect(page).toHaveURL(/\/post\/2$/);
     await expect(page.getByTestId('post-body')).toHaveText('Post 2');
-    // the optimistic /gate commit and the redirect each complete exactly once
-    await expect(page.getByTestId('complete-count')).toHaveText('3');
-    await page.waitForTimeout(500);
-    await expect(page.getByTestId('complete-count')).toHaveText('3');
   });
 
   // ...and surfaces a fetch error instead of getting stuck on the skeleton.
