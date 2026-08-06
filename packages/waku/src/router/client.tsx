@@ -998,6 +998,7 @@ export function Slice({
     }
   }, [fetchingSlices, refetch, id, needsToFetchSlice]);
   if (props.lazy && !(slotId in elements)) {
+    // FIXME the fallback doesn't show on refetch after the first one.
     return props.fallback;
   }
   return <Slot id={slotId}>{children}</Slot>;
