@@ -143,14 +143,7 @@ export const createRequestHandler = ({
             clientEtags,
             requestElementCache,
           ),
-        ).catch((e: unknown) => {
-          const info = getErrorInfo(e);
-          // one hop only; the client takes the original redirect from here
-          if (info?.location || info?.status === 404) {
-            return null;
-          }
-          throw e;
-        });
+        ).catch(() => null);
       };
 
       const handleRscRequest = async ({

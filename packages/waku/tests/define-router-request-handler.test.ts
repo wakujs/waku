@@ -404,6 +404,42 @@ describe('request dispatch', () => {
     expect(seen[seen.length - 1]).toBe('/docs/dest');
   });
 
+  it('hands off a route redirect whose destination fails to render', async () => {
+    const moved = {
+      ...dynamicRoute('/moved'),
+      routeElement: {
+        isStatic: false,
+        renderer: () => {
+          unstable_redirect('/dest' as never);
+        },
+      },
+    };
+    const broken = {
+      ...dynamicRoute('/dest'),
+      routeElement: {
+        isStatic: false,
+        renderer: () => {
+          throw new Error('the destination is broken');
+        },
+      },
+    };
+    const { handleRequest } = unstable_defineRouter({
+      getConfigs: async () => [moved, broken],
+    });
+    const utils = makeUtils();
+
+    const err = await handleRequest(
+      rscInput(encodeRoutePath('/moved')),
+      utils,
+    ).catch((e: unknown) => e);
+
+    // the browser goes to /dest and meets the error there, at its own url
+    expect(unstable_getErrorInfo(err)).toEqual({
+      status: 307,
+      location: '/dest',
+    });
+  });
+
   it('hands off a route redirect the destination cannot answer', async () => {
     const moved = {
       ...dynamicRoute('/moved'),
