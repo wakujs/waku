@@ -83,7 +83,12 @@ export function unstable_redirect<Path extends RoutePath = RoutePath>(
   }
   for (let i = 0; i < location.length; ++i) {
     const charCode = location.charCodeAt(i);
-    if (charCode < 0x20 || charCode === 0x7f || charCode === 0x5c) {
+    const isBackslash = charCode === 0x5c;
+    if (
+      charCode < 0x20 ||
+      charCode === 0x7f ||
+      (isBackslash && !leavesTheApp)
+    ) {
       throw new Error(`Invalid redirect location: ${JSON.stringify(location)}`);
     }
   }

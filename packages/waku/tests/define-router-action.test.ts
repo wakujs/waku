@@ -340,6 +340,17 @@ describe('unstable_redirect', () => {
     });
   });
 
+  it('accepts a backslash the url parser keeps in a query', () => {
+    try {
+      unstable_redirect(new URL('https://example.com/s?q=a\\b'), 303);
+    } catch (e) {
+      expect(getErrorInfo(e)).toEqual({
+        status: 303,
+        location: 'https://example.com/s?q=a\\b',
+      });
+    }
+  });
+
   it('accepts a URL, which is how a variable gets through', () => {
     try {
       unstable_redirect(new URL('https://example.com/next?a=1'), 303);
