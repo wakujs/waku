@@ -3,7 +3,7 @@ import { addBase } from './path.js';
 const hasControlCharacter = (value: string) =>
   [...value].some((char) => char < ' ' || char === '\u007f');
 
-const spellingOf = (location: string) => {
+const getLocationType = (location: string) => {
   if (/^[a-z][a-z\d+.-]*:/i.test(location)) {
     return 'absolute' as const;
   }
@@ -15,17 +15,14 @@ const spellingOf = (location: string) => {
     : ('relative' as const);
 };
 
-const forTheBrowserToResolve = (location: string) =>
-  hasControlCharacter(location) ? undefined : location;
-
 export const resolveRedirectLocation = (
   location: string,
   requestUrl: string,
   basePath: string,
 ): string | undefined => {
-  const spelling = spellingOf(location);
-  if (spelling === 'relative') {
-    return forTheBrowserToResolve(location);
+  const locationType = getLocationType(location);
+  if (locationType === 'relative') {
+    return hasControlCharacter(location) ? undefined : location;
   }
   const request = new URL(requestUrl);
   let target: URL;
@@ -41,12 +38,14 @@ export const resolveRedirectLocation = (
   target.password = '';
   const path = target.pathname + target.search + target.hash;
   if (target.host !== request.host) {
-    return spelling === 'absolute' ? target.href : '//' + target.host + path;
+    return locationType === 'absolute'
+      ? target.href
+      : '//' + target.host + path;
   }
   // requestUrl takes its scheme from the socket, so http from there is no
   // evidence that the browser is on http
-  if (spelling === 'absolute' && target.protocol === 'https:') {
+  if (locationType === 'absolute' && target.protocol === 'https:') {
     return target.href;
   }
-  return spelling === 'appPath' ? addBase(path, basePath) : path;
+  return locationType === 'appPath' ? addBase(path, basePath) : path;
 };

@@ -88,15 +88,8 @@ const toProcessRequest =
           { headers: { 'cache-control': 'private, no-store' } },
         );
       }
-      const refusedTheLocation = !!info?.location && !documentLocation;
-      const browserFollowsItself =
-        input.type === 'http' && !!input.tryAction && !!documentLocation;
-      // 307 and 308 resend the body to the destination
-      const status = refusedTheLocation
-        ? 500
-        : browserFollowsItself
-          ? 303
-          : info?.status || 500;
+      const isRefusedLocation = !!info?.location && !documentLocation;
+      const status = isRefusedLocation ? 500 : info?.status || 500;
       let message: string;
       if (info) {
         message = (e as { message?: string } | undefined)?.message || String(e);
