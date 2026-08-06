@@ -1,6 +1,9 @@
 import { createElement } from 'react';
 import type { FunctionComponent, ReactElement, ReactNode } from 'react';
-import { Children_UNSTABLE as Children, Slot_UNSTABLE as Slot } from '../minimal/client.js';
+import {
+  Children_UNSTABLE as Children,
+  Slot_UNSTABLE as Slot,
+} from '../minimal/client.js';
 import {
   unstable_createCustomError as createCustomError,
   unstable_getGrouplessPath as getGrouplessPath,
