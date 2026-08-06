@@ -24,9 +24,11 @@ describe('createBootstrapScriptContent', () => {
     expect(() => new Function(content)).not.toThrow();
   });
 
-  it('emits a bare import without a build id', () => {
+  it('emits a terminated bare import without a build id', () => {
+    // The trailing semicolon guards the concatenated extraScriptContent
+    // against continuing the import expression.
     expect(createBootstrapScriptContent('/assets/index-abc123.js')).toBe(
-      'import("/assets/index-abc123.js")',
+      'import("/assets/index-abc123.js");',
     );
   });
 
@@ -37,7 +39,7 @@ describe('createBootstrapScriptContent', () => {
       createBootstrapScriptContent(
         '/@id/__x00__virtual:vite-rsc/browser-entry',
       ),
-    ).toBe('import("/@id/__x00__virtual:vite-rsc/browser-entry")');
+    ).toBe('import("/@id/__x00__virtual:vite-rsc/browser-entry");');
   });
 });
 

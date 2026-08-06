@@ -50,7 +50,7 @@ function getVersionSkewRecoveryCode(): string {
 export function createBootstrapScriptContent(entryUrl: string): string {
   const entryImport = `import(${JSON.stringify(entryUrl)})`;
   if (!getRecoveryBuildId()) {
-    return entryImport;
+    return `${entryImport};`;
   }
   return `${entryImport}.catch((err) => {
     var e = new Event('vite:preloadError', { cancelable: true });
