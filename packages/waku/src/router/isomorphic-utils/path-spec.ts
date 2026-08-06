@@ -82,14 +82,6 @@ const matchSpecSegment = (
   return true;
 };
 
-// getPathMapping(
-//   [
-//     { type: 'literal', name: 'foo' },
-//     { type: 'group', name: 'a' },
-//   ],
-//   '/foo/bar',
-// );
-// // => { a: 'bar' }
 export const getPathMapping = (
   pathSpec: PathSpec,
   pathname: string,

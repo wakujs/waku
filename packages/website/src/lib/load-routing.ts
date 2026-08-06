@@ -1,6 +1,5 @@
 import { loadCreatePages, loadReadme } from './load-docs';
 
-// README "## Routing" from "### Overview" through the end of that section.
 export const loadRoutingFileBased = (): string => {
   const readme = loadReadme();
   const routingSectionMatch = readme.match(
@@ -18,7 +17,6 @@ export const loadRoutingFileBased = (): string => {
   return contentAfterOverview.trim();
 };
 
-// create-pages.mdx without frontmatter / main heading (config-based routing docs).
 export const loadRoutingConfigBased = (): string => {
   const createPages = loadCreatePages();
   const withoutFrontmatter = createPages.replace(/^---[\s\S]*?---\n*/, '');
@@ -29,7 +27,6 @@ export const loadRoutingConfigBased = (): string => {
   return withoutMainHeading.trim();
 };
 
-// README from "## Introduction" up to (not including) "## Routing".
 export const loadBeforeRouting = (): string => {
   const readme = loadReadme();
   const match = readme.match(/(^## Introduction[\s\S]*?)(?=^## Routing)/m);
@@ -40,7 +37,6 @@ export const loadBeforeRouting = (): string => {
   return content.trim();
 };
 
-// README from the section after "## Routing" to the end.
 export const loadAfterRouting = (): string => {
   const readme = loadReadme();
   const match = readme.match(
