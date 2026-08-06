@@ -56,6 +56,11 @@ export function unstable_notFound(): never {
  * A `URL` is the way to pass one that is not a literal. Where it points is not
  * validated, so check a target built from user input against your own
  * allowlist.
+ *
+ * An absolute url navigates the document even when it names this origin, so
+ * pass a path to stay within the app. A form submission without JavaScript is
+ * followed by the browser, which resends the body on 307 and 308, so those
+ * answer 303 instead.
  */
 export function unstable_redirect<Path extends RoutePath = RoutePath>(
   to:

@@ -91,10 +91,11 @@ const toProcessRequest =
       const isRefusedLocation = !!info?.location && !documentLocation;
       const isDocumentPost = input.type === 'http' && req.method === 'POST';
       // 307 and 308 resend the body to the destination
+      const redirectStatus = isDocumentPost ? 303 : info?.status || 307;
       const status = isRefusedLocation
         ? 500
-        : documentLocation && isDocumentPost
-          ? 303
+        : documentLocation
+          ? redirectStatus
           : info?.status || 500;
       let message: string;
       if (info) {
@@ -104,7 +105,12 @@ const toProcessRequest =
         message = 'Internal Server Error';
       }
       const body = stringToStream(message);
-      const headers = documentLocation ? { location: documentLocation } : {};
+      const headers = documentLocation
+        ? {
+            location: documentLocation,
+            'cache-control': 'private, no-store',
+          }
+        : {};
       return new Response(body, { status, headers });
     }
 
