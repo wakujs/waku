@@ -33,6 +33,14 @@ export const resolveErrorRoute = (
     if (!parsed) {
       return { type: 'unfollowable', location };
     }
+    // credentials would reach the address bar and the history entry
+    parsed.username = '';
+    parsed.password = '';
+    // a streamed redirect carries the location as the app wrote it, and one
+    // that named this host over plaintext would send the page back to it
+    if (parsed.protocol === 'http:' && parsed.host === window.location.host) {
+      parsed.protocol = window.location.protocol;
+    }
     // the server already resolved it, so it leaves whatever its origin
     if (info.unstable_leave || parsed.origin !== window.location.origin) {
       return { type: 'leave', url: parsed };

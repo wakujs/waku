@@ -99,6 +99,40 @@ describe('resolveErrorRoute', () => {
     expect(errorRoute.type).toBe('leave');
   });
 
+  test('credentials never reach the address bar', () => {
+    const error = createCustomError('redirect', {
+      status: 307,
+      location: 'https://user:pw@example.com/next',
+    });
+
+    const errorRoute = resolveErrorRoute(error, requested('/from'), false);
+
+    expect(errorRoute.type === 'leave' && errorRoute.url.href).toBe(
+      'https://example.com/next',
+    );
+  });
+
+  test('this host named over plaintext keeps the scheme the page is on', () => {
+    const secure = 'https://app.example';
+    (window as any).happyDOM.setURL(secure + '/from');
+    try {
+      const error = createCustomError('redirect', {
+        // what an app builds from a request url behind an https proxy
+        status: 307,
+        location: 'http://app.example/next',
+      });
+
+      const errorRoute = resolveErrorRoute(error, requested('/from'), false);
+
+      expect(errorRoute.type).toBe('route');
+      expect(errorRoute.type === 'route' && errorRoute.url.protocol).toBe(
+        'https:',
+      );
+    } finally {
+      (window as any).happyDOM.setURL('http://localhost:3000/');
+    }
+  });
+
   test('a location the browser should not navigate to cannot be followed', () => {
     const error = createCustomError('redirect', {
       status: 307,
