@@ -17,8 +17,8 @@ import { getErrorInfo } from '../src/lib/utils/custom-errors.js';
 import { ETAG_ID_PREFIX, IMMUTABLE_ETAG } from '../src/lib/utils/etags.js';
 import { fetchRscStore } from '../src/minimal/client-utils/fetch-store.js';
 import {
-  Root,
-  Slot,
+  Root_UNSTABLE as Root,
+  Slot_UNSTABLE as Slot,
   unstable_callServerRsc,
   unstable_fetchRsc,
   unstable_prefetchRsc,
@@ -26,7 +26,7 @@ import {
   unstable_registerFetchEnhancer,
   unstable_registerFetchRscInputTransformer,
   useElementsPromise_UNSTABLE,
-  useRefetch,
+  useRefetch_UNSTABLE as useRefetch,
 } from '../src/minimal/client.js';
 
 type CallServer = (funcId: string, args: unknown[]) => Promise<unknown>;
@@ -180,6 +180,31 @@ describe('minimal/client transport failures', () => {
     await expect(unstable_fetchRsc('R/redirect.txt')).resolves.toMatchObject({
       text: 'the payload',
     });
+  });
+
+  test('a redirect the fetch did not follow is reported as a status', async () => {
+    track(
+      unstable_registerFetchEnhancer(
+        () => async () =>
+          ({
+            redirected: false,
+            url: `${window.location.origin}/RSC/R/next.txt`,
+            ok: false,
+            status: 307,
+            statusText: 'Temporary Redirect',
+            headers: new Headers({ location: '/login' }),
+            text: async () => '',
+          }) as unknown as Response,
+      ),
+    );
+
+    const error = await unstable_fetchRsc('R/next.txt').catch(
+      (e: unknown) => e,
+    );
+
+    // waku never reads Location, so a fetch enhancer using redirect: 'manual'
+    // is not supported. Decided 2026-07-30; revisit with a real use case.
+    expect(getErrorInfo(error)).toEqual({ status: 307 });
   });
 
   test('a redirect off the rsc endpoint leaves it, same origin or not', async () => {

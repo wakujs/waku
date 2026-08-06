@@ -20,11 +20,12 @@ import { createCustomError } from '../src/lib/utils/custom-errors.js';
 import { ETAG_ID_PREFIX, IMMUTABLE_ETAG } from '../src/lib/utils/etags.js';
 import { fetchRscStore } from '../src/minimal/client-utils/fetch-store.js';
 import {
-  Children,
+  Children_UNSTABLE as Children,
   INTERNAL_ServerRoot,
-  Root,
+  Root_UNSTABLE as Root,
+  Slot_UNSTABLE as Slot,
   unstable_prefetchRsc as prefetchRsc,
-  useRefetch,
+  useRefetch_UNSTABLE as useRefetch,
 } from '../src/minimal/client.js';
 import { PREFETCH_LIMIT } from '../src/router/client-utils/prefetch-cache.js';
 import {
@@ -282,7 +283,7 @@ vi.mock('../src/minimal/client.js', async () => {
     const valueRef = React.useRef<Record<string, unknown>>(undefined);
     if (!valueRef.current) {
       valueRef.current = {
-        root: React.createElement(actual.Children),
+        root: React.createElement(actual.Children_UNSTABLE),
         ...testHoisted.elements,
       };
     }
@@ -389,7 +390,7 @@ vi.mock('../src/minimal/client.js', async () => {
 
   return {
     ...actual,
-    Root: vi.fn((props: Parameters<typeof actual.Root>[0]) =>
+    Root_UNSTABLE: vi.fn((props: Parameters<typeof actual.Root_UNSTABLE>[0]) =>
       React.createElement(StatefulRoot, props),
     ),
     // The router writes route metadata here when no fetch carries it; route it
@@ -399,7 +400,7 @@ vi.mock('../src/minimal/client.js', async () => {
       return store ? store.applySync : noopMergeElements;
     },
     unstable_prefetchRsc: vi.fn(),
-    useRefetch: vi.fn(useMockRefetch),
+    useRefetch_UNSTABLE: vi.fn(useMockRefetch),
   };
 });
 
@@ -417,6 +418,18 @@ const renderApp = async (element: ReactElement) => {
       });
       container.remove();
     },
+  };
+};
+
+const stubScrollY = (value: number) => {
+  const descriptor = Object.getOwnPropertyDescriptor(window, 'scrollY');
+  Object.defineProperty(window, 'scrollY', { configurable: true, value });
+  return () => {
+    if (descriptor) {
+      Object.defineProperty(window, 'scrollY', descriptor);
+    } else {
+      Reflect.deleteProperty(window, 'scrollY');
+    }
   };
 };
 
@@ -664,6 +677,43 @@ describe('router/client utilities', () => {
 });
 
 describe('useRouter + Link with context', () => {
+  const PrefetchOnViewToggleLink = () => {
+    const [prefetchOnView, setPrefetchOnView] = useState<
+      Record<string, never> | undefined
+    >(undefined);
+    return (
+      <>
+        <button
+          data-testid="enable-prefetch-on-view"
+          onClick={() => setPrefetchOnView({})}
+        />
+        <Link
+          to="/next"
+          {...(prefetchOnView
+            ? { unstable_prefetchOnView: prefetchOnView }
+            : {})}
+        >
+          next
+        </Link>
+      </>
+    );
+  };
+
+  const RemountablePrefetchOnViewLink = () => {
+    const [key, setKey] = useState(0);
+    return (
+      <>
+        <button
+          data-testid="remount-link"
+          onClick={() => setKey((current) => current + 1)}
+        />
+        <Link key={key} to="/next" unstable_prefetchOnView={{}}>
+          next
+        </Link>
+      </>
+    );
+  };
+
   test('throws without RouterContext', async () => {
     const UseRouterComponent = () => {
       useRouter();
@@ -1104,14 +1154,7 @@ describe('useRouter + Link with context', () => {
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
       return;
     });
-    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'scrollY',
-    );
-    Object.defineProperty(window, 'scrollY', {
-      configurable: true,
-      value: 100,
-    });
+    const restoreScrollY = stubScrollY(100);
     const hashTarget = document.createElement('div');
     hashTarget.id = 'target';
     const getBoundingClientRectSpy = vi
@@ -1160,11 +1203,7 @@ describe('useRouter + Link with context', () => {
       getBoundingClientRectSpy.mockRestore();
       hashTarget.remove();
       window.history.replaceState({}, '', '/');
-      if (scrollYDescriptor) {
-        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
-      } else {
-        Reflect.deleteProperty(window, 'scrollY');
-      }
+      restoreScrollY();
     }
   });
 
@@ -1352,6 +1391,94 @@ describe('useRouter + Link with context', () => {
     expect(observer.disconnect).toHaveBeenCalledTimes(1);
   });
 
+  test('Link attaches prefetchOnView observer when enabled after mount', async () => {
+    const prefetchRoute = vi.fn();
+
+    const view = await renderApp(
+      <RouterContext
+        value={{
+          route: { path: '/start', query: '', hash: '' },
+          changeRoute: vi.fn(async () => {}),
+          prefetchRoute,
+          routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set<string>(),
+        }}
+      >
+        <PrefetchOnViewToggleLink />
+      </RouterContext>,
+    );
+
+    const link = view.container.querySelector('a');
+    if (!link) {
+      throw new Error('expected link');
+    }
+
+    const ctor = globalThis.IntersectionObserver as unknown as {
+      mock?: { calls: unknown[][] };
+    };
+    expect(ctor.mock?.calls.length ?? 0).toBe(0);
+
+    const enableButton = view.container.querySelector(
+      '[data-testid="enable-prefetch-on-view"]',
+    );
+    if (!(enableButton instanceof HTMLButtonElement)) {
+      throw new Error('expected enable button');
+    }
+    enableButton.click();
+    await flush();
+
+    const observer = getIntersectionObserverMockInstance();
+    expect(observer.observe).toHaveBeenCalledWith(link);
+    view.unmount();
+  });
+
+  test('Link remount observes a new anchor for prefetchOnView', async () => {
+    const prefetchRoute = vi.fn();
+
+    const view = await renderApp(
+      <RouterContext
+        value={{
+          route: { path: '/start', query: '', hash: '' },
+          changeRoute: vi.fn(async () => {}),
+          prefetchRoute,
+          routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set<string>(),
+        }}
+      >
+        <RemountablePrefetchOnViewLink />
+      </RouterContext>,
+    );
+
+    const firstLink = view.container.querySelector('a');
+    if (!firstLink) {
+      throw new Error('expected link');
+    }
+
+    const firstObserver = getIntersectionObserverMockInstance();
+    expect(firstObserver.observe).toHaveBeenCalledWith(firstLink);
+
+    const remountButton = view.container.querySelector(
+      '[data-testid="remount-link"]',
+    );
+    if (!(remountButton instanceof HTMLButtonElement)) {
+      throw new Error('expected remount button');
+    }
+    remountButton.click();
+    await flush();
+
+    expect(firstObserver.disconnect).toHaveBeenCalledTimes(1);
+
+    const secondLink = view.container.querySelector('a');
+    if (!secondLink) {
+      throw new Error('expected remounted link');
+    }
+    expect(secondLink).not.toBe(firstLink);
+
+    const secondObserver = getIntersectionObserverMockInstance();
+    expect(secondObserver.observe).toHaveBeenCalledWith(secondLink);
+    view.unmount();
+  });
+
   test('Link uses unstable_startTransition override for navigation', async () => {
     const changeRoute = vi.fn(async () => {});
     const prefetchRoute = vi.fn();
@@ -1432,6 +1559,35 @@ describe('useRouter + Link with context', () => {
 
     expect(callbackRef).toHaveBeenCalledTimes(1);
     expect(callbackCleanup).toHaveBeenCalledTimes(1);
+  });
+
+  test('Link callback ref without cleanup receives null on unmount', async () => {
+    const callbackRef = vi.fn<(node: HTMLAnchorElement | null) => void>();
+
+    const view = await renderApp(
+      <RouterContext
+        value={{
+          route: { path: '/start', query: '', hash: '' },
+          changeRoute: vi.fn(async () => {}),
+          prefetchRoute: vi.fn(),
+          routeChangeEvents: { on: vi.fn(), off: vi.fn() },
+          fetchingSlices: new Set<string>(),
+        }}
+      >
+        <Link to="/next" ref={callbackRef}>
+          next
+        </Link>
+      </RouterContext>,
+    );
+
+    const link = view.container.querySelector('a');
+    expect(callbackRef).toHaveBeenCalledTimes(1);
+    expect(callbackRef).toHaveBeenCalledWith(link);
+
+    view.unmount();
+
+    expect(callbackRef).toHaveBeenCalledTimes(2);
+    expect(callbackRef).toHaveBeenLastCalledWith(null);
   });
 });
 
@@ -1771,7 +1927,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('a server function 404 keeps the attempted url', async () => {
+  test('a server function 404 keeps the requested url', async () => {
     window.history.replaceState({}, '', '/start?a=1');
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
@@ -2525,14 +2681,7 @@ describe('Router integration', () => {
         hash: window.location.hash,
       });
     });
-    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'scrollY',
-    );
-    Object.defineProperty(window, 'scrollY', {
-      configurable: true,
-      value: 100,
-    });
+    const restoreScrollY = stubScrollY(100);
     const getBoundingClientRectSpy = vi
       .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       .mockImplementation(function (this: HTMLElement) {
@@ -2583,14 +2732,444 @@ describe('Router integration', () => {
     } finally {
       view.unmount();
       getBoundingClientRectSpy.mockRestore();
-      if (scrollYDescriptor) {
-        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
-      } else {
-        Object.defineProperty(window, 'scrollY', {
-          configurable: true,
-          value: 0,
-        });
-      }
+      restoreScrollY();
+    }
+  });
+
+  test('a server rewrite drops a hash target the response did not keep', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const nextSlotId = unstable_getRouteSlotId('/next');
+    let land: (() => void) | undefined;
+    const refetch = vi.fn<RefetchInner>(
+      () =>
+        new Promise((resolve) => {
+          land = () =>
+            resolve({
+              [unstable_getRouteSlotId('/rewritten')]: (
+                <>
+                  <Probe />
+                  <div id="intro">intro</div>
+                </>
+              ),
+              [ROUTE_ID]: ['/rewritten', ''],
+              [IS_STATIC_ID]: false,
+            });
+        }),
+    );
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [nextSlotId]: <div>shell</div>,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+        [`${ETAG_ID_PREFIX}${nextSlotId}`]: IMMUTABLE_ETAG,
+      },
+    );
+    try {
+      document.body.append(view.container);
+      const pushed = capture.router!.push('/next#intro', {
+        unstable_instant: true,
+      });
+      await act(async () => {
+        await flush();
+      });
+      scrollToSpy.mockClear();
+
+      // the rewritten route has an #intro of its own, but it was never asked for
+      await act(async () => {
+        land!();
+        await pushed;
+        await flush();
+      });
+
+      expect(capture.router!.path).toBe('/rewritten');
+      expect(scrollToSpy).not.toHaveBeenCalled();
+    } finally {
+      view.container.remove();
+      view.unmount();
+      scrollToSpy.mockRestore();
+    }
+  });
+
+  test('a named element that is not an anchor is not a hash target', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [unstable_getRouteSlotId('/next')]: (
+          <>
+            <Probe />
+            <input name="section" readOnly />
+          </>
+        ),
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    try {
+      document.body.append(view.container);
+      await act(async () => {
+        await capture.router!.push('/next');
+        await flush();
+      });
+      scrollToSpy.mockClear();
+
+      // same path, so a real target would scroll and a miss does nothing
+      await act(async () => {
+        await capture.router!.push('/next#section');
+        await flush();
+      });
+
+      expect(scrollToSpy).not.toHaveBeenCalled();
+    } finally {
+      view.container.remove();
+      view.unmount();
+      scrollToSpy.mockRestore();
+    }
+  });
+
+  test('a later navigation drops a hash target that never arrived', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const grab = { refetch: null as null | ReturnType<typeof useRefetch> };
+    const Grabber = () => {
+      grab.refetch = useRefetch();
+      return null;
+    };
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [unstable_getRouteSlotId('/a')]: (
+          <>
+            <Probe />
+            <Grabber />
+          </>
+        ),
+        [unstable_getRouteSlotId('/b')]: (
+          <>
+            <Probe />
+            <Grabber />
+            <Slot id="late" />
+          </>
+        ),
+        late: <div>nothing yet</div>,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    try {
+      document.body.append(view.container);
+      // the target never shows up on /a
+      await act(async () => {
+        await capture.router!.push('/a#target');
+        await flush();
+      });
+      await act(async () => {
+        await capture.router!.push('/b', { scroll: false });
+        await flush();
+      });
+      scrollToSpy.mockClear();
+
+      refetch.mockResolvedValueOnce({ late: <div id="target">target</div> });
+      await act(async () => {
+        await grab.refetch!('late');
+        await flush();
+      });
+
+      expect(scrollToSpy).not.toHaveBeenCalled();
+    } finally {
+      view.container.remove();
+      view.unmount();
+      scrollToSpy.mockRestore();
+    }
+  });
+
+  test('a reader who scrolls is not pulled to a late hash target', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const nextSlotId = unstable_getRouteSlotId('/next');
+    let land: (() => void) | undefined;
+    const refetch = vi.fn<RefetchInner>(
+      () =>
+        new Promise((resolve) => {
+          land = () =>
+            resolve({
+              extra: <div id="target">target</div>,
+              [ROUTE_ID]: ['/next', ''],
+              [IS_STATIC_ID]: false,
+            });
+        }),
+    );
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [nextSlotId]: (
+          <>
+            <Probe />
+            <Slot id="extra" />
+          </>
+        ),
+        extra: <div>placeholder</div>,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+        [`${ETAG_ID_PREFIX}${nextSlotId}`]: IMMUTABLE_ETAG,
+      },
+    );
+    try {
+      document.body.append(view.container);
+      const pushed = capture.router!.push('/next#target', {
+        unstable_instant: true,
+      });
+      await act(async () => {
+        await flush();
+      });
+      scrollToSpy.mockClear();
+
+      // the reader takes over before the target arrives
+      window.dispatchEvent(new Event('wheel'));
+      await act(async () => {
+        land!();
+        await pushed;
+        await flush();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(document.getElementById('target')).not.toBeNull();
+      expect(scrollToSpy).not.toHaveBeenCalled();
+    } finally {
+      view.container.remove();
+      view.unmount();
+      scrollToSpy.mockRestore();
+    }
+  });
+
+  test('a malformed escape does not spoil the rest of a hash target', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const restoreScrollY = stubScrollY(100);
+    const getBoundingClientRectSpy = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        return { top: this.id === 'foo bar%ZZ' ? 40 : 0 } as DOMRect;
+      });
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [unstable_getRouteSlotId('/next')]: (
+          <>
+            <Probe />
+            <div id="foo bar%ZZ">target</div>
+          </>
+        ),
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    try {
+      document.body.append(view.container);
+      // %20 decodes, %ZZ is not an escape and stays as written
+      await act(async () => {
+        await capture.router!.push('/next#foo%20bar%ZZ');
+        await flush();
+      });
+
+      expect(scrollToSpy).toHaveBeenLastCalledWith({
+        left: 0,
+        top: 140,
+        behavior: 'instant',
+      });
+    } finally {
+      view.container.remove();
+      view.unmount();
+      getBoundingClientRectSpy.mockRestore();
+      scrollToSpy.mockRestore();
+      restoreScrollY();
+    }
+  });
+
+  test('a percent encoded #top still means the top of the document', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const restoreScrollY = stubScrollY(100);
+    const getBoundingClientRectSpy = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        return {
+          top: this === document.documentElement ? -100 : 0,
+        } as DOMRect;
+      });
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [unstable_getRouteSlotId('/next')]: <Probe />,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    try {
+      document.body.append(view.container);
+      await act(async () => {
+        await capture.router!.push('/next');
+        await flush();
+      });
+      scrollToSpy.mockClear();
+
+      await act(async () => {
+        await capture.router!.push('/next#%74op');
+        await flush();
+      });
+
+      expect(scrollToSpy).toHaveBeenCalledTimes(1);
+      expect(scrollToSpy).toHaveBeenLastCalledWith({
+        left: 0,
+        top: 0,
+        behavior: 'auto',
+      });
+    } finally {
+      view.container.remove();
+      view.unmount();
+      getBoundingClientRectSpy.mockRestore();
+      scrollToSpy.mockRestore();
+      restoreScrollY();
+    }
+  });
+
+  test('a hash target can be an old style name anchor', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const restoreScrollY = stubScrollY(100);
+    const getBoundingClientRectSpy = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        return {
+          top: this.getAttribute('name') === 'target' ? 40 : 0,
+        } as DOMRect;
+      });
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [unstable_getRouteSlotId('/next')]: <Probe />,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    const anchor = document.createElement('a');
+    anchor.setAttribute('name', 'target');
+    try {
+      document.body.append(view.container);
+      document.body.append(anchor);
+      await act(async () => {
+        await capture.router!.push('/next#target');
+        await flush();
+      });
+
+      expect(scrollToSpy).toHaveBeenLastCalledWith({
+        left: 0,
+        top: 140,
+        behavior: 'instant',
+      });
+    } finally {
+      anchor.remove();
+      view.container.remove();
+      view.unmount();
+      getBoundingClientRectSpy.mockRestore();
+      scrollToSpy.mockRestore();
+      restoreScrollY();
+    }
+  });
+
+  test('a #top hash with no such element means the top of the document', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const restoreScrollY = stubScrollY(100);
+    const getBoundingClientRectSpy = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        // the document is scrolled down, so the root starts above the viewport
+        return {
+          top: this === document.documentElement ? -100 : 0,
+        } as DOMRect;
+      });
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [unstable_getRouteSlotId('/next')]: <Probe />,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    try {
+      document.body.append(view.container);
+      await act(async () => {
+        await capture.router!.push('/next');
+        await flush();
+      });
+      scrollToSpy.mockClear();
+
+      // same path, so a missing target would not fall back to the top
+      await act(async () => {
+        await capture.router!.push('/next#top');
+        await flush();
+      });
+
+      expect(scrollToSpy).toHaveBeenCalledTimes(1);
+      expect(scrollToSpy).toHaveBeenLastCalledWith({
+        left: 0,
+        top: 0,
+        behavior: 'auto',
+      });
+    } finally {
+      view.container.remove();
+      view.unmount();
+      getBoundingClientRectSpy.mockRestore();
+      scrollToSpy.mockRestore();
+      restoreScrollY();
     }
   });
 
@@ -2615,14 +3194,7 @@ describe('Router integration', () => {
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
       return;
     });
-    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'scrollY',
-    );
-    Object.defineProperty(window, 'scrollY', {
-      configurable: true,
-      value: 100,
-    });
+    const restoreScrollY = stubScrollY(100);
     const getBoundingClientRectSpy = vi
       .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       .mockImplementation(function (this: HTMLElement) {
@@ -2667,14 +3239,7 @@ describe('Router integration', () => {
     } finally {
       view.unmount();
       getBoundingClientRectSpy.mockRestore();
-      if (scrollYDescriptor) {
-        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
-      } else {
-        Object.defineProperty(window, 'scrollY', {
-          configurable: true,
-          value: 0,
-        });
-      }
+      restoreScrollY();
     }
   });
 
@@ -2728,14 +3293,7 @@ describe('Router integration', () => {
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
       return;
     });
-    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'scrollY',
-    );
-    Object.defineProperty(window, 'scrollY', {
-      configurable: true,
-      value: 100,
-    });
+    const restoreScrollY = stubScrollY(100);
     const hashTarget = document.createElement('div');
     hashTarget.id = 'target';
     const getBoundingClientRectSpy = vi
@@ -2771,14 +3329,7 @@ describe('Router integration', () => {
       view.unmount();
       getBoundingClientRectSpy.mockRestore();
       hashTarget.remove();
-      if (scrollYDescriptor) {
-        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
-      } else {
-        Object.defineProperty(window, 'scrollY', {
-          configurable: true,
-          value: 0,
-        });
-      }
+      restoreScrollY();
     }
   });
 
@@ -2794,14 +3345,7 @@ describe('Router integration', () => {
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
       return;
     });
-    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'scrollY',
-    );
-    Object.defineProperty(window, 'scrollY', {
-      configurable: true,
-      value: 100,
-    });
+    const restoreScrollY = stubScrollY(100);
     // `%E6%97%A5...` is the percent-encoded form of the id "日本語見出し", which
     // is how `URL.hash` (and therefore `route.hash`) represents a non-ASCII
     // fragment. Use the encoded form explicitly so the test reproduces the bug
@@ -2841,14 +3385,7 @@ describe('Router integration', () => {
       view.unmount();
       getBoundingClientRectSpy.mockRestore();
       hashTarget.remove();
-      if (scrollYDescriptor) {
-        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
-      } else {
-        Object.defineProperty(window, 'scrollY', {
-          configurable: true,
-          value: 0,
-        });
-      }
+      restoreScrollY();
     }
   });
 
@@ -2864,14 +3401,7 @@ describe('Router integration', () => {
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
       return;
     });
-    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'scrollY',
-    );
-    Object.defineProperty(window, 'scrollY', {
-      configurable: true,
-      value: 100,
-    });
+    const restoreScrollY = stubScrollY(100);
     // Per the HTML fragment navigation algorithm, the raw fragment must be
     // tried first and the percent-decoded form only as a fallback. With both
     // ids present, `#a%20b` must scroll to `id="a%20b"`, not `id="a b"`.
@@ -2913,14 +3443,7 @@ describe('Router integration', () => {
       decodedRectSpy.mockRestore();
       rawTarget.remove();
       decodedTarget.remove();
-      if (scrollYDescriptor) {
-        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
-      } else {
-        Object.defineProperty(window, 'scrollY', {
-          configurable: true,
-          value: 0,
-        });
-      }
+      restoreScrollY();
     }
   });
 
@@ -3341,7 +3864,7 @@ describe('Router integration', () => {
     const replaceLocationSpy = vi
       .spyOn(window.location, 'replace')
       .mockImplementation(() => {});
-    // an instant commit writes the attempted url before the response lands
+    // an instant commit writes the requested url before the response lands
     window.history.replaceState({}, '', '/next?x=1');
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(() =>
       Promise.reject(
@@ -3661,6 +4184,52 @@ describe('Router integration', () => {
     expect(prefetchRsc).toHaveBeenCalledTimes(1);
 
     view.unmount();
+  });
+
+  test('the prefetch cache survives an unrelated re-render', async () => {
+    const shell = {
+      [unstable_getRouteSlotId('/next')]: <div>next-shell</div>,
+      [ROUTE_ID]: ['/next', ''],
+      [IS_STATIC_ID]: false,
+    };
+    vi.mocked(prefetchRsc).mockReturnValue(resolvedThenable(shell));
+
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const bump = { fn: null as null | (() => void) };
+    const Bump = () => {
+      const [, setN] = useState(0);
+      bump.fn = () => setN((n) => n + 1);
+      return (
+        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+          <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
+        </Unstable_SearchCodecsProvider>
+      );
+    };
+    testHoisted.elements = {
+      ...instantNavElements(),
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+    };
+    const view = await renderApp(<Bump />);
+    try {
+      await act(async () => {
+        capture.router!.prefetch('/next', { mode: 'once' });
+        await flush();
+      });
+      await act(async () => {
+        bump.fn!();
+        await flush();
+      });
+      await act(async () => {
+        capture.router!.prefetch('/next?q=a', { mode: 'once' });
+        await flush();
+      });
+
+      // a per render manager would forget the first prefetch and fetch again
+      expect(prefetchRsc).toHaveBeenCalledTimes(1);
+    } finally {
+      view.unmount();
+    }
   });
 
   test('a repeat prefetch claims the stored response as its base', async () => {
@@ -4048,6 +4617,51 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a server rewrite drops the requested hash from the committed route', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
+      [ROUTE_ID]: ['/z', ''],
+      [IS_STATIC_ID]: false,
+    }));
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/z')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      elements,
+    );
+    try {
+      // asked for a hash, but the server answered with a different route
+      await act(async () => {
+        await capture.router!.push('/y#frag');
+        await flush();
+      });
+      expect(capture.router?.path).toBe('/z');
+      expect(window.location.hash).toBe('');
+      scrollToSpy.mockClear();
+
+      window.history.pushState({}, '', '/z');
+      await act(async () => {
+        window.dispatchEvent(new PopStateEvent('popstate'));
+        await flush();
+      });
+
+      // nothing moved, so the requested '#frag' must not still count as committed
+      expect(scrollToSpy).not.toHaveBeenCalled();
+    } finally {
+      scrollToSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('popstate that lands on another route moves the url with it', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
@@ -4125,14 +4739,7 @@ describe('Router integration', () => {
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
       return;
     });
-    const scrollYDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'scrollY',
-    );
-    Object.defineProperty(window, 'scrollY', {
-      configurable: true,
-      value: 100,
-    });
+    const restoreScrollY = stubScrollY(100);
     const hashTarget = document.createElement('div');
     hashTarget.id = 'target';
     const getBoundingClientRectSpy = vi
@@ -4160,14 +4767,7 @@ describe('Router integration', () => {
       view.unmount();
       getBoundingClientRectSpy.mockRestore();
       hashTarget.remove();
-      if (scrollYDescriptor) {
-        Object.defineProperty(window, 'scrollY', scrollYDescriptor);
-      } else {
-        Object.defineProperty(window, 'scrollY', {
-          configurable: true,
-          value: 0,
-        });
-      }
+      restoreScrollY();
     }
   });
 
@@ -4351,6 +4951,107 @@ describe('Router integration', () => {
     }
   });
 
+  test('an instant nav scrolls once, not again when the response lands', async () => {
+    let land: (() => void) | undefined;
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(
+      () =>
+        new Promise((resolve) => {
+          land = () =>
+            resolve({
+              [ROUTE_ID]: ['/next', ''],
+              [IS_STATIC_ID]: false,
+            });
+        }),
+    );
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        ...instantNavElements(),
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+      },
+    );
+    try {
+      const pushed = capture.router!.push('/next', {
+        unstable_instant: true,
+      });
+      await act(async () => {
+        await flush();
+      });
+      await act(async () => {
+        land!();
+        await pushed;
+        await flush();
+      });
+
+      // the shell commit scrolls; the response landing must not scroll again
+      expect(scrollToSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      scrollToSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
+  test('an instant nav whose response rewrites the route pushes once', async () => {
+    let land: (() => void) | undefined;
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(
+      () =>
+        new Promise((resolve) => {
+          land = () =>
+            resolve({
+              [ROUTE_ID]: ['/streamed', ''],
+              [IS_STATIC_ID]: false,
+            });
+        }),
+    );
+    installRefetch(refetch);
+
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        ...instantNavElements(),
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [unstable_getRouteSlotId('/streamed')]: <Probe />,
+      },
+    );
+    const historyPushSpy = vi.spyOn(window.history, 'pushState');
+    const historyReplaceSpy = vi.spyOn(window.history, 'replaceState');
+    try {
+      // commits the requested url first, then the response moves the route
+      const pushed = capture.router!.push('/next', {
+        unstable_instant: true,
+      });
+      await act(async () => {
+        await flush();
+      });
+      await act(async () => {
+        land!();
+        await pushed;
+        await flush();
+      });
+
+      expect(capture.router?.path).toBe('/streamed');
+      expect(window.location.pathname).toBe('/streamed');
+      // the second reconcile must replace the entry it already pushed
+      expect(historyPushSpy).toHaveBeenCalledTimes(1);
+      expect(String(historyReplaceSpy.mock.lastCall?.[2])).toContain(
+        '/streamed',
+      );
+    } finally {
+      historyReplaceSpy.mockRestore();
+      historyPushSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('changeRoute applies route rewrite from refetch result', async () => {
     const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
       [ROUTE_ID]: ['/streamed', 'x=1'],
@@ -4489,7 +5190,7 @@ describe('Router integration', () => {
     expect(replaceLocationSpy).toHaveBeenCalledTimes(1);
     expect(replaceLocationSpy.mock.calls[0]![0]).toContain('/next');
     expect(capture.router!.path).toBe('/start');
-    // the attempted entry is written first, so leaving it keeps /start behind
+    // the requested entry is written first, so leaving it keeps /start behind
     expect(window.location.pathname).toBe('/moved');
     replaceLocationSpy.mockRestore();
     view.unmount();
@@ -4550,7 +5251,7 @@ describe('Router integration', () => {
     }
   });
 
-  test('a rejected redirect resolves a relative location against the attempted url', async () => {
+  test('a rejected redirect resolves a relative location against the requested url', async () => {
     const assignSpy = vi
       .spyOn(window.location, 'assign')
       .mockImplementation(() => {});
@@ -4656,7 +5357,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('an instant 404 keeps the attempted url in the address bar', async () => {
+  test('an instant 404 keeps the requested url in the address bar', async () => {
     const refetch = vi.fn<ReturnType<typeof useRefetch>>();
     refetch
       .mockImplementationOnce(() =>
@@ -4700,7 +5401,7 @@ describe('Router integration', () => {
       await flush();
     });
 
-    // the 404 route renders while the address bar keeps the attempted url
+    // the 404 route renders while the address bar keeps the requested url
     expect(capture.router.path).toBe('/404');
     expect(window.location.pathname).toBe('/account/profile');
     expect(window.history.length).toBe(lengthBefore + 1);
@@ -4708,7 +5409,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('a redirect that keeps the attempted pathname still scrolls', async () => {
+  test('a redirect that keeps the requested pathname still scrolls', async () => {
     const scrollToSpy = vi
       .spyOn(window, 'scrollTo')
       .mockImplementation(() => {});
@@ -4758,9 +5459,9 @@ describe('Router integration', () => {
     });
 
     // the visible navigation is from /start, so the page scrolls even
-    // though the redirect keeps the attempted pathname
+    // though the redirect keeps the requested pathname
     expect(capture.router.query).toBe('login=1');
-    // twice: the attempted commit, then the follow
+    // twice: the requested commit, then the follow
     expect(scrollToSpy).toHaveBeenCalledTimes(2);
 
     scrollToSpy.mockRestore();
@@ -4815,7 +5516,7 @@ describe('Router integration', () => {
       await flush();
     });
 
-    // the attempted entry is written once, then replaced by the redirect
+    // the requested entry is written once, then replaced by the redirect
     expect(capture.router.path).toBe('/login');
     expect(window.location.pathname).toBe('/login');
     expect(window.history.length).toBe(lengthBefore + 1);
@@ -4823,7 +5524,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('a slow redirect after an instant error writes one attempted entry', async () => {
+  test('a slow redirect after an instant error writes one requested entry', async () => {
     const RedirectErrorObject = createCustomError('moved', {
       status: 307,
       location: 'login',
@@ -4874,7 +5575,7 @@ describe('Router integration', () => {
       pushPromise = capture.router!.push('/account/profile', {
         unstable_instant: true,
       });
-      // flush the attempted route's commit while the redirect is pending
+      // flush the requested route's commit while the redirect is pending
       await flush();
       await flush();
     });
@@ -4998,7 +5699,7 @@ describe('Router integration', () => {
     });
 
     expect(capture.router.query).toBe('page=3');
-    // twice: the attempted commit, then the follow
+    // twice: the requested commit, then the follow
     expect(scrollToSpy).toHaveBeenCalledTimes(2);
 
     scrollToSpy.mockRestore();
@@ -5326,14 +6027,14 @@ describe('Router integration', () => {
     // the visible navigation is /start -> /account/profile?login=1, so
     // the redirect scrolls even though it only changed the query
     expect(capture.router.query).toBe('login=1');
-    // twice: the attempted commit, then the follow
+    // twice: the requested commit, then the follow
     expect(scrollToSpy).toHaveBeenCalledTimes(2);
 
     scrollToSpy.mockRestore();
     view.unmount();
   });
 
-  test('a redirect back to the current route scrolls like the attempted navigation', async () => {
+  test('a redirect back to the current route scrolls like the requested navigation', async () => {
     const scrollToSpy = vi
       .spyOn(window, 'scrollTo')
       .mockImplementation(() => {});
@@ -5483,7 +6184,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('a 404 follow fetches the 404 route with the attempted query', async () => {
+  test('a 404 follow fetches the 404 route with the requested query', async () => {
     const { view, refetch, capture, router } = await renderFollowRouter({
       responses: [
         { reject: { status: 404 } },
@@ -5897,6 +6598,300 @@ describe('Router integration', () => {
     }
   });
 
+  test('a retry from a still mounted nav after a failure fetches again', async () => {
+    const capture = { router: null as RouterApi | null };
+    const navCapture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const NavProbe = makeProbe(navCapture);
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
+    refetch.mockRejectedValueOnce(new Error('boom'));
+    installRefetch(refetch);
+
+    testHoisted.elements = {
+      root: (
+        <>
+          <NavProbe />
+          <ErrorBoundary>
+            <Children />
+          </ErrorBoundary>
+        </>
+      ),
+      [unstable_getRouteSlotId('/list')]: <Probe />,
+      [ROUTE_ID]: ['/list', ''],
+      [IS_STATIC_ID]: false,
+    };
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const view = await renderApp(
+      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+        <Router initialRoute={{ path: '/list', query: '', hash: '' }} />
+      </Unstable_SearchCodecsProvider>,
+    );
+    try {
+      await act(async () => {
+        await navCapture.router!.push('/detail?id=5').catch(() => {});
+        await flush();
+      });
+      refetch.mockClear();
+
+      await act(async () => {
+        await navCapture.router!.push('/list?id=5').catch(() => {});
+        await flush();
+      });
+
+      expect(refetch).toHaveBeenCalledTimes(1);
+    } finally {
+      consoleErrorSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
+  test('an instant retry already at its url replaces the entry a failure wrote', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    let land: (() => void) | undefined;
+    const refetch = vi.fn<RefetchInner>();
+    refetch.mockRejectedValueOnce(createCustomError('nf', { status: 404 }));
+    refetch.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          land = () =>
+            resolve({
+              [ROUTE_ID]: ['/other', ''],
+              [IS_STATIC_ID]: false,
+            });
+        }),
+    );
+    installRefetch(refetch);
+    const pushSpy = vi.spyOn(window.history, 'pushState');
+    const replaceSpy = vi.spyOn(window.history, 'replaceState');
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const nextSlotId = unstable_getRouteSlotId('/next');
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [nextSlotId]: <div>next</div>,
+        [unstable_getRouteSlotId('/other')]: <div>other</div>,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+        [`${ETAG_ID_PREFIX}${nextSlotId}`]: IMMUTABLE_ETAG,
+        [HAS404_ID]: false,
+      },
+    );
+    try {
+      // the failure writes /next itself, and with no 404 route to follow to
+      // the router stays mounted, so the retry starts already at its url
+      await act(async () => {
+        await expect(capture.router!.push('/next')).rejects.toBeTruthy();
+        await flush();
+      });
+      expect(window.location.pathname).toBe('/next');
+      pushSpy.mockClear();
+      replaceSpy.mockClear();
+
+      const retried = capture.router!.push('/next', {
+        unstable_instant: true,
+        scroll: false,
+      });
+      await act(async () => {
+        await flush();
+      });
+      await act(async () => {
+        land!();
+        await retried;
+        await flush();
+      });
+      expect(window.location.pathname).toBe('/other');
+      expect(pushSpy).not.toHaveBeenCalled();
+      expect(replaceSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      consoleErrorSpy.mockRestore();
+      pushSpy.mockRestore();
+      replaceSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
+  test('an instant nav does not chase a hash target that arrives later', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const nextSlotId = unstable_getRouteSlotId('/next');
+    let land: (() => void) | undefined;
+    const refetch = vi.fn<RefetchInner>(
+      () =>
+        new Promise((resolve) => {
+          land = () =>
+            resolve({
+              extra: <div id="target">target</div>,
+              [ROUTE_ID]: ['/next', ''],
+              [IS_STATIC_ID]: false,
+            });
+        }),
+    );
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const restoreScrollY = stubScrollY(100);
+    const getBoundingClientRectSpy = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        return { top: this.id === 'target' ? 40 : 0 } as DOMRect;
+      });
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        // the cached shell paints without #target; it streams in after
+        [nextSlotId]: (
+          <>
+            <Probe />
+            <Slot id="extra" />
+          </>
+        ),
+        extra: <div>placeholder</div>,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+        [`${ETAG_ID_PREFIX}${nextSlotId}`]: IMMUTABLE_ETAG,
+      },
+    );
+    try {
+      document.body.append(view.container);
+      const pushed = capture.router!.push('/next#target', {
+        unstable_instant: true,
+      });
+      await act(async () => {
+        await flush();
+      });
+      // the path changed and the target was missing, so it went to the top
+      expect(scrollToSpy).toHaveBeenCalledTimes(1);
+      expect(scrollToSpy).toHaveBeenLastCalledWith({
+        left: 0,
+        top: 0,
+        behavior: 'instant',
+      });
+
+      await act(async () => {
+        land!();
+        await pushed;
+        await flush();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(document.getElementById('target')).not.toBeNull();
+      expect(scrollToSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      view.container.remove();
+      view.unmount();
+      getBoundingClientRectSpy.mockRestore();
+      scrollToSpy.mockRestore();
+      restoreScrollY();
+    }
+  });
+
+  test('an unrelated element merge does not scroll or push again', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const grab = { refetch: null as null | ReturnType<typeof useRefetch> };
+    const Grabber = () => {
+      grab.refetch = useRefetch();
+      return null;
+    };
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const pushSpy = vi.spyOn(window.history, 'pushState');
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: (
+          <>
+            <Probe />
+            <Grabber />
+          </>
+        ),
+        [unstable_getRouteSlotId('/b')]: (
+          <>
+            <Probe />
+            <Grabber />
+          </>
+        ),
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    try {
+      await act(async () => {
+        await capture.router!.push('/b');
+        await flush();
+      });
+      expect(scrollToSpy).toHaveBeenCalledTimes(1);
+      expect(pushSpy).toHaveBeenCalledTimes(1);
+      // this merge suspends the root, so React replays the layout effect for
+      // a state it has already applied
+      refetch.mockResolvedValueOnce({ 'sidebar:/': <div>fresh</div> });
+      await act(async () => {
+        await grab.refetch!('sidebar');
+        await flush();
+      });
+      expect(scrollToSpy).toHaveBeenCalledTimes(1);
+      expect(pushSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      scrollToSpy.mockRestore();
+      pushSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
+  test('an unrelated re-render does not scroll again', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
+    installRefetch(refetch);
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const bump = { fn: null as null | (() => void) };
+    const Bump = () => {
+      const [, setN] = useState(0);
+      bump.fn = () => setN((n) => n + 1);
+      return (
+        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+          <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
+        </Unstable_SearchCodecsProvider>
+      );
+    };
+    testHoisted.elements = {
+      [unstable_getRouteSlotId('/start')]: <Probe />,
+      [unstable_getRouteSlotId('/b')]: <Probe />,
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    };
+    const view = await renderApp(<Bump />);
+    try {
+      await act(async () => {
+        await capture.router!.push('/b');
+        await flush();
+      });
+      expect(scrollToSpy).toHaveBeenCalledTimes(1);
+      scrollToSpy.mockClear();
+      await act(async () => {
+        bump.fn!();
+        await flush();
+      });
+      expect(scrollToSpy).not.toHaveBeenCalled();
+    } finally {
+      scrollToSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('a second 404 with a query lands on the 404 route again', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
@@ -6070,7 +7065,7 @@ describe('Router integration', () => {
       await flush();
       await flush();
     });
-    // the attempted query update does not scroll, and the redirect
+    // the requested query update does not scroll, and the redirect
     // inherits that decision
     expect(capture.router!.path).toBe('/login');
     expect(scrollToSpy).not.toHaveBeenCalled();
@@ -6158,8 +7153,13 @@ describe('Router integration', () => {
     expect(
       (view.container.textContent?.match(/found-page/g) ?? []).length,
     ).toBe(2);
-    // exactly one navigation per router, even under strict-mode replay
-    expect(getRefetchMock()).toHaveBeenCalledTimes(2);
+    expect(getRefetchMock()).toHaveBeenCalledWith(
+      unstable_encodeRoutePath('/404'),
+      expect.anything(),
+      expect.anything(),
+    );
+    // one per router, doubled by the strict mode replay we accept
+    expect(getRefetchMock()).toHaveBeenCalledTimes(4);
 
     view.unmount();
   });
@@ -6200,7 +7200,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('custom 404 handling with a /404 page avoids strict-mode refetching race', async () => {
+  test('custom 404 handling with a /404 page recovers under strict mode', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
     const ThrowNotFoundErrorObject = createCustomError('not-found', {
@@ -6228,7 +7228,8 @@ describe('Router integration', () => {
 
     await flush();
     try {
-      expect(getRefetchMock()).toHaveBeenCalledTimes(1);
+      // doubled by the strict mode replay we accept, and no more than that
+      expect(getRefetchMock()).toHaveBeenCalledTimes(2);
       expect(getRefetchMock()).toHaveBeenCalledWith(
         unstable_encodeRoutePath('/404'),
         expect.any(URLSearchParams),
@@ -6243,6 +7244,50 @@ describe('Router integration', () => {
     } finally {
       view.unmount();
       consoleLogSpy.mockRestore();
+    }
+  });
+
+  test('the strict mode replay reports a superseded follow', async () => {
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const ThrowNotFoundErrorObject = createCustomError('not-found', {
+      status: 404,
+    });
+    const ThrowNotFound = () => {
+      throw ThrowNotFoundErrorObject;
+    };
+    const view = await renderRouterInStrictMode(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <ThrowNotFound />,
+        [unstable_getRouteSlotId('/404')]: <Probe />,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+        [HAS404_ID]: true,
+      },
+    );
+    await flush();
+    try {
+      const events: string[] = [];
+      for (const name of ['start', 'complete', 'error'] as const) {
+        capture.router!.unstable_events.on(name, (route) =>
+          events.push(`${name} ${route.path}`),
+        );
+      }
+      await act(async () => {
+        await capture.router!.push('/start').catch(() => {});
+        await flush();
+        await flush();
+      });
+
+      // the replayed dispatch supersedes the first, so listeners see an
+      // error for a follow that then succeeds. dev only, and bounded.
+      expect(
+        events.filter((e) => e.startsWith('error')).length,
+      ).toBeLessThanOrEqual(2);
+      expect(events[events.length - 1]).toBe('complete /404');
+    } finally {
+      view.unmount();
     }
   });
 
@@ -6875,7 +7920,7 @@ describe('Router integration', () => {
       await flush();
       await flush();
     });
-    // the attempted entry is written, then the browser leaves from it
+    // the requested entry is written, then the browser leaves from it
     expect(window.location.pathname).toBe('/protected');
     expect(window.history.length).toBe(lengthBefore + 1);
     // leaving still closes the navigation it was asked for

@@ -30,7 +30,6 @@ export const parsePathWithSlug = (path: string): PathSpec =>
       };
     });
 
-/** Convert a path spec to a string for the path */
 export const pathSpecAsString = (path: PathSpec) => {
   return (
     '/' +
@@ -83,21 +82,6 @@ const matchSpecSegment = (
   return true;
 };
 
-/**
- * Helper function to get the path mapping from the path spec and the pathname.
- *
- * @param pathSpec
- * @param pathname - route as a string
- * @example
- * getPathMapping(
- *   [
- *     { type: 'literal', name: 'foo' },
- *     { type: 'group', name: 'a' },
- *   ],
- *   '/foo/bar',
- * );
- * // => { a: 'bar' }
- */
 export const getPathMapping = (
   pathSpec: PathSpec,
   pathname: string,
@@ -169,4 +153,21 @@ export const getPathMapping = (
     );
   }
   return mapping;
+};
+
+const escapeRegExp = (s: string) => s.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
+
+export const path2regexp = (path: PathSpec) => {
+  const parts = path.map((item) => {
+    if (item.type === 'literal') {
+      return escapeRegExp(item.name);
+    } else if (item.type === 'group') {
+      const prefix = escapeRegExp(item.prefix ?? '');
+      const suffix = escapeRegExp(item.suffix ?? '');
+      return `${prefix}([^/]+)${suffix}`;
+    } else {
+      return `(.*)`;
+    }
+  });
+  return `^/${parts.join('/')}$`;
 };
