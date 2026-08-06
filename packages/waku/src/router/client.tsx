@@ -809,6 +809,7 @@ const FollowError = ({
   const { path: routePath, query: routeQuery, hash: routeHash } = route;
   const caughtAtRef = useRef<readonly [string, string, string]>(undefined);
   caughtAtRef.current ??= [routePath, routeQuery, routeHash];
+  const leftRef = useRef(false);
   const dispatchedRef = useRef<
     | { route: RouteProps; url: string; from: RouterState | undefined }
     | undefined
@@ -863,7 +864,12 @@ const FollowError = ({
       return;
     }
     if (errorRoute.type === 'leave') {
-      window.location.replace(errorRoute.url.href);
+      // the effect replays in dev, and replacing again while the first
+      // navigation is in flight cancels it in firefox
+      if (!leftRef.current) {
+        leftRef.current = true;
+        window.location.replace(errorRoute.url.href);
+      }
       return;
     }
     const { target, url } = errorRoute;

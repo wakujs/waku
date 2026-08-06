@@ -69,8 +69,9 @@ test.describe(`ssr-redirect`, () => {
       await page.waitForURL('http://127.0.0.1:39876/from-render');
       await expect(page.getByRole('heading')).toHaveText('Other Origin');
       // only a fetch sends an origin, and it could not have read the answer
-      expect(hits).toContain('none /from-render');
-      expect(hits.filter((hit) => !hit.startsWith('none '))).toEqual([]);
+      expect(hits.filter((hit) => hit.endsWith(' /from-render'))).toEqual([
+        'none /from-render',
+      ]);
     } finally {
       // the browser holds the connection open, and the next test wants the port
       other.closeAllConnections();
@@ -132,8 +133,9 @@ test.describe(`ssr-redirect`, () => {
         timeout: 10_000,
       });
       await expect(page.getByRole('heading')).toHaveText('Other Origin');
-      expect(hits).toContain('none /from-late');
-      expect(hits.filter((hit) => !hit.startsWith('none '))).toEqual([]);
+      expect(hits.filter((hit) => hit.endsWith(' /from-late'))).toEqual([
+        'none /from-late',
+      ]);
     } finally {
       // the browser holds the connection open, and the next test wants the port
       other.closeAllConnections();
