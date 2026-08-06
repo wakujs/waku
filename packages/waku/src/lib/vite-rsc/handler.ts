@@ -84,26 +84,19 @@ const toProcessRequest =
       if (documentLocation && input.type !== 'http') {
         return new Response(
           await renderUtils.renderRsc({}, { documentLocation }),
-          {
-            // a 200 like any payload, so a shared cache must be told not to
-            // hand one user's redirect to the next
-            headers: { 'cache-control': 'private, no-store' },
-          },
+          // a 200 that a shared cache must not hand to the next user
+          { headers: { 'cache-control': 'private, no-store' } },
         );
       }
-      // a browser resends the body on 307 and 308, and a no-js form submission
-      // is followed by the browser itself, so the destination is asked with
-      // GET. Any other post keeps the status it asked for
-      let status = info?.status || 500;
-      if (info?.location && !documentLocation) {
-        // a location the browser must not be sent to is an error, and a 3xx
-        // without a Location is nowhere to go
-        status = 500;
-      } else if (documentLocation && input.type === 'http' && input.tryAction) {
-        // a browser resends the body on 307 and 308, and a no-js form
-        // submission is followed by the browser itself
-        status = 303;
-      }
+      const refusedTheLocation = !!info?.location && !documentLocation;
+      const browserFollowsItself =
+        input.type === 'http' && !!input.tryAction && !!documentLocation;
+      // 307 and 308 resend the body to the destination
+      const status = refusedTheLocation
+        ? 500
+        : browserFollowsItself
+          ? 303
+          : info?.status || 500;
       let message: string;
       if (info) {
         message = (e as { message?: string } | undefined)?.message || String(e);
@@ -112,7 +105,6 @@ const toProcessRequest =
         message = 'Internal Server Error';
       }
       const body = stringToStream(message);
-      // a command line follower will follow a Location a browser ignores
       const headers = documentLocation ? { location: documentLocation } : {};
       return new Response(body, { status, headers });
     }

@@ -119,14 +119,11 @@ export const createRequestHandler = ({
         }
       };
 
-      // a fetch cannot use a redirect, so answer with the destination itself
       const getEntriesForRedirect = async (location: string) => {
         const redirectRoute = resolveInternalRoute(location, input.req.url);
         if (!redirectRoute) {
           return null;
         }
-        // the browser would have asked for the destination itself, so an
-        // interceptor guarding it has to be given that request and not this one
         const url = new URL(input.req.url);
         const base = url.pathname.slice(
           0,
@@ -136,10 +133,13 @@ export const createRequestHandler = ({
         for (const name of ['content-type', 'content-length']) {
           headers.delete(name);
         }
-        const destination = new Request(new URL(base + location, url), {
-          headers,
-        });
-        return runHandled(destination, () =>
+        const asTheBrowserWouldAsk = new Request(
+          new URL(base + location, url),
+          {
+            headers,
+          },
+        );
+        return runHandled(asTheBrowserWouldAsk, () =>
           routeEntries.getEntriesForRoute(
             encodeRoutePath(redirectRoute.path),
             new URLSearchParams({ query: redirectRoute.query }),
@@ -148,8 +148,7 @@ export const createRequestHandler = ({
           ),
         ).catch((e: unknown) => {
           const info = getErrorInfo(e);
-          // the destination redirects again or is missing, so the client
-          // gets the original redirect and takes it from there
+          // one hop only; the client takes the original redirect from here
           if (info?.location || info?.status === 404) {
             return null;
           }

@@ -33,15 +33,13 @@ export const resolveErrorRoute = (
     if (!parsed) {
       return { type: 'unfollowable', location };
     }
-    // credentials would reach the address bar and the history entry
     parsed.username = '';
     parsed.password = '';
-    // a streamed redirect carries the location as the app wrote it, and one
-    // that named this host over plaintext would send the page back to it
+    // a streamed location arrives as the app wrote it, and this end knows the
+    // scheme the browser is really on
     if (parsed.protocol === 'http:' && parsed.host === window.location.host) {
       parsed.protocol = window.location.protocol;
     }
-    // the server already resolved it, so it leaves whatever its origin
     if (info.unstable_leave || parsed.origin !== window.location.origin) {
       return { type: 'leave', url: parsed };
     }
@@ -53,8 +51,6 @@ export const resolveErrorRoute = (
       };
       return { type: 'route', target, url: getRouteUrl(target) };
     }
-    // an absolute url carries the base path, and parsing one from outside it
-    // would throw, so the browser takes it instead
     if (!isInsideBase(parsed)) {
       return { type: 'leave', url: parsed };
     }
