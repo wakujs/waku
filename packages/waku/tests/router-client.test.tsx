@@ -7363,6 +7363,80 @@ describe('Router integration', () => {
     }
   });
 
+  test('a suspended destination cannot commit after a newer navigation starts', async () => {
+    const clientDelay = createDeferred<void>();
+    const secondNavigation = createDeferred<Record<string, unknown>>();
+    const ClientSuspends = () => {
+      use(clientDelay.promise);
+      return <h1>Page 2</h1>;
+    };
+    const refetch = vi
+      .fn<ReturnType<typeof useRefetch>>()
+      .mockResolvedValueOnce({
+        [ROUTE_ID]: ['/two', ''],
+        [IS_STATIC_ID]: false,
+      })
+      .mockReturnValueOnce(secondNavigation.promise);
+    installRefetch(refetch);
+    window.history.replaceState({}, '', '/one');
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+
+    const view = await renderRouter(
+      { initialRoute: { path: '/one', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/one')]: (
+          <>
+            <h1>Page 1</h1>
+            <Probe />
+          </>
+        ),
+        [unstable_getRouteSlotId('/two')]: <ClientSuspends />,
+        [unstable_getRouteSlotId('/three')]: <h1>Page 3</h1>,
+        [ROUTE_ID]: ['/one', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+
+    try {
+      if (!capture.router) {
+        throw new Error('router not initialized');
+      }
+      await act(async () => {
+        await capture.router!.push('/two');
+        await flush();
+      });
+      expect(view.container.textContent).toContain('Page 1');
+
+      let secondPush!: Promise<void>;
+      await act(async () => {
+        secondPush = capture.router!.push('/three');
+        await Promise.resolve();
+      });
+      expect(refetch).toHaveBeenCalledTimes(2);
+
+      await act(async () => {
+        clientDelay.resolve();
+        await flush();
+      });
+      expect(view.container.textContent).toContain('Page 1');
+      expect(window.location.pathname).toBe('/one');
+
+      await act(async () => {
+        secondNavigation.resolve({
+          [ROUTE_ID]: ['/three', ''],
+          [IS_STATIC_ID]: false,
+        });
+        await secondPush;
+        await flush();
+      });
+      expect(view.container.textContent).toContain('Page 3');
+      expect(window.location.pathname).toBe('/three');
+    } finally {
+      view.unmount();
+    }
+  });
+
   test('useNavigationStatus stays idle when the Link uses unstable_startTransition', async () => {
     // A custom unstable_startTransition replaces React's useTransition, so
     // isPending never flips and the hook reports { pending: false } for that

@@ -1040,6 +1040,10 @@ const InnerRouter = ({
 
   const refetch = useRefetch();
   const mergeElements = useMergeElements();
+  const pendingNavigationRef = useRef<{
+    controller: AbortController;
+    queuedState?: RouterState;
+  } | null>(null);
   // starts empty so hydration matches the server, then the effect fills it
   const [restoredHash, setRestoredHash] = useState('');
   useEffect(() => {
@@ -1063,6 +1067,10 @@ const InnerRouter = ({
   const destinationHref = destination?.url.href;
   const currentHash = currentRoute.hash;
   useLayoutEffect(() => {
+    const queuedState = pendingNavigationRef.current?.queuedState;
+    if (queuedState && queuedState === routerState) {
+      pendingNavigationRef.current = null;
+    }
     if (!routerState || !destinationHref) {
       return;
     }
@@ -1107,11 +1115,19 @@ const InnerRouter = ({
 
   // state, not a ref: it is read during render (passed through context)
   const [fetchingSlices] = useState(() => new Set<SliceId>());
-  const pendingNavigationRef = useRef<AbortController | null>(null);
 
   const changeRoute: ChangeRoute = useCallback(
     async function changeRoute(nextRoute, options) {
-      pendingNavigationRef.current?.abort();
+      const pendingNavigation = pendingNavigationRef.current;
+      pendingNavigation?.controller.abort();
+      if (pendingNavigation?.queuedState) {
+        // Append the committed snapshot after the superseded transition update.
+        const committed = resolvedElementsRef.current;
+        mergeElements({
+          ...committed,
+          [ROUTER_STATE_ID]: getRouterState(committed),
+        });
+      }
       pendingNavigationRef.current = null;
       const settledRoute = getSettledRoute(
         resolvedElementsRef.current,
@@ -1129,16 +1145,17 @@ const InnerRouter = ({
       const shouldRefetch =
         options.refetch ?? !isSameRscRoute(nextRoute, settledRoute);
       const controller = new AbortController();
-      pendingNavigationRef.current = controller;
+      pendingNavigationRef.current = { controller };
       const commit = (
         update: () => void,
         transition = options.startTransition,
+        state = routerState,
       ) => {
         const callback = () => {
           if (controller.signal.aborted) {
             return;
           }
-          pendingNavigationRef.current = null;
+          pendingNavigationRef.current = { controller, queuedState: state };
           update();
         };
         if (transition) {
@@ -1207,17 +1224,22 @@ const InnerRouter = ({
         if (controller.signal.aborted) {
           return;
         }
-        commit(() => {
-          // write the url now; an unrecoverable rethrow discards the commit
-          commitHistory(targetUrl, routerState.history);
-          mergeElements({
-            [ROUTER_STATE_ID]: {
-              ...routerState,
-              history: null, // the url above is already written
-              failure: { error: e, committedHash: settledRoute.hash },
-            },
-          });
-        });
+        const failureState: RouterState = {
+          ...routerState,
+          history: null,
+          failure: { error: e, committedHash: settledRoute.hash },
+        };
+        commit(
+          () => {
+            // write the url now; an unrecoverable rethrow discards the commit
+            commitHistory(targetUrl, routerState.history);
+            mergeElements({
+              [ROUTER_STATE_ID]: failureState,
+            });
+          },
+          options.startTransition,
+          failureState,
+        );
         throw e;
       }
     },
