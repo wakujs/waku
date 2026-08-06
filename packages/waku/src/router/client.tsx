@@ -39,11 +39,6 @@ import {
   useMergeElements_UNSTABLE as useMergeElements,
   useRefetch_UNSTABLE as useRefetch,
 } from '../minimal/client.js';
-import {
-  getRouteFromElements,
-  has404FromElements,
-  isStaticFromElements,
-} from './client-utils/elements-meta.js';
 import { isFollowable, resolveErrorRoute } from './client-utils/error-route.js';
 import {
   type PrefetchOptions,
@@ -58,8 +53,11 @@ import {
 import {
   ROUTER_STATE_ID,
   canCommitInstantly,
+  getRouteFromElements,
   getRouterState,
   getSettledRoute,
+  has404FromElements,
+  isStaticFromElements,
   makeRouterState,
   pinForSwr,
   resolveServerRedirect,
@@ -99,28 +97,19 @@ import {
 
 type NavigateOptions = {
   /**
-   * indicates if the link should scroll or not on navigation
+   * Whether the link should scroll on navigation.
    * - `true`: always scroll
    * - `false`: never scroll
    * - `undefined`: scroll on path/hash change (not on query-only change)
    */
   scroll?: boolean;
   /**
-   * Commit instantly: paint the cached shell + its <Suspense> fallbacks right
+   * Commit instantly: paint the cached shell + its `<Suspense>` fallbacks right
    * away and stream the dynamic parts in, instead of waiting for the response.
    */
   unstable_instant?: boolean;
 };
 
-/**
- * Resolves once the requested navigation has been handled: after its response
- * when the route needs one, right away when it does not, and when a newer
- * navigation supersedes it. It rejects when the navigation fails, when a
- * redirect hands the page to the browser, and when a missing route gets no
- * answer from a waku server (a waku server sends the 404 page instead, which
- * resolves). It never waits for a follow, and it does not wait for React to
- * render, so the address bar may still show the previous url.
- */
 type Navigate = {
   (to: RouteHref, options?: NavigateOptions): Promise<void>;
   <Path extends RoutePath>(
@@ -129,11 +118,6 @@ type Navigate = {
   ): Promise<void>;
 };
 
-/**
- * Fetches whatever it is given, including the route already on screen, so it
- * can warm the cache for a later reload. `<Link>` prefetching is automatic, so
- * that one skips a target the router is already showing.
- */
 type Prefetch = {
   (to: RouteHref, options?: PrefetchOptions): void;
   <Path extends RoutePath>(
@@ -263,6 +247,22 @@ const resolveRouteUrl = <Path extends RoutePath>(
   resolveCodec: ReturnType<typeof useResolveSearchCodec>,
 ): URL => new URL(resolveRouteHref(to, resolveCodec), window.location.href);
 
+/**
+ * Current route fields plus navigation helpers.
+ *
+ * `push` and `replace` return a promise that settles once the requested
+ * navigation has been handled: after its response when the route needs one,
+ * right away when it does not, and when a newer navigation supersedes it. The
+ * promise rejects when the navigation fails, when a redirect hands the page to
+ * the browser, and when a missing route gets no answer from a Waku server (a
+ * Waku server sends the 404 page instead, which resolves). It never waits for a
+ * follow, and it does not wait for React to render, so the address bar may still
+ * show the previous URL.
+ *
+ * `prefetch` fetches whatever it is given, including the route already on
+ * screen, so it can warm the cache for a later reload. `<Link>` prefetching is
+ * automatic and skips a target the router is already showing.
+ */
 export function useRouter() {
   const router = useRouterOrThrow();
   const { route, changeRoute, prefetchRoute } = router;
@@ -561,14 +561,14 @@ export type LinkProps<Path extends RoutePath> = {
   to: RouteHref | BuildRouteHrefTarget<Path>;
   children: ReactNode;
   /**
-   * indicates if the link should scroll or not on navigation
+   * Whether the link should scroll on navigation.
    * - `true`: always scroll
    * - `false`: never scroll
    * - `undefined`: scroll on path/hash change or repeated same-hash click (not query-only)
    */
   scroll?: boolean;
   /**
-   * Commit instantly: paint the cached shell + its <Suspense> fallbacks right
+   * Commit instantly: paint the cached shell + its `<Suspense>` fallbacks right
    * away and stream the dynamic parts in.
    */
   unstable_instant?: boolean;
@@ -584,6 +584,12 @@ export type LinkProps<Path extends RoutePath> = {
   ref?: Ref<HTMLAnchorElement> | undefined;
 } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'>;
 
+/**
+ * Client-side navigation link. Renders an `<a>`; click handling pushes through
+ * the router unless the click is modified, prevented, or targets another window.
+ * Failures surface through the router error boundary rather than a returned
+ * promise.
+ */
 export function Link<Path extends RoutePath>({
   to,
   children,
@@ -1254,11 +1260,20 @@ const InnerRouter = ({
   );
 };
 
+/**
+ * Client router root. Mount once near the app root so `useRouter`, `Link`, and
+ * related hooks share navigation state. `initialRoute` defaults to the current
+ * browser location.
+ */
 export function Router({
   initialRoute = parseRouteFromLocation(),
   unstable_routeInterceptor,
 }: {
   initialRoute?: RouteProps;
+  /**
+   * Rewrite or block the route before navigation commits. Return `false` to
+   * cancel; otherwise return the route to use.
+   */
   unstable_routeInterceptor?: (route: RouteProps) => RouteProps | false;
 }) {
   const initialRscPath = encodeRoutePath(initialRoute.path);
