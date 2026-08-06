@@ -1,4 +1,4 @@
-import { unstable_createCustomError as createCustomError } from 'waku/minimal/server';
+import { unstable_redirect as redirect } from 'waku/router/server';
 
 export default async function ExternalActionPage() {
   return (
@@ -7,10 +7,8 @@ export default async function ExternalActionPage() {
       <form
         action={async (formData: FormData) => {
           'use server';
-          throw createCustomError('leaving', {
-            status: 303,
-            location: String(formData.get('to')),
-          });
+          // a URL, because an allowlisted target is a variable, not a literal
+          redirect(new URL(String(formData.get('to'))));
         }}
       >
         <input name="to" data-testid="to" defaultValue="" />

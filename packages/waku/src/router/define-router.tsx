@@ -52,25 +52,32 @@ export function unstable_notFound(): never {
 }
 
 /**
- * Redirect within the app, or away from it with an absolute http or https
- * url. An external target is not validated, so check one built from user
- * input against your own allowlist.
+ * Redirect within the app, or away from it with an absolute http or https url.
+ * A `URL` is the way to pass one that is not a literal. Where it points is not
+ * validated, so check a target built from user input against your own
+ * allowlist.
  */
 export function unstable_redirect<Path extends RoutePath = RoutePath>(
   to:
     | RouteHref
     | `http://${string}`
     | `https://${string}`
+    | URL
     | BuildRouteHrefTarget<Path>,
   status: 303 | 307 | 308 = 307,
 ): never {
   const location =
-    typeof to === 'string' ? to : buildRouteHref(to, getResolveSearchCodec());
+    typeof to === 'string'
+      ? to
+      : to instanceof URL
+        ? to.href
+        : buildRouteHref(to, getResolveSearchCodec());
   const leavesTheApp =
     location.startsWith('http://') || location.startsWith('https://');
   if (
-    !leavesTheApp &&
-    (!location.startsWith('/') || location.startsWith('//'))
+    leavesTheApp
+      ? !URL.canParse(location)
+      : !location.startsWith('/') || location.startsWith('//')
   ) {
     throw new Error(`Invalid redirect location: ${JSON.stringify(location)}`);
   }

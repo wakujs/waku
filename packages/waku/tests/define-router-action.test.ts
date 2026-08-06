@@ -340,12 +340,25 @@ describe('unstable_redirect', () => {
     });
   });
 
+  it('accepts a URL, which is how a variable gets through', () => {
+    try {
+      unstable_redirect(new URL('https://example.com/next?a=1'), 303);
+    } catch (e) {
+      expect(getErrorInfo(e)).toEqual({
+        status: 303,
+        location: 'https://example.com/next?a=1',
+      });
+    }
+  });
+
   it.each([
     '//example.com/',
     '/\\example.com/',
     'login',
     '/bad\npath',
     '/bad\x7fpath',
+    'https://',
+    'https://[',
   ])('rejects invalid redirect location %s', (location) => {
     expect(() => unstable_redirect(location)).toThrow(
       'Invalid redirect location',
