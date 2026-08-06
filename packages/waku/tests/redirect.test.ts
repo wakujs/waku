@@ -12,16 +12,19 @@ describe('resolveRedirectLocation', () => {
     expect(resolve('/login', '/base/')).toBe('/base/login');
   });
 
-  test('a same host absolute location gives up its origin', () => {
+  test('a same host http location gives up its origin', () => {
     // the browser resolves it against the page, so an https app behind a proxy
     // is not sent back to the http the socket reports
-    expect(resolve('https://app.example/login')).toBe('/login');
     expect(resolve('http://app.example/login?a=1#x')).toBe('/login?a=1#x');
   });
 
-  test('a same host absolute location is already based', () => {
+  test('a same host https location is kept, so an app can canonicalise', () => {
+    expect(resolve('https://app.example/login')).toBe(
+      'https://app.example/login',
+    );
+    // the base is already in the url it named, so none is added
     expect(resolve('https://app.example/base/login', '/base/')).toBe(
-      '/base/login',
+      'https://app.example/base/login',
     );
   });
 

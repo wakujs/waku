@@ -16,13 +16,16 @@ export const resolveRedirectLocation = (
   if (target.protocol !== 'http:' && target.protocol !== 'https:') {
     return undefined;
   }
-  // requestUrl takes its scheme from the socket, so naming one here would send
-  // an https app behind a proxy back to http
+  const named = /^([a-z][a-z\d+.-]*):/i.exec(location)?.[1]?.toLowerCase();
   const path = target.pathname + target.search + target.hash;
   if (target.host !== new URL(requestUrl).host) {
-    return /^[a-z][a-z\d+.-]*:/i.test(location)
-      ? target.href
-      : '//' + target.host + path;
+    return named ? target.href : '//' + target.host + path;
+  }
+  // https is kept, so an app can send the browser to its secure origin, but
+  // requestUrl takes its scheme from the socket and naming http here would
+  // send an https app behind a proxy back to plaintext
+  if (named === 'https') {
+    return target.href;
   }
   return location.startsWith('/') ? addBase(path, basePath) : path;
 };
