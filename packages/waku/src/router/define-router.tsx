@@ -66,7 +66,7 @@ export function unstable_redirect<Path extends RoutePath = RoutePath>(
     | BuildRouteHrefTarget<Path>,
   status: 303 | 307 | 308 = 307,
 ): never {
-  const location =
+  let location =
     typeof to === 'string'
       ? to
       : to instanceof URL
@@ -80,6 +80,14 @@ export function unstable_redirect<Path extends RoutePath = RoutePath>(
       : !location.startsWith('/') || location.startsWith('//')
   ) {
     throw new Error(`Invalid redirect location: ${JSON.stringify(location)}`);
+  }
+  if (leavesTheApp) {
+    // a redirect thrown mid stream reaches the client as this digest, before
+    // anything resolves it
+    const url = new URL(location);
+    url.username = '';
+    url.password = '';
+    location = url.href;
   }
   for (let i = 0; i < location.length; ++i) {
     const charCode = location.charCodeAt(i);

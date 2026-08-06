@@ -351,6 +351,18 @@ describe('unstable_redirect', () => {
     }
   });
 
+  it('does not carry credentials into the error it throws', () => {
+    // a redirect thrown mid stream reaches the client as this digest
+    try {
+      unstable_redirect(new URL('https://user:pw@other.example/x'), 303);
+    } catch (e) {
+      expect(getErrorInfo(e)).toEqual({
+        status: 303,
+        location: 'https://other.example/x',
+      });
+    }
+  });
+
   it('accepts a URL, which is how a variable gets through', () => {
     try {
       unstable_redirect(new URL('https://example.com/next?a=1'), 303);
