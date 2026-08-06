@@ -717,15 +717,6 @@ export const Slot_UNSTABLE = ({
   );
 };
 
-/** @deprecated Use `Root_UNSTABLE`. */
-export const Root = Root_UNSTABLE;
-/** @deprecated Use `Slot_UNSTABLE`. */
-export const Slot = Slot_UNSTABLE;
-/** @deprecated Use `Children_UNSTABLE`. */
-export const Children = Children_UNSTABLE;
-/** @deprecated Use `useRefetch_UNSTABLE`. */
-export const useRefetch = useRefetch_UNSTABLE;
-
 export const INTERNAL_ServerRoot = ({
   elementsPromise,
   children,
