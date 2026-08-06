@@ -44,19 +44,15 @@ function getVersionSkewRecoveryCode(): string {
   `;
 }
 
-// The plugin-rsc bootstrap is a bare `import("...")` whose failure dispatches no `vite:preloadError`.
-// TODO: remove once @vitejs/plugin-rsc handles this natively. https://github.com/wakujs/waku/issues/2238
-const BOOTSTRAP_IMPORT_RE = /^(import\("(?:[^"\\]|\\.)*"\));?$/;
-
-export function wrapBootstrapScriptContent(content: string): string {
+// A bare `import()` dispatches no `vite:preloadError` on failure, so mirror
+// Vite's `__vitePreload` semantics to reach the recovery listener above.
+// https://github.com/wakujs/waku/issues/2238
+export function createBootstrapScriptContent(entryUrl: string): string {
+  const entryImport = `import(${JSON.stringify(entryUrl)})`;
   if (!getRecoveryBuildId()) {
-    return content;
+    return entryImport;
   }
-  const match = BOOTSTRAP_IMPORT_RE.exec(content.trim());
-  if (!match) {
-    return content;
-  }
-  return `${match[1]}.catch((err) => {
+  return `${entryImport}.catch((err) => {
     var e = new Event('vite:preloadError', { cancelable: true });
     e.payload = err;
     window.dispatchEvent(e);

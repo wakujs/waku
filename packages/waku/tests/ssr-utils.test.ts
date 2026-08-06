@@ -1,64 +1,43 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  createBootstrapScriptContent,
   getBootstrapPreamble,
-  wrapBootstrapScriptContent,
 } from '../src/lib/utils/ssr.js';
 
 afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe('wrapBootstrapScriptContent', () => {
-  it('wraps the plugin-rsc bootstrap import when a build id is set', () => {
+describe('createBootstrapScriptContent', () => {
+  it('dispatches vite:preloadError on failure when a build id is set', () => {
     vi.stubEnv('WAKU_BUILD_ID', 'test-build');
-    const wrapped = wrapBootstrapScriptContent(
+    const content = createBootstrapScriptContent('/assets/index-abc123.js');
+    expect(content).toContain('import("/assets/index-abc123.js").catch');
+    expect(content).toContain('vite:preloadError');
+    // must be valid JS
+    expect(() => new Function(content)).not.toThrow();
+  });
+
+  it('escapes the entry url', () => {
+    vi.stubEnv('WAKU_BUILD_ID', 'test-build');
+    const content = createBootstrapScriptContent('/a"b\\c.js');
+    expect(() => new Function(content)).not.toThrow();
+  });
+
+  it('emits a bare import without a build id', () => {
+    expect(createBootstrapScriptContent('/assets/index-abc123.js')).toBe(
       'import("/assets/index-abc123.js")',
     );
-    expect(wrapped).toContain('import("/assets/index-abc123.js").catch');
-    expect(wrapped).toContain('vite:preloadError');
-    // must remain parseable JS
-    expect(() => new Function(wrapped)).not.toThrow();
   });
 
-  it('tolerates surrounding whitespace and a trailing semicolon', () => {
-    vi.stubEnv('WAKU_BUILD_ID', 'test-build');
-    const wrapped = wrapBootstrapScriptContent(
-      '  import("/assets/index-abc123.js");\n',
-    );
-    expect(wrapped).toContain('import("/assets/index-abc123.js").catch');
-    expect(() => new Function(wrapped)).not.toThrow();
-  });
-
-  it('handles escaped quotes inside the URL', () => {
-    vi.stubEnv('WAKU_BUILD_ID', 'test-build');
-    const wrapped = wrapBootstrapScriptContent('import("/a\\"b.js")');
-    expect(wrapped).toContain('.catch');
-    expect(() => new Function(wrapped)).not.toThrow();
-  });
-
-  it('leaves multi-statement content untouched', () => {
-    vi.stubEnv('WAKU_BUILD_ID', 'test-build');
-    const content = 'import("/a.js"); import("/b.js")';
-    expect(wrapBootstrapScriptContent(content)).toBe(content);
-  });
-
-  it('leaves unrecognized shapes untouched', () => {
-    vi.stubEnv('WAKU_BUILD_ID', 'test-build');
-    const content = 'Promise.resolve().then(() => import("/a.js"))';
-    expect(wrapBootstrapScriptContent(content)).toBe(content);
-  });
-
-  it('is a no-op without a build id', () => {
-    const content = 'import("/assets/index-abc123.js")';
-    expect(wrapBootstrapScriptContent(content)).toBe(content);
-  });
-
-  it('is a no-op in dev, even though the dev bootstrap matches the shape', () => {
-    // The dev bootstrap `import("/@id/__x00__virtual:...")` matches the regex,
-    // but recovery must stay production-only. https://github.com/wakujs/waku/issues/2238
+  it('emits a bare import in dev, where recovery stays off', () => {
+    // https://github.com/wakujs/waku/issues/2238
     vi.stubEnv('WAKU_BUILD_ID', 'dev');
-    const content = 'import("/@id/__x00__virtual:vite-rsc/browser-entry")';
-    expect(wrapBootstrapScriptContent(content)).toBe(content);
+    expect(
+      createBootstrapScriptContent(
+        '/@id/__x00__virtual:vite-rsc/browser-entry',
+      ),
+    ).toBe('import("/@id/__x00__virtual:vite-rsc/browser-entry")');
   });
 });
 
