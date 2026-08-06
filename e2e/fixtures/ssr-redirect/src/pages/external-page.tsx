@@ -1,8 +1,10 @@
 import { unstable_redirect as redirect } from 'waku/router/server';
 
-// the port the spec listens on for the second origin
 export default async function ExternalPage() {
-  redirect('http://127.0.0.1:39876/from-render', 303);
+  // the spec listens on this origin and passes it in when it starts the app
+  redirect(
+    new URL('/from-render', String(process.env.WAKU_E2E_EXTERNAL_ORIGIN)),
+  );
 }
 
 export const getConfig = () => {

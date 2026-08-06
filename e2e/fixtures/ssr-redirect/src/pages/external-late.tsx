@@ -5,7 +5,10 @@ const Late = async () => {
   await new Promise((resolve) => setTimeout(resolve, 100));
   throw createCustomError('leaving late', {
     status: 303,
-    location: 'http://127.0.0.1:39877/from-late',
+    location: new URL(
+      '/from-late',
+      String(process.env.WAKU_E2E_EXTERNAL_ORIGIN),
+    ).href,
   });
 };
 
