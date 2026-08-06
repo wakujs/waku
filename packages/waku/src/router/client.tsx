@@ -110,6 +110,15 @@ type NavigateOptions = {
   unstable_instant?: boolean;
 };
 
+/**
+ * Resolves once the requested navigation has been handled: after its response
+ * when the route needs one, right away when it does not, and when a newer
+ * navigation supersedes it. Rejects when the navigation fails, when a redirect
+ * hands the page to the browser, and when a missing route gets no answer from a
+ * Waku server (a Waku server sends the 404 page instead, which resolves). Never
+ * waits for a follow, and does not wait for React to render, so the address bar
+ * may still show the previous URL.
+ */
 type Navigate = {
   (to: RouteHref, options?: NavigateOptions): Promise<void>;
   <Path extends RoutePath>(
@@ -118,6 +127,11 @@ type Navigate = {
   ): Promise<void>;
 };
 
+/**
+ * Fetches whatever it is given, including the route already on screen, so it
+ * can warm the cache for a later reload. `<Link>` prefetching is automatic and
+ * skips a target the router is already showing.
+ */
 type Prefetch = {
   (to: RouteHref, options?: PrefetchOptions): void;
   <Path extends RoutePath>(
@@ -248,20 +262,13 @@ const resolveRouteUrl = <Path extends RoutePath>(
 ): URL => new URL(resolveRouteHref(to, resolveCodec), window.location.href);
 
 /**
- * Current route fields plus navigation helpers.
+ * Current route fields plus navigation helpers (`push`, `replace`, `reload`,
+ * `back`, `forward`, `prefetch`).
  *
- * `push` and `replace` return a promise that settles once the requested
- * navigation has been handled: after its response when the route needs one,
- * right away when it does not, and when a newer navigation supersedes it. The
- * promise rejects when the navigation fails, when a redirect hands the page to
- * the browser, and when a missing route gets no answer from a Waku server (a
- * Waku server sends the 404 page instead, which resolves). It never waits for a
- * follow, and it does not wait for React to render, so the address bar may still
- * show the previous URL.
- *
- * `prefetch` fetches whatever it is given, including the route already on
- * screen, so it can warm the cache for a later reload. `<Link>` prefetching is
- * automatic and skips a target the router is already showing.
+ * `push` / `replace` settle as described on their return type: handled
+ * navigation, not paint-finished. `reload` refetches the current location.
+ * `prefetch` warms a route for a later navigation or reload; `<Link>`
+ * prefetching is automatic and skips the route already on screen.
  */
 export function useRouter() {
   const router = useRouterOrThrow();

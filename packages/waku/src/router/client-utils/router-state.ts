@@ -7,6 +7,7 @@ import {
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import { getRouteUrl } from './route-url.js';
 
+// Server-owned element meta (ROUTE / HAS404 / IS_STATIC), read by the client.
 export const getRouteFromElements = (
   elements: Record<string, unknown>,
 ): RouteProps | undefined => {
@@ -23,7 +24,7 @@ export const has404FromElements = (elements: Record<string, unknown>) =>
   !!elements[HAS404_ID];
 
 export const isMetaKey = (key: string) =>
-  key === ROUTE_ID || key === HAS404_ID || key.startsWith(IS_STATIC_ID);
+  key === ROUTE_ID || key === HAS404_ID || key === IS_STATIC_ID;
 
 export const getServerRedirect = (
   elements: Record<string, unknown>,
