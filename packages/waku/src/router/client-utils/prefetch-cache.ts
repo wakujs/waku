@@ -93,11 +93,7 @@ const mergePrefetchedElements = (
 ): void => {
   reservePrefetchedElements(store, rscPath);
   const existing = store.get(rscPath);
-  if (!existing) {
-    store.set(rscPath, elements);
-    return;
-  }
-  store.set(rscPath, { ...existing, ...elements });
+  store.set(rscPath, existing ? { ...existing, ...elements } : elements);
 };
 
 type PrefetchManager = {

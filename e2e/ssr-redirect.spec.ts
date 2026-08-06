@@ -22,7 +22,7 @@ test.describe(`ssr-redirect`, () => {
       res.end('<html><body><h1>Other Origin</h1></body></html>');
     });
     await new Promise<void>((resolve, reject) => {
-      other.on('error', reject);
+      other.once('error', reject);
       other.listen(0, '127.0.0.1', resolve);
     });
     otherOrigin = `http://127.0.0.1:${(other.address() as AddressInfo).port}`;
@@ -33,8 +33,13 @@ test.describe(`ssr-redirect`, () => {
     }));
   });
 
+  test.beforeEach(() => {
+    hits.length = 0;
+  });
+
   test.afterAll(async () => {
     await stopApp();
+    delete process.env.WAKU_E2E_EXTERNAL_ORIGIN;
     other.closeAllConnections();
     await new Promise<void>((resolve) => other.close(() => resolve()));
   });
