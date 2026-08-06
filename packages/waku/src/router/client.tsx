@@ -670,9 +670,7 @@ export function Link<Path extends RoutePath>({
           history: 'push',
           url,
           instant: unstable_instant,
-          startTransition: unstable_instant
-            ? undefined
-            : unstable_startTransition,
+          startTransition: unstable_startTransition,
         },
         startTransition,
       ).catch(() => {});
@@ -1122,6 +1120,7 @@ const InnerRouter = ({
       pendingNavigation?.controller.abort();
       if (pendingNavigation?.queuedState) {
         // Append the committed snapshot after the superseded transition update.
+        // The explicit key also clears state absent from the initial snapshot.
         const committed = resolvedElementsRef.current;
         mergeElements({
           ...committed,

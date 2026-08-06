@@ -7476,7 +7476,11 @@ describe('Router integration', () => {
         [unstable_getRouteSlotId('/one')]: (
           <>
             <h1>Page 1</h1>
-            <Link to="/two" unstable_startTransition={customTransition}>
+            <Link
+              to="/two"
+              unstable_instant
+              unstable_startTransition={customTransition}
+            >
               Go to two
               <PendingProbe />
             </Link>
