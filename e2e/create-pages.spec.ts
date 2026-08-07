@@ -819,7 +819,14 @@ test.describe(`create-pages`, () => {
 
   test('no ssr with render=dynamic and no client component', async ({
     page,
+    request,
   }) => {
+    // nothing else about this page says the server skipped it
+    const response = await request.get(
+      `http://localhost:${port}/no-ssr-server-only`,
+    );
+    expect(await response.text()).not.toContain('No SSR Server Only');
+
     await page.goto(`http://localhost:${port}/no-ssr-server-only`);
     await expect(
       page.getByRole('heading', { name: 'No SSR Server Only', exact: true }),
