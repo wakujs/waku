@@ -73,11 +73,11 @@ export const resolveServerRedirect = (
   const stateUrl = new URL(routerState.url, window.location.href);
   const serverRoute = routerState.failure
     ? undefined
-    : getRouteFromElements(elements as Record<string, unknown>);
+    : getRouteFromElements(elements);
   const redirect =
     serverRoute &&
     (serverRoute.path !== routerState.requested[0] ||
-      (!isStaticFromElements(elements as Record<string, unknown>) &&
+      (!isStaticFromElements(elements) &&
         serverRoute.query !== routerState.requested[1]))
       ? serverRoute
       : undefined;
