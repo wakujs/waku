@@ -1232,7 +1232,7 @@ const InnerRouter = ({
     const callback = () => {
       const popped = parseRoute(new URL(window.location.href));
       const nextRoute = routeInterceptor ? routeInterceptor(popped) : popped;
-      if (nextRoute === false) {
+      if (!nextRoute) {
         return;
       }
       startTransition(() => {
