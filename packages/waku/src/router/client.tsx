@@ -225,15 +225,21 @@ const fetchRoute = (
     signal,
     prefetched,
     onBuildIdMismatch,
+    base,
   }: {
     signal: AbortSignal;
     prefetched?: Promise<Elements>;
     onBuildIdMismatch: () => void;
+    base: Elements;
   },
 ): Promise<Elements> => {
   return prefetched
     ? abortable(prefetched, signal)
-    : fetchRsc(rscPath, rscParams, { signal, onBuildIdMismatch });
+    : fetchRsc(rscPath, rscParams, {
+        signal,
+        onBuildIdMismatch,
+        unstable_base: base,
+      });
 };
 
 const isAltClick = (event: MouseEvent<HTMLAnchorElement>) =>
@@ -1254,6 +1260,7 @@ const InnerRouter = ({
             signal: controller.signal,
             ...(cached ? { prefetched: cached.promise } : {}),
             onBuildIdMismatch: () => reloadWithUrl(targetUrl),
+            base,
           });
       try {
         const resolved = await dataPromise;
