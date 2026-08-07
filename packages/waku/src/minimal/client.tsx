@@ -119,40 +119,6 @@ const mergeElementsPromise = (
   return getCached(getResult, cache2, b);
 };
 
-const rebaseCache = new WeakMap();
-const rebaseElementsPromise = (
-  a: Promise<Elements>,
-  b: Promise<Elements>,
-  base: Elements,
-  overlay: Elements | undefined,
-): Promise<Elements> => {
-  const getResult = () =>
-    Promise.all([a, b]).then(([aRes, bRes]) => {
-      const nextElements = { ...aRes, ...bRes };
-      // String keys are server-owned. Keep changes made after the request began.
-      for (const key of Object.keys(aRes)) {
-        if (!Object.hasOwn(base, key) || aRes[key] !== base[key]) {
-          nextElements[key] = aRes[key];
-        }
-      }
-      for (const key of Object.keys(base)) {
-        if (!Object.hasOwn(aRes, key)) {
-          delete nextElements[key];
-        }
-      }
-      for (const key of Reflect.ownKeys(overlay ?? {})) {
-        if (Object.hasOwn(bRes, key)) {
-          nextElements[key] = bRes[key];
-        }
-      }
-      delete nextElements._value;
-      return nextElements;
-    });
-  const cache2 = getCached(() => new WeakMap(), rebaseCache, a);
-  const cache3 = getCached(() => new WeakMap(), cache2, b);
-  return getCached(getResult, cache3, base);
-};
-
 // a replayed updater has to return the same promise, or the tree never
 // settles on the refreshed record (hot-reload.dev.spec.ts)
 const refreshCache = new WeakMap();
@@ -274,16 +240,11 @@ const swrNewKeysElementsPromise = (
 type FetchRscOptions = {
   signal?: AbortSignal;
   onBuildIdMismatch?: () => void;
-  /**
-   * Existing elements retained by the caller. Their etags are sent with the
-   * request, and the response is merged over them before it is returned.
-   */
   unstable_base?: Elements;
 };
 
 type MergeElementsOptions = {
   unstable_overlay?: Elements;
-  unstable_rebase?: Elements;
   unstable_swr?: {
     pin: (key: string | symbol) => boolean;
     base?: Elements;
@@ -617,19 +578,10 @@ export const Root_UNSTABLE = ({
     fetchRscStore[SET_ELEMENTS] = setElements;
   }, []);
   useEffect(() => {
-    if (fetchRscStore[ENTRY]?.[2] === elements) {
-      delete fetchRscStore[ENTRY];
-    }
-  }, [elements]);
-  useEffect(() => {
     elements.then(updateCachedEtags, () => {});
   }, [elements]);
   const mergeElements = useCallback<MergeElements>((data, options) => {
-    const {
-      unstable_overlay: overlay,
-      unstable_rebase: rebase,
-      unstable_swr: swr,
-    } = options ?? {};
+    const { unstable_overlay: overlay, unstable_swr: swr } = options ?? {};
     const elements = Promise.resolve(data);
     const elementsWithoutErrors = elements.catch(() => ({}));
     if (swr) {
@@ -658,11 +610,7 @@ export const Root_UNSTABLE = ({
     const elementsToMerge = overlay
       ? mergeElementsPromise(elements, overlay).catch(() => ({}))
       : elementsWithoutErrors;
-    setElements((prev) =>
-      rebase
-        ? rebaseElementsPromise(prev, elementsToMerge, rebase, overlay)
-        : mergeElementsPromise(prev, elementsToMerge),
-    );
+    setElements((prev) => mergeElementsPromise(prev, elementsToMerge));
     return elements;
   }, []);
   return (

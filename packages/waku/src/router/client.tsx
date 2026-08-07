@@ -1265,21 +1265,30 @@ const InnerRouter = ({
           pendingNavigationRef.current = null;
         } else {
           commit(() => {
-            void mergeElements(resolved, {
-              unstable_overlay: {
-                ...(ROUTE_ID in resolved
-                  ? { [ROUTE_ID]: resolved[ROUTE_ID] }
-                  : {}),
-                ...(HAS404_ID in resolved
-                  ? { [HAS404_ID]: resolved[HAS404_ID] }
-                  : {}),
-                ...(IS_STATIC_ID in resolved
-                  ? { [IS_STATIC_ID]: resolved[IS_STATIC_ID] }
-                  : {}),
-                [ROUTER_STATE_ID]: routerState,
-              },
-              unstable_rebase: base,
+            const current = resolvedElementsRef.current;
+            const update: Elements = {};
+            // A server action can merge newer values while this request waits.
+            for (const [key, value] of Object.entries(resolved)) {
+              if (
+                Object.hasOwn(current, key) === Object.hasOwn(base, key) &&
+                current[key] === base[key]
+              ) {
+                update[key] = value;
+              }
+            }
+            Object.assign(update, {
+              ...(ROUTE_ID in resolved
+                ? { [ROUTE_ID]: resolved[ROUTE_ID] }
+                : {}),
+              ...(HAS404_ID in resolved
+                ? { [HAS404_ID]: resolved[HAS404_ID] }
+                : {}),
+              ...(IS_STATIC_ID in resolved
+                ? { [IS_STATIC_ID]: resolved[IS_STATIC_ID] }
+                : {}),
+              [ROUTER_STATE_ID]: routerState,
             });
+            void mergeElements(update);
           }, options.startTransition || startTransition);
         }
       } catch (e) {

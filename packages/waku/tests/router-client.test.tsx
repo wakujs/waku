@@ -93,7 +93,6 @@ const testHoisted = vi.hoisted(() => ({
   mergeOptions: [] as Array<
     | {
         unstable_overlay?: Record<string, unknown>;
-        unstable_rebase?: Record<string, unknown>;
         unstable_swr?: {
           pin: (key: string | symbol) => boolean;
           base?: Record<string, unknown>;
@@ -374,7 +373,6 @@ vi.mock('../src/minimal/client.js', async () => {
       data: Record<string, unknown> | Promise<Record<string, unknown>>,
       options?: {
         unstable_overlay?: Record<string, unknown>;
-        unstable_rebase?: Record<string, unknown>;
         unstable_swr?: { pin: (key: string | symbol) => boolean };
       },
     ) => Promise<Record<string, unknown>>
@@ -1978,11 +1976,22 @@ describe('Router integration', () => {
     installRefetch(vi.fn<RefetchInner>(() => pending.promise));
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
+    let mergeElements: ReturnType<typeof useMergeElements> | undefined;
+    const Content = () => {
+      mergeElements = useMergeElements();
+      return (
+        <>
+          <Probe />
+          <Slot id="shared" />
+        </>
+      );
+    };
     const view = await renderRouter(
       { initialRoute: { path: '/start', query: '', hash: '' } },
       {
-        [unstable_getRouteSlotId('/start')]: <Probe />,
-        [unstable_getRouteSlotId('/next')]: <Probe />,
+        [unstable_getRouteSlotId('/start')]: <Content />,
+        [unstable_getRouteSlotId('/next')]: <Content />,
+        shared: <div>initial</div>,
         [ROUTE_ID]: ['/start', ''],
         [IS_STATIC_ID]: false,
       },
@@ -2000,20 +2009,24 @@ describe('Router integration', () => {
       expect(window.location.pathname).toBe('/start');
 
       await act(async () => {
-        pending.resolve({ [IS_STATIC_ID]: false });
+        await mergeElements!({ shared: <div>server action</div> });
+      });
+      expect(view.container.textContent).toContain('server action');
+      testHoisted.mergeTypes.length = 0;
+
+      await act(async () => {
+        pending.resolve({
+          shared: <div>route response</div>,
+          [IS_STATIC_ID]: false,
+        });
         await pushed;
       });
 
       expect(testHoisted.mergeTypes).toEqual(['sync']);
-      expect(testHoisted.mergeOptions).toContainEqual(
-        expect.objectContaining({
-          unstable_rebase: expect.objectContaining({
-            [ROUTE_ID]: ['/start', ''],
-          }),
-        }),
-      );
       expect(capture.router?.path).toBe('/next');
       expect(window.location.pathname).toBe('/next');
+      expect(view.container.textContent).toContain('server action');
+      expect(view.container.textContent).not.toContain('route response');
     } finally {
       view.unmount();
     }
