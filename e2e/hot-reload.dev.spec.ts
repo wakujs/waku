@@ -429,11 +429,15 @@ test.describe('minimal hot reload', () => {
     rmSync(minimalHmrFixtureDir, { recursive: true, force: true });
   });
 
-  test('keeps the updated Root RSC after a remount', async ({ page }) => {
+  test('refreshes the active RSC and invalidates the Root cache', async ({
+    page,
+  }) => {
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
     await page.getByRole('button', { name: 'Increment' }).click();
     await expect(page.getByTestId('count')).toHaveText('Count: 1');
+    await page.getByRole('button', { name: 'Refetch' }).click();
+    await expect(page.getByTestId('title')).toHaveText('Hello refetched');
 
     const appFile = join(minimalHmrFixtureDir, 'src/components/App.tsx');
     const original = readFileSync(appFile, 'utf-8');
@@ -443,7 +447,7 @@ test.describe('minimal hot reload', () => {
     );
 
     await expectNoFullReloadFor(page);
-    await expect(page.getByTestId('title')).toHaveText('Hello HMR Waku');
+    await expect(page.getByTestId('title')).toHaveText('Hello HMR refetched');
     await expect(page.getByTestId('count')).toHaveText('Count: 1');
 
     await page.evaluate(() => {

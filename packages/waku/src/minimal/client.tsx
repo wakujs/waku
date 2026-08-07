@@ -486,7 +486,14 @@ export function unstable_registerFetchRscInputTransformer(
   };
 }
 
+/**
+ * Sets the RSC refresh operation used by HMR, replacing the previous one. It
+ * has no effect outside development.
+ */
 export const unstable_setRscReloadListener = (listener: () => void): void => {
+  if (!import.meta.hot) {
+    return;
+  }
   globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= [];
   const previous = globalThis.__WAKU_REFETCH_RSC__;
   const reload = () => {
@@ -712,15 +719,22 @@ export const useRefetch = () => {
   const mergeElements = useMergeElements_UNSTABLE();
   return useCallback(
     (rscPath: string, rscParams?: unknown, options?: RefetchOptions) => {
-      const { unstable_overlay, unstable_swr, ...fetchOptions } = options ?? {};
-      const elements = unstable_fetchRsc(rscPath, rscParams, {
-        ...fetchOptions,
-        ...(unstable_swr?.base ? { unstable_base: unstable_swr.base } : {}),
+      const refetch = () => {
+        const { unstable_overlay, unstable_swr, ...fetchOptions } =
+          options ?? {};
+        const elements = unstable_fetchRsc(rscPath, rscParams, {
+          ...fetchOptions,
+          ...(unstable_swr?.base ? { unstable_base: unstable_swr.base } : {}),
+        });
+        return mergeElements(elements, {
+          ...(unstable_overlay ? { unstable_overlay } : {}),
+          ...(unstable_swr ? { unstable_swr } : {}),
+        });
+      };
+      unstable_setRscReloadListener(() => {
+        void refetch();
       });
-      return mergeElements(elements, {
-        ...(unstable_overlay ? { unstable_overlay } : {}),
-        ...(unstable_swr ? { unstable_swr } : {}),
-      });
+      return refetch();
     },
     [mergeElements],
   );

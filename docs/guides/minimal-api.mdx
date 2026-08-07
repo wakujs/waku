@@ -516,6 +516,7 @@ The Minimal API exposes fetching and merging separately. Define a hook for the b
 import { useCallback, useTransition } from 'react';
 import {
   unstable_fetchRsc as fetchRsc,
+  unstable_setRscReloadListener as setRscReloadListener,
   useMergeElements_UNSTABLE as useMergeElements,
 } from 'waku/minimal/client';
 
@@ -523,8 +524,11 @@ const useRefetch = () => {
   const mergeElements = useMergeElements();
   return useCallback(
     (rscPath: string, rscParams?: unknown) => {
-      const elements = fetchRsc(rscPath, rscParams);
-      return mergeElements(elements);
+      const refetch = () => mergeElements(fetchRsc(rscPath, rscParams));
+      setRscReloadListener(() => {
+        void refetch();
+      });
+      return refetch();
     },
     [mergeElements],
   );
@@ -552,6 +556,7 @@ Important behavior:
 
 - `refetch(...)` requests a new RSC payload for the given `rscPath` and optional `rscParams`.
 - The returned payload is merged into the current element map by key.
+- The reload registration keeps development HMR on the refetched RSC path and has no effect in production.
 - If you return only `InnerApp`, previously rendered elements such as `App` stay mounted.
 - If the refetch fails, the existing element map stays in place.
 
