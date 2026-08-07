@@ -398,8 +398,27 @@ describe('minimal/client input transformer', () => {
 
     await unstable_fetchRsc('R/original.txt', undefined);
 
-    expect(transform).toHaveBeenCalledWith('R/original.txt', undefined);
+    expect(transform).toHaveBeenCalledOnce();
+    expect(transform.mock.calls[0]?.slice(0, 2)).toEqual([
+      'R/original.txt',
+      undefined,
+    ]);
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('rewritten');
+  });
+
+  test('supports the deprecated transformer signature', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response('{}'));
+    track(unstable_registerFetchEnhancer(() => fetchMock));
+    const transform = vi.fn(
+      (_rscPath: string, _rscParams: unknown, prefetchOnly: boolean) =>
+        ['R/legacy.txt', { x: 1 }, prefetchOnly] as const,
+    );
+    track(unstable_registerFetchRscInputTransformer(transform));
+
+    await unstable_fetchRsc('R/original.txt', undefined);
+
+    expect(transform).toHaveBeenCalledWith('R/original.txt', undefined, false);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('legacy');
   });
 });
 

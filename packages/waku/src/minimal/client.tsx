@@ -33,8 +33,10 @@ import {
   fetchRscStore,
 } from './client-utils/fetch-store.js';
 import type {
+  CompatibleFetchRscInputTransformer,
   FetchEnhancer,
   FetchRscInputTransformer,
+  LegacyFetchRscInputTransformer,
   SetElements,
 } from './client-utils/fetch-store.js';
 
@@ -360,7 +362,7 @@ const applyInputTransformers = (
   const fetchRscInputTransformers = fetchRscStore[FETCH_RSC_INPUT_TRANSFORMERS];
   if (fetchRscInputTransformers) {
     for (const transformFetchRscInput of fetchRscInputTransformers) {
-      [rscPath, rscParams] = transformFetchRscInput(rscPath, rscParams);
+      [rscPath, rscParams] = transformFetchRscInput(rscPath, rscParams, false);
     }
   }
   return [rscPath, rscParams];
@@ -458,13 +460,23 @@ export const unstable_registerFetchEnhancer = (
 };
 
 /**
- * Register a transformer that rewrites the RSC fetch input
- * (`rscPath`, `rscParams`) before each request. Returns a function that
- * unregisters the transformer.
+ * Registers a transformer that rewrites the RSC path and params before each
+ * request. Returns a function that unregisters the transformer.
  */
-export const unstable_registerFetchRscInputTransformer = (
+export function unstable_registerFetchRscInputTransformer(
   transformFetchRscInput: FetchRscInputTransformer,
-): Unregister => {
+): Unregister;
+/**
+ * @deprecated Use a two-argument transformer that returns the transformed RSC
+ * path and params. The third argument is always `false`, and the third return
+ * value is ignored.
+ */
+export function unstable_registerFetchRscInputTransformer(
+  transformFetchRscInput: LegacyFetchRscInputTransformer,
+): Unregister;
+export function unstable_registerFetchRscInputTransformer(
+  transformFetchRscInput: CompatibleFetchRscInputTransformer,
+): Unregister {
   const fetchRscInputTransformers = (fetchRscStore[
     FETCH_RSC_INPUT_TRANSFORMERS
   ] ||= new Set());
@@ -472,7 +484,7 @@ export const unstable_registerFetchRscInputTransformer = (
   return () => {
     fetchRscInputTransformers.delete(transformFetchRscInput);
   };
-};
+}
 
 export const unstable_upsertRscReloadListener = (
   previous: (() => void) | undefined,
