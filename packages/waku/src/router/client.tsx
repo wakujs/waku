@@ -1163,9 +1163,25 @@ const InnerRouter = ({
     scrollToHash(currentHash, behavior, pathChanged);
   }, [elements, routerState, destinationHref, currentHash, addToStaticPathSet]);
 
+  const cancelPendingNavigation = useCallback(() => {
+    const pendingNavigation = pendingNavigationRef.current;
+    pendingNavigation?.controller.abort();
+    if (pendingNavigation?.queuedState) {
+      // Append the committed snapshot after the superseded transition update.
+      // The explicit key also clears state absent from the initial snapshot.
+      const committed = resolvedElementsRef.current;
+      void mergeElements({
+        ...committed,
+        [ROUTER_STATE_ID]: getRouterState(committed),
+      });
+    }
+    pendingNavigationRef.current = null;
+  }, [mergeElements]);
+
   useEffect(() => {
     if (import.meta.hot) {
       const refetchRouteOnHmr = () => {
+        cancelPendingNavigation();
         prefetchManagerRef.current!.clear();
         staticPathSetRef.current!.clear();
         const settledRoute = getSettledRoute(
@@ -1182,25 +1198,14 @@ const InnerRouter = ({
       };
       return registerRscReloadListener(refetchRouteOnHmr);
     }
-  }, [refetch, addToStaticPathSet, routeFallback]);
+  }, [refetch, addToStaticPathSet, routeFallback, cancelPendingNavigation]);
 
   // starts empty so hydration matches; filled when a lazy Slice fetches
   const [fetchingSlices] = useState(() => new Set<SliceId>());
 
   const changeRoute: ChangeRoute = useCallback(
     async function changeRoute(nextRoute, options) {
-      const pendingNavigation = pendingNavigationRef.current;
-      pendingNavigation?.controller.abort();
-      if (pendingNavigation?.queuedState) {
-        // Append the committed snapshot after the superseded transition update.
-        // The explicit key also clears state absent from the initial snapshot.
-        const committed = resolvedElementsRef.current;
-        void mergeElements({
-          ...committed,
-          [ROUTER_STATE_ID]: getRouterState(committed),
-        });
-      }
-      pendingNavigationRef.current = null;
+      cancelPendingNavigation();
       const settledRoute = getSettledRoute(
         resolvedElementsRef.current,
         routeFallback,
@@ -1347,7 +1352,13 @@ const InnerRouter = ({
         throw e;
       }
     },
-    [routeFallback, refetch, mergeElements, addToStaticPathSet],
+    [
+      routeFallback,
+      refetch,
+      mergeElements,
+      addToStaticPathSet,
+      cancelPendingNavigation,
+    ],
   );
 
   const changeRouteFromServer = useCallback(

@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'waku/router/client';
+import { DelayedLink } from '../components/DelayedLink';
 import { MinimalRefetch } from '../components/MinimalRefetch';
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -50,6 +51,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         >
           hover
         </Link>
+        {' | '}
+        <DelayedLink />
         {' | '}
         <MinimalRefetch />
       </nav>

@@ -457,5 +457,28 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     );
     await expect(page.getByTestId('hmr-marker')).toBeVisible();
     await expect(page.getByTestId('post-body')).toHaveText('Post 1');
+
+    const delayedResponsePromise = page.waitForResponse((response) =>
+      response.url().includes('R/post/2'),
+    );
+    await page.getByTestId('link-delayed-post-2').click();
+    await (await delayedResponsePromise).finished();
+
+    const postFile = join(hmrFixtureDir, 'src/pages/post/[id].tsx');
+    const originalPost = readFileSync(postFile, 'utf-8');
+    const postHmrResponsePromise = page.waitForResponse((response) =>
+      response.url().includes('R/post/1'),
+    );
+    writeFileSync(postFile, originalPost.replace('Post {id}', 'HMR Post {id}'));
+    await (await postHmrResponsePromise).finished();
+    await page.evaluate(() => {
+      const global = globalThis as typeof globalThis & {
+        __WAKU_TEST_COMMIT_NAVIGATION__?: () => void;
+      };
+      global.__WAKU_TEST_COMMIT_NAVIGATION__?.();
+      delete global.__WAKU_TEST_COMMIT_NAVIGATION__;
+    });
+    await expect(page).toHaveURL(`http://localhost:${port}/post/1`);
+    await expect(page.getByTestId('post-body')).toHaveText('HMR Post 1');
   });
 });
