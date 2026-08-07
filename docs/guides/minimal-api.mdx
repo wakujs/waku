@@ -36,7 +36,8 @@ The minimal API is small, but it exposes both server-side handlers and client-si
 | `waku/minimal/client` | `Root_UNSTABLE`              | Installing the minimal client runtime.                                |
 | `waku/minimal/client` | `Slot_UNSTABLE`              | Rendering a server element by RSC ID.                                 |
 | `waku/minimal/client` | `Children_UNSTABLE`          | Placing client-side `Slot` children inside a server-rendered element. |
-| `waku/minimal/client` | `useRefetch_UNSTABLE`        | Fetching and merging another RSC payload.                             |
+| `waku/minimal/client` | `unstable_fetchRsc`          | Fetching and decoding an RSC payload.                                 |
+| `waku/minimal/client` | `useMergeElements_UNSTABLE`  | Merging an RSC payload into the current element map.                  |
 | `waku/minimal/client` | `unstable_*` helpers         | Building router-like abstractions.                                    |
 
 Examples below often import these as shorter names.
@@ -50,7 +51,7 @@ At this level, Waku gives you rendering primitives and very little policy.
 - `handleRequest` decides how each incoming request is handled.
 - `renderRsc` renders a React Server Components payload as a `ReadableStream`.
 - `renderHtml` renders the HTML shell that boots the client.
-- `Root` fetches and caches RSC payloads on the client.
+- `Root` fetches and owns the current RSC payload on the client.
 - `Slot` renders a named element from the RSC payload.
 - `handleBuild` decides which files are emitted during `waku build`.
 
@@ -199,7 +200,7 @@ The `input` argument is one of the following shapes:
 
 | `input.type` | When it is used                                                                          | Extra fields           |
 | ------------ | ---------------------------------------------------------------------------------------- | ---------------------- |
-| `rsc`        | RSC payload fetches initiated by `Root` or `useRefetch`                                  | `rscPath`, `rscParams` |
+| `rsc`        | RSC payload fetches initiated by `Root` or `unstable_fetchRsc`                           | `rscPath`, `rscParams` |
 | `call`       | Server function calls                                                                    | `fn`, `args`           |
 | `http`       | Ordinary HTTP requests such as document requests, custom endpoints, and form submissions | `tryAction?`           |
 
@@ -425,7 +426,7 @@ Props:
 Important behavior:
 
 - `initialRscPath` defaults to `''`.
-- `Root` is required for `Slot`, `Children`, and `useRefetch`.
+- `Root` is required for `Slot`, `Children`, and `useMergeElements_UNSTABLE`.
 - The client store is a module-level singleton (normally one per document), so mounting multiple `Root` instances is not supported.
 - `Root` injects default head tags for charset, viewport, and generator.
 - For SSR or SSG, use `hydrateRoot(document, rootElement)` when `globalThis.__WAKU_HYDRATE__` is set.
@@ -507,23 +508,27 @@ Client:
 
 This is useful for nested layouts and composition patterns where the server tree decides where client-provided children should appear.
 
-#### `useRefetch`
+#### Refetching
 
-`useRefetch` returns a function that fetches a new RSC payload and merges it into the current element map:
-
-```tsx
-refetch(
-  rscPath: string,
-  rscParams?: unknown,
-  options?: { signal?: AbortSignal; onBuildIdMismatch?: () => void },
-)
-```
-
-Example:
+The Minimal API exposes fetching and merging separately. Define a hook for the behavior your application needs:
 
 ```tsx
-import { useTransition } from 'react';
-import { useRefetch_UNSTABLE as useRefetch } from 'waku/minimal/client';
+import { useCallback, useTransition } from 'react';
+import {
+  unstable_fetchRsc,
+  useMergeElements_UNSTABLE,
+} from 'waku/minimal/client';
+
+const useRefetch = () => {
+  const mergeElements = useMergeElements_UNSTABLE();
+  return useCallback(
+    (rscPath: string, rscParams?: unknown) => {
+      const elements = unstable_fetchRsc(rscPath, rscParams);
+      return mergeElements(elements);
+    },
+    [mergeElements],
+  );
+};
 
 const Counter = () => {
   const [isPending, startTransition] = useTransition();
@@ -542,6 +547,8 @@ const Counter = () => {
   );
 };
 ```
+
+The deprecated `useRefetch` export remains temporarily for migration. New code should define the hook locally as above.
 
 Important behavior:
 

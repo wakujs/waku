@@ -26,7 +26,7 @@ import {
   unstable_registerFetchEnhancer,
   unstable_registerFetchRscInputTransformer,
   useElementsPromise_UNSTABLE,
-  useRefetch_UNSTABLE as useRefetch,
+  useRefetch,
 } from '../src/minimal/client.js';
 
 type CallServer = (funcId: string, args: unknown[]) => Promise<unknown>;
@@ -1350,68 +1350,39 @@ describe('minimal/client refetch scenarios', () => {
     view.unmount();
   });
 
-  test('an aborted navigation does not act on its prefetch build id', async () => {
+  test('an aborted adopted prefetch does not act on its build id', async () => {
     vi.stubEnv('WAKU_BUILD_ID', 'build-1');
-    const view = await mount(
-      { _value: null, page: 'P1', _buildId: 'build-1' },
-      () => (
-        <Suspense fallback={null}>
-          <Slot id="page" />
-        </Suspense>
-      ),
-    );
     const onBuildIdMismatch = vi.fn();
     const controller = new AbortController();
     let settle = () => {};
     const prefetched = new Promise<Record<string, unknown>>((resolve) => {
       settle = () => resolve({ _value: null, page: 'P2', _buildId: 'build-2' });
     });
-    await act(async () => {
-      view
-        .refetch()('R/done.txt', undefined, {
-          unstable_prefetched: prefetched,
-          signal: controller.signal,
-          onBuildIdMismatch,
-        })
-        .catch(() => {});
-      await wait();
+    const adopted = unstable_fetchRsc('R/done.txt', undefined, {
+      unstable_prefetched: prefetched,
+      signal: controller.signal,
+      onBuildIdMismatch,
     });
 
     controller.abort();
-    await act(async () => {
-      // the stale build arrives after the user moved on
-      settle();
-      await wait();
-    });
+    settle();
+    await adopted.catch(() => {});
 
     expect(onBuildIdMismatch).not.toHaveBeenCalled();
-    view.unmount();
   });
 
   test('adopting prefetched elements re-checks the build id', async () => {
     vi.stubEnv('WAKU_BUILD_ID', 'build-1');
-    const view = await mount(
-      { _value: null, page: 'P1', _buildId: 'build-1' },
-      () => (
-        <Suspense fallback={null}>
-          <Slot id="page" />
-        </Suspense>
-      ),
-    );
     const onBuildIdMismatch = vi.fn();
-    await act(async () => {
-      await view.refetch()('R/done.txt', undefined, {
-        unstable_prefetched: Promise.resolve({
-          _value: null,
-          page: 'P2',
-          _buildId: 'build-2',
-        }),
-        onBuildIdMismatch,
-      });
-      await wait();
+    await unstable_fetchRsc('R/done.txt', undefined, {
+      unstable_prefetched: Promise.resolve({
+        _value: null,
+        page: 'P2',
+        _buildId: 'build-2',
+      }),
+      onBuildIdMismatch,
     });
     expect(onBuildIdMismatch).toHaveBeenCalledTimes(1);
-    view.unmount();
   });
 
   test('new key: a slot b introduces suspends, then shows b', async () => {

@@ -26,10 +26,6 @@ import type {
 } from 'react';
 import { preloadModule } from 'react-dom';
 import {
-  abortable,
-  reloadOnBuildIdMismatch,
-} from '../minimal/client-utils/rsc-promise.js';
-import {
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
   unstable_addBase as addBase,
@@ -42,7 +38,6 @@ import {
   unstable_upsertRscReloadListener as upsertRscReloadListener,
   useElementsPromise_UNSTABLE as useElementsPromise,
   useMergeElements_UNSTABLE as useMergeElements,
-  useRefetch_UNSTABLE as useRefetch,
 } from '../minimal/client.js';
 import { isFollowable, resolveErrorRoute } from './client-utils/error-route.js';
 import {
@@ -167,6 +162,41 @@ const reloadWithUrl = (url: URL) => {
 
 type Elements = Record<string | symbol, unknown>;
 
+type RefetchOptions = {
+  signal?: AbortSignal;
+  onBuildIdMismatch?: () => void;
+  unstable_prefetched?: Promise<Elements>;
+  unstable_overlay?: Elements;
+  unstable_swr?: {
+    pin: (key: string | symbol) => boolean;
+    base?: Elements;
+  };
+};
+
+type Refetch = (
+  rscPath: string,
+  rscParams?: unknown,
+  options?: RefetchOptions,
+) => Promise<Elements>;
+
+const useRefetch = (): Refetch => {
+  const mergeElements = useMergeElements();
+  return useCallback(
+    (rscPath, rscParams, options = {}) => {
+      const { unstable_overlay, unstable_swr, ...fetchOptions } = options;
+      const elements = fetchRsc(rscPath, rscParams, {
+        ...fetchOptions,
+        ...(unstable_swr?.base ? { unstable_base: unstable_swr.base } : {}),
+      });
+      return mergeElements(elements, {
+        ...(unstable_overlay ? { unstable_overlay } : {}),
+        ...(unstable_swr ? { unstable_swr } : {}),
+      });
+    },
+    [mergeElements],
+  );
+};
+
 const fetchRoute = (
   rscPath: string,
   rscParams: URLSearchParams,
@@ -180,16 +210,11 @@ const fetchRoute = (
     onBuildIdMismatch: () => void;
   },
 ): Promise<Elements> => {
-  const elements = prefetched
-    ? abortable(prefetched, signal)
-    : fetchRsc(rscPath, rscParams, {
-        signal,
-        onBuildIdMismatch,
-      });
-  if (prefetched) {
-    reloadOnBuildIdMismatch(elements, onBuildIdMismatch);
-  }
-  return elements;
+  return fetchRsc(rscPath, rscParams, {
+    signal,
+    onBuildIdMismatch,
+    ...(prefetched ? { unstable_prefetched: prefetched } : {}),
+  });
 };
 
 const isAltClick = (event: MouseEvent<HTMLAnchorElement>) =>
@@ -1124,7 +1149,7 @@ const InnerRouter = ({
         // Append the committed snapshot after the superseded transition update.
         // The explicit key also clears state absent from the initial snapshot.
         const committed = resolvedElementsRef.current;
-        mergeElements({
+        void mergeElements({
           ...committed,
           [ROUTER_STATE_ID]: getRouterState(committed),
         });
@@ -1168,7 +1193,7 @@ const InnerRouter = ({
       if (staticPathSetRef.current!.has(nextRoute.path) || !shouldRefetch) {
         commit(
           () => {
-            mergeElements({
+            void mergeElements({
               [ROUTE_ID]: [nextRoute.path, nextRoute.query],
               [ROUTER_STATE_ID]: routerState,
             });
@@ -1220,7 +1245,10 @@ const InnerRouter = ({
           pendingNavigationRef.current = null;
         } else {
           commit(() => {
-            mergeElements({ ...resolved, [ROUTER_STATE_ID]: routerState });
+            void mergeElements({
+              ...resolved,
+              [ROUTER_STATE_ID]: routerState,
+            });
           }, options.startTransition || startTransition);
         }
       } catch (e) {
@@ -1236,7 +1264,7 @@ const InnerRouter = ({
           () => {
             // write the url now; an unrecoverable rethrow discards the commit
             commitHistory(targetUrl, routerState.history);
-            mergeElements({
+            void mergeElements({
               [ROUTER_STATE_ID]: failureState,
             });
           },

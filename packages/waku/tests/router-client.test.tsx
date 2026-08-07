@@ -26,7 +26,7 @@ import {
   Slot_UNSTABLE as Slot,
   unstable_fetchRsc as fetchRsc,
   unstable_prefetchRsc as prefetchRsc,
-  useRefetch_UNSTABLE as useRefetch,
+  useMergeElements_UNSTABLE as useMergeElements,
 } from '../src/minimal/client.js';
 import { PREFETCH_LIMIT } from '../src/router/client-utils/prefetch-cache.js';
 import {
@@ -88,6 +88,16 @@ const testHoisted = vi.hoisted(() => ({
   inner: null as
     ((...args: unknown[]) => Promise<Record<string, unknown>>) | null,
   mergeTypes: [] as Array<'sync' | 'async' | 'swr'>,
+  mergeOptions: [] as Array<
+    | {
+        unstable_overlay?: Record<string, unknown>;
+        unstable_swr?: {
+          pin: (key: string | symbol) => boolean;
+          base?: Record<string, unknown>;
+        };
+      }
+    | undefined
+  >,
   onMerge: null as (() => void) | null,
 }));
 
@@ -141,7 +151,20 @@ type RootStore = {
     pin: (key: string | symbol) => boolean,
   ) => void;
 };
-type RefetchInner = ReturnType<typeof useRefetch>;
+type RefetchInner = (
+  rscPath: string,
+  rscParams?: unknown,
+  options?: {
+    signal?: AbortSignal;
+    onBuildIdMismatch?: () => void;
+    unstable_prefetched?: Promise<Record<string, unknown>>;
+    unstable_overlay?: Record<string, unknown>;
+    unstable_swr?: {
+      pin: (key: string | symbol) => boolean;
+      base?: Record<string, unknown>;
+    };
+  },
+) => Promise<Record<string, unknown>>;
 type MockedRefetch = ReturnType<typeof vi.fn<RefetchInner>>;
 
 // Install a test-provided refetch as the shared inner mock the mocked Roots
@@ -338,39 +361,29 @@ vi.mock('../src/minimal/client.js', async () => {
     );
   };
 
-  // Per-root refetch: calls the shared inner mock, then merges the response into
-  // this Root's own store.
-  const noopMergeElements = () => {};
-  const refetchByStore = new WeakMap<
+  const noopMergeElements = async (
+    data: Record<string, unknown> | Promise<Record<string, unknown>>,
+  ) => data;
+  const mergeByStore = new WeakMap<
     object,
     (
-      rscPath: string,
-      ...rest: [rscParams?: unknown, options?: unknown]
-    ) => unknown
+      data: Record<string, unknown> | Promise<Record<string, unknown>>,
+      options?: {
+        unstable_overlay?: Record<string, unknown>;
+        unstable_swr?: { pin: (key: string | symbol) => boolean };
+      },
+    ) => Promise<Record<string, unknown>>
   >();
-  const useMockRefetch = () => {
+  const useMockMergeElements = () => {
     const store = React.use(StoreContext);
-    // one function identity per store, like the real RefetchContext value
-    let fn = store && refetchByStore.get(store);
+    let fn = store && mergeByStore.get(store);
     if (!fn) {
-      fn = (
-        rscPath: string,
-        ...rest: [rscParams?: unknown, options?: unknown]
-      ) => {
-        const options = rest[1] as
-          | {
-              unstable_overlay?: Record<string, unknown>;
-              unstable_swr?: { pin: (key: string | symbol) => boolean };
-            }
-          | undefined;
+      fn = (data, options) => {
+        testHoisted.mergeOptions.push(options);
         const overlay = options?.unstable_overlay;
         const swr = options?.unstable_swr;
-        const dataPromise = Promise.resolve(
-          testHoisted.inner!(rscPath, ...rest),
-        ).then((result) => withRouteMeta(result, rscPath, rest[0]));
+        const dataPromise = Promise.resolve(data);
         if (swr) {
-          // like minimal's swr merge: the overlay lands right away and the
-          // record keeps rendering while the response streams into its holes
           if (overlay) {
             store?.applySync(overlay);
           }
@@ -380,20 +393,39 @@ vi.mock('../src/minimal/client.js', async () => {
           );
           return dataPromise;
         }
-        // like minimal's refetch: the overlay merges atomically on success
-        store?.applyAsync(
-          dataPromise.then(
-            (result) => ({ ...result, ...overlay }),
-            () => ({}),
-          ),
-        );
+        if (data instanceof Promise || 'then' in data) {
+          store?.applyAsync(
+            dataPromise.then(
+              (result) => ({ ...result, ...overlay }),
+              () => ({}),
+            ),
+          );
+        } else {
+          store?.applySync({ ...data, ...overlay });
+        }
         return dataPromise;
       };
       if (store) {
-        refetchByStore.set(store, fn);
+        mergeByStore.set(store, fn);
       }
     }
     return fn;
+  };
+
+  const abortable = <T,>(promise: Promise<T>, signal?: AbortSignal) => {
+    if (!signal) {
+      return promise;
+    }
+    if (signal.aborted) {
+      return Promise.reject(signal.reason);
+    }
+    return new Promise<T>((resolve, reject) => {
+      const abort = () => reject(signal.reason);
+      signal.addEventListener('abort', abort, { once: true });
+      promise
+        .then(resolve, reject)
+        .finally(() => signal.removeEventListener('abort', abort));
+    });
   };
 
   return {
@@ -401,20 +433,34 @@ vi.mock('../src/minimal/client.js', async () => {
     Root_UNSTABLE: vi.fn((props: Parameters<typeof actual.Root_UNSTABLE>[0]) =>
       React.createElement(StatefulRoot, props),
     ),
-    // The router writes route metadata here when no fetch carries it; route it
-    // to the calling Root's own store.
-    useMergeElements_UNSTABLE: () => {
-      const store = React.use(StoreContext);
-      return store ? store.applySync : noopMergeElements;
-    },
+    useMergeElements_UNSTABLE: () =>
+      useMockMergeElements() ?? noopMergeElements,
     unstable_fetchRsc: vi.fn(
-      (rscPath: string, rscParams?: unknown, options?: unknown) =>
-        Promise.resolve(testHoisted.inner!(rscPath, rscParams, options)).then(
-          (result) => withRouteMeta(result, rscPath, rscParams),
-        ),
+      (
+        rscPath: string,
+        rscParams?: unknown,
+        options?: {
+          signal?: AbortSignal;
+          onBuildIdMismatch?: () => void;
+          unstable_prefetched?: Promise<Record<string, unknown>>;
+        },
+      ) => {
+        const hasOptions = options && Reflect.ownKeys(options).length;
+        const rest =
+          !hasOptions && rscParams === undefined
+            ? []
+            : !hasOptions
+              ? [rscParams]
+              : [rscParams, options];
+        const requested = Promise.resolve(testHoisted.inner!(rscPath, ...rest));
+        const data = abortable(
+          options?.unstable_prefetched ?? requested,
+          options?.signal,
+        );
+        return data.then((result) => withRouteMeta(result, rscPath, rscParams));
+      },
     ),
     unstable_prefetchRsc: vi.fn(),
-    useRefetch_UNSTABLE: vi.fn(useMockRefetch),
   };
 });
 
@@ -512,17 +558,16 @@ afterAll(() => {
 
 beforeEach(() => {
   window.history.replaceState({}, '', '/start');
-  vi.stubEnv('WAKU_BUILD_ID', '');
 
   delete (globalThis as Record<string, unknown>).__WAKU_PREFETCHED__;
   testHoisted.elements = {};
   testHoisted.mergeTypes.length = 0;
+  testHoisted.mergeOptions.length = 0;
   testHoisted.onMerge = null;
-  // Fresh shared request mock per test; the mocked fetch and useRefetch wrap
-  // it, so their implementations must stay intact (do not mockReset them).
+  // Fresh shared request mock per test. The mocked fetch wraps it, so its
+  // implementation must stay intact (do not mockReset it).
   testHoisted.inner = vi.fn(async () => ({}));
   vi.mocked(fetchRsc).mockClear();
-  vi.mocked(useRefetch).mockClear();
   vi.mocked(preloadModule).mockClear();
   vi.mocked(prefetchRsc).mockReset();
   // prefetchRsc returns the decoded Promise<Elements>; default to an empty
@@ -1611,7 +1656,7 @@ describe('Slice', () => {
     const fetchingSlices = new Set<string>();
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
     refetch.mockRejectedValueOnce(new Error('slice failed'));
     installRefetch(refetch);
 
@@ -1805,7 +1850,7 @@ describe('Router integration', () => {
   test('a server function response marks a static route as static', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
     installRefetch(refetch);
 
     const view = await renderRouter(
@@ -2015,7 +2060,7 @@ describe('Router integration', () => {
     const secondNavigation = createDeferred<Record<string, unknown>>();
     const thirdNavigation = createDeferred<Record<string, unknown>>();
     const refetch = vi
-      .fn<ReturnType<typeof useRefetch>>()
+      .fn<RefetchInner>()
       .mockImplementationOnce(() => firstNavigation.promise)
       .mockImplementationOnce(() => secondNavigation.promise)
       .mockImplementationOnce(() => thirdNavigation.promise);
@@ -2316,13 +2361,17 @@ describe('Router integration', () => {
   test('a later navigation drops a hash target that never arrived', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
-    const grab = { refetch: null as null | ReturnType<typeof useRefetch> };
-    const Grabber = () => {
-      grab.refetch = useRefetch();
-      return null;
-    };
     const refetch = vi.fn<RefetchInner>(async () => ({}));
     installRefetch(refetch);
+    const MergeButton = () => {
+      const mergeElements = useMergeElements();
+      return (
+        <button
+          data-testid="merge-late"
+          onClick={() => void mergeElements(fetchRsc('late'))}
+        />
+      );
+    };
     const scrollToSpy = vi
       .spyOn(window, 'scrollTo')
       .mockImplementation(() => {});
@@ -2333,13 +2382,13 @@ describe('Router integration', () => {
         [unstable_getRouteSlotId('/a')]: (
           <>
             <Probe />
-            <Grabber />
+            <MergeButton />
           </>
         ),
         [unstable_getRouteSlotId('/b')]: (
           <>
             <Probe />
-            <Grabber />
+            <MergeButton />
             <Slot id="late" />
           </>
         ),
@@ -2363,7 +2412,9 @@ describe('Router integration', () => {
 
       refetch.mockResolvedValueOnce({ late: <div id="target">target</div> });
       await act(async () => {
-        await grab.refetch!('late');
+        view.container
+          .querySelector<HTMLButtonElement>('[data-testid="merge-late"]')
+          ?.click();
         await flush();
       });
 
@@ -2992,7 +3043,7 @@ describe('Router integration', () => {
   test('push writes history when refetch fails', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
     refetch.mockRejectedValueOnce(new Error('refetch failed'));
     installRefetch(refetch);
     const historyPushSpy = vi.spyOn(window.history, 'pushState');
@@ -3262,7 +3313,7 @@ describe('Router integration', () => {
   });
 
   test('instant nav reuses a prefetched response as data source and base', async () => {
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
+    const refetch = vi.fn<RefetchInner>(async () => ({
       [ROUTE_ID]: ['/next', ''],
       [IS_STATIC_ID]: true,
     }));
@@ -3305,7 +3356,12 @@ describe('Router integration', () => {
       unstable_encodeRoutePath('/next'),
       expect.any(URLSearchParams),
       expect.objectContaining({
+        unstable_base: shell,
         unstable_prefetched: shellPromise,
+      }),
+    );
+    expect(testHoisted.mergeOptions).toContainEqual(
+      expect.objectContaining({
         unstable_overlay: expect.objectContaining({
           [ROUTE_ID]: ['/next', ''],
         }),
@@ -3321,7 +3377,7 @@ describe('Router integration', () => {
 
   test('instant nav paints the target and writes the url before the response', async () => {
     const pending = createDeferred<Record<string, unknown>>();
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(() => pending.promise);
+    const refetch = vi.fn<RefetchInner>(() => pending.promise);
     installRefetch(refetch);
 
     const capture = { router: null as RouterApi | null };
@@ -3369,7 +3425,7 @@ describe('Router integration', () => {
       .mockImplementation(() => {});
     // an instant commit writes the requested url before the response lands
     window.history.replaceState({}, '', '/next?x=1');
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(() =>
+    const refetch = vi.fn<RefetchInner>(() =>
       Promise.reject(
         createCustomError('moved', {
           status: 307,
@@ -3414,7 +3470,7 @@ describe('Router integration', () => {
     // A static payload does not echo the query. The meta the eager pass pins
     // is the route being left, so without a refresh the record would call this
     // a server redirect and drop ?x=1 from the address bar.
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
+    const refetch = vi.fn<RefetchInner>(async () => ({
       [ROUTE_ID]: ['/next', ''],
       [IS_STATIC_ID]: true,
     }));
@@ -3451,7 +3507,7 @@ describe('Router integration', () => {
 
   test('an instant nav from a static route does not mark the target static', async () => {
     const pending = createDeferred<Record<string, unknown>>();
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
+    const refetch = vi.fn<RefetchInner>(async () => ({
       [ROUTE_ID]: ['/next', ''],
       [IS_STATIC_ID]: false,
     }));
@@ -3511,7 +3567,7 @@ describe('Router integration', () => {
   // for both instant and non-instant navigations (avoids a duplicate fetch).
   for (const instant of [true, false] as const) {
     test(`${instant ? 'instant' : 'non-instant'} nav adopts an in-flight prefetch as its data source`, async () => {
-      const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
+      const refetch = vi.fn<RefetchInner>(async () => ({
         [ROUTE_ID]: ['/next', ''],
         [IS_STATIC_ID]: true,
       }));
@@ -3549,18 +3605,13 @@ describe('Router integration', () => {
         await pushed;
       });
 
-      if (instant) {
-        expect(refetch).toHaveBeenCalledWith(
-          unstable_encodeRoutePath('/next'),
-          expect.any(URLSearchParams),
-          expect.objectContaining({
-            unstable_prefetched: pending.promise,
-          }),
-        );
-      } else {
-        expect(refetch).not.toHaveBeenCalled();
-        expect(fetchRsc).not.toHaveBeenCalled();
-      }
+      expect(refetch).toHaveBeenCalledWith(
+        unstable_encodeRoutePath('/next'),
+        expect.any(URLSearchParams),
+        expect.objectContaining({
+          unstable_prefetched: pending.promise,
+        }),
+      );
       expect(window.location.pathname).toBe('/next');
 
       view.unmount();
@@ -3599,46 +3650,8 @@ describe('Router integration', () => {
     }
   });
 
-  test('adopting a prefetch checks its build id', async () => {
-    vi.stubEnv('WAKU_BUILD_ID', 'build-1');
-    const reloadSpy = vi
-      .spyOn(window.location, 'reload')
-      .mockImplementation(() => {});
-    vi.mocked(prefetchRsc).mockReturnValue(
-      resolvedThenable({
-        [unstable_getRouteSlotId('/next')]: <div>next</div>,
-        [ROUTE_ID]: ['/next', ''],
-        [IS_STATIC_ID]: false,
-        _buildId: 'build-2',
-      }),
-    );
-    const capture = { router: null as RouterApi | null };
-    const Probe = makeProbe(capture);
-    const view = await renderRouter(
-      { initialRoute: { path: '/start', query: '', hash: '' } },
-      {
-        [unstable_getRouteSlotId('/start')]: <Probe />,
-        [ROUTE_ID]: ['/start', ''],
-        [IS_STATIC_ID]: false,
-      },
-    );
-    try {
-      await act(async () => {
-        capture.router!.prefetch('/next');
-        await flush();
-        await capture.router!.push('/next');
-        await flush();
-      });
-
-      expect(reloadSpy).toHaveBeenCalledTimes(1);
-    } finally {
-      reloadSpy.mockRestore();
-      view.unmount();
-    }
-  });
-
   test('instant nav does not reuse a prefetch for a different query', async () => {
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
+    const refetch = vi.fn<RefetchInner>(async () => ({
       [ROUTE_ID]: ['/next', ''],
       [IS_STATIC_ID]: true,
     }));
@@ -3968,7 +3981,7 @@ describe('Router integration', () => {
   });
 
   test('instant nav serves stored statics on a first visit', async () => {
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
+    const refetch = vi.fn<RefetchInner>(async () => ({
       [ROUTE_ID]: ['/fresh', ''],
       [IS_STATIC_ID]: false,
     }));
@@ -4017,6 +4030,14 @@ describe('Router integration', () => {
     expect(refetch).toHaveBeenCalledWith(
       unstable_encodeRoutePath('/fresh'),
       expect.any(URLSearchParams),
+      expect.objectContaining({
+        unstable_base: expect.objectContaining({
+          [freshSlotId]: expect.anything(),
+          [`${ETAG_ID_PREFIX}${freshSlotId}`]: IMMUTABLE_ETAG,
+        }),
+      }),
+    );
+    expect(testHoisted.mergeOptions).toContainEqual(
       expect.objectContaining({
         unstable_swr: expect.objectContaining({
           base: expect.objectContaining({
@@ -4168,7 +4189,7 @@ describe('Router integration', () => {
   test('a server rewrite drops the requested hash from the committed route', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
+    const refetch = vi.fn<RefetchInner>(async () => ({
       [ROUTE_ID]: ['/z', ''],
       [IS_STATIC_ID]: false,
     }));
@@ -4213,7 +4234,7 @@ describe('Router integration', () => {
   test('popstate that lands on another route moves the url with it', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
+    const refetch = vi.fn<RefetchInner>(async () => ({
       [ROUTE_ID]: ['/new', ''],
       [IS_STATIC_ID]: false,
     }));
@@ -4427,7 +4448,7 @@ describe('Router integration', () => {
 
   test('an instant nav scrolls once, not again when the response lands', async () => {
     let land: (() => void) | undefined;
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(
+    const refetch = vi.fn<RefetchInner>(
       () =>
         new Promise((resolve) => {
           land = () =>
@@ -4474,7 +4495,7 @@ describe('Router integration', () => {
 
   test('an instant nav whose response rewrites the route pushes once', async () => {
     let land: (() => void) | undefined;
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(
+    const refetch = vi.fn<RefetchInner>(
       () =>
         new Promise((resolve) => {
           land = () =>
@@ -4527,7 +4548,7 @@ describe('Router integration', () => {
   });
 
   test('changeRoute applies route rewrite from refetch result', async () => {
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
+    const refetch = vi.fn<RefetchInner>(async () => ({
       [ROUTE_ID]: ['/streamed', 'x=1'],
       [IS_STATIC_ID]: false,
     }));
@@ -4594,7 +4615,7 @@ describe('Router integration', () => {
     slots?: string[];
     meta?: Record<string, unknown>;
   }) => {
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>();
+    const refetch = vi.fn<RefetchInner>();
     for (const response of responses) {
       if ('redirect' in response) {
         const err = createCustomError('redirect', {
@@ -4650,7 +4671,7 @@ describe('Router integration', () => {
   const renderInterruptedFollow = async (caughtSlot: ReactNode) => {
     const pendingFollow = createDeferred<Record<string, unknown>>();
     const refetch = vi
-      .fn<ReturnType<typeof useRefetch>>()
+      .fn<RefetchInner>()
       .mockResolvedValueOnce({
         [unstable_getRouteSlotId('/a')]: caughtSlot,
         [ROUTE_ID]: ['/a', ''],
@@ -4717,7 +4738,7 @@ describe('Router integration', () => {
       .mockImplementation(() => {});
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
     refetch.mockImplementationOnce(() =>
       Promise.reject(
         createCustomError('moved', {
@@ -4770,7 +4791,7 @@ describe('Router integration', () => {
     const replaceLocationSpy = vi
       .spyOn(window.location, 'replace')
       .mockImplementation(() => {});
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>();
+    const refetch = vi.fn<RefetchInner>();
     refetch.mockImplementationOnce(() =>
       Promise.reject(
         createCustomError('moved', {
@@ -4815,7 +4836,7 @@ describe('Router integration', () => {
   });
 
   test('an instant 404 keeps the requested url in the address bar', async () => {
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>();
+    const refetch = vi.fn<RefetchInner>();
     refetch
       .mockImplementationOnce(() =>
         Promise.reject(createCustomError('nf', { status: 404 })),
@@ -4879,7 +4900,7 @@ describe('Router integration', () => {
     const ThrowRedirect = () => {
       throw RedirectErrorObject;
     };
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>();
+    const refetch = vi.fn<RefetchInner>();
     refetch
       .mockResolvedValueOnce({
         [unstable_getRouteSlotId('/account/profile')]: <ThrowRedirect />,
@@ -4935,7 +4956,7 @@ describe('Router integration', () => {
     const ThrowRedirect = () => {
       throw RedirectErrorObject;
     };
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>();
+    const refetch = vi.fn<RefetchInner>();
     refetch
       .mockResolvedValueOnce({
         [unstable_getRouteSlotId('/products')]: <ThrowRedirect />,
@@ -4990,7 +5011,7 @@ describe('Router integration', () => {
       throw RedirectErrorObject;
     };
     let resolveSecond!: (value: Record<string, unknown>) => void;
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>();
+    const refetch = vi.fn<RefetchInner>();
     refetch
       .mockResolvedValueOnce({
         [unstable_getRouteSlotId('/account/profile')]: <ThrowRedirect />,
@@ -5089,7 +5110,7 @@ describe('Router integration', () => {
     const ThrowRedirect = () => {
       throw RedirectErrorObject;
     };
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>();
+    const refetch = vi.fn<RefetchInner>();
     refetch
       .mockResolvedValueOnce({
         [unstable_getRouteSlotId('/products')]: <ThrowRedirect />,
@@ -5147,7 +5168,7 @@ describe('Router integration', () => {
     const ThrowRedirect = () => {
       throw RedirectErrorObject;
     };
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>();
+    const refetch = vi.fn<RefetchInner>();
     refetch
       .mockResolvedValueOnce({
         [unstable_getRouteSlotId('/moved')]: <ThrowRedirect />,
@@ -5213,7 +5234,7 @@ describe('Router integration', () => {
     const ThrowRedirect = () => {
       throw RedirectErrorObject;
     };
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(() =>
+    const refetch = vi.fn<RefetchInner>(() =>
       Promise.resolve({
         [unstable_getRouteSlotId('/a')]: <ThrowRedirect />,
         [ROUTE_ID]: ['/a', ''],
@@ -5264,7 +5285,7 @@ describe('Router integration', () => {
 
   test('an endless redirect chain stops at the hop limit', async () => {
     let calls = 0;
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(() => {
+    const refetch = vi.fn<RefetchInner>(() => {
       const path = `/hop/${calls}`;
       calls += 1;
       const err = createCustomError('moved', {
@@ -5319,7 +5340,7 @@ describe('Router integration', () => {
   }, 20_000);
 
   test('a committing redirect cycle stops at the hop limit', async () => {
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(((rscPath: string) => {
+    const refetch = vi.fn<RefetchInner>(((rscPath: string) => {
       const path = rscPath === unstable_encodeRoutePath('/a') ? '/a' : '/b';
       const next = path === '/a' ? '/b' : '/a';
       const err = createCustomError('moved', { status: 307, location: next });
@@ -5384,7 +5405,7 @@ describe('Router integration', () => {
       throw RedirectErrorObject;
     };
     const profileSlotId = unstable_getRouteSlotId('/account/profile');
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>();
+    const refetch = vi.fn<RefetchInner>();
     refetch
       .mockResolvedValueOnce({
         [profileSlotId]: <ThrowRedirect />,
@@ -5469,7 +5490,7 @@ describe('Router integration', () => {
       throw RedirectErrorObject;
     };
     let resolveSecond!: (value: Record<string, unknown>) => void;
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>();
+    const refetch = vi.fn<RefetchInner>();
     refetch
       .mockResolvedValueOnce({
         [unstable_getRouteSlotId('/a')]: <ThrowRedirect />,
@@ -5702,7 +5723,7 @@ describe('Router integration', () => {
     const ThrowToHash = () => {
       throw toHash;
     };
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>();
+    const refetch = vi.fn<RefetchInner>();
     refetch
       .mockResolvedValueOnce({
         [unstable_getRouteSlotId('/next')]: <ThrowToHash />,
@@ -5738,10 +5759,10 @@ describe('Router integration', () => {
   test('a hash on the 404 route does not cost a second identical fetch', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>((() =>
+    const refetch = vi.fn<RefetchInner>((() =>
       Promise.reject(
         createCustomError('nf', { status: 404 }),
-      )) as unknown as ReturnType<typeof useRefetch>);
+      )) as unknown as RefetchInner);
     installRefetch(refetch);
 
     testHoisted.elements = {
@@ -5785,13 +5806,13 @@ describe('Router integration', () => {
     const ThrowToPage2 = () => {
       throw toPage2;
     };
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>((() =>
+    const refetch = vi.fn<RefetchInner>((() =>
       Promise.resolve({
         [unstable_getRouteSlotId('/products')]: <ThrowToPage2 />,
         // the response sends us back to the query we came from
         [ROUTE_ID]: ['/products', 'page=1'],
         [IS_STATIC_ID]: false,
-      })) as unknown as ReturnType<typeof useRefetch>);
+      })) as unknown as RefetchInner);
     installRefetch(refetch);
 
     testHoisted.elements = {
@@ -5838,7 +5859,7 @@ describe('Router integration', () => {
     const ThrowToGone = () => {
       throw toGone;
     };
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(((rscPath: string) =>
+    const refetch = vi.fn<RefetchInner>(((rscPath: string) =>
       rscPath === unstable_encodeRoutePath('/404')
         ? Promise.resolve({
             [unstable_getRouteSlotId('/404')]: <Probe />,
@@ -5847,7 +5868,7 @@ describe('Router integration', () => {
           })
         : Promise.reject(
             createCustomError('nf', { status: 404 }),
-          )) as unknown as ReturnType<typeof useRefetch>);
+          )) as unknown as RefetchInner);
     installRefetch(refetch);
 
     testHoisted.elements = {
@@ -5872,7 +5893,7 @@ describe('Router integration', () => {
   test('a 404 route that itself 404s stops instead of hitting the hop limit', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(() =>
+    const refetch = vi.fn<RefetchInner>(() =>
       Promise.reject(createCustomError('nf', { status: 404 })),
     );
     installRefetch(refetch);
@@ -5916,7 +5937,7 @@ describe('Router integration', () => {
   test('a retry after a failed navigation fetches again', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
     refetch.mockRejectedValueOnce(new Error('boom'));
     installRefetch(refetch);
 
@@ -5965,7 +5986,7 @@ describe('Router integration', () => {
     const navCapture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
     const NavProbe = makeProbe(navCapture);
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
     refetch.mockRejectedValueOnce(new Error('boom'));
     installRefetch(refetch);
 
@@ -6158,13 +6179,17 @@ describe('Router integration', () => {
   test('an unrelated element merge does not scroll or push again', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
-    const grab = { refetch: null as null | ReturnType<typeof useRefetch> };
-    const Grabber = () => {
-      grab.refetch = useRefetch();
-      return null;
-    };
     const refetch = vi.fn<RefetchInner>(async () => ({}));
     installRefetch(refetch);
+    const MergeButton = () => {
+      const mergeElements = useMergeElements();
+      return (
+        <button
+          data-testid="merge-sidebar"
+          onClick={() => void mergeElements(fetchRsc('sidebar'))}
+        />
+      );
+    };
     const scrollToSpy = vi
       .spyOn(window, 'scrollTo')
       .mockImplementation(() => {});
@@ -6175,13 +6200,13 @@ describe('Router integration', () => {
         [unstable_getRouteSlotId('/start')]: (
           <>
             <Probe />
-            <Grabber />
+            <MergeButton />
           </>
         ),
         [unstable_getRouteSlotId('/b')]: (
           <>
             <Probe />
-            <Grabber />
+            <MergeButton />
           </>
         ),
         [ROUTE_ID]: ['/start', ''],
@@ -6199,7 +6224,9 @@ describe('Router integration', () => {
       // a state it has already applied
       refetch.mockResolvedValueOnce({ 'sidebar:/': <div>fresh</div> });
       await act(async () => {
-        await grab.refetch!('sidebar');
+        view.container
+          .querySelector<HTMLButtonElement>('[data-testid="merge-sidebar"]')
+          ?.click();
         await flush();
       });
       expect(scrollToSpy).toHaveBeenCalledTimes(1);
@@ -6214,7 +6241,7 @@ describe('Router integration', () => {
   test('a second 404 with a query lands on the 404 route again', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(((rscPath: string) =>
+    const refetch = vi.fn<RefetchInner>(((rscPath: string) =>
       rscPath === unstable_encodeRoutePath('/404')
         ? Promise.resolve({
             [unstable_getRouteSlotId('/404')]: <Probe />,
@@ -6223,7 +6250,7 @@ describe('Router integration', () => {
           })
         : Promise.reject(
             createCustomError('nf', { status: 404 }),
-          )) as unknown as ReturnType<typeof useRefetch>);
+          )) as unknown as RefetchInner);
     installRefetch(refetch);
 
     testHoisted.elements = {
@@ -6298,7 +6325,7 @@ describe('Router integration', () => {
   });
 
   test('a follow into a known static route does not fetch it', async () => {
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>();
+    const refetch = vi.fn<RefetchInner>();
     refetch
       .mockResolvedValueOnce({ [ROUTE_ID]: ['/a', ''], [IS_STATIC_ID]: false })
       .mockImplementationOnce(() =>
@@ -6794,7 +6821,7 @@ describe('Router integration', () => {
     const ThrowRedirect = () => {
       throw RedirectErrorObject;
     };
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
     installRefetch(refetch);
 
     const view = await renderRouter(
@@ -6907,7 +6934,7 @@ describe('Router integration', () => {
   test('a session of followed redirects does not exhaust the budget', async () => {
     // the follow budget bounds one navigation, so a long session of ordinary
     // redirects must not run it down
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(((rscPath: string) => {
+    const refetch = vi.fn<RefetchInner>(((rscPath: string) => {
       if (rscPath !== unstable_encodeRoutePath('/moved')) {
         return Promise.resolve({});
       }
@@ -6923,7 +6950,7 @@ describe('Router integration', () => {
         [ROUTE_ID]: ['/moved', ''],
         [IS_STATIC_ID]: false,
       });
-    }) as unknown as ReturnType<typeof useRefetch>);
+    }) as unknown as RefetchInner);
     installRefetch(refetch);
 
     const capture = { router: null as RouterApi | null };
@@ -7223,7 +7250,7 @@ describe('Router integration', () => {
       .mockImplementation(() => {});
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({}));
+    const refetch = vi.fn<RefetchInner>(async () => ({}));
     // the shape checkStatus gives a network failure
     refetch.mockRejectedValueOnce(
       createCustomError('Failed to fetch', { unstable_networkError: true }),
@@ -7327,7 +7354,7 @@ describe('Router integration', () => {
         <div data-testid="not-pending">Idle</div>
       );
     };
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(async () => ({
+    const refetch = vi.fn<RefetchInner>(async () => ({
       [ROUTE_ID]: ['/two', ''],
       [IS_STATIC_ID]: false,
     }));
@@ -7404,7 +7431,7 @@ describe('Router integration', () => {
       return <h1>Page 2</h1>;
     };
     const refetch = vi
-      .fn<ReturnType<typeof useRefetch>>()
+      .fn<RefetchInner>()
       .mockResolvedValueOnce({
         [ROUTE_ID]: ['/two', ''],
         [IS_STATIC_ID]: true,
@@ -7474,9 +7501,7 @@ describe('Router integration', () => {
     // isPending never flips and the hook reports { pending: false } for that
     // link even mid-navigation. This locks the documented limitation.
     const navigation = createDeferred<Record<string, unknown>>();
-    const refetch = vi.fn<ReturnType<typeof useRefetch>>(
-      () => navigation.promise,
-    );
+    const refetch = vi.fn<RefetchInner>(() => navigation.promise);
     installRefetch(refetch);
     window.history.replaceState({}, '', '/one');
     let inCustomTransition = false;

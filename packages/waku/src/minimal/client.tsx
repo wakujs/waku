@@ -37,10 +37,6 @@ import type {
   FetchRscInputTransformer,
   SetElements,
 } from './client-utils/fetch-store.js';
-import {
-  abortable,
-  reloadOnBuildIdMismatch,
-} from './client-utils/rsc-promise.js';
 
 const { createFromFetch, encodeReply, createTemporaryReferenceSet } =
   RSDWClient;
@@ -244,20 +240,23 @@ const swrNewKeysElementsPromise = (
 type FetchRscOptions = {
   signal?: AbortSignal;
   onBuildIdMismatch?: () => void;
+  unstable_prefetched?: Promise<Elements>;
+  unstable_base?: Elements;
 };
 
-type Refetch = (
-  rscPath: string,
-  rscParams?: unknown,
-  options?: FetchRscOptions & {
-    unstable_prefetched?: Promise<Elements>;
-    unstable_overlay?: Elements;
-    unstable_swr?: {
-      pin: (key: string | symbol) => boolean;
-      base?: Elements;
-    };
-  },
-) => Promise<Elements>;
+type MergeElementsOptions = {
+  unstable_overlay?: Elements;
+  unstable_swr?: {
+    pin: (key: string | symbol) => boolean;
+    base?: Elements;
+  };
+};
+
+type RefetchOptions = MergeElementsOptions & {
+  signal?: AbortSignal;
+  onBuildIdMismatch?: () => void;
+  unstable_prefetched?: Promise<Elements>;
+};
 
 const getFetchFn = (): typeof fetch => {
   let fetchFn = fetch;
@@ -331,6 +330,42 @@ const decodeRsc = (
       unstable_leave: true,
     });
   });
+
+const reloadOnBuildIdMismatch = (
+  elements: Promise<Elements>,
+  onBuildIdMismatch: (() => void) | undefined,
+) => {
+  if (!import.meta.env?.WAKU_BUILD_ID) {
+    return;
+  }
+  Promise.resolve(elements).then(
+    (data) => {
+      if (data._buildId !== import.meta.env.WAKU_BUILD_ID) {
+        (onBuildIdMismatch ?? (() => window.location.reload()))();
+      }
+    },
+    () => {},
+  );
+};
+
+const abortable = (
+  elements: Promise<Elements>,
+  signal: AbortSignal | undefined,
+): Promise<Elements> => {
+  if (!signal) {
+    return elements;
+  }
+  if (signal.aborted) {
+    return Promise.reject(signal.reason);
+  }
+  return new Promise<Elements>((resolve, reject) => {
+    const abort = () => reject(signal.reason);
+    signal.addEventListener('abort', abort, { once: true });
+    elements
+      .then(resolve, reject)
+      .finally(() => signal.removeEventListener('abort', abort));
+  });
+};
 
 const applyInputTransformers = (
   rscPath: string,
@@ -488,7 +523,9 @@ export const unstable_fetchRsc = (
   if (import.meta.hot) {
     const refetchRscOnHmr = () => {
       fetchRscStore[CACHED_ETAGS] = {};
-      const data = unstable_fetchRsc(rscPath, rscParams, options);
+      const freshOptions: FetchRscOptions = { ...options };
+      delete freshOptions.unstable_prefetched;
+      const data = unstable_fetchRsc(rscPath, rscParams, freshOptions);
       const setElements = getSetElements();
       setElements((prev) => refreshElementsPromise(prev, data));
     };
@@ -497,6 +534,17 @@ export const unstable_fetchRsc = (
       refetchRscOnHmr,
     );
     globalThis.__WAKU_REFETCH_RSC__ = refetchRscOnHmr;
+  }
+  if (options?.unstable_prefetched) {
+    const elements = abortable(options.unstable_prefetched, options.signal);
+    reloadOnBuildIdMismatch(elements, options.onBuildIdMismatch);
+    return elements;
+  }
+  if (options?.unstable_base) {
+    fetchRscStore[CACHED_ETAGS] = {
+      ...fetchRscStore[CACHED_ETAGS],
+      ...collectCachedEtags(options.unstable_base),
+    };
   }
   return fetchRscElements(rscPath, rscParams, options);
 };
@@ -549,10 +597,10 @@ export const unstable_prefetchRsc = (
   return Promise.resolve(data).then((response) => ({ ...base, ...response }));
 };
 
-const RefetchContext = createContext<Refetch>(() => {
-  throw new Error('Missing Root component');
-});
-type MergeElements = (partial: Elements) => void;
+type MergeElements = (
+  elements: Elements | Promise<Elements>,
+  options?: MergeElementsOptions,
+) => Promise<Elements>;
 const MergeElementsContext = createContext<MergeElements>(() => {
   throw new Error('Missing Root component');
 });
@@ -585,62 +633,54 @@ export const Root_UNSTABLE = ({
   useEffect(() => {
     elements.then(updateCachedEtags, () => {});
   }, [elements]);
-  const refetch = useCallback<Refetch>(async (rscPath, rscParams, options) => {
-    const {
-      unstable_prefetched: prefetched,
-      unstable_overlay: overlay,
-      unstable_swr: swr,
-    } = options ?? {};
-    let data: Promise<Elements>;
-    if (prefetched) {
-      data = abortable(prefetched, options?.signal);
-      reloadOnBuildIdMismatch(data, options?.onBuildIdMismatch);
-    } else {
-      if (swr?.base) {
-        fetchRscStore[CACHED_ETAGS] = {
-          ...fetchRscStore[CACHED_ETAGS],
-          ...collectCachedEtags(swr.base),
-        };
-      }
-      data = unstable_fetchRsc(rscPath, rscParams, options);
-    }
-    const dataWithoutErrors = Promise.resolve(data).catch(() => ({}));
+  const mergeElements = useCallback<MergeElements>((data, options) => {
+    const { unstable_overlay: overlay, unstable_swr: swr } = options ?? {};
+    const elements = Promise.resolve(data);
+    const elementsWithoutErrors = elements.catch(() => ({}));
     if (swr) {
       setElements((prev) =>
-        swrElementsPromise(prev, dataWithoutErrors, swr.pin, swr.base, overlay),
+        swrElementsPromise(
+          prev,
+          elementsWithoutErrors,
+          swr.pin,
+          swr.base,
+          overlay,
+        ),
       );
-      return Promise.resolve(data).then((resolved) => {
+      return elements.then((resolved) => {
         setElements((prev) =>
-          swrNewKeysElementsPromise(prev, dataWithoutErrors, resolved, overlay),
+          swrNewKeysElementsPromise(
+            prev,
+            elementsWithoutErrors,
+            resolved,
+            overlay,
+          ),
         );
         return resolved;
       });
     }
     // the overlay lands only when the fetch succeeds
-    const dataToMerge = overlay
-      ? mergeElementsPromise(data, overlay).catch(() => ({}))
-      : dataWithoutErrors;
-    setElements((prev) => mergeElementsPromise(prev, dataToMerge));
-    return data;
-  }, []);
-  const mergeElements = useCallback<MergeElements>((partial) => {
-    setElements((prev) => mergeElementsPromise(prev, partial));
+    const elementsToMerge = overlay
+      ? mergeElementsPromise(elements, overlay).catch(() => ({}))
+      : elementsWithoutErrors;
+    setElements((prev) => mergeElementsPromise(prev, elementsToMerge));
+    return elements;
   }, []);
   return (
-    <RefetchContext value={refetch}>
-      <MergeElementsContext value={mergeElements}>
-        <ElementsContext value={elements}>
-          {DEFAULT_HTML_HEAD}
-          {children}
-        </ElementsContext>
-      </MergeElementsContext>
-    </RefetchContext>
+    <MergeElementsContext value={mergeElements}>
+      <ElementsContext value={elements}>
+        {DEFAULT_HTML_HEAD}
+        {children}
+      </ElementsContext>
+    </MergeElementsContext>
   );
 };
 
-/** Fetch and merge another RSC payload into the current element map. */
-export const useRefetch_UNSTABLE = () => use(RefetchContext);
-
+/**
+ * Returns a function that merges an element record or pending RSC payload into
+ * the current `Root_UNSTABLE`. A rejected payload leaves the current elements
+ * unchanged.
+ */
 export const useMergeElements_UNSTABLE = () => use(MergeElementsContext);
 
 const ChildrenContext = createContext<ReactNode>(undefined);
@@ -701,8 +741,27 @@ export const Root = Root_UNSTABLE;
 export const Slot = Slot_UNSTABLE;
 /** @deprecated Use `Children_UNSTABLE`. */
 export const Children = Children_UNSTABLE;
-/** @deprecated Use `useRefetch_UNSTABLE`. */
-export const useRefetch = useRefetch_UNSTABLE;
+/**
+ * @deprecated Define a hook with `unstable_fetchRsc` and
+ * `useMergeElements_UNSTABLE` instead.
+ */
+export const useRefetch = () => {
+  const mergeElements = useMergeElements_UNSTABLE();
+  return useCallback(
+    (rscPath: string, rscParams?: unknown, options?: RefetchOptions) => {
+      const { unstable_overlay, unstable_swr, ...fetchOptions } = options ?? {};
+      const elements = unstable_fetchRsc(rscPath, rscParams, {
+        ...fetchOptions,
+        ...(unstable_swr?.base ? { unstable_base: unstable_swr.base } : {}),
+      });
+      return mergeElements(elements, {
+        ...(unstable_overlay ? { unstable_overlay } : {}),
+        ...(unstable_swr ? { unstable_swr } : {}),
+      });
+    },
+    [mergeElements],
+  );
+};
 
 export const INTERNAL_ServerRoot = ({
   elementsPromise,
@@ -711,14 +770,12 @@ export const INTERNAL_ServerRoot = ({
   elementsPromise: Promise<Elements>;
   children: ReactNode;
 }) => (
-  <RefetchContext value={async () => ({})}>
-    <MergeElementsContext value={() => {}}>
-      <ElementsContext value={elementsPromise}>
-        {DEFAULT_HTML_HEAD}
-        {children}
-      </ElementsContext>
-    </MergeElementsContext>
-  </RefetchContext>
+  <MergeElementsContext value={async () => ({})}>
+    <ElementsContext value={elementsPromise}>
+      {DEFAULT_HTML_HEAD}
+      {children}
+    </ElementsContext>
+  </MergeElementsContext>
 );
 
 // Expose internal APIs

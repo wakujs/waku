@@ -23,7 +23,7 @@ import {
   Root_UNSTABLE as Root,
   unstable_isImmutableElement as isImmutableElement,
   unstable_prefetchRsc as prefetchRsc,
-  useRefetch_UNSTABLE as useRefetch,
+  useRefetch,
 } from '../src/minimal/client.js';
 import { unstable_buildElements as buildElements } from '../src/minimal/server.js';
 
