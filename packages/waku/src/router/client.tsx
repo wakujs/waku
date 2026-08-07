@@ -1068,6 +1068,7 @@ const InnerRouter = ({
   useLayoutEffect(() => {
     const queuedState = pendingNavigationRef.current?.queuedState;
     if (queuedState && queuedState === routerState) {
+      addToStaticPathSet(elements);
       pendingNavigationRef.current = null;
     }
     if (!routerState || !destinationHref) {
@@ -1085,7 +1086,7 @@ const InnerRouter = ({
     const { pathChanged } = routerState.scroll;
     const behavior = pathChanged ? 'instant' : 'auto';
     scrollToHash(currentHash, behavior, pathChanged);
-  }, [routerState, destinationHref, currentHash]);
+  }, [elements, routerState, destinationHref, currentHash, addToStaticPathSet]);
 
   useEffect(() => {
     if (import.meta.hot) {
@@ -1220,7 +1221,6 @@ const InnerRouter = ({
         } else {
           commit(() => {
             mergeElements({ ...resolved, [ROUTER_STATE_ID]: routerState });
-            addToStaticPathSet(resolved);
           }, options.startTransition || startTransition);
         }
       } catch (e) {

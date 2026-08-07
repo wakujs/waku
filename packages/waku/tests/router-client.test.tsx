@@ -7396,7 +7396,7 @@ describe('Router integration', () => {
     }
   });
 
-  test('a suspended destination cannot commit after a newer navigation starts', async () => {
+  test('a suspended static destination is fetched again when superseded', async () => {
     const clientDelay = createDeferred<void>();
     const secondNavigation = createDeferred<Record<string, unknown>>();
     const ClientSuspends = () => {
@@ -7407,7 +7407,7 @@ describe('Router integration', () => {
       .fn<ReturnType<typeof useRefetch>>()
       .mockResolvedValueOnce({
         [ROUTE_ID]: ['/two', ''],
-        [IS_STATIC_ID]: false,
+        [IS_STATIC_ID]: true,
       })
       .mockReturnValueOnce(secondNavigation.promise);
     installRefetch(refetch);
@@ -7425,7 +7425,6 @@ describe('Router integration', () => {
           </>
         ),
         [unstable_getRouteSlotId('/two')]: <ClientSuspends />,
-        [unstable_getRouteSlotId('/three')]: <h1>Page 3</h1>,
         [ROUTE_ID]: ['/one', ''],
         [IS_STATIC_ID]: false,
       },
@@ -7443,7 +7442,7 @@ describe('Router integration', () => {
 
       let secondPush!: Promise<void>;
       await act(async () => {
-        secondPush = capture.router!.push('/three');
+        secondPush = capture.router!.push('/two');
         await Promise.resolve();
       });
       expect(refetch).toHaveBeenCalledTimes(2);
@@ -7457,14 +7456,14 @@ describe('Router integration', () => {
 
       await act(async () => {
         secondNavigation.resolve({
-          [ROUTE_ID]: ['/three', ''],
-          [IS_STATIC_ID]: false,
+          [ROUTE_ID]: ['/two', ''],
+          [IS_STATIC_ID]: true,
         });
         await secondPush;
         await flush();
       });
-      expect(view.container.textContent).toContain('Page 3');
-      expect(window.location.pathname).toBe('/three');
+      expect(view.container.textContent).toContain('Page 2');
+      expect(window.location.pathname).toBe('/two');
     } finally {
       view.unmount();
     }
