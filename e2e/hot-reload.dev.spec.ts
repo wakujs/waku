@@ -459,5 +459,23 @@ test.describe('minimal hot reload', () => {
     });
     await expect(page.getByTestId('title')).toHaveText('Hello HMR Waku');
     await expect(page.getByTestId('count')).toHaveText('Count: 0');
+
+    await page.getByRole('button', { name: 'Refetch' }).click();
+    await expect(page.getByTestId('title')).toHaveText('Hello HMR refetched');
+    await page.evaluate(() => {
+      (
+        globalThis as typeof globalThis & {
+          __WAKU_TEST_REMOUNT_ROOT__?: () => void;
+        }
+      ).__WAKU_TEST_REMOUNT_ROOT__?.();
+    });
+    await expect(page.getByTestId('title')).toHaveText('Hello HMR Waku');
+
+    writeFileSync(
+      appFile,
+      original.replace('Hello {name}', 'Hello HMR2 {name}'),
+    );
+    await expectNoFullReloadFor(page);
+    await expect(page.getByTestId('title')).toHaveText('Hello HMR2 Waku');
   });
 });

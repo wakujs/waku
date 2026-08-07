@@ -400,6 +400,34 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     await expect(page.getByTestId('hmr-marker')).toBeVisible();
     await expect(page.getByTestId('widget-static')).toBeVisible();
 
+    await expect(page.getByTestId('lazy-clock-value')).toHaveText(
+      'lazy clock loaded',
+    );
+    await page.evaluate(() => {
+      (
+        globalThis as typeof globalThis & { __WAKU_TEST_NO_RELOAD__?: boolean }
+      ).__WAKU_TEST_NO_RELOAD__ = true;
+    });
+    const sliceFile = join(hmrFixtureDir, 'src/pages/_slices/lazy-clock.tsx');
+    const originalSlice = readFileSync(sliceFile, 'utf-8');
+    writeFileSync(
+      sliceFile,
+      originalSlice.replace('lazy clock loaded', 'lazy clock HMR'),
+    );
+    await expect(page.getByTestId('lazy-clock-value')).toHaveText(
+      'lazy clock HMR',
+    );
+    expect(
+      await page.evaluate(
+        () =>
+          (
+            globalThis as typeof globalThis & {
+              __WAKU_TEST_NO_RELOAD__?: boolean;
+            }
+          ).__WAKU_TEST_NO_RELOAD__,
+      ),
+    ).toBe(true);
+
     // the stored template predates the edit, so its etags must not ride
     // the navigation: the response has to carry the fresh route template
     await page.getByTestId('link-slow').click();

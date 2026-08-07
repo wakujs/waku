@@ -532,23 +532,12 @@ const fetchRootRsc = (
   rscPath: string,
   rscParams: unknown,
 ): Promise<Elements> => {
-  const fetchElements = () => {
-    const initial = consumeInitialRscEntry();
-    return fetchRscElements(
-      rscPath,
-      rscParams,
-      initial ? { initial } : { etags: {} },
-    );
-  };
-  if (import.meta.hot) {
-    const refetchRscOnHmr = () => {
-      const data = fetchElements();
-      const setElements = getSetElements();
-      setElements((prev) => refreshElementsPromise(prev, data));
-    };
-    unstable_setRscReloadListener(refetchRscOnHmr);
-  }
-  return fetchElements();
+  const initial = consumeInitialRscEntry();
+  return fetchRscElements(
+    rscPath,
+    rscParams,
+    initial ? { initial } : { etags: {} },
+  );
 };
 
 /**
@@ -579,6 +568,13 @@ const getInitialRsc = (
   rscPath: string,
   rscParams: unknown,
 ): Promise<Elements> => {
+  if (import.meta.hot) {
+    unstable_setRscReloadListener(() => {
+      const data = fetchRootRsc(rscPath, rscParams);
+      const setElements = getSetElements();
+      setElements((prev) => refreshElementsPromise(prev, data));
+    });
+  }
   const entry = fetchRscStore[ENTRY];
   if (entry && entry[0] === rscPath && entry[1] === rscParams) {
     return entry[2];

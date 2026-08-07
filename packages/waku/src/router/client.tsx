@@ -35,6 +35,7 @@ import {
   unstable_registerCallServerElementsListener as registerCallServerElementsListener,
   INTERNAL_registerRscReloadListener as registerRscReloadListener,
   unstable_removeBase as removeBase,
+  unstable_setRscReloadListener as setRscReloadListener,
   useElementsPromise_UNSTABLE as useElementsPromise,
   useMergeElements_UNSTABLE as useMergeElements,
 } from '../minimal/client.js';
@@ -1032,19 +1033,29 @@ export function Slice({
   const needsToFetchSlice =
     props.lazy &&
     (!(slotId in elements) || !isImmutableElement(elements, slotId));
-  useEffect(() => {
-    if (needsToFetchSlice && !fetchingSlices.has(id)) {
-      fetchingSlices.add(id);
-      const rscPath = encodeSliceId(id);
-      refetch(rscPath)
-        .catch((e) => {
-          console.error('Failed to fetch slice:', e);
-        })
-        .finally(() => {
-          fetchingSlices.delete(id);
-        });
+  const fetchSlice = useCallback(() => {
+    if (fetchingSlices.has(id)) {
+      return;
     }
-  }, [fetchingSlices, refetch, id, needsToFetchSlice]);
+    fetchingSlices.add(id);
+    refetch(encodeSliceId(id))
+      .catch((e) => {
+        console.error('Failed to fetch slice:', e);
+      })
+      .finally(() => {
+        fetchingSlices.delete(id);
+      });
+  }, [fetchingSlices, refetch, id]);
+  useEffect(() => {
+    if (needsToFetchSlice) {
+      fetchSlice();
+    }
+  }, [fetchSlice, needsToFetchSlice]);
+  useEffect(() => {
+    if (import.meta.hot && props.lazy) {
+      return registerRscReloadListener(fetchSlice);
+    }
+  }, [fetchSlice, props.lazy]);
   if (props.lazy && !(slotId in elements)) {
     // FIXME the fallback doesn't show on refetch after the first one.
     return props.fallback;
@@ -1105,6 +1116,12 @@ const InnerRouter = ({
   const [restoredHash, setRestoredHash] = useState('');
   useEffect(() => {
     setRestoredHash(window.location.hash || initialHashRef.current);
+  }, []);
+  useEffect(() => {
+    if (import.meta.hot) {
+      // The listener below owns the current route, not Root's initial path.
+      setRscReloadListener(() => {});
+    }
   }, []);
 
   const routeFallback = useMemo(
