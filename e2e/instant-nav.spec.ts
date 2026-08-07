@@ -347,7 +347,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     rmSync(hmrFixtureDir, { recursive: true, force: true });
   });
 
-  test('an HMR update invalidates stored prefetches', async ({ page }) => {
+  test('an HMR update invalidates cached route data', async ({ page }) => {
     const layoutFile = join(hmrFixtureDir, 'src/pages/_layout.tsx');
     const original = readFileSync(layoutFile, 'utf-8');
     const bodies: string[] = [];
@@ -368,6 +368,15 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     // the view prefetch stores /slow's pre-edit template
     await expect.poll(() => bodies.length).toBe(1);
 
+    const widgetResponsePromise = page.waitForResponse((response) =>
+      response.url().includes('R/widget'),
+    );
+    await page.getByTestId('link-widget').hover();
+    const widgetResponse = await widgetResponsePromise;
+    await widgetResponse.finished();
+    await page.getByTestId('link-widget').click();
+    await expect(page.getByTestId('widget-static')).toBeVisible();
+
     writeFileSync(
       layoutFile,
       original.replace(
@@ -376,6 +385,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
       ),
     );
     await expect(page.getByTestId('hmr-marker')).toBeVisible();
+    await expect(page.getByTestId('widget-static')).toBeVisible();
 
     // the stored template predates the edit, so its etags must not ride
     // the navigation: the response has to carry the fresh route template

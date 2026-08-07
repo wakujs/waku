@@ -1206,6 +1206,7 @@ const InnerRouter = ({
       const cached = prefetchManagerRef.current!.get(rscPath, nextRoute.query);
       const prefetchedElements =
         prefetchManagerRef.current!.getElements(rscPath);
+      const base = resolvedElementsRef.current;
       const instant =
         options.instant &&
         canCommitInstantly(
@@ -1245,9 +1246,20 @@ const InnerRouter = ({
           pendingNavigationRef.current = null;
         } else {
           commit(() => {
-            void mergeElements({
-              ...resolved,
-              [ROUTER_STATE_ID]: routerState,
+            void mergeElements(resolved, {
+              unstable_overlay: {
+                ...(ROUTE_ID in resolved
+                  ? { [ROUTE_ID]: resolved[ROUTE_ID] }
+                  : {}),
+                ...(HAS404_ID in resolved
+                  ? { [HAS404_ID]: resolved[HAS404_ID] }
+                  : {}),
+                ...(IS_STATIC_ID in resolved
+                  ? { [IS_STATIC_ID]: resolved[IS_STATIC_ID] }
+                  : {}),
+                [ROUTER_STATE_ID]: routerState,
+              },
+              unstable_rebase: base,
             });
           }, options.startTransition || startTransition);
         }

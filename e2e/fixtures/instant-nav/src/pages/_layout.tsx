@@ -20,7 +20,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           post 3
         </Link>
         {' | '}
-        <Link to="/widget" unstable_instant data-testid="link-widget">
+        <Link
+          to="/widget"
+          unstable_instant
+          unstable_prefetchOnEnter={{ mode: 'once' }}
+          data-testid="link-widget"
+        >
           widget
         </Link>
         {' | '}

@@ -26,6 +26,7 @@ import {
   unstable_registerFetchEnhancer,
   unstable_registerFetchRscInputTransformer,
   useElementsPromise_UNSTABLE,
+  useMergeElements_UNSTABLE,
   useRefetch,
 } from '../src/minimal/client.js';
 
@@ -730,6 +731,47 @@ describe('minimal/client eager merge', () => {
     expect(merged.page).toBe('B');
     expect(merged.nav).toBe('from the client');
 
+    act(() => root.unmount());
+  });
+
+  test('a rebased merge preserves updates made after its base', async () => {
+    mocks.createFromFetch.mockReturnValueOnce(
+      resolvedThenable({ _value: null, page: 'initial' }),
+    );
+    stubFetch();
+
+    let mergeElements: ReturnType<typeof useMergeElements_UNSTABLE> | undefined;
+    let elementsPromise: Promise<Record<string, unknown>> | undefined;
+    const Probe = () => {
+      mergeElements = useMergeElements_UNSTABLE();
+      elementsPromise = useElementsPromise_UNSTABLE();
+      return null;
+    };
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <Root initialRscPath="R/app.txt">
+          <Probe />
+        </Root>,
+      );
+    });
+    const base = await elementsPromise!;
+
+    await act(async () => {
+      await Promise.all([
+        mergeElements!({ page: 'server action' }),
+        mergeElements!(
+          { page: 'route response', route: 'next' },
+          { unstable_rebase: base },
+        ),
+      ]);
+    });
+
+    await expect(elementsPromise).resolves.toMatchObject({
+      page: 'server action',
+      route: 'next',
+    });
     act(() => root.unmount());
   });
 

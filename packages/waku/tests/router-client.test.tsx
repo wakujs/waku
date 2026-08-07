@@ -91,6 +91,7 @@ const testHoisted = vi.hoisted(() => ({
   mergeOptions: [] as Array<
     | {
         unstable_overlay?: Record<string, unknown>;
+        unstable_rebase?: Record<string, unknown>;
         unstable_swr?: {
           pin: (key: string | symbol) => boolean;
           base?: Record<string, unknown>;
@@ -370,6 +371,7 @@ vi.mock('../src/minimal/client.js', async () => {
       data: Record<string, unknown> | Promise<Record<string, unknown>>,
       options?: {
         unstable_overlay?: Record<string, unknown>;
+        unstable_rebase?: Record<string, unknown>;
         unstable_swr?: { pin: (key: string | symbol) => boolean };
       },
     ) => Promise<Record<string, unknown>>
@@ -1997,6 +1999,13 @@ describe('Router integration', () => {
       });
 
       expect(testHoisted.mergeTypes).toEqual(['sync']);
+      expect(testHoisted.mergeOptions).toContainEqual(
+        expect.objectContaining({
+          unstable_rebase: expect.objectContaining({
+            [ROUTE_ID]: ['/start', ''],
+          }),
+        }),
+      );
       expect(capture.router?.path).toBe('/next');
       expect(window.location.pathname).toBe('/next');
     } finally {
