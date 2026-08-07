@@ -536,6 +536,7 @@ export const unstable_fetchRsc = (
 ): Promise<Elements> => {
   const base = options?.unstable_base;
   const elements = fetchRscElements(rscPath, rscParams, {
+    // Etags can only claim elements from a base the caller retains.
     etags: collectCachedEtags(base ?? {}),
     ...(options?.signal ? { signal: options.signal } : {}),
     ...(options?.onBuildIdMismatch
