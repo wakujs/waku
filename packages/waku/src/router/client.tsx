@@ -1156,10 +1156,10 @@ const InnerRouter = ({
         });
       };
       upsertRscReloadListener(
-        globalThis.__WAKU_REFETCH_ROUTE__,
+        globalThis.__WAKU_REFETCH_RSC__,
         refetchRouteOnHmr,
       );
-      globalThis.__WAKU_REFETCH_ROUTE__ = refetchRouteOnHmr;
+      globalThis.__WAKU_REFETCH_RSC__ = refetchRouteOnHmr;
     }
   }, [refetch, addToStaticPathSet, routeFallback]);
 
