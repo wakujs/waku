@@ -489,15 +489,20 @@ export function unstable_registerFetchRscInputTransformer(
 export const unstable_setRscReloadListener = (listener: () => void): void => {
   globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= [];
   const previous = globalThis.__WAKU_REFETCH_RSC__;
+  const reload = () => {
+    fetchRscStore[CACHED_ETAGS] = {};
+    delete fetchRscStore[ENTRY];
+    listener();
+  };
   const index = previous
     ? globalThis.__WAKU_RSC_RELOAD_LISTENERS__.indexOf(previous)
     : -1;
   if (index !== -1) {
-    globalThis.__WAKU_RSC_RELOAD_LISTENERS__.splice(index, 1, listener);
+    globalThis.__WAKU_RSC_RELOAD_LISTENERS__.splice(index, 1, reload);
   } else {
-    globalThis.__WAKU_RSC_RELOAD_LISTENERS__.push(listener);
+    globalThis.__WAKU_RSC_RELOAD_LISTENERS__.push(reload);
   }
-  globalThis.__WAKU_REFETCH_RSC__ = listener;
+  globalThis.__WAKU_REFETCH_RSC__ = reload;
 };
 
 const fetchRootRsc = (
@@ -509,13 +514,11 @@ const fetchRootRsc = (
     return fetchRscElements(
       rscPath,
       rscParams,
-      initial ? { initial } : undefined,
+      initial ? { initial } : { etags: {} },
     );
   };
   if (import.meta.hot) {
     const refetchRscOnHmr = () => {
-      fetchRscStore[CACHED_ETAGS] = {};
-      delete fetchRscStore[ENTRY];
       const data = fetchElements();
       const setElements = getSetElements();
       setElements((prev) => refreshElementsPromise(prev, data));

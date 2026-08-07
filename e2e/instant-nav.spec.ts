@@ -403,5 +403,25 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     expect(bodies[1]).toContain('route:/slow');
     expect(bodies[1]).toContain('hmr-marker');
     await expect(page.getByTestId('hmr-marker')).toBeVisible();
+
+    await page.getByTestId('link-post-1').click();
+    await expect(page.getByTestId('post-body')).toHaveText('Post 1');
+    await page.evaluate(() => {
+      (
+        globalThis as typeof globalThis & {
+          __WAKU_TEST_REMOUNT_ROUTER__?: () => void;
+        }
+      ).__WAKU_TEST_REMOUNT_ROUTER__?.();
+    });
+    await page.waitForFunction(
+      () =>
+        (
+          globalThis as typeof globalThis & {
+            __WAKU_TEST_ROUTER_KEY__?: number;
+          }
+        ).__WAKU_TEST_ROUTER_KEY__ === 1,
+    );
+    await expect(page.getByTestId('hmr-marker')).toBeVisible();
+    await expect(page.getByTestId('post-body')).toHaveText('Post 1');
   });
 });
