@@ -486,11 +486,9 @@ export function unstable_registerFetchRscInputTransformer(
   };
 }
 
-export const unstable_upsertRscReloadListener = (
-  previous: (() => void) | undefined,
-  listener: () => void,
-): void => {
+export const unstable_setRscReloadListener = (listener: () => void): void => {
   globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= [];
+  const previous = globalThis.__WAKU_REFETCH_RSC__;
   const index = previous
     ? globalThis.__WAKU_RSC_RELOAD_LISTENERS__.indexOf(previous)
     : -1;
@@ -499,6 +497,7 @@ export const unstable_upsertRscReloadListener = (
   } else {
     globalThis.__WAKU_RSC_RELOAD_LISTENERS__.push(listener);
   }
+  globalThis.__WAKU_REFETCH_RSC__ = listener;
 };
 
 const fetchRootRsc = (
@@ -516,15 +515,12 @@ const fetchRootRsc = (
   if (import.meta.hot) {
     const refetchRscOnHmr = () => {
       fetchRscStore[CACHED_ETAGS] = {};
+      delete fetchRscStore[ENTRY];
       const data = fetchElements();
       const setElements = getSetElements();
       setElements((prev) => refreshElementsPromise(prev, data));
     };
-    unstable_upsertRscReloadListener(
-      globalThis.__WAKU_REFETCH_RSC__,
-      refetchRscOnHmr,
-    );
-    globalThis.__WAKU_REFETCH_RSC__ = refetchRscOnHmr;
+    unstable_setRscReloadListener(refetchRscOnHmr);
   }
   return fetchElements();
 };
@@ -595,9 +591,6 @@ export const Root_UNSTABLE = ({
   }, []);
   useEffect(() => {
     elements.then(updateCachedEtags, () => {});
-    if (fetchRscStore[ENTRY]?.[2] === elements) {
-      delete fetchRscStore[ENTRY];
-    }
   }, [elements]);
   const mergeElements = useCallback<MergeElements>((data, options) => {
     const { unstable_overlay: overlay, unstable_swr: swr } = options ?? {};

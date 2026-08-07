@@ -377,6 +377,13 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     await page.getByTestId('link-widget').click();
     await expect(page.getByTestId('widget-static')).toBeVisible();
 
+    const hoverResponsePromise = page.waitForResponse((response) =>
+      response.url().includes('R/hover'),
+    );
+    await page.getByTestId('link-hover').hover();
+    const hoverResponse = await hoverResponsePromise;
+    await hoverResponse.finished();
+
     writeFileSync(
       layoutFile,
       original.replace(
