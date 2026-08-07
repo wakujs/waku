@@ -1237,6 +1237,11 @@ const InnerRouter = ({
       }
       const rscPath = encodeRoutePath(nextRoute.path);
       const cached = prefetchManagerRef.current!.get(rscPath, nextRoute.query);
+      cached?.onInvalidate(() => {
+        if (!controller.signal.aborted) {
+          reloadWithUrl(targetUrl);
+        }
+      });
       const prefetchedElements =
         prefetchManagerRef.current!.getElements(rscPath);
       const base = resolvedElementsRef.current;
@@ -1379,12 +1384,17 @@ const InnerRouter = ({
       return;
     }
     const rscPath = encodeRoutePath(route.path);
-    prefetchManagerRef.current!.prefetch(
+    const prefetchManager = prefetchManagerRef.current!;
+    prefetchManager.prefetch(
       rscPath,
       route.query,
-      (base) =>
+      (base, invalidate) =>
         fetchRsc(rscPath, createRscParams(route.query), {
           ...(base ? { unstable_base: base } : {}),
+          onBuildIdMismatch: () => {
+            invalidate();
+            prefetchManager.clear();
+          },
         }),
       options,
     );

@@ -3195,6 +3195,88 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a build mismatch drops an idle prefetch without reloading', async () => {
+    const pending = createDeferred<Record<string, unknown>>();
+    prefetchRsc.mockReturnValue(pending.promise);
+    const refetch = installRefetch(
+      vi.fn<RefetchInner>(async () => ({
+        [ROUTE_ID]: ['/next', ''],
+        [IS_STATIC_ID]: false,
+      })),
+    );
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [unstable_getRouteSlotId('/next')]: <Probe />,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    const reloadSpy = vi
+      .spyOn(window.location, 'reload')
+      .mockImplementation(() => {});
+    try {
+      capture.router!.prefetch('/next');
+      prefetchRsc.mock.calls[0]?.[2]?.onBuildIdMismatch?.();
+
+      expect(window.location.pathname).toBe('/start');
+      expect(reloadSpy).not.toHaveBeenCalled();
+
+      await act(async () => {
+        await capture.router!.push('/next');
+      });
+      expect(refetch).toHaveBeenCalledOnce();
+    } finally {
+      pending.resolve({});
+      reloadSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
+  test('a build mismatch reloads the target of an adopted prefetch', async () => {
+    const pending = createDeferred<Record<string, unknown>>();
+    prefetchRsc.mockReturnValue(pending.promise);
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [unstable_getRouteSlotId('/next')]: <Probe />,
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    const reloadSpy = vi
+      .spyOn(window.location, 'reload')
+      .mockImplementation(() => {});
+    try {
+      capture.router!.prefetch('/next');
+      const navigation = capture.router!.push('/next');
+      await Promise.resolve();
+
+      prefetchRsc.mock.calls[0]?.[2]?.onBuildIdMismatch?.();
+
+      expect(window.location.pathname).toBe('/next');
+      expect(reloadSpy).toHaveBeenCalledOnce();
+
+      pending.resolve({
+        [ROUTE_ID]: ['/next', ''],
+        [IS_STATIC_ID]: false,
+      });
+      await act(async () => {
+        await navigation;
+      });
+    } finally {
+      pending.resolve({});
+      reloadSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('a hover prefetch without a router is a no-op', async () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
@@ -3826,13 +3908,16 @@ describe('Router integration', () => {
       capture.router!.prefetch('/next');
       await flush();
     });
-    expect(prefetchRsc.mock.calls.at(0)?.[2]).toBeUndefined();
+    expect(prefetchRsc.mock.calls.at(0)?.[2]).toEqual({
+      onBuildIdMismatch: expect.any(Function),
+    });
 
     await act(async () => {
       capture.router!.prefetch('/next?q=b');
       await flush();
     });
     expect(prefetchRsc.mock.calls.at(1)?.[2]).toEqual({
+      onBuildIdMismatch: expect.any(Function),
       unstable_base: expect.objectContaining({
         [unstable_getRouteSlotId('/next')]: expect.anything(),
       }),

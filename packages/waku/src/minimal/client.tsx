@@ -595,6 +595,9 @@ export const Root_UNSTABLE = ({
   }, []);
   useEffect(() => {
     elements.then(updateCachedEtags, () => {});
+    if (fetchRscStore[ENTRY]?.[2] === elements) {
+      delete fetchRscStore[ENTRY];
+    }
   }, [elements]);
   const mergeElements = useCallback<MergeElements>((data, options) => {
     const { unstable_overlay: overlay, unstable_swr: swr } = options ?? {};

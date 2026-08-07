@@ -125,7 +125,7 @@ describe('minimal/client fetch', () => {
     expect(mocks.createFromFetch).toHaveBeenCalledTimes(2);
   });
 
-  test('Root caches its initial fetch', async () => {
+  test('Root caches its initial fetch until the first commit', async () => {
     mocks.createFromFetch.mockReturnValue(
       resolvedThenable({ _value: null, App: 'app' }),
     );
@@ -152,7 +152,7 @@ describe('minimal/client fetch', () => {
     act(() => firstRoot.unmount());
 
     const secondRoot = await render();
-    expect(mocks.createFromFetch).toHaveBeenCalledTimes(1);
+    expect(mocks.createFromFetch).toHaveBeenCalledTimes(2);
     act(() => secondRoot.unmount());
   });
 
