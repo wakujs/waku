@@ -5,11 +5,13 @@ import {
   ROUTER_STATE_ID,
   canCommitInstantly,
   getRouterState,
+  getSettledRoute,
   makeRouterState,
   pinForSwr,
   resolveServerRedirect,
 } from '../src/router/client-utils/router-state.js';
 import {
+  HAS404_ID,
   IS_STATIC_ID,
   ROUTE_ID,
 } from '../src/router/isomorphic-utils/route-path.js';
@@ -28,7 +30,7 @@ const withRouterState = (
 ) => ({ ...elements, [ROUTER_STATE_ID]: routerState });
 
 describe('makeRouterState', () => {
-  test('captures the url, the attempted route and the intents', () => {
+  test('captures the url, the requested route and the intents', () => {
     const routerState = makeRouterState(
       route('/a', 'x=1'),
       urlOf('/a?x=1#top'),
@@ -40,7 +42,7 @@ describe('makeRouterState', () => {
       },
     );
     expect(routerState.url).toBe('/a?x=1#top');
-    expect(routerState.attempted).toEqual(['/a', 'x=1']);
+    expect(routerState.requested).toEqual(['/a', 'x=1']);
     expect(routerState.history).toBe('push');
     expect(routerState.scroll).toEqual({ pathChanged: true });
     expect(routerState.followCount).toBe(0);
@@ -166,7 +168,7 @@ describe('resolveServerRedirect', () => {
     }
   });
 
-  test('a server redirect to the 404 route keeps the attempted url', () => {
+  test('a server redirect to the 404 route keeps the requested url', () => {
     const routerState = makeRouterState(route('/missing'), urlOf('/missing'), {
       history: 'replace',
       scroll: false,
@@ -181,6 +183,71 @@ describe('resolveServerRedirect', () => {
     );
     expect(resolvedRoute.path).toBe('/404');
     expect(url.pathname).toBe('/missing');
+  });
+});
+
+describe('getSettledRoute', () => {
+  const fallback = route('/f', '', '#restored');
+
+  test('the fallback until a navigation has landed', () => {
+    expect(getSettledRoute({}, fallback)).toEqual(fallback);
+  });
+
+  test('a failed navigation keeps the hash that is still on screen', () => {
+    const routerState = makeRouterState(route('/b'), urlOf('/b#target'), {
+      history: 'push',
+      scroll: true,
+      pathChanged: true,
+      followCount: 0,
+    });
+    const elements = withRouterState(
+      { [ROUTE_ID]: ['/a', 'x=1'] },
+      {
+        ...routerState,
+        failure: { error: new Error('x'), committedHash: '#onscreen' },
+      },
+    );
+    // the route id is the one the client came from, not the failed attempt
+    expect(getSettledRoute(elements, fallback)).toEqual({
+      path: '/a',
+      query: 'x=1',
+      hash: '#onscreen',
+    });
+  });
+
+  test('a failure with no route id falls back, still with the on screen hash', () => {
+    const routerState = makeRouterState(route('/b'), urlOf('/b'), {
+      history: 'push',
+      scroll: false,
+      pathChanged: true,
+      followCount: 0,
+    });
+    const elements = withRouterState(
+      {},
+      {
+        ...routerState,
+        failure: { error: new Error('x'), committedHash: '' },
+      },
+    );
+    expect(getSettledRoute(elements, fallback)).toEqual({
+      path: '/f',
+      query: '',
+      hash: '',
+    });
+  });
+
+  test('a landed navigation resolves the server redirect', () => {
+    const routerState = makeRouterState(route('/a'), urlOf('/a#top'), {
+      history: 'push',
+      scroll: true,
+      pathChanged: true,
+      followCount: 0,
+    });
+    const elements = withRouterState(
+      { [ROUTE_ID]: ['/b', 'y=2'] },
+      routerState,
+    );
+    expect(getSettledRoute(elements, fallback)).toEqual(route('/b', 'y=2'));
   });
 });
 
@@ -220,6 +287,10 @@ describe('pinForSwr', () => {
   test('pins meta keys and immutable slots, not mutable ones', () => {
     const pin = pinForSwr(() => immutable('layout:/'));
     expect(pin(ROUTE_ID)).toBe(true);
+    expect(pin(HAS404_ID)).toBe(true);
+    expect(pin(IS_STATIC_ID)).toBe(true);
+    // a legacy-style prefix is not meta; only the exact IS_STATIC key is
+    expect(pin(`${IS_STATIC_ID}:layout:/`)).toBe(false);
     // the client's own state rides the merge instead of becoming a hole
     expect(pin(ROUTER_STATE_ID)).toBe(true);
     expect(pin('layout:/')).toBe(true);

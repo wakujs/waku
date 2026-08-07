@@ -9,6 +9,7 @@ export type Unstable_RenderRsc = (
   options?: {
     value?: unknown;
     etags?: Etags;
+    documentLocation?: string;
     unstable_clientModuleCallback?: (ids: string[]) => void;
   },
 ) => Promise<ReadableStream>;
@@ -105,7 +106,7 @@ export type Unstable_CreateServerEntryAdapter = <Options>(
       handlers: Unstable_Handlers;
       processRequest: Unstable_ProcessRequest;
       processBuild: Unstable_ProcessBuild;
-      setAllEnv: (newEnv: Readonly<Record<string, unknown>>) => void;
+      unstable_setAllEnv: (newEnv: Readonly<Record<string, unknown>>) => void;
       config: Omit<Required<Config>, 'vite'>;
       isBuild: boolean;
       notFoundHtml: string;

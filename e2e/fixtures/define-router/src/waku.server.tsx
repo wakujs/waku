@@ -2,7 +2,10 @@ import type { ReactNode } from 'react';
 import { readFile } from 'node:fs/promises';
 // NOTE: I think we need one spec to use non-default adapter
 import adapter from 'waku/adapters/node';
-import { Children, Slot } from 'waku/minimal/client';
+import {
+  Children_UNSTABLE as Children,
+  Slot_UNSTABLE as Slot,
+} from 'waku/minimal/client';
 import {
   unstable_defineRouter as defineRouter,
   unstable_redirect as redirect,
@@ -81,7 +84,7 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
     }),
     {
       // the renderer throws before anything streams, so the rsc request is
-      // answered with a real redirect that the browser has to follow
+      // answered with the destination route instead of a redirect
       type: 'route' as const,
       pattern: '^/moved$',
       path: [{ type: 'literal', name: 'moved' } as const],
@@ -103,6 +106,33 @@ const router: ReturnType<typeof defineRouter> = defineRouter({
         isStatic: false,
         renderer: () => {
           redirect('/foo');
+        },
+      },
+      elements: {},
+    },
+    {
+      // a location no route can answer: the client has to navigate it itself
+      type: 'route' as const,
+      pattern: '^/moved-hash$',
+      path: [{ type: 'literal', name: 'moved-hash' } as const],
+      isStatic: false,
+      rootElement: {
+        isStatic: true,
+        renderer: () => (
+          <html>
+            <head>
+              <title>Waku example</title>
+            </head>
+            <body>
+              <Children />
+            </body>
+          </html>
+        ),
+      },
+      routeElement: {
+        isStatic: false,
+        renderer: () => {
+          redirect('/foo#bottom');
         },
       },
       elements: {},

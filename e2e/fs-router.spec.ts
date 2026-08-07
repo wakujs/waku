@@ -72,6 +72,107 @@ test.describe('fs-router', () => {
     await expect(page).toHaveURL(`http://localhost:${port}/foo`);
   });
 
+  test('recovers when the entry chunk itself fails to load', async ({
+    page,
+    mode,
+  }) => {
+    // https://github.com/wakujs/waku/issues/2238
+    // Dev bootstrap is a virtual module, not a hashed asset.
+    // eslint-disable-next-line playwright/no-skipped-test
+    test.skip(mode === 'DEV', 'covers the production bootstrap import only');
+    const staleEntry = '/assets/index-stale-build.js';
+    let navigations = 0;
+    let staleEntryRequests = 0;
+    let currentEntryRequests = 0;
+    page.on('framenavigated', (frame) => {
+      if (frame === page.mainFrame()) {
+        navigations++;
+      }
+    });
+    page.on('request', (request) => {
+      const { pathname } = new URL(request.url());
+      if (pathname === staleEntry) {
+        staleEntryRequests++;
+      } else if (/^\/assets\/index-[\w-]+\.js$/.test(pathname)) {
+        currentEntryRequests++;
+      }
+    });
+    // First document: rewrite every entry url to a missing chunk; reload gets
+    // the current document (preload + bootstrap both use the hash).
+    let firstDocument = true;
+    await page.route(`http://localhost:${port}/`, async (route) => {
+      if (!firstDocument) {
+        await route.continue();
+        return;
+      }
+      firstDocument = false;
+      const response = await route.fetch();
+      const html = await response.text();
+      await route.fulfill({
+        response,
+        headers: { ...response.headers(), 'cache-control': 'no-store' },
+        body: html.replaceAll(/\/assets\/index-[\w-]+\.js/g, staleEntry),
+      });
+    });
+    await page.route(`**${staleEntry}`, (route) =>
+      route.fulfill({
+        status: 404,
+        headers: { 'cache-control': 'no-store' },
+        body: '',
+      }),
+    );
+    await page.goto(`http://localhost:${port}`);
+    await expect
+      .poll(() => navigations, { timeout: 10_000 })
+      .toBeGreaterThanOrEqual(2);
+    await waitForHydration(page);
+    await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+    expect(staleEntryRequests).toBeGreaterThanOrEqual(1);
+    expect(currentEntryRequests).toBeGreaterThanOrEqual(1);
+  });
+
+  test('stops reloading when the entry chunk stays broken', async ({
+    page,
+    mode,
+  }) => {
+    // https://github.com/wakujs/waku/issues/2238
+    // eslint-disable-next-line playwright/no-skipped-test
+    test.skip(mode === 'DEV', 'covers the production bootstrap import only');
+    const staleEntry = '/assets/index-stale-build.js';
+    let navigations = 0;
+    page.on('framenavigated', (frame) => {
+      if (frame === page.mainFrame()) {
+        navigations++;
+      }
+    });
+    // Every document keeps the missing chunk; assert navigations settle (no loop).
+    await page.route(`http://localhost:${port}/`, async (route) => {
+      const response = await route.fetch();
+      const html = await response.text();
+      await route.fulfill({
+        response,
+        headers: { ...response.headers(), 'cache-control': 'no-store' },
+        body: html.replaceAll(/\/assets\/index-[\w-]+\.js/g, staleEntry),
+      });
+    });
+    await page.route(`**${staleEntry}`, (route) =>
+      route.fulfill({
+        status: 404,
+        headers: { 'cache-control': 'no-store' },
+        body: '',
+      }),
+    );
+    await page.goto(`http://localhost:${port}`);
+    // eslint-disable-next-line playwright/no-wait-for-timeout
+    await page.waitForTimeout(2000);
+    const settled = navigations;
+    // eslint-disable-next-line playwright/no-wait-for-timeout
+    await page.waitForTimeout(2000);
+    expect(navigations).toBe(settled);
+    expect(settled).toBeGreaterThanOrEqual(2);
+    expect(settled).toBeLessThan(5);
+  });
+
   test('foo with trailing slash', async ({ page }) => {
     await page.goto(`http://localhost:${port}/foo/`);
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
