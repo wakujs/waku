@@ -32,7 +32,6 @@ import {
   unstable_fetchRsc as fetchRsc,
   unstable_getErrorInfo as getErrorInfo,
   unstable_isImmutableElement as isImmutableElement,
-  unstable_prefetchRsc as prefetchRsc,
   unstable_registerCallServerElementsListener as registerCallServerElementsListener,
   unstable_removeBase as removeBase,
   unstable_upsertRscReloadListener as upsertRscReloadListener,
@@ -165,7 +164,7 @@ type Elements = Record<string | symbol, unknown>;
 type RefetchOptions = {
   signal?: AbortSignal;
   onBuildIdMismatch?: () => void;
-  unstable_prefetched?: Promise<Elements>;
+  prefetched?: Promise<Elements>;
   unstable_overlay?: Elements;
   unstable_swr?: {
     pin: (key: string | symbol) => boolean;
@@ -183,11 +182,14 @@ const useRefetch = (): Refetch => {
   const mergeElements = useMergeElements();
   return useCallback(
     (rscPath, rscParams, options = {}) => {
-      const { unstable_overlay, unstable_swr, ...fetchOptions } = options;
-      const elements = fetchRsc(rscPath, rscParams, {
-        ...fetchOptions,
-        ...(unstable_swr?.base ? { unstable_base: unstable_swr.base } : {}),
-      });
+      const { prefetched, unstable_overlay, unstable_swr, ...fetchOptions } =
+        options;
+      const elements = prefetched
+        ? abortable(prefetched, options.signal)
+        : fetchRsc(rscPath, rscParams, {
+            ...fetchOptions,
+            ...(unstable_swr?.base ? { unstable_base: unstable_swr.base } : {}),
+          });
       return mergeElements(elements, {
         ...(unstable_overlay ? { unstable_overlay } : {}),
         ...(unstable_swr ? { unstable_swr } : {}),
@@ -195,6 +197,25 @@ const useRefetch = (): Refetch => {
     },
     [mergeElements],
   );
+};
+
+const abortable = <T,>(
+  promise: Promise<T>,
+  signal: AbortSignal | undefined,
+): Promise<T> => {
+  if (!signal) {
+    return promise;
+  }
+  if (signal.aborted) {
+    return Promise.reject(signal.reason);
+  }
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(signal.reason);
+    signal.addEventListener('abort', abort, { once: true });
+    promise
+      .then(resolve, reject)
+      .finally(() => signal.removeEventListener('abort', abort));
+  });
 };
 
 const fetchRoute = (
@@ -210,11 +231,9 @@ const fetchRoute = (
     onBuildIdMismatch: () => void;
   },
 ): Promise<Elements> => {
-  return fetchRsc(rscPath, rscParams, {
-    signal,
-    onBuildIdMismatch,
-    ...(prefetched ? { unstable_prefetched: prefetched } : {}),
-  });
+  return prefetched
+    ? abortable(prefetched, signal)
+    : fetchRsc(rscPath, rscParams, { signal, onBuildIdMismatch });
 };
 
 const isAltClick = (event: MouseEvent<HTMLAnchorElement>) =>
@@ -1229,7 +1248,7 @@ const InnerRouter = ({
               ...(prefetchedElements ? { base: prefetchedElements } : {}),
             },
             onBuildIdMismatch: () => reloadWithUrl(targetUrl),
-            ...(cached ? { unstable_prefetched: cached.promise } : {}),
+            ...(cached ? { prefetched: cached.promise } : {}),
           })
         : fetchRoute(rscPath, rscParams, {
             signal: controller.signal,
@@ -1340,8 +1359,9 @@ const InnerRouter = ({
       rscPath,
       route.query,
       (base) =>
-        prefetchRsc(rscPath, createRscParams(route.query), {
+        fetchRsc(rscPath, createRscParams(route.query), {
           ...(base ? { unstable_base: base } : {}),
+          unstable_prefetch: true,
         }),
       options,
     );

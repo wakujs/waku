@@ -21,7 +21,6 @@ import {
   Slot_UNSTABLE as Slot,
   unstable_callServerRsc,
   unstable_fetchRsc,
-  unstable_prefetchRsc,
   unstable_registerCallServerElementsListener,
   unstable_registerFetchEnhancer,
   unstable_registerFetchRscInputTransformer,
@@ -100,7 +99,7 @@ afterEach(() => {
 });
 
 describe('minimal/client prefetch', () => {
-  test('unstable_prefetchRsc returns a decoded Promise<Elements>', async () => {
+  test('unstable_fetchRsc returns prefetched elements', async () => {
     // Minimal no longer parks or reuses prefetches; it just fetches + decodes
     // and hands the promise back to the caller (the router holds it).
     const fetchMock = vi.fn<typeof fetch>(
@@ -109,7 +108,9 @@ describe('minimal/client prefetch', () => {
     track(unstable_registerFetchEnhancer(() => fetchMock));
     const rscParams = new URLSearchParams({ query: 'x=1' });
 
-    const elements = await unstable_prefetchRsc('R/next.txt', rscParams);
+    const elements = await unstable_fetchRsc('R/next.txt', rscParams, {
+      unstable_prefetch: true,
+    });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(mocks.createFromFetch).toHaveBeenCalledTimes(1);
@@ -123,7 +124,9 @@ describe('minimal/client prefetch', () => {
     track(unstable_registerFetchEnhancer(() => fetchMock));
     const rscParams = new URLSearchParams({ query: 'x=1' });
 
-    await unstable_prefetchRsc('R/next.txt', rscParams);
+    await unstable_fetchRsc('R/next.txt', rscParams, {
+      unstable_prefetch: true,
+    });
     await unstable_fetchRsc('R/next.txt', rscParams);
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -190,7 +193,9 @@ describe('minimal/client prefetch', () => {
     const unregisterPrefetch = unstable_registerFetchEnhancer(
       () => prefetchFetch,
     );
-    await unstable_prefetchRsc('R/page.txt', undefined);
+    await unstable_fetchRsc('R/page.txt', undefined, {
+      unstable_prefetch: true,
+    });
     unregisterPrefetch();
     // ...then the app registers a different fetch.
     track(unstable_registerFetchEnhancer(() => actionFetch));
@@ -351,9 +356,9 @@ describe('minimal/client server actions', () => {
     });
     stubFetch();
 
-    const error = await unstable_prefetchRsc('R/next.txt').catch(
-      (e: unknown) => e,
-    );
+    const error = await unstable_fetchRsc('R/next.txt', undefined, {
+      unstable_prefetch: true,
+    }).catch((e: unknown) => e);
 
     expect(getErrorInfo(error)).toEqual({
       location: 'https://other.example/prefetched',
@@ -399,7 +404,9 @@ describe('minimal/client server actions', () => {
       return resolvedThenable({ App: 'prefetched' });
     });
     stubFetch();
-    void unstable_prefetchRsc('R/page.txt', undefined);
+    void unstable_fetchRsc('R/page.txt', undefined, {
+      unstable_prefetch: true,
+    });
 
     const container = document.createElement('div');
     const root = createRoot(container);
@@ -459,6 +466,23 @@ describe('minimal/client build id mismatch', () => {
     await wait();
 
     expect(onBuildIdMismatch).not.toHaveBeenCalled();
+  });
+
+  test('a prefetch checks the build id when it resolves', async () => {
+    vi.stubEnv('WAKU_BUILD_ID', 'build-1');
+    mocks.createFromFetch.mockResolvedValueOnce({
+      _value: null,
+      _buildId: 'build-2',
+    });
+    stubFetch();
+    const onBuildIdMismatch = vi.fn();
+
+    await unstable_fetchRsc('R/prefetch.txt', undefined, {
+      onBuildIdMismatch,
+      unstable_prefetch: true,
+    });
+
+    expect(onBuildIdMismatch).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -1312,26 +1336,6 @@ describe('minimal/client refetch scenarios', () => {
     view.unmount();
   });
 
-  test('prefetched elements are adopted as the data source without fetching', async () => {
-    const view = await mount({ _value: null, page: 'P1' }, () => (
-      <Suspense fallback={null}>
-        <Slot id="page" />
-      </Suspense>
-    ));
-    expect(view.container.textContent).toBe('P1');
-
-    mocks.createFromFetch.mockClear();
-    await act(async () => {
-      await view.refetch()('R/done.txt', undefined, {
-        unstable_prefetched: Promise.resolve({ _value: null, page: 'P2' }),
-      });
-    });
-    expect(view.container.textContent).toBe('P2');
-    expect(mocks.createFromFetch).not.toHaveBeenCalled();
-
-    view.unmount();
-  });
-
   // createFromFetch says it returns a promise, but hands back a pending
   // thenable whose `then` returns nothing
   const pendingThenable = (value: Record<string, unknown>) => {
@@ -1359,72 +1363,6 @@ describe('minimal/client refetch scenarios', () => {
     settle();
 
     await expect(chained).resolves.toMatchObject({ page: 'P2' });
-  });
-
-  test('aborting a navigation releases the prefetch it adopted', async () => {
-    const view = await mount({ _value: null, page: 'P1' }, () => (
-      <Suspense fallback={null}>
-        <Slot id="page" />
-      </Suspense>
-    ));
-    const controller = new AbortController();
-    const pending = new Promise<Record<string, unknown>>(() => {});
-    await act(async () => {
-      view
-        .refetch()('R/pending.txt', undefined, {
-          unstable_prefetched: pending,
-          signal: controller.signal,
-        })
-        .catch(() => {});
-      await wait();
-    });
-
-    controller.abort();
-    await act(async () => {
-      await view.refetch()('R/next.txt', undefined, {
-        unstable_prefetched: Promise.resolve({ _value: null, page: 'P2' }),
-      });
-      await wait();
-    });
-
-    // the abandoned prefetch never settles, so the chain must not wait on it
-    expect(view.container.textContent).toBe('P2');
-    view.unmount();
-  });
-
-  test('an aborted adopted prefetch does not act on its build id', async () => {
-    vi.stubEnv('WAKU_BUILD_ID', 'build-1');
-    const onBuildIdMismatch = vi.fn();
-    const controller = new AbortController();
-    let settle = () => {};
-    const prefetched = new Promise<Record<string, unknown>>((resolve) => {
-      settle = () => resolve({ _value: null, page: 'P2', _buildId: 'build-2' });
-    });
-    const adopted = unstable_fetchRsc('R/done.txt', undefined, {
-      unstable_prefetched: prefetched,
-      signal: controller.signal,
-      onBuildIdMismatch,
-    });
-
-    controller.abort();
-    settle();
-    await adopted.catch(() => {});
-
-    expect(onBuildIdMismatch).not.toHaveBeenCalled();
-  });
-
-  test('adopting prefetched elements re-checks the build id', async () => {
-    vi.stubEnv('WAKU_BUILD_ID', 'build-1');
-    const onBuildIdMismatch = vi.fn();
-    await unstable_fetchRsc('R/done.txt', undefined, {
-      unstable_prefetched: Promise.resolve({
-        _value: null,
-        page: 'P2',
-        _buildId: 'build-2',
-      }),
-      onBuildIdMismatch,
-    });
-    expect(onBuildIdMismatch).toHaveBeenCalledTimes(1);
   });
 
   test('new key: a slot b introduces suspends, then shows b', async () => {

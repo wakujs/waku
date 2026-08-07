@@ -274,8 +274,10 @@ const swrNewKeysElementsPromise = (
 type FetchRscOptions = {
   signal?: AbortSignal;
   onBuildIdMismatch?: () => void;
-  unstable_prefetched?: Promise<Elements>;
+  /** Existing elements whose etags may be sent with the request. */
   unstable_base?: Elements;
+  /** Fetch for later reuse without consuming the initial response. */
+  unstable_prefetch?: boolean;
 };
 
 type MergeElementsOptions = {
@@ -290,7 +292,6 @@ type MergeElementsOptions = {
 type RefetchOptions = MergeElementsOptions & {
   signal?: AbortSignal;
   onBuildIdMismatch?: () => void;
-  unstable_prefetched?: Promise<Elements>;
 };
 
 const getFetchFn = (): typeof fetch => {
@@ -383,25 +384,6 @@ const reloadOnBuildIdMismatch = (
   );
 };
 
-const abortable = (
-  elements: Promise<Elements>,
-  signal: AbortSignal | undefined,
-): Promise<Elements> => {
-  if (!signal) {
-    return elements;
-  }
-  if (signal.aborted) {
-    return Promise.reject(signal.reason);
-  }
-  return new Promise<Elements>((resolve, reject) => {
-    const abort = () => reject(signal.reason);
-    signal.addEventListener('abort', abort, { once: true });
-    elements
-      .then(resolve, reject)
-      .finally(() => signal.removeEventListener('abort', abort));
-  });
-};
-
 const applyInputTransformers = (
   rscPath: string,
   rscParams: unknown,
@@ -425,12 +407,14 @@ const fetchRscElements = (
   rscParams: unknown,
   options: FetchRscOptions | undefined,
 ): Promise<Elements> => {
-  [rscPath, rscParams] = applyInputTransformers(rscPath, rscParams, false);
-  const initial = consumeInitialRscEntry();
+  const prefetch = !!options?.unstable_prefetch;
+  [rscPath, rscParams] = applyInputTransformers(rscPath, rscParams, prefetch);
+  const initial = prefetch ? undefined : consumeInitialRscEntry();
   const baseFetchFn = getFetchFn();
-  const debug = import.meta.hot
-    ? setupDebugChannel(baseFetchFn, !!initial, initial?.debugId)
-    : undefined;
+  const debug =
+    import.meta.hot && !prefetch
+      ? setupDebugChannel(baseFetchFn, !!initial, initial?.debugId)
+      : undefined;
   const fetchFn = debug?.fetchFn || baseFetchFn;
   const temporaryReferences = createTemporaryReferenceSet();
   const responsePromise = initial
@@ -441,6 +425,14 @@ const fetchRscElements = (
         rscParams,
         temporaryReferences,
         options?.signal,
+        prefetch
+          ? collectCachedEtags(options?.unstable_base ?? {})
+          : options?.unstable_base
+            ? {
+                ...fetchRscStore[CACHED_ETAGS],
+                ...collectCachedEtags(options.unstable_base),
+              }
+            : undefined,
       );
   const elements = decodeRsc(
     responsePromise,
@@ -448,6 +440,12 @@ const fetchRscElements = (
     debug?.debugChannel,
   );
   reloadOnBuildIdMismatch(elements, options?.onBuildIdMismatch);
+  if (prefetch && options?.unstable_base) {
+    return elements.then((response) => ({
+      ...options.unstable_base,
+      ...response,
+    }));
+  }
   return elements;
 };
 
@@ -555,11 +553,10 @@ export const unstable_fetchRsc = (
   rscParams?: unknown,
   options?: FetchRscOptions,
 ): Promise<Elements> => {
-  if (import.meta.hot) {
+  if (import.meta.hot && !options?.unstable_prefetch) {
     const refetchRscOnHmr = () => {
       fetchRscStore[CACHED_ETAGS] = {};
       const freshOptions: FetchRscOptions = { ...options };
-      delete freshOptions.unstable_prefetched;
       delete freshOptions.unstable_base;
       const data = unstable_fetchRsc(rscPath, rscParams, freshOptions);
       const setElements = getSetElements();
@@ -570,17 +567,6 @@ export const unstable_fetchRsc = (
       refetchRscOnHmr,
     );
     globalThis.__WAKU_REFETCH_RSC__ = refetchRscOnHmr;
-  }
-  if (options?.unstable_prefetched) {
-    const elements = abortable(options.unstable_prefetched, options.signal);
-    reloadOnBuildIdMismatch(elements, options.onBuildIdMismatch);
-    return elements;
-  }
-  if (options?.unstable_base) {
-    fetchRscStore[CACHED_ETAGS] = {
-      ...fetchRscStore[CACHED_ETAGS],
-      ...collectCachedEtags(options.unstable_base),
-    };
   }
   return fetchRscElements(rscPath, rscParams, options);
 };
@@ -596,41 +582,6 @@ const getInitialRsc = (
   const data = unstable_fetchRsc(rscPath, rscParams);
   fetchRscStore[ENTRY] = [rscPath, rscParams, data];
   return data;
-};
-
-/**
- * Fetch + decode a route's elements; the caller (the router) holds the result.
- */
-export const unstable_prefetchRsc = (
-  rscPath: string,
-  rscParams?: unknown,
-  options?: {
-    /**
-     * Elements the client already holds for this path. Their etags are the
-     * only ones sent with the request, so the server can omit any the client
-     * holds current, and the returned elements are the response merged over
-     * the base, so a caller cannot claim copies it does not keep.
-     */
-    unstable_base?: Elements;
-  },
-): Promise<Elements> => {
-  // Transformers must be prefetchOnly-agnostic (prefetches reused as navs).
-  [rscPath, rscParams] = applyInputTransformers(rscPath, rscParams, true);
-  const base = options?.unstable_base;
-  const temporaryReferences = createTemporaryReferenceSet();
-  const responsePromise = requestRsc(
-    getFetchFn(),
-    rscPath,
-    rscParams,
-    temporaryReferences,
-    undefined,
-    base ? collectCachedEtags(base) : {},
-  );
-  const data = decodeRsc(responsePromise, temporaryReferences, undefined);
-  if (!base) {
-    return data;
-  }
-  return Promise.resolve(data).then((response) => ({ ...base, ...response }));
 };
 
 type MergeElements = (

@@ -25,7 +25,6 @@ import {
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
   unstable_fetchRsc as fetchRsc,
-  unstable_prefetchRsc as prefetchRsc,
   useMergeElements_UNSTABLE as useMergeElements,
 } from '../src/minimal/client.js';
 import { PREFETCH_LIMIT } from '../src/router/client-utils/prefetch-cache.js';
@@ -87,6 +86,9 @@ const testHoisted = vi.hoisted(() => ({
   elements: {} as Record<string, unknown>,
   inner: null as
     ((...args: unknown[]) => Promise<Record<string, unknown>>) | null,
+  prefetch: vi.fn(
+    async (..._args: unknown[]): Promise<Record<string, unknown>> => ({}),
+  ),
   mergeTypes: [] as Array<'sync' | 'async' | 'swr'>,
   mergeOptions: [] as Array<
     | {
@@ -158,7 +160,8 @@ type RefetchInner = (
   options?: {
     signal?: AbortSignal;
     onBuildIdMismatch?: () => void;
-    unstable_prefetched?: Promise<Record<string, unknown>>;
+    unstable_base?: Record<string, unknown>;
+    unstable_prefetch?: boolean;
     unstable_overlay?: Record<string, unknown>;
     unstable_swr?: {
       pin: (key: string | symbol) => boolean;
@@ -167,6 +170,7 @@ type RefetchInner = (
   },
 ) => Promise<Record<string, unknown>>;
 type MockedRefetch = ReturnType<typeof vi.fn<RefetchInner>>;
+const prefetchRsc = testHoisted.prefetch as unknown as MockedRefetch;
 
 // Install a test-provided refetch as the shared inner mock the mocked Roots
 // wrap. Returns it so the test keeps configuring/inspecting it.
@@ -444,7 +448,8 @@ vi.mock('../src/minimal/client.js', async () => {
         options?: {
           signal?: AbortSignal;
           onBuildIdMismatch?: () => void;
-          unstable_prefetched?: Promise<Record<string, unknown>>;
+          unstable_base?: Record<string, unknown>;
+          unstable_prefetch?: boolean;
         },
       ) => {
         const hasOptions = options && Reflect.ownKeys(options).length;
@@ -454,15 +459,18 @@ vi.mock('../src/minimal/client.js', async () => {
             : !hasOptions
               ? [rscParams]
               : [rscParams, options];
-        const requested = Promise.resolve(testHoisted.inner!(rscPath, ...rest));
-        const data = abortable(
-          options?.unstable_prefetched ?? requested,
-          options?.signal,
+        const requested = Promise.resolve(
+          (options?.unstable_prefetch
+            ? testHoisted.prefetch
+            : testHoisted.inner!)(rscPath, ...rest),
         );
-        return data.then((result) => withRouteMeta(result, rscPath, rscParams));
+        const data = abortable(requested, options?.signal);
+        return data.then((result) => ({
+          ...(options?.unstable_prefetch ? options.unstable_base : {}),
+          ...withRouteMeta(result, rscPath, rscParams),
+        }));
       },
     ),
-    unstable_prefetchRsc: vi.fn(),
   };
 });
 
@@ -571,10 +579,10 @@ beforeEach(() => {
   testHoisted.inner = vi.fn(async () => ({}));
   vi.mocked(fetchRsc).mockClear();
   vi.mocked(preloadModule).mockClear();
-  vi.mocked(prefetchRsc).mockReset();
-  // prefetchRsc returns the decoded Promise<Elements>; default to an empty
+  prefetchRsc.mockReset();
+  // A prefetch returns the decoded Promise<Elements>; default to an empty
   // shell so prefetchRoute's cache wiring has a promise to track.
-  vi.mocked(prefetchRsc).mockReturnValue(resolvedThenable({}));
+  prefetchRsc.mockReturnValue(resolvedThenable({}));
   vi.mocked(Root).mockClear();
 
   const IntersectionObserverMock = vi.fn(function (
@@ -3163,10 +3171,10 @@ describe('Router integration', () => {
 
     capture.router.prefetch('/next?x=1');
     expect(prefetchRsc).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(prefetchRsc).mock.calls[0]?.[0]).toBe(
+    expect(prefetchRsc.mock.calls[0]?.[0]).toBe(
       unstable_encodeRoutePath('/next'),
     );
-    const params = vi.mocked(prefetchRsc).mock.calls[0]?.[1] as URLSearchParams;
+    const params = prefetchRsc.mock.calls[0]?.[1] as URLSearchParams;
     expect(params.get('query')).toBe('x=1');
     expect(prefetchHook).toHaveBeenCalledWith('/next', expect.any(Function));
     expect(preloadModule).toHaveBeenCalledWith('/assets//next.js', {
@@ -3276,9 +3284,8 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  // The instant shell: a prefetch for the target is adopted via
-  // `unstable_prefetched` as the navigation's data source, while the eager
-  // merge paints the static shell and the base.
+  // The instant shell: a cached prefetch is the navigation's data source,
+  // while the eager merge paints the static shell and the base.
   const instantNavElements = () => ({
     [unstable_getRouteSlotId('/start')]: <div>start</div>,
     [unstable_getRouteSlotId('/next')]: <div>next</div>,
@@ -3334,7 +3341,7 @@ describe('Router integration', () => {
       [IS_STATIC_ID]: true,
     };
     const shellPromise = resolvedThenable(shell);
-    vi.mocked(prefetchRsc).mockReturnValue(shellPromise);
+    prefetchRsc.mockReturnValue(shellPromise);
 
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
@@ -3361,14 +3368,7 @@ describe('Router integration', () => {
       await capture.router!.push('/next', { unstable_instant: true });
     });
 
-    expect(refetch).toHaveBeenCalledWith(
-      unstable_encodeRoutePath('/next'),
-      expect.any(URLSearchParams),
-      expect.objectContaining({
-        unstable_base: shell,
-        unstable_prefetched: shellPromise,
-      }),
-    );
+    expect(refetch).not.toHaveBeenCalled();
     expect(testHoisted.mergeOptions).toContainEqual(
       expect.objectContaining({
         unstable_overlay: expect.objectContaining({
@@ -3585,7 +3585,7 @@ describe('Router integration', () => {
       // Still in flight at navigation time: it started earlier than a fresh
       // request could, so the navigation adopts it instead of duplicating it.
       const pending = createDeferred<Record<string, unknown>>();
-      vi.mocked(prefetchRsc).mockReturnValue(pending.promise);
+      prefetchRsc.mockReturnValue(pending.promise);
 
       const capture = { router: null as RouterApi | null };
       const Probe = makeProbe(capture);
@@ -3614,13 +3614,7 @@ describe('Router integration', () => {
         await pushed;
       });
 
-      expect(refetch).toHaveBeenCalledWith(
-        unstable_encodeRoutePath('/next'),
-        expect.any(URLSearchParams),
-        expect.objectContaining({
-          unstable_prefetched: pending.promise,
-        }),
-      );
+      expect(refetch).not.toHaveBeenCalled();
       expect(window.location.pathname).toBe('/next');
 
       view.unmount();
@@ -3629,7 +3623,7 @@ describe('Router integration', () => {
 
   test('superseding a navigation releases an adopted prefetch', async () => {
     const pending = createDeferred<Record<string, unknown>>();
-    vi.mocked(prefetchRsc).mockReturnValue(pending.promise);
+    prefetchRsc.mockReturnValue(pending.promise);
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
     const view = await renderRouter(
@@ -3671,7 +3665,7 @@ describe('Router integration', () => {
       [ROUTE_ID]: ['/next', ''],
       [IS_STATIC_ID]: true,
     };
-    vi.mocked(prefetchRsc).mockReturnValue(resolvedThenable(shell));
+    prefetchRsc.mockReturnValue(resolvedThenable(shell));
 
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
@@ -3703,7 +3697,7 @@ describe('Router integration', () => {
     expect(refetch).toHaveBeenCalledWith(
       unstable_encodeRoutePath('/next'),
       expect.any(URLSearchParams),
-      expect.not.objectContaining({ unstable_prefetched: expect.anything() }),
+      expect.objectContaining({ unstable_base: shell }),
     );
 
     view.unmount();
@@ -3716,7 +3710,7 @@ describe('Router integration', () => {
       [ROUTE_ID]: ['/next', ''],
       [IS_STATIC_ID]: false,
     };
-    vi.mocked(prefetchRsc).mockReturnValue(resolvedThenable(shell));
+    prefetchRsc.mockReturnValue(resolvedThenable(shell));
 
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
@@ -3754,7 +3748,7 @@ describe('Router integration', () => {
       [ROUTE_ID]: ['/next', ''],
       [IS_STATIC_ID]: false,
     };
-    vi.mocked(prefetchRsc).mockReturnValue(resolvedThenable(shell));
+    prefetchRsc.mockReturnValue(resolvedThenable(shell));
 
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
@@ -3800,7 +3794,7 @@ describe('Router integration', () => {
       [ROUTE_ID]: ['/next', ''],
       [IS_STATIC_ID]: false,
     };
-    vi.mocked(prefetchRsc).mockReturnValue(resolvedThenable(first));
+    prefetchRsc.mockReturnValue(resolvedThenable(first));
 
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
@@ -3821,16 +3815,19 @@ describe('Router integration', () => {
       capture.router!.prefetch('/next');
       await flush();
     });
-    expect(vi.mocked(prefetchRsc).mock.calls.at(0)?.[2]).toEqual({});
+    expect(prefetchRsc.mock.calls.at(0)?.[2]).toEqual({
+      unstable_prefetch: true,
+    });
 
     await act(async () => {
       capture.router!.prefetch('/next?q=b');
       await flush();
     });
-    expect(vi.mocked(prefetchRsc).mock.calls.at(1)?.[2]).toEqual({
+    expect(prefetchRsc.mock.calls.at(1)?.[2]).toEqual({
       unstable_base: expect.objectContaining({
         [unstable_getRouteSlotId('/next')]: expect.anything(),
       }),
+      unstable_prefetch: true,
     });
 
     view.unmount();
@@ -3838,7 +3835,7 @@ describe('Router integration', () => {
 
   test('mode once dedupes concurrent prefetches by rscPath', async () => {
     const pending = createDeferred<Record<string, unknown>>();
-    vi.mocked(prefetchRsc).mockReturnValue(pending.promise);
+    prefetchRsc.mockReturnValue(pending.promise);
 
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
@@ -3869,7 +3866,7 @@ describe('Router integration', () => {
   test('an evicted route can be warmed once again', async () => {
     // The store is bounded, so "once" holds while the route stays in it: a
     // route evicted by newer prefetches is fetched again on a later trigger.
-    vi.mocked(prefetchRsc).mockImplementation(((rscPath: string) =>
+    prefetchRsc.mockImplementation(((rscPath: string) =>
       resolvedThenable({
         [ROUTE_ID]: [rscPath, ''],
         [IS_STATIC_ID]: false,
@@ -3909,7 +3906,7 @@ describe('Router integration', () => {
   });
 
   test('mode once retries after a failed prefetch', async () => {
-    vi.mocked(prefetchRsc)
+    prefetchRsc
       .mockImplementationOnce(() => Promise.reject(new Error('network')))
       .mockReturnValueOnce(
         resolvedThenable({ [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: false }),
@@ -3945,7 +3942,7 @@ describe('Router integration', () => {
   });
 
   test('prefetch honors a per-call ttl', async () => {
-    vi.mocked(prefetchRsc).mockReturnValue(
+    prefetchRsc.mockReturnValue(
       resolvedThenable({ [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: false }),
     );
     const now = Date.now();
@@ -4003,7 +4000,7 @@ describe('Router integration', () => {
       [ROUTE_ID]: ['/fresh', ''],
       [IS_STATIC_ID]: false,
     };
-    vi.mocked(prefetchRsc).mockReturnValue(resolvedThenable(shell));
+    prefetchRsc.mockReturnValue(resolvedThenable(shell));
     const now = Date.now();
     const dateNow = vi.spyOn(Date, 'now').mockReturnValue(now);
 
