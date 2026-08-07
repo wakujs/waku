@@ -1361,7 +1361,6 @@ const InnerRouter = ({
       (base) =>
         fetchRsc(rscPath, createRscParams(route.query), {
           ...(base ? { unstable_base: base } : {}),
-          unstable_prefetch: true,
         }),
       options,
     );

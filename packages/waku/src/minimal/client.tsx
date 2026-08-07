@@ -274,10 +274,11 @@ const swrNewKeysElementsPromise = (
 type FetchRscOptions = {
   signal?: AbortSignal;
   onBuildIdMismatch?: () => void;
-  /** Existing elements whose etags may be sent with the request. */
+  /**
+   * Existing elements retained by the caller. Their etags are sent with the
+   * request, and the response is merged over them before it is returned.
+   */
   unstable_base?: Elements;
-  /** Fetch for later reuse without consuming the initial response. */
-  unstable_prefetch?: boolean;
 };
 
 type MergeElementsOptions = {
@@ -406,13 +407,17 @@ const fetchRscElements = (
   rscPath: string,
   rscParams: unknown,
   options: FetchRscOptions | undefined,
+  prefetchOnly: boolean,
 ): Promise<Elements> => {
-  const prefetch = !!options?.unstable_prefetch;
-  [rscPath, rscParams] = applyInputTransformers(rscPath, rscParams, prefetch);
-  const initial = prefetch ? undefined : consumeInitialRscEntry();
+  [rscPath, rscParams] = applyInputTransformers(
+    rscPath,
+    rscParams,
+    prefetchOnly,
+  );
+  const initial = prefetchOnly ? undefined : consumeInitialRscEntry();
   const baseFetchFn = getFetchFn();
   const debug =
-    import.meta.hot && !prefetch
+    import.meta.hot && !prefetchOnly
       ? setupDebugChannel(baseFetchFn, !!initial, initial?.debugId)
       : undefined;
   const fetchFn = debug?.fetchFn || baseFetchFn;
@@ -425,14 +430,9 @@ const fetchRscElements = (
         rscParams,
         temporaryReferences,
         options?.signal,
-        prefetch
+        prefetchOnly
           ? collectCachedEtags(options?.unstable_base ?? {})
-          : options?.unstable_base
-            ? {
-                ...fetchRscStore[CACHED_ETAGS],
-                ...collectCachedEtags(options.unstable_base),
-              }
-            : undefined,
+          : undefined,
       );
   const elements = decodeRsc(
     responsePromise,
@@ -440,7 +440,7 @@ const fetchRscElements = (
     debug?.debugChannel,
   );
   reloadOnBuildIdMismatch(elements, options?.onBuildIdMismatch);
-  if (prefetch && options?.unstable_base) {
+  if (prefetchOnly && options?.unstable_base) {
     return elements.then((response) => ({
       ...options.unstable_base,
       ...response,
@@ -464,6 +464,7 @@ export const unstable_callServerRsc = async (
     rscPath,
     rscParams,
     undefined,
+    false,
   );
   if (Object.keys(data).length) {
     const setElements = getSetElements();
@@ -544,21 +545,14 @@ export const unstable_upsertRscReloadListener = (
   }
 };
 
-/**
- * Fetch and decode elements for an RSC path. Each call starts a new request;
- * consumers own prefetching and response reuse.
- */
-export const unstable_fetchRsc = (
+const fetchRootRsc = (
   rscPath: string,
-  rscParams?: unknown,
-  options?: FetchRscOptions,
+  rscParams: unknown,
 ): Promise<Elements> => {
-  if (import.meta.hot && !options?.unstable_prefetch) {
+  if (import.meta.hot) {
     const refetchRscOnHmr = () => {
       fetchRscStore[CACHED_ETAGS] = {};
-      const freshOptions: FetchRscOptions = { ...options };
-      delete freshOptions.unstable_base;
-      const data = unstable_fetchRsc(rscPath, rscParams, freshOptions);
+      const data = fetchRscElements(rscPath, rscParams, undefined, false);
       const setElements = getSetElements();
       setElements((prev) => refreshElementsPromise(prev, data));
     };
@@ -568,8 +562,18 @@ export const unstable_fetchRsc = (
     );
     globalThis.__WAKU_REFETCH_RSC__ = refetchRscOnHmr;
   }
-  return fetchRscElements(rscPath, rscParams, options);
+  return fetchRscElements(rscPath, rscParams, undefined, false);
 };
+
+/**
+ * Fetch and decode elements for an RSC path. Each call starts a new request;
+ * consumers own prefetching and response reuse.
+ */
+export const unstable_fetchRsc = (
+  rscPath: string,
+  rscParams?: unknown,
+  options?: FetchRscOptions,
+): Promise<Elements> => fetchRscElements(rscPath, rscParams, options, true);
 
 const getInitialRsc = (
   rscPath: string,
@@ -579,7 +583,7 @@ const getInitialRsc = (
   if (entry && entry[0] === rscPath && entry[1] === rscParams) {
     return entry[2];
   }
-  const data = unstable_fetchRsc(rscPath, rscParams);
+  const data = fetchRootRsc(rscPath, rscParams);
   fetchRscStore[ENTRY] = [rscPath, rscParams, data];
   return data;
 };

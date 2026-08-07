@@ -204,7 +204,7 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
   it('a prefetch without a base claims nothing', async () => {
     fetchRscStore[CACHED_ETAGS] = { widget: 'etag-live' };
     testHoisted.elements = { page: <div>b</div> };
-    await fetchRsc('R/bar', undefined, { unstable_prefetch: true });
+    await fetchRsc('R/bar');
 
     const lastCall = vi.mocked(globalThis.fetch).mock.calls.at(-1);
     const headers = new Headers(
@@ -224,7 +224,6 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
         widget: <div>w</div>,
         [`${ETAG_ID_PREFIX}widget`]: 'etag-widget',
       },
-      unstable_prefetch: true,
     });
 
     const lastCall = vi.mocked(globalThis.fetch).mock.calls.at(-1);

@@ -161,7 +161,6 @@ type RefetchInner = (
     signal?: AbortSignal;
     onBuildIdMismatch?: () => void;
     unstable_base?: Record<string, unknown>;
-    unstable_prefetch?: boolean;
     unstable_overlay?: Record<string, unknown>;
     unstable_swr?: {
       pin: (key: string | symbol) => boolean;
@@ -449,7 +448,6 @@ vi.mock('../src/minimal/client.js', async () => {
           signal?: AbortSignal;
           onBuildIdMismatch?: () => void;
           unstable_base?: Record<string, unknown>;
-          unstable_prefetch?: boolean;
         },
       ) => {
         const hasOptions = options && Reflect.ownKeys(options).length;
@@ -460,13 +458,13 @@ vi.mock('../src/minimal/client.js', async () => {
               ? [rscParams]
               : [rscParams, options];
         const requested = Promise.resolve(
-          (options?.unstable_prefetch
+          (!options?.signal && rscPath.startsWith('R/')
             ? testHoisted.prefetch
             : testHoisted.inner!)(rscPath, ...rest),
         );
         const data = abortable(requested, options?.signal);
         return data.then((result) => ({
-          ...(options?.unstable_prefetch ? options.unstable_base : {}),
+          ...options?.unstable_base,
           ...withRouteMeta(result, rscPath, rscParams),
         }));
       },
@@ -3815,9 +3813,7 @@ describe('Router integration', () => {
       capture.router!.prefetch('/next');
       await flush();
     });
-    expect(prefetchRsc.mock.calls.at(0)?.[2]).toEqual({
-      unstable_prefetch: true,
-    });
+    expect(prefetchRsc.mock.calls.at(0)?.[2]).toBeUndefined();
 
     await act(async () => {
       capture.router!.prefetch('/next?q=b');
@@ -3827,7 +3823,6 @@ describe('Router integration', () => {
       unstable_base: expect.objectContaining({
         [unstable_getRouteSlotId('/next')]: expect.anything(),
       }),
-      unstable_prefetch: true,
     });
 
     view.unmount();

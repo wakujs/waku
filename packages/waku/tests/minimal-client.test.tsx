@@ -98,39 +98,20 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe('minimal/client prefetch', () => {
-  test('unstable_fetchRsc returns prefetched elements', async () => {
-    // Minimal no longer parks or reuses prefetches; it just fetches + decodes
-    // and hands the promise back to the caller (the router holds it).
+describe('minimal/client fetch', () => {
+  test('unstable_fetchRsc returns fetched elements', async () => {
+    // Minimal only fetches + decodes and hands the promise back to the caller.
     const fetchMock = vi.fn<typeof fetch>(
       async () => new Response('prefetched'),
     );
     track(unstable_registerFetchEnhancer(() => fetchMock));
     const rscParams = new URLSearchParams({ query: 'x=1' });
 
-    const elements = await unstable_fetchRsc('R/next.txt', rscParams, {
-      unstable_prefetch: true,
-    });
+    const elements = await unstable_fetchRsc('R/next.txt', rscParams);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(mocks.createFromFetch).toHaveBeenCalledTimes(1);
     expect(elements).toEqual({ _value: null, text: 'prefetched' });
-  });
-
-  test('a fetch after a prefetch issues its own request (minimal holds nothing)', async () => {
-    // No prefetch cache: each prefetch and each fetch is an independent
-    // request. Reuse of the prefetched shell is the router's job.
-    const fetchMock = vi.fn<typeof fetch>(async () => new Response('x'));
-    track(unstable_registerFetchEnhancer(() => fetchMock));
-    const rscParams = new URLSearchParams({ query: 'x=1' });
-
-    await unstable_fetchRsc('R/next.txt', rscParams, {
-      unstable_prefetch: true,
-    });
-    await unstable_fetchRsc('R/next.txt', rscParams);
-
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(mocks.createFromFetch).toHaveBeenCalledTimes(2);
   });
 
   test('each fetch issues a new request for the same input', async () => {
@@ -178,8 +159,8 @@ describe('minimal/client prefetch', () => {
     act(() => secondRoot.unmount());
   });
 
-  test('server actions use the current fetch, not the one a prefetch decoded with', async () => {
-    // Capture the callServer baked into the prefetch-decoded elements.
+  test('server actions use the current fetch, not the one elements decoded with', async () => {
+    // Capture the callServer baked into the fetched elements.
     let callServer: CallServer | undefined;
     mocks.createFromFetch.mockImplementation((_responsePromise, options) => {
       callServer ??= options?.callServer;
@@ -189,13 +170,11 @@ describe('minimal/client prefetch', () => {
     const prefetchFetch = vi.fn<typeof fetch>(async () => new Response('p'));
     const actionFetch = vi.fn<typeof fetch>(async () => new Response('n'));
 
-    // Prefetch with one fetch...
+    // Fetch elements with one fetch...
     const unregisterPrefetch = unstable_registerFetchEnhancer(
       () => prefetchFetch,
     );
-    await unstable_fetchRsc('R/page.txt', undefined, {
-      unstable_prefetch: true,
-    });
+    await unstable_fetchRsc('R/page.txt');
     unregisterPrefetch();
     // ...then the app registers a different fetch.
     track(unstable_registerFetchEnhancer(() => actionFetch));
@@ -348,24 +327,6 @@ describe('minimal/client server actions', () => {
     act(() => root.unmount());
   });
 
-  test('a document location fails the prefetch that decoded it', async () => {
-    // the router holds this promise, and its rejection is what makes the
-    // click leave rather than commit a payload that is not elements
-    mocks.createFromFetch.mockResolvedValueOnce({
-      _location: 'https://other.example/prefetched',
-    });
-    stubFetch();
-
-    const error = await unstable_fetchRsc('R/next.txt', undefined, {
-      unstable_prefetch: true,
-    }).catch((e: unknown) => e);
-
-    expect(getErrorInfo(error)).toEqual({
-      location: 'https://other.example/prefetched',
-      unstable_leave: true,
-    });
-  });
-
   test('a document location is reported as an error, not merged', async () => {
     // minimal only tags it; deciding what a location means is the router's
     mocks.createFromFetch.mockResolvedValueOnce({
@@ -392,48 +353,6 @@ describe('minimal/client server actions', () => {
     await expect(unstable_callServerRsc('actions#do', [])).rejects.toThrow(
       'Missing Root',
     );
-  });
-
-  test('a server action from a consumed prefetched tree updates the active Root', async () => {
-    // The old per-Root store rebound a prefetched tree's actions to the
-    // consuming store; with a single store, the action must still update the
-    // mounted Root.
-    let callServer: CallServer | undefined;
-    mocks.createFromFetch.mockImplementation((_responsePromise, options) => {
-      callServer ??= options?.callServer;
-      return resolvedThenable({ App: 'prefetched' });
-    });
-    stubFetch();
-    void unstable_fetchRsc('R/page.txt', undefined, {
-      unstable_prefetch: true,
-    });
-
-    const container = document.createElement('div');
-    const root = createRoot(container);
-    await act(async () => {
-      root.render(
-        <Root initialRscPath="R/page.txt">
-          <Suspense fallback={null}>
-            <Slot id="App" />
-          </Suspense>
-        </Root>,
-      );
-    });
-    expect(container.textContent).toBe('prefetched');
-
-    mocks.createFromFetch.mockResolvedValueOnce({
-      _value: 'ok',
-      App: 'updated',
-    });
-    let value: unknown;
-    await act(async () => {
-      value = await callServer!('actions#do', []);
-    });
-
-    expect(value).toBe('ok');
-    expect(container.textContent).toBe('updated');
-
-    act(() => root.unmount());
   });
 });
 
@@ -467,23 +386,6 @@ describe('minimal/client build id mismatch', () => {
 
     expect(onBuildIdMismatch).not.toHaveBeenCalled();
   });
-
-  test('a prefetch checks the build id when it resolves', async () => {
-    vi.stubEnv('WAKU_BUILD_ID', 'build-1');
-    mocks.createFromFetch.mockResolvedValueOnce({
-      _value: null,
-      _buildId: 'build-2',
-    });
-    stubFetch();
-    const onBuildIdMismatch = vi.fn();
-
-    await unstable_fetchRsc('R/prefetch.txt', undefined, {
-      onBuildIdMismatch,
-      unstable_prefetch: true,
-    });
-
-    expect(onBuildIdMismatch).toHaveBeenCalledTimes(1);
-  });
 });
 
 describe('minimal/client input transformer', () => {
@@ -499,7 +401,7 @@ describe('minimal/client input transformer', () => {
 
     await unstable_fetchRsc('R/original.txt', undefined);
 
-    expect(transform).toHaveBeenCalledWith('R/original.txt', undefined, false);
+    expect(transform).toHaveBeenCalledWith('R/original.txt', undefined, true);
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('rewritten');
   });
 });
