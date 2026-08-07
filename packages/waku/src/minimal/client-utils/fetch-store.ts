@@ -19,8 +19,7 @@ type FetchEnhancers = Set<FetchEnhancer>;
 export type FetchRscInputTransformer = (
   rscPath: string,
   rscParams: unknown,
-  prefetchOnly: boolean,
-) => readonly [rscPath: string, rscParams: unknown, prefetchOnly: boolean];
+) => readonly [rscPath: string, rscParams: unknown];
 type FetchRscInputTransformers = Set<FetchRscInputTransformer>;
 
 type CallServerElementsListeners = Set<

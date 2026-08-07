@@ -391,14 +391,14 @@ describe('minimal/client input transformer', () => {
     const fetchMock = vi.fn<typeof fetch>(async () => new Response('{}'));
     track(unstable_registerFetchEnhancer(() => fetchMock));
     const transform = vi.fn(
-      (_rscPath: string, _rscParams: unknown, prefetchOnly: boolean) =>
-        ['R/rewritten.txt', { x: 1 }, prefetchOnly] as const,
+      (_rscPath: string, _rscParams: unknown) =>
+        ['R/rewritten.txt', { x: 1 }] as const,
     );
     track(unstable_registerFetchRscInputTransformer(transform));
 
     await unstable_fetchRsc('R/original.txt', undefined);
 
-    expect(transform).toHaveBeenCalledWith('R/original.txt', undefined, true);
+    expect(transform).toHaveBeenCalledWith('R/original.txt', undefined);
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('rewritten');
   });
 });
