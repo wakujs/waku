@@ -512,6 +512,22 @@ export const unstable_setRscReloadListener = (listener: () => void): void => {
   globalThis.__WAKU_REFETCH_RSC__ = reload;
 };
 
+export const INTERNAL_registerRscReloadListener = (
+  listener: () => void,
+): Unregister => {
+  if (!import.meta.hot) {
+    return () => {};
+  }
+  const listeners = (globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= []);
+  listeners.push(listener);
+  return () => {
+    const index = listeners.indexOf(listener);
+    if (index !== -1) {
+      listeners.splice(index, 1);
+    }
+  };
+};
+
 const fetchRootRsc = (
   rscPath: string,
   rscParams: unknown,

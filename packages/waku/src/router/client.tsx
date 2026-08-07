@@ -33,8 +33,8 @@ import {
   unstable_getErrorInfo as getErrorInfo,
   unstable_isImmutableElement as isImmutableElement,
   unstable_registerCallServerElementsListener as registerCallServerElementsListener,
+  INTERNAL_registerRscReloadListener as registerRscReloadListener,
   unstable_removeBase as removeBase,
-  unstable_setRscReloadListener as setRscReloadListener,
   useElementsPromise_UNSTABLE as useElementsPromise,
   useMergeElements_UNSTABLE as useMergeElements,
 } from '../minimal/client.js';
@@ -1163,7 +1163,7 @@ const InnerRouter = ({
           ).then(addToStaticPathSet, () => {});
         });
       };
-      setRscReloadListener(refetchRouteOnHmr);
+      return registerRscReloadListener(refetchRouteOnHmr);
     }
   }, [refetch, addToStaticPathSet, routeFallback]);
 

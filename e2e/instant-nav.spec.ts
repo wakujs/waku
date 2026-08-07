@@ -384,6 +384,12 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     const hoverResponse = await hoverResponsePromise;
     await hoverResponse.finished();
 
+    const refetchResponsePromise = page.waitForResponse((response) =>
+      response.url().includes('R/widget'),
+    );
+    await page.getByTestId('minimal-refetch').click();
+    await (await refetchResponsePromise).finished();
+
     writeFileSync(
       layoutFile,
       original.replace(

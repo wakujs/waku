@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'waku/router/client';
+import { MinimalRefetch } from '../components/MinimalRefetch';
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
@@ -49,6 +50,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         >
           hover
         </Link>
+        {' | '}
+        <MinimalRefetch />
       </nav>
       <main>
         <Suspense fallback={<div data-testid="page-skeleton">loading...</div>}>
