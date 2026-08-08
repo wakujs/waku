@@ -793,6 +793,7 @@ describe('useRouter + Link with context', () => {
           changeRoute,
           prefetchRoute,
           fetchingSlices: new Set<string>(),
+          lazySliceIds: new Set<string>(),
         }}
       >
         <Probe />
@@ -891,6 +892,7 @@ describe('useRouter + Link with context', () => {
             changeRoute,
             prefetchRoute: vi.fn(),
             fetchingSlices: new Set<string>(),
+            lazySliceIds: new Set<string>(),
           }}
         >
           <Probe />
@@ -960,6 +962,7 @@ describe('useRouter + Link with context', () => {
               changeRoute: vi.fn(async () => {}),
               prefetchRoute,
               fetchingSlices: new Set<string>(),
+              lazySliceIds: new Set<string>(),
             }}
           >
             <Probe />
@@ -1018,6 +1021,7 @@ describe('useRouter + Link with context', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
           fetchingSlices: new Set<string>(),
+          lazySliceIds: new Set<string>(),
         }}
       >
         <Probe />
@@ -1042,6 +1046,7 @@ describe('useRouter + Link with context', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
           fetchingSlices: new Set<string>(),
+          lazySliceIds: new Set<string>(),
         }}
       >
         <Probe />
@@ -1097,6 +1102,7 @@ describe('useRouter + Link with context', () => {
             changeRoute: vi.fn(async () => {}),
             prefetchRoute: vi.fn(),
             fetchingSlices: new Set<string>(),
+            lazySliceIds: new Set<string>(),
           }}
         >
           <Probe />
@@ -1126,6 +1132,7 @@ describe('useRouter + Link with context', () => {
           changeRoute,
           prefetchRoute,
           fetchingSlices: new Set<string>(),
+          lazySliceIds: new Set<string>(),
         }}
       >
         <>
@@ -1209,6 +1216,7 @@ describe('useRouter + Link with context', () => {
           changeRoute,
           prefetchRoute,
           fetchingSlices: new Set<string>(),
+          lazySliceIds: new Set<string>(),
         }}
       >
         <Link to="/start#target" data-testid="hash-link">
@@ -1265,6 +1273,7 @@ describe('useRouter + Link with context', () => {
           changeRoute,
           prefetchRoute,
           fetchingSlices: new Set<string>(),
+          lazySliceIds: new Set<string>(),
         }}
       >
         <Link to="/start#target" scroll={false} data-testid="hash-link">
@@ -1307,6 +1316,7 @@ describe('useRouter + Link with context', () => {
           changeRoute,
           prefetchRoute,
           fetchingSlices: new Set<string>(),
+          lazySliceIds: new Set<string>(),
         }}
       >
         <>
@@ -1381,6 +1391,7 @@ describe('useRouter + Link with context', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute,
           fetchingSlices: new Set<string>(),
+          lazySliceIds: new Set<string>(),
         }}
       >
         <Link
@@ -1437,6 +1448,7 @@ describe('useRouter + Link with context', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute,
           fetchingSlices: new Set<string>(),
+          lazySliceIds: new Set<string>(),
         }}
       >
         <PrefetchOnViewToggleLink />
@@ -1473,6 +1485,7 @@ describe('useRouter + Link with context', () => {
       changeRoute: vi.fn(async () => {}),
       prefetchRoute: vi.fn(),
       fetchingSlices: new Set<string>(),
+      lazySliceIds: new Set<string>(),
     };
 
     const objectRef: { current: HTMLAnchorElement | null } = { current: null };
@@ -1513,6 +1526,7 @@ describe('useRouter + Link with context', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
           fetchingSlices: new Set<string>(),
+          lazySliceIds: new Set<string>(),
         }}
       >
         <Link to="/next" ref={callbackRef}>
@@ -1552,6 +1566,7 @@ describe('Slice', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
           fetchingSlices: new Set<string>(),
+          lazySliceIds: new Set<string>(),
         }}
       >
         <Slice id="slice-1" />
@@ -1572,6 +1587,7 @@ describe('Slice', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
           fetchingSlices,
+          lazySliceIds: new Set<string>(),
         }}
       >
         <>
@@ -1615,6 +1631,7 @@ describe('Slice', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
           fetchingSlices: new Set<string>(),
+          lazySliceIds: new Set<string>(),
         }}
       >
         <Slice id="slice-1" lazy fallback={<div>fallback</div>} />
@@ -1643,6 +1660,7 @@ describe('Slice', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
           fetchingSlices: new Set<string>(),
+          lazySliceIds: new Set<string>(),
         }}
       >
         <Slice id="slice-1" lazy fallback={<div>fallback</div>} />
@@ -1673,6 +1691,7 @@ describe('Slice', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
           fetchingSlices,
+          lazySliceIds: new Set<string>(),
         }}
       >
         <Slice id="slice-1" lazy fallback={<div>fallback</div>} />
@@ -3322,6 +3341,7 @@ describe('Router integration', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute,
           fetchingSlices: new Set<string>(),
+          lazySliceIds: new Set<string>(),
         }}
       >
         <Link to="/start#target" unstable_prefetchOnEnter={{}}>
@@ -3353,6 +3373,7 @@ describe('Router integration', () => {
           changeRoute: vi.fn(async () => {}),
           prefetchRoute,
           fetchingSlices: new Set<string>(),
+          lazySliceIds: new Set<string>(),
         }}
       >
         <Link to="/start#target" unstable_prefetchOnEnter={{}}>

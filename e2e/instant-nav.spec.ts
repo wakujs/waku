@@ -1,7 +1,7 @@
 import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expect } from '@playwright/test';
+import { type Request, expect } from '@playwright/test';
 import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 // Instant navigation (`<Link ... unstable_instant>`): on a revisited (cached)
@@ -410,10 +410,37 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     });
     const sliceFile = join(hmrFixtureDir, 'src/pages/_slices/lazy-clock.tsx');
     const originalSlice = readFileSync(sliceFile, 'utf-8');
+
+    await page.getByTestId('link-post-1').click();
+    await expect(page.getByTestId('post-body')).toHaveText('Post 1');
+
+    const hmrRequests: string[] = [];
+    const recordHmrRequest = (request: Request) => {
+      hmrRequests.push(request.url());
+    };
+    page.on('request', recordHmrRequest);
+    const postFile = join(hmrFixtureDir, 'src/pages/post/[id].tsx');
+    const originalPost = readFileSync(postFile, 'utf-8');
+    const postHmrResponsePromise = page.waitForResponse((response) =>
+      response.url().includes('R/post/1'),
+    );
+    writeFileSync(
+      postFile,
+      originalPost.replace('await sleep(600)', 'await sleep(601)'),
+    );
+    await (await postHmrResponsePromise).finished();
+    page.off('request', recordHmrRequest);
+    expect(hmrRequests.some((url) => url.includes('R/widget'))).toBe(false);
+
+    const sliceHmrResponsePromise = page.waitForResponse((response) =>
+      response.url().includes('R/post/1'),
+    );
     writeFileSync(
       sliceFile,
       originalSlice.replace('lazy clock loaded', 'lazy clock HMR'),
     );
+    await (await sliceHmrResponsePromise).finished();
+    await page.getByTestId('link-widget').click();
     await expect(page.getByTestId('lazy-clock-value')).toHaveText(
       'lazy clock HMR',
     );
@@ -464,13 +491,11 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     await page.getByTestId('link-delayed-post-2').click();
     await (await delayedResponsePromise).finished();
 
-    const postFile = join(hmrFixtureDir, 'src/pages/post/[id].tsx');
-    const originalPost = readFileSync(postFile, 'utf-8');
-    const postHmrResponsePromise = page.waitForResponse((response) =>
+    const delayedPostHmrResponsePromise = page.waitForResponse((response) =>
       response.url().includes('R/post/1'),
     );
     writeFileSync(postFile, originalPost.replace('Post {id}', 'HMR Post {id}'));
-    await (await postHmrResponsePromise).finished();
+    await (await delayedPostHmrResponsePromise).finished();
     await page.evaluate(() => {
       const global = globalThis as typeof globalThis & {
         __WAKU_TEST_COMMIT_NAVIGATION__?: () => void;

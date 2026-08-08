@@ -280,6 +280,7 @@ const RouterContext = createContext<{
   changeRoute: ChangeRoute;
   prefetchRoute: PrefetchRoute;
   fetchingSlices: Set<SliceId>;
+  lazySliceIds: Set<SliceId>;
 } | null>(null);
 
 const SearchCodecsContext = createContext<ReadonlyMap<string, AnyCodec>>(
@@ -1003,6 +1004,24 @@ const preloadRouteModules = (path: string) => {
   });
 };
 
+const fetchSlice = (
+  id: SliceId,
+  refetch: Refetch,
+  fetchingSlices: Set<SliceId>,
+) => {
+  if (fetchingSlices.has(id)) {
+    return;
+  }
+  fetchingSlices.add(id);
+  refetch(encodeSliceId(id))
+    .catch((e) => {
+      console.error('Failed to fetch slice:', e);
+    })
+    .finally(() => {
+      fetchingSlices.delete(id);
+    });
+};
+
 /**
  * Renders a named slice slot from the current RSC elements. With `lazy`, the
  * first visit fetches the slice if it is missing or mutable; later visits reuse
@@ -1025,7 +1044,7 @@ export function Slice({
       fallback: ReactNode;
     }
 )) {
-  const { fetchingSlices } = useRouterOrThrow();
+  const { fetchingSlices, lazySliceIds } = useRouterOrThrow();
   const refetch = useRefetch();
   const slotId = getSliceSlotId(id);
   const elementsPromise = useElementsPromise();
@@ -1033,29 +1052,16 @@ export function Slice({
   const needsToFetchSlice =
     props.lazy &&
     (!(slotId in elements) || !isImmutableElement(elements, slotId));
-  const fetchSlice = useCallback(() => {
-    if (fetchingSlices.has(id)) {
-      return;
+  useEffect(() => {
+    if (props.lazy) {
+      lazySliceIds.add(id);
     }
-    fetchingSlices.add(id);
-    refetch(encodeSliceId(id))
-      .catch((e) => {
-        console.error('Failed to fetch slice:', e);
-      })
-      .finally(() => {
-        fetchingSlices.delete(id);
-      });
-  }, [fetchingSlices, refetch, id]);
+  }, [id, lazySliceIds, props.lazy]);
   useEffect(() => {
     if (needsToFetchSlice) {
-      fetchSlice();
+      fetchSlice(id, refetch, fetchingSlices);
     }
-  }, [fetchSlice, needsToFetchSlice]);
-  useEffect(() => {
-    if (import.meta.hot && props.lazy) {
-      return registerRscReloadListener(fetchSlice);
-    }
-  }, [fetchSlice, props.lazy]);
+  }, [fetchingSlices, id, needsToFetchSlice, refetch]);
   if (props.lazy && !(slotId in elements)) {
     // FIXME the fallback doesn't show on refetch after the first one.
     return props.fallback;
@@ -1108,6 +1114,9 @@ const InnerRouter = ({
 
   const refetch = useRefetch();
   const mergeElements = useMergeElements();
+  const [fetchingSlices] = useState(() => new Set<SliceId>());
+  // Lazy slice elements stay cached after unmount, so their ids do too.
+  const [lazySliceIds] = useState(() => new Set<SliceId>());
   const pendingNavigationRef = useRef<{
     controller: AbortController;
     queuedState?: RouterState;
@@ -1194,18 +1203,29 @@ const InnerRouter = ({
             encodeRoutePath(settledRoute.path),
             createRscParams(settledRoute.query),
           ).then(addToStaticPathSet, () => {});
+          lazySliceIds.forEach((id) => {
+            fetchSlice(id, refetch, fetchingSlices);
+          });
         });
       };
       return registerRscReloadListener(refetchRouteOnHmr);
     }
-  }, [refetch, addToStaticPathSet, routeFallback, cancelPendingNavigation]);
-
-  // starts empty so hydration matches; filled when a lazy Slice fetches
-  const [fetchingSlices] = useState(() => new Set<SliceId>());
+  }, [
+    refetch,
+    addToStaticPathSet,
+    routeFallback,
+    cancelPendingNavigation,
+    lazySliceIds,
+    fetchingSlices,
+  ]);
 
   const changeRoute: ChangeRoute = useCallback(
     async function changeRoute(nextRoute, options) {
       cancelPendingNavigation();
+      if (import.meta.hot) {
+        // A route navigation retires the previous Minimal refetch target.
+        setRscReloadListener(() => {});
+      }
       const settledRoute = getSettledRoute(
         resolvedElementsRef.current,
         routeFallback,
@@ -1476,6 +1496,7 @@ const InnerRouter = ({
         changeRoute,
         prefetchRoute,
         fetchingSlices,
+        lazySliceIds,
       }}
     >
       {rootElement}
@@ -1524,6 +1545,7 @@ export function INTERNAL_ServerRouter({ route }: { route: RouteProps }) {
           changeRoute: notAvailableInServer('changeRoute'),
           prefetchRoute: notAvailableInServer('prefetchRoute'),
           fetchingSlices: new Set<SliceId>(),
+          lazySliceIds: new Set<SliceId>(),
         }}
       >
         {rootElement}
