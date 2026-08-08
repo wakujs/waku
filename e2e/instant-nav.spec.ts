@@ -506,4 +506,47 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     await expect(page).toHaveURL(`http://localhost:${port}/post/1`);
     await expect(page.getByTestId('post-body')).toHaveText('HMR Post 1');
   });
+
+  test('HMR replaces an in-flight lazy slice response', async ({ page }) => {
+    const sliceFile = join(hmrFixtureDir, 'src/pages/_slices/lazy-clock.tsx');
+    const source = readFileSync(sliceFile, 'utf-8');
+    const firstSliceFetched = Promise.withResolvers<void>();
+    const releaseFirstSlice = Promise.withResolvers<void>();
+    await page.route(
+      '**/RSC/S/lazy-clock**',
+      async (route) => {
+        const response = await route.fetch();
+        firstSliceFetched.resolve();
+        await releaseFirstSlice.promise;
+        await route.fulfill({ response });
+      },
+      { times: 1 },
+    );
+
+    await page.goto(`http://localhost:${port}/widget`);
+    await waitForHydration(page);
+    await firstSliceFetched.promise;
+    const sliceHmrResponsePromise = page.waitForResponse((response) =>
+      response.url().includes('S/lazy-clock'),
+    );
+    writeFileSync(
+      sliceFile,
+      source.replace(
+        /(<span data-testid="lazy-clock-value">).*?(<\/span>)/,
+        '$1lazy clock racing HMR$2',
+      ),
+    );
+    await (await sliceHmrResponsePromise).finished();
+    releaseFirstSlice.resolve();
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        }),
+    );
+
+    await expect(page.getByTestId('lazy-clock-value')).toHaveText(
+      'lazy clock racing HMR',
+    );
+  });
 });

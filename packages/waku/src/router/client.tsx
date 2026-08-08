@@ -25,6 +25,7 @@ import type {
   TransitionFunction,
 } from 'react';
 import { preloadModule } from 'react-dom';
+import { ETAG_ID_PREFIX } from '../lib/utils/etags.js';
 import {
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
@@ -278,7 +279,7 @@ const RouterContext = createContext<{
   routerState?: RouterState | undefined;
   changeRoute: ChangeRoute;
   prefetchRoute: PrefetchRoute;
-  fetchingSlices: Set<SliceId>;
+  fetchingSlices: Map<SliceId, Promise<Elements>>;
   lazySliceIds: Set<SliceId>;
 } | null>(null);
 
@@ -1005,19 +1006,28 @@ const preloadRouteModules = (path: string) => {
 
 const fetchSlice = (
   id: SliceId,
-  refetch: Refetch,
-  fetchingSlices: Set<SliceId>,
+  mergeElements: ReturnType<typeof useMergeElements>,
+  fetchingSlices: Map<SliceId, Promise<Elements>>,
+  options?: { replace?: boolean },
 ) => {
-  if (fetchingSlices.has(id)) {
+  if (fetchingSlices.has(id) && !options?.replace) {
     return;
   }
-  fetchingSlices.add(id);
-  refetch(encodeSliceId(id))
+  const request = fetchRsc(encodeSliceId(id));
+  fetchingSlices.set(id, request);
+  request
+    .then((result) => {
+      if (fetchingSlices.get(id) === request) {
+        return mergeElements(result);
+      }
+    })
     .catch((e) => {
       console.error('Failed to fetch slice:', e);
     })
     .finally(() => {
-      fetchingSlices.delete(id);
+      if (fetchingSlices.get(id) === request) {
+        fetchingSlices.delete(id);
+      }
     });
 };
 
@@ -1044,7 +1054,7 @@ export function Slice({
     }
 )) {
   const { fetchingSlices, lazySliceIds } = useRouterOrThrow();
-  const refetch = useRefetch();
+  const mergeElements = useMergeElements();
   const slotId = getSliceSlotId(id);
   const elementsPromise = useElementsPromise();
   const elements = use(elementsPromise);
@@ -1058,9 +1068,9 @@ export function Slice({
   }, [id, lazySliceIds, props.lazy]);
   useEffect(() => {
     if (needsToFetchSlice) {
-      fetchSlice(id, refetch, fetchingSlices);
+      fetchSlice(id, mergeElements, fetchingSlices);
     }
-  }, [fetchingSlices, id, needsToFetchSlice, refetch]);
+  }, [fetchingSlices, id, mergeElements, needsToFetchSlice]);
   if (props.lazy && !(slotId in elements)) {
     // FIXME the fallback doesn't show on refetch after the first one.
     return props.fallback;
@@ -1113,7 +1123,9 @@ const InnerRouter = ({
 
   const refetch = useRefetch();
   const mergeElements = useMergeElements();
-  const [fetchingSlices] = useState(() => new Set<SliceId>());
+  const [fetchingSlices] = useState(
+    () => new Map<SliceId, Promise<Elements>>(),
+  );
   // Lazy slice elements stay cached after unmount, so their ids do too.
   const [lazySliceIds] = useState(() => new Set<SliceId>());
   const pendingNavigationRef = useRef<{
@@ -1203,7 +1215,7 @@ const InnerRouter = ({
             createRscParams(settledRoute.query),
           ).then(addToStaticPathSet, () => {});
           lazySliceIds.forEach((id) => {
-            fetchSlice(id, refetch, fetchingSlices);
+            fetchSlice(id, mergeElements, fetchingSlices, { replace: true });
           });
         });
       };
@@ -1216,6 +1228,7 @@ const InnerRouter = ({
     cancelPendingNavigation,
     lazySliceIds,
     fetchingSlices,
+    mergeElements,
   ]);
 
   const changeRoute: ChangeRoute = useCallback(
@@ -1324,11 +1337,20 @@ const InnerRouter = ({
           commit(() => {
             const current = resolvedElementsRef.current;
             const update: Elements = {};
+            const responseRoute = getRouteFromElements(resolved) ?? nextRoute;
+            const routeSlotId = getRouteSlotId(responseRoute.path);
+            const routeEtagId = ETAG_ID_PREFIX + routeSlotId;
+            const rscRouteChanged = !isSameRscRoute(
+              responseRoute,
+              settledRoute,
+            );
             // A server action can merge newer values while this request waits.
             for (const [key, value] of Object.entries(resolved)) {
               if (
-                Object.hasOwn(current, key) === Object.hasOwn(base, key) &&
-                current[key] === base[key]
+                (rscRouteChanged &&
+                  (key === routeSlotId || key === routeEtagId)) ||
+                (Object.hasOwn(current, key) === Object.hasOwn(base, key) &&
+                  current[key] === base[key])
               ) {
                 update[key] = value;
               }
@@ -1543,7 +1565,7 @@ export function INTERNAL_ServerRouter({ route }: { route: RouteProps }) {
           route,
           changeRoute: notAvailableInServer('changeRoute'),
           prefetchRoute: notAvailableInServer('prefetchRoute'),
-          fetchingSlices: new Set<SliceId>(),
+          fetchingSlices: new Map<SliceId, Promise<Elements>>(),
           lazySliceIds: new Set<SliceId>(),
         }}
       >

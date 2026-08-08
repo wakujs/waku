@@ -792,7 +792,7 @@ describe('useRouter + Link with context', () => {
           route: { path: '/start', query: '', hash: '' },
           changeRoute,
           prefetchRoute,
-          fetchingSlices: new Set<string>(),
+          fetchingSlices: new Map<string, Promise<Record<string, unknown>>>(),
           lazySliceIds: new Set<string>(),
         }}
       >
@@ -891,7 +891,7 @@ describe('useRouter + Link with context', () => {
             route: { path: '/start', query: '', hash: '' },
             changeRoute,
             prefetchRoute: vi.fn(),
-            fetchingSlices: new Set<string>(),
+            fetchingSlices: new Map<string, Promise<Record<string, unknown>>>(),
             lazySliceIds: new Set<string>(),
           }}
         >
@@ -961,7 +961,10 @@ describe('useRouter + Link with context', () => {
               route: { path: '/start', query: '', hash: '' },
               changeRoute: vi.fn(async () => {}),
               prefetchRoute,
-              fetchingSlices: new Set<string>(),
+              fetchingSlices: new Map<
+                string,
+                Promise<Record<string, unknown>>
+              >(),
               lazySliceIds: new Set<string>(),
             }}
           >
@@ -1020,7 +1023,7 @@ describe('useRouter + Link with context', () => {
           route: { path: '/posts/a%20b', query: '', hash: '' },
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
-          fetchingSlices: new Set<string>(),
+          fetchingSlices: new Map<string, Promise<Record<string, unknown>>>(),
           lazySliceIds: new Set<string>(),
         }}
       >
@@ -1045,7 +1048,7 @@ describe('useRouter + Link with context', () => {
           route: { path: '/about', query: '', hash: '' },
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
-          fetchingSlices: new Set<string>(),
+          fetchingSlices: new Map<string, Promise<Record<string, unknown>>>(),
           lazySliceIds: new Set<string>(),
         }}
       >
@@ -1101,7 +1104,7 @@ describe('useRouter + Link with context', () => {
             route,
             changeRoute: vi.fn(async () => {}),
             prefetchRoute: vi.fn(),
-            fetchingSlices: new Set<string>(),
+            fetchingSlices: new Map<string, Promise<Record<string, unknown>>>(),
             lazySliceIds: new Set<string>(),
           }}
         >
@@ -1131,7 +1134,7 @@ describe('useRouter + Link with context', () => {
           route: { path: '/start', query: '', hash: '' },
           changeRoute,
           prefetchRoute,
-          fetchingSlices: new Set<string>(),
+          fetchingSlices: new Map<string, Promise<Record<string, unknown>>>(),
           lazySliceIds: new Set<string>(),
         }}
       >
@@ -1215,7 +1218,7 @@ describe('useRouter + Link with context', () => {
           route: { path: '/start', query: '', hash: '#target' },
           changeRoute,
           prefetchRoute,
-          fetchingSlices: new Set<string>(),
+          fetchingSlices: new Map<string, Promise<Record<string, unknown>>>(),
           lazySliceIds: new Set<string>(),
         }}
       >
@@ -1272,7 +1275,7 @@ describe('useRouter + Link with context', () => {
           route: { path: '/start', query: '', hash: '#target' },
           changeRoute,
           prefetchRoute,
-          fetchingSlices: new Set<string>(),
+          fetchingSlices: new Map<string, Promise<Record<string, unknown>>>(),
           lazySliceIds: new Set<string>(),
         }}
       >
@@ -1315,7 +1318,7 @@ describe('useRouter + Link with context', () => {
           route: { path: '/start', query: '', hash: '' },
           changeRoute,
           prefetchRoute,
-          fetchingSlices: new Set<string>(),
+          fetchingSlices: new Map<string, Promise<Record<string, unknown>>>(),
           lazySliceIds: new Set<string>(),
         }}
       >
@@ -1390,7 +1393,7 @@ describe('useRouter + Link with context', () => {
           route: { path: '/start', query: '', hash: '' },
           changeRoute: vi.fn(async () => {}),
           prefetchRoute,
-          fetchingSlices: new Set<string>(),
+          fetchingSlices: new Map<string, Promise<Record<string, unknown>>>(),
           lazySliceIds: new Set<string>(),
         }}
       >
@@ -1447,7 +1450,7 @@ describe('useRouter + Link with context', () => {
           route: { path: '/start', query: '', hash: '' },
           changeRoute: vi.fn(async () => {}),
           prefetchRoute,
-          fetchingSlices: new Set<string>(),
+          fetchingSlices: new Map<string, Promise<Record<string, unknown>>>(),
           lazySliceIds: new Set<string>(),
         }}
       >
@@ -1484,7 +1487,7 @@ describe('useRouter + Link with context', () => {
       route: { path: '/start', query: '', hash: '' },
       changeRoute: vi.fn(async () => {}),
       prefetchRoute: vi.fn(),
-      fetchingSlices: new Set<string>(),
+      fetchingSlices: new Map<string, Promise<Record<string, unknown>>>(),
       lazySliceIds: new Set<string>(),
     };
 
@@ -1525,7 +1528,7 @@ describe('useRouter + Link with context', () => {
           route: { path: '/start', query: '', hash: '' },
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
-          fetchingSlices: new Set<string>(),
+          fetchingSlices: new Map<string, Promise<Record<string, unknown>>>(),
           lazySliceIds: new Set<string>(),
         }}
       >
@@ -1565,7 +1568,7 @@ describe('Slice', () => {
           route: { path: '/start', query: '', hash: '' },
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
-          fetchingSlices: new Set<string>(),
+          fetchingSlices: new Map<string, Promise<Record<string, unknown>>>(),
           lazySliceIds: new Set<string>(),
         }}
       >
@@ -1578,8 +1581,8 @@ describe('Slice', () => {
     view.unmount();
   });
 
-  test('lazy slice fetches once, dedupes, and clears in-flight set on completion', async () => {
-    const fetchingSlices = new Set<string>();
+  test('lazy slice fetches once, dedupes, and clears the request on completion', async () => {
+    const fetchingSlices = new Map<string, Promise<Record<string, unknown>>>();
     const view = await renderWithMinimalRoot(
       <RouterContext
         value={{
@@ -1630,7 +1633,7 @@ describe('Slice', () => {
           route: { path: '/start', query: '', hash: '' },
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
-          fetchingSlices: new Set<string>(),
+          fetchingSlices: new Map<string, Promise<Record<string, unknown>>>(),
           lazySliceIds: new Set<string>(),
         }}
       >
@@ -1659,7 +1662,7 @@ describe('Slice', () => {
           route: { path: '/start', query: '', hash: '' },
           changeRoute: vi.fn(async () => {}),
           prefetchRoute: vi.fn(),
-          fetchingSlices: new Set<string>(),
+          fetchingSlices: new Map<string, Promise<Record<string, unknown>>>(),
           lazySliceIds: new Set<string>(),
         }}
       >
@@ -1676,8 +1679,8 @@ describe('Slice', () => {
     view.unmount();
   });
 
-  test('logs refetch failures and clears fetching set', async () => {
-    const fetchingSlices = new Set<string>();
+  test('logs refetch failures and clears the request', async () => {
+    const fetchingSlices = new Map<string, Promise<Record<string, unknown>>>();
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const refetch = vi.fn<RefetchInner>(async () => ({}));
@@ -2046,6 +2049,74 @@ describe('Router integration', () => {
       expect(window.location.pathname).toBe('/next');
       expect(view.container.textContent).toContain('server action');
       expect(view.container.textContent).not.toContain('route response');
+    } finally {
+      view.unmount();
+    }
+  });
+
+  test('query navigation commits its route after an action updates the old query', async () => {
+    const pending = createDeferred<Record<string, unknown>>();
+    const refetch = installRefetch(vi.fn<RefetchInner>(() => pending.promise));
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const slotId = unstable_getRouteSlotId('/start');
+    const etagId = `${ETAG_ID_PREFIX}${slotId}`;
+    let mergeElements: ReturnType<typeof useMergeElements> | undefined;
+    const Content = ({ label }: { label: string }) => {
+      mergeElements = useMergeElements();
+      return (
+        <>
+          <Probe />
+          <div data-testid="route-content">{label}</div>
+        </>
+      );
+    };
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [slotId]: <Content label="initial" />,
+        [etagId]: 'initial',
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      },
+    );
+    try {
+      let pushed: Promise<void> | undefined;
+      await act(async () => {
+        pushed = capture.router!.push('?x=1');
+        await Promise.resolve();
+      });
+      await act(async () => {
+        await mergeElements!({
+          [slotId]: <Content label="action" />,
+          [etagId]: 'action',
+        });
+      });
+
+      await act(async () => {
+        pending.resolve({
+          [slotId]: <Content label="destination" />,
+          [etagId]: 'destination',
+          [IS_STATIC_ID]: false,
+        });
+        await pushed;
+      });
+
+      expect(capture.router?.query).toBe('x=1');
+      expect(view.container.textContent).toContain('destination');
+      expect(view.container.textContent).not.toContain('action');
+
+      refetch.mockResolvedValueOnce({
+        [slotId]: <Content label="reloaded" />,
+        [etagId]: 'reloaded',
+        [IS_STATIC_ID]: false,
+      });
+      await act(async () => {
+        await capture.router!.reload();
+      });
+      expect(refetch.mock.calls[1]?.[2]?.unstable_base?.[etagId]).toBe(
+        'destination',
+      );
     } finally {
       view.unmount();
     }
@@ -3340,7 +3411,7 @@ describe('Router integration', () => {
           route: { path: '/start', query: '', hash: '' },
           changeRoute: vi.fn(async () => {}),
           prefetchRoute,
-          fetchingSlices: new Set<string>(),
+          fetchingSlices: new Map<string, Promise<Record<string, unknown>>>(),
           lazySliceIds: new Set<string>(),
         }}
       >
@@ -3372,7 +3443,7 @@ describe('Router integration', () => {
           route: { path: '/start', query: '', hash: '' },
           changeRoute: vi.fn(async () => {}),
           prefetchRoute,
-          fetchingSlices: new Set<string>(),
+          fetchingSlices: new Map<string, Promise<Record<string, unknown>>>(),
           lazySliceIds: new Set<string>(),
         }}
       >
