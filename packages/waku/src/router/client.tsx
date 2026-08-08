@@ -33,9 +33,8 @@ import {
   unstable_getErrorInfo as getErrorInfo,
   unstable_isImmutableElement as isImmutableElement,
   unstable_registerCallServerElementsListener as registerCallServerElementsListener,
-  INTERNAL_registerRscReloadListener as registerRscReloadListener,
+  unstable_registerRscReloadListener as registerRscReloadListener,
   unstable_removeBase as removeBase,
-  unstable_setRscReloadListener as setRscReloadListener,
   useElementsPromise_UNSTABLE as useElementsPromise,
   useMergeElements_UNSTABLE as useMergeElements,
 } from '../minimal/client.js';
@@ -1129,7 +1128,7 @@ const InnerRouter = ({
   useEffect(() => {
     if (import.meta.hot) {
       // The listener below owns the current route, not Root's initial path.
-      setRscReloadListener(() => {});
+      registerRscReloadListener(() => {}, { replace: true });
     }
   }, []);
 
@@ -1224,7 +1223,7 @@ const InnerRouter = ({
       cancelPendingNavigation();
       if (import.meta.hot) {
         // A route navigation retires the previous Minimal refetch target.
-        setRscReloadListener(() => {});
+        registerRscReloadListener(() => {}, { replace: true });
       }
       const settledRoute = getSettledRoute(
         resolvedElementsRef.current,

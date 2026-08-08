@@ -487,43 +487,45 @@ export function unstable_registerFetchRscInputTransformer(
 }
 
 /**
- * Sets the RSC refresh operation used by HMR, replacing the previous one. It
- * has no effect outside development.
+ * Registers an RSC reload listener used by development HMR. Listeners coexist
+ * by default. With `replace`, it replaces the previous replaceable listener
+ * and invalidates Minimal's RSC caches before calling it. Returns a function
+ * that unregisters this listener.
  */
-export const unstable_setRscReloadListener = (listener: () => void): void => {
-  if (!import.meta.hot) {
-    return;
-  }
-  globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= [];
-  const previous = globalThis.__WAKU_REFETCH_RSC__;
-  const reload = () => {
-    fetchRscStore[CACHED_ETAGS] = {};
-    delete fetchRscStore[ENTRY];
-    listener();
-  };
-  const index = previous
-    ? globalThis.__WAKU_RSC_RELOAD_LISTENERS__.indexOf(previous)
-    : -1;
-  if (index !== -1) {
-    globalThis.__WAKU_RSC_RELOAD_LISTENERS__.splice(index, 1, reload);
-  } else {
-    globalThis.__WAKU_RSC_RELOAD_LISTENERS__.push(reload);
-  }
-  globalThis.__WAKU_REFETCH_RSC__ = reload;
-};
-
-export const INTERNAL_registerRscReloadListener = (
+export const unstable_registerRscReloadListener = (
   listener: () => void,
+  options?: { replace?: boolean },
 ): Unregister => {
   if (!import.meta.hot) {
     return () => {};
   }
   const listeners = (globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= []);
-  listeners.push(listener);
+  const registered = options?.replace
+    ? () => {
+        fetchRscStore[CACHED_ETAGS] = {};
+        delete fetchRscStore[ENTRY];
+        listener();
+      }
+    : listener;
+  const previous = options?.replace
+    ? globalThis.__WAKU_REFETCH_RSC__
+    : undefined;
+  const previousIndex = previous ? listeners.indexOf(previous) : -1;
+  if (previousIndex === -1) {
+    listeners.push(registered);
+  } else {
+    listeners.splice(previousIndex, 1, registered);
+  }
+  if (options?.replace) {
+    globalThis.__WAKU_REFETCH_RSC__ = registered;
+  }
   return () => {
-    const index = listeners.indexOf(listener);
+    const index = listeners.indexOf(registered);
     if (index !== -1) {
       listeners.splice(index, 1);
+    }
+    if (globalThis.__WAKU_REFETCH_RSC__ === registered) {
+      globalThis.__WAKU_REFETCH_RSC__ = undefined;
     }
   };
 };
@@ -569,11 +571,14 @@ const getInitialRsc = (
   rscParams: unknown,
 ): Promise<Elements> => {
   if (import.meta.hot) {
-    unstable_setRscReloadListener(() => {
-      const data = fetchRootRsc(rscPath, rscParams);
-      const setElements = getSetElements();
-      setElements((prev) => refreshElementsPromise(prev, data));
-    });
+    unstable_registerRscReloadListener(
+      () => {
+        const data = fetchRootRsc(rscPath, rscParams);
+        const setElements = getSetElements();
+        setElements((prev) => refreshElementsPromise(prev, data));
+      },
+      { replace: true },
+    );
   }
   const entry = fetchRscStore[ENTRY];
   if (entry && entry[0] === rscPath && entry[1] === rscParams) {
@@ -743,9 +748,12 @@ export const useRefetch = () => {
           ...(unstable_swr ? { unstable_swr } : {}),
         });
       };
-      unstable_setRscReloadListener(() => {
-        void refetch();
-      });
+      unstable_registerRscReloadListener(
+        () => {
+          void refetch();
+        },
+        { replace: true },
+      );
       return refetch();
     },
     [mergeElements],
