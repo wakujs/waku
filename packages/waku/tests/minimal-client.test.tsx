@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+// Test probes expose hook values and state setters to their test cases.
 
 import { StrictMode, Suspense, act, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -25,7 +26,7 @@ import {
   unstable_registerFetchEnhancer,
   unstable_registerFetchRscInputTransformer,
   useElementsPromise_UNSTABLE,
-  useRefetch,
+  useMergeElements_UNSTABLE,
 } from '../src/minimal/client.js';
 
 type CallServer = (funcId: string, args: unknown[]) => Promise<unknown>;
@@ -58,6 +59,25 @@ const resolvedThenable = <T,>(value: T): Promise<T> =>
     status: 'fulfilled' as const,
     value,
   });
+
+const useRefetch = () => {
+  const mergeElements = useMergeElements_UNSTABLE();
+  return (
+    rscPath: string,
+    rscParams?: unknown,
+    options?: Parameters<typeof mergeElements>[1],
+  ) =>
+    mergeElements(
+      unstable_fetchRsc(rscPath, rscParams, {
+        ...(options?.unstable_swr?.base
+          ? { unstable_base: options.unstable_swr.base }
+          : {}),
+      }),
+      options,
+    );
+};
+
+type Refetch = ReturnType<typeof useRefetch>;
 
 // The client store is a module singleton; reset it between tests.
 const clientStore = fetchRscStore as unknown as Record<string, unknown>;
@@ -405,21 +425,6 @@ describe('minimal/client input transformer', () => {
     ]);
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('rewritten');
   });
-
-  test('supports the deprecated transformer signature', async () => {
-    const fetchMock = vi.fn<typeof fetch>(async () => new Response('{}'));
-    track(unstable_registerFetchEnhancer(() => fetchMock));
-    const transform = vi.fn(
-      (_rscPath: string, _rscParams: unknown, prefetchOnly: boolean) =>
-        ['R/legacy.txt', { x: 1 }, prefetchOnly] as const,
-    );
-    track(unstable_registerFetchRscInputTransformer(transform));
-
-    await unstable_fetchRsc('R/original.txt', undefined);
-
-    expect(transform).toHaveBeenCalledWith('R/original.txt', undefined, false);
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('legacy');
-  });
 });
 
 describe('minimal/client eager merge', () => {
@@ -430,11 +435,13 @@ describe('minimal/client eager merge', () => {
     );
     stubFetch();
 
-    let refetch: ReturnType<typeof useRefetch> | undefined;
+    let refetch: Refetch | undefined;
     let mountExtra: () => void = () => {};
     const Probe = () => {
+      // eslint-disable-next-line react-hooks/globals
       refetch = useRefetch();
       const [extra, setExtra] = useState(false);
+      // eslint-disable-next-line react-hooks/globals
       mountExtra = () => setExtra(true);
       return extra ? <Slot id="extra" /> : null;
     };
@@ -484,11 +491,13 @@ describe('minimal/client eager merge', () => {
     );
     stubFetch();
 
-    let refetch: ReturnType<typeof useRefetch> | undefined;
+    let refetch: Refetch | undefined;
     let mountExtra: () => void = () => {};
     const Probe = () => {
+      // eslint-disable-next-line react-hooks/globals
       refetch = useRefetch();
       const [extra, setExtra] = useState(false);
+      // eslint-disable-next-line react-hooks/globals
       mountExtra = () => setExtra(true);
       return extra ? <Slot id="extra" /> : null;
     };
@@ -531,8 +540,9 @@ describe('minimal/client eager merge', () => {
     );
     stubFetch();
 
-    let refetch: ReturnType<typeof useRefetch> | undefined;
+    let refetch: Refetch | undefined;
     const Probe = () => {
+      // eslint-disable-next-line react-hooks/globals
       refetch = useRefetch();
       return null;
     };
@@ -589,10 +599,12 @@ describe('minimal/client eager merge', () => {
     );
     stubFetch();
 
-    let refetch: ReturnType<typeof useRefetch> | undefined;
+    let refetch: Refetch | undefined;
     let elementsPromise: Promise<Record<string, unknown>> | undefined;
     const Probe = () => {
+      // eslint-disable-next-line react-hooks/globals
       refetch = useRefetch();
+      // eslint-disable-next-line react-hooks/globals
       elementsPromise = useElementsPromise_UNSTABLE();
       return null;
     };
@@ -644,10 +656,12 @@ describe('minimal/client eager merge', () => {
     );
     stubFetch();
 
-    let refetch: ReturnType<typeof useRefetch> | undefined;
+    let refetch: Refetch | undefined;
     let elementsPromise: Promise<Record<string, unknown>> | undefined;
     const Probe = () => {
+      // eslint-disable-next-line react-hooks/globals
       refetch = useRefetch();
+      // eslint-disable-next-line react-hooks/globals
       elementsPromise = useElementsPromise_UNSTABLE();
       return null;
     };
@@ -682,10 +696,12 @@ describe('minimal/client eager merge', () => {
     );
     stubFetch();
 
-    let refetch: ReturnType<typeof useRefetch> | undefined;
+    let refetch: Refetch | undefined;
     let elementsPromise: Promise<Record<string, unknown>> | undefined;
     const Probe = () => {
+      // eslint-disable-next-line react-hooks/globals
       refetch = useRefetch();
+      // eslint-disable-next-line react-hooks/globals
       elementsPromise = useElementsPromise_UNSTABLE();
       return null;
     };
@@ -726,10 +742,12 @@ describe('minimal/client eager merge', () => {
     );
     stubFetch();
 
-    let refetch: ReturnType<typeof useRefetch> | undefined;
+    let refetch: Refetch | undefined;
     let elementsPromise: Promise<Record<string, unknown>> | undefined;
     const Probe = () => {
+      // eslint-disable-next-line react-hooks/globals
       refetch = useRefetch();
+      // eslint-disable-next-line react-hooks/globals
       elementsPromise = useElementsPromise_UNSTABLE();
       return null;
     };
@@ -786,10 +804,12 @@ describe('minimal/client eager merge', () => {
     );
     stubFetch();
 
-    let refetch: ReturnType<typeof useRefetch> | undefined;
+    let refetch: Refetch | undefined;
     let elementsPromise: Promise<Record<string, unknown>> | undefined;
     const Probe = () => {
+      // eslint-disable-next-line react-hooks/globals
       refetch = useRefetch();
+      // eslint-disable-next-line react-hooks/globals
       elementsPromise = useElementsPromise_UNSTABLE();
       return null;
     };
@@ -841,10 +861,12 @@ describe('minimal/client eager merge', () => {
     );
     stubFetch();
 
-    let refetch: ReturnType<typeof useRefetch> | undefined;
+    let refetch: Refetch | undefined;
     let elementsPromise: Promise<Record<string, unknown>> | undefined;
     const Probe = () => {
+      // eslint-disable-next-line react-hooks/globals
       refetch = useRefetch();
+      // eslint-disable-next-line react-hooks/globals
       elementsPromise = useElementsPromise_UNSTABLE();
       return null;
     };
@@ -890,10 +912,12 @@ describe('minimal/client eager merge', () => {
     );
     stubFetch();
 
-    let refetch: ReturnType<typeof useRefetch> | undefined;
+    let refetch: Refetch | undefined;
     let elementsPromise: Promise<Record<string, unknown>> | undefined;
     const Probe = () => {
+      // eslint-disable-next-line react-hooks/globals
       refetch = useRefetch();
+      // eslint-disable-next-line react-hooks/globals
       elementsPromise = useElementsPromise_UNSTABLE();
       return null;
     };
@@ -964,10 +988,12 @@ describe('minimal/client eager merge', () => {
     );
     stubFetch();
 
-    let refetch: ReturnType<typeof useRefetch> | undefined;
+    let refetch: Refetch | undefined;
     let elementsPromise: Promise<Record<string, unknown>> | undefined;
     const Probe = () => {
+      // eslint-disable-next-line react-hooks/globals
       refetch = useRefetch();
+      // eslint-disable-next-line react-hooks/globals
       elementsPromise = useElementsPromise_UNSTABLE();
       return null;
     };
@@ -1024,11 +1050,13 @@ describe('minimal/client eager merge', () => {
     );
     stubFetch();
 
-    let refetch: ReturnType<typeof useRefetch> | undefined;
+    let refetch: Refetch | undefined;
     let mountExtra: () => void = () => {};
     const Probe = () => {
+      // eslint-disable-next-line react-hooks/globals
       refetch = useRefetch();
       const [extra, setExtra] = useState(false);
+      // eslint-disable-next-line react-hooks/globals
       mountExtra = () => setExtra(true);
       return extra ? (
         <>
@@ -1117,11 +1145,13 @@ describe('minimal/client eager merge', () => {
     );
     stubFetch();
 
-    let refetch: ReturnType<typeof useRefetch> | undefined;
+    let refetch: Refetch | undefined;
     let mountExtra: () => void = () => {};
     const Probe = () => {
+      // eslint-disable-next-line react-hooks/globals
       refetch = useRefetch();
       const [extra, setExtra] = useState(false);
+      // eslint-disable-next-line react-hooks/globals
       mountExtra = () => setExtra(true);
       return extra ? <Slot id="extra" /> : null;
     };
@@ -1159,12 +1189,13 @@ describe('minimal/client refetch scenarios', () => {
   // No-router scenario tests for refetch's merge behavior.
   const mount = async (
     initial: Record<string, unknown>,
-    ui: (refetchRef: { current?: ReturnType<typeof useRefetch> }) => ReactNode,
+    ui: (refetchRef: { current?: Refetch }) => ReactNode,
   ) => {
     mocks.createFromFetch.mockReturnValueOnce(resolvedThenable(initial));
     stubFetch();
-    const refetchRef: { current?: ReturnType<typeof useRefetch> } = {};
+    const refetchRef: { current?: Refetch } = {};
     const Probe = () => {
+      // eslint-disable-next-line react-hooks/immutability
       refetchRef.current = useRefetch();
       return null;
     };
@@ -1246,8 +1277,10 @@ describe('minimal/client refetch scenarios', () => {
     let mountExtra = () => {};
     const view = await mount({ _value: null, main: 'M1' }, (ref) => {
       const Holder = () => {
+        // eslint-disable-next-line react-hooks/immutability
         ref.current = useRefetch();
         const [extra, setExtra] = useState(false);
+        // eslint-disable-next-line react-hooks/globals
         mountExtra = () => setExtra(true);
         return extra ? (
           <Suspense fallback={<span>loading</span>}>
