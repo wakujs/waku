@@ -1,9 +1,8 @@
 // @vitest-environment happy-dom
-// Test components expose hook values to their test cases.
 
 // Proves the per-slot cache-validator carry/replay lives in the minimal layer
 // (router-agnostic), driving the real minimal Root.
-import { act } from 'react';
+import { act, useEffect } from 'react';
 import type { ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -145,8 +144,10 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
     };
     let refetch!: Refetch;
     const Capture = () => {
-      // eslint-disable-next-line react-hooks/globals
-      refetch = useRefetch();
+      const refetchValue = useRefetch();
+      useEffect(() => {
+        refetch = refetchValue;
+      });
       return null;
     };
     const view = await renderApp(
@@ -184,8 +185,10 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
     };
     let refetch!: Refetch;
     const Capture = () => {
-      // eslint-disable-next-line react-hooks/globals
-      refetch = useRefetch();
+      const refetchValue = useRefetch();
+      useEffect(() => {
+        refetch = refetchValue;
+      });
       return null;
     };
     const view = await renderApp(
@@ -274,8 +277,10 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
     };
     let refetch!: Refetch;
     const Capture = () => {
-      // eslint-disable-next-line react-hooks/globals
-      refetch = useRefetch();
+      const refetchValue = useRefetch();
+      useEffect(() => {
+        refetch = refetchValue;
+      });
       return null;
     };
     const view = await renderApp(

@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
-// Test probes expose hook values and state setters to their test cases.
 
-import { StrictMode, Suspense, act, useState } from 'react';
+import { StrictMode, Suspense, act, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
@@ -438,11 +437,12 @@ describe('minimal/client eager merge', () => {
     let refetch: Refetch | undefined;
     let mountExtra: () => void = () => {};
     const Probe = () => {
-      // eslint-disable-next-line react-hooks/globals
-      refetch = useRefetch();
+      const refetchValue = useRefetch();
       const [extra, setExtra] = useState(false);
-      // eslint-disable-next-line react-hooks/globals
-      mountExtra = () => setExtra(true);
+      useEffect(() => {
+        refetch = refetchValue;
+        mountExtra = () => setExtra(true);
+      });
       return extra ? <Slot id="extra" /> : null;
     };
 
@@ -494,11 +494,12 @@ describe('minimal/client eager merge', () => {
     let refetch: Refetch | undefined;
     let mountExtra: () => void = () => {};
     const Probe = () => {
-      // eslint-disable-next-line react-hooks/globals
-      refetch = useRefetch();
+      const refetchValue = useRefetch();
       const [extra, setExtra] = useState(false);
-      // eslint-disable-next-line react-hooks/globals
-      mountExtra = () => setExtra(true);
+      useEffect(() => {
+        refetch = refetchValue;
+        mountExtra = () => setExtra(true);
+      });
       return extra ? <Slot id="extra" /> : null;
     };
 
@@ -542,8 +543,10 @@ describe('minimal/client eager merge', () => {
 
     let refetch: Refetch | undefined;
     const Probe = () => {
-      // eslint-disable-next-line react-hooks/globals
-      refetch = useRefetch();
+      const refetchValue = useRefetch();
+      useEffect(() => {
+        refetch = refetchValue;
+      });
       return null;
     };
 
@@ -602,10 +605,12 @@ describe('minimal/client eager merge', () => {
     let refetch: Refetch | undefined;
     let elementsPromise: Promise<Record<string, unknown>> | undefined;
     const Probe = () => {
-      // eslint-disable-next-line react-hooks/globals
-      refetch = useRefetch();
-      // eslint-disable-next-line react-hooks/globals
-      elementsPromise = useElementsPromise_UNSTABLE();
+      const refetchValue = useRefetch();
+      const elementsPromiseValue = useElementsPromise_UNSTABLE();
+      useEffect(() => {
+        refetch = refetchValue;
+        elementsPromise = elementsPromiseValue;
+      });
       return null;
     };
 
@@ -659,10 +664,12 @@ describe('minimal/client eager merge', () => {
     let refetch: Refetch | undefined;
     let elementsPromise: Promise<Record<string, unknown>> | undefined;
     const Probe = () => {
-      // eslint-disable-next-line react-hooks/globals
-      refetch = useRefetch();
-      // eslint-disable-next-line react-hooks/globals
-      elementsPromise = useElementsPromise_UNSTABLE();
+      const refetchValue = useRefetch();
+      const elementsPromiseValue = useElementsPromise_UNSTABLE();
+      useEffect(() => {
+        refetch = refetchValue;
+        elementsPromise = elementsPromiseValue;
+      });
       return null;
     };
 
@@ -699,10 +706,12 @@ describe('minimal/client eager merge', () => {
     let refetch: Refetch | undefined;
     let elementsPromise: Promise<Record<string, unknown>> | undefined;
     const Probe = () => {
-      // eslint-disable-next-line react-hooks/globals
-      refetch = useRefetch();
-      // eslint-disable-next-line react-hooks/globals
-      elementsPromise = useElementsPromise_UNSTABLE();
+      const refetchValue = useRefetch();
+      const elementsPromiseValue = useElementsPromise_UNSTABLE();
+      useEffect(() => {
+        refetch = refetchValue;
+        elementsPromise = elementsPromiseValue;
+      });
       return null;
     };
 
@@ -745,10 +754,12 @@ describe('minimal/client eager merge', () => {
     let refetch: Refetch | undefined;
     let elementsPromise: Promise<Record<string, unknown>> | undefined;
     const Probe = () => {
-      // eslint-disable-next-line react-hooks/globals
-      refetch = useRefetch();
-      // eslint-disable-next-line react-hooks/globals
-      elementsPromise = useElementsPromise_UNSTABLE();
+      const refetchValue = useRefetch();
+      const elementsPromiseValue = useElementsPromise_UNSTABLE();
+      useEffect(() => {
+        refetch = refetchValue;
+        elementsPromise = elementsPromiseValue;
+      });
       return null;
     };
 
@@ -807,10 +818,12 @@ describe('minimal/client eager merge', () => {
     let refetch: Refetch | undefined;
     let elementsPromise: Promise<Record<string, unknown>> | undefined;
     const Probe = () => {
-      // eslint-disable-next-line react-hooks/globals
-      refetch = useRefetch();
-      // eslint-disable-next-line react-hooks/globals
-      elementsPromise = useElementsPromise_UNSTABLE();
+      const refetchValue = useRefetch();
+      const elementsPromiseValue = useElementsPromise_UNSTABLE();
+      useEffect(() => {
+        refetch = refetchValue;
+        elementsPromise = elementsPromiseValue;
+      });
       return null;
     };
 
@@ -864,10 +877,12 @@ describe('minimal/client eager merge', () => {
     let refetch: Refetch | undefined;
     let elementsPromise: Promise<Record<string, unknown>> | undefined;
     const Probe = () => {
-      // eslint-disable-next-line react-hooks/globals
-      refetch = useRefetch();
-      // eslint-disable-next-line react-hooks/globals
-      elementsPromise = useElementsPromise_UNSTABLE();
+      const refetchValue = useRefetch();
+      const elementsPromiseValue = useElementsPromise_UNSTABLE();
+      useEffect(() => {
+        refetch = refetchValue;
+        elementsPromise = elementsPromiseValue;
+      });
       return null;
     };
 
@@ -915,10 +930,12 @@ describe('minimal/client eager merge', () => {
     let refetch: Refetch | undefined;
     let elementsPromise: Promise<Record<string, unknown>> | undefined;
     const Probe = () => {
-      // eslint-disable-next-line react-hooks/globals
-      refetch = useRefetch();
-      // eslint-disable-next-line react-hooks/globals
-      elementsPromise = useElementsPromise_UNSTABLE();
+      const refetchValue = useRefetch();
+      const elementsPromiseValue = useElementsPromise_UNSTABLE();
+      useEffect(() => {
+        refetch = refetchValue;
+        elementsPromise = elementsPromiseValue;
+      });
       return null;
     };
 
@@ -991,10 +1008,12 @@ describe('minimal/client eager merge', () => {
     let refetch: Refetch | undefined;
     let elementsPromise: Promise<Record<string, unknown>> | undefined;
     const Probe = () => {
-      // eslint-disable-next-line react-hooks/globals
-      refetch = useRefetch();
-      // eslint-disable-next-line react-hooks/globals
-      elementsPromise = useElementsPromise_UNSTABLE();
+      const refetchValue = useRefetch();
+      const elementsPromiseValue = useElementsPromise_UNSTABLE();
+      useEffect(() => {
+        refetch = refetchValue;
+        elementsPromise = elementsPromiseValue;
+      });
       return null;
     };
 
@@ -1053,11 +1072,12 @@ describe('minimal/client eager merge', () => {
     let refetch: Refetch | undefined;
     let mountExtra: () => void = () => {};
     const Probe = () => {
-      // eslint-disable-next-line react-hooks/globals
-      refetch = useRefetch();
+      const refetchValue = useRefetch();
       const [extra, setExtra] = useState(false);
-      // eslint-disable-next-line react-hooks/globals
-      mountExtra = () => setExtra(true);
+      useEffect(() => {
+        refetch = refetchValue;
+        mountExtra = () => setExtra(true);
+      });
       return extra ? (
         <>
           <Suspense fallback={<span>[S]</span>}>
@@ -1148,11 +1168,12 @@ describe('minimal/client eager merge', () => {
     let refetch: Refetch | undefined;
     let mountExtra: () => void = () => {};
     const Probe = () => {
-      // eslint-disable-next-line react-hooks/globals
-      refetch = useRefetch();
+      const refetchValue = useRefetch();
       const [extra, setExtra] = useState(false);
-      // eslint-disable-next-line react-hooks/globals
-      mountExtra = () => setExtra(true);
+      useEffect(() => {
+        refetch = refetchValue;
+        mountExtra = () => setExtra(true);
+      });
       return extra ? <Slot id="extra" /> : null;
     };
 
@@ -1195,8 +1216,10 @@ describe('minimal/client refetch scenarios', () => {
     stubFetch();
     const refetchRef: { current?: Refetch } = {};
     const Probe = () => {
-      // eslint-disable-next-line react-hooks/immutability
-      refetchRef.current = useRefetch();
+      const refetch = useRefetch();
+      useEffect(() => {
+        refetchRef.current = refetch;
+      });
       return null;
     };
     const container = document.createElement('div');
@@ -1277,11 +1300,12 @@ describe('minimal/client refetch scenarios', () => {
     let mountExtra = () => {};
     const view = await mount({ _value: null, main: 'M1' }, (ref) => {
       const Holder = () => {
-        // eslint-disable-next-line react-hooks/immutability
-        ref.current = useRefetch();
+        const refetch = useRefetch();
         const [extra, setExtra] = useState(false);
-        // eslint-disable-next-line react-hooks/globals
-        mountExtra = () => setExtra(true);
+        useEffect(() => {
+          ref.current = refetch;
+          mountExtra = () => setExtra(true);
+        });
         return extra ? (
           <Suspense fallback={<span>loading</span>}>
             <Slot id="extra" />
