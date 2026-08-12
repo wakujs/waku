@@ -287,7 +287,7 @@ type NavigationOutcome =
       instant: boolean;
     }
   | {
-      type: 'static';
+      type: 'reused';
       attempt: NavigationAttempt;
       history: HistoryIntent;
     }
@@ -761,6 +761,7 @@ export function Link<Path extends RoutePath>({
           startTransition: unstable_startTransition,
         },
         startTransition,
+        // a click has no caller to reject to; the boundary shows the failure
       ).catch(() => {});
     } else if (url.hash && scroll !== false) {
       scrollToHash(url.hash, 'auto', false);
@@ -1282,6 +1283,7 @@ const InnerRouter = ({
         url: routeUrl,
         follows: options.follows ?? 0,
       };
+      const pathChanged = initialAttempt.route.path !== settledRoute.path;
       const shouldRefetch =
         options.refetch ?? !isSameRscRoute(nextRoute, settledRoute);
       const makeStateForAttempt = (
@@ -1291,7 +1293,7 @@ const InnerRouter = ({
         makeRouterState(attempt.route, attempt.url, {
           history,
           scroll: options.shouldScroll,
-          pathChanged: attempt.route.path !== settledRoute.path,
+          pathChanged,
           follows: attempt.follows,
         });
       const controller = new AbortController();
@@ -1345,10 +1347,10 @@ const InnerRouter = ({
         restoreBase: boolean,
       ): Promise<NavigationOutcome> => {
         if (
-          attempt.follows &&
+          attempt.follows > 0 &&
           staticPathSetRef.current!.has(attempt.route.path)
         ) {
-          return { type: 'static', attempt, history };
+          return { type: 'reused', attempt, history };
         }
         const rscPath = encodeRoutePath(attempt.route.path);
         const prefetchManager = prefetchManagerRef.current!;
@@ -1424,15 +1426,24 @@ const InnerRouter = ({
             // the paint already wrote this url, so the follow replaces it
             commitHistory(attempt.url, history);
           }
-          return fetchRoute(
-            {
-              route: decision.target,
-              url: decision.url,
-              follows: attempt.follows + 1,
-            },
-            instant ? history && 'replace' : history,
-            restoreBase || instant,
-          );
+          const nextAttempt = {
+            route: decision.target,
+            url: decision.url,
+            follows: attempt.follows + 1,
+          };
+          const nextHistory = instant && history !== null ? 'replace' : history;
+          if (
+            // A render-time follow may be retrying the route whose slot threw.
+            initialAttempt.follows === 0 &&
+            isSameRscRoute(decision.target, settledRoute)
+          ) {
+            return {
+              type: 'reused',
+              attempt: nextAttempt,
+              history: nextHistory,
+            };
+          }
+          return fetchRoute(nextAttempt, nextHistory, restoreBase || instant);
         }
         return controller.signal.aborted
           ? { type: 'superseded' }
@@ -1442,7 +1453,7 @@ const InnerRouter = ({
       if (outcome.type === 'superseded') {
         return;
       }
-      if (outcome.type === 'static') {
+      if (outcome.type === 'reused') {
         commitRoute(
           outcome.attempt.route,
           makeStateForAttempt(outcome.attempt, outcome.history),
@@ -1505,7 +1516,7 @@ const InnerRouter = ({
       const finalState = makeRouterState(destination.route, destination.url, {
         history: outcome.history,
         scroll: options.shouldScroll,
-        pathChanged: destination.route.path !== settledRoute.path,
+        pathChanged,
         follows: attempt.follows,
       });
       commit(

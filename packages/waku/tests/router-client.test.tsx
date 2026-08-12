@@ -6230,6 +6230,50 @@ describe('Router integration', () => {
     }
   });
 
+  test('a fetch redirect that only adds a hash reuses the current route', async () => {
+    const { view, refetch, capture, router } = await renderFollowRouter({
+      responses: [{ reject: { status: 307, location: '/start#section' } }],
+    });
+    await act(async () => {
+      await router.reload();
+      await flush();
+    });
+    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(capture.router).toMatchObject({
+      path: '/start',
+      hash: '#section',
+    });
+    view.unmount();
+  });
+
+  test('a fetch redirect back to the current route keeps path-change scrolling', async () => {
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const { view, refetch, capture, router } = await renderFollowRouter({
+      responses: [{ reject: { status: 307, location: '/start#missing' } }],
+    });
+    try {
+      await act(async () => {
+        await router.push('/next');
+        await flush();
+      });
+      expect(refetch).toHaveBeenCalledTimes(1);
+      expect(capture.router).toMatchObject({
+        path: '/start',
+        hash: '#missing',
+      });
+      expect(scrollToSpy).toHaveBeenCalledWith({
+        left: 0,
+        top: 0,
+        behavior: 'instant',
+      });
+    } finally {
+      scrollToSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('a server redirect back to the caught query is a loop', async () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
