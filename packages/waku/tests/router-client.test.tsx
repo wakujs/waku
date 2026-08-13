@@ -6251,16 +6251,51 @@ describe('Router integration', () => {
       .spyOn(window, 'scrollTo')
       .mockImplementation(() => {});
     const { view, refetch, capture, router } = await renderFollowRouter({
-      responses: [{ reject: { status: 307, location: '/start#missing' } }],
+      responses: [
+        { reject: { status: 307, location: '/start#missing' } },
+        { resolve: { [ROUTE_ID]: ['/start', ''], [IS_STATIC_ID]: false } },
+      ],
     });
     try {
       await act(async () => {
         await router.push('/next');
         await flush();
       });
-      expect(refetch).toHaveBeenCalledTimes(1);
+      expect(refetch).toHaveBeenCalledTimes(2);
       expect(capture.router).toMatchObject({
         path: '/start',
+        hash: '#missing',
+      });
+      expect(scrollToSpy).toHaveBeenCalledWith({
+        left: 0,
+        top: 0,
+        behavior: 'instant',
+      });
+    } finally {
+      scrollToSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
+  test('a query-only fetch redirect to another path resets scroll', async () => {
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const { view, refetch, capture, router } = await renderFollowRouter({
+      responses: [
+        { reject: { status: 307, location: '/detail#missing' } },
+        { resolve: { [ROUTE_ID]: ['/detail', ''], [IS_STATIC_ID]: false } },
+      ],
+      slots: ['/detail'],
+    });
+    try {
+      await act(async () => {
+        await router.push('/start?page=2', { scroll: true });
+        await flush();
+      });
+      expect(refetch).toHaveBeenCalledTimes(2);
+      expect(capture.router).toMatchObject({
+        path: '/detail',
         hash: '#missing',
       });
       expect(scrollToSpy).toHaveBeenCalledWith({

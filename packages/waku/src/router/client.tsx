@@ -1435,6 +1435,7 @@ const InnerRouter = ({
           if (
             // A render-time follow may be retrying the route whose slot threw.
             initialAttempt.follows === 0 &&
+            isSameRscRoute(decision.target, attempt.route) &&
             isSameRscRoute(decision.target, settledRoute)
           ) {
             return {
@@ -1516,7 +1517,8 @@ const InnerRouter = ({
       const finalState = makeRouterState(destination.route, destination.url, {
         history: outcome.history,
         scroll: options.shouldScroll,
-        pathChanged,
+        pathChanged:
+          pathChanged || destination.route.path !== settledRoute.path,
         follows: attempt.follows,
       });
       commit(
