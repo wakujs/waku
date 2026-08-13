@@ -1283,7 +1283,8 @@ const InnerRouter = ({
         url: routeUrl,
         follows: options.follows ?? 0,
       };
-      const pathChanged = initialAttempt.route.path !== settledRoute.path;
+      const requestedPathChanged =
+        initialAttempt.route.path !== settledRoute.path;
       const shouldRefetch =
         options.refetch ?? !isSameRscRoute(nextRoute, settledRoute);
       const makeStateForAttempt = (
@@ -1293,7 +1294,8 @@ const InnerRouter = ({
         makeRouterState(attempt.route, attempt.url, {
           history,
           scroll: options.shouldScroll,
-          pathChanged,
+          pathChanged:
+            requestedPathChanged || attempt.route.path !== settledRoute.path,
           follows: attempt.follows,
         });
       const controller = new AbortController();
@@ -1518,7 +1520,7 @@ const InnerRouter = ({
         history: outcome.history,
         scroll: options.shouldScroll,
         pathChanged:
-          pathChanged || destination.route.path !== settledRoute.path,
+          requestedPathChanged || destination.route.path !== settledRoute.path,
         follows: attempt.follows,
       });
       commit(

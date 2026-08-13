@@ -6893,6 +6893,61 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a query-only redirect to a known static path resets scroll', async () => {
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
+    const redirect = createCustomError('redirect', {
+      status: 307,
+      location: '/detail#missing',
+    });
+    const refetch = vi
+      .fn<RefetchInner>()
+      .mockResolvedValueOnce({
+        [ROUTE_ID]: ['/start', 'page=1'],
+        [IS_STATIC_ID]: false,
+      })
+      .mockRejectedValueOnce(redirect);
+    installRefetch(refetch);
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const view = await renderRouter(
+      { initialRoute: { path: '/detail', query: '', hash: '' } },
+      {
+        [unstable_getRouteSlotId('/detail')]: <Probe />,
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [ROUTE_ID]: ['/detail', ''],
+        [IS_STATIC_ID]: true,
+      },
+    );
+    try {
+      await act(async () => {
+        await capture.router!.push('/start?page=1');
+        await flush();
+      });
+      scrollToSpy.mockClear();
+
+      await act(async () => {
+        await capture.router!.push('/start?page=2', { scroll: true });
+        await flush();
+      });
+
+      expect(refetch).toHaveBeenCalledTimes(2);
+      expect(capture.router).toMatchObject({
+        path: '/detail',
+        hash: '#missing',
+      });
+      expect(scrollToSpy).toHaveBeenCalledWith({
+        left: 0,
+        top: 0,
+        behavior: 'instant',
+      });
+    } finally {
+      scrollToSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
   test('a redirect that lands on a missing route goes to the 404 route', async () => {
     const { view, refetch, capture, router } = await renderFollowRouter({
       responses: [
