@@ -336,13 +336,22 @@ const useResolveSearchCodec = () => {
   );
 };
 
+const canPaintInstantOverlay = (
+  follows: number,
+  routeSlotId: string,
+  resolvedElements: Record<string, unknown>,
+  prefetchedElements: Record<string, unknown> | null | undefined,
+) =>
+  !follows &&
+  canCommitInstantly(routeSlotId, resolvedElements, prefetchedElements);
+
 const dispatchChangeRoute = (
   changeRoute: ChangeRoute,
   route: RouteProps,
   options: ChangeRouteOptions,
   startTransitionFn: (fn: TransitionFunction) => void = startTransition,
 ): Promise<void> => {
-  if (options.instant) {
+  if (options.instant && !options.startTransition) {
     // skip the outer wrap until changeRoute knows it will actually paint
     return changeRoute(route, {
       ...options,
@@ -1281,10 +1290,10 @@ const InnerRouter = ({
       // would deprioritise the paint that unstable_instant exists to deliver
       if (
         options.pendingTransition &&
-        !options.startTransition &&
         shouldRefetch &&
         !staticPathSetRef.current!.has(nextRoute.path) &&
-        !canCommitInstantly(
+        !canPaintInstantOverlay(
+          options.follows ?? 0,
           getRouteSlotId(nextRoute.path),
           resolvedElementsRef.current,
           prefetchManagerRef.current!.getElements(
@@ -1294,7 +1303,6 @@ const InnerRouter = ({
       ) {
         const schedule = options.pendingTransition;
         // React's startTransition runs fn now, so cancel still happens in this turn.
-        // A custom startTransition never takes this branch.
         return new Promise<void>((resolve, reject) => {
           schedule(async () => {
             try {
@@ -1400,9 +1408,9 @@ const InnerRouter = ({
         });
         const prefetchedElements = prefetchManager.getElements(rscPath);
         const instant =
-          !attempt.follows &&
           !!options.instant &&
-          canCommitInstantly(
+          canPaintInstantOverlay(
+            attempt.follows,
             getRouteSlotId(attempt.route.path),
             resolvedElementsRef.current,
             prefetchedElements,
