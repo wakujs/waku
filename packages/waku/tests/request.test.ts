@@ -17,8 +17,12 @@ const getStatus = async (promise: Promise<unknown>) => {
   }
 };
 
-const makeRequest = (headers: HeadersInit = {}, init: RequestInit = {}) =>
-  new Request('https://app.test/RSC/F/foo/bar.txt', {
+const makeRequest = (
+  headers: HeadersInit = {},
+  init: RequestInit = {},
+  protocol = 'https',
+) =>
+  new Request(`${protocol}://app.test/RSC/F/foo/bar.txt`, {
     method: 'POST',
     body: '[]',
     headers,
@@ -41,6 +45,38 @@ describe('getInput server action request validation', () => {
     const input = await makeInput(makeRequest({ origin: 'https://app.test' }));
 
     expect(input.type).toBe('call');
+  });
+
+  it('accepts same-origin server function requests over HTTP', async () => {
+    const input = await makeInput(
+      makeRequest({ origin: 'http://app.test' }, {}, 'http'),
+    );
+
+    expect(input.type).toBe('call');
+  });
+
+  it('accepts an HTTPS origin when a reverse proxy forwards over HTTP', async () => {
+    const input = await makeInput(
+      makeRequest({ origin: 'https://app.test' }, {}, 'http'),
+    );
+
+    expect(input.type).toBe('call');
+  });
+
+  it('rejects an HTTPS origin from another host for an HTTP request URL', async () => {
+    await expect(
+      getStatus(
+        makeInput(makeRequest({ origin: 'https://evil.test' }, {}, 'http')),
+      ),
+    ).resolves.toBe(403);
+  });
+
+  it('rejects an HTTP origin for an HTTPS request URL', async () => {
+    await expect(
+      getStatus(
+        makeInput(makeRequest({ origin: 'http://app.test' }, {}, 'https')),
+      ),
+    ).resolves.toBe(403);
   });
 
   it('rejects server function requests with non-POST methods', async () => {
