@@ -126,7 +126,6 @@ function validateServerActionRequest(req: Request) {
     if (origin === 'null') {
       throw createCustomError('Forbidden', { status: 403 });
     }
-
     const requestUrl = new URL(req.url);
     let originUrl: URL;
     try {
@@ -134,12 +133,8 @@ function validateServerActionRequest(req: Request) {
     } catch {
       throw createCustomError('Forbidden', { status: 403 });
     }
-
-    // Reject if the request's origin is different from the request URL's origin.
     if (
       originUrl.origin !== requestUrl.origin &&
-      // Only allow same-host requests upgrading from http to https (e.g. behind a reverse proxy),
-      // but not the other way around
       !(
         requestUrl.protocol === 'http:' &&
         originUrl.protocol === 'https:' &&
