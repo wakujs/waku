@@ -135,14 +135,16 @@ function validateServerActionRequest(req: Request) {
       throw createCustomError('Forbidden', { status: 403 });
     }
 
+    // Reject if the request's origin is different from the request URL's origin.
     if (
-      requestUrl.protocol === 'https:' &&
-      originUrl.origin !== requestUrl.origin
-    ) {
-      throw createCustomError('Forbidden', { status: 403 });
-    } else if (
-      requestUrl.protocol === 'http:' &&
-      originUrl.host !== requestUrl.host
+      originUrl.origin !== requestUrl.origin &&
+      // Only allow same-host requests upgrading from http to https (e.g. behind a reverse proxy),
+      // but not the other way around
+      !(
+        requestUrl.protocol === 'http:' &&
+        originUrl.protocol === 'https:' &&
+        originUrl.host === requestUrl.host
+      )
     ) {
       throw createCustomError('Forbidden', { status: 403 });
     }
