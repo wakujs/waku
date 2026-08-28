@@ -34,10 +34,10 @@ import {
   unstable_getErrorInfo as getErrorInfo,
   unstable_isImmutableElement as isImmutableElement,
   unstable_removeBase as removeBase,
-  useCallServerElementsListener_UNSTABLE as useCallServerElementsListener,
   useElementsPromise_UNSTABLE as useElementsPromise,
   useMergeElements_UNSTABLE as useMergeElements,
-  useRscReloadListener_UNSTABLE as useRscReloadListener,
+  useRegisterCallServerElementsListener_UNSTABLE as useRegisterCallServerElementsListener,
+  useRegisterRscReloadListener_UNSTABLE as useRegisterRscReloadListener,
 } from '../minimal/client.js';
 import { decideFollow, isFollowable } from './client-utils/error-route.js';
 import {
@@ -1167,7 +1167,7 @@ const InnerRouter = ({
 
   const refetch = useRefetch();
   const mergeElements = useMergeElements();
-  const registerRscReloadListener = useRscReloadListener();
+  const registerRscReloadListener = useRegisterRscReloadListener();
   const [fetchingSlices] = useState(
     () => new Map<SliceId, Promise<Elements>>(),
   );
@@ -1188,7 +1188,7 @@ const InnerRouter = ({
   useEffect(() => {
     if (import.meta.hot) {
       // The listener below owns the current route, not Root's initial path.
-      registerRscReloadListener?.(() => {}, { replace: true });
+      registerRscReloadListener(() => {}, { replace: true });
     }
   }, [registerRscReloadListener]);
 
@@ -1267,7 +1267,7 @@ const InnerRouter = ({
           });
         });
       };
-      return registerRscReloadListener?.(refetchRouteOnHmr);
+      return registerRscReloadListener(refetchRouteOnHmr);
     }
   }, [
     refetch,
@@ -1323,7 +1323,7 @@ const InnerRouter = ({
       setNavigationError(undefined);
       if (import.meta.hot) {
         // A route navigation retires the previous Minimal refetch target.
-        registerRscReloadListener?.(() => {}, { replace: true });
+        registerRscReloadListener(() => {}, { replace: true });
       }
       const routeUrl = options.url ?? getRouteUrl(nextRoute);
       const initialAttempt: NavigationAttempt = {
@@ -1644,7 +1644,8 @@ const InnerRouter = ({
     },
     [changeRoute, routeFallback],
   );
-  const registerCallServerElementsListener = useCallServerElementsListener();
+  const registerCallServerElementsListener =
+    useRegisterCallServerElementsListener();
   useEffect(() => {
     const listener = (elements: Record<string, unknown>) => {
       addToStaticPathSet(elements);

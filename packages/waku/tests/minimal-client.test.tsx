@@ -33,9 +33,9 @@ import {
   unstable_registerCallServerElementsListener,
   unstable_registerFetchEnhancer,
   unstable_registerFetchRscInputTransformer,
-  useCallServerElementsListener_UNSTABLE,
   useElementsPromise_UNSTABLE,
   useMergeElements_UNSTABLE,
+  useRegisterCallServerElementsListener_UNSTABLE,
 } from '../src/minimal/client.js';
 
 type CallServer = (funcId: string, args: unknown[]) => Promise<unknown>;
@@ -341,7 +341,7 @@ describe('minimal/client server actions', () => {
     const rootListener = vi.fn();
     track(unstable_registerCallServerElementsListener(listener));
     const Listener = () => {
-      const register = useCallServerElementsListener_UNSTABLE();
+      const register = useRegisterCallServerElementsListener_UNSTABLE();
       useEffect(() => register(rootListener), [register]);
       return null;
     };

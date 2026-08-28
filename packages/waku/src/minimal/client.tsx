@@ -8,7 +8,6 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
@@ -438,12 +437,14 @@ export const unstable_callServerRsc = async (
 
 type Unregister = () => void;
 
+const noop = () => {};
+
 /**
  * Registers a global listener that receives elements returned by server
  * actions. Returns a function that unregisters the listener.
  *
- * @deprecated Use `useCallServerElementsListener_UNSTABLE` so the listener is
- * bound to the enclosing Root.
+ * @deprecated Use `useRegisterCallServerElementsListener_UNSTABLE` so the
+ * listener is bound to the enclosing Root.
  */
 export const unstable_registerCallServerElementsListener = (
   listener: CallServerElementsListener,
@@ -489,8 +490,8 @@ export function unstable_registerFetchRscInputTransformer(
 }
 
 /**
- * @deprecated Use `useRscReloadListener_UNSTABLE` so the listener is bound to
- * the enclosing Root.
+ * @deprecated Use `useRegisterRscReloadListener_UNSTABLE` so the listener is
+ * bound to the enclosing Root.
  */
 export const unstable_registerRscReloadListener =
   registerDefaultRscReloadListener;
@@ -562,12 +563,12 @@ type RegisterCallServerElementsListener = (
  * Returns a Root-bound registrar for listeners that receive elements returned
  * by server actions.
  */
-export const useCallServerElementsListener_UNSTABLE = () => {
+export const useRegisterCallServerElementsListener_UNSTABLE = () => {
   const store = useRootStore();
   return useCallback<RegisterCallServerElementsListener>(
     (listener) => {
       if (store === null) {
-        return () => {};
+        return noop;
       }
       store.listeners.add(listener);
       return () => {
@@ -629,19 +630,18 @@ export const useMergeElements_UNSTABLE = () => {
 };
 
 /**
- * Returns a Root-bound registrar for development RSC reload listeners, or
- * `undefined` outside development. Listeners coexist by default. With
+ * Returns a Root-bound registrar for development RSC reload listeners. The
+ * registrar is a no-op in production. Listeners coexist by default. With
  * `replace`, the listener owns the Root's active refetch target until it is
  * replaced or unregistered.
  */
-export const useRscReloadListener_UNSTABLE = () => {
+export const useRegisterRscReloadListener_UNSTABLE = () => {
   const store = useRootStore();
-  return useMemo<RegisterRscReloadListener | undefined>(
-    () =>
+  return useCallback<RegisterRscReloadListener>(
+    (listener, options) =>
       import.meta.hot && store !== null
-        ? (listener, options) =>
-            registerRootRscReloadListener(store, listener, options)
-        : undefined,
+        ? registerRootRscReloadListener(store, listener, options)
+        : noop,
     [store],
   );
 };

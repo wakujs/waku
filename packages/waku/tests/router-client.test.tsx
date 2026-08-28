@@ -439,7 +439,7 @@ vi.mock('../src/minimal/client.js', async () => {
     ),
     useMergeElements_UNSTABLE: () =>
       useMockMergeElements() ?? noopMergeElements,
-    useCallServerElementsListener_UNSTABLE: () =>
+    useRegisterCallServerElementsListener_UNSTABLE: () =>
       actual.unstable_registerCallServerElementsListener,
     unstable_registerCallServerElementsListener: (
       ...args: Parameters<

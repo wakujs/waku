@@ -1,18 +1,18 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useState } from 'react';
-import { useRscReloadListener_UNSTABLE as useRscReloadListener } from 'waku/minimal/client';
+import { useRegisterRscReloadListener_UNSTABLE as useRegisterRscReloadListener } from 'waku/minimal/client';
 import { updateContent } from './ServerPing/actions.js';
 
 type RootName = 'first' | 'second' | 'third';
 
 export const MultipleRootAction = ({ name }: { name: RootName }) => {
-  const registerRscReloadListener = useRscReloadListener();
+  const registerRscReloadListener = useRegisterRscReloadListener();
   const [ownsHmr, setOwnsHmr] = useState(false);
   useLayoutEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     return searchParams.get('descendant-hmr') === name || ownsHmr
-      ? registerRscReloadListener?.(
+      ? registerRscReloadListener(
           () => {
             (
               globalThis as typeof globalThis & {
