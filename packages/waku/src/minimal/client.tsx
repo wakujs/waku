@@ -43,7 +43,10 @@ import {
   getDefaultRootStore,
   registerRootStore,
 } from './client-utils/root-store.js';
-import type { RootStore } from './client-utils/root-store.js';
+import type {
+  CallServerElementsListener,
+  RootStore,
+} from './client-utils/root-store.js';
 import {
   registerDefaultRscReloadListener,
   registerRootReload,
@@ -419,10 +422,12 @@ export const unstable_callServerRsc = async (
         'Server action returned elements without a mounted Root component. Call mount-time actions from useEffect, not useLayoutEffect.',
       );
     }
-    const callServerElementsListeners =
-      fetchRscStore[CALL_SERVER_ELEMENTS_LISTENERS];
+    const globalListeners = fetchRscStore[CALL_SERVER_ELEMENTS_LISTENERS];
     startTransition(() => {
-      callServerElementsListeners?.forEach((listener) => {
+      globalListeners?.forEach((listener) => {
+        listener(data);
+      });
+      rootStore.listeners.forEach((listener) => {
         listener(data);
       });
       rootStore.setElements((prev) => mergeElementsPromise(prev, data));
@@ -434,11 +439,14 @@ export const unstable_callServerRsc = async (
 type Unregister = () => void;
 
 /**
- * Register a listener that runs when a server action returns new elements.
- * Returns a function that unregisters the listener.
+ * Registers a global listener that receives elements returned by server
+ * actions. Returns a function that unregisters the listener.
+ *
+ * @deprecated Use `useCallServerElementsListener_UNSTABLE` so the listener is
+ * bound to the enclosing Root.
  */
 export const unstable_registerCallServerElementsListener = (
-  listener: (elements: Elements) => void,
+  listener: CallServerElementsListener,
 ): Unregister => {
   const callServerElementsListeners = (fetchRscStore[
     CALL_SERVER_ELEMENTS_LISTENERS
@@ -546,6 +554,30 @@ const useRootStore = (): RootStore | null => {
   return store;
 };
 
+type RegisterCallServerElementsListener = (
+  listener: CallServerElementsListener,
+) => Unregister;
+
+/**
+ * Returns a Root-bound registrar for listeners that receive elements returned
+ * by server actions.
+ */
+export const useCallServerElementsListener_UNSTABLE = () => {
+  const store = useRootStore();
+  return useCallback<RegisterCallServerElementsListener>(
+    (listener) => {
+      if (store === null) {
+        return () => {};
+      }
+      store.listeners.add(listener);
+      return () => {
+        store.listeners.delete(listener);
+      };
+    },
+    [store],
+  );
+};
+
 const ElementsContext = createContext<Promise<Elements> | null>(null);
 
 /**
@@ -632,7 +664,11 @@ export const Root_UNSTABLE = ({
   );
   const [initialElements] = useState(() => getInitialRsc(...initialInput));
   const [elements, setElements] = useState(initialElements);
-  const [store] = useState(() => ({ setElements, etags: {} }));
+  const [store] = useState(() => ({
+    setElements,
+    etags: {},
+    listeners: new Set<CallServerElementsListener>(),
+  }));
   useLayoutEffect(() => {
     releaseInitialRscEntry(...initialInput, initialElements);
     const unregisterStore = registerRootStore(store);

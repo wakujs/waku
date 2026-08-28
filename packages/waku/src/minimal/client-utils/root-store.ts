@@ -2,6 +2,8 @@ import type { Etags } from '../../lib/utils/etags.js';
 
 type Elements = Record<string | symbol, unknown>;
 
+export type CallServerElementsListener = (elements: Elements) => void;
+
 export type SetElements = (
   updater: (prev: Promise<Elements>) => Promise<Elements>,
 ) => void;
@@ -9,6 +11,7 @@ export type SetElements = (
 export type RootStore = {
   setElements: SetElements;
   etags: Etags;
+  listeners: Set<CallServerElementsListener>;
 };
 
 const mountedRootStores: RootStore[] = [];

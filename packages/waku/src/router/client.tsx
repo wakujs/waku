@@ -33,8 +33,8 @@ import {
   unstable_fetchRsc as fetchRsc,
   unstable_getErrorInfo as getErrorInfo,
   unstable_isImmutableElement as isImmutableElement,
-  unstable_registerCallServerElementsListener as registerCallServerElementsListener,
   unstable_removeBase as removeBase,
+  useCallServerElementsListener_UNSTABLE as useCallServerElementsListener,
   useElementsPromise_UNSTABLE as useElementsPromise,
   useMergeElements_UNSTABLE as useMergeElements,
   useRscReloadListener_UNSTABLE as useRscReloadListener,
@@ -1644,6 +1644,7 @@ const InnerRouter = ({
     },
     [changeRoute, routeFallback],
   );
+  const registerCallServerElementsListener = useCallServerElementsListener();
   useEffect(() => {
     const listener = (elements: Record<string, unknown>) => {
       addToStaticPathSet(elements);
@@ -1655,7 +1656,11 @@ const InnerRouter = ({
       });
     };
     return registerCallServerElementsListener(listener);
-  }, [changeRouteFromServer, addToStaticPathSet]);
+  }, [
+    changeRouteFromServer,
+    addToStaticPathSet,
+    registerCallServerElementsListener,
+  ]);
 
   const prefetchRoute: PrefetchRoute = useCallback((route, options) => {
     preloadRouteModules(route.path);

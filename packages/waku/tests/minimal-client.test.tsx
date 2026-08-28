@@ -24,6 +24,7 @@ import {
   clearRootCachedEtags,
   registerRootStore,
 } from '../src/minimal/client-utils/root-store.js';
+import type { CallServerElementsListener } from '../src/minimal/client-utils/root-store.js';
 import {
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
@@ -32,6 +33,7 @@ import {
   unstable_registerCallServerElementsListener,
   unstable_registerFetchEnhancer,
   unstable_registerFetchRscInputTransformer,
+  useCallServerElementsListener_UNSTABLE,
   useElementsPromise_UNSTABLE,
   useMergeElements_UNSTABLE,
 } from '../src/minimal/client.js';
@@ -336,13 +338,20 @@ describe('minimal/client server actions', () => {
     mocks.createFromFetch.mockReturnValueOnce(resolvedThenable({ App: 'A' }));
     stubFetch();
     const listener = vi.fn();
+    const rootListener = vi.fn();
     track(unstable_registerCallServerElementsListener(listener));
+    const Listener = () => {
+      const register = useCallServerElementsListener_UNSTABLE();
+      useEffect(() => register(rootListener), [register]);
+      return null;
+    };
 
     const container = document.createElement('div');
     const root = createRoot(container);
     await act(async () => {
       root.render(
         <Root initialRscPath="R/app.txt">
+          <Listener />
           <Suspense fallback={null}>
             <Slot id="App" />
           </Suspense>
@@ -361,6 +370,7 @@ describe('minimal/client server actions', () => {
     expect(value).toBe('result');
     expect(container.textContent).toBe('B');
     expect(listener).toHaveBeenCalledWith({ App: 'B' });
+    expect(rootListener).toHaveBeenCalledWith({ App: 'B' });
 
     act(() => root.unmount());
   });
@@ -393,7 +403,45 @@ describe('minimal/client server actions', () => {
     );
   });
 
-  test('an action response stays with its request-time Root', async () => {
+  test('an action response and listeners target its request-time Root', async () => {
+    let resolveAction: (value: Record<string, unknown>) => void = () => {};
+    mocks.createFromFetch.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveAction = resolve;
+      }),
+    );
+    stubFetch();
+    const firstSetElements = vi.fn();
+    const secondSetElements = vi.fn();
+    const firstListener = vi.fn();
+    const secondListener = vi.fn();
+    const unregisterFirst = registerRootStore({
+      setElements: firstSetElements,
+      etags: { App: 'first' },
+      listeners: new Set([firstListener]),
+    });
+
+    const action = unstable_callServerRsc('actions#do', []);
+    const unregisterSecond = registerRootStore({
+      setElements: secondSetElements,
+      etags: { App: 'second' },
+      listeners: new Set([secondListener]),
+    });
+    resolveAction({ _value: 'result', App: 'updated' });
+
+    try {
+      await expect(action).resolves.toBe('result');
+      expect(firstSetElements).toHaveBeenCalledOnce();
+      expect(secondSetElements).not.toHaveBeenCalled();
+      expect(firstListener).toHaveBeenCalledOnce();
+      expect(secondListener).not.toHaveBeenCalled();
+    } finally {
+      unregisterSecond();
+      unregisterFirst();
+    }
+  });
+
+  test('an action response is not retargeted after its Root unmounts', async () => {
     let resolveAction: (value: Record<string, unknown>) => void = () => {};
     mocks.createFromFetch.mockReturnValueOnce(
       new Promise((resolve) => {
@@ -406,6 +454,7 @@ describe('minimal/client server actions', () => {
     const unregisterFirst = registerRootStore({
       setElements: firstSetElements,
       etags: { App: 'first' },
+      listeners: new Set(),
     });
 
     const action = unstable_callServerRsc('actions#do', []);
@@ -413,6 +462,7 @@ describe('minimal/client server actions', () => {
     const unregisterSecond = registerRootStore({
       setElements: secondSetElements,
       etags: { App: 'second' },
+      listeners: new Set(),
     });
     resolveAction({ _value: 'result', App: 'updated' });
 
@@ -426,8 +476,16 @@ describe('minimal/client server actions', () => {
   });
 
   test('HMR clears cached etags from every mounted Root', () => {
-    const first = { setElements: vi.fn(), etags: { App: 'first' } };
-    const second = { setElements: vi.fn(), etags: { App: 'second' } };
+    const first = {
+      setElements: vi.fn(),
+      etags: { App: 'first' },
+      listeners: new Set<CallServerElementsListener>(),
+    };
+    const second = {
+      setElements: vi.fn(),
+      etags: { App: 'second' },
+      listeners: new Set<CallServerElementsListener>(),
+    };
     const unregisterFirst = registerRootStore(first);
     const unregisterSecond = registerRootStore(second);
 
