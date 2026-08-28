@@ -116,7 +116,13 @@ export const registerDefaultRscReloadListener: RegisterRscReloadListener = (
   }
   const store = getDefaultRootStore();
   if (!store) {
-    throw new Error('Missing Root component');
+    const registered = createRscReloadListener(listener);
+    setActiveRscReloadListener(registered);
+    return () => {
+      if (globalThis.__WAKU_REFETCH_RSC__ === registered) {
+        activateDefaultRscReloadListener();
+      }
+    };
   }
   return registerRootRscReloadListener(store, listener, options);
 };

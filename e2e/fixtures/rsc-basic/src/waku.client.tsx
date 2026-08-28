@@ -15,6 +15,13 @@ registerRscReloadListener(() => {
   ).__WAKU_ROOTLESS_HMR_LISTENER__ = true;
 });
 
+registerRscReloadListener(() => {}, { replace: true });
+(
+  globalThis as typeof globalThis & {
+    __WAKU_ROOTLESS_HMR_REPLACEMENT_REGISTERED__?: boolean;
+  }
+).__WAKU_ROOTLESS_HMR_REPLACEMENT_REGISTERED__ = true;
+
 const multipleRoots = new URLSearchParams(window.location.search).has(
   'multiple-roots',
 );

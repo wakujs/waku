@@ -57,6 +57,26 @@ test.describe(`rsc-basic`, () => {
     },
   );
 
+  test(
+    'deprecated replacement HMR listeners can register before Root mounts',
+    { tag: '@dev' },
+    async ({ page }) => {
+      await page.goto(`http://localhost:${port}/`);
+      await expect(page.getByTestId('app-name')).toHaveText('Waku');
+
+      const registered = await page.evaluate(
+        () =>
+          (
+            globalThis as typeof globalThis & {
+              __WAKU_ROOTLESS_HMR_REPLACEMENT_REGISTERED__?: boolean;
+            }
+          ).__WAKU_ROOTLESS_HMR_REPLACEMENT_REGISTERED__,
+      );
+
+      expect(registered).toBe(true);
+    },
+  );
+
   test('server actions target the default minimal root', async ({ page }) => {
     await page.goto(`http://localhost:${port}/?multiple-roots`);
     await expect(page.getByTestId('first-root')).toContainText('first');

@@ -393,7 +393,7 @@ describe('minimal/client server actions', () => {
     );
   });
 
-  test('an action response targets the Root active when it started', async () => {
+  test('an action response stays with its request-time Root', async () => {
     let resolveAction: (value: Record<string, unknown>) => void = () => {};
     mocks.createFromFetch.mockReturnValueOnce(
       new Promise((resolve) => {
@@ -409,6 +409,7 @@ describe('minimal/client server actions', () => {
     });
 
     const action = unstable_callServerRsc('actions#do', []);
+    unregisterFirst();
     const unregisterSecond = registerRootStore({
       setElements: secondSetElements,
       etags: { App: 'second' },
@@ -421,7 +422,6 @@ describe('minimal/client server actions', () => {
       expect(secondSetElements).not.toHaveBeenCalled();
     } finally {
       unregisterSecond();
-      unregisterFirst();
     }
   });
 
