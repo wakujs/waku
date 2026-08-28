@@ -10,36 +10,39 @@ export type RegisterRscReloadListener = (
 ) => Unregister;
 
 type RootReload = {
-  fallback: () => void;
+  fallback?: () => void;
   replacement?: () => void;
+  mounted: boolean;
 };
 
 const rootReloads = new WeakMap<RootStore, RootReload>();
+let rootlessReplacement: (() => void) | undefined;
 
-const setActiveRscReloadListener = (listener: (() => void) | undefined) => {
+const replaceRscReloadListener = (
+  previous: (() => void) | undefined,
+  listener: (() => void) | undefined,
+) => {
   const listeners = (globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= []);
-  const active = globalThis.__WAKU_REFETCH_RSC__;
-  const activeIndex = active ? listeners.indexOf(active) : -1;
+  const index = previous ? listeners.indexOf(previous) : -1;
   if (listener) {
-    if (activeIndex === -1) {
+    if (index === -1) {
       listeners.push(listener);
     } else {
-      listeners.splice(activeIndex, 1, listener);
+      listeners.splice(index, 1, listener);
     }
-  } else if (activeIndex !== -1) {
-    listeners.splice(activeIndex, 1);
+  } else if (index !== -1) {
+    listeners.splice(index, 1);
   }
-  globalThis.__WAKU_REFETCH_RSC__ = listener;
 };
 
 const activateDefaultRscReloadListener = (): void => {
   const store = getDefaultRootStore();
   if (!store) {
-    setActiveRscReloadListener(undefined);
+    globalThis.__WAKU_REFETCH_RSC__ = rootlessReplacement;
     return;
   }
   const reload = rootReloads.get(store);
-  setActiveRscReloadListener(reload?.replacement ?? reload?.fallback);
+  globalThis.__WAKU_REFETCH_RSC__ = reload?.replacement ?? reload?.fallback;
 };
 
 const createRscReloadListener =
@@ -70,20 +73,25 @@ export const registerRootRscReloadListener = (
     return addRscReloadListener(listener);
   }
 
-  const rootReload = rootReloads.get(store);
-  if (!rootReload) {
-    throw new Error('Missing Root component');
-  }
+  const rootReload = rootReloads.get(store) ?? { mounted: false };
+  rootReloads.set(store, rootReload);
   const registered = createRscReloadListener(listener);
+  const previous = rootReload.replacement ?? rootReload.fallback;
   rootReload.replacement = registered;
+  replaceRscReloadListener(previous, registered);
   if (getDefaultRootStore() === store) {
-    setActiveRscReloadListener(registered);
+    globalThis.__WAKU_REFETCH_RSC__ = registered;
   }
   return () => {
     if (rootReload.replacement === registered) {
       delete rootReload.replacement;
-    }
-    if (globalThis.__WAKU_REFETCH_RSC__ === registered) {
+      replaceRscReloadListener(
+        registered,
+        rootReload.mounted ? rootReload.fallback : undefined,
+      );
+      if (!rootReload.mounted) {
+        rootReloads.delete(store);
+      }
       activateDefaultRscReloadListener();
     }
   };
@@ -93,13 +101,29 @@ export const registerRootReload = (
   store: RootStore,
   fallback: () => void,
 ): Unregister => {
-  const rootReload: RootReload = {
-    fallback: createRscReloadListener(fallback),
-  };
+  const rootReload = rootReloads.get(store) ?? { mounted: false };
+  const registered = createRscReloadListener(fallback);
+  rootReload.fallback = registered;
+  rootReload.mounted = true;
   rootReloads.set(store, rootReload);
+  if (rootlessReplacement) {
+    replaceRscReloadListener(rootlessReplacement, undefined);
+    rootlessReplacement = undefined;
+  }
+  const current = rootReload.replacement ?? registered;
+  const listeners = (globalThis.__WAKU_RSC_RELOAD_LISTENERS__ ||= []);
+  if (!listeners.includes(current)) {
+    listeners.push(current);
+  }
   activateDefaultRscReloadListener();
   return () => {
-    rootReloads.delete(store);
+    const current = rootReload.replacement ?? rootReload.fallback;
+    replaceRscReloadListener(current, undefined);
+    rootReload.mounted = false;
+    delete rootReload.fallback;
+    if (!rootReload.replacement) {
+      rootReloads.delete(store);
+    }
     activateDefaultRscReloadListener();
   };
 };
@@ -117,9 +141,13 @@ export const registerDefaultRscReloadListener: RegisterRscReloadListener = (
   const store = getDefaultRootStore();
   if (!store) {
     const registered = createRscReloadListener(listener);
-    setActiveRscReloadListener(registered);
+    replaceRscReloadListener(rootlessReplacement, registered);
+    rootlessReplacement = registered;
+    globalThis.__WAKU_REFETCH_RSC__ = registered;
     return () => {
-      if (globalThis.__WAKU_REFETCH_RSC__ === registered) {
+      if (rootlessReplacement === registered) {
+        replaceRscReloadListener(registered, undefined);
+        rootlessReplacement = undefined;
         activateDefaultRscReloadListener();
       }
     };

@@ -137,6 +137,32 @@ test.describe(`rsc-basic`, () => {
     },
   );
 
+  test('HMR reloads every mounted Root', { tag: '@dev' }, async ({ page }) => {
+    await page.goto(`http://localhost:${port}/?multiple-roots`);
+    await expect(page.getByTestId('first-root')).toContainText('first');
+    await expect(page.getByTestId('second-root')).toContainText('second');
+
+    const requests = await page.evaluate(() => {
+      const urls: string[] = [];
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = (...args) => {
+        urls.push(String(args[0]));
+        return originalFetch(...args);
+      };
+      try {
+        globalThis.__WAKU_RSC_RELOAD_LISTENERS__?.forEach((listener) =>
+          listener(),
+        );
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+      return urls;
+    });
+
+    expect(requests).toContain('/RSC/first.txt');
+    expect(requests).toContain('/RSC/second.txt');
+  });
+
   test(
     'HMR clears cached etags from every Root',
     { tag: '@dev' },
