@@ -17,6 +17,14 @@ import { getErrorInfo } from '../src/lib/utils/custom-errors.js';
 import { ETAG_ID_PREFIX, IMMUTABLE_ETAG } from '../src/lib/utils/etags.js';
 import { fetchRscStore } from '../src/minimal/client-utils/fetch-store.js';
 import {
+  clearInitialRscEntries,
+  getInitialRscEntry,
+} from '../src/minimal/client-utils/initial-rsc-store.js';
+import {
+  clearRootCachedEtags,
+  registerRootStore,
+} from '../src/minimal/client-utils/root-store.js';
+import {
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
   unstable_callServerRsc,
@@ -110,6 +118,7 @@ afterEach(() => {
   for (const key of Object.keys(clientStore)) {
     delete clientStore[key];
   }
+  clearInitialRscEntries();
   delete (globalThis as any).__WAKU_PREFETCHED__;
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
@@ -144,7 +153,7 @@ describe('minimal/client fetch', () => {
     expect(mocks.createFromFetch).toHaveBeenCalledTimes(2);
   });
 
-  test('Root caches its initial fetch', async () => {
+  test('Root releases its initial fetch after committing', async () => {
     mocks.createFromFetch.mockReturnValue(
       resolvedThenable({ _value: null, App: 'app' }),
     );
@@ -171,8 +180,21 @@ describe('minimal/client fetch', () => {
     act(() => firstRoot.unmount());
 
     const secondRoot = await render();
-    expect(mocks.createFromFetch).toHaveBeenCalledTimes(1);
+    expect(mocks.createFromFetch).toHaveBeenCalledTimes(2);
     act(() => secondRoot.unmount());
+  });
+
+  test('bounds uncommitted initial fetches', () => {
+    const first = getInitialRscEntry('0', undefined, () => Promise.resolve({}));
+    for (let index = 1; index <= 32; index += 1) {
+      void getInitialRscEntry(String(index), undefined, () =>
+        Promise.resolve({}),
+      );
+    }
+    const create = vi.fn(() => Promise.resolve({}));
+
+    expect(getInitialRscEntry('0', undefined, create)).not.toBe(first);
+    expect(create).toHaveBeenCalledOnce();
   });
 
   test('server actions use the current fetch, not the one elements decoded with', async () => {
@@ -362,13 +384,90 @@ describe('minimal/client server actions', () => {
 
   test('a server action returning elements throws when no Root is mounted', async () => {
     // The merge must fail loudly (not silently drop) when there is no
-    // `SET_ELEMENTS` bridge, so timing/wiring bugs surface.
+    // default Root bridge, so timing/wiring bugs surface.
     mocks.createFromFetch.mockResolvedValueOnce({ _value: 'v', foo: 'FOO' });
     stubFetch();
 
     await expect(unstable_callServerRsc('actions#do', [])).rejects.toThrow(
-      'Missing Root',
+      'Server action returned elements without a mounted Root component',
     );
+  });
+
+  test('an action response targets the Root active when it started', async () => {
+    let resolveAction: (value: Record<string, unknown>) => void = () => {};
+    mocks.createFromFetch.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveAction = resolve;
+      }),
+    );
+    stubFetch();
+    const firstSetElements = vi.fn();
+    const secondSetElements = vi.fn();
+    const unregisterFirst = registerRootStore({
+      setElements: firstSetElements,
+      etags: { App: 'first' },
+    });
+
+    const action = unstable_callServerRsc('actions#do', []);
+    const unregisterSecond = registerRootStore({
+      setElements: secondSetElements,
+      etags: { App: 'second' },
+    });
+    resolveAction({ _value: 'result', App: 'updated' });
+
+    try {
+      await expect(action).resolves.toBe('result');
+      expect(firstSetElements).toHaveBeenCalledOnce();
+      expect(secondSetElements).not.toHaveBeenCalled();
+    } finally {
+      unregisterSecond();
+      unregisterFirst();
+    }
+  });
+
+  test('HMR clears cached etags from every mounted Root', () => {
+    const first = { setElements: vi.fn(), etags: { App: 'first' } };
+    const second = { setElements: vi.fn(), etags: { App: 'second' } };
+    const unregisterFirst = registerRootStore(first);
+    const unregisterSecond = registerRootStore(second);
+
+    try {
+      clearRootCachedEtags();
+      expect(first.etags).toEqual({});
+      expect(second.etags).toEqual({});
+    } finally {
+      unregisterSecond();
+      unregisterFirst();
+    }
+  });
+
+  test('a descendant mount effect can call a server action', async () => {
+    mocks.createFromFetch
+      .mockResolvedValueOnce({ _value: null })
+      .mockResolvedValueOnce({ _value: 'result', App: 'updated' });
+    stubFetch();
+    let action: Promise<unknown> | undefined;
+    const ActionOnMount = () => {
+      useEffect(() => {
+        action = unstable_callServerRsc('actions#do', []);
+        void action.catch(() => {});
+      }, []);
+      return null;
+    };
+    const root = createRoot(document.createElement('div'));
+
+    try {
+      await act(async () => {
+        root.render(
+          <Root>
+            <ActionOnMount />
+          </Root>,
+        );
+      });
+      await expect(action).resolves.toBe('result');
+    } finally {
+      act(() => root.unmount());
+    }
   });
 });
 
