@@ -4,7 +4,7 @@ import { createCustomError } from '../src/lib/utils/custom-errors.js';
 import {
   decideFollow,
   resolveErrorRoute,
-} from '../src/router/client-utils/error-route.js';
+} from '../src/router/client-core-utils/error-route.js';
 
 beforeEach(() => {
   vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/');
