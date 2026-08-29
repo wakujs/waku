@@ -2,12 +2,10 @@ import { unstable_fetchRsc as fetchRsc } from '../../minimal/client.js';
 import { encodeRoutePath } from '../isomorphic-utils/route-path.js';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import { canReuseStaticRoute, createRscParams, getPrefetch } from './caches.js';
-import { decideFollow } from './error-route.js';
+import { MAX_FOLLOWS_PER_NAVIGATION, decideFollow } from './error-route.js';
 import { getRouteUrl, isSameRscRoute } from './route-url.js';
 
 type Elements = Record<string | symbol, unknown>;
-
-export const MAX_FOLLOWS_PER_NAVIGATION = 20;
 
 export type LoadOutcome =
   | {

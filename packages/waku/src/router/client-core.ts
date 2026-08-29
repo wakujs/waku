@@ -22,6 +22,13 @@ export {
   isStaticFromElements as unstable_isStaticFromElements,
 } from './client-core-utils/element-meta.js';
 
+export {
+  MAX_FOLLOWS_PER_NAVIGATION as unstable_MAX_FOLLOWS_PER_NAVIGATION,
+  decideFollow as unstable_decideFollow,
+  isFollowable as unstable_isFollowable,
+} from './client-core-utils/error-route.js';
+export type { FollowDecision as Unstable_FollowDecision } from './client-core-utils/error-route.js';
+
 export { ErrorBoundary as ErrorBoundary_UNSTABLE } from './client-core-utils/error-boundary.js';
 
 export {

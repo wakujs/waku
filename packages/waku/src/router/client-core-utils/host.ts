@@ -8,7 +8,9 @@ import type { RouteProps } from '../isomorphic-utils/route-path.js';
  *
  * Bindings that call `load` must commit `outcome.url` after follows so the
  * address bar matches the landed route, and must follow a redirect thrown
- * while rendering the landed slot. Pass `onBuildIdMismatch` and
+ * while rendering the landed slot. Bound that chain (`decideFollow`,
+ * `MAX_FOLLOWS_PER_NAVIGATION`) and surface the failure; `load` cannot,
+ * because the throw happens after it returns. Pass `onBuildIdMismatch` and
  * `onInvalidate` for build-mismatch recovery or omit them so `load` leaves
  * minimal's reload default in place. `navigate` must honor `scroll`.
  */

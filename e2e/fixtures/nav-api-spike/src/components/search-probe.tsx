@@ -29,6 +29,15 @@ export const SearchProbe = () => {
       >
         set
       </button>
+      <button
+        type="button"
+        data-testid="set-search-replace"
+        onClick={() => {
+          void setSearch({ q: 'x' }, { history: 'replace' });
+        }}
+      >
+        set replace
+      </button>
     </>
   );
 };

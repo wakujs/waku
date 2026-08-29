@@ -4,6 +4,11 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
+import {
+  MAX_FOLLOWS_PER_NAVIGATION,
+  decideFollow,
+  isFollowable,
+} from '../src/router/client-core-utils/error-route.js';
 import * as clientCore from '../src/router/client-core.js';
 import * as client from '../src/router/client.js';
 
@@ -25,6 +30,7 @@ describe('waku/router/client-core surface', () => {
       'Slice_UNSTABLE',
       'unstable_HAS404_ID',
       'unstable_IS_STATIC_ID',
+      'unstable_MAX_FOLLOWS_PER_NAVIGATION',
       'unstable_ROUTE_ID',
       'unstable_RouterHostContext',
       'unstable_buildMergePatch',
@@ -32,6 +38,7 @@ describe('waku/router/client-core surface', () => {
       'unstable_canReuseStaticRoute',
       'unstable_clearCaches',
       'unstable_createRscParams',
+      'unstable_decideFollow',
       'unstable_decodeRoutePath',
       'unstable_decodeSliceId',
       'unstable_encodeRoutePath',
@@ -47,6 +54,7 @@ describe('waku/router/client-core surface', () => {
       'unstable_has404FromElements',
       'unstable_hasCachedShell',
       'unstable_isCodec',
+      'unstable_isFollowable',
       'unstable_isRouteSlotId',
       'unstable_isSameRoute',
       'unstable_isSameRscRoute',
@@ -101,6 +109,14 @@ describe('waku/router/client-core surface', () => {
     for (const spec of specs) {
       expect(spec).not.toMatch(/client\.tsx|router-state/);
     }
+  });
+
+  test('follow primitives are the error-route module', () => {
+    expect(clientCore.unstable_decideFollow).toBe(decideFollow);
+    expect(clientCore.unstable_isFollowable).toBe(isFollowable);
+    expect(clientCore.unstable_MAX_FOLLOWS_PER_NAVIGATION).toBe(
+      MAX_FOLLOWS_PER_NAVIGATION,
+    );
   });
 });
 
