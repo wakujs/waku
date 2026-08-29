@@ -57,8 +57,8 @@ import {
   Link,
   Router,
   unstable_RouterContext as RouterContext,
+  SearchCodecsProvider_UNSTABLE,
   Slice,
-  Unstable_SearchCodecsProvider,
   unstable_encodeRoutePath,
   unstable_encodeSliceId,
   unstable_getRouteSlotId,
@@ -563,9 +563,9 @@ const renderRouter = async (
 ) => {
   testHoisted.elements = elements;
   return renderApp(
-    <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+    <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
       <Router {...(props || {})} />
-    </Unstable_SearchCodecsProvider>,
+    </SearchCodecsProvider_UNSTABLE>,
   );
 };
 
@@ -576,9 +576,9 @@ const renderRouterInStrictMode = async (
   testHoisted.elements = elements;
   return renderApp(
     <StrictMode>
-      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+      <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
         <Router {...(props || {})} />
-      </Unstable_SearchCodecsProvider>
+      </SearchCodecsProvider_UNSTABLE>
     </StrictMode>,
   );
 };
@@ -697,9 +697,9 @@ describe('router/client utilities', () => {
     } as const;
     await expect(
       renderApp(
-        <Unstable_SearchCodecsProvider searchCodecs={[a, b]}>
+        <SearchCodecsProvider_UNSTABLE searchCodecs={[a, b]}>
           <div />
-        </Unstable_SearchCodecsProvider>,
+        </SearchCodecsProvider_UNSTABLE>,
       ),
     ).rejects.toThrow(/Duplicate search codec id/);
   });
@@ -713,9 +713,9 @@ describe('router/client utilities', () => {
     const notCodec = { id: 3, first: 'react', last: 'js' };
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const view = await renderApp(
-      <Unstable_SearchCodecsProvider searchCodecs={{ codec, notCodec }}>
+      <SearchCodecsProvider_UNSTABLE searchCodecs={{ codec, notCodec }}>
         <div />
-      </Unstable_SearchCodecsProvider>,
+      </SearchCodecsProvider_UNSTABLE>,
     );
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining('not a search codec'),
@@ -927,7 +927,7 @@ describe('useRouter + Link with context', () => {
     };
 
     const view = await renderApp(
-      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+      <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
         <RouterContext
           value={{
             route: { path: '/start', query: '', hash: '' },
@@ -936,7 +936,7 @@ describe('useRouter + Link with context', () => {
         >
           <Probe />
         </RouterContext>
-      </Unstable_SearchCodecsProvider>,
+      </SearchCodecsProvider_UNSTABLE>,
     );
 
     if (!capture.router) {
@@ -994,7 +994,7 @@ describe('useRouter + Link with context', () => {
       };
 
       const view = await renderApp(
-        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+        <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
           <RouterContext
             value={{
               route: { path: '/start', query: '', hash: '' },
@@ -1003,7 +1003,7 @@ describe('useRouter + Link with context', () => {
           >
             <Probe />
           </RouterContext>
-        </Unstable_SearchCodecsProvider>,
+        </SearchCodecsProvider_UNSTABLE>,
       );
 
       if (!capture.router) {
@@ -1172,7 +1172,7 @@ describe('useRouter + Link with context', () => {
     };
 
     const view = await renderApp(
-      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+      <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
         <RouterHostContext
           value={{
             route: {
@@ -1185,7 +1185,7 @@ describe('useRouter + Link with context', () => {
         >
           <Probe />
         </RouterHostContext>
-      </Unstable_SearchCodecsProvider>,
+      </SearchCodecsProvider_UNSTABLE>,
     );
 
     expect(capture.params).toEqual({ slug: 'hello' });
@@ -1219,7 +1219,7 @@ describe('useRouter + Link with context', () => {
     };
 
     const view = await renderApp(
-      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+      <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
         <RouterHostContext
           value={{
             route: { path: '/about', query: '', hash: '' },
@@ -1228,7 +1228,7 @@ describe('useRouter + Link with context', () => {
         >
           <Probe />
         </RouterHostContext>
-      </Unstable_SearchCodecsProvider>,
+      </SearchCodecsProvider_UNSTABLE>,
     );
 
     await act(async () => {
@@ -3404,9 +3404,9 @@ describe('Router integration', () => {
       .mockImplementation(() => {});
     const view = await renderApp(
       <ErrorBoundary>
-        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+        <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
           <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
-        </Unstable_SearchCodecsProvider>
+        </SearchCodecsProvider_UNSTABLE>
       </ErrorBoundary>,
     );
     try {
@@ -3508,7 +3508,7 @@ describe('Router integration', () => {
     };
 
     const view = await renderApp(
-      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+      <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
         <div data-testid="root-a">
           <CaptureContext value={captureA}>
             <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
@@ -3519,7 +3519,7 @@ describe('Router integration', () => {
             <Router initialRoute={{ path: '/other', query: '', hash: '' }} />
           </CaptureContext>
         </div>
-      </Unstable_SearchCodecsProvider>,
+      </SearchCodecsProvider_UNSTABLE>,
     );
 
     expect(captureA.router).toBeTruthy();
@@ -3593,7 +3593,7 @@ describe('Router integration', () => {
     };
 
     const view = await renderApp(
-      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+      <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
         <div data-testid="root-a">
           <CaptureContext value={captureA}>
             <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
@@ -3604,7 +3604,7 @@ describe('Router integration', () => {
             <Router initialRoute={{ path: '/other', query: '', hash: '' }} />
           </CaptureContext>
         </div>
-      </Unstable_SearchCodecsProvider>,
+      </SearchCodecsProvider_UNSTABLE>,
     );
 
     await act(async () => {
@@ -4202,9 +4202,9 @@ describe('Router integration', () => {
       ),
     };
     const view = await renderApp(
-      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+      <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
         <Router initialRoute={{ path: '/start', query: 'a=1', hash: '#top' }} />
-      </Unstable_SearchCodecsProvider>,
+      </SearchCodecsProvider_UNSTABLE>,
     );
     try {
       historyPushSpy.mockClear();
@@ -4375,9 +4375,9 @@ describe('Router integration', () => {
       ),
     };
     const view = await renderApp(
-      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+      <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
         <Router initialRoute={{ path: '/start', query: 'a=1', hash: '' }} />
-      </Unstable_SearchCodecsProvider>,
+      </SearchCodecsProvider_UNSTABLE>,
     );
     try {
       let navigation: Promise<void> | undefined;
@@ -4777,9 +4777,9 @@ describe('Router integration', () => {
       const [, setN] = useState(0);
       bump.fn = () => setN((n) => n + 1);
       return (
-        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+        <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
           <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
-        </Unstable_SearchCodecsProvider>
+        </SearchCodecsProvider_UNSTABLE>
       );
     };
     testHoisted.elements = {
@@ -5714,9 +5714,9 @@ describe('Router integration', () => {
     };
     const view = await renderApp(
       <ErrorBoundary>
-        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+        <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
           <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
-        </Unstable_SearchCodecsProvider>
+        </SearchCodecsProvider_UNSTABLE>
       </ErrorBoundary>,
     );
     if (!capture.router) {
@@ -5785,9 +5785,9 @@ describe('Router integration', () => {
       .mockImplementation(() => {});
     const view = await renderApp(
       <ErrorBoundary>
-        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+        <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
           <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
-        </Unstable_SearchCodecsProvider>
+        </SearchCodecsProvider_UNSTABLE>
       </ErrorBoundary>,
     );
     try {
@@ -6284,11 +6284,11 @@ describe('Router integration', () => {
       .mockImplementation(() => {});
     testHoisted.elements = elements;
     const view = await renderApp(
-      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+      <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
         <ErrorBoundary>
           <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
         </ErrorBoundary>
-      </Unstable_SearchCodecsProvider>,
+      </SearchCodecsProvider_UNSTABLE>,
     );
     if (!capture.router) {
       throw new Error('router not initialized');
@@ -6343,11 +6343,11 @@ describe('Router integration', () => {
       .spyOn(console, 'error')
       .mockImplementation(() => {});
     const view = await renderApp(
-      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+      <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
         <ErrorBoundary>
           <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
         </ErrorBoundary>
-      </Unstable_SearchCodecsProvider>,
+      </SearchCodecsProvider_UNSTABLE>,
     );
     try {
       await act(async () => {
@@ -6395,11 +6395,11 @@ describe('Router integration', () => {
       .spyOn(console, 'error')
       .mockImplementation(() => {});
     const view = await renderApp(
-      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+      <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
         <ErrorBoundary>
           <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
         </ErrorBoundary>
-      </Unstable_SearchCodecsProvider>,
+      </SearchCodecsProvider_UNSTABLE>,
     );
     try {
       await act(async () => {
@@ -6508,9 +6508,9 @@ describe('Router integration', () => {
       .mockImplementation(() => {});
     const view = await renderApp(
       <ErrorBoundary>
-        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+        <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
           <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
-        </Unstable_SearchCodecsProvider>
+        </SearchCodecsProvider_UNSTABLE>
       </ErrorBoundary>,
     );
     try {
@@ -7131,9 +7131,9 @@ describe('Router integration', () => {
       .mockImplementation(() => {});
     const view = await renderApp(
       <ErrorBoundary>
-        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+        <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
           <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
-        </Unstable_SearchCodecsProvider>
+        </SearchCodecsProvider_UNSTABLE>
       </ErrorBoundary>,
     );
     try {
@@ -7181,9 +7181,9 @@ describe('Router integration', () => {
       .spyOn(console, 'error')
       .mockImplementation(() => {});
     const view = await renderApp(
-      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+      <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
         <Router initialRoute={{ path: '/list', query: '', hash: '' }} />
-      </Unstable_SearchCodecsProvider>,
+      </SearchCodecsProvider_UNSTABLE>,
     );
     try {
       await act(async () => {
@@ -7231,9 +7231,9 @@ describe('Router integration', () => {
       .spyOn(console, 'error')
       .mockImplementation(() => {});
     const view = await renderApp(
-      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+      <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
         <Router initialRoute={{ path: '/list', query: '', hash: '' }} />
-      </Unstable_SearchCodecsProvider>,
+      </SearchCodecsProvider_UNSTABLE>,
     );
     try {
       await act(async () => {
@@ -7489,9 +7489,9 @@ describe('Router integration', () => {
       .mockImplementation(() => {});
     const view = await renderApp(
       <ErrorBoundary>
-        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+        <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
           <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
-        </Unstable_SearchCodecsProvider>
+        </SearchCodecsProvider_UNSTABLE>
       </ErrorBoundary>,
     );
     try {
@@ -7811,10 +7811,10 @@ describe('Router integration', () => {
     const initialRoute = { path: '/start', query: '', hash: '' };
     const view = await renderApp(
       <StrictMode>
-        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+        <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
           <Router initialRoute={initialRoute} />
           <Router initialRoute={initialRoute} />
-        </Unstable_SearchCodecsProvider>
+        </SearchCodecsProvider_UNSTABLE>
       </StrictMode>,
     );
     await flush();
@@ -8117,9 +8117,9 @@ describe('Router integration', () => {
     try {
       const view = await renderApp(
         <ErrorBoundary>
-          <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+          <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
             <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
-          </Unstable_SearchCodecsProvider>
+          </SearchCodecsProvider_UNSTABLE>
         </ErrorBoundary>,
       );
       await flush();
@@ -8239,9 +8239,9 @@ describe('Router integration', () => {
       .mockImplementation(() => {});
     const view = await renderApp(
       <ErrorBoundary>
-        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+        <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
           <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
-        </Unstable_SearchCodecsProvider>
+        </SearchCodecsProvider_UNSTABLE>
       </ErrorBoundary>,
     );
     try {
@@ -8291,11 +8291,11 @@ describe('Router integration', () => {
       .spyOn(console, 'error')
       .mockImplementation(() => {});
     const view = await renderApp(
-      <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+      <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
         <ErrorBoundary>
           <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
         </ErrorBoundary>
-      </Unstable_SearchCodecsProvider>,
+      </SearchCodecsProvider_UNSTABLE>,
     );
     try {
       for (let i = 0; i < 110; i += 1) {
@@ -8349,9 +8349,9 @@ describe('Router integration', () => {
     try {
       const view = await renderApp(
         <ErrorBoundary>
-          <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+          <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
             <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
-          </Unstable_SearchCodecsProvider>
+          </SearchCodecsProvider_UNSTABLE>
         </ErrorBoundary>,
       );
       await flush();
@@ -8397,9 +8397,9 @@ describe('Router integration', () => {
     try {
       const view = await renderApp(
         <ErrorBoundary>
-          <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+          <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
             <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
-          </Unstable_SearchCodecsProvider>
+          </SearchCodecsProvider_UNSTABLE>
         </ErrorBoundary>,
       );
       await flush();
@@ -8593,9 +8593,9 @@ describe('Router integration', () => {
       .mockImplementation(() => {});
     const view = await renderApp(
       <ErrorBoundary>
-        <Unstable_SearchCodecsProvider searchCodecs={[postsSearchCodec]}>
+        <SearchCodecsProvider_UNSTABLE searchCodecs={[postsSearchCodec]}>
           <Router initialRoute={{ path: '/start', query: '', hash: '' }} />
-        </Unstable_SearchCodecsProvider>
+        </SearchCodecsProvider_UNSTABLE>
       </ErrorBoundary>,
     );
     try {

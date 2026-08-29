@@ -32,7 +32,7 @@ export type { FollowDecision as Unstable_FollowDecision } from './client-core-ut
 export { ErrorBoundary as ErrorBoundary_UNSTABLE } from './client-core-utils/error-boundary.js';
 
 export {
-  RouterHostContext as unstable_RouterHostContext,
+  RouterHostContext as RouterHostContext_UNSTABLE,
   useRouterHost as useRouterHost_UNSTABLE,
 } from './client-core-utils/host.js';
 export type { RouterHost as Unstable_RouterHost } from './client-core-utils/host.js';
@@ -47,7 +47,7 @@ export type {
 export { buildMergePatch as unstable_buildMergePatch } from './client-core-utils/merge-patch.js';
 
 export {
-  Unstable_SearchCodecsProvider as SearchCodecsProvider_UNSTABLE,
+  SearchCodecsProvider_UNSTABLE,
   useParams_UNSTABLE,
   useResolveSearchCodec as useResolveSearchCodec_UNSTABLE,
   useSearch_UNSTABLE,

@@ -53,7 +53,7 @@ export function useParams_UNSTABLE<Path extends RoutePath>({
  * is ignored with a warning, so keep helpers and constants out of the module you
  * pass (or list the codecs explicitly).
  */
-export function Unstable_SearchCodecsProvider({
+export function SearchCodecsProvider_UNSTABLE({
   searchCodecs,
   children,
 }: {
@@ -68,7 +68,7 @@ export function Unstable_SearchCodecsProvider({
     for (const value of values) {
       if (!isCodec(value)) {
         console.warn(
-          'Unstable_SearchCodecsProvider ignored a value that is not a search codec; pass only codecs (a codec-only module or an explicit array).',
+          'SearchCodecsProvider_UNSTABLE ignored a value that is not a search codec; pass only codecs (a codec-only module or an explicit array).',
           value,
         );
         continue;
@@ -86,7 +86,7 @@ export function Unstable_SearchCodecsProvider({
 
 /**
  * Read the current route's typed `search`, parsed client-side with the route's
- * codec (provided via `Unstable_SearchCodecsProvider`), or null when the current
+ * codec (provided via `SearchCodecsProvider_UNSTABLE`), or null when the current
  * path does not match `from` or the route has no codec. Re-renders when the
  * query changes.
  */
@@ -116,7 +116,7 @@ type SetSearch<Path extends RoutePath> = (
 
 /**
  * Returns a setter for the current route's `search`, serialized client-side with
- * the route's codec (provided via `Unstable_SearchCodecsProvider`). Accepts a
+ * the route's codec (provided via `SearchCodecsProvider_UNSTABLE`). Accepts a
  * partial or an updater of the current search and navigates (push by default, or
  * replace) to the same path. A no-op when the current path does not match `from`
  * or has no codec.

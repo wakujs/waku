@@ -26,7 +26,7 @@ import {
   unstable_ROUTE_ID as ROUTE_ID,
   type Unstable_RouteProps as RouteProps,
   type Unstable_RouterHost as RouterHost,
-  unstable_RouterHostContext as RouterHostContext,
+  RouterHostContext_UNSTABLE as RouterHostContext,
   unstable_buildMergePatch as buildMergePatch,
   unstable_decideFollow as decideFollow,
   unstable_encodeRoutePath as encodeRoutePath,

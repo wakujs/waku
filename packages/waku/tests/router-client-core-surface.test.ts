@@ -26,13 +26,13 @@ describe('waku/router/client-core surface', () => {
   test('runtime export names are the frozen L1 surface', () => {
     expect(runtimeExportNames(clientCore)).toEqual([
       'ErrorBoundary_UNSTABLE',
+      'RouterHostContext_UNSTABLE',
       'SearchCodecsProvider_UNSTABLE',
       'Slice_UNSTABLE',
       'unstable_HAS404_ID',
       'unstable_IS_STATIC_ID',
       'unstable_MAX_FOLLOWS_PER_NAVIGATION',
       'unstable_ROUTE_ID',
-      'unstable_RouterHostContext',
       'unstable_buildMergePatch',
       'unstable_buildRouteHref',
       'unstable_canReuseStaticRoute',
@@ -127,6 +127,7 @@ describe('waku/router/client surface', () => {
       'INTERNAL_ServerRouter',
       'Link',
       'Router',
+      'SearchCodecsProvider_UNSTABLE',
       'Slice',
       'Unstable_SearchCodecsProvider',
       'unstable_HAS404_ID',
@@ -157,7 +158,10 @@ describe('waku/router/client surface', () => {
     expect(clientCore.ErrorBoundary_UNSTABLE).toBe(client.ErrorBoundary);
     expect(clientCore.useParams_UNSTABLE).toBe(client.useParams_UNSTABLE);
     expect(clientCore.SearchCodecsProvider_UNSTABLE).toBe(
-      client.Unstable_SearchCodecsProvider,
+      client.SearchCodecsProvider_UNSTABLE,
+    );
+    expect(client.Unstable_SearchCodecsProvider).toBe(
+      client.SearchCodecsProvider_UNSTABLE,
     );
     expect(clientCore.unstable_parseRoute).toBe(client.unstable_parseRoute);
     expect(clientCore.unstable_HAS404_ID).toBe(client.unstable_HAS404_ID);

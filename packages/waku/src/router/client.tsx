@@ -60,7 +60,10 @@ import { RouterHostContext } from './client-core-utils/host.js';
 import type { RouterHost } from './client-core-utils/host.js';
 import { abortable, load } from './client-core-utils/load.js';
 import { buildMergePatch } from './client-core-utils/merge-patch.js';
-import { useResolveSearchCodec } from './client-core-utils/route-hooks.js';
+import {
+  SearchCodecsProvider_UNSTABLE,
+  useResolveSearchCodec,
+} from './client-core-utils/route-hooks.js';
 import {
   useHmrRefetch,
   useInitialRoute,
@@ -111,7 +114,7 @@ import type { RouteProps } from './isomorphic-utils/route-path.js';
 
 export { ErrorBoundary } from './client-core-utils/error-boundary.js';
 export {
-  Unstable_SearchCodecsProvider,
+  SearchCodecsProvider_UNSTABLE,
   useParams_UNSTABLE,
   useSearch_UNSTABLE,
   useSetSearch_UNSTABLE,
@@ -1372,6 +1375,8 @@ export function INTERNAL_ServerRouter({ route }: { route: RouteProps }) {
   );
 }
 
+/** @deprecated Use `SearchCodecsProvider_UNSTABLE`. */
+export const Unstable_SearchCodecsProvider = SearchCodecsProvider_UNSTABLE;
 /** @deprecated Import `Unstable_RouteProps` from `waku/router/client-core`. */
 export type Unstable_RouteProps = RouteProps;
 /** @deprecated Import `unstable_HAS404_ID` from `waku/router/client-core`. */
