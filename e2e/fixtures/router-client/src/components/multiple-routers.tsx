@@ -29,7 +29,8 @@ const RouterFrame = ({
               <Router initialRoute={{ path, query, hash: '' }} />
             </Suspense>
           </StrictMode>,
-          frame.contentDocument,
+          // React supports Document containers, but @types/react-dom omits it.
+          frame.contentDocument as unknown as DocumentFragment,
         )}
     </>
   );
