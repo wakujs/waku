@@ -25,6 +25,7 @@ import {
 import * as slice from '../src/router/client-core-utils/slice.js';
 import {
   clearRegisteredLazySlices,
+  forEachRegisteredLazySlice,
   registerLazySlice,
 } from '../src/router/client-core-utils/slice.js';
 import {
@@ -171,6 +172,14 @@ describe('useHmrRefetch', () => {
     (
       globalThis as { __WAKU_RSC_RELOAD_LISTENERS__?: (() => void)[] }
     ).__WAKU_RSC_RELOAD_LISTENERS__ = [];
+  });
+
+  test('cache clearing preserves lazy-slice registrations', () => {
+    registerLazySlice('slice-a');
+    clearCaches();
+    const ids: string[] = [];
+    forEachRegisteredLazySlice((id) => ids.push(id));
+    expect(ids).toEqual(['slice-a']);
   });
 
   test('clears caches then refetches the settled route and lazy slices', async () => {
