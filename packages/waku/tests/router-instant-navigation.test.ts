@@ -4,6 +4,7 @@ import { ETAG_ID_PREFIX, IMMUTABLE_ETAG } from '../src/lib/utils/etags.js';
 import {
   canPaintInstantOverlay,
   pinForSwr,
+  shouldWrapInstantTransition,
 } from '../src/router/client-utils/instant-navigation.js';
 import { ROUTER_STATE_ID } from '../src/router/client-utils/router-state.js';
 import {
@@ -24,6 +25,15 @@ describe('canPaintInstantOverlay', () => {
     const elements = immutable(getRouteSlotId(route.path));
     expect(canPaintInstantOverlay(0, route, elements)).toBe(true);
     expect(canPaintInstantOverlay(1, route, elements)).toBe(false);
+  });
+});
+
+describe('shouldWrapInstantTransition', () => {
+  test('wraps only when the route must wait for data', () => {
+    expect(shouldWrapInstantTransition(true, false, false)).toBe(true);
+    expect(shouldWrapInstantTransition(false, false, false)).toBe(false);
+    expect(shouldWrapInstantTransition(true, true, false)).toBe(false);
+    expect(shouldWrapInstantTransition(true, false, true)).toBe(false);
   });
 });
 
