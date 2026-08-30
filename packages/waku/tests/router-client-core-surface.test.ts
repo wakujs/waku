@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { readFileSync, readdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 import {
@@ -173,16 +173,25 @@ describe('waku/router/client surface', () => {
 describe('client utility boundaries', () => {
   test('client-core-utils does not depend on client-utils', () => {
     const dir = join(routerSrc, 'client-core-utils');
-    for (const fileName of readdirSync(dir)) {
-      if (!/\.[cm]?[jt]sx?$/.test(fileName)) {
-        continue;
-      }
+    const clientUtilsDir = join(routerSrc, 'client-utils');
+    const fileNames = readdirSync(dir, { recursive: true }).filter((fileName) =>
+      /\.[cm]?[jt]sx?$/.test(fileName),
+    );
+    expect(fileNames.length).toBeGreaterThan(0);
+    for (const fileName of fileNames) {
       const src = readFileSync(join(dir, fileName), 'utf8');
       const specs = [
         ...src.matchAll(/(?:\bfrom\s+|\bimport\s*(?:\(\s*)?)["']([^"']+)["']/g),
       ].map((match) => match[1]!);
       expect(
-        specs.some((spec) => spec.startsWith('../client-utils/')),
+        specs.some((spec) => {
+          if (!spec.startsWith('.')) {
+            return false;
+          }
+          const target = resolve(dirname(join(dir, fileName)), spec);
+          const path = relative(clientUtilsDir, target);
+          return !path.startsWith('..') && !isAbsolute(path);
+        }),
         fileName,
       ).toBe(false);
     }
