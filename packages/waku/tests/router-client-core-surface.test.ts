@@ -179,9 +179,7 @@ describe('client utility boundaries', () => {
       }
       const src = readFileSync(join(dir, fileName), 'utf8');
       const specs = [
-        ...src.matchAll(
-          /(?:\bfrom\s+|\bimport\s*(?:\(\s*)?)["']([^"']+)["']/g,
-        ),
+        ...src.matchAll(/(?:\bfrom\s+|\bimport\s*(?:\(\s*)?)["']([^"']+)["']/g),
       ].map((match) => match[1]!);
       expect(
         specs.some((spec) => spec.startsWith('../client-utils/')),
