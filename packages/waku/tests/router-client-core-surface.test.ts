@@ -174,9 +174,10 @@ describe('client utility boundaries', () => {
   test('client-core-utils does not depend on client-utils', () => {
     const dir = join(routerSrc, 'client-core-utils');
     const clientUtilsDir = join(routerSrc, 'client-utils');
-    const fileNames = readdirSync(dir, { recursive: true }).filter((fileName) =>
-      /\.[cm]?[jt]sx?$/.test(fileName),
-    );
+    const fileNames = readdirSync(dir, {
+      encoding: 'utf8',
+      recursive: true,
+    }).filter((fileName) => /\.[cm]?[jt]sx?$/.test(fileName));
     expect(fileNames.length).toBeGreaterThan(0);
     for (const fileName of fileNames) {
       const src = readFileSync(join(dir, fileName), 'utf8');
