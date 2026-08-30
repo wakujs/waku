@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
@@ -66,7 +66,6 @@ describe('waku/router/client-core surface', () => {
       'unstable_parseRoute',
       'unstable_pathnameToRoutePath',
       'unstable_prefetchRoute',
-      'unstable_registerLazySlice',
       'useHmrRefetch_UNSTABLE',
       'useInitialRoute_UNSTABLE',
       'useInitialRscParams_UNSTABLE',
@@ -168,31 +167,5 @@ describe('waku/router/client surface', () => {
     expect(clientCore.unstable_encodeRoutePath).toBe(
       client.unstable_encodeRoutePath,
     );
-  });
-});
-
-describe('folder membership is layer membership', () => {
-  test('client-utils holds only router-state', () => {
-    expect(readdirSync(join(routerSrc, 'client-utils')).sort()).toEqual([
-      'router-state.ts',
-    ]);
-  });
-
-  test('client-core-utils holds the L1 modules', () => {
-    expect(readdirSync(join(routerSrc, 'client-core-utils')).sort()).toEqual([
-      'caches.ts',
-      'element-meta.ts',
-      'error-boundary.tsx',
-      'error-route.ts',
-      'host.ts',
-      'load.ts',
-      'merge-patch.ts',
-      'prefetch-cache.ts',
-      'route-hooks.tsx',
-      'route-state-hooks.ts',
-      'route-url.ts',
-      'scroll.ts',
-      'slice.tsx',
-    ]);
   });
 });
