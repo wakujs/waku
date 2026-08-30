@@ -78,7 +78,6 @@ import type { SliceId } from './client-core-utils/slice.js';
 import {
   canPaintInstantOverlay,
   pinForSwr,
-  shouldWrapInstantTransition,
 } from './client-utils/instant-navigation.js';
 import {
   ROUTER_STATE_ID,
@@ -966,14 +965,12 @@ const InnerRouter = ({
       // would deprioritise the paint that unstable_instant exists to deliver
       if (
         options.pendingTransition &&
-        shouldWrapInstantTransition(
-          shouldRefetch,
-          canReuseStaticRoute(nextRoute, resolvedElementsRef.current),
-          canPaintInstantOverlay(
-            options.follows ?? 0,
-            nextRoute,
-            resolvedElementsRef.current,
-          ),
+        shouldRefetch &&
+        !canReuseStaticRoute(nextRoute, resolvedElementsRef.current) &&
+        !canPaintInstantOverlay(
+          options.follows ?? 0,
+          nextRoute,
+          resolvedElementsRef.current,
         )
       ) {
         const schedule = options.pendingTransition;

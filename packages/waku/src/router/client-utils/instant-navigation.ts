@@ -9,12 +9,6 @@ export const canPaintInstantOverlay = (
   resolvedElements: Record<string, unknown>,
 ) => !follows && hasCachedShell(route, resolvedElements);
 
-export const shouldWrapInstantTransition = (
-  shouldRefetch: boolean,
-  canReuse: boolean,
-  canPaint: boolean,
-) => shouldRefetch && !canReuse && !canPaint;
-
 // symbol keys are client owned; they are carried, never fetched
 export const pinForSwr =
   (getResolvedElements: () => Record<string, unknown>) =>

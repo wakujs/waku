@@ -39,12 +39,14 @@ export const fetchSlice = (
   replace = false,
 ) => {
   let request = fetchingSlices.get(id);
-  if (!request || (replace && !request[1])) {
+  const isReplace = request?.[1];
+  if (!request || (replace && !isReplace)) {
     request = [fetchRsc(encodeSliceId(id)), replace];
     fetchingSlices.set(id, request);
   }
   const current = request;
-  current[0]
+  const [promise] = current;
+  promise
     .then((result) => {
       if (fetchingSlices.get(id) === current) {
         return mergeElements(result);
