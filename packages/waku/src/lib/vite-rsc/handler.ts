@@ -55,7 +55,9 @@ const toProcessRequest =
       (import.meta.env.DEV && req.headers.get(DEBUG_ID_HEADER.toLowerCase())) ||
       undefined;
     const debugChannels = globalThis.__WAKU_DEBUG_CHANNELS__;
-    const debugChannel = debugId ? debugChannels?.get(debugId) : undefined;
+    const createDebugChannel = debugId
+      ? debugChannels?.get(debugId)
+      : undefined;
     if (debugId) {
       debugChannels?.delete(debugId);
     }
@@ -65,7 +67,7 @@ const toProcessRequest =
       renderToReadableStream,
       loadSsrEntryModule,
       import.meta.env.WAKU_BUILD_ID ?? '',
-      debugChannel,
+      createDebugChannel,
       debugId,
     );
 

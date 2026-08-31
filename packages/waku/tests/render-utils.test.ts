@@ -71,6 +71,40 @@ describe('createRenderUtils', () => {
     );
   });
 
+  test('creates a debug channel for each RSC render', async () => {
+    const renderToReadableStream = vi.fn(() => new ReadableStream());
+    const firstDebugChannel = {
+      readable: new ReadableStream(),
+      writable: new WritableStream(),
+    };
+    const secondDebugChannel = {
+      readable: new ReadableStream(),
+      writable: new WritableStream(),
+    };
+    const createDebugChannel = vi
+      .fn()
+      .mockReturnValueOnce(firstDebugChannel)
+      .mockReturnValueOnce(secondDebugChannel);
+    const renderUtils = createRenderUtils(
+      undefined,
+      renderToReadableStream,
+      async () => ({}) as any,
+      '',
+      createDebugChannel,
+    );
+
+    await renderUtils.renderRsc({ App: 'first' });
+    await renderUtils.renderRsc({ App: 'second' });
+
+    expect(renderToReadableStream.mock.calls[0]?.[1]).toEqual(
+      expect.objectContaining({ debugChannel: firstDebugChannel }),
+    );
+    expect(renderToReadableStream.mock.calls[1]?.[1]).toEqual(
+      expect.objectContaining({ debugChannel: secondDebugChannel }),
+    );
+    expect(createDebugChannel).toHaveBeenCalledTimes(2);
+  });
+
   test('HTML response sets charset=utf-8 (full document reload decoding)', async () => {
     const renderToReadableStream = vi.fn(
       (_data: unknown, _options?: object, _extraOptions?: object) =>

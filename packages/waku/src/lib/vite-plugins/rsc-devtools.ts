@@ -90,7 +90,11 @@ export function rscDevtoolsPlugin(): Plugin {
       };
 
       const cleanupIfEnded = (debugId: string, session: Session) => {
-        if (session.pendingChunks || !session.ended) {
+        if (
+          sessions.get(debugId) !== session ||
+          session.pendingChunks ||
+          !session.ended
+        ) {
           return;
         }
         getDebugChannels().delete(debugId);
@@ -128,37 +132,52 @@ export function rscDevtoolsPlugin(): Plugin {
       });
 
       const registerDebugChannel = (debugId: string) => {
-        let session = sessions.get(debugId);
-        if (!session) {
-          session = { pendingChunks: [], ended: false };
-          sessions.set(debugId, session);
-        }
-        const readable = new ReadableStream<Uint8Array>({
-          start(controller) {
-            session.cmdController = controller;
-          },
-          cancel() {
-            delete session.cmdController;
-          },
-        });
-        const writable = new WritableStream<Uint8Array>({
-          write(chunk) {
-            if (session.pendingChunks) {
-              session.pendingChunks.push(chunk);
-            } else {
-              sendChunk(debugId, chunk);
+        let created = false;
+        getDebugChannels().set(debugId, () => {
+          let session = sessions.get(debugId);
+          if (created) {
+            if (session) {
+              closeCmdController(session);
+              delete session.pendingChunks;
             }
-          },
-          close() {
-            session.ended = true;
-            cleanupIfEnded(debugId, session);
-          },
-          abort() {
-            session.ended = true;
-            cleanupIfEnded(debugId, session);
-          },
+            session = undefined;
+          }
+          created = true;
+          if (!session) {
+            session = { pendingChunks: [], ended: false };
+            sessions.set(debugId, session);
+          }
+          const currentSession = session;
+          const readable = new ReadableStream<Uint8Array>({
+            start(controller) {
+              currentSession.cmdController = controller;
+            },
+            cancel() {
+              delete currentSession.cmdController;
+            },
+          });
+          const writable = new WritableStream<Uint8Array>({
+            write(chunk) {
+              if (sessions.get(debugId) !== currentSession) {
+                return;
+              }
+              if (currentSession.pendingChunks) {
+                currentSession.pendingChunks.push(chunk);
+              } else {
+                sendChunk(debugId, chunk);
+              }
+            },
+            close() {
+              currentSession.ended = true;
+              cleanupIfEnded(debugId, currentSession);
+            },
+            abort() {
+              currentSession.ended = true;
+              cleanupIfEnded(debugId, currentSession);
+            },
+          });
+          return { writable, readable };
         });
-        getDebugChannels().set(debugId, { writable, readable });
       };
 
       return () => {

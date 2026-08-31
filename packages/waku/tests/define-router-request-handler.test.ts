@@ -561,6 +561,35 @@ describe('request dispatch', () => {
     );
   });
 
+  it('renders the 404 route when a matched page throws 404 during SSR', async () => {
+    const { handleRequest } = unstable_defineRouter({
+      getConfigs: async () => [
+        dynamicRoute('/not-found'),
+        dynamicRoute('/404'),
+      ],
+    });
+    const utils = makeUtils();
+    utils.renderHtml
+      .mockImplementationOnce(async () => unstable_notFound())
+      .mockResolvedValueOnce(new Response('not found', { status: 404 }));
+    const res = await handleRequest(
+      {
+        type: 'http',
+        pathname: '/not-found',
+        req: new Request('http://localhost/not-found'),
+      },
+      utils,
+    );
+    expect(res).toBeInstanceOf(Response);
+    expect((res as Response).status).toBe(404);
+    expect(utils.renderHtml).toHaveBeenCalledTimes(2);
+    const elements = utils.renderRsc.mock.calls[1]?.[0] as Record<
+      string,
+      unknown
+    >;
+    expect(elements?.[ROUTE_ID]).toEqual(['/404', '']);
+  });
+
   it('returns fallback for a noSsr route', async () => {
     const { handleRequest } = unstable_defineRouter({
       getConfigs: async () => [{ ...dynamicRoute('/nossr'), noSsr: true }],

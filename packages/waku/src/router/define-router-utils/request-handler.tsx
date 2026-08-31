@@ -278,6 +278,7 @@ export const createRequestHandler = ({
               unstable_extraScriptContent:
                 getRouterPrefetchCode(path2moduleIds) +
                 setupRouterSearchCodecs(configRegistry.getAll()),
+              unstable_rethrowNotFound: configRegistry.has404(),
             },
           );
         };

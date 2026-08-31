@@ -1,7 +1,6 @@
 import { unstable_notFound as notFound } from 'waku/router/server';
 
-export default async function SyncPage() {
-  await new Promise((resolve) => setTimeout(resolve, 100));
+export default function SyncPage() {
   notFound();
 }
 

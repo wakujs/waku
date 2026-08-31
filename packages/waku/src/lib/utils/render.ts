@@ -1,6 +1,7 @@
 import type { Unstable_RenderHtml, Unstable_RenderRsc } from '../types.js';
 import { ETAG_ID_PREFIX } from './etags.js';
 import { sanitizeLog } from './log.js';
+import type { CreateDebugChannel } from './react-debug-channel.js';
 
 const validateRscElementIds = (elements: Record<string, unknown>) => {
   for (const id of Object.keys(elements)) {
@@ -23,7 +24,7 @@ export function createRenderUtils(
     typeof import('../vite-entries/entry.ssr.js')
   >,
   buildId: string,
-  debugChannel?: { readable?: ReadableStream; writable?: WritableStream },
+  createDebugChannel?: CreateDebugChannel,
   debugId?: string,
 ): {
   renderRsc: Unstable_RenderRsc;
@@ -63,7 +64,7 @@ export function createRenderUtils(
         {
           temporaryReferences,
           onError,
-          debugChannel,
+          debugChannel: createDebugChannel?.(),
         },
         {
           onClientReference(metadata: {
@@ -88,6 +89,7 @@ export function createRenderUtils(
         formState: options.formState as never,
         nonce: options.nonce,
         extraScriptContent: options.unstable_extraScriptContent,
+        rethrowNotFound: options.unstable_rethrowNotFound,
         debugId,
       });
       return new Response(htmlResult.stream, {

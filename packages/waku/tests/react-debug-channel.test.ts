@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from 'vitest';
 import {
+  type CreateDebugChannel,
   DEBUG_CMD_EVENT,
   DEBUG_DATA_EVENT,
   DEBUG_ID_HEADER,
@@ -83,6 +84,18 @@ const readAll = async (stream: ReadableStream<Uint8Array>) => {
   return new TextDecoder().decode(bytes);
 };
 
+const openDebugChannel = (debugId: string) => {
+  const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
+    string,
+    CreateDebugChannel
+  >;
+  const channel = channels.get(debugId)?.();
+  if (!channel) {
+    throw new Error(`Missing debug channel: ${debugId}`);
+  }
+  return channel;
+};
+
 afterEach(() => {
   delete (globalThis as any).__WAKU_DEBUG_ID__;
   delete (globalThis as any).__WAKU_DEBUG_CHANNELS__;
@@ -125,15 +138,8 @@ describe('react debug channel', () => {
     };
     middleware(req, {}, () => {});
 
-    const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
-      string,
-      {
-        readable?: ReadableStream<Uint8Array>;
-        writable?: WritableStream<Uint8Array>;
-      }
-    >;
-    const entry = channels.get('early-debug-id');
-    const writer = entry!.writable!.getWriter();
+    const channel = openDebugChannel('early-debug-id');
+    const writer = channel.writable.getWriter();
     await writer.write(enc.encode('early'));
     await wait();
 
@@ -159,18 +165,9 @@ describe('react debug channel', () => {
     expect(req.rawHeaders).toContain(DEBUG_ID_HEADER);
     expect(req.rawHeaders).toContain(debugId);
 
-    const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
-      string,
-      {
-        readable?: ReadableStream<Uint8Array>;
-        writable?: WritableStream<Uint8Array>;
-      }
-    >;
-    const entry = channels.get(debugId);
-    expect(entry?.readable).toBeDefined();
-    expect(entry?.writable).toBeDefined();
+    const channel = openDebugChannel(debugId);
 
-    const writer = entry!.writable!.getWriter();
+    const writer = channel.writable.getWriter();
     await writer.write(enc.encode('reply'));
     expect(sent).toEqual([]);
 
@@ -194,7 +191,7 @@ describe('react debug channel', () => {
       d: true,
     });
     await wait();
-    expect(await readAll(entry!.readable!)).toBe('Q:1\n');
+    expect(await readAll(channel.readable)).toBe('Q:1\n');
 
     await writer.close();
     await wait();
@@ -202,6 +199,51 @@ describe('react debug channel', () => {
       {
         event: DEBUG_DATA_EVENT,
         data: { i: debugId, b: btoa('reply') },
+      },
+      {
+        event: DEBUG_DATA_EVENT,
+        data: { i: debugId, d: true },
+      },
+    ]);
+  });
+
+  test('plugin replaces a pending debug channel for a later render', async () => {
+    const { hotListeners, sent, middleware } = await setupPlugin();
+    const req: Req = {
+      headers: { accept: 'text/html' },
+      rawHeaders: ['Accept', 'text/html'],
+    };
+    middleware(req, {}, () => {});
+
+    const debugId = req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
+    const first = openDebugChannel(debugId);
+    const firstWriter = first.writable.getWriter();
+    await firstWriter.write(enc.encode('discarded'));
+
+    const second = openDebugChannel(debugId);
+    await firstWriter.close();
+    const secondWriter = second.writable.getWriter();
+    await secondWriter.write(enc.encode('final'));
+
+    hotListeners.get(DEBUG_CMD_EVENT)?.({ i: debugId });
+    await wait();
+
+    hotListeners.get(DEBUG_CMD_EVENT)?.({
+      i: debugId,
+      b: btoa('Q:2\n'),
+    });
+    hotListeners.get(DEBUG_CMD_EVENT)?.({ i: debugId, d: true });
+    await wait();
+
+    await secondWriter.close();
+    await wait();
+
+    expect(await readAll(first.readable)).toBe('');
+    expect(await readAll(second.readable)).toBe('Q:2\n');
+    expect(sent).toEqual([
+      {
+        event: DEBUG_DATA_EVENT,
+        data: { i: debugId, b: btoa('final') },
       },
       {
         event: DEBUG_DATA_EVENT,
@@ -219,16 +261,9 @@ describe('react debug channel', () => {
     middleware(req, {}, () => {});
 
     const debugId = req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
-    const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
-      string,
-      {
-        readable?: ReadableStream<Uint8Array>;
-        writable?: WritableStream<Uint8Array>;
-      }
-    >;
-    const entry = channels.get(debugId);
+    const channel = openDebugChannel(debugId);
 
-    const writer = entry!.writable!.getWriter();
+    const writer = channel.writable.getWriter();
     await writer.write(enc.encode('late'));
     await writer.close();
     await wait();
@@ -261,21 +296,14 @@ describe('react debug channel', () => {
     middleware(req, {}, () => {});
 
     const debugId = req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
-    const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
-      string,
-      {
-        readable?: ReadableStream<Uint8Array>;
-        writable?: WritableStream<Uint8Array>;
-      }
-    >;
-    const entry = channels.get(debugId);
+    const channel = openDebugChannel(debugId);
 
     hotListeners.get(DEBUG_CMD_EVENT)?.({
       i: debugId,
     });
     await wait();
 
-    const writer = entry!.writable!.getWriter();
+    const writer = channel.writable.getWriter();
     await writer.close();
     await wait();
 

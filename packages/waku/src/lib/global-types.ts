@@ -7,7 +7,7 @@ declare global {
   var __WAKU_INITIAL_RSC__:
     import('./utils/initial-rsc.js').InitialRscEntry | undefined;
   var __WAKU_DEBUG_CHANNELS__:
-    | Map<string, { readable: ReadableStream; writable: WritableStream }>
+    | Map<string, import('./utils/react-debug-channel.js').CreateDebugChannel>
     | undefined;
   var __WAKU_ROUTER_PREFETCH__:
     ((path: string, callback: (id: string) => void) => void) | undefined;
