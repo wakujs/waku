@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
@@ -10,6 +11,10 @@ const formatHost: ts.FormatDiagnosticsHost = {
 };
 
 test('createPages route types compile without circular inference', () => {
+  const mainDts = fileURLToPath(new URL('../dist/main.d.ts', import.meta.url));
+  if (!existsSync(mainDts)) {
+    throw new Error('Run `pnpm -F waku run compile` before this test.');
+  }
   const configPath = fileURLToPath(
     new URL('./fixtures/create-pages-types/tsconfig.json', import.meta.url),
   );
@@ -22,6 +27,9 @@ test('createPages route types compile without circular inference', () => {
     ts.sys,
     dirname(configPath),
   );
+  if (parsed.errors.length) {
+    throw new Error(ts.formatDiagnostics(parsed.errors, formatHost));
+  }
   const diagnostics = ts.getPreEmitDiagnostics(
     ts.createProgram(parsed.fileNames, parsed.options),
   );

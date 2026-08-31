@@ -317,11 +317,23 @@ export default adapter(pages);
 
 Once this is done, string navigation targets use the inferred paths. In this case, the one valid use would be `<Link to="/" />`, but as you add more pages to the router, this type will grow to include them.
 
+This does not check structured navigation targets or route-pattern APIs against the route table. Structured targets still infer their parameters from the supplied pattern, but a pattern such as `{ to: '/missing' }` is accepted. The same applies to `PageProps` and `useParams_UNSTABLE`.
+
+Do not add the following augmentation:
+
+```tsx
+declare module 'waku/router' {
+  interface CreatePagesConfig {
+    pages: typeof pages;
+  }
+}
+```
+
+A manual `createPages` table contains the page components, so using `PageProps` in one imported module and typed navigation in another creates a circular type dependency through that table. The file-system router can safely provide this augmentation because its generated type table contains only route metadata.
+
 #### PageProps
 
 The `PageProps` type derives the page path and slug parameter types.
-
-With `createPages`, structured navigation targets such as `<Link to={{ to: '/missing' }} />` and route-pattern APIs such as `PageProps` and `useParams_UNSTABLE` are not checked against the route table. Augmenting `CreatePagesConfig` with `typeof pages` can create a circular type dependency through the page components.
 
 ```tsx
 // ./src/templates/about-page.tsx
