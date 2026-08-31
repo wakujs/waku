@@ -310,19 +310,18 @@ declare module 'waku/router' {
   interface RouteConfig {
     paths: PathsForPages<typeof pages>;
   }
-  interface CreatePagesConfig {
-    pages: typeof pages;
-  }
 }
 
 export default adapter(pages);
 ```
 
-Once this is done, any `<Link />` component or hook from `waku/router` that uses paths in your app will use this type. In this case, the one valid use would be `<Link to="/" />`, but as you add more pages to the router, this type will grow to include them.
+Once this is done, string navigation targets use the inferred paths. In this case, the one valid use would be `<Link to="/" />`, but as you add more pages to the router, this type will grow to include them.
 
 #### PageProps
 
-The `PageProps` type gives you type safety for the path and slug parameters in your pages.
+The `PageProps` type derives the page path and slug parameter types.
+
+With `createPages`, structured navigation targets such as `<Link to={{ to: '/missing' }} />` and route-pattern APIs such as `PageProps` and `useParams_UNSTABLE` are not checked against the route table. Augmenting `CreatePagesConfig` with `typeof pages` can create a circular type dependency through the page components.
 
 ```tsx
 // ./src/templates/about-page.tsx
