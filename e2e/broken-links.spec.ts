@@ -203,7 +203,10 @@ test.describe('broken-links/dynamic-not-found', () => {
   });
 
   test('access async page directly', async ({ page }) => {
-    await page.goto(`http://localhost:${port}/dynamic-not-found/async`);
+    const response = await page.goto(
+      `http://localhost:${port}/dynamic-not-found/async`,
+    );
+    expect(response?.status()).toBe(200);
     await expect(page.getByRole('heading')).toHaveText('Custom not found');
     await expect(page).toHaveTitle('Custom Not Found Title');
   });

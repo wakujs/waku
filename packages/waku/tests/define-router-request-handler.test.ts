@@ -583,6 +583,18 @@ describe('request dispatch', () => {
     expect(res).toBeInstanceOf(Response);
     expect((res as Response).status).toBe(404);
     expect(utils.renderHtml).toHaveBeenCalledTimes(2);
+    expect(utils.renderHtml).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ unstable_rethrowNotFound: true }),
+    );
+    expect(utils.renderHtml).toHaveBeenNthCalledWith(
+      2,
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ unstable_rethrowNotFound: false }),
+    );
     const elements = utils.renderRsc.mock.calls[1]?.[0] as Record<
       string,
       unknown

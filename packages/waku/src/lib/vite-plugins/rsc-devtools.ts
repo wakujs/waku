@@ -135,6 +135,7 @@ export function rscDevtoolsPlugin(): Plugin {
         let created = false;
         getDebugChannels().set(debugId, () => {
           let session = sessions.get(debugId);
+          // The browser sends ready once, so a replacement inherits that state.
           const ready = !!session && !session.pendingChunks;
           if (created) {
             if (session) {
