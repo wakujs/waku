@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { Unstable_RenderHtml } from '../src/lib/types.js';
 import {
   unstable_createCustomError,
   unstable_getErrorInfo,
@@ -33,7 +34,9 @@ const makeStream = () =>
 const makeUtils = (loadBuildMetadata = vi.fn()) => ({
   renderRsc: vi.fn().mockResolvedValue(makeStream()),
   parseRsc: vi.fn(),
-  renderHtml: vi.fn().mockResolvedValue(new Response('ok')),
+  renderHtml: vi
+    .fn<Unstable_RenderHtml>()
+    .mockResolvedValue(new Response('ok')),
   loadBuildMetadata,
 });
 
@@ -561,7 +564,7 @@ describe('request dispatch', () => {
     );
   });
 
-  it('renders the 404 route when a matched page throws 404 during SSR', async () => {
+  it('returns the fallback response when the 404 route also throws during SSR', async () => {
     const { handleRequest } = unstable_defineRouter({
       getConfigs: async () => [
         dynamicRoute('/not-found'),
@@ -569,9 +572,12 @@ describe('request dispatch', () => {
       ],
     });
     const utils = makeUtils();
-    utils.renderHtml
-      .mockImplementationOnce(async () => unstable_notFound())
-      .mockResolvedValueOnce(new Response('not found', { status: 404 }));
+    utils.renderHtml.mockImplementation(async (_stream, _html, options) => {
+      if (options.unstable_rethrowNotFound) {
+        unstable_notFound();
+      }
+      return new Response('not found', { status: options.status });
+    });
     const res = await handleRequest(
       {
         type: 'http',
@@ -582,19 +588,8 @@ describe('request dispatch', () => {
     );
     expect(res).toBeInstanceOf(Response);
     expect((res as Response).status).toBe(404);
+    expect(await (res as Response).text()).toBe('not found');
     expect(utils.renderHtml).toHaveBeenCalledTimes(2);
-    expect(utils.renderHtml).toHaveBeenNthCalledWith(
-      1,
-      expect.anything(),
-      expect.anything(),
-      expect.objectContaining({ unstable_rethrowNotFound: true }),
-    );
-    expect(utils.renderHtml).toHaveBeenNthCalledWith(
-      2,
-      expect.anything(),
-      expect.anything(),
-      expect.objectContaining({ unstable_rethrowNotFound: false }),
-    );
     const elements = utils.renderRsc.mock.calls[1]?.[0] as Record<
       string,
       unknown
