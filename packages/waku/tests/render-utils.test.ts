@@ -96,11 +96,17 @@ describe('createRenderUtils', () => {
     await renderUtils.renderRsc({ App: 'first' });
     await renderUtils.renderRsc({ App: 'second' });
 
-    expect(renderToReadableStream.mock.calls[0]?.[1]).toEqual(
+    expect(renderToReadableStream).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
       expect.objectContaining({ debugChannel: firstDebugChannel }),
+      expect.anything(),
     );
-    expect(renderToReadableStream.mock.calls[1]?.[1]).toEqual(
+    expect(renderToReadableStream).toHaveBeenNthCalledWith(
+      2,
+      expect.anything(),
       expect.objectContaining({ debugChannel: secondDebugChannel }),
+      expect.anything(),
     );
     expect(createDebugChannel).toHaveBeenCalledTimes(2);
   });
