@@ -252,6 +252,37 @@ describe('react debug channel', () => {
     ]);
   });
 
+  test('plugin preserves readiness when replacing a debug channel', async () => {
+    const { hotListeners, sent, middleware } = await setupPlugin();
+    const req: Req = {
+      headers: { accept: 'text/html' },
+      rawHeaders: ['Accept', 'text/html'],
+    };
+    middleware(req, {}, () => {});
+
+    const debugId = req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
+    const first = openDebugChannel(debugId);
+    hotListeners.get(DEBUG_CMD_EVENT)?.({ i: debugId });
+
+    const second = openDebugChannel(debugId);
+    const writer = second.writable.getWriter();
+    await writer.write(enc.encode('replacement'));
+    await writer.close();
+    await wait();
+
+    expect(await readAll(first.readable)).toBe('');
+    expect(sent).toEqual([
+      {
+        event: DEBUG_DATA_EVENT,
+        data: { i: debugId, b: btoa('replacement') },
+      },
+      {
+        event: DEBUG_DATA_EVENT,
+        data: { i: debugId, d: true },
+      },
+    ]);
+  });
+
   test('plugin flushes buffered initial chunks even if ready arrives after server close', async () => {
     const { hotListeners, sent, middleware } = await setupPlugin();
     const req: Req = {

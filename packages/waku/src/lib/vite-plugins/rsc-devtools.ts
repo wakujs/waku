@@ -135,6 +135,7 @@ export function rscDevtoolsPlugin(): Plugin {
         let created = false;
         getDebugChannels().set(debugId, () => {
           let session = sessions.get(debugId);
+          const ready = !!session && !session.pendingChunks;
           if (created) {
             if (session) {
               closeCmdController(session);
@@ -144,7 +145,10 @@ export function rscDevtoolsPlugin(): Plugin {
           }
           created = true;
           if (!session) {
-            session = { pendingChunks: [], ended: false };
+            session = {
+              ...(ready ? {} : { pendingChunks: [] }),
+              ended: false,
+            };
             sessions.set(debugId, session);
           }
           const currentSession = session;
