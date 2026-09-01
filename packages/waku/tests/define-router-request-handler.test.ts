@@ -576,7 +576,7 @@ describe('request dispatch', () => {
       if (options.unstable_rethrowNotFound) {
         unstable_notFound();
       }
-      return new Response('not found', { status: options.status });
+      return new Response('not found', { status: options.status ?? 200 });
     });
     const res = await handleRequest(
       {
