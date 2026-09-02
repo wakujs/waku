@@ -91,12 +91,7 @@ export function rscDevtoolsPlugin(): Plugin {
       };
 
       const cleanupIfEnded = (debugId: string, session: Session) => {
-        if (
-          sessions.get(debugId) !== session ||
-          session.pendingChunks ||
-          !session.ended ||
-          !session.finished
-        ) {
+        if (session.pendingChunks || !session.ended || !session.finished) {
           return;
         }
         getDebugChannels().delete(debugId);
@@ -134,40 +129,41 @@ export function rscDevtoolsPlugin(): Plugin {
       });
 
       const registerDebugChannel = (debugId: string) => {
-        let created = false;
-        let finished = false;
+        let session = sessions.get(debugId);
+        if (!session) {
+          session = {
+            pendingChunks: [],
+            ended: false,
+            finished: false,
+          };
+          sessions.set(debugId, session);
+        }
+        const currentSession = session;
+        let deactivatePrevious: (() => void) | undefined;
         const createDebugChannel = () => {
-          let session = sessions.get(debugId);
-          // The browser sends ready once, so a replacement inherits that state.
-          const ready = !!session && !session.pendingChunks;
-          if (created) {
-            if (session) {
-              closeCmdController(session);
-              delete session.pendingChunks;
+          deactivatePrevious?.();
+          let active = true;
+          deactivatePrevious = () => {
+            active = false;
+            closeCmdController(currentSession);
+            if (currentSession.pendingChunks) {
+              currentSession.pendingChunks = [];
             }
-            session = undefined;
-          }
-          created = true;
-          if (!session) {
-            session = {
-              ...(ready ? {} : { pendingChunks: [] }),
-              ended: false,
-              finished,
-            };
-            sessions.set(debugId, session);
-          }
-          const currentSession = session;
+            currentSession.ended = false;
+          };
           const readable = new ReadableStream<Uint8Array>({
             start(controller) {
               currentSession.cmdController = controller;
             },
             cancel() {
-              delete currentSession.cmdController;
+              if (active) {
+                delete currentSession.cmdController;
+              }
             },
           });
           const writable = new WritableStream<Uint8Array>({
             write(chunk) {
-              if (sessions.get(debugId) !== currentSession) {
+              if (!active) {
                 return;
               }
               if (currentSession.pendingChunks) {
@@ -177,10 +173,16 @@ export function rscDevtoolsPlugin(): Plugin {
               }
             },
             close() {
+              if (!active) {
+                return;
+              }
               currentSession.ended = true;
               cleanupIfEnded(debugId, currentSession);
             },
             abort() {
+              if (!active) {
+                return;
+              }
               currentSession.ended = true;
               cleanupIfEnded(debugId, currentSession);
             },
@@ -188,12 +190,8 @@ export function rscDevtoolsPlugin(): Plugin {
           return { writable, readable };
         };
         const finishDebugChannel = () => {
-          finished = true;
-          const session = sessions.get(debugId);
-          if (session) {
-            session.finished = true;
-            cleanupIfEnded(debugId, session);
-          }
+          currentSession.finished = true;
+          cleanupIfEnded(debugId, currentSession);
         };
         getDebugChannels().set(debugId, [
           createDebugChannel,

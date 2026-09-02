@@ -282,6 +282,13 @@ describe('react debug channel', () => {
     const writer = second.writable.getWriter();
     await writer.write(enc.encode('replacement'));
     finishDebugChannel(debugId);
+    await wait();
+    expect(sent).toEqual([
+      {
+        event: DEBUG_DATA_EVENT,
+        data: { i: debugId, b: btoa('replacement') },
+      },
+    ]);
     await writer.close();
     await wait();
 
