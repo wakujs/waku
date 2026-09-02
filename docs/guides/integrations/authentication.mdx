@@ -314,7 +314,10 @@ export async function authenticate(
     return 'Invalid credentials.';
   }
   await signIn(user.id);
-  redirect('/dashboard');
+  // 303, so that a browser following the redirect without JavaScript requests
+  // the destination with GET. The default 307 re-sends the form POST — with the
+  // action encoded in it — to /dashboard.
+  redirect('/dashboard', 303);
 }
 ```
 
@@ -367,7 +370,7 @@ export const signOut = () => {
   action={async () => {
     'use server';
     signOut();
-    redirect('/');
+    redirect('/', 303);
   }}
 >
   <button>Sign out</button>
