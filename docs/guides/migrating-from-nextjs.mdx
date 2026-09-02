@@ -201,7 +201,10 @@ Two exceptions:
 - An action that stays on the page and expects the screen to update needs
   `unstable_rerenderRoute(pathname, query)` — an action that ends in `redirect()`
   does not. Pass the current query string, or a client sitting on
-  `/invoices?page=2` will not see the re-render.
+  `/invoices?page=2` will not see the re-render. As of 1.0.0-rc the client can
+  also drop the re-rendered elements depending on the order in which the layout
+  and page slots stream; until that is fixed, refetching from a client component
+  with `useRouter().reload()` after the action is the reliable form.
 - If you measure a need for caching, add it explicitly. See
   [Explicit Caching](/guides/explicit-caching).
 
