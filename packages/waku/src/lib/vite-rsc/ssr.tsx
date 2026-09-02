@@ -112,11 +112,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
     });
   } catch (e) {
     const info = getErrorInfo(e);
-    if (info?.location) {
-      // Redirects become HTTP responses outside the HTML renderer.
-      throw e;
-    }
-    if (options.rethrowNotFound && info?.status === 404) {
+    if (info?.location || (options.rethrowNotFound && info?.status === 404)) {
       throw e;
     }
     status = info?.status || 500;

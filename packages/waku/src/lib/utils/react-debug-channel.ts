@@ -14,13 +14,6 @@ export const DEBUG_ID_HEADER = 'X-Waku-Debug-Id';
 export const DEBUG_CMD_EVENT = 'waku:debug-cmd';
 export const DEBUG_DATA_EVENT = 'waku:debug-data';
 
-export type DebugChannel = {
-  readable: ReadableStream;
-  writable: WritableStream;
-};
-
-export type CreateDebugChannel = () => DebugChannel;
-
 type DebugCmdEventReadyPayload = {
   i: string; // debugId
 };
@@ -127,6 +120,8 @@ const createWsDebugChannel = (debugId: string) => {
 
   return { readable, writable };
 };
+
+export type CreateDebugChannel = () => ReturnType<typeof createWsDebugChannel>;
 
 export const setupDebugChannel = (
   baseFetchFn: typeof fetch,
