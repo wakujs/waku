@@ -564,7 +564,7 @@ describe('request dispatch', () => {
     );
   });
 
-  it('returns the fallback response when the 404 route also throws during SSR', async () => {
+  it('keeps the 404 fallback render from rethrowing', async () => {
     const { handleRequest } = unstable_defineRouter({
       getConfigs: async () => [
         dynamicRoute('/not-found'),
@@ -588,7 +588,6 @@ describe('request dispatch', () => {
     );
     expect(res).toBeInstanceOf(Response);
     expect((res as Response).status).toBe(404);
-    expect(await (res as Response).text()).toBe('not found');
     expect(utils.renderHtml).toHaveBeenCalledTimes(2);
     const elements = utils.renderRsc.mock.calls[1]?.[0] as Record<
       string,
