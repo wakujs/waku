@@ -1,5 +1,4 @@
 import type { Unstable_RenderHtml, Unstable_RenderRsc } from '../types.js';
-import type { CreateDebugChannel } from '../vite-plugins/rsc-devtools.js';
 import { ETAG_ID_PREFIX } from './etags.js';
 import { sanitizeLog } from './log.js';
 
@@ -24,7 +23,10 @@ export function createRenderUtils(
     typeof import('../vite-entries/entry.ssr.js')
   >,
   buildId: string,
-  createDebugChannel?: CreateDebugChannel,
+  createDebugChannel?: () => {
+    readable: ReadableStream<Uint8Array>;
+    writable: WritableStream<Uint8Array>;
+  },
   debugId?: string,
 ): {
   renderRsc: Unstable_RenderRsc;

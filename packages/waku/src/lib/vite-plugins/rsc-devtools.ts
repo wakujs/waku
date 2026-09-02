@@ -8,14 +8,16 @@ import {
   assertIsDebugEventPayload,
 } from '../utils/react-debug-channel.js';
 
-export type CreateDebugChannel = () => {
+type CreateDebugChannel = () => {
   readable: ReadableStream<Uint8Array>;
   writable: WritableStream<Uint8Array>;
 };
 
+type FinishDebugChannel = () => void;
+
 export type DebugChannelRegistry = Map<
   string,
-  [CreateDebugChannel, () => void]
+  [CreateDebugChannel, FinishDebugChannel]
 >;
 
 const getDebugChannelRegistry = () =>
