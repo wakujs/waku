@@ -141,6 +141,7 @@ export function rscDevtoolsPlugin(): Plugin {
         const currentSession = session;
         let deactivatePrevious: (() => void) | undefined;
         const createDebugChannel = () => {
+          // The browser only receives the last render in a request.
           deactivatePrevious?.();
           let active = true;
           deactivatePrevious = () => {
