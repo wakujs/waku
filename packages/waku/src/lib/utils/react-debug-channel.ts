@@ -121,8 +121,6 @@ const createWsDebugChannel = (debugId: string) => {
   return { readable, writable };
 };
 
-export type CreateDebugChannel = () => ReturnType<typeof createWsDebugChannel>;
-
 export const setupDebugChannel = (
   baseFetchFn: typeof fetch,
   prefetched: boolean,

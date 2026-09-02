@@ -1,7 +1,7 @@
 import type { Unstable_RenderHtml, Unstable_RenderRsc } from '../types.js';
+import type { CreateDebugChannel } from '../vite-plugins/rsc-devtools.js';
 import { ETAG_ID_PREFIX } from './etags.js';
 import { sanitizeLog } from './log.js';
-import type { CreateDebugChannel } from './react-debug-channel.js';
 
 const validateRscElementIds = (elements: Record<string, unknown>) => {
   for (const id of Object.keys(elements)) {

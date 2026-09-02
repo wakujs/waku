@@ -54,12 +54,14 @@ const toProcessRequest =
     const debugId =
       (import.meta.env.DEV && req.headers.get(DEBUG_ID_HEADER.toLowerCase())) ||
       undefined;
-    const debugChannels = globalThis.__WAKU_DEBUG_CHANNELS__;
-    const debugChannel = debugId ? debugChannels?.get(debugId) : undefined;
-    const createDebugChannel = debugChannel?.[0];
-    const finishDebugChannel = debugChannel?.[1];
+    const debugChannelRegistry = globalThis.__WAKU_DEBUG_CHANNEL_REGISTRY__;
+    const debugChannelEntry = debugId
+      ? debugChannelRegistry?.get(debugId)
+      : undefined;
+    const createDebugChannel = debugChannelEntry?.[0];
+    const finishDebugChannel = debugChannelEntry?.[1];
     if (debugId) {
-      debugChannels?.delete(debugId);
+      debugChannelRegistry?.delete(debugId);
     }
 
     const renderUtils = createRenderUtils(

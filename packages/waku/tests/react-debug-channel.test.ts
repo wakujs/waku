@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, test } from 'vitest';
 import {
-  type CreateDebugChannel,
   DEBUG_CMD_EVENT,
   DEBUG_DATA_EVENT,
   DEBUG_ID_HEADER,
 } from '../src/lib/utils/react-debug-channel.js';
-import { rscDevtoolsPlugin } from '../src/lib/vite-plugins/rsc-devtools.js';
+import {
+  type DebugChannelRegistry,
+  rscDevtoolsPlugin,
+} from '../src/lib/vite-plugins/rsc-devtools.js';
 
 const enc = new TextEncoder();
 
@@ -21,6 +23,10 @@ type Middleware = (
 ) => void;
 
 type Req = Parameters<Middleware>[0];
+
+const debugGlobal = globalThis as typeof globalThis & {
+  __WAKU_DEBUG_CHANNEL_REGISTRY__?: DebugChannelRegistry;
+};
 
 const setupPlugin = async () => {
   const hotListeners = new Map<string, (data: unknown) => void>();
@@ -85,11 +91,8 @@ const readAll = async (stream: ReadableStream<Uint8Array>) => {
 };
 
 const openDebugChannel = (debugId: string) => {
-  const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
-    string,
-    [CreateDebugChannel, () => void]
-  >;
-  const channel = channels.get(debugId)?.[0]();
+  const channel =
+    debugGlobal.__WAKU_DEBUG_CHANNEL_REGISTRY__?.get(debugId)?.[0]();
   if (!channel) {
     throw new Error(`Missing debug channel: ${debugId}`);
   }
@@ -97,16 +100,12 @@ const openDebugChannel = (debugId: string) => {
 };
 
 const finishDebugChannel = (debugId: string) => {
-  const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
-    string,
-    [CreateDebugChannel, () => void]
-  >;
-  channels.get(debugId)?.[1]();
+  debugGlobal.__WAKU_DEBUG_CHANNEL_REGISTRY__?.get(debugId)?.[1]();
 };
 
 afterEach(() => {
   delete (globalThis as any).__WAKU_DEBUG_ID__;
-  delete (globalThis as any).__WAKU_DEBUG_CHANNELS__;
+  delete debugGlobal.__WAKU_DEBUG_CHANNEL_REGISTRY__;
 });
 
 describe('react debug channel', () => {
@@ -124,7 +123,7 @@ describe('react debug channel', () => {
 
     expect(nextCalled).toBe(true);
     expect(req.headers[DEBUG_ID_HEADER.toLowerCase()]).toBeUndefined();
-    expect((globalThis as any).__WAKU_DEBUG_CHANNELS__).toBeUndefined();
+    expect(debugGlobal.__WAKU_DEBUG_CHANNEL_REGISTRY__).toBeUndefined();
   });
 
   test('plugin handles early ready before request middleware', async () => {

@@ -8,8 +8,18 @@ import {
   assertIsDebugEventPayload,
 } from '../utils/react-debug-channel.js';
 
-const getDebugChannels = () =>
-  (globalThis.__WAKU_DEBUG_CHANNELS__ ||= new Map());
+export type CreateDebugChannel = () => {
+  readable: ReadableStream<Uint8Array>;
+  writable: WritableStream<Uint8Array>;
+};
+
+export type DebugChannelRegistry = Map<
+  string,
+  [CreateDebugChannel, () => void]
+>;
+
+const getDebugChannelRegistry = () =>
+  (globalThis.__WAKU_DEBUG_CHANNEL_REGISTRY__ ||= new Map());
 
 const setRequestHeader = (
   req: {
@@ -98,7 +108,7 @@ export function rscDevtoolsPlugin(): Plugin {
         if (!session.ready || !session.streamClosed || !session.requestDone) {
           return;
         }
-        getDebugChannels().delete(debugId);
+        getDebugChannelRegistry().delete(debugId);
         sessions.delete(debugId);
         hot.send(DEBUG_DATA_EVENT, {
           i: debugId,
@@ -180,7 +190,7 @@ export function rscDevtoolsPlugin(): Plugin {
           session.requestDone = true;
           cleanupIfDone(debugId, session);
         };
-        getDebugChannels().set(debugId, [
+        getDebugChannelRegistry().set(debugId, [
           createDebugChannel,
           finishDebugChannel,
         ]);
