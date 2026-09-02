@@ -55,11 +55,8 @@ const toProcessRequest =
       (import.meta.env.DEV && req.headers.get(DEBUG_ID_HEADER.toLowerCase())) ||
       undefined;
     const debugChannelRegistry = globalThis.__WAKU_DEBUG_CHANNEL_REGISTRY__;
-    const debugChannelEntry = debugId
-      ? debugChannelRegistry?.get(debugId)
-      : undefined;
-    const createDebugChannel = debugChannelEntry?.[0];
-    const finishDebugChannel = debugChannelEntry?.[1];
+    const [createDebugChannel, finishDebugChannel] =
+      (debugId && debugChannelRegistry?.get(debugId)) || [];
     if (debugId) {
       debugChannelRegistry?.delete(debugId);
     }
