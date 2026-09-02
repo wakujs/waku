@@ -22,9 +22,24 @@ import * as cookie from 'cookie';
 import { jwtVerify } from 'jose';
 import { unstable_getHeaders as getHeaders } from 'waku/router/server';
 
-const secret = new TextEncoder().encode(process.env.SESSION_SECRET!);
-
 export type Session = { userId: string };
+
+// Resolve the key on first use, not at module scope: page modules are also
+// evaluated during `waku build`, where a runtime secret need not exist. And
+// never fall back silently — an unset secret would become a guessable key.
+let secret: Uint8Array | undefined;
+const getSecret = () => {
+  if (!secret) {
+    const value = process.env.SESSION_SECRET;
+    if (!value || value.length < 32) {
+      throw new Error(
+        'SESSION_SECRET must be set to at least 32 random characters.',
+      );
+    }
+    secret = new TextEncoder().encode(value);
+  }
+  return secret;
+};
 
 export const verifySessionToken = async (
   token: string | undefined,
@@ -33,7 +48,7 @@ export const verifySessionToken = async (
     return null;
   }
   try {
-    const { payload } = await jwtVerify(token, secret);
+    const { payload } = await jwtVerify(token, getSecret());
     return { userId: payload.sub! };
   } catch {
     return null;
@@ -50,7 +65,61 @@ export const auth = async (): Promise<Session | null> => {
 
 ## Protecting routes
 
-Put the check in the layout that wraps the protected routes. A layout runs for every route beneath it, on both a full page load and a client-side navigation:
+There are two different jobs here, and they go in two different places.
+
+**Authorization belongs in the data layer.** Every function that returns
+protected data, and every mutation, verifies the session before doing anything
+else:
+
+```ts
+// ./src/lib/session.ts (continued)
+export const requireSession = async (): Promise<Session> => {
+  const session = await auth();
+  if (!session) {
+    throw new Error('Unauthorized');
+  }
+  return session;
+};
+```
+
+```ts
+// ./src/lib/data.ts
+export async function fetchInvoices() {
+  await requireSession();
+  return sql`SELECT ...`;
+}
+```
+
+```ts
+// ./src/lib/actions.ts
+'use server';
+
+export async function deleteInvoice(id: string) {
+  await requireSession();
+  await sql`DELETE FROM invoices WHERE id = ${id}`;
+}
+```
+
+This is the boundary, and it has to be, because of how a route renders. Waku
+renders a route's layouts and its page as independent slots of one response. A
+`redirect()` thrown in a layout redirects the layout; it does not stop the page
+beneath it from rendering. With a check in the layout only, an unauthenticated
+request still gets the page's data:
+
+```
+GET /dashboard                     -> 307  Location: /login
+GET /RSC/R/dashboard.txt           -> 200  22,327 bytes, including every figure on the page
+```
+
+With `requireSession()` in the data functions, the same request carries error
+slots and nothing else. A server action is an endpoint of its own and an API
+route is outside every layout, so neither is covered by anything but its own
+check either.
+
+**The redirect is for people.** Put it in the layout that wraps the protected
+routes, which runs for every route beneath it on both a full page load and a
+client-side navigation, so a signed-out visitor lands on the login page instead
+of an error:
 
 ```tsx
 // ./src/pages/dashboard/_layout.tsx
@@ -78,17 +147,15 @@ export const getConfig = async () => {
 };
 ```
 
-Server actions and API routes are not covered by a layout, so each one checks for itself. An action is an endpoint; nothing secures it but its own body:
+An API route answers with a status instead:
 
 ```ts
-'use server';
+// ./src/pages/_api/report.ts
+import { auth } from '../../lib/session';
 
-import { auth } from '../lib/session';
-
-export async function deleteInvoice(id: string) {
-  const session = await auth();
-  if (!session) {
-    throw new Error('Unauthorized');
+export async function GET() {
+  if (!(await auth())) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
   // ...
 }
@@ -112,7 +179,7 @@ GET /dashboard                    -> 302  Location: /login
 GET /RSC/R/dashboard.txt?query=   -> 200  the rendered dashboard
 ```
 
-A visitor with no session who clicks a `<Link to="/dashboard">` gets the page. The check passes the obvious manual test (loading the URL redirects) and fails on the path users actually take. Middleware is the right place for response-level concerns such as headers, logging and cookies; authorization belongs in the render.
+A visitor with no session who clicks a `<Link to="/dashboard">` gets the page. The check passes the obvious manual test (loading the URL redirects) and fails on the path users actually take. Middleware is the right place for response-level concerns such as headers, logging and cookies; authorization belongs in the data layer, with the redirect in the layout.
 
 ## Signing in: setting a cookie from a server action
 
@@ -197,7 +264,7 @@ export const signIn = async (userId: string) => {
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(userId)
     .setExpirationTime('7d')
-    .sign(secret);
+    .sign(getSecret());
 
   queueSetCookie(
     cookie.stringifySetCookie({

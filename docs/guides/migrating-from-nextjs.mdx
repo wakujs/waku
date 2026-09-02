@@ -42,9 +42,10 @@ next.config.js            →  waku.config.ts
 
 Two conventions have no Next.js equivalent and are worth knowing early:
 `src/pages/_slices/` holds page fragments with their own rendering mode, and
-`src/pages/_interceptors/` wraps each render. Directories starting with `_` are
-ignored by the router, so `_components/` and `_hooks/` can be co-located inside
-`src/pages`.
+`src/pages/_interceptors/` wraps each render. Three directory names are
+ignored by the router so that files can be co-located inside `src/pages`:
+`_actions`, `_components` and `_hooks`. Other `_`-prefixed names are not
+special, so put `lib/` and `utils/` outside `src/pages` as before.
 
 ### The document shell moves
 
@@ -162,8 +163,8 @@ Once `waku router typegen` has run, `<Link to>` and `router.push()` accept known
 route patterns rather than any string. Three ways to satisfy it:
 
 ```tsx
-<Link to="/about" />                                        // a literal
-<Link to={{ to: '/blog/[slug]', params: { slug } }} />       // structured
+<Link to="/about">About</Link>                                     // a literal
+<Link to={{ to: '/blog/[slug]', params: { slug } }}>{title}</Link>  // structured
 const href: `/search?${string}` = `/search?${params}`;       // typed template
 ```
 
@@ -212,9 +213,11 @@ loudly:
 - **`middleware.ts` cannot protect routes.** A client-side navigation requests
   `/RSC/R/<path>.txt`, not the page path, so a Hono middleware matching
   `/dashboard` sees the first page load and nothing after it, and serves the
-  protected payload to anyone who clicks a link. Authorization belongs in the
-  layout that wraps the protected routes, which runs for every route beneath it
-  on both navigation types.
+  protected payload to anyone who clicks a link. And a layout is not the
+  boundary either: Waku renders a route's layouts and page as independent slots,
+  so a layout that redirects still lets the page render its data. Put the
+  authorization check in the data access layer and the mutations, and the
+  redirect in the layout.
 - **There is no `cookies().set()`.** Server code reads request headers; only
   middleware owns the response. A sign-in action writes its cookie through a
   request-scoped jar that middleware empties onto the response — and that jar
@@ -272,7 +275,7 @@ root layout, read during render, is enough.
    `nextjs-commerce` does this and `nextjs-dashboard` does it the direct way.
 5. Delete the caching layer.
 6. Port route handlers to `_api/`, and `sitemap`/`robots`/OG images with them.
-7. Move authorization out of middleware and into layouts, and rebuild cookie
-   writes around a jar — the [Authentication](/guides/authentication) guide has
-   both.
+7. Move authorization out of middleware and into the data layer, with the
+   redirect in a layout, and rebuild cookie writes around a jar — the
+   [Authentication](/guides/authentication) guide has both.
 8. Handle the remainder: images, fonts, parallel routes.
