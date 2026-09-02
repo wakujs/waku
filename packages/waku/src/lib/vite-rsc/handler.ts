@@ -55,9 +55,9 @@ const toProcessRequest =
       (import.meta.env.DEV && req.headers.get(DEBUG_ID_HEADER.toLowerCase())) ||
       undefined;
     const debugChannels = globalThis.__WAKU_DEBUG_CHANNELS__;
-    const createDebugChannel = debugId
-      ? debugChannels?.get(debugId)
-      : undefined;
+    const debugChannel = debugId ? debugChannels?.get(debugId) : undefined;
+    const createDebugChannel = debugChannel?.[0];
+    const finishDebugChannel = debugChannel?.[1];
     if (debugId) {
       debugChannels?.delete(debugId);
     }
@@ -114,6 +114,8 @@ const toProcessRequest =
           }
         : {};
       return new Response(body, { status, headers });
+    } finally {
+      finishDebugChannel?.();
     }
 
     if (res instanceof ReadableStream) {

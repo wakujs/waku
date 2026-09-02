@@ -87,13 +87,21 @@ const readAll = async (stream: ReadableStream<Uint8Array>) => {
 const openDebugChannel = (debugId: string) => {
   const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
     string,
-    CreateDebugChannel
+    [CreateDebugChannel, () => void]
   >;
-  const channel = channels.get(debugId)?.();
+  const channel = channels.get(debugId)?.[0]();
   if (!channel) {
     throw new Error(`Missing debug channel: ${debugId}`);
   }
   return channel;
+};
+
+const finishDebugChannel = (debugId: string) => {
+  const channels = (globalThis as any).__WAKU_DEBUG_CHANNELS__ as Map<
+    string,
+    [CreateDebugChannel, () => void]
+  >;
+  channels.get(debugId)?.[1]();
 };
 
 afterEach(() => {
@@ -193,6 +201,7 @@ describe('react debug channel', () => {
     await wait();
     expect(await readAll(channel.readable)).toBe('Q:1\n');
 
+    finishDebugChannel(debugId);
     await writer.close();
     await wait();
     expect(sent).toEqual([
@@ -235,6 +244,7 @@ describe('react debug channel', () => {
     hotListeners.get(DEBUG_CMD_EVENT)?.({ i: debugId, d: true });
     await wait();
 
+    finishDebugChannel(debugId);
     await secondWriter.close();
     await wait();
 
@@ -262,11 +272,16 @@ describe('react debug channel', () => {
 
     const debugId = req.headers[DEBUG_ID_HEADER.toLowerCase()] as string;
     const first = openDebugChannel(debugId);
+    const firstWriter = first.writable.getWriter();
     hotListeners.get(DEBUG_CMD_EVENT)?.({ i: debugId });
+    await firstWriter.close();
+    await wait();
+    expect(sent).toEqual([]);
 
     const second = openDebugChannel(debugId);
     const writer = second.writable.getWriter();
     await writer.write(enc.encode('replacement'));
+    finishDebugChannel(debugId);
     await writer.close();
     await wait();
 
@@ -296,6 +311,7 @@ describe('react debug channel', () => {
 
     const writer = channel.writable.getWriter();
     await writer.write(enc.encode('late'));
+    finishDebugChannel(debugId);
     await writer.close();
     await wait();
 
@@ -335,6 +351,7 @@ describe('react debug channel', () => {
     await wait();
 
     const writer = channel.writable.getWriter();
+    finishDebugChannel(debugId);
     await writer.close();
     await wait();
 

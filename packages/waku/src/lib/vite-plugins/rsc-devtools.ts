@@ -36,6 +36,7 @@ const setRequestHeader = (
 type Session = {
   pendingChunks?: Uint8Array[];
   ended: boolean;
+  finished: boolean;
   cmdController?: ReadableStreamDefaultController<Uint8Array>;
 };
 
@@ -93,7 +94,8 @@ export function rscDevtoolsPlugin(): Plugin {
         if (
           sessions.get(debugId) !== session ||
           session.pendingChunks ||
-          !session.ended
+          !session.ended ||
+          !session.finished
         ) {
           return;
         }
@@ -127,13 +129,14 @@ export function rscDevtoolsPlugin(): Plugin {
           flushPendingChunks(payload.i, session);
           cleanupIfEnded(payload.i, session);
         } else {
-          sessions.set(payload.i, { ended: false });
+          sessions.set(payload.i, { ended: false, finished: false });
         }
       });
 
       const registerDebugChannel = (debugId: string) => {
         let created = false;
-        getDebugChannels().set(debugId, () => {
+        let finished = false;
+        const createDebugChannel = () => {
           let session = sessions.get(debugId);
           // The browser sends ready once, so a replacement inherits that state.
           const ready = !!session && !session.pendingChunks;
@@ -149,6 +152,7 @@ export function rscDevtoolsPlugin(): Plugin {
             session = {
               ...(ready ? {} : { pendingChunks: [] }),
               ended: false,
+              finished,
             };
             sessions.set(debugId, session);
           }
@@ -182,7 +186,19 @@ export function rscDevtoolsPlugin(): Plugin {
             },
           });
           return { writable, readable };
-        });
+        };
+        const finishDebugChannel = () => {
+          finished = true;
+          const session = sessions.get(debugId);
+          if (session) {
+            session.finished = true;
+            cleanupIfEnded(debugId, session);
+          }
+        };
+        getDebugChannels().set(debugId, [
+          createDebugChannel,
+          finishDebugChannel,
+        ]);
       };
 
       return () => {
