@@ -20,6 +20,7 @@ Server code reads request cookies from `unstable_getHeaders()`. Wrap that in one
 // ./src/lib/session.ts
 import * as cookie from 'cookie';
 import { jwtVerify } from 'jose';
+import { getEnv } from 'waku';
 import { unstable_getHeaders as getHeaders } from 'waku/router/server';
 
 export type Session = { userId: string };
@@ -27,10 +28,12 @@ export type Session = { userId: string };
 // Resolve the key on first use, not at module scope: page modules are also
 // evaluated during `waku build`, where a runtime secret need not exist. And
 // never fall back silently — an unset secret would become a guessable key.
+// getEnv() is Waku's runtime-agnostic env access; process.env does not exist
+// on Cloudflare Workers or Deno.
 let secret: Uint8Array | undefined;
 const getSecret = () => {
   if (!secret) {
-    const value = process.env.SESSION_SECRET;
+    const value = getEnv('SESSION_SECRET');
     if (!value || value.length < 32) {
       throw new Error(
         'SESSION_SECRET must be set to at least 32 random characters.',
@@ -47,8 +50,11 @@ export const verifySessionToken = async (
   if (!token) {
     return null;
   }
+  // Resolve the key before the try: a missing secret is a deployment error and
+  // must surface, whereas a bad token is an ordinary "no session".
+  const key = getSecret();
   try {
-    const { payload } = await jwtVerify(token, getSecret());
+    const { payload } = await jwtVerify(token, key);
     return { userId: payload.sub! };
   } catch {
     return null;
@@ -273,7 +279,7 @@ export const signIn = async (userId: string) => {
       httpOnly: true,
       path: '/',
       sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      secure: getEnv('NODE_ENV') === 'production',
       maxAge: 60 * 60 * 24 * 7,
     }),
   );
@@ -411,3 +417,4 @@ The code above is a complete, small session, and it is a reasonable place to sto
 ## Runtime notes
 
 The cookie jar uses `AsyncLocalStorage`, which Waku itself already depends on, so it runs wherever Waku runs: Node.js, Bun, Deno, and Cloudflare Workers with the `nodejs_als` compatibility flag that the [Cloudflare guide](/guides/cloudflare) sets. Keep the jar request-scoped and small; it exists only to carry headers from where they are decided to where they are written.
+Read configuration through `getEnv` from `waku` rather than `process.env`, which Node.js provides and the other runtimes do not.

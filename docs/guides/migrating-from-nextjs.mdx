@@ -35,7 +35,7 @@ app/about/page.tsx        →  src/pages/about.tsx
 app/blog/[slug]/page.tsx  →  src/pages/blog/[slug].tsx
 app/shop/[...rest]/page   →  src/pages/shop/[...rest].tsx
 app/(marketing)/…         →  src/pages/(marketing)/…
-app/api/hello/route.ts    →  src/pages/_api/hello.ts
+app/api/hello/route.ts    →  src/pages/_api/api/hello.ts   (_api is stripped from the URL)
 middleware.ts             →  src/middleware/*.ts   (Hono middleware — read on)
 next.config.js            →  waku.config.ts
 ```
@@ -108,9 +108,13 @@ import type { PageProps } from 'waku/router';
 export default async function Page({ slug, query }: PageProps<'/blog/[slug]'>) {
   const q = new URLSearchParams(query).get('q') ?? '';
 }
+
+// A page that reads `query` has to be dynamic: a static page is rendered at
+// build time, with no request, and receives no query at all.
+export const getConfig = async () => ({ render: 'dynamic' }) as const;
 ```
 
-`query` is the raw query string, not a parsed object. Waku can type it per route
+`query` is the raw query string, not a parsed object. Waku can type it per route A static page never sees one — it is rendered once at build time — so any page that filters or paginates from search params must be `render: 'dynamic'`.
 with a [search codec](/guides/typed-routes) if you want more than that.
 
 ## Metadata
@@ -175,16 +179,16 @@ favour: match it against a list of known routes instead of casting.
 
 ## Files that were conventions
 
-| Next.js                      | Waku                                                     |
-| ---------------------------- | -------------------------------------------------------- |
-| `loading.tsx`                | a `<Suspense fallback>` where you want it                |
-| `error.tsx`                  | an error boundary you place, e.g. `react-error-boundary` |
-| `not-found.tsx`, per segment | one `src/pages/404.tsx` for the app                      |
-| `template.tsx`               | no equivalent; remount with a `key`                      |
-| `default.tsx`                | no equivalent (see parallel routes below)                |
-| `sitemap.ts`, `robots.ts`    | API routes that return the XML or text                   |
-| `opengraph-image.tsx`        | an API route; `satori` + `@resvg/resvg-js` for PNG       |
-| `route.ts`                   | `src/pages/_api/*.ts` exporting `GET`, `POST`, …         |
+| Next.js                      | Waku                                                                                                                                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `loading.tsx`                | a `<Suspense fallback>` where you want it                                                                                                                          |
+| `error.tsx`                  | an error boundary you place, e.g. `react-error-boundary`                                                                                                           |
+| `not-found.tsx`, per segment | one `src/pages/404.tsx` for the app                                                                                                                                |
+| `template.tsx`               | no equivalent; remount with a `key`                                                                                                                                |
+| `default.tsx`                | no equivalent (see parallel routes below)                                                                                                                          |
+| `sitemap.ts`, `robots.ts`    | API routes that return the XML or text                                                                                                                             |
+| `opengraph-image.tsx`        | an API route; `satori` + `@resvg/resvg-js` for PNG                                                                                                                 |
+| `route.ts`                   | `src/pages/_api/**/*.ts` exporting `GET`, `POST`, …; the `_api` segment is stripped from the URL, so `app/api/x/route.ts` becomes `_api/api/x.ts` to keep `/api/x` |
 
 Losing per-segment `not-found.tsx` is a real reduction: `notFound()` anywhere in
 the app renders the same `404.tsx`.
