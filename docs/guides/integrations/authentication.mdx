@@ -14,10 +14,15 @@ The session itself can come from a library or, as in the code below, from a few 
 
 ## Reading the session
 
-The snippets use two small libraries — `cookie` to parse and serialize headers and `jose` to sign and verify the token — so install them first. `hono`, whose `MiddlewareHandler` type the middleware imports, is already a dependency of a Waku project.
+The snippets use two small libraries — `cookie` to parse and serialize headers
+and `jose` to sign and verify the token — and the cookie jar below imports
+`node:async_hooks`, whose declarations come from `@types/node`, which the starter
+template does not include. `hono`, whose `MiddlewareHandler` type the middleware
+imports, is already a dependency of a Waku project.
 
 ```sh
 npm install cookie jose
+npm install --save-dev @types/node
 ```
 
 Server code reads request cookies from `unstable_getHeaders()`. Wrap that in one function and use it everywhere:
