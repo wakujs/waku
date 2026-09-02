@@ -241,7 +241,6 @@ export const createRequestHandler = ({
           query: string,
           status = 200,
         ) => {
-          const isNotFoundFallback = status === 404;
           const routePath = pathnameToRoutePath(pathname);
           const rscPath = encodeRoutePath(routePath);
           const rscParams = new URLSearchParams({ query });
@@ -280,7 +279,7 @@ export const createRequestHandler = ({
                 getRouterPrefetchCode(path2moduleIds) +
                 setupRouterSearchCodecs(configRegistry.getAll()),
               unstable_rethrowNotFound:
-                !isNotFoundFallback && configRegistry.has404(),
+                status !== 404 && configRegistry.has404(),
             },
           );
         };
