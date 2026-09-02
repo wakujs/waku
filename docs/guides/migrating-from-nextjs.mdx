@@ -147,15 +147,15 @@ equivalent of the `title.template` pattern; write the full title on each page.
 
 ## Routing APIs
 
-| Next.js                                       | Waku                                            |
-| --------------------------------------------- | ----------------------------------------------- |
-| `import Link from 'next/link'`, `<Link href>` | `import { Link } from 'waku'`, `<Link to>`      |
-| `useRouter()` from `next/navigation`          | `useRouter()` from `waku`                       |
-| `usePathname()`                               | `useRouter().path`                              |
-| `useSearchParams()`                           | `new URLSearchParams(useRouter().query)`        |
-| `redirect()`                                  | `unstable_redirect()` from `waku/router/server` |
-| `notFound()`                                  | `unstable_notFound()` from `waku/router/server` |
-| `revalidatePath()`                            | `unstable_rerenderRoute(path, query)`           |
+| Next.js                                       | Waku                                                                                                                                            |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `import Link from 'next/link'`, `<Link href>` | `import { Link } from 'waku'`, `<Link to>`                                                                                                      |
+| `useRouter()` from `next/navigation`          | `useRouter()` from `waku`                                                                                                                       |
+| `usePathname()`                               | `useRouter().path`                                                                                                                              |
+| `useSearchParams()`                           | `new URLSearchParams(useRouter().query)`                                                                                                        |
+| `redirect()`                                  | `unstable_redirect()` from `waku/router/server`; pass `303` from a server action so a no-JavaScript form POST is not re-sent to the destination |
+| `notFound()`                                  | `unstable_notFound()` from `waku/router/server`                                                                                                 |
+| `revalidatePath()`                            | `unstable_rerenderRoute(path, query)`                                                                                                           |
 
 `useSearchParams()` in Next.js opts a page into client rendering and is usually
 wrapped in `<Suspense>`; Waku's `useRouter()` carries no such requirement, so
@@ -199,6 +199,15 @@ Delete it. There is no `fetch` cache, no `unstable_cache`, no `use cache`, no
 `cacheTag`/`cacheLife`, no ISR and no `revalidateTag`. Static pages are built once
 and dynamic pages run on every request, so nothing is stale and nothing needs
 invalidating. Most `revalidateTag`/`revalidatePath` calls simply disappear.
+
+Check one thing per route before deleting them: a Next.js route that used ISR
+(`export const revalidate = 60`) or was refreshed with `revalidatePath()` after
+a content change was static _with a refresh path_. A static Waku page has no
+refresh path — it is frozen until the next build. Make such routes
+`render: 'dynamic'`, or keep a rebuild or an explicit
+[`waku-cache`](/guides/explicit-caching) invalidation in the flow that used to
+call `revalidatePath`, so that removing the call does not turn "fresh within a
+minute" into "fresh at the next deploy".
 
 Two exceptions:
 
