@@ -34,9 +34,10 @@ const setRequestHeader = (
 };
 
 type Session = {
-  pendingChunks?: Uint8Array[];
-  ended: boolean;
-  finished: boolean;
+  ready: boolean;
+  pendingChunks: Uint8Array[];
+  streamClosed: boolean;
+  requestDone: boolean;
   cmdController?: ReadableStreamDefaultController<Uint8Array>;
 };
 
@@ -46,6 +47,20 @@ export function rscDevtoolsPlugin(): Plugin {
     configureServer(server) {
       const hot = server.environments.client.hot;
       const sessions = new Map<string, Session>();
+
+      const getSession = (debugId: string) => {
+        let session = sessions.get(debugId);
+        if (!session) {
+          session = {
+            ready: false,
+            pendingChunks: [],
+            streamClosed: false,
+            requestDone: false,
+          };
+          sessions.set(debugId, session);
+        }
+        return session;
+      };
 
       const sendChunk = (debugId: string, chunk: Uint8Array) => {
         hot.send(DEBUG_DATA_EVENT, {
@@ -79,19 +94,8 @@ export function rscDevtoolsPlugin(): Plugin {
         }
       };
 
-      const flushPendingChunks = (debugId: string, session: Session) => {
-        const pendingChunks = session.pendingChunks;
-        if (!pendingChunks) {
-          return;
-        }
-        for (const chunk of pendingChunks) {
-          sendChunk(debugId, chunk);
-        }
-        delete session.pendingChunks;
-      };
-
-      const cleanupIfEnded = (debugId: string, session: Session) => {
-        if (session.pendingChunks || !session.ended || !session.finished) {
+      const cleanupIfDone = (debugId: string, session: Session) => {
+        if (!session.ready || !session.streamClosed || !session.requestDone) {
           return;
         }
         getDebugChannels().delete(debugId);
@@ -106,39 +110,28 @@ export function rscDevtoolsPlugin(): Plugin {
         assertIsDebugEventPayload(payload);
         const session = sessions.get(payload.i);
         if ('d' in payload) {
-          // done
           if (session) {
             closeCmdController(session);
           }
           return;
         }
         if ('b' in payload) {
-          // chunk
           if (session) {
             enqueueCmdChunk(session, base64ToBytes(payload.b));
           }
           return;
         }
-        // ready
-        if (session) {
-          flushPendingChunks(payload.i, session);
-          cleanupIfEnded(payload.i, session);
-        } else {
-          sessions.set(payload.i, { ended: false, finished: false });
+        const readySession = session ?? getSession(payload.i);
+        readySession.ready = true;
+        for (const chunk of readySession.pendingChunks) {
+          sendChunk(payload.i, chunk);
         }
+        readySession.pendingChunks.length = 0;
+        cleanupIfDone(payload.i, readySession);
       });
 
       const registerDebugChannel = (debugId: string) => {
-        let session = sessions.get(debugId);
-        if (!session) {
-          session = {
-            pendingChunks: [],
-            ended: false,
-            finished: false,
-          };
-          sessions.set(debugId, session);
-        }
-        const currentSession = session;
+        const session = getSession(debugId);
         let deactivatePrevious: (() => void) | undefined;
         const createDebugChannel = () => {
           // The browser only receives the last render in a request.
@@ -146,53 +139,46 @@ export function rscDevtoolsPlugin(): Plugin {
           let active = true;
           deactivatePrevious = () => {
             active = false;
-            closeCmdController(currentSession);
-            if (currentSession.pendingChunks) {
-              currentSession.pendingChunks = [];
-            }
-            currentSession.ended = false;
+            closeCmdController(session);
+            session.pendingChunks.length = 0;
+            session.streamClosed = false;
           };
           const readable = new ReadableStream<Uint8Array>({
             start(controller) {
-              currentSession.cmdController = controller;
+              session.cmdController = controller;
             },
             cancel() {
               if (active) {
-                delete currentSession.cmdController;
+                delete session.cmdController;
               }
             },
           });
+          const closeStream = () => {
+            if (!active) {
+              return;
+            }
+            session.streamClosed = true;
+            cleanupIfDone(debugId, session);
+          };
           const writable = new WritableStream<Uint8Array>({
             write(chunk) {
               if (!active) {
                 return;
               }
-              if (currentSession.pendingChunks) {
-                currentSession.pendingChunks.push(chunk);
-              } else {
+              if (session.ready) {
                 sendChunk(debugId, chunk);
+              } else {
+                session.pendingChunks.push(chunk);
               }
             },
-            close() {
-              if (!active) {
-                return;
-              }
-              currentSession.ended = true;
-              cleanupIfEnded(debugId, currentSession);
-            },
-            abort() {
-              if (!active) {
-                return;
-              }
-              currentSession.ended = true;
-              cleanupIfEnded(debugId, currentSession);
-            },
+            close: closeStream,
+            abort: closeStream,
           });
           return { writable, readable };
         };
         const finishDebugChannel = () => {
-          currentSession.finished = true;
-          cleanupIfEnded(debugId, currentSession);
+          session.requestDone = true;
+          cleanupIfDone(debugId, session);
         };
         getDebugChannels().set(debugId, [
           createDebugChannel,
