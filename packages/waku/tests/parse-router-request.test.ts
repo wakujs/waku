@@ -11,8 +11,7 @@ import {
 
 const req = (url: string) => new Request(url);
 
-// the url the client router actually fetches for a route: the route query
-// travels inside a `query` parameter, exactly as `createRscParams` sends it
+// the url the client router actually fetches, envelope and all
 const rscUrl = (routePath: string, query = '') =>
   'http://localhost/RSC/' +
   encodeRscPath(encodeRoutePath(routePath)) +
@@ -70,14 +69,12 @@ describe('parseRouterRequest', () => {
     if (parsed?.type !== 'route') {
       throw new Error('expected a route');
     }
-    // `path` and `query` are reachable by inference alone, which is why the
-    // union is not exported.
     expect([parsed.path, parsed.query]).toEqual(['/x', 'a=1']);
   });
 
   it('reports an unknown query when the params ride in the body', () => {
-    // a fetch RSC input transformer that returns anything but URLSearchParams
-    // makes the client POST the params as an encoded body
+    // what `fetchRsc` sends when a transformer returns anything but
+    // `URLSearchParams`
     const bodyBacked = new Request(rscUrl('/x'), {
       method: 'POST',
       body: 'encoded-reply',
@@ -204,7 +201,6 @@ describe('formatRouterRequest', () => {
     const bodyBacked = () =>
       new Request(rscUrl('/old'), { method: 'POST', body: 'encoded-reply' });
     expect(formatRouterRequest(bodyBacked(), '/new')).toBe(null);
-    // an explicit query says what the destination should carry, so it can build
     expect(formatRouterRequest(bodyBacked(), '/new', 'b=2')?.search).toBe(
       '?query=b%3D2',
     );
