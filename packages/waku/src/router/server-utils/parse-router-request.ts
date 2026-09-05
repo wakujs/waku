@@ -19,15 +19,20 @@ const getRscBase = () => import.meta.env?.WAKU_CONFIG_RSC_BASE ?? 'RSC';
  *
  * A route is reported the same way whether the browser asked for the document
  * or the client router asked for its RSC payload, so a check written against
- * `path` covers both. An action carries no route: it is dispatched by function
- * id, so no path-based rule can scope it.
+ * `path` covers both.
+ *
+ * `'action'` is a client-dispatched action, addressed by function id with no
+ * route attached. A progressively enhanced form submitted without JavaScript
+ * is not one of these: it posts to the route's own url and is reported as
+ * `'route'`, which is what it addresses. Waku itself only tells the two apart
+ * after decoding the body.
  */
 export type Unstable_RouterRequest =
   /** A page request: the document, or the RSC payload for the same route. */
   | { type: 'route'; path: string; query: string }
   /** A slice payload request. */
   | { type: 'slice'; id: string }
-  /** A server action call. Carries no route — see the type docs. */
+  /** A client-dispatched server action. Carries no route — see the type docs. */
   | { type: 'action' };
 
 /**
@@ -42,8 +47,9 @@ export type Unstable_RouterRequest =
  * is the caller's job.
  *
  * A route-matched check here is an optimistic redirect, not an authorization
- * boundary — it cannot cover `type: 'action'`, and it runs before the router
- * has resolved anything. Enforce authorization where the data is read.
+ * boundary — it cannot cover a client-dispatched `type: 'action'`, and it runs
+ * before the router has resolved anything. Enforce authorization where the data
+ * is read.
  */
 export function parseRouterRequest(
   req: Request,
@@ -57,11 +63,18 @@ export function parseRouterRequest(
   } catch {
     return null;
   }
-  const query = url.searchParams.toString();
   const rscPathPrefix = '/' + rscBase + '/';
   if (!pathname.startsWith(rscPathPrefix)) {
-    return { type: 'route', path: pathnameToRoutePath(pathname), query };
+    return {
+      type: 'route',
+      path: pathnameToRoutePath(pathname),
+      query: url.searchParams.toString(),
+    };
   }
+  // The client router sends the route query inside a `query` parameter
+  // (`createRscParams`), and the server reads it back the same way, so an RSC
+  // url's own search string is an envelope, not the route's query.
+  const query = url.searchParams.get('query') ?? '';
   let rscPath: string;
   try {
     rscPath = decodeRscPath(pathname.slice(rscPathPrefix.length));
@@ -106,12 +119,20 @@ export function formatRouterRequest(
   const isRscRequest = removeBase(url.pathname, basePath).startsWith(
     '/' + rscBase + '/',
   );
+  // `encodeRoutePath` rejects a trailing slash and `/index.html`, which a
+  // hand-written redirect table is free to contain, so canonicalize first and
+  // keep both url shapes pointing at the same route.
+  const canonicalPath = pathnameToRoutePath(routePath);
   url.pathname = addBase(
     isRscRequest
-      ? '/' + rscBase + '/' + encodeRscPath(encodeRoutePath(routePath))
-      : routePath,
+      ? '/' + rscBase + '/' + encodeRscPath(encodeRoutePath(canonicalPath))
+      : canonicalPath,
     basePath,
   );
-  url.search = query ?? parsed.query;
+  const nextQuery = query ?? parsed.query;
+  // Match how the client router sends a route query for each url shape.
+  url.search = isRscRequest
+    ? new URLSearchParams({ query: nextQuery }).toString()
+    : nextQuery;
   return url;
 }

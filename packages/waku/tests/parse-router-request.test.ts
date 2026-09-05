@@ -11,11 +11,13 @@ import {
 
 const req = (url: string) => new Request(url);
 
-// the url the client router actually fetches for a route
+// the url the client router actually fetches for a route: the route query
+// travels inside a `query` parameter, exactly as `createRscParams` sends it
 const rscUrl = (routePath: string, query = '') =>
   'http://localhost/RSC/' +
   encodeRscPath(encodeRoutePath(routePath)) +
-  (query ? '?' + query : '');
+  '?' +
+  new URLSearchParams({ query }).toString();
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -54,6 +56,18 @@ describe('parseRouterRequest', () => {
     expect(parseRouterRequest(req(rscUrl('/x', 'a=1')))).toMatchObject({
       query: 'a=1',
     });
+  });
+
+  it('unwraps a multi-parameter query from an RSC url', () => {
+    // the envelope is `?query=a%3D1%26b%3D2`, not `?a=1&b=2`
+    expect(parseRouterRequest(req(rscUrl('/x', 'a=1&b=2')))).toMatchObject({
+      query: 'a=1&b=2',
+    });
+  });
+
+  it('reports an empty query for an RSC url with no envelope', () => {
+    const url = 'http://localhost/RSC/' + encodeRscPath(encodeRoutePath('/x'));
+    expect(parseRouterRequest(req(url))).toMatchObject({ query: '' });
   });
 
   it('reports a server action as an action, with no route', () => {
@@ -137,6 +151,39 @@ describe('formatRouterRequest', () => {
       formatRouterRequest(req('http://localhost/old?a=1'), '/new', 'b=2')
         ?.search,
     ).toBe('?b=2');
+  });
+
+  it('wraps the query again when rewriting an RSC url', () => {
+    expect(
+      formatRouterRequest(req(rscUrl('/old', 'a=1')), '/new')?.search,
+    ).toBe('?query=a%3D1');
+    expect(
+      formatRouterRequest(req(rscUrl('/old', 'a=1')), '/new', 'b=2')?.search,
+    ).toBe('?query=b%3D2');
+  });
+
+  it('round-trips a rewritten query through parseRouterRequest', () => {
+    for (const original of [
+      'http://localhost/old?a=1',
+      rscUrl('/old', 'a=1'),
+    ]) {
+      const rewritten = formatRouterRequest(req(original), '/new', 'b=2&c=3');
+      expect(parseRouterRequest(req(rewritten!.toString()))).toEqual({
+        type: 'route',
+        path: '/new',
+        query: 'b=2&c=3',
+      });
+    }
+  });
+
+  it('canonicalizes a destination path in either shape', () => {
+    expect(
+      formatRouterRequest(req('http://localhost/old'), '/new/')?.pathname,
+    ).toBe('/new');
+    const rsc = formatRouterRequest(req(rscUrl('/old')), '/new/');
+    expect(parseRouterRequest(req(rsc!.toString()))).toMatchObject({
+      path: '/new',
+    });
   });
 
   it('honours a custom basePath', () => {
