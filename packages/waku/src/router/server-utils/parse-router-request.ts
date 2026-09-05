@@ -129,8 +129,12 @@ export function formatRouterRequest(
   if (nextQuery === undefined) {
     return null;
   }
-  url.search = isRscRequest
-    ? new URLSearchParams({ query: nextQuery }).toString()
-    : nextQuery;
+  if (isRscRequest) {
+    // The envelope can carry params a fetch RSC input transformer added, and
+    // the handler still receives them, so update the query in place.
+    url.searchParams.set('query', nextQuery);
+  } else {
+    url.search = nextQuery;
+  }
   return url;
 }

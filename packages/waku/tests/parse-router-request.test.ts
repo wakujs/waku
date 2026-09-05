@@ -206,6 +206,17 @@ describe('formatRouterRequest', () => {
     );
   });
 
+  it('keeps envelope params a transformer added', () => {
+    const withExtras =
+      'http://localhost/RSC/' +
+      encodeRscPath(encodeRoutePath('/old')) +
+      '?' +
+      new URLSearchParams({ query: 'a=1', tenant: 'acme' }).toString();
+    const rewritten = formatRouterRequest(req(withExtras), '/new');
+    expect(rewritten?.searchParams.get('tenant')).toBe('acme');
+    expect(rewritten?.searchParams.get('query')).toBe('a=1');
+  });
+
   it('canonicalizes a destination path in either shape', () => {
     expect(
       formatRouterRequest(req('http://localhost/old'), '/new/')?.pathname,
