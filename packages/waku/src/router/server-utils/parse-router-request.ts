@@ -28,8 +28,13 @@ const getRscBase = () => import.meta.env?.WAKU_CONFIG_RSC_BASE ?? 'RSC';
  * after decoding the body.
  */
 type RouterRequest =
-  /** A page request: the document, or the RSC payload for the same route. */
-  | { type: 'route'; path: string; query: string }
+  /**
+   * A page request: the document, or the RSC payload for the same route.
+   *
+   * `query` is `undefined` when the request carries the router's params in its
+   * body rather than its url — see `parseRouterRequest`.
+   */
+  | { type: 'route'; path: string; query: string | undefined }
   /** A slice payload request. */
   | { type: 'slice'; id: string }
   /** A client-dispatched server action. Carries no route — see the type docs. */
@@ -47,9 +52,12 @@ type RouterRequest =
  * is the caller's job.
  *
  * `query` is read from the url. An app that registers an
- * `unstable_registerFetchRscInputTransformer` which moves the router's params
- * into the request body gets `query: ''` here, since reading the body would
- * consume it before the handler sees it. `path` is unaffected.
+ * `unstable_registerFetchRscInputTransformer` returning something other than
+ * `URLSearchParams` makes the client send the router's params in an encoded
+ * POST body instead, which cannot be read here without consuming the body
+ * before the handler sees it. Such a request reports `query: undefined` rather
+ * than an empty query, so a caller can tell "no query" from "not visible", and
+ * `formatRouterRequest` refuses to invent one. `path` is unaffected.
  *
  * A route-matched check here is an optimistic redirect, not an authorization
  * boundary — it cannot cover a client-dispatched `type: 'action'`, and it runs
@@ -76,8 +84,9 @@ export function parseRouterRequest(req: Request): RouterRequest | null {
   }
   // The client router sends the route query inside a `query` parameter
   // (`createRscParams`), and the server reads it back the same way, so an RSC
-  // url's own search string is an envelope, not the route's query.
-  const query = url.searchParams.get('query') ?? '';
+  // url's own search string is an envelope, not the route's query. When the
+  // params ride in the body instead, the query is not visible from here at all.
+  const query = req.body ? undefined : (url.searchParams.get('query') ?? '');
   let rscPath: string;
   try {
     rscPath = decodeRscPath(pathname.slice(rscPathPrefix.length));
@@ -105,7 +114,9 @@ export function parseRouterRequest(req: Request): RouterRequest | null {
  * payload url, so a rewrite keeps the kind of response the caller expects.
  *
  * Returns `null` when `req` is not a route request, since an action or a slice
- * has no route to rewrite.
+ * has no route to rewrite, and when the incoming request carries its query in
+ * its body and no `query` is given — rewriting would drop it. Handle `null` by
+ * leaving the request alone.
  */
 export function formatRouterRequest(
   req: Request,
@@ -133,6 +144,11 @@ export function formatRouterRequest(
     basePath,
   );
   const nextQuery = query ?? parsed.query;
+  if (nextQuery === undefined) {
+    // The incoming query rode in the body, so rewriting it would silently drop
+    // it. Pass an explicit `query` to say what the destination should carry.
+    return null;
+  }
   // Match how the client router sends a route query for each url shape.
   url.search = isRscRequest
     ? new URLSearchParams({ query: nextQuery }).toString()

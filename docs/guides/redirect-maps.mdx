@@ -52,13 +52,16 @@ const redirectsMiddleware = (): MiddlewareHandler => async (c, next) => {
   const parsed = parseRouterRequest(c.req.raw);
   const destination =
     parsed?.type === 'route' ? redirects[parsed.path] : undefined;
-  if (destination) {
-    // Rebuilds the same kind of url, so client-side navigation gets a payload
-    // and a direct visit gets the page.
-    const location = formatRouterRequest(c.req.raw, destination);
+  // Rebuilds the same kind of url, so client-side navigation gets a payload
+  // and a direct visit gets the page. `null` means this request cannot be
+  // rewritten without losing state, so leave it alone.
+  const location = destination
+    ? formatRouterRequest(c.req.raw, destination)
+    : null;
+  if (location) {
     c.res = new Response(null, {
       status: 302,
-      headers: { location: location!.toString() },
+      headers: { location: location.toString() },
     });
     return;
   }

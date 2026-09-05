@@ -75,6 +75,20 @@ describe('parseRouterRequest', () => {
     expect([parsed.path, parsed.query]).toEqual(['/x', 'a=1']);
   });
 
+  it('reports an unknown query when the params ride in the body', () => {
+    // a fetch RSC input transformer that returns anything but URLSearchParams
+    // makes the client POST the params as an encoded body
+    const bodyBacked = new Request(rscUrl('/x'), {
+      method: 'POST',
+      body: 'encoded-reply',
+    });
+    expect(parseRouterRequest(bodyBacked)).toEqual({
+      type: 'route',
+      path: '/x',
+      query: undefined,
+    });
+  });
+
   it('reports an empty query for an RSC url with no envelope', () => {
     const url = 'http://localhost/RSC/' + encodeRscPath(encodeRoutePath('/x'));
     expect(parseRouterRequest(req(url))).toMatchObject({ query: '' });
@@ -184,6 +198,16 @@ describe('formatRouterRequest', () => {
         query: 'b=2&c=3',
       });
     }
+  });
+
+  it('refuses to rewrite a body-backed request rather than drop its query', () => {
+    const bodyBacked = () =>
+      new Request(rscUrl('/old'), { method: 'POST', body: 'encoded-reply' });
+    expect(formatRouterRequest(bodyBacked(), '/new')).toBe(null);
+    // an explicit query says what the destination should carry, so it can build
+    expect(formatRouterRequest(bodyBacked(), '/new', 'b=2')?.search).toBe(
+      '?query=b%3D2',
+    );
   });
 
   it('canonicalizes a destination path in either shape', () => {
