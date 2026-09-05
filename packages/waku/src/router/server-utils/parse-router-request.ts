@@ -98,8 +98,9 @@ export function parseRouterRequest(req: Request): RouterRequest | null {
  * payload url, so a rewrite keeps the kind of response the caller expects.
  *
  * Returns `null` when `req` is not a route request, since an action or a slice
- * has no route to rewrite, and when the incoming request carries its query in
- * its body and no `query` is given — rewriting would drop it. Handle `null` by
+ * has no route to rewrite, and when the incoming request carries the router's
+ * params in its body: a redirect drops that body, and `query` can replace the
+ * route query but not the rest of a transformed payload. Handle `null` by
  * leaving the request alone.
  */
 export function formatRouterRequest(
@@ -125,10 +126,12 @@ export function formatRouterRequest(
       : canonicalPath,
     basePath,
   );
-  const nextQuery = query ?? parsed.query;
-  if (nextQuery === undefined) {
+  if (parsed.query === undefined) {
+    // A body-backed request carries a whole transformed payload, and a redirect
+    // drops the body, so no url can stand in for it.
     return null;
   }
+  const nextQuery = query ?? parsed.query;
   if (isRscRequest) {
     // The envelope can carry params a fetch RSC input transformer added, and
     // the handler still receives them, so update the query in place.

@@ -197,13 +197,12 @@ describe('formatRouterRequest', () => {
     }
   });
 
-  it('refuses to rewrite a body-backed request rather than drop its query', () => {
+  it('refuses to rewrite a body-backed request', () => {
     const bodyBacked = () =>
       new Request(rscUrl('/old'), { method: 'POST', body: 'encoded-reply' });
     expect(formatRouterRequest(bodyBacked(), '/new')).toBe(null);
-    expect(formatRouterRequest(bodyBacked(), '/new', 'b=2')?.search).toBe(
-      '?query=b%3D2',
-    );
+    // an explicit query cannot stand in for the rest of the payload either
+    expect(formatRouterRequest(bodyBacked(), '/new', 'b=2')).toBe(null);
   });
 
   it('keeps envelope params a transformer added', () => {
