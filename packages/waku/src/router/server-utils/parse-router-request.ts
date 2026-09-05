@@ -46,6 +46,11 @@ export type Unstable_RouterRequest =
  * `/favicon.ico` parses as a route with that path. Deciding which paths matter
  * is the caller's job.
  *
+ * `query` is read from the url. An app that registers an
+ * `unstable_registerFetchRscInputTransformer` which moves the router's params
+ * into the request body gets `query: ''` here, since reading the body would
+ * consume it before the handler sees it. `path` is unaffected.
+ *
  * A route-matched check here is an optimistic redirect, not an authorization
  * boundary — it cannot cover a client-dispatched `type: 'action'`, and it runs
  * before the router has resolved anything. Enforce authorization where the data
