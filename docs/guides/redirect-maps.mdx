@@ -14,19 +14,19 @@ This guide is for redirect maps that sit in front of the Waku server, such as mi
 When a Waku app uses the client router, a navigation usually fetches both:
 
 - the browser route, such as `/old`
-- the corresponding RSC payload route, such as `/RSC/R/old.txt`
+- the RSC payload for the same route, at a separate url
 
-If you want `/old` to behave like a redirect to `/new` even during client-side navigation, you usually need to redirect both paths.
+Both have to be redirected. If you redirect only `/old`, a direct visit works while client-side navigation still lands on the old route.
 
-With Waku's default config:
+Inside the app, `unstable_parseRouterRequest` reads either url as the route it addresses, and `unstable_formatRouterRequest` builds the matching url for the destination, so middleware never has to spell the RSC url out. Outside the app — a CDN or a hosting platform's redirect rules — there is no way to call into Waku, so those rules do have to name the url. With Waku's default config:
 
 - `basePath` is `/`
 - `rscBase` is `RSC`
 - the route `/old` maps to the RSC path `/RSC/R/old.txt`
 
-> The `/RSC/` file naming convention is [subject to change](https://github.com/wakujs/waku/discussions/929#discussioncomment-10825975) in future versions of Waku.
+> The `/RSC/` file naming convention is [subject to change](https://github.com/wakujs/waku/discussions/929#discussioncomment-10825975) in future versions of Waku. Prefer the middleware approach below, which does not depend on it.
 
-If you customize `basePath` or `rscBase`, adjust the redirect rules accordingly.
+If you customize `basePath` or `rscBase`, adjust any hand-written rules accordingly.
 
 For application-level redirects implemented inside Waku routes or server actions, see [Redirects and Not Found](/guides/redirects-and-not-found) instead. That is a separate use case from the redirect-map approach described here.
 
@@ -37,23 +37,28 @@ Create a new middleware file in `src/middleware/`. Waku automatically discovers 
 ```typescript
 // ./src/middleware/redirects.ts
 import type { MiddlewareHandler } from 'hono';
+import {
+  unstable_formatRouterRequest as formatRouterRequest,
+  unstable_parseRouterRequest as parseRouterRequest,
+} from 'waku/router/server';
+
+const redirects: Record<string, string> = {
+  '/old': '/new',
+  // ... add more redirects here
+};
 
 const redirectsMiddleware = (): MiddlewareHandler => async (c, next) => {
-  const url = new URL(c.req.raw.url);
-
-  // With the default Waku config, redirect both the browser route
-  // and the corresponding RSC payload route.
-  const redirects: Record<string, string> = {
-    '/old': '/new',
-    '/RSC/R/old.txt': '/RSC/R/new.txt',
-    // ... add more redirects here
-  };
-
-  if (url.pathname in redirects) {
-    url.pathname = redirects[url.pathname]!;
+  // Reads the browser route and the RSC payload request the same way.
+  const parsed = parseRouterRequest(c.req.raw);
+  const destination =
+    parsed?.type === 'route' ? redirects[parsed.path] : undefined;
+  if (destination) {
+    // Rebuilds the same kind of url, so client-side navigation gets a payload
+    // and a direct visit gets the page.
+    const location = formatRouterRequest(c.req.raw, destination);
     c.res = new Response(null, {
       status: 302,
-      headers: { location: url.toString() },
+      headers: { location: location!.toString() },
     });
     return;
   }
@@ -64,9 +69,15 @@ const redirectsMiddleware = (): MiddlewareHandler => async (c, next) => {
 export default redirectsMiddleware;
 ```
 
-This only handles the paths you explicitly match. If you redirect only `/old` and not `/RSC/R/old.txt`, direct requests may work while client-side navigation can still fail or land on the wrong state.
+Matching on `parsed.path` covers both requests with one entry per route, and keeps the redirect map readable as a list of routes.
+
+> In a production build the adapter serves statically generated files before middleware runs, so a middleware redirect does not fire for a route rendered with `render: 'static'`. Redirect those from the hosting environment instead, or make the route dynamic.
+
+Note the `type` check: a server action is dispatched by function id and carries no route, so it can never be matched by a path rule. That is a limitation of any path-based rule, not of this helper — see [Authentication](/guides/integrations/authentication) for where to put checks that must not be bypassed.
 
 ### Redirect via hosting environment
+
+A redirect map outside the app cannot call into Waku, so these rules name both urls explicitly and depend on the `/RSC/` convention noted above.
 
 This very much depends on the hosting environment you are using. For example, on [Vercel](https://vercel.com/docs/projects/project-configuration#redirects) you can use the `vercel.json` file to define redirects.
 
