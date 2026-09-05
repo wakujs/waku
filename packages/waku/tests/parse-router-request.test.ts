@@ -65,6 +65,16 @@ describe('parseRouterRequest', () => {
     });
   });
 
+  it('narrows to the route members without a named type', () => {
+    const parsed = parseRouterRequest(req('http://localhost/x?a=1'));
+    if (parsed?.type !== 'route') {
+      throw new Error('expected a route');
+    }
+    // `path` and `query` are reachable by inference alone, which is why the
+    // union is not exported.
+    expect([parsed.path, parsed.query]).toEqual(['/x', 'a=1']);
+  });
+
   it('reports an empty query for an RSC url with no envelope', () => {
     const url = 'http://localhost/RSC/' + encodeRscPath(encodeRoutePath('/x'));
     expect(parseRouterRequest(req(url))).toMatchObject({ query: '' });

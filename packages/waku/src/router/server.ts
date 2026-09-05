@@ -24,4 +24,3 @@ export {
   formatRouterRequest as unstable_formatRouterRequest,
   parseRouterRequest as unstable_parseRouterRequest,
 } from './server-utils/parse-router-request.js';
-export type { Unstable_RouterRequest } from './server-utils/parse-router-request.js';

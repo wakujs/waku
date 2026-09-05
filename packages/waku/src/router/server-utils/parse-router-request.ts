@@ -27,7 +27,7 @@ const getRscBase = () => import.meta.env?.WAKU_CONFIG_RSC_BASE ?? 'RSC';
  * `'route'`, which is what it addresses. Waku itself only tells the two apart
  * after decoding the body.
  */
-export type Unstable_RouterRequest =
+type RouterRequest =
   /** A page request: the document, or the RSC payload for the same route. */
   | { type: 'route'; path: string; query: string }
   /** A slice payload request. */
@@ -56,9 +56,7 @@ export type Unstable_RouterRequest =
  * before the router has resolved anything. Enforce authorization where the data
  * is read.
  */
-export function parseRouterRequest(
-  req: Request,
-): Unstable_RouterRequest | null {
+export function parseRouterRequest(req: Request): RouterRequest | null {
   const basePath = getBasePath();
   const rscBase = getRscBase();
   const url = new URL(req.url);
