@@ -150,11 +150,18 @@ incomplete.
 - Comment why a branch exists, which invariant must be preserved, or which
   external behavior requires a workaround.
 - Do not restate names or repeat the same fact in multiple places.
+- Treat a cluster of inline comments as a design signal. If a function needs
+  several of them to be followed, name the constant, rename the binding, or
+  split the function. The comment is usually describing something the code
+  should say.
 - `TODO`, `FIXME`, and `HACK` are acceptable when they describe an unresolved
   issue. Remove them only when the issue is actually resolved.
 - Public APIs should have complete JSDoc suitable for editor documentation.
   Cover the behavior, parameters, return values, caveats, and examples needed to
-  use the API correctly. Public API documentation does not need to be short.
+  use the API correctly, in as few lines as that takes. A caller should be able
+  to read it in one pass. Explain what a caller must know, not how the
+  implementation arrives there. Documentation that grows past a screenful
+  usually means the API needs splitting rather than more prose.
 - Document non-obvious behavior and caveats without enumerating every edge case
   already captured by tests.
 - Public unstable APIs should have the same useful editor documentation as

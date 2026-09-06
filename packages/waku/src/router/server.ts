@@ -20,3 +20,7 @@ export type {
   CreateInterceptor,
 } from './create-pages.js';
 export { fsRouter } from './fs-router.js';
+export {
+  formatRouterRequest as unstable_formatRouterRequest,
+  parseRouterRequest as unstable_parseRouterRequest,
+} from './server-utils/parse-router-request.js';
