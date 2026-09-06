@@ -189,14 +189,28 @@ if (c.req.path.startsWith('/dashboard') && !session) {
 }
 ```
 
-It only sees document requests. A client-side navigation to `/dashboard` requests `/RSC/R/dashboard.txt` instead, so the middleware never matches and the protected route's payload is served:
+`c.req.path` only sees document requests. A client-side navigation to `/dashboard` requests `/RSC/R/dashboard.txt` instead, so the middleware never matches and the protected route's payload is served:
 
 ```
 GET /dashboard                    -> 302  Location: /login
 GET /RSC/R/dashboard.txt?query=   -> 200  the rendered dashboard
 ```
 
-A visitor with no session who clicks a `<Link to="/dashboard">` gets the page. The check passes the obvious manual test (loading the URL redirects) and fails on the path users actually take. Middleware is the right place for response-level concerns such as headers, logging and cookies; authorization belongs in the data layer, with the redirect in the layout.
+A visitor with no session who clicks a `<Link to="/dashboard">` gets the page. The check passes the obvious manual test (loading the URL redirects) and fails on the path users actually take.
+
+That much is fixable. `unstable_parseRouterRequest` reads either url as the route it addresses, so both lines above report `/dashboard` and a middleware written against it matches both — the [redirect maps](/guides/redirect-maps) guide builds one:
+
+```ts
+import { unstable_parseRouterRequest as parseRouterRequest } from 'waku/router/server';
+
+const parsed = parseRouterRequest(c.req.raw);
+const path = parsed?.type === 'route' ? parsed.path : null;
+if (path?.startsWith('/dashboard') && !session) {
+  return c.redirect('/login');
+}
+```
+
+What it does not fix is the reason to keep authorization out of middleware. A server action dispatched from the client carries no route — it reports `{ type: 'action' }` — so no path rule covers it, and a component that reads protected data inside an action is reachable whatever the middleware decides. A route match is an optimistic redirect, not a boundary. Middleware is the right place for response-level concerns such as headers, logging and cookies; authorization belongs in the data layer, with the redirect in the layout.
 
 ## Signing in: setting a cookie from a server action
 

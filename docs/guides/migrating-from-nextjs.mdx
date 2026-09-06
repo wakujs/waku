@@ -47,6 +47,12 @@ ignored by the router so that files can be co-located inside `src/pages`:
 `_actions`, `_components` and `_hooks`. Other `_`-prefixed names are not
 special, so put `lib/` and `utils/` outside `src/pages` as before.
 
+Catch-alls need one adjustment. Waku has `[...rest]` but no `[[...rest]]`, and
+its catch-all does not match the base path: `shop/[...rest].tsx` serves
+`/shop/a` and `/shop/a/b`, not `/shop`. An optional catch-all therefore becomes
+two files, `shop/index.tsx` and `shop/[...rest].tsx`. Carrying the Next.js
+filename across on its own leaves `/shop` with no route.
+
 ### The document shell moves
 
 Next.js renders `<html>` and `<body>` from the root layout. Waku splits that: the
