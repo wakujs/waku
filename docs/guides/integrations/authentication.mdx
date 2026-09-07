@@ -198,17 +198,29 @@ GET /RSC/R/dashboard.txt?query=   -> 200  the rendered dashboard
 
 A visitor with no session who clicks a `<Link to="/dashboard">` gets the page. The check passes the obvious manual test (loading the URL redirects) and fails on the path users actually take.
 
-That much is fixable. `unstable_parseRouterRequest` reads either url as the route it addresses, so both lines above report `/dashboard` and a middleware written against it matches both — the [redirect maps](/guides/redirect-maps) guide builds one:
+That much is fixable. `unstable_parseRouterRequest` reads either url as the route it addresses, and `unstable_formatRouterRequest` builds the destination in the shape the caller asked for — a document for a document request, an RSC payload for an RSC one. The [redirect maps](/guides/redirect-maps) guide builds a middleware on the pair:
 
 ```ts
-import { unstable_parseRouterRequest as parseRouterRequest } from 'waku/router/server';
+import {
+  unstable_formatRouterRequest as formatRouterRequest,
+  unstable_parseRouterRequest as parseRouterRequest,
+} from 'waku/router/server';
 
 const parsed = parseRouterRequest(c.req.raw);
 const path = parsed?.type === 'route' ? parsed.path : null;
 if (path?.startsWith('/dashboard') && !session) {
-  return c.redirect('/login');
+  const location = formatRouterRequest(c.req.raw, '/login');
+  if (location) {
+    c.res = new Response(null, {
+      status: 302,
+      headers: { location: location.toString() },
+    });
+    return;
+  }
 }
 ```
+
+Redirecting an RSC request to `/login` with `c.redirect()` would send the fetch a document, which the client then fails to decode as a Flight payload; the formatter is what keeps the shapes matched.
 
 What it does not fix is the reason to keep authorization out of middleware. A server action dispatched from the client carries no route — it reports `{ type: 'action' }` — so no path rule covers it, and a component that reads protected data inside an action is reachable whatever the middleware decides. A route match is an optimistic redirect, not a boundary. Middleware is the right place for response-level concerns such as headers, logging and cookies; authorization belongs in the data layer, with the redirect in the layout.
 

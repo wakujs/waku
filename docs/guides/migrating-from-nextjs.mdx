@@ -228,8 +228,7 @@ Two exceptions:
 - An action that stays on the page and expects the screen to update needs
   `unstable_rerenderRoute(pathname, query)` — an action that ends in `redirect()`
   does not. Pass the current query string, or a client sitting on
-  `/invoices?page=2` will not see the re-render. As of 1.0.0-rc the client can also drop the re-rendered elements depending on the order in which the layout and page slots stream ([wakujs/waku#2288](https://github.com/wakujs/waku/issues/2288)); until that is fixed, refetching from a client component
-  with `useRouter().reload()` after the action is the reliable form.
+  `/invoices?page=2` will not see the re-render.
 - If you measure a need for caching, add it explicitly. See
   [Explicit Caching](/guides/explicit-caching).
 
@@ -288,8 +287,11 @@ root layout, read during render, is enough.
 - A dependency that loads runtime assets next to itself (a WASM database, `sharp`,
   a generated Prisma client) must stay out of the server bundle:
   `vite.environments.rsc.resolve.external`.
-- Tailwind v3 with PostCSS and Tailwind v4 with `@tailwindcss/vite` both work
-  unchanged. So do CSS modules.
+- Tailwind v4 with `@tailwindcss/vite` works unchanged, and so do CSS modules.
+  Tailwind v3 with PostCSS keeps working too, but its `content` globs are a list
+  of paths: a config scanning `./app/**/*` finds nothing once the routes live in
+  `src/pages`, and the build succeeds with those classes missing from the CSS.
+  Point `content` at `./src/**/*` when you move them.
 
 ## A migration order that works
 
