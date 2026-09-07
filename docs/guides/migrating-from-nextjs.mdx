@@ -198,7 +198,7 @@ favour: match it against a list of known routes instead of casting.
 | `not-found.tsx`, per segment | one `src/pages/404.tsx` for the app                                                                                                                                |
 | `template.tsx`               | no equivalent; remount with a `key`                                                                                                                                |
 | `default.tsx`                | no equivalent (see parallel routes below)                                                                                                                          |
-| `sitemap.ts`, `robots.ts`    | API routes that return the XML or text                                                                                                                             |
+| `sitemap.ts`, `robots.ts`    | `_api/sitemap.xml.ts`, `_api/robots.txt.ts` — only the final extension is stripped, so the name carries the one the crawler asks for                               |
 | `opengraph-image.tsx`        | an API route; `satori` + `@resvg/resvg-js` for PNG                                                                                                                 |
 | `route.ts`                   | `src/pages/_api/**/*.ts` exporting `GET`, `POST`, …; the `_api` segment is stripped from the URL, so `app/api/x/route.ts` becomes `_api/api/x.ts` to keep `/api/x` |
 
@@ -228,7 +228,10 @@ Two exceptions:
 - An action that stays on the page and expects the screen to update needs
   `unstable_rerenderRoute(pathname, query)` — an action that ends in `redirect()`
   does not. Pass the current query string, or a client sitting on
-  `/invoices?page=2` will not see the re-render.
+  `/invoices?page=2` will not see the re-render. A re-render carries the route's
+  own elements, not a lazy `<Slice>`: a mounted slice keeps what it fetched, so
+  a mutation that changes slice data needs the slice remounted with a `key` or
+  refetched on its own.
 - If you measure a need for caching, add it explicitly. See
   [Explicit Caching](/guides/explicit-caching).
 

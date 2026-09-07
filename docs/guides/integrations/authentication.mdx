@@ -457,7 +457,7 @@ Keep session reads as far down the tree as they can go. A root layout that reads
 
 ## Choosing a library
 
-The code above is a complete, small session, and it is a reasonable place to stop for an app with a password form. If you want OAuth providers, email links, or session storage, any framework-agnostic library fits the same shape: it verifies credentials in a server action or API route, it needs the cookie jar to write its cookie, and it needs `auth()` to read it. [Auth.js](https://authjs.dev) (`@auth/core`, not a framework wrapper) and [Better Auth](https://www.better-auth.com) are two options. A library that is built on another framework's internals, such as one that imports that framework's request or header helpers, will not port.
+The code above is a complete, small session, and it is a reasonable place to stop for an app with a password form. If you want OAuth providers, email links, or session storage, any framework-agnostic library fits the same shape: it verifies credentials in a server action or API route, and it needs `auth()` to read its cookie. Writing one depends on where it runs: a server action needs the cookie jar above, while an API route can return the library's own `Response` unchanged, `Set-Cookie` and all. [Auth.js](https://authjs.dev) (`@auth/core`, not a framework wrapper) and [Better Auth](https://www.better-auth.com) are two options. A library that is built on another framework's internals, such as one that imports that framework's request or header helpers, will not port.
 
 ## Runtime notes
 
