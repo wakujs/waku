@@ -1,4 +1,5 @@
 import type { Unstable_RenderHtml, Unstable_RenderRsc } from '../types.js';
+import { getErrorInfo } from './custom-errors.js';
 import { ETAG_ID_PREFIX } from './etags.js';
 import { sanitizeLog } from './log.js';
 
@@ -28,20 +29,27 @@ export function createRenderUtils(
     writable: WritableStream<Uint8Array>;
   },
   debugId?: string,
+  onRenderError?: (e: unknown) => void,
 ): {
   renderRsc: Unstable_RenderRsc;
   renderHtml: Unstable_RenderHtml;
 } {
   const onError = (e: unknown) => {
-    if (
+    const digest =
       e &&
       typeof e === 'object' &&
       'digest' in e &&
       typeof e.digest === 'string'
-    ) {
-      return e.digest;
+        ? e.digest
+        : undefined;
+    if (digest === undefined) {
+      console.error('Error during rendering:', sanitizeLog(e));
     }
-    console.error('Error during rendering:', sanitizeLog(e));
+    // custom errors carry control flow such as redirects, the rest are render failures
+    if (!getErrorInfo(e)) {
+      onRenderError?.(e);
+    }
+    return digest;
   };
 
   return {

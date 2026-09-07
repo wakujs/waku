@@ -138,11 +138,17 @@ const toProcessRequest =
 const toProcessBuild =
   (handleBuild: HandleBuild): ProcessBuild =>
   async ({ emitFile, unstable_registerPrunableFile }) => {
+    let renderErrorCount = 0;
     const renderUtils = createRenderUtils(
       undefined,
       renderToReadableStream,
       loadSsrEntryModule,
       import.meta.env.WAKU_BUILD_ID ?? '',
+      undefined,
+      undefined,
+      () => {
+        renderErrorCount++;
+      },
     );
 
     let fallbackHtml: string | undefined;
@@ -184,6 +190,11 @@ const toProcessBuild =
       },
       unstable_registerPrunableFile,
     });
+    if (renderErrorCount) {
+      throw new Error(
+        `${renderErrorCount} error${renderErrorCount === 1 ? '' : 's'} occurred while prerendering, see the log above.`,
+      );
+    }
     await emitFile(
       joinPath(DIST_SERVER, BUILD_METADATA_FILE),
       stringToStream(
