@@ -13,24 +13,35 @@ const validateRscElementIds = (elements: Record<string, unknown>) => {
   }
 };
 
-export function createRenderUtils(
-  temporaryReferences: unknown,
+export function createRenderUtils({
+  temporaryReferences,
+  renderToReadableStream,
+  loadSsrEntryModule,
+  buildId,
+  createDebugChannel,
+  debugId,
+  onRenderError,
+}: {
+  temporaryReferences: unknown;
   renderToReadableStream: (
     data: unknown,
     options?: object,
     extraOptions?: object,
-  ) => ReadableStream,
+  ) => ReadableStream;
   loadSsrEntryModule: () => Promise<
     typeof import('../vite-entries/entry.ssr.js')
-  >,
-  buildId: string,
-  createDebugChannel?: () => {
-    readable: ReadableStream<Uint8Array>;
-    writable: WritableStream<Uint8Array>;
-  },
-  debugId?: string,
-  onRenderError?: (e: unknown) => void,
-): {
+  >;
+  buildId: string;
+  createDebugChannel?:
+    | (() => {
+        readable: ReadableStream<Uint8Array>;
+        writable: WritableStream<Uint8Array>;
+      })
+    | undefined;
+  debugId?: string | undefined;
+  /** receives every render error except Waku's custom errors, which carry control flow such as redirects */
+  onRenderError?: ((e: unknown) => void) | undefined;
+}): {
   renderRsc: Unstable_RenderRsc;
   renderHtml: Unstable_RenderHtml;
 } {
@@ -45,7 +56,6 @@ export function createRenderUtils(
     if (digest === undefined) {
       console.error('Error during rendering:', sanitizeLog(e));
     }
-    // custom errors carry control flow such as redirects, the rest are render failures
     if (!getErrorInfo(e)) {
       onRenderError?.(e);
     }
@@ -101,6 +111,7 @@ export function createRenderUtils(
         extraScriptContent: options.unstable_extraScriptContent,
         rethrowNotFound: options.unstable_rethrowNotFound,
         debugId,
+        onRenderError,
       });
       return new Response(htmlResult.stream, {
         status: htmlResult.status || options.status || 200,

@@ -61,14 +61,14 @@ const toProcessRequest =
       debugChannelRegistry?.delete(debugId);
     }
 
-    const renderUtils = createRenderUtils(
+    const renderUtils = createRenderUtils({
       temporaryReferences,
       renderToReadableStream,
       loadSsrEntryModule,
-      import.meta.env.WAKU_BUILD_ID ?? '',
+      buildId: import.meta.env.WAKU_BUILD_ID ?? '',
       createDebugChannel,
       debugId,
-    );
+    });
 
     let res: Awaited<ReturnType<typeof handleRequest>>;
     try {
@@ -138,18 +138,16 @@ const toProcessRequest =
 const toProcessBuild =
   (handleBuild: HandleBuild): ProcessBuild =>
   async ({ emitFile, unstable_registerPrunableFile }) => {
-    let renderErrorCount = 0;
-    const renderUtils = createRenderUtils(
-      undefined,
+    let renderFailed = false;
+    const renderUtils = createRenderUtils({
+      temporaryReferences: undefined,
       renderToReadableStream,
       loadSsrEntryModule,
-      import.meta.env.WAKU_BUILD_ID ?? '',
-      undefined,
-      undefined,
-      () => {
-        renderErrorCount++;
+      buildId: import.meta.env.WAKU_BUILD_ID ?? '',
+      onRenderError: () => {
+        renderFailed = true;
       },
-    );
+    });
 
     let fallbackHtml: string | undefined;
     const getFallbackHtml = async () => {
@@ -190,9 +188,9 @@ const toProcessBuild =
       },
       unstable_registerPrunableFile,
     });
-    if (renderErrorCount) {
+    if (renderFailed) {
       throw new Error(
-        `${renderErrorCount} error${renderErrorCount === 1 ? '' : 's'} occurred while prerendering, see the log above.`,
+        'Render errors occurred while prerendering, see the log above.',
       );
     }
     await emitFile(

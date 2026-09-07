@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
+import { createCustomError } from '../src/lib/utils/custom-errors.js';
 import { ETAG_ID_PREFIX, IMMUTABLE_ETAG } from '../src/lib/utils/etags.js';
 import { createRenderUtils } from '../src/lib/utils/render.js';
 
@@ -7,13 +8,15 @@ const makeRenderUtils = () => {
     (_data: unknown, _options?: object, _extraOptions?: object) =>
       new ReadableStream(),
   );
-  const renderUtils = createRenderUtils(
-    undefined,
+  const onRenderError = vi.fn();
+  const renderUtils = createRenderUtils({
+    temporaryReferences: undefined,
     renderToReadableStream,
-    async () => ({}) as any,
-    '',
-  );
-  return { renderToReadableStream, renderUtils };
+    loadSsrEntryModule: async () => ({}) as any,
+    buildId: '',
+    onRenderError,
+  });
+  return { renderToReadableStream, renderUtils, onRenderError };
 };
 
 describe('createRenderUtils', () => {
@@ -85,13 +88,13 @@ describe('createRenderUtils', () => {
       .fn()
       .mockReturnValueOnce(firstDebugChannel)
       .mockReturnValueOnce(secondDebugChannel);
-    const renderUtils = createRenderUtils(
-      undefined,
+    const renderUtils = createRenderUtils({
+      temporaryReferences: undefined,
       renderToReadableStream,
-      async () => ({}) as any,
-      '',
+      loadSsrEntryModule: async () => ({}) as any,
+      buildId: '',
       createDebugChannel,
-    );
+    });
 
     await renderUtils.renderRsc({ App: 'first' });
     await renderUtils.renderRsc({ App: 'second' });
@@ -121,20 +124,47 @@ describe('createRenderUtils', () => {
       stream: fakeHtmlStream,
       status: undefined,
     });
-    const renderUtils = createRenderUtils(
-      undefined,
+    const onRenderError = vi.fn();
+    const renderUtils = createRenderUtils({
+      temporaryReferences: undefined,
       renderToReadableStream,
-      async () =>
+      loadSsrEntryModule: async () =>
         ({
           INTERNAL_renderHtmlStream: renderHtmlStream,
         }) as any,
-      '',
-    );
+      buildId: '',
+      onRenderError,
+    });
 
     const res = await renderUtils.renderHtml(new ReadableStream(), 'app', {
       rscPath: '',
     });
 
     expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    expect(renderHtmlStream).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ onRenderError }),
+    );
+  });
+
+  test('reports render errors except custom errors', async () => {
+    const { renderToReadableStream, renderUtils, onRenderError } =
+      makeRenderUtils();
+
+    await renderUtils.renderRsc({ App: 'app' });
+    const { onError } = renderToReadableStream.mock.calls[0]![1] as {
+      onError: (e: unknown) => string | undefined;
+    };
+
+    const error = new Error('boom');
+    expect(onError(error)).toBeUndefined();
+    // an error that came back through a Flight round trip keeps its digest
+    const roundTripped = Object.assign(new Error('boom'), { digest: '' });
+    expect(onError(roundTripped)).toBe('');
+    const custom = createCustomError('not found', { status: 404 });
+    expect(onError(custom)).toBe((custom as { digest?: string }).digest);
+
+    expect(onRenderError.mock.calls).toEqual([[error], [roundTripped]]);
   });
 });

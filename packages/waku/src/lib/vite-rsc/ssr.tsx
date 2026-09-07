@@ -41,6 +41,7 @@ type RenderHtmlStream = (
     extraScriptContent: string | undefined;
     rethrowNotFound: boolean | undefined;
     debugId: string | undefined;
+    onRenderError: ((e: unknown) => void) | undefined;
   },
 ) => Promise<{ stream: ReadableStream; status: number | undefined }>;
 
@@ -92,20 +93,25 @@ export const renderHtmlStream: RenderHtmlStream = async (
         bootstrapScriptContent +
         (options.extraScriptContent || ''),
       onError: (e: unknown) => {
-        if (
+        const digest =
           e &&
           typeof e === 'object' &&
           'digest' in e &&
           typeof e.digest === 'string'
-        ) {
-          return e.digest;
+            ? e.digest
+            : undefined;
+        if (digest === undefined) {
+          console.error(
+            '[SSR Error]',
+            sanitizeLog(captureOwnerStack?.() || ''),
+            '\n',
+            sanitizeLog(e),
+          );
         }
-        console.error(
-          '[SSR Error]',
-          sanitizeLog(captureOwnerStack?.() || ''),
-          '\n',
-          sanitizeLog(e),
-        );
+        if (!getErrorInfo(e)) {
+          options.onRenderError?.(e);
+        }
+        return digest;
       },
       ...(options.nonce ? { nonce: options.nonce } : {}),
       ...(options.formState ? { formState: options.formState } : {}),

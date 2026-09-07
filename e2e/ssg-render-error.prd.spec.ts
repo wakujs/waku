@@ -12,12 +12,16 @@ const fixtureDir = fileURLToPath(
   new URL('./fixtures/ssg-render-error', import.meta.url),
 );
 
-test('build fails when a static page throws inside Suspense', async () => {
-  await expect(
-    execAsync(`node ${waku} build`, { cwd: fixtureDir }),
-  ).rejects.toMatchObject({
-    stderr: expect.stringMatching(
-      /Unexpected error inside Suspense[^]*1 error occurred while prerendering/,
-    ),
-  });
+test('build fails when static pages throw during prerendering', async () => {
+  const error = await execAsync(`node ${waku} build`, { cwd: fixtureDir }).then(
+    () => {
+      throw new Error('build should fail');
+    },
+    (e: { stderr: string }) => e,
+  );
+  // a server component throwing inside Suspense
+  expect(error.stderr).toContain('Unexpected error inside Suspense');
+  // a client component throwing while React DOM renders the HTML
+  expect(error.stderr).toContain('Unexpected error in a client component');
+  expect(error.stderr).toContain('Render errors occurred while prerendering');
 });
