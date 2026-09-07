@@ -208,7 +208,8 @@ import {
 
 const parsed = parseRouterRequest(c.req.raw);
 const path = parsed?.type === 'route' ? parsed.path : null;
-if (path?.startsWith('/dashboard') && !session) {
+const inDashboard = path === '/dashboard' || path?.startsWith('/dashboard/');
+if (inDashboard && !session) {
   const location = formatRouterRequest(c.req.raw, '/login');
   if (location) {
     c.res = new Response(null, {
