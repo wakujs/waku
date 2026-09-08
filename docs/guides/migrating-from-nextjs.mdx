@@ -240,14 +240,16 @@ Two exceptions:
 Two Next.js habits do not survive the move, and both fail silently rather than
 loudly:
 
-- **`middleware.ts` cannot protect routes.** A client-side navigation requests
-  `/RSC/R/<path>.txt`, not the page path, so a Hono middleware matching
-  `/dashboard` sees the first page load and nothing after it, and serves the
-  protected payload to anyone who clicks a link. And a layout is not the
-  boundary either: Waku renders a route's layouts and page as independent slots,
-  so a layout that redirects still lets the page render its data. Put the
-  authorization check in the data access layer and the mutations, and the
-  redirect in the layout.
+- **`middleware.ts` is not an authorization boundary.** A client-side navigation
+  requests `/RSC/R/<path>.txt`, not the page path, so a middleware matching
+  `/dashboard` on `c.req.path` sees the first page load and nothing after it,
+  and serves the protected payload to anyone who clicks a link.
+  `unstable_parseRouterRequest` closes that particular gap, but an action
+  dispatched from the client carries no route at all, so no path rule covers it.
+  And a layout is not the boundary either: Waku renders a route's layouts and
+  page as independent slots, so a layout that redirects still lets the page
+  render its data. Put the authorization check in the data access layer and the
+  mutations, and the redirect in the layout.
 - **There is no `cookies().set()`.** Server code reads request headers; only
   middleware owns the response. A sign-in action writes its cookie through a
   request-scoped jar that middleware empties onto the response — and that jar
