@@ -21,7 +21,6 @@ export const createElementCache = (
       cache.set(cacheId, Promise.resolve(bytes));
     },
     has: (cacheId: CacheId) => cache.has(cacheId),
-    // every call builds a new promise, so ask has() when only presence matters
     get: (cacheId: CacheId) => {
       const cachedBytes = cache.get(cacheId);
       if (!cachedBytes) {
