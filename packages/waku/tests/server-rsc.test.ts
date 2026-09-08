@@ -1,5 +1,8 @@
 import { describe, expect, test, vi } from 'vitest';
-import { createCustomError } from '../src/lib/utils/custom-errors.js';
+import {
+  createCustomError,
+  getErrorInfo,
+} from '../src/lib/utils/custom-errors.js';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -78,12 +81,11 @@ describe('waku/server RSC helpers', () => {
         onError: (e: unknown) => string | undefined;
       };
 
-      // react stores whatever onError returns as the error's digest, so
-      // handing it back is what carries a redirect or a 404 to the reader
+      // react stores whatever onError returns as the error's digest
       const custom = createCustomError('not found', { status: 404 });
-      expect(options.onError(custom)).toBe(
-        (custom as { digest?: string }).digest,
-      );
+      expect(getErrorInfo({ digest: options.onError(custom) })).toEqual({
+        status: 404,
+      });
       expect(consoleError).not.toHaveBeenCalled();
 
       expect(options.onError(new Error('boom'))).toBeUndefined();
