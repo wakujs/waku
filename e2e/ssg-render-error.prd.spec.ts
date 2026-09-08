@@ -19,9 +19,10 @@ test('build fails when static pages throw during prerendering', async () => {
     },
     (e: { stderr: string }) => e,
   );
+  const aggregate = error.stderr.slice(error.stderr.indexOf('AggregateError'));
+  expect(aggregate).toContain('Render errors occurred while prerendering');
   // a server component throwing inside Suspense
-  expect(error.stderr).toContain('Unexpected error inside Suspense');
+  expect(aggregate).toContain('Unexpected error inside Suspense');
   // a client component throwing while React DOM renders the HTML
-  expect(error.stderr).toContain('Unexpected error in a client component');
-  expect(error.stderr).toContain('Render errors occurred while prerendering');
+  expect(aggregate).toContain('Unexpected error in a client component');
 });

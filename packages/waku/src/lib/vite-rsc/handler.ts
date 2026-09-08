@@ -36,6 +36,11 @@ function loadSsrEntryModule() {
   >('ssr', 'index');
 }
 
+const getDigest = (e: unknown) =>
+  e && typeof e === 'object' && 'digest' in e && typeof e.digest === 'string'
+    ? e.digest
+    : undefined;
+
 const toProcessRequest =
   (handleRequest: HandleRequest): ProcessRequest =>
   async (req) => {
@@ -68,6 +73,13 @@ const toProcessRequest =
       buildId: import.meta.env.WAKU_BUILD_ID ?? '',
       createDebugChannel,
       debugId,
+      onError: (e) => {
+        const digest = getDigest(e);
+        if (digest === undefined) {
+          console.error('Error during rendering:', sanitizeLog(e));
+        }
+        return digest;
+      },
     });
 
     let res: Awaited<ReturnType<typeof handleRequest>>;
@@ -138,15 +150,20 @@ const toProcessRequest =
 const toProcessBuild =
   (handleBuild: HandleBuild): ProcessBuild =>
   async ({ emitFile, unstable_registerPrunableFile }) => {
-    let renderFailed = false;
+    const errors: unknown[] = [];
+    const onError = (e: unknown) => {
+      const digest = getDigest(e);
+      if (digest === undefined) {
+        errors.push(e);
+      }
+      return digest;
+    };
     const renderUtils = createRenderUtils({
       temporaryReferences: undefined,
       renderToReadableStream,
       loadSsrEntryModule,
       buildId: import.meta.env.WAKU_BUILD_ID ?? '',
-      onRenderError: () => {
-        renderFailed = true;
-      },
+      onError,
     });
 
     let fallbackHtml: string | undefined;
@@ -187,10 +204,12 @@ const toProcessBuild =
         );
       },
       unstable_registerPrunableFile,
+      unstable_onError: onError,
     });
-    if (renderFailed) {
-      throw new Error(
-        'Render errors occurred while prerendering, see the log above.',
+    if (errors.length) {
+      throw new AggregateError(
+        errors,
+        'Render errors occurred while prerendering',
       );
     }
     await emitFile(

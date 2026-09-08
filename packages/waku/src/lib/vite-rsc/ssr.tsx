@@ -1,4 +1,4 @@
-import { type ReactNode, captureOwnerStack, use } from 'react';
+import { type ReactNode, use } from 'react';
 import {
   createFromReadableStream as createFromReadableStreamBase,
   getClientEntryUrl,
@@ -9,7 +9,6 @@ import { injectRSCPayload } from 'rsc-html-stream/server';
 import htmlShell from 'virtual:vite-rsc-waku/html-shell';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
-import { sanitizeLog } from '../utils/log.js';
 import {
   createBootstrapScriptContent,
   getBootstrapPreamble,
@@ -41,7 +40,7 @@ type RenderHtmlStream = (
     extraScriptContent: string | undefined;
     rethrowNotFound: boolean | undefined;
     debugId: string | undefined;
-    onRenderError: ((e: unknown) => void) | undefined;
+    onError: (e: unknown) => string | undefined;
   },
 ) => Promise<{ stream: ReadableStream; status: number | undefined }>;
 
@@ -92,27 +91,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
         }) +
         bootstrapScriptContent +
         (options.extraScriptContent || ''),
-      onError: (e: unknown) => {
-        const digest =
-          e &&
-          typeof e === 'object' &&
-          'digest' in e &&
-          typeof e.digest === 'string'
-            ? e.digest
-            : undefined;
-        if (digest === undefined) {
-          console.error(
-            '[SSR Error]',
-            sanitizeLog(captureOwnerStack?.() || ''),
-            '\n',
-            sanitizeLog(e),
-          );
-        }
-        if (!getErrorInfo(e)) {
-          options.onRenderError?.(e);
-        }
-        return digest;
-      },
+      onError: options.onError,
       ...(options.nonce ? { nonce: options.nonce } : {}),
       ...(options.formState ? { formState: options.formState } : {}),
     });

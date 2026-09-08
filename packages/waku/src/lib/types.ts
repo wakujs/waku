@@ -70,6 +70,7 @@ export type Unstable_HandleBuild = (utils: {
   ) => Promise<void>;
   generateDefaultHtml: (fileName: string) => Promise<void>;
   unstable_registerPrunableFile: (srcPath: string) => void;
+  unstable_onError: (e: unknown) => string | undefined;
 }) => Promise<void>;
 
 export type Unstable_Handlers = {

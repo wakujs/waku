@@ -1,5 +1,4 @@
 import { describe, expect, test, vi } from 'vitest';
-import { createCustomError } from '../src/lib/utils/custom-errors.js';
 import { ETAG_ID_PREFIX, IMMUTABLE_ETAG } from '../src/lib/utils/etags.js';
 import { createRenderUtils } from '../src/lib/utils/render.js';
 
@@ -8,15 +7,15 @@ const makeRenderUtils = () => {
     (_data: unknown, _options?: object, _extraOptions?: object) =>
       new ReadableStream(),
   );
-  const onRenderError = vi.fn();
+  const onError = vi.fn();
   const renderUtils = createRenderUtils({
     temporaryReferences: undefined,
     renderToReadableStream,
     loadSsrEntryModule: async () => ({}) as any,
     buildId: '',
-    onRenderError,
+    onError,
   });
-  return { renderToReadableStream, renderUtils, onRenderError };
+  return { renderToReadableStream, renderUtils, onError };
 };
 
 describe('createRenderUtils', () => {
@@ -94,6 +93,7 @@ describe('createRenderUtils', () => {
       loadSsrEntryModule: async () => ({}) as any,
       buildId: '',
       createDebugChannel,
+      onError: vi.fn(),
     });
 
     await renderUtils.renderRsc({ App: 'first' });
@@ -124,7 +124,7 @@ describe('createRenderUtils', () => {
       stream: fakeHtmlStream,
       status: undefined,
     });
-    const onRenderError = vi.fn();
+    const onError = vi.fn();
     const renderUtils = createRenderUtils({
       temporaryReferences: undefined,
       renderToReadableStream,
@@ -133,7 +133,7 @@ describe('createRenderUtils', () => {
           INTERNAL_renderHtmlStream: renderHtmlStream,
         }) as any,
       buildId: '',
-      onRenderError,
+      onError,
     });
 
     const res = await renderUtils.renderHtml(new ReadableStream(), 'app', {
@@ -144,27 +144,19 @@ describe('createRenderUtils', () => {
     expect(renderHtmlStream).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      expect.objectContaining({ onRenderError }),
+      expect.objectContaining({ onError }),
     );
   });
 
-  test('reports render errors except custom errors', async () => {
-    const { renderToReadableStream, renderUtils, onRenderError } =
-      makeRenderUtils();
+  test('passes onError to the RSC render', async () => {
+    const { renderToReadableStream, renderUtils, onError } = makeRenderUtils();
 
     await renderUtils.renderRsc({ App: 'app' });
-    const { onError } = renderToReadableStream.mock.calls[0]![1] as {
-      onError: (e: unknown) => string | undefined;
-    };
 
-    const error = new Error('boom');
-    expect(onError(error)).toBeUndefined();
-    // an error that came back through a Flight round trip keeps its digest
-    const roundTripped = Object.assign(new Error('boom'), { digest: '' });
-    expect(onError(roundTripped)).toBe('');
-    const custom = createCustomError('not found', { status: 404 });
-    expect(onError(custom)).toBe((custom as { digest?: string }).digest);
-
-    expect(onRenderError.mock.calls).toEqual([[error], [roundTripped]]);
+    expect(renderToReadableStream).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ onError }),
+      expect.anything(),
+    );
   });
 });

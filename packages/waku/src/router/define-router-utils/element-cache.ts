@@ -14,6 +14,7 @@ export type CacheId = string;
 
 export const createElementCache = (
   onSerialize?: (cacheId: CacheId, serialized: string) => void,
+  onError?: (e: unknown) => string | undefined,
 ) => {
   const cache = new Map<CacheId, Promise<Uint8Array>>();
   return {
@@ -33,7 +34,7 @@ export const createElementCache = (
       if (cache.has(cacheId)) {
         return;
       }
-      const bytesPromise = serializeRsc(element);
+      const bytesPromise = serializeRsc(element, { onError });
       cache.set(cacheId, bytesPromise);
       if (onSerialize) {
         return bytesPromise.then((bytes) => {

@@ -86,6 +86,7 @@ export const createBuildHandler = ({
     generateFile,
     generateDefaultHtml,
     unstable_registerPrunableFile,
+    unstable_onError,
   }) => {
     await configRegistry.initialize();
     const configs = configRegistry.getAll();
@@ -93,7 +94,7 @@ export const createBuildHandler = ({
     const serializedCachedElements = new Map<CacheId, string>();
     const buildElementCache = createElementCache((cacheId, serialized) => {
       serializedCachedElements.set(cacheId, serialized);
-    });
+    }, unstable_onError);
     const { runTask, waitForTasks } = createTaskRunner(500);
     const path2moduleIds: Record<string, string[]> = {};
     const htmlRenderTasks = new Set<() => Promise<void>>();

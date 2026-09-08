@@ -66,6 +66,13 @@ describe('element cache', () => {
     expect(onSerialize.mock.calls[0]![0]).toBe('slot/x');
   });
 
+  it('passes onError to serializeRsc', async () => {
+    const onError = vi.fn();
+    const cache = createElementCache(undefined, onError);
+    await cache.set('slot/x', 'value' as never);
+    expect(serializeRsc).toHaveBeenCalledWith('value', { onError });
+  });
+
   it('slot and path-spec cache ids are stable', () => {
     expect(getSlotCacheId('main')).toBe('slot/main');
     expect(getSlotCacheId('main')).toBe(getSlotCacheId('main'));

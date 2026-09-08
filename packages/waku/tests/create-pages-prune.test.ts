@@ -38,6 +38,7 @@ describe('createPages - build-time pruning', () => {
       generateFile: vi.fn().mockResolvedValue(undefined),
       generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
       unstable_registerPrunableFile: register,
+      unstable_onError: vi.fn(),
     });
 
     expect(register).toHaveBeenCalledWith('pages/_slices/preset/[id].tsx');
