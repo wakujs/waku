@@ -201,7 +201,7 @@ const toProcessBuild =
     if (errors.length) {
       throw new AggregateError(
         errors,
-        'Render errors occurred while prerendering, see the log above.',
+        'Render errors occurred while prerendering',
       );
     }
     await emitFile(
