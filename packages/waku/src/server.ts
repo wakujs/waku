@@ -11,8 +11,6 @@ export async function serializeRsc(element: unknown): Promise<Uint8Array> {
       element,
       {},
       {
-        // react drops the digest unless a handler returns it, and waku reads
-        // its own control flow back out of that digest after the round trip
         onError: (e: unknown) => {
           if (!getErrorInfo(e)) {
             console.error('Error during rendering:', sanitizeLog(e));
