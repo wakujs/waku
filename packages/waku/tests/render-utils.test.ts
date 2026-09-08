@@ -141,6 +141,27 @@ describe('createRenderUtils', () => {
     });
 
     expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8');
+  });
+
+  test('passes onError to the html render', async () => {
+    const renderHtmlStream = vi.fn().mockResolvedValue({
+      stream: new ReadableStream(),
+      status: undefined,
+    });
+    const onError = vi.fn();
+    const renderToReadableStream = vi.fn(() => new ReadableStream());
+    const renderUtils = createRenderUtils({
+      temporaryReferences: undefined,
+      renderToReadableStream,
+      loadSsrEntryModule: async () =>
+        ({ INTERNAL_renderHtmlStream: renderHtmlStream }) as any,
+      buildId: '',
+      onError,
+    });
+
+    await renderUtils.renderHtml(new ReadableStream(), 'app', { rscPath: '' });
+
+    expect(renderToReadableStream).toHaveBeenCalledWith('app', { onError });
     expect(renderHtmlStream).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),

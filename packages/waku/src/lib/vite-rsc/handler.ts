@@ -18,7 +18,7 @@ import type {
   Unstable_ProcessBuild as ProcessBuild,
   Unstable_ProcessRequest as ProcessRequest,
 } from '../types.js';
-import { getErrorInfo } from '../utils/custom-errors.js';
+import { getDigest, getErrorInfo } from '../utils/custom-errors.js';
 import { sanitizeLog } from '../utils/log.js';
 import { joinPath } from '../utils/path.js';
 import { DEBUG_ID_HEADER } from '../utils/react-debug-channel.js';
@@ -35,11 +35,6 @@ function loadSsrEntryModule() {
     typeof import('../vite-entries/entry.ssr.js')
   >('ssr', 'index');
 }
-
-const getDigest = (e: unknown) =>
-  e && typeof e === 'object' && 'digest' in e && typeof e.digest === 'string'
-    ? e.digest
-    : undefined;
 
 const toProcessRequest =
   (handleRequest: HandleRequest): ProcessRequest =>
