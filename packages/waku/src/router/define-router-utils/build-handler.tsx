@@ -239,10 +239,15 @@ export const createBuildHandler = ({
               unstable_clientModuleCallback: (ids) =>
                 ids.forEach((id) => moduleIds.add(id)),
             });
-            const [stream1, stream2] = stream.tee();
+            // noSsr routes get the fallback html from generateNoSsrDefaultHtml
+            const [stream1, stream2]: [ReadableStream, ReadableStream?] =
+              item.noSsr ? [stream] : stream.tee();
             await generateFile(rscPath2pathname(rscPath), stream1);
             path2moduleIds[path2regexp(item.pathPattern || item.path)] =
               Array.from(moduleIds);
+            if (!stream2) {
+              return;
+            }
             htmlRenderTasks.add(() =>
               // Run inside the same request/router/interceptor scope as the RSC
               // render, so the deferred HTML render is consistent with it.
