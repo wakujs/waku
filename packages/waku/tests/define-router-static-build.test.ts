@@ -83,7 +83,6 @@ describe('define-router handleBuild', () => {
       generateFile: vi.fn().mockResolvedValue(undefined),
       generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
       unstable_registerPrunableFile: vi.fn(),
-      unstable_onError: vi.fn(),
     });
 
     const script = scripts.find((content) => content.includes('bar-module'));
@@ -140,7 +139,6 @@ describe('define-router handleBuild', () => {
       generateFile: vi.fn().mockResolvedValue(undefined),
       generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
       unstable_registerPrunableFile: vi.fn(),
-      unstable_onError: vi.fn(),
     });
 
     // Static elements inside a dynamic-path route should still be cached
@@ -203,7 +201,6 @@ describe('define-router handleBuild', () => {
       generateFile: vi.fn().mockResolvedValue(undefined),
       generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
       unstable_registerPrunableFile: vi.fn(),
-      unstable_onError: vi.fn(),
     });
 
     expect(sliceRenderer).toHaveBeenCalled();
@@ -261,7 +258,6 @@ describe('define-router handleBuild', () => {
         generateFile,
         generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
         unstable_registerPrunableFile: vi.fn(),
-        unstable_onError: vi.fn(),
       }),
     ).rejects.toSatisfy((err: unknown) => {
       expect(err).toBeInstanceOf(Error);
@@ -298,7 +294,6 @@ describe('define-router handleBuild', () => {
       generateFile: vi.fn().mockResolvedValue(undefined),
       generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
       unstable_registerPrunableFile: vi.fn(),
-      unstable_onError: vi.fn(),
     });
     const buildMetadata = new Map<string, string>(
       buildSave.mock.calls.map(([key, value]) => [key, value]),
@@ -387,7 +382,6 @@ describe('define-router handleBuild', () => {
       generateFile: vi.fn().mockResolvedValue(undefined),
       generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
       unstable_registerPrunableFile: register,
-      unstable_onError: vi.fn(),
     });
 
     expect(register).not.toHaveBeenCalledWith('pages/shared.tsx');
@@ -440,7 +434,6 @@ describe('define-router handleBuild', () => {
       }),
       generateDefaultHtml,
       unstable_registerPrunableFile: vi.fn(),
-      unstable_onError: vi.fn(),
     });
 
     expect(generated.has(`dist/${encodeRoutePath('/foo')}.txt`)).toBe(true);

@@ -3,13 +3,8 @@ import { bytesToStream, streamToBytes } from './lib/utils/stream.js';
 
 export { getEnv } from './lib/env.js';
 
-export async function serializeRsc(
-  element: unknown,
-  options?: { onError?: ((e: unknown) => string | undefined) | undefined },
-): Promise<Uint8Array> {
-  return streamToBytes(
-    renderToReadableStream(element, {}, { onError: options?.onError }),
-  );
+export async function serializeRsc(element: unknown): Promise<Uint8Array> {
+  return streamToBytes(renderToReadableStream(element, {}));
 }
 
 export async function deserializeRsc(bytes: Uint8Array): Promise<unknown> {

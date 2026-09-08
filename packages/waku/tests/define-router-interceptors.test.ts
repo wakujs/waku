@@ -67,7 +67,6 @@ const callHandleBuild = (router: ReturnType<typeof unstable_defineRouter>) =>
     generateFile: vi.fn().mockResolvedValue(undefined),
     generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
     unstable_registerPrunableFile: vi.fn(),
-    unstable_onError: vi.fn(),
   });
 
 const orderingInterceptor =
@@ -242,7 +241,6 @@ describe('define-router handler interceptors', () => {
       generateFile: vi.fn().mockResolvedValue(undefined),
       generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
       unstable_registerPrunableFile: vi.fn(),
-      unstable_onError: vi.fn(),
     });
 
     expect(seenInHtml).toBe('from-build');

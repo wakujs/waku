@@ -151,19 +151,17 @@ const toProcessBuild =
   (handleBuild: HandleBuild): ProcessBuild =>
   async ({ emitFile, unstable_registerPrunableFile }) => {
     const errors: unknown[] = [];
-    const onError = (e: unknown) => {
-      const digest = getDigest(e);
-      if (digest === undefined) {
-        errors.push(e);
-      }
-      return digest;
-    };
     const renderUtils = createRenderUtils({
       temporaryReferences: undefined,
       renderToReadableStream,
       loadSsrEntryModule,
       buildId: import.meta.env.WAKU_BUILD_ID ?? '',
-      onError,
+      onError: (e) => {
+        if (!getErrorInfo(e)) {
+          errors.push(e);
+        }
+        return getDigest(e);
+      },
     });
 
     let fallbackHtml: string | undefined;
@@ -204,12 +202,11 @@ const toProcessBuild =
         );
       },
       unstable_registerPrunableFile,
-      unstable_onError: onError,
     });
     if (errors.length) {
       throw new AggregateError(
         errors,
-        'Render errors occurred while prerendering',
+        'Render errors occurred while prerendering, see the log above.',
       );
     }
     await emitFile(

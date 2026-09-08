@@ -25,16 +25,14 @@ const rsdwClient = vi.hoisted(() => ({
 }));
 
 const rsdwServer = vi.hoisted(() => ({
-  renderToReadableStream: vi.fn(
-    (element: unknown, _webpackMap: object, _options?: object) => {
-      return new ReadableStream<Uint8Array>({
-        start(controller) {
-          controller.enqueue(encoder.encode(String(element)));
-          controller.close();
-        },
-      });
-    },
-  ),
+  renderToReadableStream: vi.fn((element: unknown, _webpackMap: object) => {
+    return new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode(String(element)));
+        controller.close();
+      },
+    });
+  }),
 }));
 
 vi.mock('react-server-dom-webpack/client.edge', () => ({
@@ -54,25 +52,11 @@ describe('waku/server RSC helpers', () => {
     expect(rsdwServer.renderToReadableStream).toHaveBeenCalledWith(
       'cached element',
       {},
-      { onError: undefined },
     );
 
     await expect(deserializeRsc(bytes)).resolves.toBe('cached element');
     expect(rsdwClient.createFromReadableStream).toHaveBeenCalledWith(
       expect.any(ReadableStream),
-    );
-  });
-
-  test('serializeRsc passes onError to the render', async () => {
-    const { serializeRsc } = await import('../src/server.js');
-    const onError = vi.fn();
-
-    await serializeRsc('element', { onError });
-
-    expect(rsdwServer.renderToReadableStream).toHaveBeenLastCalledWith(
-      'element',
-      {},
-      { onError },
     );
   });
 });

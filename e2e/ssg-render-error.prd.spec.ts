@@ -21,8 +21,12 @@ test('build fails when static pages throw during prerendering', async () => {
   );
   const aggregate = error.stderr.slice(error.stderr.indexOf('AggregateError'));
   expect(aggregate).toContain('Render errors occurred while prerendering');
-  // a server component throwing inside Suspense
-  expect(aggregate).toContain('Unexpected error inside Suspense');
   // a client component throwing while React DOM renders the HTML
   expect(aggregate).toContain('Unexpected error in a client component');
+  // a server component throwing inside Suspense reaches the build from the
+  // payload, where react keeps its message out of a production build
+  expect(aggregate).toContain(
+    'An error occurred in the Server Components render',
+  );
+  expect(error.stderr).toContain('Unexpected error inside Suspense');
 });
