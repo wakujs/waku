@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
+import { createCustomError } from '../src/lib/utils/custom-errors.js';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -25,14 +26,16 @@ const rsdwClient = vi.hoisted(() => ({
 }));
 
 const rsdwServer = vi.hoisted(() => ({
-  renderToReadableStream: vi.fn((element: unknown, _webpackMap: object) => {
-    return new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.enqueue(encoder.encode(String(element)));
-        controller.close();
-      },
-    });
-  }),
+  renderToReadableStream: vi.fn(
+    (element: unknown, _webpackMap: object, _options?: object) => {
+      return new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode(String(element)));
+          controller.close();
+        },
+      });
+    },
+  ),
 }));
 
 vi.mock('react-server-dom-webpack/client.edge', () => ({
@@ -52,11 +55,39 @@ describe('waku/server RSC helpers', () => {
     expect(rsdwServer.renderToReadableStream).toHaveBeenCalledWith(
       'cached element',
       {},
+      expect.objectContaining({ onError: expect.any(Function) }),
     );
 
     await expect(deserializeRsc(bytes)).resolves.toBe('cached element');
     expect(rsdwClient.createFromReadableStream).toHaveBeenCalledWith(
       expect.any(ReadableStream),
     );
+  });
+
+  test('serializeRsc returns a waku digest and logs anything else', async () => {
+    const { serializeRsc } = await import('../src/server.js');
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    try {
+      await serializeRsc('element');
+      const options = rsdwServer.renderToReadableStream.mock.calls.at(
+        -1,
+      )![2] as {
+        onError: (e: unknown) => string | undefined;
+      };
+
+      const custom = createCustomError('not found', { status: 404 });
+      expect(options.onError(custom)).toBe(
+        (custom as { digest?: string }).digest,
+      );
+      expect(consoleError).not.toHaveBeenCalled();
+
+      expect(options.onError(new Error('boom'))).toBeUndefined();
+      expect(consoleError).toHaveBeenCalledOnce();
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });
