@@ -99,7 +99,7 @@ export const getRouterCache = (fetchRsc: FetchRsc): RouterCache => {
 };
 
 /**
- * Returns the Router cache of the enclosing Root. Outside a Root, including
- * during SSR, every caller shares one cache, as they share one fetch.
+ * Returns the Router cache of the enclosing Root. Outside a Root every caller
+ * shares one cache, as they share one fetch.
  */
 export const useRouterCache = (): RouterCache => getRouterCache(useFetchRsc());

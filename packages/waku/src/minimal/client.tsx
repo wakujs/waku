@@ -407,11 +407,10 @@ const noop = () => {};
 
 /**
  * Registers a transformer that rewrites the RSC path and params before each
- * request, after every enhancer, as the last step before the request is sent.
- * Returns a function that unregisters the transformer.
+ * request. Returns a function that unregisters the transformer.
  *
- * @deprecated Use `useRegisterRscEnhancer_UNSTABLE`, whose enhancer rewrites
- * the inputs of the enclosing Root only.
+ * @deprecated Use `useRegisterRscEnhancer_UNSTABLE`. This runs after every
+ * enhancer, last before the request is sent.
  */
 export function unstable_registerFetchRscInputTransformer(
   transformFetchRscInput: FetchRscInputTransformer,
@@ -471,11 +470,10 @@ const fetchRsc = (
 
 /**
  * Fetch and decode elements for an RSC path. Each call starts a new request;
- * consumers own prefetching and response reuse. It runs the enhancers of the
- * Root mounted last when it is called.
+ * consumers own prefetching and response reuse.
  *
- * @deprecated Use `useFetchRsc_UNSTABLE`, whose fetch runs its own Root's
- * enhancers.
+ * @deprecated Use `useFetchRsc_UNSTABLE`. This runs the enhancers of whichever
+ * Root mounted last.
  */
 export const unstable_fetchRsc: FetchRsc = (rscPath, rscParams, options) =>
   fetchRsc(rscPath, rscParams, options, getDefaultRootStore());
@@ -508,21 +506,16 @@ const fetchWithoutRoot: FetchRsc = (rscPath, rscParams, options) =>
 
 /**
  * Returns the fetch of the enclosing `Root_UNSTABLE`, which runs that Root's
- * RSC enhancers and returns the elements without merging them. Fetching does
- * not need a Root, so outside one this is a fetch that runs no enhancers.
+ * enhancers and returns the elements without merging them. Outside a Root it
+ * runs no enhancers.
  */
 export const useFetchRsc_UNSTABLE = (): FetchRsc =>
   use(RootStoreContext)?.fetchRsc ?? fetchWithoutRoot;
 
 /**
  * Returns a registrar for the enclosing Root's RSC request enhancers. An
- * enhancer wraps `(rscPath, rscParams, options) => Promise<{ elements, value? }>`
- * to rewrite the inputs, wrap `options.fetch`, or transform the result, where
- * `value` is a server action's return value. Enhancers run for the Root's
- * fetches, the server actions it receives and its development reloads, but not
- * its initial payload. Higher `order`s wrap lower ones; at an equal order,
- * later registrations wrap earlier ones. A request keeps the enhancers it
- * started with.
+ * enhancer wraps the Root's requests to rewrite the inputs, wrap
+ * `options.fetch`, or transform the result. Higher `order`s wrap lower ones.
  */
 export const useRegisterRscEnhancer_UNSTABLE = () => {
   const store = useRootStore();
