@@ -121,8 +121,7 @@ const refreshElementsPromise = (
 ): Promise<Elements> => {
   const getResult = () =>
     Promise.all([a, b]).then(([aRes, bRes]) =>
-      // an enhanced response owns the symbols it declares, so only the ones it
-      // leaves out carry over from the elements being refreshed
+      // an enhanced response owns the symbols it declares; the rest carry over
       combineElements(bRes, aRes, {
         unstable_filter: (key) => typeof key === 'symbol' && !(key in bRes),
       }),
@@ -368,7 +367,6 @@ const fetchRscElements = (
       ...(options.signal ? { signal: options.signal } : {}),
     });
   } catch (e) {
-    // an enhancer that throws fails the request, it does not throw at the caller
     return Promise.reject(e);
   }
 };

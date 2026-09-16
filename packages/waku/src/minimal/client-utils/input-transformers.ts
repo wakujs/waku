@@ -7,6 +7,5 @@ export type FetchRscInputTransformer = (
 // consumers while tests can still import it to reset state.
 //
 // TODO: delete this module once unstable_registerFetchRscInputTransformer is
-// dropped. Its enhancer replacement rewrites the inputs of one Root, so there
-// is nothing left to keep globally.
+// dropped.
 export const fetchRscInputTransformers = new Set<FetchRscInputTransformer>();

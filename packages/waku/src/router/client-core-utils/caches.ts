@@ -38,7 +38,7 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
     fetchRsc,
     slices: createSliceCache(fetchRsc),
     prefetchRoute: (route: RouteProps, options?: PrefetchOptions): void => {
-      // skip is canReuseStaticRoute at the caller, which has this root's elements
+      // the caller skips this with canReuseStaticRoute, which needs its elements
       const rscPath = encodeRoutePath(route.path);
       manager.prefetch(
         rscPath,
