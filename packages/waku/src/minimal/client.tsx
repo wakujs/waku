@@ -121,7 +121,6 @@ const refreshElementsPromise = (
 ): Promise<Elements> => {
   const getResult = () =>
     Promise.all([a, b]).then(([aRes, bRes]) =>
-      // an enhanced response owns the symbols it declares; the rest carry over
       combineElements(bRes, aRes, {
         unstable_filter: (key) => typeof key === 'symbol' && !(key in bRes),
       }),

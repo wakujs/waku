@@ -45,7 +45,6 @@ import { scrollToHash, shouldScrollForRouteChange } from './scroll.js';
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
 
-// enhancers that must handle an action response first register below this
 const ACTION_ENHANCER_ORDER = 100;
 
 type HistoryIntent = ChangeRouteOptions['history'];

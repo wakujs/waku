@@ -456,7 +456,6 @@ test('an enhancer below Router order replaces the final destination and action v
   expect(view.errors).not.toHaveBeenCalled();
 });
 
-// a Link in a second React root, or in a component test, has no Root above it
 test('a Link renders outside a Root', async () => {
   const container = document.createElement('div');
   document.body.append(container);
