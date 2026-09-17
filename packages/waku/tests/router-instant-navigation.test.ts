@@ -1,6 +1,9 @@
 /** @vitest-environment happy-dom */
-import { describe, expect, test } from 'vitest';
-import { ETAG_ID_PREFIX, IMMUTABLE_ETAG } from '../src/lib/utils/etags.js';
+import { describe, expect, test, vi } from 'vitest';
+import { ETAGS_ID, IMMUTABLE_ETAG } from '../src/lib/utils/etags.js';
+import { adoptElements } from '../src/minimal/client-utils/element-etags.js';
+import type { FetchRsc } from '../src/minimal/client-utils/root-store.js';
+import { getRouterCache } from '../src/router/client-core-utils/caches.js';
 import {
   canPaintInstantOverlay,
   pinForSwr,
@@ -13,17 +16,20 @@ import {
   getRouteSlotId,
 } from '../src/router/isomorphic-utils/route-path.js';
 
-const immutable = (slotId: string) => ({
-  [ETAG_ID_PREFIX + slotId]: IMMUTABLE_ETAG,
-});
+const immutable = (slotId: string) =>
+  adoptElements({
+    [slotId]: {},
+    [ETAGS_ID]: { [slotId]: IMMUTABLE_ETAG },
+  });
 
 describe('canPaintInstantOverlay', () => {
   const route = { path: '/a', query: '', hash: '' };
+  const cache = getRouterCache(vi.fn<FetchRsc>());
 
   test('uses an immutable route shell only on the first attempt', () => {
     const elements = immutable(getRouteSlotId(route.path));
-    expect(canPaintInstantOverlay(0, route, elements)).toBe(true);
-    expect(canPaintInstantOverlay(1, route, elements)).toBe(false);
+    expect(canPaintInstantOverlay(cache, 0, route, elements)).toBe(true);
+    expect(canPaintInstantOverlay(cache, 1, route, elements)).toBe(false);
   });
 });
 
