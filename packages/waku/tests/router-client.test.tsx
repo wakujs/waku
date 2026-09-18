@@ -48,18 +48,20 @@ import {
 } from '../src/router/client-core-utils/host.js';
 import { PREFETCH_LIMIT } from '../src/router/client-core-utils/prefetch-cache.js';
 import {
-  ErrorBoundary,
-  INTERNAL_ServerRouter,
-  Link,
-  Router,
-  unstable_RouterContext as RouterContext,
-  SearchCodecsProvider_UNSTABLE,
-  Slice,
   unstable_encodeRoutePath,
   unstable_encodeSliceId,
   unstable_getRouteSlotId,
   unstable_getSliceSlotId,
   unstable_parseRoute,
+} from '../src/router/client-core.js';
+import { RouterContext } from '../src/router/client-utils/router-context.js';
+import {
+  ErrorBoundary,
+  INTERNAL_ServerRouter,
+  Link,
+  Router,
+  SearchCodecsProvider_UNSTABLE,
+  Slice,
   useNavigationStatus_UNSTABLE as useNavigationStatus,
   useParams_UNSTABLE as useParams,
   useRouter,
