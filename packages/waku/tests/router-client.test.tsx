@@ -25,30 +25,28 @@ import {
   vi,
 } from 'vitest';
 import { createCustomError } from '../src/lib/utils/custom-errors.js';
-import { ETAG_ID_PREFIX, IMMUTABLE_ETAG } from '../src/lib/utils/etags.js';
-import { fetchRscStore } from '../src/minimal/client-utils/fetch-store.js';
+import { ETAGS_ID, IMMUTABLE_ETAG } from '../src/lib/utils/etags.js';
+import type { Etags } from '../src/lib/utils/etags.js';
+import {
+  adoptElements,
+  collectEtags,
+} from '../src/minimal/client-utils/element-etags.js';
 import {
   Children_UNSTABLE as Children,
   INTERNAL_ServerRoot,
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
   unstable_fetchRsc as fetchRsc,
+  unstable_isImmutableElement as isImmutableElement,
   useElementsPromise_UNSTABLE as useElementsPromise,
   useMergeElements_UNSTABLE as useMergeElements,
 } from '../src/minimal/client.js';
-import * as routerCaches from '../src/router/client-core-utils/caches.js';
-import { clearCaches } from '../src/router/client-core-utils/caches.js';
+import { getRouterCache } from '../src/router/client-core-utils/caches.js';
 import {
   RouterHostContext,
   useRouterHost,
 } from '../src/router/client-core-utils/host.js';
 import { PREFETCH_LIMIT } from '../src/router/client-core-utils/prefetch-cache.js';
-import {
-  clearRegisteredLazySlices,
-  fetchSlice,
-  getInFlightSliceCount,
-  resetSliceFetches,
-} from '../src/router/client-core-utils/slice.js';
 import {
   ErrorBoundary,
   INTERNAL_ServerRouter,
@@ -76,7 +74,7 @@ import {
 } from '../src/router/isomorphic-utils/route-path.js';
 
 const spyPrefetchRoute = () =>
-  vi.spyOn(routerCaches, 'prefetchRoute').mockImplementation(() => {});
+  vi.spyOn(routerCache(), 'prefetchRoute').mockImplementation(() => {});
 
 const postsSearchCodec = {
   id: 'posts-test',
@@ -127,7 +125,15 @@ const testHoisted = vi.hoisted(() => ({
     | undefined
   >,
   onMerge: null as (() => void) | null,
-  legacyActionListenerRegistrations: 0,
+  // a Root's stable fetch; each test gets a new one, and so a new router cache
+  fetchRsc: null as unknown as ReturnType<typeof vi.fn>,
+  newFetchRsc: null as unknown as () => void,
+  // the RSC enhancers the mocked Roots registered, newest Root last
+  enhancerCount: null as unknown as () => number,
+  clearEnhancers: null as unknown as () => void,
+  emitActionElements: null as unknown as (
+    elements: Record<string, unknown>,
+  ) => Promise<unknown>,
 }));
 
 const createDeferred = <T,>() => {
@@ -197,6 +203,13 @@ type RefetchInner = (
 type MockedRefetch = ReturnType<typeof vi.fn<RefetchInner>>;
 const prefetchRsc = testHoisted.prefetch as unknown as MockedRefetch;
 
+const currentFetch = () => testHoisted.fetchRsc;
+const routerCache = () =>
+  getRouterCache(
+    currentFetch() as unknown as Parameters<typeof getRouterCache>[0],
+  );
+const slices = () => routerCache().slices;
+
 // Install a test-provided refetch as the shared inner mock the mocked Roots
 // wrap. Returns it so the test keeps configuring/inspecting it.
 const installRefetch = (inner: MockedRefetch) => {
@@ -259,6 +272,9 @@ vi.mock('../src/minimal/client.js', async () => {
     typeof import('../src/minimal/client.js')
   >('../src/minimal/client.js');
   const React = await vi.importActual<typeof import('react')>('react');
+  const { adoptElements } = await vi.importActual<
+    typeof import('../src/minimal/client-utils/element-etags.js')
+  >('../src/minimal/client-utils/element-etags.js');
 
   const makeThenable = (value: Record<string, unknown>) =>
     Object.assign(Promise.resolve(value), {
@@ -287,8 +303,10 @@ vi.mock('../src/minimal/client.js', async () => {
           : undefined;
       result =
         prevValue && !('then' in data)
-          ? makeThenable({ ...prevValue, ...data })
-          : Promise.all([prev, data]).then(([a, b]) => ({ ...a, ...b }));
+          ? makeThenable(actual.unstable_combineElements(prevValue, data))
+          : Promise.all([prev, data]).then(([a, b]) =>
+              actual.unstable_combineElements(a, b),
+            );
       byData.set(data, result);
     }
     return result;
@@ -314,19 +332,12 @@ vi.mock('../src/minimal/client.js', async () => {
     }
     let merged = byResult.get(result);
     if (!merged) {
-      merged = Promise.resolve(prev).then((prevRes) => {
-        const next: Record<string | symbol, unknown> = { ...prevRes };
-        const from: Record<string | symbol, unknown> = result;
-        for (const key of Reflect.ownKeys(result)) {
-          if (key === '_value') {
-            continue;
-          }
-          if (!(key in prevRes) || (overlay && key in overlay) || !pin(key)) {
-            next[key] = from[key];
-          }
-        }
-        return next as Record<string, unknown>;
-      });
+      merged = Promise.resolve(prev).then((prevRes) =>
+        actual.unstable_combineElements(prevRes, result, {
+          unstable_filter: (key) =>
+            !(key in prevRes) || (!!overlay && key in overlay) || !pin(key),
+        }),
+      );
       byResult.set(result, merged);
     }
     return merged;
@@ -339,10 +350,10 @@ vi.mock('../src/minimal/client.js', async () => {
   const StatefulRoot = (props: { children?: ReactNode }) => {
     const valueRef = React.useRef<Record<string, unknown>>(undefined);
     if (!valueRef.current) {
-      valueRef.current = {
+      valueRef.current = adoptElements({
         root: React.createElement(actual.Children_UNSTABLE),
         ...testHoisted.elements,
-      };
+      });
     }
     const [elements, setElements] = React.useState<
       Promise<Record<string, unknown>>
@@ -426,12 +437,15 @@ vi.mock('../src/minimal/client.js', async () => {
         if (data instanceof Promise || 'then' in data) {
           store?.applyAsync(
             dataPromise.then(
-              (result) => ({ ...result, ...overlay }),
+              (result) =>
+                actual.unstable_combineElements(result, overlay ?? {}),
               () => ({}),
             ),
           );
         } else {
-          store?.applySync({ ...data, ...overlay });
+          store?.applySync(
+            actual.unstable_combineElements(data, overlay ?? {}),
+          );
         }
         return dataPromise;
       };
@@ -458,6 +472,70 @@ vi.mock('../src/minimal/client.js', async () => {
     });
   };
 
+  const fetchRscImpl = (
+    rscPath: string,
+    rscParams?: unknown,
+    options?: {
+      signal?: AbortSignal;
+      onBuildIdMismatch?: () => void;
+      unstable_base?: Record<string, unknown>;
+    },
+  ) => {
+    const hasOptions = options && Reflect.ownKeys(options).length;
+    const rest =
+      !hasOptions && rscParams === undefined
+        ? []
+        : !hasOptions
+          ? [rscParams]
+          : [rscParams, options];
+    const requested = Promise.resolve(
+      (!options?.signal && rscPath.startsWith('R/')
+        ? testHoisted.prefetch
+        : testHoisted.inner!)(rscPath, ...rest),
+    );
+    const data = abortable(requested, options?.signal);
+    return data.then((result) => {
+      const response = adoptElements(withRouteMeta(result, rscPath, rscParams));
+      return options?.unstable_base
+        ? actual.unstable_combineElements(options.unstable_base, response)
+        : response;
+    });
+  };
+  testHoisted.newFetchRsc = () => {
+    testHoisted.fetchRsc = vi.fn(fetchRscImpl);
+  };
+  testHoisted.newFetchRsc();
+
+  type Enhance = (next: Request) => Request;
+  type Request = (
+    rscPath: string,
+    rscParams: unknown,
+    options: { type: 'rsc' | 'call'; fetch: typeof fetch },
+  ) => Promise<{ elements: Record<string, unknown>; value?: unknown }>;
+  const enhancers: [Enhance, number][] = [];
+  // stable like the real hook, so a re-registering effect shows up as churn
+  const registerEnhancer = (enhance: Enhance, order = 0) => {
+    const entry: [Enhance, number] = [enhance, order];
+    enhancers.push(entry);
+    return () => {
+      const index = enhancers.indexOf(entry);
+      if (index !== -1) {
+        enhancers.splice(index, 1);
+      }
+    };
+  };
+  testHoisted.enhancerCount = () => enhancers.length;
+  testHoisted.clearEnhancers = () => {
+    enhancers.length = 0;
+  };
+  testHoisted.emitActionElements = (elements) => {
+    let request: Request = async () => ({ elements });
+    for (const [enhance] of [...enhancers].sort((a, b) => a[1] - b[1])) {
+      request = enhance(request);
+    }
+    return request('F/action', [], { type: 'call', fetch: globalThis.fetch });
+  };
+
   return {
     ...actual,
     Root_UNSTABLE: vi.fn((props: Parameters<typeof actual.Root_UNSTABLE>[0]) =>
@@ -465,45 +543,12 @@ vi.mock('../src/minimal/client.js', async () => {
     ),
     useMergeElements_UNSTABLE: () =>
       useMockMergeElements() ?? noopMergeElements,
-    useRegisterCallServerElementsListener_UNSTABLE: () =>
-      actual.unstable_registerCallServerElementsListener,
-    unstable_registerCallServerElementsListener: (
-      ...args: Parameters<
-        typeof actual.unstable_registerCallServerElementsListener
-      >
-    ) => {
-      testHoisted.legacyActionListenerRegistrations += 1;
-      return actual.unstable_registerCallServerElementsListener(...args);
-    },
-    unstable_fetchRsc: vi.fn(
-      (
-        rscPath: string,
-        rscParams?: unknown,
-        options?: {
-          signal?: AbortSignal;
-          onBuildIdMismatch?: () => void;
-          unstable_base?: Record<string, unknown>;
-        },
-      ) => {
-        const hasOptions = options && Reflect.ownKeys(options).length;
-        const rest =
-          !hasOptions && rscParams === undefined
-            ? []
-            : !hasOptions
-              ? [rscParams]
-              : [rscParams, options];
-        const requested = Promise.resolve(
-          (!options?.signal && rscPath.startsWith('R/')
-            ? testHoisted.prefetch
-            : testHoisted.inner!)(rscPath, ...rest),
-        );
-        const data = abortable(requested, options?.signal);
-        return data.then((result) => ({
-          ...options?.unstable_base,
-          ...withRouteMeta(result, rscPath, rscParams),
-        }));
-      },
-    ),
+    unstable_fetchRsc: vi.fn(fetchRscImpl),
+    useFetchRsc_UNSTABLE: () =>
+      testHoisted.fetchRsc as unknown as ReturnType<
+        typeof actual.useFetchRsc_UNSTABLE
+      >,
+    useRegisterRscEnhancer_UNSTABLE: () => registerEnhancer,
   };
 });
 
@@ -607,20 +652,17 @@ beforeEach(() => {
   testHoisted.mergeTypes.length = 0;
   testHoisted.mergeOptions.length = 0;
   testHoisted.onMerge = null;
-  testHoisted.legacyActionListenerRegistrations = 0;
   // Fresh shared request mock per test. The mocked fetch wraps it, so its
   // implementation must stay intact (do not mockReset it).
   testHoisted.inner = vi.fn(async () => ({}));
-  vi.mocked(fetchRsc).mockClear();
   vi.mocked(preloadModule).mockClear();
   prefetchRsc.mockReset();
   // A prefetch returns the decoded Promise<Elements>; default to an empty
   // shell so prefetchRoute's cache wiring has a promise to track.
   prefetchRsc.mockReturnValue(resolvedThenable({}));
   vi.mocked(Root).mockClear();
-  clearCaches();
-  clearRegisteredLazySlices();
-  resetSliceFetches();
+  testHoisted.clearEnhancers();
+  testHoisted.newFetchRsc();
 
   const IntersectionObserverMock = vi.fn(function (
     callback: IntersectionObserverCallback,
@@ -653,7 +695,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  const prefetch = routerCaches.prefetchRoute as { mockRestore?: () => void };
+  const prefetch = routerCache().prefetchRoute as { mockRestore?: () => void };
   prefetch.mockRestore?.();
   vi.clearAllMocks();
 });
@@ -1670,7 +1712,7 @@ describe('Slice', () => {
     expect(refetch).toHaveBeenCalledTimes(1);
     expect(refetch).toHaveBeenCalledWith(unstable_encodeSliceId('slice-1'));
     // released when it settles, so the slice can be fetched again later
-    expect(getInFlightSliceCount()).toBe(0);
+    expect(slices().getInFlightSliceCount()).toBe(0);
 
     view.unmount();
   });
@@ -1707,7 +1749,7 @@ describe('Slice', () => {
     expect(view.container.textContent).toContain('fallback-b');
     expect(refetch).toHaveBeenCalledTimes(1);
     expect(refetch).toHaveBeenCalledWith(unstable_encodeSliceId('slice-1'));
-    expect(getInFlightSliceCount()).toBe(1);
+    expect(slices().getInFlightSliceCount()).toBe(1);
 
     await act(async () => {
       pending.resolve({
@@ -1721,7 +1763,7 @@ describe('Slice', () => {
     expect(
       view.container.querySelector('[data-testid="root-b"]')?.textContent,
     ).toContain('slice-content');
-    expect(getInFlightSliceCount()).toBe(0);
+    expect(slices().getInFlightSliceCount()).toBe(0);
 
     view.unmount();
   });
@@ -1734,12 +1776,20 @@ describe('Slice', () => {
     const mergeA = vi.fn(async (data: Record<string, unknown>) => data);
     const mergeB = vi.fn(async (data: Record<string, unknown>) => data);
 
-    fetchSlice('slice-1', mergeA as Parameters<typeof fetchSlice>[1], true);
-    fetchSlice('slice-1', mergeB as Parameters<typeof fetchSlice>[1], true);
+    slices().fetchSlice(
+      'slice-1',
+      mergeA as Parameters<ReturnType<typeof slices>['fetchSlice']>[1],
+      true,
+    );
+    slices().fetchSlice(
+      'slice-1',
+      mergeB as Parameters<ReturnType<typeof slices>['fetchSlice']>[1],
+      true,
+    );
 
     expect(refetch).toHaveBeenCalledTimes(1);
     expect(refetch).toHaveBeenCalledWith(unstable_encodeSliceId('slice-1'));
-    expect(getInFlightSliceCount()).toBe(1);
+    expect(slices().getInFlightSliceCount()).toBe(1);
 
     await act(async () => {
       pending.resolve({
@@ -1751,7 +1801,7 @@ describe('Slice', () => {
 
     expect(mergeA).toHaveBeenCalledTimes(1);
     expect(mergeB).toHaveBeenCalledTimes(1);
-    expect(getInFlightSliceCount()).toBe(0);
+    expect(slices().getInFlightSliceCount()).toBe(0);
   });
 
   test('a replace slice fetch does not adopt an in-flight non-replace fetch', async () => {
@@ -1768,11 +1818,18 @@ describe('Slice', () => {
     const mergeHmr = vi.fn(async (data: Record<string, unknown>) => data);
     const slotId = unstable_getSliceSlotId('slice-1');
 
-    fetchSlice('slice-1', mergeLazy as Parameters<typeof fetchSlice>[1]);
-    fetchSlice('slice-1', mergeHmr as Parameters<typeof fetchSlice>[1], true);
+    slices().fetchSlice(
+      'slice-1',
+      mergeLazy as Parameters<ReturnType<typeof slices>['fetchSlice']>[1],
+    );
+    slices().fetchSlice(
+      'slice-1',
+      mergeHmr as Parameters<ReturnType<typeof slices>['fetchSlice']>[1],
+      true,
+    );
 
     expect(refetch).toHaveBeenCalledTimes(2);
-    expect(getInFlightSliceCount()).toBe(1);
+    expect(slices().getInFlightSliceCount()).toBe(1);
 
     await act(async () => {
       stale.resolve({ [slotId]: 'stale' });
@@ -1784,14 +1841,14 @@ describe('Slice', () => {
     });
     expect(mergeHmr).toHaveBeenCalledTimes(1);
     expect(mergeHmr.mock.calls[0]?.[0]).toEqual({ [slotId]: 'fresh' });
-    expect(getInFlightSliceCount()).toBe(0);
+    expect(slices().getInFlightSliceCount()).toBe(0);
   });
 
   test('lazy slice skips fetch when static element exists', async () => {
     const slotId = unstable_getSliceSlotId('slice-1');
     const elements = {
       [slotId]: <div>loaded</div>,
-      [`${ETAG_ID_PREFIX}${slotId}`]: IMMUTABLE_ETAG,
+      [ETAGS_ID]: { [slotId]: IMMUTABLE_ETAG },
     };
 
     const view = await renderWithMinimalRoot(
@@ -1810,7 +1867,7 @@ describe('Slice', () => {
     const slotId = unstable_getSliceSlotId('slice-1');
     const elements = {
       [slotId]: <div>loaded</div>,
-      [`${ETAG_ID_PREFIX}${slotId}`]: 'v1',
+      [ETAGS_ID]: { [slotId]: 'v1' },
     };
 
     const view = await renderWithMinimalRoot(
@@ -1842,7 +1899,7 @@ describe('Slice', () => {
       expect.any(Error),
     );
     // a failed fetch releases the id too, so a retry is possible
-    expect(getInFlightSliceCount()).toBe(0);
+    expect(slices().getInFlightSliceCount()).toBe(0);
 
     view.unmount();
   });
@@ -1960,13 +2017,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('registers its callServer listener once, and removes it on unmount (StrictMode)', async () => {
-    // The Minimal mock records Root-bound listeners in the legacy store.
-    const store = fetchRscStore as unknown as Record<string, unknown>;
-    delete store.l;
-    const size = (key: string) =>
-      (store[key] as Set<unknown> | undefined)?.size ?? 0;
-
+  test('registers its action enhancer once, and removes it on unmount (StrictMode)', async () => {
     const elements = {
       [unstable_getRouteSlotId('/start')]: <div>start</div>,
       [ROUTE_ID]: ['/start', ''],
@@ -1978,13 +2029,12 @@ describe('Router integration', () => {
     );
 
     // Registered exactly once despite StrictMode's mount/unmount/mount cycle.
-    expect(size('l')).toBe(1);
-    expect(testHoisted.legacyActionListenerRegistrations).toBe(0);
+    expect(testHoisted.enhancerCount()).toBe(1);
 
     view.unmount();
 
     // Fully unregistered on unmount, so nothing leaks into later RSC requests.
-    expect(size('l')).toBe(0);
+    expect(testHoisted.enhancerCount()).toBe(0);
   });
 
   test('a server function route update keeps the base path', async () => {
@@ -2002,15 +2052,12 @@ describe('Router integration', () => {
         elements,
       );
 
-      const store = fetchRscStore as unknown as Record<string, unknown>;
-      const listeners = store.l as Set<
-        (elements: Record<string, unknown>) => void
-      >;
-      expect(listeners.size).toBe(1);
+      expect(testHoisted.enhancerCount()).toBe(1);
       await act(async () => {
-        for (const listener of listeners) {
-          listener({ [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: false });
-        }
+        await testHoisted.emitActionElements({
+          [ROUTE_ID]: ['/next', ''],
+          [IS_STATIC_ID]: false,
+        });
         await flush();
       });
       await flush();
@@ -2034,16 +2081,13 @@ describe('Router integration', () => {
       },
     );
     try {
-      const store = fetchRscStore as unknown as Record<string, unknown>;
-      const listeners = store.l as Set<
-        (elements: Record<string, unknown>) => void
-      >;
-      expect(listeners.size).toBe(1);
+      expect(testHoisted.enhancerCount()).toBe(1);
       testHoisted.mergeTypes.length = 0;
       await act(async () => {
-        for (const listener of listeners) {
-          listener({ [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: false });
-        }
+        await testHoisted.emitActionElements({
+          [ROUTE_ID]: ['/next', ''],
+          [IS_STATIC_ID]: false,
+        });
         expect(testHoisted.mergeTypes).toEqual(['sync']);
       });
     } finally {
@@ -2066,14 +2110,11 @@ describe('Router integration', () => {
     const pushStateSpy = vi.spyOn(window.history, 'pushState');
 
     try {
-      const store = fetchRscStore as unknown as Record<string, unknown>;
-      const listeners = store.l as Set<
-        (elements: Record<string, unknown>) => void
-      >;
       await act(async () => {
-        for (const listener of listeners) {
-          listener({ [ROUTE_ID]: ['/start', ''], [IS_STATIC_ID]: false });
-        }
+        await testHoisted.emitActionElements({
+          [ROUTE_ID]: ['/start', ''],
+          [IS_STATIC_ID]: false,
+        });
         await flush();
       });
 
@@ -2101,14 +2142,11 @@ describe('Router integration', () => {
       },
     );
 
-    const store = fetchRscStore as unknown as Record<string, unknown>;
-    const listeners = store.l as Set<
-      (elements: Record<string, unknown>) => void
-    >;
     await act(async () => {
-      for (const listener of listeners) {
-        listener({ [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: true });
-      }
+      await testHoisted.emitActionElements({
+        [ROUTE_ID]: ['/next', ''],
+        [IS_STATIC_ID]: true,
+      });
       await flush();
     });
     expect(capture.router?.path).toBe('/next');
@@ -2129,6 +2167,66 @@ describe('Router integration', () => {
     view.unmount();
   });
 
+  test('a cancelled navigation keeps the etags of the elements on screen', async () => {
+    const startSlot = unstable_getRouteSlotId('/start');
+    const never = new Promise<never>(() => {});
+    const Never = () => use(never);
+    installRefetch(
+      vi.fn<RefetchInner>(async (rscPath) =>
+        rscPath === unstable_encodeRoutePath('/never')
+          ? {
+              [unstable_getRouteSlotId('/never')]: <Never />,
+              [ROUTE_ID]: ['/never', ''],
+              [IS_STATIC_ID]: false,
+            }
+          : never,
+      ),
+    );
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const Immutable = () => {
+      const elements = use(useElementsPromise());
+      return (
+        <i data-testid="immutable">
+          {String(isImmutableElement(elements, startSlot))}
+        </i>
+      );
+    };
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        [startSlot]: (
+          <>
+            <Probe />
+            <Immutable />
+          </>
+        ),
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: true,
+        [ETAGS_ID]: { [startSlot]: IMMUTABLE_ETAG },
+      },
+    );
+    try {
+      const immutable = () =>
+        view.container.querySelector('[data-testid="immutable"]')?.textContent;
+      expect(immutable()).toBe('true');
+      // /never's merge waits in its transition; reusing the static /start
+      // cancels it and merges back the elements on screen
+      await act(async () => {
+        void capture.router!.push('/never');
+        await flush();
+      });
+      await act(async () => {
+        void capture.router!.push('/start?x=1');
+        await flush();
+      });
+
+      expect(immutable()).toBe('true');
+    } finally {
+      view.unmount();
+    }
+  });
+
   test('a server function 404 keeps the requested url', async () => {
     window.history.replaceState({}, '', '/start?a=1');
     const capture = { router: null as RouterApi | null };
@@ -2145,14 +2243,11 @@ describe('Router integration', () => {
       elements,
     );
 
-    const store = fetchRscStore as unknown as Record<string, unknown>;
-    const listeners = store.l as Set<
-      (elements: Record<string, unknown>) => void
-    >;
     await act(async () => {
-      for (const listener of listeners) {
-        listener({ [ROUTE_ID]: ['/404', ''], [IS_STATIC_ID]: false });
-      }
+      await testHoisted.emitActionElements({
+        [ROUTE_ID]: ['/404', ''],
+        [IS_STATIC_ID]: false,
+      });
       await flush();
     });
     await flush();
@@ -2235,7 +2330,7 @@ describe('Router integration', () => {
         await Promise.resolve();
       });
 
-      expect(fetchRsc).toHaveBeenCalledTimes(1);
+      expect(currentFetch()).toHaveBeenCalledTimes(1);
       expect(testHoisted.mergeTypes).toEqual([]);
       expect(capture.router?.path).toBe('/start');
       expect(window.location.pathname).toBe('/start');
@@ -2270,7 +2365,6 @@ describe('Router integration', () => {
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
     const slotId = unstable_getRouteSlotId('/start');
-    const etagId = `${ETAG_ID_PREFIX}${slotId}`;
     let mergeElements: ReturnType<typeof useMergeElements> | undefined;
     const Content = ({ label }: { label: string }) => {
       mergeElements = useMergeElements();
@@ -2285,7 +2379,7 @@ describe('Router integration', () => {
       { initialRoute: { path: '/start', query: '', hash: '' } },
       {
         [slotId]: <Content label="initial" />,
-        [etagId]: 'initial',
+        [ETAGS_ID]: { [slotId]: 'initial' },
         [ROUTE_ID]: ['/start', ''],
         [IS_STATIC_ID]: false,
       },
@@ -2297,16 +2391,18 @@ describe('Router integration', () => {
         await Promise.resolve();
       });
       await act(async () => {
-        await mergeElements!({
-          [slotId]: <Content label="action" />,
-          [etagId]: 'action',
-        });
+        await mergeElements!(
+          adoptElements({
+            [slotId]: <Content label="action" />,
+            [ETAGS_ID]: { [slotId]: 'action' },
+          }),
+        );
       });
 
       await act(async () => {
         pending.resolve({
           [slotId]: <Content label="destination" />,
-          [etagId]: 'destination',
+          [ETAGS_ID]: { [slotId]: 'destination' },
           [IS_STATIC_ID]: false,
         });
         await pushed;
@@ -2316,17 +2412,19 @@ describe('Router integration', () => {
       expect(view.container.textContent).toContain('destination');
       expect(view.container.textContent).not.toContain('action');
 
-      refetch.mockResolvedValueOnce({
-        [slotId]: <Content label="reloaded" />,
-        [etagId]: 'reloaded',
-        [IS_STATIC_ID]: false,
+      let reloadEtags: Etags | undefined;
+      refetch.mockImplementationOnce(async (_rscPath, _rscParams, options) => {
+        reloadEtags = collectEtags(options?.unstable_base ?? {});
+        return {
+          [slotId]: <Content label="reloaded" />,
+          [ETAGS_ID]: { [slotId]: 'reloaded' },
+          [IS_STATIC_ID]: false,
+        };
       });
       await act(async () => {
         await capture.router!.reload();
       });
-      expect(refetch.mock.calls[1]?.[2]?.unstable_base?.[etagId]).toBe(
-        'destination',
-      );
+      expect(reloadEtags).toEqual({ [slotId]: 'destination' });
     } finally {
       view.unmount();
     }
@@ -2613,7 +2711,7 @@ describe('Router integration', () => {
         [nextSlotId]: <div>shell</div>,
         [ROUTE_ID]: ['/start', ''],
         [IS_STATIC_ID]: false,
-        [`${ETAG_ID_PREFIX}${nextSlotId}`]: IMMUTABLE_ETAG,
+        [ETAGS_ID]: { [nextSlotId]: IMMUTABLE_ETAG },
       },
     );
     try {
@@ -2787,7 +2885,7 @@ describe('Router integration', () => {
         extra: <div>placeholder</div>,
         [ROUTE_ID]: ['/start', ''],
         [IS_STATIC_ID]: false,
-        [`${ETAG_ID_PREFIX}${nextSlotId}`]: IMMUTABLE_ETAG,
+        [ETAGS_ID]: { [nextSlotId]: IMMUTABLE_ETAG },
       },
     );
     try {
@@ -3845,26 +3943,24 @@ describe('Router integration', () => {
 
   // The instant shell: a cached prefetch is the navigation's data source,
   // while the eager merge paints the static shell and the base.
-  const instantNavElements = () => ({
+  const instantNavElements = (etags: Record<string, unknown> = {}) => ({
     [unstable_getRouteSlotId('/start')]: <div>start</div>,
     [unstable_getRouteSlotId('/next')]: <div>next</div>,
     [ROUTE_ID]: ['/start', ''],
     [IS_STATIC_ID]: false,
-    // mark /next's route slot static so the instant branch engages
-    [`${ETAG_ID_PREFIX}${unstable_getRouteSlotId('/next')}`]: IMMUTABLE_ETAG,
+    [ETAGS_ID]: {
+      // mark /next's route slot static so the instant branch engages
+      [unstable_getRouteSlotId('/next')]: IMMUTABLE_ETAG,
+      ...etags,
+    },
   });
 
-  test('instant Link bypasses a custom transition for a known static route', async () => {
-    const customTransition = vi.fn<(fn: () => void) => void>();
+  test('instant Link commits a known static route without refetching', async () => {
     const view = await renderRouter(
       { initialRoute: { path: '/start', query: '', hash: '' } },
       {
         [unstable_getRouteSlotId('/start')]: (
-          <Link
-            to="/start?updated=1"
-            unstable_instant
-            unstable_startTransition={customTransition}
-          >
+          <Link to="/start?updated=1" unstable_instant>
             update query
           </Link>
         ),
@@ -3879,7 +3975,6 @@ describe('Router integration', () => {
         await flush();
       });
 
-      expect(customTransition).not.toHaveBeenCalled();
       expect(window.location.search).toBe('?updated=1');
       expect(getRefetchMock()).not.toHaveBeenCalled();
     } finally {
@@ -4041,12 +4136,12 @@ describe('Router integration', () => {
     const view = await renderRouter(
       { initialRoute: { path: '/start', query: '', hash: '' } },
       {
-        ...instantNavElements(),
+        ...instantNavElements({
+          [unstable_getRouteSlotId('/slow')]: IMMUTABLE_ETAG,
+        }),
         [unstable_getRouteSlotId('/start')]: <Probe />,
         [unstable_getRouteSlotId('/slow')]: <Probe />,
         [unstable_getRouteSlotId('/next')]: <Probe />,
-        [`${ETAG_ID_PREFIX}${unstable_getRouteSlotId('/slow')}`]:
-          IMMUTABLE_ETAG,
       },
     );
 
@@ -4788,7 +4883,7 @@ describe('Router integration', () => {
   test('mode once fetches a route only once per session', async () => {
     const shell = {
       [unstable_getRouteSlotId('/next')]: <div>next-shell</div>,
-      [`${ETAG_ID_PREFIX}${unstable_getRouteSlotId('/next')}`]: IMMUTABLE_ETAG,
+      [ETAGS_ID]: { [unstable_getRouteSlotId('/next')]: IMMUTABLE_ETAG },
       [ROUTE_ID]: ['/next', ''],
       [IS_STATIC_ID]: false,
     };
@@ -5078,7 +5173,7 @@ describe('Router integration', () => {
     const freshSlotId = unstable_getRouteSlotId('/fresh');
     const shell = {
       [freshSlotId]: <div>fresh-shell</div>,
-      [`${ETAG_ID_PREFIX}${freshSlotId}`]: IMMUTABLE_ETAG,
+      [ETAGS_ID]: { [freshSlotId]: IMMUTABLE_ETAG },
       [ROUTE_ID]: ['/fresh', ''],
       [IS_STATIC_ID]: false,
     };
@@ -5118,23 +5213,16 @@ describe('Router integration', () => {
     expect(refetch).toHaveBeenCalledWith(
       unstable_encodeRoutePath('/fresh'),
       expect.any(URLSearchParams),
-      expect.objectContaining({
-        unstable_base: expect.objectContaining({
-          [freshSlotId]: expect.anything(),
-          [`${ETAG_ID_PREFIX}${freshSlotId}`]: IMMUTABLE_ETAG,
-        }),
-      }),
+      expect.objectContaining({ unstable_base: expect.any(Object) }),
     );
-    expect(testHoisted.mergeOptions).toContainEqual(
-      expect.objectContaining({
-        unstable_swr: expect.objectContaining({
-          base: expect.objectContaining({
-            [freshSlotId]: expect.anything(),
-            [`${ETAG_ID_PREFIX}${freshSlotId}`]: IMMUTABLE_ETAG,
-          }),
-        }),
-      }),
-    );
+    const refetchBase = refetch.mock.calls.at(-1)?.[2]?.unstable_base ?? {};
+    expect(collectEtags(refetchBase)).toEqual({
+      [freshSlotId]: IMMUTABLE_ETAG,
+    });
+    const swrBase =
+      testHoisted.mergeOptions.find((options) => options?.unstable_swr?.base)
+        ?.unstable_swr?.base ?? {};
+    expect(collectEtags(swrBase)).toEqual({ [freshSlotId]: IMMUTABLE_ETAG });
 
     dateNow.mockRestore();
     view.unmount();
@@ -5947,7 +6035,7 @@ describe('Router integration', () => {
       [ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
       [HAS404_ID]: true,
-      [`${ETAG_ID_PREFIX}${profileSlotId}`]: IMMUTABLE_ETAG,
+      [ETAGS_ID]: { [profileSlotId]: IMMUTABLE_ETAG },
     };
 
     const view = await renderRouter(
@@ -6125,7 +6213,7 @@ describe('Router integration', () => {
       [unstable_getRouteSlotId('/account/login')]: <Probe />,
       [ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
-      [`${ETAG_ID_PREFIX}${profileSlotId}`]: IMMUTABLE_ETAG,
+      [ETAGS_ID]: { [profileSlotId]: IMMUTABLE_ETAG },
     };
 
     const view = await renderRouter(
@@ -6625,7 +6713,7 @@ describe('Router integration', () => {
       [profileSlotId]: <ThrowRedirect />,
       [ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
-      [`${ETAG_ID_PREFIX}${profileSlotId}`]: IMMUTABLE_ETAG,
+      [ETAGS_ID]: { [profileSlotId]: IMMUTABLE_ETAG },
     };
 
     const view = await renderRouter(
@@ -7347,7 +7435,7 @@ describe('Router integration', () => {
         [unstable_getRouteSlotId('/other')]: <div>other</div>,
         [ROUTE_ID]: ['/start', ''],
         [IS_STATIC_ID]: false,
-        [`${ETAG_ID_PREFIX}${nextSlotId}`]: IMMUTABLE_ETAG,
+        [ETAGS_ID]: { [nextSlotId]: IMMUTABLE_ETAG },
         [HAS404_ID]: false,
       },
     );
@@ -7425,7 +7513,7 @@ describe('Router integration', () => {
         extra: <div>placeholder</div>,
         [ROUTE_ID]: ['/start', ''],
         [IS_STATIC_ID]: false,
-        [`${ETAG_ID_PREFIX}${nextSlotId}`]: IMMUTABLE_ETAG,
+        [ETAGS_ID]: { [nextSlotId]: IMMUTABLE_ETAG },
       },
     );
     try {
@@ -8884,14 +8972,13 @@ describe('Router integration', () => {
     }
   });
 
-  test('a delayed failure commit cannot replace a newer navigation', async () => {
-    const customCommits: Array<() => void> = [];
-    const customTransition = vi.fn((fn: () => void) => {
-      customCommits.push(fn);
-    });
+  test('a delayed failure cannot replace a newer navigation', async () => {
+    // The failure lands after a newer navigation already committed, so its
+    // controller is aborted and the error must not reach the boundary.
+    const broken = createDeferred<Record<string, unknown>>();
     const refetch = vi
       .fn<RefetchInner>()
-      .mockRejectedValueOnce(new Error('offline'))
+      .mockReturnValueOnce(broken.promise)
       .mockResolvedValueOnce({
         [ROUTE_ID]: ['/other', ''],
         [IS_STATIC_ID]: false,
@@ -8908,11 +8995,7 @@ describe('Router integration', () => {
           </ErrorBoundary>
         </>
       ),
-      [unstable_getRouteSlotId('/start')]: (
-        <Link to="/broken" unstable_startTransition={customTransition}>
-          broken
-        </Link>
-      ),
+      [unstable_getRouteSlotId('/start')]: <Link to="/broken">broken</Link>,
       [unstable_getRouteSlotId('/other')]: <div>other page</div>,
       [ROUTE_ID]: ['/start', ''],
       [IS_STATIC_ID]: false,
@@ -8928,14 +9011,14 @@ describe('Router integration', () => {
         view.container.querySelector('a')?.click();
         await flush();
       });
-      expect(customTransition).toHaveBeenCalledTimes(1);
+      expect(refetch).toHaveBeenCalledTimes(1);
 
       await act(async () => {
         await capture.router!.push('/other');
         await flush();
       });
       await act(async () => {
-        customCommits[0]?.();
+        broken.reject(new Error('offline'));
         await flush();
       });
 
@@ -8945,135 +9028,6 @@ describe('Router integration', () => {
       );
     } finally {
       consoleErrorSpy.mockRestore();
-      view.unmount();
-    }
-  });
-
-  test('useNavigationStatus stays idle when the Link uses unstable_startTransition', async () => {
-    // A custom unstable_startTransition replaces React's useTransition, so
-    // isPending never flips and the hook reports { pending: false } for that
-    // link even mid-navigation. This locks the documented limitation.
-    const navigation = createDeferred<Record<string, unknown>>();
-    const refetch = vi.fn<RefetchInner>(() => navigation.promise);
-    installRefetch(refetch);
-    window.history.replaceState({}, '', '/one');
-    let inCustomTransition = false;
-    let mergeInsideTransition: boolean | undefined;
-    const customCommits: Array<() => void> = [];
-    const customTransition = vi.fn((fn: () => void) => {
-      customCommits.push(() => {
-        inCustomTransition = true;
-        try {
-          fn();
-        } finally {
-          inCustomTransition = false;
-        }
-      });
-    });
-
-    const PendingProbe = () => {
-      const { pending } = useNavigationStatus();
-      return pending ? (
-        <div data-testid="pending">Pending</div>
-      ) : (
-        <div data-testid="not-pending">Idle</div>
-      );
-    };
-
-    const view = await renderRouter(
-      { initialRoute: { path: '/one', query: '', hash: '' } },
-      {
-        [unstable_getRouteSlotId('/one')]: (
-          <>
-            <h1>Page 1</h1>
-            <Link
-              to="/two"
-              unstable_instant
-              unstable_startTransition={customTransition}
-            >
-              Go to two
-              <PendingProbe />
-            </Link>
-          </>
-        ),
-        [ROUTE_ID]: ['/one', ''],
-        [IS_STATIC_ID]: false,
-      },
-    );
-
-    try {
-      testHoisted.onMerge = () => {
-        mergeInsideTransition = inCustomTransition;
-      };
-      const has = (testid: string) =>
-        view.container.querySelector(`[data-testid="${testid}"]`) !== null;
-
-      expect(has('not-pending')).toBe(true);
-
-      const link = Array.from(view.container.querySelectorAll('a')).find(
-        (anchor) => anchor.textContent?.includes('Go to two'),
-      ) as HTMLAnchorElement | undefined;
-      if (!link) {
-        throw new Error('expected link');
-      }
-      await act(async () => {
-        link.dispatchEvent(
-          new MouseEvent('click', {
-            bubbles: true,
-            cancelable: true,
-            button: 0,
-          }),
-        );
-      });
-      await flush();
-
-      // Navigation is in flight (refetch not resolved), but the custom
-      // transition bypassed useTransition, so pending never flipped.
-      expect(refetch).toHaveBeenCalledTimes(1);
-      expect(has('pending')).toBe(false);
-      expect(has('not-pending')).toBe(true);
-      expect(view.container.textContent).toContain('Page 1');
-      expect(customTransition).not.toHaveBeenCalled();
-
-      await act(async () => {
-        navigation.resolve({
-          [unstable_getRouteSlotId('/two')]: <h1>Page 2</h1>,
-          [ROUTE_ID]: ['/two', ''],
-          [IS_STATIC_ID]: true,
-        });
-        await flush();
-      });
-
-      expect(customTransition).toHaveBeenCalledTimes(1);
-      expect(view.container.textContent).toContain('Page 1');
-      await act(async () => {
-        link.dispatchEvent(
-          new MouseEvent('click', {
-            bubbles: true,
-            cancelable: true,
-            button: 0,
-          }),
-        );
-        await flush();
-      });
-
-      // The first response is static, but its delayed commit has not run. A
-      // newer navigation must fetch it again instead of trusting missing data.
-      expect(refetch).toHaveBeenCalledTimes(2);
-      expect(customTransition).toHaveBeenCalledTimes(2);
-      await act(async () => {
-        customCommits[0]?.();
-        await flush();
-      });
-      expect(view.container.textContent).toContain('Page 1');
-      await act(async () => {
-        customCommits[1]?.();
-        await flush();
-      });
-
-      expect(view.container.textContent).toContain('Page 2');
-      expect(mergeInsideTransition).toBe(true);
-    } finally {
       view.unmount();
     }
   });

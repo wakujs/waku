@@ -13,37 +13,33 @@ import {
 import type { ReactNode } from 'react';
 import RSDWClient from 'react-server-dom-webpack/client';
 import { createCustomError } from '../lib/utils/custom-errors.js';
-import {
-  ETAGS_HEADER,
-  ETAG_ID_PREFIX,
-  IMMUTABLE_ETAG,
-  isValidEtag,
-  serializeClientEtags,
-} from '../lib/utils/etags.js';
+import { ETAGS_HEADER, serializeClientEtags } from '../lib/utils/etags.js';
 import type { Etags } from '../lib/utils/etags.js';
 import { consumeInitialRscEntry } from '../lib/utils/initial-rsc.js';
 import { setupDebugChannel } from '../lib/utils/react-debug-channel.js';
 import { encodeFuncId, encodeRscPath } from '../lib/utils/rsc-path.js';
 import {
-  CALL_SERVER_ELEMENTS_LISTENERS,
-  FETCH_ENHANCERS,
-  FETCH_RSC_INPUT_TRANSFORMERS,
-  fetchRscStore,
-} from './client-utils/fetch-store.js';
-import type {
-  FetchEnhancer,
-  FetchRscInputTransformer,
-} from './client-utils/fetch-store.js';
+  adoptElements,
+  collectEtags,
+  combineElements,
+  copyElement,
+  isImmutableElement,
+} from './client-utils/element-etags.js';
 import {
   getInitialRscEntry,
   releaseInitialRscEntry,
 } from './client-utils/initial-rsc-store.js';
+import { fetchRscInputTransformers } from './client-utils/input-transformers.js';
+import type { FetchRscInputTransformer } from './client-utils/input-transformers.js';
 import {
   getDefaultRootStore,
   registerRootStore,
 } from './client-utils/root-store.js';
 import type {
-  CallServerElementsListener,
+  FetchRsc,
+  FetchRscOptions,
+  RequestRsc,
+  RequestRscEnhancer,
   RootStore,
 } from './client-utils/root-store.js';
 import {
@@ -92,26 +88,12 @@ const checkStatus = async (
 };
 
 // only the client adds symbol keys; a decoded server payload has string keys
-type Elements = Record<string | symbol, unknown>;
+type Elements = Readonly<Record<string | symbol, unknown>>;
 
-const collectCachedEtags = (elements: Elements): Etags => {
-  const etags: Etags = {};
-  for (const [key, value] of Object.entries(elements)) {
-    if (key.startsWith(ETAG_ID_PREFIX) && isValidEtag(value)) {
-      etags[key.slice(ETAG_ID_PREFIX.length)] = value;
-    }
-  }
-  return etags;
+export {
+  combineElements as unstable_combineElements,
+  isImmutableElement as unstable_isImmutableElement,
 };
-
-const updateCachedEtags = (store: RootStore, elements: Elements): void => {
-  store.etags = collectCachedEtags(elements);
-};
-
-export const unstable_isImmutableElement = (
-  elements: Elements,
-  slotId: string,
-): boolean => elements[ETAG_ID_PREFIX + slotId] === IMMUTABLE_ETAG;
 
 const getCached = <T,>(c: () => T, m: WeakMap<WeakKey, T>, k: object): T =>
   (m.has(k) ? m : m.set(k, c())).get(k) as T;
@@ -125,11 +107,7 @@ const mergeElementsPromise = (
   b: Promise<Elements> | Elements,
 ): Promise<Elements> => {
   const getResult = () =>
-    Promise.all([a, b]).then(([a, b]) => {
-      const nextElements = { ...a, ...b };
-      delete nextElements._value;
-      return nextElements;
-    });
+    Promise.all([a, b]).then(([a, b]) => combineElements(a, b));
   const cache2 = getCached(() => new WeakMap(), mergeCache, a);
   return getCached(getResult, cache2, b);
 };
@@ -142,22 +120,14 @@ const refreshElementsPromise = (
   b: Promise<Elements>,
 ): Promise<Elements> => {
   const getResult = () =>
-    Promise.all([a, b]).then(([aRes, bRes]) => {
-      const nextElements = { ...bRes };
-      delete nextElements._value;
-      for (const key of Object.getOwnPropertySymbols(aRes)) {
-        nextElements[key] = aRes[key];
-      }
-      return nextElements;
-    });
+    Promise.all([a, b]).then(([aRes, bRes]) =>
+      combineElements(bRes, aRes, {
+        unstable_filter: (key) => typeof key === 'symbol' && !(key in bRes),
+      }),
+    );
   const cache2 = getCached(() => new WeakMap(), refreshCache, a);
   return getCached(getResult, cache2, b);
 };
-
-const slotIdOf = <K extends string | symbol>(key: K): K =>
-  typeof key === 'string' && key.startsWith(ETAG_ID_PREFIX)
-    ? (key.slice(ETAG_ID_PREFIX.length) as K)
-    : key;
 
 const swrCache = new WeakMap();
 const swrElementsPromise = (
@@ -173,30 +143,32 @@ const swrElementsPromise = (
         b.then((bRes) =>
           key in bRes ? bRes[key] : base && key in base ? base[key] : aRes[key],
         );
-      const nextElements: Elements = {};
+      const nextElements: Record<string | symbol, unknown> = {};
       for (const key of Reflect.ownKeys(aRes)) {
-        if (key === '_value') {
-          continue;
+        if (pin(key)) {
+          copyElement(nextElements, aRes, key);
+        } else {
+          nextElements[key] = holeFor(key);
         }
-        // an _etag:<slot> key follows its slot's swr-ness, not its own
-        nextElements[key] = pin(slotIdOf(key)) ? aRes[key] : holeFor(key);
       }
       if (base) {
         for (const key of Object.keys(base)) {
-          if (key === '_value' || key in nextElements) {
+          if (key in nextElements) {
             continue;
           }
           // pin only what the base proves immutable; pinning a mutable
           // base key would eagerly serve possibly-stale content
-          if (unstable_isImmutableElement(base, slotIdOf(key))) {
-            nextElements[key] = base[key];
+          if (isImmutableElement(base, key)) {
+            copyElement(nextElements, base, key);
           } else {
             nextElements[key] = holeFor(key);
           }
         }
       }
       if (overlay) {
-        Object.assign(nextElements, overlay);
+        for (const key of Reflect.ownKeys(overlay)) {
+          copyElement(nextElements, overlay, key);
+        }
       }
       resolvedMergeResults.set(result, nextElements);
       return nextElements;
@@ -227,38 +199,28 @@ const swrNewKeysElementsPromise = (
   if (
     prevRes &&
     !overlayKeys.length &&
-    !Object.keys(bRes).some((key) => key !== '_value' && !(key in prevRes))
+    !Object.keys(bRes).some((key) => !(key in prevRes))
   ) {
     return prev;
   }
   const getResult = () =>
     Promise.resolve(prev).then((prevRes) => {
-      const newKeys = Object.keys(bRes).filter(
-        (key) => key !== '_value' && !(key in prevRes),
-      );
+      const newKeys = Object.keys(bRes).filter((key) => !(key in prevRes));
       if (!newKeys.length && !overlayKeys.length) {
         return prevRes;
       }
-      const nextElements = { ...prevRes };
-      for (const key of newKeys) {
-        nextElements[key] = bRes[key];
-      }
-      for (const key of overlayKeys) {
-        nextElements[key] = bRes[key];
-      }
-      return nextElements;
+      return combineElements(prevRes, bRes, {
+        unstable_filter: (key) =>
+          typeof key === 'string' &&
+          (newKeys.includes(key) || overlayKeys.includes(key)),
+      });
     });
   const cache2 = getCached(() => new WeakMap(), swrNewKeysCache, prev);
   return getCached(getResult, cache2, bRes);
 };
 
-type FetchRscOptions = {
-  signal?: AbortSignal;
-  onBuildIdMismatch?: () => void;
-  unstable_base?: Elements;
-};
-
 type FetchRscElementsOptions = {
+  type?: 'rsc' | 'call';
   signal?: AbortSignal;
   onBuildIdMismatch?: () => void;
   etags?: Etags;
@@ -271,17 +233,6 @@ type MergeElementsOptions = {
     pin: (key: string | symbol) => boolean;
     base?: Elements;
   };
-};
-
-const getFetchFn = (): typeof fetch => {
-  let fetchFn = fetch;
-  const enhancers = fetchRscStore[FETCH_ENHANCERS];
-  if (enhancers) {
-    for (const enhance of enhancers) {
-      fetchFn = enhance(fetchFn);
-    }
-  }
-  return fetchFn;
 };
 
 const requestRsc = (
@@ -357,11 +308,8 @@ const applyInputTransformers = (
   rscPath: string,
   rscParams: unknown,
 ): readonly [rscPath: string, rscParams: unknown] => {
-  const fetchRscInputTransformers = fetchRscStore[FETCH_RSC_INPUT_TRANSFORMERS];
-  if (fetchRscInputTransformers) {
-    for (const transformFetchRscInput of fetchRscInputTransformers) {
-      [rscPath, rscParams] = transformFetchRscInput(rscPath, rscParams);
-    }
+  for (const transformFetchRscInput of fetchRscInputTransformers) {
+    [rscPath, rscParams] = transformFetchRscInput(rscPath, rscParams);
   }
   return [rscPath, rscParams];
 };
@@ -369,33 +317,57 @@ const applyInputTransformers = (
 const fetchRscElements = (
   rscPath: string,
   rscParams: unknown,
-  options?: FetchRscElementsOptions,
-): Promise<Elements> => {
-  [rscPath, rscParams] = applyInputTransformers(rscPath, rscParams);
-  const initial = options?.initial;
-  const baseFetchFn = getFetchFn();
-  const debug = import.meta.hot
-    ? setupDebugChannel(baseFetchFn, !!initial, initial?.debugId)
-    : undefined;
-  const fetchFn = debug?.fetchFn || baseFetchFn;
-  const temporaryReferences = createTemporaryReferenceSet();
-  const responsePromise = initial
-    ? initial.response
-    : requestRsc(
-        fetchFn,
-        rscPath,
-        rscParams,
-        temporaryReferences,
-        options?.signal,
-        options?.etags,
-      );
-  const elements = decodeRsc(
-    responsePromise,
-    temporaryReferences,
-    debug?.debugChannel,
-  );
-  reloadOnBuildIdMismatch(elements, options?.onBuildIdMismatch);
-  return elements;
+  options: FetchRscElementsOptions,
+  store: RootStore | undefined,
+): ReturnType<RequestRsc> => {
+  let request: RequestRsc = (
+    path,
+    params,
+    { type, fetch: transport, signal },
+  ) => {
+    [path, params] = applyInputTransformers(path, params);
+    const initial = options.initial;
+    const debug = import.meta.hot
+      ? setupDebugChannel(transport, !!initial, initial?.debugId)
+      : undefined;
+    const fetchFn = debug?.fetchFn || transport;
+    const temporaryReferences = createTemporaryReferenceSet();
+    const responsePromise = initial
+      ? initial.response
+      : requestRsc(
+          fetchFn,
+          path,
+          params,
+          temporaryReferences,
+          signal,
+          options.etags,
+        );
+    const elements = decodeRsc(
+      responsePromise,
+      temporaryReferences,
+      debug?.debugChannel,
+    );
+    reloadOnBuildIdMismatch(elements, options.onBuildIdMismatch);
+    return elements.then((data) =>
+      type === 'call'
+        ? { elements: adoptElements(data), value: data._value }
+        : { elements: adoptElements(data) },
+    );
+  };
+  try {
+    for (const [enhance] of [...(store?.enhancers ?? [])].sort(
+      (a, b) => a[1] - b[1],
+    )) {
+      request = enhance(request);
+    }
+    return request(rscPath, rscParams, {
+      type: options.type ?? 'rsc',
+      fetch: fetch.bind(globalThis),
+      ...(options.signal ? { signal: options.signal } : {}),
+    });
+  } catch (e) {
+    return Promise.reject(e);
+  }
 };
 
 /**
@@ -410,25 +382,19 @@ export const unstable_callServerRsc = async (
   const rscPath = encodeFuncId(funcId);
   const rscParams =
     args.length === 1 && args[0] instanceof URLSearchParams ? args[0] : args;
-  const { _value: value, ...data } = await fetchRscElements(
+  const { elements: data, value } = await fetchRscElements(
     rscPath,
     rscParams,
-    { etags: rootStore?.etags ?? {} },
+    { type: 'call', etags: rootStore?.etags ?? {} },
+    rootStore,
   );
-  if (Object.keys(data).length) {
+  if (Reflect.ownKeys(data).length) {
     if (!rootStore) {
       throw new Error(
         'Server action returned elements without a mounted Root component. Call mount-time actions from useEffect, not useLayoutEffect.',
       );
     }
-    const globalListeners = fetchRscStore[CALL_SERVER_ELEMENTS_LISTENERS];
     startTransition(() => {
-      globalListeners?.forEach((listener) => {
-        listener(data);
-      });
-      rootStore.listeners.forEach((listener) => {
-        listener(data);
-      });
       rootStore.setElements((prev) => mergeElementsPromise(prev, data));
     });
   }
@@ -440,49 +406,15 @@ type Unregister = () => void;
 const noop = () => {};
 
 /**
- * Registers a global listener that receives elements returned by server
- * actions. Returns a function that unregisters the listener.
- *
- * @deprecated Use `useRegisterCallServerElementsListener_UNSTABLE` so the
- * listener is bound to the enclosing Root.
- */
-export const unstable_registerCallServerElementsListener = (
-  listener: CallServerElementsListener,
-): Unregister => {
-  const callServerElementsListeners = (fetchRscStore[
-    CALL_SERVER_ELEMENTS_LISTENERS
-  ] ||= new Set());
-  callServerElementsListeners.add(listener);
-  return () => {
-    callServerElementsListeners.delete(listener);
-  };
-};
-
-/**
- * Register a fetch enhancer applied to every RSC request (e.g. to add headers).
- * Enhancers are composed in registration order. Returns a function that
- * unregisters the enhancer.
- */
-export const unstable_registerFetchEnhancer = (
-  enhance: FetchEnhancer,
-): Unregister => {
-  const fetchEnhancers = (fetchRscStore[FETCH_ENHANCERS] ||= new Set());
-  fetchEnhancers.add(enhance);
-  return () => {
-    fetchEnhancers.delete(enhance);
-  };
-};
-
-/**
  * Registers a transformer that rewrites the RSC path and params before each
  * request. Returns a function that unregisters the transformer.
+ *
+ * @deprecated Use `useRegisterRscEnhancer_UNSTABLE`. This runs after every
+ * enhancer, last before the request is sent.
  */
 export function unstable_registerFetchRscInputTransformer(
   transformFetchRscInput: FetchRscInputTransformer,
 ): Unregister {
-  const fetchRscInputTransformers = (fetchRscStore[
-    FETCH_RSC_INPUT_TRANSFORMERS
-  ] ||= new Set());
   fetchRscInputTransformers.add(transformFetchRscInput);
   return () => {
     fetchRscInputTransformers.delete(transformFetchRscInput);
@@ -499,38 +431,52 @@ export const unstable_registerRscReloadListener =
 const fetchRootRsc = (
   rscPath: string,
   rscParams: unknown,
+  store?: RootStore,
 ): Promise<Elements> => {
   const initial = consumeInitialRscEntry();
   return fetchRscElements(
     rscPath,
     rscParams,
     initial ? { initial } : { etags: {} },
-  );
+    store,
+  ).then(({ elements }) => elements);
+};
+
+const fetchRsc = (
+  rscPath: string,
+  rscParams: unknown,
+  options: FetchRscOptions | undefined,
+  store: RootStore | undefined,
+): Promise<Elements> => {
+  const base = options?.unstable_base;
+  const elements = fetchRscElements(
+    rscPath,
+    rscParams,
+    {
+      // Etags can only claim elements from a base the caller retains.
+      etags: collectEtags(base ?? {}),
+      ...(options?.signal ? { signal: options.signal } : {}),
+      ...(options?.onBuildIdMismatch
+        ? { onBuildIdMismatch: options.onBuildIdMismatch }
+        : {}),
+    },
+    store,
+  ).then(({ elements }) => elements);
+  if (!base) {
+    return elements;
+  }
+  return elements.then((response) => combineElements(base, response));
 };
 
 /**
  * Fetch and decode elements for an RSC path. Each call starts a new request;
  * consumers own prefetching and response reuse.
+ *
+ * @deprecated Use `useFetchRsc_UNSTABLE`. This runs the enhancers of whichever
+ * Root mounted last.
  */
-export const unstable_fetchRsc = (
-  rscPath: string,
-  rscParams?: unknown,
-  options?: FetchRscOptions,
-): Promise<Elements> => {
-  const base = options?.unstable_base;
-  const elements = fetchRscElements(rscPath, rscParams, {
-    // Etags can only claim elements from a base the caller retains.
-    etags: collectCachedEtags(base ?? {}),
-    ...(options?.signal ? { signal: options.signal } : {}),
-    ...(options?.onBuildIdMismatch
-      ? { onBuildIdMismatch: options.onBuildIdMismatch }
-      : {}),
-  });
-  if (!base) {
-    return elements;
-  }
-  return elements.then((response) => ({ ...base, ...response }));
-};
+export const unstable_fetchRsc: FetchRsc = (rscPath, rscParams, options) =>
+  fetchRsc(rscPath, rscParams, options, getDefaultRootStore());
 
 const getInitialRsc = (
   rscPath: string,
@@ -555,24 +501,36 @@ const useRootStore = (): RootStore | null => {
   return store;
 };
 
-type RegisterCallServerElementsListener = (
-  listener: CallServerElementsListener,
-) => Unregister;
+const fetchWithoutRoot: FetchRsc = (rscPath, rscParams, options) =>
+  fetchRsc(rscPath, rscParams, options, undefined);
 
 /**
- * Returns a Root-bound registrar for listeners that receive elements returned
- * by server actions.
+ * Returns the fetch of the enclosing `Root_UNSTABLE`, which runs that Root's
+ * enhancers and returns the elements without merging them. Outside a Root it
+ * runs no enhancers.
  */
-export const useRegisterCallServerElementsListener_UNSTABLE = () => {
+export const useFetchRsc_UNSTABLE = (): FetchRsc =>
+  use(RootStoreContext)?.fetchRsc ?? fetchWithoutRoot;
+
+/**
+ * Returns a registrar for the enclosing Root's RSC request enhancers. An
+ * enhancer wraps the Root's requests to rewrite the inputs, wrap
+ * `options.fetch`, or transform the result. Higher `order`s wrap lower ones.
+ */
+export const useRegisterRscEnhancer_UNSTABLE = () => {
   const store = useRootStore();
-  return useCallback<RegisterCallServerElementsListener>(
-    (listener) => {
+  return useCallback(
+    (enhance: RequestRscEnhancer, order = 0): Unregister => {
       if (store === null) {
         return noop;
       }
-      store.listeners.add(listener);
+      const entry: [RequestRscEnhancer, number] = [enhance, order];
+      store.enhancers.push(entry);
       return () => {
-        store.listeners.delete(listener);
+        const index = store.enhancers.indexOf(entry);
+        if (index !== -1) {
+          store.enhancers.splice(index, 1);
+        }
       };
     },
     [store],
@@ -582,9 +540,9 @@ export const useRegisterCallServerElementsListener_UNSTABLE = () => {
 const ElementsContext = createContext<Promise<Elements> | null>(null);
 
 /**
- * Returns a function that merges an element record or pending RSC payload into
- * the current `Root_UNSTABLE`. A rejected payload leaves the current elements
- * unchanged.
+ * Returns a function that merges an element record, or a promise of one such
+ * as `unstable_fetchRsc` returns, into the current `Root_UNSTABLE`. A rejected
+ * payload leaves the current elements unchanged.
  */
 export const useMergeElements_UNSTABLE = () => {
   const store = useRootStore();
@@ -664,17 +622,22 @@ export const Root_UNSTABLE = ({
   );
   const [initialElements] = useState(() => getInitialRsc(...initialInput));
   const [elements, setElements] = useState(initialElements);
-  const [store] = useState(() => ({
-    setElements,
-    etags: {},
-    listeners: new Set<CallServerElementsListener>(),
-  }));
+  const [store] = useState(() => {
+    const store: RootStore = {
+      setElements,
+      etags: {},
+      enhancers: [],
+      fetchRsc: (rscPath, rscParams, options) =>
+        fetchRsc(rscPath, rscParams, options, store),
+    };
+    return store;
+  });
   useLayoutEffect(() => {
     releaseInitialRscEntry(...initialInput, initialElements);
     const unregisterStore = registerRootStore(store);
     const unregisterReload = import.meta.hot
       ? registerRootReload(store, () => {
-          const data = fetchRootRsc(...initialInput);
+          const data = fetchRootRsc(...initialInput, store);
           setElements((prev) => refreshElementsPromise(prev, data));
         })
       : undefined;
@@ -685,7 +648,9 @@ export const Root_UNSTABLE = ({
   }, [initialElements, initialInput, store]);
   useEffect(() => {
     elements.then(
-      (resolved) => updateCachedEtags(store, resolved),
+      (resolved) => {
+        store.etags = collectEtags(resolved);
+      },
       () => {},
     );
   }, [elements, store]);
