@@ -159,15 +159,15 @@ equivalent of the `title.template` pattern; write the full title on each page.
 
 ## Routing APIs
 
-| Next.js                                       | Waku                                                                                                                                                                                                                                                                                            |
-| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `import Link from 'next/link'`, `<Link href>` | `import { Link } from 'waku'`, `<Link to>`                                                                                                                                                                                                                                                      |
-| `useRouter()` from `next/navigation`          | `useRouter()` from `waku`                                                                                                                                                                                                                                                                       |
-| `usePathname()`                               | `useRouter().path`                                                                                                                                                                                                                                                                              |
-| `useSearchParams()`                           | `new URLSearchParams(useRouter().query)`                                                                                                                                                                                                                                                        |
-| `redirect()`                                  | `unstable_redirect()` from `waku/router/server`; pass `303` from a server action so a no-JavaScript form POST is not re-sent to the destination                                                                                                                                                 |
-| `notFound()`                                  | `unstable_notFound()` from `waku/router/server`                                                                                                                                                                                                                                                 |
-| `revalidatePath()`                            | from a server action, `unstable_rerenderRoute(path, query)` or a client-side `useRouter().reload()` to refresh the UI; from a route handler there is no equivalent — `unstable_rerenderRoute` throws `Rerender is not available.` outside an action — see [Caching](#caching-or-the-lack-of-it) |
+| Next.js                                       | Waku                                                                                                                                                                                                                                                                                                                                                                                        |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `import Link from 'next/link'`, `<Link href>` | `import { Link } from 'waku'`, `<Link to>`                                                                                                                                                                                                                                                                                                                                                  |
+| `useRouter()` from `next/navigation`          | `useRouter()` from `waku`                                                                                                                                                                                                                                                                                                                                                                   |
+| `usePathname()`                               | `useRouter().path`                                                                                                                                                                                                                                                                                                                                                                          |
+| `useSearchParams()`                           | `new URLSearchParams(useRouter().query)`                                                                                                                                                                                                                                                                                                                                                    |
+| `redirect()`                                  | `unstable_redirect()` from `waku/router/server`; pass `303` from a server action so a no-JavaScript form POST is not re-sent to the destination                                                                                                                                                                                                                                             |
+| `notFound()`                                  | `unstable_notFound()` from `waku/router/server`                                                                                                                                                                                                                                                                                                                                             |
+| `revalidatePath()`                            | from a server action, `unstable_rerenderRoute()` for the route the action came from, or `unstable_rerenderRoute(path, query)` for another one; on the client, `useRouter().reload()`; from a route handler there is no equivalent — `unstable_rerenderRoute` throws `Rerender is not available.` outside an action — see [Rerendering After Server Actions](/guides/rerender-after-actions) |
 
 `useSearchParams()` in Next.js opts a page into client rendering and is usually
 wrapped in `<Suspense>`; Waku's `useRouter()` carries no such requirement, so
@@ -226,12 +226,14 @@ flow. Either way, removing the call should not turn "fresh within a minute" into
 Two exceptions:
 
 - An action that stays on the page and expects the screen to update needs
-  `unstable_rerenderRoute(pathname, query)` — an action that ends in `redirect()`
-  does not. Pass the current query string, or a client sitting on
-  `/invoices?page=2` will not see the re-render. A re-render carries the route's
-  own elements, not a lazy `<Slice>`: a mounted slice keeps what it fetched, so
-  a mutation that changes slice data needs the slice remounted with a `key` or
-  refetched on its own.
+  `unstable_rerenderRoute()` — an action that ends in `redirect()` does not.
+  Called with no arguments it renders the route the action came from, query
+  included, which is also what stops a `useOptimistic` value from snapping back
+  when the action settles; pass `(pathname, query)` only to render a different
+  route. A re-render carries the route's own elements, not a lazy `<Slice>`: a
+  mounted slice keeps what it fetched, so a mutation that changes slice data
+  needs the slice remounted with a `key` or refetched on its own. See
+  [Rerendering After Server Actions](/guides/rerender-after-actions).
 - If you measure a need for caching, add it explicitly. See
   [Explicit Caching](/guides/explicit-caching).
 
