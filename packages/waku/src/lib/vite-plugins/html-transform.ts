@@ -4,17 +4,7 @@ import { DEFAULT_METADATA_FILTER } from '../utils/html-metadata.js';
 import type { MetadataFilter } from '../utils/html-metadata.js';
 
 type HtmlTransformOptions = {
-  /**
-   * Merge duplicate metadata in the SSR head, keeping the last declaration of
-   * each key. `false` emits the head as rendered.
-   *
-   * Only keys their consumers resolve to the first occurrence belong here:
-   * React re-adds on hydration any tag missing from the served HTML, appending
-   * it after the survivor, which inverts a key like `viewport`.
-   *
-   * @defaultValue `true`
-   */
-  mergeMetadata?: boolean | Partial<MetadataFilter>;
+  mergeMetadata?: Partial<MetadataFilter> | false;
 };
 
 const MODULE_ID = 'virtual:vite-rsc-waku/html-transform';
@@ -22,7 +12,7 @@ const MODULE_ID = 'virtual:vite-rsc-waku/html-transform';
 export function htmlTransformPlugin(
   options: HtmlTransformOptions = {},
 ): Plugin {
-  const { mergeMetadata = true } = options;
+  const { mergeMetadata } = options;
   const runtime = fileURLToPath(
     new URL('../utils/html-metadata.js', import.meta.url),
   );
@@ -35,12 +25,12 @@ export function htmlTransformPlugin(
       if (id !== '\0' + MODULE_ID) {
         return;
       }
-      if (!mergeMetadata) {
+      if (mergeMetadata === false) {
         return `export default undefined;`;
       }
       const filter: MetadataFilter = {
         ...DEFAULT_METADATA_FILTER,
-        ...(mergeMetadata === true ? {} : mergeMetadata),
+        ...mergeMetadata,
       };
       return `
 import { dedupeHtmlMetadataStream } from ${JSON.stringify(runtime)};
