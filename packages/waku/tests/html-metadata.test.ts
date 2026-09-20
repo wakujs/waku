@@ -289,6 +289,17 @@ describe('dedupeHtmlMetadataStream', () => {
     );
   });
 
+  test('finds the head when every byte arrives in its own chunk', async () => {
+    const html =
+      '<html><head><title>layout</title><title>page</title></head>' +
+      '<body>hi</body></html>';
+    const bytes = enc.encode(html);
+    const chunks = Array.from(bytes, (_, i) => bytes.subarray(i, i + 1));
+    expect(await pipeBytes(chunks)).toBe(
+      '<html><head><title>page</title></head><body>hi</body></html>',
+    );
+  });
+
   test('passes through a document with no head', async () => {
     // The shell rendered for an SSR error closes no head.
     const html = '<html><body></body></html>';

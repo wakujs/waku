@@ -156,8 +156,10 @@ const scanHead = (
   return { tags, headEnd: undefined };
 };
 
-export const dedupeHtmlMetadata = (head: string): string => {
-  const { tags } = scanHead(head);
+const rewriteMetadata = (
+  head: string,
+  tags: readonly MetadataTag[],
+): string => {
   const survivorByKey = new Map<string, number>();
   for (const tag of tags) {
     survivorByKey.set(tag.key, tag.start);
@@ -177,7 +179,41 @@ export const dedupeHtmlMetadata = (head: string): string => {
   return result + head.slice(cursor);
 };
 
+export const dedupeHtmlMetadata = (head: string): string => {
+  const { tags } = scanHead(head);
+  return rewriteMetadata(head, tags);
+};
+
 const MAX_BUFFERED_HEAD = 1024 * 1024;
+
+const HEAD_END_PROBE = '</head';
+
+const includesHeadEndProbe = (bytes: Uint8Array): boolean => {
+  outer: for (let i = 0; i + HEAD_END_PROBE.length <= bytes.length; i++) {
+    for (let j = 0; j < HEAD_END_PROBE.length; j++) {
+      const byte = bytes[i + j]!;
+      const lowered = byte >= 0x41 && byte <= 0x5a ? byte + 0x20 : byte;
+      if (lowered !== HEAD_END_PROBE.charCodeAt(j)) {
+        continue outer;
+      }
+    }
+    return true;
+  }
+  return false;
+};
+
+const concat = (chunks: readonly Uint8Array[], length: number): Uint8Array => {
+  if (chunks.length === 1) {
+    return chunks[0]!;
+  }
+  const out = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return out;
+};
 
 export const dedupeHtmlMetadataStream = (): TransformStream<
   Uint8Array,
@@ -187,25 +223,14 @@ export const dedupeHtmlMetadataStream = (): TransformStream<
   const decoder = new TextDecoder();
   let buffered: Uint8Array[] | undefined = [];
   let bufferedLength = 0;
-
-  const concat = (chunks: readonly Uint8Array[]): Uint8Array => {
-    if (chunks.length === 1) {
-      return chunks[0]!;
-    }
-    const out = new Uint8Array(bufferedLength);
-    let offset = 0;
-    for (const chunk of chunks) {
-      out.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
-    return out;
-  };
+  let probeTail = new Uint8Array(0);
+  let probeMatched = false;
 
   const passThrough = (
     controller: TransformStreamDefaultController<Uint8Array>,
   ): void => {
     if (buffered?.length) {
-      controller.enqueue(concat(buffered));
+      controller.enqueue(concat(buffered, bufferedLength));
     }
     buffered = undefined;
   };
@@ -218,19 +243,37 @@ export const dedupeHtmlMetadataStream = (): TransformStream<
       }
       buffered.push(chunk);
       bufferedLength += chunk.byteLength;
-      const all = concat(buffered);
-      const { headEnd } = scanHead(decoder.decode(all));
+      if (!probeMatched) {
+        const probe = concat(
+          [probeTail, chunk],
+          probeTail.byteLength + chunk.byteLength,
+        );
+        probeTail = probe.slice(
+          Math.max(0, probe.byteLength - HEAD_END_PROBE.length + 1),
+        );
+        // The probe can complete a chunk before the tag does, so once it has
+        // matched every later chunk is scanned until the head is found.
+        probeMatched = includesHeadEndProbe(probe);
+        if (!probeMatched) {
+          if (bufferedLength > MAX_BUFFERED_HEAD) {
+            passThrough(controller);
+          }
+          return;
+        }
+      }
+      const all = concat(buffered, bufferedLength);
+      buffered = [all];
+      const html = decoder.decode(all);
+      const { tags, headEnd } = scanHead(html);
       if (headEnd === undefined) {
         if (bufferedLength > MAX_BUFFERED_HEAD) {
           passThrough(controller);
-        } else {
-          buffered = [all];
         }
         return;
       }
       buffered = undefined;
-      const head = decoder.decode(all).slice(0, headEnd);
-      controller.enqueue(encoder.encode(dedupeHtmlMetadata(head)));
+      const head = html.slice(0, headEnd);
+      controller.enqueue(encoder.encode(rewriteMetadata(head, tags)));
       controller.enqueue(all.subarray(encoder.encode(head).length));
     },
     flush(controller) {
