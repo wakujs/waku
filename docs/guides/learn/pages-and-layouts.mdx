@@ -42,7 +42,7 @@ With the dev server running, visit [http://localhost:3000/contact](http://localh
 
 Two things worth noticing:
 
-- The `<title>` element is hoisted into the document head automatically. The same works for `meta` and `link` tags.
+- The `<title>` element is hoisted into the document head automatically. The same works for `meta` and `link` tags. When a layout and a page both declare a `title`, `description`, or `og:*` tag, the page's wins — see [Metadata](/guides/metadata).
 - `<Link>` performs client-side navigation between pages. Use it instead of `<a>` for internal links. For programmatic navigation, there is also a `useRouter` hook.
 
 ## Layouts

@@ -1,0 +1,102 @@
+---
+slug: metadata
+title: Metadata
+description: How title, description, and Open Graph tags resolve across layouts and pages.
+category: Routing and Navigation
+order: 45
+---
+
+Waku renders metadata as ordinary JSX. React hoists `title`, `meta`, and `link`
+elements into the document head, so a page declares them wherever it likes:
+
+```tsx
+export default function AboutPage() {
+  return (
+    <div>
+      <title>About</title>
+      <meta name="description" content="Who we are." />
+      <h1>About</h1>
+    </div>
+  );
+}
+```
+
+## Pages override layouts
+
+React does not deduplicate hoisted tags, so a layout and a page that both
+declare a `title` would otherwise emit two of them. Waku resolves this while
+streaming the HTML: when the same key is declared more than once in the head,
+the **last** declaration wins.
+
+Layouts are rendered around the page they wrap, so the page's declaration comes
+last. Defaults in a layout, overridden per page, work as expected:
+
+```tsx
+// src/pages/blog/_layout.tsx
+export default function BlogLayout({ children }: { children: ReactNode }) {
+  return (
+    <div>
+      <title>Blog</title>
+      <meta property="og:site_name" content="My Site" />
+      {children}
+    </div>
+  );
+}
+
+// src/pages/blog/hello.tsx — this page's title wins; og:site_name is inherited
+export default function HelloPage() {
+  return (
+    <div>
+      <title>Hello</title>
+      <h1>Hello</h1>
+    </div>
+  );
+}
+```
+
+The keys that are merged are `title`, `meta[name="description"]`, and any
+`meta[property="og:*"]`. Each `og:` property is merged on its own, so a layout
+can set `og:site_name` while a page sets `og:title`.
+
+This matters most for consumers that do not run JavaScript — search engine and
+social-card crawlers read the served HTML, where without merging the layout's
+tags would come first and win.
+
+## Everything else is your responsibility
+
+Tags outside that set are emitted as written, and declaring one twice produces
+two tags. Most notably:
+
+- **`viewport` and `charset`** are resolved by their _last_ occurrence, so
+  merging them in the head would flip which one applies once hydration runs.
+  They are not merged. To change them, replace the root component rather than
+  declaring a second tag — see below.
+- **Slices** are rendered inside the page, so a slice that declares a `title`
+  declares it last and wins. Keep metadata out of reusable slices.
+- **Metadata inside a `<Suspense>` boundary** is emitted after the head has been
+  flushed and cannot be merged into it. An `async` page component is fine — only
+  an explicit boundary between the page and its metadata defers it.
+
+## Overriding charset and viewport
+
+Waku's defaults live in the root component. Adding `src/pages/_root.tsx`
+replaces it, and with it the entire document head:
+
+```tsx
+// src/pages/_root.tsx
+export default function Root({ children }: { children: ReactNode }) {
+  return (
+    <html>
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+An app that defines its own root, or that renders the document itself through
+the [minimal API](/guides/minimal-api), owns these tags and must declare the
+ones it wants.

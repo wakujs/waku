@@ -9,6 +9,7 @@ import { injectRSCPayload } from 'rsc-html-stream/server';
 import htmlShell from 'virtual:vite-rsc-waku/html-shell';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
+import { dedupeHtmlMetadataStream } from '../utils/html-metadata.js';
 import {
   createBootstrapScriptContent,
   getBootstrapPreamble,
@@ -120,12 +121,14 @@ export const renderHtmlStream: RenderHtmlStream = async (
       ...(options.nonce ? { nonce: options.nonce } : {}),
     });
   }
-  const responseStream: ReadableStream<Uint8Array> = htmlStream.pipeThrough(
-    injectRSCPayload(
-      batchReadableStream(stream2),
-      options.nonce ? { nonce: options.nonce } : {},
-    ),
-  );
+  const responseStream: ReadableStream<Uint8Array> = htmlStream
+    .pipeThrough(dedupeHtmlMetadataStream())
+    .pipeThrough(
+      injectRSCPayload(
+        batchReadableStream(stream2),
+        options.nonce ? { nonce: options.nonce } : {},
+      ),
+    );
 
   return { stream: responseStream, status };
 };

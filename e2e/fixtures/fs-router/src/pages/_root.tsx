@@ -6,7 +6,10 @@ export default function Root({ children }: { children: ReactNode }) {
   const rand = Math.round(Math.random() * 100);
   return (
     <html>
-      <head></head>
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
       <body data-dynamic-root={`Random Number ${rand}`}>{children}</body>
     </html>
   );

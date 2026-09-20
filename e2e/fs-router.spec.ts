@@ -651,4 +651,68 @@ test.describe('fs-router', () => {
       }),
     ).toBeVisible();
   });
+
+  test('metadata: page overrides layout without JS', async ({ browser }) => {
+    // Crawlers and social scrapers read this path, not the hydrated one.
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+    await page.goto(`http://localhost:${port}/metadata`);
+    const read = () => ({
+      titles: [...document.querySelectorAll('title')].map((t) => t.textContent),
+      descriptions: [
+        ...document.querySelectorAll('meta[name="description"]'),
+      ].map((m) => m.getAttribute('content')),
+      ogTitles: [...document.querySelectorAll('meta[property="og:title"]')].map(
+        (m) => m.getAttribute('content'),
+      ),
+      ogSiteNames: [
+        ...document.querySelectorAll('meta[property="og:site_name"]'),
+      ].map((m) => m.getAttribute('content')),
+    });
+    expect(await page.evaluate(read)).toEqual({
+      titles: ['Metadata Page'],
+      descriptions: ['page description'],
+      ogTitles: ['page og title'],
+      // only the layout declares this one, so it survives untouched
+      ogSiteNames: ['layout og site name'],
+    });
+    await context.close();
+  });
+
+  test('metadata: layout applies when the page declares none', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+    await page.goto(`http://localhost:${port}/metadata/inherited`);
+    expect(
+      await page.evaluate(() =>
+        [...document.querySelectorAll('title')].map((t) => t.textContent),
+      ),
+    ).toEqual(['Metadata Layout']);
+    await context.close();
+  });
+
+  test('metadata: the merged title survives hydration', async ({ page }) => {
+    // Where React puts the tags it re-adds differs between dev and build, so
+    // only the resolved title is a guarantee.
+    await page.goto(`http://localhost:${port}/metadata`);
+    await waitForHydration(page);
+    await expect(page).toHaveTitle('Metadata Page');
+  });
+
+  test('metadata: viewport is not deduplicated', async ({ browser }) => {
+    // Deliberate: a key resolved by its last occurrence cannot be merged.
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+    await page.goto(`http://localhost:${port}/metadata/viewport`);
+    expect(
+      await page.evaluate(() =>
+        [...document.querySelectorAll('meta[name="viewport"]')].map((m) =>
+          m.getAttribute('content'),
+        ),
+      ),
+    ).toEqual(['width=device-width, initial-scale=1', 'width=400']);
+    await context.close();
+  });
 });
