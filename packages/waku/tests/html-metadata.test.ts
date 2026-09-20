@@ -317,6 +317,18 @@ describe('dedupeHtmlMetadataStream', () => {
     expect(await pipe([html])).toBe(html);
   });
 
+  test('keeps a character split by the chunk that closes the head', async () => {
+    const bytes = enc.encode(
+      '<html><head><title>a</title><title>b</title></head>' +
+        '<body>\u65e5\u672c</body></html>',
+    );
+    // two of the three bytes of the first body character
+    const cut = bytes.indexOf(0xe6) + 2;
+    expect(await pipeBytes([bytes.subarray(0, cut), bytes.subarray(cut)])).toBe(
+      '<html><head><title>b</title></head><body>\u65e5\u672c</body></html>',
+    );
+  });
+
   test('preserves a byte order mark', async () => {
     const html =
       '\uFEFF<html><head><title>a</title><title>b</title></head>' +
