@@ -8,7 +8,6 @@ export { extraPlugins as unstable_extraPlugins } from './lib/vite-plugins/extra-
 export { fsRouterTypegenPlugin as unstable_fsRouterTypegenPlugin } from './lib/vite-plugins/fs-router-typegen.js';
 export { htmlShellPlugin as unstable_htmlShellPlugin } from './lib/vite-plugins/html-shell.js';
 export { htmlTransformPlugin as unstable_htmlTransformPlugin } from './lib/vite-plugins/html-transform.js';
-export type { Unstable_HtmlTransformOptions } from './lib/vite-plugins/html-transform.js';
 export { notFoundPlugin as unstable_notFoundPlugin } from './lib/vite-plugins/not-found.js';
 export { patchRsdwPlugin as unstable_patchRsdwPlugin } from './lib/vite-plugins/patch-rsdw.js';
 export { privateDirPlugin as unstable_privateDirPlugin } from './lib/vite-plugins/private-dir.js';

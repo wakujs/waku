@@ -3,7 +3,7 @@ import type { Plugin } from 'vite';
 import { DEFAULT_METADATA_FILTER } from '../utils/html-metadata.js';
 import type { MetadataFilter } from '../utils/html-metadata.js';
 
-export type Unstable_HtmlTransformOptions = {
+type HtmlTransformOptions = {
   /**
    * Merge duplicate metadata in the SSR head, keeping the last declaration of
    * each key. `false` emits the head as rendered.
@@ -20,7 +20,7 @@ export type Unstable_HtmlTransformOptions = {
 const MODULE_ID = 'virtual:vite-rsc-waku/html-transform';
 
 export function htmlTransformPlugin(
-  options: Unstable_HtmlTransformOptions = {},
+  options: HtmlTransformOptions = {},
 ): Plugin {
   const { mergeMetadata = true } = options;
   const runtime = fileURLToPath(
