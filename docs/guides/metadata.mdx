@@ -54,9 +54,11 @@ export default function HelloPage() {
 }
 ```
 
-The keys that are merged are `title`, `meta[name="description"]`, and any
-`meta[property="og:*"]`. Each `og:` property is merged on its own, so a layout
-can set `og:site_name` while a page sets `og:title`.
+The keys that are merged are `title`, `meta[name="description"]`, and the Open
+Graph properties that hold a single value: `og:title`, `og:type`, `og:url`,
+`og:description`, `og:determiner`, `og:site_name` and `og:locale`. Each is
+merged on its own, so a layout can set `og:site_name` while a page sets
+`og:title`. Metadata names are matched case-insensitively.
 
 This matters most for consumers that do not run JavaScript — search engine and
 social-card crawlers read the served HTML, where without merging the layout's
@@ -71,6 +73,10 @@ two tags. Most notably:
   merging them in the head would flip which one applies once hydration runs.
   They are not merged. To change them, replace the root component rather than
   declaring a second tag — see below.
+- **Repeated Open Graph properties** such as `og:image`, `og:video` and
+  `og:locale:alternate` are arrays in OGP, and their order carries meaning, so
+  they are emitted as written. A layout that declares `og:image` is not
+  replaced by a page that declares one.
 - **Slices** are rendered inside the page, so a slice that declares a `title`
   declares it last and wins. Keep metadata out of reusable slices.
 - **Metadata inside a `<Suspense>` boundary** is emitted after the head has been

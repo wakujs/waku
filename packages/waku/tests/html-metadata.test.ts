@@ -57,15 +57,70 @@ describe('dedupeHtmlMetadata', () => {
     );
   });
 
-  test('deduplicates each og property independently', () => {
+  test('deduplicates each scalar og property independently', () => {
     const head =
       '<meta property="og:title" content="a"/>' +
-      '<meta property="og:image" content="b"/>' +
+      '<meta property="og:site_name" content="b"/>' +
       '<meta property="og:title" content="c"/>';
     expect(dedupeHtmlMetadata(head)).toBe(
-      '<meta property="og:image" content="b"/>' +
+      '<meta property="og:site_name" content="b"/>' +
         '<meta property="og:title" content="c"/>',
     );
+  });
+
+  test('keeps repeated og properties that represent arrays', () => {
+    const head =
+      '<meta property="og:image" content="hero.jpg"/>' +
+      '<meta property="og:image:width" content="800"/>' +
+      '<meta property="og:image" content="thumb.jpg"/>' +
+      '<meta property="og:video" content="a.mp4"/>' +
+      '<meta property="og:video" content="b.mp4"/>' +
+      '<meta property="og:locale:alternate" content="fr_FR"/>' +
+      '<meta property="og:locale:alternate" content="de_DE"/>';
+    expect(dedupeHtmlMetadata(head)).toBe(head);
+  });
+
+  test('leaves raw text in script and style untouched', () => {
+    const head =
+      '<title>layout</title>' +
+      '<script>const h = "<title>example</title>";</script>' +
+      '<style>/* <meta name="description" content="x"> */</style>' +
+      '<title>page</title>';
+    expect(dedupeHtmlMetadata(head)).toBe(
+      '<script>const h = "<title>example</title>";</script>' +
+        '<style>/* <meta name="description" content="x"> */</style>' +
+        '<title>page</title>',
+    );
+  });
+
+  test('ignores tags inside comments', () => {
+    const head =
+      '<title>layout</title>' +
+      '<!-- <title>commented</title> -->' +
+      '<title>page</title>';
+    expect(dedupeHtmlMetadata(head)).toBe(
+      '<!-- <title>commented</title> --><title>page</title>',
+    );
+  });
+
+  test('deduplicates a title carrying attributes', () => {
+    expect(
+      dedupeHtmlMetadata('<title>Layout</title><title lang="en">Page</title>'),
+    ).toBe('<title lang="en">Page</title>');
+  });
+
+  test('leaves an itemProp title alone', () => {
+    const head = '<title>Layout</title><title itemProp="name">Item</title>';
+    expect(dedupeHtmlMetadata(head)).toBe(head);
+  });
+
+  test('matches metadata names case-insensitively', () => {
+    expect(
+      dedupeHtmlMetadata(
+        '<meta name="description" content="layout"/>' +
+          '<meta name="Description" content="page"/>',
+      ),
+    ).toBe('<meta name="Description" content="page"/>');
   });
 
   test('leaves tags outside the allowlist untouched', () => {
@@ -128,6 +183,17 @@ describe('dedupeHtmlMetadataStream', () => {
         'head><body/></html>',
       ]),
     ).toBe('<html><head><title>b</title></head><body/></html>');
+  });
+
+  test('does not end the head at a `</head>` inside a script', async () => {
+    const html =
+      '<html><head><title>layout</title>' +
+      '<script>const s = "</head>";</script>' +
+      '<title>page</title></head><body>hi</body></html>';
+    expect(await pipe([html])).toBe(
+      '<html><head><script>const s = "</head>";</script>' +
+        '<title>page</title></head><body>hi</body></html>',
+    );
   });
 
   test('passes through a document with no head', async () => {
