@@ -1,121 +1,164 @@
 import { concatUint8Array } from './stream.js';
 
+/**
+ * Metadata keys to merge, each resolved to its last declaration. Only keys
+ * whose consumers resolve the first occurrence belong here: React appends on
+ * hydration whatever the served HTML omits, which inverts any other key.
+ */
 export type MetadataFilter = {
   metaNames: readonly string[];
   metaProperties: readonly string[];
 };
 
-const SCALAR_OG_PROPERTIES = [
-  'og:title',
-  'og:type',
-  'og:url',
-  'og:description',
-  'og:determiner',
-  'og:site_name',
-  'og:locale',
-];
-
 export const DEFAULT_METADATA_FILTER: MetadataFilter = {
   metaNames: ['description'],
-  metaProperties: SCALAR_OG_PROPERTIES,
+  metaProperties: [
+    'og:title',
+    'og:type',
+    'og:url',
+    'og:description',
+    'og:determiner',
+    'og:site_name',
+    'og:locale',
+  ],
 };
 
-const VOID_ELEMENTS = new Set([
-  'area',
-  'base',
-  'br',
-  'col',
-  'embed',
-  'hr',
-  'img',
-  'input',
-  'link',
-  'meta',
-  'source',
-  'track',
-  'wbr',
-]);
+/** The void elements a head can hold; anything else in one has a close tag. */
+const VOID_HEAD_ELEMENTS = new Set(['base', 'link', 'meta']);
 
-const RAW_TEXT_ELEMENTS = new Set(['script', 'style', 'noscript', 'title']);
+/** Their content is text, so a `<title>` written inside one is not metadata. */
+const RAW_TEXT_ELEMENTS = new Set(['noscript', 'script', 'style', 'title']);
 
-const ATTRIBUTE_RE =
-  /([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
+const SLASH = 47;
+const GT = 62;
+const EQUALS = 61;
+const DOUBLE_QUOTE = 34;
+const SINGLE_QUOTE = 39;
 
-const getAttribute = (tag: string, name: string): string | undefined => {
-  ATTRIBUTE_RE.lastIndex = 0;
-  let match: RegExpExecArray | null;
-  while ((match = ATTRIBUTE_RE.exec(tag))) {
-    if (match[1]!.toLowerCase() === name) {
-      return match[2] ?? match[3] ?? match[4] ?? '';
+const isSpace = (code: number): boolean =>
+  code === 32 || code === 9 || code === 10 || code === 12 || code === 13;
+
+const isNameChar = (code: number): boolean =>
+  (code >= 97 && code <= 122) || // a-z
+  (code >= 65 && code <= 90) || // A-Z
+  (code >= 48 && code <= 57) || // 0-9
+  code === 45; // -
+
+const endsAttributeName = (code: number): boolean =>
+  isSpace(code) || code === EQUALS || code === GT || code === SLASH;
+
+const endsBareValue = (code: number): boolean => isSpace(code) || code === GT;
+
+type Tag = {
+  name: string;
+  closing: boolean;
+  selfClosing: boolean;
+  /** The index just past the `>`. */
+  end: number;
+  attributes: Map<string, string>;
+};
+
+/** Reads the tag at `start`, or `undefined` if the buffer stops inside it. */
+const readTag = (html: string, start: number): Tag | undefined => {
+  let cursor = start + 1;
+  const closing = html.charCodeAt(cursor) === SLASH;
+  if (closing) {
+    cursor++;
+  }
+  const nameStart = cursor;
+  while (cursor < html.length && isNameChar(html.charCodeAt(cursor))) {
+    cursor++;
+  }
+  const name = html.slice(nameStart, cursor).toLowerCase();
+  const attributes = new Map<string, string>();
+  let selfClosing = false;
+  while (cursor < html.length) {
+    const code = html.charCodeAt(cursor);
+    if (isSpace(code)) {
+      cursor++;
+      continue;
+    }
+    if (code === GT) {
+      return { name, closing, selfClosing, end: cursor + 1, attributes };
+    }
+    if (code === SLASH) {
+      selfClosing = true;
+      cursor++;
+      continue;
+    }
+    selfClosing = false;
+    const attributeStart = cursor;
+    while (
+      cursor < html.length &&
+      !endsAttributeName(html.charCodeAt(cursor))
+    ) {
+      cursor++;
+    }
+    const attribute = html.slice(attributeStart, cursor).toLowerCase();
+    while (cursor < html.length && isSpace(html.charCodeAt(cursor))) {
+      cursor++;
+    }
+    if (html.charCodeAt(cursor) !== EQUALS) {
+      if (!attributes.has(attribute)) {
+        attributes.set(attribute, '');
+      }
+      continue;
+    }
+    cursor++;
+    while (cursor < html.length && isSpace(html.charCodeAt(cursor))) {
+      cursor++;
+    }
+    const quote = html.charCodeAt(cursor);
+    const quoted = quote === DOUBLE_QUOTE || quote === SINGLE_QUOTE;
+    if (quoted) {
+      cursor++;
+    }
+    const valueStart = cursor;
+    while (
+      cursor < html.length &&
+      (quoted
+        ? html.charCodeAt(cursor) !== quote
+        : !endsBareValue(html.charCodeAt(cursor)))
+    ) {
+      cursor++;
+    }
+    if (!attributes.has(attribute)) {
+      attributes.set(attribute, html.slice(valueStart, cursor));
+    }
+    if (quoted) {
+      cursor++;
     }
   }
   return undefined;
 };
 
-const isNameChar = (code: number): boolean =>
-  (code >= 97 && code <= 122) ||
-  (code >= 65 && code <= 90) ||
-  (code >= 48 && code <= 57) ||
-  code === 45;
-
-const isAfterName = (code: number): boolean =>
-  code === 32 ||
-  code === 9 ||
-  code === 10 ||
-  code === 12 ||
-  code === 13 ||
-  code === 47 ||
-  code === 62;
-
-const findTagEnd = (html: string, from: number): number => {
-  let quote = 0;
-  for (let i = from; i < html.length; i++) {
-    const code = html.charCodeAt(i);
-    if (quote) {
-      if (code === quote) {
-        quote = 0;
-      }
-    } else if (code === 34 || code === 39) {
-      quote = code;
-    } else if (code === 62) {
-      return i;
-    }
-  }
-  return -1;
-};
-
 const findRawTextEnd = (html: string, from: number, name: string): number => {
-  for (let i = from; (i = html.indexOf('</', i)) !== -1; i += 2) {
-    const nameEnd = i + 2 + name.length;
-    if (
-      nameEnd >= html.length ||
-      html.slice(i + 2, nameEnd).toLowerCase() !== name ||
-      !isAfterName(html.charCodeAt(nameEnd))
-    ) {
-      continue;
+  let cursor = from;
+  while ((cursor = html.indexOf('</', cursor)) !== -1) {
+    const tag = readTag(html, cursor);
+    if (tag === undefined) {
+      return -1;
     }
-    const tagEnd = findTagEnd(html, nameEnd);
-    return tagEnd === -1 ? -1 : tagEnd + 1;
+    if (tag.name === name) {
+      return tag.end;
+    }
+    cursor += 2;
   }
   return -1;
 };
 
-const metadataKey = (
-  name: string,
-  tag: string,
-  filter: MetadataFilter,
-): string | undefined => {
-  if (getAttribute(tag, 'itemprop') !== undefined) {
+const metadataKey = (tag: Tag, filter: MetadataFilter): string | undefined => {
+  if (tag.attributes.has('itemprop')) {
     return undefined;
   }
-  if (name === 'title') {
+  if (tag.name === 'title') {
     return 'title';
   }
-  const metaName = getAttribute(tag, 'name')?.toLowerCase();
-  if (metaName !== undefined && filter.metaNames.includes(metaName)) {
-    return 'name:' + metaName;
+  const name = tag.attributes.get('name')?.toLowerCase();
+  if (name !== undefined && filter.metaNames.includes(name)) {
+    return 'name:' + name;
   }
-  const property = getAttribute(tag, 'property')?.toLowerCase();
+  const property = tag.attributes.get('property')?.toLowerCase();
   if (property !== undefined && filter.metaProperties.includes(property)) {
     return 'property:' + property;
   }
@@ -126,16 +169,16 @@ type MetadataTag = { key: string; start: number; end: number };
 
 /**
  * A scan in progress. React hoists document metadata to be a direct child of
- * `<head>`, so `depth` -- how deep inside the head the scan is -- separates it
- * from a `<title>` belonging to an inline `<svg>`, a `<template>`, or any
- * other element written into the head.
+ * `<head>`, so a tag found while `skipName` is set -- inside an `<svg>`, a
+ * `<template>`, or anything else written into the head -- is not metadata.
  *
  * `cursor` stops before anything the buffer has not finished, so a scan of a
  * longer prefix of the same document resumes from it.
  */
 type HeadScan = {
   cursor: number;
-  depth: number;
+  skipName: string | undefined;
+  skipDepth: number;
   tags: MetadataTag[];
   headEnd: number | undefined;
   filter: MetadataFilter;
@@ -143,7 +186,8 @@ type HeadScan = {
 
 const createHeadScan = (filter: MetadataFilter): HeadScan => ({
   cursor: 0,
-  depth: 0,
+  skipName: undefined,
+  skipDepth: 0,
   tags: [],
   headEnd: undefined,
   filter,
@@ -156,61 +200,34 @@ const scanHead = (html: string, scan: HeadScan): void => {
       scan.cursor = html.length;
       return;
     }
-    if (html.startsWith('<!--', start)) {
-      // `<!-->` is an empty comment, so the terminator may overlap the opener.
-      const commentEnd = html.indexOf('-->', start + 2);
-      if (commentEnd === -1) {
+    if (html.startsWith('<!', start)) {
+      // `<!-->` is an empty comment, so its terminator can overlap its opener.
+      const terminator = html.startsWith('<!--', start) ? '-->' : '>';
+      const end = html.indexOf(terminator, start + 2);
+      if (end === -1) {
         scan.cursor = start;
         return;
       }
-      scan.cursor = commentEnd + 3;
+      scan.cursor = end + terminator.length;
       continue;
     }
-    let cursor = start + 1;
-    const isClosing = html.charCodeAt(cursor) === 47;
-    if (isClosing) {
-      cursor++;
-    }
-    const nameStart = cursor;
-    while (cursor < html.length && isNameChar(html.charCodeAt(cursor))) {
-      cursor++;
-    }
-    const name = html.slice(nameStart, cursor).toLowerCase();
-    if (!name) {
-      if (cursor >= html.length) {
-        scan.cursor = start;
-        return;
-      }
-      scan.cursor = start + 1;
-      continue;
-    }
-    const tagEnd = findTagEnd(html, cursor);
-    if (tagEnd === -1) {
+    const tag = readTag(html, start);
+    if (tag === undefined) {
       scan.cursor = start;
       return;
     }
-    if (isClosing) {
-      if (scan.depth > 0) {
-        scan.depth--;
-      } else if (name === 'head') {
-        scan.headEnd = start;
-        return;
-      }
-      scan.cursor = tagEnd + 1;
+    if (!tag.name) {
+      scan.cursor = start + 1;
       continue;
     }
-    if (RAW_TEXT_ELEMENTS.has(name)) {
-      const contentEnd = findRawTextEnd(html, tagEnd + 1, name);
+    if (!tag.closing && RAW_TEXT_ELEMENTS.has(tag.name)) {
+      const contentEnd = findRawTextEnd(html, tag.end, tag.name);
       if (contentEnd === -1) {
         scan.cursor = start;
         return;
       }
-      if (name === 'title' && scan.depth === 0) {
-        const key = metadataKey(
-          name,
-          html.slice(start, tagEnd + 1),
-          scan.filter,
-        );
+      if (tag.name === 'title' && scan.skipName === undefined) {
+        const key = metadataKey(tag, scan.filter);
         if (key !== undefined) {
           scan.tags.push({ key, start, end: contentEnd });
         }
@@ -218,21 +235,41 @@ const scanHead = (html: string, scan: HeadScan): void => {
       scan.cursor = contentEnd;
       continue;
     }
-    if (VOID_ELEMENTS.has(name) || html.charCodeAt(tagEnd - 1) === 47) {
-      if (name === 'meta' && scan.depth === 0) {
-        const key = metadataKey(
-          name,
-          html.slice(start, tagEnd + 1),
-          scan.filter,
-        );
-        if (key !== undefined) {
-          scan.tags.push({ key, start, end: tagEnd + 1 });
+    if (scan.skipName !== undefined) {
+      if (tag.name === scan.skipName) {
+        if (tag.closing) {
+          scan.skipDepth--;
+          if (scan.skipDepth === 0) {
+            scan.skipName = undefined;
+          }
+        } else if (!tag.selfClosing) {
+          scan.skipDepth++;
         }
       }
-    } else if (name !== 'html' && name !== 'head') {
-      scan.depth++;
+    } else if (tag.closing) {
+      if (tag.name === 'head') {
+        scan.headEnd = start;
+        return;
+      }
+    } else {
+      if (tag.name === 'meta') {
+        const key = metadataKey(tag, scan.filter);
+        if (key !== undefined) {
+          scan.tags.push({ key, start, end: tag.end });
+        }
+      }
+      // `html` and `head` enclose the scan rather than nest inside it.
+      if (
+        !tag.selfClosing &&
+        !VOID_HEAD_ELEMENTS.has(tag.name) &&
+        tag.name !== 'html' &&
+        tag.name !== 'head'
+      ) {
+        scan.skipName = tag.name;
+        scan.skipDepth = 1;
+      }
     }
-    scan.cursor = tagEnd + 1;
+    scan.cursor = tag.end;
   }
 };
 

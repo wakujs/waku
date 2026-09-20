@@ -175,17 +175,24 @@ describe('dedupeHtmlMetadata', () => {
     );
   });
 
-  test('ignores a `</noscript>` written inside its raw text', () => {
+  test('ends raw text at the first close tag, as a parser does', () => {
     expect(
       dedupeHtmlMetadata(
         '<title>a</title>' +
-          '<noscript><style>i::after{content:"</noscript>"}</style></noscript>' +
+          '<noscript><style>i::after{content:"</noscript>"}</style>' +
+          '<title>trap</title></noscript>' +
           '<title>b</title>',
       ),
     ).toBe(
-      '<noscript><style>i::after{content:"</noscript>"}</style></noscript>' +
-        '<title>b</title>',
+      '<noscript><style>i::after{content:"</noscript>"}</style>' +
+        '</noscript><title>b</title>',
     );
+  });
+
+  test('leaves a mismatched close tag inside a skipped element', () => {
+    expect(
+      dedupeHtmlMetadata('<title>a</title><div><span></div><title>b</title>'),
+    ).toBe('<div><span></div><title>b</title>');
   });
 
   test('ignores tags inside comments', () => {
@@ -304,6 +311,27 @@ describe('dedupeHtmlMetadataStream', () => {
         'head><body/></html>',
       ]),
     ).toBe('<html><head><title>b</title></head><body/></html>');
+  });
+
+  test('waits for a comment opener split across a chunk boundary', async () => {
+    expect(
+      await pipe([
+        '<html><head><title>a</title><!',
+        '-- <title>trap</title> --><title>b</title></head><body/></html>',
+      ]),
+    ).toBe(
+      '<html><head><!-- <title>trap</title> --><title>b</title>' +
+        '</head><body/></html>',
+    );
+  });
+
+  test('waits for a comment opener split after its second dash', async () => {
+    expect(
+      await pipe([
+        '<html><head><title>a</title><!-',
+        '-</head>--><title>b</title></head><body/></html>',
+      ]),
+    ).toBe('<html><head><!--</head>--><title>b</title></head><body/></html>');
   });
 
   test('does not end the head at a `</head>` inside a script', async () => {
