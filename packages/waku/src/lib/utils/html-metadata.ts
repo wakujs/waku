@@ -260,18 +260,6 @@ const utf8Length = (text: string): number => {
   return length;
 };
 
-const trailingPartialLength = (bytes: Uint8Array): number => {
-  for (let back = 1; back <= 3 && back <= bytes.length; back++) {
-    const byte = bytes[bytes.length - back]!;
-    if ((byte & 0xc0) === 0x80) {
-      continue;
-    }
-    const needed = byte >= 0xf0 ? 4 : byte >= 0xe0 ? 3 : byte >= 0xc0 ? 2 : 1;
-    return needed > back ? back : 0;
-  }
-  return 0;
-};
-
 export const dedupeHtmlMetadataStream = (): TransformStream<
   Uint8Array,
   Uint8Array
@@ -282,7 +270,6 @@ export const dedupeHtmlMetadataStream = (): TransformStream<
   const decoder = new TextDecoder('utf-8', { ignoreBOM: true });
   const chunks: Uint8Array[] = [];
   let bufferedLength = 0;
-  let partial = new Uint8Array(0);
   let html = '';
   const scan = createHeadScan();
   let buffering = true;
@@ -295,12 +282,7 @@ export const dedupeHtmlMetadataStream = (): TransformStream<
       }
       chunks.push(chunk);
       bufferedLength += chunk.byteLength;
-      const decodable = concatUint8Array([partial, chunk]);
-      const trailing = trailingPartialLength(decodable);
-      partial = decodable.slice(decodable.length - trailing);
-      html += decoder.decode(
-        decodable.subarray(0, decodable.length - trailing),
-      );
+      html += decoder.decode(chunk, { stream: true });
       scanHead(html, scan);
       if (scan.headEnd === undefined) {
         if (bufferedLength > MAX_BUFFERED_HEAD) {
