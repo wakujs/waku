@@ -84,6 +84,33 @@ two tags. Most notably:
   flushed and cannot be merged into it. An `async` page component is fine — only
   an explicit boundary between the page and its metadata defers it.
 
+## Replacing the merge
+
+The merge is a transform the `htmlTransformPlugin` hands to the SSR stream.
+Supplying the plugin yourself replaces Waku's, so the behaviour is yours to
+narrow, widen, or switch off:
+
+```ts
+// ./waku.config.ts
+import { defineConfig } from 'waku/config';
+import { unstable_htmlTransformPlugin as htmlTransformPlugin } from 'waku/vite-plugins';
+
+export default defineConfig({
+  vite: {
+    plugins: [
+      htmlTransformPlugin({
+        // false emits the head as rendered
+        mergeMetadata: { metaNames: ['description', 'robots'] },
+      }),
+    ],
+  },
+});
+```
+
+`metaNames` and `metaProperties` each replace their default list, and `<title>`
+is merged either way. A key whose consumers resolve it to the _last_ occurrence
+does not belong in either list — see above.
+
 ## Overriding charset and viewport
 
 Waku's defaults live in the root component. Adding `src/pages/_root.tsx`

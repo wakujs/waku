@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import {
+  DEFAULT_METADATA_FILTER,
   dedupeHtmlMetadata,
   dedupeHtmlMetadataStream,
 } from '../src/lib/utils/html-metadata.js';
@@ -215,6 +216,32 @@ describe('dedupeHtmlMetadata', () => {
           '<meta name="Description" content="page"/>',
       ),
     ).toBe('<meta name="Description" content="page"/>');
+  });
+
+  test('merges the meta names the filter names', () => {
+    const head =
+      '<meta name="robots" content="index"/>' +
+      '<meta name="robots" content="noindex"/>';
+    expect(dedupeHtmlMetadata(head)).toBe(head);
+    expect(
+      dedupeHtmlMetadata(head, {
+        ...DEFAULT_METADATA_FILTER,
+        metaNames: ['robots'],
+      }),
+    ).toBe('<meta name="robots" content="noindex"/>');
+  });
+
+  test('an empty filter still merges the title', () => {
+    expect(
+      dedupeHtmlMetadata(
+        '<title>a</title><meta name="description" content="x"/>' +
+          '<title>b</title><meta name="description" content="y"/>',
+        { metaNames: [], metaProperties: [] },
+      ),
+    ).toBe(
+      '<meta name="description" content="x"/>' +
+        '<title>b</title><meta name="description" content="y"/>',
+    );
   });
 
   test('leaves tags outside the allowlist untouched', () => {

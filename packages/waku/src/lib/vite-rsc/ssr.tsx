@@ -7,9 +7,9 @@ import type { ReactFormState } from 'react-dom/client';
 import { renderToReadableStream } from 'react-dom/server.edge';
 import { injectRSCPayload } from 'rsc-html-stream/server';
 import htmlShell from 'virtual:vite-rsc-waku/html-shell';
+import htmlTransform from 'virtual:vite-rsc-waku/html-transform';
 import { INTERNAL_ServerRoot } from '../../minimal/client.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
-import { dedupeHtmlMetadataStream } from '../utils/html-metadata.js';
 import {
   createBootstrapScriptContent,
   getBootstrapPreamble,
@@ -121,14 +121,15 @@ export const renderHtmlStream: RenderHtmlStream = async (
       ...(options.nonce ? { nonce: options.nonce } : {}),
     });
   }
-  const responseStream: ReadableStream<Uint8Array> = htmlStream
-    .pipeThrough(dedupeHtmlMetadataStream())
-    .pipeThrough(
-      injectRSCPayload(
-        batchReadableStream(stream2),
-        options.nonce ? { nonce: options.nonce } : {},
-      ),
-    );
+  let responseStream: ReadableStream<Uint8Array> = htmlStream.pipeThrough(
+    injectRSCPayload(
+      batchReadableStream(stream2),
+      options.nonce ? { nonce: options.nonce } : {},
+    ),
+  );
+  if (htmlTransform) {
+    responseStream = responseStream.pipeThrough(htmlTransform());
+  }
 
   return { stream: responseStream, status };
 };

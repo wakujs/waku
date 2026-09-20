@@ -1,6 +1,11 @@
 import { concatUint8Array } from './stream.js';
 
-const SCALAR_OG_PROPERTIES = new Set([
+export type MetadataFilter = {
+  metaNames: readonly string[];
+  metaProperties: readonly string[];
+};
+
+const SCALAR_OG_PROPERTIES = [
   'og:title',
   'og:type',
   'og:url',
@@ -8,7 +13,12 @@ const SCALAR_OG_PROPERTIES = new Set([
   'og:determiner',
   'og:site_name',
   'og:locale',
-]);
+];
+
+export const DEFAULT_METADATA_FILTER: MetadataFilter = {
+  metaNames: ['description'],
+  metaProperties: SCALAR_OG_PROPERTIES,
+};
 
 const VOID_ELEMENTS = new Set([
   'area',
@@ -90,18 +100,23 @@ const findRawTextEnd = (html: string, from: number, name: string): number => {
   return -1;
 };
 
-const metadataKey = (name: string, tag: string): string | undefined => {
+const metadataKey = (
+  name: string,
+  tag: string,
+  filter: MetadataFilter,
+): string | undefined => {
   if (getAttribute(tag, 'itemprop') !== undefined) {
     return undefined;
   }
   if (name === 'title') {
     return 'title';
   }
-  if (getAttribute(tag, 'name')?.toLowerCase() === 'description') {
-    return 'name:description';
+  const metaName = getAttribute(tag, 'name')?.toLowerCase();
+  if (metaName !== undefined && filter.metaNames.includes(metaName)) {
+    return 'name:' + metaName;
   }
   const property = getAttribute(tag, 'property')?.toLowerCase();
-  if (property !== undefined && SCALAR_OG_PROPERTIES.has(property)) {
+  if (property !== undefined && filter.metaProperties.includes(property)) {
     return 'property:' + property;
   }
   return undefined;
@@ -123,13 +138,15 @@ type HeadScan = {
   depth: number;
   tags: MetadataTag[];
   headEnd: number | undefined;
+  filter: MetadataFilter;
 };
 
-const createHeadScan = (): HeadScan => ({
+const createHeadScan = (filter: MetadataFilter): HeadScan => ({
   cursor: 0,
   depth: 0,
   tags: [],
   headEnd: undefined,
+  filter,
 });
 
 const scanHead = (html: string, scan: HeadScan): void => {
@@ -189,7 +206,11 @@ const scanHead = (html: string, scan: HeadScan): void => {
         return;
       }
       if (name === 'title' && scan.depth === 0) {
-        const key = metadataKey(name, html.slice(start, tagEnd + 1));
+        const key = metadataKey(
+          name,
+          html.slice(start, tagEnd + 1),
+          scan.filter,
+        );
         if (key !== undefined) {
           scan.tags.push({ key, start, end: contentEnd });
         }
@@ -199,7 +220,11 @@ const scanHead = (html: string, scan: HeadScan): void => {
     }
     if (VOID_ELEMENTS.has(name) || html.charCodeAt(tagEnd - 1) === 47) {
       if (name === 'meta' && scan.depth === 0) {
-        const key = metadataKey(name, html.slice(start, tagEnd + 1));
+        const key = metadataKey(
+          name,
+          html.slice(start, tagEnd + 1),
+          scan.filter,
+        );
         if (key !== undefined) {
           scan.tags.push({ key, start, end: tagEnd + 1 });
         }
@@ -234,8 +259,11 @@ const rewriteMetadata = (
   return result + head.slice(cursor);
 };
 
-export const dedupeHtmlMetadata = (head: string): string => {
-  const scan = createHeadScan();
+export const dedupeHtmlMetadata = (
+  head: string,
+  filter: MetadataFilter = DEFAULT_METADATA_FILTER,
+): string => {
+  const scan = createHeadScan(filter);
   scanHead(head, scan);
   return rewriteMetadata(head, scan.tags);
 };
@@ -260,10 +288,9 @@ const utf8Length = (text: string): number => {
   return length;
 };
 
-export const dedupeHtmlMetadataStream = (): TransformStream<
-  Uint8Array,
-  Uint8Array
-> => {
+export const dedupeHtmlMetadataStream = (
+  filter: MetadataFilter = DEFAULT_METADATA_FILTER,
+): TransformStream<Uint8Array, Uint8Array> => {
   const encoder = new TextEncoder();
   // The head is re-encoded to find where it ends in the buffer, so the decode
   // has to keep every byte it was given.
@@ -271,7 +298,7 @@ export const dedupeHtmlMetadataStream = (): TransformStream<
   const chunks: Uint8Array[] = [];
   let bufferedLength = 0;
   let html = '';
-  const scan = createHeadScan();
+  const scan = createHeadScan(filter);
   let buffering = true;
 
   return new TransformStream({
