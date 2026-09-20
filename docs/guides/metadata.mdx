@@ -69,10 +69,11 @@ tags would come first and win.
 Tags outside that set are emitted as written, and declaring one twice produces
 two tags. Most notably:
 
-- **`viewport` and `charset`** are resolved by their _last_ occurrence, so
-  merging them in the head would flip which one applies once hydration runs.
-  They are not merged. To change them, replace the root component rather than
-  declaring a second tag — see below.
+- **`viewport` and `charset`** are not merged. React re-adds on hydration any
+  tag missing from the served HTML, appending it after the survivor, which
+  would flip which `viewport` applies; `charset` is resolved by its _first_
+  occurrence, so a later one never takes effect anyway. To change either,
+  replace the root component rather than declaring a second tag — see below.
 - **Repeated Open Graph properties** such as `og:image`, `og:video` and
   `og:locale:alternate` are arrays in OGP, and their order carries meaning, so
   they are emitted as written. A layout that declares `og:image` is not

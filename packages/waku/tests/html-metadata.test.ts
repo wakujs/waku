@@ -5,7 +5,7 @@ import {
 } from '../src/lib/utils/html-metadata.js';
 
 const enc = new TextEncoder();
-const dec = new TextDecoder();
+const dec = new TextDecoder('utf-8', { ignoreBOM: true });
 
 const pipeBytes = async (chunks: readonly Uint8Array[]): Promise<string> => {
   const input = new ReadableStream<Uint8Array>({
@@ -141,12 +141,24 @@ describe('dedupeHtmlMetadata', () => {
     ).toBe('<template><!-- <template> --></template><title>b</title>');
   });
 
-  test('treats a self-closing template as open, as the parser does', () => {
-    const head =
-      '<title>a</title><template/>' +
-      '<meta name="description" content="x"/>' +
-      '<meta name="description" content="y"/>';
-    expect(dedupeHtmlMetadata(head)).toBe(head);
+  test('honours a self-closing tag, as foreign content requires', () => {
+    expect(
+      dedupeHtmlMetadata(
+        '<title>a</title><svg><path/><title>icon</title></svg><title>b</title>',
+      ),
+    ).toBe('<svg><path/><title>icon</title></svg><title>b</title>');
+  });
+
+  test('ignores metadata inside inline svg', () => {
+    expect(
+      dedupeHtmlMetadata('<title>page</title><svg><title>icon</title></svg>'),
+    ).toBe('<title>page</title><svg><title>icon</title></svg>');
+  });
+
+  test('ignores an empty comment rather than abandoning the scan', () => {
+    expect(dedupeHtmlMetadata('<title>a</title><!--><title>b</title>')).toBe(
+      '<!--><title>b</title>',
+    );
   });
 
   test('does not merge metadata across noscript', () => {
@@ -301,9 +313,17 @@ describe('dedupeHtmlMetadataStream', () => {
   });
 
   test('passes through a document with no head', async () => {
-    // The shell rendered for an SSR error closes no head.
     const html = '<html><body></body></html>';
     expect(await pipe([html])).toBe(html);
+  });
+
+  test('preserves a byte order mark', async () => {
+    const html =
+      '\uFEFF<html><head><title>a</title><title>b</title></head>' +
+      '<body>hi</body></html>';
+    expect(await pipe([html])).toBe(
+      '\uFEFF<html><head><title>b</title></head><body>hi</body></html>',
+    );
   });
 
   test('does not split multi-byte characters across chunks', async () => {

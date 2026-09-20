@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test';
+import type { Browser } from '@playwright/test';
 import {
   prepareNormalSetup,
   test,
@@ -7,6 +8,21 @@ import {
 } from './utils.js';
 
 const startApp = prepareNormalSetup('fs-router');
+
+const readWithoutJs = async <T>(
+  browser: Browser,
+  url: string,
+  read: () => T,
+): Promise<T> => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  try {
+    const page = await context.newPage();
+    await page.goto(url);
+    return await page.evaluate(read);
+  } finally {
+    await context.close();
+  }
+};
 
 test.describe('fs-router', () => {
   let port: number;
@@ -654,43 +670,40 @@ test.describe('fs-router', () => {
 
   test('metadata: page overrides layout without JS', async ({ browser }) => {
     // Crawlers and social scrapers read this path, not the hydrated one.
-    const context = await browser.newContext({ javaScriptEnabled: false });
-    const page = await context.newPage();
-    await page.goto(`http://localhost:${port}/metadata`);
-    const read = () => ({
-      titles: [...document.querySelectorAll('title')].map((t) => t.textContent),
-      descriptions: [
-        ...document.querySelectorAll('meta[name="description"]'),
-      ].map((m) => m.getAttribute('content')),
-      ogTitles: [...document.querySelectorAll('meta[property="og:title"]')].map(
-        (m) => m.getAttribute('content'),
-      ),
-      ogSiteNames: [
-        ...document.querySelectorAll('meta[property="og:site_name"]'),
-      ].map((m) => m.getAttribute('content')),
-    });
-    expect(await page.evaluate(read)).toEqual({
+    expect(
+      await readWithoutJs(browser, `http://localhost:${port}/metadata`, () => ({
+        titles: [...document.querySelectorAll('title')].map(
+          (t) => t.textContent,
+        ),
+        descriptions: [
+          ...document.querySelectorAll('meta[name="description"]'),
+        ].map((m) => m.getAttribute('content')),
+        ogTitles: [
+          ...document.querySelectorAll('meta[property="og:title"]'),
+        ].map((m) => m.getAttribute('content')),
+        ogSiteNames: [
+          ...document.querySelectorAll('meta[property="og:site_name"]'),
+        ].map((m) => m.getAttribute('content')),
+      })),
+    ).toEqual({
       titles: ['Metadata Page'],
       descriptions: ['page description'],
       ogTitles: ['page og title'],
       // only the layout declares this one, so it survives untouched
       ogSiteNames: ['layout og site name'],
     });
-    await context.close();
   });
 
   test('metadata: layout applies when the page declares none', async ({
     browser,
   }) => {
-    const context = await browser.newContext({ javaScriptEnabled: false });
-    const page = await context.newPage();
-    await page.goto(`http://localhost:${port}/metadata/inherited`);
     expect(
-      await page.evaluate(() =>
-        [...document.querySelectorAll('title')].map((t) => t.textContent),
+      await readWithoutJs(
+        browser,
+        `http://localhost:${port}/metadata/inherited`,
+        () => [...document.querySelectorAll('title')].map((t) => t.textContent),
       ),
     ).toEqual(['Metadata Layout']);
-    await context.close();
   });
 
   test('metadata: the merged title survives hydration', async ({ page }) => {
@@ -703,16 +716,15 @@ test.describe('fs-router', () => {
 
   test('metadata: viewport is not deduplicated', async ({ browser }) => {
     // Deliberate: a key resolved by its last occurrence cannot be merged.
-    const context = await browser.newContext({ javaScriptEnabled: false });
-    const page = await context.newPage();
-    await page.goto(`http://localhost:${port}/metadata/viewport`);
     expect(
-      await page.evaluate(() =>
-        [...document.querySelectorAll('meta[name="viewport"]')].map((m) =>
-          m.getAttribute('content'),
-        ),
+      await readWithoutJs(
+        browser,
+        `http://localhost:${port}/metadata/viewport`,
+        () =>
+          [...document.querySelectorAll('meta[name="viewport"]')].map((m) =>
+            m.getAttribute('content'),
+          ),
       ),
     ).toEqual(['width=device-width, initial-scale=1', 'width=400']);
-    await context.close();
   });
 });

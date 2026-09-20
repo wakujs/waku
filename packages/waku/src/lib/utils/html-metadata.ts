@@ -1,3 +1,5 @@
+import { concatUint8Array } from './stream.js';
+
 const SCALAR_OG_PROPERTIES = new Set([
   'og:title',
   'og:type',
@@ -8,11 +10,31 @@ const SCALAR_OG_PROPERTIES = new Set([
   'og:locale',
 ]);
 
+const VOID_ELEMENTS = new Set([
+  'area',
+  'base',
+  'br',
+  'col',
+  'embed',
+  'hr',
+  'img',
+  'input',
+  'link',
+  'meta',
+  'source',
+  'track',
+  'wbr',
+]);
+
+const RAW_TEXT_ELEMENTS = new Set(['script', 'style', 'noscript', 'title']);
+
+const ATTRIBUTE_RE =
+  /([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
+
 const getAttribute = (tag: string, name: string): string | undefined => {
-  const attribute =
-    /([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
+  ATTRIBUTE_RE.lastIndex = 0;
   let match: RegExpExecArray | null;
-  while ((match = attribute.exec(tag))) {
+  while ((match = ATTRIBUTE_RE.exec(tag))) {
     if (match[1]!.toLowerCase() === name) {
       return match[2] ?? match[3] ?? match[4] ?? '';
     }
@@ -20,34 +42,46 @@ const getAttribute = (tag: string, name: string): string | undefined => {
   return undefined;
 };
 
+const isNameChar = (code: number): boolean =>
+  (code >= 97 && code <= 122) ||
+  (code >= 65 && code <= 90) ||
+  (code >= 48 && code <= 57) ||
+  code === 45;
+
+const isAfterName = (code: number): boolean =>
+  code === 32 ||
+  code === 9 ||
+  code === 10 ||
+  code === 12 ||
+  code === 13 ||
+  code === 47 ||
+  code === 62;
+
 const findTagEnd = (html: string, from: number): number => {
-  let quote = '';
+  let quote = 0;
   for (let i = from; i < html.length; i++) {
-    const char = html[i]!;
+    const code = html.charCodeAt(i);
     if (quote) {
-      if (char === quote) {
-        quote = '';
+      if (code === quote) {
+        quote = 0;
       }
-    } else if (char === '"' || char === "'") {
-      quote = char;
-    } else if (char === '>') {
+    } else if (code === 34 || code === 39) {
+      quote = code;
+    } else if (code === 62) {
       return i;
     }
   }
   return -1;
 };
 
-const findClosingTag = (html: string, from: number, name: string): number => {
-  for (let i = from; (i = html.indexOf('<', i)) !== -1; i++) {
-    if (html[i + 1] !== '/') {
-      continue;
-    }
+const findRawTextEnd = (html: string, from: number, name: string): number => {
+  for (let i = from; (i = html.indexOf('</', i)) !== -1; i += 2) {
     const nameEnd = i + 2 + name.length;
-    if (html.slice(i + 2, nameEnd).toLowerCase() !== name) {
-      continue;
-    }
-    const after = html[nameEnd];
-    if (after !== undefined && !/[\s/>]/.test(after)) {
+    if (
+      nameEnd >= html.length ||
+      html.slice(i + 2, nameEnd).toLowerCase() !== name ||
+      !isAfterName(html.charCodeAt(nameEnd))
+    ) {
       continue;
     }
     const tagEnd = findTagEnd(html, nameEnd);
@@ -75,85 +109,106 @@ const metadataKey = (name: string, tag: string): string | undefined => {
 
 type MetadataTag = { key: string; start: number; end: number };
 
-const scanHead = (
-  html: string,
-): { tags: MetadataTag[]; headEnd: number | undefined } => {
-  const tags: MetadataTag[] = [];
-  let templateDepth = 0;
-  let i = 0;
-  while (i < html.length) {
-    const start = html.indexOf('<', i);
+/**
+ * A scan in progress. React hoists document metadata to be a direct child of
+ * `<head>`, so `depth` -- how deep inside the head the scan is -- separates it
+ * from a `<title>` belonging to an inline `<svg>`, a `<template>`, or any
+ * other element written into the head.
+ *
+ * `cursor` stops before anything the buffer has not finished, so a scan of a
+ * longer prefix of the same document resumes from it.
+ */
+type HeadScan = {
+  cursor: number;
+  depth: number;
+  tags: MetadataTag[];
+  headEnd: number | undefined;
+};
+
+const createHeadScan = (): HeadScan => ({
+  cursor: 0,
+  depth: 0,
+  tags: [],
+  headEnd: undefined,
+});
+
+const scanHead = (html: string, scan: HeadScan): void => {
+  while (scan.headEnd === undefined) {
+    const start = html.indexOf('<', scan.cursor);
     if (start === -1) {
-      break;
+      scan.cursor = html.length;
+      return;
     }
     if (html.startsWith('<!--', start)) {
-      const commentEnd = html.indexOf('-->', start + 4);
+      // `<!-->` is an empty comment, so the terminator may overlap the opener.
+      const commentEnd = html.indexOf('-->', start + 2);
       if (commentEnd === -1) {
-        break;
+        scan.cursor = start;
+        return;
       }
-      i = commentEnd + 3;
+      scan.cursor = commentEnd + 3;
       continue;
     }
     let cursor = start + 1;
-    const isClosing = html[cursor] === '/';
+    const isClosing = html.charCodeAt(cursor) === 47;
     if (isClosing) {
       cursor++;
     }
     const nameStart = cursor;
-    while (cursor < html.length && /[a-zA-Z0-9-]/.test(html[cursor]!)) {
+    while (cursor < html.length && isNameChar(html.charCodeAt(cursor))) {
       cursor++;
     }
     const name = html.slice(nameStart, cursor).toLowerCase();
     if (!name) {
-      i = start + 1;
+      if (cursor >= html.length) {
+        scan.cursor = start;
+        return;
+      }
+      scan.cursor = start + 1;
       continue;
     }
     const tagEnd = findTagEnd(html, cursor);
     if (tagEnd === -1) {
-      break;
+      scan.cursor = start;
+      return;
     }
     if (isClosing) {
-      if (name === 'template' && templateDepth > 0) {
-        templateDepth--;
-      } else if (name === 'head' && templateDepth === 0) {
-        return { tags, headEnd: start };
+      if (scan.depth > 0) {
+        scan.depth--;
+      } else if (name === 'head') {
+        scan.headEnd = start;
+        return;
       }
-      i = tagEnd + 1;
+      scan.cursor = tagEnd + 1;
       continue;
     }
-    if (name === 'template') {
-      templateDepth++;
-      i = tagEnd + 1;
-      continue;
-    }
-    if (
-      name === 'script' ||
-      name === 'style' ||
-      name === 'noscript' ||
-      name === 'title'
-    ) {
-      const contentEnd = findClosingTag(html, tagEnd + 1, name);
+    if (RAW_TEXT_ELEMENTS.has(name)) {
+      const contentEnd = findRawTextEnd(html, tagEnd + 1, name);
       if (contentEnd === -1) {
-        break;
+        scan.cursor = start;
+        return;
       }
-      if (name === 'title' && templateDepth === 0) {
+      if (name === 'title' && scan.depth === 0) {
         const key = metadataKey(name, html.slice(start, tagEnd + 1));
         if (key !== undefined) {
-          tags.push({ key, start, end: contentEnd });
+          scan.tags.push({ key, start, end: contentEnd });
         }
       }
-      i = contentEnd;
+      scan.cursor = contentEnd;
       continue;
     }
-    if (name === 'meta' && templateDepth === 0) {
-      const key = metadataKey(name, html.slice(start, tagEnd + 1));
-      if (key !== undefined) {
-        tags.push({ key, start, end: tagEnd + 1 });
+    if (VOID_ELEMENTS.has(name) || html.charCodeAt(tagEnd - 1) === 47) {
+      if (name === 'meta' && scan.depth === 0) {
+        const key = metadataKey(name, html.slice(start, tagEnd + 1));
+        if (key !== undefined) {
+          scan.tags.push({ key, start, end: tagEnd + 1 });
+        }
       }
+    } else if (name !== 'html' && name !== 'head') {
+      scan.depth++;
     }
-    i = tagEnd + 1;
+    scan.cursor = tagEnd + 1;
   }
-  return { tags, headEnd: undefined };
 };
 
 const rewriteMetadata = (
@@ -180,39 +235,41 @@ const rewriteMetadata = (
 };
 
 export const dedupeHtmlMetadata = (head: string): string => {
-  const { tags } = scanHead(head);
-  return rewriteMetadata(head, tags);
+  const scan = createHeadScan();
+  scanHead(head, scan);
+  return rewriteMetadata(head, scan.tags);
 };
 
 const MAX_BUFFERED_HEAD = 1024 * 1024;
 
-const HEAD_END_PROBE = '</head';
-
-const includesHeadEndProbe = (bytes: Uint8Array): boolean => {
-  outer: for (let i = 0; i + HEAD_END_PROBE.length <= bytes.length; i++) {
-    for (let j = 0; j < HEAD_END_PROBE.length; j++) {
-      const byte = bytes[i + j]!;
-      const lowered = byte >= 0x41 && byte <= 0x5a ? byte + 0x20 : byte;
-      if (lowered !== HEAD_END_PROBE.charCodeAt(j)) {
-        continue outer;
-      }
+const utf8Length = (text: string): number => {
+  let length = 0;
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (code < 0x80) {
+      length += 1;
+    } else if (code < 0x800) {
+      length += 2;
+    } else if (code >= 0xd800 && code <= 0xdbff) {
+      length += 4;
+      i++;
+    } else {
+      length += 3;
     }
-    return true;
   }
-  return false;
+  return length;
 };
 
-const concat = (chunks: readonly Uint8Array[], length: number): Uint8Array => {
-  if (chunks.length === 1) {
-    return chunks[0]!;
+const trailingPartialLength = (bytes: Uint8Array): number => {
+  for (let back = 1; back <= 3 && back <= bytes.length; back++) {
+    const byte = bytes[bytes.length - back]!;
+    if ((byte & 0xc0) === 0x80) {
+      continue;
+    }
+    const needed = byte >= 0xf0 ? 4 : byte >= 0xe0 ? 3 : byte >= 0xc0 ? 2 : 1;
+    return needed > back ? back : 0;
   }
-  const out = new Uint8Array(length);
-  let offset = 0;
-  for (const chunk of chunks) {
-    out.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return out;
+  return 0;
 };
 
 export const dedupeHtmlMetadataStream = (): TransformStream<
@@ -220,64 +277,49 @@ export const dedupeHtmlMetadataStream = (): TransformStream<
   Uint8Array
 > => {
   const encoder = new TextEncoder();
-  const decoder = new TextDecoder();
-  let buffered: Uint8Array[] | undefined = [];
+  // The head is re-encoded to find where it ends in the buffer, so the decode
+  // has to keep every byte it was given.
+  const decoder = new TextDecoder('utf-8', { ignoreBOM: true });
+  const chunks: Uint8Array[] = [];
   let bufferedLength = 0;
-  let probeTail = new Uint8Array(0);
-  let probeMatched = false;
-
-  const passThrough = (
-    controller: TransformStreamDefaultController<Uint8Array>,
-  ): void => {
-    if (buffered?.length) {
-      controller.enqueue(concat(buffered, bufferedLength));
-    }
-    buffered = undefined;
-  };
+  let partial = new Uint8Array(0);
+  let html = '';
+  const scan = createHeadScan();
+  let buffering = true;
 
   return new TransformStream({
     transform(chunk, controller) {
-      if (!buffered) {
+      if (!buffering) {
         controller.enqueue(chunk);
         return;
       }
-      buffered.push(chunk);
+      chunks.push(chunk);
       bufferedLength += chunk.byteLength;
-      if (!probeMatched) {
-        const probe = concat(
-          [probeTail, chunk],
-          probeTail.byteLength + chunk.byteLength,
-        );
-        probeTail = probe.slice(
-          Math.max(0, probe.byteLength - HEAD_END_PROBE.length + 1),
-        );
-        // The probe can complete a chunk before the tag does, so once it has
-        // matched every later chunk is scanned until the head is found.
-        probeMatched = includesHeadEndProbe(probe);
-        if (!probeMatched) {
-          if (bufferedLength > MAX_BUFFERED_HEAD) {
-            passThrough(controller);
-          }
-          return;
-        }
-      }
-      const all = concat(buffered, bufferedLength);
-      buffered = [all];
-      const html = decoder.decode(all);
-      const { tags, headEnd } = scanHead(html);
-      if (headEnd === undefined) {
+      const decodable = concatUint8Array([partial, chunk]);
+      const trailing = trailingPartialLength(decodable);
+      partial = decodable.slice(decodable.length - trailing);
+      html += decoder.decode(
+        decodable.subarray(0, decodable.length - trailing),
+      );
+      scanHead(html, scan);
+      if (scan.headEnd === undefined) {
         if (bufferedLength > MAX_BUFFERED_HEAD) {
-          passThrough(controller);
+          buffering = false;
+          controller.enqueue(concatUint8Array(chunks));
+          chunks.length = 0;
         }
         return;
       }
-      buffered = undefined;
-      const head = html.slice(0, headEnd);
-      controller.enqueue(encoder.encode(rewriteMetadata(head, tags)));
-      controller.enqueue(all.subarray(encoder.encode(head).length));
+      buffering = false;
+      const head = html.slice(0, scan.headEnd);
+      controller.enqueue(encoder.encode(rewriteMetadata(head, scan.tags)));
+      controller.enqueue(concatUint8Array(chunks).subarray(utf8Length(head)));
+      chunks.length = 0;
     },
     flush(controller) {
-      passThrough(controller);
+      if (buffering && chunks.length) {
+        controller.enqueue(concatUint8Array(chunks));
+      }
     },
   });
 };
