@@ -79,6 +79,7 @@ const scanHead = (
   html: string,
 ): { tags: MetadataTag[]; headEnd: number | undefined } => {
   const tags: MetadataTag[] = [];
+  let templateDepth = 0;
   let i = 0;
   while (i < html.length) {
     const start = html.indexOf('<', i);
@@ -112,18 +113,30 @@ const scanHead = (
       break;
     }
     if (isClosing) {
-      if (name === 'head') {
+      if (name === 'template' && templateDepth > 0) {
+        templateDepth--;
+      } else if (name === 'head' && templateDepth === 0) {
         return { tags, headEnd: start };
       }
       i = tagEnd + 1;
       continue;
     }
-    if (name === 'script' || name === 'style' || name === 'title') {
+    if (name === 'template') {
+      templateDepth++;
+      i = tagEnd + 1;
+      continue;
+    }
+    if (
+      name === 'script' ||
+      name === 'style' ||
+      name === 'noscript' ||
+      name === 'title'
+    ) {
       const contentEnd = findClosingTag(html, tagEnd + 1, name);
       if (contentEnd === -1) {
         break;
       }
-      if (name === 'title') {
+      if (name === 'title' && templateDepth === 0) {
         const key = metadataKey(name, html.slice(start, tagEnd + 1));
         if (key !== undefined) {
           tags.push({ key, start, end: contentEnd });
@@ -132,7 +145,7 @@ const scanHead = (
       i = contentEnd;
       continue;
     }
-    if (name === 'meta') {
+    if (name === 'meta' && templateDepth === 0) {
       const key = metadataKey(name, html.slice(start, tagEnd + 1));
       if (key !== undefined) {
         tags.push({ key, start, end: tagEnd + 1 });

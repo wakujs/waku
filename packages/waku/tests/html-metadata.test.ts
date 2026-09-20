@@ -93,6 +93,88 @@ describe('dedupeHtmlMetadata', () => {
     );
   });
 
+  test('ignores metadata inside template and resumes after it', () => {
+    expect(
+      dedupeHtmlMetadata(
+        '<title>a</title><template><title>t</title></template><title>b</title>',
+      ),
+    ).toBe('<template><title>t</title></template><title>b</title>');
+  });
+
+  test('ignores metadata inside nested templates', () => {
+    expect(
+      dedupeHtmlMetadata(
+        '<title>a</title>' +
+          '<template><template><title>x</title></template>' +
+          '<title>y</title></template>' +
+          '<title>b</title>',
+      ),
+    ).toBe(
+      '<template><template><title>x</title></template>' +
+        '<title>y</title></template>' +
+        '<title>b</title>',
+    );
+  });
+
+  test('ignores a `</template>` written inside a comment or script', () => {
+    expect(
+      dedupeHtmlMetadata(
+        '<title>a</title>' +
+          '<template><!-- </template> -->' +
+          '<script>var s = "</template>";</script>' +
+          '<title>t</title></template>' +
+          '<title>b</title>',
+      ),
+    ).toBe(
+      '<template><!-- </template> -->' +
+        '<script>var s = "</template>";</script>' +
+        '<title>t</title></template>' +
+        '<title>b</title>',
+    );
+  });
+
+  test('does not let a commented `<template>` suppress the rest of the head', () => {
+    expect(
+      dedupeHtmlMetadata(
+        '<title>a</title><template><!-- <template> --></template><title>b</title>',
+      ),
+    ).toBe('<template><!-- <template> --></template><title>b</title>');
+  });
+
+  test('treats a self-closing template as open, as the parser does', () => {
+    const head =
+      '<title>a</title><template/>' +
+      '<meta name="description" content="x"/>' +
+      '<meta name="description" content="y"/>';
+    expect(dedupeHtmlMetadata(head)).toBe(head);
+  });
+
+  test('does not merge metadata across noscript', () => {
+    expect(
+      dedupeHtmlMetadata(
+        '<meta name="description" content="a"/>' +
+          '<noscript><meta name="description" content="no-js"/></noscript>' +
+          '<meta name="description" content="b"/>',
+      ),
+    ).toBe(
+      '<noscript><meta name="description" content="no-js"/></noscript>' +
+        '<meta name="description" content="b"/>',
+    );
+  });
+
+  test('ignores a `</noscript>` written inside its raw text', () => {
+    expect(
+      dedupeHtmlMetadata(
+        '<title>a</title>' +
+          '<noscript><style>i::after{content:"</noscript>"}</style></noscript>' +
+          '<title>b</title>',
+      ),
+    ).toBe(
+      '<noscript><style>i::after{content:"</noscript>"}</style></noscript>' +
+        '<title>b</title>',
+    );
+  });
+
   test('ignores tags inside comments', () => {
     const head =
       '<title>layout</title>' +
@@ -192,6 +274,17 @@ describe('dedupeHtmlMetadataStream', () => {
       '<title>page</title></head><body>hi</body></html>';
     expect(await pipe([html])).toBe(
       '<html><head><script>const s = "</head>";</script>' +
+        '<title>page</title></head><body>hi</body></html>',
+    );
+  });
+
+  test('does not end the head at a `</head>` inside a template', async () => {
+    const html =
+      '<html><head><title>layout</title>' +
+      '<template><p></head></p></template>' +
+      '<title>page</title></head><body>hi</body></html>';
+    expect(await pipe([html])).toBe(
+      '<html><head><template><p></head></p></template>' +
         '<title>page</title></head><body>hi</body></html>',
     );
   });
