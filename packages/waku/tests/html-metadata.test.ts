@@ -151,10 +151,27 @@ describe('dedupeHtmlMetadata', () => {
     ).toBe('<svg><path/><title>icon</title></svg><title>b</title>');
   });
 
+  test('leaves raw text whose close tag name runs into punctuation', () => {
+    const script =
+      '<script>const s = "</script!><title>trap</title>";</script>';
+    expect(
+      dedupeHtmlMetadata(`<title>a</title>${script}<title>b</title>`),
+    ).toBe(`${script}<title>b</title>`);
+    const style =
+      '<style>.a{content:"</style:foo><title>trap</title>"}</style>';
+    expect(dedupeHtmlMetadata(`<title>a</title>${style}<title>b</title>`)).toBe(
+      `${style}<title>b</title>`,
+    );
+  });
+
   test('honours a self-closing raw text tag inside foreign content', () => {
     expect(
       dedupeHtmlMetadata('<title>a</title><svg><title/></svg><title>b</title>'),
     ).toBe('<svg><title/></svg><title>b</title>');
+    const nested = '<template><svg><title/></svg></template>';
+    expect(
+      dedupeHtmlMetadata(`<title>a</title>${nested}<title>b</title>`),
+    ).toBe(`${nested}<title>b</title>`);
   });
 
   test('ignores metadata inside inline svg', () => {

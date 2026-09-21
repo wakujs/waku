@@ -49,6 +49,9 @@ const endsAttributeName = (code: number): boolean =>
 
 const endsBareValue = (code: number): boolean => isSpace(code) || code === GT;
 
+const endsRawTextName = (code: number): boolean =>
+  isSpace(code) || code === SLASH || code === GT;
+
 type Tag = {
   name: string;
   closing: boolean;
@@ -135,12 +138,17 @@ const readTag = (html: string, start: number): Tag | undefined => {
 const findRawTextEnd = (html: string, from: number, name: string): number => {
   let cursor = from;
   while ((cursor = html.indexOf('</', cursor)) !== -1) {
-    const tag = readTag(html, cursor);
-    if (tag === undefined) {
+    const nameEnd = cursor + 2 + name.length;
+    if (nameEnd >= html.length) {
       return -1;
     }
-    if (tag.name === name) {
-      return tag.end;
+    // Anything else after the name leaves the sequence part of the text.
+    if (
+      html.slice(cursor + 2, nameEnd).toLowerCase() === name &&
+      endsRawTextName(html.charCodeAt(nameEnd))
+    ) {
+      const tag = readTag(html, cursor);
+      return tag === undefined ? -1 : tag.end;
     }
     cursor += 2;
   }
@@ -223,8 +231,9 @@ const scanHead = (html: string, scan: HeadScan): void => {
       continue;
     }
     if (!tag.closing && RAW_TEXT_ELEMENTS.has(tag.name)) {
-      if (tag.selfClosing && scan.skipName === 'svg') {
-        // Foreign content honours `/>`, so there is no raw text to read past.
+      // Nothing skipped is metadata, so honouring `/>` here only has to keep
+      // foreign content, where it does close a tag, from waiting forever.
+      if (tag.selfClosing && scan.skipName !== undefined) {
         scan.cursor = tag.end;
         continue;
       }
