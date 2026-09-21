@@ -384,7 +384,7 @@ export const dedupeHtmlMetadata = (
   return rewriteMetadata(head, scan.tags);
 };
 
-const MAX_BUFFERED_HEAD = 1024 * 1024;
+export const DEFAULT_MAX_BUFFERED_HEAD = 1024 * 1024;
 
 /**
  * Markup is ascii, so one character per byte is enough to scan it, and an
@@ -401,6 +401,7 @@ const decodeBytes = (bytes: Uint8Array): string => {
 
 export const dedupeHtmlMetadataStream = (
   filter: MetadataFilter = DEFAULT_METADATA_FILTER,
+  maxBufferedHead: number = DEFAULT_MAX_BUFFERED_HEAD,
 ): TransformStream<Uint8Array, Uint8Array> => {
   const chunks: Uint8Array[] = [];
   let bufferedLength = 0;
@@ -419,7 +420,7 @@ export const dedupeHtmlMetadataStream = (
       html += decodeBytes(chunk);
       scanHead(html, scan);
       if (!scan.headClosed) {
-        if (bufferedLength > MAX_BUFFERED_HEAD) {
+        if (bufferedLength > maxBufferedHead) {
           buffering = false;
           controller.enqueue(concatUint8Array(chunks));
           chunks.length = 0;

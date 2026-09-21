@@ -1,5 +1,8 @@
 import { expect, test } from 'vitest';
-import { DEFAULT_METADATA_FILTER } from '../src/lib/utils/html-metadata.js';
+import {
+  DEFAULT_MAX_BUFFERED_HEAD,
+  DEFAULT_METADATA_FILTER,
+} from '../src/lib/utils/html-metadata.js';
 import { htmlTransformPlugin } from '../src/lib/vite-plugins/html-transform.js';
 
 const MODULE_ID = 'virtual:vite-rsc-waku/html-transform';
@@ -45,6 +48,15 @@ test('provides the default filter when given no options', async () => {
   const code = (await runLoad()) as string;
   expect(code).toContain('dedupeHtmlMetadataStream');
   expect(loadedFilter(code)).toEqual(DEFAULT_METADATA_FILTER);
+});
+
+test('passes the buffer cap through, defaulting when it is left out', async () => {
+  expect((await runLoad()) as string).toContain(
+    `dedupeHtmlMetadataStream(filter, ${DEFAULT_MAX_BUFFERED_HEAD})`,
+  );
+  expect((await runLoad({ maxBufferedHead: 4096 })) as string).toContain(
+    'dedupeHtmlMetadataStream(filter, 4096)',
+  );
 });
 
 test('provides no transform when the merge is off', async () => {

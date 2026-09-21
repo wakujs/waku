@@ -9,7 +9,10 @@ import {
 const enc = new TextEncoder();
 const dec = new TextDecoder('utf-8', { ignoreBOM: true });
 
-const pipeBytes = async (chunks: readonly Uint8Array[]): Promise<string> => {
+const pipeBytes = async (
+  chunks: readonly Uint8Array[],
+  maxBufferedHead?: number,
+): Promise<string> => {
   const input = new ReadableStream<Uint8Array>({
     start(controller) {
       for (const chunk of chunks) {
@@ -19,7 +22,11 @@ const pipeBytes = async (chunks: readonly Uint8Array[]): Promise<string> => {
     },
   });
   const out: Uint8Array[] = [];
-  const reader = input.pipeThrough(dedupeHtmlMetadataStream()).getReader();
+  const reader = input
+    .pipeThrough(
+      dedupeHtmlMetadataStream(DEFAULT_METADATA_FILTER, maxBufferedHead),
+    )
+    .getReader();
   while (true) {
     const { value, done } = await reader.read();
     if (done) {
@@ -37,8 +44,14 @@ const pipeBytes = async (chunks: readonly Uint8Array[]): Promise<string> => {
   return dec.decode(joined);
 };
 
-const pipe = (chunks: readonly string[]): Promise<string> =>
-  pipeBytes(chunks.map((chunk) => enc.encode(chunk)));
+const pipe = (
+  chunks: readonly string[],
+  maxBufferedHead?: number,
+): Promise<string> =>
+  pipeBytes(
+    chunks.map((chunk) => enc.encode(chunk)),
+    maxBufferedHead,
+  );
 
 describe('dedupeHtmlMetadata', () => {
   test('keeps the last title', () => {
@@ -465,9 +478,13 @@ describe('dedupeHtmlMetadataStream', () => {
   test('gives up rather than buffer an unfinished head past the cap', async () => {
     // Injected RSC scripts count toward the cap as well, so a head that has
     // not closed by then is emitted as it was rendered.
-    const opening = `<html><head><title>a</title><!--${'y'.repeat(1024 * 1024)}-->`;
+    const opening = `<html><head><title>a</title><!--${'y'.repeat(64)}-->`;
     const rest = '<title>b</title></head><body>hi</body></html>';
-    expect(await pipe([opening, rest])).toBe(opening + rest);
+    expect(await pipe([opening, rest], 32)).toBe(opening + rest);
+    expect(await pipe([opening, rest])).toBe(
+      `<html><head><!--${'y'.repeat(64)}--><title>b</title></head>` +
+        '<body>hi</body></html>',
+    );
   });
 
   test('passes through a document with no head', async () => {
