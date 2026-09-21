@@ -23,22 +23,8 @@ export const DEFAULT_METADATA_FILTER: MetadataFilter = {
   ],
 };
 
-/** They have no close tag, so they never open content for the scan to skip. */
-const VOID_ELEMENTS = new Set([
-  'area',
-  'base',
-  'br',
-  'col',
-  'embed',
-  'hr',
-  'img',
-  'input',
-  'link',
-  'meta',
-  'source',
-  'track',
-  'wbr',
-]);
+/** Their content is their own, so a `<title>` inside one is not metadata. */
+const NESTED_CONTENT = new Set(['math', 'svg', 'template']);
 
 /** Their content is text, so a `<title>` written inside one is not metadata. */
 const RAW_TEXT_ELEMENTS = new Set(['noscript', 'script', 'style', 'title']);
@@ -272,13 +258,7 @@ const scanHead = (html: string, scan: HeadScan): void => {
           scan.tags.push({ key, start, end: tag.end });
         }
       }
-      // `html` and `head` enclose the scan rather than nest inside it.
-      if (
-        !tag.selfClosing &&
-        !VOID_ELEMENTS.has(tag.name) &&
-        tag.name !== 'html' &&
-        tag.name !== 'head'
-      ) {
+      if (!tag.selfClosing && NESTED_CONTENT.has(tag.name)) {
         scan.skipName = tag.name;
         scan.skipDepth = 1;
       }

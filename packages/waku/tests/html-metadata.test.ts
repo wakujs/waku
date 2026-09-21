@@ -176,11 +176,14 @@ describe('dedupeHtmlMetadata', () => {
     );
   });
 
-  test('keeps scanning past a void element written into the head', () => {
-    for (const void_ of ['br', 'img src="/x.png"', 'hr', 'input', 'wbr']) {
+  test('keeps scanning past any element that does not own its content', () => {
+    // A browser ends the head at each of these, putting what follows in the
+    // body, where the first title still wins.
+    const stray = ['br', 'img src="/x.png"', 'hr', 'input', 'div', 'foo'];
+    for (const tag of stray) {
       expect(
-        dedupeHtmlMetadata(`<title>a</title><${void_}><title>b</title>`),
-      ).toBe(`<${void_}><title>b</title>`);
+        dedupeHtmlMetadata(`<title>a</title><${tag}><title>b</title>`),
+      ).toBe(`<${tag}><title>b</title>`);
     }
   });
 
