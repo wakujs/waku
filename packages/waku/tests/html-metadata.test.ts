@@ -151,6 +151,16 @@ describe('dedupeHtmlMetadata', () => {
     ).toBe('<svg><path/><title>icon</title></svg><title>b</title>');
   });
 
+  test('keeps a `</script>` a parser reads as script text', () => {
+    // `<!--<script` starts the double escaped state, where the next
+    // `</script>` returns to the escaped state instead of ending the element.
+    const script =
+      '<script><!--<script></script><title>trap</title>--></script>';
+    expect(
+      dedupeHtmlMetadata(`<title>a</title>${script}<title>b</title>`),
+    ).toBe(`${script}<title>b</title>`);
+  });
+
   test('leaves raw text whose close tag name runs into punctuation', () => {
     const script =
       '<script>const s = "</script!><title>trap</title>";</script>';
@@ -450,6 +460,14 @@ describe('dedupeHtmlMetadataStream', () => {
     expect(await pipeBytes(chunks)).toBe(
       '<html><head><title>page</title></head><body>hi</body></html>',
     );
+  });
+
+  test('gives up rather than buffer an unfinished head past the cap', async () => {
+    // Injected RSC scripts count toward the cap as well, so a head that has
+    // not closed by then is emitted as it was rendered.
+    const opening = `<html><head><title>a</title><!--${'y'.repeat(1024 * 1024)}-->`;
+    const rest = '<title>b</title></head><body>hi</body></html>';
+    expect(await pipe([opening, rest])).toBe(opening + rest);
   });
 
   test('passes through a document with no head', async () => {

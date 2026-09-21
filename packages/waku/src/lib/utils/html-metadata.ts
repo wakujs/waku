@@ -155,6 +155,56 @@ const findRawTextEnd = (html: string, from: number, name: string): number => {
   return -1;
 };
 
+/**
+ * Where a parser ends a `<script>`. Inside `<!-- -->` a nested `<script` makes
+ * the next `</script>` part of the text rather than the end of the element.
+ */
+const findScriptEnd = (html: string, from: number): number => {
+  let cursor = from;
+  let commented = false;
+  let nested = false;
+  while (true) {
+    const open = html.indexOf('<', cursor);
+    const uncomment = commented ? html.indexOf('-->', cursor) : -1;
+    if (uncomment !== -1 && (open === -1 || uncomment < open)) {
+      commented = false;
+      nested = false;
+      cursor = uncomment + 3;
+      continue;
+    }
+    if (open === -1) {
+      return -1;
+    }
+    if (html.startsWith('<!--', open)) {
+      commented = true;
+      cursor = open + 4;
+      continue;
+    }
+    const closing = html.charCodeAt(open + 1) === SLASH;
+    const nameStart = open + (closing ? 2 : 1);
+    const nameEnd = nameStart + 'script'.length;
+    if (nameEnd >= html.length) {
+      return -1;
+    }
+    if (
+      html.slice(nameStart, nameEnd).toLowerCase() !== 'script' ||
+      !endsRawTextName(html.charCodeAt(nameEnd))
+    ) {
+      cursor = open + 1;
+      continue;
+    }
+    if (!closing) {
+      nested = commented;
+    } else if (nested) {
+      nested = false;
+    } else {
+      const tag = readTag(html, open);
+      return tag === undefined ? -1 : tag.end;
+    }
+    cursor = nameEnd;
+  }
+};
+
 const readMetadataKey = (
   tag: Tag,
   filter: MetadataFilter,
@@ -237,7 +287,10 @@ const scanHead = (html: string, scan: HeadScan): void => {
         scan.cursor = tag.end;
         continue;
       }
-      const contentEnd = findRawTextEnd(html, tag.end, tag.name);
+      const contentEnd =
+        tag.name === 'script'
+          ? findScriptEnd(html, tag.end)
+          : findRawTextEnd(html, tag.end, tag.name);
       if (contentEnd === -1) {
         scan.cursor = start;
         return;
