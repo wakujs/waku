@@ -24,7 +24,7 @@ export const DEFAULT_METADATA_FILTER: MetadataFilter = {
 };
 
 /** Their content is their own, so a `<title>` inside one is not metadata. */
-const NESTED_CONTENT = new Set(['math', 'svg', 'template']);
+const NESTED_CONTENT = new Set(['svg', 'template']);
 
 /** Their content is text, so a `<title>` written inside one is not metadata. */
 const RAW_TEXT_ELEMENTS = new Set(['noscript', 'script', 'style', 'title']);
