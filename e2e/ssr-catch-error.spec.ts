@@ -22,6 +22,25 @@ test.describe(`ssr-catch-error`, () => {
     await expect(page.getByText('Something went wrong')).toBeVisible();
   });
 
+  test('the default root and the error page carry charset and viewport', async ({
+    page,
+  }) => {
+    const viewport = 'width=device-width, initial-scale=1';
+    await page.goto(`http://localhost:${port}/no-error`);
+    await expect(page.locator('meta[charset]')).toHaveCount(1);
+    await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
+      'content',
+      viewport,
+    );
+    await page.goto(`http://localhost:${port}/`);
+    await expect(page.getByText('Something went wrong')).toBeVisible();
+    await expect(page.locator('meta[charset]')).toHaveCount(1);
+    await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
+      'content',
+      viewport,
+    );
+  });
+
   test('a static element that throws does not take the server down', async ({
     request,
   }) => {

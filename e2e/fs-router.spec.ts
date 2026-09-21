@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import type { Browser } from '@playwright/test';
+import type { Browser, Page } from '@playwright/test';
 import {
   prepareNormalSetup,
   test,
@@ -9,16 +9,16 @@ import {
 
 const startApp = prepareNormalSetup('fs-router');
 
-const readWithoutJs = async <T>(
+const checkWithoutJs = async (
   browser: Browser,
   url: string,
-  read: () => T,
-): Promise<T> => {
+  check: (page: Page) => Promise<void>,
+): Promise<void> => {
   const context = await browser.newContext({ javaScriptEnabled: false });
   try {
     const page = await context.newPage();
     await page.goto(url);
-    return await page.evaluate(read);
+    await check(page);
   } finally {
     await context.close();
   }
@@ -670,40 +670,43 @@ test.describe('fs-router', () => {
 
   test('metadata: page overrides layout without JS', async ({ browser }) => {
     // Crawlers and social scrapers read this path, not the hydrated one.
-    expect(
-      await readWithoutJs(browser, `http://localhost:${port}/metadata`, () => ({
-        titles: [...document.querySelectorAll('title')].map(
-          (t) => t.textContent,
-        ),
-        descriptions: [
-          ...document.querySelectorAll('meta[name="description"]'),
-        ].map((m) => m.getAttribute('content')),
-        ogTitles: [
-          ...document.querySelectorAll('meta[property="og:title"]'),
-        ].map((m) => m.getAttribute('content')),
-        ogSiteNames: [
-          ...document.querySelectorAll('meta[property="og:site_name"]'),
-        ].map((m) => m.getAttribute('content')),
-      })),
-    ).toEqual({
-      titles: ['Metadata Page'],
-      descriptions: ['page description'],
-      ogTitles: ['page og title'],
-      // only the layout declares this one, so it survives untouched
-      ogSiteNames: ['layout og site name'],
-    });
+    await checkWithoutJs(
+      browser,
+      `http://localhost:${port}/metadata`,
+      async (page) => {
+        await expect(page.locator('title')).toHaveCount(1);
+        await expect(page).toHaveTitle('Metadata Page');
+        const description = page.locator('meta[name="description"]');
+        await expect(description).toHaveCount(1);
+        await expect(description).toHaveAttribute(
+          'content',
+          'page description',
+        );
+        const ogTitle = page.locator('meta[property="og:title"]');
+        await expect(ogTitle).toHaveCount(1);
+        await expect(ogTitle).toHaveAttribute('content', 'page og title');
+        // only the layout declares this one, so it survives untouched
+        const ogSiteName = page.locator('meta[property="og:site_name"]');
+        await expect(ogSiteName).toHaveCount(1);
+        await expect(ogSiteName).toHaveAttribute(
+          'content',
+          'layout og site name',
+        );
+      },
+    );
   });
 
   test('metadata: layout applies when the page declares none', async ({
     browser,
   }) => {
-    expect(
-      await readWithoutJs(
-        browser,
-        `http://localhost:${port}/metadata/inherited`,
-        () => [...document.querySelectorAll('title')].map((t) => t.textContent),
-      ),
-    ).toEqual(['Metadata Layout']);
+    await checkWithoutJs(
+      browser,
+      `http://localhost:${port}/metadata/inherited`,
+      async (page) => {
+        await expect(page.locator('title')).toHaveCount(1);
+        await expect(page).toHaveTitle('Metadata Layout');
+      },
+    );
   });
 
   test('metadata: the merged title survives hydration', async ({ page }) => {
@@ -716,15 +719,18 @@ test.describe('fs-router', () => {
 
   test('metadata: viewport is not deduplicated', async ({ browser }) => {
     // Deliberate: a key resolved by its last occurrence cannot be merged.
-    expect(
-      await readWithoutJs(
-        browser,
-        `http://localhost:${port}/metadata/viewport`,
-        () =>
-          [...document.querySelectorAll('meta[name="viewport"]')].map((m) =>
-            m.getAttribute('content'),
-          ),
-      ),
-    ).toEqual(['width=device-width, initial-scale=1', 'width=400']);
+    await checkWithoutJs(
+      browser,
+      `http://localhost:${port}/metadata/viewport`,
+      async (page) => {
+        const viewport = page.locator('meta[name="viewport"]');
+        await expect(viewport).toHaveCount(2);
+        await expect(viewport.nth(0)).toHaveAttribute(
+          'content',
+          'width=device-width, initial-scale=1',
+        );
+        await expect(viewport.nth(1)).toHaveAttribute('content', 'width=400');
+      },
+    );
   });
 });
