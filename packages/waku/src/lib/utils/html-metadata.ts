@@ -148,6 +148,16 @@ const findRawTextEnd = (html: string, from: number, name: string): number => {
   return -1;
 };
 
+// `<!-->` and `<!--->` reach `>` while still in the dash dash state, which
+// returns to script data without ever escaping.
+const dashDashEnd = (html: string, from: number): number => {
+  let cursor = from;
+  while (html.charCodeAt(cursor) === HYPHEN) {
+    cursor++;
+  }
+  return html.charCodeAt(cursor) === GT ? cursor + 1 : -1;
+};
+
 const findScriptEnd = (html: string, from: number): number => {
   let cursor = from;
   let escaped = false;
@@ -165,8 +175,15 @@ const findScriptEnd = (html: string, from: number): number => {
       return -1;
     }
     if (html.startsWith('<!--', open)) {
+      const unescaped = dashDashEnd(html, open + '<!--'.length);
+      if (unescaped !== -1) {
+        escaped = false;
+        doubleEscaped = false;
+        cursor = unescaped;
+        continue;
+      }
       escaped = true;
-      cursor = open + 4;
+      cursor = open + '<!--'.length;
       continue;
     }
     const closing = html.charCodeAt(open + 1) === SLASH;

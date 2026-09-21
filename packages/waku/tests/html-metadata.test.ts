@@ -161,6 +161,19 @@ describe('dedupeHeadMetadataForTest', () => {
     ).toBe('<svg><path/><title>icon</title></svg><title>b</title>');
   });
 
+  test('leaves the escaped state where a parser leaves it', () => {
+    // `<!-->` and `<!--->` reach `>` still in the dash dash state, so the
+    // `<script>` after them is text and the `</script>` really does close.
+    for (const bang of ['<!-->', '<!--->', '<!--<!-->']) {
+      const script = `<script>${bang}<script></script>`;
+      expect(
+        dedupeHeadMetadataForTest(
+          `<title>a</title>${script}<title>trap</title></script><title>b</title>`,
+        ),
+      ).toBe(`${script}</script><title>b</title>`);
+    }
+  });
+
   test('keeps a `</script>` a parser reads as script text', () => {
     // `<!--<script` starts the double escaped state, where the next
     // `</script>` returns to the escaped state instead of ending the element.
