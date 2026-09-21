@@ -198,15 +198,44 @@ describe('dedupeHeadMetadataForTest', () => {
   });
 
   test('honours a self-closing raw text tag inside foreign content', () => {
+    const nestings = [
+      '<svg><title/></svg>',
+      '<template><svg><title/></svg></template>',
+    ];
+    for (const nesting of nestings) {
+      expect(
+        dedupeHeadMetadataForTest(`<title>a</title>${nesting}<title>b</title>`),
+      ).toBe(`${nesting}<title>b</title>`);
+    }
+    // A template is not foreign content, so `<title/>` there opens raw text
+    // that swallows the rest, leaving nothing safe to merge.
+    const head =
+      '<title>a</title><template><title/></template><title>b</title>';
+    expect(dedupeHeadMetadataForTest(head)).toBe(head);
+  });
+
+  test('leaves text alone in every element whose content is text', () => {
+    for (const name of ['textarea', 'iframe', 'xmp', 'noembed', 'noframes']) {
+      const text = `<${name}></title><title>trap</title></${name}>`;
+      expect(
+        dedupeHeadMetadataForTest(`<title>a</title>${text}<title>b</title>`),
+      ).toBe(`${text}<title>b</title>`);
+    }
+  });
+
+  test('leaves a MathML subtree alone', () => {
+    const math = '<math><mtext><title>x</title></mtext></math>';
     expect(
-      dedupeHeadMetadataForTest(
-        '<title>a</title><svg><title/></svg><title>b</title>',
-      ),
-    ).toBe('<svg><title/></svg><title>b</title>');
-    const nested = '<template><svg><title/></svg></template>';
+      dedupeHeadMetadataForTest(`<title>a</title>${math}<title>b</title>`),
+    ).toBe(`${math}<title>b</title>`);
+  });
+
+  test('self-closes only on `/>`, as the tokenizer does', () => {
+    // `<svg / >` is a stray solidus, so the scan is inside the svg subtree.
+    const svg = '<svg / ><title>icon</title></svg>';
     expect(
-      dedupeHeadMetadataForTest(`<title>a</title>${nested}<title>b</title>`),
-    ).toBe(`${nested}<title>b</title>`);
+      dedupeHeadMetadataForTest(`<title>a</title>${svg}<title>b</title>`),
+    ).toBe(`${svg}<title>b</title>`);
   });
 
   test('ignores metadata inside inline svg', () => {

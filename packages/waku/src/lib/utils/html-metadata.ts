@@ -18,9 +18,19 @@ const DEFAULT_METADATA_FILTER: MetadataFilter = {
   ],
 };
 
-const ELEMENTS_OWNING_THEIR_CONTENT = new Set(['svg', 'template']);
+const ELEMENTS_OWNING_THEIR_CONTENT = new Set(['math', 'svg', 'template']);
 
-const RAW_TEXT_ELEMENTS = new Set(['noscript', 'script', 'style', 'title']);
+const RAW_TEXT_ELEMENTS = new Set([
+  'iframe',
+  'noembed',
+  'noframes',
+  'noscript',
+  'script',
+  'style',
+  'textarea',
+  'title',
+  'xmp',
+]);
 
 const SLASH = 47;
 const HYPHEN = 45;
@@ -72,6 +82,7 @@ const readTag = (html: string, start: number): Tag | undefined => {
   while (cursor < html.length) {
     const code = html.charCodeAt(cursor);
     if (isSpace(code)) {
+      selfClosing = false;
       cursor++;
       continue;
     }
@@ -236,8 +247,7 @@ type MetadataTag = { key: string; start: number; end: number };
 
 type HeadScan = {
   resumeAt: number;
-  skipName: string | undefined;
-  skipDepth: number;
+  skipped: string[];
   tags: MetadataTag[];
   headClosed: boolean;
   filter: MetadataFilter;
@@ -245,8 +255,7 @@ type HeadScan = {
 
 const createHeadScan = (filter: Partial<MetadataFilter>): HeadScan => ({
   resumeAt: 0,
-  skipName: undefined,
-  skipDepth: 0,
+  skipped: [],
   tags: [],
   headClosed: false,
   filter: {
@@ -287,8 +296,8 @@ const scanHead = (html: string, scan: HeadScan): void => {
       continue;
     }
     if (!tag.closing && RAW_TEXT_ELEMENTS.has(tag.name)) {
-      // Foreign content closes on `/>`, and nothing skipped is metadata.
-      if (tag.selfClosing && scan.skipName !== undefined) {
+      // Only foreign content closes a tag on `/>`.
+      if (tag.selfClosing && scan.skipped.at(-1) === 'svg') {
         scan.resumeAt = tag.end;
         continue;
       }
@@ -300,7 +309,7 @@ const scanHead = (html: string, scan: HeadScan): void => {
         scan.resumeAt = start;
         return;
       }
-      if (tag.name === 'title' && scan.skipName === undefined) {
+      if (tag.name === 'title' && !scan.skipped.length) {
         const key = readMetadataKey(tag, scan.filter);
         if (key !== undefined) {
           scan.tags.push({ key, start, end: contentEnd });
@@ -309,16 +318,16 @@ const scanHead = (html: string, scan: HeadScan): void => {
       scan.resumeAt = contentEnd;
       continue;
     }
-    if (scan.skipName !== undefined) {
-      if (tag.name === scan.skipName) {
-        if (tag.closing) {
-          scan.skipDepth--;
-          if (scan.skipDepth === 0) {
-            scan.skipName = undefined;
-          }
-        } else if (!tag.selfClosing) {
-          scan.skipDepth++;
+    if (scan.skipped.length) {
+      if (tag.closing) {
+        if (tag.name === scan.skipped.at(-1)) {
+          scan.skipped.pop();
         }
+      } else if (
+        !tag.selfClosing &&
+        ELEMENTS_OWNING_THEIR_CONTENT.has(tag.name)
+      ) {
+        scan.skipped.push(tag.name);
       }
     } else if (tag.closing) {
       if (tag.name === 'head') {
@@ -333,8 +342,7 @@ const scanHead = (html: string, scan: HeadScan): void => {
         }
       }
       if (!tag.selfClosing && ELEMENTS_OWNING_THEIR_CONTENT.has(tag.name)) {
-        scan.skipName = tag.name;
-        scan.skipDepth = 1;
+        scan.skipped.push(tag.name);
       }
     }
     scan.resumeAt = tag.end;
@@ -426,6 +434,7 @@ export const dedupeHtmlMetadataStream = (
           buffering = false;
           controller.enqueue(concatUint8Array(chunks));
           chunks.length = 0;
+          html = '';
         }
         return;
       }
