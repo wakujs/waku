@@ -179,7 +179,7 @@ type HeadScan = {
   skipName: string | undefined;
   skipDepth: number;
   tags: MetadataTag[];
-  headEnd: number | undefined;
+  headClosed: boolean;
   filter: MetadataFilter;
 };
 
@@ -188,12 +188,15 @@ const createHeadScan = (filter: MetadataFilter): HeadScan => ({
   skipName: undefined,
   skipDepth: 0,
   tags: [],
-  headEnd: undefined,
-  filter,
+  headClosed: false,
+  filter: {
+    metaNames: filter.metaNames.map((name) => name.toLowerCase()),
+    metaProperties: filter.metaProperties.map((name) => name.toLowerCase()),
+  },
 });
 
 const scanHead = (html: string, scan: HeadScan): void => {
-  while (scan.headEnd === undefined) {
+  while (!scan.headClosed) {
     const start = html.indexOf('<', scan.cursor);
     if (start === -1) {
       scan.cursor = html.length;
@@ -220,6 +223,11 @@ const scanHead = (html: string, scan: HeadScan): void => {
       continue;
     }
     if (!tag.closing && RAW_TEXT_ELEMENTS.has(tag.name)) {
+      if (tag.selfClosing && scan.skipName === 'svg') {
+        // Foreign content honours `/>`, so there is no raw text to read past.
+        scan.cursor = tag.end;
+        continue;
+      }
       const contentEnd = findRawTextEnd(html, tag.end, tag.name);
       if (contentEnd === -1) {
         scan.cursor = start;
@@ -247,7 +255,7 @@ const scanHead = (html: string, scan: HeadScan): void => {
       }
     } else if (tag.closing) {
       if (tag.name === 'head') {
-        scan.headEnd = start;
+        scan.headClosed = true;
         return;
       }
     } else {
@@ -317,8 +325,8 @@ export const dedupeHtmlMetadata = (
 const MAX_BUFFERED_HEAD = 1024 * 1024;
 
 /**
- * Markup is ascii, so one character per byte is enough to scan it, and it
- * keeps an offset in the scan an offset in the buffer. Decoding as utf-8
+ * Markup is ascii, so one character per byte is enough to scan it, and an
+ * offset in the scan is then an offset in the buffer. Decoding as utf-8
  * would not: a byte it cannot decode becomes a character three bytes long.
  */
 const decodeBytes = (bytes: Uint8Array): string => {
@@ -348,7 +356,7 @@ export const dedupeHtmlMetadataStream = (
       bufferedLength += chunk.byteLength;
       html += decodeBytes(chunk);
       scanHead(html, scan);
-      if (scan.headEnd === undefined) {
+      if (!scan.headClosed) {
         if (bufferedLength > MAX_BUFFERED_HEAD) {
           buffering = false;
           controller.enqueue(concatUint8Array(chunks));

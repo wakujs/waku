@@ -151,6 +151,12 @@ describe('dedupeHtmlMetadata', () => {
     ).toBe('<svg><path/><title>icon</title></svg><title>b</title>');
   });
 
+  test('honours a self-closing raw text tag inside foreign content', () => {
+    expect(
+      dedupeHtmlMetadata('<title>a</title><svg><title/></svg><title>b</title>'),
+    ).toBe('<svg><title/></svg><title>b</title>');
+  });
+
   test('ignores metadata inside inline svg', () => {
     expect(
       dedupeHtmlMetadata('<title>page</title><svg><title>icon</title></svg>'),
@@ -205,6 +211,17 @@ describe('dedupeHtmlMetadata', () => {
     expect(
       dedupeHtmlMetadata('<title>a</title><div><span></div><title>b</title>'),
     ).toBe('<div><span></div><title>b</title>');
+  });
+
+  test('matches a filter entry whatever case it is written in', () => {
+    const head =
+      '<meta name="Description" content="a"><meta name="Description" content="b">';
+    expect(
+      dedupeHtmlMetadata(head, {
+        metaNames: ['Description'],
+        metaProperties: [],
+      }),
+    ).toBe('<meta name="Description" content="b">');
   });
 
   test('ignores tags inside comments', () => {
