@@ -1,3 +1,4 @@
+import { injectRSCPayload } from 'rsc-html-stream/server';
 import { describe, expect, test } from 'vitest';
 import {
   DEFAULT_METADATA_FILTER,
@@ -354,6 +355,45 @@ describe('dedupeHtmlMetadataStream', () => {
       '<html><head><template><p></head></p></template>' +
         '<title>page</title></head><body>hi</body></html>',
     );
+  });
+
+  test('merges a head the RSC payload is injected into', async () => {
+    const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+    const html = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        controller.enqueue(enc.encode('<html><head><title>layout</title>'));
+        // injectRSCPayload writes the payload after the tick it first sees
+        // html in, which need not be the tick that closes the head.
+        await tick();
+        await tick();
+        controller.enqueue(
+          enc.encode('<title>page</title></head><body>hi</body></html>'),
+        );
+        controller.close();
+      },
+    });
+    const rsc = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(enc.encode('["</head> <title>trap</title>"]'));
+        controller.close();
+      },
+    });
+    const out = html
+      .pipeThrough(injectRSCPayload(rsc, {}))
+      .pipeThrough(dedupeHtmlMetadataStream());
+    const reader = out.getReader();
+    let text = '';
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) {
+        break;
+      }
+      text += dec.decode(value, { stream: true });
+    }
+    expect(text.indexOf('<script>')).toBeLessThan(text.indexOf('</head>'));
+    expect(text).toContain('__FLIGHT_DATA');
+    expect(text).not.toContain('<title>layout</title>');
+    expect(text).toContain('<title>page</title></head>');
   });
 
   test('finds the head when every byte arrives in its own chunk', async () => {
