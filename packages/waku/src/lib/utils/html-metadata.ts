@@ -23,8 +23,22 @@ export const DEFAULT_METADATA_FILTER: MetadataFilter = {
   ],
 };
 
-/** The void elements a head can hold; anything else in one has a close tag. */
-const VOID_HEAD_ELEMENTS = new Set(['base', 'link', 'meta']);
+/** They have no close tag, so they never open content for the scan to skip. */
+const VOID_ELEMENTS = new Set([
+  'area',
+  'base',
+  'br',
+  'col',
+  'embed',
+  'hr',
+  'img',
+  'input',
+  'link',
+  'meta',
+  'source',
+  'track',
+  'wbr',
+]);
 
 /** Their content is text, so a `<title>` written inside one is not metadata. */
 const RAW_TEXT_ELEMENTS = new Set(['noscript', 'script', 'style', 'title']);
@@ -261,7 +275,7 @@ const scanHead = (html: string, scan: HeadScan): void => {
       // `html` and `head` enclose the scan rather than nest inside it.
       if (
         !tag.selfClosing &&
-        !VOID_HEAD_ELEMENTS.has(tag.name) &&
+        !VOID_ELEMENTS.has(tag.name) &&
         tag.name !== 'html' &&
         tag.name !== 'head'
       ) {
@@ -273,27 +287,43 @@ const scanHead = (html: string, scan: HeadScan): void => {
   }
 };
 
-const rewriteMetadata = (
-  head: string,
-  tags: readonly MetadataTag[],
-): string => {
+const droppedTags = (tags: readonly MetadataTag[]): MetadataTag[] => {
   const survivorByKey = new Map<string, number>();
   for (const tag of tags) {
     survivorByKey.set(tag.key, tag.start);
   }
-  if (survivorByKey.size === tags.length) {
-    return head;
-  }
+  return tags.filter((tag) => survivorByKey.get(tag.key) !== tag.start);
+};
+
+const rewriteMetadata = (
+  head: string,
+  tags: readonly MetadataTag[],
+): string => {
   let result = '';
   let cursor = 0;
-  for (const tag of tags) {
-    if (survivorByKey.get(tag.key) === tag.start) {
-      continue;
-    }
+  for (const tag of droppedTags(tags)) {
     result += head.slice(cursor, tag.start);
     cursor = tag.end;
   }
   return result + head.slice(cursor);
+};
+
+const spliceMetadata = (
+  buffer: Uint8Array,
+  tags: readonly MetadataTag[],
+): Uint8Array => {
+  const dropped = droppedTags(tags);
+  if (!dropped.length) {
+    return buffer;
+  }
+  const parts: Uint8Array[] = [];
+  let cursor = 0;
+  for (const tag of dropped) {
+    parts.push(buffer.subarray(cursor, tag.start));
+    cursor = tag.end;
+  }
+  parts.push(buffer.subarray(cursor));
+  return concatUint8Array(parts);
 };
 
 export const dedupeHtmlMetadata = (
@@ -307,31 +337,22 @@ export const dedupeHtmlMetadata = (
 
 const MAX_BUFFERED_HEAD = 1024 * 1024;
 
-const utf8Length = (text: string): number => {
-  let length = 0;
-  for (let i = 0; i < text.length; i++) {
-    const code = text.charCodeAt(i);
-    if (code < 0x80) {
-      length += 1;
-    } else if (code < 0x800) {
-      length += 2;
-    } else if (code >= 0xd800 && code <= 0xdbff) {
-      length += 4;
-      i++;
-    } else {
-      length += 3;
-    }
+/**
+ * Markup is ascii, so one character per byte is enough to scan it, and it
+ * keeps an offset in the scan an offset in the buffer. Decoding as utf-8
+ * would not: a byte it cannot decode becomes a character three bytes long.
+ */
+const decodeBytes = (bytes: Uint8Array): string => {
+  let text = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    text += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   }
-  return length;
+  return text;
 };
 
 export const dedupeHtmlMetadataStream = (
   filter: MetadataFilter = DEFAULT_METADATA_FILTER,
 ): TransformStream<Uint8Array, Uint8Array> => {
-  const encoder = new TextEncoder();
-  // The head is re-encoded to find where it ends in the buffer, so the decode
-  // has to keep every byte it was given.
-  const decoder = new TextDecoder('utf-8', { ignoreBOM: true });
   const chunks: Uint8Array[] = [];
   let bufferedLength = 0;
   let html = '';
@@ -346,7 +367,7 @@ export const dedupeHtmlMetadataStream = (
       }
       chunks.push(chunk);
       bufferedLength += chunk.byteLength;
-      html += decoder.decode(chunk, { stream: true });
+      html += decodeBytes(chunk);
       scanHead(html, scan);
       if (scan.headEnd === undefined) {
         if (bufferedLength > MAX_BUFFERED_HEAD) {
@@ -357,10 +378,9 @@ export const dedupeHtmlMetadataStream = (
         return;
       }
       buffering = false;
-      const head = html.slice(0, scan.headEnd);
-      controller.enqueue(encoder.encode(rewriteMetadata(head, scan.tags)));
-      controller.enqueue(concatUint8Array(chunks).subarray(utf8Length(head)));
+      controller.enqueue(spliceMetadata(concatUint8Array(chunks), scan.tags));
       chunks.length = 0;
+      html = '';
     },
     flush(controller) {
       if (buffering && chunks.length) {

@@ -176,6 +176,14 @@ describe('dedupeHtmlMetadata', () => {
     );
   });
 
+  test('keeps scanning past a void element written into the head', () => {
+    for (const void_ of ['br', 'img src="/x.png"', 'hr', 'input', 'wbr']) {
+      expect(
+        dedupeHtmlMetadata(`<title>a</title><${void_}><title>b</title>`),
+      ).toBe(`<${void_}><title>b</title>`);
+    }
+  });
+
   test('ends raw text at the first close tag, as a parser does', () => {
     expect(
       dedupeHtmlMetadata(
@@ -421,6 +429,19 @@ describe('dedupeHtmlMetadataStream', () => {
     const cut = bytes.indexOf(0xe6) + 2;
     expect(await pipeBytes([bytes.subarray(0, cut), bytes.subarray(cut)])).toBe(
       '<html><head><title>b</title></head><body>\u65e5\u672c</body></html>',
+    );
+  });
+
+  test('does not shift the buffer on a byte it cannot decode', async () => {
+    const head = '<html><head><title>a</title><title>b</title>';
+    const tail = '</head><body>xy</body></html>';
+    const bytes = new Uint8Array([
+      ...enc.encode(head),
+      0xff,
+      ...enc.encode(tail),
+    ]);
+    expect(await pipeBytes([bytes])).toBe(
+      `<html><head><title>b</title>\uFFFD${tail}`,
     );
   });
 
