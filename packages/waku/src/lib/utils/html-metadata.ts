@@ -18,19 +18,7 @@ const DEFAULT_METADATA_FILTER: MetadataFilter = {
   ],
 };
 
-const ELEMENTS_OWNING_THEIR_CONTENT = new Set(['math', 'svg', 'template']);
-
-const RAW_TEXT_ELEMENTS = new Set([
-  'iframe',
-  'noembed',
-  'noframes',
-  'noscript',
-  'script',
-  'style',
-  'textarea',
-  'title',
-  'xmp',
-]);
+const RAW_TEXT_ELEMENTS = new Set(['script', 'style', 'title']);
 
 const SLASH = 47;
 const HYPHEN = 45;
@@ -61,7 +49,6 @@ const endsRawTextName = (code: number): boolean =>
 type Tag = {
   name: string;
   closing: boolean;
-  selfClosing: boolean;
   end: number;
   attributes: Map<string, string>;
 };
@@ -78,23 +65,19 @@ const readTag = (html: string, start: number): Tag | undefined => {
   }
   const name = html.slice(nameStart, cursor).toLowerCase();
   const attributes = new Map<string, string>();
-  let selfClosing = false;
   while (cursor < html.length) {
     const code = html.charCodeAt(cursor);
     if (isSpace(code)) {
-      selfClosing = false;
       cursor++;
       continue;
     }
     if (code === GT) {
-      return { name, closing, selfClosing, end: cursor + 1, attributes };
+      return { name, closing, end: cursor + 1, attributes };
     }
     if (code === SLASH) {
-      selfClosing = true;
       cursor++;
       continue;
     }
-    selfClosing = false;
     const attributeStart = cursor;
     while (
       cursor < html.length &&
@@ -247,7 +230,6 @@ type MetadataTag = { key: string; start: number; end: number };
 
 type HeadScan = {
   resumeAt: number;
-  skipped: string[];
   tags: MetadataTag[];
   headClosed: boolean;
   filter: MetadataFilter;
@@ -255,7 +237,6 @@ type HeadScan = {
 
 const createHeadScan = (filter: Partial<MetadataFilter>): HeadScan => ({
   resumeAt: 0,
-  skipped: [],
   tags: [],
   headClosed: false,
   filter: {
@@ -296,11 +277,6 @@ const scanHead = (html: string, scan: HeadScan): void => {
       continue;
     }
     if (!tag.closing && RAW_TEXT_ELEMENTS.has(tag.name)) {
-      // Only foreign content closes a tag on `/>`.
-      if (tag.selfClosing && scan.skipped.at(-1) === 'svg') {
-        scan.resumeAt = tag.end;
-        continue;
-      }
       const contentEnd =
         tag.name === 'script'
           ? findScriptEnd(html, tag.end)
@@ -309,7 +285,7 @@ const scanHead = (html: string, scan: HeadScan): void => {
         scan.resumeAt = start;
         return;
       }
-      if (tag.name === 'title' && !scan.skipped.length) {
+      if (tag.name === 'title') {
         const key = readMetadataKey(tag, scan.filter);
         if (key !== undefined) {
           scan.tags.push({ key, start, end: contentEnd });
@@ -318,31 +294,15 @@ const scanHead = (html: string, scan: HeadScan): void => {
       scan.resumeAt = contentEnd;
       continue;
     }
-    if (scan.skipped.length) {
-      if (tag.closing) {
-        if (tag.name === scan.skipped.at(-1)) {
-          scan.skipped.pop();
-        }
-      } else if (
-        !tag.selfClosing &&
-        ELEMENTS_OWNING_THEIR_CONTENT.has(tag.name)
-      ) {
-        scan.skipped.push(tag.name);
-      }
-    } else if (tag.closing) {
+    if (tag.closing) {
       if (tag.name === 'head') {
         scan.headClosed = true;
         return;
       }
-    } else {
-      if (tag.name === 'meta') {
-        const key = readMetadataKey(tag, scan.filter);
-        if (key !== undefined) {
-          scan.tags.push({ key, start, end: tag.end });
-        }
-      }
-      if (!tag.selfClosing && ELEMENTS_OWNING_THEIR_CONTENT.has(tag.name)) {
-        scan.skipped.push(tag.name);
+    } else if (tag.name === 'meta') {
+      const key = readMetadataKey(tag, scan.filter);
+      if (key !== undefined) {
+        scan.tags.push({ key, start, end: tag.end });
       }
     }
     scan.resumeAt = tag.end;

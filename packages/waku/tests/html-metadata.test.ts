@@ -105,62 +105,6 @@ describe('dedupeHeadMetadataForTest', () => {
     );
   });
 
-  test('ignores metadata inside template and resumes after it', () => {
-    expect(
-      dedupeHeadMetadataForTest(
-        '<title>a</title><template><title>t</title></template><title>b</title>',
-      ),
-    ).toBe('<template><title>t</title></template><title>b</title>');
-  });
-
-  test('ignores metadata inside nested templates', () => {
-    expect(
-      dedupeHeadMetadataForTest(
-        '<title>a</title>' +
-          '<template><template><title>x</title></template>' +
-          '<title>y</title></template>' +
-          '<title>b</title>',
-      ),
-    ).toBe(
-      '<template><template><title>x</title></template>' +
-        '<title>y</title></template>' +
-        '<title>b</title>',
-    );
-  });
-
-  test('ignores a `</template>` written inside a comment or script', () => {
-    expect(
-      dedupeHeadMetadataForTest(
-        '<title>a</title>' +
-          '<template><!-- </template> -->' +
-          '<script>var s = "</template>";</script>' +
-          '<title>t</title></template>' +
-          '<title>b</title>',
-      ),
-    ).toBe(
-      '<template><!-- </template> -->' +
-        '<script>var s = "</template>";</script>' +
-        '<title>t</title></template>' +
-        '<title>b</title>',
-    );
-  });
-
-  test('does not let a commented `<template>` suppress the rest of the head', () => {
-    expect(
-      dedupeHeadMetadataForTest(
-        '<title>a</title><template><!-- <template> --></template><title>b</title>',
-      ),
-    ).toBe('<template><!-- <template> --></template><title>b</title>');
-  });
-
-  test('honours a self-closing tag, as foreign content requires', () => {
-    expect(
-      dedupeHeadMetadataForTest(
-        '<title>a</title><svg><path/><title>icon</title></svg><title>b</title>',
-      ),
-    ).toBe('<svg><path/><title>icon</title></svg><title>b</title>');
-  });
-
   test('leaves the escaped state where a parser leaves it', () => {
     // `<!-->` and `<!--->` reach `>` still in the dash dash state, so the
     // `<script>` after them is text and the `</script>` really does close.
@@ -197,72 +141,35 @@ describe('dedupeHeadMetadataForTest', () => {
     ).toBe(`${style}<title>b</title>`);
   });
 
-  test('honours a self-closing raw text tag inside foreign content', () => {
-    const nestings = [
-      '<svg><title/></svg>',
-      '<template><svg><title/></svg></template>',
-    ];
-    for (const nesting of nestings) {
-      expect(
-        dedupeHeadMetadataForTest(`<title>a</title>${nesting}<title>b</title>`),
-      ).toBe(`${nesting}<title>b</title>`);
-    }
-    // A template is not foreign content, so `<title/>` there opens raw text
-    // that swallows the rest, leaving nothing safe to merge.
+  test('leaves text alone in script, style and title', () => {
     const head =
-      '<title>a</title><template><title/></template><title>b</title>';
-    expect(dedupeHeadMetadataForTest(head)).toBe(head);
+      '<title>layout</title>' +
+      '<script>const h = "<title>x</title>";</script>' +
+      '<style>a::after{content:"<title>y</title>"}</style>' +
+      '<title>page</title>';
+    expect(dedupeHeadMetadataForTest(head)).toBe(
+      '<script>const h = "<title>x</title>";</script>' +
+        '<style>a::after{content:"<title>y</title>"}</style>' +
+        '<title>page</title>',
+    );
   });
 
-  test('leaves text alone in every element whose content is text', () => {
-    for (const name of ['textarea', 'iframe', 'xmp', 'noembed', 'noframes']) {
-      const text = `<${name}></title><title>trap</title></${name}>`;
+  test('reads every other element as the markup it is', () => {
+    // Deliberately simple: a head holds metadata, not templates or foreign
+    // content, so nothing is skipped and a `<title>` anywhere in one counts.
+    for (const wrapper of ['template', 'svg', 'noscript']) {
       expect(
-        dedupeHeadMetadataForTest(`<title>a</title>${text}<title>b</title>`),
-      ).toBe(`${text}<title>b</title>`);
+        dedupeHeadMetadataForTest(
+          `<title>a</title><${wrapper}><title>b</title></${wrapper}>`,
+        ),
+      ).toBe(`<${wrapper}><title>b</title></${wrapper}>`);
     }
-  });
-
-  test('leaves a MathML subtree alone', () => {
-    const math = '<math><mtext><title>x</title></mtext></math>';
-    expect(
-      dedupeHeadMetadataForTest(`<title>a</title>${math}<title>b</title>`),
-    ).toBe(`${math}<title>b</title>`);
-  });
-
-  test('self-closes only on `/>`, as the tokenizer does', () => {
-    // `<svg / >` is a stray solidus, so the scan is inside the svg subtree.
-    const svg = '<svg / ><title>icon</title></svg>';
-    expect(
-      dedupeHeadMetadataForTest(`<title>a</title>${svg}<title>b</title>`),
-    ).toBe(`${svg}<title>b</title>`);
-  });
-
-  test('ignores metadata inside inline svg', () => {
-    expect(
-      dedupeHeadMetadataForTest(
-        '<title>page</title><svg><title>icon</title></svg>',
-      ),
-    ).toBe('<title>page</title><svg><title>icon</title></svg>');
   });
 
   test('ignores an empty comment rather than abandoning the scan', () => {
     expect(
       dedupeHeadMetadataForTest('<title>a</title><!--><title>b</title>'),
     ).toBe('<!--><title>b</title>');
-  });
-
-  test('does not merge metadata across noscript', () => {
-    expect(
-      dedupeHeadMetadataForTest(
-        '<meta name="description" content="a"/>' +
-          '<noscript><meta name="description" content="no-js"/></noscript>' +
-          '<meta name="description" content="b"/>',
-      ),
-    ).toBe(
-      '<noscript><meta name="description" content="no-js"/></noscript>' +
-        '<meta name="description" content="b"/>',
-    );
   });
 
   test('keeps scanning past any element that does not own its content', () => {
@@ -464,17 +371,6 @@ describe('dedupeHtmlMetadataStream', () => {
       '<title>page</title></head><body>hi</body></html>';
     expect(await pipe([html])).toBe(
       '<html><head><script>const s = "</head>";</script>' +
-        '<title>page</title></head><body>hi</body></html>',
-    );
-  });
-
-  test('does not end the head at a `</head>` inside a template', async () => {
-    const html =
-      '<html><head><title>layout</title>' +
-      '<template><p></head></p></template>' +
-      '<title>page</title></head><body>hi</body></html>';
-    expect(await pipe([html])).toBe(
-      '<html><head><template><p></head></p></template>' +
         '<title>page</title></head><body>hi</body></html>',
     );
   });
