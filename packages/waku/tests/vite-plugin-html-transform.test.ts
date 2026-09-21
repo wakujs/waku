@@ -53,6 +53,14 @@ test('provides no transform when the merge is off', async () => {
   );
 });
 
+test('keeps the defaults when a filter field is left undefined', async () => {
+  // A plain-JS waku.config.js is not held to exactOptionalPropertyTypes.
+  const code = (await runLoad({
+    mergeMetadata: { metaNames: undefined },
+  } as never)) as string;
+  expect(loadedFilter(code)).toEqual(DEFAULT_METADATA_FILTER);
+});
+
 test('fills a partial filter in from the defaults', async () => {
   const code = (await runLoad({
     mergeMetadata: { metaNames: ['robots'] },

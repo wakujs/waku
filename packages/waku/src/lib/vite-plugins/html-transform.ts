@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import { normalizePath } from 'vite';
 import type { Plugin } from 'vite';
 import { DEFAULT_METADATA_FILTER } from '../utils/html-metadata.js';
 import type { MetadataFilter } from '../utils/html-metadata.js';
@@ -13,8 +14,8 @@ export function htmlTransformPlugin(
   options: HtmlTransformOptions = {},
 ): Plugin {
   const { mergeMetadata } = options;
-  const runtime = fileURLToPath(
-    new URL('../utils/html-metadata.js', import.meta.url),
+  const runtime = normalizePath(
+    fileURLToPath(new URL('../utils/html-metadata.js', import.meta.url)),
   );
   return {
     name: 'waku:vite-plugins:html-transform',
@@ -29,8 +30,11 @@ export function htmlTransformPlugin(
         return `export default undefined;`;
       }
       const filter: MetadataFilter = {
-        ...DEFAULT_METADATA_FILTER,
-        ...mergeMetadata,
+        metaNames:
+          mergeMetadata?.metaNames ?? DEFAULT_METADATA_FILTER.metaNames,
+        metaProperties:
+          mergeMetadata?.metaProperties ??
+          DEFAULT_METADATA_FILTER.metaProperties,
       };
       return `
 import { dedupeHtmlMetadataStream } from ${JSON.stringify(runtime)};
