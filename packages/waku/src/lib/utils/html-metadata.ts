@@ -23,10 +23,10 @@ export const DEFAULT_METADATA_FILTER: MetadataFilter = {
   ],
 };
 
-/** Their content is their own, so a `<title>` inside one is not metadata. */
+/** A `<title>` inside one of these belongs to it, not to the document. */
 const NESTED_CONTENT = new Set(['svg', 'template']);
 
-/** Their content is text, so a `<title>` written inside one is not metadata. */
+/** Their content is text, so the scan reads past it rather than into it. */
 const RAW_TEXT_ELEMENTS = new Set(['noscript', 'script', 'style', 'title']);
 
 const SLASH = 47;
@@ -147,7 +147,10 @@ const findRawTextEnd = (html: string, from: number, name: string): number => {
   return -1;
 };
 
-const metadataKey = (tag: Tag, filter: MetadataFilter): string | undefined => {
+const readMetadataKey = (
+  tag: Tag,
+  filter: MetadataFilter,
+): string | undefined => {
   if (tag.attributes.has('itemprop')) {
     return undefined;
   }
@@ -168,12 +171,8 @@ const metadataKey = (tag: Tag, filter: MetadataFilter): string | undefined => {
 type MetadataTag = { key: string; start: number; end: number };
 
 /**
- * A scan in progress. React hoists document metadata to be a direct child of
- * `<head>`, so a tag found while `skipName` is set -- inside an `<svg>`, a
- * `<template>`, or anything else written into the head -- is not metadata.
- *
- * `cursor` stops before anything the buffer has not finished, so a scan of a
- * longer prefix of the same document resumes from it.
+ * A scan in progress. `cursor` stops before anything the buffer has not
+ * finished, so a scan of a longer prefix of the same document resumes from it.
  */
 type HeadScan = {
   cursor: number;
@@ -227,7 +226,7 @@ const scanHead = (html: string, scan: HeadScan): void => {
         return;
       }
       if (tag.name === 'title' && scan.skipName === undefined) {
-        const key = metadataKey(tag, scan.filter);
+        const key = readMetadataKey(tag, scan.filter);
         if (key !== undefined) {
           scan.tags.push({ key, start, end: contentEnd });
         }
@@ -253,7 +252,7 @@ const scanHead = (html: string, scan: HeadScan): void => {
       }
     } else {
       if (tag.name === 'meta') {
-        const key = metadataKey(tag, scan.filter);
+        const key = readMetadataKey(tag, scan.filter);
         if (key !== undefined) {
           scan.tags.push({ key, start, end: tag.end });
         }
@@ -267,7 +266,7 @@ const scanHead = (html: string, scan: HeadScan): void => {
   }
 };
 
-const droppedTags = (tags: readonly MetadataTag[]): MetadataTag[] => {
+const findSuperseded = (tags: readonly MetadataTag[]): MetadataTag[] => {
   const survivorByKey = new Map<string, number>();
   for (const tag of tags) {
     survivorByKey.set(tag.key, tag.start);
@@ -281,7 +280,7 @@ const rewriteMetadata = (
 ): string => {
   let result = '';
   let cursor = 0;
-  for (const tag of droppedTags(tags)) {
+  for (const tag of findSuperseded(tags)) {
     result += head.slice(cursor, tag.start);
     cursor = tag.end;
   }
@@ -292,7 +291,7 @@ const spliceMetadata = (
   buffer: Uint8Array,
   tags: readonly MetadataTag[],
 ): Uint8Array => {
-  const dropped = droppedTags(tags);
+  const dropped = findSuperseded(tags);
   if (!dropped.length) {
     return buffer;
   }

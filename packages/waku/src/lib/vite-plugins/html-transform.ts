@@ -5,6 +5,7 @@ import { DEFAULT_METADATA_FILTER } from '../utils/html-metadata.js';
 import type { MetadataFilter } from '../utils/html-metadata.js';
 
 type HtmlTransformOptions = {
+  /** The defaults fill in what a partial filter leaves out. */
   mergeMetadata?: Partial<MetadataFilter> | false;
 };
 
