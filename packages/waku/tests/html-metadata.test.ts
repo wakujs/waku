@@ -1,7 +1,6 @@
 import { injectRSCPayload } from 'rsc-html-stream/server';
 import { describe, expect, test } from 'vitest';
 import {
-  DEFAULT_METADATA_FILTER,
   dedupeHtmlMetadata,
   dedupeHtmlMetadataStream,
 } from '../src/lib/utils/html-metadata.js';
@@ -23,9 +22,7 @@ const pipeBytes = async (
   });
   const out: Uint8Array[] = [];
   const reader = input
-    .pipeThrough(
-      dedupeHtmlMetadataStream(DEFAULT_METADATA_FILTER, maxBufferedHead),
-    )
+    .pipeThrough(dedupeHtmlMetadataStream({}, maxBufferedHead))
     .getReader();
   while (true) {
     const { value, done } = await reader.read();
@@ -299,12 +296,19 @@ describe('dedupeHtmlMetadata', () => {
       '<meta name="robots" content="index"/>' +
       '<meta name="robots" content="noindex"/>';
     expect(dedupeHtmlMetadata(head)).toBe(head);
-    expect(
-      dedupeHtmlMetadata(head, {
-        ...DEFAULT_METADATA_FILTER,
-        metaNames: ['robots'],
-      }),
-    ).toBe('<meta name="robots" content="noindex"/>');
+    expect(dedupeHtmlMetadata(head, { metaNames: ['robots'] })).toBe(
+      '<meta name="robots" content="noindex"/>',
+    );
+  });
+
+  test('fills in a filter field left undefined', () => {
+    // A plain-JS waku.config.js is not held to exactOptionalPropertyTypes.
+    const head =
+      '<meta name="description" content="a"/>' +
+      '<meta name="description" content="b"/>';
+    expect(dedupeHtmlMetadata(head, { metaNames: undefined } as never)).toBe(
+      '<meta name="description" content="b"/>',
+    );
   });
 
   test('an empty filter still merges the title', () => {

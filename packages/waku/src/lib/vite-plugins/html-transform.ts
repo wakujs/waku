@@ -1,14 +1,14 @@
 import { fileURLToPath } from 'node:url';
 import { normalizePath } from 'vite';
 import type { Plugin } from 'vite';
-import {
-  DEFAULT_MAX_BUFFERED_HEAD,
-  DEFAULT_METADATA_FILTER,
-} from '../utils/html-metadata.js';
 import type { MetadataFilter } from '../utils/html-metadata.js';
 
 type HtmlTransformOptions = {
-  /** The defaults fill in what a partial filter leaves out. */
+  /**
+   * The defaults fill in what a partial filter leaves out. Name only keys
+   * whose consumers resolve the first occurrence: React appends on hydration
+   * whatever the served HTML omits, which inverts any other.
+   */
   mergeMetadata?: Partial<MetadataFilter> | false;
   /**
    * How much of an unclosed head to buffer before emitting it as rendered.
@@ -38,18 +38,13 @@ export function htmlTransformPlugin(
       if (mergeMetadata === false) {
         return `export default undefined;`;
       }
-      const filter: MetadataFilter = {
-        metaNames:
-          mergeMetadata?.metaNames ?? DEFAULT_METADATA_FILTER.metaNames,
-        metaProperties:
-          mergeMetadata?.metaProperties ??
-          DEFAULT_METADATA_FILTER.metaProperties,
-      };
-      const buffered = maxBufferedHead ?? DEFAULT_MAX_BUFFERED_HEAD;
+      const args = [JSON.stringify(mergeMetadata ?? {})];
+      if (maxBufferedHead !== undefined) {
+        args.push(String(maxBufferedHead));
+      }
       return `
 import { dedupeHtmlMetadataStream } from ${JSON.stringify(runtime)};
-const filter = ${JSON.stringify(filter)};
-export default () => dedupeHtmlMetadataStream(filter, ${buffered});
+export default () => dedupeHtmlMetadataStream(${args.join(', ')});
 `;
     },
   };

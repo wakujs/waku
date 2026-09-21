@@ -1,8 +1,4 @@
 import { expect, test } from 'vitest';
-import {
-  DEFAULT_MAX_BUFFERED_HEAD,
-  DEFAULT_METADATA_FILTER,
-} from '../src/lib/utils/html-metadata.js';
 import { htmlTransformPlugin } from '../src/lib/vite-plugins/html-transform.js';
 
 const MODULE_ID = 'virtual:vite-rsc-waku/html-transform';
@@ -26,12 +22,12 @@ const runLoad = async (
   return plugin.load.call({} as never, id);
 };
 
-const loadedFilter = (code: string) => {
-  const match = /^const filter = (.*);$/m.exec(code);
+const loadedArgs = (code: string) => {
+  const match = /dedupeHtmlMetadataStream\((.*)\)/.exec(code);
   if (!match) {
-    throw new Error(`No filter in: ${code}`);
+    throw new Error(`No call in: ${code}`);
   }
-  return JSON.parse(match[1]!);
+  return match[1]!;
 };
 
 test('claims only its own module id', async () => {
@@ -44,18 +40,16 @@ test('claims only its own module id', async () => {
   ).resolves.toBe(undefined);
 });
 
-test('provides the default filter when given no options', async () => {
+test('asks for the defaults when given no options', async () => {
   const code = (await runLoad()) as string;
   expect(code).toContain('dedupeHtmlMetadataStream');
-  expect(loadedFilter(code)).toEqual(DEFAULT_METADATA_FILTER);
+  expect(loadedArgs(code)).toBe('{}');
 });
 
-test('passes the buffer cap through, defaulting when it is left out', async () => {
-  expect((await runLoad()) as string).toContain(
-    `dedupeHtmlMetadataStream(filter, ${DEFAULT_MAX_BUFFERED_HEAD})`,
-  );
-  expect((await runLoad({ maxBufferedHead: 4096 })) as string).toContain(
-    'dedupeHtmlMetadataStream(filter, 4096)',
+test('passes the buffer cap through only when it is given', async () => {
+  expect(loadedArgs((await runLoad()) as string)).toBe('{}');
+  expect(loadedArgs((await runLoad({ maxBufferedHead: 4096 })) as string)).toBe(
+    '{}, 4096',
   );
 });
 
@@ -65,20 +59,9 @@ test('provides no transform when the merge is off', async () => {
   );
 });
 
-test('keeps the defaults when a filter field is left undefined', async () => {
-  // A plain-JS waku.config.js is not held to exactOptionalPropertyTypes.
-  const code = (await runLoad({
-    mergeMetadata: { metaNames: undefined },
-  } as never)) as string;
-  expect(loadedFilter(code)).toEqual(DEFAULT_METADATA_FILTER);
-});
-
-test('fills a partial filter in from the defaults', async () => {
+test('passes a partial filter through as given', async () => {
   const code = (await runLoad({
     mergeMetadata: { metaNames: ['robots'] },
   })) as string;
-  expect(loadedFilter(code)).toEqual({
-    metaNames: ['robots'],
-    metaProperties: DEFAULT_METADATA_FILTER.metaProperties,
-  });
+  expect(loadedArgs(code)).toBe('{"metaNames":["robots"]}');
 });
