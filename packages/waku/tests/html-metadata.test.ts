@@ -1,7 +1,7 @@
 import { injectRSCPayload } from 'rsc-html-stream/server';
 import { describe, expect, test } from 'vitest';
 import {
-  dedupeHtmlMetadata,
+  dedupeHeadMetadataForTest,
   dedupeHtmlMetadataStream,
 } from '../src/lib/utils/html-metadata.js';
 
@@ -50,11 +50,11 @@ const pipe = (
     maxBufferedHead,
   );
 
-describe('dedupeHtmlMetadata', () => {
+describe('dedupeHeadMetadataForTest', () => {
   test('keeps the last title', () => {
-    expect(dedupeHtmlMetadata('<title>layout</title><title>page</title>')).toBe(
-      '<title>page</title>',
-    );
+    expect(
+      dedupeHeadMetadataForTest('<title>layout</title><title>page</title>'),
+    ).toBe('<title>page</title>');
   });
 
   test('keeps the last description and og tag', () => {
@@ -63,7 +63,7 @@ describe('dedupeHtmlMetadata', () => {
       '<meta property="og:title" content="layout"/>' +
       '<meta name="description" content="page"/>' +
       '<meta property="og:title" content="page"/>';
-    expect(dedupeHtmlMetadata(head)).toBe(
+    expect(dedupeHeadMetadataForTest(head)).toBe(
       '<meta name="description" content="page"/>' +
         '<meta property="og:title" content="page"/>',
     );
@@ -74,7 +74,7 @@ describe('dedupeHtmlMetadata', () => {
       '<meta property="og:title" content="a"/>' +
       '<meta property="og:site_name" content="b"/>' +
       '<meta property="og:title" content="c"/>';
-    expect(dedupeHtmlMetadata(head)).toBe(
+    expect(dedupeHeadMetadataForTest(head)).toBe(
       '<meta property="og:site_name" content="b"/>' +
         '<meta property="og:title" content="c"/>',
     );
@@ -89,7 +89,7 @@ describe('dedupeHtmlMetadata', () => {
       '<meta property="og:video" content="b.mp4"/>' +
       '<meta property="og:locale:alternate" content="fr_FR"/>' +
       '<meta property="og:locale:alternate" content="de_DE"/>';
-    expect(dedupeHtmlMetadata(head)).toBe(head);
+    expect(dedupeHeadMetadataForTest(head)).toBe(head);
   });
 
   test('leaves raw text in script and style untouched', () => {
@@ -98,7 +98,7 @@ describe('dedupeHtmlMetadata', () => {
       '<script>const h = "<title>example</title>";</script>' +
       '<style>/* <meta name="description" content="x"> */</style>' +
       '<title>page</title>';
-    expect(dedupeHtmlMetadata(head)).toBe(
+    expect(dedupeHeadMetadataForTest(head)).toBe(
       '<script>const h = "<title>example</title>";</script>' +
         '<style>/* <meta name="description" content="x"> */</style>' +
         '<title>page</title>',
@@ -107,7 +107,7 @@ describe('dedupeHtmlMetadata', () => {
 
   test('ignores metadata inside template and resumes after it', () => {
     expect(
-      dedupeHtmlMetadata(
+      dedupeHeadMetadataForTest(
         '<title>a</title><template><title>t</title></template><title>b</title>',
       ),
     ).toBe('<template><title>t</title></template><title>b</title>');
@@ -115,7 +115,7 @@ describe('dedupeHtmlMetadata', () => {
 
   test('ignores metadata inside nested templates', () => {
     expect(
-      dedupeHtmlMetadata(
+      dedupeHeadMetadataForTest(
         '<title>a</title>' +
           '<template><template><title>x</title></template>' +
           '<title>y</title></template>' +
@@ -130,7 +130,7 @@ describe('dedupeHtmlMetadata', () => {
 
   test('ignores a `</template>` written inside a comment or script', () => {
     expect(
-      dedupeHtmlMetadata(
+      dedupeHeadMetadataForTest(
         '<title>a</title>' +
           '<template><!-- </template> -->' +
           '<script>var s = "</template>";</script>' +
@@ -147,7 +147,7 @@ describe('dedupeHtmlMetadata', () => {
 
   test('does not let a commented `<template>` suppress the rest of the head', () => {
     expect(
-      dedupeHtmlMetadata(
+      dedupeHeadMetadataForTest(
         '<title>a</title><template><!-- <template> --></template><title>b</title>',
       ),
     ).toBe('<template><!-- <template> --></template><title>b</title>');
@@ -155,7 +155,7 @@ describe('dedupeHtmlMetadata', () => {
 
   test('honours a self-closing tag, as foreign content requires', () => {
     expect(
-      dedupeHtmlMetadata(
+      dedupeHeadMetadataForTest(
         '<title>a</title><svg><path/><title>icon</title></svg><title>b</title>',
       ),
     ).toBe('<svg><path/><title>icon</title></svg><title>b</title>');
@@ -167,7 +167,7 @@ describe('dedupeHtmlMetadata', () => {
     const script =
       '<script><!--<script></script><title>trap</title>--></script>';
     expect(
-      dedupeHtmlMetadata(`<title>a</title>${script}<title>b</title>`),
+      dedupeHeadMetadataForTest(`<title>a</title>${script}<title>b</title>`),
     ).toBe(`${script}<title>b</title>`);
   });
 
@@ -175,40 +175,44 @@ describe('dedupeHtmlMetadata', () => {
     const script =
       '<script>const s = "</script!><title>trap</title>";</script>';
     expect(
-      dedupeHtmlMetadata(`<title>a</title>${script}<title>b</title>`),
+      dedupeHeadMetadataForTest(`<title>a</title>${script}<title>b</title>`),
     ).toBe(`${script}<title>b</title>`);
     const style =
       '<style>.a{content:"</style:foo><title>trap</title>"}</style>';
-    expect(dedupeHtmlMetadata(`<title>a</title>${style}<title>b</title>`)).toBe(
-      `${style}<title>b</title>`,
-    );
+    expect(
+      dedupeHeadMetadataForTest(`<title>a</title>${style}<title>b</title>`),
+    ).toBe(`${style}<title>b</title>`);
   });
 
   test('honours a self-closing raw text tag inside foreign content', () => {
     expect(
-      dedupeHtmlMetadata('<title>a</title><svg><title/></svg><title>b</title>'),
+      dedupeHeadMetadataForTest(
+        '<title>a</title><svg><title/></svg><title>b</title>',
+      ),
     ).toBe('<svg><title/></svg><title>b</title>');
     const nested = '<template><svg><title/></svg></template>';
     expect(
-      dedupeHtmlMetadata(`<title>a</title>${nested}<title>b</title>`),
+      dedupeHeadMetadataForTest(`<title>a</title>${nested}<title>b</title>`),
     ).toBe(`${nested}<title>b</title>`);
   });
 
   test('ignores metadata inside inline svg', () => {
     expect(
-      dedupeHtmlMetadata('<title>page</title><svg><title>icon</title></svg>'),
+      dedupeHeadMetadataForTest(
+        '<title>page</title><svg><title>icon</title></svg>',
+      ),
     ).toBe('<title>page</title><svg><title>icon</title></svg>');
   });
 
   test('ignores an empty comment rather than abandoning the scan', () => {
-    expect(dedupeHtmlMetadata('<title>a</title><!--><title>b</title>')).toBe(
-      '<!--><title>b</title>',
-    );
+    expect(
+      dedupeHeadMetadataForTest('<title>a</title><!--><title>b</title>'),
+    ).toBe('<!--><title>b</title>');
   });
 
   test('does not merge metadata across noscript', () => {
     expect(
-      dedupeHtmlMetadata(
+      dedupeHeadMetadataForTest(
         '<meta name="description" content="a"/>' +
           '<noscript><meta name="description" content="no-js"/></noscript>' +
           '<meta name="description" content="b"/>',
@@ -225,14 +229,14 @@ describe('dedupeHtmlMetadata', () => {
     const stray = ['br', 'img src="/x.png"', 'hr', 'input', 'div', 'foo'];
     for (const tag of stray) {
       expect(
-        dedupeHtmlMetadata(`<title>a</title><${tag}><title>b</title>`),
+        dedupeHeadMetadataForTest(`<title>a</title><${tag}><title>b</title>`),
       ).toBe(`<${tag}><title>b</title>`);
     }
   });
 
   test('ends raw text at the first close tag, as a parser does', () => {
     expect(
-      dedupeHtmlMetadata(
+      dedupeHeadMetadataForTest(
         '<title>a</title>' +
           '<noscript><style>i::after{content:"</noscript>"}</style>' +
           '<title>trap</title></noscript>' +
@@ -246,7 +250,9 @@ describe('dedupeHtmlMetadata', () => {
 
   test('leaves a mismatched close tag inside a skipped element', () => {
     expect(
-      dedupeHtmlMetadata('<title>a</title><div><span></div><title>b</title>'),
+      dedupeHeadMetadataForTest(
+        '<title>a</title><div><span></div><title>b</title>',
+      ),
     ).toBe('<div><span></div><title>b</title>');
   });
 
@@ -254,7 +260,7 @@ describe('dedupeHtmlMetadata', () => {
     const head =
       '<meta name="Description" content="a"><meta name="Description" content="b">';
     expect(
-      dedupeHtmlMetadata(head, {
+      dedupeHeadMetadataForTest(head, {
         metaNames: ['Description'],
         metaProperties: [],
       }),
@@ -266,25 +272,27 @@ describe('dedupeHtmlMetadata', () => {
       '<title>layout</title>' +
       '<!-- <title>commented</title> -->' +
       '<title>page</title>';
-    expect(dedupeHtmlMetadata(head)).toBe(
+    expect(dedupeHeadMetadataForTest(head)).toBe(
       '<!-- <title>commented</title> --><title>page</title>',
     );
   });
 
   test('deduplicates a title carrying attributes', () => {
     expect(
-      dedupeHtmlMetadata('<title>Layout</title><title lang="en">Page</title>'),
+      dedupeHeadMetadataForTest(
+        '<title>Layout</title><title lang="en">Page</title>',
+      ),
     ).toBe('<title lang="en">Page</title>');
   });
 
   test('leaves an itemProp title alone', () => {
     const head = '<title>Layout</title><title itemProp="name">Item</title>';
-    expect(dedupeHtmlMetadata(head)).toBe(head);
+    expect(dedupeHeadMetadataForTest(head)).toBe(head);
   });
 
   test('matches metadata names case-insensitively', () => {
     expect(
-      dedupeHtmlMetadata(
+      dedupeHeadMetadataForTest(
         '<meta name="description" content="layout"/>' +
           '<meta name="Description" content="page"/>',
       ),
@@ -295,8 +303,8 @@ describe('dedupeHtmlMetadata', () => {
     const head =
       '<meta name="robots" content="index"/>' +
       '<meta name="robots" content="noindex"/>';
-    expect(dedupeHtmlMetadata(head)).toBe(head);
-    expect(dedupeHtmlMetadata(head, { metaNames: ['robots'] })).toBe(
+    expect(dedupeHeadMetadataForTest(head)).toBe(head);
+    expect(dedupeHeadMetadataForTest(head, { metaNames: ['robots'] })).toBe(
       '<meta name="robots" content="noindex"/>',
     );
   });
@@ -306,14 +314,14 @@ describe('dedupeHtmlMetadata', () => {
     const head =
       '<meta name="description" content="a"/>' +
       '<meta name="description" content="b"/>';
-    expect(dedupeHtmlMetadata(head, { metaNames: undefined } as never)).toBe(
-      '<meta name="description" content="b"/>',
-    );
+    expect(
+      dedupeHeadMetadataForTest(head, { metaNames: undefined } as never),
+    ).toBe('<meta name="description" content="b"/>');
   });
 
   test('an empty filter still merges the title', () => {
     expect(
-      dedupeHtmlMetadata(
+      dedupeHeadMetadataForTest(
         '<title>a</title><meta name="description" content="x"/>' +
           '<title>b</title><meta name="description" content="y"/>',
         { metaNames: [], metaProperties: [] },
@@ -331,7 +339,7 @@ describe('dedupeHtmlMetadata', () => {
       '<meta name="generator" content="Waku"/>' +
       '<meta name="viewport" content="width=400"/>' +
       '<meta name="generator" content="App"/>';
-    expect(dedupeHtmlMetadata(head)).toBe(head);
+    expect(dedupeHeadMetadataForTest(head)).toBe(head);
   });
 
   test('matches tag boundaries around escaped angle brackets', () => {
@@ -341,7 +349,7 @@ describe('dedupeHtmlMetadata', () => {
       '<head><meta charSet="utf-8"/><title>a &gt; b</title>' +
       '<link rel="stylesheet" href="/a.css"/>' +
       '<title>c &quot;d&quot;</title></head>';
-    expect(dedupeHtmlMetadata(head)).toBe(
+    expect(dedupeHeadMetadataForTest(head)).toBe(
       '<head><meta charSet="utf-8"/>' +
         '<link rel="stylesheet" href="/a.css"/>' +
         '<title>c &quot;d&quot;</title></head>',
@@ -350,7 +358,7 @@ describe('dedupeHtmlMetadata', () => {
 
   test('returns the input unchanged when there is nothing to remove', () => {
     const head = '<title>only</title><meta name="description" content="one"/>';
-    expect(dedupeHtmlMetadata(head)).toBe(head);
+    expect(dedupeHeadMetadataForTest(head)).toBe(head);
   });
 });
 

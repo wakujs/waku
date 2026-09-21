@@ -363,7 +363,7 @@ const spliceMetadata = (
   return concatUint8Array(parts);
 };
 
-export const dedupeHtmlMetadata = (
+export const dedupeHeadMetadataForTest = (
   head: string,
   filter: Partial<MetadataFilter> = {},
 ): string => {
