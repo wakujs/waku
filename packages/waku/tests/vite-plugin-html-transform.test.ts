@@ -58,6 +58,10 @@ test('refuses a buffer cap that is not a count of bytes', async () => {
     await expect(runLoad({ maxBufferedHead })).rejects.toThrow(
       'maxBufferedHead must be a non-negative integer',
     );
+    // Turning the merge off does not excuse the cap from being a count.
+    await expect(
+      runLoad({ mergeMetadata: false, maxBufferedHead }),
+    ).rejects.toThrow('maxBufferedHead must be a non-negative integer');
   }
 });
 

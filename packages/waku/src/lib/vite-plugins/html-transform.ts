@@ -5,9 +5,11 @@ import type { MetadataFilter } from '../utils/html-metadata.js';
 
 type HtmlTransformOptions = {
   /**
-   * The defaults fill in what a partial filter leaves out. Name only keys
-   * whose consumers resolve the first occurrence: React appends on hydration
-   * whatever the served HTML omits, which inverts any other.
+   * The `<meta>` names and properties a page overrides its layout's under, or
+   * `false` to serve every head as rendered. `<title>` is merged whatever the
+   * filter names, and the defaults fill in a field it leaves out. Name only
+   * keys whose consumers resolve the first occurrence: React appends on
+   * hydration whatever the served HTML omits, which inverts any other.
    */
   mergeMetadata?: Partial<MetadataFilter> | false;
   /**
@@ -19,10 +21,22 @@ type HtmlTransformOptions = {
 
 const MODULE_ID = 'virtual:vite-rsc-waku/html-transform';
 
+/**
+ * Merges the metadata React renders into a server-rendered head, so that a
+ * page's `<title>` and `<meta>` tags override the ones its layout declared.
+ */
 export function htmlTransformPlugin(
   options: HtmlTransformOptions = {},
 ): Plugin {
   const { mergeMetadata, maxBufferedHead } = options;
+  if (
+    maxBufferedHead !== undefined &&
+    (!Number.isInteger(maxBufferedHead) || maxBufferedHead < 0)
+  ) {
+    throw new Error(
+      `maxBufferedHead must be a non-negative integer, got ${maxBufferedHead}`,
+    );
+  }
   const runtime = normalizePath(
     fileURLToPath(new URL('../utils/html-metadata.js', import.meta.url)),
   );
@@ -37,14 +51,6 @@ export function htmlTransformPlugin(
       }
       if (mergeMetadata === false) {
         return `export default undefined;`;
-      }
-      if (
-        maxBufferedHead !== undefined &&
-        (!Number.isInteger(maxBufferedHead) || maxBufferedHead < 0)
-      ) {
-        throw new Error(
-          `maxBufferedHead must be a non-negative integer, got ${maxBufferedHead}`,
-        );
       }
       const args = [JSON.stringify(mergeMetadata ?? {})];
       if (maxBufferedHead !== undefined) {

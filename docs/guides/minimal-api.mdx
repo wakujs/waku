@@ -433,6 +433,8 @@ Important behavior:
   `Root`, `useFetchRsc` still works but runs no enhancers.
 - Each `Root` owns its client store. Bare server action calls use the `Root`
   that was most recently mounted when the request starts.
+- `Root` injects a `generator` meta tag. Charset and viewport are yours to
+  declare.
 - For SSR or SSG, use `hydrateRoot(document, rootElement)` when `globalThis.__WAKU_HYDRATE__` is set.
 - For purely client-side rendering, use `createRoot(document).render(rootElement)`.
 

@@ -169,23 +169,56 @@ const SCRIPT_OPEN_REGEXP = /<script/i;
 const entersDoubleEscape = (content: string): boolean =>
   content.includes('<!--') && SCRIPT_OPEN_REGEXP.test(content);
 
-const readMetadataKeys = (tag: Tag, filter: MetadataFilter): string[] => {
+// What a tag in a head names itself with. A `<meta>` carrying two of them,
+// or a `<title>` carrying any, holds an identity besides the one the splice
+// would place: dropping the tag would take that identity's value out of the
+// document, and keeping it would shadow whatever supersedes the other.
+const NAMING_ATTRIBUTES = [
+  'charset',
+  'http-equiv',
+  'itemprop',
+  'name',
+  'property',
+];
+
+const namesItselfTwice = (tag: Tag): boolean => {
+  const names = NAMING_ATTRIBUTES.filter((attribute) =>
+    tag.attributes.has(attribute),
+  ).length;
+  return tag.name === 'title' ? names > 0 : names > 1;
+};
+
+const readMetadataKey = (
+  tag: Tag,
+  filter: MetadataFilter,
+): string | undefined => {
   if (tag.name === 'title') {
-    return ['title'];
+    return 'title';
   }
   if (tag.name !== 'meta') {
-    return [];
+    return undefined;
   }
-  const keys: string[] = [];
   const name = tag.attributes.get('name')?.toLowerCase();
   if (name !== undefined && filter.metaNames.includes(name)) {
-    keys.push('name:' + name);
+    return 'name:' + name;
   }
   const property = tag.attributes.get('property')?.toLowerCase();
   if (property !== undefined && filter.metaProperties.includes(property)) {
-    keys.push('property:' + property);
+    return 'property:' + property;
   }
-  return keys;
+  return undefined;
+};
+
+const MAX_SPREAD_ARGUMENTS = 0x400;
+
+// The splice cuts the buffer at offsets this string yields, so a byte has to
+// stay one character: utf-8 would collapse a multi-byte sequence into one.
+const bytesToLatin1 = (bytes: Uint8Array): string => {
+  let text = '';
+  for (let i = 0; i < bytes.length; i += MAX_SPREAD_ARGUMENTS) {
+    text += String.fromCharCode(...bytes.subarray(i, i + MAX_SPREAD_ARGUMENTS));
+  }
+  return text;
 };
 
 type MetadataSpan = { key: string; start: number; end: number };
@@ -196,16 +229,21 @@ type HeadScan = {
   filter: MetadataFilter;
 };
 
+// The scan reads a name out of latin1-decoded bytes, so a filter entry is
+// read the same way rather than as the string a config file spelled.
+const asScanned = (name: string): string =>
+  bytesToLatin1(new TextEncoder().encode(name)).toLowerCase();
+
 const createHeadScan = (filter: Partial<MetadataFilter>): HeadScan => ({
   resumeAt: 0,
   spans: [],
   filter: {
     metaNames: (filter.metaNames ?? DEFAULT_METADATA_FILTER.metaNames).map(
-      (name) => name.toLowerCase(),
+      asScanned,
     ),
     metaProperties: (
       filter.metaProperties ?? DEFAULT_METADATA_FILTER.metaProperties
-    ).map((name) => name.toLowerCase()),
+    ).map(asScanned),
   },
 });
 
@@ -262,13 +300,9 @@ const scanHead = (html: string, scan: HeadScan): boolean => {
         return true;
       }
     }
-    const [key, ...rest] = readMetadataKeys(tag, scan.filter);
+    const key = readMetadataKey(tag, scan.filter);
     if (key !== undefined) {
-      // A tag carrying a second name, or an `itemprop` that takes it out of
-      // the document's metadata, is one identity the splice can place and
-      // one it cannot: whichever way it went, it would shadow the tag that
-      // supersedes it.
-      if (rest.length > 0 || tag.attributes.has('itemprop')) {
+      if (namesItselfTwice(tag)) {
         scan.spans.length = 0;
         return true;
       }
@@ -284,19 +318,6 @@ const findSuperseded = (spans: readonly MetadataSpan[]): MetadataSpan[] => {
     lastStartByKey.set(span.key, span.start);
   }
   return spans.filter((span) => lastStartByKey.get(span.key) !== span.start);
-};
-
-const rewriteMetadata = (
-  head: string,
-  spans: readonly MetadataSpan[],
-): string => {
-  let result = '';
-  let cursor = 0;
-  for (const span of findSuperseded(spans)) {
-    result += head.slice(cursor, span.start);
-    cursor = span.end;
-  }
-  return result + head.slice(cursor);
 };
 
 const spliceMetadata = (
@@ -315,24 +336,16 @@ const spliceMetadata = (
 
 const DEFAULT_MAX_BUFFERED_HEAD = 1024 * 1024;
 
-const MAX_SPREAD_ARGUMENTS = 0x400;
-
-// The splice cuts the buffer at offsets this string yields, so a byte has to
-// stay one character: utf-8 would collapse a multi-byte sequence into one.
-const bytesToLatin1 = (bytes: Uint8Array): string => {
-  let text = '';
-  for (let i = 0; i < bytes.length; i += MAX_SPREAD_ARGUMENTS) {
-    text += String.fromCharCode(...bytes.subarray(i, i + MAX_SPREAD_ARGUMENTS));
-  }
-  return text;
-};
-
 export const dedupeHeadMetadataForTest = (
   head: string,
   filter: Partial<MetadataFilter> = {},
 ): string => {
+  const bytes = new TextEncoder().encode(head);
   const scan = createHeadScan(filter);
-  return scanHead(head, scan) ? rewriteMetadata(head, scan.spans) : head;
+  const merged = scanHead(bytesToLatin1(bytes), scan)
+    ? spliceMetadata(bytes, scan.spans)
+    : bytes;
+  return new TextDecoder().decode(merged);
 };
 
 export const dedupeHtmlMetadataStream = (

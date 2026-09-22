@@ -94,15 +94,23 @@ describe('dedupeHead', () => {
     );
   });
 
-  test('stops at a tag the filter matches under two names', () => {
-    // Removing it would take the value of one name out of the document
-    // though nothing superseded it, and keeping it would shadow whatever
-    // supersedes the other. No splice of it is right.
-    const pair =
-      '<meta name="description" property="og:description" content="layout"/>';
+  test('stops at a tag that names itself twice', () => {
+    // Removing it would take the value of the second name out of the
+    // document though nothing superseded it, and keeping it would shadow
+    // whatever supersedes the first. No splice of it is right, and the
+    // second name need not be one the filter merges.
     const one = '<meta name="description" content="page"/>';
-    expect(dedupeHead(pair + one)).toBe(pair + one);
-    expect(dedupeHead(one + pair)).toBe(one + pair);
+    for (const second of [
+      'property="og:description"',
+      'property="og:image"',
+      'http-equiv="refresh"',
+      'charset="utf-8"',
+      'itemprop="x"',
+    ]) {
+      const pair = `<meta name="description" ${second} content="layout"/>`;
+      expect(dedupeHead(pair + one)).toBe(pair + one);
+      expect(dedupeHead(one + pair)).toBe(one + pair);
+    }
   });
 
   test('stops at an itemProp tag that shadows a name it merges', () => {
@@ -263,6 +271,19 @@ describe('dedupeHead', () => {
     ).toBe(
       '<style>i::after{content:"</style>"}' + '</style>' + '<title>b</title>',
     );
+  });
+
+  test('matches a filter entry spelled with non-ascii characters', () => {
+    // The scan reads names out of latin1-decoded bytes, so a filter entry
+    // that a config file spells as text has to be read the same way.
+    const name = 'r\u00e9sum\u00e9';
+    expect(
+      dedupeHead(
+        `<meta name="${name}" content="layout"/>` +
+          `<meta name="${name}" content="page"/>`,
+        { metaNames: [name], metaProperties: [] },
+      ),
+    ).toBe(`<meta name="${name}" content="page"/>`);
   });
 
   test('matches a filter entry whatever case it is written in', () => {
