@@ -1,5 +1,3 @@
-import { concatUint8Array } from './stream.js';
-
 // This is not an HTML parser. It reads the head React renders, and stops at
 // anything else it finds in one, including markup passed through by
 // `dangerouslySetInnerHTML`, so the scan then merges nothing and the response
@@ -35,22 +33,24 @@ const SCANNED_ELEMENTS = new Set([
   'meta',
 ]);
 
-const SLASH = 47;
-const GT = 62;
-const EQUALS = 61;
-const DOUBLE_QUOTE = 34;
-const SINGLE_QUOTE = 39;
+// Past the end of what has arrived a character reads as undefined, which ends
+// every run below, so the scan waits for the next chunk rather than running on.
+type Char = string | undefined;
 
-const isSpace = (code: number): boolean =>
-  code === 32 || code === 9 || code === 10 || code === 12 || code === 13;
+const isSpace = (char: Char): boolean =>
+  char === ' ' ||
+  char === '\t' ||
+  char === '\n' ||
+  char === '\f' ||
+  char === '\r';
 
-const endsAttributeName = (code: number): boolean =>
-  isSpace(code) || code === EQUALS || code === GT || code === SLASH;
+const endsTagName = (char: Char): boolean =>
+  isSpace(char) || char === '/' || char === '>';
 
-const endsBareValue = (code: number): boolean => isSpace(code) || code === GT;
+const endsAttributeName = (char: Char): boolean =>
+  endsTagName(char) || char === '=';
 
-const endsTagName = (code: number): boolean =>
-  isSpace(code) || code === SLASH || code === GT;
+const endsBareValue = (char: Char): boolean => isSpace(char) || char === '>';
 
 type Tag = {
   name: string;
@@ -61,26 +61,26 @@ type Tag = {
 
 const readTag = (html: string, start: number): Tag | undefined => {
   let cursor = start + 1;
-  const closing = html.charCodeAt(cursor) === SLASH;
+  const closing = html[cursor] === '/';
   if (closing) {
     cursor++;
   }
   const nameStart = cursor;
-  while (cursor < html.length && !endsTagName(html.charCodeAt(cursor))) {
+  while (cursor < html.length && !endsTagName(html[cursor])) {
     cursor++;
   }
   const name = html.slice(nameStart, cursor).toLowerCase();
   const attributes = new Map<string, string>();
   while (cursor < html.length) {
-    const code = html.charCodeAt(cursor);
-    if (isSpace(code)) {
+    const char = html[cursor];
+    if (isSpace(char)) {
       cursor++;
       continue;
     }
-    if (code === GT) {
+    if (char === '>') {
       return { name, closing, end: cursor + 1, attributes };
     }
-    if (code === SLASH) {
+    if (char === '/') {
       cursor++;
       continue;
     }
@@ -88,37 +88,32 @@ const readTag = (html: string, start: number): Tag | undefined => {
     // ending an empty one, so the first character is always part of it.
     const attributeStart = cursor;
     cursor++;
-    while (
-      cursor < html.length &&
-      !endsAttributeName(html.charCodeAt(cursor))
-    ) {
+    while (cursor < html.length && !endsAttributeName(html[cursor])) {
       cursor++;
     }
     const attribute = html.slice(attributeStart, cursor).toLowerCase();
-    while (cursor < html.length && isSpace(html.charCodeAt(cursor))) {
+    while (cursor < html.length && isSpace(html[cursor])) {
       cursor++;
     }
-    if (html.charCodeAt(cursor) !== EQUALS) {
+    if (html[cursor] !== '=') {
       if (!attributes.has(attribute)) {
         attributes.set(attribute, '');
       }
       continue;
     }
     cursor++;
-    while (cursor < html.length && isSpace(html.charCodeAt(cursor))) {
+    while (cursor < html.length && isSpace(html[cursor])) {
       cursor++;
     }
-    const quote = html.charCodeAt(cursor);
-    const quoted = quote === DOUBLE_QUOTE || quote === SINGLE_QUOTE;
+    const quote = html[cursor];
+    const quoted = quote === '"' || quote === "'";
     if (quoted) {
       cursor++;
     }
     const valueStart = cursor;
     while (
       cursor < html.length &&
-      (quoted
-        ? html.charCodeAt(cursor) !== quote
-        : !endsBareValue(html.charCodeAt(cursor)))
+      (quoted ? html[cursor] !== quote : !endsBareValue(html[cursor]))
     ) {
       cursor++;
     }
@@ -138,7 +133,7 @@ const findRawTextEnd = (html: string, from: number, name: string): number => {
     const nameEnd = cursor + 2 + name.length;
     if (
       html.slice(cursor + 2, nameEnd).toLowerCase() === name &&
-      endsTagName(html.charCodeAt(nameEnd))
+      endsTagName(html[nameEnd])
     ) {
       const tag = readTag(html, cursor);
       return tag === undefined ? -1 : tag.end;
@@ -203,16 +198,22 @@ const readMetadataKey = (
 
 const encoder = new TextEncoder();
 
-const MAX_SPREAD_ARGUMENTS = 0x400;
-
-// The splice cuts the buffer at offsets this string yields, so a byte has to
+// The splice cuts the head at offsets this string yields, so a byte has to
 // stay one character: utf-8 would collapse a multi-byte sequence into one.
 const bytesToLatin1 = (bytes: Uint8Array): string => {
   let text = '';
-  for (let i = 0; i < bytes.length; i += MAX_SPREAD_ARGUMENTS) {
-    text += String.fromCharCode(...bytes.subarray(i, i + MAX_SPREAD_ARGUMENTS));
+  for (const byte of bytes) {
+    text += String.fromCharCode(byte);
   }
   return text;
+};
+
+const latin1ToBytes = (text: string): Uint8Array => {
+  const bytes = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i++) {
+    bytes[i] = text.charCodeAt(i);
+  }
+  return bytes;
 };
 
 type MetadataSpan = {
@@ -319,17 +320,16 @@ const findSuperseded = (spans: readonly MetadataSpan[]): MetadataSpan[] => {
 };
 
 const spliceMetadata = (
-  buffer: Uint8Array,
+  head: string,
   spans: readonly MetadataSpan[],
-): Uint8Array => {
-  const parts: Uint8Array[] = [];
+): string => {
+  let merged = '';
   let cursor = 0;
   for (const span of findSuperseded(spans)) {
-    parts.push(buffer.subarray(cursor, span.start));
+    merged += head.slice(cursor, span.start);
     cursor = span.end;
   }
-  parts.push(buffer.subarray(cursor));
-  return concatUint8Array(parts);
+  return merged + head.slice(cursor);
 };
 
 const DEFAULT_MAX_BUFFERED_HEAD = 1024 * 1024;
@@ -338,19 +338,18 @@ export const dedupeHeadMetadataForTest = (
   head: string,
   filter: Partial<MetadataFilter> = {},
 ): string => {
-  const bytes = encoder.encode(head);
+  const latin1 = bytesToLatin1(encoder.encode(head));
   const scan = createHeadScan(filter);
-  const merged = scanHead(bytesToLatin1(bytes), scan)
-    ? spliceMetadata(bytes, scan.spans)
-    : bytes;
-  return new TextDecoder().decode(merged);
+  const merged = scanHead(latin1, scan)
+    ? spliceMetadata(latin1, scan.spans)
+    : latin1;
+  return new TextDecoder().decode(latin1ToBytes(merged));
 };
 
 export const dedupeHtmlMetadataStream = (
   filter: Partial<MetadataFilter> = {},
   maxBufferedHead = DEFAULT_MAX_BUFFERED_HEAD,
 ): TransformStream<Uint8Array, Uint8Array> => {
-  const chunks: Uint8Array[] = [];
   let html = '';
   const scan = createHeadScan(filter);
   let buffering = true;
@@ -361,23 +360,20 @@ export const dedupeHtmlMetadataStream = (
         controller.enqueue(chunk);
         return;
       }
-      chunks.push(chunk);
       html += bytesToLatin1(chunk);
       const finished = scanHead(html, scan);
       if (!finished && html.length <= maxBufferedHead) {
         return;
       }
       buffering = false;
-      const buffered = concatUint8Array(chunks);
       controller.enqueue(
-        finished ? spliceMetadata(buffered, scan.spans) : buffered,
+        latin1ToBytes(finished ? spliceMetadata(html, scan.spans) : html),
       );
-      chunks.length = 0;
       html = '';
     },
     flush(controller) {
-      if (buffering && chunks.length) {
-        controller.enqueue(concatUint8Array(chunks));
+      if (buffering && html) {
+        controller.enqueue(latin1ToBytes(html));
       }
     },
   });
