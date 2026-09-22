@@ -1,8 +1,9 @@
 import { concatUint8Array } from './stream.js';
 
 // This is not an HTML parser. It reads the head React renders, and stops at
-// anything else it finds in one: the scan then merges nothing and the response
-// is served as rendered.
+// anything else it finds in one -- including markup passed through by
+// `dangerouslySetInnerHTML` -- so the scan then merges nothing and the
+// response is served as rendered.
 
 export type MetadataFilter = {
   metaNames: readonly string[];
@@ -38,7 +39,6 @@ const ELEMENTS_THE_SCAN_READS = new Set([
 ]);
 
 const SLASH = 47;
-const HYPHEN = 45;
 const GT = 62;
 const EQUALS = 61;
 const DOUBLE_QUOTE = 34;
@@ -156,16 +156,6 @@ const findRawTextEnd = (html: string, from: number, name: string): number => {
   return -1;
 };
 
-// `<!-->` and `<!--->` reach `>` while still in the dash dash state, which
-// returns to script data without ever escaping.
-const findDashDashEnd = (html: string, from: number): number => {
-  let cursor = from;
-  while (html.charCodeAt(cursor) === HYPHEN) {
-    cursor++;
-  }
-  return html.charCodeAt(cursor) === GT ? cursor + 1 : -1;
-};
-
 const findDeclarationEnd = (html: string, start: number): number => {
   const from = start + '<!'.length;
   if (!html.startsWith('<!--', start)) {
@@ -182,57 +172,16 @@ const findDeclarationEnd = (html: string, start: number): number => {
   return bang === -1 ? -1 : bang + '--!>'.length;
 };
 
-const findScriptEnd = (html: string, from: number): number => {
-  let cursor = from;
-  let escaped = false;
-  let doubleEscaped = false;
-  while (true) {
-    const open = html.indexOf('<', cursor);
-    const unescape = escaped ? html.indexOf('-->', cursor) : -1;
-    if (unescape !== -1 && (open === -1 || unescape < open)) {
-      escaped = false;
-      doubleEscaped = false;
-      cursor = unescape + 3;
-      continue;
-    }
-    if (open === -1) {
-      return -1;
-    }
-    if (html.startsWith('<!--', open)) {
-      const unescaped = findDashDashEnd(html, open + '<!--'.length);
-      if (unescaped !== -1) {
-        escaped = false;
-        doubleEscaped = false;
-        cursor = unescaped;
-        continue;
-      }
-      escaped = true;
-      cursor = open + '<!--'.length;
-      continue;
-    }
-    const closing = html.charCodeAt(open + 1) === SLASH;
-    const nameStart = open + (closing ? 2 : 1);
-    const nameEnd = nameStart + 'script'.length;
-    if (nameEnd >= html.length) {
-      return -1;
-    }
-    if (
-      html.slice(nameStart, nameEnd).toLowerCase() !== 'script' ||
-      !endsTagName(html.charCodeAt(nameEnd))
-    ) {
-      cursor = open + 1;
-      continue;
-    }
-    if (!closing) {
-      doubleEscaped = escaped;
-    } else if (doubleEscaped) {
-      doubleEscaped = false;
-    } else {
-      const tag = readTag(html, open);
-      return tag === undefined ? -1 : tag.end;
-    }
-    cursor = nameEnd;
-  }
+// A `</script>` ends a script unless `<!--` then `<script` has put the
+// tokenizer in its double escaped state. React escapes `<script` in the script
+// children it renders and the RSC payload escapes `<!--`, so that pair only
+// reaches a head through `dangerouslySetInnerHTML`, which the scan stops at
+// rather than model.
+const SCRIPT_OPEN = /<script/i;
+
+const entersDoubleEscape = (content: string): boolean => {
+  const comment = content.indexOf('<!--');
+  return comment !== -1 && SCRIPT_OPEN.test(content.slice(comment));
 };
 
 const readMetadataKey = (
@@ -310,12 +259,17 @@ const scanHead = (html: string, scan: HeadScan): void => {
       return;
     }
     if (RAW_TEXT_ELEMENTS.has(tag.name) && !tag.closing) {
-      const contentEnd =
-        tag.name === 'script'
-          ? findScriptEnd(html, tag.end)
-          : findRawTextEnd(html, tag.end, tag.name);
+      const contentEnd = findRawTextEnd(html, tag.end, tag.name);
       if (contentEnd === -1) {
         scan.resumeAt = start;
+        return;
+      }
+      if (
+        tag.name === 'script' &&
+        entersDoubleEscape(html.slice(tag.end, contentEnd))
+      ) {
+        scan.tags.length = 0;
+        scan.finished = true;
         return;
       }
       if (tag.name === 'title') {

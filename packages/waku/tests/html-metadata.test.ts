@@ -105,24 +105,20 @@ describe('dedupeHeadMetadataForTest', () => {
     );
   });
 
-  test('leaves the escaped state where a parser leaves it', () => {
-    // `<!-->` and `<!--->` reach `>` still in the dash dash state, so the
-    // `<script>` after them is text and the `</script>` really does close.
-    for (const bang of ['<!-->', '<!--->', '<!--<!-->']) {
-      const script = `<script>${bang}<script></script>`;
-      expect(
-        dedupeHeadMetadataForTest(
-          `<title>a</title>${script}<title>trap</title></script><title>b</title>`,
-        ),
-      ).toBe(`${script}</script><title>b</title>`);
+  test('stops at a script it cannot tell the end of', () => {
+    // `<!--` then `<script` starts the tokenizer's double escaped state, where
+    // the next `</script>` does not close the element. React escapes `<script`
+    // in the children it renders, so this only arrives through
+    // `dangerouslySetInnerHTML`.
+    for (const nested of ['<script>', '<SCRIPT>']) {
+      const script = `<script><!--${nested}</script><title>trap</title>--></script>`;
+      const head = `<title>a</title>${script}<title>b</title>`;
+      expect(dedupeHeadMetadataForTest(head)).toBe(head);
     }
   });
 
-  test('keeps a `</script>` a parser reads as script text', () => {
-    // `<!--<script` starts the double escaped state, where the next
-    // `</script>` returns to the escaped state instead of ending the element.
-    const script =
-      '<script><!--<script></script><title>trap</title>--></script>';
+  test('reads a script whose content React could have written', () => {
+    const script = '<script>const s = "<!-- not a script -->";</script>';
     expect(
       dedupeHeadMetadataForTest(`<title>a</title>${script}<title>b</title>`),
     ).toBe(`${script}<title>b</title>`);
