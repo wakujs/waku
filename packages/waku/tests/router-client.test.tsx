@@ -802,6 +802,9 @@ describe('router/client utilities', () => {
       throw 'boom-string';
     };
     try {
+      // Hoisted tags outlive the render that made them, so the head starts
+      // empty or these assertions would pass on an earlier test's leftovers.
+      document.head.replaceChildren();
       const first = await renderApp(
         <ErrorBoundary>
           <ThrowError />

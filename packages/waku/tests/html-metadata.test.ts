@@ -5,6 +5,7 @@ import {
   dedupeHeadMetadataForTest,
   dedupeHtmlMetadataStream,
 } from '../src/lib/utils/html-metadata.js';
+import { streamToBytes } from '../src/lib/utils/stream.js';
 
 const enc = new TextEncoder();
 const dec = new TextDecoder('utf-8', { ignoreBOM: true });
@@ -21,25 +22,11 @@ const pipeBytes = async (
       controller.close();
     },
   });
-  const out: Uint8Array[] = [];
-  const reader = input
-    .pipeThrough(dedupeHtmlMetadataStream({}, maxBufferedHead))
-    .getReader();
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) {
-      break;
-    }
-    out.push(value);
-  }
-  const total = out.reduce((n, chunk) => n + chunk.byteLength, 0);
-  const joined = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of out) {
-    joined.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return dec.decode(joined);
+  return dec.decode(
+    await streamToBytes(
+      input.pipeThrough(dedupeHtmlMetadataStream({}, maxBufferedHead)),
+    ),
+  );
 };
 
 const pipe = (
@@ -95,10 +82,7 @@ describe('dedupeHead', () => {
   });
 
   test('stops at a tag that names itself twice', () => {
-    // Removing it would take the value of the second name out of the
-    // document though nothing superseded it, and keeping it would shadow
-    // whatever supersedes the first. No splice of it is right, and the
-    // second name need not be one the filter merges.
+    // The second name need not be one the filter merges.
     const one = '<meta name="description" content="page"/>';
     for (const second of [
       'property="og:description"',
@@ -148,10 +132,8 @@ describe('dedupeHead', () => {
   });
 
   test('stops at a script it cannot tell the end of', () => {
-    // `<!--` then `<script` starts the tokenizer's double escaped state, where
-    // the next `</script>` does not close the element. React escapes `<script`
-    // in the children it renders, so this only arrives through
-    // `dangerouslySetInnerHTML`.
+    // React escapes `<script` in the children it renders, so a script that
+    // reads as double escaped only arrives through `dangerouslySetInnerHTML`.
     for (const nested of ['<script>', '<SCRIPT>']) {
       const script = `<script><!--${nested}</script><title>trap</title>--></script>`;
       const head = `<title>a</title>${script}<title>b</title>`;
@@ -274,8 +256,6 @@ describe('dedupeHead', () => {
   });
 
   test('matches a filter entry spelled with non-ascii characters', () => {
-    // The scan reads names out of latin1-decoded bytes, so a filter entry
-    // that a config file spells as text has to be read the same way.
     const name = 'r\u00e9sum\u00e9';
     expect(
       dedupeHead(

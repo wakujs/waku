@@ -3,12 +3,17 @@ import { htmlTransformPlugin } from '../src/lib/vite-plugins/html-transform.js';
 
 const MODULE_ID = 'virtual:vite-rsc-waku/html-transform';
 
-const runResolve = async (source: string) => {
+const runResolve = async (source: string, environment = 'ssr') => {
   const plugin = htmlTransformPlugin();
   if (typeof plugin.resolveId !== 'function') {
     throw new Error('Plugin resolveId is not defined');
   }
-  return plugin.resolveId.call({} as never, source, undefined, {} as never);
+  return plugin.resolveId.call(
+    { environment: { name: environment } } as never,
+    source,
+    undefined,
+    {} as never,
+  );
 };
 
 const runLoad = async (
@@ -30,14 +35,23 @@ const loadedArgs = (code: string) => {
   return match[1]!;
 };
 
-test('claims only its own module id', async () => {
+test('claims its own module id, and only where it runs', async () => {
   await expect(runResolve(MODULE_ID)).resolves.toBe('\0' + MODULE_ID);
+  await expect(runResolve(MODULE_ID, 'client')).rejects.toThrow();
   await expect(runResolve('virtual:vite-rsc-waku/html-shell')).resolves.toBe(
     undefined,
   );
   await expect(
     runLoad(undefined, '\0virtual:vite-rsc-waku/html-shell'),
   ).resolves.toBe(undefined);
+});
+
+test('refuses a filter field that is not a list of names', () => {
+  for (const metaNames of ['description', { 0: 'description' }, [1]]) {
+    expect(() =>
+      htmlTransformPlugin({ mergeMetadata: { metaNames } as never }),
+    ).toThrow('mergeMetadata.metaNames must be an array of strings');
+  }
 });
 
 test('asks for the defaults when given no options', async () => {

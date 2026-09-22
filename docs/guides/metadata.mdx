@@ -58,7 +58,7 @@ The keys that are merged are `title`, `meta[name="description"]`, and the Open
 Graph properties that hold a single value: `og:title`, `og:type`, `og:url`,
 `og:description`, `og:determiner`, `og:site_name` and `og:locale`. Each is
 merged on its own, so a layout can set `og:site_name` while a page sets
-`og:title`. Metadata names are matched case-insensitively.
+`og:title`. Metadata names are matched case-insensitively, in ASCII.
 
 This matters most for consumers that do not run JavaScript — search engine and
 social-card crawlers read the served HTML, where without merging the layout's
@@ -84,9 +84,10 @@ two tags. Most notably:
 - **Metadata inside a `<Suspense>` boundary** is emitted after the head has been
   flushed and cannot be merged into it. An `async` page component is fine — only
   an explicit boundary between the page and its metadata defers it.
-- **A head holding anything but metadata** is served as rendered. A `<template>`
-  or an inline `<svg>` has a `<title>` of its own that is not the document's, so
-  a root component that puts one in `<head>` turns the merge off for that page.
+- **A head holding an element other than metadata** is served as rendered. A
+  `<template>` or an inline `<svg>` has a `<title>` of its own that is not the
+  document's, so a root component that puts one in `<head>` turns the merge off
+  for that page.
 
 ## Overriding charset and viewport
 

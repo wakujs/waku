@@ -209,6 +209,8 @@ const readMetadataKey = (
   return undefined;
 };
 
+const encoder = new TextEncoder();
+
 const MAX_SPREAD_ARGUMENTS = 0x400;
 
 // The splice cuts the buffer at offsets this string yields, so a byte has to
@@ -232,7 +234,7 @@ type HeadScan = {
 // The scan reads a name out of latin1-decoded bytes, so a filter entry is
 // read the same way rather than as the string a config file spelled.
 const asScanned = (name: string): string =>
-  bytesToLatin1(new TextEncoder().encode(name)).toLowerCase();
+  bytesToLatin1(encoder.encode(name)).toLowerCase();
 
 const createHeadScan = (filter: Partial<MetadataFilter>): HeadScan => ({
   resumeAt: 0,
@@ -340,7 +342,7 @@ export const dedupeHeadMetadataForTest = (
   head: string,
   filter: Partial<MetadataFilter> = {},
 ): string => {
-  const bytes = new TextEncoder().encode(head);
+  const bytes = encoder.encode(head);
   const scan = createHeadScan(filter);
   const merged = scanHead(bytesToLatin1(bytes), scan)
     ? spliceMetadata(bytes, scan.spans)

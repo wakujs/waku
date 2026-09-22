@@ -1,3 +1,4 @@
+import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
 import { normalizePath } from 'vite';
 import type { Plugin } from 'vite';
@@ -29,6 +30,18 @@ export function htmlTransformPlugin(
   options: HtmlTransformOptions = {},
 ): Plugin {
   const { mergeMetadata, maxBufferedHead } = options;
+  if (mergeMetadata !== undefined && mergeMetadata !== false) {
+    for (const field of ['metaNames', 'metaProperties'] as const) {
+      const names = mergeMetadata[field];
+      if (
+        names !== undefined &&
+        (!Array.isArray(names) ||
+          names.some((name) => typeof name !== 'string'))
+      ) {
+        throw new Error(`mergeMetadata.${field} must be an array of strings`);
+      }
+    }
+  }
   if (
     maxBufferedHead !== undefined &&
     (!Number.isInteger(maxBufferedHead) || maxBufferedHead < 0)
@@ -43,7 +56,11 @@ export function htmlTransformPlugin(
   return {
     name: 'waku:vite-plugins:html-transform',
     resolveId(source, _importer, _options) {
-      return source === MODULE_ID ? '\0' + MODULE_ID : undefined;
+      if (source !== MODULE_ID) {
+        return undefined;
+      }
+      assert(this.environment.name === 'ssr');
+      return '\0' + MODULE_ID;
     },
     load(id) {
       if (id !== '\0' + MODULE_ID) {
