@@ -188,6 +188,12 @@ const namesItselfTwice = (tag: Tag): boolean => {
   return tag.name === 'title' ? names > 0 : names > 1;
 };
 
+// React leaves out an attribute whose value is undefined but renders an empty
+// `<title>` whatever its children were, so a `<meta>` without `content`
+// declared nothing while a title always declares what it holds.
+const declaresValue = (tag: Tag): boolean =>
+  tag.name === 'title' || tag.attributes.has('content');
+
 const readMetadataKey = (
   tag: Tag,
   filter: MetadataFilter,
@@ -223,7 +229,12 @@ const bytesToLatin1 = (bytes: Uint8Array): string => {
   return text;
 };
 
-type MetadataSpan = { key: string; start: number; end: number };
+type MetadataSpan = {
+  key: string;
+  declaresValue: boolean;
+  start: number;
+  end: number;
+};
 
 type HeadScan = {
   resumeAt: number;
@@ -308,18 +319,26 @@ const scanHead = (html: string, scan: HeadScan): boolean => {
         scan.spans.length = 0;
         return true;
       }
-      scan.spans.push({ key, start, end });
+      scan.spans.push({ key, declaresValue: declaresValue(tag), start, end });
     }
     scan.resumeAt = end;
   }
 };
 
+// A tag that declared nothing is superseded by one that did, wherever it sits,
+// and supersedes none itself: dropping the last tag to declare a name would
+// take that name out of the document.
 const findSuperseded = (spans: readonly MetadataSpan[]): MetadataSpan[] => {
   const lastStartByKey = new Map<string, number>();
   for (const span of spans) {
-    lastStartByKey.set(span.key, span.start);
+    if (span.declaresValue) {
+      lastStartByKey.set(span.key, span.start);
+    }
   }
-  return spans.filter((span) => lastStartByKey.get(span.key) !== span.start);
+  return spans.filter((span) => {
+    const lastStart = lastStartByKey.get(span.key);
+    return lastStart !== undefined && lastStart !== span.start;
+  });
 };
 
 const spliceMetadata = (

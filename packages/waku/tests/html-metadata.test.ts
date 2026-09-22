@@ -81,6 +81,28 @@ describe('dedupeHead', () => {
     );
   });
 
+  test('supersedes with a value, never with the want of one', () => {
+    // React leaves `content` out of a `<meta>` whose value is undefined, so
+    // the tag declares nothing and must not take the layout's value with it.
+    const layout = '<meta name="description" content="layout"/>';
+    const page = '<meta name="description" content="page"/>';
+    const unset = '<meta name="description"/>';
+    expect(dedupeHead(layout + unset)).toBe(layout);
+    expect(dedupeHead(unset + page)).toBe(page);
+    expect(dedupeHead(unset + unset)).toBe(unset + unset);
+    // An empty `content` is a value the page chose, and supersedes.
+    const empty = '<meta name="description" content=""/>';
+    expect(dedupeHead(layout + empty)).toBe(empty);
+  });
+
+  test('supersedes with an empty title, which React renders either way', () => {
+    // `<title>{undefined}</title>` and `<title>{''}</title>` both render as
+    // `<title></title>`, so an empty one is as much a declaration as any.
+    expect(dedupeHead('<title>Layout</title><title></title>')).toBe(
+      '<title></title>',
+    );
+  });
+
   test('stops at a tag that names itself twice', () => {
     // The second name need not be one the filter merges.
     const one = '<meta name="description" content="page"/>';
