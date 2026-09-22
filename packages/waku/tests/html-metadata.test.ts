@@ -1,6 +1,7 @@
 import { injectRSCPayload } from 'rsc-html-stream/server';
 import { describe, expect, test } from 'vitest';
 import {
+  type MetadataFilter,
   dedupeHeadMetadataForTest,
   dedupeHtmlMetadataStream,
 } from '../src/lib/utils/html-metadata.js';
@@ -50,11 +51,24 @@ const pipe = (
     maxBufferedHead,
   );
 
-describe('dedupeHeadMetadataForTest', () => {
+// The transform merges only a head it has read the end of, so every fixture
+// below is scanned with one closed.
+const dedupeHead = (head: string, filter?: Partial<MetadataFilter>): string =>
+  dedupeHeadMetadataForTest(head + '</head>', filter).slice(
+    0,
+    -'</head>'.length,
+  );
+
+describe('dedupeHead', () => {
+  test('merges nothing in a head it has not read the end of', () => {
+    const head = '<title>layout</title><title>page</title>';
+    expect(dedupeHeadMetadataForTest(head)).toBe(head);
+  });
+
   test('keeps the last title', () => {
-    expect(
-      dedupeHeadMetadataForTest('<title>layout</title><title>page</title>'),
-    ).toBe('<title>page</title>');
+    expect(dedupeHead('<title>layout</title><title>page</title>')).toBe(
+      '<title>page</title>',
+    );
   });
 
   test('keeps the last description and og tag', () => {
@@ -63,7 +77,7 @@ describe('dedupeHeadMetadataForTest', () => {
       '<meta property="og:title" content="layout"/>' +
       '<meta name="description" content="page"/>' +
       '<meta property="og:title" content="page"/>';
-    expect(dedupeHeadMetadataForTest(head)).toBe(
+    expect(dedupeHead(head)).toBe(
       '<meta name="description" content="page"/>' +
         '<meta property="og:title" content="page"/>',
     );
@@ -74,7 +88,7 @@ describe('dedupeHeadMetadataForTest', () => {
       '<meta property="og:title" content="a"/>' +
       '<meta property="og:site_name" content="b"/>' +
       '<meta property="og:title" content="c"/>';
-    expect(dedupeHeadMetadataForTest(head)).toBe(
+    expect(dedupeHead(head)).toBe(
       '<meta property="og:site_name" content="b"/>' +
         '<meta property="og:title" content="c"/>',
     );
@@ -87,8 +101,8 @@ describe('dedupeHeadMetadataForTest', () => {
     const pair =
       '<meta name="description" property="og:description" content="layout"/>';
     const one = '<meta name="description" content="page"/>';
-    expect(dedupeHeadMetadataForTest(pair + one)).toBe(pair + one);
-    expect(dedupeHeadMetadataForTest(one + pair)).toBe(one + pair);
+    expect(dedupeHead(pair + one)).toBe(pair + one);
+    expect(dedupeHead(one + pair)).toBe(one + pair);
   });
 
   test('stops at an itemProp tag that shadows a name it merges', () => {
@@ -97,7 +111,7 @@ describe('dedupeHeadMetadataForTest', () => {
     const head =
       '<title>layout</title><title itemProp="name">Item</title>' +
       '<title>page</title>';
-    expect(dedupeHeadMetadataForTest(head)).toBe(head);
+    expect(dedupeHead(head)).toBe(head);
   });
 
   test('keeps repeated og properties that represent arrays', () => {
@@ -109,7 +123,7 @@ describe('dedupeHeadMetadataForTest', () => {
       '<meta property="og:video" content="b.mp4"/>' +
       '<meta property="og:locale:alternate" content="fr_FR"/>' +
       '<meta property="og:locale:alternate" content="de_DE"/>';
-    expect(dedupeHeadMetadataForTest(head)).toBe(head);
+    expect(dedupeHead(head)).toBe(head);
   });
 
   test('leaves raw text in script and style untouched', () => {
@@ -118,7 +132,7 @@ describe('dedupeHeadMetadataForTest', () => {
       '<script>const h = "<title>example</title>";</script>' +
       '<style>/* <meta name="description" content="x"> */</style>' +
       '<title>page</title>';
-    expect(dedupeHeadMetadataForTest(head)).toBe(
+    expect(dedupeHead(head)).toBe(
       '<script>const h = "<title>example</title>";</script>' +
         '<style>/* <meta name="description" content="x"> */</style>' +
         '<title>page</title>',
@@ -133,28 +147,28 @@ describe('dedupeHeadMetadataForTest', () => {
     for (const nested of ['<script>', '<SCRIPT>']) {
       const script = `<script><!--${nested}</script><title>trap</title>--></script>`;
       const head = `<title>a</title>${script}<title>b</title>`;
-      expect(dedupeHeadMetadataForTest(head)).toBe(head);
+      expect(dedupeHead(head)).toBe(head);
     }
   });
 
   test('reads a script whose content React could have written', () => {
     const script = '<script>const s = "<!-- not a script -->";</script>';
-    expect(
-      dedupeHeadMetadataForTest(`<title>a</title>${script}<title>b</title>`),
-    ).toBe(`${script}<title>b</title>`);
+    expect(dedupeHead(`<title>a</title>${script}<title>b</title>`)).toBe(
+      `${script}<title>b</title>`,
+    );
   });
 
   test('leaves raw text whose close tag name runs into punctuation', () => {
     const script =
       '<script>const s = "</script!><title>trap</title>";</script>';
-    expect(
-      dedupeHeadMetadataForTest(`<title>a</title>${script}<title>b</title>`),
-    ).toBe(`${script}<title>b</title>`);
+    expect(dedupeHead(`<title>a</title>${script}<title>b</title>`)).toBe(
+      `${script}<title>b</title>`,
+    );
     const style =
       '<style>.a{content:"</style:foo><title>trap</title>"}</style>';
-    expect(
-      dedupeHeadMetadataForTest(`<title>a</title>${style}<title>b</title>`),
-    ).toBe(`${style}<title>b</title>`);
+    expect(dedupeHead(`<title>a</title>${style}<title>b</title>`)).toBe(
+      `${style}<title>b</title>`,
+    );
   });
 
   test('stops at anything a head of metadata would not hold', () => {
@@ -163,19 +177,19 @@ describe('dedupeHeadMetadataForTest', () => {
     // is not head content at all. None of them is the document's metadata.
     for (const wrapper of ['template', 'noscript', 'svg', 'div', 'foo']) {
       const head = `<title>a</title><${wrapper}><title>b</title></${wrapper}>`;
-      expect(dedupeHeadMetadataForTest(head)).toBe(head);
+      expect(dedupeHead(head)).toBe(head);
     }
     const noscript =
       '<meta name="description" content="normal"/>' +
       '<noscript><meta name="description" content="fallback"/></noscript>';
-    expect(dedupeHeadMetadataForTest(noscript)).toBe(noscript);
+    expect(dedupeHead(noscript)).toBe(noscript);
   });
 
   test('reads the elements a head does hold', () => {
     const head =
       '<base href="/"/><link rel="icon" href="x"/>' +
       '<title>layout</title><title>page</title>';
-    expect(dedupeHeadMetadataForTest(head)).toBe(
+    expect(dedupeHead(head)).toBe(
       '<base href="/"/><link rel="icon" href="x"/><title>page</title>',
     );
   });
@@ -187,20 +201,18 @@ describe('dedupeHeadMetadataForTest', () => {
       '<title>a</title><!--!><title>b</title>',
       '<title>a</title><!---!><title>b</title>',
     ]) {
-      expect(dedupeHeadMetadataForTest(head)).toBe(head);
+      expect(dedupeHead(head)).toBe(head);
     }
     // Two of its own do close it.
-    expect(
-      dedupeHeadMetadataForTest('<title>a</title><!----!><title>b</title>'),
-    ).toBe('<!----!><title>b</title>');
+    expect(dedupeHead('<title>a</title><!----!><title>b</title>')).toBe(
+      '<!----!><title>b</title>',
+    );
   });
 
   test('ends a comment at `--!>` as well as at `-->`', () => {
     for (const close of ['-->', '--!>']) {
       expect(
-        dedupeHeadMetadataForTest(
-          `<title>a</title><!-- x ${close}<title>b</title>`,
-        ),
+        dedupeHead(`<title>a</title><!-- x ${close}<title>b</title>`),
       ).toBe(`<!-- x ${close}<title>b</title>`);
     }
   });
@@ -209,7 +221,7 @@ describe('dedupeHeadMetadataForTest', () => {
     // A name runs to whitespace, `/` or `>`, so this is `linké`, not `link`
     // with a stray attribute, and it is not an element the scan reads.
     const head = '<title>a</title><link\u00e9><title>b</title>';
-    expect(dedupeHeadMetadataForTest(head)).toBe(head);
+    expect(dedupeHead(head)).toBe(head);
   });
 
   test('stops at a `<` a parser would not read as a tag', () => {
@@ -218,31 +230,31 @@ describe('dedupeHeadMetadataForTest', () => {
     // only arrives through `dangerouslySetInnerHTML`.
     for (const stray of ['<3', '<-x', '<?x ', '</1', '<<meta content="1">']) {
       const head = `<title>a</title>${stray}<title>b</title>`;
-      expect(dedupeHeadMetadataForTest(head)).toBe(head);
+      expect(dedupeHead(head)).toBe(head);
     }
   });
 
   test('stops at a head a parser ends at `</html>`', () => {
     const head = '<title>a</title><title>b</title></html><title>c</title>';
-    expect(dedupeHeadMetadataForTest(head)).toBe(head);
+    expect(dedupeHead(head)).toBe(head);
   });
 
   test('stops at a stray close tag of an element it does not read', () => {
     const head = '<title>a</title></div><title>b</title>';
-    expect(dedupeHeadMetadataForTest(head)).toBe(head);
+    expect(dedupeHead(head)).toBe(head);
   });
 
   test('ignores an empty comment rather than abandoning the scan', () => {
-    expect(
-      dedupeHeadMetadataForTest('<title>a</title><!--><title>b</title>'),
-    ).toBe('<!--><title>b</title>');
+    expect(dedupeHead('<title>a</title><!--><title>b</title>')).toBe(
+      '<!--><title>b</title>',
+    );
   });
 
   test('ends raw text at the first close tag, as a parser does', () => {
     // The `</style>` in the declaration ends the element, so what follows it
     // is markup and the title in it is the document's.
     expect(
-      dedupeHeadMetadataForTest(
+      dedupeHead(
         '<title>a</title>' +
           '<style>i::after{content:"</style>"}' +
           '<title>trap</title></style>' +
@@ -257,7 +269,7 @@ describe('dedupeHeadMetadataForTest', () => {
     const head =
       '<meta name="Description" content="a"><meta name="Description" content="b">';
     expect(
-      dedupeHeadMetadataForTest(head, {
+      dedupeHead(head, {
         metaNames: ['Description'],
         metaProperties: [],
       }),
@@ -269,27 +281,25 @@ describe('dedupeHeadMetadataForTest', () => {
       '<title>layout</title>' +
       '<!-- <title>commented</title> -->' +
       '<title>page</title>';
-    expect(dedupeHeadMetadataForTest(head)).toBe(
+    expect(dedupeHead(head)).toBe(
       '<!-- <title>commented</title> --><title>page</title>',
     );
   });
 
   test('deduplicates a title carrying attributes', () => {
     expect(
-      dedupeHeadMetadataForTest(
-        '<title>Layout</title><title lang="en">Page</title>',
-      ),
+      dedupeHead('<title>Layout</title><title lang="en">Page</title>'),
     ).toBe('<title lang="en">Page</title>');
   });
 
   test('leaves an itemProp title alone', () => {
     const head = '<title>Layout</title><title itemProp="name">Item</title>';
-    expect(dedupeHeadMetadataForTest(head)).toBe(head);
+    expect(dedupeHead(head)).toBe(head);
   });
 
   test('matches metadata names case-insensitively', () => {
     expect(
-      dedupeHeadMetadataForTest(
+      dedupeHead(
         '<meta name="description" content="layout"/>' +
           '<meta name="Description" content="page"/>',
       ),
@@ -300,8 +310,8 @@ describe('dedupeHeadMetadataForTest', () => {
     const head =
       '<meta name="robots" content="index"/>' +
       '<meta name="robots" content="noindex"/>';
-    expect(dedupeHeadMetadataForTest(head)).toBe(head);
-    expect(dedupeHeadMetadataForTest(head, { metaNames: ['robots'] })).toBe(
+    expect(dedupeHead(head)).toBe(head);
+    expect(dedupeHead(head, { metaNames: ['robots'] })).toBe(
       '<meta name="robots" content="noindex"/>',
     );
   });
@@ -311,14 +321,14 @@ describe('dedupeHeadMetadataForTest', () => {
     const head =
       '<meta name="description" content="a"/>' +
       '<meta name="description" content="b"/>';
-    expect(
-      dedupeHeadMetadataForTest(head, { metaNames: undefined } as never),
-    ).toBe('<meta name="description" content="b"/>');
+    expect(dedupeHead(head, { metaNames: undefined } as never)).toBe(
+      '<meta name="description" content="b"/>',
+    );
   });
 
   test('an empty filter still merges the title', () => {
     expect(
-      dedupeHeadMetadataForTest(
+      dedupeHead(
         '<title>a</title><meta name="description" content="x"/>' +
           '<title>b</title><meta name="description" content="y"/>',
         { metaNames: [], metaProperties: [] },
@@ -336,7 +346,7 @@ describe('dedupeHeadMetadataForTest', () => {
       '<meta name="generator" content="Waku"/>' +
       '<meta name="viewport" content="width=400"/>' +
       '<meta name="generator" content="App"/>';
-    expect(dedupeHeadMetadataForTest(head)).toBe(head);
+    expect(dedupeHead(head)).toBe(head);
   });
 
   test('matches tag boundaries around escaped angle brackets', () => {
@@ -346,7 +356,7 @@ describe('dedupeHeadMetadataForTest', () => {
       '<head><meta charSet="utf-8"/><title>a &gt; b</title>' +
       '<link rel="stylesheet" href="/a.css"/>' +
       '<title>c &quot;d&quot;</title></head>';
-    expect(dedupeHeadMetadataForTest(head)).toBe(
+    expect(dedupeHead(head)).toBe(
       '<head><meta charSet="utf-8"/>' +
         '<link rel="stylesheet" href="/a.css"/>' +
         '<title>c &quot;d&quot;</title></head>',
@@ -361,12 +371,12 @@ describe('dedupeHeadMetadataForTest', () => {
     const head =
       '<meta name="description" content="first"/>' +
       '<meta//=y//Name = descriptionx NAME =Description content="second"/>';
-    expect(dedupeHeadMetadataForTest(head)).toBe(head);
+    expect(dedupeHead(head)).toBe(head);
   });
 
   test('ends a tag at a `>` outside its attribute values', () => {
     expect(
-      dedupeHeadMetadataForTest(
+      dedupeHead(
         '<meta name="description" content="a>b"/>' +
           '<meta name="description" content="c"/>',
       ),
@@ -375,7 +385,7 @@ describe('dedupeHeadMetadataForTest', () => {
 
   test('returns the input unchanged when there is nothing to remove', () => {
     const head = '<title>only</title><meta name="description" content="one"/>';
-    expect(dedupeHeadMetadataForTest(head)).toBe(head);
+    expect(dedupeHead(head)).toBe(head);
   });
 });
 
@@ -491,6 +501,16 @@ describe('dedupeHtmlMetadataStream', () => {
     expect(await pipeBytes(chunks)).toBe(
       '<html><head><title>page</title></head><body>hi</body></html>',
     );
+  });
+
+  test('merges nothing in a head it gave up on part way through', async () => {
+    // The `<div>` would have stopped the scan and merged nothing, but it
+    // arrives past the cap, so the head is emitted as it was rendered.
+    const opening =
+      `<html><head><title>a</title><!--${'y'.repeat(64)}-->` +
+      '<title>b</title>';
+    const rest = '<div>x</div></head><body>hi</body></html>';
+    expect(await pipe([opening, rest], 32)).toBe(opening + rest);
   });
 
   test('gives up rather than buffer an unfinished head past the cap', async () => {

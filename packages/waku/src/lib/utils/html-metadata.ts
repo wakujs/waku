@@ -332,8 +332,7 @@ export const dedupeHeadMetadataForTest = (
   filter: Partial<MetadataFilter> = {},
 ): string => {
   const scan = createHeadScan(filter);
-  scanHead(head, scan);
-  return rewriteMetadata(head, scan.spans);
+  return scanHead(head, scan) ? rewriteMetadata(head, scan.spans) : head;
 };
 
 export const dedupeHtmlMetadataStream = (
