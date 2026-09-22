@@ -1,5 +1,9 @@
 import { concatUint8Array } from './stream.js';
 
+// This is not an HTML parser. It reads the head React renders, and stops at
+// anything else it finds in one: the scan then merges nothing and the response
+// is served as rendered.
+
 export type MetadataFilter = {
   metaNames: readonly string[];
   metaProperties: readonly string[];
