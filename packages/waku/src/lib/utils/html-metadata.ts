@@ -20,6 +20,10 @@ const DEFAULT_METADATA_FILTER: MetadataFilter = {
 
 const RAW_TEXT_ELEMENTS = new Set(['script', 'style', 'title']);
 
+// Their content is not the document's, and reading it as if it were would let
+// an inert `<title>` supersede the real one.
+const ELEMENTS_THE_SCAN_STOPS_AT = new Set(['noscript', 'svg', 'template']);
+
 const SLASH = 47;
 const HYPHEN = 45;
 const GT = 62;
@@ -304,6 +308,10 @@ const scanHead = (html: string, scan: HeadScan): void => {
       if (key !== undefined) {
         scan.tags.push({ key, start, end: tag.end });
       }
+    } else if (ELEMENTS_THE_SCAN_STOPS_AT.has(tag.name)) {
+      scan.tags.length = 0;
+      scan.headClosed = true;
+      return;
     }
     scan.resumeAt = tag.end;
   }

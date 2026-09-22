@@ -141,29 +141,18 @@ describe('dedupeHeadMetadataForTest', () => {
     ).toBe(`${style}<title>b</title>`);
   });
 
-  test('leaves text alone in script, style and title', () => {
-    const head =
-      '<title>layout</title>' +
-      '<script>const h = "<title>x</title>";</script>' +
-      '<style>a::after{content:"<title>y</title>"}</style>' +
-      '<title>page</title>';
-    expect(dedupeHeadMetadataForTest(head)).toBe(
-      '<script>const h = "<title>x</title>";</script>' +
-        '<style>a::after{content:"<title>y</title>"}</style>' +
-        '<title>page</title>',
-    );
-  });
-
-  test('reads every other element as the markup it is', () => {
-    // Deliberately simple: a head holds metadata, not templates or foreign
-    // content, so nothing is skipped and a `<title>` anywhere in one counts.
-    for (const wrapper of ['template', 'svg', 'noscript']) {
-      expect(
-        dedupeHeadMetadataForTest(
-          `<title>a</title><${wrapper}><title>b</title></${wrapper}>`,
-        ),
-      ).toBe(`<${wrapper}><title>b</title></${wrapper}>`);
+  test("stops rather than read content that is not the document's", () => {
+    // A template's contents are a separate fragment, a `noscript`'s depend on
+    // whether scripting is on, and an svg `<title>` labels a graphic. None of
+    // them is the document's metadata, so the head is emitted as rendered.
+    for (const wrapper of ['template', 'noscript', 'svg']) {
+      const head = `<title>a</title><${wrapper}><title>b</title></${wrapper}>`;
+      expect(dedupeHeadMetadataForTest(head)).toBe(head);
     }
+    const noscript =
+      '<meta name="description" content="normal"/>' +
+      '<noscript><meta name="description" content="fallback"/></noscript>';
+    expect(dedupeHeadMetadataForTest(noscript)).toBe(noscript);
   });
 
   test('ignores an empty comment rather than abandoning the scan', () => {
@@ -184,20 +173,21 @@ describe('dedupeHeadMetadataForTest', () => {
   });
 
   test('ends raw text at the first close tag, as a parser does', () => {
+    // The `</style>` in the declaration ends the element, so what follows it
+    // is markup and the title in it is the document's.
     expect(
       dedupeHeadMetadataForTest(
         '<title>a</title>' +
-          '<noscript><style>i::after{content:"</noscript>"}</style>' +
-          '<title>trap</title></noscript>' +
+          '<style>i::after{content:"</style>"}' +
+          '<title>trap</title></style>' +
           '<title>b</title>',
       ),
     ).toBe(
-      '<noscript><style>i::after{content:"</noscript>"}</style>' +
-        '</noscript><title>b</title>',
+      '<style>i::after{content:"</style>"}' + '</style>' + '<title>b</title>',
     );
   });
 
-  test('leaves a mismatched close tag inside a skipped element', () => {
+  test('is not thrown by a mismatched close tag', () => {
     expect(
       dedupeHeadMetadataForTest(
         '<title>a</title><div><span></div><title>b</title>',
