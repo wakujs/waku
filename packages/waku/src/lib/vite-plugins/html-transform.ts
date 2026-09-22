@@ -38,13 +38,22 @@ export function htmlTransformPlugin(
       if (mergeMetadata === false) {
         return `export default undefined;`;
       }
+      if (
+        maxBufferedHead !== undefined &&
+        (!Number.isInteger(maxBufferedHead) || maxBufferedHead < 0)
+      ) {
+        throw new Error(
+          `maxBufferedHead must be a non-negative integer, got ${maxBufferedHead}`,
+        );
+      }
       const args = [JSON.stringify(mergeMetadata ?? {})];
       if (maxBufferedHead !== undefined) {
         args.push(String(maxBufferedHead));
       }
       return `
 import { dedupeHtmlMetadataStream } from ${JSON.stringify(runtime)};
-export default () => dedupeHtmlMetadataStream(${args.join(', ')});
+const transform = () => dedupeHtmlMetadataStream(${args.join(', ')});
+export default transform;
 `;
     },
   };

@@ -78,8 +78,9 @@ two tags. Most notably:
   `og:locale:alternate` are arrays in OGP, and their order carries meaning, so
   they are emitted as written. A layout that declares `og:image` is not
   replaced by a page that declares one.
-- **Slices** are rendered inside the page, so a slice that declares a `title`
-  declares it last and wins. Keep metadata out of reusable slices.
+- **Slices** declare their metadata wherever the `<Slice>` is rendered, so
+  whether a slice or the page wins depends on which comes first. Keep metadata
+  out of reusable slices.
 - **Metadata inside a `<Suspense>` boundary** is emitted after the head has been
   flushed and cannot be merged into it. An `async` page component is fine — only
   an explicit boundary between the page and its metadata defers it.

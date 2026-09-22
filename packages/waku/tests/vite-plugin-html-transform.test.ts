@@ -53,6 +53,14 @@ test('passes the buffer cap through only when it is given', async () => {
   );
 });
 
+test('refuses a buffer cap that is not a count of bytes', async () => {
+  for (const maxBufferedHead of [NaN, -1, 1.5, Infinity]) {
+    await expect(runLoad({ maxBufferedHead })).rejects.toThrow(
+      'maxBufferedHead must be a non-negative integer',
+    );
+  }
+});
+
 test('provides no transform when the merge is off', async () => {
   await expect(runLoad({ mergeMetadata: false })).resolves.toBe(
     'export default undefined;',

@@ -73,8 +73,10 @@ const readTag = (html: string, start: number): Tag | undefined => {
     cursor++;
   }
   const nameStart = cursor;
-  while (cursor < html.length && isNameChar(html.charCodeAt(cursor))) {
-    cursor++;
+  if (isLetter(html.charCodeAt(cursor))) {
+    while (cursor < html.length && isNameChar(html.charCodeAt(cursor))) {
+      cursor++;
+    }
   }
   const name = html.slice(nameStart, cursor).toLowerCase();
   const attributes = new Map<string, string>();
@@ -157,12 +159,28 @@ const findRawTextEnd = (html: string, from: number, name: string): number => {
 
 // `<!-->` and `<!--->` reach `>` while still in the dash dash state, which
 // returns to script data without ever escaping.
-const dashDashEnd = (html: string, from: number): number => {
+const findDashDashEnd = (html: string, from: number): number => {
   let cursor = from;
   while (html.charCodeAt(cursor) === HYPHEN) {
     cursor++;
   }
   return html.charCodeAt(cursor) === GT ? cursor + 1 : -1;
+};
+
+const findDeclarationEnd = (html: string, start: number): number => {
+  const from = start + '<!'.length;
+  if (!html.startsWith('<!--', start)) {
+    const end = html.indexOf('>', from);
+    return end === -1 ? -1 : end + 1;
+  }
+  // The comment end bang state closes on `--!>` as well as on `-->`, and
+  // `<!-->` is an empty comment, so both searches start inside its opener.
+  const plain = html.indexOf('-->', from);
+  const bang = html.indexOf('--!>', from);
+  if (plain !== -1 && (bang === -1 || plain < bang)) {
+    return plain + '-->'.length;
+  }
+  return bang === -1 ? -1 : bang + '--!>'.length;
 };
 
 const findScriptEnd = (html: string, from: number): number => {
@@ -182,7 +200,7 @@ const findScriptEnd = (html: string, from: number): number => {
       return -1;
     }
     if (html.startsWith('<!--', open)) {
-      const unescaped = dashDashEnd(html, open + '<!--'.length);
+      const unescaped = findDashDashEnd(html, open + '<!--'.length);
       if (unescaped !== -1) {
         escaped = false;
         doubleEscaped = false;
@@ -244,14 +262,14 @@ type MetadataTag = { key: string; start: number; end: number };
 type HeadScan = {
   resumeAt: number;
   tags: MetadataTag[];
-  headClosed: boolean;
+  finished: boolean;
   filter: MetadataFilter;
 };
 
 const createHeadScan = (filter: Partial<MetadataFilter>): HeadScan => ({
   resumeAt: 0,
   tags: [],
-  headClosed: false,
+  finished: false,
   filter: {
     metaNames: (filter.metaNames ?? DEFAULT_METADATA_FILTER.metaNames).map(
       (name) => name.toLowerCase(),
@@ -263,21 +281,19 @@ const createHeadScan = (filter: Partial<MetadataFilter>): HeadScan => ({
 });
 
 const scanHead = (html: string, scan: HeadScan): void => {
-  while (!scan.headClosed) {
+  while (!scan.finished) {
     const start = html.indexOf('<', scan.resumeAt);
     if (start === -1) {
       scan.resumeAt = html.length;
       return;
     }
     if (html.startsWith('<!', start)) {
-      const terminator = html.startsWith('<!--', start) ? '-->' : '>';
-      // `<!-->` is an empty comment, so the search starts inside its opener.
-      const end = html.indexOf(terminator, start + '<!'.length);
+      const end = findDeclarationEnd(html, start);
       if (end === -1) {
         scan.resumeAt = start;
         return;
       }
-      scan.resumeAt = end + terminator.length;
+      scan.resumeAt = end;
       continue;
     }
     const tag = readTag(html, start);
@@ -289,7 +305,12 @@ const scanHead = (html: string, scan: HeadScan): void => {
       scan.resumeAt = start + 1;
       continue;
     }
-    if (!tag.closing && RAW_TEXT_ELEMENTS.has(tag.name)) {
+    if (!tag.closing && !ELEMENTS_THE_SCAN_READS.has(tag.name)) {
+      scan.tags.length = 0;
+      scan.finished = true;
+      return;
+    }
+    if (RAW_TEXT_ELEMENTS.has(tag.name) && !tag.closing) {
       const contentEnd =
         tag.name === 'script'
           ? findScriptEnd(html, tag.end)
@@ -309,7 +330,7 @@ const scanHead = (html: string, scan: HeadScan): void => {
     }
     if (tag.closing) {
       if (tag.name === 'head') {
-        scan.headClosed = true;
+        scan.finished = true;
         return;
       }
     } else if (tag.name === 'meta') {
@@ -317,10 +338,6 @@ const scanHead = (html: string, scan: HeadScan): void => {
       if (key !== undefined) {
         scan.tags.push({ key, start, end: tag.end });
       }
-    } else if (!ELEMENTS_THE_SCAN_READS.has(tag.name)) {
-      scan.tags.length = 0;
-      scan.headClosed = true;
-      return;
     }
     scan.resumeAt = tag.end;
   }
@@ -380,8 +397,8 @@ const DEFAULT_MAX_BUFFERED_HEAD = 1024 * 1024;
 // decode comes back as a character three bytes long.
 const decodeOneCharPerByte = (bytes: Uint8Array): string => {
   let text = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) {
-    text += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  for (let i = 0; i < bytes.length; i += 0x400) {
+    text += String.fromCharCode(...bytes.subarray(i, i + 0x400));
   }
   return text;
 };
@@ -391,7 +408,6 @@ export const dedupeHtmlMetadataStream = (
   maxBufferedHead = DEFAULT_MAX_BUFFERED_HEAD,
 ): TransformStream<Uint8Array, Uint8Array> => {
   const chunks: Uint8Array[] = [];
-  let bufferedLength = 0;
   let html = '';
   const scan = createHeadScan(filter);
   let buffering = true;
@@ -403,11 +419,10 @@ export const dedupeHtmlMetadataStream = (
         return;
       }
       chunks.push(chunk);
-      bufferedLength += chunk.byteLength;
       html += decodeOneCharPerByte(chunk);
       scanHead(html, scan);
-      if (!scan.headClosed) {
-        if (bufferedLength > maxBufferedHead) {
+      if (!scan.finished) {
+        if (html.length > maxBufferedHead) {
           buffering = false;
           controller.enqueue(concatUint8Array(chunks));
           chunks.length = 0;

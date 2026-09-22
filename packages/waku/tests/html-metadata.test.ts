@@ -164,6 +164,24 @@ describe('dedupeHeadMetadataForTest', () => {
     );
   });
 
+  test('ends a comment at `--!>` as well as at `-->`', () => {
+    for (const close of ['-->', '--!>']) {
+      expect(
+        dedupeHeadMetadataForTest(
+          `<title>a</title><!-- x ${close}<title>b</title>`,
+        ),
+      ).toBe(`<!-- x ${close}<title>b</title>`);
+    }
+  });
+
+  test('reads `<` before a digit or hyphen as text', () => {
+    for (const stray of ['<3', '<-x']) {
+      expect(
+        dedupeHeadMetadataForTest(`<title>a</title>${stray}<title>b</title>`),
+      ).toBe(`${stray}<title>b</title>`);
+    }
+  });
+
   test('ignores an empty comment rather than abandoning the scan', () => {
     expect(
       dedupeHeadMetadataForTest('<title>a</title><!--><title>b</title>'),

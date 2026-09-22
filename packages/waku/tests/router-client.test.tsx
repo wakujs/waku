@@ -811,6 +811,11 @@ describe('router/client utilities', () => {
         'Caught an unexpected error',
       );
       expect(first.container.textContent).toContain('Error: boom');
+      // The fallback renders its own document, so it carries these itself.
+      expect(document.head.querySelector('meta[charset]')).not.toBeNull();
+      expect(
+        document.head.querySelector('meta[name="viewport"]'),
+      ).not.toBeNull();
       first.unmount();
 
       const second = await renderApp(
