@@ -46,17 +46,12 @@ const isSpace = (code: number): boolean =>
 const isLetter = (code: number): boolean =>
   (code >= 97 && code <= 122) || (code >= 65 && code <= 90);
 
-const isDigit = (code: number): boolean => code >= 48 && code <= 57;
-
-const isNameChar = (code: number): boolean =>
-  isLetter(code) || isDigit(code) || code === HYPHEN;
-
 const endsAttributeName = (code: number): boolean =>
   isSpace(code) || code === EQUALS || code === GT || code === SLASH;
 
 const endsBareValue = (code: number): boolean => isSpace(code) || code === GT;
 
-const endsRawTextName = (code: number): boolean =>
+const endsTagName = (code: number): boolean =>
   isSpace(code) || code === SLASH || code === GT;
 
 type Tag = {
@@ -74,7 +69,7 @@ const readTag = (html: string, start: number): Tag | undefined => {
   }
   const nameStart = cursor;
   if (isLetter(html.charCodeAt(cursor))) {
-    while (cursor < html.length && isNameChar(html.charCodeAt(cursor))) {
+    while (cursor < html.length && !endsTagName(html.charCodeAt(cursor))) {
       cursor++;
     }
   }
@@ -147,7 +142,7 @@ const findRawTextEnd = (html: string, from: number, name: string): number => {
     }
     if (
       html.slice(cursor + 2, nameEnd).toLowerCase() === name &&
-      endsRawTextName(html.charCodeAt(nameEnd))
+      endsTagName(html.charCodeAt(nameEnd))
     ) {
       const tag = readTag(html, cursor);
       return tag === undefined ? -1 : tag.end;
@@ -173,10 +168,10 @@ const findDeclarationEnd = (html: string, start: number): number => {
     const end = html.indexOf('>', from);
     return end === -1 ? -1 : end + 1;
   }
-  // The comment end bang state closes on `--!>` as well as on `-->`, and
-  // `<!-->` is an empty comment, so both searches start inside its opener.
+  // `<!-->` closes abruptly, so that search starts inside the opener, but
+  // reaching the comment end bang state takes two hyphens of its own.
   const plain = html.indexOf('-->', from);
-  const bang = html.indexOf('--!>', from);
+  const bang = html.indexOf('--!>', start + '<!--'.length);
   if (plain !== -1 && (bang === -1 || plain < bang)) {
     return plain + '-->'.length;
   }
@@ -219,7 +214,7 @@ const findScriptEnd = (html: string, from: number): number => {
     }
     if (
       html.slice(nameStart, nameEnd).toLowerCase() !== 'script' ||
-      !endsRawTextName(html.charCodeAt(nameEnd))
+      !endsTagName(html.charCodeAt(nameEnd))
     ) {
       cursor = open + 1;
       continue;

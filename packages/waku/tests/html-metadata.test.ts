@@ -164,6 +164,21 @@ describe('dedupeHeadMetadataForTest', () => {
     );
   });
 
+  test('does not let a comment opener supply the `--!>` hyphens', () => {
+    // After `<!--` an immediate `!` is comment data: reaching the comment end
+    // bang state takes two hyphens of the comment's own.
+    for (const head of [
+      '<title>a</title><!--!><title>b</title>',
+      '<title>a</title><!---!><title>b</title>',
+    ]) {
+      expect(dedupeHeadMetadataForTest(head)).toBe(head);
+    }
+    // Two of its own do close it.
+    expect(
+      dedupeHeadMetadataForTest('<title>a</title><!----!><title>b</title>'),
+    ).toBe('<!----!><title>b</title>');
+  });
+
   test('ends a comment at `--!>` as well as at `-->`', () => {
     for (const close of ['-->', '--!>']) {
       expect(
@@ -172,6 +187,13 @@ describe('dedupeHeadMetadataForTest', () => {
         ),
       ).toBe(`<!-- x ${close}<title>b</title>`);
     }
+  });
+
+  test('reads a tag name to the end a parser reads it to', () => {
+    // A name runs to whitespace, `/` or `>`, so this is `linké`, not `link`
+    // with a stray attribute, and it is not an element the scan reads.
+    const head = '<title>a</title><link\u00e9><title>b</title>';
+    expect(dedupeHeadMetadataForTest(head)).toBe(head);
   });
 
   test('reads `<` before a digit or hyphen as text', () => {
