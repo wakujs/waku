@@ -27,6 +27,7 @@ const RAW_TEXT_ELEMENTS = new Set(['script', 'style', 'title']);
 
 const SCANNED_ELEMENTS = new Set([
   ...RAW_TEXT_ELEMENTS,
+  '!doctype',
   'base',
   'head',
   'html',
@@ -147,21 +148,6 @@ const findRawTextEnd = (html: string, from: number, name: string): number => {
   return -1;
 };
 
-const findDeclarationEnd = (html: string, start: number): number => {
-  if (!html.startsWith('<!--', start)) {
-    const end = html.indexOf('>', start + '<!'.length);
-    return end === -1 ? -1 : end + 1;
-  }
-  // `<!-->` closes, but `<!--!>` does not: the bang state needs two hyphens
-  // the opener did not supply.
-  const plain = html.indexOf('-->', start + '<!'.length);
-  const bang = html.indexOf('--!>', start + '<!--'.length);
-  if (plain !== -1 && (bang === -1 || plain < bang)) {
-    return plain + '-->'.length;
-  }
-  return bang === -1 ? -1 : bang + '--!>'.length;
-};
-
 // `<!--` then `<script` puts the tokenizer in its double escaped state, where
 // the next `</script>` does not close the element.
 const SCRIPT_OPEN_REGEXP = /<script/i;
@@ -266,15 +252,6 @@ const scanHead = (html: string, scan: HeadScan): boolean => {
     if (start === -1) {
       scan.resumeAt = html.length;
       return false;
-    }
-    if (html.startsWith('<!', start)) {
-      const end = findDeclarationEnd(html, start);
-      if (end === -1) {
-        scan.resumeAt = start;
-        return false;
-      }
-      scan.resumeAt = end;
-      continue;
     }
     const tag = readTag(html, start);
     if (tag === undefined) {

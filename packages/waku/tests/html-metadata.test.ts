@@ -206,29 +206,6 @@ describe('dedupeHead', () => {
     );
   });
 
-  test('does not let a comment opener supply the `--!>` hyphens', () => {
-    // After `<!--` an immediate `!` is comment data: reaching the comment end
-    // bang state takes two hyphens of the comment's own.
-    for (const head of [
-      '<title>a</title><!--!><title>b</title>',
-      '<title>a</title><!---!><title>b</title>',
-    ]) {
-      expect(dedupeHead(head)).toBe(head);
-    }
-    // Two of its own do close it.
-    expect(dedupeHead('<title>a</title><!----!><title>b</title>')).toBe(
-      '<!----!><title>b</title>',
-    );
-  });
-
-  test('ends a comment at `--!>` as well as at `-->`', () => {
-    for (const close of ['-->', '--!>']) {
-      expect(
-        dedupeHead(`<title>a</title><!-- x ${close}<title>b</title>`),
-      ).toBe(`<!-- x ${close}<title>b</title>`);
-    }
-  });
-
   test('reads a tag name to the end a parser reads it to', () => {
     // A name runs to whitespace, `/` or `>`, so this is `linké`, not `link`
     // with a stray attribute, and it is not an element the scan reads.
@@ -251,15 +228,21 @@ describe('dedupeHead', () => {
     expect(dedupeHead(head)).toBe(head);
   });
 
+  test('reads the doctype a React document opens with, and no other `<!`', () => {
+    // A comment is the only other `<!` a head can hold, and only markup the
+    // scan passes through can put one there.
+    expect(dedupeHead('<!DOCTYPE html><title>a</title><title>b</title>')).toBe(
+      '<!DOCTYPE html><title>b</title>',
+    );
+    for (const bang of ['<!-- c -->', '<!---->', '<![CDATA[x]]>', '<!']) {
+      const head = `<title>a</title>${bang}<title>b</title>`;
+      expect(dedupeHead(head)).toBe(head);
+    }
+  });
+
   test('stops at a stray close tag of an element it does not read', () => {
     const head = '<title>a</title></div><title>b</title>';
     expect(dedupeHead(head)).toBe(head);
-  });
-
-  test('ignores an empty comment rather than abandoning the scan', () => {
-    expect(dedupeHead('<title>a</title><!--><title>b</title>')).toBe(
-      '<!--><title>b</title>',
-    );
   });
 
   test('ends raw text at the first close tag, as a parser does', () => {
@@ -297,16 +280,6 @@ describe('dedupeHead', () => {
         metaProperties: [],
       }),
     ).toBe('<meta name="Description" content="b">');
-  });
-
-  test('ignores tags inside comments', () => {
-    const head =
-      '<title>layout</title>' +
-      '<!-- <title>commented</title> -->' +
-      '<title>page</title>';
-    expect(dedupeHead(head)).toBe(
-      '<!-- <title>commented</title> --><title>page</title>',
-    );
   });
 
   test('deduplicates a title carrying attributes', () => {
@@ -444,27 +417,6 @@ describe('dedupeHtmlMetadataStream', () => {
     ).toBe('<html><head><title>b</title></head><body/></html>');
   });
 
-  test('waits for a comment opener split across a chunk boundary', async () => {
-    expect(
-      await pipe([
-        '<html><head><title>a</title><!',
-        '-- <title>trap</title> --><title>b</title></head><body/></html>',
-      ]),
-    ).toBe(
-      '<html><head><!-- <title>trap</title> --><title>b</title>' +
-        '</head><body/></html>',
-    );
-  });
-
-  test('waits for a comment opener split after its second dash', async () => {
-    expect(
-      await pipe([
-        '<html><head><title>a</title><!-',
-        '-</head>--><title>b</title></head><body/></html>',
-      ]),
-    ).toBe('<html><head><!--</head>--><title>b</title></head><body/></html>');
-  });
-
   test('does not end the head at a `</head>` inside a script', async () => {
     const html =
       '<html><head><title>layout</title>' +
@@ -530,7 +482,7 @@ describe('dedupeHtmlMetadataStream', () => {
     // The `<div>` would have stopped the scan and merged nothing, but it
     // arrives past the cap, so the head is emitted as it was rendered.
     const opening =
-      `<html><head><title>a</title><!--${'y'.repeat(64)}-->` +
+      `<html><head><title>a</title><link rel="preload" href="/${'y'.repeat(64)}"/>` +
       '<title>b</title>';
     const rest = '<div>x</div></head><body>hi</body></html>';
     expect(await pipe([opening, rest], 32)).toBe(opening + rest);
@@ -539,12 +491,12 @@ describe('dedupeHtmlMetadataStream', () => {
   test('gives up rather than buffer an unfinished head past the cap', async () => {
     // Injected RSC scripts count toward the cap as well, so a head that has
     // not closed by then is emitted as it was rendered.
-    const opening = `<html><head><title>a</title><!--${'y'.repeat(64)}-->`;
+    const link = `<link rel="preload" href="/${'y'.repeat(64)}"/>`;
+    const opening = `<html><head><title>a</title>${link}`;
     const rest = '<title>b</title></head><body>hi</body></html>';
     expect(await pipe([opening, rest], 32)).toBe(opening + rest);
     expect(await pipe([opening, rest])).toBe(
-      `<html><head><!--${'y'.repeat(64)}--><title>b</title></head>` +
-        '<body>hi</body></html>',
+      `<html><head>${link}<title>b</title></head><body>hi</body></html>`,
     );
   });
 
