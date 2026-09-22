@@ -20,9 +20,18 @@ const DEFAULT_METADATA_FILTER: MetadataFilter = {
 
 const RAW_TEXT_ELEMENTS = new Set(['script', 'style', 'title']);
 
-// Their content is not the document's, and reading it as if it were would let
-// an inert `<title>` supersede the real one.
-const ELEMENTS_THE_SCAN_STOPS_AT = new Set(['noscript', 'svg', 'template']);
+// A head of metadata and the text around it is all the scan models. Anything
+// else in one, from a `<template>` to a stray `<div>`, ends it.
+const ELEMENTS_THE_SCAN_READS = new Set([
+  'base',
+  'head',
+  'html',
+  'link',
+  'meta',
+  'script',
+  'style',
+  'title',
+]);
 
 const SLASH = 47;
 const HYPHEN = 45;
@@ -308,7 +317,7 @@ const scanHead = (html: string, scan: HeadScan): void => {
       if (key !== undefined) {
         scan.tags.push({ key, start, end: tag.end });
       }
-    } else if (ELEMENTS_THE_SCAN_STOPS_AT.has(tag.name)) {
+    } else if (!ELEMENTS_THE_SCAN_READS.has(tag.name)) {
       scan.tags.length = 0;
       scan.headClosed = true;
       return;

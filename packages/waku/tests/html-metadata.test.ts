@@ -141,11 +141,11 @@ describe('dedupeHeadMetadataForTest', () => {
     ).toBe(`${style}<title>b</title>`);
   });
 
-  test("stops rather than read content that is not the document's", () => {
+  test('stops at anything a head of metadata would not hold', () => {
     // A template's contents are a separate fragment, a `noscript`'s depend on
-    // whether scripting is on, and an svg `<title>` labels a graphic. None of
-    // them is the document's metadata, so the head is emitted as rendered.
-    for (const wrapper of ['template', 'noscript', 'svg']) {
+    // whether scripting is on, an svg `<title>` labels a graphic, and a `div`
+    // is not head content at all. None of them is the document's metadata.
+    for (const wrapper of ['template', 'noscript', 'svg', 'div', 'foo']) {
       const head = `<title>a</title><${wrapper}><title>b</title></${wrapper}>`;
       expect(dedupeHeadMetadataForTest(head)).toBe(head);
     }
@@ -155,21 +155,19 @@ describe('dedupeHeadMetadataForTest', () => {
     expect(dedupeHeadMetadataForTest(noscript)).toBe(noscript);
   });
 
+  test('reads the elements a head does hold', () => {
+    const head =
+      '<base href="/"/><link rel="icon" href="x"/>' +
+      '<title>layout</title><title>page</title>';
+    expect(dedupeHeadMetadataForTest(head)).toBe(
+      '<base href="/"/><link rel="icon" href="x"/><title>page</title>',
+    );
+  });
+
   test('ignores an empty comment rather than abandoning the scan', () => {
     expect(
       dedupeHeadMetadataForTest('<title>a</title><!--><title>b</title>'),
     ).toBe('<!--><title>b</title>');
-  });
-
-  test('keeps scanning past any element that does not own its content', () => {
-    // A browser ends the head at each of these, putting what follows in the
-    // body, where the first title still wins.
-    const stray = ['br', 'img src="/x.png"', 'hr', 'input', 'div', 'foo'];
-    for (const tag of stray) {
-      expect(
-        dedupeHeadMetadataForTest(`<title>a</title><${tag}><title>b</title>`),
-      ).toBe(`<${tag}><title>b</title>`);
-    }
   });
 
   test('ends raw text at the first close tag, as a parser does', () => {
@@ -185,14 +183,6 @@ describe('dedupeHeadMetadataForTest', () => {
     ).toBe(
       '<style>i::after{content:"</style>"}' + '</style>' + '<title>b</title>',
     );
-  });
-
-  test('is not thrown by a mismatched close tag', () => {
-    expect(
-      dedupeHeadMetadataForTest(
-        '<title>a</title><div><span></div><title>b</title>',
-      ),
-    ).toBe('<div><span></div><title>b</title>');
   });
 
   test('matches a filter entry whatever case it is written in', () => {

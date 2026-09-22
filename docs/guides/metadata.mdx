@@ -83,6 +83,9 @@ two tags. Most notably:
 - **Metadata inside a `<Suspense>` boundary** is emitted after the head has been
   flushed and cannot be merged into it. An `async` page component is fine — only
   an explicit boundary between the page and its metadata defers it.
+- **A head holding anything but metadata** is served as rendered. A `<template>`
+  or an inline `<svg>` has a `<title>` of its own that is not the document's, so
+  a root component that puts one in `<head>` turns the merge off for that page.
 
 ## Overriding charset and viewport
 
