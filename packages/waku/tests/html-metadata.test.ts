@@ -585,6 +585,21 @@ describe('dedupeHtmlMetadataStream', () => {
     );
   });
 
+  test('drops a tag whose attribute holds a split character', async () => {
+    // The dropped tag's offsets are byte offsets, so a chunk boundary inside
+    // the utf-8 sequence of an attribute value must not shift them.
+    const bytes = enc.encode(
+      '<html><head><meta name="description" content="\u65e5\u672c\u8a9e"/>' +
+        '<meta name="description" content="page"/></head><body/></html>',
+    );
+    // one of the three bytes of the first character of the dropped tag
+    const cut = bytes.indexOf(0xe6) + 1;
+    expect(await pipeBytes([bytes.subarray(0, cut), bytes.subarray(cut)])).toBe(
+      '<html><head><meta name="description" content="page"/></head>' +
+        '<body/></html>',
+    );
+  });
+
   test('does not split multi-byte characters across chunks', async () => {
     const html =
       '<html><head><title>あ</title><title>日本語</title></head><body/></html>';
