@@ -1,9 +1,9 @@
 import { concatUint8Array } from './stream.js';
 
 // This is not an HTML parser. It reads the head React renders, and stops at
-// anything else it finds in one -- including markup passed through by
-// `dangerouslySetInnerHTML` -- so the scan then merges nothing and the
-// response is served as rendered.
+// anything else it finds in one, including markup passed through by
+// `dangerouslySetInnerHTML`, so the scan then merges nothing and the response
+// is served as rendered.
 
 export type MetadataFilter = {
   metaNames: readonly string[];
@@ -25,17 +25,13 @@ const DEFAULT_METADATA_FILTER: MetadataFilter = {
 
 const RAW_TEXT_ELEMENTS = new Set(['script', 'style', 'title']);
 
-// A head of metadata and the text around it is all the scan models. Anything
-// else in one, from a `<template>` to a stray `<div>`, ends it.
-const ELEMENTS_THE_SCAN_READS = new Set([
+const SCANNED_ELEMENTS = new Set([
+  ...RAW_TEXT_ELEMENTS,
   'base',
   'head',
   'html',
   'link',
   'meta',
-  'script',
-  'style',
-  'title',
 ]);
 
 const SLASH = 47;
@@ -46,9 +42,6 @@ const SINGLE_QUOTE = 39;
 
 const isSpace = (code: number): boolean =>
   code === 32 || code === 9 || code === 10 || code === 12 || code === 13;
-
-const isLetter = (code: number): boolean =>
-  (code >= 97 && code <= 122) || (code >= 65 && code <= 90);
 
 const endsAttributeName = (code: number): boolean =>
   isSpace(code) || code === EQUALS || code === GT || code === SLASH;
@@ -72,10 +65,8 @@ const readTag = (html: string, start: number): Tag | undefined => {
     cursor++;
   }
   const nameStart = cursor;
-  if (isLetter(html.charCodeAt(cursor))) {
-    while (cursor < html.length && !endsTagName(html.charCodeAt(cursor))) {
-      cursor++;
-    }
+  while (cursor < html.length && !endsTagName(html.charCodeAt(cursor))) {
+    cursor++;
   }
   const name = html.slice(nameStart, cursor).toLowerCase();
   const attributes = new Map<string, string>();
@@ -92,7 +83,10 @@ const readTag = (html: string, start: number): Tag | undefined => {
       cursor++;
       continue;
     }
+    // An `=` in the name position starts an attribute name rather than
+    // ending an empty one, so the first character is always part of it.
     const attributeStart = cursor;
+    cursor++;
     while (
       cursor < html.length &&
       !endsAttributeName(html.charCodeAt(cursor))
@@ -141,9 +135,6 @@ const findRawTextEnd = (html: string, from: number, name: string): number => {
   let cursor = from;
   while ((cursor = html.indexOf('</', cursor)) !== -1) {
     const nameEnd = cursor + 2 + name.length;
-    if (nameEnd >= html.length) {
-      return -1;
-    }
     if (
       html.slice(cursor + 2, nameEnd).toLowerCase() === name &&
       endsTagName(html.charCodeAt(nameEnd))
@@ -157,14 +148,13 @@ const findRawTextEnd = (html: string, from: number, name: string): number => {
 };
 
 const findDeclarationEnd = (html: string, start: number): number => {
-  const from = start + '<!'.length;
   if (!html.startsWith('<!--', start)) {
-    const end = html.indexOf('>', from);
+    const end = html.indexOf('>', start + '<!'.length);
     return end === -1 ? -1 : end + 1;
   }
-  // `<!-->` closes abruptly, so that search starts inside the opener, but
-  // reaching the comment end bang state takes two hyphens of its own.
-  const plain = html.indexOf('-->', from);
+  // `<!-->` closes, but `<!--!>` does not: the bang state needs two hyphens
+  // the opener did not supply.
+  const plain = html.indexOf('-->', start + '<!'.length);
   const bang = html.indexOf('--!>', start + '<!--'.length);
   if (plain !== -1 && (bang === -1 || plain < bang)) {
     return plain + '-->'.length;
@@ -172,52 +162,43 @@ const findDeclarationEnd = (html: string, start: number): number => {
   return bang === -1 ? -1 : bang + '--!>'.length;
 };
 
-// A `</script>` ends a script unless `<!--` then `<script` has put the
-// tokenizer in its double escaped state. React escapes `<script` in the script
-// children it renders and the RSC payload escapes `<!--`, so that pair only
-// reaches a head through `dangerouslySetInnerHTML`, which the scan stops at
-// rather than model.
-const SCRIPT_OPEN = /<script/i;
+// `<!--` then `<script` puts the tokenizer in its double escaped state, where
+// the next `</script>` does not close the element.
+const SCRIPT_OPEN_REGEXP = /<script/i;
 
-const entersDoubleEscape = (content: string): boolean => {
-  const comment = content.indexOf('<!--');
-  return comment !== -1 && SCRIPT_OPEN.test(content.slice(comment));
-};
+const entersDoubleEscape = (content: string): boolean =>
+  content.includes('<!--') && SCRIPT_OPEN_REGEXP.test(content);
 
-const readMetadataKey = (
-  tag: Tag,
-  filter: MetadataFilter,
-): string | undefined => {
-  if (tag.attributes.has('itemprop')) {
-    return undefined;
-  }
+const readMetadataKeys = (tag: Tag, filter: MetadataFilter): string[] => {
   if (tag.name === 'title') {
-    return 'title';
+    return ['title'];
   }
+  if (tag.name !== 'meta') {
+    return [];
+  }
+  const keys: string[] = [];
   const name = tag.attributes.get('name')?.toLowerCase();
   if (name !== undefined && filter.metaNames.includes(name)) {
-    return 'name:' + name;
+    keys.push('name:' + name);
   }
   const property = tag.attributes.get('property')?.toLowerCase();
   if (property !== undefined && filter.metaProperties.includes(property)) {
-    return 'property:' + property;
+    keys.push('property:' + property);
   }
-  return undefined;
+  return keys;
 };
 
-type MetadataTag = { key: string; start: number; end: number };
+type MetadataSpan = { key: string; start: number; end: number };
 
 type HeadScan = {
   resumeAt: number;
-  tags: MetadataTag[];
-  finished: boolean;
+  spans: MetadataSpan[];
   filter: MetadataFilter;
 };
 
 const createHeadScan = (filter: Partial<MetadataFilter>): HeadScan => ({
   resumeAt: 0,
-  tags: [],
-  finished: false,
+  spans: [],
   filter: {
     metaNames: (filter.metaNames ?? DEFAULT_METADATA_FILTER.metaNames).map(
       (name) => name.toLowerCase(),
@@ -228,18 +209,18 @@ const createHeadScan = (filter: Partial<MetadataFilter>): HeadScan => ({
   },
 });
 
-const scanHead = (html: string, scan: HeadScan): void => {
-  while (!scan.finished) {
+const scanHead = (html: string, scan: HeadScan): boolean => {
+  while (true) {
     const start = html.indexOf('<', scan.resumeAt);
     if (start === -1) {
       scan.resumeAt = html.length;
-      return;
+      return false;
     }
     if (html.startsWith('<!', start)) {
       const end = findDeclarationEnd(html, start);
       if (end === -1) {
         scan.resumeAt = start;
-        return;
+        return false;
       }
       scan.resumeAt = end;
       continue;
@@ -247,92 +228,103 @@ const scanHead = (html: string, scan: HeadScan): void => {
     const tag = readTag(html, start);
     if (tag === undefined) {
       scan.resumeAt = start;
-      return;
+      return false;
     }
-    if (!tag.name) {
-      scan.resumeAt = start + 1;
-      continue;
-    }
-    if (!tag.closing && !ELEMENTS_THE_SCAN_READS.has(tag.name)) {
-      scan.tags.length = 0;
-      scan.finished = true;
-      return;
-    }
-    if (RAW_TEXT_ELEMENTS.has(tag.name) && !tag.closing) {
-      const contentEnd = findRawTextEnd(html, tag.end, tag.name);
-      if (contentEnd === -1) {
-        scan.resumeAt = start;
-        return;
-      }
-      if (
-        tag.name === 'script' &&
-        entersDoubleEscape(html.slice(tag.end, contentEnd))
-      ) {
-        scan.tags.length = 0;
-        scan.finished = true;
-        return;
-      }
-      if (tag.name === 'title') {
-        const key = readMetadataKey(tag, scan.filter);
-        if (key !== undefined) {
-          scan.tags.push({ key, start, end: contentEnd });
-        }
-      }
-      scan.resumeAt = contentEnd;
-      continue;
+    if (!SCANNED_ELEMENTS.has(tag.name)) {
+      scan.spans.length = 0;
+      return true;
     }
     if (tag.closing) {
       if (tag.name === 'head') {
-        scan.finished = true;
-        return;
+        return true;
       }
-    } else if (tag.name === 'meta') {
-      const key = readMetadataKey(tag, scan.filter);
-      if (key !== undefined) {
-        scan.tags.push({ key, start, end: tag.end });
+      // A parser ends the head at `</html>` too, and carries on in a body the
+      // scan does not model. Every other close tag here it ignores.
+      if (tag.name === 'html') {
+        scan.spans.length = 0;
+        return true;
+      }
+      scan.resumeAt = tag.end;
+      continue;
+    }
+    let end = tag.end;
+    if (RAW_TEXT_ELEMENTS.has(tag.name)) {
+      end = findRawTextEnd(html, tag.end, tag.name);
+      if (end === -1) {
+        scan.resumeAt = start;
+        return false;
+      }
+      if (
+        tag.name === 'script' &&
+        entersDoubleEscape(html.slice(tag.end, end))
+      ) {
+        scan.spans.length = 0;
+        return true;
       }
     }
-    scan.resumeAt = tag.end;
+    const [key, ...rest] = readMetadataKeys(tag, scan.filter);
+    if (key !== undefined) {
+      // A tag carrying a second name, or an `itemprop` that takes it out of
+      // the document's metadata, is one identity the splice can place and
+      // one it cannot: whichever way it went, it would shadow the tag that
+      // supersedes it.
+      if (rest.length > 0 || tag.attributes.has('itemprop')) {
+        scan.spans.length = 0;
+        return true;
+      }
+      scan.spans.push({ key, start, end });
+    }
+    scan.resumeAt = end;
   }
 };
 
-const findSuperseded = (tags: readonly MetadataTag[]): MetadataTag[] => {
-  const survivorByKey = new Map<string, number>();
-  for (const tag of tags) {
-    survivorByKey.set(tag.key, tag.start);
+const findSuperseded = (spans: readonly MetadataSpan[]): MetadataSpan[] => {
+  const lastStartByKey = new Map<string, number>();
+  for (const span of spans) {
+    lastStartByKey.set(span.key, span.start);
   }
-  return tags.filter((tag) => survivorByKey.get(tag.key) !== tag.start);
+  return spans.filter((span) => lastStartByKey.get(span.key) !== span.start);
 };
 
 const rewriteMetadata = (
   head: string,
-  tags: readonly MetadataTag[],
+  spans: readonly MetadataSpan[],
 ): string => {
   let result = '';
   let cursor = 0;
-  for (const tag of findSuperseded(tags)) {
-    result += head.slice(cursor, tag.start);
-    cursor = tag.end;
+  for (const span of findSuperseded(spans)) {
+    result += head.slice(cursor, span.start);
+    cursor = span.end;
   }
   return result + head.slice(cursor);
 };
 
 const spliceMetadata = (
   buffer: Uint8Array,
-  tags: readonly MetadataTag[],
+  spans: readonly MetadataSpan[],
 ): Uint8Array => {
-  const dropped = findSuperseded(tags);
-  if (!dropped.length) {
-    return buffer;
-  }
   const parts: Uint8Array[] = [];
   let cursor = 0;
-  for (const tag of dropped) {
-    parts.push(buffer.subarray(cursor, tag.start));
-    cursor = tag.end;
+  for (const span of findSuperseded(spans)) {
+    parts.push(buffer.subarray(cursor, span.start));
+    cursor = span.end;
   }
   parts.push(buffer.subarray(cursor));
   return concatUint8Array(parts);
+};
+
+const DEFAULT_MAX_BUFFERED_HEAD = 1024 * 1024;
+
+const MAX_SPREAD_ARGUMENTS = 0x400;
+
+// The splice cuts the buffer at offsets this string yields, so a byte has to
+// stay one character: utf-8 would collapse a multi-byte sequence into one.
+const bytesToLatin1 = (bytes: Uint8Array): string => {
+  let text = '';
+  for (let i = 0; i < bytes.length; i += MAX_SPREAD_ARGUMENTS) {
+    text += String.fromCharCode(...bytes.subarray(i, i + MAX_SPREAD_ARGUMENTS));
+  }
+  return text;
 };
 
 export const dedupeHeadMetadataForTest = (
@@ -341,19 +333,7 @@ export const dedupeHeadMetadataForTest = (
 ): string => {
   const scan = createHeadScan(filter);
   scanHead(head, scan);
-  return rewriteMetadata(head, scan.tags);
-};
-
-const DEFAULT_MAX_BUFFERED_HEAD = 1024 * 1024;
-
-// Decoding utf-8 would lose the offsets the splice needs: a byte it cannot
-// decode comes back as a character three bytes long.
-const decodeOneCharPerByte = (bytes: Uint8Array): string => {
-  let text = '';
-  for (let i = 0; i < bytes.length; i += 0x400) {
-    text += String.fromCharCode(...bytes.subarray(i, i + 0x400));
-  }
-  return text;
+  return rewriteMetadata(head, scan.spans);
 };
 
 export const dedupeHtmlMetadataStream = (
@@ -372,19 +352,16 @@ export const dedupeHtmlMetadataStream = (
         return;
       }
       chunks.push(chunk);
-      html += decodeOneCharPerByte(chunk);
-      scanHead(html, scan);
-      if (!scan.finished) {
-        if (html.length > maxBufferedHead) {
-          buffering = false;
-          controller.enqueue(concatUint8Array(chunks));
-          chunks.length = 0;
-          html = '';
-        }
+      html += bytesToLatin1(chunk);
+      const finished = scanHead(html, scan);
+      if (!finished && html.length <= maxBufferedHead) {
         return;
       }
       buffering = false;
-      controller.enqueue(spliceMetadata(concatUint8Array(chunks), scan.tags));
+      const buffered = concatUint8Array(chunks);
+      controller.enqueue(
+        finished ? spliceMetadata(buffered, scan.spans) : buffered,
+      );
       chunks.length = 0;
       html = '';
     },

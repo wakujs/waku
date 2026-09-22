@@ -80,6 +80,26 @@ describe('dedupeHeadMetadataForTest', () => {
     );
   });
 
+  test('stops at a tag the filter matches under two names', () => {
+    // Removing it would take the value of one name out of the document
+    // though nothing superseded it, and keeping it would shadow whatever
+    // supersedes the other. No splice of it is right.
+    const pair =
+      '<meta name="description" property="og:description" content="layout"/>';
+    const one = '<meta name="description" content="page"/>';
+    expect(dedupeHeadMetadataForTest(pair + one)).toBe(pair + one);
+    expect(dedupeHeadMetadataForTest(one + pair)).toBe(one + pair);
+  });
+
+  test('stops at an itemProp tag that shadows a name it merges', () => {
+    // `itemProp` takes the tag out of the document's metadata but not out of
+    // the document, so it still shadows the title that supersedes it.
+    const head =
+      '<title>layout</title><title itemProp="name">Item</title>' +
+      '<title>page</title>';
+    expect(dedupeHeadMetadataForTest(head)).toBe(head);
+  });
+
   test('keeps repeated og properties that represent arrays', () => {
     const head =
       '<meta property="og:image" content="hero.jpg"/>' +
@@ -192,12 +212,24 @@ describe('dedupeHeadMetadataForTest', () => {
     expect(dedupeHeadMetadataForTest(head)).toBe(head);
   });
 
-  test('reads `<` before a digit or hyphen as text', () => {
-    for (const stray of ['<3', '<-x']) {
-      expect(
-        dedupeHeadMetadataForTest(`<title>a</title>${stray}<title>b</title>`),
-      ).toBe(`${stray}<title>b</title>`);
+  test('stops at a `<` a parser would not read as a tag', () => {
+    // A parser reads `<3` as text and `<?x` as a comment, and joins the `<`
+    // to what follows it. React escapes a `<` it renders as text, so either
+    // only arrives through `dangerouslySetInnerHTML`.
+    for (const stray of ['<3', '<-x', '<?x ', '</1', '<<meta content="1">']) {
+      const head = `<title>a</title>${stray}<title>b</title>`;
+      expect(dedupeHeadMetadataForTest(head)).toBe(head);
     }
+  });
+
+  test('stops at a head a parser ends at `</html>`', () => {
+    const head = '<title>a</title><title>b</title></html><title>c</title>';
+    expect(dedupeHeadMetadataForTest(head)).toBe(head);
+  });
+
+  test('stops at a stray close tag of an element it does not read', () => {
+    const head = '<title>a</title></div><title>b</title>';
+    expect(dedupeHeadMetadataForTest(head)).toBe(head);
   });
 
   test('ignores an empty comment rather than abandoning the scan', () => {
@@ -319,6 +351,26 @@ describe('dedupeHeadMetadataForTest', () => {
         '<link rel="stylesheet" href="/a.css"/>' +
         '<title>c &quot;d&quot;</title></head>',
     );
+  });
+
+  test('reads a leading `=` as part of an attribute name', () => {
+    // A parser reads `=y` as an attribute name, so `Name` is this tag's
+    // `name` and the later `NAME` a duplicate it ignores. Reading `=` as an
+    // empty name instead would swallow `y//Name` as a value and leave the
+    // tag matching the filter it does not match.
+    const head =
+      '<meta name="description" content="first"/>' +
+      '<meta//=y//Name = descriptionx NAME =Description content="second"/>';
+    expect(dedupeHeadMetadataForTest(head)).toBe(head);
+  });
+
+  test('ends a tag at a `>` outside its attribute values', () => {
+    expect(
+      dedupeHeadMetadataForTest(
+        '<meta name="description" content="a>b"/>' +
+          '<meta name="description" content="c"/>',
+      ),
+    ).toBe('<meta name="description" content="c"/>');
   });
 
   test('returns the input unchanged when there is nothing to remove', () => {
