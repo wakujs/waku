@@ -249,8 +249,16 @@ const createHeadScan = (filter: Partial<MetadataFilter>): HeadScan => ({
 
 const scanHead = (html: string, scan: HeadScan): boolean => {
   while (true) {
-    const start = html.indexOf('<', scan.resumeAt);
-    if (start === -1) {
+    const found = html.indexOf('<', scan.resumeAt);
+    const start = found === -1 ? html.length : found;
+    // A parser ends the head at text, and puts what follows it in the body.
+    for (let i = scan.resumeAt; i < start; i++) {
+      if (!isSpace(html[i])) {
+        scan.spans.length = 0;
+        return true;
+      }
+    }
+    if (found === -1) {
       scan.resumeAt = html.length;
       return false;
     }

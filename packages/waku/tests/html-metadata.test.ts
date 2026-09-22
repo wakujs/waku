@@ -240,24 +240,34 @@ describe('dedupeHead', () => {
     }
   });
 
+  test('stops at text, which a parser ends the head at', () => {
+    // What follows the text goes in the body, so the head would lose the tag
+    // that superseded the one it held.
+    const head =
+      '<meta name="description" content="layout"/>x' +
+      '<meta name="description" content="page"/>';
+    expect(dedupeHead(head)).toBe(head);
+    // Whitespace is head content like any other.
+    expect(dedupeHead('<title>a</title>\n\t <title>b</title>')).toBe(
+      '\n\t <title>b</title>',
+    );
+  });
+
   test('stops at a stray close tag of an element it does not read', () => {
     const head = '<title>a</title></div><title>b</title>';
     expect(dedupeHead(head)).toBe(head);
   });
 
   test('ends raw text at the first close tag, as a parser does', () => {
-    // The `</style>` in the declaration ends the element, so what follows it
-    // is markup and the title in it is the document's.
-    expect(
-      dedupeHead(
-        '<title>a</title>' +
-          '<style>i::after{content:"</style>"}' +
-          '<title>trap</title></style>' +
-          '<title>b</title>',
-      ),
-    ).toBe(
-      '<style>i::after{content:"</style>"}' + '</style>' + '<title>b</title>',
-    );
+    // The `</style>` in the declaration ends the element, so the `"}` after
+    // it is text, which ends the head. Reading on to the last `</style>`
+    // would find no text and merge the titles either side.
+    const head =
+      '<title>a</title>' +
+      '<style>i::after{content:"</style>"}' +
+      '<title>trap</title></style>' +
+      '<title>b</title>';
+    expect(dedupeHead(head)).toBe(head);
   });
 
   test('matches a filter entry spelled with non-ascii characters', () => {
@@ -518,25 +528,29 @@ describe('dedupeHtmlMetadataStream', () => {
   });
 
   test('does not shift the buffer on a byte it cannot decode', async () => {
-    const head = '<html><head><title>a</title><title>b</title>';
-    const tail = '</head><body>xy</body></html>';
     const bytes = new Uint8Array([
-      ...enc.encode(head),
+      ...enc.encode('<html><head><title>a'),
       0xff,
-      ...enc.encode(tail),
+      ...enc.encode('</title><title>b</title></head><body>xy</body></html>'),
     ]);
     expect(await pipeBytes([bytes])).toBe(
-      `<html><head><title>b</title>\uFFFD${tail}`,
+      '<html><head><title>b</title></head><body>xy</body></html>',
     );
   });
 
-  test('preserves a byte order mark', async () => {
+  test('passes a byte order mark through untouched', async () => {
+    // The scan reads the mark as text and stops, so the bytes go out as they
+    // came in rather than decoded and encoded again.
     const html =
       '\uFEFF<html><head><title>a</title><title>b</title></head>' +
       '<body>hi</body></html>';
-    expect(await pipe([html])).toBe(
-      '\uFEFF<html><head><title>b</title></head><body>hi</body></html>',
-    );
+    expect(await pipe([html])).toBe(html);
+  });
+
+  test('stops at text a chunk ends in', async () => {
+    const opening = '<html><head><title>a</title>x';
+    const rest = '<title>b</title></head><body/></html>';
+    expect(await pipe([opening, rest])).toBe(opening + rest);
   });
 
   test('drops a tag whose attribute holds a split character', async () => {
