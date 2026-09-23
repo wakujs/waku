@@ -1,3 +1,5 @@
+import { concatUint8Array } from './stream.js';
+
 // This is not an HTML parser. It reads the head React renders, and stops at
 // anything else it finds in one, including markup passed through by
 // `dangerouslySetInnerHTML`, so the scan then merges nothing and the response
@@ -184,23 +186,10 @@ const readMetadataKey = (
 
 const encoder = new TextEncoder();
 
-// Each byte becomes one character and back, so the head goes out as exactly
-// the bytes it came in as.
-const bytesToLatin1 = (bytes: Uint8Array): string => {
-  let text = '';
-  for (const byte of bytes) {
-    text += String.fromCharCode(byte);
-  }
-  return text;
-};
-
-const latin1ToBytes = (text: string): Uint8Array => {
-  const bytes = new Uint8Array(text.length);
-  for (let i = 0; i < text.length; i++) {
-    bytes[i] = text.charCodeAt(i);
-  }
-  return bytes;
-};
+// Each byte decodes to one character, so an offset in the text is an offset in
+// the bytes. The label means windows-1252, which moves a few bytes above ASCII
+// but none into it, and ASCII is all the scan compares.
+const decoder = new TextDecoder('latin1');
 
 type MetadataSpan = {
   key: string;
@@ -216,7 +205,7 @@ type HeadScan = {
 };
 
 const textToLatin1 = (text: string): string =>
-  bytesToLatin1(encoder.encode(text));
+  decoder.decode(encoder.encode(text));
 
 const createHeadScan = (filter: Partial<MetadataFilter>): HeadScan => ({
   resumeAt: 0,
@@ -306,16 +295,17 @@ const findSuperseded = (spans: readonly MetadataSpan[]): MetadataSpan[] => {
 };
 
 const spliceMetadata = (
-  head: string,
+  bytes: Uint8Array,
   spans: readonly MetadataSpan[],
-): string => {
-  let merged = '';
+): Uint8Array => {
+  const parts: Uint8Array[] = [];
   let cursor = 0;
   for (const span of findSuperseded(spans)) {
-    merged += head.slice(cursor, span.start);
+    parts.push(bytes.subarray(cursor, span.start));
     cursor = span.end;
   }
-  return merged + head.slice(cursor);
+  parts.push(bytes.subarray(cursor));
+  return concatUint8Array(parts);
 };
 
 const DEFAULT_MAX_BUFFERED_HEAD = 1024 * 1024;
@@ -324,19 +314,22 @@ export const dedupeHeadMetadataForTest = (
   head: string,
   filter: Partial<MetadataFilter> = {},
 ): string => {
-  const latin1 = bytesToLatin1(encoder.encode(head));
+  const bytes = encoder.encode(head);
   const scan = createHeadScan(filter);
-  const merged = scanHead(latin1, scan)
-    ? spliceMetadata(latin1, scan.spans)
-    : latin1;
-  return new TextDecoder().decode(latin1ToBytes(merged));
+  const merged = scanHead(decoder.decode(bytes), scan)
+    ? spliceMetadata(bytes, scan.spans)
+    : bytes;
+  return new TextDecoder().decode(merged);
 };
 
 export const dedupeHtmlMetadataStream = (
   filter: Partial<MetadataFilter> = {},
   maxBufferedHead = DEFAULT_MAX_BUFFERED_HEAD,
 ): TransformStream<Uint8Array, Uint8Array> => {
+  const chunks: Uint8Array[] = [];
   let html = '';
+  let tail = '';
+  let scanning = false;
   const scan = createHeadScan(filter);
   let buffering = true;
 
@@ -346,20 +339,27 @@ export const dedupeHtmlMetadataStream = (
         controller.enqueue(chunk);
         return;
       }
-      html += bytesToLatin1(chunk);
-      const finished = scanHead(html, scan);
+      chunks.push(chunk);
+      const text = decoder.decode(chunk);
+      // Reading a growing head again on every chunk is quadratic in its size,
+      // and a head React renders ends at `</head>`, so the scan starts there.
+      const recent = tail + text;
+      scanning ||= /<\/head/i.test(recent);
+      tail = recent.slice(1 - '</head'.length);
+      html += text;
+      const finished = scanning && scanHead(html, scan);
       if (!finished && html.length <= maxBufferedHead) {
         return;
       }
       buffering = false;
-      controller.enqueue(
-        latin1ToBytes(finished ? spliceMetadata(html, scan.spans) : html),
-      );
+      const bytes = concatUint8Array(chunks);
+      controller.enqueue(finished ? spliceMetadata(bytes, scan.spans) : bytes);
+      chunks.length = 0;
       html = '';
     },
     flush(controller) {
-      if (buffering && html) {
-        controller.enqueue(latin1ToBytes(html));
+      if (buffering && chunks.length) {
+        controller.enqueue(concatUint8Array(chunks));
       }
     },
   });
