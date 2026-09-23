@@ -46,6 +46,14 @@ test('claims its own module id, and only where it runs', async () => {
   ).resolves.toBe(undefined);
 });
 
+test('refuses a filter that is not an object', () => {
+  for (const mergeMetadata of [null, true, 'description', ['description']]) {
+    expect(() =>
+      htmlTransformPlugin({ mergeMetadata: mergeMetadata as never }),
+    ).toThrow('mergeMetadata must be a filter object or false');
+  }
+});
+
 test('refuses a filter field that is not a list of names', () => {
   for (const metaNames of ['description', { 0: 'description' }, [1]]) {
     expect(() =>
