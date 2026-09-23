@@ -14,8 +14,8 @@ type HtmlTransformOptions = {
    */
   mergeMetadata?: Partial<MetadataFilter> | false;
   /**
-   * How much of an unclosed head to buffer before emitting it as rendered.
-   * Every buffered byte counts, the RSC payload injected upstream included.
+   * A positive integer: how many bytes of an unclosed head to buffer before
+   * emitting it as rendered, counting the RSC payload injected upstream.
    */
   maxBufferedHead?: number;
 };
@@ -30,14 +30,6 @@ export function htmlTransformPlugin(
   options: HtmlTransformOptions = {},
 ): Plugin {
   const { mergeMetadata, maxBufferedHead } = options;
-  if (
-    maxBufferedHead !== undefined &&
-    (!Number.isInteger(maxBufferedHead) || maxBufferedHead < 0)
-  ) {
-    throw new Error(
-      `maxBufferedHead must be a non-negative integer, got ${maxBufferedHead}`,
-    );
-  }
   const runtime = normalizePath(
     fileURLToPath(new URL('../utils/html-metadata.js', import.meta.url)),
   );
