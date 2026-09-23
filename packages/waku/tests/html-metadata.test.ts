@@ -343,7 +343,8 @@ describe('dedupeClosedHead', () => {
   });
 
   test('fills in a filter field left undefined', () => {
-    // A plain-JS waku.config.js is not held to exactOptionalPropertyTypes.
+    // TypeScript allows one unless exactOptionalPropertyTypes is on, and it is
+    // off by default.
     const head =
       '<meta name="description" content="a"/>' +
       '<meta name="description" content="b"/>';

@@ -30,25 +30,6 @@ export function htmlTransformPlugin(
   options: HtmlTransformOptions = {},
 ): Plugin {
   const { mergeMetadata, maxBufferedHead } = options;
-  if (mergeMetadata !== undefined && mergeMetadata !== false) {
-    if (
-      typeof mergeMetadata !== 'object' ||
-      mergeMetadata === null ||
-      Array.isArray(mergeMetadata)
-    ) {
-      throw new Error('mergeMetadata must be a filter object or false');
-    }
-    for (const field of ['metaNames', 'metaProperties'] as const) {
-      const names = mergeMetadata[field];
-      if (
-        names !== undefined &&
-        (!Array.isArray(names) ||
-          names.some((name) => typeof name !== 'string'))
-      ) {
-        throw new Error(`mergeMetadata.${field} must be an array of strings`);
-      }
-    }
-  }
   if (
     maxBufferedHead !== undefined &&
     (!Number.isInteger(maxBufferedHead) || maxBufferedHead < 0)
