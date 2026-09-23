@@ -452,7 +452,10 @@ Root component is a special component that is rendered at the root of html docum
 export const Root = ({ children }) => {
   return (
     <html lang="en">
-      <head></head>
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
       <body>{children}</body>
     </html>
   );

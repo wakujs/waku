@@ -116,7 +116,7 @@ async function stopTracing(session: CDPSession): Promise<TraceEvent[]> {
   await session.send('Tracing.end');
   const stream = await tracingComplete;
   let trace = '';
-  for (;;) {
+  while (true) {
     const chunk = await session.send('IO.read', { handle: stream });
     trace += chunk.data;
     if (chunk.eof) {

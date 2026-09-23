@@ -9,6 +9,8 @@ const App = (_: { name: string }) => {
   return (
     <html>
       <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>e2e-rsc-asset</title>
       </head>
       <body>

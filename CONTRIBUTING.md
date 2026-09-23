@@ -128,8 +128,8 @@ incomplete.
   states.
 - Prefer plain functions and objects. Use a class only when required by a
   framework or platform contract.
-- Use `while (true)`, never `for (;;)`. Use recursion when the problem is
-  naturally recursive and the call depth is safe.
+- Use recursion when the problem is naturally recursive and the call depth is
+  safe.
 - Await or return promises. Do not leave asynchronous work floating.
 - Normalize configuration and optional inputs once near the boundary.
 
@@ -146,14 +146,17 @@ incomplete.
 
 ### Comments and documentation
 
-- If the code already says it, omit the comment.
+- Reach for a name before a comment. A comment that explains a binding, a
+  constant, or a whole function is describing something the name should say;
+  rename it, or split the function. Comment only what no name can carry.
 - Comment why a branch exists, which invariant must be preserved, or which
   external behavior requires a workaround.
-- Do not restate names or repeat the same fact in multiple places.
-- Treat a cluster of inline comments as a design signal. If a function needs
-  several of them to be followed, name the constant, rename the binding, or
-  split the function. The comment is usually describing something the code
-  should say.
+- Do not restate a name or type, in a comment or in JSDoc, and do not repeat
+  the same fact in multiple places.
+- Prefer the durable home: motivation belongs in the guides, edge cases in
+  tests. Comment only what neither can carry.
+- Write for the code as it stands. A comment that only makes sense against the
+  version it replaced belongs in the commit message.
 - `TODO`, `FIXME`, and `HACK` are acceptable when they describe an unresolved
   issue. Remove them only when the issue is actually resolved.
 - Public APIs should have complete JSDoc suitable for editor documentation.
@@ -162,13 +165,12 @@ incomplete.
   to read it in one pass. Explain what a caller must know, not how the
   implementation arrives there. Documentation that grows past a screenful
   usually means the API needs splitting rather than more prose.
-- Document non-obvious behavior and caveats without enumerating every edge case
-  already captured by tests.
 - Public unstable APIs should have the same useful editor documentation as
   other public APIs.
-- An exported symbol is not necessarily a public API. Internal exports should
-  use lean or no JSDoc unless the types cannot express an important contract.
-- Do not add narrating JSDoc that merely restates a symbol's name or type.
+- An exported symbol is not necessarily a public API. JSDoc is editor
+  documentation for callers, so a symbol no public entry point exposes gets
+  none; comment it like any other code.
+- An export that exists only for tests says so in its name.
 
 ### Tests
 

@@ -397,7 +397,10 @@ export type CreateInterceptor = (interceptor: HandlerInterceptor) => void;
 const DefaultRoot = ({ children }: { children: ReactNode }) => (
   <ErrorBoundary>
     <html>
-      <head />
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
       <body>{children}</body>
     </html>
   </ErrorBoundary>

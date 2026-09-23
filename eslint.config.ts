@@ -91,6 +91,10 @@ export default defineConfig(
       'no-restricted-syntax': [
         'error',
         {
+          selector: 'ForStatement:not([init]):not([test]):not([update])',
+          message: 'Use while (true) instead of for (;;).',
+        },
+        {
           selector: "TSQualifiedName[left.name='React']",
           message:
             'Import React types directly instead of using React.* namespace',

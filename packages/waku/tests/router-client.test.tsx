@@ -802,6 +802,9 @@ describe('router/client utilities', () => {
       throw 'boom-string';
     };
     try {
+      // Hoisted tags outlive the render that made them, so the head starts
+      // empty or these assertions would pass on an earlier test's leftovers.
+      document.head.replaceChildren();
       const first = await renderApp(
         <ErrorBoundary>
           <ThrowError />
@@ -811,6 +814,11 @@ describe('router/client utilities', () => {
         'Caught an unexpected error',
       );
       expect(first.container.textContent).toContain('Error: boom');
+      // The fallback renders its own document, so it carries these itself.
+      expect(document.head.querySelector('meta[charset]')).not.toBeNull();
+      expect(
+        document.head.querySelector('meta[name="viewport"]'),
+      ).not.toBeNull();
       first.unmount();
 
       const second = await renderApp(
