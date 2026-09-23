@@ -281,6 +281,23 @@ describe('dedupeHead', () => {
     ).toBe(`<meta name="${name}" content="page"/>`);
   });
 
+  test('matches a property exactly as written', () => {
+    // RDFa folds only a property's prefix, so `og:TITLE` is not `og:title`.
+    // The scan folds none of it, so it merges no two it should not.
+    const layout = '<meta property="og:title" content="layout"/>';
+    for (const property of ['og:TITLE', 'OG:title']) {
+      const page = `<meta property="${property}" content="page"/>`;
+      expect(dedupeHead(layout + page)).toBe(layout + page);
+    }
+    expect(
+      dedupeHead(
+        '<meta property="OG:Title" content="a"/>' +
+          '<meta property="OG:Title" content="b"/>',
+        { metaNames: [], metaProperties: ['OG:Title'] },
+      ),
+    ).toBe('<meta property="OG:Title" content="b"/>');
+  });
+
   test('matches a filter entry whatever case it is written in', () => {
     const head =
       '<meta name="Description" content="a"><meta name="Description" content="b">';

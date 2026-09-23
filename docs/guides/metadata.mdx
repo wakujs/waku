@@ -58,7 +58,8 @@ The keys that are merged are `title`, `meta[name="description"]`, and the Open
 Graph properties that hold a single value: `og:title`, `og:type`, `og:url`,
 `og:description`, `og:determiner`, `og:site_name` and `og:locale`. Each is
 merged on its own, so a layout can set `og:site_name` while a page sets
-`og:title`. Metadata names are matched case-insensitively, in ASCII.
+`og:title`. A `name` is matched in any ASCII case, and a `property` exactly as
+written.
 
 This matters most for consumers that do not run JavaScript — search engine and
 social-card crawlers read the served HTML, where without merging the layout's

@@ -185,11 +185,13 @@ const readMetadataKey = (
   if (tag.name !== 'meta') {
     return undefined;
   }
+  // HTML matches a `name` in any ASCII case. A `property` is RDFa, where only
+  // the prefix is, so it is matched as written rather than folded wrongly.
   const name = tag.attributes.get('name')?.toLowerCase();
   if (name !== undefined && filter.metaNames.includes(name)) {
     return 'name:' + name;
   }
-  const property = tag.attributes.get('property')?.toLowerCase();
+  const property = tag.attributes.get('property');
   if (property !== undefined && filter.metaProperties.includes(property)) {
     return 'property:' + property;
   }
@@ -231,15 +233,14 @@ type HeadScan = {
 
 // The scan reads a name out of latin1-decoded bytes, so a filter entry is
 // read the same way rather than as the string a config file spelled.
-const asScanned = (name: string): string =>
-  bytesToLatin1(encoder.encode(name)).toLowerCase();
+const asScanned = (name: string): string => bytesToLatin1(encoder.encode(name));
 
 const createHeadScan = (filter: Partial<MetadataFilter>): HeadScan => ({
   resumeAt: 0,
   spans: [],
   filter: {
     metaNames: (filter.metaNames ?? DEFAULT_METADATA_FILTER.metaNames).map(
-      asScanned,
+      (name) => asScanned(name).toLowerCase(),
     ),
     metaProperties: (
       filter.metaProperties ?? DEFAULT_METADATA_FILTER.metaProperties
