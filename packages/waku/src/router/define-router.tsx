@@ -28,6 +28,7 @@ import type {
   RoutePath,
 } from './isomorphic-utils/build-route-href.js';
 import {
+  encodePathname,
   encodeRoutePath,
   pathnameToRoutePath,
 } from './isomorphic-utils/route-path.js';
@@ -56,9 +57,9 @@ export function unstable_rerenderRoute(pathname?: string, query?: string) {
     getRerender()();
     return;
   }
-  const url = new URL('http://localhost');
-  url.pathname = pathnameToRoutePath(pathname);
-  const rscPath = encodeRoutePath(url.pathname);
+  const rscPath = encodeRoutePath(
+    encodePathname(pathnameToRoutePath(pathname)),
+  );
   getRerender()(rscPath, query && new URLSearchParams({ query }));
 }
 

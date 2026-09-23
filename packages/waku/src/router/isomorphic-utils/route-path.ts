@@ -20,6 +20,12 @@ export function pathnameToRoutePath(pathname: string): string {
   return pathname || '/';
 }
 
+export function encodePathname(pathname: string): string {
+  const url = new URL('http://localhost');
+  url.pathname = pathname;
+  return url.pathname;
+}
+
 export function getComponentIds(routePath: string): readonly string[] {
   const pathItems = routePath.split('/').filter(Boolean);
   const idSet = new Set<string>();
