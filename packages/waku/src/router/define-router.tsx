@@ -47,8 +47,8 @@ export type { ApiHandler, HandlerInterceptor };
  */
 export function unstable_rerenderRoute(): void;
 /**
- * Renders a route into the response of the current server action. `query` is
- * the search string without `?`.
+ * Renders a route into the response of the current server action. `pathname`
+ * may be decoded or percent-encoded. `query` is the search string without `?`.
  */
 export function unstable_rerenderRoute(pathname: string, query?: string): void;
 export function unstable_rerenderRoute(pathname?: string, query?: string) {
@@ -56,8 +56,8 @@ export function unstable_rerenderRoute(pathname?: string, query?: string) {
     getRerender()();
     return;
   }
-  const routePath = pathnameToRoutePath(pathname);
-  const rscPath = encodeRoutePath(routePath);
+  const url = new URL(pathnameToRoutePath(pathname), 'http://localhost');
+  const rscPath = encodeRoutePath(url.pathname);
   getRerender()(rscPath, query && new URLSearchParams({ query }));
 }
 
