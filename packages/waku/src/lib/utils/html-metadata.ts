@@ -33,8 +33,6 @@ const SCANNED_ELEMENTS = new Set([
   'meta',
 ]);
 
-// Past the end of what has arrived a character reads as undefined, which ends
-// every run below, so the scan waits for the next chunk rather than running on.
 type Char = string | undefined;
 
 const isSpace = (char: Char): boolean =>
@@ -84,13 +82,10 @@ const readTag = (html: string, start: number): Tag | undefined => {
       cursor++;
       continue;
     }
-    // An `=` in the name position starts an attribute name rather than
-    // ending an empty one, so the first character is always part of it.
     const attributeStart = cursor;
-    cursor++;
-    while (cursor < html.length && !endsAttributeName(html[cursor])) {
+    do {
       cursor++;
-    }
+    } while (cursor < html.length && !endsAttributeName(html[cursor]));
     const attribute = html.slice(attributeStart, cursor).toLowerCase();
     while (cursor < html.length && isSpace(html[cursor])) {
       cursor++;
@@ -145,15 +140,9 @@ const findRawTextEnd = (html: string, from: number, name: string): number => {
 
 // `<!--` then `<script` puts the tokenizer in its double escaped state, where
 // the next `</script>` does not close the element.
-const SCRIPT_OPEN_REGEXP = /<script/i;
-
 const entersDoubleEscape = (content: string): boolean =>
-  content.includes('<!--') && SCRIPT_OPEN_REGEXP.test(content);
+  content.includes('<!--') && /<script/i.test(content);
 
-// What a tag in a head names itself with. A `<meta>` carrying two of them,
-// or a `<title>` carrying any, holds an identity besides the one the splice
-// would place: dropping the tag would take that identity's value out of the
-// document, and keeping it would shadow whatever supersedes the other.
 const NAMING_ATTRIBUTES = [
   'charset',
   'http-equiv',
@@ -169,9 +158,6 @@ const namesItselfTwice = (tag: Tag): boolean => {
   return tag.name === 'title' ? names > 0 : names > 1;
 };
 
-// React leaves out an attribute whose value is undefined but renders an empty
-// `<title>` whatever its children were, so a `<meta>` without `content`
-// declared nothing while a title always declares what it holds.
 const declaresValue = (tag: Tag): boolean =>
   tag.name === 'title' || tag.attributes.has('content');
 
@@ -185,8 +171,6 @@ const readMetadataKey = (
   if (tag.name !== 'meta') {
     return undefined;
   }
-  // HTML matches a `name` in any ASCII case. A `property` is RDFa, where only
-  // the prefix is, so it is matched as written rather than folded wrongly.
   const name = tag.attributes.get('name')?.toLowerCase();
   if (name !== undefined && filter.metaNames.includes(name)) {
     return 'name:' + name;
@@ -200,8 +184,8 @@ const readMetadataKey = (
 
 const encoder = new TextEncoder();
 
-// The splice cuts the head at offsets this string yields, so a byte has to
-// stay one character: utf-8 would collapse a multi-byte sequence into one.
+// Each byte becomes one character and back, so the head goes out as exactly
+// the bytes it came in as.
 const bytesToLatin1 = (bytes: Uint8Array): string => {
   let text = '';
   for (const byte of bytes) {
@@ -231,20 +215,19 @@ type HeadScan = {
   filter: MetadataFilter;
 };
 
-// The scan reads a name out of latin1-decoded bytes, so a filter entry is
-// read the same way rather than as the string a config file spelled.
-const asScanned = (name: string): string => bytesToLatin1(encoder.encode(name));
+const textToLatin1 = (text: string): string =>
+  bytesToLatin1(encoder.encode(text));
 
 const createHeadScan = (filter: Partial<MetadataFilter>): HeadScan => ({
   resumeAt: 0,
   spans: [],
   filter: {
     metaNames: (filter.metaNames ?? DEFAULT_METADATA_FILTER.metaNames).map(
-      (name) => asScanned(name).toLowerCase(),
+      (name) => textToLatin1(name).toLowerCase(),
     ),
     metaProperties: (
       filter.metaProperties ?? DEFAULT_METADATA_FILTER.metaProperties
-    ).map(asScanned),
+    ).map(textToLatin1),
   },
 });
 
@@ -252,7 +235,6 @@ const scanHead = (html: string, scan: HeadScan): boolean => {
   while (true) {
     const found = html.indexOf('<', scan.resumeAt);
     const start = found === -1 ? html.length : found;
-    // A parser ends the head at text, and puts what follows it in the body.
     for (let i = scan.resumeAt; i < start; i++) {
       if (!isSpace(html[i])) {
         scan.spans.length = 0;
@@ -276,8 +258,6 @@ const scanHead = (html: string, scan: HeadScan): boolean => {
       if (tag.name === 'head') {
         return true;
       }
-      // A parser ends the head at `</html>` too, and carries on in a body the
-      // scan does not model. Every other close tag here it ignores.
       if (tag.name === 'html') {
         scan.spans.length = 0;
         return true;
@@ -312,9 +292,6 @@ const scanHead = (html: string, scan: HeadScan): boolean => {
   }
 };
 
-// A tag that declared nothing is superseded by one that did, wherever it sits,
-// and supersedes none itself: dropping the last tag to declare a name would
-// take that name out of the document.
 const findSuperseded = (spans: readonly MetadataSpan[]): MetadataSpan[] => {
   const lastStartByKey = new Map<string, number>();
   for (const span of spans) {
