@@ -28,7 +28,6 @@ import type {
   RoutePath,
 } from './isomorphic-utils/build-route-href.js';
 import {
-  encodePathname,
   encodeRoutePath,
   pathnameToRoutePath,
 } from './isomorphic-utils/route-path.js';
@@ -41,6 +40,12 @@ export {
   setNonce as unstable_setNonce,
 };
 export type { ApiHandler, HandlerInterceptor };
+
+const encodePathname = (pathname: string) => {
+  const url = new URL('http://localhost');
+  url.pathname = pathname;
+  return url.pathname;
+};
 
 /**
  * Renders the route the current server action was called from into its
