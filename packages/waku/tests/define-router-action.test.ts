@@ -322,7 +322,14 @@ describe('define-router action requests', () => {
     );
   });
 
-  it('percent-encodes a non-ASCII pathname to rerender', async () => {
+  it.each([
+    ['/日本', '/%E6%97%A5%E6%9C%AC'],
+    ['/%E6%97%A5%E6%9C%AC', '/%E6%97%A5%E6%9C%AC'],
+    ['/a?b', '/a%3Fb'],
+    ['/a%3Fb', '/a%3Fb'],
+    ['/a#b', '/a%23b'],
+    ['/a%23b', '/a%23b'],
+  ])('rerenders pathname %s as %s', async (pathname, routePath) => {
     const { handleRequest } = unstable_defineRouter({
       getConfigs: async () => [
         {
@@ -342,7 +349,7 @@ describe('define-router action requests', () => {
       {
         type: 'call',
         pathname: '/RSC/F/actions/submit.txt',
-        fn: async () => unstable_rerenderRoute('/日本'),
+        fn: async () => unstable_rerenderRoute(pathname),
         args: [],
         req: new Request('http://localhost/RSC/F/actions/submit.txt', {
           method: 'POST',
@@ -357,8 +364,8 @@ describe('define-router action requests', () => {
 
     expect(renderRsc).toHaveBeenCalledWith(
       expect.objectContaining({
-        [ROUTE_ID]: ['/%E6%97%A5%E6%9C%AC', ''],
-        'route:/%E6%97%A5%E6%9C%AC': 'route',
+        [ROUTE_ID]: [routePath, ''],
+        [`route:${routePath}`]: 'route',
       }),
       expect.anything(),
     );

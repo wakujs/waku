@@ -56,7 +56,9 @@ export function unstable_rerenderRoute(pathname?: string, query?: string) {
     getRerender()();
     return;
   }
-  const url = new URL(pathnameToRoutePath(pathname), 'http://localhost');
+  const url = new URL('http://localhost');
+  // unlike parsing, the setter encodes `?` and `#` instead of splitting on them
+  url.pathname = pathnameToRoutePath(pathname);
   const rscPath = encodeRoutePath(url.pathname);
   getRerender()(rscPath, query && new URLSearchParams({ query }));
 }
