@@ -54,7 +54,8 @@ const encodePathname = (pathname: string) => {
 export function unstable_rerenderRoute(): void;
 /**
  * Renders a route into the response of the current server action. `pathname`
- * may be decoded or percent-encoded. `query` is the search string without `?`.
+ * may contain unescaped non-ASCII characters, and its percent escapes are kept.
+ * `query` is the search string without `?`.
  */
 export function unstable_rerenderRoute(pathname: string, query?: string): void;
 export function unstable_rerenderRoute(pathname?: string, query?: string) {
