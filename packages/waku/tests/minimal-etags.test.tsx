@@ -418,6 +418,22 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
     expect(sentEtags()).toEqual({ widget: 'etag-widget', page: 'etag-page-2' });
   });
 
+  it('sends a non-ASCII slot id in a header a browser accepts', async () => {
+    testHoisted.elements = {
+      'slice:日本': <div>s</div>,
+      [ETAGS_ID]: { 'slice:日本': IMMUTABLE_ETAG },
+    };
+    const base = await fetchRsc('R/base');
+    await fetchRsc('R/bar', undefined, { unstable_base: base });
+
+    const lastCall = vi.mocked(globalThis.fetch).mock.calls.at(-1);
+    const headers = new Headers(
+      (lastCall?.[1] as RequestInit | undefined)?.headers,
+    );
+    expect(headers.get(ETAGS_HEADER)).toMatch(/^[\x20-\x7e]*$/);
+    expect(sentEtags()).toEqual({ 'slice:日本': IMMUTABLE_ETAG });
+  });
+
   it('caches the etag of a slot a response newly introduces in an instant-nav merge', async () => {
     // A slot only the response introduces lands via the second swr commit,
     // and its etag must enter the cache like any other.
