@@ -322,6 +322,55 @@ describe('define-router action requests', () => {
     );
   });
 
+  it.each([
+    ['/日本', '/%E6%97%A5%E6%9C%AC'],
+    ['/%E6%97%A5%E6%9C%AC', '/%E6%97%A5%E6%9C%AC'],
+    ['/a?b', '/a%3Fb'],
+    ['/a%3Fb', '/a%3Fb'],
+    ['/a#b', '/a%23b'],
+    ['/a%23b', '/a%23b'],
+  ])('rerenders pathname %s as %s', async (pathname, routePath) => {
+    const { handleRequest } = unstable_defineRouter({
+      getConfigs: async () => [
+        {
+          type: 'route' as const,
+          path: [{ type: 'group' as const, name: 'name' }],
+          isStatic: false,
+          rootElement: { isStatic: false, renderer: () => 'root' },
+          routeElement: { isStatic: false, renderer: () => 'route' },
+          elements: {},
+        },
+      ],
+    });
+
+    const renderRsc = vi.fn().mockResolvedValue(makeStream());
+
+    await handleRequest(
+      {
+        type: 'call',
+        pathname: '/RSC/F/actions/submit.txt',
+        fn: async () => unstable_rerenderRoute(pathname),
+        args: [],
+        req: new Request('http://localhost/RSC/F/actions/submit.txt', {
+          method: 'POST',
+        }),
+      },
+      {
+        renderRsc,
+        renderHtml: vi.fn(),
+        loadBuildMetadata: vi.fn(),
+      },
+    );
+
+    expect(renderRsc).toHaveBeenCalledWith(
+      expect.objectContaining({
+        [ROUTE_ID]: [routePath, ''],
+        [`route:${routePath}`]: 'route',
+      }),
+      expect.anything(),
+    );
+  });
+
   it('lets api routes handle action requests when no route matches', async () => {
     const apiHandler = vi.fn().mockResolvedValue(new Response('api'));
     const actionFn = vi.fn();

@@ -5,7 +5,15 @@
 import { Suspense, act, useEffect } from 'react';
 import type { ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import {
   ETAGS_HEADER,
   ETAGS_ID,
@@ -22,8 +30,8 @@ import {
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
   unstable_combineElements as combineElements,
-  unstable_fetchRsc as fetchRsc,
   unstable_isImmutableElement as isImmutableElement,
+  useFetchRsc_UNSTABLE,
   useMergeElements_UNSTABLE,
 } from '../src/minimal/client.js';
 import { unstable_buildElements as buildElements } from '../src/minimal/server.js';
@@ -50,6 +58,7 @@ const flush = async () => {
 };
 
 const useRefetch = () => {
+  const fetchRsc = useFetchRsc_UNSTABLE();
   const mergeElements = useMergeElements_UNSTABLE();
   return (
     rscPath: string,
@@ -82,6 +91,24 @@ const renderApp = async (element: ReactElement) => {
     },
   };
 };
+
+let fetchRsc: ReturnType<typeof useFetchRsc_UNSTABLE>;
+
+beforeAll(async () => {
+  (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
+  const Probe = () => {
+    const rootlessFetch = useFetchRsc_UNSTABLE();
+    useEffect(() => {
+      fetchRsc = rootlessFetch;
+    });
+    return null;
+  };
+  const root = createRoot(document.createElement('div'));
+  await act(async () => {
+    root.render(<Probe />);
+  });
+  act(() => root.unmount());
+});
 
 beforeEach(() => {
   (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
@@ -389,6 +416,22 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
     testHoisted.elements = {};
     await fetchRsc('R/baz', undefined, { unstable_base: result });
     expect(sentEtags()).toEqual({ widget: 'etag-widget', page: 'etag-page-2' });
+  });
+
+  it('sends a non-ASCII slot id in a header a browser accepts', async () => {
+    testHoisted.elements = {
+      'slice:日本': <div>s</div>,
+      [ETAGS_ID]: { 'slice:日本': IMMUTABLE_ETAG },
+    };
+    const base = await fetchRsc('R/base');
+    await fetchRsc('R/bar', undefined, { unstable_base: base });
+
+    const lastCall = vi.mocked(globalThis.fetch).mock.calls.at(-1);
+    const headers = new Headers(
+      (lastCall?.[1] as RequestInit | undefined)?.headers,
+    );
+    expect(headers.get(ETAGS_HEADER)).toMatch(/^[\x20-\x7e]*$/);
+    expect(sentEtags()).toEqual({ 'slice:日本': IMMUTABLE_ETAG });
   });
 
   it('caches the etag of a slot a response newly introduces in an instant-nav merge', async () => {

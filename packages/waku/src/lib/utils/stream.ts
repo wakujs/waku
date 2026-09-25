@@ -38,7 +38,7 @@ export const bytesToStream = (bytes: Uint8Array): ReadableStream =>
     },
   });
 
-function concatUint8Array(chunks: readonly Uint8Array[]): Uint8Array {
+export function concatUint8Array(chunks: readonly Uint8Array[]): Uint8Array {
   if (chunks.length === 1) {
     return chunks[0]!;
   }

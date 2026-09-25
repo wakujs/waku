@@ -26,6 +26,8 @@ async function submitPermalink(prev: string, _formData: FormData) {
 export const MixedForms = () => (
   <html>
     <head>
+      <meta charSet="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
       <title>Mixed Forms</title>
     </head>
     <body>

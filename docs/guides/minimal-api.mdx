@@ -428,10 +428,13 @@ Props:
 Important behavior:
 
 - `initialRscPath` defaults to `''`.
-- `Root` is required for `Slot`, `Children`, and `useMergeElements`.
+- `Root` is required for `Slot`, `Children`, `useMergeElements`,
+  `useRegisterRscEnhancer`, and `useRegisterRscReloadListener`. Outside a
+  `Root`, `useFetchRsc` still works but runs no enhancers.
 - Each `Root` owns its client store. Bare server action calls use the `Root`
   that was most recently mounted when the request starts.
-- `Root` injects default head tags for charset, viewport, and generator.
+- `Root` injects a `generator` meta tag. Charset and viewport are yours to
+  declare.
 - For SSR or SSG, use `hydrateRoot(document, rootElement)` when `globalThis.__WAKU_HYDRATE__` is set.
 - For purely client-side rendering, use `createRoot(document).render(rootElement)`.
 
@@ -607,7 +610,7 @@ Important behavior:
 - The result is `{ elements, value }`, where `value` is a server function's return value. The elements never carry Minimal's reserved keys.
 - Build a changed element map with `unstable_combineElements`. Each slot's etag stays with the map Minimal made it in, so a result rebuilt with a spread arrives without them and the server stops skipping the slots the Root already holds.
 - Enhancers run for the Root's fetches, the server actions it receives, and its development reloads, but not for its initial payload. A bare server action goes to the Root mounted last, which is not necessarily the one that rendered the component calling it.
-- A higher `order`, the optional second argument that defaults to `0`, wraps a lower one, so it runs earlier on the request and later on the result. At the same order a later registration wraps an earlier one. The Waku router registers its own enhancer at order 100. An enhancer above that order must not delay the result it returns. The router applies an action's route change while the chain is still unwinding, and the elements arrive only once the whole chain resolves, so a delay above it can paint a route whose slot has not been merged.
+- A higher `order`, the optional second argument that defaults to `0`, wraps a lower one, so it runs earlier on the request and later on the result. At the same order, a later registration wraps an earlier one. The Waku router registers its own enhancer at order 100. Enhancers above that order must return the result without introducing an asynchronous delay after the inner enhancer resolves. The router acts on an action's result while the chain is still unwinding: it applies the route change and decides whether a rerender of the page the action came from still applies. Minimal merges the returned elements only after the whole chain resolves. Delaying the result above the router can therefore render the new route before its slot has been merged, so `Slot` throws, or let a navigation started during the delay be overwritten when the action's elements are applied.
 - A request keeps the enhancers it started with, so unregistering does not change a response already on its way.
 - The initial payload is a known limitation. A `Root` requests it before any descendant can register, so an application that has to reach that one request wraps `globalThis.fetch` itself.
 

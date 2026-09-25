@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test';
+import type { Browser, Page } from '@playwright/test';
 import {
   prepareNormalSetup,
   test,
@@ -7,6 +8,21 @@ import {
 } from './utils.js';
 
 const startApp = prepareNormalSetup('fs-router');
+
+const checkWithoutJs = async (
+  browser: Browser,
+  url: string,
+  check: (page: Page) => Promise<void>,
+): Promise<void> => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  try {
+    const page = await context.newPage();
+    await page.goto(url);
+    await check(page);
+  } finally {
+    await context.close();
+  }
+};
 
 test.describe('fs-router', () => {
   let port: number;
@@ -650,5 +666,71 @@ test.describe('fs-router', () => {
         name: 'Subroute Catch-All: test/deep/path',
       }),
     ).toBeVisible();
+  });
+
+  test('metadata: page overrides layout without JS', async ({ browser }) => {
+    // Crawlers and social scrapers read this path, not the hydrated one.
+    await checkWithoutJs(
+      browser,
+      `http://localhost:${port}/metadata`,
+      async (page) => {
+        await expect(page.locator('title')).toHaveCount(1);
+        await expect(page).toHaveTitle('Metadata Page');
+        const description = page.locator('meta[name="description"]');
+        await expect(description).toHaveCount(1);
+        await expect(description).toHaveAttribute(
+          'content',
+          'page description',
+        );
+        const ogTitle = page.locator('meta[property="og:title"]');
+        await expect(ogTitle).toHaveCount(1);
+        await expect(ogTitle).toHaveAttribute('content', 'page og title');
+        // only the layout declares this one, so it survives untouched
+        const ogSiteName = page.locator('meta[property="og:site_name"]');
+        await expect(ogSiteName).toHaveCount(1);
+        await expect(ogSiteName).toHaveAttribute(
+          'content',
+          'layout og site name',
+        );
+      },
+    );
+  });
+
+  test('metadata: layout applies when the page declares none', async ({
+    browser,
+  }) => {
+    await checkWithoutJs(
+      browser,
+      `http://localhost:${port}/metadata/inherited`,
+      async (page) => {
+        await expect(page.locator('title')).toHaveCount(1);
+        await expect(page).toHaveTitle('Metadata Layout');
+      },
+    );
+  });
+
+  test('metadata: the merged title survives hydration', async ({ page }) => {
+    // Where React puts the tags it re-adds differs between dev and build, so
+    // only the resolved title is a guarantee.
+    await page.goto(`http://localhost:${port}/metadata`);
+    await waitForHydration(page);
+    await expect(page).toHaveTitle('Metadata Page');
+  });
+
+  test('metadata: viewport is not deduplicated', async ({ browser }) => {
+    // Deliberate: a key resolved by its last occurrence cannot be merged.
+    await checkWithoutJs(
+      browser,
+      `http://localhost:${port}/metadata/viewport`,
+      async (page) => {
+        const viewport = page.locator('meta[name="viewport"]');
+        await expect(viewport).toHaveCount(2);
+        await expect(viewport.nth(0)).toHaveAttribute(
+          'content',
+          'width=device-width, initial-scale=1',
+        );
+        await expect(viewport.nth(1)).toHaveAttribute('content', 'width=400');
+      },
+    );
   });
 });

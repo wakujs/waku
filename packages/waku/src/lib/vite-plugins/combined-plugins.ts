@@ -10,6 +10,7 @@ import { environmentsPlugin } from './environments.js';
 import { extraPlugins } from './extra-plugins.js';
 import { fsRouterTypegenPlugin } from './fs-router-typegen.js';
 import { htmlShellPlugin } from './html-shell.js';
+import { htmlTransformPlugin } from './html-transform.js';
 import { notFoundPlugin } from './not-found.js';
 import { patchReactDomPlugin } from './patch-react-dom.js';
 import { patchRsdwPlugin } from './patch-rsdw.js';
@@ -61,6 +62,7 @@ export function combinedPlugins(config: Required<Config>): PluginOption {
     staticBuildPlugin(config),
     privateDirPlugin(config),
     htmlShellPlugin(),
+    htmlTransformPlugin(),
     fsRouterTypegenPlugin(config),
   ];
   return [

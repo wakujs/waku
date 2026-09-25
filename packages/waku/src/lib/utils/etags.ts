@@ -37,4 +37,7 @@ export const parseClientEtags = (serialized: string | null): Etags => {
 };
 
 export const serializeClientEtags = (etags: Etags): string =>
-  JSON.stringify(etags);
+  JSON.stringify(etags).replace(
+    /[\u007f-\uffff]/g,
+    (char) => '\\u' + char.charCodeAt(0).toString(16).padStart(4, '0'),
+  );

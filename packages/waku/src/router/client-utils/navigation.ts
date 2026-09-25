@@ -480,10 +480,6 @@ export const useNavigation = (
         });
         if (!(IS_ORIGIN_ID in result.elements)) {
           if (Reflect.ownKeys(result.elements).length) {
-            // TODO: this commits the route while the chain is still unwinding,
-            // so an enhancer above this order that delays the result paints the
-            // route before its slot is merged. Return the route keys in
-            // result.elements instead, so Minimal applies both in one merge.
             handleActionElements(result.elements);
           }
           return result;
