@@ -8,11 +8,10 @@ import {
   useState,
 } from 'react';
 import {
-  unstable_combineElements as combineElements,
   useMergeElements_UNSTABLE as useMergeElements,
-  useRegisterRscEnhancer_UNSTABLE as useRegisterRscEnhancer,
   useRegisterRscReloadListener_UNSTABLE as useRegisterRscReloadListener,
 } from '../../minimal/client.js';
+import { useActionRouting } from '../client-core-utils/action-routing.js';
 import { useRouterCache } from '../client-core-utils/caches.js';
 import { has404FromElements } from '../client-core-utils/element-meta.js';
 import { isFollowable } from '../client-core-utils/error-route.js';
@@ -27,12 +26,7 @@ import {
   parseRoute,
 } from '../client-core-utils/route-url.js';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
-import {
-  ACTION_LOCATION_HEADER,
-  IS_ORIGIN_ID,
-  IS_STATIC_ID,
-  ROUTE_ID,
-} from '../isomorphic-utils/route-path.js';
+import { IS_STATIC_ID, ROUTE_ID } from '../isomorphic-utils/route-path.js';
 import {
   canPaintInstantOverlay,
   useStartInstantPaint,
@@ -50,8 +44,6 @@ import type { RouterState } from './router-state.js';
 import { scrollToHash, shouldScrollForRouteChange } from './scroll.js';
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
-
-const ACTION_ENHANCER_ORDER = 100;
 
 type HistoryIntent = ChangeRouteOptions['history'];
 
@@ -108,7 +100,6 @@ export const useNavigation = (
 
   const startInstantPaint = useStartInstantPaint(getElements, reloadWithUrl);
   const mergeElements = useMergeElements();
-  const registerRscEnhancer = useRegisterRscEnhancer();
   const registerRscReloadListener = useRegisterRscReloadListener();
   const [navigationError, setNavigationError] = useState<NavigationError>();
   useEffect(() => {
@@ -428,24 +419,13 @@ export const useNavigation = (
     ],
   );
 
-  // an action a descendant starts in a passive effect must find this enhancer
-  useLayoutEffect(() => {
-    const handleActionElements = (nextElements: Record<string, unknown>) => {
-      cache.learnStaticFromElements(nextElements);
-      const { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic } = nextElements;
-      if (!routeData) {
-        return;
-      }
-      const [path, query] = routeData as [string, string];
-      const settledRoute = getSettledRoute();
-      if (
-        settledRoute.path === path &&
-        (isStatic || settledRoute.query === query)
-      ) {
-        return;
-      }
-      const nextRoute = { path, query, hash: '' };
-      const is404 = path === '/404';
+  const getPendingRoute = useCallback(
+    () => pendingNavigationRef.current?.route,
+    [],
+  );
+  const commitActionRoute = useCallback(
+    (nextRoute: RouteProps) => {
+      const is404 = nextRoute.path === '/404';
       dispatchChangeRoute(changeRoute, nextRoute, {
         refetch: false,
         shouldScroll: false,
@@ -457,50 +437,14 @@ export const useNavigation = (
           console.error('Error while handling route updates:', error);
         }
       });
-    };
-    return registerRscEnhancer(
-      (next) => async (rscPath, rscParams, options) => {
-        if (options.type !== 'call') {
-          return next(rscPath, rscParams, options);
-        }
-        const origin = getSettledRoute();
-        const result = await next(rscPath, rscParams, {
-          ...options,
-          fetch: (input, init) => {
-            const headers = new Headers(
-              init?.headers ??
-                (input instanceof Request ? input.headers : undefined),
-            );
-            headers.set(
-              ACTION_LOCATION_HEADER,
-              origin.query ? origin.path + '?' + origin.query : origin.path,
-            );
-            return options.fetch(input, { ...init, headers });
-          },
-        });
-        if (!(IS_ORIGIN_ID in result.elements)) {
-          if (Reflect.ownKeys(result.elements).length) {
-            handleActionElements(result.elements);
-          }
-          return result;
-        }
-        const pending = pendingNavigationRef.current;
-        // React holds a navigation back until a pending action settles
-        if (
-          (pending && !isSameRscRoute(pending.route, origin)) ||
-          !isSameRscRoute(getSettledRoute(), origin)
-        ) {
-          return { ...result, elements: {} };
-        }
-        const elements = combineElements({}, result.elements, {
-          unstable_filter: (key) => key !== IS_ORIGIN_ID,
-        });
-        handleActionElements(elements);
-        return { ...result, elements };
-      },
-      ACTION_ENHANCER_ORDER,
-    );
-  }, [cache, changeRoute, getSettledRoute, registerRscEnhancer]);
+    },
+    [changeRoute],
+  );
+  useActionRouting({
+    getSettledRoute,
+    getPendingRoute,
+    onRouteChange: commitActionRoute,
+  });
 
   useEffect(() => {
     const callback = () => {
