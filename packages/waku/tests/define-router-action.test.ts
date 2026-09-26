@@ -329,6 +329,8 @@ describe('define-router action requests', () => {
     ['/a%3Fb', '/a%3Fb'],
     ['/a#b', '/a%23b'],
     ['/a%23b', '/a%23b'],
+    ['/a/.', '/a'],
+    ['/a/b/..', '/a'],
   ])('rerenders pathname %s as %s', async (pathname, routePath) => {
     const { handleRequest } = unstable_defineRouter({
       getConfigs: async () => [
@@ -367,6 +369,54 @@ describe('define-router action requests', () => {
         [ROUTE_ID]: [routePath, ''],
         [`route:${routePath}`]: 'route',
       }),
+      expect.anything(),
+    );
+  });
+
+  it('rejects a relative pathname to rerender', () => {
+    expect(() => unstable_rerenderRoute('a')).toThrow(
+      'Pathname must start with `/`',
+    );
+  });
+
+  it.each([
+    ['q=a b', 'q=a+b'],
+    ['q=日本', 'q=%E6%97%A5%E6%9C%AC'],
+  ])('rerenders query %s as %s', async (query, routeQuery) => {
+    const { handleRequest } = unstable_defineRouter({
+      getConfigs: async () => [
+        {
+          type: 'route' as const,
+          path: [{ type: 'literal' as const, name: 'search' }],
+          isStatic: false,
+          rootElement: { isStatic: false, renderer: () => 'root' },
+          routeElement: { isStatic: false, renderer: () => 'route' },
+          elements: {},
+        },
+      ],
+    });
+
+    const renderRsc = vi.fn().mockResolvedValue(makeStream());
+
+    await handleRequest(
+      {
+        type: 'call',
+        pathname: '/RSC/F/actions/submit.txt',
+        fn: async () => unstable_rerenderRoute('/search', query),
+        args: [],
+        req: new Request('http://localhost/RSC/F/actions/submit.txt', {
+          method: 'POST',
+        }),
+      },
+      {
+        renderRsc,
+        renderHtml: vi.fn(),
+        loadBuildMetadata: vi.fn(),
+      },
+    );
+
+    expect(renderRsc).toHaveBeenCalledWith(
+      expect.objectContaining({ [ROUTE_ID]: ['/search', routeQuery] }),
       expect.anything(),
     );
   });

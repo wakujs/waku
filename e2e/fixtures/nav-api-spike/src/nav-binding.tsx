@@ -223,8 +223,7 @@ const NavBinding = ({ fallbackRoute }: { fallbackRoute: RouteProps }) => {
     () => getRouteFromElements(resolvedRef.current) ?? routeFallback,
     [routeFallback],
   );
-  // intercept commits the URL before the route loads. Compare it with the URL
-  // the route committed at, not with the route: a 404 keeps the requested URL.
+  // intercept commits the URL before the route loads
   const getPendingRoute = useCallback(
     () =>
       ownsNavigation && window.location.href !== settledHrefRef.current
@@ -333,8 +332,7 @@ const NavBinding = ({ fallbackRoute }: { fallbackRoute: RouteProps }) => {
         lastFollowRef.current = null;
       }
       if (info?.fromAction) {
-        // the action's response carries the route's elements. Intercept even
-        // when the url parses to the current route, or the document reloads.
+        // the action's response carries the route's elements
         event.intercept({ scroll: 'manual', focusReset: 'manual' });
         return;
       }
