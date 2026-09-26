@@ -415,6 +415,20 @@ test.describe('nav-api-spike', () => {
     await expect(page).toHaveURL(/\/rerender-action$/);
   });
 
+  test('an action rerenders the 404 page it was called from', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    await page.getByTestId('go-missing').click();
+    await expect(page.getByTestId('not-found')).toHaveText('Custom 404');
+    const count = page.getByTestId('not-found-count');
+    const before = Number(await count.textContent());
+    await page.getByTestId('not-found-rerender').click();
+    await expect(count).toHaveText(String(before + 1));
+    await expect(page).toHaveURL(/\/missing$/);
+  });
+
   test('an action that renders another route moves the address bar', async ({
     page,
   }) => {

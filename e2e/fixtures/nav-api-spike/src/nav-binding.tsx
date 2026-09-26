@@ -193,8 +193,10 @@ const NavBinding = ({ fallbackRoute }: { fallbackRoute: RouteProps }) => {
   const cache = useRouterCache();
   const routeFallback = useInitialRoute(fallbackRoute);
   const resolvedRef = useRef(elements);
+  const settledHrefRef = useRef<string>(undefined);
   useLayoutEffect(() => {
     resolvedRef.current = elements;
+    settledHrefRef.current = window.location.href;
   }, [elements]);
   const has404 = has404FromElements(elements);
   // hash-only navigations skip load; the host still has to report the current hash
@@ -221,10 +223,13 @@ const NavBinding = ({ fallbackRoute }: { fallbackRoute: RouteProps }) => {
     () => getRouteFromElements(resolvedRef.current) ?? routeFallback,
     [routeFallback],
   );
-  // intercept commits the URL before the route loads
+  // intercept commits the URL before the route loads. Compare it with the URL
+  // the route committed at, not with the route: a 404 keeps the requested URL.
   const getPendingRoute = useCallback(
     () =>
-      ownsNavigation ? parseRoute(new URL(window.location.href)) : undefined,
+      ownsNavigation && window.location.href !== settledHrefRef.current
+        ? parseRoute(new URL(window.location.href))
+        : undefined,
     [ownsNavigation],
   );
   const commitActionRoute = useCallback(
