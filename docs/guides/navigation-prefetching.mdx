@@ -179,6 +179,8 @@ Because an instant navigation commits before the server responds, it reconciles 
 
 An instant navigation that can commit from cache, or that needs no fetch, commits urgently rather than inside a React transition, since a transition would suppress the immediate skeleton. A `<ViewTransition>` therefore does not animate that commit. When the shell is not cached, navigation waits for the response and commits the destination in a transition; `useNavigationStatus_UNSTABLE()` reports `pending` for that wait. When the cache commit is available, the shell itself is the pending state.
 
+When an instant navigation paints a cached shell, the dynamic slots the client already had lose their etags, including slots from earlier pages and slots that opted in with [`unstable_getEtag`](/guides/explicit-caching#etags-skipping-unchanged-payloads). The next regular navigation or server action that includes such a slot has the server render and send it again, and the slot gets its etag back. Prefetches are not affected, because they send the etags of the prefetched response. Instant navigation suits dynamic parts that change often or are cheap to render. If your app relies on etags to skip costly dynamic slots, pair them with `cache.rsc` so the server replays the cached subtree instead of rendering it again, or do not use `unstable_instant`.
+
 ## Pending UI
 
 A descendant of `<Link>` can read the navigation status with `useNavigationStatus_UNSTABLE()` and render pending UI while a navigation transition is in progress. It works like React's `useFormStatus`: it reflects the nearest enclosing `<Link>`, and `pending` stays `true` until the destination route's async components resolve (including client-only Suspense).
