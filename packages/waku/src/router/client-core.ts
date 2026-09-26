@@ -1,5 +1,7 @@
 'use client';
 
+export { useActionRouting as useActionRouting_UNSTABLE } from './client-core-utils/action-routing.js';
+
 export {
   createRscParams as unstable_createRscParams,
   useRouterCache as useRouterCache_UNSTABLE,

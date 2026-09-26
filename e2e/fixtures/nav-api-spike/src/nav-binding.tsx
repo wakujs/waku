@@ -37,6 +37,7 @@ import {
   unstable_isFollowable as isFollowable,
   unstable_load as load,
   unstable_parseRoute as parseRoute,
+  useActionRouting_UNSTABLE as useActionRouting,
   useInitialRoute_UNSTABLE as useInitialRoute,
   useInitialRscParams_UNSTABLE as useInitialRscParams,
   useRouterCache_UNSTABLE as useRouterCache,
@@ -216,6 +217,33 @@ const NavBinding = ({ fallbackRoute }: { fallbackRoute: RouteProps }) => {
     return fromElements ? { ...fromElements, hash } : routeFallback;
   }, [elements, routeFallback, hash]);
 
+  const getSettledRoute = useCallback(
+    () => getRouteFromElements(resolvedRef.current) ?? routeFallback,
+    [routeFallback],
+  );
+  // intercept commits the URL before the route loads
+  const getPendingRoute = useCallback(
+    () =>
+      ownsNavigation ? parseRoute(new URL(window.location.href)) : undefined,
+    [ownsNavigation],
+  );
+  const commitActionRoute = useCallback(
+    (next: RouteProps) => {
+      // the 404 route renders where the user already is
+      if (ownsNavigation && next.path !== '/404') {
+        void window.navigation.navigate(getRouteUrl(next).href, {
+          info: { fromAction: true },
+        });
+      }
+    },
+    [ownsNavigation],
+  );
+  useActionRouting({
+    getSettledRoute,
+    getPendingRoute,
+    onRouteChange: commitActionRoute,
+  });
+
   const runImpl: FollowRun = async (next, signal, followCount) => {
     const base = resolvedRef.current;
     const settled = getRouteFromElements(base) ?? routeFallback;
@@ -289,7 +317,8 @@ const NavBinding = ({ fallbackRoute }: { fallbackRoute: RouteProps }) => {
         return;
       }
       const info = event.info as
-        { scroll?: boolean; follows?: number } | undefined;
+        | { scroll?: boolean; follows?: number; fromAction?: boolean }
+        | undefined;
       // replace is not "redirect"; only our follow metadata continues a chain.
       // a hash-only user navigation never loads, but it is still a fresh chain.
       if (typeof info?.follows === 'number') {
@@ -297,6 +326,12 @@ const NavBinding = ({ fallbackRoute }: { fallbackRoute: RouteProps }) => {
       } else {
         setFollows(0);
         lastFollowRef.current = null;
+      }
+      if (info?.fromAction) {
+        // the action's response carries the route's elements. Intercept even
+        // when the url parses to the current route, or the document reloads.
+        event.intercept({ scroll: 'manual', focusReset: 'manual' });
+        return;
       }
       const next = parseRoute(dest);
       const current = parseRoute(new URL(window.location.href));
