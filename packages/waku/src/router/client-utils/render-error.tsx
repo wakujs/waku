@@ -179,3 +179,37 @@ export class RenderErrorHandler extends Component<
     return this.props.children;
   }
 }
+
+export class MissingRouteHandler extends Component<
+  { children?: ReactNode },
+  { error: unknown | null }
+> {
+  constructor(props: { children?: ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error: unknown) {
+    return { error };
+  }
+  render() {
+    const { error } = this.state;
+    if (error === null) {
+      return this.props.children;
+    }
+    if (getErrorInfo(error)?.status !== 404) {
+      throw error;
+    }
+    // without the route's elements there is no root element to render inside
+    return (
+      <html>
+        <head>
+          <meta charSet="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+        </head>
+        <body>
+          <h1>Not Found</h1>
+        </body>
+      </html>
+    );
+  }
+}
