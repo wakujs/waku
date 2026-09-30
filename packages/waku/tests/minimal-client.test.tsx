@@ -249,6 +249,60 @@ describe('minimal/client fetch', () => {
     act(() => root.unmount());
   });
 
+  test('a Root mounted again after its initial fetch failed fetches again', async () => {
+    mocks.createFromFetch
+      .mockImplementationOnce(() => Promise.reject(new Error('failed')))
+      .mockReturnValue(resolvedThenable({ _value: null, App: 'app' }));
+    stubFetch();
+    class Retry extends Component<
+      { children: ReactNode },
+      { failed: boolean }
+    > {
+      constructor(props: { children: ReactNode }) {
+        super(props);
+        this.state = { failed: false };
+      }
+      static getDerivedStateFromError() {
+        return { failed: true };
+      }
+      render() {
+        return this.state.failed ? (
+          <button onClick={() => this.setState({ failed: false })}>
+            retry
+          </button>
+        ) : (
+          this.props.children
+        );
+      }
+    }
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <Retry>
+          <Root initialRscPath="R/app.txt">
+            <Slot id="App" />
+          </Root>
+        </Retry>,
+      );
+    });
+
+    expect(container.textContent).toBe('retry');
+    expect(mocks.createFromFetch).toHaveBeenCalledOnce();
+
+    // a click arrives in a later task than the render that failed
+    await wait();
+    await act(async () => {
+      container.querySelector('button')!.click();
+    });
+
+    expect(container.textContent).toBe('app');
+    expect(mocks.createFromFetch).toHaveBeenCalledTimes(2);
+
+    act(() => root.unmount());
+  });
+
   test('server actions use the current fetch, not the one elements decoded with', async () => {
     // Capture the callServer baked into the fetched elements.
     let callServer: CallServer | undefined;
