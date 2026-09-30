@@ -24,28 +24,41 @@ test.describe('router-client-no-ssr', () => {
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
   });
 
-  test('direct missing route renders Not Found fallback without /404 page', async ({
-    page,
-  }) => {
-    const rscRequests: string[] = [];
-    page.on('request', (request) => {
-      if (request.url().includes('/RSC/R/missing.txt')) {
-        rscRequests.push(request.url());
-      }
-    });
-    const pageErrors: Error[] = [];
-    page.on('pageerror', (error) => {
-      pageErrors.push(error);
-    });
+  for (const [container, query] of [
+    ['document', ''],
+    ['document.body', '?__container=body'],
+  ] as const) {
+    test(`direct missing route renders Not Found fallback in ${container} without /404 page`, async ({
+      page,
+    }) => {
+      const rscRequests: string[] = [];
+      page.on('request', (request) => {
+        if (request.url().includes('/RSC/R/missing.txt')) {
+          rscRequests.push(request.url());
+        }
+      });
+      const errors: string[] = [];
+      page.on('pageerror', (error) => {
+        errors.push(error.message);
+      });
+      page.on('console', (msg) => {
+        // the route's RSC request is the one expected to fail
+        if (
+          msg.type() === 'error' &&
+          !msg.text().startsWith('Failed to load resource')
+        ) {
+          errors.push(msg.text());
+        }
+      });
 
-    await page.goto(`http://localhost:${port}/missing`);
-    await waitForHydration(page);
+      await page.goto(`http://localhost:${port}/missing${query}`);
 
-    await expect(
-      page.getByRole('heading', { name: 'Not Found' }),
-    ).toBeVisible();
-    await expect(page).toHaveURL(/\/missing$/);
-    expect(rscRequests).toHaveLength(1);
-    expect(pageErrors).toEqual([]);
-  });
+      await expect(
+        page.getByRole('heading', { name: 'Not Found' }),
+      ).toBeVisible();
+      await expect(page).toHaveURL(`http://localhost:${port}/missing${query}`);
+      expect(rscRequests).toHaveLength(1);
+      expect(errors).toEqual([]);
+    });
+  }
 });

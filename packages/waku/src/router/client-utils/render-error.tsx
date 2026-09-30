@@ -199,17 +199,9 @@ export class MissingRouteHandler extends Component<
     if (getErrorInfo(error)?.status !== 404) {
       throw error;
     }
-    // without the route's elements there is no root element to render inside
-    return (
-      <html>
-        <head>
-          <meta charSet="utf-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-        </head>
-        <body>
-          <h1>Not Found</h1>
-        </body>
-      </html>
-    );
+    // without the route's elements there is no root element to render inside,
+    // so this renders no <html> either: the Router may be mounted in
+    // document.body, and React puts a document root's children in its body
+    return <h1>Not Found</h1>;
   }
 }
