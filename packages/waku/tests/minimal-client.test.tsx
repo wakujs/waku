@@ -303,6 +303,48 @@ describe('minimal/client fetch', () => {
     act(() => root.unmount());
   });
 
+  test('a Root mounted after an abandoned render failed fetches again', async () => {
+    let reject!: (error: unknown) => void;
+    mocks.createFromFetch
+      .mockImplementationOnce(
+        () =>
+          new Promise<Record<string, unknown>>((_resolve, rejectFetch) => {
+            reject = rejectFetch;
+          }),
+      )
+      .mockReturnValue(resolvedThenable({ _value: null, App: 'app' }));
+    stubFetch();
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
+    try {
+      const container = document.createElement('div');
+      const render = async () => {
+        const root = createRoot(container);
+        await act(async () => {
+          root.render(
+            <Root initialRscPath="R/app.txt">
+              <Slot id="App" />
+            </Root>,
+          );
+        });
+        return root;
+      };
+
+      const abandoned = await render();
+      act(() => abandoned.unmount());
+      await act(async () => {
+        reject(new Error('failed'));
+      });
+      await vi.advanceTimersByTimeAsync(1000);
+
+      const root = await render();
+      expect(container.textContent).toBe('app');
+      expect(mocks.createFromFetch).toHaveBeenCalledTimes(2);
+      act(() => root.unmount());
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   test('server actions use the current fetch, not the one elements decoded with', async () => {
     // Capture the callServer baked into the fetched elements.
     let callServer: CallServer | undefined;
