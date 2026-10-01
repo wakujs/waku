@@ -2,6 +2,8 @@ import { expect } from '@playwright/test';
 import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('router-client-no-ssr');
+const rscNotFoundLog =
+  /Failed to load resource: the server responded with a status of 404 \(Not Found\)/;
 
 test.describe('router-client-no-ssr', () => {
   let port: number;
@@ -42,11 +44,7 @@ test.describe('router-client-no-ssr', () => {
         errors.push(error.message);
       });
       page.on('console', (msg) => {
-        // the route's RSC request is the one expected to fail
-        if (
-          msg.type() === 'error' &&
-          !msg.text().startsWith('Failed to load resource')
-        ) {
+        if (msg.type() === 'error' && !rscNotFoundLog.test(msg.text())) {
           errors.push(msg.text());
         }
       });
