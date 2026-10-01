@@ -7,9 +7,6 @@ type InitialRscEntry = [
 ];
 
 // An abandoned suspended render has no cleanup, so this cache must be bounded.
-// A rejected entry must stay until its Root commits: React renders a suspended
-// Root again from scratch once its fetch settles, and that render has to throw
-// the rejection rather than fetch again.
 const INITIAL_RSC_ENTRY_LIMIT = 32;
 const initialRscEntries: InitialRscEntry[] = [];
 
