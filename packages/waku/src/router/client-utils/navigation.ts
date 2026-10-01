@@ -55,6 +55,12 @@ type NavigationAttempt = {
 
 type NavigationError = { error: unknown };
 
+type PendingNavigation = {
+  controller: AbortController;
+  route: Pick<RouteProps, 'path' | 'query'>;
+  queuedState?: RouterState;
+};
+
 type Navigation = {
   route: RouteProps;
   changeRoute: ChangeRoute;
@@ -117,11 +123,7 @@ export const useNavigation = (
     [elements, routerState, routeFallback],
   );
   const route = destination ? destination.route : routeFallback;
-  const pendingNavigationRef = useRef<{
-    controller: AbortController;
-    route: Pick<RouteProps, 'path' | 'query'>;
-    queuedState?: RouterState;
-  } | null>(null);
+  const pendingNavigationRef = useRef<PendingNavigation | null>(null);
   const appliedRef = useRef<{ state: RouterState; href: string }>(undefined);
   const destinationHref = destination?.url.href;
   const currentHash = route.hash;
@@ -149,19 +151,22 @@ export const useNavigation = (
     scrollToHash(currentHash, pathChanged ? 'instant' : 'auto', pathChanged);
   }, [cache, elements, routerState, destinationHref, currentHash]);
 
-  const cancelPendingNavigation = useCallback(() => {
-    const pendingNavigation = pendingNavigationRef.current;
-    pendingNavigation?.controller.abort();
-    if (pendingNavigation?.queuedState) {
-      // Append the committed snapshot after the superseded transition update.
-      // The explicit key also clears state absent from the initial snapshot.
-      const committed = getElements();
-      void mergeElements(committed, {
-        unstable_overlay: { [ROUTER_STATE_ID]: getRouterState(committed) },
-      });
-    }
-    pendingNavigationRef.current = null;
-  }, [getElements, mergeElements]);
+  const replacePendingNavigation = useCallback(
+    (next: PendingNavigation | null = null) => {
+      const superseded = pendingNavigationRef.current;
+      pendingNavigationRef.current = next;
+      if (superseded?.queuedState) {
+        // Append the committed snapshot after the superseded transition update.
+        // The explicit key also clears state absent from the initial snapshot.
+        const committed = getElements();
+        void mergeElements(committed, {
+          unstable_overlay: { [ROUTER_STATE_ID]: getRouterState(committed) },
+        });
+      }
+      superseded?.controller.abort();
+    },
+    [getElements, mergeElements],
+  );
 
   const getSettledRoute = useCallback(
     () => resolveSettledRoute(getElements(), routeFallback),
@@ -169,7 +174,7 @@ export const useNavigation = (
   );
   useHmrRefetch({
     getSettledRoute,
-    onBeforeRefetch: cancelPendingNavigation,
+    onBeforeRefetch: replacePendingNavigation,
   });
 
   const changeRoute: ChangeRoute = useCallback(
@@ -206,7 +211,15 @@ export const useNavigation = (
           });
         });
       }
-      cancelPendingNavigation();
+      const controller = new AbortController();
+      if (options.onSuperseded) {
+        controller.signal.addEventListener('abort', options.onSuperseded);
+      }
+      replacePendingNavigation({ controller, route: nextRoute });
+      // onSuperseded may have started a newer navigation
+      if (controller.signal.aborted) {
+        return;
+      }
       setNavigationError(undefined);
       if (import.meta.hot) {
         // A route navigation retires the previous Minimal refetch target.
@@ -231,8 +244,6 @@ export const useNavigation = (
             requestedPathChanged || attempt.route.path !== settledRoute.path,
           follows: attempt.follows,
         });
-      const controller = new AbortController();
-      pendingNavigationRef.current = { controller, route: nextRoute };
       const commit = (
         state: RouterState,
         update: () => void,
@@ -415,7 +426,7 @@ export const useNavigation = (
       startInstantPaint,
       mergeElements,
       getElements,
-      cancelPendingNavigation,
+      replacePendingNavigation,
       has404,
       registerRscReloadListener,
     ],
