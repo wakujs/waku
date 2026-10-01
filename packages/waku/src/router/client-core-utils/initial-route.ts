@@ -35,7 +35,7 @@ export const useInitialRoute = (proposed: RouteProps): RouteProps => {
   );
 };
 
-// A suspended mount has no cleanup, so this cache must be bounded.
+// A suspended mount has no cleanup, so keep this aligned with Minimal's cache.
 const INITIAL_RSC_PARAMS_LIMIT = 32;
 const initialRscParamsCache = new Map<string, URLSearchParams>();
 

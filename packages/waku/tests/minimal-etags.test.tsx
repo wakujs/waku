@@ -24,6 +24,7 @@ import {
   adoptElements,
   collectEtags,
 } from '../src/minimal/client-utils/element-etags.js';
+import { clearInitialRscEntries } from '../src/minimal/client-utils/initial-rsc-store.js';
 import { getDefaultRootStore } from '../src/minimal/client-utils/root-store.js';
 import {
   Root_UNSTABLE as Root,
@@ -114,6 +115,7 @@ beforeEach(() => {
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(
     new Response(null, { status: 200 }),
   );
+  clearInitialRscEntries();
 });
 
 afterEach(() => {

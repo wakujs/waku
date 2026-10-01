@@ -1,25 +1,54 @@
 type Elements = Readonly<Record<string | symbol, unknown>>;
 
-// The payload in the HTML can be read only once.
-let claimedInitialRsc:
-  [rscPath: string, elements: Promise<Elements>] | undefined;
-
-export const claimInitialRsc = (
+type InitialRscEntry = [
   rscPath: string,
-  read: () => Promise<Elements> | undefined,
-): Promise<Elements> | undefined => {
-  if (claimedInitialRsc) {
-    return claimedInitialRsc[0] === rscPath ? claimedInitialRsc[1] : undefined;
+  rscParams: unknown,
+  elements: Promise<Elements>,
+];
+
+// An abandoned suspended render has no cleanup, so this cache must be bounded.
+// A rejected entry must stay until its Root commits: React renders a suspended
+// Root again from scratch once its fetch settles, and that render has to throw
+// the rejection rather than fetch again.
+const INITIAL_RSC_ENTRY_LIMIT = 32;
+const initialRscEntries: InitialRscEntry[] = [];
+
+export const clearInitialRscEntries = (): void => {
+  initialRscEntries.length = 0;
+};
+
+export const getInitialRscEntry = (
+  rscPath: string,
+  rscParams: unknown,
+  create: () => Promise<Elements>,
+): Promise<Elements> => {
+  const index = initialRscEntries.findIndex(
+    (item) => item[0] === rscPath && item[1] === rscParams,
+  );
+  if (index !== -1) {
+    const entry = initialRscEntries[index]!;
+    initialRscEntries.splice(index, 1);
+    initialRscEntries.push(entry);
+    return entry[2];
   }
-  const elements = read();
-  if (elements) {
-    claimedInitialRsc = [rscPath, elements];
+  const elements = create();
+  if (initialRscEntries.length === INITIAL_RSC_ENTRY_LIMIT) {
+    void initialRscEntries.shift();
   }
+  initialRscEntries.push([rscPath, rscParams, elements]);
   return elements;
 };
 
-export const releaseInitialRsc = (elements: Promise<Elements>): void => {
-  if (claimedInitialRsc?.[1] === elements) {
-    claimedInitialRsc = undefined;
+export const releaseInitialRscEntry = (
+  rscPath: string,
+  rscParams: unknown,
+  elements: Promise<Elements>,
+): void => {
+  const index = initialRscEntries.findIndex(
+    (item) =>
+      item[0] === rscPath && item[1] === rscParams && item[2] === elements,
+  );
+  if (index !== -1) {
+    initialRscEntries.splice(index, 1);
   }
 };

@@ -6,7 +6,6 @@ import {
   startTransition,
   use,
   useCallback,
-  useDeferredValue,
   useEffect,
   useLayoutEffect,
   useState,
@@ -27,8 +26,8 @@ import {
   isImmutableElement,
 } from './client-utils/element-etags.js';
 import {
-  claimInitialRsc,
-  releaseInitialRsc,
+  getInitialRscEntry,
+  releaseInitialRscEntry,
 } from './client-utils/initial-rsc-store.js';
 import {
   getDefaultRootStore,
@@ -388,10 +387,15 @@ const fetchRootRsc = (
   rscPath: string,
   rscParams: unknown,
   store?: RootStore,
-): Promise<Elements> =>
-  fetchRscElements(rscPath, rscParams, { etags: {} }, store).then(
-    ({ elements }) => elements,
-  );
+): Promise<Elements> => {
+  const initial = consumeInitialRscEntry();
+  return fetchRscElements(
+    rscPath,
+    rscParams,
+    initial ? { initial } : { etags: {} },
+    store,
+  ).then(({ elements }) => elements);
+};
 
 const fetchRsc = (
   rscPath: string,
@@ -419,31 +423,13 @@ const fetchRsc = (
   return elements.then((response) => combineElements(base, response));
 };
 
-const prepareInitialRsc = (rscPath: string, rscParams: unknown) => {
-  const hydrated = claimInitialRsc(rscPath, () => {
-    const initial = consumeInitialRscEntry();
-    return (
-      initial &&
-      fetchRscElements(rscPath, rscParams, { initial }, undefined).then(
-        ({ elements }) => elements,
-      )
-    );
-  });
-  if (hydrated) {
-    return {
-      elements: hydrated,
-      hydrating: true,
-      commit: () => releaseInitialRsc(hydrated),
-    };
-  }
-  let commit = noop;
-  const elements = new Promise<Elements>((resolve) => {
-    let fetched: Promise<Elements> | undefined;
-    // StrictMode runs the commit effect twice
-    commit = () => resolve((fetched ??= fetchRootRsc(rscPath, rscParams)));
-  });
-  return { elements, hydrating: false, commit };
-};
+const getInitialRsc = (
+  rscPath: string,
+  rscParams: unknown,
+): Promise<Elements> =>
+  getInitialRscEntry(rscPath, rscParams, () =>
+    fetchRootRsc(rscPath, rscParams),
+  );
 
 type MergeElements = (
   elements: Elements | Promise<Elements>,
@@ -565,9 +551,7 @@ export const useRegisterRscReloadListener_UNSTABLE = () => {
 
 /**
  * Client root. Seeds the initial elements, bridges the store to React state,
- * and provides the elements to `Slot` descendants. Unless it hydrates elements
- * from the HTML, it fetches them once it has committed and renders its
- * children after that, so the update that mounts it does not wait for them.
+ * and provides the elements to `Slot` descendants.
  */
 export const Root_UNSTABLE = ({
   initialRscPath,
@@ -581,12 +565,8 @@ export const Root_UNSTABLE = ({
   const [initialInput] = useState(
     () => [initialRscPath || '', initialRscParams] as const,
   );
-  const [initial] = useState(() => prepareInitialRsc(...initialInput));
-  const [elements, setElements] = useState(initial.elements);
-  // React mounts a Root again from scratch when its first render suspends, so
-  // children wait for the commit, except when hydrating, which must render them
-  // at once
-  const rendersChildren = useDeferredValue(true, initial.hydrating);
+  const [initialElements] = useState(() => getInitialRsc(...initialInput));
+  const [elements, setElements] = useState(initialElements);
   const [store] = useState(() => {
     const store: RootStore = {
       setElements,
@@ -598,7 +578,7 @@ export const Root_UNSTABLE = ({
     return store;
   });
   useLayoutEffect(() => {
-    initial.commit();
+    releaseInitialRscEntry(...initialInput, initialElements);
     const unregisterStore = registerRootStore(store);
     const unregisterReload = import.meta.hot
       ? registerRootReload(store, () => {
@@ -610,7 +590,7 @@ export const Root_UNSTABLE = ({
       unregisterStore();
       unregisterReload?.();
     };
-  }, [initial, initialInput, store]);
+  }, [initialElements, initialInput, store]);
   useEffect(() => {
     elements.then(
       (resolved) => {
@@ -623,7 +603,7 @@ export const Root_UNSTABLE = ({
     <RootStoreContext value={store}>
       <ElementsContext value={elements}>
         {META_GENERATOR}
-        {rendersChildren && children}
+        {children}
       </ElementsContext>
     </RootStoreContext>
   );
