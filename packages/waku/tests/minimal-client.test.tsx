@@ -25,10 +25,6 @@ import { getErrorInfo } from '../src/lib/utils/custom-errors.js';
 import { ETAGS_ID, IMMUTABLE_ETAG } from '../src/lib/utils/etags.js';
 import { adoptElements } from '../src/minimal/client-utils/element-etags.js';
 import {
-  clearInitialRscEntries,
-  getInitialRscEntry,
-} from '../src/minimal/client-utils/initial-rsc-store.js';
-import {
   clearRootCachedEtags,
   getDefaultRootStore,
   registerRootStore,
@@ -129,7 +125,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  clearInitialRscEntries();
   delete (globalThis as any).__WAKU_PREFETCHED__;
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
@@ -193,19 +188,6 @@ describe('minimal/client fetch', () => {
     const secondRoot = await render();
     expect(mocks.createFromFetch).toHaveBeenCalledTimes(2);
     act(() => secondRoot.unmount());
-  });
-
-  test('bounds uncommitted initial fetches', () => {
-    const first = getInitialRscEntry('0', undefined, () => Promise.resolve({}));
-    for (let index = 1; index <= 32; index += 1) {
-      void getInitialRscEntry(String(index), undefined, () =>
-        Promise.resolve({}),
-      );
-    }
-    const create = vi.fn(() => Promise.resolve({}));
-
-    expect(getInitialRscEntry('0', undefined, create)).not.toBe(first);
-    expect(create).toHaveBeenCalledOnce();
   });
 
   test('a Root that suspended on its initial fetch gets the rejection, not another fetch', async () => {
@@ -291,8 +273,6 @@ describe('minimal/client fetch', () => {
     expect(container.textContent).toBe('retry');
     expect(mocks.createFromFetch).toHaveBeenCalledOnce();
 
-    // a click arrives in a later task than the render that failed
-    await wait();
     await act(async () => {
       container.querySelector('button')!.click();
     });
@@ -314,35 +294,50 @@ describe('minimal/client fetch', () => {
       )
       .mockReturnValue(resolvedThenable({ _value: null, App: 'app' }));
     stubFetch();
-    vi.useFakeTimers({ toFake: ['setTimeout'] });
-    try {
-      const container = document.createElement('div');
-      const render = async () => {
-        const root = createRoot(container);
-        await act(async () => {
-          root.render(
-            <Root initialRscPath="R/app.txt">
-              <Slot id="App" />
-            </Root>,
-          );
-        });
-        return root;
-      };
-
-      const abandoned = await render();
-      act(() => abandoned.unmount());
+    const container = document.createElement('div');
+    const render = async () => {
+      const root = createRoot(container);
       await act(async () => {
-        reject(new Error('failed'));
+        root.render(
+          <Root initialRscPath="R/app.txt">
+            <Slot id="App" />
+          </Root>,
+        );
       });
-      await vi.advanceTimersByTimeAsync(1000);
+      return root;
+    };
 
-      const root = await render();
-      expect(container.textContent).toBe('app');
-      expect(mocks.createFromFetch).toHaveBeenCalledTimes(2);
-      act(() => root.unmount());
-    } finally {
-      vi.useRealTimers();
-    }
+    const abandoned = await render();
+    act(() => abandoned.unmount());
+    await act(async () => {
+      reject(new Error('failed'));
+    });
+
+    const root = await render();
+    expect(container.textContent).toBe('app');
+    expect(mocks.createFromFetch).toHaveBeenCalledTimes(2);
+    act(() => root.unmount());
+  });
+
+  test('a Root whose first render never commits starts no fetch', async () => {
+    stubFetch();
+    const never = new Promise<never>(() => {});
+    const Suspend = () => use(never);
+
+    const root = createRoot(document.createElement('div'));
+    await act(async () => {
+      root.render(
+        <>
+          <Root initialRscPath="R/app.txt">
+            <Slot id="App" />
+          </Root>
+          <Suspend />
+        </>,
+      );
+    });
+
+    expect(mocks.createFromFetch).not.toHaveBeenCalled();
+    act(() => root.unmount());
   });
 
   test('server actions use the current fetch, not the one elements decoded with', async () => {
@@ -1693,7 +1688,7 @@ describe('minimal/client swr landing', () => {
   });
 
   test('two Roots that merge one payload each land it', async () => {
-    mocks.createFromFetch.mockReturnValueOnce(resolvedThenable({ page: 'P' }));
+    mocks.createFromFetch.mockReturnValue(resolvedThenable({ page: 'P' }));
     stubFetch();
     const merges: Merge[] = [];
     const Probe = () => {
@@ -1705,7 +1700,6 @@ describe('minimal/client swr landing', () => {
     };
     const container = document.createElement('div');
     const root = createRoot(container);
-    // mounted together, they start from one shared initial payload
     await act(async () => {
       root.render(
         <>

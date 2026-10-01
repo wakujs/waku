@@ -5,7 +5,6 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { ETAGS_HEADER, ETAGS_ID } from '../src/lib/utils/etags.js';
 import { adoptElements } from '../src/minimal/client-utils/element-etags.js';
-import { clearInitialRscEntries } from '../src/minimal/client-utils/initial-rsc-store.js';
 import type {
   RequestRsc,
   RequestRscEnhancer,
@@ -42,7 +41,6 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => roots.splice(0).forEach((root) => root.unmount()));
   document.body.replaceChildren();
-  clearInitialRscEntries();
   Reflect.deleteProperty(import.meta, 'hot');
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();

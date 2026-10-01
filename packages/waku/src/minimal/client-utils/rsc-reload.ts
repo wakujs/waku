@@ -1,4 +1,3 @@
-import { clearInitialRscEntries } from './initial-rsc-store.js';
 import { clearRootCachedEtags, getDefaultRootStore } from './root-store.js';
 import type { RootStore } from './root-store.js';
 
@@ -44,7 +43,6 @@ const createRscReloadListener =
   (listener: () => void): Unregister =>
   () => {
     clearRootCachedEtags();
-    clearInitialRscEntries();
     listener();
   };
 
