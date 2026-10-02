@@ -1,5 +1,5 @@
 {
-  "name": "ssr-catch-error",
+  "name": "router-client-no-ssr",
   "version": "0.1.0",
   "type": "module",
   "private": true,
@@ -9,10 +9,8 @@
     "start": "waku start"
   },
   "dependencies": {
-    "hono": "^4.12.14",
     "react": "~19.3.0",
     "react-dom": "~19.3.0",
-    "react-error-boundary": "^6.1.6",
     "react-server-dom-webpack": "~19.3.0",
     "waku": "latest"
   },

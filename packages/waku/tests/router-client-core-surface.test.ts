@@ -59,6 +59,7 @@ describe('waku/router/client-core surface', () => {
       'unstable_matchRouteParams',
       'unstable_parseRoute',
       'unstable_pathnameToRoutePath',
+      'useActionRouting_UNSTABLE',
       'useHmrRefetch_UNSTABLE',
       'useInitialRoute_UNSTABLE',
       'useInitialRscParams_UNSTABLE',

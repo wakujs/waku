@@ -120,6 +120,8 @@ export const getConfig = () => {
 
 The two savings compose: `cache.rsc` saves the server from re-rendering the subtree, and the etag saves the network from re-sending it. See the [waku-cache README](https://github.com/wakujs/waku-cache#readme) for the details.
 
+An instant navigation drops the etags of dynamic slots; see [Instant Navigation](/guides/navigation-prefetching#instant-navigation) for when that costs a render and how to avoid it.
+
 ## What stays uncached
 
 During client-side navigation, the router reuses prefetched RSC payloads so that moving between pages is fast. This is a browser-side navigation optimization: it does not create a server data cache. Static payloads can be reused freely because they change only with a deploy. An explicitly prefetched dynamic response may also be reused until its prefetch TTL expires (60 seconds by default), so a navigation shortly after a prefetch may not issue a new request; whenever a request does reach the server, it renders fresh. See [Navigation and Prefetching](/guides/navigation-prefetching) for the details and the experimental tuning APIs.

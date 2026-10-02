@@ -8,11 +8,10 @@ import {
   useState,
 } from 'react';
 import {
-  unstable_combineElements as combineElements,
   useMergeElements_UNSTABLE as useMergeElements,
-  useRegisterRscEnhancer_UNSTABLE as useRegisterRscEnhancer,
   useRegisterRscReloadListener_UNSTABLE as useRegisterRscReloadListener,
 } from '../../minimal/client.js';
+import { useActionRouting } from '../client-core-utils/action-routing.js';
 import { useRouterCache } from '../client-core-utils/caches.js';
 import { has404FromElements } from '../client-core-utils/element-meta.js';
 import { isFollowable } from '../client-core-utils/error-route.js';
@@ -27,12 +26,7 @@ import {
   parseRoute,
 } from '../client-core-utils/route-url.js';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
-import {
-  ACTION_LOCATION_HEADER,
-  IS_ORIGIN_ID,
-  IS_STATIC_ID,
-  ROUTE_ID,
-} from '../isomorphic-utils/route-path.js';
+import { IS_STATIC_ID, ROUTE_ID } from '../isomorphic-utils/route-path.js';
 import {
   canPaintInstantOverlay,
   useStartInstantPaint,
@@ -51,8 +45,6 @@ import { scrollToHash, shouldScrollForRouteChange } from './scroll.js';
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
 
-const ACTION_ENHANCER_ORDER = 100;
-
 type HistoryIntent = ChangeRouteOptions['history'];
 
 type NavigationAttempt = {
@@ -62,6 +54,12 @@ type NavigationAttempt = {
 };
 
 type NavigationError = { error: unknown };
+
+type PendingNavigation = {
+  controller: AbortController;
+  route: Pick<RouteProps, 'path' | 'query'>;
+  queuedState?: RouterState;
+};
 
 type Navigation = {
   route: RouteProps;
@@ -108,7 +106,6 @@ export const useNavigation = (
 
   const startInstantPaint = useStartInstantPaint(getElements, reloadWithUrl);
   const mergeElements = useMergeElements();
-  const registerRscEnhancer = useRegisterRscEnhancer();
   const registerRscReloadListener = useRegisterRscReloadListener();
   const [navigationError, setNavigationError] = useState<NavigationError>();
   useEffect(() => {
@@ -126,29 +123,27 @@ export const useNavigation = (
     [elements, routerState, routeFallback],
   );
   const route = destination ? destination.route : routeFallback;
-  const pendingNavigationRef = useRef<{
-    controller: AbortController;
-    route: Pick<RouteProps, 'path' | 'query'>;
-    queuedState?: RouterState;
-  } | null>(null);
-  const appliedRef = useRef<RouterState>(undefined);
+  const pendingNavigationRef = useRef<PendingNavigation>(undefined);
+  const appliedRef = useRef<{ state: RouterState; href: string }>(undefined);
   const destinationHref = destination?.url.href;
   const currentHash = route.hash;
   useLayoutEffect(() => {
     const queuedState = pendingNavigationRef.current?.queuedState;
     if (queuedState && queuedState === routerState) {
       cache.learnStaticFromElements(elements);
-      pendingNavigationRef.current = null;
+      pendingNavigationRef.current = undefined;
     }
     if (!routerState || !destinationHref) {
       return;
     }
-    const applied = appliedRef.current === routerState;
-    commitHistory(
-      new URL(destinationHref),
-      applied ? 'replace' : routerState.history,
-    );
-    appliedRef.current = routerState;
+    const applied = appliedRef.current?.state === routerState;
+    if (!applied || appliedRef.current?.href !== destinationHref) {
+      commitHistory(
+        new URL(destinationHref),
+        applied ? 'replace' : routerState.history,
+      );
+    }
+    appliedRef.current = { state: routerState, href: destinationHref };
     if (applied || !routerState.scroll) {
       return;
     }
@@ -156,19 +151,22 @@ export const useNavigation = (
     scrollToHash(currentHash, pathChanged ? 'instant' : 'auto', pathChanged);
   }, [cache, elements, routerState, destinationHref, currentHash]);
 
-  const cancelPendingNavigation = useCallback(() => {
-    const pendingNavigation = pendingNavigationRef.current;
-    pendingNavigation?.controller.abort();
-    if (pendingNavigation?.queuedState) {
-      // Append the committed snapshot after the superseded transition update.
-      // The explicit key also clears state absent from the initial snapshot.
-      const committed = getElements();
-      void mergeElements(committed, {
-        unstable_overlay: { [ROUTER_STATE_ID]: getRouterState(committed) },
-      });
-    }
-    pendingNavigationRef.current = null;
-  }, [getElements, mergeElements]);
+  const replacePendingNavigation = useCallback(
+    (next?: PendingNavigation) => {
+      const superseded = pendingNavigationRef.current;
+      pendingNavigationRef.current = next;
+      if (superseded?.queuedState) {
+        // Append the committed snapshot after the superseded transition update.
+        // The explicit key also clears state absent from the initial snapshot.
+        const committed = getElements();
+        void mergeElements(committed, {
+          unstable_overlay: { [ROUTER_STATE_ID]: getRouterState(committed) },
+        });
+      }
+      superseded?.controller.abort();
+    },
+    [getElements, mergeElements],
+  );
 
   const getSettledRoute = useCallback(
     () => resolveSettledRoute(getElements(), routeFallback),
@@ -176,7 +174,7 @@ export const useNavigation = (
   );
   useHmrRefetch({
     getSettledRoute,
-    onBeforeRefetch: cancelPendingNavigation,
+    onBeforeRefetch: replacePendingNavigation,
   });
 
   const changeRoute: ChangeRoute = useCallback(
@@ -213,7 +211,16 @@ export const useNavigation = (
           });
         });
       }
-      cancelPendingNavigation();
+      const controller = new AbortController();
+      controller.signal.addEventListener('abort', () => {
+        if (pendingNavigationRef.current) {
+          options.onSuperseded?.();
+        }
+      });
+      replacePendingNavigation({ controller, route: nextRoute });
+      if (controller.signal.aborted) {
+        return;
+      }
       setNavigationError(undefined);
       if (import.meta.hot) {
         // A route navigation retires the previous Minimal refetch target.
@@ -238,8 +245,6 @@ export const useNavigation = (
             requestedPathChanged || attempt.route.path !== settledRoute.path,
           follows: attempt.follows,
         });
-      const controller = new AbortController();
-      pendingNavigationRef.current = { controller, route: nextRoute };
       const commit = (
         state: RouterState,
         update: () => void,
@@ -342,7 +347,7 @@ export const useNavigation = (
       }
       if (outcome.type === 'external') {
         commitHistory(outcome.from, historyIntent);
-        pendingNavigationRef.current = null;
+        pendingNavigationRef.current = undefined;
         window.location.replace(outcome.url.href);
         throw outcome.error;
       }
@@ -372,7 +377,7 @@ export const useNavigation = (
               : {}),
             [ROUTER_STATE_ID]: failureState,
           });
-          pendingNavigationRef.current = null;
+          pendingNavigationRef.current = undefined;
           setNavigationError({ error });
         };
         showError();
@@ -380,7 +385,7 @@ export const useNavigation = (
       }
       if (outcome.adopted) {
         cache.learnStaticFromElements(outcome.elements);
-        pendingNavigationRef.current = null;
+        pendingNavigationRef.current = undefined;
         return;
       }
       const landed: NavigationAttempt = {
@@ -422,30 +427,19 @@ export const useNavigation = (
       startInstantPaint,
       mergeElements,
       getElements,
-      cancelPendingNavigation,
+      replacePendingNavigation,
       has404,
       registerRscReloadListener,
     ],
   );
 
-  // an action a descendant starts in a passive effect must find this enhancer
-  useLayoutEffect(() => {
-    const handleActionElements = (nextElements: Record<string, unknown>) => {
-      cache.learnStaticFromElements(nextElements);
-      const { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic } = nextElements;
-      if (!routeData) {
-        return;
-      }
-      const [path, query] = routeData as [string, string];
-      const settledRoute = getSettledRoute();
-      if (
-        settledRoute.path === path &&
-        (isStatic || settledRoute.query === query)
-      ) {
-        return;
-      }
-      const nextRoute = { path, query, hash: '' };
-      const is404 = path === '/404';
+  const getPendingRoute = useCallback(
+    () => pendingNavigationRef.current?.route,
+    [],
+  );
+  const commitActionRoute = useCallback(
+    (nextRoute: RouteProps) => {
+      const is404 = nextRoute.path === '/404';
       dispatchChangeRoute(changeRoute, nextRoute, {
         refetch: false,
         shouldScroll: false,
@@ -457,50 +451,14 @@ export const useNavigation = (
           console.error('Error while handling route updates:', error);
         }
       });
-    };
-    return registerRscEnhancer(
-      (next) => async (rscPath, rscParams, options) => {
-        if (options.type !== 'call') {
-          return next(rscPath, rscParams, options);
-        }
-        const origin = getSettledRoute();
-        const result = await next(rscPath, rscParams, {
-          ...options,
-          fetch: (input, init) => {
-            const headers = new Headers(
-              init?.headers ??
-                (input instanceof Request ? input.headers : undefined),
-            );
-            headers.set(
-              ACTION_LOCATION_HEADER,
-              origin.query ? origin.path + '?' + origin.query : origin.path,
-            );
-            return options.fetch(input, { ...init, headers });
-          },
-        });
-        if (!(IS_ORIGIN_ID in result.elements)) {
-          if (Reflect.ownKeys(result.elements).length) {
-            handleActionElements(result.elements);
-          }
-          return result;
-        }
-        const pending = pendingNavigationRef.current;
-        // React holds a navigation back until a pending action settles
-        if (
-          (pending && !isSameRscRoute(pending.route, origin)) ||
-          !isSameRscRoute(getSettledRoute(), origin)
-        ) {
-          return { ...result, elements: {} };
-        }
-        const elements = combineElements({}, result.elements, {
-          unstable_filter: (key) => key !== IS_ORIGIN_ID,
-        });
-        handleActionElements(elements);
-        return { ...result, elements };
-      },
-      ACTION_ENHANCER_ORDER,
-    );
-  }, [cache, changeRoute, getSettledRoute, registerRscEnhancer]);
+    },
+    [changeRoute],
+  );
+  useActionRouting({
+    getSettledRoute,
+    getPendingRoute,
+    onRouteChange: commitActionRoute,
+  });
 
   useEffect(() => {
     const callback = () => {

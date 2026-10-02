@@ -42,6 +42,9 @@ export {
 export type { ApiHandler, HandlerInterceptor };
 
 const encodePathname = (pathname: string) => {
+  if (!pathname.startsWith('/')) {
+    throw new Error('Pathname must start with `/`: ' + pathname);
+  }
   const url = new URL('http://localhost');
   url.pathname = pathname;
   return url.pathname;
@@ -54,8 +57,9 @@ const encodePathname = (pathname: string) => {
 export function unstable_rerenderRoute(): void;
 /**
  * Renders a route into the response of the current server action. `pathname`
- * is serialized as a URL pathname, so unescaped non-ASCII characters are
- * percent-encoded. `query` is the search string without `?`.
+ * is serialized as a URL pathname, so dot segments are resolved and unescaped
+ * non-ASCII characters are percent-encoded. `query` is the search string
+ * without `?`, serialized as URL search params, so `q=a b` becomes `q=a+b`.
  */
 export function unstable_rerenderRoute(pathname: string, query?: string): void;
 export function unstable_rerenderRoute(pathname?: string, query?: string) {
@@ -64,9 +68,13 @@ export function unstable_rerenderRoute(pathname?: string, query?: string) {
     return;
   }
   const rscPath = encodeRoutePath(
-    encodePathname(pathnameToRoutePath(pathname)),
+    pathnameToRoutePath(encodePathname(pathname)),
   );
-  getRerender()(rscPath, query && new URLSearchParams({ query }));
+  const encodedQuery = new URLSearchParams(query).toString();
+  getRerender()(
+    rscPath,
+    encodedQuery && new URLSearchParams({ query: encodedQuery }),
+  );
 }
 
 export function unstable_notFound(): never {
