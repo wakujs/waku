@@ -153,9 +153,9 @@ export const useNavigation = (
   }, [cache, elements, routerState, destinationHref, currentHash]);
 
   const replacePendingNavigation = useCallback(
-    (next: PendingNavigation | null = null) => {
+    (next?: PendingNavigation) => {
       const superseded = pendingNavigationRef.current;
-      pendingNavigationRef.current = next;
+      pendingNavigationRef.current = next ?? null;
       if (superseded?.queuedState) {
         // Append the committed snapshot after the superseded transition update.
         // The explicit key also clears state absent from the initial snapshot.
@@ -165,9 +165,7 @@ export const useNavigation = (
         });
       }
       superseded?.controller.abort();
-      if (next) {
-        superseded?.onSuperseded?.();
-      }
+      return superseded;
     },
     [getElements, mergeElements],
   );
@@ -221,7 +219,7 @@ export const useNavigation = (
         route: nextRoute,
         onSuperseded: options.onSuperseded,
       };
-      replacePendingNavigation(pendingNavigation);
+      replacePendingNavigation(pendingNavigation)?.onSuperseded?.();
       // onSuperseded may have started a newer navigation
       if (controller.signal.aborted) {
         return;
