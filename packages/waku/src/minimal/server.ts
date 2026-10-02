@@ -40,14 +40,14 @@ export type { ElementSource as Unstable_ElementSource } from '../lib/utils/build
 /** An element record and its etags, with slots held by the client omitted. */
 export type Unstable_BuiltElements = Awaited<ReturnType<typeof buildElements>>;
 
-/** @deprecated Build-cache serialization is reserved for framework internals. */
+/** @deprecated Build-cache serialization is not part of the Minimal API. */
 export const unstable_base64ToBytes = base64ToBytes;
 
-/** @deprecated Build-cache serialization is reserved for framework internals. */
+/** @deprecated Build-cache serialization is not part of the Minimal API. */
 export const unstable_bytesToBase64 = bytesToBase64;
 
-/** @deprecated Route-group handling is reserved for Waku Router internals. */
+/** @deprecated Waku Router's route-group convention is not part of the Minimal API. */
 export const unstable_getGrouplessPath = getGrouplessPath;
 
-/** @deprecated Filesystem-route conventions are reserved for Waku Router internals. */
+/** @deprecated Waku Router's filesystem conventions are not part of the Minimal API. */
 export const unstable_isIgnoredPath = isIgnoredPath;

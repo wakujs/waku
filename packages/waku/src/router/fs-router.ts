@@ -3,6 +3,7 @@ import type { ImportGlobFunction } from 'vite/types/importGlob.d.ts';
 import { METHODS, createPages } from './create-pages.js';
 import type { Method } from './create-pages.js';
 import type { HandlerInterceptor } from './define-router.js';
+import { isIgnoredPath } from './isomorphic-utils/route-path.js';
 import type { Unstable_SearchCodec } from './isomorphic-utils/search-codec-registry.js';
 
 declare global {
@@ -10,8 +11,6 @@ declare global {
     glob: ImportGlobFunction;
   }
 }
-
-const IGNORED_PATH_PARTS = new Set(['_actions', '_components', '_hooks']);
 
 export function fsRouter(
   /**
@@ -77,7 +76,7 @@ export function fsRouter(
           .replace(/\.\w+$/, '')
           .split('/')
           .filter(Boolean);
-        if (pathItems.some((part) => IGNORED_PATH_PARTS.has(part))) {
+        if (isIgnoredPath(pathItems)) {
           continue;
         }
         if (pathItems.at(0) === interceptorsDir) {

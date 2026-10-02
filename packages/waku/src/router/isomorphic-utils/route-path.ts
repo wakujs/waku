@@ -27,6 +27,11 @@ export const getGrouplessPath = (path: string) => {
   return path;
 };
 
+const IGNORED_PATH_PARTS = new Set(['_actions', '_components', '_hooks']);
+
+export const isIgnoredPath = (parts: string[]) =>
+  parts.some((part) => IGNORED_PATH_PARTS.has(part));
+
 export function pathnameToRoutePath(pathname: string): string {
   if (!pathname.startsWith('/')) {
     throw new Error('Pathname must start with `/`: ' + pathname);

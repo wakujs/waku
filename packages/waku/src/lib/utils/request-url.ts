@@ -2,8 +2,25 @@ import { addBase, removeBase } from './path.js';
 import { decodeFuncId, decodeRscPath, encodeRscPath } from './rsc-path.js';
 
 const getBasePath = () => import.meta.env?.WAKU_CONFIG_BASE_PATH ?? '/';
-const getRscPrefix = () =>
-  '/' + (import.meta.env?.WAKU_CONFIG_RSC_BASE ?? 'RSC') + '/';
+const getRscBase = () => import.meta.env?.WAKU_CONFIG_RSC_BASE ?? 'RSC';
+
+export const parseRequestUrl = (
+  url: URL,
+  basePath: string,
+  rscBase: string,
+) => {
+  const pathname = removeBase(url.pathname, basePath);
+  const prefix = '/' + rscBase + '/';
+  if (!pathname.startsWith(prefix)) {
+    return { type: 'http' as const, pathname };
+  }
+  const rscPath = decodeRscPath(pathname.slice(prefix.length));
+  const actionId = decodeFuncId(rscPath);
+  if (actionId) {
+    return { type: 'call' as const, pathname, actionId };
+  }
+  return { type: 'rsc' as const, pathname, rscPath };
+};
 
 type RequestInfo =
   | { type: 'http'; pathname: string; searchParams: URLSearchParams }
@@ -20,28 +37,25 @@ type RequestInfo =
  */
 export const parseRequest = (req: Request): RequestInfo | null => {
   const url = new URL(req.url);
-  let pathname: string;
+  let parsed: ReturnType<typeof parseRequestUrl>;
   try {
-    pathname = removeBase(url.pathname, getBasePath());
+    parsed = parseRequestUrl(url, getBasePath(), getRscBase());
   } catch {
     return null;
   }
-  const prefix = getRscPrefix();
-  if (!pathname.startsWith(prefix)) {
-    return { type: 'http', pathname, searchParams: url.searchParams };
+  if (parsed.type === 'http') {
+    return {
+      type: 'http',
+      pathname: parsed.pathname,
+      searchParams: url.searchParams,
+    };
   }
-  let rscPath: string;
-  try {
-    rscPath = decodeRscPath(pathname.slice(prefix.length));
-  } catch {
-    return null;
-  }
-  if (decodeFuncId(rscPath) !== null) {
+  if (parsed.type === 'call') {
     return { type: 'call' };
   }
   return {
     type: 'rsc',
-    rscPath,
+    rscPath: parsed.rscPath,
     rscParams: req.body === null ? url.searchParams : undefined,
   };
 };
@@ -54,7 +68,7 @@ export const parseRequest = (req: Request): RequestInfo | null => {
 export const formatRscUrl = (rscPath: string, baseUrl: string | URL): URL => {
   const url = new URL(baseUrl);
   url.pathname = addBase(
-    getRscPrefix() + encodeRscPath(rscPath),
+    '/' + getRscBase() + '/' + encodeRscPath(rscPath),
     getBasePath(),
   );
   return url;

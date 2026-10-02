@@ -21,10 +21,10 @@ export {
   unstable_isImmutableElement,
 } from './client-runtime.js';
 
-/** @deprecated Base-path handling is reserved for framework internals. */
+/** @deprecated URL base-path handling is not part of the Minimal API. */
 export const unstable_addBase = addBase;
 
-/** @deprecated Base-path handling is reserved for framework internals. */
+/** @deprecated URL base-path handling is not part of the Minimal API. */
 export const unstable_removeBase = removeBase;
 
 /** @deprecated Reserved for Waku's client bootstrap. */
