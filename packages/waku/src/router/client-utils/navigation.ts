@@ -123,7 +123,7 @@ export const useNavigation = (
     [elements, routerState, routeFallback],
   );
   const route = destination ? destination.route : routeFallback;
-  const pendingNavigationRef = useRef<PendingNavigation | null>(null);
+  const pendingNavigationRef = useRef<PendingNavigation>(undefined);
   const appliedRef = useRef<{ state: RouterState; href: string }>(undefined);
   const destinationHref = destination?.url.href;
   const currentHash = route.hash;
@@ -131,7 +131,7 @@ export const useNavigation = (
     const queuedState = pendingNavigationRef.current?.queuedState;
     if (queuedState && queuedState === routerState) {
       cache.learnStaticFromElements(elements);
-      pendingNavigationRef.current = null;
+      pendingNavigationRef.current = undefined;
     }
     if (!routerState || !destinationHref) {
       return;
@@ -154,7 +154,7 @@ export const useNavigation = (
   const replacePendingNavigation = useCallback(
     (next?: PendingNavigation) => {
       const superseded = pendingNavigationRef.current;
-      pendingNavigationRef.current = next ?? null;
+      pendingNavigationRef.current = next;
       if (superseded?.queuedState) {
         // Append the committed snapshot after the superseded transition update.
         // The explicit key also clears state absent from the initial snapshot.
@@ -213,13 +213,11 @@ export const useNavigation = (
       }
       const controller = new AbortController();
       controller.signal.addEventListener('abort', () => {
-        // an HMR refetch cancels without installing a newer navigation
         if (pendingNavigationRef.current) {
           options.onSuperseded?.();
         }
       });
       replacePendingNavigation({ controller, route: nextRoute });
-      // onSuperseded may have started a newer navigation
       if (controller.signal.aborted) {
         return;
       }
@@ -349,7 +347,7 @@ export const useNavigation = (
       }
       if (outcome.type === 'external') {
         commitHistory(outcome.from, historyIntent);
-        pendingNavigationRef.current = null;
+        pendingNavigationRef.current = undefined;
         window.location.replace(outcome.url.href);
         throw outcome.error;
       }
@@ -379,7 +377,7 @@ export const useNavigation = (
               : {}),
             [ROUTER_STATE_ID]: failureState,
           });
-          pendingNavigationRef.current = null;
+          pendingNavigationRef.current = undefined;
           setNavigationError({ error });
         };
         showError();
@@ -387,7 +385,7 @@ export const useNavigation = (
       }
       if (outcome.adopted) {
         cache.learnStaticFromElements(outcome.elements);
-        pendingNavigationRef.current = null;
+        pendingNavigationRef.current = undefined;
         return;
       }
       const landed: NavigationAttempt = {
