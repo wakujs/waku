@@ -59,6 +59,7 @@ type PendingNavigation = {
   controller: AbortController;
   route: Pick<RouteProps, 'path' | 'query'>;
   queuedState?: RouterState;
+  onSuperseded?: (() => void) | undefined;
 };
 
 type Navigation = {
@@ -164,6 +165,9 @@ export const useNavigation = (
         });
       }
       superseded?.controller.abort();
+      if (next) {
+        superseded?.onSuperseded?.();
+      }
     },
     [getElements, mergeElements],
   );
@@ -212,10 +216,12 @@ export const useNavigation = (
         });
       }
       const controller = new AbortController();
-      if (options.onSuperseded) {
-        controller.signal.addEventListener('abort', options.onSuperseded);
-      }
-      replacePendingNavigation({ controller, route: nextRoute });
+      const pendingNavigation: PendingNavigation = {
+        controller,
+        route: nextRoute,
+        onSuperseded: options.onSuperseded,
+      };
+      replacePendingNavigation(pendingNavigation);
       // onSuperseded may have started a newer navigation
       if (controller.signal.aborted) {
         return;
@@ -254,7 +260,7 @@ export const useNavigation = (
             return;
           }
           pendingNavigationRef.current = {
-            controller,
+            ...pendingNavigation,
             route: { path: state.requested[0], query: state.requested[1] },
             queuedState: state,
           };

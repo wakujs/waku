@@ -422,6 +422,48 @@ test('a navigation started from unstable_onSuperseded supersedes the newer one',
   expect(window.location.pathname).toBe('/again');
 });
 
+test('an HMR refetch cancels a pending navigation without reporting it superseded', async () => {
+  Object.defineProperty(import.meta, 'hot', { configurable: true, value: {} });
+  try {
+    const view = await mount();
+    const slowResponse = deferred<Record<string, unknown>>({});
+    const slowFetched = deferred<void>(undefined);
+    decode
+      .mockImplementationOnce(() => {
+        slowFetched.resolve();
+        return slowResponse.promise;
+      })
+      .mockReturnValueOnce({
+        [getRouteSlotId('/start')]: 'refreshed start',
+        [ROUTE_ID]: ['/start', ''],
+        [IS_STATIC_ID]: false,
+      });
+    const onSuperseded = vi.fn();
+    let slow!: Promise<void>;
+    await act(async () => {
+      slow = view
+        .getRouter()
+        .push('/slow', { unstable_onSuperseded: onSuperseded });
+      await slowFetched.promise;
+    });
+    await act(async () => {
+      (
+        globalThis as { __WAKU_RSC_RELOAD_LISTENERS__?: (() => void)[] }
+      ).__WAKU_RSC_RELOAD_LISTENERS__?.forEach((listener) => listener());
+      slowResponse.resolve({
+        [getRouteSlotId('/slow')]: 'slow',
+        [ROUTE_ID]: ['/slow', ''],
+        [IS_STATIC_ID]: false,
+      });
+      await slow;
+    });
+    expect(view.container.textContent).toBe('refreshed start');
+    expect(onSuperseded).not.toHaveBeenCalled();
+  } finally {
+    Reflect.deleteProperty(import.meta, 'hot');
+  }
+});
+
 test('an action delayed by an enhancer navigates relative to the latest committed route', async () => {
   window.history.replaceState({}, '', '/start#section');
   const view = await mount();
