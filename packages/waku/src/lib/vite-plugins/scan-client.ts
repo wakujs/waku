@@ -1,7 +1,10 @@
 import { getPluginApi } from '@vitejs/plugin-rsc';
 import type { Plugin } from 'vite';
 
-// plugin-rsc looks for server references only in the rsc and ssr graphs
+/**
+ * Finds server functions that only client code imports, which plugin-rsc's
+ * build does not look for, by scanning the client graph before that build.
+ */
 export function scanClientPlugin(): Plugin {
   return {
     name: 'waku:vite-plugins:scan-client',
