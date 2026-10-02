@@ -59,7 +59,6 @@ type PendingNavigation = {
   controller: AbortController;
   route: Pick<RouteProps, 'path' | 'query'>;
   queuedState?: RouterState;
-  onSuperseded?: (() => void) | undefined;
 };
 
 type Navigation = {
@@ -165,7 +164,6 @@ export const useNavigation = (
         });
       }
       superseded?.controller.abort();
-      return superseded;
     },
     [getElements, mergeElements],
   );
@@ -214,12 +212,13 @@ export const useNavigation = (
         });
       }
       const controller = new AbortController();
-      const pendingNavigation: PendingNavigation = {
-        controller,
-        route: nextRoute,
-        onSuperseded: options.onSuperseded,
-      };
-      replacePendingNavigation(pendingNavigation)?.onSuperseded?.();
+      controller.signal.addEventListener('abort', () => {
+        // an HMR refetch cancels without installing a newer navigation
+        if (pendingNavigationRef.current) {
+          options.onSuperseded?.();
+        }
+      });
+      replacePendingNavigation({ controller, route: nextRoute });
       // onSuperseded may have started a newer navigation
       if (controller.signal.aborted) {
         return;
@@ -258,7 +257,7 @@ export const useNavigation = (
             return;
           }
           pendingNavigationRef.current = {
-            ...pendingNavigation,
+            controller,
             route: { path: state.requested[0], query: state.requested[1] },
             queuedState: state,
           };
