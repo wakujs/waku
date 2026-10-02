@@ -4240,6 +4240,56 @@ describe('Router integration', () => {
     }
   });
 
+  test('a painted instant navigation superseded while its response streams reports it', async () => {
+    const slow = createDeferred<Record<string, unknown>>();
+    installRefetch(
+      vi.fn<RefetchInner>(async (rscPath) =>
+        rscPath === unstable_encodeRoutePath('/slow') ? slow.promise : {},
+      ),
+    );
+    const capture = { router: null as RouterApi | null };
+    const Probe = makeProbe(capture);
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        ...instantNavElements({
+          [unstable_getRouteSlotId('/slow')]: IMMUTABLE_ETAG,
+        }),
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [unstable_getRouteSlotId('/slow')]: <Probe />,
+        [unstable_getRouteSlotId('/next')]: <Probe />,
+      },
+    );
+
+    try {
+      const onSuperseded = vi.fn();
+      let superseded!: Promise<void>;
+      await act(async () => {
+        superseded = capture.router!.push('/slow', {
+          unstable_instant: true,
+          unstable_onSuperseded: onSuperseded,
+        });
+      });
+      expect(capture.router!.path).toBe('/slow');
+      expect(onSuperseded).not.toHaveBeenCalled();
+
+      await act(async () => {
+        await capture.router!.push('/next');
+      });
+
+      expect(capture.router!.path).toBe('/next');
+      expect(onSuperseded).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        slow.resolve({});
+        await superseded;
+      });
+    } finally {
+      slow.resolve({});
+      view.unmount();
+    }
+  });
+
   test('instant nav reuses a prefetched response as data source and base', async () => {
     const refetch = vi.fn<RefetchInner>(async () => ({
       [ROUTE_ID]: ['/next', ''],
