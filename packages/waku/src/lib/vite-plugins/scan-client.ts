@@ -14,14 +14,20 @@ export function scanClientPlugin(): Plugin {
         const { manager } = getPluginApi(builder.config)!;
         const rsc = builder.environments.rsc!;
         const client = builder.environments.client!;
+        const { isScanBuild } = manager;
+        const rscWrite = rsc.config.build.write;
+        const clientWrite = client.config.build.write;
         manager.isScanBuild = true;
         rsc.config.build.write = false;
         client.config.build.write = false;
-        await builder.build(rsc);
-        await builder.build(client);
-        rsc.config.build.write = true;
-        client.config.build.write = true;
-        manager.isScanBuild = false;
+        try {
+          await builder.build(rsc);
+          await builder.build(client);
+        } finally {
+          manager.isScanBuild = isScanBuild;
+          rsc.config.build.write = rscWrite;
+          client.config.build.write = clientWrite;
+        }
       },
     },
   };
