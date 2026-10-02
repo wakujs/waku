@@ -12,8 +12,8 @@ Waku and the Next.js App Router share a foundation — React Server Components,
 `'use client'`, server actions, `<Suspense>` streaming — so most of an app moves
 across unchanged. Components, styles, forms, validation, data access and business
 logic are not the work. The work is the framework surface around them: routing
-conventions, metadata, caching, cookies, and the handful of Next.js APIs that
-Waku deliberately does not have.
+conventions, metadata, caching, cookies, environment variables, and the handful
+of Next.js APIs that Waku deliberately does not have.
 
 This guide is written from four migrations of real Next.js apps, which live in
 the [waku-examples](https://github.com/wakujs/waku-examples) repository and are
@@ -298,8 +298,15 @@ root layout, read during render, is enough.
 
 - Waku projects are ESM. A `postcss.config.js` using `module.exports` must become
   `export default` (or be renamed `.cjs`).
-- Vite does not read `paths` or `baseUrl` from `tsconfig.json`. Mirror the aliases
-  in `waku.config.ts` under `vite.resolve.alias`.
+- `NEXT_PUBLIC_*` variables become `WAKU_PUBLIC_*`, read in client code as
+  `import.meta.env.WAKU_PUBLIC_*`; every other variable stays on the server.
+  Read those with `getEnv()` from `waku` rather than `process.env`, which not
+  every runtime provides: code copied from `lib/` that reads `process.env` can
+  pass on Node.js and fail after deploying elsewhere.
+- Vite needs `resolve.tsconfigPaths: true` to resolve `paths` and `baseUrl` from
+  `tsconfig.json`; without it, `waku dev` cannot find the aliased imports. Set it
+  under `vite.resolve` in `waku.config.ts` rather than mirroring each alias in
+  `vite.resolve.alias`.
 - A dependency that loads runtime assets next to itself (a WASM database, `sharp`,
   a generated Prisma client) must stay out of the server bundle:
   `vite.environments.rsc.resolve.external`.
@@ -311,16 +318,18 @@ root layout, read during render, is enough.
 
 ## A migration order that works
 
-1. Scaffold a Waku project and copy `components/`, `lib/` and styles across
-   untouched.
-2. Move pages and layouts into `src/pages`, adding `getConfig` to each.
-3. Replace `metadata` exports with rendered tags in the same layouts and pages.
-4. Swap `next/link` and `next/navigation` for `waku`. On a large app, a six-line
+1. Scaffold a Waku project and copy `components/`, `lib/` and styles across.
+2. Rename `NEXT_PUBLIC_*` variables to `WAKU_PUBLIC_*`, read on the client
+   through `import.meta.env`, and switch server reads from `process.env` to
+   `getEnv()`.
+3. Move pages and layouts into `src/pages`, adding `getConfig` to each.
+4. Replace `metadata` exports with rendered tags in the same layouts and pages.
+5. Swap `next/link` and `next/navigation` for `waku`. On a large app, a six-line
    compatibility module keeps that step to one import line per file —
    `nextjs-commerce` does this and `nextjs-dashboard` does it the direct way.
-5. Delete the caching layer.
-6. Port route handlers to `_api/`, and `sitemap`/`robots`/OG images with them.
-7. Move authorization out of middleware and into the data layer, with the
+6. Delete the caching layer.
+7. Port route handlers to `_api/`, and `sitemap`/`robots`/OG images with them.
+8. Move authorization out of middleware and into the data layer, with the
    redirect in a layout, and rebuild cookie writes around a jar — the
    [Authentication](/guides/authentication) guide has both.
-8. Handle the remainder: images, fonts, parallel routes.
+9. Handle the remainder: images, fonts, parallel routes.
