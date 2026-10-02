@@ -10,7 +10,7 @@ order: 20
 
 Waku does not ship an authentication system; that is a deliberate boundary (see [Use Cases](/guides/use-cases)). What it provides is enough to plug one in: request headers in server code, server actions for signing in and out, middleware that owns the response, and layouts that run for every route beneath them. This guide shows where each part of an auth flow goes, and the two places where the obvious approach does not work.
 
-The session itself can come from a library or, as in the code below, from a few lines over a signed cookie. Everything here is condensed from the `nextjs-dashboard` example in the [waku-examples](https://github.com/wakujs/waku-examples) repository, which runs the full flow end to end.
+The session itself can come from a library or, as in the code below, from a few lines over a signed cookie. Everything here is condensed from the [`nextjs-dashboard`](https://github.com/wakujs/waku-examples/tree/main/fs-router/nextjs-dashboard) example in the waku-examples repository, which runs the full flow end to end.
 
 ## Reading the session
 
@@ -124,8 +124,8 @@ beneath it from rendering. With a check in the layout only, an unauthenticated
 request still gets the page's data:
 
 ```
-GET /dashboard                     -> 307  Location: /login
-GET /RSC/R/dashboard.txt           -> 200  22,327 bytes, including every figure on the page
+GET /dashboard                     -> 307  Location: /login?callbackUrl=%2Fdashboard
+GET /RSC/R/dashboard.txt           -> 200  22,532 bytes, including every figure on the page
 ```
 
 With `requireSession()` in the data functions, the same request carries error
@@ -141,7 +141,11 @@ of an error:
 ```tsx
 // ./src/pages/dashboard/_layout.tsx
 import type { ReactNode } from 'react';
-import { unstable_redirect as redirect } from 'waku/router/server';
+import {
+  unstable_getRequest as getRequest,
+  unstable_parseRouterRequest as parseRouterRequest,
+  unstable_redirect as redirect,
+} from 'waku/router/server';
 import { auth } from '../../lib/session';
 
 export default async function DashboardLayout({
@@ -151,11 +155,22 @@ export default async function DashboardLayout({
 }) {
   const session = await auth();
   if (!session) {
-    redirect('/login');
+    redirect(loginUrl());
   }
 
   return <>{children}</>;
 }
+
+// Pass the requested route along as callbackUrl so that signing in can return
+// to it. An action's request addresses no route, so it falls back to /login.
+const loginUrl = () => {
+  const route = parseRouterRequest(getRequest());
+  if (route?.type !== 'route') {
+    return '/login';
+  }
+  const callbackUrl = route.query ? `${route.path}?${route.query}` : route.path;
+  return `/login?${new URLSearchParams({ callbackUrl })}` as const;
+};
 
 export const getConfig = async () => {
   return {
@@ -348,10 +363,28 @@ export async function authenticate(
   await signIn(user.id);
   // 303, so that a browser following the redirect without JavaScript requests
   // the destination with GET. The default 307 re-sends the form POST — with the
-  // action encoded in it — to /dashboard.
-  redirect('/dashboard', 303);
+  // action encoded in it — to the destination.
+  redirect(dashboardPath(String(formData.get('redirectTo') ?? '')), 303);
 }
+
+// Anyone can write a callbackUrl into the login page's query string, so follow
+// it only to a same-origin path under /dashboard, which is all the layout
+// sends. The cast is needed because redirect() is typed against the app's
+// routes.
+const dashboardPath = (url: string) => {
+  try {
+    const { origin, pathname, search } = new URL(url, 'http://localhost');
+    if (origin === 'http://localhost' && /^\/dashboard(\/|$)/.test(pathname)) {
+      return `${pathname}${search}` as Parameters<typeof redirect>[0];
+    }
+  } catch {
+    // Not a URL at all.
+  }
+  return '/dashboard';
+};
 ```
+
+The login form reads `callbackUrl` from `useRouter().query` and posts it back in a hidden `redirectTo` field.
 
 ### The read-through
 

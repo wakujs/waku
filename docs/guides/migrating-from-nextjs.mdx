@@ -19,12 +19,12 @@ This guide is written from four migrations of real Next.js apps, which live in
 the [waku-examples](https://github.com/wakujs/waku-examples) repository and are
 referenced throughout:
 
-| Example               | Migrated from                                 | What it exercises                                      |
-| --------------------- | --------------------------------------------- | ------------------------------------------------------ |
-| `nextjs-blog-starter` | `vercel/next.js` `examples/blog-starter`      | static generation, metadata, markdown, CSS modules     |
-| `nextjs-dashboard`    | `vercel/next-learn` `dashboard/final-example` | auth, a database, server actions, streaming, search    |
-| `nextjs-commerce`     | `vercel/commerce`                             | caching, cookies, optimistic UI, sitemap and OG images |
-| `nextjs-photo-modal`  | `vercel/nextgram`                             | parallel and intercepting routes                       |
+| Example                                                                                                  | Migrated from                                 | What it exercises                                      |
+| -------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------ |
+| [`nextjs-blog-starter`](https://github.com/wakujs/waku-examples/tree/main/fs-router/nextjs-blog-starter) | `vercel/next.js` `examples/blog-starter`      | static generation, metadata, markdown, CSS modules     |
+| [`nextjs-dashboard`](https://github.com/wakujs/waku-examples/tree/main/fs-router/nextjs-dashboard)       | `vercel/next-learn` `dashboard/final-example` | auth, a database, server actions, streaming, search    |
+| [`nextjs-commerce`](https://github.com/wakujs/waku-examples/tree/main/fs-router/nextjs-commerce)         | `vercel/commerce`                             | caching, cookies, optimistic UI, sitemap and OG images |
+| [`nextjs-photo-modal`](https://github.com/wakujs/waku-examples/tree/main/fs-router/nextjs-photo-modal)   | `vercel/nextgram`                             | parallel and intercepting routes                       |
 
 ## The shape of the project
 
@@ -66,7 +66,10 @@ import '../styles.css';
 export default function RootElement({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <head />
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
       <body>{children}</body>
     </html>
   );
@@ -74,6 +77,9 @@ export default function RootElement({ children }: { children: ReactNode }) {
 
 export const getConfig = async () => ({ render: 'static' }) as const;
 ```
+
+Next.js adds the charset and viewport tags for you. A `_root.tsx` replaces
+Waku's default document head, so it declares them itself.
 
 ### Every page declares how it renders
 
@@ -131,7 +137,7 @@ coercion.
 
 ## Metadata
 
-There is no `metadata` export and no `generateMetadata()`. Render the tags; Waku
+There is no `metadata` export and no `generateMetadata()`. Render the tags; React
 hoists any `<title>`, `<meta>` and `<link>` into the document head, so
 "generated" metadata is just data you already fetched:
 
@@ -150,12 +156,13 @@ export default async function ProductPage({
 }
 ```
 
-**The one thing to watch: layout and page metadata do not merge.** In Next.js a
-`title` in a page overrides the one in the layout. In Waku both are rendered, the
-layout's comes first, and the browser uses the first — so the page's title
-silently never applies. Keep page-specific tags on pages, and leave only genuinely
-global tags (icons, `theme-color`, `viewport`) in the layout. There is no
-equivalent of the `title.template` pattern; write the full title on each page.
+As in Next.js, a page's tags override its layout's. For `title`, `description`
+and the Open Graph properties that hold one value, the last declaration wins, so
+a layout that declares its defaults before rendering `{children}` is overridden
+by its pages. Three things do not carry over: there is no `title.template`, so
+write the full title on each page; repeated properties such as `og:image` are
+emitted as written rather than replaced; and `charset` and `viewport` belong in
+`_root.tsx`. [Metadata](/guides/metadata) has the full rules.
 
 ## Routing APIs
 
@@ -187,7 +194,9 @@ const href: `/search?${string}` = `/search?${params}`;       // typed template
 For a component whose target is genuinely dynamic, the type `Link` accepts is not
 exported; borrow it with `ComponentProps<typeof Link>['to']`. Where the href comes
 from user input — a login `callbackUrl`, say — the type error is doing you a
-favour: match it against a list of known routes instead of casting.
+favour: check it against the routes you mean to allow before you cast.
+`nextjs-dashboard` follows a callback only to a same-origin path under
+`/dashboard`.
 
 ## Files that were conventions
 
@@ -305,8 +314,7 @@ root layout, read during render, is enough.
 1. Scaffold a Waku project and copy `components/`, `lib/` and styles across
    untouched.
 2. Move pages and layouts into `src/pages`, adding `getConfig` to each.
-3. Replace `metadata` exports with rendered tags, pushing page-specific ones down
-   onto the pages.
+3. Replace `metadata` exports with rendered tags in the same layouts and pages.
 4. Swap `next/link` and `next/navigation` for `waku`. On a large app, a six-line
    compatibility module keeps that step to one import line per file —
    `nextjs-commerce` does this and `nextjs-dashboard` does it the direct way.
