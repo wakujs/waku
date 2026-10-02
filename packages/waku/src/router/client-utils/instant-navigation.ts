@@ -1,6 +1,8 @@
 import { useCallback } from 'react';
-import { useMergeElements_UNSTABLE as useMergeElements } from '../../minimal/client-runtime.js';
-import { isImmutableElement } from '../../minimal/client-utils/element-etags.js';
+import {
+  unstable_isImmutableElement as isImmutableElement,
+  useMergeElements_UNSTABLE as useMergeElements,
+} from 'waku/minimal/client';
 import {
   createRscParams,
   useRouterCache,

@@ -1,5 +1,5 @@
-import { unstable_createCustomError as createCustomError } from '../minimal/server.js';
-import type { Unstable_Handlers as Handlers } from '../minimal/server.js';
+import { unstable_createCustomError as createCustomError } from 'waku/minimal/server';
+import type { Unstable_Handlers as Handlers } from 'waku/minimal/server';
 import { createBuildHandler } from './define-router-utils/build-handler.js';
 import { createConfigRegistry } from './define-router-utils/config-registry.js';
 import type {

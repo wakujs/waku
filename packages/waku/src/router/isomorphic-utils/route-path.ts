@@ -4,6 +4,29 @@ export type RouteProps<Path extends string = string> = {
   hash: string;
 };
 
+export const addBase = (url: string, base: string) =>
+  base !== '/' && url.startsWith('/') ? base.slice(0, -1) + url : url;
+
+export const removeBase = (url: string, base: string) => {
+  if (base === '/') {
+    return url;
+  }
+  if (!url.startsWith(base)) {
+    throw new Error('pathname must start with basePath: ' + url);
+  }
+  return url.slice(base.length - 1);
+};
+
+export const getGrouplessPath = (path: string) => {
+  if (path.includes('(')) {
+    const withoutGroups = path
+      .split('/')
+      .filter((part) => !part.startsWith('('));
+    return withoutGroups.length > 1 ? withoutGroups.join('/') : '/';
+  }
+  return path;
+};
+
 export function pathnameToRoutePath(pathname: string): string {
   if (!pathname.startsWith('/')) {
     throw new Error('Pathname must start with `/`: ' + pathname);

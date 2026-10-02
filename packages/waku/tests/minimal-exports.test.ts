@@ -28,6 +28,7 @@ const clientExports = [
   'Slot_UNSTABLE',
   'unstable_combineElements',
   'unstable_getErrorInfo',
+  'unstable_isImmutableElement',
   'useElementsPromise_UNSTABLE',
   'useFetchRsc_UNSTABLE',
   'useMergeElements_UNSTABLE',
@@ -39,15 +40,19 @@ const clientCompatibilityExports = [
   'INTERNAL_ServerRoot',
   'unstable_addBase',
   'unstable_callServerRsc',
-  'unstable_isImmutableElement',
   'unstable_removeBase',
 ];
 
-const serverExports = ['unstable_createCustomError', 'unstable_getErrorInfo'];
+const serverExports = [
+  'unstable_buildElements',
+  'unstable_createCustomError',
+  'unstable_formatRscUrl',
+  'unstable_getErrorInfo',
+  'unstable_parseRequest',
+];
 
 const serverCompatibilityExports = [
   'unstable_base64ToBytes',
-  'unstable_buildElements',
   'unstable_bytesToBase64',
   'unstable_defineHandlers',
   'unstable_defineServerEntry',

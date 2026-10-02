@@ -1,5 +1,8 @@
-import { addBase, removeBase } from '../../lib/utils/path.js';
-import { pathnameToRoutePath } from '../isomorphic-utils/route-path.js';
+import {
+  addBase,
+  pathnameToRoutePath,
+  removeBase,
+} from '../isomorphic-utils/route-path.js';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 
 export const pathnameToCurrentRoutePath = (pathname: string) =>

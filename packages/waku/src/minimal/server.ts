@@ -3,7 +3,7 @@ import type {
   Unstable_ServerEntry as ServerEntry,
 } from '../lib/types.js';
 import { base64ToBytes, bytesToBase64 } from '../lib/utils/base64-web.js';
-import { buildElements } from '../lib/utils/build-elements.js';
+import type { buildElements } from '../lib/utils/build-elements.js';
 import { getGrouplessPath } from '../lib/utils/create-pages.js';
 import { isIgnoredPath } from '../lib/utils/fs-router.js';
 
@@ -15,10 +15,15 @@ export type {
   Unstable_RenderHtml,
 } from '../lib/types.js';
 export type { Etags as Unstable_Etags } from '../lib/utils/etags.js';
+export { buildElements as unstable_buildElements } from '../lib/utils/build-elements.js';
 export {
   createCustomError as unstable_createCustomError,
   getErrorInfo as unstable_getErrorInfo,
 } from '../lib/utils/custom-errors.js';
+export {
+  formatRscUrl as unstable_formatRscUrl,
+  parseRequest as unstable_parseRequest,
+} from '../lib/utils/request-url.js';
 
 /** @deprecated Pass a handler object to an adapter, annotated with `Unstable_Handlers` if needed. */
 export function unstable_defineHandlers(handlers: Handlers) {
@@ -30,16 +35,10 @@ export function unstable_defineServerEntry(fns: ServerEntry) {
   return fns;
 }
 
-export type {
-  /** @deprecated Slot validator omission is reserved for framework internals. */
-  ElementSource as Unstable_ElementSource,
-} from '../lib/utils/build-elements.js';
+export type { ElementSource as Unstable_ElementSource } from '../lib/utils/build-elements.js';
 
-/** @deprecated Use element records and renderRsc's etags option directly. */
+/** An element record and its etags, with slots held by the client omitted. */
 export type Unstable_BuiltElements = Awaited<ReturnType<typeof buildElements>>;
-
-/** @deprecated Slot validator omission is reserved for framework internals. */
-export const unstable_buildElements = buildElements;
 
 /** @deprecated Build-cache serialization is reserved for framework internals. */
 export const unstable_base64ToBytes = base64ToBytes;

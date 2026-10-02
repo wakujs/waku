@@ -49,22 +49,36 @@ The Minimal API consists of server handler contracts and client rendering primit
 Examples below often import these as shorter names.
 
 `waku/adapter-builders` exports `Unstable_ServerEntry` for adapter authors
-who own a complete server entry. Framework implementation helpers are private
-modules.
+who own a complete server entry. Waku's bootstrap and HTML renderer use private
+implementation modules.
+
+Advanced composition APIs remain available to any Minimal-based framework:
+
+- `unstable_combineElements(a, b, { unstable_filter })` selects keys from `b`
+  while preserving their validators.
+- `unstable_isImmutableElement(elements, slotId)` inspects a slot's immutable
+  status without exposing its validator.
+- `useMergeElements_UNSTABLE` accepts `unstable_overlay` and `unstable_swr`
+  options for eager rendering while a response streams.
+- `unstable_buildElements`, `Unstable_ElementSource`, and
+  `Unstable_BuiltElements` build payloads that omit slots the client already
+  holds, using the etags supplied to `handleRequest`.
+- `unstable_parseRequest(request)` inspects HTTP, RSC, and server-call URLs
+  without consuming their bodies. `unstable_formatRscUrl(rscPath, baseUrl)`
+  constructs a payload URL using the configured base path and RSC endpoint.
+  These support middleware in Minimal-based frameworks; request inspection
+  does not validate actions or authorize access.
 
 For compatibility, the following existing exports are deprecated:
 
 - `waku/minimal/client`: `INTERNAL_ServerRoot`, `unstable_callServerRsc`,
-  `unstable_addBase`, `unstable_removeBase`, and `unstable_isImmutableElement`.
-  The overlay/SWR options on
-  `useMergeElements_UNSTABLE` are also deprecated.
+  `unstable_addBase`, and `unstable_removeBase`.
 - `waku/minimal/server`: `unstable_defineHandlers`,
-  `unstable_defineServerEntry`, `unstable_buildElements`,
+  `unstable_defineServerEntry`,
   `unstable_base64ToBytes`, `unstable_bytesToBase64`,
-  `unstable_getGrouplessPath`, `unstable_isIgnoredPath`,
-  `Unstable_ElementSource`, and `Unstable_BuiltElements`.
+  `unstable_getGrouplessPath`, and `unstable_isIgnoredPath`.
 
-New code should use the kernel above. Use handler objects or the exported
+Start with the kernel above. Use handler objects or the exported
 types in place of the identity helpers.
 
 ### Mental Model

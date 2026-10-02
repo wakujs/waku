@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { Unstable_HandleBuild as HandleBuild } from '../../minimal/server.js';
+import type { Unstable_HandleBuild as HandleBuild } from 'waku/minimal/server';
 import { INTERNAL_ServerRouter } from '../client.js';
 import {
   type PathSpec,

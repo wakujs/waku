@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
-import { bytesToBase64 } from '../../lib/utils/base64-web.js';
-import { deserializeRsc, serializeRsc } from '../../server.js';
+import { deserializeRsc, serializeRsc } from 'waku/server';
 import type { PathSpec } from '../isomorphic-utils/path-spec.js';
 import {
   isRouteSlotId,
@@ -9,6 +8,17 @@ import {
 import { type SlotId, pathSpecKey } from './config.js';
 
 export const ROOT_SLOT_ID = 'root';
+
+const bytesToBase64 = (bytes: Uint8Array) => {
+  let binary = '';
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+};
+
+export const base64ToBytes = (base64: string) =>
+  Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
 
 export type CacheId = string;
 

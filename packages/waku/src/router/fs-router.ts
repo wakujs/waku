@@ -1,6 +1,5 @@
 import type { FunctionComponent, ReactNode } from 'react';
 import type { ImportGlobFunction } from 'vite/types/importGlob.d.ts';
-import { isIgnoredPath } from '../lib/utils/fs-router.js';
 import { METHODS, createPages } from './create-pages.js';
 import type { Method } from './create-pages.js';
 import type { HandlerInterceptor } from './define-router.js';
@@ -11,6 +10,8 @@ declare global {
     glob: ImportGlobFunction;
   }
 }
+
+const IGNORED_PATH_PARTS = new Set(['_actions', '_components', '_hooks']);
 
 export function fsRouter(
   /**
@@ -76,7 +77,7 @@ export function fsRouter(
           .replace(/\.\w+$/, '')
           .split('/')
           .filter(Boolean);
-        if (isIgnoredPath(pathItems)) {
+        if (pathItems.some((part) => IGNORED_PATH_PARTS.has(part))) {
           continue;
         }
         if (pathItems.at(0) === interceptorsDir) {

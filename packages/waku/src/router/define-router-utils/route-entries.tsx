@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
-import { buildElements } from '../../lib/utils/build-elements.js';
-import type { ElementSource } from '../../lib/utils/build-elements.js';
-import type { Unstable_Etags as Etags } from '../../minimal/server.js';
+import { unstable_buildElements as buildElements } from 'waku/minimal/server';
+import type {
+  Unstable_ElementSource as ElementSource,
+  Unstable_Etags as Etags,
+} from 'waku/minimal/server';
 import {
   HAS404_ID,
   IS_STATIC_ID,
