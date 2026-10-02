@@ -1,8 +1,8 @@
 import { use, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { isImmutableElement } from '../../minimal/client-utils/element-etags.js';
 import {
   Slot_UNSTABLE as Slot,
-  unstable_isImmutableElement as isImmutableElement,
   useElementsPromise_UNSTABLE as useElementsPromise,
   useMergeElements_UNSTABLE as useMergeElements,
 } from '../../minimal/client.js';

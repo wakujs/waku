@@ -16,7 +16,7 @@ import type {
   RefObject,
 } from 'react';
 import { preloadModule } from 'react-dom';
-import { unstable_addBase as addBase } from '../../minimal/client.js';
+import { addBase } from '../../lib/utils/path.js';
 import {
   type PrefetchOptions,
   type RouterCache,

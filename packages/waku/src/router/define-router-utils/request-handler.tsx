@@ -1,8 +1,6 @@
-import {
-  unstable_base64ToBytes as base64ToBytes,
-  unstable_getErrorInfo as getErrorInfo,
-} from '../../minimal/server.js';
-import type { unstable_defineHandlers as defineHandlers } from '../../minimal/server.js';
+import { base64ToBytes } from '../../lib/utils/base64-web.js';
+import { unstable_getErrorInfo as getErrorInfo } from '../../minimal/server.js';
+import type { Unstable_HandleRequest as HandleRequest } from '../../minimal/server.js';
 import { INTERNAL_ServerRouter } from '../client.js';
 import { getPathMapping } from '../isomorphic-utils/path-spec.js';
 import {
@@ -22,7 +20,6 @@ import { createElementCache } from './element-cache.js';
 import { getNonce, setRerender } from './request-store.js';
 import type { RouteEntries, createRouteEntries } from './route-entries.js';
 
-type HandleRequest = Parameters<typeof defineHandlers>[0]['handleRequest'];
 type HandlerInput = Parameters<HandleRequest>[0];
 
 const parseInternalRoute = (location: string, base: string) => {

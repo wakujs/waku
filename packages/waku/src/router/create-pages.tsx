@@ -1,13 +1,11 @@
 import { createElement } from 'react';
 import type { FunctionComponent, ReactElement, ReactNode } from 'react';
+import { getGrouplessPath } from '../lib/utils/create-pages.js';
 import {
   Children_UNSTABLE as Children,
   Slot_UNSTABLE as Slot,
 } from '../minimal/client.js';
-import {
-  unstable_createCustomError as createCustomError,
-  unstable_getGrouplessPath as getGrouplessPath,
-} from '../minimal/server.js';
+import { unstable_createCustomError as createCustomError } from '../minimal/server.js';
 import { ErrorBoundary } from '../router/client.js';
 import type {
   AnyPage,

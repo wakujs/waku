@@ -1,8 +1,6 @@
 import { startTransition, useEffect } from 'react';
-import {
-  useMergeElements_UNSTABLE as useMergeElements,
-  useRegisterRscReloadListener_UNSTABLE as useRegisterRscReloadListener,
-} from '../../minimal/client.js';
+import { useRegisterRscReloadListener_UNSTABLE as useRegisterRscReloadListener } from '../../minimal/client-runtime.js';
+import { useMergeElements_UNSTABLE as useMergeElements } from '../../minimal/client.js';
 import { encodeRoutePath } from '../isomorphic-utils/route-path.js';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import { createRscParams, useRouterCache } from './caches.js';

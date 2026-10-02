@@ -18,9 +18,8 @@ vi.mock('../src/server.js', () => ({
   ),
 }));
 
-vi.mock('../src/minimal/server.js', () => ({
-  unstable_bytesToBase64: (bytes: Uint8Array) =>
-    Buffer.from(bytes).toString('base64'),
+vi.mock('../src/lib/utils/base64-web.js', () => ({
+  bytesToBase64: (bytes: Uint8Array) => Buffer.from(bytes).toString('base64'),
 }));
 
 const encode = (value: unknown) =>

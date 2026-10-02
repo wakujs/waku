@@ -14,6 +14,7 @@ import {
   it,
   vi,
 } from 'vitest';
+import { buildElements } from '../src/lib/utils/build-elements.js';
 import {
   ETAGS_HEADER,
   ETAGS_ID,
@@ -23,6 +24,7 @@ import {
 import {
   adoptElements,
   collectEtags,
+  isImmutableElement,
 } from '../src/minimal/client-utils/element-etags.js';
 import { clearInitialRscEntries } from '../src/minimal/client-utils/initial-rsc-store.js';
 import { getDefaultRootStore } from '../src/minimal/client-utils/root-store.js';
@@ -30,11 +32,9 @@ import {
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
   unstable_combineElements as combineElements,
-  unstable_isImmutableElement as isImmutableElement,
   useFetchRsc_UNSTABLE,
   useMergeElements_UNSTABLE,
 } from '../src/minimal/client.js';
-import { unstable_buildElements as buildElements } from '../src/minimal/server.js';
 
 const testHoisted = vi.hoisted(() => ({
   elements: {} as Record<string, unknown>,

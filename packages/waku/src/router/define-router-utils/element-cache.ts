@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { unstable_bytesToBase64 as bytesToBase64 } from '../../minimal/server.js';
+import { bytesToBase64 } from '../../lib/utils/base64-web.js';
 import { deserializeRsc, serializeRsc } from '../../server.js';
 import type { PathSpec } from '../isomorphic-utils/path-spec.js';
 import {

@@ -15,8 +15,8 @@ vi.mock('../src/server.js', () => ({
   deserializeRsc: vi.fn(),
   serializeRsc: vi.fn(),
 }));
-vi.mock('../src/minimal/server.js', () => ({
-  unstable_bytesToBase64: vi.fn(),
+vi.mock('../src/lib/utils/base64-web.js', () => ({
+  bytesToBase64: vi.fn(),
 }));
 
 const literal = (name: string): PathSpec => [{ type: 'literal', name }];

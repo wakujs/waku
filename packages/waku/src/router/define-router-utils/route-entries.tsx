@@ -1,9 +1,7 @@
 import type { ReactNode } from 'react';
-import { unstable_buildElements as buildElements } from '../../minimal/server.js';
-import type {
-  Unstable_ElementSource as ElementSource,
-  Unstable_Etags as Etags,
-} from '../../minimal/server.js';
+import { buildElements } from '../../lib/utils/build-elements.js';
+import type { ElementSource } from '../../lib/utils/build-elements.js';
+import type { Unstable_Etags as Etags } from '../../minimal/server.js';
 import {
   HAS404_ID,
   IS_STATIC_ID,

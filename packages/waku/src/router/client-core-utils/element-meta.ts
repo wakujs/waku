@@ -1,4 +1,4 @@
-import { unstable_isImmutableElement as isImmutableElement } from '../../minimal/client.js';
+import { isImmutableElement } from '../../minimal/client-utils/element-etags.js';
 import {
   HAS404_ID,
   IS_STATIC_ID,

@@ -8,7 +8,7 @@ import { renderToReadableStream } from 'react-dom/server.edge';
 import { injectRSCPayload } from 'rsc-html-stream/server';
 import htmlShell from 'virtual:vite-rsc-waku/html-shell';
 import htmlTransform from 'virtual:vite-rsc-waku/html-transform';
-import { INTERNAL_ServerRoot } from '../../minimal/client.js';
+import { INTERNAL_ServerRoot } from '../../minimal/client-runtime.js';
 import { getErrorInfo } from '../utils/custom-errors.js';
 import {
   createBootstrapScriptContent,
