@@ -98,7 +98,7 @@ test('server consumers import only server and isomorphic utilities', async () =>
 
 test('CLI and Vite tooling can import build and server utilities', async () => {
   for (const file of [
-    'internals.ts',
+    'vite-plugins.ts',
     'lib/vite-rsc/loader.ts',
     'lib/vite-entries/entry.build.ts',
     'lib/vite-plugins/rsc-devtools.ts',
