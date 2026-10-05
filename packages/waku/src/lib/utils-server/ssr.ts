@@ -1,3 +1,5 @@
+import { createElement } from 'react';
+import { renderToReadableStream } from 'react-dom/server.edge';
 import { DEV_BUILD_ID } from '../constants.js';
 
 // DEV: hold the stream ~5s so React's late debug-channel chunks settle before close. https://github.com/wakujs/waku/pull/2154
@@ -113,7 +115,7 @@ export function getBootstrapPreamble(options: {
     .join('\n');
 }
 
-export const createHtmlFallback = (
+export const createHtmlFallback = async (
   html: string,
   entryUrl: string,
   options?: {
@@ -121,23 +123,13 @@ export const createHtmlFallback = (
     extraScriptContent?: string | undefined;
   },
 ) => {
-  const nonce = options?.nonce
-    ?.replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-  const script = (
+  const script =
     getBootstrapPreamble({ hydrate: false, initialRsc: false }) +
     createBootstrapScriptContent(entryUrl) +
-    (options?.extraScriptContent || '')
-  ).replace(
-    /(<\/?)(s)(cript)/gi,
-    (_match, prefix: string, letter: string, suffix: string) =>
-      prefix + (letter === 's' ? '\\u0073' : '\\u0053') + suffix,
+    (options?.extraScriptContent || '');
+  const stream = await renderToReadableStream(
+    createElement('script', { nonce: options?.nonce }, script),
   );
-  return html.replace(
-    '</body>',
-    () =>
-      `<script${nonce ? ` nonce="${nonce}"` : ''}>${script}</script></body>`,
-  );
+  const scriptHtml = await new Response(stream).text();
+  return html.replace('</body>', () => `${scriptHtml}</body>`);
 };
