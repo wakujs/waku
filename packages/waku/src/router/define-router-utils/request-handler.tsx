@@ -69,7 +69,10 @@ export const createRequestHandler = ({
   let requestElementCacheInit: Promise<void> | undefined;
   let cachedPath2moduleIds: Record<string, string[]> | undefined;
 
-  return async (input, { renderRsc, renderHtml, loadBuildMetadata }) => {
+  return async (
+    input,
+    { renderRsc, renderHtml, renderHtmlFallback, loadBuildMetadata },
+  ) => {
     return runHandled(input.req, async () => {
       requestElementCacheInit ??= (async () => {
         const cachedElementsMetadata = await loadBuildMetadata(
@@ -335,7 +338,13 @@ export const createRequestHandler = ({
           );
         };
         if (resolved?.noSsr) {
-          return 'fallback';
+          const nonce = getNonce();
+          return renderHtmlFallback({
+            unstable_extraScriptContent: getExtraScriptContent
+              ? await getExtraScriptContent()
+              : '',
+            ...(nonce ? { nonce } : {}),
+          });
         }
         try {
           if (resolved) {

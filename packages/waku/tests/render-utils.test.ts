@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import { ETAGS_ID, IMMUTABLE_ETAG } from '../src/lib/utils-isomorphic/etags.js';
 import { createRenderUtils } from '../src/lib/utils-server/render.js';
+import { createHtmlFallback } from '../src/lib/utils-server/ssr.js';
 
 const makeRenderUtils = () => {
   const renderToReadableStream = vi.fn(
@@ -19,6 +20,40 @@ const makeRenderUtils = () => {
 };
 
 describe('createRenderUtils', () => {
+  test('renders independent fallback documents with bootstrap options', async () => {
+    const renderToReadableStream = vi.fn(() => new ReadableStream());
+    const renderHtmlFallback = vi.fn(
+      async (options?: { nonce?: string; extraScriptContent?: string }) =>
+        createHtmlFallback('<html><body></body></html>', '/entry.js', options),
+    );
+    const renderUtils = createRenderUtils({
+      temporaryReferences: undefined,
+      renderToReadableStream,
+      loadSsrEntryModule: async () =>
+        ({
+          INTERNAL_renderHtmlFallback: renderHtmlFallback,
+        }) as any,
+      buildId: '',
+      onError: vi.fn(),
+    });
+    const first = await renderUtils.renderHtmlFallback({
+      nonce: 'first-nonce',
+      unstable_extraScriptContent: 'globalThis.first = true;',
+    });
+    const second = await renderUtils.renderHtmlFallback({
+      unstable_extraScriptContent: 'globalThis.second = true;',
+    });
+    const plain = await renderUtils.renderHtmlFallback();
+    expect(first.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    expect(await first.text()).toContain('nonce="first-nonce"');
+    const secondHtml = await second.text();
+    expect(secondHtml).toContain('globalThis.second = true;');
+    expect(secondHtml).not.toContain('nonce=');
+    expect(secondHtml).not.toContain('globalThis.first');
+    expect(await plain.text()).not.toContain('globalThis.second');
+    expect(renderToReadableStream).not.toHaveBeenCalled();
+  });
+
   test('carries a document location', async () => {
     const { renderToReadableStream, renderUtils } = makeRenderUtils();
 

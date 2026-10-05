@@ -61,6 +61,7 @@ describe('define-router action requests', () => {
       {
         renderRsc,
         renderHtml: vi.fn(),
+        renderHtmlFallback: vi.fn(),
         loadBuildMetadata: vi.fn(),
       },
     );
@@ -104,6 +105,7 @@ describe('define-router action requests', () => {
       {
         renderRsc,
         renderHtml: vi.fn(),
+        renderHtmlFallback: vi.fn(),
         loadBuildMetadata: vi.fn(),
       },
     );
@@ -142,6 +144,7 @@ describe('define-router action requests', () => {
       {
         renderRsc,
         renderHtml,
+        renderHtmlFallback: vi.fn(),
         loadBuildMetadata: vi.fn(),
       },
     );
@@ -192,6 +195,7 @@ describe('define-router action requests', () => {
       {
         renderRsc,
         renderHtml,
+        renderHtmlFallback: vi.fn(),
         loadBuildMetadata: vi.fn(),
       },
     );
@@ -247,6 +251,7 @@ describe('define-router action requests', () => {
       {
         renderRsc,
         renderHtml: vi.fn().mockResolvedValue(new Response('ok')),
+        renderHtmlFallback: vi.fn(),
         loadBuildMetadata: vi.fn(),
       },
     );
@@ -300,6 +305,7 @@ describe('define-router action requests', () => {
       {
         renderRsc,
         renderHtml,
+        renderHtmlFallback: vi.fn(),
         loadBuildMetadata: vi.fn(),
       },
     );
@@ -360,6 +366,7 @@ describe('define-router action requests', () => {
       {
         renderRsc,
         renderHtml: vi.fn(),
+        renderHtmlFallback: vi.fn(),
         loadBuildMetadata: vi.fn(),
       },
     );
@@ -411,6 +418,7 @@ describe('define-router action requests', () => {
       {
         renderRsc,
         renderHtml: vi.fn(),
+        renderHtmlFallback: vi.fn(),
         loadBuildMetadata: vi.fn(),
       },
     );
@@ -450,6 +458,7 @@ describe('define-router action requests', () => {
       {
         renderRsc: vi.fn(),
         renderHtml: vi.fn(),
+        renderHtmlFallback: vi.fn(),
         loadBuildMetadata: vi.fn(),
       },
     );

@@ -54,6 +54,7 @@ const callHandleRequest = (
     {
       renderRsc: vi.fn().mockResolvedValue(makeStream()),
       renderHtml: vi.fn().mockResolvedValue(new Response('ok')),
+      renderHtmlFallback: vi.fn(),
       loadBuildMetadata: vi.fn(),
     },
   );

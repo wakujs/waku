@@ -53,6 +53,9 @@ const makeUtils = () => ({
   renderHtml: vi
     .fn<Parameters<HandleRequest>[1]['renderHtml']>()
     .mockImplementation(async () => new Response('html')),
+  renderHtmlFallback: vi
+    .fn<Parameters<HandleRequest>[1]['renderHtmlFallback']>()
+    .mockImplementation(async () => new Response('fallback')),
   loadBuildMetadata: vi
     .fn<Parameters<HandleRequest>[1]['loadBuildMetadata']>()
     .mockResolvedValue(undefined),
@@ -520,7 +523,8 @@ describe('defineRouter route resolver', () => {
         { type: 'http', pathname: '/', req: new Request('http://localhost/') },
         utils,
       ),
-    ).toBe('fallback');
+    ).toBeInstanceOf(Response);
+    expect(utils.renderHtmlFallback).toHaveBeenCalledOnce();
     expect(render).not.toHaveBeenCalled();
     await router.handleRequest(rscInput('/'), utils);
     expect(utils.renderRsc).toHaveBeenCalledWith(
@@ -875,6 +879,111 @@ describe('defineRouter route resolver', () => {
     } finally {
       deserialize.mockReset().mockImplementation(implementation);
     }
+  });
+
+  it('resolves async sources before warming the build cache', async () => {
+    const router = unstable_defineRouter({
+      resolve: async () => ({
+        elements: {
+          root: { immutable: true, render: async () => 'async root' },
+          route: { immutable: true, render: async () => 'async route' },
+        },
+      }),
+      getHas404: async () => false,
+      getBuildPaths: async () => [{ pathname: '/', prerender: false }],
+    });
+    const metadata = new Map<string, string>();
+    await router.handleBuild({
+      ...makeUtils(),
+      rscPath2pathname: (path) => path,
+      generateFile: vi.fn(),
+      generateDefaultHtml: vi.fn(),
+      saveBuildMetadata: async (key, value) => {
+        metadata.set(key, value);
+      },
+      unstable_registerPrunableFile: vi.fn(),
+    });
+    const utils = makeUtils();
+    utils.loadBuildMetadata.mockImplementation(async (key) =>
+      metadata.get(key),
+    );
+    await router.handleRequest(rscInput('/'), utils);
+    expect(utils.renderRsc).toHaveBeenCalledWith(
+      expect.objectContaining({ root: 'async root', 'route:/': 'async route' }),
+      expect.anything(),
+    );
+  });
+
+  it('fails the build when an immutable source rejects while warming', async () => {
+    const failed = Promise.reject(new Error('async source failed'));
+    await failed.catch(() => {});
+    const router = unstable_defineRouter({
+      resolve: async () => ({
+        elements: {
+          root: { immutable: true, render: () => failed },
+          route: { render: () => 'dynamic route' },
+        },
+      }),
+      getBuildPaths: async () => ['/dynamic'],
+    });
+    const saveBuildMetadata = vi.fn();
+    await expect(
+      router.handleBuild({
+        ...makeUtils(),
+        rscPath2pathname: (path) => path,
+        generateFile: vi.fn(),
+        generateDefaultHtml: vi.fn(),
+        saveBuildMetadata,
+        unstable_registerPrunableFile: vi.fn(),
+      }),
+    ).rejects.toThrow('async source failed');
+    expect(saveBuildMetadata).not.toHaveBeenCalled();
+  });
+
+  it('registers search codecs in runtime and built noSsr HTML', async () => {
+    const codec = {
+      id: 'no-ssr-search',
+      parse: () => ({}),
+      serialize: () => '',
+    };
+    const router = unstable_defineRouter({
+      resolve: async () => ({ ...makeRoute('content', true), noSsr: true }),
+      getHas404: async () => false,
+      getSearchCodecs: async () => ({ '/search': codec }),
+      getBuildPaths: async () => ['/search'],
+    });
+    const utils = makeUtils();
+    const response = await router.handleRequest(
+      { type: 'http', pathname: '/', req: new Request('http://localhost/') },
+      utils,
+    );
+    expect(response).toBeInstanceOf(Response);
+    expect(utils.renderHtml).not.toHaveBeenCalled();
+    expect(utils.renderRsc).not.toHaveBeenCalled();
+    expect(utils.renderHtmlFallback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        unstable_extraScriptContent: expect.stringContaining(
+          '"/search":"no-ssr-search"',
+        ),
+      }),
+    );
+    const generateDefaultHtml = vi.fn();
+    await router.handleBuild({
+      ...utils,
+      rscPath2pathname: (path) => path,
+      generateFile: vi.fn(),
+      generateDefaultHtml,
+      saveBuildMetadata: vi.fn(),
+      unstable_registerPrunableFile: vi.fn(),
+    });
+    expect(generateDefaultHtml).toHaveBeenCalledWith(
+      '/search/index.html',
+      expect.objectContaining({
+        unstable_extraScriptContent: expect.stringContaining(
+          '"/search":"no-ssr-search"',
+        ),
+      }),
+    );
   });
 
   it('builds an explicit immutable element even when runtime resolution is mutable', async () => {

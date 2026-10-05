@@ -29,6 +29,11 @@ export type Unstable_RenderHtml = (
   },
 ) => Promise<Response>;
 
+type HtmlFallbackOptions = {
+  nonce?: string;
+  unstable_extraScriptContent?: string;
+};
+
 export type Unstable_EmitFile = (
   filePath: string,
   body: ReadableStream,
@@ -58,6 +63,8 @@ export type Unstable_HandleRequest = (
   utils: {
     renderRsc: Unstable_RenderRsc;
     renderHtml: Unstable_RenderHtml;
+    /** Returns the client-rendered HTML shell, with optional bootstrap code and CSP nonce. */
+    renderHtmlFallback: (options?: HtmlFallbackOptions) => Promise<Response>;
     loadBuildMetadata: (key: string) => Promise<string | undefined>;
   },
 ) => Promise<ReadableStream | Response | 'fallback' | null | undefined>;
@@ -72,7 +79,10 @@ export type Unstable_HandleBuild = (utils: {
     fileName: string,
     body: ReadableStream | string,
   ) => Promise<void>;
-  generateDefaultHtml: (fileName: string) => Promise<void>;
+  generateDefaultHtml: (
+    fileName: string,
+    options?: HtmlFallbackOptions,
+  ) => Promise<void>;
   unstable_registerPrunableFile: (srcPath: string) => void;
 }) => Promise<void>;
 

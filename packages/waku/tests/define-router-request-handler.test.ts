@@ -40,6 +40,7 @@ const makeUtils = (loadBuildMetadata = vi.fn()) => ({
     .fn<Unstable_RenderHtml>()
     .mockResolvedValue(new Response('ok')),
   loadBuildMetadata,
+  renderHtmlFallback: vi.fn(async () => new Response('fallback')),
 });
 
 const rscInput = (rscPath: string, rscParams?: unknown) => ({
@@ -765,19 +766,23 @@ describe('request dispatch', () => {
     expect(elements?.[ROUTE_ID]).toEqual(['/404', '']);
   });
 
-  it('returns fallback for a noSsr route', async () => {
+  it('renders fallback HTML without rendering a noSsr route', async () => {
     const { handleRequest } = createConfiguredRouter({
       getConfigs: async () => [{ ...dynamicRoute('/nossr'), noSsr: true }],
     });
+    const utils = makeUtils();
     const res = await handleRequest(
       {
         type: 'http',
         pathname: '/nossr',
         req: new Request('http://localhost/nossr'),
       },
-      makeUtils(),
+      utils,
     );
-    expect(res).toBe('fallback');
+    expect(res).toBeInstanceOf(Response);
+    expect(utils.renderHtmlFallback).toHaveBeenCalledOnce();
+    expect(utils.renderRsc).not.toHaveBeenCalled();
+    expect(utils.renderHtml).not.toHaveBeenCalled();
   });
 
   it('loads cached-elements and path2moduleIds metadata only once', async () => {

@@ -15,6 +15,7 @@ import { getErrorInfo } from '../utils-isomorphic/custom-errors.js';
 import { batchReadableStream } from '../utils-isomorphic/stream.js';
 import {
   createBootstrapScriptContent,
+  createHtmlFallback,
   getBootstrapPreamble,
 } from '../utils-server/ssr.js';
 
@@ -136,16 +137,8 @@ export const renderHtmlStream: RenderHtmlStream = async (
   return { stream: responseStream, status };
 };
 
-export async function renderHtmlFallback() {
-  const bootstrapScriptContent =
-    createBootstrapScriptContent(getClientEntryUrl());
-  const html = htmlShell.replace(
-    '</body>',
-    () =>
-      `<script>${getBootstrapPreamble({
-        hydrate: false,
-        initialRsc: false,
-      })}${bootstrapScriptContent}</script></body>`,
-  );
-  return html;
+export async function renderHtmlFallback(
+  options?: Parameters<typeof createHtmlFallback>[2],
+) {
+  return createHtmlFallback(htmlShell, getClientEntryUrl(), options);
 }

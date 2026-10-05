@@ -78,6 +78,7 @@ const drive = async (
         },
       ),
       renderHtml: vi.fn(),
+      renderHtmlFallback: vi.fn(),
       loadBuildMetadata: vi.fn(),
     },
   );
@@ -117,6 +118,7 @@ const driveHtml = async (
         return makeStream();
       }),
       renderHtml: vi.fn(async () => new Response('ok')),
+      renderHtmlFallback: vi.fn(),
       loadBuildMetadata: vi.fn(),
     },
   );

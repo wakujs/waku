@@ -112,3 +112,32 @@ export function getBootstrapPreamble(options: {
     .filter(Boolean)
     .join('\n');
 }
+
+export const createHtmlFallback = (
+  html: string,
+  entryUrl: string,
+  options?: {
+    nonce?: string | undefined;
+    extraScriptContent?: string | undefined;
+  },
+) => {
+  const nonce = options?.nonce
+    ?.replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  const script = (
+    getBootstrapPreamble({ hydrate: false, initialRsc: false }) +
+    createBootstrapScriptContent(entryUrl) +
+    (options?.extraScriptContent || '')
+  ).replace(
+    /(<\/?)(s)(cript)/gi,
+    (_match, prefix: string, letter: string, suffix: string) =>
+      prefix + (letter === 's' ? '\\u0073' : '\\u0053') + suffix,
+  );
+  return html.replace(
+    '</body>',
+    () =>
+      `<script${nonce ? ` nonce="${nonce}"` : ''}>${script}</script></body>`,
+  );
+};

@@ -35,6 +35,7 @@ describe('createPages router integration', () => {
     const utils = {
       renderRsc,
       renderHtml: vi.fn(),
+      renderHtmlFallback: vi.fn(),
       loadBuildMetadata: vi.fn(),
     };
     for (const path of ['/one', '/two']) {

@@ -28,6 +28,18 @@ test.describe(`define-router`, () => {
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');
   });
 
+  test('structured search navigation after a direct noSsr load', async ({
+    page,
+  }) => {
+    const response = await page.goto(`http://localhost:${port}/no-ssr-search`);
+    expect(await response!.text()).not.toContain('Search foo');
+    const link = page.getByRole('link', { name: 'Search foo' });
+    await expect(link).toHaveAttribute('href', '/foo?q=after');
+    await link.click();
+    await expect(page.getByTestId('foo-title')).toHaveText('Foo');
+    expect(page.url()).toBe(`http://localhost:${port}/foo?q=after`);
+  });
+
   test('bar1 (dynamic page + static slice)', async ({ page, mode }) => {
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
@@ -259,5 +271,19 @@ test.describe('define-router: static server', { tag: '@prd' }, () => {
     );
     await expect(page.getByTestId('slice001')).toContainText('Slice 001');
     expect(payload.status()).toBe(200);
+  });
+
+  test('structured search navigation from static noSsr HTML', async ({
+    page,
+  }) => {
+    const response = await page.goto(
+      `http://localhost:${port}/no-ssr-search-static`,
+    );
+    expect(await response!.text()).not.toContain('Search foo');
+    const link = page.getByRole('link', { name: 'Search foo' });
+    await expect(link).toHaveAttribute('href', '/foo?q=after');
+    await link.click();
+    await expect(page.getByTestId('foo-title')).toHaveText('Foo');
+    expect(page.url()).toBe(`http://localhost:${port}/foo?q=after`);
   });
 });

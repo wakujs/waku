@@ -113,7 +113,7 @@ export const createBuildHandler =
                     id === 'route' ? getRouteSlotId(routePath) : id;
                   const cacheId = getElementCacheId(slotId, source);
                   if (!cache.has(cacheId)) {
-                    await cache.set(cacheId, source.render());
+                    await cache.set(cacheId, await source.render());
                   }
                 }
               }),
@@ -154,7 +154,9 @@ export const createBuildHandler =
             routePath === '/404' ? '404.html' : routePath + '/index.html';
           if (resolved.noSsr) {
             await utils.generateFile(utils.rscPath2pathname(rscPath), stream);
-            await utils.generateDefaultHtml(htmlPath);
+            await utils.generateDefaultHtml(htmlPath, {
+              unstable_extraScriptContent: await getExtraScriptContent(),
+            });
           } else {
             const [payload, htmlPayload] = stream.tee();
             await utils.generateFile(utils.rscPath2pathname(rscPath), payload);

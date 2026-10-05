@@ -11,8 +11,10 @@ import {
   unstable_defineRouter as defineRouter,
   unstable_redirect as redirect,
 } from 'waku/router/server';
+import { SearchPage } from './components/search-page.js';
 import { Slice001 } from './components/slice001.js';
 import { Slice002 } from './components/slice002.js';
+import { searchCodec } from './lib/search.js';
 import Bar1Page from './routes/bar1/page.js';
 import Bar2Page from './routes/bar2/page.js';
 import Baz1Page from './routes/baz1/page.js';
@@ -21,7 +23,14 @@ import FooPage from './routes/foo/page.js';
 import Layout from './routes/layout.js';
 import Page from './routes/page.js';
 
-const STATIC_PAGES = ['/', '/foo', '/bar2', '/baz2', '/static-lazy'];
+const STATIC_PAGES = [
+  '/',
+  '/foo',
+  '/bar2',
+  '/baz2',
+  '/static-lazy',
+  '/no-ssr-search-static',
+];
 const PATH_PAGE: Record<string, ReactNode> = {
   '/': <Page />,
   '/foo': <FooPage />,
@@ -29,6 +38,8 @@ const PATH_PAGE: Record<string, ReactNode> = {
   '/bar2': <Bar2Page />, // static page + dynamic slice
   '/baz1': <Baz1Page />, // dynamic page + lazy static slice
   '/baz2': <Baz2Page />, // static page + lazy dynamic slice
+  '/no-ssr-search': <SearchPage />,
+  '/no-ssr-search-static': <SearchPage />,
   '/static-lazy': (
     <div>
       <h2 data-testid="static-lazy-title">Static lazy</h2>
@@ -91,6 +102,7 @@ const router = defineRouter({
       return null;
     }
     return {
+      noSsr: path === '/no-ssr-search' || path === '/no-ssr-search-static',
       elements: {
         root,
         route: {
@@ -124,6 +136,7 @@ const router = defineRouter({
   },
   getBuildPaths: async () => [...Object.keys(PATH_PAGE), '/api/empty'],
   getBuildElementIds: async () => ['slice:slice001'],
+  getSearchCodecs: async () => ({ '/foo': searchCodec }),
   resolveElement: async (id) =>
     sliceSources[id as keyof typeof sliceSources] || null,
 });
