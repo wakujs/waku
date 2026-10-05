@@ -154,7 +154,7 @@ describe('define-router handleBuild', () => {
     // routeElement is keyed by the path template (not a concrete path)
     // so a single cache entry covers every concrete instance under
     // a slug/wildcard route.
-    const templateRouteKey = `pathSpec/${JSON.stringify([
+    const templateRouteKey = `key/pathSpec/${JSON.stringify([
       { type: 'literal', name: 'nested' },
       { type: 'group', name: 'name' },
     ])}`;

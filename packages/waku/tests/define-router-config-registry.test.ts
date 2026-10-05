@@ -151,11 +151,11 @@ describe('config registry queries', () => {
     ]);
     await registry.initialize();
     expect(
-      registry.resolveSearchCodec(pathSpecAsString(literal('foopat')))?.id,
+      registry.getSearchCodecs()[pathSpecAsString(literal('foopat'))]?.id,
     ).toBe('cf');
     // the raw path is not the key when a pathPattern is present
     expect(
-      registry.resolveSearchCodec(pathSpecAsString(literal('foo'))),
+      registry.getSearchCodecs()[pathSpecAsString(literal('foo'))],
     ).toBeUndefined();
   });
 

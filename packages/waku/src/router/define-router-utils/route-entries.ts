@@ -13,14 +13,14 @@ import {
   decodeRoutePath,
   getRouteSlotId,
 } from '../isomorphic-utils/route-path.js';
-import { cacheElementSource, getSlotCacheId } from './element-cache.js';
+import { cacheElementSource, getElementCacheId } from './element-cache.js';
 import type { ElementCache } from './element-cache.js';
 import { setRscParams, setRscPath } from './request-store.js';
 
 export type Route = {
-  elements: Record<string, ElementSource> & {
-    root: ElementSource;
-    route: ElementSource;
+  elements: Record<string, ElementSource & { cacheKey?: string }> & {
+    root: ElementSource & { cacheKey?: string };
+    route: ElementSource & { cacheKey?: string };
   };
   noSsr?: boolean;
 };
@@ -45,18 +45,20 @@ export const createRouteEntries = (
   getHas404?: () => Promise<boolean>,
 ) => {
   let cachedHas404: Promise<boolean> | undefined;
-  const has404 =
-    getHas404 ??
-    (() =>
-      (cachedHas404 ??= resolve('/404', '')
-        .catch((error) => {
-          if (getErrorInfo(error)?.status === 404) {
-            return null;
-          }
-          cachedHas404 = undefined;
-          throw error;
-        })
-        .then((result) => result !== null && typeof result !== 'function')));
+  const has404 = () =>
+    (cachedHas404 ??= (
+      getHas404
+        ? getHas404()
+        : resolve('/404', '').then(
+            (result) => result !== null && typeof result !== 'function',
+          )
+    ).catch((error) => {
+      if (getErrorInfo(error)?.status === 404) {
+        return false;
+      }
+      cachedHas404 = undefined;
+      throw error;
+    }));
 
   const getEntriesForRoute = async (
     rscPath: string,
@@ -84,12 +86,16 @@ export const createRouteEntries = (
     }
     const { route, ...sources } = resolved.elements;
     const routeId = getRouteSlotId(pathname);
-    sources[routeId] = route.immutable
-      ? {
-          ...route,
-          render: () => cache.get(getSlotCacheId(routeId)) ?? route.render(),
-        }
-      : route;
+    sources[routeId] =
+      route.cacheKey !== undefined
+        ? cacheElementSource(route, getElementCacheId(routeId, route), cache)
+        : route.immutable
+          ? {
+              ...route,
+              render: () =>
+                cache.get(getElementCacheId(routeId, route)) ?? route.render(),
+            }
+          : route;
     const entries = await buildElements(
       clientEtags,
       Object.fromEntries(
@@ -97,7 +103,7 @@ export const createRouteEntries = (
           id,
           id === routeId
             ? source
-            : cacheElementSource(source, getSlotCacheId(id), cache),
+            : cacheElementSource(source, getElementCacheId(id, source), cache),
         ]),
       ),
     );
@@ -111,12 +117,22 @@ export const createRouteEntries = (
     return entries;
   };
 
-  const getEntriesForElement = async (id: string, cache: ElementCache) => {
-    const source = await resolveElement?.(id);
+  const getEntriesForElement = async (
+    id: string,
+    cache: ElementCache,
+    resolvedSource?: ElementSource,
+  ) => {
+    const source = resolvedSource ?? (await resolveElement?.(id));
     return source
       ? buildElements(
           {},
-          { [id]: cacheElementSource(source, getSlotCacheId(id), cache) },
+          {
+            [id]: cacheElementSource(
+              source,
+              getElementCacheId(id, source),
+              cache,
+            ),
+          },
         )
       : null;
   };

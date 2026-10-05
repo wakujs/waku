@@ -77,11 +77,13 @@ Each source uses Minimal's `Unstable_ElementSource`:
 
 An immutable slot must have the same content for its lifetime. The `root` ID is shared across routes, while `route` is mapped internally to a path-specific slot. Additional IDs are shared wherever they appear, so use distinct IDs for different content.
 
-The server caches immutable named elements. It reuses immutable `route` content from build output, but does not cache new route content by requested pathname at runtime.
+The server caches immutable named elements. It reuses immutable `route` content from build output, but does not cache new route content by requested pathname at runtime. Give a route source a `cacheKey` to share its cached content across pathnames, such as a reusable route shell. Sources with the same key must render the same content; use a bounded set of keys rather than arbitrary requested URLs.
 
 Additional IDs must not start with `_`, a capital letter, or `route:`; these names are reserved for Minimal and Router metadata.
 
-Set `noSsr: true` on a route to return Waku's client-rendered document fallback; its RSC response remains available. Resolving `/404` supplies a custom not-found route. Its availability is checked once per router instance; the content is resolved on each visit. See [Redirects and Not Found](/guides/redirects-and-not-found) for streaming behavior.
+Set `noSsr: true` on a route to return Waku's client-rendered document fallback; its RSC response remains available. Resolving `/404` supplies a custom not-found route. Its availability is checked once per router instance; the content is resolved on each visit. Supply `getHas404: async () => boolean` when your manifest can answer this without resolving a route, or when a catch-all also matches `/404`. See [Redirects and Not Found](/guides/redirects-and-not-found) for streaming behavior.
+
+`getSearchCodecs` optionally returns a map from route patterns to search codecs. Waku uses the map for structured server-side redirects and registers the same codec IDs in the browser for structured navigation.
 
 ## Client Entry
 
@@ -115,14 +117,16 @@ The request body can be read only once. If resolution needs to inspect it before
 
 ## Build Paths
 
-The optional `getBuildPaths` returns concrete pathname strings, without queries or fragments. Build and runtime use the same `resolve` callback.
+The optional `getBuildPaths` returns pathname strings, without queries or fragments. These use the same `resolve` callback as runtime requests.
 
 - Routes with only immutable sources emit RSC and HTML files.
 - Mutable routes cache only their immutable sources; mutable content is rendered at runtime.
 - HTTP handlers emit their response bodies as static files.
 - Immutable routes with `noSsr` emit RSC and a default client-rendered HTML document.
 
-Omit a path to skip its build output. Omit `getBuildPaths` entirely for runtime-only routes. Custom routers do not need `PathSpec`, component source-file metadata, or the private build plan used by `createPages`.
+For explicit build planning, return `{ pathname, route?, prerender?, prefetchPattern? }` targets. `route` supplies build-specific sources or an HTTP handler rather than calling `resolve`. `prerender: false` caches only immutable sources without emitting a page, even when every source is immutable. `prefetchPattern` is a regular expression matching paths that share the target's client modules.
+
+Omit a path to skip its build output. Omit `getBuildPaths` entirely for runtime-only routes. Custom routers do not need `PathSpec` or component source-file metadata.
 
 Include `/404` in `getBuildPaths` to emit a static `404.html`.
 
@@ -145,10 +149,14 @@ async getBuildElementIds() {
 
 `getBuildElementIds` lists immutable elements to emit as standalone RSC files, including lazy slices needed on a static deployment. It works independently of `getBuildPaths`. Currently only `slice:<id>` IDs are supported. Listed elements must resolve and be immutable; otherwise the build fails. Unlisted elements require a runtime server when fetched independently.
 
+Return `{ id, source }` instead of an ID string when the build should use an explicit source rather than `resolveElement`.
+
 Include an element directly in a route's `elements` when it should arrive in the route payload. There are no separate page, layout, or slice declarations in `defineRouter`; those are `createPages` authoring concepts.
 
 ## Boundaries
 
 `defineRouter` owns the protocol expected by `waku/router/client`: reserved metadata, root and route slots, action rerenders, redirects, 404 handling, SSR, and build output. Custom routers supply resolution and element sources, without importing internal IDs or encoding helpers from `waku/router/client-core`.
+
+`createPages` uses this same public API for runtime and builds. It owns page/layout matching, configuration metadata, and source-file pruning. `fsRouter` uses only `createPages`' public authoring API to translate route modules into those declarations.
 
 The API is unstable and may change.

@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { ROUTER_METADATA } from '../define-router-utils/build-metadata.js';
 import {
   type PathSpec,
   pathSpecAsString,
@@ -11,7 +10,7 @@ export type ApiHandler = (
   apiContext: { params: Record<string, string | string[]> },
 ) => Promise<Response>;
 
-export type { HandlerInterceptor } from '../define-router-utils/request-store.js';
+export type { HandlerInterceptor } from '../define-router.js';
 
 export type SlotId = string;
 
@@ -103,7 +102,6 @@ export type SerializableConfig =
   SerializableRouteConfig | SerializableApiConfig | SerializableSliceConfig;
 
 export const DEFINE_ROUTER_METADATA = {
-  ...ROUTER_METADATA,
   serializableConfigs: 'defineRouter:serializableConfigs',
 } as const;
 

@@ -1,10 +1,30 @@
 import type { FunctionComponent, ReactNode } from 'react';
 import type { ImportGlobFunction } from 'vite/types/importGlob.d.ts';
-import { METHODS, createPages } from './create-pages.js';
-import type { Method } from './create-pages.js';
-import type { HandlerInterceptor } from './define-router.js';
+import { createPages } from './create-pages.js';
+import type {
+  CreateApi,
+  CreateInterceptor,
+  CreatePage,
+} from './create-pages.js';
 import { isIgnoredPath } from './isomorphic-utils/route-path.js';
-import type { Unstable_SearchCodec } from './isomorphic-utils/search-codec-registry.js';
+
+type DynamicApi = Extract<
+  Parameters<CreateApi>[0],
+  { render: 'dynamic'; handlers: object }
+>;
+
+const METHODS: Record<Exclude<keyof DynamicApi['handlers'], 'all'>, true> = {
+  GET: true,
+  HEAD: true,
+  POST: true,
+  PUT: true,
+  DELETE: true,
+  CONNECT: true,
+  OPTIONS: true,
+  TRACE: true,
+  PATCH: true,
+  QUERY: true,
+};
 
 declare global {
   interface ImportMeta {
@@ -81,7 +101,7 @@ export function fsRouter(
         }
         if (pathItems.at(0) === interceptorsDir) {
           const interceptorMod = (await modules[file]!()) as {
-            default: HandlerInterceptor;
+            default: Parameters<CreateInterceptor>[0];
           };
           createInterceptor(interceptorMod.default);
           continue;
@@ -92,7 +112,7 @@ export function fsRouter(
             render?: 'static' | 'dynamic';
             unstable_disableSSR?: boolean;
             unstable_getEtag?: (props?: any) => Promise<string | undefined>;
-            unstable_searchCodec?: Unstable_SearchCodec<any>;
+            unstable_searchCodec?: Parameters<CreatePage>[0]['unstable_searchCodec'];
           }>;
           GET?: (req: Request) => Promise<Response>;
         };
@@ -126,18 +146,18 @@ export function fsRouter(
               unstable_sourceFile: srcPath,
             });
           } else {
-            const validMethods = new Set(METHODS);
+            const validMethods = new Set(Object.keys(METHODS));
             const handlers = Object.fromEntries(
               Object.entries(mod).flatMap(([exportName, handler]) => {
                 const isValidExport =
                   exportName === 'getConfig' ||
                   exportName === 'default' ||
-                  validMethods.has(exportName as Method);
+                  validMethods.has(exportName);
                 if (!isValidExport) {
                   console.warn(
-                    `API ${path} has an invalid export: ${exportName}. Valid exports are: ${METHODS.join(
-                      ', ',
-                    )}`,
+                    `API ${path} has an invalid export: ${exportName}. Valid exports are: ${Object.keys(
+                      METHODS,
+                    ).join(', ')}`,
                   );
                 }
                 return isValidExport && exportName !== 'getConfig'

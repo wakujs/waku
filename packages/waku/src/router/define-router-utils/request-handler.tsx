@@ -12,7 +12,6 @@ import {
 import { ROUTER_METADATA } from './build-metadata.js';
 import { getRouterPrefetchCode } from './client-code.js';
 import { base64ToBytes, createElementCache } from './element-cache.js';
-import type { ElementCache } from './element-cache.js';
 import { getNonce, setRerender } from './request-store.js';
 import type { Resolve, Route, createRouteEntries } from './route-entries.js';
 
@@ -59,16 +58,14 @@ export const createRequestHandler = ({
   resolve,
   routeEntries,
   runHandled,
-  elementCache,
   getExtraScriptContent,
 }: {
   resolve: Resolve;
   routeEntries: ReturnType<typeof createRouteEntries>;
   runHandled: <T>(req: Request, fn: () => Promise<T>) => Promise<T>;
-  elementCache?: ElementCache | undefined;
   getExtraScriptContent?: (() => Promise<string>) | undefined;
 }): HandleRequest => {
-  const requestElementCache = elementCache ?? createElementCache();
+  const requestElementCache = createElementCache();
   let requestElementCacheInit: Promise<void> | undefined;
   let cachedPath2moduleIds: Record<string, string[]> | undefined;
 

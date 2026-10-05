@@ -1,5 +1,6 @@
 import type { Unstable_HandleBuild as HandleBuild } from 'waku/minimal/server';
 import { INTERNAL_ServerRouter } from '../client.js';
+import type { unstable_defineRouter } from '../define-router.js';
 import {
   encodeRoutePath,
   encodeSliceId,
@@ -12,7 +13,7 @@ import { getRouterPrefetchCode } from './client-code.js';
 import {
   cacheElementSource,
   createElementCache,
-  getSlotCacheId,
+  getElementCacheId,
 } from './element-cache.js';
 import type { Resolve, createRouteEntries } from './route-entries.js';
 
@@ -47,12 +48,16 @@ export const createBuildHandler =
     getBuildElementIds,
     routeEntries,
     runHandled,
+    getExtraScriptContent,
   }: {
     resolve: Resolve;
-    getBuildPaths: (() => Promise<Iterable<string>>) | undefined;
-    getBuildElementIds: (() => Promise<Iterable<string>>) | undefined;
+    getBuildPaths: Parameters<typeof unstable_defineRouter>[0]['getBuildPaths'];
+    getBuildElementIds: Parameters<
+      typeof unstable_defineRouter
+    >[0]['getBuildElementIds'];
     routeEntries: ReturnType<typeof createRouteEntries>;
     runHandled: <T>(req: Request, fn: () => Promise<T>) => Promise<T>;
+    getExtraScriptContent: () => Promise<string>;
   }): HandleBuild =>
   async (utils) => {
     const cachedElements: Record<string, string> = {};
@@ -63,9 +68,10 @@ export const createBuildHandler =
     const htmlTasks: (() => Promise<void>)[] = [];
     const { runTask, waitForTasks } = createTaskRunner(500);
 
-    const buildUrls = Array.from(
+    const buildTargets = Array.from(
       (await getBuildPaths?.()) || [],
-      (pathname) => {
+      (target) => {
+        const pathname = typeof target === 'string' ? target : target.pathname;
         if (
           !pathname.startsWith('/') ||
           pathname.startsWith('//') ||
@@ -77,15 +83,15 @@ export const createBuildHandler =
         const url = new URL('http://localhost:3000');
         url.pathname = pathname;
         url.pathname = pathnameToRoutePath(url.pathname);
-        return url;
+        return { url, target: typeof target === 'string' ? undefined : target };
       },
     );
-    for (const url of buildUrls) {
+    for (const { url, target } of buildTargets) {
       const routePath = url.pathname;
       const req = new Request(url);
       runTask(() =>
         runHandled(req, async () => {
-          const resolved = await resolve(routePath, '');
+          const resolved = target?.route ?? (await resolve(routePath, ''));
           if (!resolved) {
             throw new Error('Build path did not resolve: ' + routePath);
           }
@@ -95,6 +101,7 @@ export const createBuildHandler =
             return;
           }
           if (
+            target?.prerender === false ||
             !Object.values(resolved.elements).every(
               (source) => source.immutable,
             )
@@ -104,11 +111,10 @@ export const createBuildHandler =
                 if (source.immutable) {
                   const slotId =
                     id === 'route' ? getRouteSlotId(routePath) : id;
-                  await cacheElementSource(
-                    source,
-                    getSlotCacheId(slotId),
-                    cache,
-                  ).render();
+                  const cacheId = getElementCacheId(slotId, source);
+                  if (!cache.has(cacheId)) {
+                    await cache.set(cacheId, source.render());
+                  }
                 }
               }),
             );
@@ -126,7 +132,10 @@ export const createBuildHandler =
                 ...resolved.elements,
                 route: cacheElementSource(
                   resolved.elements.route,
-                  getSlotCacheId(getRouteSlotId(routePath)),
+                  getElementCacheId(
+                    getRouteSlotId(routePath),
+                    resolved.elements.route,
+                  ),
                   cache,
                 ),
               },
@@ -159,7 +168,8 @@ export const createBuildHandler =
                   {
                     rscPath,
                     unstable_extraScriptContent:
-                      getRouterPrefetchCode(path2moduleIds),
+                      getRouterPrefetchCode(path2moduleIds) +
+                      (await getExtraScriptContent()),
                   },
                 );
                 await utils.generateFile(htmlPath, response.body || '');
@@ -167,13 +177,21 @@ export const createBuildHandler =
             );
           }
           path2moduleIds[
-            '^' + routePath.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&') + '$'
+            target?.prefetchPattern ??
+              '^' + routePath.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&') + '$'
           ] = [...moduleIds];
         }),
       );
     }
     await waitForTasks();
-    for (const id of new Set((await getBuildElementIds?.()) || [])) {
+    const buildElements = new Map(
+      Array.from((await getBuildElementIds?.()) || [], (target) =>
+        typeof target === 'string'
+          ? ([target, undefined] as const)
+          : ([target.id, target.source] as const),
+      ),
+    );
+    for (const [id, source] of buildElements) {
       runTask(async () => {
         if (!isSliceSlotId(id)) {
           throw new Error('Unsupported build element ID: ' + id);
@@ -182,7 +200,11 @@ export const createBuildHandler =
         const pathname = utils.rscPath2pathname(rscPath);
         const req = new Request(new URL(pathname, 'http://localhost:3000'));
         return runHandled(req, async () => {
-          const entries = await routeEntries.getEntriesForElement(id, cache);
+          const entries = await routeEntries.getEntriesForElement(
+            id,
+            cache,
+            source,
+          );
           if (!entries) {
             throw new Error('Build element did not resolve: ' + id);
           }

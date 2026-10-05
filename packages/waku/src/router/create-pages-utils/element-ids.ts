@@ -5,17 +5,6 @@ import {
 } from '../isomorphic-utils/route-path.js';
 import { pathSpecKey } from './config.js';
 
-export {
-  ROOT_SLOT_ID,
-  base64ToBytes,
-  createElementCache,
-  getSlotCacheId,
-} from '../define-router-utils/element-cache.js';
-export type {
-  CacheId,
-  ElementCache,
-} from '../define-router-utils/element-cache.js';
-
 export const getPathSpecCacheId = (pathSpec: PathSpec) =>
   `pathSpec/${pathSpecKey(pathSpec)}`;
 

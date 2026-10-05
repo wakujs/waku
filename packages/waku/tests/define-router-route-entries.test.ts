@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createConfigRegistry } from '../src/router/create-pages-utils/config-registry.js';
 import type { RuntimeConfig } from '../src/router/create-pages-utils/config.js';
-import { createRouteEntries } from '../src/router/create-pages-utils/route-entries.js';
+import { createRouteResolver } from '../src/router/create-pages-utils/route-resolver.js';
 import { createElementCache } from '../src/router/define-router-utils/element-cache.js';
+import { createRouteEntries } from '../src/router/define-router-utils/route-entries.js';
 import type { PathSpec } from '../src/router/isomorphic-utils/path-spec.js';
 import {
   HAS404_ID,
@@ -82,8 +83,13 @@ const slice = (
 const setup = async (configs: RuntimeConfig[]) => {
   const registry = createConfigRegistry(async () => configs);
   await registry.initialize();
-  const routeEntries = createRouteEntries(registry);
-  return { routeEntries, cache: createElementCache() };
+  const resolver = createRouteResolver(registry);
+  const routeEntries = createRouteEntries(
+    resolver.resolve,
+    resolver.resolveElement,
+    async () => registry.has404(),
+  );
+  return { routeEntries, resolver, cache: createElementCache() };
 };
 
 describe('getEntriesForRoute', () => {
@@ -214,17 +220,22 @@ describe('getEntriesForRoute', () => {
   });
 });
 
-describe('getEntriesForSlice', () => {
+describe('getEntriesForElement', () => {
   it('returns the slice slot for a known slice and null for an unknown one', async () => {
     const { routeEntries, cache } = await setup([
       slice('sb', { isStatic: true }),
     ]);
-    const entries = (await routeEntries.getEntriesForSlice('sb', cache))!;
+    const entries = (await routeEntries.getEntriesForElement(
+      'slice:sb',
+      cache,
+    ))!;
     expect(Object.keys(entries.elements)).toEqual(['slice:sb']);
     // immutable (static) slice carries the immutable etag
     expect(entries.etags['slice:sb']).toBeDefined();
 
-    expect(await routeEntries.getEntriesForSlice('nope', cache)).toBeNull();
+    expect(
+      await routeEntries.getEntriesForElement('slice:nope', cache),
+    ).toBeNull();
   });
 
   it('uses a preResolved config so an earlier pathSpec slice cannot shadow an exact static slice', async () => {
@@ -245,17 +256,25 @@ describe('getEntriesForSlice', () => {
       renderer: staticRenderer,
     });
     // the slug slice precedes the exact static slice in config order
-    const { routeEntries, cache } = await setup([dynamicSlice, staticSlice]);
+    const { routeEntries, resolver, cache } = await setup([
+      dynamicSlice,
+      staticSlice,
+    ]);
 
     // resolving by id alone matches the earlier slug slice (the shadow)
-    await routeEntries.getEntriesForSlice('foo/bar', cache);
+    await routeEntries.getEntriesForElement('slice:foo/bar', cache);
     expect(dynamicRenderer).toHaveBeenCalledTimes(1);
     expect(staticRenderer).not.toHaveBeenCalled();
 
     // the build path passes the already-resolved static config instead
-    await routeEntries.getEntriesForSlice('foo/bar', createElementCache(), {
+    const source = await resolver.resolveElement('slice:foo/bar', {
       sliceConfig: staticSlice as never,
     });
+    await routeEntries.getEntriesForElement(
+      'slice:foo/bar',
+      createElementCache(),
+      source!,
+    );
     expect(staticRenderer).toHaveBeenCalledTimes(1);
     expect(dynamicRenderer).toHaveBeenCalledTimes(1);
   });

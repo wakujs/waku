@@ -31,21 +31,17 @@ import {
 } from './isomorphic-utils/route-path.js';
 import type { Unstable_SearchCodec } from './isomorphic-utils/search-codec-registry.js';
 
-// https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods
-// QUERY: https://www.rfc-editor.org/rfc/rfc10008.html
-export const METHODS = [
-  'GET',
-  'HEAD',
-  'POST',
-  'PUT',
-  'DELETE',
-  'CONNECT',
-  'OPTIONS',
-  'TRACE',
-  'PATCH',
-  'QUERY',
-] as const;
-export type Method = (typeof METHODS)[number];
+type Method =
+  | 'GET'
+  | 'HEAD'
+  | 'POST'
+  | 'PUT'
+  | 'DELETE'
+  | 'CONNECT'
+  | 'OPTIONS'
+  | 'TRACE'
+  | 'PATCH'
+  | 'QUERY';
 
 export const pathMappingWithoutGroups: typeof getPathMapping = (
   pathSpec,
@@ -103,8 +99,6 @@ const forEachConcreteStaticPath = (
     fn(expandStaticRoutePath(routePathSpec, staticSegments));
   }
 };
-
-// createPages API (a wrapper around unstable_defineRouter)
 
 type IsValidPathItem<T> = T extends `/${string}` | '[]' | '' ? false : true;
 export type IsValidPathInSlugPath<T> = T extends `/${infer L}/${infer R}`

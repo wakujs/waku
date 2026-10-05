@@ -30,6 +30,16 @@ const serverModules = [
   'packages/waku/src/lib/vite-rsc/ssr.tsx',
 ];
 
+const routerImportRestrictions = {
+  patterns: [
+    {
+      regex: '^waku(?:$|/(?!minimal/(?:client|server)$|client$|server$))',
+      message:
+        'Router depends only on public Minimal, client, and server APIs.',
+    },
+  ],
+};
+
 export default defineConfig(
   {
     ignores: [
@@ -198,18 +208,68 @@ export default defineConfig(
               message:
                 'Use a public Waku entry point or a Router-local module.',
             },
+            {
+              target: [
+                './packages/waku/src/router/create-pages.tsx',
+                './packages/waku/src/router/create-pages-utils',
+              ],
+              from: './packages/waku/src/router/define-router-utils',
+              message: 'createPages must use the public defineRouter API.',
+            },
+            {
+              target: './packages/waku/src/router/fs-router.ts',
+              from: [
+                './packages/waku/src/router/create-pages-utils',
+                './packages/waku/src/router/define-router-utils',
+                './packages/waku/src/router/define-router.tsx',
+              ],
+              message: 'fsRouter must use the public createPages API.',
+            },
           ],
         },
       ],
+      'no-restricted-imports': ['error', routerImportRestrictions],
+    },
+  },
+  {
+    files: [
+      'packages/waku/src/router/create-pages.tsx',
+      'packages/waku/src/router/create-pages-utils/**/*.{ts,tsx}',
+    ],
+    rules: {
       'no-restricted-imports': [
         'error',
         {
-          patterns: [
+          ...routerImportRestrictions,
+          paths: ['./define-router.js', '../define-router.js'].map((name) => ({
+            name,
+            allowImportNames: ['unstable_defineRouter', 'HandlerInterceptor'],
+            message: 'Use the public defineRouter API.',
+          })),
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/waku/src/router/fs-router.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          ...routerImportRestrictions,
+          paths: [
             {
-              regex:
-                '^waku(?:$|/(?!minimal/(?:client|server)$|client$|server$))',
-              message:
-                'Router depends only on public Minimal, client, and server APIs.',
+              name: './create-pages.js',
+              allowImportNames: [
+                'createPages',
+                'CreateApi',
+                'CreateInterceptor',
+                'CreatePage',
+                'CreateLayout',
+                'CreateRoot',
+                'CreateSlice',
+              ],
+              message: 'Use the public createPages API.',
             },
           ],
         },

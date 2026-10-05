@@ -1,7 +1,10 @@
 import { unstable_createCustomError as createCustomError } from 'waku/minimal/server';
-import type { Unstable_Handlers as Handlers } from 'waku/minimal/server';
+import type {
+  Unstable_ElementSource as ElementSource,
+  Unstable_Handlers as Handlers,
+} from 'waku/minimal/server';
 import { createBuildHandler } from './define-router-utils/build-handler.js';
-import type { ElementCache } from './define-router-utils/element-cache.js';
+import { setupRouterSearchCodecs } from './define-router-utils/client-code.js';
 import { createRequestHandler } from './define-router-utils/request-handler.js';
 import {
   getHeaders,
@@ -13,14 +16,12 @@ import {
   runWithRouterStore,
   setNonce,
 } from './define-router-utils/request-store.js';
-import type {
-  HandlerInterceptor,
-  RouterStore,
-} from './define-router-utils/request-store.js';
+import type { HandlerInterceptor } from './define-router-utils/request-store.js';
 import { createRouteEntries } from './define-router-utils/route-entries.js';
 import type {
   Resolve,
   ResolveElement,
+  Route,
 } from './define-router-utils/route-entries.js';
 import { buildRouteHref } from './isomorphic-utils/build-route-href.js';
 import type {
@@ -32,6 +33,7 @@ import {
   encodeRoutePath,
   pathnameToRoutePath,
 } from './isomorphic-utils/route-path.js';
+import type { Unstable_SearchCodec } from './isomorphic-utils/search-codec-registry.js';
 
 export {
   getRequest as unstable_getRequest,
@@ -139,49 +141,25 @@ export function unstable_redirect<Path extends RoutePath = RoutePath>(
   throw createCustomError('Redirect', { status, location });
 }
 
+type BuildPath =
+  | string
+  | {
+      pathname: string;
+      route?: Route | ((req: Request) => Promise<Response>);
+      prerender?: boolean;
+      prefetchPattern?: string;
+    };
+
+type BuildElementId = string | { id: string; source: ElementSource };
+
 type RouterOptions = {
   resolve: Resolve;
-  getBuildPaths?: () => Promise<Iterable<string>>;
-  getBuildElementIds?: () => Promise<Iterable<string>>;
+  getBuildPaths?: () => Promise<Iterable<BuildPath>>;
+  getBuildElementIds?: () => Promise<Iterable<BuildElementId>>;
   resolveElement?: ResolveElement;
+  getHas404?: () => Promise<boolean>;
+  getSearchCodecs?: () => Promise<Record<string, Unstable_SearchCodec<any>>>;
   unstable_interceptors?: HandlerInterceptor[];
-};
-
-export const createRouterHandlers = (
-  fns: RouterOptions,
-  routeEntries: ReturnType<typeof createRouteEntries>,
-  integration?: {
-    elementCache?: ElementCache;
-    getExtraScriptContent?: () => Promise<string>;
-    resolveSearchCodec?: RouterStore['resolveSearchCodec'];
-  },
-): Handlers => {
-  const runHandled = <T,>(req: Request, fn: () => Promise<T>): Promise<T> =>
-    runWithRouterStore(
-      {
-        req,
-        resolveSearchCodec:
-          integration?.resolveSearchCodec ?? getResolveSearchCodec(),
-      },
-      (fns.unstable_interceptors ?? []).reduceRight(
-        (next, interceptor) => () => interceptor(next),
-        fn,
-      ),
-    );
-  const handleRequest = createRequestHandler({
-    resolve: fns.resolve,
-    routeEntries,
-    runHandled,
-    ...integration,
-  });
-  const handleBuild = createBuildHandler({
-    resolve: fns.resolve,
-    getBuildPaths: fns.getBuildPaths,
-    getBuildElementIds: fns.getBuildElementIds,
-    routeEntries,
-    runHandled,
-  });
-  return { handleRequest, handleBuild };
 };
 
 /**
@@ -190,19 +168,76 @@ export const createRouterHandlers = (
  * sources with `root` and `route`, an HTTP handler, or `null` for not found.
  * The document root uses `Children_UNSTABLE` to place the active route.
  *
- * `getBuildPaths` lists concrete paths: immutable routes are prerendered, HTTP
- * handlers emit static responses, and mutable routes cache only immutable
- * elements. `resolveElement` handles `slice:<id>` requests from client `Slice`
+ * `getBuildPaths` lists pathnames to resolve, or explicit `{ pathname, route }`
+ * targets. Immutable routes are prerendered, HTTP handlers emit static responses,
+ * and mutable routes cache only immutable elements. A target's `prerender: false`
+ * caches immutable sources without emitting a page; `prefetchPattern` is a regular
+ * expression matching paths that share its client modules.
+ * `resolveElement` handles `slice:<id>` requests from client `Slice`
  * components; `getBuildElementIds` lists immutable IDs to emit as standalone
- * RSC files. Only `slice:<id>` IDs are supported for standalone requests.
+ * RSC files, as strings to resolve or `{ id, source }` targets.
+ * Only `slice:<id>` IDs are supported for standalone requests.
  * Unresolved or mutable build IDs fail the build.
- * Runtime route content is reused only from build-preloaded entries.
- * Custom 404 availability is checked once per router instance.
- * Immutable sources must render the same content for the lifetime of their ID.
+ * An immutable source's optional `cacheKey` shares its cached content across
+ * slot IDs. Without a key, route content is reused only from build-preloaded
+ * entries. Custom 404 availability is checked once per router instance, using
+ * `getHas404` when provided or resolving `/404` otherwise.
+ * `getSearchCodecs` maps route patterns to codecs for structured navigation on
+ * the server and in the browser. It is loaded once per router instance.
+ * Immutable sources must render the same content for the lifetime of their ID
+ * or explicit cache key. Use a bounded set of keys, not arbitrary request paths.
  */
 export function unstable_defineRouter(fns: RouterOptions): Handlers {
-  return createRouterHandlers(
-    fns,
-    createRouteEntries(fns.resolve, fns.resolveElement),
+  const routeEntries = createRouteEntries(
+    fns.resolve,
+    fns.resolveElement,
+    fns.getHas404,
   );
+  let searchCodecsPromise:
+    Promise<Record<string, Unstable_SearchCodec<any>>> | undefined;
+  const getSearchCodecs = (): Promise<
+    Record<string, Unstable_SearchCodec<any>>
+  > =>
+    (searchCodecsPromise ??= (
+      fns.getSearchCodecs?.() ?? Promise.resolve({})
+    ).catch((error) => {
+      searchCodecsPromise = undefined;
+      throw error;
+    }));
+  const getExtraScriptContent = async () =>
+    setupRouterSearchCodecs(await getSearchCodecs());
+  const runHandled = async <T,>(
+    req: Request,
+    fn: () => Promise<T>,
+  ): Promise<T> => {
+    const codecs = await getSearchCodecs();
+    return runWithRouterStore(
+      {
+        req,
+        resolveSearchCodec: fns.getSearchCodecs
+          ? (path) => codecs[path]
+          : getResolveSearchCodec(),
+      },
+      (fns.unstable_interceptors ?? []).reduceRight(
+        (next, interceptor) => () => interceptor(next),
+        fn,
+      ),
+    );
+  };
+  return {
+    handleRequest: createRequestHandler({
+      resolve: fns.resolve,
+      routeEntries,
+      runHandled,
+      getExtraScriptContent,
+    }),
+    handleBuild: createBuildHandler({
+      resolve: fns.resolve,
+      getBuildPaths: fns.getBuildPaths,
+      getBuildElementIds: fns.getBuildElementIds,
+      routeEntries,
+      runHandled,
+      getExtraScriptContent,
+    }),
+  };
 }

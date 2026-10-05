@@ -12,7 +12,7 @@ import {
   type SliceConfig,
   mergeWithRuntimeConfigs,
 } from './config.js';
-import { assertNonReservedSlotId } from './element-cache.js';
+import { assertNonReservedSlotId } from './element-ids.js';
 
 const is404 = (pathSpec: PathSpec) =>
   pathSpec.length === 1 &&
@@ -26,8 +26,6 @@ export const createConfigRegistry = (
 ) => {
   let cachedConfigs: RuntimeConfig[] | undefined;
   let cachedHas404 = false;
-  let cachedRoutePath2searchCodec:
-    Map<string, Unstable_SearchCodec<any>> | undefined;
   let initPromise: Promise<void> | undefined;
 
   const load = async (
@@ -85,21 +83,15 @@ export const createConfigRegistry = (
     return cachedHas404;
   };
 
-  const resolveSearchCodec = (
-    routePath: string,
-  ): Unstable_SearchCodec<any> | undefined => {
-    if (!cachedRoutePath2searchCodec) {
-      cachedRoutePath2searchCodec = new Map();
-      for (const item of getAll()) {
-        if (item.type === 'route' && item.searchCodec) {
-          cachedRoutePath2searchCodec.set(
-            pathSpecAsString(item.pathPattern ?? item.path),
-            item.searchCodec,
-          );
-        }
+  const getSearchCodecs = () => {
+    const codecs: Record<string, Unstable_SearchCodec<any>> = {};
+    for (const config of getAll()) {
+      if (config.type === 'route' && config.searchCodec) {
+        codecs[pathSpecAsString(config.pathPattern ?? config.path)] =
+          config.searchCodec;
       }
     }
-    return cachedRoutePath2searchCodec.get(routePath);
+    return codecs;
   };
 
   const findPathConfig = (pathname: string) => {
@@ -138,7 +130,7 @@ export const createConfigRegistry = (
     initialize,
     getAll,
     has404,
-    resolveSearchCodec,
+    getSearchCodecs,
     findPathConfig,
     findSliceConfig,
   };

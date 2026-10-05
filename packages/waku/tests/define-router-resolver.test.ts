@@ -1,5 +1,7 @@
+import { runInNewContext } from 'node:vm';
 import { describe, expect, it, vi } from 'vitest';
 import type { Unstable_HandleRequest as HandleRequest } from '../src/minimal/server.js';
+import type { Unstable_SearchCodec } from '../src/router/base-types.js';
 import {
   unstable_defineRouter,
   unstable_getRequest,
@@ -16,14 +18,21 @@ import {
   encodeRoutePath,
   encodeSliceId,
 } from '../src/router/isomorphic-utils/route-path.js';
-import { serializeRsc } from '../src/server.js';
+import { deserializeRsc, serializeRsc } from '../src/server.js';
+
+declare module '../src/router/base-types.js' {
+  interface SearchCodecsConfig {
+    '/define-router-search/[id]': Unstable_SearchCodec<Record<string, never>>;
+  }
+}
 
 vi.mock('../src/server.js', () => ({
   serializeRsc: vi.fn(async (value: unknown) =>
     new TextEncoder().encode(JSON.stringify(value)),
   ),
-  deserializeRsc: async (bytes: Uint8Array) =>
+  deserializeRsc: vi.fn(async (bytes: Uint8Array) =>
     JSON.parse(new TextDecoder().decode(bytes)),
+  ),
 }));
 
 type RouterOptions = Parameters<typeof unstable_defineRouter>[0];
@@ -58,6 +67,97 @@ const rscInput = (pathname: string, query = '') => ({
 });
 
 describe('defineRouter route resolver', () => {
+  it('shares explicitly keyed immutable sources across route IDs', async () => {
+    const render = vi.fn(() => 'shell');
+    const router = unstable_defineRouter({
+      resolve: async () => ({
+        elements: {
+          root: { render: () => 'root' },
+          route: { immutable: true, cacheKey: 'shared-shell', render },
+        },
+      }),
+      getHas404: async () => false,
+    });
+    const utils = makeUtils();
+    await router.handleRequest(rscInput('/one'), utils);
+    await router.handleRequest(rscInput('/two'), utils);
+    expect(render).toHaveBeenCalledOnce();
+    expect(utils.renderRsc).toHaveBeenLastCalledWith(
+      expect.objectContaining({ 'route:/two': 'shell' }),
+      expect.objectContaining({ etags: { 'route:/two': 1 } }),
+    );
+  });
+
+  it('uses explicit 404 availability without probing a catch-all', async () => {
+    const resolve = vi.fn<RouterOptions['resolve']>(async () =>
+      makeRoute('content'),
+    );
+    const getHas404 = vi.fn(async () => false);
+    const router = unstable_defineRouter({ resolve, getHas404 });
+    const utils = makeUtils();
+    await Promise.all(
+      ['/one', '/two'].map((path) =>
+        router.handleRequest(rscInput(path), utils),
+      ),
+    );
+    expect(resolve.mock.calls.map(([path]) => path)).toEqual(['/one', '/two']);
+    expect(getHas404).toHaveBeenCalledOnce();
+    for (const [elements] of utils.renderRsc.mock.calls) {
+      expect(elements).not.toHaveProperty(HAS404_ID);
+    }
+  });
+
+  it('loads search codecs once for redirects and document scripts', async () => {
+    const codec = {
+      id: 'post-search',
+      parse: () => ({}),
+      serialize: () => 'encoded=search',
+    };
+    const getSearchCodecs = vi.fn(async () => ({
+      '/define-router-search/[id]': codec,
+    }));
+    const router = unstable_defineRouter({
+      resolve: async (path) =>
+        path === '/redirect'
+          ? async () =>
+              unstable_redirect({
+                to: '/define-router-search/[id]',
+                params: { id: 'one' },
+                search: {},
+              })
+          : makeRoute('content'),
+      getSearchCodecs,
+      getHas404: async () => false,
+    });
+    const utils = makeUtils();
+    await expect(
+      router.handleRequest(
+        {
+          type: 'http',
+          pathname: '/redirect',
+          req: new Request('http://localhost/redirect'),
+        },
+        utils,
+      ),
+    ).rejects.toMatchObject({
+      digest: expect.stringContaining('encoded=search'),
+    });
+    await router.handleRequest(
+      { type: 'http', pathname: '/', req: new Request('http://localhost/') },
+      utils,
+    );
+    expect(getSearchCodecs).toHaveBeenCalledOnce();
+    expect(utils.renderHtml).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        unstable_extraScriptContent: expect.stringContaining(
+          '"/define-router-search/[id]":"post-search"',
+        ),
+      }),
+    );
+  });
+
   it('does not retain immutable route content for arbitrary runtime paths', async () => {
     vi.mocked(serializeRsc).mockClear();
     const render = vi.fn((path: string) => path);
@@ -681,4 +781,171 @@ describe('defineRouter route resolver', () => {
       expect(generateFile).not.toHaveBeenCalled();
     },
   );
+
+  it('warms explicit template sources without prerendering or runtime rendering', async () => {
+    const render = vi.fn(() => 'shell');
+    const source = { immutable: true, cacheKey: 'post-shell', render };
+    const router = unstable_defineRouter({
+      resolve: async () => null,
+      getHas404: async () => false,
+      getBuildPaths: async () => [
+        {
+          pathname: '/posts/[id]',
+          route: {
+            elements: {
+              root: { immutable: true, render: () => 'root' },
+              route: source,
+            },
+          },
+          prerender: false,
+        },
+      ],
+    });
+    const metadata = new Map<string, string>();
+    const generateFile = vi.fn();
+    await router.handleBuild({
+      ...makeUtils(),
+      rscPath2pathname: (path) => path,
+      generateFile,
+      generateDefaultHtml: vi.fn(),
+      saveBuildMetadata: async (key, value) => {
+        metadata.set(key, value);
+      },
+      unstable_registerPrunableFile: vi.fn(),
+    });
+    expect(generateFile).not.toHaveBeenCalled();
+    expect(render).toHaveBeenCalledOnce();
+    const runtime = unstable_defineRouter({
+      resolve: async () => ({
+        elements: {
+          root: {
+            immutable: true,
+            render: () => {
+              throw new Error('root was pruned');
+            },
+          },
+          route: {
+            ...source,
+            render: () => {
+              throw new Error('route was pruned');
+            },
+          },
+        },
+      }),
+      getHas404: async () => false,
+    });
+    const utils = makeUtils();
+    utils.loadBuildMetadata.mockImplementation(async (key) =>
+      metadata.get(key),
+    );
+    await runtime.handleRequest(rscInput('/posts/one'), utils);
+    expect(utils.renderRsc).toHaveBeenCalledWith(
+      expect.objectContaining({ root: 'root', 'route:/posts/one': 'shell' }),
+      expect.anything(),
+    );
+  });
+
+  it('warms immutable sources without decoding their cached render errors', async () => {
+    const deserialize = vi.mocked(deserializeRsc);
+    const implementation = deserialize.getMockImplementation()!;
+    deserialize.mockRejectedValueOnce(new Error('cached component failed'));
+    const router = unstable_defineRouter({
+      resolve: async () => ({
+        elements: {
+          root: { immutable: true, render: () => 'root' },
+          route: { render: () => 'dynamic route' },
+        },
+      }),
+      getBuildPaths: async () => ['/dynamic'],
+    });
+    const saveBuildMetadata = vi.fn();
+    try {
+      await router.handleBuild({
+        ...makeUtils(),
+        rscPath2pathname: (path) => path,
+        generateFile: vi.fn(),
+        generateDefaultHtml: vi.fn(),
+        saveBuildMetadata,
+        unstable_registerPrunableFile: vi.fn(),
+      });
+      expect(saveBuildMetadata).toHaveBeenCalledWith(
+        'defineRouter:cachedElements',
+        expect.stringContaining('slot/root'),
+      );
+    } finally {
+      deserialize.mockReset().mockImplementation(implementation);
+    }
+  });
+
+  it('builds an explicit immutable element even when runtime resolution is mutable', async () => {
+    const mutableRender = vi.fn(() => 'runtime');
+    const router = unstable_defineRouter({
+      resolve: async () => null,
+      resolveElement: async () => ({ render: mutableRender }),
+      getBuildElementIds: async () => [
+        {
+          id: 'slice:summary',
+          source: { immutable: true, render: () => 'static summary' },
+        },
+      ],
+    });
+    const utils = makeUtils();
+    const generateFile = vi.fn();
+    await router.handleBuild({
+      ...utils,
+      rscPath2pathname: (path) => path,
+      generateFile,
+      generateDefaultHtml: vi.fn(),
+      saveBuildMetadata: vi.fn(),
+      unstable_registerPrunableFile: vi.fn(),
+    });
+    expect(mutableRender).not.toHaveBeenCalled();
+    expect(generateFile).toHaveBeenCalledWith(
+      encodeSliceId('summary'),
+      expect.any(ReadableStream),
+    );
+    expect(utils.renderRsc).toHaveBeenCalledWith(
+      { 'slice:summary': 'static summary' },
+      { etags: { 'slice:summary': 1 } },
+    );
+  });
+
+  it("prefetches a build target's modules for other matching paths", async () => {
+    const router = unstable_defineRouter({
+      resolve: async () => null,
+      getHas404: async () => false,
+      getBuildPaths: async () => [
+        {
+          pathname: '/posts/one',
+          route: makeRoute('post', true),
+          prefetchPattern: '^/posts/[^/]+$',
+        },
+      ],
+    });
+    const utils = makeUtils();
+    utils.renderRsc.mockImplementation(async (_elements, options) => {
+      options?.unstable_clientModuleCallback?.(['post-module']);
+      return new Response('payload').body!;
+    });
+    await router.handleBuild({
+      ...utils,
+      rscPath2pathname: (path) => path,
+      generateFile: vi.fn(),
+      generateDefaultHtml: vi.fn(),
+      saveBuildMetadata: vi.fn(),
+      unstable_registerPrunableFile: vi.fn(),
+    });
+    const script =
+      utils.renderHtml.mock.calls[0]![2].unstable_extraScriptContent!;
+    const sandbox: {
+      __WAKU_ROUTER_PREFETCH__?: (
+        path: string,
+        callback: (id: string) => void,
+      ) => void;
+    } = {};
+    runInNewContext(script, sandbox);
+    const modules: string[] = [];
+    sandbox.__WAKU_ROUTER_PREFETCH__!('/posts/two', (id) => modules.push(id));
+    expect(modules).toEqual(['post-module']);
+  });
 });

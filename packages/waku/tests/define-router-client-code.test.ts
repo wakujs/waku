@@ -1,14 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { setupRouterSearchCodecs } from '../src/router/create-pages-utils/client-code.js';
+import { DEFINE_ROUTER_METADATA } from '../src/router/create-pages-utils/config.js';
 import {
-  DEFINE_ROUTER_METADATA,
-  type RuntimeConfig,
-} from '../src/router/create-pages-utils/config.js';
-import { getRouterPrefetchCode } from '../src/router/define-router-utils/client-code.js';
-import {
-  type PathSpec,
-  pathSpecAsString,
-} from '../src/router/isomorphic-utils/path-spec.js';
+  getRouterPrefetchCode,
+  setupRouterSearchCodecs,
+} from '../src/router/define-router-utils/client-code.js';
+import type { Unstable_SearchCodec } from '../src/router/isomorphic-utils/search-codec-registry.js';
 
 type Globals = {
   __WAKU_ROUTER_PREFETCH__?: (path: string, cb: (id: string) => void) => void;
@@ -16,14 +12,11 @@ type Globals = {
 };
 const globals = globalThis as Globals;
 
-const literal = (name: string): PathSpec => [{ type: 'literal', name }];
-
-const route = (opts: {
-  path: PathSpec;
-  pathPattern?: PathSpec;
-  searchCodec?: { id: string };
-}): RuntimeConfig =>
-  ({ type: 'route', isStatic: false, ...opts }) as unknown as RuntimeConfig;
+const codec = (id: string): Unstable_SearchCodec<any> => ({
+  id,
+  parse: () => ({}),
+  serialize: () => '',
+});
 
 // The generated prefetch code assigns globalThis.__WAKU_ROUTER_PREFETCH__.
 const runPrefetch = (code: string) => {
@@ -61,31 +54,20 @@ describe('getRouterPrefetchCode', () => {
 });
 
 describe('setupRouterSearchCodecs', () => {
-  it('keys the map by pathPattern when present, otherwise path', () => {
-    setupRouterSearchCodecs([
-      route({
-        path: literal('a'),
-        pathPattern: literal('ap'),
-        searchCodec: { id: 'ca' },
-      }),
-      route({ path: literal('b'), searchCodec: { id: 'cb' } }),
-    ]);
+  it('keeps the registered route patterns as keys', () => {
+    setupRouterSearchCodecs({ '/ap': codec('ca'), '/b': codec('cb') });
     const map = globals.__WAKU_ROUTER_SEARCH_CODECS__!;
-    expect(map[pathSpecAsString(literal('ap'))]).toBe('ca');
-    expect(map[pathSpecAsString(literal('b'))]).toBe('cb');
-    // the raw path of the pathPattern route is not used as a key
-    expect(map[pathSpecAsString(literal('a'))]).toBeUndefined();
+    expect(map['/ap']).toBe('ca');
+    expect(map['/b']).toBe('cb');
   });
 
   it('emits no script when no route has a search codec', () => {
-    expect(setupRouterSearchCodecs([route({ path: literal('x') })])).toBe('');
+    expect(setupRouterSearchCodecs({})).toBe('');
     expect(globals.__WAKU_ROUTER_SEARCH_CODECS__).toBeUndefined();
   });
 
   it('escapes `<` in the inline JSON', () => {
-    const script = setupRouterSearchCodecs([
-      route({ path: literal('foo'), searchCodec: { id: 'c<x' } }),
-    ]);
+    const script = setupRouterSearchCodecs({ '/foo': codec('c<x') });
     expect(script).toContain('\\u003c');
     expect(script).not.toContain('<');
   });
@@ -95,8 +77,6 @@ describe('DEFINE_ROUTER_METADATA', () => {
   it('matches the persisted metadata keys exactly', () => {
     expect(DEFINE_ROUTER_METADATA).toStrictEqual({
       serializableConfigs: 'defineRouter:serializableConfigs',
-      cachedElements: 'defineRouter:cachedElements',
-      path2moduleIds: 'defineRouter:path2moduleIds',
     });
   });
 });
