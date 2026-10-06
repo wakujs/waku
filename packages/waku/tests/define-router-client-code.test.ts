@@ -75,6 +75,6 @@ describe('setupRouterSearchCodecs', () => {
 
 describe('CREATE_PAGES_CONFIGS_KEY', () => {
   it('matches the persisted metadata key exactly', () => {
-    expect(CREATE_PAGES_CONFIGS_KEY).toBe('defineRouter:serializableConfigs');
+    expect(CREATE_PAGES_CONFIGS_KEY).toBe('createPages:serializableConfigs');
   });
 });

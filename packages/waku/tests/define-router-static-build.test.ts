@@ -454,7 +454,7 @@ describe('define-router handleBuild', () => {
     ) as Record<string, string>;
     expect(Object.keys(cachedElements).length).toBeGreaterThan(0);
     const serializableConfigs = JSON.parse(
-      savedMetadata.get('defineRouter:serializableConfigs')!,
+      savedMetadata.get('createPages:serializableConfigs')!,
     ) as { type: string; rootElement?: object }[];
     expect(serializableConfigs).toHaveLength(6);
     expect(
