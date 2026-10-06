@@ -1,6 +1,8 @@
-import type { Unstable_HandleBuild as HandleBuild } from 'waku/minimal/server';
+import type {
+  Unstable_ElementSource as ElementSource,
+  Unstable_HandleBuild as HandleBuild,
+} from 'waku/minimal/server';
 import { INTERNAL_ServerRouter } from '../client.js';
-import type { unstable_defineRouter } from '../define-router.js';
 import {
   encodeRoutePath,
   encodeSliceId,
@@ -15,7 +17,18 @@ import {
   createElementCache,
   getElementCacheId,
 } from './element-cache.js';
-import type { Resolve, createRouteEntries } from './route-entries.js';
+import type { Resolve, Route, createRouteEntries } from './route-entries.js';
+
+export type BuildPath =
+  | string
+  | {
+      pathname: string;
+      route?: Route | ((req: Request) => Promise<Response>);
+      prerender?: boolean;
+      prefetchPattern?: string;
+    };
+
+export type BuildElementId = string | { id: string; source: ElementSource };
 
 export const createTaskRunner = (limit: number) => {
   let running = 0;
@@ -51,10 +64,8 @@ export const createBuildHandler =
     getExtraScriptContent,
   }: {
     resolve: Resolve;
-    getBuildPaths: Parameters<typeof unstable_defineRouter>[0]['getBuildPaths'];
-    getBuildElementIds: Parameters<
-      typeof unstable_defineRouter
-    >[0]['getBuildElementIds'];
+    getBuildPaths: (() => Promise<Iterable<BuildPath>>) | undefined;
+    getBuildElementIds: (() => Promise<Iterable<BuildElementId>>) | undefined;
     routeEntries: ReturnType<typeof createRouteEntries>;
     runHandled: <T>(req: Request, fn: () => Promise<T>) => Promise<T>;
     getExtraScriptContent: () => Promise<string>;

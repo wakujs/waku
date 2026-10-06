@@ -1,9 +1,10 @@
 import { unstable_createCustomError as createCustomError } from 'waku/minimal/server';
-import type {
-  Unstable_ElementSource as ElementSource,
-  Unstable_Handlers as Handlers,
-} from 'waku/minimal/server';
+import type { Unstable_Handlers as Handlers } from 'waku/minimal/server';
 import { createBuildHandler } from './define-router-utils/build-handler.js';
+import type {
+  BuildElementId,
+  BuildPath,
+} from './define-router-utils/build-handler.js';
 import { setupRouterSearchCodecs } from './define-router-utils/client-code.js';
 import { createRequestHandler } from './define-router-utils/request-handler.js';
 import {
@@ -21,7 +22,6 @@ import { createRouteEntries } from './define-router-utils/route-entries.js';
 import type {
   Resolve,
   ResolveElement,
-  Route,
 } from './define-router-utils/route-entries.js';
 import { buildRouteHref } from './isomorphic-utils/build-route-href.js';
 import type {
@@ -140,17 +140,6 @@ export function unstable_redirect<Path extends RoutePath = RoutePath>(
   }
   throw createCustomError('Redirect', { status, location });
 }
-
-type BuildPath =
-  | string
-  | {
-      pathname: string;
-      route?: Route | ((req: Request) => Promise<Response>);
-      prerender?: boolean;
-      prefetchPattern?: string;
-    };
-
-type BuildElementId = string | { id: string; source: ElementSource };
 
 type RouterOptions = {
   resolve: Resolve;

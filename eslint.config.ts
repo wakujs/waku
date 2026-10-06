@@ -209,6 +209,12 @@ export default defineConfig(
                 'Use a public Waku entry point or a Router-local module.',
             },
             {
+              target: './packages/waku/src/router/define-router-utils',
+              from: './packages/waku/src/router/define-router.tsx',
+              message:
+                'defineRouter utilities must not depend on their entry point.',
+            },
+            {
               target: [
                 './packages/waku/src/router/create-pages.tsx',
                 './packages/waku/src/router/create-pages-utils',

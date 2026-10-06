@@ -126,6 +126,19 @@ test('Router keeps its public API boundary', async () => {
   ).toEqual(['no-restricted-imports']);
 }, 60_000);
 
+test('defineRouter utilities do not depend on their entry point', async () => {
+  const file = 'router/define-router-utils/build-handler.tsx';
+  expect(
+    await lint(
+      file,
+      "import type { unstable_defineRouter } from '../define-router.js';\nexport type Options = Parameters<typeof unstable_defineRouter>[0];\n",
+    ),
+  ).toEqual(['import/no-restricted-paths']);
+  expect(
+    await lintImport(file, 'router/define-router-utils/route-entries.ts'),
+  ).toEqual([]);
+}, 60_000);
+
 test('router implementations use the public API of the layer below', async () => {
   for (const file of [
     'router/create-pages.tsx',
