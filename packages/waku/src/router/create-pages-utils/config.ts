@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { unstable_defineRouter } from '../define-router.js';
 import {
   type PathSpec,
   pathSpecAsString,
@@ -10,7 +11,9 @@ export type ApiHandler = (
   apiContext: { params: Record<string, string | string[]> },
 ) => Promise<Response>;
 
-export type { HandlerInterceptor } from '../define-router.js';
+export type HandlerInterceptor = NonNullable<
+  Parameters<typeof unstable_defineRouter>[0]['unstable_interceptors']
+>[number];
 
 export type SlotId = string;
 

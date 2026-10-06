@@ -243,7 +243,7 @@ export default defineConfig(
           ...routerImportRestrictions,
           paths: ['./define-router.js', '../define-router.js'].map((name) => ({
             name,
-            allowImportNames: ['unstable_defineRouter', 'HandlerInterceptor'],
+            allowImportNames: ['unstable_defineRouter'],
             message: 'Use the public defineRouter API.',
           })),
         },

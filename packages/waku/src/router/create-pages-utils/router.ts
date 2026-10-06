@@ -1,5 +1,4 @@
 import { unstable_defineRouter } from '../define-router.js';
-import type { HandlerInterceptor } from '../define-router.js';
 import {
   path2regexp,
   pathSpecAsString,
@@ -7,7 +6,7 @@ import {
 import { getSliceSlotId } from '../isomorphic-utils/route-path.js';
 import { createConfigRegistry } from './config-registry.js';
 import { DEFINE_ROUTER_METADATA, toSerializable } from './config.js';
-import type { RuntimeConfig } from './config.js';
+import type { HandlerInterceptor, RuntimeConfig } from './config.js';
 import { createRouteResolver } from './route-resolver.js';
 
 export const createConfiguredRouter = (fns: {

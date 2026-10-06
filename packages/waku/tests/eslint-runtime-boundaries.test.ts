@@ -129,6 +129,7 @@ test('Router keeps its public API boundary', async () => {
 test('router implementations use the public API of the layer below', async () => {
   for (const file of [
     'router/create-pages.tsx',
+    'router/create-pages-utils/config.ts',
     'router/create-pages-utils/router.ts',
   ]) {
     const specifier = file.endsWith('create-pages.tsx')
@@ -140,6 +141,24 @@ test('router implementations use the public API of the layer below', async () =>
         `import { unstable_defineRouter } from '${specifier}';\nvoid unstable_defineRouter;\n`,
       ),
     ).toEqual([]);
+    expect(
+      await lint(
+        file,
+        `import type { unstable_defineRouter } from '${specifier}';\nexport type Interceptor = NonNullable<Parameters<typeof unstable_defineRouter>[0]['unstable_interceptors']>[number];\n`,
+      ),
+    ).toEqual([]);
+    expect(
+      await lint(
+        file,
+        `export type { HandlerInterceptor } from '${specifier}';\n`,
+      ),
+    ).toEqual(['no-restricted-imports']);
+    expect(
+      await lint(
+        file,
+        `import type { HandlerInterceptor } from '${specifier}';\nexport type Interceptor = HandlerInterceptor;\n`,
+      ),
+    ).toEqual(['no-restricted-imports']);
     expect(
       await lint(
         file,

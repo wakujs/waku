@@ -6,7 +6,10 @@ import {
 } from 'waku/minimal/client';
 import { unstable_createCustomError as createCustomError } from 'waku/minimal/server';
 import { ErrorBoundary } from '../router/client.js';
-import type { ApiHandler } from './create-pages-utils/config.js';
+import type {
+  ApiHandler,
+  HandlerInterceptor,
+} from './create-pages-utils/config.js';
 import type {
   AnyPage,
   GetSlugs,
@@ -18,7 +21,6 @@ import {
   parseExactPath,
 } from './create-pages-utils/path-spec.js';
 import { createConfiguredRouter } from './create-pages-utils/router.js';
-import type { HandlerInterceptor } from './define-router.js';
 import {
   getPathMapping,
   parsePathWithSlug,
