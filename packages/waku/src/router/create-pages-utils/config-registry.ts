@@ -6,7 +6,7 @@ import type { PathSpec } from '../isomorphic-utils/path-spec.js';
 import { pathnameToRoutePath } from '../isomorphic-utils/route-path.js';
 import type { Unstable_SearchCodec } from '../isomorphic-utils/search-codec-registry.js';
 import {
-  DEFINE_ROUTER_METADATA,
+  CREATE_PAGES_CONFIGS_KEY,
   type RuntimeConfig,
   type SerializableConfig,
   type SliceConfig,
@@ -34,9 +34,7 @@ export const createConfigRegistry = (
     const runtimeConfigs = Array.from(await getConfigs());
     let configs: RuntimeConfig[] = runtimeConfigs;
     if (loadBuildMetadata) {
-      const raw = await loadBuildMetadata(
-        DEFINE_ROUTER_METADATA.serializableConfigs,
-      );
+      const raw = await loadBuildMetadata(CREATE_PAGES_CONFIGS_KEY);
       if (raw) {
         const serializableConfigs = JSON.parse(raw) as SerializableConfig[];
         configs = mergeWithRuntimeConfigs(serializableConfigs, runtimeConfigs);

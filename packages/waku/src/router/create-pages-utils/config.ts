@@ -104,9 +104,7 @@ export type SerializableSliceConfig = Omit<
 export type SerializableConfig =
   SerializableRouteConfig | SerializableApiConfig | SerializableSliceConfig;
 
-export const DEFINE_ROUTER_METADATA = {
-  serializableConfigs: 'defineRouter:serializableConfigs',
-} as const;
+export const CREATE_PAGES_CONFIGS_KEY = 'defineRouter:serializableConfigs';
 
 export const pathSpecKey = (p: PathSpec) => JSON.stringify(p);
 

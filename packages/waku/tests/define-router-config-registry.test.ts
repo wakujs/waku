@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createConfigRegistry } from '../src/router/create-pages-utils/config-registry.js';
 import {
-  DEFINE_ROUTER_METADATA,
+  CREATE_PAGES_CONFIGS_KEY,
   type RuntimeConfig,
   toSerializable,
 } from '../src/router/create-pages-utils/config.js';
@@ -97,9 +97,7 @@ describe('config registry initialization', () => {
     });
     const serialized = JSON.stringify([toSerializable(runtime)]);
     const loadBuildMetadata = vi.fn(async (key: string) =>
-      key === DEFINE_ROUTER_METADATA.serializableConfigs
-        ? serialized
-        : undefined,
+      key === CREATE_PAGES_CONFIGS_KEY ? serialized : undefined,
     );
     const registry = createConfigRegistry(async () => [runtime]);
     await registry.initialize(loadBuildMetadata);

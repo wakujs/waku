@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { DEFINE_ROUTER_METADATA } from '../src/router/create-pages-utils/config.js';
+import { CREATE_PAGES_CONFIGS_KEY } from '../src/router/create-pages-utils/config.js';
 import {
   getRouterPrefetchCode,
   setupRouterSearchCodecs,
@@ -73,10 +73,8 @@ describe('setupRouterSearchCodecs', () => {
   });
 });
 
-describe('DEFINE_ROUTER_METADATA', () => {
-  it('matches the persisted metadata keys exactly', () => {
-    expect(DEFINE_ROUTER_METADATA).toStrictEqual({
-      serializableConfigs: 'defineRouter:serializableConfigs',
-    });
+describe('CREATE_PAGES_CONFIGS_KEY', () => {
+  it('matches the persisted metadata key exactly', () => {
+    expect(CREATE_PAGES_CONFIGS_KEY).toBe('defineRouter:serializableConfigs');
   });
 });
