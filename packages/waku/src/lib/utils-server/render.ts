@@ -1,6 +1,6 @@
 import type {
-  Unstable_HandleRequest,
   Unstable_RenderHtml,
+  Unstable_RenderHtmlFallback,
   Unstable_RenderRsc,
 } from '../types.js';
 import { ETAGS_ID } from '../utils-isomorphic/etags.js';
@@ -45,7 +45,7 @@ export function createRenderUtils({
 }): {
   renderRsc: Unstable_RenderRsc;
   renderHtml: Unstable_RenderHtml;
-  renderHtmlFallback: Parameters<Unstable_HandleRequest>[1]['renderHtmlFallback'];
+  renderHtmlFallback: Unstable_RenderHtmlFallback;
 } {
   return {
     async renderRsc(elements, options) {

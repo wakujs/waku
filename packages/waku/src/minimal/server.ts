@@ -16,6 +16,7 @@ export type {
   Unstable_HandleBuild,
   Unstable_RenderRsc,
   Unstable_RenderHtml,
+  Unstable_RenderHtmlFallback,
 } from '../lib/types.js';
 export type { Etags as Unstable_Etags } from '../lib/utils-isomorphic/etags.js';
 export { buildElements as unstable_buildElements } from '../lib/utils-server/build-elements.js';

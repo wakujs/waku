@@ -29,22 +29,22 @@ Exports marked `unstable_*` or `*_UNSTABLE` in this document may still change.
 
 The Minimal API consists of server handler contracts and client rendering primitives:
 
-| Entry point           | Surface                                                       | Use when                                                              |
-| --------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `waku/minimal/server` | `Unstable_Handlers`                                           | Defining `handleRequest` and `handleBuild` for an adapter.            |
-| `waku/minimal/server` | `Unstable_HandleRequest`, `Unstable_HandleBuild`              | Typing individual handlers.                                           |
-| `waku/minimal/server` | `Unstable_RenderRsc`, `Unstable_RenderHtml`, `Unstable_Etags` | Typing rendering utilities and validators.                            |
-| `waku/minimal/server` | `unstable_createCustomError`, `unstable_getErrorInfo`         | Creating and reading status and redirect errors.                      |
-| `waku/minimal/client` | `Root_UNSTABLE`                                               | Installing the minimal client runtime.                                |
-| `waku/minimal/client` | `Slot_UNSTABLE`                                               | Rendering a server element by RSC ID.                                 |
-| `waku/minimal/client` | `Children_UNSTABLE`                                           | Placing client-side `Slot` children inside a server-rendered element. |
-| `waku/minimal/client` | `useFetchRsc_UNSTABLE`                                        | Fetching and decoding an RSC payload.                                 |
-| `waku/minimal/client` | `useMergeElements_UNSTABLE`                                   | Merging an RSC payload into the current element map.                  |
-| `waku/minimal/client` | `useElementsPromise_UNSTABLE`                                 | Reading the current element map.                                      |
-| `waku/minimal/client` | `useRegisterRscEnhancer_UNSTABLE`                             | Extending the RSC requests a `Root` makes.                            |
-| `waku/minimal/client` | `useRegisterRscReloadListener_UNSTABLE`                       | Choosing the RSC input to refresh during development reloads.         |
-| `waku/minimal/client` | `unstable_combineElements`                                    | Combining element maps without losing their etags.                    |
-| `waku/minimal/client` | `unstable_getErrorInfo`                                       | Reading status, redirect and network-error information.               |
+| Entry point           | Surface                                                                                      | Use when                                                              |
+| --------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `waku/minimal/server` | `Unstable_Handlers`                                                                          | Defining `handleRequest` and `handleBuild` for an adapter.            |
+| `waku/minimal/server` | `Unstable_HandleRequest`, `Unstable_HandleBuild`                                             | Typing individual handlers.                                           |
+| `waku/minimal/server` | `Unstable_RenderRsc`, `Unstable_RenderHtml`, `Unstable_RenderHtmlFallback`, `Unstable_Etags` | Typing rendering utilities and validators.                            |
+| `waku/minimal/server` | `unstable_createCustomError`, `unstable_getErrorInfo`                                        | Creating and reading status and redirect errors.                      |
+| `waku/minimal/client` | `Root_UNSTABLE`                                                                              | Installing the minimal client runtime.                                |
+| `waku/minimal/client` | `Slot_UNSTABLE`                                                                              | Rendering a server element by RSC ID.                                 |
+| `waku/minimal/client` | `Children_UNSTABLE`                                                                          | Placing client-side `Slot` children inside a server-rendered element. |
+| `waku/minimal/client` | `useFetchRsc_UNSTABLE`                                                                       | Fetching and decoding an RSC payload.                                 |
+| `waku/minimal/client` | `useMergeElements_UNSTABLE`                                                                  | Merging an RSC payload into the current element map.                  |
+| `waku/minimal/client` | `useElementsPromise_UNSTABLE`                                                                | Reading the current element map.                                      |
+| `waku/minimal/client` | `useRegisterRscEnhancer_UNSTABLE`                                                            | Extending the RSC requests a `Root` makes.                            |
+| `waku/minimal/client` | `useRegisterRscReloadListener_UNSTABLE`                                                      | Choosing the RSC input to refresh during development reloads.         |
+| `waku/minimal/client` | `unstable_combineElements`                                                                   | Combining element maps without losing their etags.                    |
+| `waku/minimal/client` | `unstable_getErrorInfo`                                                                      | Reading status, redirect and network-error information.               |
 
 Examples below often import these as shorter names.
 
