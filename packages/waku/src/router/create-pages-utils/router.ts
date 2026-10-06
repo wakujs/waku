@@ -1,4 +1,4 @@
-import { unstable_defineRouter } from '../define-router.js';
+import { unstable_defineRouter } from 'waku/router/server';
 import {
   path2regexp,
   pathSpecAsString,

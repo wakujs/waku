@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { unstable_defineRouter } from '../define-router.js';
+import type { unstable_defineRouter } from 'waku/router/server';
 import {
   type PathSpec,
   pathSpecAsString,

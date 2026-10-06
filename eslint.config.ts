@@ -219,7 +219,10 @@ export default defineConfig(
                 './packages/waku/src/router/create-pages.tsx',
                 './packages/waku/src/router/create-pages-utils',
               ],
-              from: './packages/waku/src/router/define-router-utils',
+              from: [
+                './packages/waku/src/router/define-router-utils',
+                './packages/waku/src/router/define-router.tsx',
+              ],
               message: 'createPages must use the public defineRouter API.',
             },
             {
@@ -246,12 +249,20 @@ export default defineConfig(
       'no-restricted-imports': [
         'error',
         {
-          ...routerImportRestrictions,
-          paths: ['./define-router.js', '../define-router.js'].map((name) => ({
-            name,
-            allowImportNames: ['unstable_defineRouter'],
-            message: 'Use the public defineRouter API.',
-          })),
+          patterns: [
+            {
+              regex:
+                '^waku(?:$|/(?!minimal/(?:client|server)$|client$|server$|router/server$))',
+              message: 'createPages depends only on public Waku APIs.',
+            },
+          ],
+          paths: [
+            {
+              name: 'waku/router/server',
+              allowImportNames: ['unstable_defineRouter'],
+              message: 'Use the public defineRouter API.',
+            },
+          ],
         },
       ],
     },

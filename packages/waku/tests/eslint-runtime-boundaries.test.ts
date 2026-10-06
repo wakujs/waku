@@ -135,6 +135,12 @@ test('defineRouter utilities do not depend on their entry point', async () => {
     ),
   ).toEqual(['import/no-restricted-paths']);
   expect(
+    await lint(
+      file,
+      "import type { unstable_defineRouter } from 'waku/router/server';\nexport type Options = Parameters<typeof unstable_defineRouter>[0];\n",
+    ),
+  ).toEqual(['no-restricted-imports']);
+  expect(
     await lintImport(file, 'router/define-router-utils/route-entries.ts'),
   ).toEqual([]);
 }, 60_000);
@@ -143,11 +149,10 @@ test('router implementations use the public API of the layer below', async () =>
   for (const file of [
     'router/create-pages.tsx',
     'router/create-pages-utils/config.ts',
+    'router/create-pages-utils/route-resolver.ts',
     'router/create-pages-utils/router.ts',
   ]) {
-    const specifier = file.endsWith('create-pages.tsx')
-      ? './define-router.js'
-      : '../define-router.js';
+    const specifier = 'waku/router/server';
     expect(
       await lint(
         file,
@@ -166,6 +171,9 @@ test('router implementations use the public API of the layer below', async () =>
         `export type { HandlerInterceptor } from '${specifier}';\n`,
       ),
     ).toEqual(['no-restricted-imports']);
+    expect(await lintImport(file, 'router/define-router.tsx')).toEqual([
+      'import/no-restricted-paths',
+    ]);
     expect(
       await lint(
         file,
