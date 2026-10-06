@@ -1,7 +1,7 @@
 import type { UserConfig } from 'vite';
 import { expect, test } from 'vitest';
 import type { Config } from '../src/config.js';
-import { unstable_resolveConfig as legacyResolveConfig } from '../src/internals.js';
+import * as internals from '../src/internals.js';
 import { environmentsPlugin } from '../src/lib/vite-plugins/environments.js';
 import { unstable_resolveConfig as resolveConfig } from '../src/vite-plugins.js';
 
@@ -21,8 +21,13 @@ const runConfigHook = async (config: Config): Promise<UserConfig> => {
   )) as UserConfig;
 };
 
-test('tooling configuration resolution preserves the legacy alias', () => {
-  expect(resolveConfig).toBe(legacyResolveConfig);
+test('internals exposes only runtime APIs', () => {
+  expect(Object.keys(internals).sort()).toEqual([
+    'unstable_constants',
+    'unstable_consumeMultiplexedStream',
+    'unstable_honoMiddleware',
+    'unstable_produceMultiplexedStream',
+  ]);
 });
 
 test('uses basePath as the default Vite base', async () => {

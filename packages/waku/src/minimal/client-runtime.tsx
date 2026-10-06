@@ -692,8 +692,4 @@ export const INTERNAL_ServerRoot = ({
   </RootStoreContext>
 );
 
-export {
-  addBase as unstable_addBase,
-  removeBase as unstable_removeBase,
-} from '../lib/utils-isomorphic/path.js';
 export { getErrorInfo as unstable_getErrorInfo } from '../lib/utils-isomorphic/custom-errors.js';

@@ -21,6 +21,7 @@ const clientModules = [
 
 const serverModules = [
   'packages/waku/src/server.ts',
+  'packages/waku/src/internals.ts',
   'packages/waku/src/minimal/server.ts',
   'packages/waku/src/lib/hono',
   'packages/waku/src/lib/utils-server',

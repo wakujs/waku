@@ -78,6 +78,7 @@ test('client consumers import only client and isomorphic utilities', async () =>
 test('server consumers import only server and isomorphic utilities', async () => {
   for (const file of [
     'server.ts',
+    'internals.ts',
     'minimal/server.ts',
     'lib/hono/middleware.ts',
     'lib/vite-rsc/handler.ts',

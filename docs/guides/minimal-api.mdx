@@ -69,18 +69,6 @@ Advanced composition APIs remain available to any Minimal-based framework:
   These support middleware in Minimal-based frameworks; request inspection
   does not validate actions or authorize access.
 
-For compatibility, the following existing exports are deprecated:
-
-- `waku/minimal/client`: `INTERNAL_ServerRoot`, `unstable_callServerRsc`,
-  `unstable_addBase`, and `unstable_removeBase`.
-- `waku/minimal/server`: `unstable_defineHandlers`,
-  `unstable_defineServerEntry`,
-  `unstable_base64ToBytes`, `unstable_bytesToBase64`,
-  `unstable_getGrouplessPath`, and `unstable_isIgnoredPath`.
-
-Start with the kernel above. Use handler objects or the exported
-types in place of the identity helpers.
-
 ### Mental Model
 
 At this level, Waku gives you rendering primitives and very little policy.
