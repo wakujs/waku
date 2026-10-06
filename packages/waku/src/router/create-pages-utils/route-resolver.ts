@@ -1,5 +1,5 @@
 import type { Unstable_ElementSource as ElementSource } from 'waku/minimal/server';
-import type { unstable_defineRouter } from 'waku/router/server';
+import type { unstable_defineRouter } from '../define-router.js';
 import { getPathMapping } from '../isomorphic-utils/path-spec.js';
 import {
   getSliceSlotId,

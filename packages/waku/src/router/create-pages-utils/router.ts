@@ -1,4 +1,5 @@
-import { unstable_defineRouter } from 'waku/router/server';
+// Import the public API directly; the server barrel would cycle through createPages.
+import { unstable_defineRouter } from '../define-router.js';
 import {
   path2regexp,
   pathSpecAsString,

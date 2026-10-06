@@ -40,16 +40,6 @@ const routerImportRestrictions = {
   ],
 };
 
-const routerServerImportRestrictions = {
-  patterns: [
-    {
-      regex:
-        '^waku(?:$|/(?!minimal/(?:client|server)$|client$|server$|router/server$))',
-      message: 'Router depends only on public Waku runtime APIs.',
-    },
-  ],
-};
-
 export default defineConfig(
   {
     ignores: [
@@ -219,6 +209,12 @@ export default defineConfig(
                 'Use a public Waku entry point or a Router-local module.',
             },
             {
+              target: './packages/waku/src/router',
+              from: './packages/waku/src/router/server.ts',
+              message:
+                'Router implementations must not depend on their server entry point.',
+            },
+            {
               target: './packages/waku/src/router/define-router-utils',
               from: './packages/waku/src/router/define-router.tsx',
               message:
@@ -229,16 +225,12 @@ export default defineConfig(
                 './packages/waku/src/router/create-pages.tsx',
                 './packages/waku/src/router/create-pages-utils',
               ],
-              from: [
-                './packages/waku/src/router/define-router-utils',
-                './packages/waku/src/router/define-router.tsx',
-              ],
+              from: ['./packages/waku/src/router/define-router-utils'],
               message: 'createPages must use the public defineRouter API.',
             },
             {
               target: './packages/waku/src/router/fs-router.ts',
               from: [
-                './packages/waku/src/router/create-pages.tsx',
                 './packages/waku/src/router/create-pages-utils',
                 './packages/waku/src/router/define-router-utils',
                 './packages/waku/src/router/define-router.tsx',
@@ -260,10 +252,10 @@ export default defineConfig(
       'no-restricted-imports': [
         'error',
         {
-          ...routerServerImportRestrictions,
-          paths: [
+          patterns: [
+            ...routerImportRestrictions.patterns,
             {
-              name: 'waku/router/server',
+              regex: '(^|/)define-router\\.(?:js|tsx)$',
               allowImportNames: ['unstable_defineRouter'],
               message: 'Use the public defineRouter API.',
             },
@@ -278,10 +270,10 @@ export default defineConfig(
       'no-restricted-imports': [
         'error',
         {
-          ...routerServerImportRestrictions,
-          paths: [
+          patterns: [
+            ...routerImportRestrictions.patterns,
             {
-              name: 'waku/router/server',
+              regex: '(^|/)create-pages\\.(?:js|tsx)$',
               allowImportNames: [
                 'createPages',
                 'CreateApi',

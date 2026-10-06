@@ -1,11 +1,12 @@
 import type { FunctionComponent, ReactNode } from 'react';
 import type { ImportGlobFunction } from 'vite/types/importGlob.d.ts';
-import { createPages } from 'waku/router/server';
+// Import the public API directly; the server barrel would cycle through fsRouter.
+import { createPages } from './create-pages.js';
 import type {
   CreateApi,
   CreateInterceptor,
   CreatePage,
-} from 'waku/router/server';
+} from './create-pages.js';
 import { isIgnoredPath } from './isomorphic-utils/route-path.js';
 
 type DynamicApi = Extract<
