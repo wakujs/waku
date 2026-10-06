@@ -202,13 +202,28 @@ test('router implementations use the public API of the layer below', async () =>
   expect(
     await lint(
       'router/fs-router.ts',
-      "import { createPages } from './create-pages.js';\nvoid createPages;\n",
+      "import { createPages } from 'waku/router/server';\nvoid createPages;\n",
     ),
   ).toEqual([]);
   expect(
     await lint(
       'router/fs-router.ts',
-      "import { METHODS } from './create-pages.js';\nvoid METHODS;\n",
+      "export type { CreateApi, CreateInterceptor, CreatePage } from 'waku/router/server';\n",
+    ),
+  ).toEqual([]);
+  expect(
+    await lintImport('router/fs-router.ts', 'router/create-pages.tsx'),
+  ).toEqual(['import/no-restricted-paths']);
+  expect(
+    await lint(
+      'router/fs-router.ts',
+      "import { unstable_defineRouter } from 'waku/router/server';\nvoid unstable_defineRouter;\n",
+    ),
+  ).toEqual(['no-restricted-imports']);
+  expect(
+    await lint(
+      'router/fs-router.ts',
+      "import { METHODS } from 'waku/router/server';\nvoid METHODS;\n",
     ),
   ).toEqual(['no-restricted-imports']);
 }, 60_000);

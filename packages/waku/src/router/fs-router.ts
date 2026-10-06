@@ -1,11 +1,11 @@
 import type { FunctionComponent, ReactNode } from 'react';
 import type { ImportGlobFunction } from 'vite/types/importGlob.d.ts';
-import { createPages } from './create-pages.js';
+import { createPages } from 'waku/router/server';
 import type {
   CreateApi,
   CreateInterceptor,
   CreatePage,
-} from './create-pages.js';
+} from 'waku/router/server';
 import { isIgnoredPath } from './isomorphic-utils/route-path.js';
 
 type DynamicApi = Extract<

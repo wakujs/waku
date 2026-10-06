@@ -40,6 +40,16 @@ const routerImportRestrictions = {
   ],
 };
 
+const routerServerImportRestrictions = {
+  patterns: [
+    {
+      regex:
+        '^waku(?:$|/(?!minimal/(?:client|server)$|client$|server$|router/server$))',
+      message: 'Router depends only on public Waku runtime APIs.',
+    },
+  ],
+};
+
 export default defineConfig(
   {
     ignores: [
@@ -228,6 +238,7 @@ export default defineConfig(
             {
               target: './packages/waku/src/router/fs-router.ts',
               from: [
+                './packages/waku/src/router/create-pages.tsx',
                 './packages/waku/src/router/create-pages-utils',
                 './packages/waku/src/router/define-router-utils',
                 './packages/waku/src/router/define-router.tsx',
@@ -249,13 +260,7 @@ export default defineConfig(
       'no-restricted-imports': [
         'error',
         {
-          patterns: [
-            {
-              regex:
-                '^waku(?:$|/(?!minimal/(?:client|server)$|client$|server$|router/server$))',
-              message: 'createPages depends only on public Waku APIs.',
-            },
-          ],
+          ...routerServerImportRestrictions,
           paths: [
             {
               name: 'waku/router/server',
@@ -273,10 +278,10 @@ export default defineConfig(
       'no-restricted-imports': [
         'error',
         {
-          ...routerImportRestrictions,
+          ...routerServerImportRestrictions,
           paths: [
             {
-              name: './create-pages.js',
+              name: 'waku/router/server',
               allowImportNames: [
                 'createPages',
                 'CreateApi',
