@@ -11,7 +11,7 @@
   "dependencies": {
     "cookie": "^2.0.1",
     "hono": "^4.12.14",
-    "jotai": "^3.0.0",
+    "jotai": "^3.0.1",
     "react": "~19.3.0",
     "react-dom": "~19.3.0",
     "react-server-dom-webpack": "~19.3.0",
