@@ -17,6 +17,7 @@ import {
   createElementCache,
   getElementCacheId,
 } from './element-cache.js';
+import { validateRouteElementIds } from './route-entries.js';
 import type { Resolve, Route, createRouteEntries } from './route-entries.js';
 
 export type BuildPath =
@@ -111,6 +112,7 @@ export const createBuildHandler =
             await utils.generateFile(routePath, response.body || '');
             return;
           }
+          validateRouteElementIds(resolved.elements);
           if (
             target?.prerender === false ||
             !Object.values(resolved.elements).every(

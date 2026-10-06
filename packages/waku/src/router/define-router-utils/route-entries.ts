@@ -32,6 +32,18 @@ export type Resolve = (
 
 export type ResolveElement = (id: string) => Promise<ElementSource | null>;
 
+export const validateRouteElementIds = (elements: Route['elements']) => {
+  for (const id of Object.keys(elements)) {
+    if (
+      id !== 'root' &&
+      id !== 'route' &&
+      (id.startsWith('_') || id.startsWith('route:') || /^[A-Z]/.test(id))
+    ) {
+      throw new Error('Reserved router element ID: ' + id);
+    }
+  }
+};
+
 export const getQuery = (params: unknown): string =>
   params instanceof URLSearchParams
     ? params.get('query') || ''
@@ -75,15 +87,7 @@ export const createRouteEntries = (
     if (!resolved || typeof resolved === 'function') {
       return null;
     }
-    for (const id of Object.keys(resolved.elements)) {
-      if (
-        id !== 'root' &&
-        id !== 'route' &&
-        (id.startsWith('_') || id.startsWith('route:') || /^[A-Z]/.test(id))
-      ) {
-        throw new Error('Reserved router element ID: ' + id);
-      }
-    }
+    validateRouteElementIds(resolved.elements);
     const { route, ...sources } = resolved.elements;
     const routeId = getRouteSlotId(pathname);
     sources[routeId] =

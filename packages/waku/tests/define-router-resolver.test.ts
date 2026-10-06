@@ -849,6 +849,41 @@ describe('defineRouter route resolver', () => {
     );
   });
 
+  it.each(
+    ['ROUTE', '_foo', 'route:foo'].flatMap((id) => [
+      { id, immutable: false, prerender: true },
+      { id, immutable: true, prerender: false },
+    ]),
+  )(
+    'rejects reserved build element $id (immutable: $immutable, prerender: $prerender)',
+    async ({ id, immutable, prerender }) => {
+      const render = vi.fn(() => 'content');
+      const router = unstable_defineRouter({
+        resolve: async () => ({
+          elements: {
+            root: { immutable, render },
+            route: { immutable, render },
+            [id]: { immutable: true, render },
+          },
+        }),
+        getBuildPaths: async () => [{ pathname: '/', prerender }],
+      });
+      const saveBuildMetadata = vi.fn();
+      await expect(
+        router.handleBuild({
+          ...makeUtils(),
+          rscPath2pathname: (path) => path,
+          generateFile: vi.fn(),
+          generateDefaultHtml: vi.fn(),
+          saveBuildMetadata,
+          unstable_registerPrunableFile: vi.fn(),
+        }),
+      ).rejects.toThrow('Reserved router element ID: ' + id);
+      expect(render).not.toHaveBeenCalled();
+      expect(saveBuildMetadata).not.toHaveBeenCalled();
+    },
+  );
+
   it('warms immutable sources without decoding their cached render errors', async () => {
     const deserialize = vi.mocked(deserializeRsc);
     const implementation = deserialize.getMockImplementation()!;
