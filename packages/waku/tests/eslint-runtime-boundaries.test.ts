@@ -125,3 +125,126 @@ test('Router keeps its public API boundary', async () => {
     ),
   ).toEqual(['no-restricted-imports']);
 }, 60_000);
+
+test('defineRouter utilities do not depend on their entry point', async () => {
+  const file = 'router/define-router-utils/build-handler.tsx';
+  expect(
+    await lint(
+      file,
+      "import type { unstable_defineRouter } from '../define-router.js';\nexport type Options = Parameters<typeof unstable_defineRouter>[0];\n",
+    ),
+  ).toEqual(['import/no-restricted-paths']);
+  expect(
+    await lint(
+      file,
+      "import type { unstable_defineRouter } from 'waku/router/server';\nexport type Options = Parameters<typeof unstable_defineRouter>[0];\n",
+    ),
+  ).toEqual(['no-restricted-imports']);
+  expect(
+    await lintImport(file, 'router/define-router-utils/route-entries.ts'),
+  ).toEqual([]);
+}, 60_000);
+
+test('router implementations use the public API of the layer below', async () => {
+  for (const file of [
+    'router/create-pages.tsx',
+    'router/create-pages-utils/config.ts',
+    'router/create-pages-utils/route-resolver.ts',
+    'router/create-pages-utils/router.ts',
+  ]) {
+    const specifier =
+      file === 'router/create-pages.tsx'
+        ? './define-router.js'
+        : '../define-router.js';
+    expect(
+      await lint(
+        file,
+        `import { unstable_defineRouter } from '${specifier}';\nvoid unstable_defineRouter;\n`,
+      ),
+    ).toEqual([]);
+    expect(
+      await lint(
+        file,
+        `import type { unstable_defineRouter } from '${specifier}';\nexport type Interceptor = NonNullable<Parameters<typeof unstable_defineRouter>[0]['unstable_interceptors']>[number];\n`,
+      ),
+    ).toEqual([]);
+    expect(
+      await lint(
+        file,
+        `export type { HandlerInterceptor } from '${specifier}';\n`,
+      ),
+    ).toEqual(['no-restricted-imports']);
+    expect(await lintImport(file, 'router/define-router.tsx')).toEqual([
+      'no-restricted-imports',
+    ]);
+    expect(await lintImport(file, 'router/server.ts')).toEqual([
+      'import/no-restricted-paths',
+    ]);
+    expect(
+      await lint(
+        file,
+        "import { unstable_defineRouter } from 'waku/router/server';\nvoid unstable_defineRouter;\n",
+      ),
+    ).toEqual(['no-restricted-imports']);
+    expect(
+      await lint(
+        file,
+        `import type { HandlerInterceptor } from '${specifier}';\nexport type Interceptor = HandlerInterceptor;\n`,
+      ),
+    ).toEqual(['no-restricted-imports']);
+    expect(
+      await lint(
+        file,
+        `import { createRouterHandlers } from '${specifier}';\nvoid createRouterHandlers;\n`,
+      ),
+    ).toEqual(['no-restricted-imports']);
+    expect(
+      await lintImport(file, 'router/define-router-utils/element-cache.ts'),
+    ).toEqual(['import/no-restricted-paths']);
+  }
+  expect(
+    await lintImport('router/fs-router.ts', 'router/define-router.tsx'),
+  ).toEqual(['import/no-restricted-paths']);
+  expect(
+    await lintImport(
+      'router/fs-router.ts',
+      'router/create-pages-utils/router.ts',
+    ),
+  ).toEqual(['import/no-restricted-paths']);
+  expect(
+    await lint(
+      'router/fs-router.ts',
+      "import { createPages } from './create-pages.js';\nvoid createPages;\n",
+    ),
+  ).toEqual([]);
+  expect(
+    await lint(
+      'router/fs-router.ts',
+      "export type { CreateApi, CreateInterceptor, CreatePage } from './create-pages.js';\n",
+    ),
+  ).toEqual([]);
+  expect(
+    await lintImport('router/fs-router.ts', 'router/create-pages.tsx'),
+  ).toEqual(['no-restricted-imports']);
+  expect(await lintImport('router/fs-router.ts', 'router/server.ts')).toEqual([
+    'import/no-restricted-paths',
+  ]);
+  expect(
+    await lint(
+      'router/fs-router.ts',
+      "import { createPages } from 'waku/router/server';\nvoid createPages;\n",
+    ),
+  ).toEqual(['no-restricted-imports']);
+  expect(
+    await lint(
+      'router/fs-router.ts',
+      "import { unstable_defineRouter } from 'waku/router/server';\nvoid unstable_defineRouter;\n",
+    ),
+  ).toEqual(['no-restricted-imports']);
+  expect(
+    await lint(
+      'router/fs-router.ts',
+      "import { METHODS } from './create-pages.js';\nvoid METHODS;\n",
+    ),
+  ).toEqual(['no-restricted-imports']);
+}, 60_000);

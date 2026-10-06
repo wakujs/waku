@@ -7,6 +7,10 @@ import {
 import { unstable_createCustomError as createCustomError } from 'waku/minimal/server';
 import { ErrorBoundary } from '../router/client.js';
 import type {
+  ApiHandler,
+  HandlerInterceptor,
+} from './create-pages-utils/config.js';
+import type {
   AnyPage,
   GetSlugs,
   PropsForPages,
@@ -16,8 +20,7 @@ import {
   countSlugsAndWildcards,
   parseExactPath,
 } from './create-pages-utils/path-spec.js';
-import { unstable_defineRouter } from './define-router.js';
-import type { ApiHandler, HandlerInterceptor } from './define-router.js';
+import { createConfiguredRouter } from './create-pages-utils/router.js';
 import {
   getPathMapping,
   parsePathWithSlug,
@@ -30,21 +33,17 @@ import {
 } from './isomorphic-utils/route-path.js';
 import type { Unstable_SearchCodec } from './isomorphic-utils/search-codec-registry.js';
 
-// https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods
-// QUERY: https://www.rfc-editor.org/rfc/rfc10008.html
-export const METHODS = [
-  'GET',
-  'HEAD',
-  'POST',
-  'PUT',
-  'DELETE',
-  'CONNECT',
-  'OPTIONS',
-  'TRACE',
-  'PATCH',
-  'QUERY',
-] as const;
-export type Method = (typeof METHODS)[number];
+type Method =
+  | 'GET'
+  | 'HEAD'
+  | 'POST'
+  | 'PUT'
+  | 'DELETE'
+  | 'CONNECT'
+  | 'OPTIONS'
+  | 'TRACE'
+  | 'PATCH'
+  | 'QUERY';
 
 export const pathMappingWithoutGroups: typeof getPathMapping = (
   pathSpec,
@@ -102,8 +101,6 @@ const forEachConcreteStaticPath = (
     fn(expandStaticRoutePath(routePathSpec, staticSegments));
   }
 };
-
-// createPages API (a wrapper around unstable_defineRouter)
 
 type IsValidPathItem<T> = T extends `/${string}` | '[]' | '' ? false : true;
 export type IsValidPathInSlugPath<T> = T extends `/${infer L}/${infer R}`
@@ -962,7 +959,7 @@ export const createPages = <
     );
   };
 
-  const definedRouter = unstable_defineRouter({
+  const definedRouter = createConfiguredRouter({
     getConfigs: async () => {
       await configure();
       type RendererOption = { routePath: string; query: string | undefined };

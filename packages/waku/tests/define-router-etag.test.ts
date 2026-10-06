@@ -7,7 +7,7 @@ import {
   parseClientEtags,
 } from '../src/lib/utils-isomorphic/etags.js';
 import type { Etags } from '../src/lib/utils-isomorphic/etags.js';
-import { unstable_defineRouter } from '../src/router/define-router.js';
+import { createConfiguredRouter } from '../src/router/create-pages-utils/router.js';
 import {
   IS_STATIC_ID,
   encodeRoutePath,
@@ -36,7 +36,7 @@ type ElementSpec = {
 };
 
 const buildRouter = (elements: Record<string, ElementSpec>) =>
-  unstable_defineRouter({
+  createConfiguredRouter({
     getConfigs: async () => [
       {
         type: 'route' as const,
@@ -53,7 +53,7 @@ const buildRouter = (elements: Record<string, ElementSpec>) =>
 // the router passes to renderRsc, merged with its `etags` re-encoded as one
 // `_etags` object (what renderRsc attaches post-validation).
 const drive = async (
-  router: ReturnType<typeof unstable_defineRouter>,
+  router: ReturnType<typeof createConfiguredRouter>,
   etags: Etags,
   rscPath = encodeRoutePath('/foo'),
 ): Promise<Record<string, unknown>> => {
@@ -78,6 +78,7 @@ const drive = async (
         },
       ),
       renderHtml: vi.fn(),
+      renderHtmlFallback: vi.fn(),
       loadBuildMetadata: vi.fn(),
     },
   );
@@ -85,14 +86,14 @@ const drive = async (
 };
 
 const getEntries = (
-  router: ReturnType<typeof unstable_defineRouter>,
+  router: ReturnType<typeof createConfiguredRouter>,
   clientEtags?: Record<string, string | typeof IMMUTABLE_ETAG>,
 ): Promise<Record<string, unknown>> => drive(router, clientEtags ?? {});
 
 // Drive with a raw, un-serialized etags header value parsed through the real
 // minimal parser (for legacy/malformed inputs), mirroring what getInput does.
 const getEntriesWithEtagsHeader = (
-  router: ReturnType<typeof unstable_defineRouter>,
+  router: ReturnType<typeof createConfiguredRouter>,
   etagsHeader: string,
 ): Promise<Record<string, unknown>> =>
   drive(router, parseClientEtags(etagsHeader));
@@ -100,7 +101,7 @@ const getEntriesWithEtagsHeader = (
 // Same as `drive`, but for a page request: an html render must carry every
 // slot, so the etags a client sends along have to be ignored.
 const driveHtml = async (
-  router: ReturnType<typeof unstable_defineRouter>,
+  router: ReturnType<typeof createConfiguredRouter>,
   etags: Etags,
 ): Promise<Record<string, unknown>> => {
   let captured: Record<string, unknown> = {};
@@ -117,6 +118,7 @@ const driveHtml = async (
         return makeStream();
       }),
       renderHtml: vi.fn(async () => new Response('ok')),
+      renderHtmlFallback: vi.fn(),
       loadBuildMetadata: vi.fn(),
     },
   );
@@ -262,7 +264,7 @@ describe('define-router etags (per-slot omit)', () => {
 
   it('applies the same etag omit to a dynamic slice', async () => {
     let sliceTag = 'sv1';
-    const router = unstable_defineRouter({
+    const router = createConfiguredRouter({
       getConfigs: async () => [
         {
           type: 'route' as const,
@@ -300,7 +302,7 @@ describe('define-router etags (per-slot omit)', () => {
 
   it('resolves the etag before rendering on a slice request, so a concurrent invalidation cannot tag stale content', async () => {
     const calls: string[] = [];
-    const router = unstable_defineRouter({
+    const router = createConfiguredRouter({
       getConfigs: async () => [
         {
           type: 'slice' as const,
@@ -324,7 +326,7 @@ describe('define-router etags (per-slot omit)', () => {
 
   it('applies the etag omit to the root element', async () => {
     let tag = 'r1';
-    const router = unstable_defineRouter({
+    const router = createConfiguredRouter({
       getConfigs: async () => [
         {
           type: 'route' as const,
@@ -358,7 +360,7 @@ describe('define-router etags (per-slot omit)', () => {
   it('resolves each slot independently in one response', async () => {
     let pageTag: string | undefined = 'p1';
     let sliceTag: string | undefined = 's1';
-    const router = unstable_defineRouter({
+    const router = createConfiguredRouter({
       getConfigs: async () => [
         {
           type: 'route' as const,
@@ -406,7 +408,7 @@ describe('define-router etags (per-slot omit)', () => {
   });
 
   it('marks a static slice by the etag sentinel, not an IS_STATIC marker', async () => {
-    const router = unstable_defineRouter({
+    const router = createConfiguredRouter({
       getConfigs: async () => [
         {
           type: 'route' as const,

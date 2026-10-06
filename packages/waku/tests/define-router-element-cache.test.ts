@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   assertNonReservedSlotId,
+  getPathSpecCacheId,
+} from '../src/router/create-pages-utils/element-ids.js';
+import {
   base64ToBytes,
   createElementCache,
-  getPathSpecCacheId,
   getSlotCacheId,
 } from '../src/router/define-router-utils/element-cache.js';
 import type { PathSpec } from '../src/router/isomorphic-utils/path-spec.js';

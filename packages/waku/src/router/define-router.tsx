@@ -1,12 +1,11 @@
 import { unstable_createCustomError as createCustomError } from 'waku/minimal/server';
 import type { Unstable_Handlers as Handlers } from 'waku/minimal/server';
 import { createBuildHandler } from './define-router-utils/build-handler.js';
-import { createConfigRegistry } from './define-router-utils/config-registry.js';
 import type {
-  ApiHandler,
-  HandlerInterceptor,
-  RuntimeConfig,
-} from './define-router-utils/config.js';
+  BuildElementId,
+  BuildPath,
+} from './define-router-utils/build-handler.js';
+import { setupRouterSearchCodecs } from './define-router-utils/client-code.js';
 import { createRequestHandler } from './define-router-utils/request-handler.js';
 import {
   getHeaders,
@@ -18,7 +17,12 @@ import {
   runWithRouterStore,
   setNonce,
 } from './define-router-utils/request-store.js';
+import type { HandlerInterceptor } from './define-router-utils/request-store.js';
 import { createRouteEntries } from './define-router-utils/route-entries.js';
+import type {
+  Resolve,
+  ResolveElement,
+} from './define-router-utils/route-entries.js';
 import { buildRouteHref } from './isomorphic-utils/build-route-href.js';
 import type {
   BuildRouteHrefTarget,
@@ -29,6 +33,7 @@ import {
   encodeRoutePath,
   pathnameToRoutePath,
 } from './isomorphic-utils/route-path.js';
+import type { Unstable_SearchCodec } from './isomorphic-utils/search-codec-registry.js';
 
 export {
   getRequest as unstable_getRequest,
@@ -37,7 +42,7 @@ export {
   getRscParams as unstable_getRscParams,
   setNonce as unstable_setNonce,
 };
-export type { ApiHandler, HandlerInterceptor };
+export type { HandlerInterceptor };
 
 const encodePathname = (pathname: string) => {
   if (!pathname.startsWith('/')) {
@@ -136,38 +141,92 @@ export function unstable_redirect<Path extends RoutePath = RoutePath>(
   throw createCustomError('Redirect', { status, location });
 }
 
-export function unstable_defineRouter(fns: {
-  getConfigs: () => Promise<Iterable<RuntimeConfig>>;
-  unstable_skipBuild?: (routePath: string) => boolean;
+type RouterOptions = {
+  resolve: Resolve;
+  getBuildPaths?: () => Promise<Iterable<BuildPath>>;
+  getBuildElementIds?: () => Promise<Iterable<BuildElementId>>;
+  resolveElement?: ResolveElement;
+  getHas404?: () => Promise<boolean>;
+  getSearchCodecs?: () => Promise<Record<string, Unstable_SearchCodec<any>>>;
   unstable_interceptors?: HandlerInterceptor[];
-}) {
-  const configRegistry = createConfigRegistry(fns.getConfigs);
-  const routeEntries = createRouteEntries(configRegistry);
+};
 
-  const runHandled = <T,>(req: Request, fn: () => Promise<T>): Promise<T> =>
-    runWithRouterStore(
-      { req, resolveSearchCodec: configRegistry.resolveSearchCodec },
+/**
+ * Creates server handlers for `waku/router/client`. `resolve` receives the
+ * normalized pathname and query string without `?`, and returns element
+ * sources with `root` and `route`, an HTTP handler, or `null` for not found.
+ * The document root uses `Children_UNSTABLE` to place the active route.
+ *
+ * `getBuildPaths` lists pathnames to resolve, or explicit `{ pathname, route }`
+ * targets. Immutable routes are prerendered, HTTP handlers emit static responses,
+ * and mutable routes cache only immutable elements. A target's `prerender: false`
+ * caches immutable sources without emitting a page; `prefetchPattern` is a regular
+ * expression matching paths that share its client modules.
+ * `resolveElement` handles `slice:<id>` requests from client `Slice`
+ * components; `getBuildElementIds` lists immutable IDs to emit as standalone
+ * RSC files, as strings to resolve or `{ id, source }` targets.
+ * Only `slice:<id>` IDs are supported for standalone requests.
+ * Unresolved or mutable build IDs fail the build.
+ * An immutable source's optional `cacheKey` shares its cached content across
+ * slot IDs. Without a key, route content is reused only from build-preloaded
+ * entries. Custom 404 availability is checked once per router instance, using
+ * `getHas404` when provided or resolving `/404` otherwise.
+ * `getSearchCodecs` maps route patterns to codecs for structured navigation on
+ * the server and in the browser. It is loaded once per router instance.
+ * Immutable sources must render the same content for the lifetime of their ID
+ * or explicit cache key. Use a bounded set of keys, not arbitrary request paths.
+ */
+export function unstable_defineRouter(fns: RouterOptions): Handlers {
+  const routeEntries = createRouteEntries(
+    fns.resolve,
+    fns.resolveElement,
+    fns.getHas404,
+  );
+  let searchCodecsPromise:
+    Promise<Record<string, Unstable_SearchCodec<any>>> | undefined;
+  const getSearchCodecs = (): Promise<
+    Record<string, Unstable_SearchCodec<any>>
+  > =>
+    (searchCodecsPromise ??= (
+      fns.getSearchCodecs?.() ?? Promise.resolve({})
+    ).catch((error) => {
+      searchCodecsPromise = undefined;
+      throw error;
+    }));
+  const getExtraScriptContent = async () =>
+    setupRouterSearchCodecs(await getSearchCodecs());
+  const runHandled = async <T,>(
+    req: Request,
+    fn: () => Promise<T>,
+  ): Promise<T> => {
+    const codecs = await getSearchCodecs();
+    return runWithRouterStore(
+      {
+        req,
+        resolveSearchCodec: fns.getSearchCodecs
+          ? (path) => codecs[path]
+          : getResolveSearchCodec(),
+      },
       (fns.unstable_interceptors ?? []).reduceRight(
         (next, interceptor) => () => interceptor(next),
         fn,
       ),
     );
-
-  const handleRequest = createRequestHandler({
-    configRegistry,
-    routeEntries,
-    runHandled,
-  });
-
-  const handleBuild = createBuildHandler({
-    configRegistry,
-    routeEntries,
-    runHandled,
-    skipBuild: fns.unstable_skipBuild,
-  });
-
-  const handlers: Handlers = { handleRequest, handleBuild };
-  return Object.assign(handlers, {
-    unstable_getRouterConfigs: async () => configRegistry.getAll(),
-  });
+  };
+  return {
+    handleRequest: createRequestHandler({
+      resolve: fns.resolve,
+      routeEntries,
+      runHandled,
+      getExtraScriptContent,
+    }),
+    handleBuild: createBuildHandler({
+      resolve: fns.resolve,
+      getBuildPaths: fns.getBuildPaths,
+      getBuildElementIds: fns.getBuildElementIds,
+      routeEntries,
+      runHandled,
+      getExtraScriptContent,
+    }),
+  };
 }

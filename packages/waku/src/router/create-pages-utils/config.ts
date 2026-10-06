@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { unstable_defineRouter } from '../define-router.js';
 import {
   type PathSpec,
   pathSpecAsString,
@@ -10,7 +11,9 @@ export type ApiHandler = (
   apiContext: { params: Record<string, string | string[]> },
 ) => Promise<Response>;
 
-export type HandlerInterceptor = <T>(next: () => Promise<T>) => Promise<T>;
+export type HandlerInterceptor = NonNullable<
+  Parameters<typeof unstable_defineRouter>[0]['unstable_interceptors']
+>[number];
 
 export type SlotId = string;
 
@@ -101,11 +104,7 @@ export type SerializableSliceConfig = Omit<
 export type SerializableConfig =
   SerializableRouteConfig | SerializableApiConfig | SerializableSliceConfig;
 
-export const DEFINE_ROUTER_METADATA = {
-  serializableConfigs: 'defineRouter:serializableConfigs',
-  cachedElements: 'defineRouter:cachedElements',
-  path2moduleIds: 'defineRouter:path2moduleIds',
-} as const;
+export const CREATE_PAGES_CONFIGS_KEY = 'createPages:serializableConfigs';
 
 export const pathSpecKey = (p: PathSpec) => JSON.stringify(p);
 

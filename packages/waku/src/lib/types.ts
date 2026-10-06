@@ -29,6 +29,11 @@ export type Unstable_RenderHtml = (
   },
 ) => Promise<Response>;
 
+export type Unstable_RenderHtmlFallback = (options?: {
+  nonce?: string;
+  unstable_extraScriptContent?: string;
+}) => Promise<Response>;
+
 export type Unstable_EmitFile = (
   filePath: string,
   body: ReadableStream,
@@ -58,6 +63,7 @@ export type Unstable_HandleRequest = (
   utils: {
     renderRsc: Unstable_RenderRsc;
     renderHtml: Unstable_RenderHtml;
+    renderHtmlFallback: Unstable_RenderHtmlFallback;
     loadBuildMetadata: (key: string) => Promise<string | undefined>;
   },
 ) => Promise<ReadableStream | Response | 'fallback' | null | undefined>;
@@ -72,7 +78,10 @@ export type Unstable_HandleBuild = (utils: {
     fileName: string,
     body: ReadableStream | string,
   ) => Promise<void>;
-  generateDefaultHtml: (fileName: string) => Promise<void>;
+  generateDefaultHtml: (
+    fileName: string,
+    options?: Parameters<Unstable_RenderHtmlFallback>[0],
+  ) => Promise<void>;
   unstable_registerPrunableFile: (srcPath: string) => void;
 }) => Promise<void>;
 

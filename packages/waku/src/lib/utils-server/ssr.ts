@@ -1,3 +1,5 @@
+import { createElement } from 'react';
+import { renderToReadableStream } from 'react-dom/server.edge';
 import { DEV_BUILD_ID } from '../constants.js';
 
 // DEV: hold the stream ~5s so React's late debug-channel chunks settle before close. https://github.com/wakujs/waku/pull/2154
@@ -112,3 +114,22 @@ export function getBootstrapPreamble(options: {
     .filter(Boolean)
     .join('\n');
 }
+
+export const createHtmlFallback = async (
+  html: string,
+  entryUrl: string,
+  options?: {
+    nonce?: string | undefined;
+    extraScriptContent?: string | undefined;
+  },
+) => {
+  const script =
+    getBootstrapPreamble({ hydrate: false, initialRsc: false }) +
+    createBootstrapScriptContent(entryUrl) +
+    (options?.extraScriptContent || '');
+  const stream = await renderToReadableStream(
+    createElement('script', { nonce: options?.nonce }, script),
+  );
+  const scriptHtml = await new Response(stream).text();
+  return html.replace('</body>', () => `${scriptHtml}</body>`);
+};

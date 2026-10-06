@@ -1,13 +1,52 @@
+import { runInNewContext } from 'node:vm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { consumeInitialRscEntry } from '../src/lib/utils-client/initial-rsc.js';
 import {
   createBootstrapScriptContent,
+  createHtmlFallback,
   getBootstrapPreamble,
 } from '../src/lib/utils-server/ssr.js';
 
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
+});
+
+describe('createHtmlFallback', () => {
+  it('adds bootstrap code to the shell without enabling SSR or an initial payload', async () => {
+    const html = await createHtmlFallback(
+      '<html><body></body></html>',
+      '/entry.js',
+      {
+        extraScriptContent: 'globalThis.example = "ready";',
+      },
+    );
+    expect(html).toContain('import("/entry.js");globalThis.example = "ready";');
+    expect(html).not.toContain('__WAKU_HYDRATE__');
+    expect(html).not.toContain('__WAKU_INITIAL_RSC__');
+  });
+
+  it('escapes the nonce and keeps bootstrap strings inside their script element', async () => {
+    const html = await createHtmlFallback(
+      '<html><body></body></html>',
+      '/entry.js',
+      {
+        nonce: 'nonce"<&',
+        extraScriptContent:
+          'globalThis.example = "</ScRiPt><!--<script>";globalThis.matched = 0</script/.test("script");',
+      },
+    );
+    expect(html).toContain('nonce="nonce&quot;&lt;&amp;"');
+    expect(html.match(/<\/script>/gi)).toHaveLength(1);
+    const script = html.match(/<script[^>]*>([\s\S]*?)<\/script>/)![1]!;
+    const globals: { example?: string; matched?: boolean } = {};
+    runInNewContext(
+      script.replace(createBootstrapScriptContent('/entry.js'), ''),
+      globals,
+    );
+    expect(globals.example).toBe('</ScRiPt><!--<script>');
+    expect(globals.matched).toBe(true);
+  });
 });
 
 it('the client consumes the payload emitted by server bootstrap once', async () => {

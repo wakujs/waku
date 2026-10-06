@@ -133,10 +133,7 @@ const toProcessRequest =
     // fallback index html like packages/waku/src/lib/plugins/vite-plugin-rsc-index.ts
     const url = new URL(req.url);
     if (res === 'fallback' || (!res && url.pathname === '/')) {
-      const { INTERNAL_renderHtmlFallback } = await loadSsrEntryModule();
-      const htmlFallbackStream = await INTERNAL_renderHtmlFallback();
-      const headers = { 'content-type': 'text/html; charset=utf-8' };
-      return new Response(htmlFallbackStream, { headers });
+      return renderUtils.renderHtmlFallback();
     }
 
     return null;
@@ -158,15 +155,6 @@ const toProcessBuild =
         return getDigest(e);
       },
     });
-
-    let fallbackHtml: string | undefined;
-    const getFallbackHtml = async () => {
-      if (!fallbackHtml) {
-        const ssrEntryModule = await loadSsrEntryModule();
-        fallbackHtml = await ssrEntryModule.INTERNAL_renderHtmlFallback();
-      }
-      return fallbackHtml;
-    };
 
     const getPublicFilePath = (fileName: string) => {
       const filePath = joinPath(DIST_PUBLIC, fileName);
@@ -190,11 +178,9 @@ const toProcessBuild =
           typeof body === 'string' ? stringToStream(body) : body,
         );
       },
-      generateDefaultHtml: async (fileName) => {
-        await emitFile(
-          getPublicFilePath(fileName),
-          stringToStream(await getFallbackHtml()),
-        );
+      generateDefaultHtml: async (fileName, options) => {
+        const response = await renderUtils.renderHtmlFallback(options);
+        await emitFile(getPublicFilePath(fileName), response.body!);
       },
       unstable_registerPrunableFile,
     });

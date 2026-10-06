@@ -18,6 +18,7 @@ import type {
   Unstable_HandleRequest as HandleRequest,
   Unstable_Handlers as Handlers,
   Unstable_RenderHtml as RenderHtml,
+  Unstable_RenderHtmlFallback as RenderHtmlFallback,
   Unstable_RenderRsc as RenderRsc,
 } from '../src/minimal/server.js';
 
@@ -75,6 +76,9 @@ describe('Minimal entry points', () => {
     >();
     expectTypeOf<RenderHtml>().toEqualTypeOf<
       Parameters<HandleRequest>[1]['renderHtml']
+    >();
+    expectTypeOf<RenderHtmlFallback>().toEqualTypeOf<
+      Parameters<HandleRequest>[1]['renderHtmlFallback']
     >();
     expectTypeOf<ServerEntry>().toEqualTypeOf<
       Parameters<typeof server.unstable_defineServerEntry>[0]

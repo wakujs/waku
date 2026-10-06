@@ -29,22 +29,22 @@ Exports marked `unstable_*` or `*_UNSTABLE` in this document may still change.
 
 The Minimal API consists of server handler contracts and client rendering primitives:
 
-| Entry point           | Surface                                                       | Use when                                                              |
-| --------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `waku/minimal/server` | `Unstable_Handlers`                                           | Defining `handleRequest` and `handleBuild` for an adapter.            |
-| `waku/minimal/server` | `Unstable_HandleRequest`, `Unstable_HandleBuild`              | Typing individual handlers.                                           |
-| `waku/minimal/server` | `Unstable_RenderRsc`, `Unstable_RenderHtml`, `Unstable_Etags` | Typing rendering utilities and validators.                            |
-| `waku/minimal/server` | `unstable_createCustomError`, `unstable_getErrorInfo`         | Creating and reading status and redirect errors.                      |
-| `waku/minimal/client` | `Root_UNSTABLE`                                               | Installing the minimal client runtime.                                |
-| `waku/minimal/client` | `Slot_UNSTABLE`                                               | Rendering a server element by RSC ID.                                 |
-| `waku/minimal/client` | `Children_UNSTABLE`                                           | Placing client-side `Slot` children inside a server-rendered element. |
-| `waku/minimal/client` | `useFetchRsc_UNSTABLE`                                        | Fetching and decoding an RSC payload.                                 |
-| `waku/minimal/client` | `useMergeElements_UNSTABLE`                                   | Merging an RSC payload into the current element map.                  |
-| `waku/minimal/client` | `useElementsPromise_UNSTABLE`                                 | Reading the current element map.                                      |
-| `waku/minimal/client` | `useRegisterRscEnhancer_UNSTABLE`                             | Extending the RSC requests a `Root` makes.                            |
-| `waku/minimal/client` | `useRegisterRscReloadListener_UNSTABLE`                       | Choosing the RSC input to refresh during development reloads.         |
-| `waku/minimal/client` | `unstable_combineElements`                                    | Combining element maps without losing their etags.                    |
-| `waku/minimal/client` | `unstable_getErrorInfo`                                       | Reading status, redirect and network-error information.               |
+| Entry point           | Surface                                                                                      | Use when                                                              |
+| --------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `waku/minimal/server` | `Unstable_Handlers`                                                                          | Defining `handleRequest` and `handleBuild` for an adapter.            |
+| `waku/minimal/server` | `Unstable_HandleRequest`, `Unstable_HandleBuild`                                             | Typing individual handlers.                                           |
+| `waku/minimal/server` | `Unstable_RenderRsc`, `Unstable_RenderHtml`, `Unstable_RenderHtmlFallback`, `Unstable_Etags` | Typing rendering utilities and validators.                            |
+| `waku/minimal/server` | `unstable_createCustomError`, `unstable_getErrorInfo`                                        | Creating and reading status and redirect errors.                      |
+| `waku/minimal/client` | `Root_UNSTABLE`                                                                              | Installing the minimal client runtime.                                |
+| `waku/minimal/client` | `Slot_UNSTABLE`                                                                              | Rendering a server element by RSC ID.                                 |
+| `waku/minimal/client` | `Children_UNSTABLE`                                                                          | Placing client-side `Slot` children inside a server-rendered element. |
+| `waku/minimal/client` | `useFetchRsc_UNSTABLE`                                                                       | Fetching and decoding an RSC payload.                                 |
+| `waku/minimal/client` | `useMergeElements_UNSTABLE`                                                                  | Merging an RSC payload into the current element map.                  |
+| `waku/minimal/client` | `useElementsPromise_UNSTABLE`                                                                | Reading the current element map.                                      |
+| `waku/minimal/client` | `useRegisterRscEnhancer_UNSTABLE`                                                            | Extending the RSC requests a `Root` makes.                            |
+| `waku/minimal/client` | `useRegisterRscReloadListener_UNSTABLE`                                                      | Choosing the RSC input to refresh during development reloads.         |
+| `waku/minimal/client` | `unstable_combineElements`                                                                   | Combining element maps without losing their etags.                    |
+| `waku/minimal/client` | `unstable_getErrorInfo`                                                                      | Reading status, redirect and network-error information.               |
 
 Examples below often import these as shorter names.
 
@@ -344,6 +344,7 @@ The `utils` argument provides these helpers:
 | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `renderRsc(elements, options?)`             | Render an RSC payload as a `ReadableStream`. Object keys become RSC IDs; use `options.value` for a server function result. |
 | `renderHtml(elementsStream, html, options)` | Render the full HTML response that boots the client.                                                                       |
+| `renderHtmlFallback(options?)`              | Return the client-rendered HTML shell, without rendering an RSC tree.                                                      |
 | `loadBuildMetadata(key)`                    | Read metadata saved during `handleBuild`.                                                                                  |
 
 `handleRequest` may return any of the following:
@@ -358,6 +359,7 @@ The `utils` argument provides these helpers:
 Important details:
 
 - `renderHtml` expects an options object such as `{ rscPath: '' }`.
+- `renderHtmlFallback` accepts `unstable_extraScriptContent` for application bootstrap code and `nonce` for its script's CSP nonce. Return its `Response` when fallback HTML needs these options; returning `'fallback'` uses the defaults.
 - RSC IDs starting with `_` are reserved for Waku internals.
 - `rscPath` and `rscParams` are opaque application data. Waku does not assign them semantics.
 - Each `fetchRsc` call issues a new request. A router-like abstraction can own prefetching and response reuse.
@@ -400,14 +402,14 @@ also available from `waku/minimal/server` for server-side error handling.
 
 The build utilities are:
 
-| Utility                                     | Purpose                                                                                            |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `renderRsc(elements, options?)`             | Render an RSC payload stream. Use `options.value` for a server function result.                    |
-| `renderHtml(elementsStream, html, options)` | Render HTML from an RSC stream and client shell.                                                   |
-| `rscPath2pathname(rscPath)`                 | Convert an RSC path into the correct output pathname for the RSC payload.                          |
-| `saveBuildMetadata(key, value)`             | Persist metadata that will later be available through `loadBuildMetadata(...)` in `handleRequest`. |
-| `generateFile(fileName, body)`              | Write a file to `dist/public`. Accepts `ReadableStream` or `string`.                               |
-| `generateDefaultHtml(fileName)`             | Write Waku's default fallback HTML to `dist/public`.                                               |
+| Utility                                     | Purpose                                                                                               |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `renderRsc(elements, options?)`             | Render an RSC payload stream. Use `options.value` for a server function result.                       |
+| `renderHtml(elementsStream, html, options)` | Render HTML from an RSC stream and client shell.                                                      |
+| `rscPath2pathname(rscPath)`                 | Convert an RSC path into the correct output pathname for the RSC payload.                             |
+| `saveBuildMetadata(key, value)`             | Persist metadata that will later be available through `loadBuildMetadata(...)` in `handleRequest`.    |
+| `generateFile(fileName, body)`              | Write a file to `dist/public`. Accepts `ReadableStream` or `string`.                                  |
+| `generateDefaultHtml(fileName, options?)`   | Write fallback HTML to `dist/public`, with the same script and nonce options as `renderHtmlFallback`. |
 
 The most common patterns are:
 
