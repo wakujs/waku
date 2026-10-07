@@ -109,6 +109,155 @@ test('CLI and Vite tooling can import build and server utilities', async () => {
   }
 }, 60_000);
 
+test('client runtime consumers cannot import server or tooling entry points', async () => {
+  for (const file of [
+    'main.ts',
+    'client.ts',
+    'minimal/client.ts',
+    'minimal/client-runtime.tsx',
+    'minimal/client-utils/root-store.ts',
+    'lib/utils-client/initial-rsc.ts',
+    'lib/utils-isomorphic/log.ts',
+    'lib/vite-entries/entry.browser.tsx',
+    'router/client.tsx',
+    'router/client-core.ts',
+    'router/client-utils/navigation.ts',
+    'router/client-core-utils/load.ts',
+    'router/isomorphic-utils/router-protocol.ts',
+  ]) {
+    for (const specifier of [
+      'waku/server',
+      'waku/minimal/server',
+      'waku/router/server',
+      'waku/internals',
+      'waku/adapter-builders',
+      'waku/vite-plugins',
+      'waku/adapters/node',
+    ]) {
+      expect(
+        await lint(
+          file,
+          `import * as server from '${specifier}';\nvoid server;\n`,
+        ),
+      ).toContain('no-restricted-syntax');
+      expect(await lint(file, `void import('${specifier}');\n`)).toContain(
+        'no-restricted-syntax',
+      );
+    }
+    for (const dependency of [
+      'server.ts',
+      'minimal/server.ts',
+      'router/server.ts',
+      'internals.ts',
+      'adapter-builders.ts',
+      'vite-plugins.ts',
+      'adapters/node.ts',
+      'main.react-server.ts',
+    ]) {
+      const path = relative(dirname(file), dependency)
+        .split(sep)
+        .join('/')
+        .replace(/\.ts$/, '.js');
+      const specifier = path.startsWith('.') ? path : './' + path;
+      expect(await lint(file, `export * from '${specifier}';\n`)).toContain(
+        'no-restricted-syntax',
+      );
+      expect(await lint(file, `void import('${specifier}');\n`)).toContain(
+        'no-restricted-syntax',
+      );
+    }
+  }
+}, 60_000);
+
+test('runtime import syntax cannot bypass the client boundary', async () => {
+  for (const specifier of ['waku/adapter-builders', '../adapter-builders.js']) {
+    for (const code of [
+      `import '${specifier}';`,
+      `import {} from '${specifier}';`,
+      `export { unstable_createServerEntryAdapter } from '${specifier}';`,
+      `import { type Unstable_ServerEntry } from '${specifier}';\nexport type Entry = Unstable_ServerEntry;`,
+      `export { type Unstable_ServerEntry } from '${specifier}';`,
+      `void import(\`${specifier}\`);`,
+    ]) {
+      expect(await lint('minimal/client-runtime.tsx', code)).toContain(
+        'no-restricted-syntax',
+      );
+    }
+  }
+  expect(
+    await lint(
+      'minimal/client-runtime.tsx',
+      'for (;;) { break; }\nexport type Node = React.ReactNode;\n',
+    ),
+  ).toEqual(['no-restricted-syntax', 'no-restricted-syntax']);
+}, 60_000);
+
+test('public client APIs and erased server types remain available', async () => {
+  for (const specifier of [
+    'waku/client',
+    'waku/minimal/client',
+    'waku/config',
+    '../client.js',
+    '../minimal/client.js',
+  ]) {
+    expect(
+      await lint(
+        'minimal/client-runtime.tsx',
+        `import * as client from '${specifier}';\nvoid client;\n`,
+      ),
+    ).toEqual([]);
+    expect(
+      await lint(
+        'minimal/client-runtime.tsx',
+        `void import('${specifier}');\n`,
+      ),
+    ).toEqual([]);
+  }
+  for (const specifier of ['waku/adapter-builders', '../adapter-builders.js']) {
+    expect(
+      await lint(
+        'minimal/client-runtime.tsx',
+        `import type { Unstable_ServerEntry } from '${specifier}';\nexport type Entry = Unstable_ServerEntry;\n`,
+      ),
+    ).toEqual([]);
+    expect(
+      await lint(
+        'minimal/client-runtime.tsx',
+        `export type { Unstable_ServerEntry } from '${specifier}';\n`,
+      ),
+    ).toEqual([]);
+  }
+}, 60_000);
+
+test('server and adapter consumers retain their public server imports', async () => {
+  for (const file of [
+    'server.ts',
+    'minimal/server.ts',
+    'adapters/node.ts',
+    'router/define-router.tsx',
+  ]) {
+    expect(
+      await lint(
+        file,
+        "import * as server from 'waku/minimal/server';\nvoid server;\n",
+      ),
+    ).toEqual([]);
+    expect(await lint(file, "void import('waku/server');\n")).toEqual([]);
+  }
+  expect(
+    await lint(
+      'adapters/node.ts',
+      "import * as internals from 'waku/internals';\nvoid internals;\n",
+    ),
+  ).toEqual([]);
+  expect(
+    await lint(
+      'adapters/cloudflare.ts',
+      "void import('waku/adapter-builders');\n",
+    ),
+  ).toEqual([]);
+}, 60_000);
+
 test('Router keeps its public API boundary', async () => {
   expect(
     await lintImport('router/client.tsx', 'lib/utils-isomorphic/log.ts'),
@@ -124,7 +273,7 @@ test('Router keeps its public API boundary', async () => {
       'router/client.tsx',
       "import * as internals from 'waku/internals';\nvoid internals;\n",
     ),
-  ).toEqual(['no-restricted-imports']);
+  ).toEqual(['no-restricted-imports', 'no-restricted-syntax']);
 }, 60_000);
 
 test('defineRouter utilities do not depend on their entry point', async () => {

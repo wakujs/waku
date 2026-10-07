@@ -11,12 +11,44 @@ import tseslint from 'typescript-eslint';
 const basePath = fileURLToPath(new URL('.', import.meta.url));
 
 const clientModules = [
+  'packages/waku/src/main.ts',
   'packages/waku/src/client.ts',
   'packages/waku/src/minimal/client.ts',
   'packages/waku/src/minimal/client-runtime.tsx',
   'packages/waku/src/minimal/client-utils',
   'packages/waku/src/lib/utils-client',
   'packages/waku/src/lib/vite-entries/entry.browser.tsx',
+  'packages/waku/src/router/client.tsx',
+  'packages/waku/src/router/client-core.ts',
+  'packages/waku/src/router/client-utils',
+  'packages/waku/src/router/client-core-utils',
+  'packages/waku/src/router/isomorphic-utils',
+];
+
+const clientFiles = [
+  ...clientModules.map((path) =>
+    path.endsWith('.ts') || path.endsWith('.tsx')
+      ? path
+      : `${path}/**/*.{ts,tsx}`,
+  ),
+  'packages/waku/src/lib/utils-isomorphic/**/*.{ts,tsx}',
+];
+
+const serverEntryImportPatterns = [
+  '^waku/(?:server|minimal/server|router/server|internals|adapter-builders|vite-plugins|adapters/[^?#]+)(?:[?#].*)?$',
+  String.raw`^\..*/(?:server|internals|adapter-builders|vite-plugins|main\.react-server)(?:\.[jt]sx?)?(?:[?#].*)?$`,
+  String.raw`^\..*/adapters/`,
+];
+
+const restrictedSyntax = [
+  {
+    selector: 'ForStatement:not([init]):not([test]):not([update])',
+    message: 'Use while (true) instead of for (;;).',
+  },
+  {
+    selector: "TSQualifiedName[left.name='React']",
+    message: 'Import React types directly instead of using React.* namespace',
+  },
 ];
 
 const serverModules = [
@@ -122,18 +154,7 @@ export default defineConfig(
         },
       ],
       'unicorn/prefer-string-slice': 'error',
-      'no-restricted-syntax': [
-        'error',
-        {
-          selector: 'ForStatement:not([init]):not([test]):not([update])',
-          message: 'Use while (true) instead of for (;;).',
-        },
-        {
-          selector: "TSQualifiedName[left.name='React']",
-          message:
-            'Import React types directly instead of using React.* namespace',
-        },
-      ],
+      'no-restricted-syntax': ['error', ...restrictedSyntax],
     },
   },
   {
@@ -181,17 +202,25 @@ export default defineConfig(
     },
   },
   {
-    files: [
-      ...clientModules.map((path) =>
-        path.endsWith('.ts') || path.endsWith('.tsx')
-          ? path
-          : `${path}/**/*.{ts,tsx}`,
-      ),
-      'packages/waku/src/lib/utils-isomorphic/**/*.{ts,tsx}',
-    ],
+    files: clientFiles,
     rules: {
       'import/no-nodejs-modules': 'error',
       'no-restricted-globals': ['error', 'Buffer', 'process'],
+      'no-restricted-syntax': [
+        'error',
+        ...restrictedSyntax,
+        ...serverEntryImportPatterns.map((pattern) => {
+          const regex = new RegExp(pattern).source;
+          return {
+            selector: [
+              `:matches(ImportDeclaration[importKind!=type], ExportNamedDeclaration[exportKind!=type], ExportAllDeclaration[exportKind!=type], ImportExpression)[source.value=/${regex}/]`,
+              `ImportExpression > TemplateLiteral[expressions.length=0] > TemplateElement[value.cooked=/${regex}/]`,
+            ].join(', '),
+            message:
+              'Client and isomorphic modules must not load server or tooling entry points.',
+          };
+        }),
+      ],
     },
   },
   {
