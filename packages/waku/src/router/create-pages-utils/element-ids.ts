@@ -2,7 +2,7 @@ import type { PathSpec } from '../isomorphic-utils/path-spec.js';
 import {
   isRouteSlotId,
   isSliceSlotId,
-} from '../isomorphic-utils/route-path.js';
+} from '../isomorphic-utils/router-protocol.js';
 import { pathSpecKey } from './config.js';
 
 export const getPathSpecCacheId = (pathSpec: PathSpec) =>

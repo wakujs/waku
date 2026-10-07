@@ -5,6 +5,7 @@ import {
   encodeFuncId,
   encodeRscPath,
 } from '../src/lib/utils-isomorphic/rsc-path.js';
+import { pathnameToRoutePath } from '../src/router/isomorphic-utils/route-path.js';
 import {
   decodeRoutePath,
   encodeRoutePath,
@@ -12,8 +13,7 @@ import {
   getSliceSlotId,
   isRouteSlotId,
   isSliceSlotId,
-  pathnameToRoutePath,
-} from '../src/router/isomorphic-utils/route-path.js';
+} from '../src/router/isomorphic-utils/router-protocol.js';
 
 describe('encodeRscPath', () => {
   test('encodes rscPath', () => {

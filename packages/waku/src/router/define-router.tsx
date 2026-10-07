@@ -29,10 +29,8 @@ import type {
   RouteHref,
   RoutePath,
 } from './isomorphic-utils/build-route-href.js';
-import {
-  encodeRoutePath,
-  pathnameToRoutePath,
-} from './isomorphic-utils/route-path.js';
+import { pathnameToRoutePath } from './isomorphic-utils/route-path.js';
+import { encodeRoutePath } from './isomorphic-utils/router-protocol.js';
 import type { Unstable_SearchCodec } from './isomorphic-utils/search-codec-registry.js';
 
 export {

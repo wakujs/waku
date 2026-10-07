@@ -73,7 +73,7 @@ import {
   IS_STATIC_ID,
   ROUTE_ID,
   decodeRoutePath,
-} from '../src/router/isomorphic-utils/route-path.js';
+} from '../src/router/isomorphic-utils/router-protocol.js';
 
 const spyPrefetchRoute = () =>
   vi.spyOn(routerCache(), 'prefetchRoute').mockImplementation(() => {});

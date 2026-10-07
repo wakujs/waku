@@ -10,7 +10,7 @@ import {
   IS_STATIC_ID,
   ROUTE_ID,
   encodeRoutePath,
-} from '../src/router/isomorphic-utils/route-path.js';
+} from '../src/router/isomorphic-utils/router-protocol.js';
 
 // element-cache serializes/deserializes static elements; make it reversible.
 vi.mock('../src/server.js', () => ({

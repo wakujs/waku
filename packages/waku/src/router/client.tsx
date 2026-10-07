@@ -33,11 +33,11 @@ import type {
   RouteHref,
   RoutePath,
 } from './isomorphic-utils/build-route-href.js';
+import type { RouteProps } from './isomorphic-utils/route-path.js';
 import {
   encodeRoutePath,
   getRouteSlotId,
-} from './isomorphic-utils/route-path.js';
-import type { RouteProps } from './isomorphic-utils/route-path.js';
+} from './isomorphic-utils/router-protocol.js';
 
 export { ErrorBoundary } from './client-core-utils/error-boundary.js';
 export {

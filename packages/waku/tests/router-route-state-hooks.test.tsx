@@ -27,7 +27,7 @@ import {
 import {
   ROUTE_ID,
   encodeRoutePath,
-} from '../src/router/isomorphic-utils/route-path.js';
+} from '../src/router/isomorphic-utils/router-protocol.js';
 
 const resolvedThenable = <T,>(value: T): Promise<T> =>
   Object.assign(Promise.resolve(value), {

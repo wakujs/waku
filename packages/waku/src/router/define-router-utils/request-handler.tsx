@@ -1,14 +1,14 @@
 import { unstable_getErrorInfo as getErrorInfo } from 'waku/minimal/server';
 import type { Unstable_HandleRequest as HandleRequest } from 'waku/minimal/server';
 import { INTERNAL_ServerRouter } from '../client.js';
+import { pathnameToRoutePath } from '../isomorphic-utils/route-path.js';
 import {
   ACTION_LOCATION_HEADER,
   IS_ORIGIN_ID,
   decodeSliceId,
   encodeRoutePath,
   getSliceSlotId,
-  pathnameToRoutePath,
-} from '../isomorphic-utils/route-path.js';
+} from '../isomorphic-utils/router-protocol.js';
 import { ROUTER_METADATA } from './build-metadata.js';
 import { getRouterPrefetchCode } from './client-code.js';
 import { base64ToBytes, createElementCache } from './element-cache.js';

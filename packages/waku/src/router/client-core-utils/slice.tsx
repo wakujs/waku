@@ -6,7 +6,7 @@ import {
   useElementsPromise_UNSTABLE as useElementsPromise,
   useMergeElements_UNSTABLE as useMergeElements,
 } from 'waku/minimal/client';
-import { getSliceSlotId } from '../isomorphic-utils/route-path.js';
+import { getSliceSlotId } from '../isomorphic-utils/router-protocol.js';
 import { useRouterCache } from './caches.js';
 
 export type SliceId = string;

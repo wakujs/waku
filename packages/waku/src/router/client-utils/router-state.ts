@@ -1,9 +1,9 @@
+import { getRouteUrl } from '../client-core-utils/route-url.js';
+import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
   getRouteFromElements,
   isStaticFromElements,
-} from '../client-core-utils/element-meta.js';
-import { getRouteUrl } from '../client-core-utils/route-url.js';
-import type { RouteProps } from '../isomorphic-utils/route-path.js';
+} from '../isomorphic-utils/router-protocol.js';
 
 // the client owned router state; the server's ROUTE_ID owns the path
 export const ROUTER_STATE_ID = Symbol('waku-router-state');

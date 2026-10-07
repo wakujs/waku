@@ -1,12 +1,12 @@
 import { unstable_combineElements as combineElements } from 'waku/minimal/client';
+import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
   HAS404_ID,
   IS_STATIC_ID,
   ROUTE_ID,
+  getRouteFromElements,
   getRouteSlotId,
-} from '../isomorphic-utils/route-path.js';
-import type { RouteProps } from '../isomorphic-utils/route-path.js';
-import { getRouteFromElements } from './element-meta.js';
+} from '../isomorphic-utils/router-protocol.js';
 import type { Loaded } from './load.js';
 import { isSameRscRoute } from './route-url.js';
 

@@ -5,7 +5,7 @@ import {
   ROUTE_ID,
   encodeRoutePath,
   encodeSliceId,
-} from '../src/router/isomorphic-utils/route-path.js';
+} from '../src/router/isomorphic-utils/router-protocol.js';
 
 vi.mock('../src/server.js', () => ({
   deserializeRsc: vi.fn().mockResolvedValue(null),

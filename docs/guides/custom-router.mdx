@@ -157,6 +157,8 @@ Include an element directly in a route's `elements` when it should arrive in the
 
 `defineRouter` owns the protocol expected by `waku/router/client`: reserved metadata, root and route slots, action rerenders, redirects, 404 handling, SSR, and build output. Custom routers supply resolution and element sources, without importing internal IDs or encoding helpers from `waku/router/client-core`.
 
+For changes to Router itself or another client binding, see [Router Protocol](/guides/router-protocol).
+
 `createPages` uses this same public API for runtime and builds. It owns page/layout matching, configuration metadata, and source-file pruning. `fsRouter` uses only `createPages`' public authoring API to translate route modules into those declarations.
 
 The API is unstable and may change.

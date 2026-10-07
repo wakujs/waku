@@ -7,9 +7,9 @@ import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
   ACTION_LOCATION_HEADER,
   IS_ORIGIN_ID,
-  IS_STATIC_ID,
-  ROUTE_ID,
-} from '../isomorphic-utils/route-path.js';
+  getRouteFromElements,
+  isStaticFromElements,
+} from '../isomorphic-utils/router-protocol.js';
 import { useRouterCache } from './caches.js';
 import { isSameRscRoute } from './route-url.js';
 
@@ -46,19 +46,19 @@ export const useActionRouting = ({
   useLayoutEffect(() => {
     const handleActionElements = (nextElements: Record<string, unknown>) => {
       cache.learnStaticFromElements(nextElements);
-      const { [ROUTE_ID]: routeData, [IS_STATIC_ID]: isStatic } = nextElements;
-      if (!routeData) {
+      const route = getRouteFromElements(nextElements);
+      if (!route) {
         return;
       }
-      const [path, query] = routeData as [string, string];
       const settledRoute = getSettledRoute();
       if (
-        settledRoute.path === path &&
-        (isStatic || settledRoute.query === query)
+        settledRoute.path === route.path &&
+        (isStaticFromElements(nextElements) ||
+          settledRoute.query === route.query)
       ) {
         return;
       }
-      onRouteChange({ path, query, hash: '' });
+      onRouteChange(route);
     };
     return registerRscEnhancer(
       (next) => async (rscPath, rscParams, options) => {

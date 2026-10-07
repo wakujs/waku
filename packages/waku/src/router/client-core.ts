@@ -12,10 +12,21 @@ export type {
 } from './client-core-utils/caches.js';
 
 export {
+  HAS404_ID as unstable_HAS404_ID,
+  IS_STATIC_ID as unstable_IS_STATIC_ID,
+  ROUTE_ID as unstable_ROUTE_ID,
+  decodeRoutePath as unstable_decodeRoutePath,
+  decodeSliceId as unstable_decodeSliceId,
+  encodeRoutePath as unstable_encodeRoutePath,
+  encodeSliceId as unstable_encodeSliceId,
   getRouteFromElements as unstable_getRouteFromElements,
+  getRouteSlotId as unstable_getRouteSlotId,
+  getSliceSlotId as unstable_getSliceSlotId,
   has404FromElements as unstable_has404FromElements,
+  isRouteSlotId as unstable_isRouteSlotId,
+  isSliceSlotId as unstable_isSliceSlotId,
   isStaticFromElements as unstable_isStaticFromElements,
-} from './client-core-utils/element-meta.js';
+} from './isomorphic-utils/router-protocol.js';
 
 export {
   MAX_FOLLOWS_PER_NAVIGATION as unstable_MAX_FOLLOWS_PER_NAVIGATION,
@@ -81,18 +92,7 @@ export type {
 export { matchRouteParams as unstable_matchRouteParams } from './isomorphic-utils/match-route-params.js';
 
 export {
-  HAS404_ID as unstable_HAS404_ID,
-  IS_STATIC_ID as unstable_IS_STATIC_ID,
-  ROUTE_ID as unstable_ROUTE_ID,
-  decodeRoutePath as unstable_decodeRoutePath,
-  decodeSliceId as unstable_decodeSliceId,
-  encodeRoutePath as unstable_encodeRoutePath,
-  encodeSliceId as unstable_encodeSliceId,
   getComponentIds as unstable_getComponentIds,
-  getRouteSlotId as unstable_getRouteSlotId,
-  getSliceSlotId as unstable_getSliceSlotId,
-  isRouteSlotId as unstable_isRouteSlotId,
-  isSliceSlotId as unstable_isSliceSlotId,
   pathnameToRoutePath as unstable_pathnameToRoutePath,
 } from './isomorphic-utils/route-path.js';
 export type { RouteProps as Unstable_RouteProps } from './isomorphic-utils/route-path.js';
