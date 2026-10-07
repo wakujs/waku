@@ -13,6 +13,7 @@ const basePath = fileURLToPath(new URL('.', import.meta.url));
 const clientModules = [
   'packages/waku/src/main.ts',
   'packages/waku/src/client.ts',
+  'packages/waku/src/config.ts',
   'packages/waku/src/minimal/client.ts',
   'packages/waku/src/minimal/client-runtime.tsx',
   'packages/waku/src/minimal/client-utils',
@@ -20,6 +21,7 @@ const clientModules = [
   'packages/waku/src/lib/vite-entries/entry.browser.tsx',
   'packages/waku/src/router/client.tsx',
   'packages/waku/src/router/client-core.ts',
+  'packages/waku/src/router/base-types.ts',
   'packages/waku/src/router/client-utils',
   'packages/waku/src/router/client-core-utils',
   'packages/waku/src/router/isomorphic-utils',

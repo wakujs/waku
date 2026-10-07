@@ -113,6 +113,7 @@ test('client runtime consumers cannot import server or tooling entry points', as
   for (const file of [
     'main.ts',
     'client.ts',
+    'config.ts',
     'minimal/client.ts',
     'minimal/client-runtime.tsx',
     'minimal/client-utils/root-store.ts',
@@ -121,6 +122,7 @@ test('client runtime consumers cannot import server or tooling entry points', as
     'lib/vite-entries/entry.browser.tsx',
     'router/client.tsx',
     'router/client-core.ts',
+    'router/base-types.ts',
     'router/client-utils/navigation.ts',
     'router/client-core-utils/load.ts',
     'router/isomorphic-utils/router-protocol.ts',
@@ -197,8 +199,10 @@ test('public client APIs and erased server types remain available', async () => 
     'waku/client',
     'waku/minimal/client',
     'waku/config',
+    'waku/router',
     '../client.js',
     '../minimal/client.js',
+    '../router/base-types.js',
   ]) {
     expect(
       await lint(
