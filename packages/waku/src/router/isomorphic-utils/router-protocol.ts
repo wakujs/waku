@@ -1,6 +1,6 @@
 import type { RouteProps } from './route-path.js';
 
-/** The server-rendered pathname and query, which can differ from the request. */
+/** Element-map key for `[pathname, query]` of the represented route. */
 export const ROUTE_ID = 'ROUTE';
 
 /** Whether every source of the resolved route is immutable, including omitted slots. */
@@ -16,10 +16,9 @@ export const ACTION_LOCATION_HEADER = 'X-Waku-Action-Location';
 export type RouteData = readonly [path: string, query: string];
 
 /**
- * Reads the route represented by the elements. In a server response this is
- * the rendered destination; a live element map can also describe a cached or
- * eager paint, so this does not prove a fetch has settled. The hash is empty
- * because fragments are client-owned. Returns `undefined` without metadata.
+ * Returns the represented pathname and query with an empty hash, or `undefined`
+ * without metadata. The route can differ from the request; cached and instant
+ * paints also carry it, so this does not imply a fetch has settled.
  */
 export const getRouteFromElements = (
   elements: Record<string, unknown>,
@@ -31,15 +30,14 @@ export const getRouteFromElements = (
 };
 
 /**
- * Reads whole-route immutability declared in metadata, not deduced from the
- * returned slots or HTML prerendering. The server declaration accounts for
- * sources omitted by etags; an immutable route composition alone is not enough.
+ * Returns whether every source of the represented route is immutable, including
+ * slots omitted by etags. Returns false without metadata; unrelated to prerendering.
  */
 export const isStaticFromElements = (
   elements: Record<string, unknown>,
 ): boolean => !!elements[IS_STATIC_ID];
 
-/** Whether a custom `/404` route is available for errors thrown by streamed slots. */
+/** Returns whether a custom `/404` route is available; false without metadata. */
 export const has404FromElements = (
   elements: Record<string, unknown>,
 ): boolean => !!elements[HAS404_ID];
@@ -50,11 +48,11 @@ export const isMetaKey = (key: string) =>
 const ROUTE_SLOT_ID_PREFIX = 'route:';
 const SLICE_SLOT_ID_PREFIX = 'slice:';
 
-/** Returns a path-scoped slot ID so immutable route compositions cannot collide. */
+/** Returns `route:<path>` for a normalized pathname without query or hash. */
 export const getRouteSlotId = (path: string): string =>
   ROUTE_SLOT_ID_PREFIX + path;
 
-/** Returns the slot ID for a slice, whether bundled in a route or fetched independently. */
+/** Returns `slice:<id>` for both bundled and independently fetched slices. */
 export const getSliceSlotId = (id: string): string => SLICE_SLOT_ID_PREFIX + id;
 
 export const isRouteSlotId = (slotId: string): boolean =>
