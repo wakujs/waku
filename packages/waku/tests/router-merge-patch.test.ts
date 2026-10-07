@@ -11,7 +11,7 @@ import {
   IS_STATIC_ID,
   ROUTE_ID,
   getRouteSlotId,
-} from '../src/router/isomorphic-utils/route-path.js';
+} from '../src/router/isomorphic-utils/router-protocol.js';
 
 const route = (path: string, query = '', hash = '') => ({ path, query, hash });
 

@@ -17,7 +17,7 @@ import {
   ROUTE_ID,
   encodeRoutePath,
   encodeSliceId,
-} from '../src/router/isomorphic-utils/route-path.js';
+} from '../src/router/isomorphic-utils/router-protocol.js';
 import { deserializeRsc, serializeRsc } from '../src/server.js';
 
 declare module '../src/router/base-types.js' {

@@ -8,8 +8,8 @@ import {
 } from 'react';
 import { useElementsPromise_UNSTABLE as useElementsPromise } from 'waku/minimal/client';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
+import { getRouteFromElements } from '../isomorphic-utils/router-protocol.js';
 import { createRscParams } from './caches.js';
-import { getRouteFromElements } from './element-meta.js';
 
 export const useInitialRoute = (proposed: RouteProps): RouteProps => {
   const elementsPromise = useElementsPromise();

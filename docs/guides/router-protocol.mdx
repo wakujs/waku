@@ -1,0 +1,145 @@
+---
+slug: router-protocol
+title: Router Protocol
+description: The contract between defineRouter and the router client.
+category: Low-level APIs
+order: 25
+---
+
+## Scope
+
+`unstable_defineRouter` and `waku/router/client` implement the two ends of this
+protocol. A custom route resolver does not need to implement it: supply element
+sources to `defineRouter`, as shown in [Custom Router](/guides/custom-router).
+
+Read this guide when changing Router itself or implementing another client binding
+with `waku/router/client-core`. A router with a different protocol can use the
+[Minimal API](/guides/minimal-api) directly.
+
+Minimal owns Flight transport, element storage, and etags. It does not interpret
+Router's IDs or decide which URL to display. Router uses public Minimal APIs.
+Its control entries are reserved by Router; Minimal treats them as application data.
+
+## Requests and Slots
+
+These are different identities:
+
+- A URL has a pathname, query, and client-owned fragment.
+- An RSC input identifies a route or an independently requested slice.
+- A slot ID identifies content inside an element map.
+
+Use `unstable_encodeRoutePath(pathname)` and `unstable_createRscParams(query)`
+from `waku/router/client-core` for route requests. Fragments are not sent to the
+server. Minimal handles the HTTP endpoint and its wire encoding.
+
+| Slot ID                  | Meaning                                                            |
+| ------------------------ | ------------------------------------------------------------------ |
+| `root`                   | Document composition; its ID is shared across routes.              |
+| `route:<pathname>`       | Route composition scoped to one pathname.                          |
+| Other resolver-owned IDs | Content composed with `Slot`; IDs are shared wherever they appear. |
+| `slice:<id>`             | A slice, bundled in a route or fetched independently.              |
+
+The resolver calls its source `route`; `defineRouter` maps it to the path-scoped
+slot. An immutable slot must have the same content for its lifetime. Path-scoping
+lets immutable route compositions coexist without claiming that different URLs
+have the same content. Merges can retain previously visited routes' slots.
+
+## Response Metadata
+
+Route responses also carry these entries. They are control data, not components
+to render with `Slot`.
+
+| Entry       | Contract                                                                                                                                           |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ROUTE`     | `[pathname, query]` of the route the server rendered, not necessarily the requested route.                                                         |
+| `IS_STATIC` | Every source of that route is immutable, including sources omitted by matching etags. It does not mean HTML was emitted at build time.             |
+| `HAS404`    | A custom `/404` route is available. Present when true.                                                                                             |
+| `IS_ORIGIN` | An action used the no-argument `rerenderRoute()` form to refresh its request-time origin. The action enhancer consumes this marker before merging. |
+
+Use `unstable_getRouteFromElements`, `unstable_isStaticFromElements`, and
+`unstable_has404FromElements` from `waku/router/client-core` to read route
+metadata. Independently fetched slices and actions that do not rerender a route
+need not contain it. Neither the action return value nor Minimal's etags are
+Router metadata.
+
+These contracts describe server responses. The standard client also writes
+`ROUTE` and `IS_STATIC` for cached and instant paints, so the live element map is
+not necessarily a settled server response. The binding owns navigation intent,
+errors, and history, and reconciles them with elements at commit boundaries.
+
+An immutable route composition is a reusable shell, not proof that every slot it
+renders is immutable. A shell can contain a mutable page. The client cache therefore
+distinguishes `hasCachedShell` from `canReuseStaticRoute`.
+
+## Partial Responses
+
+Minimal can send the etags of a supplied `unstable_base` with a fetch. The server
+omits slots whose validators match; fetching combines the response over that base.
+A response is consequently not guaranteed to be a complete renderable tree.
+
+Route metadata describes the resolved route even when its slots are omitted. For
+example, a dynamic page whose etag matches is omitted, but `IS_STATIC` remains
+false. Looking only at the returned slots would give the wrong reuse decision.
+
+Use Minimal's `unstable_combineElements` when combining element maps. Object
+spreads discard the validators associated with their values. Router's merge patch
+also protects slots changed by an action while a navigation was pending.
+
+## Requested, Rendered, and Browser URLs
+
+| Situation               | Requested route  | Rendered route | Browser URL after commit |
+| ----------------------- | ---------------- | -------------- | ------------------------ |
+| Ordinary navigation     | `/post?q=one`    | `/post?q=one`  | `/post?q=one`            |
+| Eager internal redirect | `/old`           | `/new`         | `/new`                   |
+| Custom not-found route  | `/missing?q=one` | `/404?q=one`   | `/missing?q=one`         |
+
+An early internal redirect can be resolved on the server into the destination's
+elements in the same response. `ROUTE` tells the client which destination landed.
+Not every redirect can be resolved this way: document redirects leave the router,
+and redirects thrown by streamed slots are handled by the client error boundary.
+
+Similarly, a fetch can succeed before a streamed slot throws not-found. The
+client uses `HAS404` to decide whether to follow `/404` or show its generic
+not-found fallback. Follow decisions share loop detection and a navigation budget.
+See [Redirects and Not Found](/guides/redirects-and-not-found) for SSR and streaming.
+
+Fragments remain client-owned. Static route reuse also preserves the browser's
+query instead of treating build-time route metadata as a query-changing redirect.
+Reading `ROUTE` is therefore not enough to decide what to write to history.
+
+On failure, retained elements can describe an earlier route. The attempted URL
+and error state belong to the client binding, not the server metadata.
+
+## Action Intent
+
+`useActionRouting_UNSTABLE` sends the settled route at action request time in
+`X-Waku-Action-Location`. This header is client-to-server information.
+
+- `rerenderRoute()` refreshes that origin and marks the response `IS_ORIGIN`.
+  If the user has navigated away or a conflicting navigation is pending, the client
+  discards its elements but retains the action's return value.
+- `rerenderRoute(destination)` and action redirects express navigation intent.
+  Their destination must not be discarded merely because the user left the origin.
+
+Install `useActionRouting_UNSTABLE` in a client binding rather than recreating this
+policy. It registers before descendant passive effects can start an action. See
+[Rerender After Actions](/guides/rerender-after-actions).
+
+## Reading the Implementation
+
+Paths below are relative to `packages/waku/src/router`.
+
+| Responsibility                                               | File                                                               |
+| ------------------------------------------------------------ | ------------------------------------------------------------------ |
+| Protocol IDs, RSC inputs, slot IDs, and metadata readers     | `isomorphic-utils/router-protocol.ts`                              |
+| Route resolution to elements and route metadata              | `define-router-utils/route-entries.ts`                             |
+| Request handling, redirects, not-found, and action responses | `define-router-utils/request-handler.tsx`                          |
+| Client action intent and stale-origin protection             | `client-core-utils/action-routing.ts`                              |
+| Fetch-time follows and render-time follow policy             | `client-core-utils/load.ts` and `client-core-utils/error-route.ts` |
+| Element/route/history commit in the standard binding         | `client-utils/navigation.ts` and `client-utils/router-state.ts`    |
+
+`packages/waku/tests/router-protocol.test.tsx` exercises server responses through
+Minimal's client and Router's public helpers, substituting only Flight
+serialization. The executable alternative binding in
+`e2e/fixtures/nav-api-spike/src/nav-binding.tsx` uses public Minimal and client-core
+APIs; its browser tests exercise the real transport.

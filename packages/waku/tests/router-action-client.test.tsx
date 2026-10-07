@@ -24,7 +24,7 @@ import {
   IS_STATIC_ID,
   ROUTE_ID,
   getRouteSlotId,
-} from '../src/router/isomorphic-utils/route-path.js';
+} from '../src/router/isomorphic-utils/router-protocol.js';
 
 const decode = vi.hoisted(() => vi.fn());
 vi.mock('react-server-dom-webpack/client', () => ({

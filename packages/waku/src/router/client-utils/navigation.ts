@@ -13,7 +13,6 @@ import {
 } from 'waku/minimal/client';
 import { useActionRouting } from '../client-core-utils/action-routing.js';
 import { useRouterCache } from '../client-core-utils/caches.js';
-import { has404FromElements } from '../client-core-utils/element-meta.js';
 import { isFollowable } from '../client-core-utils/error-route.js';
 import { useHmrRefetch } from '../client-core-utils/hmr.js';
 import { useInitialRoute } from '../client-core-utils/initial-route.js';
@@ -26,7 +25,11 @@ import {
   parseRoute,
 } from '../client-core-utils/route-url.js';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
-import { IS_STATIC_ID, ROUTE_ID } from '../isomorphic-utils/route-path.js';
+import {
+  IS_STATIC_ID,
+  ROUTE_ID,
+  has404FromElements,
+} from '../isomorphic-utils/router-protocol.js';
 import {
   canPaintInstantOverlay,
   useStartInstantPaint,

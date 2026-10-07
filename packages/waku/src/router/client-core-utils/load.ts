@@ -1,5 +1,5 @@
-import { encodeRoutePath } from '../isomorphic-utils/route-path.js';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
+import { encodeRoutePath } from '../isomorphic-utils/router-protocol.js';
 import { createRscParams } from './caches.js';
 import type { RouterCache } from './caches.js';
 import { MAX_FOLLOWS_PER_NAVIGATION, decideFollow } from './error-route.js';

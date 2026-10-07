@@ -8,17 +8,15 @@ import {
   useRouterCache,
 } from '../client-core-utils/caches.js';
 import type { RouterCache } from '../client-core-utils/caches.js';
-import {
-  isMetaKey,
-  isStaticFromElements,
-} from '../client-core-utils/element-meta.js';
 import { abortable } from '../client-core-utils/load.js';
+import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
   IS_STATIC_ID,
   ROUTE_ID,
   encodeRoutePath,
-} from '../isomorphic-utils/route-path.js';
-import type { RouteProps } from '../isomorphic-utils/route-path.js';
+  isMetaKey,
+  isStaticFromElements,
+} from '../isomorphic-utils/router-protocol.js';
 import { ROUTER_STATE_ID } from './router-state.js';
 import type { RouterState } from './router-state.js';
 

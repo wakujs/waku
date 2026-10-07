@@ -12,7 +12,7 @@ import { Router, useRouter } from '../src/router/client.js';
 import {
   IS_STATIC_ID,
   ROUTE_ID,
-} from '../src/router/isomorphic-utils/route-path.js';
+} from '../src/router/isomorphic-utils/router-protocol.js';
 
 type Payload = Record<string, unknown>;
 

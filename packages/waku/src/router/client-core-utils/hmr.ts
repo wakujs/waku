@@ -3,8 +3,8 @@ import {
   useMergeElements_UNSTABLE as useMergeElements,
   useRegisterRscReloadListener_UNSTABLE as useRegisterRscReloadListener,
 } from 'waku/minimal/client';
-import { encodeRoutePath } from '../isomorphic-utils/route-path.js';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
+import { encodeRoutePath } from '../isomorphic-utils/router-protocol.js';
 import { createRscParams, useRouterCache } from './caches.js';
 
 export const useHmrRefetch = ({

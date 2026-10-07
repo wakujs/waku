@@ -4,7 +4,7 @@ import { getPathMapping } from '../isomorphic-utils/path-spec.js';
 import {
   getSliceSlotId,
   isSliceSlotId,
-} from '../isomorphic-utils/route-path.js';
+} from '../isomorphic-utils/router-protocol.js';
 import type { ConfigRegistry } from './config-registry.js';
 import type { RendererOption, RouteConfig } from './config.js';
 import { getPathSpecCacheId } from './element-ids.js';

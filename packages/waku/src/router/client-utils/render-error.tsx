@@ -11,7 +11,6 @@ import {
   unstable_getErrorInfo as getErrorInfo,
   useElementsPromise_UNSTABLE as useElementsPromise,
 } from 'waku/minimal/client';
-import { has404FromElements } from '../client-core-utils/element-meta.js';
 import {
   MAX_FOLLOWS_PER_NAVIGATION,
   decideFollow,
@@ -19,6 +18,7 @@ import {
 } from '../client-core-utils/error-route.js';
 import { parseRoute } from '../client-core-utils/route-url.js';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
+import { has404FromElements } from '../isomorphic-utils/router-protocol.js';
 import { RouterContext } from './router-context.js';
 import { getRouterState } from './router-state.js';
 import type { RouterState } from './router-state.js';

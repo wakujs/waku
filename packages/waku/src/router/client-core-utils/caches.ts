@@ -1,14 +1,14 @@
-import { useFetchRsc_UNSTABLE as useFetchRsc } from 'waku/minimal/client';
 import {
-  encodeRoutePath,
-  getRouteSlotId,
-} from '../isomorphic-utils/route-path.js';
+  unstable_isImmutableElement as isImmutableElement,
+  useFetchRsc_UNSTABLE as useFetchRsc,
+} from 'waku/minimal/client';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
-  canCommitInstantly,
+  encodeRoutePath,
   getRouteFromElements,
+  getRouteSlotId,
   isStaticFromElements,
-} from './element-meta.js';
+} from '../isomorphic-utils/router-protocol.js';
 import {
   type PrefetchEntry,
   type PrefetchOptions,
@@ -57,12 +57,14 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
     hasCachedShell: (
       route: RouteProps,
       currentElements: Record<string, unknown>,
-    ): boolean =>
-      canCommitInstantly(
-        getRouteSlotId(route.path),
-        currentElements,
-        getPrefetchedElements(route),
-      ),
+    ): boolean => {
+      const slotId = getRouteSlotId(route.path);
+      const prefetched = getPrefetchedElements(route);
+      return (
+        isImmutableElement(currentElements, slotId) ||
+        !!(prefetched && isImmutableElement(prefetched, slotId))
+      );
+    },
     getPrefetchedElements,
     getPrefetch: (route: RouteProps): PrefetchHandle | undefined =>
       manager.get(encodeRoutePath(route.path), route.query),

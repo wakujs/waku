@@ -12,7 +12,7 @@ import {
   ROUTE_ID,
   encodeRoutePath,
   getRouteSlotId,
-} from '../src/router/isomorphic-utils/route-path.js';
+} from '../src/router/isomorphic-utils/router-protocol.js';
 
 type Elements = Record<string, unknown>;
 

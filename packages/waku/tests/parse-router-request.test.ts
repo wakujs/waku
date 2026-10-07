@@ -6,7 +6,7 @@ import {
 import {
   encodeRoutePath,
   encodeSliceId,
-} from '../src/router/isomorphic-utils/route-path.js';
+} from '../src/router/isomorphic-utils/router-protocol.js';
 import {
   formatRouterRequest,
   parseRouterRequest,

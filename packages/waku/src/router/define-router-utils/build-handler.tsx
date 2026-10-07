@@ -3,13 +3,13 @@ import type {
   Unstable_HandleBuild as HandleBuild,
 } from 'waku/minimal/server';
 import { INTERNAL_ServerRouter } from '../client.js';
+import { pathnameToRoutePath } from '../isomorphic-utils/route-path.js';
 import {
   encodeRoutePath,
   encodeSliceId,
   getRouteSlotId,
   isSliceSlotId,
-  pathnameToRoutePath,
-} from '../isomorphic-utils/route-path.js';
+} from '../isomorphic-utils/router-protocol.js';
 import { ROUTER_METADATA } from './build-metadata.js';
 import { getRouterPrefetchCode } from './client-code.js';
 import {

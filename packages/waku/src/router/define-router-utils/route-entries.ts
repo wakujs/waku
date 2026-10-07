@@ -12,7 +12,8 @@ import {
   ROUTE_ID,
   decodeRoutePath,
   getRouteSlotId,
-} from '../isomorphic-utils/route-path.js';
+} from '../isomorphic-utils/router-protocol.js';
+import type { RouteData } from '../isomorphic-utils/router-protocol.js';
 import { cacheElementSource, getElementCacheId } from './element-cache.js';
 import type { ElementCache } from './element-cache.js';
 import { setRscParams, setRscPath } from './request-store.js';
@@ -111,7 +112,7 @@ export const createRouteEntries = (
         ]),
       ),
     );
-    entries.elements[ROUTE_ID] = [pathname, query];
+    entries.elements[ROUTE_ID] = [pathname, query] satisfies RouteData;
     entries.elements[IS_STATIC_ID] = Object.values(sources).every(
       (source) => source.immutable,
     );

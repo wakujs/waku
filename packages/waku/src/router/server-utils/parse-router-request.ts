@@ -4,11 +4,13 @@ import {
 } from 'waku/minimal/server';
 import {
   addBase,
+  pathnameToRoutePath,
+} from '../isomorphic-utils/route-path.js';
+import {
   decodeRoutePath,
   decodeSliceId,
   encodeRoutePath,
-  pathnameToRoutePath,
-} from '../isomorphic-utils/route-path.js';
+} from '../isomorphic-utils/router-protocol.js';
 
 const getBasePath = () => import.meta.env?.WAKU_CONFIG_BASE_PATH ?? '/';
 const RSC_QUERY_PARAM = 'query';

@@ -4,7 +4,7 @@ import {
   path2regexp,
   pathSpecAsString,
 } from '../isomorphic-utils/path-spec.js';
-import { getSliceSlotId } from '../isomorphic-utils/route-path.js';
+import { getSliceSlotId } from '../isomorphic-utils/router-protocol.js';
 import { createConfigRegistry } from './config-registry.js';
 import { CREATE_PAGES_CONFIGS_KEY, toSerializable } from './config.js';
 import type { HandlerInterceptor, RuntimeConfig } from './config.js';
