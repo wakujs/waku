@@ -153,7 +153,7 @@ export const useNavigation = (
     scrollToHash(currentHash, pathChanged ? 'instant' : 'auto', pathChanged);
   }, [cache, elements, routerState, destinationHref, currentHash]);
 
-  const replacePendingNavigation = useCallback(
+  const replaceRequest = useCallback(
     (next?: NavigationRequest) => {
       const superseded = requestRef.current;
       requestRef.current = next;
@@ -176,7 +176,7 @@ export const useNavigation = (
   );
   useHmrRefetch({
     getSettledRoute,
-    onBeforeRefetch: replacePendingNavigation,
+    onBeforeRefetch: replaceRequest,
   });
 
   const changeRoute: ChangeRoute = useCallback(
@@ -220,7 +220,7 @@ export const useNavigation = (
           options.onSuperseded?.();
         }
       });
-      replacePendingNavigation(request);
+      replaceRequest(request);
       if (requestRef.current !== request) {
         return;
       }
@@ -377,7 +377,7 @@ export const useNavigation = (
       startInstantPaint,
       mergeElements,
       getElements,
-      replacePendingNavigation,
+      replaceRequest,
       has404,
       registerRscReloadListener,
     ],

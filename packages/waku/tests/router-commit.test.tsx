@@ -12,6 +12,7 @@ import {
   useMergeElements_UNSTABLE as useMergeElements,
 } from '../src/minimal/client.js';
 import { unstable_createCustomError as createCustomError } from '../src/minimal/server.js';
+import * as loader from '../src/router/client-core-utils/load.js';
 import { ErrorBoundary, Router, useRouter } from '../src/router/client.js';
 import {
   IS_ORIGIN_ID,
@@ -349,6 +350,78 @@ test('a failed replacement cannot reveal the superseded layout', async () => {
   expect(view.querySelector('aside')?.textContent).toBe('layout /one');
   expect(window.location.pathname).toBe('/three');
 });
+
+test.each(['external redirect', 'fetch failure'] as const)(
+  'a superseded %s returned by load does not affect the pending navigation',
+  async (failure) => {
+    const push = vi.spyOn(window.history, 'pushState');
+    const leave = vi
+      .spyOn(window.location, 'replace')
+      .mockImplementation(() => {});
+    mocks.queue.push(payload('/one', <p>page one</p>));
+    const view = await mount(
+      <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+    );
+    if (failure === 'fetch failure') {
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockRejectedValueOnce(new TypeError('offline'))
+          .mockResolvedValue(new Response('{}')),
+      );
+    }
+    const next = defer<Elements>();
+    mocks.queue.push({ _location: 'https://other.example/redirected' });
+    mocks.queue.push(next.promise);
+    const load = loader.load;
+    let outcomeType: string | undefined;
+    let abortedAtResolution: boolean | undefined;
+    let signal: AbortSignal | undefined;
+    let replacement!: Promise<void>;
+    vi.spyOn(loader, 'load').mockImplementationOnce((...args) =>
+      load(...args).then((outcome) => {
+        outcomeType = outcome.type;
+        signal = args[2].signal;
+        abortedAtResolution = signal.aborted;
+        replacement = controls.get('a')!.router.push('/three');
+        return outcome;
+      }),
+    );
+    let cancelledResult: 'fulfilled' | 'rejected' | undefined;
+    await act(async () => {
+      cancelledResult = await controls
+        .get('a')!
+        .router.push('/two')
+        .then(
+          () => 'fulfilled' as const,
+          () => 'rejected' as const,
+        );
+      await flush();
+    });
+    expect(outcomeType).toBe(
+      failure === 'external redirect' ? 'external' : 'failed',
+    );
+    expect(abortedAtResolution).toBe(false);
+    expect(signal?.aborted).toBe(true);
+    expect(leave).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+    expect(cancelledResult).toBe('fulfilled');
+    expect(view.textContent).toContain('page one');
+    expect(view.querySelector('output')?.textContent).toBe('/one');
+    expect(window.location.pathname).toBe('/one');
+    await act(async () => {
+      next.resolve(payload('/three', <p>page three</p>));
+      await replacement;
+      await flush();
+    });
+    expect(view.textContent).toContain('page three');
+    expect(view.querySelector('output')?.textContent).toBe('/three');
+    expect(window.location.pathname).toBe('/three');
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(leave).not.toHaveBeenCalled();
+  },
+);
 
 test('a successful navigation clears the previously committed not-found error', async () => {
   mocks.queue.push(payload('/one', <p>page one</p>));
