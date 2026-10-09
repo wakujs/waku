@@ -110,6 +110,46 @@ Reading `ROUTE` is therefore not enough to decide what to write to history.
 On failure, retained elements can describe an earlier route. The attempted URL
 and error state belong to the client binding, not the server metadata.
 
+## Client Commits
+
+The standard client keeps elements and navigation intent in one Minimal Root
+update queue. The intent is stored under the client-only `ROUTER_STATE_ID` symbol;
+it is neither a server response field nor another slot. Minimal merges it without
+interpreting it.
+
+| State                                      | Owner                      | Purpose                                                        |
+| ------------------------------------------ | -------------------------- | -------------------------------------------------------------- |
+| Elements and attached Router state         | Minimal Root's React state | Select the content and URL intent that render together.        |
+| Pending request and queued commit identity | Router refs                | Abort superseded work and recognize when its snapshot commits. |
+| Applied snapshot identity and destination  | Router's layout effect     | Write history and scroll once for each committed intent.       |
+| Fetch error                                | Router's React state       | Render the failure and clear it when another request starts.   |
+
+Fetching and committing are different boundaries. An ordinary fetch can finish
+while a client component is suspended; its navigation promise does not wait for
+that component. Successful ordinary navigations apply history and scrolling
+after the snapshot commits. Eligible instant navigations can commit a cached
+shell while fetching continues. Fetch failures and external redirects write
+history without waiting for a successful content commit; failures render an
+error rather than a slot that was never fetched. The render-error boundary has
+its own reset conditions, separate from clearing the Router's fetch error.
+
+Cached and same-RSC-route commits queue before the first `await`, retaining the
+caller's React priority. Transition callbacks run immediately, so wrapping an
+uncached navigation does not postpone superseding the previous request.
+
+Aborting a request does not remove an already queued React update. For an
+ordinary destination snapshot that has not committed, superseding it appends
+the last committed elements and their Router state to Root's queue. Include the
+state symbol even when its value is `undefined`: an initial snapshot has no
+navigation intent to retain. Restoring
+only intent could let the superseded response replace a shared layout.
+
+Ordinary element merges retain the attached state object by reference. The
+layout effect recognizes that identity and does not repeat its scroll or history
+intent. An external `history.replaceState` query/hash change is consequently not
+undone by an unrelated element merge. A server redirect can change the destination
+for the same intent; that correction replaces history rather than pushing again.
+
 ## Action Intent
 
 `useActionRouting_UNSTABLE` sends the settled route at action request time in
@@ -137,6 +177,8 @@ Paths below are relative to `packages/waku/src/router`.
 | Client action intent and stale-origin protection             | `client-core-utils/action-routing.ts`                              |
 | Fetch-time follows and render-time follow policy             | `client-core-utils/load.ts` and `client-core-utils/error-route.ts` |
 | Element/route/history commit in the standard binding         | `client-utils/navigation.ts` and `client-utils/router-state.ts`    |
+| Cached eager paints and response adoption                    | `client-utils/instant-navigation.ts`                               |
+| Rendered error handling and boundary resets                  | `client-utils/render-error.tsx` and `client.tsx`                   |
 
 `packages/waku/tests/router-protocol.test.tsx` exercises server responses through
 Minimal's client and Router's public helpers, substituting only Flight
