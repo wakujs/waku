@@ -110,6 +110,80 @@ Reading `ROUTE` is therefore not enough to decide what to write to history.
 On failure, retained elements can describe an earlier route. The attempted URL
 and error state belong to the client binding, not the server metadata.
 
+## Loading Without a Cache
+
+`unstable_load` from `waku/router/client-core` accepts a fetch callback. It follows
+fetch-time redirects and custom 404s, enforces the follow budget, and stops waiting
+when cancelled. It does not require the Router cache or merge elements.
+
+This hook binds the loader to the enclosing Minimal `Root` without a Router cache:
+
+```tsx
+import { useFetchRsc_UNSTABLE } from 'waku/minimal/client';
+import {
+  type Unstable_FetchRoute,
+  type Unstable_LoadOptions,
+  type Unstable_RouteProps,
+  unstable_createRscParams,
+  unstable_encodeRoutePath,
+  unstable_load,
+} from 'waku/router/client-core';
+
+function useLoadRoute() {
+  const fetchRsc = useFetchRsc_UNSTABLE();
+  const fetchRoute: Unstable_FetchRoute = ({ route }, signal) =>
+    fetchRsc(
+      unstable_encodeRoutePath(route.path),
+      unstable_createRscParams(route.query),
+      { signal },
+    );
+  return (requested: Unstable_RouteProps, options: Unstable_LoadOptions) =>
+    unstable_load(fetchRoute, requested, options);
+}
+```
+
+Call `useLoadRoute()` while rendering your binding, then call its returned
+function from a navigation handler:
+
+```ts
+const outcome = await loadRoute(requested, {
+  signal: controller.signal,
+  has404,
+  settled,
+  url: requestedUrl,
+  follows,
+});
+```
+
+Here `settled` is the binding's committed route, and `follows` is zero for a new
+navigation or the preceding count for a render-time follow. The callback receives
+each attempt's route, intended browser URL, and follow count, plus the cancellation
+signal. It can supply `unstable_base` to `fetchRsc` for etag reuse when the binding
+has a committed element snapshot.
+
+| Outcome    | Binding responsibility                                                     |
+| ---------- | -------------------------------------------------------------------------- |
+| `loaded`   | Reconcile response metadata and queue its elements with navigation intent. |
+| `reused`   | Retain existing content and queue the requested route metadata and intent. |
+| `external` | Leave the document for `url`, applying the binding's history policy.       |
+| `failed`   | Present the error at the attempted URL.                                    |
+| `aborted`  | Discard the result.                                                        |
+
+A callback returns `undefined` only to reuse usable content already in this Root;
+missing routes must reject with a not-found error. A hash-only fetch redirect back
+to the settled RSC route also returns `reused`, avoiding an identical fetch.
+`outcome.route` describes the final attempt, not necessarily the server-rendered
+destination: reconcile `ROUTE` using the URL rules above. Streamed-slot errors
+must continue the same follow budget through the binding's error boundary.
+
+Bindings that want Router's cache policy call `useRouterCache_UNSTABLE()` during
+rendering. Its `cache.load(requested, { ...options, base: elements })` wraps the
+same loader with static reuse, prefetch, and optional response adoption. A
+cache-free binding does not need to construct a cache-shaped adapter.
+If an instant paint has already merged an adopted response, the binding must not
+merge it again. A follow fetch produces a new response requiring an ordinary
+commit.
+
 ## Client Commits
 
 The standard client keeps elements and navigation intent in one Minimal Root

@@ -3,8 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCustomError } from '../src/lib/utils-isomorphic/custom-errors.js';
 import type { FetchRsc } from '../src/minimal/client-utils/root-store.js';
 import { getRouterCache } from '../src/router/client-core-utils/caches.js';
-import { load } from '../src/router/client-core-utils/load.js';
-import type { LoadOptions } from '../src/router/client-core-utils/load.js';
 import {
   IS_STATIC_ID,
   ROUTE_ID,
@@ -16,6 +14,8 @@ type Elements = Record<string, unknown>;
 
 const fetchRsc = vi.fn<FetchRsc>();
 const cache = getRouterCache(fetchRsc);
+
+type LoadOptions = Parameters<typeof cache.load>[1];
 
 const route = (path: string, query = '', hash = '') => ({ path, query, hash });
 
@@ -51,14 +51,13 @@ describe('load', () => {
     });
     const elements = { [ROUTE_ID]: ['/next', ''] };
     fetchRsc.mockResolvedValue(elements);
-    const outcome = await load(cache, route('/next'), baseOpts());
+    const outcome = await cache.load(route('/next'), baseOpts());
     expect(outcome).toEqual({
       type: 'loaded',
       route: route('/next'),
       url: new URL('http://localhost/next'),
       elements,
       follows: 0,
-      adopted: false,
     });
     expect(fetchRsc).toHaveBeenCalled();
   });
@@ -68,8 +67,7 @@ describe('load', () => {
       [ROUTE_ID]: ['/next', ''],
       [IS_STATIC_ID]: true,
     });
-    const outcome = await load(
-      cache,
+    const outcome = await cache.load(
       route('/next'),
       baseOpts({
         base: { [getRouteSlotId('/next')]: 'page' },
@@ -85,8 +83,7 @@ describe('load', () => {
   });
 
   it('reuses when refetch is false', async () => {
-    const outcome = await load(
-      cache,
+    const outcome = await cache.load(
       route('/next'),
       baseOpts({ refetch: false }),
     );
@@ -94,10 +91,10 @@ describe('load', () => {
     expect(fetchRsc).not.toHaveBeenCalled();
   });
 
-  it('fetches by encoded rscPath and returns loaded with adopted false', async () => {
+  it('fetches by encoded rscPath and returns the loaded attempt', async () => {
     const elements = { [ROUTE_ID]: ['/next', ''] };
     fetchRsc.mockResolvedValue(elements);
-    const outcome = await load(cache, route('/next'), baseOpts());
+    const outcome = await cache.load(route('/next'), baseOpts());
     expect(fetchRsc).toHaveBeenCalledWith(
       encodeRoutePath('/next'),
       expect.any(URLSearchParams),
@@ -112,13 +109,12 @@ describe('load', () => {
       url: new URL('http://localhost/next'),
       elements,
       follows: 0,
-      adopted: false,
     });
   });
 
   it('omits onBuildIdMismatch so fetchRsc keeps the reload default', async () => {
     fetchRsc.mockResolvedValue({ [ROUTE_ID]: ['/next', ''] });
-    await load(cache, route('/next'), baseOpts());
+    await cache.load(route('/next'), baseOpts());
     const options = fetchRsc.mock.calls[0]?.[2];
     expect(options && 'onBuildIdMismatch' in options).toBe(false);
   });
@@ -126,7 +122,7 @@ describe('load', () => {
   it('forwards onBuildIdMismatch when the caller supplied one', async () => {
     const onBuildIdMismatch = vi.fn();
     fetchRsc.mockResolvedValue({ [ROUTE_ID]: ['/next', ''] });
-    await load(cache, route('/next'), baseOpts({ onBuildIdMismatch }));
+    await cache.load(route('/next'), baseOpts({ onBuildIdMismatch }));
     const options = fetchRsc.mock.calls[0]?.[2];
     expect(options).toEqual(
       expect.objectContaining({
@@ -150,13 +146,12 @@ describe('load', () => {
     );
     cache.prefetchRoute(route('/next'));
     expect(fetchRsc).toHaveBeenCalledTimes(1);
-    const pending = load(cache, route('/next'), baseOpts());
+    const pending = cache.load(route('/next'), baseOpts());
     expect(fetchRsc).toHaveBeenCalledTimes(1);
     resolveFetch(elements);
     await expect(pending).resolves.toMatchObject({
       type: 'loaded',
       elements,
-      adopted: false,
     });
   });
 
@@ -172,8 +167,7 @@ describe('load', () => {
       return new Promise(() => {});
     });
     cache.prefetchRoute(route('/next'));
-    const pending = load(
-      cache,
+    const pending = cache.load(
       route('/next'),
       baseOpts({ onInvalidate, signal: controller.signal }),
     );
@@ -197,13 +191,11 @@ describe('load', () => {
       return new Promise(() => {});
     });
     cache.prefetchRoute(route('/next'));
-    const pendingA = load(
-      cache,
+    const pendingA = cache.load(
       route('/next'),
       baseOpts({ onInvalidate: onInvalidateA, signal: controllerA.signal }),
     );
-    const pendingB = load(
-      cache,
+    const pendingB = cache.load(
       route('/next'),
       baseOpts({ onInvalidate: onInvalidateB, signal: controllerB.signal }),
     );
@@ -218,11 +210,60 @@ describe('load', () => {
     await expect(pendingA).resolves.toEqual({ type: 'aborted' });
   });
 
+  it.each(['startup', 'pending'] as const)(
+    'retains prefetch invalidation through follow startup, not its pending wait (%s)',
+    async (timing) => {
+      const onInvalidate = vi.fn();
+      let invalidate!: () => void;
+      let finishFollow!: (elements: Elements) => void;
+      let startFollow!: () => void;
+      const following = new Promise<void>((resolve) => {
+        startFollow = resolve;
+      });
+      const elements = { [ROUTE_ID]: ['/final', ''] };
+      fetchRsc
+        .mockImplementationOnce((_path, _params, options) => {
+          invalidate = () => options?.onBuildIdMismatch?.();
+          return Promise.reject(
+            createCustomError('moved', { location: '/final' }),
+          );
+        })
+        .mockImplementationOnce(() => {
+          if (timing === 'startup') {
+            invalidate();
+          }
+          startFollow();
+          return new Promise((resolve) => {
+            finishFollow = resolve;
+          });
+        });
+      cache.prefetchRoute(route('/next'));
+      const pending = cache.load(
+        route('/next'),
+        baseOpts({
+          onInvalidate,
+          url: new URL('/next', window.location.href),
+        }),
+      );
+      await following;
+      if (timing === 'pending') {
+        invalidate();
+      }
+      expect(onInvalidate).toHaveBeenCalledTimes(timing === 'startup' ? 1 : 0);
+      finishFollow(elements);
+      await expect(pending).resolves.toMatchObject({
+        type: 'loaded',
+        route: route('/final'),
+        elements,
+        follows: 1,
+      });
+    },
+  );
+
   it('returns aborted when the signal is already aborted', async () => {
     const controller = new AbortController();
     controller.abort();
-    const outcome = await load(
-      cache,
+    const outcome = await cache.load(
       route('/next'),
       baseOpts({ signal: controller.signal }),
     );
@@ -240,8 +281,7 @@ describe('load', () => {
           );
         }),
     );
-    const pending = load(
-      cache,
+    const pending = cache.load(
       route('/next'),
       baseOpts({ signal: controller.signal }),
     );
@@ -253,8 +293,7 @@ describe('load', () => {
     fetchRsc
       .mockRejectedValueOnce(createCustomError('nf', { status: 404 }))
       .mockResolvedValueOnce({ [ROUTE_ID]: ['/404', ''] });
-    const outcome = await load(
-      cache,
+    const outcome = await cache.load(
       route('/missing'),
       baseOpts({
         has404: true,
@@ -265,7 +304,6 @@ describe('load', () => {
       type: 'loaded',
       route: route('/404'),
       follows: 1,
-      adopted: false,
     });
     expect(fetchRsc).toHaveBeenCalledTimes(2);
     expect(fetchRsc).toHaveBeenLastCalledWith(
@@ -284,8 +322,7 @@ describe('load', () => {
         }),
       )
       .mockResolvedValueOnce({ [ROUTE_ID]: ['/final', ''] });
-    const outcome = await load(
-      cache,
+    const outcome = await cache.load(
       route('/next'),
       baseOpts({ url: new URL('/next', window.location.href) }),
     );
@@ -293,7 +330,6 @@ describe('load', () => {
       type: 'loaded',
       route: route('/final'),
       follows: 1,
-      adopted: false,
     });
   });
 
@@ -303,7 +339,7 @@ describe('load', () => {
       unstable_leave: true,
     });
     fetchRsc.mockRejectedValue(error);
-    const outcome = await load(cache, route('/next'), baseOpts());
+    const outcome = await cache.load(route('/next'), baseOpts());
     expect(outcome).toMatchObject({
       type: 'external',
       error,
@@ -319,7 +355,7 @@ describe('load', () => {
   it('fails on a non-followable error', async () => {
     const error = new Error('boom');
     fetchRsc.mockRejectedValue(error);
-    const outcome = await load(cache, route('/next'), baseOpts());
+    const outcome = await cache.load(route('/next'), baseOpts());
     expect(outcome).toEqual({
       type: 'failed',
       route: route('/next'),
@@ -331,8 +367,7 @@ describe('load', () => {
 
   it('adopts the given promise on the first attempt and does not fetch', async () => {
     const elements = { [ROUTE_ID]: ['/next', ''] };
-    const outcome = await load(
-      cache,
+    const outcome = await cache.load(
       route('/next'),
       baseOpts({ adopt: Promise.resolve(elements) }),
     );
@@ -343,14 +378,12 @@ describe('load', () => {
       url: new URL('http://localhost/next'),
       elements,
       follows: 0,
-      adopted: true,
     });
   });
 
-  it('follow attempts after an adopted rejection fetch and are not adopted', async () => {
+  it('follow attempts after an adopted rejection fetch the new route', async () => {
     fetchRsc.mockResolvedValue({ [ROUTE_ID]: ['/404', ''] });
-    const outcome = await load(
-      cache,
+    const outcome = await cache.load(
       route('/missing'),
       baseOpts({
         has404: true,
@@ -362,7 +395,6 @@ describe('load', () => {
       type: 'loaded',
       route: route('/404'),
       follows: 1,
-      adopted: false,
     });
     expect(fetchRsc).toHaveBeenCalledTimes(1);
     expect(fetchRsc).toHaveBeenCalledWith(
@@ -375,8 +407,7 @@ describe('load', () => {
   it('an aborted adopt is aborted, not failed', async () => {
     const controller = new AbortController();
     const adopt = new Promise<Elements>(() => {});
-    const pending = load(
-      cache,
+    const pending = cache.load(
       route('/next'),
       baseOpts({ adopt, signal: controller.signal }),
     );
@@ -387,7 +418,7 @@ describe('load', () => {
 
   it('loaded.route is the requested attempt, not the response ROUTE_ID', async () => {
     fetchRsc.mockResolvedValue({ [ROUTE_ID]: ['/other', ''] });
-    const outcome = await load(cache, route('/next'), baseOpts());
+    const outcome = await cache.load(route('/next'), baseOpts());
     expect(outcome).toMatchObject({
       type: 'loaded',
       route: route('/next'),

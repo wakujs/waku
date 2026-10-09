@@ -1,12 +1,34 @@
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
-import { encodeRoutePath } from '../isomorphic-utils/router-protocol.js';
-import { createRscParams } from './caches.js';
-import type { RouterCache } from './caches.js';
 import { MAX_FOLLOWS_PER_NAVIGATION, decideFollow } from './error-route.js';
 import { getRouteUrl, isSameRscRoute } from './route-url.js';
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
 
+/**
+ * A fetch attempt and its intended browser URL, which can differ for a custom
+ * 404. `follows` counts preceding fetch-time and render-time follows.
+ */
+export type RouteAttempt = {
+  route: RouteProps;
+  url: URL;
+  follows: number;
+};
+
+/**
+ * Fetches one attempt's elements, rejecting with redirect or not-found errors
+ * to follow. Return `undefined` only when this Root already has usable content
+ * for the attempt, not when a route is missing. Forward the signal to transport.
+ */
+export type FetchRoute = (
+  attempt: RouteAttempt,
+  signal: AbortSignal,
+) => Promise<Elements | undefined>;
+
+/**
+ * `route` identifies the last fetch/follow attempt. A successful payload's
+ * route metadata can identify a different server-rendered destination, which
+ * the binding must reconcile before committing.
+ */
 export type LoadOutcome =
   | {
       type: 'loaded';
@@ -14,15 +36,14 @@ export type LoadOutcome =
       url: URL;
       elements: Elements;
       follows: number;
-      adopted: boolean;
     }
   | { type: 'reused'; route: RouteProps; url: URL; follows: number }
   | {
       type: 'external';
       url: URL;
       error: unknown;
-      // last attempt, so the binding can commit that url before leaving
       route: RouteProps;
+      /** Last attempted browser URL, for applying history before leaving. */
       from: URL;
       follows: number;
     }
@@ -35,18 +56,18 @@ export type LoadOutcome =
     }
   | { type: 'aborted' };
 
+/** A payload-bearing outcome; does not imply that React has committed it. */
 export type Loaded = Extract<LoadOutcome, { type: 'loaded' }>;
 
+/**
+ * `settled` is the committed route, used to reuse hash-only redirects back to
+ * it. `url` defaults to the requested route's URL. `follows` defaults to zero;
+ * pass the preceding count when resuming a render-time follow chain.
+ */
 export type LoadOptions = {
   signal: AbortSignal;
-  refetch?: boolean;
-  adopt?: Promise<Elements>;
-  onBuildIdMismatch?: (url: URL) => void;
-  onInvalidate?: (url: URL) => void;
   has404: boolean;
   settled: RouteProps;
-  // fetch base for etags, not a store write
-  base: Elements;
   url?: URL;
   follows?: number;
 };
@@ -58,83 +79,53 @@ export const abortable = <T>(
   if (!signal) {
     return promise;
   }
-  if (signal.aborted) {
-    return Promise.reject(signal.reason);
-  }
   return new Promise<T>((resolve, reject) => {
     const abort = () => reject(signal.reason);
-    signal.addEventListener('abort', abort, { once: true });
+    if (signal.aborted) {
+      abort();
+    } else {
+      signal.addEventListener('abort', abort, { once: true });
+    }
     promise
       .then(resolve, reject)
       .finally(() => signal.removeEventListener('abort', abort));
   });
 };
 
+/**
+ * Fetches a route through the supplied callback and follows redirects or a
+ * custom 404 within one shared follow budget. `has404` enables following /404
+ * while retaining the requested browser URL. Cancellation stops waiting even
+ * if the callback ignores its signal; transport may continue in that case.
+ * Returns an outcome without merging elements or updating history or scroll.
+ * The binding reconciles response route metadata and handles streamed-slot
+ * errors, which can occur after this promise resolves.
+ *
+ * @example
+ * const outcome = await unstable_load(fetchRoute, route, { signal, has404, settled });
+ */
 export const load = async (
-  cache: RouterCache,
+  fetchRoute: FetchRoute,
   requested: RouteProps,
   opts: LoadOptions,
 ): Promise<LoadOutcome> => {
   const initialFollows = opts.follows ?? 0;
   const initialUrl = opts.url ?? getRouteUrl(requested);
 
-  const run = async (attempt: {
-    route: RouteProps;
-    url: URL;
-    follows: number;
-  }): Promise<LoadOutcome> => {
+  const run = async (attempt: RouteAttempt): Promise<LoadOutcome> => {
     if (opts.signal.aborted) {
       return { type: 'aborted' };
     }
-    const isFirstAttempt = attempt.follows === initialFollows;
-    // changeRoute pre-checks this; unreachable from there, used by follows and adopt
-    if (
-      cache.canReuseStaticRoute(attempt.route, opts.base) ||
-      (isFirstAttempt && opts.refetch === false)
-    ) {
-      return {
-        type: 'reused',
-        route: attempt.route,
-        url: attempt.url,
-        follows: attempt.follows,
-      };
-    }
-    const cached = cache.getPrefetch(attempt.route);
-    const unsubscribeInvalidate = cached?.onInvalidate(() => {
-      if (!opts.signal.aborted) {
-        opts.onInvalidate?.(attempt.url);
-      }
-    });
-    const useAdopt = isFirstAttempt && opts.adopt !== undefined;
-    const adoptedPromise = opts.adopt;
-    const onBuildIdMismatch = opts.onBuildIdMismatch;
-    let elements: Elements;
-    let adopted = false;
     try {
-      if (useAdopt && adoptedPromise) {
-        elements = await abortable(adoptedPromise, opts.signal);
-        adopted = true;
-      } else {
-        const rscPath = encodeRoutePath(attempt.route.path);
-        elements = cached
-          ? await abortable(cached.promise, opts.signal)
-          : await cache.fetchRsc(
-              rscPath,
-              createRscParams(attempt.route.query),
-              {
-                signal: opts.signal,
-                // a defined wrapper disables minimal's reload default
-                ...(onBuildIdMismatch
-                  ? {
-                      onBuildIdMismatch: () => onBuildIdMismatch(attempt.url),
-                    }
-                  : {}),
-                unstable_base: opts.base,
-              },
-            );
-      }
+      const elements = await abortable(
+        fetchRoute(attempt, opts.signal),
+        opts.signal,
+      );
       if (opts.signal.aborted) {
         return { type: 'aborted' };
+      }
+      if (elements === undefined) {
+        return { type: 'reused', ...attempt };
       }
       return {
         type: 'loaded',
@@ -142,7 +133,6 @@ export const load = async (
         url: attempt.url,
         elements,
         follows: attempt.follows,
-        adopted,
       };
     } catch (error) {
       if (opts.signal.aborted) {
@@ -189,9 +179,6 @@ export const load = async (
         };
       }
       return run(nextAttempt);
-    } finally {
-      // an aborted load must not stay reachable from a long-lived prefetch
-      unsubscribeInvalidate?.();
     }
   };
 

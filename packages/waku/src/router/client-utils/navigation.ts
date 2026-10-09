@@ -17,7 +17,6 @@ import { useRouterCache } from '../client-core-utils/caches.js';
 import { isFollowable } from '../client-core-utils/error-route.js';
 import { useHmrRefetch } from '../client-core-utils/hmr.js';
 import { useInitialRoute } from '../client-core-utils/initial-route.js';
-import { load } from '../client-core-utils/load.js';
 import { buildMergePatch } from '../client-core-utils/merge-patch.js';
 import {
   getRouteUrl,
@@ -284,7 +283,7 @@ export const useNavigation = (
             controller.signal,
           )
         : undefined;
-      const outcome = await load(cache, nextRoute, {
+      const outcome = await cache.load(nextRoute, {
         signal: controller.signal,
         refetch: shouldRefetch,
         has404,
@@ -348,7 +347,7 @@ export const useNavigation = (
         setNavigationError({ error });
         throw error;
       }
-      if (outcome.adopted) {
+      if (instantResponse && outcome.follows === initialFollows) {
         cache.learnStaticFromElements(outcome.elements);
         finishRequest();
         return;
