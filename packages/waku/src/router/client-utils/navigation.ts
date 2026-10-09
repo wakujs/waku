@@ -80,7 +80,6 @@ const commitHistory = (url: URL, mode: HistoryIntent): void => {
     window.history.pushState(window.history.state, '', url);
     return;
   }
-  // A server redirect can replace the URL restored by popstate.
   window.history.replaceState(window.history.state, '', url);
 };
 
@@ -185,7 +184,6 @@ export const useNavigation = (
       const settledRoute = resolveSettledRoute(getElements(), routeFallback);
       const shouldRefetch =
         options.refetch ?? !isSameRscRoute(nextRoute, settledRoute);
-      // Cached paints retain the caller's priority.
       if (
         options.pendingTransition &&
         shouldRefetch &&
@@ -198,7 +196,6 @@ export const useNavigation = (
         )
       ) {
         const schedule = options.pendingTransition;
-        // Transition callbacks run immediately, preserving synchronous cancellation.
         return new Promise<void>((resolve, reject) => {
           schedule(async () => {
             try {
@@ -269,7 +266,6 @@ export const useNavigation = (
           combineElements(patch, { [ROUTER_STATE_ID]: state }),
         );
       };
-      // Queue before awaiting to preserve the caller's transition.
       if (
         cache.canReuseStaticRoute(nextRoute, getElements()) ||
         !shouldRefetch
@@ -307,7 +303,6 @@ export const useNavigation = (
       if (outcome.type === 'aborted' || requestRef.current !== request) {
         return;
       }
-      // paint already pushed; a follow must replace
       const historyIntent =
         instantResponse &&
         outcome.follows > initialFollows &&
