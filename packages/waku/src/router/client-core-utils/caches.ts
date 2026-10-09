@@ -9,6 +9,8 @@ import {
   getRouteSlotId,
   isStaticFromElements,
 } from '../isomorphic-utils/router-protocol.js';
+import { load } from './load.js';
+import type { LoadOptions, LoadOutcome } from './load.js';
 import {
   type PrefetchEntry,
   type PrefetchOptions,
@@ -17,6 +19,19 @@ import {
 import { createSliceCache } from './slice-cache.js';
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
+
+type CachedLoadOptions = LoadOptions & {
+  /** `false` reuses the initial attempt without fetching. */
+  refetch?: boolean;
+  /** Supplies the first attempt's response; follows use normal fetching. */
+  adopt?: Promise<Elements>;
+  /** Current Root elements used for etags and static-route reuse. */
+  base: Elements;
+  /** Overrides Minimal's default build-mismatch reload when supplied. */
+  onBuildIdMismatch?: (url: URL) => void;
+  /** Observes prefetch invalidation with the affected attempt's browser URL. */
+  onInvalidate?: (url: URL) => void;
+};
 
 export type FetchRsc = ReturnType<typeof useFetchRsc>;
 
@@ -33,6 +48,9 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
 
   const getPrefetchedElements = (route: RouteProps): Elements | undefined =>
     manager.getElements(encodeRoutePath(route.path));
+
+  const canReuseStaticRoute = (route: RouteProps, elements: Elements) =>
+    staticPathSet.has(route.path) && getRouteSlotId(route.path) in elements;
 
   return {
     fetchRsc,
@@ -68,12 +86,73 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
     getPrefetchedElements,
     getPrefetch: (route: RouteProps): PrefetchHandle | undefined =>
       manager.get(encodeRoutePath(route.path), route.query),
-    canReuseStaticRoute: (
-      route: RouteProps,
-      currentElements: Elements,
-    ): boolean =>
-      staticPathSet.has(route.path) &&
-      getRouteSlotId(route.path) in currentElements,
+    canReuseStaticRoute,
+    /**
+     * Loads with static reuse, an optional initial response, prefetch, or the
+     * network, in that order. Preserves `unstable_load`'s follow and cancellation
+     * behavior, and releases prefetch subscriptions as their attempts finish.
+     * Does not merge elements or commit browser state. Cached synchronous
+     * commits belong to the binding, before awaiting this method.
+     */
+    load: async (
+      requested: RouteProps,
+      opts: CachedLoadOptions,
+    ): Promise<LoadOutcome> => {
+      const initialFollows = opts.follows ?? 0;
+      let unsubscribe: (() => void) | undefined;
+      try {
+        return await load(
+          async (attempt, signal) => {
+            const unsubscribePrevious = unsubscribe;
+            unsubscribe = undefined;
+            try {
+              const first = attempt.follows === initialFollows;
+              if (
+                canReuseStaticRoute(attempt.route, opts.base) ||
+                (first && opts.refetch === false)
+              ) {
+                return;
+              }
+              const cached = manager.get(
+                encodeRoutePath(attempt.route.path),
+                attempt.route.query,
+              );
+              unsubscribe = cached?.onInvalidate(() => {
+                if (!signal.aborted) {
+                  opts.onInvalidate?.(attempt.url);
+                }
+              });
+              if (first && opts.adopt !== undefined) {
+                return opts.adopt;
+              }
+              if (cached) {
+                return cached.promise;
+              }
+              const onBuildIdMismatch = opts.onBuildIdMismatch;
+              return fetchRsc(
+                encodeRoutePath(attempt.route.path),
+                createRscParams(attempt.route.query),
+                {
+                  signal,
+                  ...(onBuildIdMismatch
+                    ? {
+                        onBuildIdMismatch: () => onBuildIdMismatch(attempt.url),
+                      }
+                    : {}),
+                  unstable_base: opts.base,
+                },
+              );
+            } finally {
+              unsubscribePrevious?.();
+            }
+          },
+          requested,
+          opts,
+        );
+      } finally {
+        unsubscribe?.();
+      }
+    },
     learnStaticFromElements: (elements: Record<string, unknown>): void => {
       const route = getRouteFromElements(elements);
       if (route && isStaticFromElements(elements)) {

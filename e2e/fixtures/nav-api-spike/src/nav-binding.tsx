@@ -35,7 +35,6 @@ import {
   unstable_getRouteUrl as getRouteUrl,
   unstable_has404FromElements as has404FromElements,
   unstable_isFollowable as isFollowable,
-  unstable_load as load,
   unstable_parseRoute as parseRoute,
   useActionRouting_UNSTABLE as useActionRouting,
   useInitialRoute_UNSTABLE as useInitialRoute,
@@ -251,7 +250,7 @@ const NavBinding = ({ fallbackRoute }: { fallbackRoute: RouteProps }) => {
   const runImpl: FollowRun = async (next, signal, followCount) => {
     const base = resolvedRef.current;
     const settled = getRouteFromElements(base) ?? routeFallback;
-    const outcome = await load(cache, next, {
+    const outcome = await cache.load(next, {
       signal,
       has404,
       settled,

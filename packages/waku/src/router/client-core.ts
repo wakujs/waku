@@ -45,6 +45,8 @@ export type { RouterHost as Unstable_RouterHost } from './client-core-utils/host
 
 export { load as unstable_load } from './client-core-utils/load.js';
 export type {
+  FetchRoute as Unstable_FetchRoute,
+  RouteAttempt as Unstable_RouteAttempt,
   LoadOptions as Unstable_LoadOptions,
   LoadOutcome as Unstable_LoadOutcome,
   Loaded as Unstable_Loaded,
