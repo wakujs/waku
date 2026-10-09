@@ -141,17 +141,23 @@ test('a bare fetch callback receives cancellation rather than a commit error', a
   await expect(pending).resolves.toEqual({ type: 'aborted' });
 });
 
-test('cancellation stops waiting for a fetch callback that ignores its signal', async () => {
+test('cancellation discards a fetch callback that resolves after ignoring its signal', async () => {
   const controller = new AbortController();
-  const fetchRoute = vi
-    .fn<FetchRoute>()
-    .mockImplementation(() => new Promise(() => {}));
+  let finish!: (elements: Record<string, unknown>) => void;
+  const response = new Promise<Record<string, unknown>>((resolve) => {
+    finish = resolve;
+  });
+  const fetchRoute = vi.fn<FetchRoute>().mockReturnValue(response);
   const pending = load(fetchRoute, next, {
     ...options(),
     signal: controller.signal,
   });
   controller.abort();
   await expect(pending).resolves.toEqual({ type: 'aborted' });
+  finish({ root: 'late response' });
+  await response;
+  await expect(pending).resolves.toEqual({ type: 'aborted' });
+  expect(fetchRoute).toHaveBeenCalledTimes(1);
 });
 
 test('a fetch callback can reject after synchronously cancelling the load', async () => {

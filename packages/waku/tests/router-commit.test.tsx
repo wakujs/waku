@@ -158,6 +158,65 @@ test('client suspension and urgent unrelated merges do not advance the route', a
   expect(push).toHaveBeenCalledTimes(1);
 });
 
+test.each([false, true])(
+  'an instant response is adopted once, while a redirect follow commits its destination (redirect: %s)',
+  async (redirect) => {
+    const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const push = vi.spyOn(window.history, 'pushState');
+    const replace = vi.spyOn(window.history, 'replaceState');
+    mocks.queue.push({
+      ...payload('/one', <p>page one</p>),
+      [getRouteSlotId('/two')]: <p>cached page two</p>,
+      _etags: { root: 1, [getRouteSlotId('/two')]: 1 },
+    });
+    const view = await mount(
+      <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+    );
+    const response = defer<Elements>();
+    mocks.queue.push(response.promise);
+    if (redirect) {
+      mocks.queue.push(payload('/three', <p>followed page three</p>));
+    }
+    let pushed!: Promise<void>;
+    await act(async () => {
+      pushed = controls.get('a')!.router.push('/two', {
+        unstable_instant: true,
+      });
+      await flush();
+    });
+    expect(view.textContent).toContain('cached page two');
+    expect(view.querySelector('output')?.textContent).toBe('/two');
+    expect(window.location.pathname).toBe('/two');
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(scroll).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      if (redirect) {
+        response.reject(createCustomError('moved', { location: '/three' }));
+      } else {
+        response.resolve({ [ROUTE_ID]: ['/two', ''], sidebar: 'response' });
+      }
+      await pushed;
+      await flush();
+    });
+    expect(view.textContent).toContain(
+      redirect ? 'followed page three' : 'cached page two',
+    );
+    expect(view.querySelector('output')?.textContent).toBe(
+      redirect ? '/three' : '/two',
+    );
+    expect(window.location.pathname).toBe(redirect ? '/three' : '/two');
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(replace).toHaveBeenCalledTimes(redirect ? 1 : 0);
+    expect(scroll).toHaveBeenCalledTimes(redirect ? 2 : 1);
+    if (!redirect) {
+      expect(view.querySelector('[data-sidebar]')?.textContent).toBe(
+        'response',
+      );
+    }
+    expect(mocks.queue).toEqual([]);
+  },
+);
+
 test('a same-route navigation cancels an already queued suspended destination', async () => {
   const ready = defer<void>();
   const Page = () => {
