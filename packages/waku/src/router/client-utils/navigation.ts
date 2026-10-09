@@ -210,11 +210,11 @@ export const useNavigation = (
           });
         });
       }
+      const controller = new AbortController();
       const request: NavigationRequest = {
-        controller: new AbortController(),
+        controller,
         target: nextRoute,
       };
-      const { controller } = request;
       controller.signal.addEventListener('abort', () => {
         if (requestRef.current) {
           options.onSuperseded?.();
