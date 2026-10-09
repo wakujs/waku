@@ -8,6 +8,7 @@ import { unstable_callServerRsc } from '../src/minimal/client-runtime.js';
 import { clearInitialRscEntries } from '../src/minimal/client-utils/initial-rsc-store.js';
 import {
   Children_UNSTABLE as Children,
+  Slot_UNSTABLE as Slot,
   useElementsPromise_UNSTABLE as useElementsPromise,
   useMergeElements_UNSTABLE as useMergeElements,
 } from '../src/minimal/client.js';
@@ -511,6 +512,54 @@ test('a successful navigation clears the previously committed not-found error', 
   expect(view.textContent).toContain('recovered page');
   expect(view.querySelector('output')?.textContent).toBe('/two');
   expect(view.querySelector('h1')).toBeNull();
+  expect(window.location.pathname).toBe('/two');
+});
+
+test('an instant paint preserves an earlier queued update when the response omits its slot', async () => {
+  mocks.queue.push({
+    ...payload('/one', <p>page one</p>),
+    root: (
+      <>
+        <Probe id="a" />
+        <aside data-queued>
+          <Suspense fallback="waiting">
+            <Slot id="sidebar" />
+          </Suspense>
+        </aside>
+        <Children />
+      </>
+    ),
+    sidebar: 'before',
+    [getRouteSlotId('/two')]: <p>cached page two</p>,
+    _etags: { root: 1, [getRouteSlotId('/two')]: 1 },
+  });
+  const view = await mount(
+    <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+  );
+  const update = defer<Elements>();
+  const response = defer<Elements>();
+  let merged!: Promise<Elements>;
+  let pushed!: Promise<void>;
+  await act(async () => {
+    merged = controls.get('a')!.merge(update.promise);
+    mocks.queue.push(response.promise);
+    pushed = controls.get('a')!.router.push('/two', { unstable_instant: true });
+    await flush();
+  });
+  await act(async () => {
+    update.resolve({ sidebar: 'queued update' });
+    await merged;
+    await flush();
+  });
+  await act(async () => {
+    response.resolve({ [ROUTE_ID]: ['/two', ''], [IS_STATIC_ID]: false });
+    await pushed;
+    await flush();
+  });
+  expect(view.querySelector('[data-queued]')?.textContent).toBe(
+    'queued update',
+  );
+  expect(view.textContent).toContain('cached page two');
   expect(window.location.pathname).toBe('/two');
 });
 

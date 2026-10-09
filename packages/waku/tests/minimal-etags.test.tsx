@@ -2,7 +2,7 @@
 
 // Proves the per-slot cache-validator carry/replay lives in the minimal layer
 // (router-agnostic), driving the real minimal Root.
-import { Suspense, act, useEffect } from 'react';
+import { act, useEffect } from 'react';
 import type { ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
@@ -28,11 +28,9 @@ import { clearInitialRscEntries } from '../src/minimal/client-utils/initial-rsc-
 import { getDefaultRootStore } from '../src/minimal/client-utils/root-store.js';
 import {
   Root_UNSTABLE as Root,
-  Slot_UNSTABLE as Slot,
   unstable_combineElements as combineElements,
   unstable_isImmutableElement as isImmutableElement,
   useFetchRsc_UNSTABLE,
-  useMergeElements_UNSTABLE,
 } from '../src/minimal/client.js';
 import { unstable_buildElements as buildElements } from '../src/minimal/server.js';
 
@@ -56,26 +54,6 @@ const flush = async () => {
     await new Promise<void>((resolve) => setTimeout(resolve));
   });
 };
-
-const useRefetch = () => {
-  const fetchRsc = useFetchRsc_UNSTABLE();
-  const mergeElements = useMergeElements_UNSTABLE();
-  return (
-    rscPath: string,
-    rscParams?: unknown,
-    options?: Parameters<typeof mergeElements>[1],
-  ) =>
-    mergeElements(
-      fetchRsc(rscPath, rscParams, {
-        ...(options?.unstable_swr?.base
-          ? { unstable_base: options.unstable_swr.base }
-          : {}),
-      }),
-      options,
-    );
-};
-
-type Refetch = ReturnType<typeof useRefetch>;
 
 const renderApp = async (element: ReactElement) => {
   const container = document.createElement('div');
@@ -286,105 +264,6 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
     expect(sentEtags()).toEqual({ page: 'yyy' });
   });
 
-  it('keeps a static slot painted and tagged through an instant-nav merge', async () => {
-    testHoisted.elements = {
-      page: <div>a</div>,
-      [ETAGS_ID]: { page: IMMUTABLE_ETAG },
-    };
-    let refetch!: Refetch;
-    const Capture = () => {
-      const refetchValue = useRefetch();
-      useEffect(() => {
-        refetch = refetchValue;
-      });
-      return null;
-    };
-    const view = await renderApp(
-      <Root initialRscPath="R/foo">
-        <Suspense fallback="L">
-          <Slot id="page" />
-        </Suspense>
-        <Capture />
-      </Root>,
-    );
-    await flush();
-    expect(view.container.textContent).toBe('a');
-
-    const response = Promise.withResolvers<Response>();
-    vi.mocked(globalThis.fetch).mockReturnValueOnce(response.promise);
-    let refetched: Promise<unknown> | undefined;
-    await act(async () => {
-      refetched = refetch('R/bar', undefined, {
-        unstable_swr: { pin: (key) => key === 'page' },
-      });
-    });
-    expect(view.container.textContent).toBe('a');
-
-    testHoisted.elements = {
-      page: <div>b</div>,
-      [ETAGS_ID]: { page: IMMUTABLE_ETAG },
-    };
-    await act(async () => {
-      response.resolve(new Response(null, { status: 200 }));
-      await refetched;
-    });
-    await flush();
-
-    expect(view.container.textContent).toBe('a');
-    expect(getDefaultRootStore()?.etags.page).toBe(IMMUTABLE_ETAG);
-
-    view.unmount();
-  });
-
-  it("sends a base's etags with the request it accompanies", async () => {
-    // Statics served from an incomplete prefetch must ride the request as
-    // etags, so the server skips re-rendering and re-sending them.
-    testHoisted.elements = {
-      page: <div>a</div>,
-      [ETAGS_ID]: { page: 'etag-page' },
-    };
-    let refetch!: Refetch;
-    const Capture = () => {
-      const refetchValue = useRefetch();
-      useEffect(() => {
-        refetch = refetchValue;
-      });
-      return null;
-    };
-    const view = await renderApp(
-      <Root initialRscPath="R/foo">
-        <Capture />
-      </Root>,
-    );
-    await flush();
-
-    testHoisted.elements = { page: <div>b</div> };
-    await act(async () => {
-      await refetch('R/bar', undefined, {
-        unstable_swr: {
-          pin: () => false,
-          base: adoptElements({
-            widget: <div>w</div>,
-            [ETAGS_ID]: { widget: 'etag-widget', page: 'etag-page-2' },
-            page: <div>p</div>,
-          }),
-        },
-      });
-    });
-
-    const lastCall = vi.mocked(globalThis.fetch).mock.calls.at(-1);
-    const headers = new Headers(
-      (lastCall?.[1] as RequestInit | undefined)?.headers,
-    );
-    const sent = JSON.parse(headers.get(ETAGS_HEADER) ?? '{}');
-    expect(sent.widget).toBe('etag-widget');
-    // for a key the base holds, the base's etag is claimed: an omission then
-    // proves the base copy current, and the merge falls back to it
-    expect(sent.page).toBe('etag-page-2');
-
-    view.unmount();
-  });
-
   it('a prefetch without a base claims nothing', async () => {
     testHoisted.elements = { page: <div>b</div> };
     await fetchRsc('R/bar');
@@ -432,46 +311,6 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
     );
     expect(headers.get(ETAGS_HEADER)).toMatch(/^[\x20-\x7e]*$/);
     expect(sentEtags()).toEqual({ 'slice:日本': IMMUTABLE_ETAG });
-  });
-
-  it('caches the etag of a slot a response newly introduces in an instant-nav merge', async () => {
-    // A slot only the response introduces lands via the second swr commit,
-    // and its etag must enter the cache like any other.
-    testHoisted.elements = {
-      page: <div>a</div>,
-      [ETAGS_ID]: { page: IMMUTABLE_ETAG },
-    };
-    let refetch!: Refetch;
-    const Capture = () => {
-      const refetchValue = useRefetch();
-      useEffect(() => {
-        refetch = refetchValue;
-      });
-      return null;
-    };
-    const view = await renderApp(
-      <Root initialRscPath="R/foo">
-        <Capture />
-      </Root>,
-    );
-    await flush();
-
-    testHoisted.elements = {
-      page: <div>b</div>,
-      [ETAGS_ID]: { page: IMMUTABLE_ETAG, widget: 'etag-widget' },
-      widget: <div>w</div>,
-    };
-    await act(async () => {
-      await refetch('R/bar', undefined, {
-        unstable_swr: { pin: (key) => key === 'page' },
-      });
-    });
-    await flush();
-
-    expect(getDefaultRootStore()?.etags.widget).toBe('etag-widget');
-    expect(getDefaultRootStore()?.etags.page).toBe(IMMUTABLE_ETAG);
-
-    view.unmount();
   });
 });
 

@@ -28,7 +28,6 @@ import {
   adoptElements,
   collectEtags,
   combineElements,
-  copyElement,
   isImmutableElement,
 } from './client-utils/element-etags.js';
 import {
@@ -90,129 +89,21 @@ export {
   isImmutableElement as unstable_isImmutableElement,
 };
 
-const getCached = <T,>(c: () => T, m: WeakMap<WeakKey, T>, k: object): T =>
-  (m.has(k) ? m : m.set(k, c())).get(k) as T;
-
-const resolvedMergeResults = new WeakMap<Promise<Elements>, Elements>();
-const swrMergeSources = new WeakMap<Promise<Elements>, Promise<Elements>>();
-
-const mergeCache = new WeakMap();
 const mergeElementsPromise = (
   a: Promise<Elements>,
   b: Promise<Elements> | Elements,
-): Promise<Elements> => {
-  const getResult = () =>
-    Promise.all([a, b]).then(([a, b]) => combineElements(a, b));
-  const cache2 = getCached(() => new WeakMap(), mergeCache, a);
-  return getCached(getResult, cache2, b);
-};
+): Promise<Elements> =>
+  Promise.all([a, b]).then(([a, b]) => combineElements(a, b));
 
-// a replayed updater has to return the same promise, or the tree never
-// settles on the refreshed record (hot-reload.dev.spec.ts)
-const refreshCache = new WeakMap();
 const refreshElementsPromise = (
   a: Promise<Elements>,
   b: Promise<Elements>,
-): Promise<Elements> => {
-  const getResult = () =>
-    Promise.all([a, b]).then(([aRes, bRes]) =>
-      combineElements(bRes, aRes, {
-        unstable_filter: (key) => typeof key === 'symbol' && !(key in bRes),
-      }),
-    );
-  const cache2 = getCached(() => new WeakMap(), refreshCache, a);
-  return getCached(getResult, cache2, b);
-};
-
-const swrCache = new WeakMap();
-const swrElementsPromise = (
-  a: Promise<Elements>,
-  b: Promise<Elements>,
-  pin: (key: string | symbol) => boolean,
-  base?: Elements,
-  overlay?: Elements,
-): Promise<Elements> => {
-  const getResult = () => {
-    const result: Promise<Elements> = Promise.resolve(a).then((aRes) => {
-      const holeFor = (key: string | symbol) =>
-        b.then((bRes) =>
-          key in bRes ? bRes[key] : base && key in base ? base[key] : aRes[key],
-        );
-      const nextElements: Record<string | symbol, unknown> = {};
-      for (const key of Reflect.ownKeys(aRes)) {
-        if (pin(key)) {
-          copyElement(nextElements, aRes, key);
-        } else {
-          nextElements[key] = holeFor(key);
-        }
-      }
-      if (base) {
-        for (const key of Object.keys(base)) {
-          if (key in nextElements) {
-            continue;
-          }
-          // pin only what the base proves immutable; pinning a mutable
-          // base key would eagerly serve possibly-stale content
-          if (isImmutableElement(base, key)) {
-            copyElement(nextElements, base, key);
-          } else {
-            nextElements[key] = holeFor(key);
-          }
-        }
-      }
-      if (overlay) {
-        for (const key of Reflect.ownKeys(overlay)) {
-          copyElement(nextElements, overlay, key);
-        }
-      }
-      resolvedMergeResults.set(result, nextElements);
-      return nextElements;
-    });
-    return result;
-  };
-  const cache2 = getCached(() => new WeakMap(), swrCache, a);
-  const result = getCached(getResult, cache2, b);
-  swrMergeSources.set(result, b);
-  return result;
-};
-
-const swrNewKeysCache = new WeakMap();
-const swrNewKeysElementsPromise = (
-  prev: Promise<Elements>,
-  b: Promise<Elements>,
-  bRes: Elements,
-  overlay?: Elements,
-): Promise<Elements> => {
-  if (swrMergeSources.get(prev) !== b) {
-    return prev;
-  }
-  // Object.keys, so a client only symbol key keeps the value it was given
-  const overlayKeys = overlay
-    ? Object.keys(overlay).filter((key) => key in bRes)
-    : [];
-  const prevRes = resolvedMergeResults.get(prev);
-  if (
-    prevRes &&
-    !overlayKeys.length &&
-    !Object.keys(bRes).some((key) => !(key in prevRes))
-  ) {
-    return prev;
-  }
-  const getResult = () =>
-    Promise.resolve(prev).then((prevRes) => {
-      const newKeys = Object.keys(bRes).filter((key) => !(key in prevRes));
-      if (!newKeys.length && !overlayKeys.length) {
-        return prevRes;
-      }
-      return combineElements(prevRes, bRes, {
-        unstable_filter: (key) =>
-          typeof key === 'string' &&
-          (newKeys.includes(key) || overlayKeys.includes(key)),
-      });
-    });
-  const cache2 = getCached(() => new WeakMap(), swrNewKeysCache, prev);
-  return getCached(getResult, cache2, bRes);
-};
+): Promise<Elements> =>
+  Promise.all([a, b]).then(([aRes, bRes]) =>
+    combineElements(bRes, aRes, {
+      unstable_filter: (key) => typeof key === 'symbol' && !(key in bRes),
+    }),
+  );
 
 type FetchRscElementsOptions = {
   type?: 'rsc' | 'call';
@@ -220,16 +111,6 @@ type FetchRscElementsOptions = {
   onBuildIdMismatch?: () => void;
   etags?: Etags;
   initial?: NonNullable<ReturnType<typeof consumeInitialRscEntry>>;
-};
-
-type MergeElementsOptions = {
-  /** Client-owned entries applied with the response, or eagerly with SWR. */
-  unstable_overlay?: Elements;
-  /** Paints unpinned slots as waiting values while retaining the pinned slots. */
-  unstable_swr?: {
-    pin: (key: string | symbol) => boolean;
-    base?: Elements;
-  };
 };
 
 const requestRsc = (
@@ -441,7 +322,10 @@ const getInitialRsc = (
 
 type MergeElements = (
   elements: Elements | Promise<Elements>,
-  options?: MergeElementsOptions,
+  merge?: (
+    previous: Promise<Elements>,
+    incoming: Promise<Elements>,
+  ) => Promise<Elements>,
 ) => Promise<Elements>;
 
 const RootStoreContext = createContext<RootStore | null | undefined>(undefined);
@@ -493,51 +377,25 @@ export const useRegisterRscEnhancer_UNSTABLE = () => {
 const ElementsContext = createContext<Promise<Elements> | null>(null);
 
 /**
- * Returns a function that merges an element record, or a promise of one such
- * as the fetch from `useFetchRsc_UNSTABLE` returns, into the current
- * `Root_UNSTABLE`. Returns the incoming payload, or rejects on failure; a
- * rejected ordinary merge leaves the current elements unchanged.
- * `unstable_overlay` overrides response keys in an ordinary merge. With
- * `unstable_swr`, it supplies the eager paint while the response streams:
- * `pin` retains selected slots and `base` supplies additional immutable slots.
+ * Returns a function that merges an element record or its promise into the
+ * enclosing Root. Returns the incoming payload without waiting for the merge
+ * or render, or rejects on failure. A rejected ordinary merge leaves the
+ * current elements unchanged.
+ * A custom merge receives the latest queued element promise and the incoming
+ * promise with rejected payloads recovered to an empty record. It returns the
+ * replacement promise, or the previous promise to leave the Root unchanged.
+ * The callback must be pure; results are memoized for React's updater replay.
  */
 export const useMergeElements_UNSTABLE = () => {
   const store = useRootStore();
   return useCallback<MergeElements>(
-    (data, options) => {
+    (data, merge = mergeElementsPromise) => {
       if (store === null) {
         return Promise.resolve({});
       }
-      const { unstable_overlay: overlay, unstable_swr: swr } = options ?? {};
       const elements = Promise.resolve(data);
-      const elementsWithoutErrors = elements.catch(() => ({}));
-      if (swr) {
-        store.setElements((prev) =>
-          swrElementsPromise(
-            prev,
-            elementsWithoutErrors,
-            swr.pin,
-            swr.base,
-            overlay,
-          ),
-        );
-        return elements.then((resolved) => {
-          store.setElements((prev) =>
-            swrNewKeysElementsPromise(
-              prev,
-              elementsWithoutErrors,
-              resolved,
-              overlay,
-            ),
-          );
-          return resolved;
-        });
-      }
-      // the overlay lands only when the fetch succeeds
-      const elementsToMerge = overlay
-        ? mergeElementsPromise(elements, overlay).catch(() => ({}))
-        : elementsWithoutErrors;
-      store.setElements((prev) => mergeElementsPromise(prev, elementsToMerge));
+      const recovered = elements.catch(() => ({}));
+      store.setElements((previous) => merge(previous, recovered));
       return elements;
     },
     [store],
@@ -581,7 +439,17 @@ export const Root_UNSTABLE = ({
   const [elements, setElements] = useState(initialElements);
   const [store] = useState(() => {
     const store: RootStore = {
-      setElements,
+      setElements: (update) => {
+        const results = new WeakMap<Promise<Elements>, Promise<Elements>>();
+        setElements((previous) => {
+          let next = results.get(previous);
+          if (!next) {
+            next = update(previous);
+            results.set(previous, next);
+          }
+          return next;
+        });
+      },
       etags: {},
       enhancers: [],
       fetchRsc: (rscPath, rscParams, options) =>
@@ -595,7 +463,7 @@ export const Root_UNSTABLE = ({
     const unregisterReload = import.meta.hot
       ? registerRootReload(store, () => {
           const data = fetchRootRsc(...initialInput, store);
-          setElements((prev) => refreshElementsPromise(prev, data));
+          store.setElements((prev) => refreshElementsPromise(prev, data));
         })
       : undefined;
     return () => {

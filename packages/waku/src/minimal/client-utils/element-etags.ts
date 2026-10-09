@@ -43,7 +43,7 @@ export const adoptElements = (data: Elements): Elements => {
   return elements;
 };
 
-export const copyElement = (
+const copyElement = (
   target: Record<string | symbol, unknown>,
   source: Elements,
   key: string | symbol,

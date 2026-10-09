@@ -1,8 +1,5 @@
 import { useCallback } from 'react';
-import {
-  unstable_isImmutableElement as isImmutableElement,
-  useMergeElements_UNSTABLE as useMergeElements,
-} from 'waku/minimal/client';
+import { unstable_isImmutableElement as isImmutableElement } from 'waku/minimal/client';
 import {
   createRscParams,
   useRouterCache,
@@ -17,6 +14,7 @@ import {
   isMetaKey,
   isStaticFromElements,
 } from '../isomorphic-utils/router-protocol.js';
+import { useMergeInstantElements } from './instant-elements.js';
 import { ROUTER_STATE_ID } from './router-state.js';
 import type { RouterState } from './router-state.js';
 
@@ -46,7 +44,7 @@ export const useStartInstantPaint = (
   getElements: () => Elements,
   reloadWithUrl: (url: URL) => void,
 ) => {
-  const mergeElements = useMergeElements();
+  const mergeInstantElements = useMergeInstantElements();
   const cache = useRouterCache();
   return useCallback(
     (attempt: InstantAttempt, state: RouterState, signal: AbortSignal) => {
@@ -67,10 +65,6 @@ export const useStartInstantPaint = (
         [ROUTE_ID]: [attempt.route.path, attempt.route.query],
         [IS_STATIC_ID]: isStaticFromElements(getElements()),
       };
-      const swr = {
-        pin: pinForSwr(getElements),
-        ...(prefetchedElements ? { base: prefetchedElements } : {}),
-      };
       const response = cached
         ? abortable(cached.promise, signal)
         : cache.fetchRsc(
@@ -84,12 +78,13 @@ export const useStartInstantPaint = (
                 : {}),
             },
           );
-      return mergeElements(response, {
-        // SWR pins metadata, so the eager paint carries the requested route.
-        unstable_overlay: overlay,
-        unstable_swr: swr,
-      });
+      return mergeInstantElements(
+        response,
+        pinForSwr(getElements),
+        prefetchedElements,
+        overlay,
+      );
     },
-    [cache, getElements, mergeElements, reloadWithUrl],
+    [cache, getElements, mergeInstantElements, reloadWithUrl],
   );
 };

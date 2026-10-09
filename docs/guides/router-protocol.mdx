@@ -207,6 +207,14 @@ history without waiting for a successful content commit; failures render an
 error rather than a slot that was never fetched. The render-error boundary has
 its own reset conditions, separate from clearing the Router's fetch error.
 
+Router's `useMergeInstantElements` owns the eager rendering policy. It uses
+Minimal's merge callback to retain pinned slots, wait on the response for other
+slots, and include cached immutable slots and client navigation intent. The
+callback starts from the latest queued elements, so it cannot overwrite an
+earlier queued update with a rendered snapshot. Settlement adds new slots and
+updates response-owned overlay keys only while that instant merge still owns
+the queued promise. Minimal owns updater replay safety, not SWR policy.
+
 Cached and same-RSC-route commits queue before the first `await`, retaining the
 caller's React priority. Transition callbacks run immediately, so wrapping an
 uncached navigation does not postpone superseding the previous request.
@@ -243,16 +251,17 @@ policy. It registers before descendant passive effects can start an action. See
 
 Paths below are relative to `packages/waku/src/router`.
 
-| Responsibility                                               | File                                                               |
-| ------------------------------------------------------------ | ------------------------------------------------------------------ |
-| Protocol IDs, RSC inputs, slot IDs, and metadata readers     | `isomorphic-utils/router-protocol.ts`                              |
-| Route resolution to elements and route metadata              | `define-router-utils/route-entries.ts`                             |
-| Request handling, redirects, not-found, and action responses | `define-router-utils/request-handler.tsx`                          |
-| Client action intent and stale-origin protection             | `client-core-utils/action-routing.ts`                              |
-| Fetch-time follows and render-time follow policy             | `client-core-utils/load.ts` and `client-core-utils/error-route.ts` |
-| Element/route/history commit in the standard binding         | `client-utils/navigation.ts` and `client-utils/router-state.ts`    |
-| Cached eager paints and response adoption                    | `client-utils/instant-navigation.ts`                               |
-| Rendered error handling and boundary resets                  | `client-utils/render-error.tsx` and `client.tsx`                   |
+| Responsibility                                                | File                                                               |
+| ------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Protocol IDs, RSC inputs, slot IDs, and metadata readers      | `isomorphic-utils/router-protocol.ts`                              |
+| Route resolution to elements and route metadata               | `define-router-utils/route-entries.ts`                             |
+| Request handling, redirects, not-found, and action responses  | `define-router-utils/request-handler.tsx`                          |
+| Client action intent and stale-origin protection              | `client-core-utils/action-routing.ts`                              |
+| Fetch-time follows and render-time follow policy              | `client-core-utils/load.ts` and `client-core-utils/error-route.ts` |
+| Element/route/history commit in the standard binding          | `client-utils/navigation.ts` and `client-utils/router-state.ts`    |
+| Cached eager paints and response adoption                     | `client-utils/instant-navigation.ts`                               |
+| Pinned slots, waiting values, and instant response settlement | `client-utils/instant-elements.ts`                                 |
+| Rendered error handling and boundary resets                   | `client-utils/render-error.tsx` and `client.tsx`                   |
 
 `packages/waku/tests/router-protocol.test.tsx` exercises server responses through
 Minimal's client and Router's public helpers, substituting only Flight
