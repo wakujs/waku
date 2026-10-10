@@ -24,7 +24,7 @@ export const buildMergePatch = (
   const rscRouteChanged = !isSameRscRoute(responseRoute, opts.settled);
   // A server action can merge newer values while this request waits.
   return combineElements({}, elements, {
-    unstable_filter: (key) =>
+    filter: (key) =>
       key === ROUTE_ID ||
       key === HAS404_ID ||
       key === IS_STATIC_ID ||

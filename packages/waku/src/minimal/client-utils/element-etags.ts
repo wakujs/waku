@@ -43,7 +43,7 @@ export const adoptElements = (data: Elements): Elements => {
   return elements;
 };
 
-export const copyElement = (
+const copyElement = (
   target: Record<string | symbol, unknown>,
   source: Elements,
   key: string | symbol,
@@ -60,15 +60,15 @@ export const copyElement = (
 /**
  * Returns a new record with the entries of `b` over those of `a`, keeping the
  * etags each value arrived with. Combine records with this rather than a
- * spread or `Object.assign`, which drop them. With `unstable_filter`, only the
+ * spread or `Object.assign`, which drop them. With `filter`, only the
  * keys of `b` it accepts are taken.
  */
 export const combineElements = (
   a: Elements,
   b: Elements,
-  options?: { unstable_filter?: (key: string | symbol) => boolean },
+  options?: { filter?: (key: string | symbol) => boolean },
 ): Elements => {
-  const filter = options?.unstable_filter;
+  const filter = options?.filter;
   const combined: Record<string | symbol, unknown> = {};
   for (const key of Reflect.ownKeys(a)) {
     copyElement(combined, a, key);

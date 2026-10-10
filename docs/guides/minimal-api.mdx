@@ -56,12 +56,12 @@ implementation modules.
 
 Advanced composition APIs remain available to any Minimal-based framework:
 
-- `unstable_combineElements(a, b, { unstable_filter })` selects keys from `b`
+- `unstable_combineElements(a, b, { filter })` selects keys from `b`
   while preserving their validators.
 - `unstable_isImmutableElement(elements, slotId)` inspects a slot's immutable
   status without exposing its validator.
-- `useMergeElements_UNSTABLE` accepts `unstable_overlay` and `unstable_swr`
-  options for eager rendering while a response streams.
+- `useMergeElements_UNSTABLE` accepts a merge callback for custom updates to
+  the Root's queued element promise.
 - `unstable_buildElements`, `Unstable_ElementSource`, and
   `Unstable_BuiltElements` build payloads that omit slots the client already
   holds, using the etags supplied to `handleRequest`.
@@ -642,6 +642,40 @@ Important behavior:
 - Each slot's etag stays with the element map Minimal made it in. Passing a map as `unstable_base` to `fetchRsc` sends its etags, so the server can skip the slots it holds. A map made by `combineElements` keeps them; a copy made with a spread or `Object.assign` does not.
 - If you return only `InnerApp`, previously rendered elements such as `App` stay mounted.
 - If the refetch fails, the existing element map stays in place.
+
+#### Custom Merges
+
+The optional second argument to `mergeElements` chooses the Root's next element
+promise. It receives the latest queued promise, including updates that have not
+rendered yet, and the incoming payload promise:
+
+```tsx
+mergeElements(response, (previous, incoming) =>
+  Promise.all([previous, incoming]).then(([current, received]) =>
+    combineElements(current, combineElements(received, clientElements)),
+  ),
+);
+```
+
+Return `previous` directly to leave the Root unchanged without introducing a
+pending promise. The callback must be pure; React can replay it with a different
+queued predecessor. Minimal reuses its result when the predecessor is the same.
+
+The incoming promise passed to the callback recovers a failed payload to an
+empty record. The promise returned by `mergeElements` is the original payload
+promise, so callers can handle its rejection. It does not wait for the custom
+merge or for React to render the update. To apply client entries only on success,
+transform the response before merging:
+
+```tsx
+mergeElements(
+  response.then((received) => combineElements(received, clientElements)),
+);
+```
+
+Use `combineElements` when retaining server entries so their etags follow their
+values. Minimal does not impose an eager rendering or stale-while-revalidate
+policy; Waku Router implements instant navigation with the merge callback.
 
 #### Development Reloads
 

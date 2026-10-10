@@ -116,16 +116,13 @@ const testHoisted = vi.hoisted(() => ({
     async (..._args: unknown[]): Promise<Record<string, unknown>> => ({}),
   ),
   mergeTypes: [] as Array<'sync' | 'async' | 'swr'>,
-  mergeOptions: [] as Array<
-    | {
-        unstable_overlay?: Record<string, unknown>;
-        unstable_swr?: {
-          pin: (key: string | symbol) => boolean;
-          base?: Record<string, unknown>;
-        };
-      }
-    | undefined
-  >,
+  instantMerges: [] as Array<{
+    pin: (key: string | symbol) => boolean;
+    base?: Record<string | symbol, unknown>;
+    overlay?: Record<string | symbol, unknown>;
+  }>,
+  useMergeInstantElements:
+    null as unknown as typeof import('../src/router/client-utils/instant-elements.js').useMergeInstantElements,
   onMerge: null as (() => void) | null,
   // a Root's stable fetch; each test gets a new one, and so a new router cache
   fetchRsc: null as unknown as ReturnType<typeof vi.fn>,
@@ -195,11 +192,6 @@ type RefetchInner = (
     signal?: AbortSignal;
     onBuildIdMismatch?: () => void;
     unstable_base?: Record<string, unknown>;
-    unstable_overlay?: Record<string, unknown>;
-    unstable_swr?: {
-      pin: (key: string | symbol) => boolean;
-      base?: Record<string, unknown>;
-    };
   },
 ) => Promise<Record<string, unknown>>;
 type MockedRefetch = ReturnType<typeof vi.fn<RefetchInner>>;
@@ -267,8 +259,6 @@ vi.mock('react-server-dom-webpack/client', () => ({
   },
 }));
 
-// This hand models minimal's merge semantics; minimal-client.test.tsx holds
-// the tests that keep the model honest (see its overlay cases).
 vi.mock('../src/minimal/client-runtime.js', async () => {
   const actual = await vi.importActual<
     typeof import('../src/minimal/client-runtime.js')
@@ -314,9 +304,6 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
     return result;
   };
 
-  // A pinned key keeps the previous value: the eager pass held it instead of
-  // leaving a hole, and minimal's second pass only refreshes new and overlay
-  // keys. That staleness is real and the router has to plan for it.
   const chainSwrCache = new WeakMap<
     object,
     WeakMap<object, Promise<Record<string, unknown>>>
@@ -336,7 +323,7 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
     if (!merged) {
       merged = Promise.resolve(prev).then((prevRes) =>
         actual.unstable_combineElements(prevRes, result, {
-          unstable_filter: (key) =>
+          filter: (key) =>
             !(key in prevRes) || (!!overlay && key in overlay) || !pin(key),
         }),
       );
@@ -363,11 +350,6 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
     const storeRef = React.useRef<RootStore>(undefined);
     if (!storeRef.current) {
       storeRef.current = {
-        // synchronous merge of a value (route metadata with no fetch)
-        // both merges chain off the previous elements like the real
-        // client's setElements(prev => merge(prev, ...)). The result is
-        // cached per (prev, data) like minimal's merge helpers, so React
-        // rebasing the updater re-runs it idempotently.
         applySync: (data) => {
           testHoisted.onMerge?.();
           testHoisted.mergeTypes.push('sync');
@@ -379,8 +361,6 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
           testHoisted.mergeTypes.push('async');
           setElements((prev) => chainMerge(prev, dataPromise));
         },
-        // the swr response landing: minimal refreshes the keys the eager pass
-        // left as holes plus the overlay keys, and keeps the pinned ones
         applySwr: (result, overlay, pin) => {
           testHoisted.mergeTypes.push('swr');
           setElements((prev) => chainSwr(prev, result, overlay, pin));
@@ -411,43 +391,18 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
     object,
     (
       data: Record<string, unknown> | Promise<Record<string, unknown>>,
-      options?: {
-        unstable_overlay?: Record<string, unknown>;
-        unstable_swr?: { pin: (key: string | symbol) => boolean };
-      },
     ) => Promise<Record<string, unknown>>
   >();
   const useMockMergeElements = () => {
     const store = React.use(StoreContext);
     let fn = store && mergeByStore.get(store);
     if (!fn) {
-      fn = (data, options) => {
-        testHoisted.mergeOptions.push(options);
-        const overlay = options?.unstable_overlay;
-        const swr = options?.unstable_swr;
+      fn = (data) => {
         const dataPromise = Promise.resolve(data);
-        if (swr) {
-          if (overlay) {
-            store?.applySync(overlay);
-          }
-          dataPromise.then(
-            (result) => store?.applySwr(result, overlay, swr.pin),
-            () => {},
-          );
-          return dataPromise;
-        }
         if (data instanceof Promise || 'then' in data) {
-          store?.applyAsync(
-            dataPromise.then(
-              (result) =>
-                actual.unstable_combineElements(result, overlay ?? {}),
-              () => ({}),
-            ),
-          );
+          store?.applyAsync(dataPromise.catch(() => ({})));
         } else {
-          store?.applySync(
-            actual.unstable_combineElements(data, overlay ?? {}),
-          );
+          store?.applySync(data);
         }
         return dataPromise;
       };
@@ -456,6 +411,28 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
       }
     }
     return fn;
+  };
+
+  testHoisted.useMergeInstantElements = function useMockMergeInstantElements() {
+    const store = React.use(StoreContext);
+    return React.useCallback(
+      (response, pin, base, overlay) => {
+        testHoisted.instantMerges.push({
+          pin,
+          ...(base ? { base } : {}),
+          ...(overlay ? { overlay } : {}),
+        });
+        if (overlay) {
+          store?.applySync(overlay);
+        }
+        void response.then(
+          (result) => store?.applySwr(result, overlay, pin),
+          () => {},
+        );
+        return response;
+      },
+      [store],
+    );
   };
 
   const abortable = <T,>(promise: Promise<T>, signal?: AbortSignal) => {
@@ -552,6 +529,10 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
     useRegisterRscEnhancer_UNSTABLE: () => registerEnhancer,
   };
 });
+
+vi.mock('../src/router/client-utils/instant-elements.js', () => ({
+  useMergeInstantElements: () => testHoisted.useMergeInstantElements(),
+}));
 
 const renderApp = async (element: ReactElement) => {
   const container = document.createElement('div');
@@ -651,7 +632,7 @@ beforeEach(() => {
   delete (globalThis as Record<string, unknown>).__WAKU_PREFETCHED__;
   testHoisted.elements = {};
   testHoisted.mergeTypes.length = 0;
-  testHoisted.mergeOptions.length = 0;
+  testHoisted.instantMerges.length = 0;
   testHoisted.onMerge = null;
   // Fresh shared request mock per test. The mocked fetch wraps it, so its
   // implementation must stay intact (do not mockReset it).
@@ -4331,15 +4312,13 @@ describe('Router integration', () => {
     });
 
     expect(refetch).not.toHaveBeenCalled();
-    expect(testHoisted.mergeOptions).toContainEqual(
+    expect(testHoisted.instantMerges).toContainEqual(
       expect.objectContaining({
-        unstable_overlay: expect.objectContaining({
+        overlay: expect.objectContaining({
           [ROUTE_ID]: ['/next', ''],
         }),
-        unstable_swr: {
-          pin: expect.any(Function),
-          base: shell,
-        },
+        pin: expect.any(Function),
+        base: shell,
       }),
     );
 
@@ -5330,8 +5309,7 @@ describe('Router integration', () => {
       [freshSlotId]: IMMUTABLE_ETAG,
     });
     const swrBase =
-      testHoisted.mergeOptions.find((options) => options?.unstable_swr?.base)
-        ?.unstable_swr?.base ?? {};
+      testHoisted.instantMerges.find((merge) => merge.base)?.base ?? {};
     expect(collectEtags(swrBase)).toEqual({ [freshSlotId]: IMMUTABLE_ETAG });
 
     dateNow.mockRestore();

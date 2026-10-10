@@ -19,7 +19,7 @@ const useRefetch = () => {
       const isSlot = (key: string | symbol) => key === slotId;
       return mergeElements(
         fetchRsc(rscPath).then((next) =>
-          combineElements({}, next, { unstable_filter: isSlot }),
+          combineElements({}, next, { filter: isSlot }),
         ),
       );
     },
