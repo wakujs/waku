@@ -95,7 +95,7 @@ export const useActionRouting = ({
           return { ...result, elements: {} };
         }
         const elements = combineElements({}, result.elements, {
-          unstable_filter: (key) => key !== IS_ORIGIN_ID,
+          filter: (key) => key !== IS_ORIGIN_ID,
         });
         handleActionElements(elements);
         return { ...result, elements };

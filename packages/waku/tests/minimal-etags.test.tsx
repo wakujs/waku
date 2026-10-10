@@ -192,7 +192,7 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
 
     await fetchRsc('R/bar', undefined, {
       unstable_base: combineElements({}, first, {
-        unstable_filter: (key) => key === 'page',
+        filter: (key) => key === 'page',
       }),
     });
     expect(sentEtags()).toEqual({ page: 'etag-page' });
@@ -239,7 +239,7 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
     });
 
     const kept = combineElements(first, second, {
-      unstable_filter: () => false,
+      filter: () => false,
     });
 
     expect(collectEtags(kept)).toEqual({ content: 'v1' });

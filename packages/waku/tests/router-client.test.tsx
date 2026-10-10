@@ -323,7 +323,7 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
     if (!merged) {
       merged = Promise.resolve(prev).then((prevRes) =>
         actual.unstable_combineElements(prevRes, result, {
-          unstable_filter: (key) =>
+          filter: (key) =>
             !(key in prevRes) || (!!overlay && key in overlay) || !pin(key),
         }),
       );

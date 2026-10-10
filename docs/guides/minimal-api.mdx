@@ -56,7 +56,7 @@ implementation modules.
 
 Advanced composition APIs remain available to any Minimal-based framework:
 
-- `unstable_combineElements(a, b, { unstable_filter })` selects keys from `b`
+- `unstable_combineElements(a, b, { filter })` selects keys from `b`
   while preserving their validators.
 - `unstable_isImmutableElement(elements, slotId)` inspects a slot's immutable
   status without exposing its validator.

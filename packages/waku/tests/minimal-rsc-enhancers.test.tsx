@@ -314,6 +314,29 @@ test.each([false, true])(
   },
 );
 
+test('a development reload replaces server entries and retains omitted client symbols', async () => {
+  Object.defineProperty(import.meta, 'hot', { configurable: true, value: {} });
+  const CLIENT_STATE = Symbol();
+  const root = await mount('initial');
+  await act(async () => {
+    await root.merge({ obsolete: 'removed', [CLIENT_STATE]: 'retained' });
+  });
+  request.mockImplementation(async () =>
+    Response.json({ content: 'reloaded' }),
+  );
+
+  await act(async () => {
+    (
+      globalThis as { __WAKU_RSC_RELOAD_LISTENERS__?: (() => void)[] }
+    ).__WAKU_RSC_RELOAD_LISTENERS__?.at(-1)?.();
+  });
+
+  expect(root.container.textContent).toBe('reloaded');
+  const elements = await root.getElements();
+  expect('obsolete' in elements).toBe(false);
+  expect(elements[CLIENT_STATE]).toBe('retained');
+});
+
 test('a development reload keeps only the symbols the enhanced response omits', async () => {
   Object.defineProperty(import.meta, 'hot', { configurable: true, value: {} });
   const RETAINED = Symbol();

@@ -92,17 +92,10 @@ export {
 const mergeElementsPromise = (
   a: Promise<Elements>,
   b: Promise<Elements> | Elements,
+  filter?: (key: string | symbol, base: Elements) => boolean,
 ): Promise<Elements> =>
-  Promise.all([a, b]).then(([a, b]) => combineElements(a, b));
-
-const refreshElementsPromise = (
-  a: Promise<Elements>,
-  b: Promise<Elements>,
-): Promise<Elements> =>
-  Promise.all([a, b]).then(([aRes, bRes]) =>
-    combineElements(bRes, aRes, {
-      unstable_filter: (key) => typeof key === 'symbol' && !(key in bRes),
-    }),
+  Promise.all([a, b]).then(([a, b]) =>
+    combineElements(a, b, filter && { filter: (key) => filter(key, a) }),
   );
 
 type FetchRscElementsOptions = {
@@ -463,7 +456,13 @@ export const Root_UNSTABLE = ({
     const unregisterReload = import.meta.hot
       ? registerRootReload(store, () => {
           const data = fetchRootRsc(...initialInput, store);
-          store.setElements((prev) => refreshElementsPromise(prev, data));
+          store.setElements((prev) =>
+            mergeElementsPromise(
+              data,
+              prev,
+              (key, base) => typeof key === 'symbol' && !(key in base),
+            ),
+          );
         })
       : undefined;
     return () => {

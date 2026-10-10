@@ -24,8 +24,7 @@ export const useMergeInstantElements = () => {
         const merged = Promise.resolve(previous).then((current) => {
           const available = base
             ? combineElements(current, base, {
-                unstable_filter: (key) =>
-                  typeof key === 'string' && !(key in current),
+                filter: (key) => typeof key === 'string' && !(key in current),
               })
             : current;
           const holes: Record<string | symbol, unknown> = {};
@@ -70,7 +69,7 @@ export const useMergeInstantElements = () => {
           }
           return previous.then((current) =>
             combineElements(current, resolved, {
-              unstable_filter: (key) =>
+              filter: (key) =>
                 typeof key === 'string' && shouldMerge(current, key),
             }),
           );
