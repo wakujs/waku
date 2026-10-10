@@ -881,6 +881,43 @@ describe('instant element settlement', () => {
     view.unmount();
   });
 
+  test('inherited overlay keys do not replace pinned slots', async () => {
+    const view = await renderRoot(
+      {
+        toString: 'pinned',
+        page: 'before',
+        [ETAGS_ID]: { toString: IMMUTABLE_ETAG },
+      },
+      <>
+        <Slot id="toString" />
+        <Slot id="page" />
+      </>,
+    );
+    const payload = Promise.withResolvers<Record<string, unknown>>();
+
+    await act(async () => {
+      void view.merge(payload.promise, (key) => key === 'toString', undefined, {
+        page: 'loading',
+      });
+    });
+    expect(view.container.textContent).toBe('pinnedloading');
+
+    await act(async () => {
+      payload.resolve(
+        adoptElements({
+          toString: 'fresh',
+          page: 'after',
+          [ETAGS_ID]: { toString: 'v2' },
+        }),
+      );
+      await payload.promise;
+    });
+
+    expect(view.container.textContent).toBe('pinnedafter');
+    expect(getDefaultRootStore()?.etags).toEqual({ toString: IMMUTABLE_ETAG });
+    view.unmount();
+  });
+
   test("an overlay's client-only symbol key keeps its value when the payload lands", async () => {
     const state = Symbol('state');
     const State = () => {

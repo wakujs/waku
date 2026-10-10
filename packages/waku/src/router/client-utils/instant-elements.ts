@@ -59,7 +59,7 @@ export const useMergeInstantElements = () => {
             return previous;
           }
           const shouldMerge = (current: Elements, key: string) =>
-            !(key in current) || !!(overlay && key in overlay);
+            !(key in current) || !!(overlay && Object.hasOwn(overlay, key));
           const current = mergeResults.get(previous);
           if (
             current &&
