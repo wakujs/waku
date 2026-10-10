@@ -92,11 +92,8 @@ export {
 const mergeElementsPromise = (
   a: Promise<Elements>,
   b: Promise<Elements> | Elements,
-  filter?: (key: string | symbol, base: Elements) => boolean,
 ): Promise<Elements> =>
-  Promise.all([a, b]).then(([a, b]) =>
-    combineElements(a, b, filter && { filter: (key) => filter(key, a) }),
-  );
+  Promise.all([a, b]).then(([a, b]) => combineElements(a, b));
 
 type FetchRscElementsOptions = {
   type?: 'rsc' | 'call';
@@ -388,7 +385,7 @@ export const useMergeElements_UNSTABLE = () => {
       }
       const elements = Promise.resolve(data);
       const recovered = elements.catch(() => ({}));
-      store.setElements((previous) => merge(previous, recovered));
+      store.setElements((prev) => merge(prev, recovered));
       return elements;
     },
     [store],
@@ -434,11 +431,11 @@ export const Root_UNSTABLE = ({
     const store: RootStore = {
       setElements: (update) => {
         const results = new WeakMap<Promise<Elements>, Promise<Elements>>();
-        setElements((previous) => {
-          let next = results.get(previous);
+        setElements((prev) => {
+          let next = results.get(prev);
           if (!next) {
-            next = update(previous);
-            results.set(previous, next);
+            next = update(prev);
+            results.set(prev, next);
           }
           return next;
         });
@@ -457,10 +454,10 @@ export const Root_UNSTABLE = ({
       ? registerRootReload(store, () => {
           const data = fetchRootRsc(...initialInput, store);
           store.setElements((prev) =>
-            mergeElementsPromise(
-              data,
-              prev,
-              (key, base) => typeof key === 'symbol' && !(key in base),
+            Promise.all([prev, data]).then(([prev, incoming]) =>
+              combineElements(incoming, prev, {
+                filter: (key) => typeof key === 'symbol' && !(key in incoming),
+              }),
             ),
           );
         })
