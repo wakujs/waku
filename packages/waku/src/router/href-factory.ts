@@ -20,8 +20,7 @@ type HrefTarget<Path extends string, Search> = {
         };
       });
 
-/** Builds href strings with locally inferred params and optional search. */
-export type Unstable_RouteHrefFactory<
+type RouteHrefFactory<
   Path extends string,
   Search extends Record<string, unknown> = never,
 > = {
@@ -51,7 +50,8 @@ export type Unstable_RouteHrefFactory<
  * target.
  *
  * @example
- * const product = unstable_createRouteHref({ path: '/products/[id]', search: codec });
+ * import { unstable_createRouteHref as createRouteHref } from 'waku/router';
+ * const product = createRouteHref({ path: '/products/[id]', search: codec });
  * const href = product({ params: { id: '42' }, search: { page: 2 } });
  * // <Link to={href}>Product</Link>
  */
@@ -66,10 +66,7 @@ export function unstable_createRouteHref<
   search?: Unstable_SearchCodec<Search>;
 } & ([Search] extends [never]
   ? unknown
-  : { search: Unstable_SearchCodec<Search> })): Unstable_RouteHrefFactory<
-  Path,
-  Search
-> {
+  : { search: Unstable_SearchCodec<Search> })): RouteHrefFactory<Path, Search> {
   const factory = Object.assign(
     (target?: HrefTarget<Path, Search>) => {
       const pathname = buildRouteHref(path, target?.params);
@@ -87,5 +84,5 @@ export function unstable_createRouteHref<
     },
     { path, searchCodec: search },
   );
-  return factory as unknown as Unstable_RouteHrefFactory<Path, Search>;
+  return factory as unknown as RouteHrefFactory<Path, Search>;
 }

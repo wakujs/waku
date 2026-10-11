@@ -187,9 +187,9 @@ raw hrefs or strings constructed from known route patterns. Use a literal,
 a [local href factory](/guides/typed-routes), or a matching template-literal type:
 
 ```tsx
-import { unstable_createRouteHref } from 'waku/router';
+import { unstable_createRouteHref as createRouteHref } from 'waku/router';
 
-const blogPost = unstable_createRouteHref({ path: '/blog/[slug]' });
+const blogPost = createRouteHref({ path: '/blog/[slug]' });
 
 <Link to="/about">About</Link>;
 <Link to={blogPost({ params: { slug } })}>{title}</Link>;
@@ -200,11 +200,13 @@ Factory results carry type-only pattern provenance, not proof that a slug is
 among the generated static paths. Keep their inferred type: widening a result
 to `string` discards that evidence.
 
-For a component whose target is genuinely dynamic, use
+For a reusable link wrapper, type its `to` prop as
 `ComponentProps<typeof Link>['to']` or `Unstable_RouteHref` from
-`waku/router/client-core`. Where the href comes
-from user input — a login `callbackUrl`, say — the type error is doing you a
-favour: check it against the routes you mean to allow before you cast.
+`waku/router/client-core`. These preserve generated route checks; they do not
+accept arbitrary strings. For a runtime-only destination such as a login
+`callbackUrl`, validate it against an application allowlist before asserting
+`href as ComponentProps<typeof Link>['to']`. An assertion performs no runtime
+validation.
 `nextjs-dashboard` follows a callback only to a same-origin path under
 `/dashboard`.
 

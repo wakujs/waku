@@ -17,7 +17,6 @@ export type {
 } from './create-pages-utils/inferred-path-types.js';
 export type { Unstable_SearchCodec } from './isomorphic-utils/search-codec.js';
 export { unstable_createRouteHref } from './href-factory.js';
-export type { Unstable_RouteHrefFactory } from './href-factory.js';
 
 export interface RouteConfig {
   // routes to be overridden by users

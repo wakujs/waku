@@ -59,9 +59,9 @@ export const DashboardButton = () => {
 `router.prefetch()` accepts the same URL strings as `router.push()`. Use a local href factory for typed params and search:
 
 ```tsx
-import { unstable_createRouteHref } from 'waku/router';
+import { unstable_createRouteHref as createRouteHref } from 'waku/router';
 
-const post = unstable_createRouteHref({ path: '/posts/[slug]' });
+const post = createRouteHref({ path: '/posts/[slug]' });
 
 router.prefetch(post({ params: { slug } }));
 ```

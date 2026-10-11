@@ -25,7 +25,7 @@ type SearchRoute<
  * Parse the current RouterHost query with a local route's codec. Returns null
  * for a different path; codec errors propagate to the render boundary. The
  * result is memoized by path, codec and query. Generated route types reject
- * unknown patterns; route groups are ignored. No codec provider is needed.
+ * unknown patterns; route groups are ignored.
  */
 export function useSearch_UNSTABLE<
   const Path extends string,

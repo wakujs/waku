@@ -19,11 +19,11 @@ Define a factory in a module that both Server and Client Components can import:
 
 ```ts
 // ./src/lib/routes.ts
-import { unstable_createRouteHref } from 'waku/router';
+import { unstable_createRouteHref as createRouteHref } from 'waku/router';
 
-export const post = unstable_createRouteHref({ path: '/posts/[slug]' });
-export const docs = unstable_createRouteHref({ path: '/docs/[...path]' });
-export const home = unstable_createRouteHref({ path: '/' });
+export const post = createRouteHref({ path: '/posts/[slug]' });
+export const docs = createRouteHref({ path: '/docs/[...path]' });
+export const home = createRouteHref({ path: '/' });
 ```
 
 Call it to encode params and optionally append a fragment:
@@ -137,10 +137,10 @@ export const productSearchCodec = {
 
 ```ts
 // ./src/lib/routes.ts
-import { unstable_createRouteHref } from 'waku/router';
+import { unstable_createRouteHref as createRouteHref } from 'waku/router';
 import { productSearchCodec } from './search';
 
-export const product = unstable_createRouteHref({
+export const product = createRouteHref({
   path: '/products/[id]',
   search: productSearchCodec,
 });
@@ -286,9 +286,9 @@ The typed-navigation API changes are breaking, including for unstable exports.
 1. Replace structured `to` targets with a local factory call. Pass its string result to `Link`, `push`, `replace`, `prefetch`, or `unstable_redirect`:
 
    ```tsx
-   import { unstable_createRouteHref } from 'waku/router';
+   import { unstable_createRouteHref as createRouteHref } from 'waku/router';
 
-   const post = unstable_createRouteHref({ path: '/posts/[slug]' });
+   const post = createRouteHref({ path: '/posts/[slug]' });
 
    <Link to={post({ params: { slug } })}>Post</Link>;
    router.push(post({ params: { slug } }));

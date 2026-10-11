@@ -1,10 +1,7 @@
 import type { TypeEqual } from 'ts-expect';
 import { expectType } from 'ts-expect';
 import { unstable_createRouteHref } from 'waku/router';
-import type {
-  SearchCodecsConfig,
-  Unstable_RouteHrefFactory,
-} from 'waku/router';
+import type { SearchCodecsConfig } from 'waku/router';
 import {
   Link,
   useRouter,
@@ -40,8 +37,12 @@ const localSearch = unstable_createRouteHref({
 expectType<TypeEqual<keyof SearchCodecsConfig, '/products/[id]'>>(true);
 expectType<TypeEqual<typeof product.path, '/products/[id]'>>(true);
 expectType<TypeEqual<typeof product.searchCodec, typeof codec>>(true);
-expectType<Unstable_RouteHrefFactory<'/products/[id]', Search>>(product);
-expectType<Unstable_RouteHrefFactory<'/products/[id]'>>(paramsOnly);
+expectType<
+  ReturnType<typeof unstable_createRouteHref<'/products/[id]', Search>>
+>(product);
+expectType<ReturnType<typeof unstable_createRouteHref<'/products/[id]'>>>(
+  paramsOnly,
+);
 expectType<ReturnType<typeof paramsOnly>>(product({ params: { id: '42' } }));
 expectType<ReturnType<typeof paramsOnly>>(grouped({ params: { id: '42' } }));
 expectType<string>(unknown({ params: { id: '42' } }));
