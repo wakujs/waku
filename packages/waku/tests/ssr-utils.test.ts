@@ -32,6 +32,7 @@ describe('createHtmlFallback', () => {
       entryUrl,
       {
         nonce: 'nonce"<&',
+        extraScriptContent: 'bootstrap.value = "</script><!--<script>";',
       },
     );
     expect(html).toContain('nonce="nonce&quot;&lt;&amp;"');
@@ -40,7 +41,9 @@ describe('createHtmlFallback', () => {
     const imports: string[] = [];
     const listeners = new Map<string, (event: unknown) => void>();
     const sessionStorage = { getItem: vi.fn(), setItem: vi.fn() };
+    const bootstrap = { value: '' };
     runInNewContext(script.replace(/import\(/g, 'captureImport('), {
+      bootstrap,
       captureImport: (url: string) => {
         imports.push(url);
         return Promise.resolve();
@@ -54,6 +57,7 @@ describe('createHtmlFallback', () => {
       sessionStorage,
     });
     expect(imports).toEqual([entryUrl]);
+    expect(bootstrap.value).toBe('</script><!--<script>');
     const preventDefault = vi.fn();
     listeners.get('vite:preloadError')!({ preventDefault });
     expect(sessionStorage.setItem).toHaveBeenCalledWith(

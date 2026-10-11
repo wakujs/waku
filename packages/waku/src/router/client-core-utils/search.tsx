@@ -1,7 +1,8 @@
-'use client';
-
 import { useCallback, useMemo } from 'react';
-import type { RoutePath } from '../isomorphic-utils/build-route-href.js';
+import type {
+  NormalizePath,
+  RoutePath,
+} from '../isomorphic-utils/build-route-href.js';
 import { matchRouteParams } from '../isomorphic-utils/match-route-params.js';
 import type { Unstable_SearchCodec } from '../isomorphic-utils/search-codec.js';
 import { useRouterHost } from './host.js';
@@ -12,26 +13,31 @@ type SetSearch<Search> = (
   options?: { history?: 'push' | 'replace'; scroll?: boolean },
 ) => Promise<void>;
 
-type SearchRoute<Search extends Record<string, unknown>> = {
-  path: string;
+type SearchRoute<
+  Path extends string,
+  Search extends Record<string, unknown>,
+> = {
+  path: NormalizePath<Path> extends NormalizePath<RoutePath> ? Path : never;
   searchCodec: Unstable_SearchCodec<Search>;
 };
 
 /**
  * Parse the current RouterHost query with a local route's codec. Returns null
  * for a different path; codec errors propagate to the render boundary. The
- * result is memoized by route and query. No codec provider is needed.
+ * result is memoized by path, codec and query. Generated route types reject
+ * unknown patterns; route groups are ignored. No codec provider is needed.
  */
-export function useSearch_UNSTABLE<Search extends Record<string, unknown>>(
-  from: SearchRoute<Search>,
-): Search | null {
+export function useSearch_UNSTABLE<
+  const Path extends string,
+  Search extends Record<string, unknown>,
+>({ path, searchCodec }: SearchRoute<Path, Search>): Search | null {
   const { route } = useRouterHost();
   return useMemo(
     () =>
-      matchRouteParams(from.path as RoutePath, route.path) === null
+      matchRouteParams(path as RoutePath, route.path) === null
         ? null
-        : from.searchCodec.parse(route.query),
-    [from, route.path, route.query],
+        : searchCodec.parse(route.query),
+    [path, searchCodec, route.path, route.query],
   );
 }
 
@@ -42,20 +48,21 @@ export function useSearch_UNSTABLE<Search extends Record<string, unknown>>(
  * A mismatched path is a no-op. Codec and navigation errors reject the promise.
  * Outbound validation belongs in `serialize`; only the current query is parsed.
  */
-export function useSetSearch_UNSTABLE<Search extends Record<string, unknown>>(
-  from: SearchRoute<Search>,
-): SetSearch<Search> {
+export function useSetSearch_UNSTABLE<
+  const Path extends string,
+  Search extends Record<string, unknown>,
+>({ path, searchCodec }: SearchRoute<Path, Search>): SetSearch<Search> {
   const { route, navigate } = useRouterHost();
   return useCallback<SetSearch<Search>>(
     async (update, options) => {
-      if (matchRouteParams(from.path as RoutePath, route.path) === null) {
+      if (matchRouteParams(path as RoutePath, route.path) === null) {
         return;
       }
-      const prev = from.searchCodec.parse(route.query);
+      const prev = searchCodec.parse(route.query);
       const partial = typeof update === 'function' ? update(prev) : update;
       const nextUrl = getRouteUrl({
         path: route.path,
-        query: from.searchCodec.serialize({ ...prev, ...partial }),
+        query: searchCodec.serialize({ ...prev, ...partial }),
         hash: route.hash,
       });
       await navigate(`${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`, {
@@ -63,6 +70,6 @@ export function useSetSearch_UNSTABLE<Search extends Record<string, unknown>>(
         scroll: options?.scroll ?? false,
       });
     },
-    [from, route.path, route.query, route.hash, navigate],
+    [path, searchCodec, route.path, route.query, route.hash, navigate],
   );
 }

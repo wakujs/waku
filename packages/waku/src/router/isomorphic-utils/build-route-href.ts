@@ -27,7 +27,7 @@ export type RouteHref = RouteConfig extends {
 
 declare const constructedHref: unique symbol;
 
-type NormalizePath<
+export type NormalizePath<
   Path extends string,
   Prefix extends string = '',
 > = string extends Path

@@ -178,8 +178,8 @@ const toProcessBuild =
           typeof body === 'string' ? stringToStream(body) : body,
         );
       },
-      generateDefaultHtml: async (fileName) => {
-        const response = await renderUtils.renderHtmlFallback();
+      generateDefaultHtml: async (fileName, options) => {
+        const response = await renderUtils.renderHtmlFallback(options);
         await emitFile(getPublicFilePath(fileName), response.body!);
       },
       unstable_registerPrunableFile,

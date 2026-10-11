@@ -770,7 +770,8 @@ describe('router/client utilities', () => {
         },
       },
     };
-    let setSearch: ReturnType<typeof useSetSearch<{ tab: string }>> | undefined;
+    let setSearch:
+      ReturnType<typeof useSetSearch<string, { tab: string }>> | undefined;
     const Probe = () => {
       setSearch = useSetSearch(descriptor);
       return null;

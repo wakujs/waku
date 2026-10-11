@@ -120,11 +120,13 @@ export const createHtmlFallback = async (
   entryUrl: string,
   options?: {
     nonce?: string | undefined;
+    extraScriptContent?: string | undefined;
   },
 ) => {
   const script =
     getBootstrapPreamble({ hydrate: false, initialRsc: false }) +
-    createBootstrapScriptContent(entryUrl);
+    createBootstrapScriptContent(entryUrl) +
+    (options?.extraScriptContent || '');
   const stream = await renderToReadableStream(
     createElement('script', { nonce: options?.nonce }, script),
   );

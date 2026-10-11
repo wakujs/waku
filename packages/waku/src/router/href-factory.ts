@@ -1,6 +1,7 @@
 import type { RouteParams } from './create-pages-utils/inferred-path-types.js';
 import {
   type ConstructedHref,
+  type NormalizePath,
   buildRouteHref,
 } from './isomorphic-utils/build-route-href.js';
 import type { Unstable_SearchCodec } from './isomorphic-utils/search-codec.js';
@@ -35,22 +36,22 @@ type HrefPath<
   : Path extends `${infer Segment}/${infer Rest}`
     ? HrefPath<
         Rest,
-        Segment extends '' | `(${string}`
+        Segment extends ''
           ? Prefix
           : Segment extends `${string}[...${string}]${string}`
             ? Prefix | `${Prefix}/${string}`
             : `${Prefix}/${HrefSegment<Segment>}`
       >
-    : Path extends '' | `(${string}`
+    : Path extends ''
       ? Prefix extends ''
         ? '/'
         : Prefix
       : `${Prefix}/${HrefSegment<Path>}`;
 
 type Href<Path extends string> =
-  | HrefPath<Path>
-  | `${HrefPath<Path>}?${string}`
-  | `${HrefPath<Path>}#${string}`;
+  | HrefPath<NormalizePath<Path>>
+  | `${HrefPath<NormalizePath<Path>>}?${string}`
+  | `${HrefPath<NormalizePath<Path>>}#${string}`;
 
 /** Builds href strings with locally inferred params and optional search. */
 export type Unstable_RouteHrefFactory<

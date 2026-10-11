@@ -12,11 +12,3 @@ export type Unstable_SearchCodec<Search extends Record<string, unknown>> = {
   parse: (query: string) => Search;
   serialize: (search: Search) => string;
 };
-
-export type AnyCodec = Unstable_SearchCodec<any>;
-
-export const isCodec = (value: unknown): value is AnyCodec =>
-  typeof value === 'object' &&
-  value !== null &&
-  typeof (value as AnyCodec).parse === 'function' &&
-  typeof (value as AnyCodec).serialize === 'function';

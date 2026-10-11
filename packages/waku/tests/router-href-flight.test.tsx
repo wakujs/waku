@@ -32,6 +32,7 @@ test('Flight composes the public Link reference with plain and eager href props'
     process.execPath,
     [
       '--conditions=react-server',
+      '--experimental-strip-types',
       fileURLToPath(
         new URL('./fixtures/router-href-flight/render.mjs', import.meta.url),
       ),

@@ -55,7 +55,6 @@ describe('waku/router/client-core surface', () => {
       'unstable_getRouteUrl',
       'unstable_getSliceSlotId',
       'unstable_has404FromElements',
-      'unstable_isCodec',
       'unstable_isFollowable',
       'unstable_isRouteSlotId',
       'unstable_isSameRoute',

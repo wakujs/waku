@@ -22,6 +22,7 @@ import {
 import { unstable_createRouteHref } from '../src/router/href-factory.js';
 
 type Search = { page: number; tag: string };
+type SetSearch = ReturnType<typeof useSetSearch_UNSTABLE<string, Search>>;
 
 const codec = {
   parse: (query: string): Search => {
@@ -236,6 +237,57 @@ afterAll(() => {
 });
 
 describe('typed search over RouterHost', () => {
+  test('memoizes inline descriptors by path and codec', async () => {
+    const parse = vi.fn(codec.parse);
+    const searchCodec = { ...codec, parse };
+    const host: RouterHost = {
+      route: { path: '/products/42', query: 'page=2', hash: '' },
+      navigate: vi.fn<RouterHost['navigate']>().mockResolvedValue(),
+    };
+    let search: Search | null = null;
+    let setSearch!: SetSearch;
+    const Probe = ({ codec = searchCodec }) => {
+      search = useSearch_UNSTABLE({
+        path: '/products/[id]',
+        searchCodec: codec,
+      });
+      setSearch = useSetSearch_UNSTABLE({
+        path: '/products/[id]',
+        searchCodec: codec,
+      });
+      return null;
+    };
+    const rerender = await render(
+      <RouterHostContext value={host}>
+        <Probe />
+      </RouterHostContext>,
+    );
+    const firstSearch = search;
+    const firstSetter = setSearch;
+    await rerender(
+      <RouterHostContext value={host}>
+        <Probe />
+      </RouterHostContext>,
+    );
+    expect(search).toBe(firstSearch);
+    expect(setSearch).toBe(firstSetter);
+    expect(parse).toHaveBeenCalledExactlyOnceWith('page=2');
+
+    const nextCodec = { ...codec, parse: vi.fn(() => ({ page: 3, tag: '' })) };
+    await rerender(
+      <RouterHostContext value={host}>
+        <Probe codec={nextCodec} />
+      </RouterHostContext>,
+    );
+    expect(search).toEqual({ page: 3, tag: '' });
+    expect(setSearch).not.toBe(firstSetter);
+    await setSearch({ tag: 'next' });
+    expect(host.navigate).toHaveBeenCalledWith(
+      '/base/products/42?page=3&tag=next',
+      { history: 'push', scroll: false },
+    );
+  });
+
   test('updates a structural route descriptor without rebuilding the path', async () => {
     const parse = vi.fn(codec.parse);
     const serialize = vi.fn(() => 'tag=a%20b');
@@ -245,7 +297,7 @@ describe('typed search over RouterHost', () => {
     };
     const navigate = vi.fn<RouterHost['navigate']>().mockResolvedValue();
     let search: Search | null = null;
-    let setSearch!: ReturnType<typeof useSetSearch_UNSTABLE<Search>>;
+    let setSearch!: SetSearch;
     const Probe = () => {
       search = useSearch_UNSTABLE(route);
       setSearch = useSetSearch_UNSTABLE(route);
@@ -283,7 +335,7 @@ describe('typed search over RouterHost', () => {
       navigate,
     };
     let search: Search | null = null;
-    let setSearch!: ReturnType<typeof useSetSearch_UNSTABLE<Search>>;
+    let setSearch!: SetSearch;
     const Probe = () => {
       search = useSearch_UNSTABLE(product);
       setSearch = useSetSearch_UNSTABLE(product);
@@ -326,7 +378,7 @@ describe('typed search over RouterHost', () => {
     });
     const navigate = vi.fn<RouterHost['navigate']>().mockResolvedValue();
     let search: Search | null = null;
-    let setSearch!: ReturnType<typeof useSetSearch_UNSTABLE<Search>>;
+    let setSearch!: SetSearch;
     const Probe = () => {
       search = useSearch_UNSTABLE(route);
       setSearch = useSetSearch_UNSTABLE(route);
@@ -364,7 +416,7 @@ describe('typed search over RouterHost', () => {
       },
     });
     const navigate = vi.fn<RouterHost['navigate']>().mockResolvedValue();
-    let setSearch!: ReturnType<typeof useSetSearch_UNSTABLE<Search>>;
+    let setSearch!: SetSearch;
     const Probe = () => {
       setSearch = useSetSearch_UNSTABLE(strictProduct);
       return null;
@@ -392,7 +444,7 @@ describe('typed search over RouterHost', () => {
       search: { ...codec, parse },
     });
     const navigate = vi.fn<RouterHost['navigate']>().mockResolvedValue();
-    let setSearch!: ReturnType<typeof useSetSearch_UNSTABLE<Search>>;
+    let setSearch!: SetSearch;
     const Probe = () => {
       setSearch = useSetSearch_UNSTABLE(route);
       return null;
@@ -417,7 +469,7 @@ describe('typed search over RouterHost', () => {
 
   test('isolates sibling hosts without a codec provider', async () => {
     const searches: (Search | null)[] = [];
-    const setters: ReturnType<typeof useSetSearch_UNSTABLE<Search>>[] = [];
+    const setters: SetSearch[] = [];
     const Probe = ({ index }: { index: number }) => {
       searches[index] = useSearch_UNSTABLE(product);
       setters[index] = useSetSearch_UNSTABLE(product);

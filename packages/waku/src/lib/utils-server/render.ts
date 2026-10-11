@@ -104,6 +104,7 @@ export function createRenderUtils({
         await loadSsrEntryModule();
       const html = await renderHtmlFallback({
         nonce: options?.nonce,
+        extraScriptContent: options?.unstable_extraScriptContent,
       });
       return new Response(html, {
         headers: { 'content-type': 'text/html; charset=utf-8' },

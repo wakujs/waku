@@ -7,7 +7,7 @@ import {
 } from 'waku/router/client-core';
 import { spikeSearchCodec } from '../lib/search.js';
 
-const searchRoute = { path: '/search', searchCodec: spikeSearchCodec };
+const searchRoute = { path: '/search', searchCodec: spikeSearchCodec } as const;
 
 export const SearchProbe = () => {
   const { route } = useRouterHost();

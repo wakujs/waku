@@ -239,7 +239,7 @@ export const Pager = () => {
 };
 ```
 
-Both hooks also accept a `{ path, searchCodec }` descriptor. They infer search from the supplied codec, not from `SearchCodecsConfig`.
+Both hooks also accept a `{ path, searchCodec }` descriptor. They infer search from the supplied codec, not from `SearchCodecsConfig`. Generated route types reject unknown patterns, ignoring route groups. Pass descriptors inline or preserve a named descriptor's literal path with `as const`.
 
 - `useSearch` returns the parsed search, or `null` for a different pathname.
 - The setter is a no-op for a different pathname. Otherwise, it parses the current query, shallow-merges a partial value or updater result, serializes, and navigates.
@@ -298,6 +298,4 @@ The typed-navigation API changes are breaking, including for unstable exports.
 
 4. Remove `getSearchCodecs` from `unstable_defineRouter`. Keep the shared codec wherever the resolver parses incoming queries. Generated or manual `SearchCodecsConfig` mappings remain for `PageProps.search`, not client navigation.
 
-5. Replace `unstable_buildRouteHref` from `waku/router/client-core` with `unstable_createRouteHref` from `waku/router`. The factory takes the codec directly and needs no resolver callback.
-
-6. For Minimal integrations, remove `unstable_extraScriptContent` from `renderHtmlFallback` and the second options argument from `generateDefaultHtml`. Runtime `renderHtmlFallback({ nonce })` remains available for CSP. The separate `renderHtml` extra-script option remains available for bootstrap code such as Router prefetching.
+5. Replace `unstable_buildRouteHref` from `waku/router/client-core` with `unstable_createRouteHref` from `waku/router`. The factory takes the codec directly and needs no resolver callback. The provider helpers `unstable_isCodec` and `Unstable_AnyCodec` are removed; use the `Unstable_SearchCodec<Search>` contract for a known search type.

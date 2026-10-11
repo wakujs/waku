@@ -179,5 +179,24 @@ export function FactorySearchProbe() {
   useSearch_UNSTABLE(paramsOnly);
   // @ts-expect-error parameter-only factories have no codec to update search
   useSetSearch_UNSTABLE(paramsOnly);
+  const groupedSearch = unstable_createRouteHref({
+    path: '/(shop)/(catalog)/products/[id]',
+    search: codec,
+  });
+  expectType<Search | null>(useSearch_UNSTABLE(groupedSearch));
+  useSetSearch_UNSTABLE(groupedSearch);
+  expectType<Search | null>(
+    useSearch_UNSTABLE({ path: '/products/[id]', searchCodec: codec }),
+  );
+  useSetSearch_UNSTABLE({ path: '/products/[id]', searchCodec: codec });
+  const typo = unstable_createRouteHref({ path: '/serach', search: codec });
+  // @ts-expect-error search readers reject unknown factory patterns
+  useSearch_UNSTABLE(typo);
+  // @ts-expect-error search setters reject unknown factory patterns
+  useSetSearch_UNSTABLE(typo);
+  // @ts-expect-error search readers reject unknown descriptor patterns
+  useSearch_UNSTABLE({ path: '/serach', searchCodec: codec });
+  // @ts-expect-error search setters reject unknown descriptor patterns
+  useSetSearch_UNSTABLE({ path: '/serach', searchCodec: codec });
   return null;
 }

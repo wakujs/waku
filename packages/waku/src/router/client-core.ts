@@ -95,8 +95,4 @@ export {
 } from './isomorphic-utils/route-path.js';
 export type { RouteProps as Unstable_RouteProps } from './isomorphic-utils/route-path.js';
 
-export { isCodec as unstable_isCodec } from './isomorphic-utils/search-codec.js';
-export type {
-  AnyCodec as Unstable_AnyCodec,
-  Unstable_SearchCodec,
-} from './isomorphic-utils/search-codec.js';
+export type { Unstable_SearchCodec } from './isomorphic-utils/search-codec.js';

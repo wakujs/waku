@@ -22,8 +22,9 @@ const makeRenderUtils = () => {
 describe('createRenderUtils', () => {
   test('renders fallback documents with independent request nonces', async () => {
     const renderToReadableStream = vi.fn(() => new ReadableStream());
-    const renderHtmlFallback = vi.fn(async (options?: { nonce?: string }) =>
-      createHtmlFallback('<html><body></body></html>', '/entry.js', options),
+    const renderHtmlFallback = vi.fn(
+      async (options?: Parameters<typeof createHtmlFallback>[2]) =>
+        createHtmlFallback('<html><body></body></html>', '/entry.js', options),
     );
     const renderUtils = createRenderUtils({
       temporaryReferences: undefined,
@@ -37,16 +38,20 @@ describe('createRenderUtils', () => {
     });
     const first = await renderUtils.renderHtmlFallback({
       nonce: 'first-nonce',
+      unstable_extraScriptContent: 'globalThis.customBootstrap = true;',
     });
     const second = await renderUtils.renderHtmlFallback({
       nonce: 'second-nonce',
     });
     const plain = await renderUtils.renderHtmlFallback();
     expect(first.headers.get('content-type')).toBe('text/html; charset=utf-8');
-    expect(await first.text()).toContain('nonce="first-nonce"');
+    const firstHtml = await first.text();
+    expect(firstHtml).toContain('nonce="first-nonce"');
+    expect(firstHtml).toContain('globalThis.customBootstrap = true;');
     const secondHtml = await second.text();
     expect(secondHtml).toContain('nonce="second-nonce"');
     expect(secondHtml).not.toContain('first-nonce');
+    expect(secondHtml).not.toContain('customBootstrap');
     const plainHtml = await plain.text();
     expect(plainHtml).toContain('import("/entry.js");');
     expect(plainHtml).not.toContain('nonce=');
