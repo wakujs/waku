@@ -4,6 +4,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
+import * as router from '../src/router/base-types.js';
 import {
   MAX_FOLLOWS_PER_NAVIGATION,
   decideFollow,
@@ -22,19 +23,26 @@ const runtimeExportNames = (ns: object): string[] =>
     .filter((key): key is string => typeof key === 'string')
     .sort();
 
+describe('waku/router surface', () => {
+  test('exposes the href factory independently of client-core', () => {
+    expect(runtimeExportNames(router)).toEqual(['unstable_createRouteHref']);
+    expect(runtimeExportNames(clientCore)).not.toContain(
+      'unstable_createRouteHref',
+    );
+  });
+});
+
 describe('waku/router/client-core surface', () => {
   test('runtime export names are the frozen L1 surface', () => {
     expect(runtimeExportNames(clientCore)).toEqual([
       'ErrorBoundary_UNSTABLE',
       'RouterHostContext_UNSTABLE',
-      'SearchCodecsProvider_UNSTABLE',
       'Slice_UNSTABLE',
       'unstable_HAS404_ID',
       'unstable_IS_STATIC_ID',
       'unstable_MAX_FOLLOWS_PER_NAVIGATION',
       'unstable_ROUTE_ID',
       'unstable_buildMergePatch',
-      'unstable_buildRouteHref',
       'unstable_createRscParams',
       'unstable_decideFollow',
       'unstable_decodeRoutePath',
@@ -43,7 +51,6 @@ describe('waku/router/client-core surface', () => {
       'unstable_encodeSliceId',
       'unstable_getComponentIds',
       'unstable_getRouteFromElements',
-      'unstable_getRouteSearchCodecId',
       'unstable_getRouteSlotId',
       'unstable_getRouteUrl',
       'unstable_getSliceSlotId',
@@ -64,7 +71,6 @@ describe('waku/router/client-core surface', () => {
       'useInitialRoute_UNSTABLE',
       'useInitialRscParams_UNSTABLE',
       'useParams_UNSTABLE',
-      'useResolveSearchCodec_UNSTABLE',
       'useRouterCache_UNSTABLE',
       'useRouterHost_UNSTABLE',
       'useSearch_UNSTABLE',
@@ -121,7 +127,6 @@ describe('waku/router/client surface', () => {
       'INTERNAL_ServerRouter',
       'Link',
       'Router',
-      'SearchCodecsProvider_UNSTABLE',
       'Slice',
       'useNavigationStatus_UNSTABLE',
       'useParams_UNSTABLE',
@@ -135,9 +140,8 @@ describe('waku/router/client surface', () => {
     expect(clientCore.Slice_UNSTABLE).toBe(client.Slice);
     expect(clientCore.ErrorBoundary_UNSTABLE).toBe(client.ErrorBoundary);
     expect(clientCore.useParams_UNSTABLE).toBe(client.useParams_UNSTABLE);
-    expect(clientCore.SearchCodecsProvider_UNSTABLE).toBe(
-      client.SearchCodecsProvider_UNSTABLE,
-    );
+    expect(clientCore.useSearch_UNSTABLE).toBe(client.useSearch_UNSTABLE);
+    expect(clientCore.useSetSearch_UNSTABLE).toBe(client.useSetSearch_UNSTABLE);
   });
 });
 

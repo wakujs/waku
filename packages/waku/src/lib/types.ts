@@ -31,7 +31,6 @@ export type Unstable_RenderHtml = (
 
 export type Unstable_RenderHtmlFallback = (options?: {
   nonce?: string;
-  unstable_extraScriptContent?: string;
 }) => Promise<Response>;
 
 export type Unstable_EmitFile = (
@@ -78,10 +77,7 @@ export type Unstable_HandleBuild = (utils: {
     fileName: string,
     body: ReadableStream | string,
   ) => Promise<void>;
-  generateDefaultHtml: (
-    fileName: string,
-    options?: Parameters<Unstable_RenderHtmlFallback>[0],
-  ) => Promise<void>;
+  generateDefaultHtml: (fileName: string) => Promise<void>;
   unstable_registerPrunableFile: (srcPath: string) => void;
 }) => Promise<void>;
 

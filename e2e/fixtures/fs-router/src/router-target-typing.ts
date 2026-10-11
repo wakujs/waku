@@ -1,19 +1,32 @@
 import { useRouter } from 'waku';
+import { unstable_createRouteHref } from 'waku/router';
 import type { Unstable_RouteHref } from 'waku/router/client-core';
+import { groupedSearchRoute, nestedRoute } from './lib/routes';
 
 type Router = ReturnType<typeof useRouter>;
 
-// Type-level assertions only; this function is never called. RouteConfig.paths
-// is augmented by the generated pages.gen.ts, so RouteHref is a literal union:
-// a computed string is rejected, and callers pass a known href, a structured
-// target, or cast via `as Unstable_RouteHref`.
 export function assertRouterTargetTyping(router: Router, computed: string) {
   void router.prefetch('/bar');
   void router.push('/bar');
   void router.replace('/bar');
-  void router.prefetch({ to: '/nested/[name]', params: { name: 'x' } });
-  void router.push({ to: '/nested/[name]', params: { name: 'x' } });
-  void router.replace({ to: '/nested/[name]', params: { name: 'x' } });
+  void router.prefetch(nestedRoute({ params: { name: 'x' } }));
+  void router.push(nestedRoute({ params: { name: 'x' } }));
+  void router.replace(nestedRoute({ params: { name: 'x' } }));
+  void router.push(groupedSearchRoute({ search: { q: 'grouped', page: 2 } }));
+
+  const article = unstable_createRouteHref({
+    path: '/page-with-segment/(article)/[slug]',
+  });
+  void router.push(article({ params: { slug: 'introducing-waku' } }));
+  void router.push(article({ params: { slug: 'not-built' } }));
+  // @ts-expect-error raw hrefs must belong to the generated static paths
+  void router.push('/page-with-segment/not-built');
+
+  const unknownRoute = unstable_createRouteHref({
+    path: '/(search-group)/missing-route',
+  });
+  // @ts-expect-error the grouped pattern is not a generated route
+  void router.push(unknownRoute());
 
   // @ts-expect-error a computed string is not a known route href
   void router.prefetch(computed);
