@@ -136,6 +136,20 @@ describe('locally typed href factories', () => {
     expect(root({ params: { parts: [] } })).toBe('/');
   });
 
+  test('rejects empty catch-all members that would produce a scheme-relative href', () => {
+    const route = unstable_createRouteHref({ path: '/[...parts]' });
+    expect(() => route({ params: { parts: ['', 'evil.example'] } })).toThrow(
+      /catch-all param/,
+    );
+  });
+
+  test('rejects empty catch-all members within a prefixed route', () => {
+    const docs = unstable_createRouteHref({ path: '/docs/[...parts]' });
+    expect(() =>
+      docs({ params: { parts: ['guides', '', 'routing'] } }),
+    ).toThrow(/catch-all param/);
+  });
+
   test('leaves raw-input validation to the serializer', () => {
     const parse = vi.fn(codec.parse);
     const lossy = unstable_createRouteHref({

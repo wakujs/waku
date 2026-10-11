@@ -45,7 +45,7 @@ export default function Navigation() {
 }
 ```
 
-- `params` is required for patterns with slugs. Named params are strings; catch-alls accept readonly string arrays.
+- `params` is required for patterns with slugs. Named params are strings; catch-alls accept readonly arrays of nonempty strings. An empty array is allowed when the pattern matches the resulting path.
 - A factory without params allows a call such as `home()`.
 - Route groups are stripped from the URL. `hash` accepts a fragment with or without the leading `#`.
 - Completed `.` and `..` path segments are rejected because URL normalization would change the path.
@@ -74,6 +74,8 @@ export const PostButton = ({ slug }: { slug: string }) => {
 Generated routes distinguish raw hrefs from constructed hrefs. Raw strings are checked against the configured concrete href types. A factory result carries a type-only brand recording its normalized route pattern; navigation checks that pattern against the generated route patterns.
 
 Bind factories to registered patterns, not concrete build URLs: for `/articles/[slug]`, use that pattern with `{ params: { slug: 'intro' } }`, or pass the raw string `'/articles/intro'` directly to navigation. Navigation rejects a factory result for `/articles/intro` unless that exact pattern is registered. Factory results are assignable to `string`, but do not have literal URL types.
+
+Parameter names are part of the pattern: `/articles/[id]` does not match a registered `/articles/[slug]`.
 
 For a static `/posts/[slug]` route, a factory checks the parameter shape, not whether a slug is among the generated static paths. Constructing an unbuilt slug can therefore succeed and navigate to not found. The brand has no runtime representation and does not register a route.
 

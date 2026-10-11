@@ -62,7 +62,7 @@ export const buildRouteHref = (
       const value = item.name ? params?.[item.name] : undefined;
       if (
         !Array.isArray(value) ||
-        value.some((part) => typeof part !== 'string')
+        value.some((part) => typeof part !== 'string' || part === '')
       ) {
         throw new Error(`Missing catch-all param "${item.name}" for "${path}"`);
       }
