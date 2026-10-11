@@ -29,7 +29,6 @@ const grouped = unstable_createRouteHref({
 const home = unstable_createRouteHref({ path: '/' });
 const about = unstable_createRouteHref({ path: '/about', search: codec });
 const unknown = unstable_createRouteHref({ path: '/unregistered/[id]' });
-const intro = unstable_createRouteHref({ path: '/articles/intro' });
 const localSearch = unstable_createRouteHref({
   path: '/products/[id]',
   search: {
@@ -38,23 +37,14 @@ const localSearch = unstable_createRouteHref({
   },
 });
 
-type ProductHref =
-  | `/products/${string}`
-  | `/products/${string}?${string}`
-  | `/products/${string}#${string}`;
-type UnknownHref =
-  | `/unregistered/${string}`
-  | `/unregistered/${string}?${string}`
-  | `/unregistered/${string}#${string}`;
-
 expectType<TypeEqual<keyof SearchCodecsConfig, '/products/[id]'>>(true);
 expectType<TypeEqual<typeof product.path, '/products/[id]'>>(true);
 expectType<TypeEqual<typeof product.searchCodec, typeof codec>>(true);
 expectType<Unstable_RouteHrefFactory<'/products/[id]', Search>>(product);
 expectType<Unstable_RouteHrefFactory<'/products/[id]'>>(paramsOnly);
-expectType<ProductHref>(product({ params: { id: '42' } }));
-expectType<ProductHref>(grouped({ params: { id: '42' } }));
-expectType<UnknownHref>(unknown({ params: { id: '42' } }));
+expectType<ReturnType<typeof paramsOnly>>(product({ params: { id: '42' } }));
+expectType<ReturnType<typeof paramsOnly>>(grouped({ params: { id: '42' } }));
+expectType<string>(unknown({ params: { id: '42' } }));
 // @ts-expect-error raw strings do not carry construction provenance
 expectType<ReturnType<typeof product>>('/products/42');
 expectType<TypeEqual<LinkProps['to'], Unstable_RouteHref>>(true);
@@ -86,7 +76,6 @@ export const href = product({
   hash: '#price',
 });
 expectType<string>(href);
-expectType<ProductHref>(href);
 expectType<Unstable_RouteHref>(href);
 product({ params: { id: '42' } });
 paramsOnly({ params: { id: '42' }, hash: 'price' });
@@ -151,7 +140,7 @@ export function FactoryNavigationProbe() {
       <Link to={about({ search: { page: 2, tag: '' }, hash: 'top' })}>
         About
       </Link>
-      <Link to={intro({ hash: 'top' })}>Intro</Link>
+      <Link to="/articles/intro#top">Intro</Link>
       {/* @ts-expect-error unknown factory paths are not registered hrefs */}
       <Link to={unknownHref}>Unknown</Link>
     </>

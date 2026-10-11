@@ -1,7 +1,6 @@
 import type { RouteParams } from './create-pages-utils/inferred-path-types.js';
 import {
   type ConstructedHref,
-  type NormalizePath,
   buildRouteHref,
 } from './isomorphic-utils/build-route-href.js';
 import type { Unstable_SearchCodec } from './isomorphic-utils/search-codec.js';
@@ -21,38 +20,6 @@ type HrefTarget<Path extends string, Search> = {
         };
       });
 
-type HrefSegment<Segment extends string> =
-  Segment extends `${string}[...${string}]${string}`
-    ? string
-    : Segment extends `${infer Prefix}[${string}]${infer Suffix}`
-      ? `${Prefix}${string}${Suffix}`
-      : Segment;
-
-type HrefPath<
-  Path extends string,
-  Prefix extends string = '',
-> = string extends Path
-  ? string
-  : Path extends `${infer Segment}/${infer Rest}`
-    ? HrefPath<
-        Rest,
-        Segment extends ''
-          ? Prefix
-          : Segment extends `${string}[...${string}]${string}`
-            ? Prefix | `${Prefix}/${string}`
-            : `${Prefix}/${HrefSegment<Segment>}`
-      >
-    : Path extends ''
-      ? Prefix extends ''
-        ? '/'
-        : Prefix
-      : `${Prefix}/${HrefSegment<Path>}`;
-
-type Href<Path extends string> =
-  | HrefPath<NormalizePath<Path>>
-  | `${HrefPath<NormalizePath<Path>>}?${string}`
-  | `${HrefPath<NormalizePath<Path>>}#${string}`;
-
 /** Builds href strings with locally inferred params and optional search. */
 export type Unstable_RouteHrefFactory<
   Path extends string,
@@ -62,7 +29,7 @@ export type Unstable_RouteHrefFactory<
     ...args: keyof RouteParams<Path> extends never
       ? [target?: HrefTarget<Path, Search>]
       : [target: HrefTarget<Path, Search>]
-  ): Href<Path> & ConstructedHref<Path>;
+  ): ConstructedHref<Path>;
   readonly path: Path;
 } & ([Search] extends [never]
   ? { readonly searchCodec?: never }
@@ -78,9 +45,10 @@ export type Unstable_RouteHrefFactory<
  * Outbound search validation belongs in `serialize`; the factory does not call
  * `parse`. The destination validates the incoming query and may reject it,
  * including an omitted query. Route-pattern types constrain factory hrefs at
- * navigation sites, not their params to static build paths. Concrete href types
- * constrain raw strings, not factory patterns. Routes without params allow an
- * omitted target.
+ * navigation sites, not their params to static build paths. Results carry the
+ * pattern's provenance, not a literal URL type. Concrete href types constrain
+ * raw strings, not factory patterns. Routes without params allow an omitted
+ * target.
  *
  * @example
  * const product = unstable_createRouteHref({ path: '/products/[id]', search: codec });
@@ -103,7 +71,7 @@ export function unstable_createRouteHref<
   Search
 > {
   const factory = Object.assign(
-    (target?: HrefTarget<Path, Search>): Href<Path> => {
+    (target?: HrefTarget<Path, Search>) => {
       const pathname = buildRouteHref(path, target?.params);
       let query = '';
       if (target?.search !== undefined) {
@@ -115,9 +83,7 @@ export function unstable_createRouteHref<
         query = search.serialize(target.search);
       }
       const hash = target?.hash?.replace(/^#/, '');
-      const href =
-        pathname + (query ? '?' + query : '') + (hash ? '#' + hash : '');
-      return href as Href<Path>;
+      return pathname + (query ? '?' + query : '') + (hash ? '#' + hash : '');
     },
     { path, searchCodec: search },
   );

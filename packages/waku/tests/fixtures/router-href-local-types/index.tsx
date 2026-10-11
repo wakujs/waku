@@ -33,16 +33,11 @@ const home = unstable_createRouteHref({ path: '/', search: codec });
 const post = unstable_createRouteHref({ path: '/posts/[id]' });
 post({ params: { id: '42' } });
 const grouped = unstable_createRouteHref({ path: '/(site)//about/(details)/' });
-expectType<'/about' | `/about?${string}` | `/about#${string}`>(grouped({}));
+const about = unstable_createRouteHref({ path: '/about' });
+expectType<ReturnType<typeof about>>(grouped({}));
+expectType<ReturnType<typeof grouped>>(about());
 const middle = unstable_createRouteHref({ path: '/docs/[...parts]/overview' });
-expectType<
-  | '/docs/overview'
-  | `/docs/${string}/overview`
-  | `/docs/overview?${string}`
-  | `/docs/${string}/overview?${string}`
-  | `/docs/overview#${string}`
-  | `/docs/${string}/overview#${string}`
->(middle({ params: { parts: [] } }));
+expectType<string>(middle({ params: { parts: [] } }));
 // @ts-expect-error parameter-only factories cannot accept search
 post({ params: { id: '42' }, search: { page: 2, tag: '' } });
 const other = unstable_createRouteHref({

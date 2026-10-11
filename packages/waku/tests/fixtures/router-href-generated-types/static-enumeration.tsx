@@ -4,6 +4,7 @@ import { unstable_redirect } from 'waku/router/server';
 import type { RouteHref } from '../../../src/router/isomorphic-utils/build-route-href.js';
 
 const article = unstable_createRouteHref({ path: '/articles/[slug]' });
+const intro = unstable_createRouteHref({ path: '/articles/intro' });
 const groupedArticle = unstable_createRouteHref({
   path: '/(content)/(public)//articles/[slug]/',
 });
@@ -31,6 +32,8 @@ export function StaticEnumerationProbe() {
       <Link to={unlisted}>Known Pattern</Link>
       <Link to={groupedArticle({ params: { slug: 'intro' } })}>Grouped</Link>
       <Link to={groupedHome()}>Grouped Home</Link>
+      {/* @ts-expect-error factories name registered patterns, not concrete build URLs */}
+      <Link to={intro()}>Concrete Factory</Link>
       {/* @ts-expect-error unlisted raw hrefs remain rejected */}
       <Link to="/articles/not-built">Unknown Raw Href</Link>
     </>

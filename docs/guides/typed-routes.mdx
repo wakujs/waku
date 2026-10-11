@@ -73,6 +73,8 @@ export const PostButton = ({ slug }: { slug: string }) => {
 
 Generated routes distinguish raw hrefs from constructed hrefs. Raw strings are checked against the configured concrete href types. A factory result carries a type-only brand recording its normalized route pattern; navigation checks that pattern against the generated route patterns.
 
+Bind factories to registered patterns, not concrete build URLs: for `/articles/[slug]`, use that pattern with `{ params: { slug: 'intro' } }`, or pass the raw string `'/articles/intro'` directly to navigation. Navigation rejects a factory result for `/articles/intro` unless that exact pattern is registered. Factory results are assignable to `string`, but do not have literal URL types.
+
 For a static `/posts/[slug]` route, a factory checks the parameter shape, not whether a slug is among the generated static paths. Constructing an unbuilt slug can therefore succeed and navigate to not found. The brand has no runtime representation and does not register a route.
 
 Without generated route patterns, factory arguments are inferred locally but the pattern's existence is unchecked. A manual `RouteConfig.paths` augmentation constrains raw hrefs only; see [createPages type safety](/create-pages#router-paths-type-safety). Widening a factory result to `string` loses its type evidence, so it may be rejected by navigation in a strictly typed app.
