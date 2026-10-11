@@ -201,9 +201,8 @@ among the generated static paths. Keep their inferred type: widening a result
 to `string` discards that evidence.
 
 For a reusable link wrapper, type its `to` prop as
-`ComponentProps<typeof Link>['to']` or `Unstable_RouteHref` from
-`waku/router/client-core`. These preserve generated route checks; they do not
-accept arbitrary strings. For a runtime-only destination such as a login
+`ComponentProps<typeof Link>['to']`. This preserves generated route checks; it
+does not accept arbitrary strings. For a runtime-only destination such as a login
 `callbackUrl`, validate it against an application allowlist before asserting
 `href as ComponentProps<typeof Link>['to']`. An assertion performs no runtime
 validation.

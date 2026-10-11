@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import type { TypeEqual } from 'ts-expect';
 import { expectType } from 'ts-expect';
 import { unstable_createRouteHref } from 'waku/router';
@@ -8,10 +9,10 @@ import {
   useSearch_UNSTABLE,
   useSetSearch_UNSTABLE,
 } from 'waku/router/client';
-import type { LinkProps } from 'waku/router/client';
-import type { Unstable_RouteHref } from 'waku/router/client-core';
 import { productSearchCodec as codec } from './search.js';
 import type { Search } from './search.js';
+
+type LinkTarget = ComponentProps<typeof Link>['to'];
 
 const product = unstable_createRouteHref({
   path: '/products/[id]',
@@ -48,27 +49,17 @@ expectType<ReturnType<typeof paramsOnly>>(grouped({ params: { id: '42' } }));
 expectType<string>(unknown({ params: { id: '42' } }));
 // @ts-expect-error raw strings do not carry construction provenance
 expectType<ReturnType<typeof product>>('/products/42');
-expectType<TypeEqual<LinkProps['to'], Unstable_RouteHref>>(true);
 expectType<
-  TypeEqual<
-    Parameters<ReturnType<typeof useRouter>['push']>[0],
-    Unstable_RouteHref
-  >
+  TypeEqual<Parameters<ReturnType<typeof useRouter>['push']>[0], LinkTarget>
 >(true);
 
 // @ts-expect-error an explicit search type requires a codec
 unstable_createRouteHref<'/products/[id]', Search>({ path: '/products/[id]' });
 expectType<
-  TypeEqual<
-    Parameters<ReturnType<typeof useRouter>['replace']>[0],
-    Unstable_RouteHref
-  >
+  TypeEqual<Parameters<ReturnType<typeof useRouter>['replace']>[0], LinkTarget>
 >(true);
 expectType<
-  TypeEqual<
-    Parameters<ReturnType<typeof useRouter>['prefetch']>[0],
-    Unstable_RouteHref
-  >
+  TypeEqual<Parameters<ReturnType<typeof useRouter>['prefetch']>[0], LinkTarget>
 >(true);
 
 export const href = product({
@@ -77,7 +68,7 @@ export const href = product({
   hash: '#price',
 });
 expectType<string>(href);
-expectType<Unstable_RouteHref>(href);
+expectType<LinkTarget>(href);
 product({ params: { id: '42' } });
 paramsOnly({ params: { id: '42' }, hash: 'price' });
 docs({ params: { parts: ['api', 'reference'] as const }, hash: 'top' });

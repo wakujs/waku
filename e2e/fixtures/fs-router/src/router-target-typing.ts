@@ -1,6 +1,5 @@
 import { useRouter } from 'waku';
 import { unstable_createRouteHref } from 'waku/router';
-import type { Unstable_RouteHref } from 'waku/router/client-core';
 import { groupedSearchRoute, nestedRoute } from './lib/routes';
 
 type Router = ReturnType<typeof useRouter>;
@@ -35,7 +34,7 @@ export function assertRouterTargetTyping(router: Router, computed: string) {
   // @ts-expect-error a computed string is not a known route href
   void router.replace(computed);
 
-  void router.prefetch(computed as Unstable_RouteHref);
-  void router.push(computed as Unstable_RouteHref);
-  void router.replace(computed as Unstable_RouteHref);
+  void router.prefetch(computed as Parameters<Router['prefetch']>[0]);
+  void router.push(computed as Parameters<Router['push']>[0]);
+  void router.replace(computed as Parameters<Router['replace']>[0]);
 }
