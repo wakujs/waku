@@ -24,11 +24,13 @@ export const runWithRouterStore = <T>(store: RouterStore, fn: () => T): T =>
  * Throws if called outside that scope, such as at module scope.
  *
  * `url` is the URL the request was sent to, which is Waku's RSC URL after a
- * client navigation or for a server function, so read the route with
- * `unstable_parseRouterRequest`. Inside an API route handler, the handler's own
- * `req` has its pathname relative to the base path and shares this request's
- * body, so read the body from it. A static render runs at build time against a
- * synthetic request, so read request data only in dynamic renders.
+ * client navigation, so read the route with `unstable_parseRouterRequest`. A
+ * server function called from the client gets a request that identifies no
+ * route, so pass it any route data it needs as arguments. Inside an API route
+ * handler, the handler's own `req` has its pathname relative to the base path
+ * and shares this request's body, so read the body from it. A static render
+ * runs at build time against a synthetic request, so read request data only in
+ * dynamic renders.
  *
  * @example
  * import { getRequest } from 'waku/router/server';

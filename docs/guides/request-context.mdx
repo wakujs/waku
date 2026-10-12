@@ -22,19 +22,21 @@ export default function Page() {
 
   return <p>User agent: {userAgent}</p>;
 }
+
+export const getConfig = async () => ({ render: 'dynamic' }) as const;
 ```
 
 Header names are case-insensitive, and `headers.get()` returns `null` for a header the request does not have.
 
 `getRequest()` throws if request context is not available. Call it during request handling, not in module scope.
 
-`getRequest().url` is the URL the request was sent to. After a client navigation or for a server function call, that is Waku's RSC URL (such as `/RSC/R/about.txt`), not the page URL. A page receives its params and `query` as props; elsewhere, read the route with `unstable_parseRouterRequest(getRequest())`.
+`getRequest().url` is the URL the request was sent to. After a client navigation, that is Waku's RSC URL (such as `/RSC/R/about.txt`), not the page URL. A page receives its params and `query` as props; elsewhere, read the route with `unstable_parseRouterRequest(getRequest())`. A server function called from the client sends its own request, which `unstable_parseRouterRequest` reports only as `{ type: 'action' }`, so pass the function any route data it needs as arguments.
 
 `getRequest()` returns the original incoming request. Inside an API route handler, the handler's own `req` argument may have a rewritten URL (the route path with any prefix stripped), so `req.url` and `getRequest().url` can differ. Use the handler argument for routing-specific values and for the body, which it shares with `getRequest()`.
 
 `getRequest` is exported from `waku/router/server` and is available wherever the router runs your code: renders (request and build), server functions, API route handlers, interceptors, and a custom router's `resolve`. In the Minimal API, use `input.req` from `handleRequest` instead, and bring your own `AsyncLocalStorage` if you need it deeper in the tree.
 
-Components rendered as `static` are prerendered at build time, so do not read `getRequest`, headers, or interceptor-seeded state in a static page, layout, or slice; those values would be baked into the prerendered output. Read request-scoped data only in `dynamic` rendering. (During a static route build `getRequest().url` is the route's path, but a static slice build uses a placeholder root request that does not identify the slice.)
+Components rendered as `static` are prerendered at build time, so do not read `getRequest`, headers, or interceptor-seeded state in a static page, layout, or slice; those values would be baked into the prerendered output. Read request-scoped data only in `dynamic` rendering. File-system pages, layouts, and slices are static by default, so the page examples in this guide export `getConfig` with `render: 'dynamic'`. (During a static route build `getRequest().url` is the route's path, but a static slice build uses a placeholder root request that does not identify the slice.)
 
 ## Pass Data with an Interceptor
 
@@ -102,6 +104,8 @@ export default function Page() {
 
   return <p>Country: {country ?? 'unknown'}</p>;
 }
+
+export const getConfig = async () => ({ render: 'dynamic' }) as const;
 ```
 
 If the value is just a request header, you can also read it from `getRequest().headers` in the component without a store. Reach for an interceptor when you want to compute the value once per request and share it across the render.
@@ -121,6 +125,8 @@ export default function Page() {
 
   return <p>Session: {cookies.sessionId ?? 'none'}</p>;
 }
+
+export const getConfig = async () => ({ render: 'dynamic' }) as const;
 ```
 
 Set a response cookie from middleware, which owns the response:
@@ -182,6 +188,8 @@ export default async function Page() {
 
   return <pre>{JSON.stringify(store, null, 2)}</pre>;
 }
+
+export const getConfig = async () => ({ render: 'dynamic' }) as const;
 ```
 
 See [Run Waku on Cloudflare](/guides/cloudflare) for the full Cloudflare setup.
