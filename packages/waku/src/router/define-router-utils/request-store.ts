@@ -20,7 +20,21 @@ export const runWithRouterStore = <T>(store: RouterStore, fn: () => T): T =>
 /**
  * Access the request being handled. Available during a render, an API route
  * handler, or a handler interceptor (request and build phases). Throws if called
- * outside that scope.
+ * outside that scope, such as at module scope.
+ *
+ * This is the original incoming request: inside an API route handler, the
+ * handler's own `req` can have a rewritten URL. The body can be read only once,
+ * so read `getRequest().clone()` to inspect it without consuming it. A static
+ * render runs at build time against a synthetic request, so read request data
+ * only in dynamic renders.
+ *
+ * @example
+ * import { getRequest } from 'waku/router/server';
+ *
+ * const Country = () => {
+ *   const country = getRequest().headers.get('cf-ipcountry') ?? 'unknown';
+ *   return <p>{country}</p>;
+ * };
  */
 export function getRequest(): Request {
   const store = routerStorage.getStore();
@@ -30,6 +44,7 @@ export function getRequest(): Request {
   return store.req;
 }
 
+/** @deprecated Use `getRequest().headers`, e.g. `getRequest().headers.get('cookie')`. */
 export function getHeaders(): Readonly<Record<string, string>> {
   return Object.fromEntries(getRequest().headers.entries());
 }

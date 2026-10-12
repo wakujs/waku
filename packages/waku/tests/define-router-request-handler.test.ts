@@ -13,7 +13,7 @@ import {
   encodeSliceId,
 } from '../src/router/isomorphic-utils/router-protocol.js';
 import {
-  unstable_getRequest,
+  getRequest,
   unstable_notFound,
   unstable_redirect,
   unstable_rerenderRoute,
@@ -528,7 +528,7 @@ describe('request dispatch', () => {
       getConfigs: async () => [moved, dynamicRoute('/dest')],
       unstable_interceptors: [
         async (next) => {
-          seen.push(new URL(unstable_getRequest().url).pathname);
+          seen.push(new URL(getRequest().url).pathname);
           return next();
         },
       ],
@@ -555,7 +555,7 @@ describe('request dispatch', () => {
       getConfigs: async () => [moved, dynamicRoute('/dest')],
       unstable_interceptors: [
         async (next) => {
-          seen.push(new URL(unstable_getRequest().url).pathname);
+          seen.push(new URL(getRequest().url).pathname);
           return next();
         },
       ],
@@ -814,9 +814,7 @@ describe('request dispatch', () => {
       getConfigs: async () => [dynamicRoute('/')],
       unstable_interceptors: [
         async (next) => {
-          unstable_setNonce(
-            `n-${unstable_getRequest().headers.get('x-n') ?? ''}`,
-          );
+          unstable_setNonce(`n-${getRequest().headers.get('x-n') ?? ''}`);
           return next();
         },
       ],
