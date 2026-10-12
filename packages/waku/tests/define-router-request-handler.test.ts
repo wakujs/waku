@@ -122,6 +122,18 @@ describe('request dispatch', () => {
     );
   });
 
+  it('exposes the call request to a server function', async () => {
+    const { handleRequest } = createConfiguredRouter({
+      getConfigs: async () => [],
+    });
+    let seen: Request | undefined;
+    const input = callInput(async () => {
+      seen = getRequest();
+    });
+    await handleRequest(input, makeUtils());
+    expect(seen).toBe(input.req);
+  });
+
   it('rerenders the route an action came from when asked with no arguments', async () => {
     const { handleRequest } = createConfiguredRouter({
       getConfigs: async () => [dynamicRoute('/dest')],

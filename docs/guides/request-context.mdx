@@ -17,33 +17,6 @@ Use `getRequest` in server-only code to access the current `Request`:
 ```tsx
 import { getRequest } from 'waku/router/server';
 
-const getCurrentPath = () => {
-  const req = getRequest();
-  return new URL(req.url).pathname;
-};
-
-export default function Page() {
-  const path = getCurrentPath();
-
-  return <p>Current path: {path}</p>;
-}
-```
-
-`getRequest()` throws if request context is not available. Call it during request handling, not in module scope.
-
-`getRequest()` returns the original incoming request. Inside an API route handler, the handler's own `req` argument may have a rewritten URL (the route path with any prefix stripped), so `req.url` and `getRequest().url` can differ. Use the handler argument for routing-specific values and `getRequest()` for the original request.
-
-`getRequest` is exported from `waku/router/server` and is available wherever the router runs your code: renders (request and build), API route handlers, and interceptors. In the Minimal API, use `input.req` from `handleRequest` instead, and bring your own `AsyncLocalStorage` if you need it deeper in the tree.
-
-Components rendered as `static` are prerendered at build time, so do not read `getRequest`, headers, or interceptor-seeded state in a static page, layout, or slice; those values would be baked into the prerendered output. Read request-scoped data only in `dynamic` rendering. (During a static route build `getRequest().url` is the route's path, but a static slice build uses a placeholder root request that does not identify the slice.)
-
-## Read Request Headers
-
-Read headers from the current request's `headers`:
-
-```tsx
-import { getRequest } from 'waku/router/server';
-
 export default function Page() {
   const userAgent = getRequest().headers.get('user-agent') ?? 'unknown';
 
@@ -52,6 +25,16 @@ export default function Page() {
 ```
 
 Header names are case-insensitive, and `headers.get()` returns `null` for a header the request does not have.
+
+`getRequest()` throws if request context is not available. Call it during request handling, not in module scope.
+
+`getRequest().url` is the URL the request was sent to. After a client navigation or for a server function call, that is Waku's RSC URL (such as `/RSC/R/about.txt`), not the page URL. A page receives its params and `query` as props; elsewhere, read the route with `unstable_parseRouterRequest(getRequest())`.
+
+`getRequest()` returns the original incoming request. Inside an API route handler, the handler's own `req` argument may have a rewritten URL (the route path with any prefix stripped), so `req.url` and `getRequest().url` can differ. Use the handler argument for routing-specific values and for the body, which it shares with `getRequest()`.
+
+`getRequest` is exported from `waku/router/server` and is available wherever the router runs your code: renders (request and build), server functions, API route handlers, interceptors, and a custom router's `resolve`. In the Minimal API, use `input.req` from `handleRequest` instead, and bring your own `AsyncLocalStorage` if you need it deeper in the tree.
+
+Components rendered as `static` are prerendered at build time, so do not read `getRequest`, headers, or interceptor-seeded state in a static page, layout, or slice; those values would be baked into the prerendered output. Read request-scoped data only in `dynamic` rendering. (During a static route build `getRequest().url` is the route's path, but a static slice build uses a placeholder root request that does not identify the slice.)
 
 ## Pass Data with an Interceptor
 
@@ -190,14 +173,14 @@ import { env } from 'cloudflare:workers'; // eslint-disable-line import/no-unres
 import { getRequest } from 'waku/router/server';
 
 export default async function Page() {
-  const req = getRequest();
-  const url = new URL(req.url);
-  const id = url.searchParams.get('id');
-  const item = id
-    ? await env.DB.prepare('SELECT * FROM item WHERE id = ?').bind(id).first()
+  const country = getRequest().headers.get('cf-ipcountry');
+  const store = country
+    ? await env.DB.prepare('SELECT * FROM store WHERE country = ?')
+        .bind(country)
+        .first()
     : null;
 
-  return <pre>{JSON.stringify(item, null, 2)}</pre>;
+  return <pre>{JSON.stringify(store, null, 2)}</pre>;
 }
 ```
 

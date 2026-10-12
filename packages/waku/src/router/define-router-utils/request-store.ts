@@ -18,15 +18,17 @@ export const runWithRouterStore = <T>(store: RouterStore, fn: () => T): T =>
   routerStorage.run(store, fn);
 
 /**
- * Access the request being handled. Available during a render, an API route
- * handler, or a handler interceptor (request and build phases). Throws if called
- * outside that scope, such as at module scope.
+ * Access the request being handled. Available while the router handles a
+ * request or builds a page: in a render, a server function, an API route
+ * handler, a handler interceptor, or `unstable_defineRouter`'s `resolve`.
+ * Throws if called outside that scope, such as at module scope.
  *
- * This is the original incoming request: inside an API route handler, the
- * handler's own `req` can have a rewritten URL. The body can be read only once,
- * so read `getRequest().clone()` to inspect it without consuming it. A static
- * render runs at build time against a synthetic request, so read request data
- * only in dynamic renders.
+ * `url` is the URL the request was sent to, which is Waku's RSC URL after a
+ * client navigation or for a server function, so read the route with
+ * `unstable_parseRouterRequest`. Inside an API route handler, the handler's own
+ * `req` has its pathname relative to the base path and shares this request's
+ * body, so read the body from it. A static render runs at build time against a
+ * synthetic request, so read request data only in dynamic renders.
  *
  * @example
  * import { getRequest } from 'waku/router/server';
