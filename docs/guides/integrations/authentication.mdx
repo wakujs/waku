@@ -178,6 +178,21 @@ const auth = (): MiddlewareHandler => async (c, next) => {
 export default auth;
 ```
 
+Both ends of the redirect render dynamically. In production, a route prerendered
+as `static` is served before middleware runs, so every page under `/dashboard`
+must be `render: 'dynamic'`, as anything that reads the session must be anyway.
+So must the login page: a client-side navigation redirected to a static `/login`
+receives its prerendered payload, which carries no `callbackUrl`.
+
+```tsx
+// ./src/pages/login.tsx, and each page under ./src/pages/dashboard
+export const getConfig = async () => {
+  return {
+    render: 'dynamic',
+  } as const;
+};
+```
+
 An API route answers with a status instead:
 
 ```ts
@@ -219,7 +234,7 @@ GET /dashboard             -> 303  Location: /login?callbackUrl=%2Fdashboard
 GET /RSC/R/dashboard.txt   -> 303  Location: /RSC/R/login.txt?query=callbackUrl%3D%252Fdashboard
 ```
 
-A route match is still an optimistic redirect, not a boundary. A server action dispatched from the client carries no route — it reports `{ type: 'action' }` — so no path rule covers it, which is why the data layer checks for itself. In production, middleware also does not run for a route prerendered as `static`; a protected route reads the session, so it is dynamic anyway.
+A route match is still an optimistic redirect, not a boundary. A server action dispatched from the client carries no route — it reports `{ type: 'action' }` — so no path rule covers it, which is why the data layer checks for itself.
 
 ## Signing in: setting a cookie from a server action
 
