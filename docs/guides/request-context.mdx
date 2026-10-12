@@ -36,7 +36,7 @@ Header names are case-insensitive, and `headers.get()` returns `null` for a head
 
 `getRequest` is exported from `waku/router/server` and is available wherever the router runs your code: renders (request and build), server functions, API route handlers, interceptors, and a custom router's `resolve`. In the Minimal API, use `input.req` from `handleRequest` instead, and bring your own `AsyncLocalStorage` if you need it deeper in the tree.
 
-Components rendered as `static` are prerendered at build time, so do not read `getRequest`, headers, or interceptor-seeded state in a static page, layout, or slice; those values would be baked into the prerendered output. Read request-scoped data only in `dynamic` rendering. File-system pages, layouts, and slices are static by default, so the page examples in this guide export `getConfig` with `render: 'dynamic'`. (During a static route build `getRequest().url` is the route's path, but a static slice build uses a placeholder root request that does not identify the slice.)
+Components rendered as `static` are prerendered at build time, so do not read `getRequest`, headers, or interceptor-seeded state in a static page, layout, or slice; those values would be baked into the prerendered output. Read request-scoped data only in `dynamic` rendering. File-system pages, layouts, and slices are static by default, so the page examples in this guide export `getConfig` with `render: 'dynamic'`. Only the file-system router reads `getConfig`; with `createPages`, pass `render: 'dynamic'` to `createPage` instead. (During a static route build `getRequest().url` is the route's path, but a static slice build uses a placeholder root request that does not identify the slice.)
 
 ## Pass Data with an Interceptor
 
