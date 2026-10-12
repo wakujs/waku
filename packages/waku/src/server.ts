@@ -25,9 +25,17 @@ export async function serializeRsc(element: unknown): Promise<Uint8Array> {
   );
 }
 
+/**
+ * Decodes bytes from `serializeRsc` into a value to render again. Server
+ * functions in it can be rendered but not called on the server.
+ */
 export async function deserializeRsc(bytes: Uint8Array): Promise<unknown> {
   // Lazy import to keep the RSC client runtime out of the rsc startup graph.
   const { createFromReadableStream } =
-    await import('react-server-dom-webpack/client.edge');
-  return createFromReadableStream(bytesToStream(bytes));
+    await import('@vitejs/plugin-rsc/react/rsc/client');
+  return createFromReadableStream(
+    bytesToStream(bytes),
+    {},
+    { preserveServerReferences: true },
+  );
 }
