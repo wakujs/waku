@@ -4,6 +4,7 @@ import {
   adoptElements,
   collectEtags,
 } from '../src/minimal/client-utils/element-etags.js';
+import { unstable_combineElements as combineElements } from '../src/minimal/client.js';
 import { buildMergePatch } from '../src/router/client-core-utils/merge-patch.js';
 import { ROUTER_STATE_ID } from '../src/router/client-utils/router-state.js';
 import {
@@ -21,10 +22,26 @@ const loaded = (path: string, elements: Record<string, unknown>) => ({
 });
 
 describe('buildMergePatch', () => {
+  it.each(['v1', 'v2', undefined])(
+    'preserves an action write with an unchanged value (%s)',
+    (etag) => {
+      const base = adoptElements({ counter: 0, [ETAGS_ID]: { counter: 'v1' } });
+      const current = adoptElements({
+        counter: 0,
+        [ETAGS_ID]: { counter: etag },
+      });
+      const patch = buildMergePatch(loaded('/next', base), current, base, {
+        settled: route('/start'),
+      });
+      expect(Object.hasOwn(patch, 'counter')).toBe(false);
+      expect(collectEtags(current)).toEqual(etag ? { counter: etag } : {});
+    },
+  );
+
   it('copies a key still identical in current and base', () => {
     const slot = getRouteSlotId('/next');
     const base = { shared: 'old', [slot]: 'start' };
-    const current = { ...base };
+    const current = combineElements({}, base);
     const patch = buildMergePatch(
       loaded('/next', { shared: 'new', [slot]: 'next' }),
       current,

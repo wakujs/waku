@@ -7,6 +7,7 @@ import {
   use,
   useEffect,
   useLayoutEffect,
+  useRef,
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
@@ -21,6 +22,7 @@ import {
   Slot_UNSTABLE as Slot,
   useElementsPromise_UNSTABLE,
   useFetchRsc_UNSTABLE,
+  useMergeElements_UNSTABLE,
 } from '../src/minimal/client.js';
 import { useMergeInstantElements } from '../src/router/client-utils/instant-elements.js';
 
@@ -55,19 +57,25 @@ const Fallback = ({ onMount }: { onMount: () => void }) => {
 const useRefetch = () => {
   const fetchRsc = useFetchRsc_UNSTABLE();
   const mergeInstantElements = useMergeInstantElements();
+  const controllerRef = useRef<AbortController>(undefined);
   return (
     rscPath: string,
     rscParams: unknown,
     pin: (key: string | symbol) => boolean,
     base?: Elements,
     overlay?: Elements,
-  ) =>
-    mergeInstantElements(
+  ) => {
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    return mergeInstantElements(
       fetchRsc(rscPath, rscParams, base ? { unstable_base: base } : undefined),
+      () => !controller.signal.aborted,
       pin,
       base,
       overlay,
-    );
+    ).response;
+  };
 };
 
 type Refetch = ReturnType<typeof useRefetch>;
@@ -689,10 +697,13 @@ describe('instant element settlement', () => {
     mocks.createFromFetch.mockReturnValueOnce(resolvedThenable(initial));
     stubFetch();
     let merge: Merge | undefined;
+    let update: ReturnType<typeof useMergeElements_UNSTABLE> | undefined;
     const Probe = () => {
       const mergeValue = useMergeInstantElements();
+      const updateValue = useMergeElements_UNSTABLE();
       useEffect(() => {
         merge = mergeValue;
+        update = updateValue;
       });
       return null;
     };
@@ -716,6 +727,7 @@ describe('instant element settlement', () => {
     return {
       container,
       merge: merge!,
+      update: update!,
       unmount: () => act(() => root.unmount()),
     };
   };
@@ -745,6 +757,7 @@ describe('instant element settlement', () => {
     await act(async () => {
       void view.merge(
         payload.promise,
+        () => true,
         (key) => key === 'shell',
         adoptElements({
           side: 'B',
@@ -783,7 +796,11 @@ describe('instant element settlement', () => {
     );
     const payload = Promise.withResolvers<Record<string, unknown>>();
     await act(async () => {
-      void view.merge(payload.promise, (key) => key === 'shell');
+      void view.merge(
+        payload.promise,
+        () => true,
+        (key) => key === 'shell',
+      );
     });
     expect(view.container.textContent).toBe('S1…');
     onFallbackMount.mockClear();
@@ -798,6 +815,143 @@ describe('instant element settlement', () => {
     view.unmount();
   });
 
+  test('settlement preserves overlay keys replaced by an unrelated merge', async () => {
+    const view = await renderRoot(
+      { shell: 'shell', page: 'before', meta: 'before-meta' },
+      <>
+        <Slot id="shell" />
+        <Slot id="page" />
+        <Slot id="meta" />
+        <Keys />
+      </>,
+    );
+    const payload = Promise.withResolvers<Elements>();
+    await act(async () => {
+      void view.merge(
+        payload.promise,
+        () => true,
+        () => true,
+        undefined,
+        { page: 'loading', meta: 'loading-meta' },
+      );
+    });
+    await act(async () => {
+      await view.update(
+        adoptElements({
+          meta: 'action-meta',
+          [ETAGS_ID]: { meta: 'action-v2' },
+        }),
+      );
+    });
+    await act(async () => {
+      payload.resolve(
+        adoptElements({
+          page: 'after',
+          meta: 'response-meta',
+          extra: 'extra',
+          [ETAGS_ID]: {
+            page: 'page-v2',
+            meta: 'response-v1',
+            extra: IMMUTABLE_ETAG,
+          },
+        }),
+      );
+      await payload.promise;
+    });
+
+    expect(view.container.textContent).toBe(
+      'shellafteraction-metashell,page,meta,extra',
+    );
+    expect(getDefaultRootStore()?.etags).toEqual({
+      page: 'page-v2',
+      meta: 'action-v2',
+      extra: IMMUTABLE_ETAG,
+    });
+    view.unmount();
+  });
+
+  test('an unrelated merge in one Root does not prevent either Root from settling a shared response', async () => {
+    const first = await renderRoot(
+      { page: 'before' },
+      <>
+        <Slot id="page" />
+        <Keys />
+      </>,
+    );
+    const second = await renderRoot(
+      { page: 'before' },
+      <>
+        <Slot id="page" />
+        <Keys />
+      </>,
+    );
+    const payload = Promise.withResolvers<Elements>();
+    await act(async () => {
+      void first.merge(
+        payload.promise,
+        () => true,
+        () => false,
+      );
+      void second.merge(
+        payload.promise,
+        () => true,
+        () => false,
+      );
+    });
+    await act(async () => {
+      await first.update({ page: 'action', local: 'local' });
+    });
+    await act(async () => {
+      payload.resolve({ page: 'after', extra: 'extra' });
+      await payload.promise;
+    });
+    expect(first.container.textContent).toBe('actionpage,local,extra');
+    expect(second.container.textContent).toBe('afterpage,extra');
+    first.unmount();
+    second.unmount();
+  });
+
+  test('settlement preserves an overlay value whose validator changed', async () => {
+    const view = await renderRoot({ page: 'before' }, <Slot id="page" />);
+    const payload = Promise.withResolvers<Elements>();
+    try {
+      await act(async () => {
+        void view.merge(
+          payload.promise,
+          () => true,
+          () => true,
+          undefined,
+          adoptElements({
+            page: 'loading',
+            [ETAGS_ID]: { page: 'overlay-v1' },
+          }),
+        );
+      });
+      await act(async () => {
+        await view.update(
+          adoptElements({
+            page: 'loading',
+            [ETAGS_ID]: { page: 'action-v2' },
+          }),
+        );
+      });
+      await act(async () => {
+        payload.resolve(
+          adoptElements({
+            page: 'after',
+            [ETAGS_ID]: { page: 'response-v1' },
+          }),
+        );
+        await payload.promise;
+      });
+      expect(view.container.textContent).toBe('loading');
+      expect(getDefaultRootStore()?.etags.page).toBe('action-v2');
+    } finally {
+      view.unmount();
+      payload.resolve({});
+    }
+  });
+
   test('the paint keeps the etags of an overlay made by Minimal', async () => {
     const view = await renderRoot({ page: 'P1' }, <Keys />);
     const payload = Promise.withResolvers<Record<string, unknown>>();
@@ -805,6 +959,7 @@ describe('instant element settlement', () => {
     await act(async () => {
       void view.merge(
         payload.promise,
+        () => true,
         () => true,
         undefined,
         adoptElements({
@@ -838,9 +993,15 @@ describe('instant element settlement', () => {
     const payload = Promise.withResolvers<Record<string, unknown>>();
 
     await act(async () => {
-      void view.merge(payload.promise, (key) => key === 'toString', undefined, {
-        page: 'loading',
-      });
+      void view.merge(
+        payload.promise,
+        () => true,
+        (key) => key === 'toString',
+        undefined,
+        {
+          page: 'loading',
+        },
+      );
     });
     expect(view.container.textContent).toBe('pinnedloading');
 
@@ -870,9 +1031,15 @@ describe('instant element settlement', () => {
     const payload = Promise.withResolvers<Record<string | symbol, unknown>>();
 
     await act(async () => {
-      void view.merge(payload.promise, () => true, undefined, {
-        [state]: 'new',
-      });
+      void view.merge(
+        payload.promise,
+        () => true,
+        () => true,
+        undefined,
+        {
+          [state]: 'new',
+        },
+      );
     });
     await act(async () => {
       payload.resolve({ page: 'P1', extra: 'X', [state]: 'old' });
@@ -893,7 +1060,11 @@ describe('instant element settlement', () => {
     const payload = Promise.withResolvers<Record<string | symbol, unknown>>();
 
     await act(async () => {
-      void view.merge(payload.promise, () => true);
+      void view.merge(
+        payload.promise,
+        () => true,
+        () => true,
+      );
     });
     await act(async () => {
       payload.resolve({ page: 'P1', extra: 'X', [state]: 'from the payload' });
@@ -923,10 +1094,11 @@ describe('instant element settlement', () => {
     await act(async () => {
       merged = view.merge(
         payload.promise,
+        () => true,
         (key) => key === 'shell',
         undefined,
         { meta: 'M' },
-      );
+      ).response;
     });
     expect(view.container.textContent).toBe('S1…M');
     await act(async () => {
@@ -969,7 +1141,11 @@ describe('instant element settlement', () => {
 
     await act(async () => {
       for (const merge of merges) {
-        void merge(payload.promise, () => true);
+        void merge(
+          payload.promise,
+          () => true,
+          () => true,
+        );
       }
     });
     await act(async () => {
@@ -1037,20 +1213,22 @@ test('a shared response retains each Root merge configuration', async () => {
   await act(async () => {
     first = controls.get('a')!(
       response.promise,
+      () => true,
       (key) => key === 'shell',
       undefined,
       {
         page: 'overlay a',
       },
-    );
+    ).response;
     second = controls.get('b')!(
       response.promise,
+      () => true,
       (key) => key === 'page',
       undefined,
       {
         shell: 'overlay b',
       },
-    );
+    ).response;
     await wait();
   });
   expect(view.textContent).toContain('old shelloverlay a');
@@ -1094,7 +1272,11 @@ test('settling a tagged hole keeps its pinned shell visible', async () => {
   const response = Promise.withResolvers<Elements>();
   let result!: Promise<Elements>;
   await act(async () => {
-    result = controls.get('a')!(response.promise, (key) => key === 'shell');
+    result = controls.get('a')!(
+      response.promise,
+      () => true,
+      (key) => key === 'shell',
+    ).response;
     await wait();
   });
   expect(view.textContent).toContain('shellwaiting');
