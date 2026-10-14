@@ -370,11 +370,11 @@ describe('instant element merges', () => {
     );
     stubFetch();
 
-    let refetch: Refetch | undefined;
+    let merge: ReturnType<typeof useMergeInstantElements> | undefined;
     const Probe = () => {
-      const refetchValue = useRefetch();
+      const mergeValue = useMergeInstantElements();
       useEffect(() => {
-        refetch = refetchValue;
+        merge = mergeValue;
       });
       return null;
     };
@@ -394,9 +394,8 @@ describe('instant element merges', () => {
     });
     expect(container.textContent).toBe('A1LIVE');
 
-    mocks.createFromFetch.mockReturnValueOnce(resolvedThenable({}));
     await act(async () => {
-      await refetch!('R/next.txt', undefined, (key) => key === 'eager', {
+      await merge!(Promise.resolve({}), (key) => key === 'eager', {
         shared: 'BASE',
       });
     });
