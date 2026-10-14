@@ -7,7 +7,7 @@ const encoder = new TextEncoder();
 // counters only move when something actually pulls the module in.
 const evaluated = vi.hoisted(() => ({ client: 0, server: 0 }));
 
-vi.mock('react-server-dom-webpack/client.edge', () => {
+vi.mock('@vitejs/plugin-rsc/react/rsc/client', () => {
   evaluated.client += 1;
   return {
     createFromReadableStream: vi.fn(

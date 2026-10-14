@@ -4,6 +4,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
+import { getPluginApi } from '@vitejs/plugin-rsc';
 import pc from 'picocolors';
 import type { Plugin, Rollup } from 'vite';
 import { createProgressLogger } from '../utils-build/progress-logger.js';
@@ -65,6 +66,9 @@ export function staticBuildPlugin({
             distDir,
             rscBundle,
             prunableFiles,
+            serverReferenceIds: new Set(
+              getPluginApi(viteConfig)!.manager.serverReferences.metaMap.keys(),
+            ),
           });
           console.log(
             pc.blue(
