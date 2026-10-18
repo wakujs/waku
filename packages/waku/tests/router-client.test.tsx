@@ -478,10 +478,6 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
       signal?: AbortSignal;
       onBuildIdMismatch?: () => void;
       unstable_base?: Record<string, unknown>;
-      merge?: (
-        base: Record<string, unknown>,
-        response: Record<string, unknown>,
-      ) => Record<string, unknown>;
     },
   ) => {
     const hasOptions = options && Reflect.ownKeys(options).length;
@@ -497,15 +493,9 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
         : testHoisted.inner!)(rscPath, ...rest),
     );
     const data = abortable(requested, options?.signal);
-    return data.then((result) => {
-      const response = adoptElements(withRouteMeta(result, rscPath, rscParams));
-      return options?.unstable_base
-        ? (options.merge ?? actual.unstable_combineElements)(
-            options.unstable_base,
-            response,
-          )
-        : response;
-    });
+    return data.then((result) =>
+      adoptElements(withRouteMeta(result, rscPath, rscParams)),
+    );
   };
   testHoisted.newFetchRsc = () => {
     testHoisted.fetchRsc = vi.fn(fetchRscImpl);

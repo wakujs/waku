@@ -260,8 +260,9 @@ test('Root-bound fetches only claim validators from an explicit base', async () 
     new Headers(request.mock.lastCall![1]?.headers).get(ETAGS_HEADER),
   ).toBe('{}');
   expect(await root.fetch('next', undefined, { unstable_base: base })).toEqual(
-    base,
+    {},
   );
+  expect((await root.getElements()).content).toBe('retained');
   expect(
     new Headers(request.mock.lastCall![1]?.headers).get(ETAGS_HEADER),
   ).toBe('{"content":"version"}');

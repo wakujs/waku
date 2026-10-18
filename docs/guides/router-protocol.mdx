@@ -74,8 +74,9 @@ distinguishes `hasCachedShell` from `canReuseStaticRoute`.
 ## Partial Responses
 
 Minimal can send the etags of a supplied `unstable_base` with a fetch. The server
-omits slots whose validators match; fetching combines the response over that base.
+omits slots whose validators match; fetching returns only response entries.
 A response is consequently not guaranteed to be a complete renderable tree.
+Callers retain omitted slots or combine a standalone snapshot explicitly.
 
 Route metadata describes the resolved route even when its slots are omitted. For
 example, a dynamic page whose etag matches is omitted, but `IS_STATIC` remains
@@ -243,13 +244,15 @@ the retained elements' route metadata as described below. Failed commits do
 not learn static routes from retained preview metadata.
 
 An ordinary navigation queues its pending elements promise when fetching starts.
-Later action and client merges follow it in React's update order. Router uses
-`fetchRsc`'s `merge` option to receive the decoded response patch without filling
-omitted entries from its request-time base. Returned entries replace earlier
-values, including equal primitive values; omitted entries retain queued values
-and removals. Cached prefetches supply their stored element map. The destination's
-route slot and protocol metadata are reapplied when the response arrives so an
-action from the previous route cannot restore its composition over the destination.
+Later action and client merges follow it in React's update order. `fetchRsc`
+returns the decoded response patch without filling omitted entries from its
+request-time base. Returned entries replace earlier values, including equal
+primitive values; omitted entries retain queued values and removals. Prefetching
+combines its retained base with the response to provide
+reusable element maps; instant merging fills omitted slots from its prefetch
+base. The destination's route slot and protocol metadata are reapplied when the
+response arrives so an action from the previous route cannot restore its
+composition over the destination.
 Redirect and 404 follows after an instant paint use the same response
 patch merge. Response metadata identifies the resolved route and is
 applied independently of slot conflicts. Reusing a cached static route restores

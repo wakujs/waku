@@ -1384,6 +1384,81 @@ test.each([
   },
 );
 
+test('an instant response fills omitted slots from its prefetched base', async () => {
+  const response = defer<Elements>();
+  const first = payload('/one', <p>page one</p>);
+  mocks.queue.push({
+    ...first,
+    sidebar: 'original',
+    _etags: { root: 1, sidebar: 'original-v1' },
+  });
+  const view = await mount(
+    <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+  );
+  mocks.queue.push({
+    ...payload(
+      '/two',
+      <>
+        <p>page two</p>
+        <Suspense fallback="waiting">
+          <aside data-prefetched-sidebar>
+            <Slot id="sidebar" />
+          </aside>
+        </Suspense>
+      </>,
+    ),
+    root: first.root,
+    sidebar: 'prefetched',
+    [ROUTE_ID]: ['/two', 'q=cached'],
+    _etags: {
+      root: 1,
+      [getRouteSlotId('/two')]: 1,
+      sidebar: 'prefetched-v1',
+    },
+  });
+  await act(async () => {
+    controls.get('a')!.router.prefetch('/two?q=cached');
+    await flush();
+  });
+  mocks.queue.push(response.promise);
+  const fetch = vi.spyOn(globalThis, 'fetch');
+  let pushed: Promise<void> | undefined;
+  try {
+    await act(async () => {
+      pushed = controls.get('a')!.router.push('/two?q=live', {
+        unstable_instant: true,
+      });
+      await flush();
+    });
+    expect(view.textContent).toContain('page two');
+    expect(view.textContent).toContain('waiting');
+    const headers = new Headers(fetch.mock.lastCall![1]?.headers);
+    const etags = JSON.parse(headers.get(ETAGS_HEADER) ?? '{}');
+    await act(async () => {
+      response.resolve({
+        [ROUTE_ID]: ['/two', 'q=live'],
+        [IS_STATIC_ID]: false,
+      });
+      await pushed;
+      await flush();
+    });
+    expect(view.querySelector('[data-prefetched-sidebar]')?.textContent).toBe(
+      'prefetched',
+    );
+    expect(view.textContent).toContain('page two');
+    expect(window.location.pathname + window.location.search).toBe(
+      '/two?q=live',
+    );
+    expect(etags.sidebar).toBe('prefetched-v1');
+  } finally {
+    await act(async () => {
+      response.resolve({});
+      await pushed;
+      await flush();
+    });
+  }
+});
+
 test.each(['page', 'layout'])(
   'an instant redirect uses the accepted layout baseline (suspension in %s)',
   async (suspension) => {

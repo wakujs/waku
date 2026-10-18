@@ -1,4 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ETAGS_ID } from '../src/lib/utils-isomorphic/etags.js';
+import {
+  adoptElements,
+  collectEtags,
+} from '../src/minimal/client-utils/element-etags.js';
 import {
   PREFETCH_LIMIT,
   PREFETCH_TTL,
@@ -172,6 +177,36 @@ describe('router prefetch manager', () => {
       undefined,
     );
     expect(received).toBeUndefined();
+  });
+
+  it('materializes a prefetched response patch with its retained values and validators', async () => {
+    const manager = createPrefetchManager();
+    await settle(
+      manager,
+      '/p',
+      'q=a',
+      adoptElements({
+        shared: 'cached',
+        [ETAGS_ID]: { shared: 'shared-v1' },
+      }),
+    );
+    manager.prefetch(
+      '/p',
+      'q=b',
+      async () =>
+        adoptElements({
+          page: 'fresh',
+          [ETAGS_ID]: { page: 'page-v2' },
+        }),
+      undefined,
+    );
+    const elements = await manager.get('/p', 'q=b')!.promise;
+    expect(elements).toEqual({ shared: 'cached', page: 'fresh' });
+    expect(collectEtags(elements)).toEqual({
+      shared: 'shared-v1',
+      page: 'page-v2',
+    });
+    expect(manager.getElements('/p')).toEqual(elements);
   });
 
   it('releases only an unfulfilled reservation', async () => {

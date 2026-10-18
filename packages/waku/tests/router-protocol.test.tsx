@@ -20,6 +20,7 @@ import { clearInitialRscEntries } from '../src/minimal/client-utils/initial-rsc-
 import {
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
+  unstable_combineElements as combineElements,
   useElementsPromise_UNSTABLE as useElementsPromise,
   useFetchRsc_UNSTABLE as useFetchRsc,
   useMergeElements_UNSTABLE as useMergeElements,
@@ -245,13 +246,15 @@ test('an omitted mutable slot still keeps the response route dynamic', async () 
   });
   const binding = await mount(router, '/page', 'q=one');
   const { fetchRsc, elements } = binding.getView();
-  const refreshed = await fetchRsc(
+  const patch = await fetchRsc(
     encodeRoutePath('/page'),
     new URLSearchParams({ query: 'q=two' }),
     { unstable_base: elements },
   );
   expect(binding.payloads.at(-1)).not.toHaveProperty('page');
   expect(binding.payloads.at(-1)).not.toHaveProperty(getRouteSlotId('/page'));
+  expect(patch).not.toHaveProperty('page');
+  const refreshed = combineElements(elements, patch);
   expect(refreshed.page).toBe('page');
   expect(isStaticFromElements(refreshed)).toBe(false);
   expect(getRouteFromElements(refreshed)).toEqual({

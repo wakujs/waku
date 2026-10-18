@@ -142,7 +142,6 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
                       }
                     : {}),
                   unstable_base: opts.base,
-                  merge: (_base, response) => response,
                 },
               );
             } finally {

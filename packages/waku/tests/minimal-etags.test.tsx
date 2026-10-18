@@ -275,7 +275,7 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
     expect(JSON.parse(headers.get(ETAGS_HEADER) ?? 'null')).toEqual({});
   });
 
-  it('a prefetch claims the etags of its base and returns the merge', async () => {
+  it('combining a response patch preserves omitted values and validators', async () => {
     testHoisted.elements = {
       widget: <div>w</div>,
       [ETAGS_ID]: { widget: 'etag-widget' },
@@ -285,13 +285,14 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
       page: <div>b</div>,
       [ETAGS_ID]: { page: 'etag-page-2' },
     };
-    const result = await fetchRsc('R/bar', undefined, { unstable_base: base });
+    const response = await fetchRsc('R/bar', undefined, {
+      unstable_base: base,
+    });
+    const result = combineElements(base, response);
 
-    // only the base's etags are claimed: a live copy the prefetch does not
-    // retain must not let the server omit an element
     expect(sentEtags()).toEqual({ widget: 'etag-widget' });
+    expect(result.widget).toBe(base.widget);
 
-    // a key the response omits is kept from the base, with its etag
     testHoisted.elements = {};
     await fetchRsc('R/baz', undefined, { unstable_base: result });
     expect(sentEtags()).toEqual({ widget: 'etag-widget', page: 'etag-page-2' });
@@ -309,15 +310,12 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
       page: 'returned',
       [ETAGS_ID]: { page: 'page-v1' },
     };
-    const merge = vi.fn((_base, response) => response);
     const patch = await fetchRsc('R/next', undefined, {
       unstable_base: base,
-      merge,
     });
 
     expect(sentEtags()).toEqual({ widget: 'widget-v1' });
     expect(patch).toEqual({ sidebar: 0, page: 'returned' });
-    expect(merge).toHaveBeenCalledExactlyOnceWith(base, patch);
     expect(collectEtags(patch)).toEqual({ page: 'page-v1' });
   });
 

@@ -23,14 +23,9 @@ export type FetchRscOptions = {
   onBuildIdMismatch?: () => void;
   /**
    * Retained elements whose etags are sent, allowing the server to omit them.
-   * The response is combined over this base unless `merge` is supplied.
+   * The returned response does not include omitted entries from this base.
    */
   unstable_base?: Elements;
-  /**
-   * Defaults to `unstable_combineElements`; runs when `unstable_base` is supplied.
-   * Return `response` to receive only returned entries while sending base etags.
-   */
-  merge?: (base: Elements, response: Elements) => Elements;
 };
 
 export type FetchRsc = (

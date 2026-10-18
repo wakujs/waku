@@ -281,14 +281,13 @@ const fetchRsc = (
   rscParams: unknown,
   options: FetchRscOptions | undefined,
   store: RootStore | undefined,
-): Promise<Elements> => {
-  const base = options?.unstable_base;
-  const elements = fetchRscElements(
+): Promise<Elements> =>
+  fetchRscElements(
     rscPath,
     rscParams,
     {
       // Etags can only claim elements from a base the caller retains.
-      etags: collectEtags(base ?? {}),
+      etags: collectEtags(options?.unstable_base ?? {}),
       ...(options?.signal ? { signal: options.signal } : {}),
       ...(options?.onBuildIdMismatch
         ? { onBuildIdMismatch: options.onBuildIdMismatch }
@@ -296,13 +295,6 @@ const fetchRsc = (
     },
     store,
   ).then(({ elements }) => elements);
-  if (!base) {
-    return elements;
-  }
-  return elements.then((response) =>
-    (options?.merge ?? combineElements)(base, response),
-  );
-};
 
 const getInitialRsc = (
   rscPath: string,
@@ -335,8 +327,9 @@ const fetchWithoutRoot: FetchRsc = (rscPath, rscParams, options) =>
 
 /**
  * Returns the fetch of the enclosing `Root_UNSTABLE`, which runs that Root's
- * enhancers and returns the elements without merging them. Outside a Root it
- * runs no enhancers.
+ * enhancers and returns response entries without merging them into the Root or
+ * `unstable_base`. Omitted slots must be retained by the caller. Outside a Root
+ * it runs no enhancers.
  */
 export const useFetchRsc_UNSTABLE = (): FetchRsc =>
   use(RootStoreContext)?.fetchRsc ?? fetchWithoutRoot;
