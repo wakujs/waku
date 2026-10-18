@@ -219,21 +219,23 @@ interpreting it.
 Each request carries forward accepted RSC elements as its cache baseline,
 which can be ahead of the last painted route. A metadata-only action dispatch
 makes no element-validator claims for its destination. This baseline does not
-track every queued action or client merge; response reconciliation reads the
-latest queued elements through Minimal's merge callback.
+track every queued action or client merge; response patches merge with the
+latest queued elements through Minimal's update queue.
 After a failure, refetch decisions use the retained request origin, not an
 instant preview whose response may have been cancelled. Action origins use
 the retained elements' route metadata as described below. Failed commits do
 not learn static routes from retained preview metadata.
 
 An ordinary navigation queues its pending elements promise when fetching starts.
-Later action and client merges follow it in React's update order. Fresh response
-entries replace earlier values; entries retained from the request's cache baseline
-do not overwrite independent queued changes. The destination's route slot and
-protocol metadata are reapplied when the response arrives so an action from the
-previous route cannot restore its composition over the destination.
+Later action and client merges follow it in React's update order. Router uses
+`fetchRsc`'s `merge` option to receive the decoded response patch without filling
+omitted entries from its request-time base. Returned entries replace earlier
+values, including equal primitive values; omitted entries retain queued values
+and removals. Cached prefetches supply their stored element map. The destination's
+route slot and protocol metadata are reapplied when the response arrives so an
+action from the previous route cannot restore its composition over the destination.
 Redirect and 404 follows after an instant paint use the same response
-reconciliation rule. Response metadata identifies the resolved route and is
+patch merge. Response metadata identifies the resolved route and is
 applied independently of slot conflicts. Reusing a cached static route restores
 its static classification.
 
@@ -269,6 +271,10 @@ layout effect recognizes that identity and does not repeat its scroll or history
 intent. An external `history.replaceState` query/hash change is consequently not
 undone by an unrelated element merge. A server redirect can change the destination
 for the same intent; that correction replaces history rather than pushing again.
+
+RSC hot reload selects an accepted destination before retiring the request. If
+only a pending fetch exists, it refreshes the visible route. This keeps an
+accepted but suspended navigation from being replaced by the previous page.
 
 ## Action Intent
 

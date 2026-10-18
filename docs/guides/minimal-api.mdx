@@ -60,9 +60,6 @@ Advanced composition APIs remain available to any Minimal-based framework:
   while preserving their validators.
 - `unstable_isImmutableElement(elements, slotId)` inspects a slot's immutable
   status without exposing its validator.
-- `unstable_isSameElement(a, b, slotId)` compares own presence, `Object.is` value,
-  and validator without exposing it. Separate writes with equal values and
-  validators compare equal.
 - `useMergeElements_UNSTABLE` accepts a merge callback for custom updates to
   the Root's queued element promise.
 - `unstable_buildElements`, `Unstable_ElementSource`, and
@@ -648,6 +645,18 @@ Important behavior:
 - If the refetch fails, the existing element map stays in place.
 
 #### Custom Merges
+
+With `unstable_base`, `fetchRsc` sends the base's validators and combines the
+response over that base by default. Its `merge(base, response)` option controls
+this combination. For example, a framework applying response patches to its own
+update queue can request only returned entries, without losing etag validation:
+
+```tsx
+const patch = await fetchRsc(rscPath, rscParams, {
+  unstable_base: retainedElements,
+  merge: (_base, response) => response,
+});
+```
 
 The optional second argument to `mergeElements` chooses the Root's next element
 promise. It receives the latest queued promise, including updates that have not

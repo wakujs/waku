@@ -30,7 +30,6 @@ import {
   Root_UNSTABLE as Root,
   unstable_combineElements as combineElements,
   unstable_isImmutableElement as isImmutableElement,
-  unstable_isSameElement as isSameElement,
   useFetchRsc_UNSTABLE,
 } from '../src/minimal/client.js';
 import { unstable_buildElements as buildElements } from '../src/minimal/server.js';
@@ -110,20 +109,6 @@ const sentEtags = () => {
 };
 
 describe('minimal per-slot cache-validator (carry + replay)', () => {
-  it('compares presence, values and validators without treating equal writes differently', () => {
-    const first = adoptElements({ page: null, [ETAGS_ID]: { page: 'v1' } });
-    const repeated = adoptElements({ page: null, [ETAGS_ID]: { page: 'v1' } });
-    const changed = adoptElements({ page: null, [ETAGS_ID]: { page: 'v2' } });
-    expect(isSameElement(first, repeated, 'page')).toBe(true);
-    expect(isSameElement(first, combineElements({}, first), 'page')).toBe(true);
-    expect(isSameElement(first, changed, 'page')).toBe(false);
-    expect(isSameElement(first, { page: null }, 'page')).toBe(false);
-    expect(isSameElement({}, { page: undefined }, 'page')).toBe(false);
-    expect(isSameElement({}, {}, 'constructor')).toBe(true);
-    expect(isSameElement({ page: NaN }, { page: NaN }, 'page')).toBe(true);
-    expect(isSameElement({ page: 0 }, { page: -0 }, 'page')).toBe(false);
-  });
-
   it('caches header-safe tags from a response and drops the clear/non-Latin1 ones', async () => {
     testHoisted.elements = {
       page: <div>page</div>,
@@ -310,6 +295,30 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
     testHoisted.elements = {};
     await fetchRsc('R/baz', undefined, { unstable_base: result });
     expect(sentEtags()).toEqual({ widget: 'etag-widget', page: 'etag-page-2' });
+  });
+
+  it('can receive a response patch without filling entries from its etag base', async () => {
+    testHoisted.elements = {
+      widget: 'cached',
+      sidebar: 0,
+      [ETAGS_ID]: { widget: 'widget-v1' },
+    };
+    const base = await fetchRsc('R/base');
+    testHoisted.elements = {
+      sidebar: 0,
+      page: 'returned',
+      [ETAGS_ID]: { page: 'page-v1' },
+    };
+    const merge = vi.fn((_base, response) => response);
+    const patch = await fetchRsc('R/next', undefined, {
+      unstable_base: base,
+      merge,
+    });
+
+    expect(sentEtags()).toEqual({ widget: 'widget-v1' });
+    expect(patch).toEqual({ sidebar: 0, page: 'returned' });
+    expect(merge).toHaveBeenCalledExactlyOnceWith(base, patch);
+    expect(collectEtags(patch)).toEqual({ page: 'page-v1' });
   });
 
   it('sends a non-ASCII slot id in a header a browser accepts', async () => {

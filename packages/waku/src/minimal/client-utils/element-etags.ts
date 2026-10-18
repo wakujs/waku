@@ -26,26 +26,6 @@ export const isImmutableElement = (
   slotId: string,
 ): boolean => slotEtagsByElements.get(elements)?.get(slotId) === IMMUTABLE_ETAG;
 
-/**
- * Compares a slot's own presence, `Object.is` value and cache validator.
- * Two absent slots are equal, as are separate writes with equal values and
- * validators. Validators are not exposed.
- */
-export const isSameElement = (
-  a: Elements,
-  b: Elements,
-  slotId: string | symbol,
-): boolean => {
-  const present = Object.hasOwn(a, slotId);
-  return (
-    present === Object.hasOwn(b, slotId) &&
-    (!present ||
-      (Object.is(a[slotId], b[slotId]) &&
-        slotEtagsByElements.get(a)?.get(slotId) ===
-          slotEtagsByElements.get(b)?.get(slotId)))
-  );
-};
-
 export const collectEtags = (elements: Elements): Etags =>
   Object.fromEntries(slotEtagsByElements.get(elements) ?? []);
 

@@ -29,7 +29,6 @@ import {
   collectEtags,
   combineElements,
   isImmutableElement,
-  isSameElement,
 } from './client-utils/element-etags.js';
 import {
   getInitialRscEntry,
@@ -88,7 +87,6 @@ type Elements = Readonly<Record<string | symbol, unknown>>;
 export {
   combineElements as unstable_combineElements,
   isImmutableElement as unstable_isImmutableElement,
-  isSameElement as unstable_isSameElement,
 };
 
 const mergeElementsPromise = (
@@ -301,7 +299,9 @@ const fetchRsc = (
   if (!base) {
     return elements;
   }
-  return elements.then((response) => combineElements(base, response));
+  return elements.then((response) =>
+    (options?.merge ?? combineElements)(base, response),
+  );
 };
 
 const getInitialRsc = (

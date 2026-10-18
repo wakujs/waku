@@ -478,6 +478,10 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
       signal?: AbortSignal;
       onBuildIdMismatch?: () => void;
       unstable_base?: Record<string, unknown>;
+      merge?: (
+        base: Record<string, unknown>,
+        response: Record<string, unknown>,
+      ) => Record<string, unknown>;
     },
   ) => {
     const hasOptions = options && Reflect.ownKeys(options).length;
@@ -496,7 +500,10 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
     return data.then((result) => {
       const response = adoptElements(withRouteMeta(result, rscPath, rscParams));
       return options?.unstable_base
-        ? actual.unstable_combineElements(options.unstable_base, response)
+        ? (options.merge ?? actual.unstable_combineElements)(
+            options.unstable_base,
+            response,
+          )
         : response;
     });
   };

@@ -9,7 +9,6 @@ import {
 } from 'react';
 import {
   unstable_combineElements as combineElements,
-  unstable_isSameElement as isSameElement,
   useMergeElements_UNSTABLE as useMergeElements,
   useRegisterRscReloadListener_UNSTABLE as useRegisterRscReloadListener,
 } from 'waku/minimal/client';
@@ -171,8 +170,14 @@ export const useNavigation = (
     () => resolveSettledRoute(getElements(), routeFallback),
     [getElements, routeFallback],
   );
+  const getRefetchRoute = useCallback(() => {
+    const request = requestRef.current;
+    return request?.queuedState && !request.queuedState.failedFrom
+      ? resolveSettledRoute(request.base, routeFallback)
+      : getSettledRoute();
+  }, [getSettledRoute, routeFallback]);
   useHmrRefetch({
-    getSettledRoute,
+    getSettledRoute: getRefetchRoute,
     onBeforeRefetch: replaceRequest,
   });
 
@@ -182,7 +187,12 @@ export const useNavigation = (
       const settledRoute =
         getRouterState(elements)?.failedFrom ??
         resolveSettledRoute(elements, routeFallback);
-      const base = requestRef.current?.base ?? elements;
+      const retained = requestRef.current?.base;
+      const base = retained ?? elements;
+      const loadedRoute =
+        getRouterState(base)?.failedFrom ??
+        (retained && getRouteFromElements(retained)) ??
+        settledRoute;
       const shouldRefetch =
         options.refetch ??
         (!isSameRscRoute(nextRoute, settledRoute) ||
@@ -289,7 +299,7 @@ export const useNavigation = (
           signal: controller.signal,
           refetch: shouldRefetch,
           has404,
-          settled: getRouteFromElements(base) ?? settledRoute,
+          settled: loadedRoute,
           base,
           url: routeUrl,
           follows: initialFollows,
@@ -326,7 +336,7 @@ export const useNavigation = (
               pathChanged: false,
               follows: outcome.follows,
             }),
-            failedFrom: getRouteFromElements(base) ?? settledRoute,
+            failedFrom: loadedRoute,
           };
           const data = {
             ...(instantResponse
@@ -391,29 +401,17 @@ export const useNavigation = (
         }
         return data;
       };
-      const mergeResponse = (
-        prev: Promise<Elements>,
-        incoming: Promise<Elements>,
-      ) =>
-        Promise.all([prev, incoming]).then(([prev, incoming]) =>
-          combineElements(prev, incoming, {
-            filter: (key) =>
-              (typeof key === 'string' && isMetaKey(key)) ||
-              !isSameElement(incoming, base, key) ||
-              isSameElement(prev, base, key),
-          }),
-        );
       const incoming = loadElements();
       if (instantResponse) {
         const data = await incoming;
         if (getRouterState(data)) {
           startTransition(() => {
-            void mergeElements(data, mergeResponse);
+            void mergeElements(data);
           });
         }
         return;
       }
-      await mergeElements(incoming, mergeResponse);
+      await mergeElements(incoming);
     },
     [
       cache,

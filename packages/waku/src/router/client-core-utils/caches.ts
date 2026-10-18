@@ -91,6 +91,8 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
      * Loads with static reuse, an optional initial response, prefetch, or the
      * network, in that order. Preserves `unstable_load`'s follow and cancellation
      * behavior, and releases prefetch subscriptions as their attempts finish.
+     * Network results are response patches; cached prefetches return stored
+     * maps. Combine patches with the retained base when reading a full snapshot.
      * Does not merge elements or commit browser state. Cached synchronous
      * commits belong to the binding, before awaiting this method.
      */
@@ -140,6 +142,7 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
                       }
                     : {}),
                   unstable_base: opts.base,
+                  merge: (_base, response) => response,
                 },
               );
             } finally {

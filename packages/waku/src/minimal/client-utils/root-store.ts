@@ -22,10 +22,15 @@ export type FetchRscOptions = {
   signal?: AbortSignal;
   onBuildIdMismatch?: () => void;
   /**
-   * Elements the response is combined over. The request sends their etags, so
-   * the server can skip the slots they hold.
+   * Retained elements whose etags are sent, allowing the server to omit them.
+   * The response is combined over this base unless `merge` is supplied.
    */
   unstable_base?: Elements;
+  /**
+   * Defaults to `unstable_combineElements`; runs when `unstable_base` is supplied.
+   * Return `response` to receive only returned entries while sending base etags.
+   */
+  merge?: (base: Elements, response: Elements) => Elements;
 };
 
 export type FetchRsc = (

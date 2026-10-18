@@ -337,6 +337,28 @@ test('partial actions survive the pending normal-navigation queue', async () => 
   }
 });
 
+test.each([0, null])(
+  'a fresh %s slot replaces an earlier queued client write',
+  async (sidebar) => {
+    mocks.queue.push({ ...payload('/one', <p>page one</p>), sidebar });
+    const view = await mount(
+      <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+    );
+    mocks.queue.push({ ...payload('/two', <p>page two</p>), sidebar });
+    await act(async () => {
+      startTransition(() => {
+        void controls.get('a')!.merge({ sidebar: 1 });
+      });
+      await controls.get('a')!.router.push('/two');
+      await flush();
+    });
+    expect(view.textContent).toContain('page two');
+    expect(view.querySelector('[data-sidebar]')?.textContent).toBe(
+      String(sidebar ?? ''),
+    );
+  },
+);
+
 test('an origin action cannot restore route metadata over a reload rewrite', async () => {
   const Destination = () => {
     const elements = use(useElementsPromise());
@@ -1959,99 +1981,134 @@ test('a later response wins over an accepted destination that renders while it w
   expect(push.mock.lastCall?.[2]?.toString()).toContain('/three');
 });
 
-test('a failed replacement keeps the instant action origin but refetches its abandoned response', async () => {
-  const instant = defer<Elements>();
-  const failed = defer<Elements>();
-  mocks.queue.push({
-    ...payload('/one', <p>page one</p>),
-    [IS_STATIC_ID]: true,
-    root: (
-      <>
-        <Probe id="a" />
-        <ErrorBoundary>
-          <Children />
-        </ErrorBoundary>
-      </>
-    ),
-    [getRouteSlotId('/two')]: <p>cached page two</p>,
-    _etags: {
-      root: 1,
-      [getRouteSlotId('/one')]: 1,
-      [getRouteSlotId('/two')]: 1,
-    },
-  });
-  const view = await mount(
-    <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
-  );
-  mocks.queue.push(instant.promise);
-  let painted: Promise<void> | undefined;
-  let pushed: Promise<void> | undefined;
-  try {
-    await act(async () => {
-      painted = controls.get('a')!.router.push('/two?q=2#anchor', {
-        unstable_instant: true,
-      });
-      await flush();
-    });
-    expect(view.textContent).toContain('cached page two');
-    expect(window.location.pathname).toBe('/two');
-    mocks.queue.push(failed.promise);
-    await act(async () => {
-      pushed = controls.get('a')!.router.push('/three');
-      void pushed.catch(() => {});
-      await flush();
-    });
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    await act(async () => {
-      failed.reject(new Error('offline'));
-      await expect(pushed).rejects.toThrow('offline');
-      await painted;
-      await flush();
-    });
-    expect(window.location.pathname).toBe('/three');
-    const fetch = vi.spyOn(globalThis, 'fetch');
-    mocks.queue.push({ _value: 'updated' });
-    await act(async () => {
-      expect(await unstable_callServerRsc('actions#update', [])).toBe(
-        'updated',
-      );
-      await flush();
-    });
-    expect(
-      new Headers(fetch.mock.lastCall![1]?.headers).get(ACTION_LOCATION_HEADER),
-    ).toBe('/two?q=2');
-    fetch.mockClear();
+test.each(['return', 'second failure', 'hash redirect'] as const)(
+  'a failed replacement keeps the instant action origin and refetches its abandoned response (%s)',
+  async (scenario) => {
+    const instant = defer<Elements>();
+    const failed = defer<Elements>();
     mocks.queue.push({
-      [ROUTE_ID]: ['/two', 'q=2'],
-      [IS_STATIC_ID]: false,
-      sidebar: 'fresh two',
+      ...payload('/one', <p>page one</p>),
+      [IS_STATIC_ID]: true,
+      root: (
+        <>
+          <Probe id="a" />
+          <ErrorBoundary>
+            <Children />
+          </ErrorBoundary>
+        </>
+      ),
+      [getRouteSlotId('/two')]: <p>cached page two</p>,
+      _etags: {
+        root: 1,
+        [getRouteSlotId('/one')]: 1,
+        [getRouteSlotId('/two')]: 1,
+      },
     });
-    await act(async () => {
-      await controls.get('a')!.router.push('/two?q=2#anchor');
-      await flush();
-    });
-    expect(fetch).toHaveBeenCalledTimes(1);
-    expect(view.querySelector('[data-sidebar]')?.textContent).toBe('fresh two');
-    expect(window.location.pathname + window.location.search).toBe('/two?q=2');
-    expect(window.location.hash).toBe('#anchor');
-    fetch.mockClear();
-    await act(async () => {
-      await controls.get('a')!.router.push('/two?q=2#next');
-      await flush();
-    });
-    expect(fetch).not.toHaveBeenCalled();
-    expect(view.querySelector('[data-sidebar]')?.textContent).toBe('fresh two');
-    expect(window.location.hash).toBe('#next');
-  } finally {
-    await act(async () => {
-      instant.resolve({});
-      failed.resolve({});
-      await painted;
-      await pushed?.catch(() => {});
-      await flush();
-    });
-  }
-});
+    const view = await mount(
+      <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+    );
+    mocks.queue.push(instant.promise);
+    let painted: Promise<void> | undefined;
+    let pushed: Promise<void> | undefined;
+    try {
+      await act(async () => {
+        painted = controls.get('a')!.router.push('/two?q=2#anchor', {
+          unstable_instant: true,
+        });
+        await flush();
+      });
+      expect(view.textContent).toContain('cached page two');
+      expect(window.location.pathname).toBe('/two');
+      mocks.queue.push(failed.promise);
+      await act(async () => {
+        pushed = controls.get('a')!.router.push('/three');
+        void pushed.catch(() => {});
+        await flush();
+      });
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      await act(async () => {
+        failed.reject(new Error('offline'));
+        await expect(pushed).rejects.toThrow('offline');
+        await painted;
+        await flush();
+      });
+      expect(window.location.pathname).toBe('/three');
+      const fetch = vi.spyOn(globalThis, 'fetch');
+      mocks.queue.push({ _value: 'updated' });
+      await act(async () => {
+        expect(await unstable_callServerRsc('actions#update', [])).toBe(
+          'updated',
+        );
+        await flush();
+      });
+      expect(
+        new Headers(fetch.mock.lastCall![1]?.headers).get(
+          ACTION_LOCATION_HEADER,
+        ),
+      ).toBe('/two?q=2');
+      if (scenario === 'second failure') {
+        const again = defer<Elements>();
+        mocks.queue.push(again.promise);
+        await act(async () => {
+          const navigation = controls.get('a')!.router.push('/four');
+          void navigation.catch(() => {});
+          await flush();
+          again.reject(new Error('offline again'));
+          await expect(navigation).rejects.toThrow('offline again');
+          await flush();
+        });
+      }
+      fetch.mockClear();
+      const redirect = defer<Elements>();
+      if (scenario === 'hash redirect') {
+        mocks.queue.push(redirect.promise);
+      }
+      mocks.queue.push({
+        [ROUTE_ID]: ['/two', 'q=2'],
+        [IS_STATIC_ID]: false,
+        sidebar: 'fresh two',
+      });
+      await act(async () => {
+        const navigation = controls.get('a')!.router.push('/two?q=2#anchor');
+        if (scenario === 'hash redirect') {
+          redirect.reject(
+            createCustomError('moved', { location: '/two?q=2#moved' }),
+          );
+        }
+        await navigation;
+        await flush();
+      });
+      expect(fetch).toHaveBeenCalledTimes(scenario === 'hash redirect' ? 2 : 1);
+      expect(view.querySelector('[data-sidebar]')?.textContent).toBe(
+        'fresh two',
+      );
+      expect(window.location.pathname + window.location.search).toBe(
+        '/two?q=2',
+      );
+      expect(window.location.hash).toBe(
+        scenario === 'hash redirect' ? '#moved' : '#anchor',
+      );
+      fetch.mockClear();
+      await act(async () => {
+        await controls.get('a')!.router.push('/two?q=2#next');
+        await flush();
+      });
+      expect(fetch).not.toHaveBeenCalled();
+      expect(view.querySelector('[data-sidebar]')?.textContent).toBe(
+        'fresh two',
+      );
+      expect(window.location.hash).toBe('#next');
+    } finally {
+      await act(async () => {
+        instant.resolve({});
+        failed.resolve({});
+        await painted;
+        await pushed?.catch(() => {});
+        await flush();
+      });
+    }
+  },
+);
 
 test('a failed navigation keeps the last accepted layout even before it paints', async () => {
   const ready = defer<void>();

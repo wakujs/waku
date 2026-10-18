@@ -12,5 +12,4 @@ export {
   unstable_combineElements,
   unstable_getErrorInfo,
   unstable_isImmutableElement,
-  unstable_isSameElement,
 } from './client-runtime.js';
