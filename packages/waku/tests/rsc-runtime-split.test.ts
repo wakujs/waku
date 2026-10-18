@@ -161,7 +161,7 @@ describe('rsc environment does not statically load the RSC client runtime', () =
     // dynamic import back into a static one must fail the assertions above.
     const source = fs.readFileSync(path.join(SRC, 'server.ts'), 'utf8');
     expect(source).toContain('await import(');
-    expect(source).toContain('react-server-dom-webpack/client.edge');
+    expect(source).toContain('@vitejs/plugin-rsc/react/rsc/client');
     expect([...walkStaticGraph('server.ts').clientRuntimeImporters]).toEqual(
       [],
     );

@@ -8,6 +8,7 @@ type Chunk = {
   imports: string[];
   dynamicImports: string[];
   facadeModuleId: string | null;
+  moduleIds: string[];
   isDynamicEntry: boolean;
   isEntry: boolean;
   name: string;
@@ -24,19 +25,22 @@ type Asset = {
 // Removes server-bundle files unreachable except via `prunableFiles`:
 // - chunks: stubbed (so dynamic imports still resolve)
 // - emitted assets (CSS, fonts, wasm, ...): deleted
-// Reachability roots are bundle entries plus non-pruned dynamic-entry chunks.
+// Reachability roots are bundle entries, non-pruned dynamic-entry chunks, and
+// chunks holding a server function, which a request can call.
 export const pruneBuildOutput = async ({
   rootDir,
   srcDir,
   distDir,
   rscBundle,
   prunableFiles,
+  serverReferenceIds,
 }: {
   rootDir: string;
   srcDir: string;
   distDir: string;
   rscBundle: Record<string, Chunk | Asset>;
   prunableFiles: string[];
+  serverReferenceIds: ReadonlySet<string>;
 }): Promise<{ stubbedChunks: string[]; deletedAssets: string[] }> => {
   if (prunableFiles.length === 0) {
     return { stubbedChunks: [], deletedAssets: [] };
@@ -83,6 +87,9 @@ export const pruneBuildOutput = async ({
     }
     // The 'build' entry is the SSG runner, not part of the runtime bundle.
     if (chunk.isEntry && chunk.name !== 'build') {
+      keepRoots.push(chunk.fileName);
+    }
+    if (chunk.moduleIds.some((id) => serverReferenceIds.has(id))) {
       keepRoots.push(chunk.fileName);
     }
   }

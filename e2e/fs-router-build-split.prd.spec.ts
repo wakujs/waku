@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect } from '@playwright/test';
-import { prepareStandaloneSetup, test } from './utils.js';
+import { prepareStandaloneSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareStandaloneSetup('fs-router-build-split');
 
@@ -80,5 +80,30 @@ test.describe('fs-router build split', () => {
         content.includes('issue-1912-static-only-css'),
       ),
     ).toBe(false);
+  });
+
+  test('a static layout keeps its server function', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/static-action`);
+    await waitForHydration(page);
+    await page.getByRole('button', { name: 'Run static action' }).click();
+    await expect(
+      page.getByRole('heading', { name: DYNAMIC_RENDER_SENTINEL }),
+    ).toBeVisible();
+  });
+
+  test('a static layout keeps its server function without JavaScript', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+    try {
+      await page.goto(`http://localhost:${port}/static-action`);
+      await page.getByRole('button', { name: 'Run static action' }).click();
+      await expect(
+        page.getByRole('heading', { name: DYNAMIC_RENDER_SENTINEL }),
+      ).toBeVisible();
+    } finally {
+      await context.close();
+    }
   });
 });

@@ -41,7 +41,7 @@ const rsdwServer = vi.hoisted(() => ({
   ),
 }));
 
-vi.mock('react-server-dom-webpack/client.edge', () => ({
+vi.mock('@vitejs/plugin-rsc/react/rsc/client', () => ({
   createFromReadableStream: rsdwClient.createFromReadableStream,
 }));
 
@@ -64,6 +64,8 @@ describe('waku/server RSC helpers', () => {
     await expect(deserializeRsc(bytes)).resolves.toBe('cached element');
     expect(rsdwClient.createFromReadableStream).toHaveBeenCalledWith(
       expect.any(ReadableStream),
+      {},
+      { preserveServerReferences: true },
     );
   });
 

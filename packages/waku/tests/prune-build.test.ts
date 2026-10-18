@@ -23,6 +23,7 @@ const makeBundle = (
         type: 'chunk';
         fileName: string;
         facadeModuleId?: string | null;
+        moduleIds?: string[];
         isEntry?: boolean;
         isDynamicEntry?: boolean;
         name?: string;
@@ -41,6 +42,7 @@ const makeBundle = (
         type: 'chunk',
         fileName: item.fileName,
         facadeModuleId: item.facadeModuleId ?? null,
+        moduleIds: item.moduleIds ?? [],
         isEntry: item.isEntry ?? false,
         isDynamicEntry: item.isDynamicEntry ?? false,
         name: item.name ?? item.fileName.replace(/\..*$/, ''),
@@ -85,6 +87,7 @@ describe('pruneBuildOutput', () => {
       distDir: DIST,
       rscBundle: bundle,
       prunableFiles: ['pages/static.tsx'],
+      serverReferenceIds: new Set(),
     });
 
     expect(stubbedChunks).toContain('static-page.js');
@@ -92,6 +95,33 @@ describe('pruneBuildOutput', () => {
     expect(rm).toHaveBeenCalledWith(`${ROOT}/${DIST}/server/static-page.css`, {
       force: true,
     });
+  });
+
+  it('keeps a static chunk that holds a server function, with its imports', async () => {
+    const bundle = makeBundle([
+      { type: 'chunk', fileName: 'build.js', isEntry: true, name: 'build' },
+      {
+        type: 'chunk',
+        fileName: 'static-layout.js',
+        facadeModuleId: '/proj/src/pages/_layout.tsx',
+        moduleIds: ['/proj/src/pages/_layout.tsx'],
+        isDynamicEntry: true,
+        imports: ['nav.js'],
+      },
+      { type: 'chunk', fileName: 'nav.js', moduleIds: ['/proj/src/nav.tsx'] },
+    ]);
+
+    const { stubbedChunks } = await pruneBuildOutput({
+      rootDir: ROOT,
+      srcDir: SRC,
+      distDir: DIST,
+      rscBundle: bundle,
+      prunableFiles: ['pages/_layout.tsx'],
+      serverReferenceIds: new Set(['/proj/src/pages/_layout.tsx']),
+    });
+
+    expect(stubbedChunks).not.toContain('static-layout.js');
+    expect(stubbedChunks).not.toContain('nav.js');
   });
 
   it('keeps assets that are also referenced by a kept chunk', async () => {
@@ -122,6 +152,7 @@ describe('pruneBuildOutput', () => {
       distDir: DIST,
       rscBundle: bundle,
       prunableFiles: ['pages/static.tsx'],
+      serverReferenceIds: new Set(),
     });
 
     expect(stubbedChunks).toContain('static-page.js');
