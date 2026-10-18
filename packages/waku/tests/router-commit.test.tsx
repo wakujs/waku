@@ -1959,11 +1959,12 @@ test('a later response wins over an accepted destination that renders while it w
   expect(push.mock.lastCall?.[2]?.toString()).toContain('/three');
 });
 
-test('an action after a failed replacement reports the painted instant route', async () => {
+test('a failed replacement keeps the instant action origin but refetches its abandoned response', async () => {
   const instant = defer<Elements>();
   const failed = defer<Elements>();
   mocks.queue.push({
     ...payload('/one', <p>page one</p>),
+    [IS_STATIC_ID]: true,
     root: (
       <>
         <Probe id="a" />
@@ -1973,7 +1974,11 @@ test('an action after a failed replacement reports the painted instant route', a
       </>
     ),
     [getRouteSlotId('/two')]: <p>cached page two</p>,
-    _etags: { root: 1, [getRouteSlotId('/two')]: 1 },
+    _etags: {
+      root: 1,
+      [getRouteSlotId('/one')]: 1,
+      [getRouteSlotId('/two')]: 1,
+    },
   });
   const view = await mount(
     <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
@@ -2015,6 +2020,28 @@ test('an action after a failed replacement reports the painted instant route', a
     expect(
       new Headers(fetch.mock.lastCall![1]?.headers).get(ACTION_LOCATION_HEADER),
     ).toBe('/two?q=2');
+    fetch.mockClear();
+    mocks.queue.push({
+      [ROUTE_ID]: ['/two', 'q=2'],
+      [IS_STATIC_ID]: false,
+      sidebar: 'fresh two',
+    });
+    await act(async () => {
+      await controls.get('a')!.router.push('/two?q=2#anchor');
+      await flush();
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(view.querySelector('[data-sidebar]')?.textContent).toBe('fresh two');
+    expect(window.location.pathname + window.location.search).toBe('/two?q=2');
+    expect(window.location.hash).toBe('#anchor');
+    fetch.mockClear();
+    await act(async () => {
+      await controls.get('a')!.router.push('/two?q=2#next');
+      await flush();
+    });
+    expect(fetch).not.toHaveBeenCalled();
+    expect(view.querySelector('[data-sidebar]')?.textContent).toBe('fresh two');
+    expect(window.location.hash).toBe('#next');
   } finally {
     await act(async () => {
       instant.resolve({});

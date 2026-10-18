@@ -136,7 +136,9 @@ export const useNavigation = (
   const currentHash = route.hash;
   useLayoutEffect(() => {
     if (routerState && requestRef.current?.queuedState === routerState) {
-      cache.learnStaticFromElements(elements);
+      if (!routerState.failedFrom) {
+        cache.learnStaticFromElements(elements);
+      }
       requestRef.current = undefined;
     }
     if (!routerState || !destinationHref) {
@@ -176,8 +178,11 @@ export const useNavigation = (
 
   const changeRoute: ChangeRoute = useCallback(
     async function changeRoute(nextRoute, options) {
-      const settledRoute = resolveSettledRoute(getElements(), routeFallback);
-      const base = requestRef.current?.base ?? getElements();
+      const elements = getElements();
+      const settledRoute =
+        getRouterState(elements)?.failedFrom ??
+        resolveSettledRoute(elements, routeFallback);
+      const base = requestRef.current?.base ?? elements;
       const shouldRefetch =
         options.refetch ??
         (!isSameRscRoute(nextRoute, settledRoute) ||

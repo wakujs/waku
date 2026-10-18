@@ -221,6 +221,10 @@ which can be ahead of the last painted route. A metadata-only action dispatch
 makes no element-validator claims for its destination. This baseline does not
 track every queued action or client merge; response reconciliation reads the
 latest queued elements through Minimal's merge callback.
+After a failure, refetch decisions use the retained request origin, not an
+instant preview whose response may have been cancelled. Action origins use
+the retained elements' route metadata as described below. Failed commits do
+not learn static routes from retained preview metadata.
 
 An ordinary navigation queues its pending elements promise when fetching starts.
 Later action and client merges follow it in React's update order. Fresh response
