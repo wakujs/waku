@@ -32,6 +32,7 @@ import {
   getRouteSlotId,
   has404FromElements,
   isMetaKey,
+  isStaticFromElements,
 } from '../isomorphic-utils/router-protocol.js';
 import {
   canPaintInstantOverlay,
@@ -184,10 +185,11 @@ export const useNavigation = (
             nextRoute,
             getRouteFromElements(base) ?? settledRoute,
           ));
+      const canReuseStatic = cache.canReuseStaticRoute(nextRoute, base);
       if (
         options.pendingTransition &&
         shouldRefetch &&
-        !cache.canReuseStaticRoute(nextRoute, base) &&
+        !canReuseStatic &&
         !canPaintInstantOverlay(
           cache,
           options.follows ?? 0,
@@ -254,9 +256,10 @@ export const useNavigation = (
             requestedPathChanged || attempt.route.path !== settledRoute.path,
           follows: attempt.follows,
         });
-      if (cache.canReuseStaticRoute(nextRoute, base) || !shouldRefetch) {
+      if (canReuseStatic || !shouldRefetch) {
         const routePatch = {
           [ROUTE_ID]: [nextRoute.path, nextRoute.query],
+          ...(canReuseStatic ? { [IS_STATIC_ID]: true } : {}),
         };
         const state = makeStateForAttempt(initialAttempt, options.history);
         request.queuedState = state;
@@ -348,7 +351,12 @@ export const useNavigation = (
         }
         const patch =
           outcome.type === 'reused'
-            ? { [ROUTE_ID]: [outcome.route.path, outcome.route.query] }
+            ? {
+                [ROUTE_ID]: [outcome.route.path, outcome.route.query],
+                [IS_STATIC_ID]:
+                  cache.canReuseStaticRoute(outcome.route, base) ||
+                  isStaticFromElements(base),
+              }
             : outcome.elements;
         const destination = resolveServerRedirect(
           patch,
@@ -385,6 +393,7 @@ export const useNavigation = (
         Promise.all([prev, incoming]).then(([prev, incoming]) =>
           combineElements(prev, incoming, {
             filter: (key) =>
+              (typeof key === 'string' && isMetaKey(key)) ||
               !isSameElement(incoming, base, key) ||
               isSameElement(prev, base, key),
           }),

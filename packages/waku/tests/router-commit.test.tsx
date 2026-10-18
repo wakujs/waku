@@ -86,6 +86,11 @@ const Probe = ({ id }: { id: string }) => {
   );
 };
 
+const StaticStatus = () => {
+  const elements = use(useElementsPromise());
+  return <output data-static>{String(elements[IS_STATIC_ID])}</output>;
+};
+
 const payload = (path: string, body: ReactNode, id = 'a'): Elements => ({
   root: (
     <>
@@ -1382,8 +1387,13 @@ test.each(['page', 'layout'])(
     mocks.queue.push({
       ...payload('/one', <p>page one</p>),
       root: firstRoot,
+      sidebar: 'baseline',
       [getRouteSlotId('/three')]: <p>cached page three</p>,
-      _etags: { root: 'one-v1', [getRouteSlotId('/three')]: 1 },
+      _etags: {
+        root: 'one-v1',
+        sidebar: 'sidebar-v1',
+        [getRouteSlotId('/three')]: 1,
+      },
     });
     const view = await mount(
       <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
@@ -1413,6 +1423,12 @@ test.each(['page', 'layout'])(
         response.reject(createCustomError('moved', { location: '/four' }));
         await flush();
       });
+      await act(async () => {
+        startTransition(() => {
+          void controls.get('a')!.merge({ sidebar: 'queued update' });
+        });
+        await flush();
+      });
       const headers = new Headers(fetch.mock.lastCall![1]?.headers);
       const etags = JSON.parse(headers.get(ETAGS_HEADER) ?? '{}');
       await act(async () => {
@@ -1430,6 +1446,9 @@ test.each(['page', 'layout'])(
       });
       expect(view.querySelector('aside')?.textContent).toBe('layout one');
       expect(view.textContent).toContain('page four');
+      expect(view.querySelector('[data-sidebar]')?.textContent).toBe(
+        'queued update',
+      );
       expect(window.location.pathname).toBe('/four');
       expect(etags.root).toBe('two-v1');
     } finally {
@@ -1444,55 +1463,222 @@ test.each(['page', 'layout'])(
   },
 );
 
-test('a cached static return keeps its immutable composition after an accepted response', async () => {
+test.each([false, true])(
+  'a cached static return keeps its immutable composition after an accepted response (redirect: %s)',
+  async (redirect) => {
+    const ready = defer<void>();
+    const Page = () => {
+      use(ready.promise);
+      return <p>page two</p>;
+    };
+    const first = {
+      ...payload(
+        '/one',
+        <>
+          <aside>layout one</aside>
+          <p>page one</p>
+        </>,
+      ),
+      root: (
+        <>
+          <Probe id="a" />
+          <StaticStatus />
+          <Children />
+        </>
+      ),
+      [IS_STATIC_ID]: true,
+      _etags: { root: 1, [getRouteSlotId('/one')]: 1 },
+    };
+    mocks.queue.push(first);
+    const view = await mount(
+      <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+    );
+    mocks.queue.push({
+      [ROUTE_ID]: ['/two', ''],
+      [IS_STATIC_ID]: false,
+      [getRouteSlotId('/two')]: (
+        <>
+          <aside>layout two</aside>
+          <Page />
+        </>
+      ),
+    });
+    try {
+      await act(async () => {
+        await controls.get('a')!.router.push('/two');
+        await flush();
+      });
+      const fetch = vi.spyOn(globalThis, 'fetch');
+      await act(async () => {
+        if (redirect) {
+          mocks.queue.push(
+            Promise.reject(
+              createCustomError('moved', { location: '/one#anchor' }),
+            ),
+          );
+        }
+        await controls
+          .get('a')!
+          .router.push(redirect ? '/redirect' : '/one#anchor');
+        ready.resolve();
+        await flush();
+      });
+      expect(view.querySelector('aside')?.textContent).toBe('layout one');
+      expect(view.textContent).toContain('page one');
+      expect(window.location.pathname + window.location.hash).toBe(
+        '/one#anchor',
+      );
+      expect(view.querySelector('[data-static]')?.textContent).toBe('true');
+      expect(fetch).toHaveBeenCalledTimes(redirect ? 1 : 0);
+    } finally {
+      await act(async () => {
+        ready.resolve();
+        await flush();
+      });
+    }
+  },
+);
+
+test('a hash-only redirect retains the accepted static classification before it paints', async () => {
   const ready = defer<void>();
   const Page = () => {
     use(ready.promise);
     return <p>page two</p>;
   };
-  const first = {
-    ...payload(
-      '/one',
+  mocks.queue.push({
+    ...payload('/one', <p>page one</p>),
+    root: (
       <>
-        <aside>layout one</aside>
-        <p>page one</p>
-      </>,
+        <Probe id="a" />
+        <StaticStatus />
+        <Children />
+      </>
     ),
-    [IS_STATIC_ID]: true,
-    _etags: { root: 1, [getRouteSlotId('/one')]: 1 },
-  };
-  mocks.queue.push(first);
+    _etags: { root: 1 },
+  });
   const view = await mount(
     <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
   );
   mocks.queue.push({
     [ROUTE_ID]: ['/two', ''],
-    [IS_STATIC_ID]: false,
-    [getRouteSlotId('/two')]: (
-      <>
-        <aside>layout two</aside>
-        <Page />
-      </>
-    ),
+    [IS_STATIC_ID]: true,
+    [getRouteSlotId('/two')]: <Page />,
+    _etags: { [getRouteSlotId('/two')]: 1 },
   });
   try {
     await act(async () => {
       await controls.get('a')!.router.push('/two');
       await flush();
     });
-    const fetch = vi.spyOn(globalThis, 'fetch');
+    expect(view.textContent).toContain('page one');
     await act(async () => {
-      await controls.get('a')!.router.push('/one#anchor');
+      mocks.queue.push(
+        Promise.reject(
+          createCustomError('moved', { location: '/two#redirected' }),
+        ),
+      );
+      await controls.get('a')!.router.push('/two#anchor');
       ready.resolve();
       await flush();
     });
-    expect(view.querySelector('aside')?.textContent).toBe('layout one');
-    expect(view.textContent).toContain('page one');
-    expect(window.location.pathname + window.location.hash).toBe('/one#anchor');
-    expect(fetch).not.toHaveBeenCalled();
+    expect(view.textContent).toContain('page two');
+    expect(view.querySelector('[data-static]')?.textContent).toBe('true');
+    expect(window.location.pathname + window.location.hash).toBe(
+      '/two#redirected',
+    );
   } finally {
     await act(async () => {
       ready.resolve();
+      await flush();
+    });
+  }
+});
+
+test('an instant follow to a dynamic route cannot make later visits reuse stale content', async () => {
+  const ready = defer<void>();
+  const response = defer<Elements>();
+  const Page = () => {
+    use(ready.promise);
+    return <p>page two</p>;
+  };
+  mocks.queue.push({
+    ...payload('/one', <p>page one</p>),
+    root: (
+      <>
+        <Probe id="a" />
+        <StaticStatus />
+        <Children />
+      </>
+    ),
+    [IS_STATIC_ID]: true,
+    [getRouteSlotId('/three')]: <p>cached page three</p>,
+    _etags: {
+      root: 1,
+      [getRouteSlotId('/one')]: 1,
+      [getRouteSlotId('/three')]: 1,
+    },
+  });
+  const view = await mount(
+    <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+  );
+  mocks.queue.push({
+    [ROUTE_ID]: ['/two', ''],
+    [IS_STATIC_ID]: false,
+    [getRouteSlotId('/two')]: <Page />,
+  });
+  let pushed: Promise<void> | undefined;
+  try {
+    await act(async () => {
+      await controls.get('a')!.router.push('/two');
+      await flush();
+    });
+    expect(view.textContent).toContain('page one');
+    mocks.queue.push(response.promise, {
+      [ROUTE_ID]: ['/four', ''],
+      [IS_STATIC_ID]: false,
+      [getRouteSlotId('/four')]: <p>page four</p>,
+    });
+    await act(async () => {
+      pushed = controls.get('a')!.router.push('/three', {
+        unstable_instant: true,
+      });
+      await flush();
+    });
+    expect(view.textContent).toContain('cached page three');
+    await act(async () => {
+      response.reject(createCustomError('moved', { location: '/four' }));
+      await pushed;
+      ready.resolve();
+      await flush();
+    });
+    expect(view.textContent).toContain('page four');
+    const staticAfterFollow = view.querySelector('[data-static]')?.textContent;
+    mocks.queue.push({
+      [ROUTE_ID]: ['/five', ''],
+      [IS_STATIC_ID]: false,
+      [getRouteSlotId('/five')]: <p>page five</p>,
+    });
+    await act(async () => {
+      await controls.get('a')!.router.push('/five');
+      await flush();
+    });
+    mocks.queue.push({
+      [ROUTE_ID]: ['/four', ''],
+      [IS_STATIC_ID]: false,
+      [getRouteSlotId('/four')]: <p>fresh page four</p>,
+    });
+    await act(async () => {
+      await controls.get('a')!.router.push('/four');
+      await flush();
+    });
+    expect(view.textContent).toContain('fresh page four');
+    expect(window.location.pathname).toBe('/four');
+    expect(staticAfterFollow).toBe('false');
+  } finally {
+    await act(async () => {
+      ready.resolve();
+      response.resolve({});
+      await pushed;
       await flush();
     });
   }
