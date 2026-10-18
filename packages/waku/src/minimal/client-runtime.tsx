@@ -286,7 +286,6 @@ const fetchRsc = (
     rscPath,
     rscParams,
     {
-      // Etags can only claim elements from a base the caller retains.
       etags: collectEtags(options?.unstable_base ?? {}),
       ...(options?.signal ? { signal: options.signal } : {}),
       ...(options?.onBuildIdMismatch

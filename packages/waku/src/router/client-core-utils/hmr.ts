@@ -8,9 +8,8 @@ import { encodeRoutePath } from '../isomorphic-utils/router-protocol.js';
 import { createRscParams, useRouterCache } from './caches.js';
 
 /**
- * Refetches the RSC route and registered lazy slices on development reloads.
- * Reads `getSettledRoute` before `onBeforeRefetch` retires pending requests,
- * then clears Router caches and merges the response in a transition.
+ * Refetches the supplied route and registered lazy slices on development reloads.
+ * Reads the route before `onBeforeRefetch` runs and invalidates Router caches.
  */
 export const useHmrRefetch = ({
   getSettledRoute,
@@ -29,7 +28,6 @@ export const useHmrRefetch = ({
         onBeforeRefetch?.();
         cache.clearCaches();
         startTransition(() => {
-          // the reload clears the set, so the response has to teach it again
           void mergeElements(
             cache.fetchRsc(
               encodeRoutePath(settledRoute.path),

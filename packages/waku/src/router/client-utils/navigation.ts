@@ -116,7 +116,7 @@ export const useNavigation = (
   const [navigationError, setNavigationError] = useState<NavigationError>();
   useEffect(() => {
     if (import.meta.hot) {
-      // The listener below owns the current route, not Root's initial path.
+      // Router owns the HMR target; replace Minimal's initial-path listener.
       registerRscReloadListener(() => {}, { replace: true });
     }
   }, [registerRscReloadListener]);
@@ -249,7 +249,6 @@ export const useNavigation = (
         }
       };
       if (import.meta.hot) {
-        // A route navigation retires the previous Minimal refetch target.
         registerRscReloadListener(() => {}, { replace: true });
       }
       const routeUrl = options.url ?? getRouteUrl(nextRoute);
