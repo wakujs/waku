@@ -1981,11 +1981,17 @@ test('a later response wins over an accepted destination that renders while it w
   expect(push.mock.lastCall?.[2]?.toString()).toContain('/three');
 });
 
-test.each(['return', 'second failure', 'hash redirect'] as const)(
+test.each([
+  'return',
+  'second failure',
+  'cancelled intermediate',
+  'hash redirect',
+] as const)(
   'a failed replacement keeps the instant action origin and refetches its abandoned response (%s)',
   async (scenario) => {
     const instant = defer<Elements>();
     const failed = defer<Elements>();
+    const intermediate = defer<Elements>();
     mocks.queue.push({
       ...payload('/one', <p>page one</p>),
       [IS_STATIC_ID]: true,
@@ -2010,6 +2016,7 @@ test.each(['return', 'second failure', 'hash redirect'] as const)(
     mocks.queue.push(instant.promise);
     let painted: Promise<void> | undefined;
     let pushed: Promise<void> | undefined;
+    let replaced: Promise<void> | undefined;
     try {
       await act(async () => {
         painted = controls.get('a')!.router.push('/two?q=2#anchor', {
@@ -2046,11 +2053,25 @@ test.each(['return', 'second failure', 'hash redirect'] as const)(
           ACTION_LOCATION_HEADER,
         ),
       ).toBe('/two?q=2');
-      if (scenario === 'second failure') {
+      if (scenario === 'cancelled intermediate') {
+        mocks.queue.push(intermediate.promise);
+        await act(async () => {
+          replaced = controls.get('a')!.router.push('/four');
+          await flush();
+        });
+      }
+      if (
+        scenario === 'second failure' ||
+        scenario === 'cancelled intermediate'
+      ) {
         const again = defer<Elements>();
         mocks.queue.push(again.promise);
         await act(async () => {
-          const navigation = controls.get('a')!.router.push('/four');
+          const navigation = controls
+            .get('a')!
+            .router.push(
+              scenario === 'cancelled intermediate' ? '/five' : '/four',
+            );
           void navigation.catch(() => {});
           await flush();
           again.reject(new Error('offline again'));
@@ -2102,8 +2123,10 @@ test.each(['return', 'second failure', 'hash redirect'] as const)(
       await act(async () => {
         instant.resolve({});
         failed.resolve({});
+        intermediate.resolve({});
         await painted;
         await pushed?.catch(() => {});
+        await replaced;
         await flush();
       });
     }

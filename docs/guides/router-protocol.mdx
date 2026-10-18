@@ -82,8 +82,7 @@ example, a dynamic page whose etag matches is omitted, but `IS_STATIC` remains
 false. Looking only at the returned slots would give the wrong reuse decision.
 
 Use Minimal's `unstable_combineElements` when combining element maps. Object
-spreads discard the validators associated with their values. Router's merge patch
-also protects slots changed by an action while a navigation was pending.
+spreads discard the validators associated with their values.
 
 ## Requested, Rendered, and Browser URLs
 
@@ -198,6 +197,23 @@ Bindings that want Router's cache policy call `useRouterCache_UNSTABLE()` during
 rendering. Its `cache.load(requested, { ...options, base: elements })` wraps the
 same loader with static reuse, prefetch, and optional response adoption. A
 cache-free binding does not need to construct a cache-shaped adapter.
+Network results contain response patches; omitted entries are not filled from
+the request-time base. Cached prefetches return their stored element maps.
+Bindings that read a complete snapshot can materialize a loaded result:
+
+```ts
+import { unstable_combineElements as combineElements } from 'waku/minimal/client';
+
+const outcome = await cache.load(requested, { ...options, base });
+if (outcome.type === 'loaded') {
+  const snapshot = combineElements(base, outcome.elements);
+}
+```
+
+Queue the response patch, not this request-time snapshot, when preserving later
+action or client updates. `unstable_buildMergePatch` implements a snapshot-conflict
+policy for custom bindings; the standard binding queues response patches directly.
+
 If an instant paint has already merged an adopted response, the binding must not
 merge it again. A follow fetch produces a new response requiring an ordinary
 commit.
