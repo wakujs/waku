@@ -18,7 +18,6 @@ import { useRouterCache } from '../client-core-utils/caches.js';
 import { isFollowable } from '../client-core-utils/error-route.js';
 import { useHmrRefetch } from '../client-core-utils/hmr.js';
 import { useInitialRoute } from '../client-core-utils/initial-route.js';
-import { buildMergePatch } from '../client-core-utils/merge-patch.js';
 import {
   getRouteUrl,
   isSameRoute,
@@ -319,7 +318,7 @@ export const useNavigation = (
               pathChanged: false,
               follows: outcome.follows,
             }),
-            failedFrom: settledRoute,
+            failedFrom: getRouteFromElements(base) ?? settledRoute,
           };
           const data = {
             ...(instantResponse
@@ -350,11 +349,7 @@ export const useNavigation = (
         const patch =
           outcome.type === 'reused'
             ? { [ROUTE_ID]: [outcome.route.path, outcome.route.query] }
-            : instantResponse
-              ? buildMergePatch(outcome, getElements(), base, {
-                  settled: settledRoute,
-                })
-              : outcome.elements;
+            : outcome.elements;
         const destination = resolveServerRedirect(
           patch,
           makeStateForAttempt(outcome, historyIntent),
@@ -383,25 +378,28 @@ export const useNavigation = (
         }
         return data;
       };
-      const incoming = loadElements();
-      if (instantResponse) {
-        const data = await incoming;
-        if (getRouterState(data)) {
-          startTransition(() => {
-            void mergeElements(data);
-          });
-        }
-        return;
-      }
-      await mergeElements(incoming, (prev, incoming) =>
+      const mergeResponse = (
+        prev: Promise<Elements>,
+        incoming: Promise<Elements>,
+      ) =>
         Promise.all([prev, incoming]).then(([prev, incoming]) =>
           combineElements(prev, incoming, {
             filter: (key) =>
               !isSameElement(incoming, base, key) ||
               isSameElement(prev, base, key),
           }),
-        ),
-      );
+        );
+      const incoming = loadElements();
+      if (instantResponse) {
+        const data = await incoming;
+        if (getRouterState(data)) {
+          startTransition(() => {
+            void mergeElements(data, mergeResponse);
+          });
+        }
+        return;
+      }
+      await mergeElements(incoming, mergeResponse);
     },
     [
       cache,

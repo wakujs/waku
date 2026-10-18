@@ -23,6 +23,7 @@ import {
   useRouter,
 } from '../src/router/client.js';
 import {
+  ACTION_LOCATION_HEADER,
   HAS404_ID,
   IS_ORIGIN_ID,
   IS_STATIC_ID,
@@ -1356,6 +1357,147 @@ test.each([
   },
 );
 
+test.each(['page', 'layout'])(
+  'an instant redirect uses the accepted layout baseline (suspension in %s)',
+  async (suspension) => {
+    const ready = defer<void>();
+    const response = defer<Elements>();
+    const followed = defer<Elements>();
+    const Page = () => {
+      use(ready.promise);
+      return <p>page two</p>;
+    };
+    const layout = (name: string) => (
+      <>
+        <Probe id="a" />
+        <aside>{name}</aside>
+        <Children />
+      </>
+    );
+    const SuspendedLayout = () => {
+      use(ready.promise);
+      return layout('layout two');
+    };
+    const firstRoot = layout('layout one');
+    mocks.queue.push({
+      ...payload('/one', <p>page one</p>),
+      root: firstRoot,
+      [getRouteSlotId('/three')]: <p>cached page three</p>,
+      _etags: { root: 'one-v1', [getRouteSlotId('/three')]: 1 },
+    });
+    const view = await mount(
+      <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+    );
+    mocks.queue.push({
+      ...payload('/two', suspension === 'page' ? <Page /> : <p>page two</p>),
+      root:
+        suspension === 'layout' ? <SuspendedLayout /> : layout('layout two'),
+      _etags: { root: 'two-v1' },
+    });
+    let pushed: Promise<void> | undefined;
+    try {
+      await act(async () => {
+        await controls.get('a')!.router.push('/two');
+        await flush();
+      });
+      expect(view.querySelector('aside')?.textContent).toBe('layout one');
+      const fetch = vi.spyOn(globalThis, 'fetch');
+      mocks.queue.push(response.promise, followed.promise);
+      await act(async () => {
+        pushed = controls.get('a')!.router.push('/three', {
+          unstable_instant: true,
+        });
+        await flush();
+      });
+      await act(async () => {
+        response.reject(createCustomError('moved', { location: '/four' }));
+        await flush();
+      });
+      const headers = new Headers(fetch.mock.lastCall![1]?.headers);
+      const etags = JSON.parse(headers.get(ETAGS_HEADER) ?? '{}');
+      await act(async () => {
+        followed.resolve({
+          [ROUTE_ID]: ['/four', ''],
+          [IS_STATIC_ID]: false,
+          [getRouteSlotId('/four')]: <p>page four</p>,
+          ...(etags.root === 'one-v1'
+            ? {}
+            : { root: firstRoot, _etags: { root: 'one-v1' } }),
+        });
+        await pushed;
+        ready.resolve();
+        await flush();
+      });
+      expect(view.querySelector('aside')?.textContent).toBe('layout one');
+      expect(view.textContent).toContain('page four');
+      expect(window.location.pathname).toBe('/four');
+      expect(etags.root).toBe('two-v1');
+    } finally {
+      await act(async () => {
+        ready.resolve();
+        response.resolve({});
+        followed.resolve({});
+        await pushed;
+        await flush();
+      });
+    }
+  },
+);
+
+test('a cached static return keeps its immutable composition after an accepted response', async () => {
+  const ready = defer<void>();
+  const Page = () => {
+    use(ready.promise);
+    return <p>page two</p>;
+  };
+  const first = {
+    ...payload(
+      '/one',
+      <>
+        <aside>layout one</aside>
+        <p>page one</p>
+      </>,
+    ),
+    [IS_STATIC_ID]: true,
+    _etags: { root: 1, [getRouteSlotId('/one')]: 1 },
+  };
+  mocks.queue.push(first);
+  const view = await mount(
+    <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+  );
+  mocks.queue.push({
+    [ROUTE_ID]: ['/two', ''],
+    [IS_STATIC_ID]: false,
+    [getRouteSlotId('/two')]: (
+      <>
+        <aside>layout two</aside>
+        <Page />
+      </>
+    ),
+  });
+  try {
+    await act(async () => {
+      await controls.get('a')!.router.push('/two');
+      await flush();
+    });
+    const fetch = vi.spyOn(globalThis, 'fetch');
+    await act(async () => {
+      await controls.get('a')!.router.push('/one#anchor');
+      ready.resolve();
+      await flush();
+    });
+    expect(view.querySelector('aside')?.textContent).toBe('layout one');
+    expect(view.textContent).toContain('page one');
+    expect(window.location.pathname + window.location.hash).toBe('/one#anchor');
+    expect(fetch).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => {
+      ready.resolve();
+      await flush();
+    });
+  }
+});
+
 test('an action destination does not inherit the preceding accepted layout validator', async () => {
   const ready = defer<void>();
   const response = defer<Elements>();
@@ -1434,6 +1576,93 @@ test('an action destination does not inherit the preceding accepted layout valid
     });
   }
 });
+
+test.each([
+  { kind: 'redirect', replacement: true },
+  { kind: '404', replacement: true },
+  { kind: 'external', replacement: true },
+  { kind: 'redirect', replacement: false },
+  { kind: '404', replacement: false },
+  { kind: 'external', replacement: false },
+])(
+  'a streamed $kind follows only its active destination (replacement: $replacement)',
+  async ({ kind, replacement }) => {
+    const streamed = defer<ReactNode>();
+    const pending = defer<Elements>();
+    const Page = () => use(streamed.promise);
+    const leave = vi
+      .spyOn(window.location, 'replace')
+      .mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    mocks.queue.push(payload('/one', <p>page one</p>));
+    const view = await mount(
+      <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+    );
+    mocks.queue.push({
+      ...payload(
+        '/two',
+        <Suspense fallback={<p>streaming page two</p>}>
+          <Page />
+        </Suspense>,
+      ),
+      [HAS404_ID]: true,
+    });
+    let pushed: Promise<void> | undefined;
+    try {
+      await act(async () => {
+        await controls.get('a')!.router.push('/two');
+        await flush();
+      });
+      mocks.queue.push(
+        ...(replacement ? [pending.promise] : []),
+        payload(kind === '404' ? '/404' : '/hijacked', <p>followed page</p>),
+      );
+      await act(async () => {
+        if (replacement) {
+          pushed = controls.get('a')!.router.push('/three');
+        }
+        await flush();
+      });
+      await act(async () => {
+        streamed.reject(
+          createCustomError(
+            'streamed failure',
+            kind === '404'
+              ? { status: 404 }
+              : {
+                  location:
+                    kind === 'external'
+                      ? 'https://other.example/hijacked'
+                      : '/hijacked',
+                },
+          ),
+        );
+        await flush();
+      });
+      expect(leave).toHaveBeenCalledTimes(
+        !replacement && kind === 'external' ? 1 : 0,
+      );
+      await act(async () => {
+        pending.resolve(payload('/three', <p>page three</p>));
+        await pushed;
+        await flush();
+      });
+      if (replacement) {
+        expect(window.location.pathname).toBe('/three');
+        expect(view.textContent).toContain('page three');
+      } else if (kind !== 'external') {
+        expect(view.textContent).toContain('followed page');
+      }
+    } finally {
+      await act(async () => {
+        streamed.resolve(<p>page two</p>);
+        pending.resolve(payload('/three', <p>page three</p>));
+        await pushed;
+        await flush();
+      });
+    }
+  },
+);
 
 test('an unrelated element update does not overwrite external history', async () => {
   mocks.queue.push(payload('/one', <p>page one</p>));
@@ -1591,6 +1820,15 @@ test('a failed navigation keeps the last accepted layout even before it paints',
   });
   expect(view.querySelector('aside')?.textContent).toBe('layout /two');
   expect(window.location.pathname).toBe('/three');
+  const fetch = vi.spyOn(globalThis, 'fetch');
+  mocks.queue.push({ _value: 'updated' });
+  await act(async () => {
+    expect(await unstable_callServerRsc('actions#update', [])).toBe('updated');
+    await flush();
+  });
+  expect(
+    new Headers(fetch.mock.lastCall![1]?.headers).get(ACTION_LOCATION_HEADER),
+  ).toBe('/two');
 });
 
 test.each(['external redirect', 'fetch failure'] as const)(

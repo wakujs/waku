@@ -218,7 +218,9 @@ interpreting it.
 
 Each request carries forward accepted RSC elements as its cache baseline,
 which can be ahead of the last painted route. A metadata-only action dispatch
-makes no element-validator claims for its destination.
+makes no element-validator claims for its destination. This baseline does not
+track every queued action or client merge; response reconciliation reads the
+latest queued elements through Minimal's merge callback.
 
 An ordinary navigation queues its pending elements promise when fetching starts.
 Later action and client merges follow it in React's update order. Fresh response
@@ -226,6 +228,8 @@ entries replace earlier values; entries retained from the request's cache baseli
 do not overwrite independent queued changes. The destination's route slot and
 protocol metadata are reapplied when the response arrives so an action from the
 previous route cannot restore its composition over the destination.
+Redirect and 404 follows after an instant paint use the same response
+reconciliation rule.
 
 Fetching and committing are different boundaries. An ordinary fetch can finish
 while a client component is suspended; its navigation promise does not wait for
