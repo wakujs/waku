@@ -1208,33 +1208,231 @@ test.each([false, true])(
   },
 );
 
-test('a cached navigation replaces an accepted but suspended destination', async () => {
+test.each([
+  {
+    name: 'same-route return',
+    to: '/one#anchor',
+    intermediate: 'none',
+    redirect: false,
+  },
+  {
+    name: 'fetched destination',
+    to: '/three',
+    intermediate: 'none',
+    redirect: false,
+  },
+  {
+    name: 'cancelled intermediate request',
+    to: '/three',
+    intermediate: 'cancelled',
+    redirect: false,
+  },
+  {
+    name: 'failed intermediate request',
+    to: '/one#anchor',
+    intermediate: 'failed',
+    redirect: false,
+  },
+  {
+    name: 'hash-only redirect',
+    to: '/one#anchor',
+    intermediate: 'none',
+    redirect: true,
+  },
+])(
+  'a later destination uses the accepted layout baseline ($name)',
+  async ({ to, intermediate, redirect }) => {
+    const ready = defer<void>();
+    const pending = defer<Elements>();
+    const response = defer<Elements>();
+    const redirected = defer<Elements>();
+    const Page = () => {
+      use(ready.promise);
+      return <p>page two</p>;
+    };
+    const first = {
+      ...payload('/one', <p>page one</p>),
+      root: (
+        <>
+          <Probe id="a" />
+          <aside>layout one</aside>
+          <ErrorBoundary>
+            <Children />
+          </ErrorBoundary>
+        </>
+      ),
+      _etags: { root: 'one-v1' },
+    };
+    const fetch = vi.spyOn(globalThis, 'fetch');
+    mocks.queue.push(first);
+    const view = await mount(
+      <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+    );
+    mocks.queue.push({
+      ...payload('/two', <Page />),
+      root: (
+        <>
+          <Probe id="a" />
+          <aside>layout two</aside>
+          <ErrorBoundary>
+            <Children />
+          </ErrorBoundary>
+        </>
+      ),
+      _etags: { root: 'two-v1' },
+    });
+    let superseded: Promise<void> | undefined;
+    let pushed: Promise<void> | undefined;
+    try {
+      await act(async () => {
+        await controls.get('a')!.router.push('/two');
+        await flush();
+      });
+      expect(view.querySelector('aside')?.textContent).toBe('layout one');
+      expect(window.location.pathname).toBe('/one');
+      if (intermediate !== 'none') {
+        mocks.queue.push(pending.promise);
+        await act(async () => {
+          superseded = controls.get('a')!.router.push('/pending');
+          void superseded.catch(() => {});
+          await flush();
+        });
+      }
+      mocks.queue.push(
+        ...(redirect ? [redirected.promise] : []),
+        response.promise,
+      );
+      await act(async () => {
+        if (intermediate === 'failed') {
+          pending.reject(new Error('offline'));
+          await expect(superseded).rejects.toThrow('offline');
+        }
+        pushed = controls.get('a')!.router.push(to);
+        await flush();
+      });
+      if (redirect) {
+        await act(async () => {
+          redirected.reject(
+            createCustomError('moved', { location: '/one#redirected' }),
+          );
+          await flush();
+        });
+      }
+      const headers = new Headers(fetch.mock.lastCall![1]?.headers);
+      const etags = JSON.parse(headers.get(ETAGS_HEADER) ?? '{}');
+      const path = new URL(to, window.location.href).pathname;
+      await act(async () => {
+        response.resolve({
+          [ROUTE_ID]: [path, ''],
+          [IS_STATIC_ID]: false,
+          [getRouteSlotId(path)]: <p>destination page</p>,
+          ...(etags.root === 'one-v1'
+            ? {}
+            : { root: first.root, _etags: { root: 'one-v1' } }),
+        });
+        await pushed;
+        await superseded?.catch(() => {});
+        ready.resolve();
+        await flush();
+      });
+      expect(view.querySelector('aside')?.textContent).toBe('layout one');
+      expect(view.textContent).not.toContain('page two');
+      expect(window.location.pathname + window.location.hash).toBe(
+        redirect ? '/one#redirected' : to,
+      );
+      expect(etags.root).toBe('two-v1');
+      expect(view.textContent).toContain('destination page');
+    } finally {
+      await act(async () => {
+        ready.resolve();
+        pending.resolve({});
+        response.resolve({});
+        redirected.resolve({});
+        await pushed;
+        await superseded?.catch(() => {});
+        await flush();
+      });
+    }
+  },
+);
+
+test('an action destination does not inherit the preceding accepted layout validator', async () => {
   const ready = defer<void>();
+  const response = defer<Elements>();
   const Page = () => {
     use(ready.promise);
-    return <p>cancelled page</p>;
+    return <p>page two</p>;
   };
-  mocks.queue.push(payload('/one', <p>page one</p>));
+  const layout = (name: string) => (
+    <>
+      <Probe id="a" />
+      <aside>{name}</aside>
+      <Children />
+    </>
+  );
+  const secondRoot = layout('layout two');
+  mocks.queue.push({
+    ...payload('/one', <p>page one</p>),
+    root: layout('layout one'),
+  });
   const view = await mount(
     <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
   );
-  mocks.queue.push(payload('/two', <Page />));
-  await act(async () => {
-    await controls.get('a')!.router.push('/two');
-    await flush();
+  mocks.queue.push({
+    ...payload('/two', <Page />),
+    root: secondRoot,
+    _etags: { root: 'two-v1' },
   });
-  await act(async () => {
-    await controls.get('a')!.router.push('/one#anchor');
-    await flush();
-  });
-  await act(async () => {
-    ready.resolve();
-    await flush();
-  });
-  expect(view.textContent).toContain('page one');
-  expect(view.textContent).not.toContain('cancelled page');
-  expect(view.querySelector('output')?.textContent).toBe('/one');
-  expect(window.location.pathname + window.location.hash).toBe('/one#anchor');
+  const fetch = vi.spyOn(globalThis, 'fetch');
+  let pushed: Promise<void> | undefined;
+  try {
+    await act(async () => {
+      await controls.get('a')!.router.push('/two');
+      await flush();
+    });
+    mocks.queue.push(
+      {
+        ...payload('/action', <p>action page</p>),
+        root: layout('action layout'),
+        _etags: { root: 'action-v1' },
+        _value: 'updated',
+      },
+      response.promise,
+    );
+    await act(async () => {
+      expect(await unstable_callServerRsc('actions#update', [])).toBe(
+        'updated',
+      );
+      pushed = controls.get('a')!.router.push('/three');
+      await flush();
+    });
+    const headers = new Headers(fetch.mock.lastCall![1]?.headers);
+    const etags = JSON.parse(headers.get(ETAGS_HEADER) ?? '{}');
+    await act(async () => {
+      response.resolve({
+        [ROUTE_ID]: ['/three', ''],
+        [IS_STATIC_ID]: false,
+        [getRouteSlotId('/three')]: <p>page three</p>,
+        ...(etags.root === 'two-v1'
+          ? {}
+          : { root: secondRoot, _etags: { root: 'two-v1' } }),
+      });
+      await pushed;
+      ready.resolve();
+      await flush();
+    });
+    expect(view.querySelector('aside')?.textContent).toBe('layout two');
+    expect(view.textContent).toContain('page three');
+    expect(window.location.pathname).toBe('/three');
+    expect(etags.root).not.toBe('two-v1');
+  } finally {
+    await act(async () => {
+      ready.resolve();
+      response.resolve({});
+      await pushed;
+      await flush();
+    });
+  }
 });
 
 test('an unrelated element update does not overwrite external history', async () => {

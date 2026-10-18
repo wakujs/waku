@@ -65,6 +65,7 @@ type NavigationError = { error: unknown };
 type NavigationRequest = {
   controller: AbortController;
   target: Pick<RouteProps, 'path' | 'query'>;
+  base: Elements;
   queuedState?: RouterState;
 };
 
@@ -176,12 +177,18 @@ export const useNavigation = (
   const changeRoute: ChangeRoute = useCallback(
     async function changeRoute(nextRoute, options) {
       const settledRoute = resolveSettledRoute(getElements(), routeFallback);
+      const base = requestRef.current?.base ?? getElements();
       const shouldRefetch =
-        options.refetch ?? !isSameRscRoute(nextRoute, settledRoute);
+        options.refetch ??
+        (!isSameRscRoute(nextRoute, settledRoute) ||
+          !isSameRscRoute(
+            nextRoute,
+            getRouteFromElements(base) ?? settledRoute,
+          ));
       if (
         options.pendingTransition &&
         shouldRefetch &&
-        !cache.canReuseStaticRoute(nextRoute, getElements()) &&
+        !cache.canReuseStaticRoute(nextRoute, base) &&
         !canPaintInstantOverlay(
           cache,
           options.follows ?? 0,
@@ -208,6 +215,7 @@ export const useNavigation = (
       const request: NavigationRequest = {
         controller,
         target: nextRoute,
+        base,
       };
       controller.signal.addEventListener('abort', () => {
         if (requestRef.current) {
@@ -247,10 +255,7 @@ export const useNavigation = (
             requestedPathChanged || attempt.route.path !== settledRoute.path,
           follows: attempt.follows,
         });
-      if (
-        cache.canReuseStaticRoute(nextRoute, getElements()) ||
-        !shouldRefetch
-      ) {
+      if (cache.canReuseStaticRoute(nextRoute, base) || !shouldRefetch) {
         const routePatch = {
           [ROUTE_ID]: [nextRoute.path, nextRoute.query],
         };
@@ -259,10 +264,11 @@ export const useNavigation = (
         const data = combineElements(routePatch, {
           [ROUTER_STATE_ID]: state,
         });
+        request.base =
+          options.refetch === false ? data : combineElements(base, data);
         void mergeElements(data);
         return;
       }
-      const base = getElements();
       const initialFollows = options.follows ?? 0;
       const instantResponse = options.instant
         ? startInstantPaint(
@@ -276,7 +282,7 @@ export const useNavigation = (
           signal: controller.signal,
           refetch: shouldRefetch,
           has404,
-          settled: settledRoute,
+          settled: getRouteFromElements(base) ?? settledRoute,
           base,
           url: routeUrl,
           follows: initialFollows,
@@ -315,18 +321,20 @@ export const useNavigation = (
             }),
             failedFrom: settledRoute,
           };
+          const data = {
+            ...(instantResponse
+              ? {
+                  [ROUTE_ID]: base[ROUTE_ID],
+                  [IS_STATIC_ID]: base[IS_STATIC_ID],
+                }
+              : {}),
+            [ROUTER_STATE_ID]: failureState,
+          };
+          request.queuedState = failureState;
+          request.base = combineElements(base, data);
           startTransition(() => {
-            void mergeElements({
-              ...(instantResponse
-                ? {
-                    [ROUTE_ID]: base[ROUTE_ID],
-                    [IS_STATIC_ID]: base[IS_STATIC_ID],
-                  }
-                : {}),
-              [ROUTER_STATE_ID]: failureState,
-            });
+            void mergeElements(data);
           });
-          finishRequest();
           setNavigationError({ error });
           throw error;
         }
@@ -359,6 +367,7 @@ export const useNavigation = (
         request.target = destination.route;
         request.queuedState = finalState;
         const data = combineElements(patch, { [ROUTER_STATE_ID]: finalState });
+        request.base = combineElements(base, data);
         if (!instantResponse) {
           const responseRoute = getRouteFromElements(data);
           if (responseRoute && !isSameRscRoute(responseRoute, settledRoute)) {

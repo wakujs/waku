@@ -172,11 +172,12 @@ const outcome = await loadRoute(requested, {
 });
 ```
 
-Here `settled` is the binding's committed route, and `follows` is zero for a new
+Here `settled` identifies the route whose composition the binding retains for
+reuse, which can be accepted before it paints. `follows` is zero for a new
 navigation or the preceding count for a render-time follow. The callback receives
 each attempt's route, intended browser URL, and follow count, plus the cancellation
 signal. It can supply `unstable_base` to `fetchRsc` for etag reuse when the binding
-has a committed element snapshot.
+retains the corresponding elements.
 
 | Outcome    | Binding responsibility                                                     |
 | ---------- | -------------------------------------------------------------------------- |
@@ -214,6 +215,10 @@ interpreting it.
 | Requested or accepted route               | Router ref                 | Cancel pending work and route action results until UI catches up. |
 | Applied snapshot identity and destination | Router's layout effect     | Write history and scroll once for each committed intent.          |
 | Fetch error                               | Router's React state       | Render the failure and clear it when another request starts.      |
+
+Each request carries forward accepted RSC elements as its cache baseline,
+which can be ahead of the last painted route. A metadata-only action dispatch
+makes no element-validator claims for its destination.
 
 An ordinary navigation queues its pending elements promise when fetching starts.
 Later action and client merges follow it in React's update order. Fresh response

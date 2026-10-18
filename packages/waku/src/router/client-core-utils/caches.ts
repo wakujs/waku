@@ -25,7 +25,7 @@ type CachedLoadOptions = LoadOptions & {
   refetch?: boolean;
   /** Supplies the first attempt's response; follows use normal fetching. */
   adopt?: Promise<Elements>;
-  /** Current Root elements used for etags and static-route reuse. */
+  /** Retained elements used for etags and static-route reuse. */
   base: Elements;
   /** Overrides Minimal's default build-mismatch reload when supplied. */
   onBuildIdMismatch?: (url: URL) => void;
