@@ -212,6 +212,85 @@ test('normal navigation queues its pending elements before the response arrives'
   }
 });
 
+test('cancelled pending responses unblock the queue and cannot replace the destination later', async () => {
+  const first = defer<Elements>();
+  const second = defer<Elements>();
+  mocks.queue.push(payload('/one', <p>page one</p>));
+  const view = await mount(
+    <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+  );
+  mocks.queue.push(first.promise, second.promise);
+  let cancelled: Promise<void> | undefined;
+  let pushed: Promise<void> | undefined;
+  await act(async () => {
+    cancelled = controls.get('a')!.router.push('/two');
+    await flush();
+  });
+  await act(async () => {
+    pushed = controls.get('a')!.router.push('/three');
+    await cancelled;
+    await flush();
+  });
+  await act(async () => {
+    second.resolve({
+      ...payload('/three', <p>page three</p>),
+      sidebar: 'three',
+    });
+    await pushed;
+    await flush();
+  });
+  expect(view.textContent).toContain('page three');
+  expect(window.location.pathname).toBe('/three');
+  await act(async () => {
+    first.resolve({ ...payload('/two', <p>late page two</p>), sidebar: 'two' });
+    await flush();
+  });
+  expect(view.textContent).not.toContain('late page two');
+  expect(view.querySelector('[data-sidebar]')?.textContent).toBe('three');
+  expect(window.location.pathname).toBe('/three');
+});
+
+test('a resolved response keeps streaming when another navigation starts before it paints', async () => {
+  const ready = defer<void>();
+  const next = defer<Elements>();
+  const Page = () => {
+    use(ready.promise);
+    return <p>streamed page two</p>;
+  };
+  const fetch = vi.spyOn(globalThis, 'fetch');
+  mocks.queue.push(payload('/one', <p>page one</p>));
+  const view = await mount(
+    <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+  );
+  mocks.queue.push(payload('/two', <Page />));
+  await act(async () => {
+    await controls.get('a')!.router.push('/two');
+    await flush();
+  });
+  const signal = fetch.mock.lastCall![1]?.signal;
+  expect(view.textContent).toContain('page one');
+  mocks.queue.push(next.promise);
+  let pushed: Promise<void> | undefined;
+  await act(async () => {
+    pushed = controls.get('a')!.router.push('/three');
+    await flush();
+  });
+  expect(signal?.aborted).toBe(false);
+  await act(async () => {
+    next.resolve(payload('/three', <p>page three</p>));
+    await pushed;
+    await flush();
+  });
+  await act(async () => {
+    ready.resolve();
+    await flush();
+  });
+  expect(view.textContent).toContain('page three');
+  expect(view.textContent).not.toContain('streamed page two');
+  expect(window.location.pathname).toBe('/three');
+  expect(signal?.aborted).toBe(false);
+});
+
 test('partial actions survive the pending normal-navigation queue', async () => {
   mocks.queue.push({ ...payload('/one', <p>page one</p>), sidebar: 'before' });
   const view = await mount(
@@ -375,6 +454,165 @@ test('an origin action cannot undo a reload redirect to a reused static route', 
   }
 });
 
+test.each(['two', 'before'])(
+  'a later response replaces an earlier queued client value (value: %s)',
+  async (value) => {
+    const ready = defer<void>();
+    const Page = () => {
+      use(ready.promise);
+      return <p>superseded page</p>;
+    };
+    mocks.queue.push({
+      ...payload('/one', <p>page one</p>),
+      sidebar: 'before',
+    });
+    const view = await mount(
+      <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+    );
+    mocks.queue.push({ ...payload('/two', <Page />), sidebar: 'two' });
+    try {
+      await act(async () => {
+        await controls.get('a')!.router.push('/two');
+        await flush();
+      });
+      mocks.queue.push({
+        ...payload('/three', <p>page three</p>),
+        sidebar: 'three',
+      });
+      let pushed: Promise<void> | undefined;
+      await act(async () => {
+        startTransition(() => {
+          void controls.get('a')!.merge({ sidebar: value });
+          pushed = controls.get('a')!.router.push('/three');
+        });
+        await pushed;
+        await flush();
+      });
+      expect(view.textContent).toContain('page three');
+      expect(view.querySelector('[data-sidebar]')?.textContent).toBe('three');
+      expect(window.location.pathname).toBe('/three');
+    } finally {
+      await act(async () => {
+        ready.resolve();
+        await flush();
+      });
+    }
+  },
+);
+
+test('a cached replacement keeps its route over queued origin-action metadata', async () => {
+  window.history.replaceState({}, '', '/cached');
+  mocks.queue.push({
+    ...payload('/cached', <p>cached page</p>),
+    [IS_STATIC_ID]: true,
+    _etags: { root: 1, [getRouteSlotId('/cached')]: 1 },
+  });
+  const view = await mount(
+    <Router initialRoute={{ path: '/cached', query: '', hash: '' }} />,
+  );
+  mocks.queue.push(payload('/one', <p>page one</p>));
+  await act(async () => {
+    await controls.get('a')!.router.push('/one');
+    await flush();
+  });
+  const response = defer<Elements>();
+  mocks.queue.push(response.promise);
+  let reloaded: Promise<void> | undefined;
+  try {
+    await act(async () => {
+      reloaded = controls.get('a')!.router.reload();
+      await flush();
+    });
+    mocks.queue.push({
+      ...payload('/one', <p>origin action page</p>),
+      [IS_ORIGIN_ID]: true,
+      sidebar: 'action',
+      _value: 'updated',
+    });
+    await act(async () => {
+      expect(await unstable_callServerRsc('actions#update', [])).toBe(
+        'updated',
+      );
+      await flush();
+    });
+    await act(async () => {
+      await controls.get('a')!.router.push('/cached');
+      await reloaded;
+      await flush();
+    });
+    expect(view.textContent).toContain('cached page');
+    expect(view.querySelector('[data-sidebar]')?.textContent).toBe('action');
+    expect(window.location.pathname).toBe('/cached');
+  } finally {
+    await act(async () => {
+      response.resolve({});
+      await reloaded;
+      await flush();
+    });
+  }
+});
+
+test.each(['before', 'after'] as const)(
+  'client merges follow queue order around a later navigation (merge: %s)',
+  async (order) => {
+    const ready = defer<void>();
+    const Page = () => {
+      use(ready.promise);
+      return <p>superseded page</p>;
+    };
+    mocks.queue.push({ ...payload('/one', <p>page one</p>), sidebar: 0 });
+    const view = await mount(
+      <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+    );
+    mocks.queue.push({ ...payload('/two', <Page />), sidebar: 1 });
+    try {
+      await act(async () => {
+        await controls.get('a')!.router.push('/two');
+        await flush();
+      });
+      const response = defer<Elements>();
+      mocks.queue.push(response.promise);
+      let pushed: Promise<void> | undefined;
+      await act(async () => {
+        startTransition(() => {
+          if (order === 'after') {
+            pushed = controls.get('a')!.router.push('/three');
+          }
+          void controls.get('a')!.merge({}, (prev) =>
+            prev.then((elements) =>
+              combineElements(elements, {
+                sidebar: Number(elements.sidebar) + 1,
+              }),
+            ),
+          );
+          if (order === 'before') {
+            pushed = controls.get('a')!.router.push('/three');
+          }
+        });
+        await flush();
+      });
+      await act(async () => {
+        response.resolve({
+          ...payload('/three', <p>page three</p>),
+          sidebar: 10,
+        });
+        await pushed;
+        await flush();
+      });
+      expect(view.textContent).toContain('page three');
+      expect(view.querySelector('[data-sidebar]')?.textContent).toBe(
+        order === 'after' ? '11' : '10',
+      );
+      expect(window.location.pathname).toBe('/three');
+    } finally {
+      await act(async () => {
+        ready.resolve();
+        await flush();
+      });
+    }
+  },
+);
+
 test('a lazy slice settling during normal navigation keeps the shell visible', async () => {
   const fallbackMounted = vi.fn();
   const Fallback = () => {
@@ -519,7 +757,7 @@ test('a replacement preserves client updates queued before it starts', async () 
 });
 
 test.each(['none', 'client', 'action'] as const)(
-  'a replacement replaces response-only slots but keeps independent writes (write: %s)',
+  'a later response updates existing slots and validators (earlier write: %s)',
   async (write) => {
     const ready = defer<void>();
     const replacement = defer<Elements>();
@@ -577,9 +815,7 @@ test.each(['none', 'client', 'action'] as const)(
         await flush();
       });
       expect(view.textContent).toContain('page three');
-      expect(view.querySelector('[data-sidebar]')?.textContent).toBe(
-        write === 'none' ? 'three' : write === 'action' ? 'two' : 'client',
-      );
+      expect(view.querySelector('[data-sidebar]')?.textContent).toBe('three');
       expect(window.location.pathname).toBe('/three');
       mocks.queue.push(payload('/three', <p>page three</p>));
       await act(async () => {
@@ -588,11 +824,7 @@ test.each(['none', 'client', 'action'] as const)(
       });
       const headers = new Headers(fetch.mock.lastCall![1]?.headers);
       expect(JSON.parse(headers.get(ETAGS_HEADER) ?? '{}').sidebar).toBe(
-        write === 'none'
-          ? 'three-v1'
-          : write === 'action'
-            ? 'two-v1'
-            : undefined,
+        'three-v1',
       );
     } finally {
       await act(async () => {
@@ -611,7 +843,7 @@ test.each([
   ['baseline-action', 'before', 'action-v2'],
   ['remove', '', undefined],
 ] as const)(
-  'rollback preserves independent changes to committed slots (write: %s)',
+  'retained baseline slots preserve independent queued changes (write: %s)',
   async (write, expectedSidebar, expectedEtag) => {
     const state = Symbol('client state');
     const ClientState = () => {
@@ -747,7 +979,7 @@ test.each([
   },
 );
 
-test('rollback preserves a removal not represented in the accepted prefetch', async () => {
+test('a retained baseline does not restore a removal omitted by the prefetched response', async () => {
   const ready = defer<void>();
   const replacement = defer<Elements>();
   let pushed: Promise<void> | undefined;
@@ -816,7 +1048,7 @@ test('rollback preserves a removal not represented in the accepted prefetch', as
 });
 
 test.each(['pending', 'failed'] as const)(
-  'a replacement recognizes response-only slots across a %s intermediate request',
+  'a later response replaces earlier slots across a %s intermediate request',
   async (intermediate) => {
     const ready = defer<void>();
     const middle = defer<Elements>();
@@ -976,7 +1208,7 @@ test.each([false, true])(
   },
 );
 
-test('a same-route navigation cancels an already queued suspended destination', async () => {
+test('a cached navigation replaces an accepted but suspended destination', async () => {
   const ready = defer<void>();
   const Page = () => {
     use(ready.promise);
@@ -1065,7 +1297,7 @@ test('an origin action response cannot replace a pending destination', async () 
   expect(window.location.pathname).toBe('/two');
 });
 
-test('a superseded commit cannot install its layout while the next request waits', async () => {
+test('a later response wins over an accepted destination that renders while it waits', async () => {
   const push = vi.spyOn(window.history, 'pushState');
   const ready = defer<void>();
   const next = defer<Elements>();
@@ -1103,13 +1335,6 @@ test('a superseded commit cannot install its layout while the next request waits
     ready.resolve();
     await flush();
   });
-  expect(view.querySelector('aside')?.textContent).toBe('layout /one');
-  expect(view.querySelector('output')?.textContent).toBe('/one');
-  expect(window.location.pathname).toBe('/one');
-  expect(window.location.search + window.location.hash).toBe(
-    '?tab=external#external',
-  );
-  expect(push).not.toHaveBeenCalled();
   await act(async () => {
     next.resolve(layout('/three', <p>page three</p>));
     await pushed;
@@ -1117,10 +1342,11 @@ test('a superseded commit cannot install its layout while the next request waits
   });
   expect(view.querySelector('aside')?.textContent).toBe('layout /three');
   expect(view.querySelector('output')?.textContent).toBe('/three');
-  expect(push).toHaveBeenCalledTimes(1);
+  expect(window.location.pathname).toBe('/three');
+  expect(push.mock.lastCall?.[2]?.toString()).toContain('/three');
 });
 
-test('a failed replacement cannot reveal the superseded layout', async () => {
+test('a failed navigation keeps the last accepted layout even before it paints', async () => {
   const ready = defer<void>();
   const next = defer<Elements>();
   const Page = () => {
@@ -1165,7 +1391,7 @@ test('a failed replacement cannot reveal the superseded layout', async () => {
     ready.resolve();
     await flush();
   });
-  expect(view.querySelector('aside')?.textContent).toBe('layout /one');
+  expect(view.querySelector('aside')?.textContent).toBe('layout /two');
   expect(window.location.pathname).toBe('/three');
 });
 

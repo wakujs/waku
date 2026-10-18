@@ -208,26 +208,19 @@ update queue. The intent is stored under the client-only `ROUTER_STATE_ID` symbo
 it is neither a server response field nor another slot. Minimal merges it without
 interpreting it.
 
-| State                                      | Owner                      | Purpose                                                        |
-| ------------------------------------------ | -------------------------- | -------------------------------------------------------------- |
-| Elements and attached Router state         | Minimal Root's React state | Select the content and URL intent that render together.        |
-| Pending request and queued commit identity | Router refs                | Abort superseded work and recognize when its snapshot commits. |
-| Applied snapshot identity and destination  | Router's layout effect     | Write history and scroll once for each committed intent.       |
-| Fetch error                                | Router's React state       | Render the failure and clear it when another request starts.   |
+| State                                     | Owner                      | Purpose                                                           |
+| ----------------------------------------- | -------------------------- | ----------------------------------------------------------------- |
+| Elements and attached Router state        | Minimal Root's React state | Select the content and URL intent that render together.           |
+| Requested or accepted route               | Router ref                 | Cancel pending work and route action results until UI catches up. |
+| Applied snapshot identity and destination | Router's layout effect     | Write history and scroll once for each committed intent.          |
+| Fetch error                               | Router's React state       | Render the failure and clear it when another request starts.      |
 
-An ordinary navigation queues its pending response when loading starts. Later
-partial action and client merges follow that response in Root's queue. Router
-reconciles values retained from the request base against the queued elements,
-preserving independent updates. On completion, navigation finalizes its
-destination's route composition and protocol metadata, so an update for the
-previous route or query cannot replace them; shared action slots are kept.
-Background slice responses merge in a transition to keep the rendered shell
-visible while a navigation response is pending.
-
-Rolling back an ordinary navigation restores committed values only for entries
-the navigation still owns, removing its response-only additions and resetting
-its router state. Separate client or action writes and removals are preserved,
-including writes with the same value and validator as the canceled response.
+An ordinary navigation queues its pending elements promise when fetching starts.
+Later action and client merges follow it in React's update order. Fresh response
+entries replace earlier values; entries retained from the request's cache baseline
+do not overwrite independent queued changes. The destination's route slot and
+protocol metadata are reapplied when the response arrives so an action from the
+previous route cannot restore its composition over the destination.
 
 Fetching and committing are different boundaries. An ordinary fetch can finish
 while a client component is suspended; its navigation promise does not wait for
@@ -250,12 +243,11 @@ Cached and same-RSC-route commits queue before the first `await`, retaining the
 caller's React priority. Transition callbacks run immediately, so wrapping an
 uncached navigation does not postpone superseding the previous request.
 
-Aborting a request does not remove an already queued React update. For an
-ordinary destination snapshot that has not committed, superseding it appends
-the last committed elements and their Router state to Root's queue. Include the
-state symbol even when its value is `undefined`: an initial snapshot has no
-navigation intent to retain. Restoring
-only intent could let the superseded response replace a shared layout.
+Superseding a pending request resolves its queued elements update to an empty
+patch. Once the response is accepted, its elements remain in the update chain,
+even if rendering is suspended. A later navigation appends a new pending promise;
+React controls which intermediate renders commit. No committed snapshot is copied
+back into the queue, and unrelated updates retain their original order.
 
 Ordinary element merges retain the attached state object by reference. The
 layout effect recognizes that identity and does not repeat its scroll or history

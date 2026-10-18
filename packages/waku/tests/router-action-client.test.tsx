@@ -352,7 +352,7 @@ test('a navigation superseded while loading reports it', async () => {
   expect(onFastSuperseded).not.toHaveBeenCalled();
 });
 
-test('a navigation superseded before it renders reports it after its promise resolves', async () => {
+test('a resolved navigation is not cancelled when another starts before it renders', async () => {
   const view = await mount();
   const destination = deferred('next');
   const Destination = () => use(destination.promise);
@@ -377,7 +377,7 @@ test('a navigation superseded before it renders reports it after its promise res
   await act(async () => {
     await view.getRouter().push('/final');
   });
-  expect(onSuperseded).toHaveBeenCalledTimes(1);
+  expect(onSuperseded).not.toHaveBeenCalled();
   await act(async () => {
     destination.resolve('next');
   });

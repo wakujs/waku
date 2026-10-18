@@ -60,9 +60,9 @@ Advanced composition APIs remain available to any Minimal-based framework:
   while preserving their validators.
 - `unstable_isImmutableElement(elements, slotId)` inspects a slot's immutable
   status without exposing its validator.
-- `unstable_isSameElement(a, b, slotId)` checks whether two records retain the
-  same slot source and value, including its validator. Independent writes are
-  distinct even with equal values and validators; two absent slots are equal.
+- `unstable_isSameElement(a, b, slotId)` compares own presence, `Object.is` value,
+  and validator without exposing it. Separate writes with equal values and
+  validators compare equal.
 - `useMergeElements_UNSTABLE` accepts a merge callback for custom updates to
   the Root's queued element promise.
 - `unstable_buildElements`, `Unstable_ElementSource`, and
@@ -598,8 +598,7 @@ const ElementIds = () => {
 ```
 
 The record is read-only. Use `combineElements` to construct a new map while
-preserving its slot sources and etags, then pass it to `mergeElements` to update
-the Root. A spread or `Object.assign` introduces new sources without etags.
+preserving its etags, then pass it to `mergeElements` to update the Root.
 
 #### Refetching
 
@@ -648,17 +647,15 @@ Important behavior:
 - If you return only `InnerApp`, previously rendered elements such as `App` stay mounted.
 - If the refetch fails, the existing element map stays in place.
 
-Merges use the caller's React update priority. Wrap background merges in
-`startTransition` to keep the current UI visible while payloads are pending.
-This includes merges after an `await` or in a promise callback, which need their
-own `startTransition`. An urgent merge can show the nearest Suspense fallback
-if an earlier queued merge is pending, even when its own payload is ready.
-
 #### Custom Merges
 
 The optional second argument to `mergeElements` chooses the Root's next element
 promise. It receives the latest queued promise, including updates that have not
 rendered yet, and the incoming payload promise:
+
+Use `startTransition` when merging pending work to retain visible content.
+An urgent merge can show the nearest Suspense fallback if an earlier queued
+elements promise is still pending.
 
 ```tsx
 mergeElements(response, (previous, incoming) =>
