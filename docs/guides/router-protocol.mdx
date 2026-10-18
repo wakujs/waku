@@ -270,6 +270,9 @@ for the same intent; that correction replaces history rather than pushing again.
 
 `useActionRouting_UNSTABLE` sends the settled route at action request time in
 `X-Waku-Action-Location`. This header is client-to-server information.
+After a failed navigation, the action origin follows the retained elements'
+route metadata, which can be ahead of the request's cache baseline after an
+instant paint. The failed destination's URL remains in history.
 
 - `rerenderRoute()` refreshes that origin and marks the response `IS_ORIGIN`.
   If the user has navigated away or a conflicting navigation is pending, the client

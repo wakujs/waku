@@ -1959,6 +1959,73 @@ test('a later response wins over an accepted destination that renders while it w
   expect(push.mock.lastCall?.[2]?.toString()).toContain('/three');
 });
 
+test('an action after a failed replacement reports the painted instant route', async () => {
+  const instant = defer<Elements>();
+  const failed = defer<Elements>();
+  mocks.queue.push({
+    ...payload('/one', <p>page one</p>),
+    root: (
+      <>
+        <Probe id="a" />
+        <ErrorBoundary>
+          <Children />
+        </ErrorBoundary>
+      </>
+    ),
+    [getRouteSlotId('/two')]: <p>cached page two</p>,
+    _etags: { root: 1, [getRouteSlotId('/two')]: 1 },
+  });
+  const view = await mount(
+    <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+  );
+  mocks.queue.push(instant.promise);
+  let painted: Promise<void> | undefined;
+  let pushed: Promise<void> | undefined;
+  try {
+    await act(async () => {
+      painted = controls.get('a')!.router.push('/two?q=2#anchor', {
+        unstable_instant: true,
+      });
+      await flush();
+    });
+    expect(view.textContent).toContain('cached page two');
+    expect(window.location.pathname).toBe('/two');
+    mocks.queue.push(failed.promise);
+    await act(async () => {
+      pushed = controls.get('a')!.router.push('/three');
+      void pushed.catch(() => {});
+      await flush();
+    });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await act(async () => {
+      failed.reject(new Error('offline'));
+      await expect(pushed).rejects.toThrow('offline');
+      await painted;
+      await flush();
+    });
+    expect(window.location.pathname).toBe('/three');
+    const fetch = vi.spyOn(globalThis, 'fetch');
+    mocks.queue.push({ _value: 'updated' });
+    await act(async () => {
+      expect(await unstable_callServerRsc('actions#update', [])).toBe(
+        'updated',
+      );
+      await flush();
+    });
+    expect(
+      new Headers(fetch.mock.lastCall![1]?.headers).get(ACTION_LOCATION_HEADER),
+    ).toBe('/two?q=2');
+  } finally {
+    await act(async () => {
+      instant.resolve({});
+      failed.resolve({});
+      await painted;
+      await pushed?.catch(() => {});
+      await flush();
+    });
+  }
+});
+
 test('a failed navigation keeps the last accepted layout even before it paints', async () => {
   const ready = defer<void>();
   const next = defer<Elements>();

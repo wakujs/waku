@@ -219,5 +219,28 @@ describe('getSettledRoute', () => {
     );
 
     expect(getSettledRoute(elements, fallback)).toEqual(settledRoute);
+    expect(
+      getSettledRoute(
+        withRouterState({}, { ...routerState, failedFrom: settledRoute }),
+        fallback,
+      ),
+    ).toEqual(settledRoute);
   });
+
+  test.each([route('/instant', 'q=2'), route('/a', 'x=2')])(
+    'a failed navigation uses the retained route $path?$query',
+    (retained) => {
+      const routerState = makeRouterState(route('/failed'), urlOf('/failed'), {
+        history: null,
+        scroll: false,
+        pathChanged: false,
+        follows: 0,
+      });
+      const elements = withRouterState(
+        { [ROUTE_ID]: [retained.path, retained.query] },
+        { ...routerState, failedFrom: route('/a', 'x=1', '#old') },
+      );
+      expect(getSettledRoute(elements, fallback)).toEqual(retained);
+    },
+  );
 });

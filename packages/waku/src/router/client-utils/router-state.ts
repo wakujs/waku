@@ -1,4 +1,4 @@
-import { getRouteUrl } from '../client-core-utils/route-url.js';
+import { getRouteUrl, isSameRscRoute } from '../client-core-utils/route-url.js';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
   getRouteFromElements,
@@ -84,8 +84,11 @@ export const getSettledRoute = (
   if (!routerState) {
     return fallback;
   }
-  return (
-    routerState.failedFrom ??
-    resolveServerRedirect(elements, routerState, fallback.path).route
-  );
+  if (routerState.failedFrom) {
+    const retained = getRouteFromElements(elements);
+    return retained && !isSameRscRoute(retained, routerState.failedFrom)
+      ? retained
+      : routerState.failedFrom;
+  }
+  return resolveServerRedirect(elements, routerState, fallback.path).route;
 };
