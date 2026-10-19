@@ -397,13 +397,17 @@ export const useNavigation = (
         const patch = combineElements(responsePatch, {
           [ROUTER_STATE_ID]: state,
         });
-        request.base = combineElements(
+        const cacheBase = combineElements(
           adopted && instantBase ? combineElements(base, instantBase) : base,
           patch,
         );
+        request.base = adopted ? { ...cacheBase } : cacheBase;
         if (adopted) {
-          cache.learnStaticFromElements(responsePatch);
-          return { [ROUTER_STATE_ID]: state };
+          return combineElements({}, patch, {
+            filter: (key) =>
+              key === ROUTER_STATE_ID ||
+              (typeof key === 'string' && isMetaKey(key)),
+          });
         }
         if (!instantResponse) {
           const responseRoute = getRouteFromElements(patch);

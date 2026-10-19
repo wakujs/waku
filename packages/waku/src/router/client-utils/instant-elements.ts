@@ -20,8 +20,9 @@ export const useMergeInstantElements = () => {
         Promise<Elements>,
         Elements | undefined
       >();
-      const incoming = mergeElements(response, (previous, recovered) => {
+      const incoming = mergeElements(response, (previous) => {
         const merged = Promise.resolve(previous).then((current) => {
+          const elementsPromise = response.catch(() => current);
           const available = base
             ? combineElements(current, base, {
                 filter: (key) => typeof key === 'string' && !(key in current),
@@ -34,7 +35,7 @@ export const useMergeInstantElements = () => {
                 ? pin(key)
                 : isImmutableElement(available, String(key));
             if (!pinned) {
-              holes[key] = recovered.then((elements) =>
+              holes[key] = elementsPromise.then((elements) =>
                 key in elements
                   ? elements[key]
                   : base && key in base

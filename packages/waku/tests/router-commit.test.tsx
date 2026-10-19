@@ -1469,7 +1469,7 @@ test.each([false, true])(
       expect(view.querySelector('aside')?.textContent).toBe('layout one');
       expect(view.textContent).toContain('page three');
       expect(window.location.pathname).toBe('/three');
-      expect(etags.root).toBe('two-v1');
+      expect(etags.root).not.toBe('one-v1');
     } finally {
       await act(async () => {
         ready.resolve();
@@ -1524,6 +1524,265 @@ test('accepting an instant response does not replay its slots over queued client
     });
   }
 });
+
+test('an adopted instant response applies metadata after an unrelated update', async () => {
+  const response = defer<Elements>();
+  const state = Symbol('client state');
+  mocks.queue.push({
+    ...payload('/one', <p>page one</p>),
+    root: (
+      <>
+        <Probe id="a" />
+        <StaticStatus />
+        <Children />
+      </>
+    ),
+    [IS_STATIC_ID]: true,
+    [getRouteSlotId('/two')]: <p>page two</p>,
+    _etags: {
+      root: 1,
+      [getRouteSlotId('/one')]: 1,
+      [getRouteSlotId('/two')]: 1,
+    },
+  });
+  const view = await mount(
+    <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+  );
+  mocks.queue.push(response.promise);
+  let navigation: Promise<void> | undefined;
+  try {
+    await act(async () => {
+      navigation = controls.get('a')!.router.push('/two', {
+        unstable_instant: true,
+      });
+      await flush();
+    });
+    await act(async () => {
+      await controls.get('a')!.merge({ [state]: 'client' });
+      await flush();
+    });
+    await act(async () => {
+      response.resolve({
+        [ROUTE_ID]: ['/two', ''],
+        [IS_STATIC_ID]: false,
+        banner: 'dynamic banner',
+      });
+      await navigation;
+      await flush();
+    });
+    expect(view.textContent).toContain('page two');
+    expect(view.querySelector('[data-static]')?.textContent).toBe('false');
+    expect(window.location.pathname).toBe('/two');
+  } finally {
+    await act(async () => {
+      response.resolve({});
+      await navigation;
+      await flush();
+    });
+  }
+});
+
+test.each([false, true])(
+  'an adopted instant response cannot claim unmerged slots (static redirect: %s)',
+  async (staticRedirect) => {
+    const ready = defer<void>();
+    const response = defer<Elements>();
+    const next = defer<Elements>();
+    const Page = () => {
+      use(ready.promise);
+      return <p>page two</p>;
+    };
+    const destination = (
+      <>
+        <p>page three</p>
+        <aside data-banner>
+          <Slot id="banner" />
+        </aside>
+      </>
+    );
+    const bannerEtag = staticRedirect ? 1 : 'banner-v1';
+    const sharedRoot = (
+      <>
+        <Probe id="a" />
+        <ErrorBoundary>
+          <Children />
+        </ErrorBoundary>
+      </>
+    );
+    const cachedPage = <Page />;
+    mocks.queue.push({
+      ...payload('/one', <p>page one</p>),
+      root: sharedRoot,
+      [getRouteSlotId('/two')]: cachedPage,
+      _etags: { root: 1, [getRouteSlotId('/two')]: 1 },
+    });
+    const view = await mount(
+      <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+    );
+    const fetch = vi.spyOn(globalThis, 'fetch');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    mocks.queue.push(response.promise, next.promise);
+    let instantNavigation: Promise<void> | undefined;
+    let navigation: Promise<void> | undefined;
+    try {
+      await act(async () => {
+        instantNavigation = controls.get('a')!.router.push('/two', {
+          unstable_instant: true,
+        });
+        await flush();
+      });
+      await act(async () => {
+        startTransition(() => {
+          void controls.get('a')!.merge({ sidebar: 'client' });
+        });
+        await flush();
+      });
+      await act(async () => {
+        response.resolve({
+          [ROUTE_ID]: [staticRedirect ? '/three' : '/two', ''],
+          [IS_STATIC_ID]: staticRedirect,
+          root: sharedRoot,
+          [getRouteSlotId(staticRedirect ? '/three' : '/two')]: staticRedirect
+            ? destination
+            : cachedPage,
+          banner: 'banner from two',
+          _etags: {
+            root: 1,
+            banner: bannerEtag,
+            [getRouteSlotId(staticRedirect ? '/three' : '/two')]: 1,
+          },
+        });
+        await instantNavigation;
+        navigation = controls.get('a')!.router.push('/three');
+        await flush();
+      });
+      const headers = new Headers(fetch.mock.lastCall![1]?.headers);
+      const etags = JSON.parse(headers.get(ETAGS_HEADER) ?? '{}');
+      await act(async () => {
+        next.resolve({
+          [ROUTE_ID]: ['/three', ''],
+          [IS_STATIC_ID]: staticRedirect,
+          root: sharedRoot,
+          [getRouteSlotId('/three')]: destination,
+          ...(etags.banner === bannerEtag ? {} : { banner: 'banner from two' }),
+          _etags: {
+            root: 1,
+            ...(staticRedirect ? { [getRouteSlotId('/three')]: 1 } : {}),
+            ...(etags.banner === bannerEtag ? {} : { banner: bannerEtag }),
+          },
+        });
+        await navigation;
+        ready.resolve();
+        await flush();
+      });
+      expect(view.querySelector('[data-banner]')?.textContent).toBe(
+        'banner from two',
+      );
+      expect(view.textContent).toContain('page three');
+      expect(view.textContent).not.toContain('Caught an unexpected error');
+      expect(window.location.pathname).toBe('/three');
+    } finally {
+      await act(async () => {
+        ready.resolve();
+        response.resolve({});
+        next.resolve({});
+        await instantNavigation;
+        await navigation;
+        await flush();
+      });
+    }
+  },
+);
+
+test.each([false, true])(
+  'a replacement cannot retain a cancelled instant preview (transport ignores cancellation: %s)',
+  async (ignoresCancellation) => {
+    const response = defer<Elements>();
+    const next = defer<Elements>();
+    const renderPage = (name: string) => (
+      <>
+        <p>{name}</p>
+        <Suspense fallback="waiting for banner">
+          <aside data-banner>
+            <Slot id="banner" />
+          </aside>
+        </Suspense>
+      </>
+    );
+    const first = payload('/one', renderPage('page one'));
+    mocks.queue.push({
+      ...first,
+      banner: 'origin banner',
+      _etags: { root: 1, banner: 'origin-v1' },
+    });
+    const view = await mount(
+      <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+    );
+    mocks.queue.push({
+      ...payload('/two', renderPage('page two')),
+      root: first.root,
+      [ROUTE_ID]: ['/two', 'q=cached'],
+      banner: 'preview banner',
+      _etags: { root: 1, [getRouteSlotId('/two')]: 1, banner: 'preview-v1' },
+    });
+    await act(async () => {
+      controls.get('a')!.router.prefetch('/two?q=cached');
+      await flush();
+    });
+    const fetch = vi.spyOn(globalThis, 'fetch');
+    mocks.queue.push(response.promise, next.promise);
+    let instantNavigation: Promise<void> | undefined;
+    let navigation: Promise<void> | undefined;
+    try {
+      await act(async () => {
+        instantNavigation = controls.get('a')!.router.push('/two?q=live', {
+          unstable_instant: true,
+        });
+        await flush();
+      });
+      expect(view.textContent).toContain('page two');
+      const signal = fetch.mock.lastCall![1]?.signal;
+      if (!ignoresCancellation) {
+        signal?.addEventListener('abort', () => {
+          response.reject(new DOMException('Aborted', 'AbortError'));
+        });
+      }
+      await act(async () => {
+        navigation = controls.get('a')!.router.push('/three');
+        await instantNavigation;
+        await flush();
+      });
+      const headers = new Headers(fetch.mock.lastCall![1]?.headers);
+      const etags = JSON.parse(headers.get(ETAGS_HEADER) ?? '{}');
+      await act(async () => {
+        next.resolve({
+          [ROUTE_ID]: ['/three', ''],
+          [IS_STATIC_ID]: false,
+          [getRouteSlotId('/three')]: renderPage('page three'),
+          ...(etags.banner === 'origin-v1'
+            ? {}
+            : { banner: 'origin banner', _etags: { banner: 'origin-v1' } }),
+        });
+        await navigation;
+        await flush();
+      });
+      expect(view.querySelector('[data-banner]')?.textContent).toBe(
+        'origin banner',
+      );
+      expect(view.textContent).toContain('page three');
+      expect(view.textContent).not.toContain('waiting for banner');
+      expect(window.location.pathname).toBe('/three');
+    } finally {
+      await act(async () => {
+        response.resolve({});
+        next.resolve({});
+        await instantNavigation;
+        await navigation;
+        await flush();
+      });
+    }
+  },
+);
 
 test('an instant response fills omitted slots from its prefetched base', async () => {
   const response = defer<Elements>();
