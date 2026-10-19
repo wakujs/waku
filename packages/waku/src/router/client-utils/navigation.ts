@@ -285,15 +285,15 @@ export const useNavigation = (
             requestedPathChanged || attempt.route.path !== settledRoute.path,
           follows: attempt.follows,
         });
+      const initialState = makeStateForAttempt(initialAttempt, options.history);
       if (canReuseStatic || !shouldRefetch) {
         const routePatch = {
           [ROUTE_ID]: [nextRoute.path, nextRoute.query],
           ...(canReuseStatic ? { [IS_STATIC_ID]: true } : {}),
         };
-        const state = makeStateForAttempt(initialAttempt, options.history);
-        request.queuedState = state;
+        request.queuedState = initialState;
         const patch = combineElements(routePatch, {
-          [ROUTER_STATE_ID]: state,
+          [ROUTER_STATE_ID]: initialState,
         });
         request.base =
           options.refetch === false ? patch : combineElements(base, patch);
@@ -302,11 +302,10 @@ export const useNavigation = (
       }
       const initialFollows = options.follows ?? 0;
       const instantResponse = options.instant
-        ? startInstantPaint(
-            initialAttempt,
-            makeStateForAttempt(initialAttempt, options.history),
-            controller.signal,
-          )
+        ? startInstantPaint(initialAttempt, initialState, controller.signal)
+        : undefined;
+      const instantBase = instantResponse
+        ? cache.getPrefetchedElements(nextRoute)
         : undefined;
       const loadPatch = async (): Promise<Elements> => {
         const outcome = await cache.load(nextRoute, {
@@ -369,15 +368,10 @@ export const useNavigation = (
           setNavigationError({ error });
           throw error;
         }
-        if (
+        const adopted =
           outcome.type === 'loaded' &&
-          instantResponse &&
-          outcome.follows === initialFollows
-        ) {
-          cache.learnStaticFromElements(outcome.elements);
-          finishRequest();
-          return {};
-        }
+          !!instantResponse &&
+          outcome.follows === initialFollows;
         const responsePatch =
           outcome.type === 'reused'
             ? {
@@ -392,16 +386,25 @@ export const useNavigation = (
           makeStateForAttempt(outcome, historyIntent),
           outcome.route.path,
         );
-        const state = makeStateForAttempt(
-          { ...destination, follows: outcome.follows },
-          historyIntent,
-        );
+        const state = adopted
+          ? initialState
+          : makeStateForAttempt(
+              { ...destination, follows: outcome.follows },
+              historyIntent,
+            );
         request.target = destination.route;
         request.queuedState = state;
         const patch = combineElements(responsePatch, {
           [ROUTER_STATE_ID]: state,
         });
-        request.base = combineElements(base, patch);
+        request.base = combineElements(
+          adopted && instantBase ? combineElements(base, instantBase) : base,
+          patch,
+        );
+        if (adopted) {
+          cache.learnStaticFromElements(responsePatch);
+          return { [ROUTER_STATE_ID]: state };
+        }
         if (!instantResponse) {
           const responseRoute = getRouteFromElements(patch);
           if (responseRoute && !isSameRscRoute(responseRoute, settledRoute)) {

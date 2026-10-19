@@ -4552,12 +4552,14 @@ describe('Router integration', () => {
     }
   });
 
-  test('an adopted instant landing does not merge a settle patch', async () => {
+  test('an adopted instant landing does not repeat history or scroll', async () => {
     const pending = createDeferred<Record<string, unknown>>();
     const refetch = vi.fn<RefetchInner>(() => pending.promise);
     installRefetch(refetch);
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
+    const historyPushSpy = vi.spyOn(window.history, 'pushState');
+    const historyReplaceSpy = vi.spyOn(window.history, 'replaceState');
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
       return;
     });
@@ -4577,8 +4579,9 @@ describe('Router integration', () => {
       });
       expect(window.location.pathname).toBe('/next');
       expect(scrollToSpy).toHaveBeenCalled();
+      historyPushSpy.mockClear();
+      historyReplaceSpy.mockClear();
       scrollToSpy.mockClear();
-      testHoisted.mergeTypes.length = 0;
 
       await act(async () => {
         pending.resolve({ [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: true });
@@ -4586,9 +4589,14 @@ describe('Router integration', () => {
         await flush();
       });
 
-      expect(testHoisted.mergeTypes).toEqual(['swr']);
+      expect(capture.router?.path).toBe('/next');
+      expect(window.location.pathname).toBe('/next');
+      expect(historyPushSpy).not.toHaveBeenCalled();
+      expect(historyReplaceSpy).not.toHaveBeenCalled();
       expect(scrollToSpy).not.toHaveBeenCalled();
     } finally {
+      historyPushSpy.mockRestore();
+      historyReplaceSpy.mockRestore();
       scrollToSpy.mockRestore();
       view.unmount();
     }

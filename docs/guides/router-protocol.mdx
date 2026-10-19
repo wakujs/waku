@@ -234,10 +234,13 @@ interpreting it.
 | Fetch error                               | Router's React state       | Render the failure and clear it when another request starts.      |
 
 Each request carries forward accepted RSC elements as its cache baseline,
-which can be ahead of the last painted route. A metadata-only action dispatch
-makes no element-validator claims for its destination. This baseline does not
-track every queued action or client merge; response patches merge with the
-latest queued elements through Minimal's update queue.
+which can be ahead of the last painted route. Accepted instant responses retain
+their prefetch fallback and reuse the eager paint's navigation intent without
+reapplying response slots or repeating history and scrolling.
+A metadata-only action dispatch makes no element-validator claims for its
+destination. This baseline does not track every queued action or client merge;
+response patches merge with the latest queued elements through Minimal's
+update queue.
 After a failure, refetch decisions use the retained request origin, not an
 instant preview whose response may have been cancelled. Action origins use
 the retained elements' route metadata as described below. Failed commits do

@@ -1384,6 +1384,147 @@ test.each([
   },
 );
 
+test.each([false, true])(
+  'a chained navigation uses the accepted instant layout baseline (prefetched: %s)',
+  async (prefetched) => {
+    const ready = defer<void>();
+    const response = defer<Elements>();
+    const next = defer<Elements>();
+    const Page = () => {
+      use(ready.promise);
+      return <p>page two</p>;
+    };
+    const renderLayout = (name: string) => (
+      <>
+        <Probe id="a" />
+        <aside>{name}</aside>
+        <Children />
+      </>
+    );
+    const firstRoot = renderLayout('layout one');
+    const cachedPage = <Page />;
+    const instantElements = {
+      ...payload('/two', cachedPage),
+      root: renderLayout('layout two'),
+      _etags: { root: 'two-v1', [getRouteSlotId('/two')]: 1 },
+    };
+    mocks.queue.push({
+      ...payload('/one', <p>page one</p>),
+      root: firstRoot,
+      ...(prefetched ? {} : { [getRouteSlotId('/two')]: cachedPage }),
+      _etags: {
+        root: 'one-v1',
+        ...(prefetched ? {} : { [getRouteSlotId('/two')]: 1 }),
+      },
+    });
+    const view = await mount(
+      <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+    );
+    if (prefetched) {
+      mocks.queue.push({
+        ...instantElements,
+        [ROUTE_ID]: ['/two', 'q=cached'],
+      });
+      await act(async () => {
+        controls.get('a')!.router.prefetch('/two?q=cached');
+        await flush();
+      });
+    }
+    const fetch = vi.spyOn(globalThis, 'fetch');
+    mocks.queue.push(response.promise, next.promise);
+    let instantNavigation: Promise<void> | undefined;
+    let navigation: Promise<void> | undefined;
+    try {
+      await act(async () => {
+        instantNavigation = controls.get('a')!.router.push('/two?q=live', {
+          unstable_instant: true,
+        });
+        await flush();
+      });
+      await act(async () => {
+        response.resolve({
+          ...(prefetched ? {} : instantElements),
+          [ROUTE_ID]: ['/two', 'q=live'],
+          [IS_STATIC_ID]: false,
+        });
+        await instantNavigation;
+        navigation = controls.get('a')!.router.push('/three');
+        await flush();
+      });
+      const headers = new Headers(fetch.mock.lastCall![1]?.headers);
+      const etags = JSON.parse(headers.get(ETAGS_HEADER) ?? '{}');
+      await act(async () => {
+        next.resolve({
+          [ROUTE_ID]: ['/three', ''],
+          [IS_STATIC_ID]: false,
+          [getRouteSlotId('/three')]: <p>page three</p>,
+          ...(etags.root === 'one-v1'
+            ? {}
+            : { root: firstRoot, _etags: { root: 'one-v1' } }),
+        });
+        await navigation;
+        ready.resolve();
+        await flush();
+      });
+      expect(view.querySelector('aside')?.textContent).toBe('layout one');
+      expect(view.textContent).toContain('page three');
+      expect(window.location.pathname).toBe('/three');
+      expect(etags.root).toBe('two-v1');
+    } finally {
+      await act(async () => {
+        ready.resolve();
+        response.resolve({});
+        next.resolve({});
+        await instantNavigation;
+        await navigation;
+        await flush();
+      });
+    }
+  },
+);
+
+test('accepting an instant response does not replay its slots over queued client updates', async () => {
+  const response = defer<Elements>();
+  mocks.queue.push({
+    ...payload('/one', <p>page one</p>),
+    [getRouteSlotId('/two')]: <p>page two</p>,
+    sidebar: 'before',
+    _etags: { root: 1, [getRouteSlotId('/two')]: 1 },
+  });
+  const view = await mount(
+    <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+  );
+  mocks.queue.push(response.promise);
+  let navigation: Promise<void> | undefined;
+  try {
+    await act(async () => {
+      navigation = controls.get('a')!.router.push('/two', {
+        unstable_instant: true,
+      });
+      await flush();
+    });
+    await act(async () => {
+      response.resolve({
+        [ROUTE_ID]: ['/two', ''],
+        [IS_STATIC_ID]: false,
+        sidebar: 'response',
+      });
+      await controls.get('a')!.merge({ sidebar: 'client' });
+      await navigation;
+      await flush();
+    });
+    expect(view.textContent).toContain('page two');
+    expect(view.querySelector('[data-sidebar]')?.textContent).toBe('client');
+    expect(window.location.pathname).toBe('/two');
+  } finally {
+    await act(async () => {
+      response.resolve({});
+      await navigation;
+      await flush();
+    });
+  }
+});
+
 test('an instant response fills omitted slots from its prefetched base', async () => {
   const response = defer<Elements>();
   const first = payload('/one', <p>page one</p>);
