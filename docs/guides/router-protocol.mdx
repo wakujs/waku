@@ -193,6 +193,9 @@ to the settled RSC route also returns `reused`, avoiding an identical fetch.
 `outcome.route` describes the final attempt, not necessarily the server-rendered
 destination: reconcile `ROUTE` using the URL rules above. Streamed-slot errors
 must continue the same follow budget through the binding's error boundary.
+Each boundary dispatches a caught error's follow once; React effect replay does
+not start another request. Separate boundaries handle a shared error
+independently.
 
 Bindings that want Router's cache policy call `useRouterCache_UNSTABLE()` during
 rendering. Its `cache.load(requested, { ...options, base: elements })` wraps the
@@ -294,7 +297,9 @@ slots, and include cached immutable slots and client navigation intent. The
 callback starts from the latest queued elements, so it cannot overwrite an
 earlier queued update with a rendered snapshot. Settlement adds new slots and
 updates response-owned overlay keys only while that instant merge still owns
-the queued promise. Minimal owns updater replay safety, not SWR policy.
+the queued promise. It settles in a transition so adding entries does not hide
+the painted shell behind the Root's Suspense fallback. Minimal owns updater
+replay safety, not SWR policy.
 
 Cached and same-RSC-route commits queue before the first `await`, retaining the
 caller's React priority. Transition callbacks run immediately, so wrapping an

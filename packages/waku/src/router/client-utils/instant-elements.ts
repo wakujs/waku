@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { startTransition, useCallback } from 'react';
 import {
   unstable_combineElements as combineElements,
   unstable_isImmutableElement as isImmutableElement,
@@ -69,32 +69,34 @@ export const useMergeInstantElements = () => {
         return merged;
       });
       return incoming.then((resolved) => {
-        void mergeElements(resolved, (previous) => {
-          if (!mergeResults.has(previous)) {
-            return previous;
-          }
-          const shouldMerge = (current: Elements, key: string) =>
-            !(key in current) || !!(overlay && Object.hasOwn(overlay, key));
-          const current = mergeResults.get(previous);
-          if (
-            current &&
-            !Object.keys(resolved).some((key) => shouldMerge(current, key))
-          ) {
-            return previous;
-          }
-          return previous.then((current) => {
-            const elements = combineElements(current, resolved, {
-              filter: (key) =>
-                typeof key === 'string' && shouldMerge(current, key),
+        startTransition(() => {
+          void mergeElements(resolved, (previous) => {
+            if (!mergeResults.has(previous)) {
+              return previous;
+            }
+            const shouldMerge = (current: Elements, key: string) =>
+              !(key in current) || !!(overlay && Object.hasOwn(overlay, key));
+            const current = mergeResults.get(previous);
+            if (
+              current &&
+              !Object.keys(resolved).some((key) => shouldMerge(current, key))
+            ) {
+              return previous;
+            }
+            return previous.then((current) => {
+              const elements = combineElements(current, resolved, {
+                filter: (key) =>
+                  typeof key === 'string' && shouldMerge(current, key),
+              });
+              return routerState
+                ? combineElements(elements, {
+                    [ROUTER_STATE_ID]: makeInstantRouterState(
+                      routerState,
+                      elements,
+                    ),
+                  })
+                : elements;
             });
-            return routerState
-              ? combineElements(elements, {
-                  [ROUTER_STATE_ID]: makeInstantRouterState(
-                    routerState,
-                    elements,
-                  ),
-                })
-              : elements;
           });
         });
         return resolved;

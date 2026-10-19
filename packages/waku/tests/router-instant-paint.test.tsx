@@ -1,6 +1,14 @@
 // @vitest-environment happy-dom
 
-import { Suspense, act, lazy, startTransition, useEffect } from 'react';
+import {
+  Suspense,
+  act,
+  lazy,
+  startTransition,
+  use,
+  useEffect,
+  useState,
+} from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterAll, beforeAll, expect, test, vi } from 'vitest';
 import {
@@ -12,6 +20,7 @@ import {
   Children_UNSTABLE as Children,
   Slot_UNSTABLE as Slot,
   unstable_combineElements as combineElements,
+  useElementsPromise_UNSTABLE as useElementsPromise,
   useMergeElements_UNSTABLE as useMergeElements,
 } from '../src/minimal/client.js';
 import { Router, useRouter } from '../src/router/client.js';
@@ -444,3 +453,131 @@ test.each(['remove', 'replace'] as const)(
     }
   },
 );
+
+test('two Roots settle a shared instant response after an update in only one Root', async () => {
+  const clientState = Symbol('client state');
+  const controls = new Map<
+    string,
+    {
+      router: ReturnType<typeof useRouter>;
+      merge: ReturnType<typeof useMergeElements>;
+    }
+  >();
+  const Capture = () => {
+    const router = useRouter();
+    const [id] = useState(router.path);
+    const merge = useMergeElements();
+    const elements = use(useElementsPromise());
+    useEffect(() => {
+      controls.set(id, { router, merge });
+    });
+    return (
+      <>
+        <output>{String(elements[clientState] ?? 'initial')}</output>
+        <aside>
+          <Suspense fallback="sidebar waiting">
+            <Slot id="sidebar" />
+          </Suspense>
+        </aside>
+      </>
+    );
+  };
+  const shell = nextPage();
+  const sharedRoot = (
+    <>
+      <Capture />
+      <Children />
+    </>
+  );
+  const ids = ['first', 'second'];
+  for (const id of ids) {
+    respond(`/shared-${id}`, {
+      root: sharedRoot,
+      [`route:/shared-${id}`]: <p>origin</p>,
+      'route:/shared-next': shell,
+      sidebar: 'before',
+      clock: 'before',
+      [ROUTE_ID]: [`/shared-${id}`, ''],
+      [IS_STATIC_ID]: false,
+      [ETAGS_ID]: {
+        root: IMMUTABLE_ETAG,
+        'route:/shared-next': IMMUTABLE_ETAG,
+      },
+    });
+  }
+  const response = Promise.withResolvers<Payload>();
+  const responsePatch = {
+    [ROUTE_ID]: ['/shared-next', ''],
+    [IS_STATIC_ID]: false,
+    sidebar: 'server',
+    clock: <Slot id="details" />,
+    details: 'shared details',
+    [ETAGS_ID]: { sidebar: 'server-v1', details: 'details-v1' },
+  };
+  respond('/shared-next', response.promise);
+  respond('/shared-next', response.promise);
+  window.history.replaceState({}, '', '/shared-first');
+  const container = document.createElement('div');
+  const errors: unknown[] = [];
+  const root = createRoot(container, {
+    onCaughtError: (error) => errors.push(error),
+    onRecoverableError: (error) => errors.push(error),
+  });
+  const navigations: Promise<void>[] = [];
+  try {
+    await act(async () => {
+      root.render(
+        <>
+          {ids.map((id) => (
+            <section key={id} data-root={id}>
+              <Router
+                initialRoute={{ path: `/shared-${id}`, query: '', hash: '' }}
+              />
+            </section>
+          ))}
+        </>,
+      );
+    });
+    await act(async () => {
+      for (const id of ids) {
+        navigations.push(
+          controls.get(`/shared-${id}`)!.router.push('/shared-next', {
+            unstable_instant: true,
+          }),
+        );
+      }
+    });
+    for (const section of container.querySelectorAll('section')) {
+      expect(section.querySelector('h1')?.textContent).toBe('next');
+      expect(section.textContent).toContain('waiting');
+    }
+    await act(async () => {
+      await controls.get('/shared-first')!.merge({
+        sidebar: 'client',
+        [clientState]: 'first update',
+      });
+    });
+    await act(async () => {
+      response.resolve(responsePatch);
+      await Promise.all(navigations);
+    });
+    const first = container.querySelector('[data-root="first"]')!;
+    const second = container.querySelector('[data-root="second"]')!;
+    expect(first.querySelector('output')?.textContent).toBe('first update');
+    expect(first.querySelector('aside')?.textContent).toBe('client');
+    expect(second.querySelector('output')?.textContent).toBe('initial');
+    expect(second.querySelector('aside')?.textContent).toBe('server');
+    for (const section of [first, second]) {
+      expect(section.textContent).toContain('nextshared details');
+      expect(section.textContent).not.toContain('waiting');
+    }
+    expect(errors).toEqual([]);
+    expect(window.location.pathname).toBe('/shared-next');
+  } finally {
+    await act(async () => {
+      response.resolve(responsePatch);
+      await Promise.allSettled(navigations);
+      root.unmount();
+    });
+  }
+});
