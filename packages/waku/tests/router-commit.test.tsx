@@ -1947,6 +1947,177 @@ test.each([
   },
 );
 
+test.each(['redirect', '404', 'error'] as const)(
+  'a suspended accepted page cannot block its replacement with a late %s',
+  async (kind) => {
+    const streamed = defer<ReactNode>();
+    const pending = defer<Elements>();
+    const Page = () => use(streamed.promise);
+    const sharedRoot = (
+      <ErrorBoundary>
+        <Probe id="a" />
+        <Children />
+      </ErrorBoundary>
+    );
+    const replacement = {
+      ...payload('/three', <p>page three</p>),
+      root: sharedRoot,
+    };
+    mocks.queue.push({
+      ...payload('/one', <p>page one</p>),
+      root: sharedRoot,
+    });
+    const view = await mount(
+      <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+    );
+    mocks.queue.push({
+      ...payload('/two', <Page />),
+      root: sharedRoot,
+      [HAS404_ID]: true,
+    });
+    let pushed: Promise<void> | undefined;
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await act(async () => {
+        await controls.get('a')!.router.push('/two');
+        await flush();
+      });
+      expect(view.textContent).toContain('page one');
+      mocks.queue.push(
+        pending.promise,
+        payload(kind === '404' ? '/404' : '/hijacked', <p>followed page</p>),
+      );
+      await act(async () => {
+        pushed = controls.get('a')!.router.push('/three');
+        await flush();
+      });
+      const fetch = vi.spyOn(globalThis, 'fetch');
+      await act(async () => {
+        streamed.reject(
+          kind === 'error'
+            ? new Error('obsolete render error')
+            : createCustomError(
+                'obsolete follow',
+                kind === '404' ? { status: 404 } : { location: '/hijacked' },
+              ),
+        );
+        await flush();
+      });
+      expect(fetch).not.toHaveBeenCalled();
+      await act(async () => {
+        pending.resolve(replacement);
+        await pushed;
+        await flush();
+      });
+      expect(view.textContent).toContain('page three');
+      expect(view.textContent).not.toContain('Caught an unexpected error');
+      expect(window.location.pathname).toBe('/three');
+    } finally {
+      await act(async () => {
+        streamed.resolve(<p>page two</p>);
+        pending.resolve(replacement);
+        await pushed;
+        await flush();
+      });
+    }
+  },
+);
+
+test.each(['remove', 'replace', 'redirect'] as const)(
+  'cached static navigation fills a missing route slot without overwriting queued updates (%s)',
+  async (change) => {
+    const ready = defer<void>();
+    const redirected = defer<Elements>();
+    const slotId = getRouteSlotId('/one');
+    const Page = () => {
+      use(ready.promise);
+      return <p>page two</p>;
+    };
+    mocks.queue.push({
+      ...payload('/one', <p>page one</p>),
+      sidebar: 'before',
+      [IS_STATIC_ID]: true,
+      _etags: { root: 1, [slotId]: 1, sidebar: 1 },
+    });
+    const view = await mount(
+      <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+    );
+    mocks.queue.push({
+      [ROUTE_ID]: ['/two', ''],
+      [IS_STATIC_ID]: false,
+      [getRouteSlotId('/two')]: <Page />,
+    });
+    let pushed: Promise<void> | undefined;
+    try {
+      await act(async () => {
+        await controls.get('a')!.router.push('/two');
+        await flush();
+      });
+      if (change === 'redirect') {
+        mocks.queue.push(redirected.promise);
+      }
+      const fetch = vi.spyOn(globalThis, 'fetch');
+      await act(async () => {
+        startTransition(() => {
+          void controls.get('a')!.merge({}, (prev) =>
+            prev.then((elements) =>
+              combineElements(
+                combineElements({}, elements, {
+                  filter: (key) => key !== slotId,
+                }),
+                {
+                  sidebar: 'client',
+                  ...(change === 'replace'
+                    ? { [slotId]: <p>client page one</p> }
+                    : {}),
+                },
+              ),
+            ),
+          );
+          pushed = controls
+            .get('a')!
+            .router.push(change === 'redirect' ? '/redirect' : '/one#anchor');
+        });
+        if (change === 'redirect') {
+          redirected.reject(
+            createCustomError('moved', { location: '/one#anchor' }),
+          );
+        }
+        await pushed;
+        await flush();
+      });
+      expect(view.textContent).toContain(
+        change === 'replace' ? 'client page one' : 'page one',
+      );
+      expect(view.querySelector('[data-sidebar]')?.textContent).toBe('client');
+      expect(window.location.pathname + window.location.hash).toBe(
+        '/one#anchor',
+      );
+      expect(fetch).toHaveBeenCalledTimes(change === 'redirect' ? 1 : 0);
+      mocks.queue.push({
+        [ROUTE_ID]: ['/three', ''],
+        [IS_STATIC_ID]: false,
+        [getRouteSlotId('/three')]: <p>page three</p>,
+      });
+      await act(async () => {
+        await controls.get('a')!.router.push('/three');
+        await flush();
+      });
+      const headers = new Headers(fetch.mock.lastCall![1]?.headers);
+      expect(JSON.parse(headers.get(ETAGS_HEADER) ?? '{}')[slotId]).toBe(
+        change === 'replace' ? undefined : 1,
+      );
+    } finally {
+      await act(async () => {
+        ready.resolve();
+        redirected.resolve({});
+        await pushed;
+        await flush();
+      });
+    }
+  },
+);
+
 test('an unrelated element update does not overwrite external history', async () => {
   mocks.queue.push(payload('/one', <p>page one</p>));
   const view = await mount(

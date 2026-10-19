@@ -189,6 +189,21 @@ export const useNavigation = (
         resolveSettledRoute(elements, routeFallback);
       const retained = requestRef.current?.base;
       const base = retained ?? elements;
+      const mergeWithCachedRoute = (
+        prev: Promise<Elements>,
+        incoming: Promise<Elements>,
+      ) =>
+        Promise.all([prev, incoming]).then(([current, patch]) => {
+          const route = getRouteFromElements(patch);
+          const slotId = route && getRouteSlotId(route.path);
+          const available =
+            slotId && !(slotId in current) && slotId in base
+              ? combineElements(current, base, {
+                  filter: (key) => key === slotId,
+                })
+              : current;
+          return combineElements(available, patch);
+        });
       const loadedRoute =
         getRouterState(base)?.failedFrom ??
         (retained && getRouteFromElements(retained)) ??
@@ -282,7 +297,7 @@ export const useNavigation = (
         });
         request.base =
           options.refetch === false ? data : combineElements(base, data);
-        void mergeElements(data);
+        void mergeElements(data, mergeWithCachedRoute);
         return;
       }
       const initialFollows = options.follows ?? 0;
@@ -394,7 +409,7 @@ export const useNavigation = (
                 typeof key === 'string' && (key === slotId || isMetaKey(key)),
             });
             startTransition(() => {
-              void mergeElements(routePatch);
+              void mergeElements(routePatch, mergeWithCachedRoute);
             });
           }
         }
@@ -405,12 +420,12 @@ export const useNavigation = (
         const data = await incoming;
         if (getRouterState(data)) {
           startTransition(() => {
-            void mergeElements(data);
+            void mergeElements(data, mergeWithCachedRoute);
           });
         }
         return;
       }
-      await mergeElements(incoming);
+      await mergeElements(incoming, mergeWithCachedRoute);
     },
     [
       cache,
