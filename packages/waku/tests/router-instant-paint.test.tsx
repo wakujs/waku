@@ -1,12 +1,18 @@
 // @vitest-environment happy-dom
 
-import { Suspense, act, lazy, useEffect } from 'react';
+import { Suspense, act, lazy, startTransition, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterAll, beforeAll, expect, test, vi } from 'vitest';
-import { ETAGS_ID, IMMUTABLE_ETAG } from '../src/lib/utils-isomorphic/etags.js';
+import {
+  ETAGS_HEADER,
+  ETAGS_ID,
+  IMMUTABLE_ETAG,
+} from '../src/lib/utils-isomorphic/etags.js';
 import {
   Children_UNSTABLE as Children,
   Slot_UNSTABLE as Slot,
+  unstable_combineElements as combineElements,
+  useMergeElements_UNSTABLE as useMergeElements,
 } from '../src/minimal/client.js';
 import { Router, useRouter } from '../src/router/client.js';
 import {
@@ -279,3 +285,162 @@ test('an instant shell painted from a prefetch stays while the response copy is 
   });
   act(() => root.unmount());
 });
+
+test.each(['remove', 'replace'] as const)(
+  'an accepted instant navigation restores only missing prefetched route slots (%s)',
+  async (change) => {
+    window.history.replaceState({}, '', '/prefetch-origin');
+    let merge: ReturnType<typeof useMergeElements> | undefined;
+    const CaptureMerge = () => {
+      const value = useMergeElements();
+      useEffect(() => {
+        merge = value;
+      });
+      return null;
+    };
+    const sharedRoot = (
+      <>
+        <CaptureRouter />
+        <CaptureMerge />
+        <Children />
+      </>
+    );
+    const shell = (
+      <>
+        <h1>prefetched shell</h1>
+        <aside>
+          <Suspense fallback="waiting">
+            <Slot id="sidebar" />
+          </Suspense>
+        </aside>
+      </>
+    );
+    const slotId = 'route:/prefetch-only';
+    respond('/prefetch-origin', {
+      root: sharedRoot,
+      'route:/prefetch-origin': <p>origin</p>,
+      sidebar: 'origin sidebar',
+      [ROUTE_ID]: ['/prefetch-origin', ''],
+      [IS_STATIC_ID]: false,
+      [ETAGS_ID]: {
+        root: IMMUTABLE_ETAG,
+        sidebar: 'origin-v1',
+      },
+    });
+    respond(
+      '/prefetch-only',
+      {
+        root: sharedRoot,
+        [slotId]: shell,
+        sidebar: 'prefetched sidebar',
+        [ROUTE_ID]: ['/prefetch-only', 'q=cached'],
+        [IS_STATIC_ID]: false,
+        [ETAGS_ID]: {
+          root: IMMUTABLE_ETAG,
+          [slotId]: IMMUTABLE_ETAG,
+          sidebar: 'prefetched-v1',
+        },
+      },
+      'q=cached',
+    );
+    const response = Promise.withResolvers<Payload>();
+    const responsePatch = {
+      sidebar: 'server sidebar',
+      [ROUTE_ID]: ['/prefetch-only', 'q=live'],
+      [IS_STATIC_ID]: false,
+      [ETAGS_ID]: { sidebar: 'response-v2' },
+    };
+    respond('/prefetch-only', response.promise, 'q=live');
+    const errors: unknown[] = [];
+    const container = document.createElement('div');
+    const root = createRoot(container, {
+      onCaughtError: (error) => errors.push(error),
+      onRecoverableError: (error) => errors.push(error),
+    });
+    let navigated: Promise<void> | undefined;
+    try {
+      await act(async () => {
+        root.render(<Router />);
+      });
+      expect(container.textContent).toBe('origin');
+      await act(async () => {
+        router!.prefetch('/prefetch-only?q=cached');
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      await act(async () => {
+        navigated = router!.push('/prefetch-only?q=live#details', {
+          unstable_instant: true,
+        });
+      });
+      expect(container.textContent).toBe('prefetched shellwaiting');
+      const fetch = vi.mocked(globalThis.fetch);
+      const requestHeaders = new Headers(fetch.mock.lastCall![1]?.headers);
+      expect(
+        JSON.parse(requestHeaders.get(ETAGS_HEADER) ?? '{}'),
+      ).toMatchObject({ [slotId]: IMMUTABLE_ETAG, sidebar: 'prefetched-v1' });
+      await act(async () => {
+        startTransition(() => {
+          void merge!({}, (prevPromise) =>
+            prevPromise.then((prev) =>
+              combineElements(
+                combineElements({}, prev, {
+                  filter: (key) => key !== slotId,
+                }),
+                {
+                  sidebar: 'client sidebar',
+                  ...(change === 'replace'
+                    ? {
+                        [slotId]: (
+                          <>
+                            <h1>client shell</h1>
+                            <aside>
+                              <Slot id="sidebar" />
+                            </aside>
+                          </>
+                        ),
+                      }
+                    : {}),
+                },
+              ),
+            ),
+          );
+        });
+        response.resolve(responsePatch);
+        await navigated;
+      });
+      expect(errors).toEqual([]);
+      expect(container.querySelector('h1')?.textContent).toBe(
+        change === 'replace' ? 'client shell' : 'prefetched shell',
+      );
+      expect(container.querySelector('aside')?.textContent).toBe(
+        'client sidebar',
+      );
+      expect(
+        window.location.pathname +
+          window.location.search +
+          window.location.hash,
+      ).toBe('/prefetch-only?q=live#details');
+      respond('/prefetch-next', {
+        'route:/prefetch-next': <p>next destination</p>,
+        [ROUTE_ID]: ['/prefetch-next', ''],
+        [IS_STATIC_ID]: false,
+      });
+      await act(async () => {
+        await router!.push('/prefetch-next');
+      });
+      const nextHeaders = new Headers(fetch.mock.lastCall![1]?.headers);
+      const etags = JSON.parse(nextHeaders.get(ETAGS_HEADER) ?? '{}');
+      expect(etags[slotId]).toBe(
+        change === 'replace' ? undefined : IMMUTABLE_ETAG,
+      );
+      expect(etags.sidebar).toBeUndefined();
+      expect(container.textContent).toBe('next destination');
+    } finally {
+      await act(async () => {
+        response.resolve(responsePatch);
+        await navigated?.catch(() => {});
+        root.unmount();
+      });
+    }
+  },
+);

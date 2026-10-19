@@ -212,8 +212,12 @@ export const useNavigation = (
                     !Object.hasOwn(prev, key),
                 })
               : prev;
-          if (slotId && !(slotId in available) && slotId in base) {
-            available = combineElements(available, base, {
+          const cachedElements =
+            slotId && responseFallback && slotId in responseFallback
+              ? responseFallback
+              : base;
+          if (slotId && !(slotId in available) && slotId in cachedElements) {
+            available = combineElements(available, cachedElements, {
               filter: (key) => key === slotId,
             });
           }
@@ -432,30 +436,45 @@ export const useNavigation = (
         );
         request.base = adopted ? { ...cacheBase } : cacheBase;
         if (adopted) {
-          responseFallback = responsePatch;
+          responseFallback = instantBase
+            ? combineElements(instantBase, responsePatch)
+            : responsePatch;
           return combineElements({}, patch, {
             filter: (key) =>
               key === ROUTER_STATE_ID ||
               (typeof key === 'string' && isMetaKey(key)),
           });
         }
-        if (!instantResponse) {
-          const responseRoute = getRouteFromElements(patch);
-          if (responseRoute && !isSameRscRoute(responseRoute, settledRoute)) {
-            const slotId = getRouteSlotId(responseRoute.path);
-            const routePatch = combineElements({}, patch, {
-              filter: (key) =>
-                typeof key === 'string' && (key === slotId || isMetaKey(key)),
-            });
-            startTransition(() => {
-              void mergeElements(routePatch, mergeWithCachedRoute);
-            });
-          }
+        const responseRoute = getRouteFromElements(patch);
+        if (
+          responseRoute &&
+          !isSameRscRoute(
+            responseRoute,
+            instantResponse ? initialAttempt.route : settledRoute,
+          )
+        ) {
+          const slotId = getRouteSlotId(responseRoute.path);
+          const routePatch = combineElements({}, patch, {
+            filter: (key) =>
+              typeof key === 'string' && (key === slotId || isMetaKey(key)),
+          });
+          startTransition(() => {
+            void mergeElements(routePatch, mergeWithCachedRoute);
+          });
         }
         return patch;
       };
       const patchPromise = loadPatch();
       if (instantResponse) {
+        try {
+          await instantResponse;
+        } catch {
+          startTransition(() => {
+            void mergeElements(patchPromise, mergeWithCachedRoute);
+          });
+          await patchPromise;
+          return;
+        }
         const patch = await patchPromise;
         if (getRouterState(patch)) {
           startTransition(() => {

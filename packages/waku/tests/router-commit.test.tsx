@@ -2174,6 +2174,129 @@ test.each(['page', 'layout'])(
   },
 );
 
+test.each([
+  { follow: 'redirect', write: 'client' },
+  { follow: '404', write: 'action' },
+  { follow: 'redirect', write: 'origin action' },
+  { follow: 'redirect', write: 'removal' },
+  { follow: 'return redirect', write: 'origin action' },
+] as const)(
+  'an instant $follow queues its pending response before a later $write update',
+  async ({ follow, write }) => {
+    const response = defer<Elements>();
+    const followed = defer<Elements>();
+    const target =
+      follow === '404'
+        ? '/404'
+        : follow === 'return redirect'
+          ? '/one'
+          : '/three';
+    mocks.queue.push({
+      ...payload('/one', <p>page one</p>),
+      [HAS404_ID]: true,
+      [getRouteSlotId('/two')]: <p>cached page two</p>,
+      sidebar: 'before',
+      _etags: {
+        root: 1,
+        [getRouteSlotId('/two')]: 1,
+        sidebar: 'before-v1',
+      },
+    });
+    const view = await mount(
+      <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+    );
+    const fetch = vi.spyOn(globalThis, 'fetch');
+    mocks.queue.push(response.promise, followed.promise);
+    let navigation: Promise<void> | undefined;
+    try {
+      await act(async () => {
+        navigation = controls.get('a')!.router.push('/two', {
+          unstable_instant: true,
+        });
+        await flush();
+      });
+      expect(view.textContent).toContain('cached page two');
+      await act(async () => {
+        response.reject(
+          follow === '404'
+            ? createCustomError('missing', { status: 404 })
+            : createCustomError('moved', { location: target }),
+        );
+        await flush();
+      });
+      expect(String(fetch.mock.lastCall![0])).toContain(`/RSC/R${target}.txt`);
+      await act(async () => {
+        if (write === 'removal') {
+          startTransition(() => {
+            void controls.get('a')!.merge({}, (prevPromise) =>
+              prevPromise.then((prev) =>
+                combineElements({}, prev, {
+                  filter: (key) => key !== 'sidebar',
+                }),
+              ),
+            );
+          });
+        } else if (write !== 'client') {
+          mocks.queue.push({
+            sidebar: 'client',
+            _value: 'updated',
+            _etags: { sidebar: 'client-v2' },
+            ...(write === 'origin action'
+              ? {
+                  [ROUTE_ID]: ['/two', ''],
+                  [IS_STATIC_ID]: false,
+                  [IS_ORIGIN_ID]: true,
+                }
+              : {}),
+          });
+          expect(await unstable_callServerRsc('actions#update', [])).toBe(
+            'updated',
+          );
+        } else {
+          startTransition(() => {
+            void controls.get('a')!.merge({ sidebar: 'client' });
+          });
+        }
+        await flush();
+      });
+      expect(view.textContent).toContain('cached page two');
+      expect(view.textContent).not.toContain('outer fallback');
+      await act(async () => {
+        followed.resolve({
+          [ROUTE_ID]: [target, ''],
+          [IS_STATIC_ID]: false,
+          [getRouteSlotId(target)]: <p>followed page</p>,
+          sidebar: 'server',
+          _etags: { sidebar: 'server-v1' },
+        });
+        await navigation;
+        await flush();
+      });
+      expect(view.textContent).toContain('followed page');
+      expect(view.querySelector('[data-sidebar]')?.textContent).toBe(
+        write === 'removal' ? '' : 'client',
+      );
+      expect(window.location.pathname).toBe(follow === '404' ? '/two' : target);
+      mocks.queue.push(payload('/four', <p>page four</p>));
+      await act(async () => {
+        await controls.get('a')!.router.push('/four');
+        await flush();
+      });
+      const headers = new Headers(fetch.mock.lastCall![1]?.headers);
+      expect(JSON.parse(headers.get(ETAGS_HEADER) ?? '{}').sidebar).toBe(
+        write === 'client' || write === 'removal' ? undefined : 'client-v2',
+      );
+    } finally {
+      await act(async () => {
+        response.resolve({});
+        followed.resolve({});
+        await navigation;
+        await flush();
+      });
+    }
+  },
+);
+
 test.each([false, true])(
   'a cached static return keeps its immutable composition after an accepted response (redirect: %s)',
   async (redirect) => {
