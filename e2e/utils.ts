@@ -80,6 +80,27 @@ export const waitForPortReady = async (port: number): Promise<void> =>
     tryConnect();
   });
 
+export const waitForPortClosed = async (port: number): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const start = Date.now();
+    const tryConnect = () => {
+      const socket = createConnection(port);
+      socket.once('connect', () => {
+        socket.destroy();
+        if (Date.now() - start >= PORT_WAIT_TIMEOUT_MS) {
+          reject(new Error(`Timeout while waiting for port ${port} to close`));
+          return;
+        }
+        setTimeout(tryConnect, 50);
+      });
+      socket.once('error', () => {
+        socket.destroy();
+        resolve();
+      });
+    };
+    tryConnect();
+  });
+
 export const runShell = (command: string, cwd: string): ChildProcess =>
   spawn(command, {
     cwd,
@@ -218,6 +239,7 @@ export const prepareNormalSetup = (
     await waitForPortReady(port);
     const stopApp = async () => {
       await terminate(cp);
+      await waitForPortClosed(port);
     };
     return { port, stopApp, fixtureDir, buildResult };
   };
@@ -409,6 +431,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     const stopApp = async () => {
       builtModeMap.delete(packageManager);
       await terminate(cp);
+      await waitForPortClosed(port);
     };
     return { port, stopApp, standaloneDir };
   };
