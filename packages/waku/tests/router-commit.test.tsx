@@ -1582,6 +1582,96 @@ test('an adopted instant response applies metadata after an unrelated update', a
   }
 });
 
+test.each([
+  { path: '/three', clientPage: false, nestedPage: false },
+  { path: '/404', clientPage: false, nestedPage: false },
+  { path: '/three', clientPage: true, nestedPage: false },
+  { path: '/three', clientPage: false, nestedPage: true },
+])(
+  'an instant metadata redirect retains its destination slot (%s)',
+  async ({ path, clientPage, nestedPage }) => {
+    const response = defer<Elements>();
+    mocks.queue.push({
+      ...payload('/one', <p>page one</p>),
+      root: (
+        <>
+          <Probe id="a" />
+          <ErrorBoundary>
+            <Children />
+          </ErrorBoundary>
+        </>
+      ),
+      [getRouteSlotId('/two')]: <p>page two</p>,
+      sidebar: 'before',
+      _etags: { root: 1, [getRouteSlotId('/two')]: 1 },
+    });
+    const view = await mount(
+      <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+    );
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    mocks.queue.push(response.promise);
+    let navigation: Promise<void> | undefined;
+    try {
+      await act(async () => {
+        navigation = controls.get('a')!.router.push('/two', {
+          unstable_instant: true,
+        });
+        await flush();
+      });
+      expect(view.textContent).toContain('page two');
+      await act(async () => {
+        if (nestedPage) {
+          await controls.get('a')!.merge({}, (prevPromise) =>
+            prevPromise.then((prev) =>
+              combineElements({}, prev, {
+                filter: (key) => key !== 'sidebar',
+              }),
+            ),
+          );
+        } else {
+          await controls.get('a')!.merge({
+            sidebar: 'client',
+            ...(clientPage
+              ? { [getRouteSlotId(path)]: <p>client page</p> }
+              : {}),
+          });
+        }
+        await flush();
+      });
+      await act(async () => {
+        response.resolve({
+          [ROUTE_ID]: [path, ''],
+          [IS_STATIC_ID]: false,
+          [getRouteSlotId(path)]: nestedPage ? (
+            <Slot id={`page:${path}`} />
+          ) : (
+            <p>rewritten page</p>
+          ),
+          ...(nestedPage ? { [`page:${path}`]: <p>rewritten page</p> } : {}),
+          _etags: { [getRouteSlotId(path)]: 'rewritten-v1' },
+        });
+        await navigation;
+        await flush();
+      });
+      expect(view.textContent).toContain(
+        clientPage ? 'client page' : 'rewritten page',
+      );
+      expect(view.querySelector('[data-route]')?.textContent).toBe(path);
+      expect(view.querySelector('[data-sidebar]')?.textContent).toBe(
+        nestedPage ? '' : 'client',
+      );
+      expect(view.textContent).not.toContain('Caught an unexpected error');
+      expect(window.location.pathname).toBe(path === '/404' ? '/two' : path);
+    } finally {
+      await act(async () => {
+        response.resolve({});
+        await navigation;
+        await flush();
+      });
+    }
+  },
+);
+
 test.each([false, true])(
   'an adopted instant response cannot claim unmerged slots (static redirect: %s)',
   async (staticRedirect) => {
@@ -2626,6 +2716,178 @@ test('a later response wins over an accepted destination that renders while it w
   expect(window.location.pathname).toBe('/three');
   expect(push.mock.lastCall?.[2]?.toString()).toContain('/three');
 });
+
+test.each([false, true])(
+  'an action after a failed navigation retains its static origin query (chained: %s)',
+  async (chained) => {
+    window.history.replaceState({}, '', '/one?q=1#top');
+    const failed = defer<Elements>();
+    const instant = defer<Elements>();
+    mocks.queue.push({
+      ...payload('/one', <p>page one</p>),
+      root: (
+        <>
+          <Probe id="a" />
+          <ErrorBoundary>
+            <Children />
+          </ErrorBoundary>
+        </>
+      ),
+      [IS_STATIC_ID]: true,
+      [getRouteSlotId('/two')]: <p>page two</p>,
+      _etags: {
+        root: 1,
+        [getRouteSlotId('/one')]: 1,
+        [getRouteSlotId('/two')]: 1,
+      },
+    });
+    await mount(
+      <Router initialRoute={{ path: '/one', query: 'q=1', hash: '#top' }} />,
+    );
+    mocks.queue.push(failed.promise);
+    let navigation: Promise<void> | undefined;
+    let preview: Promise<void> | undefined;
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await act(async () => {
+        navigation = controls.get('a')!.router.push('/failed');
+        void navigation.catch(() => {});
+        await flush();
+      });
+      await act(async () => {
+        failed.reject(new Error('offline'));
+        await expect(navigation).rejects.toThrow('offline');
+        if (chained) {
+          mocks.queue.push(instant.promise);
+          preview = controls.get('a')!.router.push('/two', {
+            unstable_instant: true,
+          });
+          void preview.catch(() => {});
+          instant.reject(new Error('offline again'));
+          await expect(preview).rejects.toThrow('offline again');
+        }
+        await flush();
+      });
+      const fetch = vi.spyOn(globalThis, 'fetch');
+      mocks.queue.push({ _value: 'updated' });
+      await act(async () => {
+        expect(await unstable_callServerRsc('actions#update', [])).toBe(
+          'updated',
+        );
+        await flush();
+      });
+      expect(
+        new Headers(fetch.mock.lastCall![1]?.headers).get(
+          ACTION_LOCATION_HEADER,
+        ),
+      ).toBe('/one?q=1');
+    } finally {
+      await act(async () => {
+        failed.resolve({});
+        instant.resolve({});
+        await navigation?.catch(() => {});
+        await preview?.catch(() => {});
+        await flush();
+      });
+    }
+  },
+);
+
+test.each(['q=2', ''])(
+  'a failed replacement retains its same-path preview action origin (%s)',
+  async (query) => {
+    const ready = defer<void>();
+    const instant = defer<Elements>();
+    const failed = defer<Elements>();
+    const Shell = () => {
+      if (useRouter().query === 'q=1') {
+        use(ready.promise);
+      }
+      return (
+        <Suspense fallback="preview pending">
+          <Slot id="page:/one" />
+        </Suspense>
+      );
+    };
+    window.history.replaceState({}, '', '/other');
+    mocks.queue.push({
+      ...payload('/other', <p>page other</p>),
+      root: (
+        <>
+          <Probe id="a" />
+          <ErrorBoundary>
+            <Children />
+          </ErrorBoundary>
+        </>
+      ),
+      [IS_STATIC_ID]: true,
+      [getRouteSlotId('/one')]: <Shell />,
+      'page:/one': <p>cached page one</p>,
+      _etags: { root: 1, [getRouteSlotId('/one')]: 1 },
+    });
+    const view = await mount(
+      <Router initialRoute={{ path: '/other', query: '', hash: '' }} />,
+    );
+    mocks.queue.push({
+      [ROUTE_ID]: ['/one', 'q=1'],
+      [IS_STATIC_ID]: false,
+      'page:/one': <p>accepted page one</p>,
+    });
+    let preview: Promise<void> | undefined;
+    let navigation: Promise<void> | undefined;
+    try {
+      await act(async () => {
+        await controls.get('a')!.router.push('/one?q=1');
+        await flush();
+      });
+      expect(view.textContent).toContain('page other');
+      mocks.queue.push(instant.promise, failed.promise);
+      await act(async () => {
+        preview = controls
+          .get('a')!
+          .router.push(query ? `/one?${query}` : '/one', {
+            unstable_instant: true,
+          });
+        await flush();
+      });
+      expect(view.textContent).toContain('preview pending');
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      await act(async () => {
+        navigation = controls.get('a')!.router.push('/failed');
+        void navigation.catch(() => {});
+        await flush();
+      });
+      await act(async () => {
+        failed.reject(new Error('offline'));
+        await expect(navigation).rejects.toThrow('offline');
+        await preview;
+        await flush();
+      });
+      const fetch = vi.spyOn(globalThis, 'fetch');
+      mocks.queue.push({ _value: 'updated' });
+      await act(async () => {
+        expect(await unstable_callServerRsc('actions#update', [])).toBe(
+          'updated',
+        );
+        await flush();
+      });
+      expect(
+        new Headers(fetch.mock.lastCall![1]?.headers).get(
+          ACTION_LOCATION_HEADER,
+        ),
+      ).toBe(query ? `/one?${query}` : '/one');
+    } finally {
+      await act(async () => {
+        ready.resolve();
+        instant.resolve({});
+        failed.resolve({});
+        await preview;
+        await navigation?.catch(() => {});
+        await flush();
+      });
+    }
+  },
+);
 
 test.each([
   'return',

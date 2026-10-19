@@ -189,6 +189,7 @@ export const useNavigation = (
         resolveSettledRoute(elements, routeFallback);
       const retainedElements = requestRef.current?.base;
       const base = retainedElements ?? elements;
+      let responseFallback: Elements | undefined;
       const mergeWithCachedRoute = (
         prevPromise: Promise<Elements>,
         patchPromise: Promise<Elements>,
@@ -196,12 +197,14 @@ export const useNavigation = (
         Promise.all([prevPromise, patchPromise]).then(([prev, patch]) => {
           const route = getRouteFromElements(patch);
           const slotId = route && getRouteSlotId(route.path);
-          const available =
-            slotId && !(slotId in prev) && slotId in base
-              ? combineElements(prev, base, {
-                  filter: (key) => key === slotId,
-                })
-              : prev;
+          let available = responseFallback
+            ? combineElements(responseFallback, prev)
+            : prev;
+          if (slotId && !(slotId in available) && slotId in base) {
+            available = combineElements(available, base, {
+              filter: (key) => key === slotId,
+            });
+          }
           return combineElements(available, patch);
         });
       const loadedRoute =
@@ -361,9 +364,23 @@ export const useNavigation = (
             [ROUTER_STATE_ID]: failureState,
           };
           request.queuedState = failureState;
-          request.base = combineElements(base, patch);
+          const baseRoute = resolveSettledRoute(base, routeFallback);
+          request.base = combineElements(base, {
+            ...patch,
+            [ROUTE_ID]: [baseRoute.path, baseRoute.query],
+          });
           startTransition(() => {
-            void mergeElements(patch);
+            void mergeElements(patch, (prevPromise) =>
+              prevPromise.then((prev) => {
+                const origin = instantResponse
+                  ? baseRoute
+                  : resolveSettledRoute(prev, routeFallback);
+                return combineElements(prev, {
+                  ...patch,
+                  [ROUTE_ID]: [origin.path, origin.query],
+                });
+              }),
+            );
           });
           setNavigationError({ error });
           throw error;
@@ -403,6 +420,7 @@ export const useNavigation = (
         );
         request.base = adopted ? { ...cacheBase } : cacheBase;
         if (adopted) {
+          responseFallback = responsePatch;
           return combineElements({}, patch, {
             filter: (key) =>
               key === ROUTER_STATE_ID ||

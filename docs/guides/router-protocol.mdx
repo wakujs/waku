@@ -236,10 +236,10 @@ interpreting it.
 Each request carries forward accepted RSC elements as its cache baseline,
 which can be ahead of the last painted route. Accepted instant responses retain
 their prefetch fallback and reuse the eager paint's navigation intent without
-reapplying response slots or repeating history and scrolling. Until that state
-commits, their cache baseline makes no etag claims: an unrelated update can
-prevent response-only slots from reaching Root. Protocol metadata is applied
-with the accepted intent even when slot settlement is skipped. Static-route
+repeating history and scrolling. Acceptance applies protocol metadata and
+backfills missing response entries, preserving queued values and removals of
+omitted slots. Until that state commits, their cache baseline makes no etag
+claims because it can differ from the latest queued values. Static-route
 eligibility is learned when the accepted instant state commits.
 A metadata-only action dispatch makes no element-validator claims for its
 destination. This baseline does not track every queued action or client merge;
@@ -248,7 +248,9 @@ update queue.
 After a failure, refetch decisions use the retained request origin, not an
 instant preview whose response may have been cancelled. Action origins use
 the retained elements' route metadata as described below. Failed commits do
-not learn static routes from retained preview metadata.
+not learn static routes from retained preview metadata. Before replacing the
+queued Router state, a failure resolves its retained origin into route metadata,
+preserving static-page queries and instant-preview origins.
 
 An ordinary navigation queues its pending elements promise when fetching starts.
 Later action and client merges follow it in React's update order. `fetchRsc`
