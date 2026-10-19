@@ -17,10 +17,31 @@ export type RouterState = {
   readonly failedFrom?: RouteProps;
 };
 
+type InstantRouterState = {
+  readonly state: RouterState;
+  readonly slotIds: ReadonlySet<string>;
+};
+
+export const makeInstantRouterState = (
+  state: RouterState,
+  elements: Record<string | symbol, unknown>,
+): InstantRouterState => ({ state, slotIds: new Set(Object.keys(elements)) });
+
 export const getRouterState = (
   elements: Record<string | symbol, unknown>,
-): RouterState | undefined =>
-  elements[ROUTER_STATE_ID] as RouterState | undefined;
+): RouterState | undefined => {
+  const state = elements[ROUTER_STATE_ID] as
+    RouterState | InstantRouterState | undefined;
+  return state && 'state' in state ? state.state : state;
+};
+
+export const getInstantSlotIds = (
+  elements: Record<string | symbol, unknown>,
+): ReadonlySet<string> | undefined => {
+  const state = elements[ROUTER_STATE_ID] as
+    RouterState | InstantRouterState | undefined;
+  return state && 'state' in state ? state.slotIds : undefined;
+};
 
 export const makeRouterState = (
   route: RouteProps,

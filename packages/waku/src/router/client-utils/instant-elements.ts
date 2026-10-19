@@ -4,6 +4,11 @@ import {
   unstable_isImmutableElement as isImmutableElement,
   useMergeElements_UNSTABLE as useMergeElements,
 } from 'waku/minimal/client';
+import {
+  ROUTER_STATE_ID,
+  getRouterState,
+  makeInstantRouterState,
+} from './router-state.js';
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
 
@@ -16,6 +21,7 @@ export const useMergeInstantElements = () => {
       base?: Elements,
       overlay?: Elements,
     ) => {
+      const routerState = overlay && getRouterState(overlay);
       const mergeResults = new WeakMap<
         Promise<Elements>,
         Elements | undefined
@@ -48,8 +54,16 @@ export const useMergeInstantElements = () => {
           const elements = overlay
             ? combineElements(waiting, overlay)
             : waiting;
-          mergeResults.set(merged, elements);
-          return elements;
+          const eagerElements = routerState
+            ? combineElements(elements, {
+                [ROUTER_STATE_ID]: makeInstantRouterState(
+                  routerState,
+                  elements,
+                ),
+              })
+            : elements;
+          mergeResults.set(merged, eagerElements);
+          return eagerElements;
         });
         mergeResults.set(merged, undefined);
         return merged;
@@ -68,12 +82,20 @@ export const useMergeInstantElements = () => {
           ) {
             return previous;
           }
-          return previous.then((current) =>
-            combineElements(current, resolved, {
+          return previous.then((current) => {
+            const elements = combineElements(current, resolved, {
               filter: (key) =>
                 typeof key === 'string' && shouldMerge(current, key),
-            }),
-          );
+            });
+            return routerState
+              ? combineElements(elements, {
+                  [ROUTER_STATE_ID]: makeInstantRouterState(
+                    routerState,
+                    elements,
+                  ),
+                })
+              : elements;
+          });
         });
         return resolved;
       });

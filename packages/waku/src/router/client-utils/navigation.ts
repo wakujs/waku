@@ -41,6 +41,7 @@ import { dispatchChangeRoute } from './router-context.js';
 import type { ChangeRoute, ChangeRouteOptions } from './router-context.js';
 import {
   ROUTER_STATE_ID,
+  getInstantSlotIds,
   getRouterState,
   makeRouterState,
   resolveServerRedirect,
@@ -134,7 +135,11 @@ export const useNavigation = (
   const destinationHref = destination?.url.href;
   const currentHash = route.hash;
   useLayoutEffect(() => {
-    if (routerState && requestRef.current?.queuedState === routerState) {
+    if (
+      routerState &&
+      requestRef.current?.queuedState === routerState &&
+      !getInstantSlotIds(elements)
+    ) {
       if (!routerState.failedFrom) {
         cache.learnStaticFromElements(elements);
       }
@@ -197,9 +202,16 @@ export const useNavigation = (
         Promise.all([prevPromise, patchPromise]).then(([prev, patch]) => {
           const route = getRouteFromElements(patch);
           const slotId = route && getRouteSlotId(route.path);
-          let available = responseFallback
-            ? combineElements(responseFallback, prev)
-            : prev;
+          const represented = getInstantSlotIds(prev);
+          let available =
+            responseFallback && represented
+              ? combineElements(prev, responseFallback, {
+                  filter: (key) =>
+                    typeof key === 'string' &&
+                    !represented.has(key) &&
+                    !Object.hasOwn(prev, key),
+                })
+              : prev;
           if (slotId && !(slotId in available) && slotId in base) {
             available = combineElements(available, base, {
               filter: (key) => key === slotId,

@@ -1,6 +1,13 @@
 // @vitest-environment happy-dom
 
-import { Suspense, act, startTransition, use, useLayoutEffect } from 'react';
+import {
+  StrictMode,
+  Suspense,
+  act,
+  startTransition,
+  use,
+  useLayoutEffect,
+} from 'react';
 import type { ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
@@ -1524,6 +1531,123 @@ test('accepting an instant response does not replay its slots over queued client
     });
   }
 });
+
+test.each(['committed', 'prefetched', 'queued', 'queued pending'] as const)(
+  'an instant response preserves a later removal of a %s slot',
+  async (source) => {
+    const response = defer<Elements>();
+    const update = defer<Elements>();
+    const cachedPage = <p>page two</p>;
+    const first = payload('/one', <p>page one</p>);
+    mocks.queue.push({
+      ...first,
+      [getRouteSlotId('/two')]: cachedPage,
+      ...(source === 'committed' ? { sidebar: 'before' } : {}),
+      _etags: {
+        root: 1,
+        [getRouteSlotId('/two')]: 1,
+        ...(source === 'committed' ? { sidebar: 'before-v1' } : {}),
+      },
+    });
+    const view = await mount(
+      <StrictMode>
+        <Router initialRoute={{ path: '/one', query: '', hash: '' }} />
+      </StrictMode>,
+    );
+    if (source === 'prefetched') {
+      mocks.queue.push({
+        [ROUTE_ID]: ['/two', 'q=cached'],
+        [IS_STATIC_ID]: false,
+        root: first.root,
+        [getRouteSlotId('/two')]: cachedPage,
+        sidebar: 'prefetched',
+        _etags: {
+          root: 1,
+          [getRouteSlotId('/two')]: 1,
+          sidebar: 'prefetched-v1',
+        },
+      });
+      await act(async () => {
+        controls.get('a')!.router.prefetch('/two?q=cached');
+        await flush();
+      });
+    }
+    mocks.queue.push(response.promise);
+    let navigation: Promise<void> | undefined;
+    let merged: Promise<unknown> | undefined;
+    try {
+      await act(async () => {
+        if (source === 'queued' || source === 'queued pending') {
+          merged = controls.get('a')!.merge(update.promise);
+        }
+        navigation = controls.get('a')!.router.push('/two?q=live', {
+          unstable_instant: true,
+        });
+        if (source !== 'queued pending') {
+          update.resolve({ sidebar: 'queued' });
+          await merged;
+        }
+        await flush();
+      });
+      if (source !== 'queued pending') {
+        expect(view.textContent).toContain('page two');
+      }
+      await act(async () => {
+        await controls
+          .get('a')!
+          .merge({}, (prevPromise) =>
+            prevPromise.then((prev) =>
+              combineElements({}, prev, { filter: (key) => key !== 'sidebar' }),
+            ),
+          );
+        await flush();
+      });
+      await act(async () => {
+        response.resolve({
+          [ROUTE_ID]: ['/two', 'q=live'],
+          [IS_STATIC_ID]: false,
+          sidebar: 'response',
+          _etags: { sidebar: 'response-v2' },
+        });
+        if (source === 'queued pending') {
+          expect(
+            await Promise.race([
+              navigation!.then(() => true),
+              flush().then(() => false),
+            ]),
+          ).toBe(true);
+          update.resolve({ sidebar: 'queued' });
+          await merged;
+        }
+        await navigation;
+        await flush();
+      });
+      expect(view.querySelector('[data-sidebar]')?.textContent).toBe('');
+      expect(view.textContent).toContain('page two');
+      expect(window.location.pathname + window.location.search).toBe(
+        '/two?q=live',
+      );
+      const fetch = vi.spyOn(globalThis, 'fetch');
+      mocks.queue.push(payload('/three', <p>page three</p>));
+      await act(async () => {
+        await controls.get('a')!.router.push('/three');
+        await flush();
+      });
+      const headers = new Headers(fetch.mock.lastCall![1]?.headers);
+      expect(JSON.parse(headers.get(ETAGS_HEADER) ?? '{}')).not.toHaveProperty(
+        'sidebar',
+      );
+    } finally {
+      await act(async () => {
+        update.resolve({});
+        response.resolve({});
+        await merged;
+        await navigation;
+        await flush();
+      });
+    }
+  },
+);
 
 test('an adopted instant response applies metadata after an unrelated update', async () => {
   const response = defer<Elements>();
@@ -3268,4 +3392,441 @@ test('concurrent Routers keep their navigation snapshots independent', async () 
   expect(view.querySelector('[data-route="a"]')?.textContent).toBe('/two');
   expect(view.querySelector('[data-route="b"]')?.textContent).toBe('/other');
   expect(view.textContent).toContain('second root');
+});
+
+test('instant lane replay preserves removal of a slot added by an earlier transition', async () => {
+  const { flushSync } = await import('react-dom');
+  const response = defer<Elements>();
+  const SidebarPresence = () => {
+    const elements = use(useElementsPromise());
+    return (
+      <output data-lane-sidebar-present>
+        {String(Object.hasOwn(elements, 'sidebar'))}
+      </output>
+    );
+  };
+  mocks.queue.push({
+    ...payload('/one', <p>page one</p>),
+    root: (
+      <>
+        <Probe id="a" />
+        <SidebarPresence />
+        <Children />
+      </>
+    ),
+    [getRouteSlotId('/two')]: <p>cached page two</p>,
+    _etags: { root: 1, [getRouteSlotId('/two')]: 1 },
+  });
+  const view = await mount(
+    <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+  );
+  const inspect = vi.fn((prevPromise: Promise<Elements>) => prevPromise);
+  mocks.queue.push(response.promise);
+  let navigation: Promise<void> | undefined;
+  try {
+    await act(async () => {
+      startTransition(() => {
+        void controls.get('a')!.merge({ sidebar: 'queued before eager' });
+      });
+      flushSync(() => {
+        navigation = controls.get('a')!.router.push('/two', {
+          unstable_instant: true,
+        });
+        void controls.get('a')!.merge({}, inspect);
+      });
+      await flush();
+    });
+    expect(
+      await Promise.all(
+        inspect.mock.calls.map(async ([prevPromise]) =>
+          Object.hasOwn(await prevPromise, 'sidebar'),
+        ),
+      ),
+    ).toEqual(expect.arrayContaining([false, true]));
+    expect(view.textContent).toContain('cached page two');
+    expect(view.querySelector('[data-lane-sidebar-present]')?.textContent).toBe(
+      'true',
+    );
+    await act(async () => {
+      await controls
+        .get('a')!
+        .merge({}, (prevPromise) =>
+          prevPromise.then((prev) =>
+            combineElements({}, prev, { filter: (key) => key !== 'sidebar' }),
+          ),
+        );
+      await flush();
+    });
+    expect(view.querySelector('[data-lane-sidebar-present]')?.textContent).toBe(
+      'false',
+    );
+    await act(async () => {
+      response.resolve({
+        [ROUTE_ID]: ['/two', ''],
+        [IS_STATIC_ID]: false,
+        sidebar: 'response',
+        _etags: { sidebar: 'response-v2' },
+      });
+      await navigation;
+      await flush();
+    });
+    expect(view.querySelector('[data-lane-sidebar-present]')?.textContent).toBe(
+      'false',
+    );
+    expect(view.querySelector('[data-sidebar]')?.textContent).toBe('');
+    expect(view.textContent).toContain('cached page two');
+    expect(window.location.pathname).toBe('/two');
+    const fetch = vi.spyOn(globalThis, 'fetch');
+    mocks.queue.push(payload('/three', <p>page three</p>));
+    await act(async () => {
+      await controls.get('a')!.router.push('/three');
+      await flush();
+    });
+    const headers = new Headers(fetch.mock.lastCall![1]?.headers);
+    expect(JSON.parse(headers.get(ETAGS_HEADER) ?? '{}')).not.toHaveProperty(
+      'sidebar',
+    );
+  } finally {
+    await act(async () => {
+      response.resolve({});
+      await navigation;
+      await flush();
+    });
+  }
+});
+
+test('instant lane replay supplies a dependency removed by an earlier transition', async () => {
+  const { flushSync } = await import('react-dom');
+  const response = defer<Elements>();
+  mocks.queue.push({
+    ...payload('/one', <p>page one</p>),
+    root: (
+      <>
+        <Probe id="a" />
+        <ErrorBoundary>
+          <Children />
+        </ErrorBoundary>
+      </>
+    ),
+    dependency: 'old dependency',
+    [getRouteSlotId('/two')]: <p>cached page two</p>,
+    _etags: {
+      root: 1,
+      dependency: 'dependency-v1',
+      [getRouteSlotId('/two')]: 1,
+    },
+  });
+  const view = await mount(
+    <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+  );
+  const inspect = vi.fn((prevPromise: Promise<Elements>) => prevPromise);
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  mocks.queue.push(response.promise);
+  let navigation: Promise<void> | undefined;
+  try {
+    await act(async () => {
+      startTransition(() => {
+        void controls.get('a')!.merge({}, (prevPromise) =>
+          prevPromise.then((prev) =>
+            combineElements({}, prev, {
+              filter: (key) => key !== 'dependency',
+            }),
+          ),
+        );
+      });
+      flushSync(() => {
+        navigation = controls.get('a')!.router.push('/two', {
+          unstable_instant: true,
+        });
+        void controls.get('a')!.merge({}, inspect);
+      });
+      await flush();
+    });
+    expect(
+      await Promise.all(
+        inspect.mock.calls.map(async ([prevPromise]) =>
+          Object.hasOwn(await prevPromise, 'dependency'),
+        ),
+      ),
+    ).toEqual(expect.arrayContaining([true, false]));
+    expect(view.textContent).toContain('cached page two');
+    await act(async () => {
+      await controls.get('a')!.merge({ sidebar: 'unrelated update' });
+      await flush();
+    });
+    await act(async () => {
+      response.resolve({
+        [ROUTE_ID]: ['/three', ''],
+        [IS_STATIC_ID]: false,
+        [getRouteSlotId('/three')]: <Slot id="dependency" />,
+        dependency: 'new response dependency',
+        _etags: {
+          [getRouteSlotId('/three')]: 'route-three-v1',
+          dependency: 'dependency-v2',
+        },
+      });
+      await navigation;
+      await flush();
+    });
+    expect(view.textContent).toContain('new response dependency');
+    expect(view.textContent).not.toContain('Caught an unexpected error');
+    expect(view.querySelector('[data-route]')?.textContent).toBe('/three');
+    expect(view.querySelector('[data-sidebar]')?.textContent).toBe(
+      'unrelated update',
+    );
+    expect(window.location.pathname).toBe('/three');
+    const fetch = vi.spyOn(globalThis, 'fetch');
+    mocks.queue.push(payload('/four', <p>page four</p>));
+    await act(async () => {
+      await controls.get('a')!.router.push('/four');
+      await flush();
+    });
+    const headers = new Headers(fetch.mock.lastCall![1]?.headers);
+    expect(JSON.parse(headers.get(ETAGS_HEADER) ?? '{}').dependency).toBe(
+      'dependency-v2',
+    );
+  } finally {
+    await act(async () => {
+      response.resolve({});
+      await navigation;
+      await flush();
+    });
+  }
+});
+
+test('instant settlement preserves removal of a newly added slot before metadata acceptance', async () => {
+  const response = defer<Elements>();
+  const acceptanceGate = defer<void>();
+  const outcomeReady = defer<void>();
+  const SidebarPresence = () => {
+    const elements = use(useElementsPromise());
+    return (
+      <output data-settled-sidebar-present>
+        {String(Object.hasOwn(elements, 'sidebar'))}
+      </output>
+    );
+  };
+  mocks.queue.push({
+    ...payload('/one', <p>page one</p>),
+    root: (
+      <>
+        <Probe id="a" />
+        <SidebarPresence />
+        <Children />
+      </>
+    ),
+    [getRouteSlotId('/two')]: <p>cached page two</p>,
+    _etags: { root: 1, [getRouteSlotId('/two')]: 1 },
+  });
+  const view = await mount(
+    <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+  );
+  const load = loader.load;
+  vi.spyOn(loader, 'load').mockImplementationOnce(async (...args) => {
+    const outcome = await load(...args);
+    outcomeReady.resolve();
+    await acceptanceGate.promise;
+    return outcome;
+  });
+  mocks.queue.push(response.promise);
+  let navigation: Promise<void> | undefined;
+  try {
+    await act(async () => {
+      navigation = controls.get('a')!.router.push('/two', {
+        unstable_instant: true,
+      });
+      await flush();
+    });
+    expect(view.textContent).toContain('cached page two');
+    expect(
+      view.querySelector('[data-settled-sidebar-present]')?.textContent,
+    ).toBe('false');
+    await act(async () => {
+      response.resolve({
+        [ROUTE_ID]: ['/two', ''],
+        [IS_STATIC_ID]: false,
+        sidebar: 'response-only sidebar',
+        _etags: { sidebar: 'response-only-v1' },
+      });
+      await outcomeReady.promise;
+      await flush();
+    });
+    expect(view.querySelector('[data-sidebar]')?.textContent).toBe(
+      'response-only sidebar',
+    );
+    expect(
+      view.querySelector('[data-settled-sidebar-present]')?.textContent,
+    ).toBe('true');
+    await act(async () => {
+      await controls
+        .get('a')!
+        .merge({}, (prevPromise) =>
+          prevPromise.then((prev) =>
+            combineElements({}, prev, { filter: (key) => key !== 'sidebar' }),
+          ),
+        );
+      await flush();
+    });
+    expect(
+      view.querySelector('[data-settled-sidebar-present]')?.textContent,
+    ).toBe('false');
+    await act(async () => {
+      acceptanceGate.resolve();
+      await navigation;
+      await flush();
+    });
+    expect(
+      view.querySelector('[data-settled-sidebar-present]')?.textContent,
+    ).toBe('false');
+    expect(view.querySelector('[data-sidebar]')?.textContent).toBe('');
+    expect(view.textContent).toContain('cached page two');
+    expect(window.location.pathname).toBe('/two');
+    const fetch = vi.spyOn(globalThis, 'fetch');
+    mocks.queue.push(payload('/three', <p>page three</p>));
+    await act(async () => {
+      await controls.get('a')!.router.push('/three');
+      await flush();
+    });
+    const headers = new Headers(fetch.mock.lastCall![1]?.headers);
+    expect(JSON.parse(headers.get(ETAGS_HEADER) ?? '{}')).not.toHaveProperty(
+      'sidebar',
+    );
+  } finally {
+    await act(async () => {
+      response.resolve({});
+      acceptanceGate.resolve();
+      await navigation;
+      await flush();
+    });
+  }
+});
+
+test('instant acceptance does not learn a dynamic route from an urgent static preview', async () => {
+  const { flushSync } = await import('react-dom');
+  const response = defer<Elements>();
+  const acceptedClassifications: unknown[] = [];
+  const snapshots = new WeakMap<Promise<Elements>, Elements>();
+  let accepted = false;
+  const StaticSnapshot = () => {
+    const elementsPromise = useElementsPromise();
+    const elements = use(elementsPromise);
+    useLayoutEffect(() => {
+      snapshots.set(elementsPromise, elements);
+      if (accepted) {
+        acceptedClassifications.push(elements[IS_STATIC_ID]);
+      }
+    });
+    return (
+      <output data-preview-static>{String(elements[IS_STATIC_ID])}</output>
+    );
+  };
+  const sharedRoot = (
+    <>
+      <Probe id="a" />
+      <StaticSnapshot />
+      <Children />
+    </>
+  );
+  mocks.queue.push({
+    ...payload('/one', <p>static page one</p>),
+    root: sharedRoot,
+    [IS_STATIC_ID]: true,
+    [getRouteSlotId('/two')]: (
+      <>
+        <p>cached page two</p>
+        <Suspense fallback="waiting for page two">
+          <Slot id="page:two" />
+        </Suspense>
+      </>
+    ),
+    'page:two': 'cached dynamic page',
+    _etags: {
+      root: 1,
+      [getRouteSlotId('/one')]: 1,
+      [getRouteSlotId('/two')]: 1,
+      'page:two': 'page-two-v1',
+    },
+  });
+  const view = await mount(
+    <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+  );
+  mocks.queue.push(response.promise);
+  let navigation: Promise<void> | undefined;
+  try {
+    await act(async () => {
+      navigation = controls.get('a')!.router.push('/two', {
+        unstable_instant: true,
+      });
+      await flush();
+    });
+    await act(async () => {
+      await controls.get('a')!.merge({ sidebar: 'before acceptance' });
+      await flush();
+    });
+    expect(view.querySelector('[data-preview-static]')?.textContent).toBe(
+      'true',
+    );
+    await act(async () => {
+      response.resolve({
+        [ROUTE_ID]: ['/two', ''],
+        [IS_STATIC_ID]: false,
+        'page:two': 'fresh dynamic page',
+        _etags: { 'page:two': 'page-two-v2' },
+      });
+      await navigation;
+      accepted = true;
+      flushSync(() => {
+        const patch = { sidebar: 'urgent after acceptance' };
+        void controls.get('a')!.merge(patch, (prevPromise) => {
+          const prev = snapshots.get(prevPromise);
+          if (!prev) {
+            return prevPromise.then((prev) => combineElements(prev, patch));
+          }
+          const elements = combineElements(prev, patch);
+          return Object.assign(Promise.resolve(elements), {
+            status: 'fulfilled',
+            value: elements,
+          });
+        });
+      });
+      await flush();
+    });
+    expect(acceptedClassifications).toContain(true);
+    expect(acceptedClassifications.at(-1)).toBe(false);
+    expect(view.querySelector('[data-preview-static]')?.textContent).toBe(
+      'false',
+    );
+    expect(view.textContent).toContain('fresh dynamic page');
+    const fetch = vi.spyOn(globalThis, 'fetch');
+    mocks.queue.push({
+      ...payload('/three', <p>page three</p>),
+      root: sharedRoot,
+      _etags: { root: 1 },
+    });
+    await act(async () => {
+      await controls.get('a')!.router.push('/three');
+      await flush();
+    });
+    expect(window.location.pathname).toBe('/three');
+    fetch.mockClear();
+    mocks.queue.push({
+      [ROUTE_ID]: ['/two', ''],
+      [IS_STATIC_ID]: false,
+      'page:two': 'refetched dynamic page',
+      _etags: { 'page:two': 'page-two-v3' },
+    });
+    await act(async () => {
+      await controls.get('a')!.router.push('/two');
+      await flush();
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(view.textContent).toContain('refetched dynamic page');
+    expect(window.location.pathname).toBe('/two');
+  } finally {
+    await act(async () => {
+      response.resolve({});
+      await navigation;
+      await flush();
+    });
+  }
 });

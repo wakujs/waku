@@ -236,9 +236,14 @@ interpreting it.
 Each request carries forward accepted RSC elements as its cache baseline,
 which can be ahead of the last painted route. Accepted instant responses retain
 their prefetch fallback and reuse the eager paint's navigation intent without
-repeating history and scrolling. Acceptance applies protocol metadata and
-backfills missing response entries, preserving queued values and removals of
-omitted slots. Until that state commits, their cache baseline makes no etag
+repeating history and scrolling. The eager merge represents its queued input and
+prefetch fallback as pinned values or response-backed placeholders. A private
+instant-state wrapper records represented slot IDs for each element snapshot,
+while retaining the same navigation intent identity through React replays.
+Acceptance backfills only unrepresented response entries and replaces the
+wrapper with ordinary Router state. A later queued removal of a represented
+slot stays removed even if the response returns it. Until that state commits,
+their cache baseline makes no etag
 claims because it can differ from the latest queued values. Static-route
 eligibility is learned when the accepted instant state commits.
 A metadata-only action dispatch makes no element-validator claims for its
