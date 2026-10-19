@@ -190,18 +190,18 @@ export const useNavigation = (
       const retained = requestRef.current?.base;
       const base = retained ?? elements;
       const mergeWithCachedRoute = (
-        prev: Promise<Elements>,
-        incoming: Promise<Elements>,
+        prevPromise: Promise<Elements>,
+        patchPromise: Promise<Elements>,
       ) =>
-        Promise.all([prev, incoming]).then(([current, patch]) => {
+        Promise.all([prevPromise, patchPromise]).then(([prev, patch]) => {
           const route = getRouteFromElements(patch);
           const slotId = route && getRouteSlotId(route.path);
           const available =
-            slotId && !(slotId in current) && slotId in base
-              ? combineElements(current, base, {
+            slotId && !(slotId in prev) && slotId in base
+              ? combineElements(prev, base, {
                   filter: (key) => key === slotId,
                 })
-              : current;
+              : prev;
           return combineElements(available, patch);
         });
       const loadedRoute =

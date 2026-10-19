@@ -672,9 +672,9 @@ An urgent merge can show the nearest Suspense fallback if an earlier queued
 elements promise is still pending.
 
 ```tsx
-mergeElements(response, (previous, incoming) =>
-  Promise.all([previous, incoming]).then(([current, received]) =>
-    combineElements(current, combineElements(received, clientElements)),
+mergeElements(response, (prevPromise, patchPromise) =>
+  Promise.all([prevPromise, patchPromise]).then(([prev, patch]) =>
+    combineElements(prev, combineElements(patch, clientElements)),
   ),
 );
 ```
