@@ -22,8 +22,8 @@ export type FetchRscOptions = {
   signal?: AbortSignal;
   onBuildIdMismatch?: () => void;
   /**
-   * Elements the response is combined over. The request sends their etags, so
-   * the server can skip the slots they hold.
+   * Retained elements whose etags are sent, allowing the server to omit them.
+   * The returned response does not include omitted entries from this base.
    */
   unstable_base?: Elements;
 };

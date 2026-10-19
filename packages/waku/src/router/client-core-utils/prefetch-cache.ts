@@ -181,7 +181,10 @@ const startPrefetch = (
     invalidationCallbacks.clear();
     callbacks.forEach((callback) => callback());
   };
-  const promise = fetchElements(base, invalidate);
+  const response = fetchElements(base, invalidate);
+  const promise = base
+    ? response.then((elements) => combineElements(base, elements))
+    : response;
   const entry: PrefetchEntry = {
     promise,
     expireAt: now + (options?.ttl ?? PREFETCH_TTL),

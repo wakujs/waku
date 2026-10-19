@@ -4,6 +4,11 @@ import {
   unstable_isImmutableElement as isImmutableElement,
   useMergeElements_UNSTABLE as useMergeElements,
 } from 'waku/minimal/client';
+import {
+  ROUTER_STATE_ID,
+  getRouterState,
+  makeInstantRouterState,
+} from './router-state.js';
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
 
@@ -16,12 +21,14 @@ export const useMergeInstantElements = () => {
       base?: Elements,
       overlay?: Elements,
     ) => {
+      const routerState = overlay && getRouterState(overlay);
       const mergeResults = new WeakMap<
         Promise<Elements>,
         Elements | undefined
       >();
-      const incoming = mergeElements(response, (previous, recovered) => {
+      const incoming = mergeElements(response, (previous) => {
         const merged = Promise.resolve(previous).then((current) => {
+          const elementsPromise = response.catch(() => current);
           const available = base
             ? combineElements(current, base, {
                 filter: (key) => typeof key === 'string' && !(key in current),
@@ -34,7 +41,7 @@ export const useMergeInstantElements = () => {
                 ? pin(key)
                 : isImmutableElement(available, String(key));
             if (!pinned) {
-              holes[key] = recovered.then((elements) =>
+              holes[key] = elementsPromise.then((elements) =>
                 key in elements
                   ? elements[key]
                   : base && key in base
@@ -47,8 +54,16 @@ export const useMergeInstantElements = () => {
           const elements = overlay
             ? combineElements(waiting, overlay)
             : waiting;
-          mergeResults.set(merged, elements);
-          return elements;
+          const eagerElements = routerState
+            ? combineElements(elements, {
+                [ROUTER_STATE_ID]: makeInstantRouterState(
+                  routerState,
+                  elements,
+                ),
+              })
+            : elements;
+          mergeResults.set(merged, eagerElements);
+          return eagerElements;
         });
         mergeResults.set(merged, undefined);
         return merged;
@@ -67,12 +82,20 @@ export const useMergeInstantElements = () => {
           ) {
             return previous;
           }
-          return previous.then((current) =>
-            combineElements(current, resolved, {
+          return previous.then((current) => {
+            const elements = combineElements(current, resolved, {
               filter: (key) =>
                 typeof key === 'string' && shouldMerge(current, key),
-            }),
-          );
+            });
+            return routerState
+              ? combineElements(elements, {
+                  [ROUTER_STATE_ID]: makeInstantRouterState(
+                    routerState,
+                    elements,
+                  ),
+                })
+              : elements;
+          });
         });
         return resolved;
       });

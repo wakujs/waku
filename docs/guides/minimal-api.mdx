@@ -644,16 +644,37 @@ Important behavior:
 - If you return only `InnerApp`, previously rendered elements such as `App` stay mounted.
 - If the refetch fails, the existing element map stays in place.
 
+With `unstable_base`, `fetchRsc` sends the base's validators and returns only
+the response entries. Omitted slots are not filled from the base. Passing this
+patch to `mergeElements` preserves the Root's queued values and removals.
+For a standalone snapshot, combine the retained base and response explicitly:
+
+```tsx
+import { unstable_combineElements as combineElements } from 'waku/minimal/client';
+
+const patch = await fetchRsc(rscPath, rscParams, {
+  unstable_base: retainedElements,
+});
+const snapshot = combineElements(retainedElements, patch);
+```
+
+Do not merge this request-time snapshot into a Root that may have queued other
+updates. Merge the patch with its latest elements.
+
 #### Custom Merges
 
 The optional second argument to `mergeElements` chooses the Root's next element
 promise. It receives the latest queued promise, including updates that have not
 rendered yet, and the incoming payload promise:
 
+Use `startTransition` when merging pending work to retain visible content.
+An urgent merge can show the nearest Suspense fallback if an earlier queued
+elements promise is still pending.
+
 ```tsx
-mergeElements(response, (previous, incoming) =>
-  Promise.all([previous, incoming]).then(([current, received]) =>
-    combineElements(current, combineElements(received, clientElements)),
+mergeElements(response, (prevPromise, patchPromise) =>
+  Promise.all([prevPromise, patchPromise]).then(([prev, patch]) =>
+    combineElements(prev, combineElements(patch, clientElements)),
   ),
 );
 ```

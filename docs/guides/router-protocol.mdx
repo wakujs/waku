@@ -74,16 +74,16 @@ distinguishes `hasCachedShell` from `canReuseStaticRoute`.
 ## Partial Responses
 
 Minimal can send the etags of a supplied `unstable_base` with a fetch. The server
-omits slots whose validators match; fetching combines the response over that base.
+omits slots whose validators match; fetching returns only response entries.
 A response is consequently not guaranteed to be a complete renderable tree.
+Callers retain omitted slots or combine a standalone snapshot explicitly.
 
 Route metadata describes the resolved route even when its slots are omitted. For
 example, a dynamic page whose etag matches is omitted, but `IS_STATIC` remains
 false. Looking only at the returned slots would give the wrong reuse decision.
 
 Use Minimal's `unstable_combineElements` when combining element maps. Object
-spreads discard the validators associated with their values. Router's merge patch
-also protects slots changed by an action while a navigation was pending.
+spreads discard the validators associated with their values.
 
 ## Requested, Rendered, and Browser URLs
 
@@ -172,11 +172,12 @@ const outcome = await loadRoute(requested, {
 });
 ```
 
-Here `settled` is the binding's committed route, and `follows` is zero for a new
+Here `settled` identifies the route whose composition the binding retains for
+reuse, which can be accepted before it paints. `follows` is zero for a new
 navigation or the preceding count for a render-time follow. The callback receives
 each attempt's route, intended browser URL, and follow count, plus the cancellation
 signal. It can supply `unstable_base` to `fetchRsc` for etag reuse when the binding
-has a committed element snapshot.
+retains the corresponding elements.
 
 | Outcome    | Binding responsibility                                                     |
 | ---------- | -------------------------------------------------------------------------- |
@@ -197,6 +198,23 @@ Bindings that want Router's cache policy call `useRouterCache_UNSTABLE()` during
 rendering. Its `cache.load(requested, { ...options, base: elements })` wraps the
 same loader with static reuse, prefetch, and optional response adoption. A
 cache-free binding does not need to construct a cache-shaped adapter.
+Network results contain response patches; omitted entries are not filled from
+the request-time base. Cached prefetches return their stored element maps.
+Bindings that read a complete snapshot can materialize a loaded result:
+
+```ts
+import { unstable_combineElements as combineElements } from 'waku/minimal/client';
+
+const outcome = await cache.load(requested, { ...options, base });
+if (outcome.type === 'loaded') {
+  const snapshot = combineElements(base, outcome.elements);
+}
+```
+
+Queue the response patch, not this request-time snapshot, when preserving later
+action or client updates. `unstable_buildMergePatch` implements a snapshot-conflict
+policy for custom bindings; the standard binding queues response patches directly.
+
 If an instant paint has already merged an adopted response, the binding must not
 merge it again. A follow fetch produces a new response requiring an ordinary
 commit.
@@ -208,12 +226,58 @@ update queue. The intent is stored under the client-only `ROUTER_STATE_ID` symbo
 it is neither a server response field nor another slot. Minimal merges it without
 interpreting it.
 
-| State                                      | Owner                      | Purpose                                                        |
-| ------------------------------------------ | -------------------------- | -------------------------------------------------------------- |
-| Elements and attached Router state         | Minimal Root's React state | Select the content and URL intent that render together.        |
-| Pending request and queued commit identity | Router refs                | Abort superseded work and recognize when its snapshot commits. |
-| Applied snapshot identity and destination  | Router's layout effect     | Write history and scroll once for each committed intent.       |
-| Fetch error                                | Router's React state       | Render the failure and clear it when another request starts.   |
+| State                                     | Owner                      | Purpose                                                           |
+| ----------------------------------------- | -------------------------- | ----------------------------------------------------------------- |
+| Elements and attached Router state        | Minimal Root's React state | Select the content and URL intent that render together.           |
+| Requested or accepted route               | Router ref                 | Cancel pending work and route action results until UI catches up. |
+| Applied snapshot identity and destination | Router's layout effect     | Write history and scroll once for each committed intent.          |
+| Fetch error                               | Router's React state       | Render the failure and clear it when another request starts.      |
+
+Each request carries forward accepted RSC elements as its cache baseline,
+which can be ahead of the last painted route. Accepted instant responses retain
+their prefetch fallback and reuse the eager paint's navigation intent without
+repeating history and scrolling. The eager merge represents its queued input and
+prefetch fallback as pinned values or response-backed placeholders. A private
+instant-state wrapper records represented slot IDs for each element snapshot,
+while retaining the same navigation intent identity through React replays.
+Acceptance backfills only unrepresented response entries and replaces the
+wrapper with ordinary Router state. A later queued removal of a represented
+slot stays removed even if the response returns it. Until that state commits,
+their cache baseline makes no etag
+claims because it can differ from the latest queued values. Static-route
+eligibility is learned when the accepted instant state commits.
+A metadata-only action dispatch makes no element-validator claims for its
+destination. This baseline does not track every queued action or client merge;
+response patches merge with the latest queued elements through Minimal's
+update queue.
+After a failure, refetch decisions use the retained request origin, not an
+instant preview whose response may have been cancelled. Action origins use
+the retained elements' route metadata as described below. Failed commits do
+not learn static routes from retained preview metadata. Before replacing the
+queued Router state, a failure resolves its retained origin into route metadata,
+preserving static-page queries and instant-preview origins.
+
+An ordinary navigation queues its pending elements promise when fetching starts.
+Later action and client merges follow it in React's update order. `fetchRsc`
+returns the decoded response patch without filling omitted entries from its
+request-time base. Returned entries replace earlier values, including equal
+primitive values; omitted entries retain queued values and removals. Prefetching
+combines its retained base with the response to provide
+reusable element maps; instant merging fills omitted slots from its prefetch
+base. A rejected instant response preserves the previous queued values rather
+than replacing them with prefetch values. Instant fetch cancellation stops
+waiting even when transport ignores the signal.
+The destination's route slot and protocol metadata are reapplied when the
+response arrives so an action from the previous route cannot restore its
+composition over the destination.
+Redirect and 404 follows after an instant paint queue their pending response
+patch before later action and client updates, using the ordinary navigation
+merge and destination finalization. Response metadata identifies the resolved
+route and is applied independently of slot conflicts. Reusing a cached static
+route restores its static classification.
+At merge time, a missing destination route slot can be filled from the retained
+cache, including an accepted instant response's prefetch fallback. An existing
+queued value for that slot and unrelated updates or removals are preserved.
 
 Fetching and committing are different boundaries. An ordinary fetch can finish
 while a client component is suspended; its navigation promise does not wait for
@@ -236,12 +300,11 @@ Cached and same-RSC-route commits queue before the first `await`, retaining the
 caller's React priority. Transition callbacks run immediately, so wrapping an
 uncached navigation does not postpone superseding the previous request.
 
-Aborting a request does not remove an already queued React update. For an
-ordinary destination snapshot that has not committed, superseding it appends
-the last committed elements and their Router state to Root's queue. Include the
-state symbol even when its value is `undefined`: an initial snapshot has no
-navigation intent to retain. Restoring
-only intent could let the superseded response replace a shared layout.
+Superseding a pending request resolves its queued elements update to an empty
+patch. Once the response is accepted, its elements remain in the update chain,
+even if rendering is suspended. A later navigation appends a new pending promise;
+React controls which intermediate renders commit. No committed snapshot is copied
+back into the queue, and unrelated updates retain their original order.
 
 Ordinary element merges retain the attached state object by reference. The
 layout effect recognizes that identity and does not repeat its scroll or history
@@ -249,10 +312,17 @@ intent. An external `history.replaceState` query/hash change is consequently not
 undone by an unrelated element merge. A server redirect can change the destination
 for the same intent; that correction replaces history rather than pushing again.
 
+RSC hot reload selects an accepted destination before retiring the request. If
+only a pending fetch exists, it refreshes the visible route. This keeps an
+accepted but suspended navigation from being replaced by the previous page.
+
 ## Action Intent
 
 `useActionRouting_UNSTABLE` sends the settled route at action request time in
 `X-Waku-Action-Location`. This header is client-to-server information.
+After a failed navigation, the action origin follows the retained elements'
+route metadata, which can be ahead of the request's cache baseline after an
+instant paint. The failed destination's URL remains in history.
 
 - `rerenderRoute()` refreshes that origin and marks the response `IS_ORIGIN`.
   If the user has navigated away or a conflicting navigation is pending, the client

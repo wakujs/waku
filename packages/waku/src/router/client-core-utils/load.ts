@@ -60,9 +60,10 @@ export type LoadOutcome =
 export type Loaded = Extract<LoadOutcome, { type: 'loaded' }>;
 
 /**
- * `settled` is the committed route, used to reuse hash-only redirects back to
- * it. `url` defaults to the requested route's URL. `follows` defaults to zero;
- * pass the preceding count when resuming a render-time follow chain.
+ * `settled` identifies the retained RSC route, used to reuse hash-only redirects
+ * to it; it need not have painted. `url` defaults to the requested route's URL.
+ * `follows` defaults to zero; pass the preceding count when resuming a
+ * render-time follow chain.
  */
 export type LoadOptions = {
   signal: AbortSignal;

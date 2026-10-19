@@ -904,39 +904,42 @@ describe('instant element settlement', () => {
     view.unmount();
   });
 
-  test('a payload that rejects leaves the paint with the old values', async () => {
-    const view = await renderRoot(
-      { shell: 'S1', page: 'P1', meta: 'M0' },
-      <>
-        <Slot id="shell" />
-        <Suspense fallback="…">
-          <Slot id="page" />
-        </Suspense>
-        <Suspense fallback="">
-          <Slot id="meta" />
-        </Suspense>
-      </>,
-    );
-    const payload = Promise.withResolvers<Record<string, unknown>>();
-
-    let merged: Promise<unknown> | undefined;
-    await act(async () => {
-      merged = view.merge(
-        payload.promise,
-        (key) => key === 'shell',
-        undefined,
-        { meta: 'M' },
+  test.each([false, true])(
+    'a payload that rejects leaves the paint with the old values (prefetched: %s)',
+    async (prefetched) => {
+      const view = await renderRoot(
+        { shell: 'S1', page: 'P1', meta: 'M0' },
+        <>
+          <Slot id="shell" />
+          <Suspense fallback="…">
+            <Slot id="page" />
+          </Suspense>
+          <Suspense fallback="">
+            <Slot id="meta" />
+          </Suspense>
+        </>,
       );
-    });
-    expect(view.container.textContent).toBe('S1…M');
-    await act(async () => {
-      payload.reject(new Error('failed'));
-      await merged?.catch(() => {});
-    });
+      const payload = Promise.withResolvers<Record<string, unknown>>();
 
-    expect(view.container.textContent).toBe('S1P1M');
-    view.unmount();
-  });
+      let merged: Promise<unknown> | undefined;
+      await act(async () => {
+        merged = view.merge(
+          payload.promise,
+          (key) => key === 'shell',
+          prefetched ? { page: 'P2' } : undefined,
+          { meta: 'M' },
+        );
+      });
+      expect(view.container.textContent).toBe('S1…M');
+      await act(async () => {
+        payload.reject(new Error('failed'));
+        await merged?.catch(() => {});
+      });
+
+      expect(view.container.textContent).toBe('S1P1M');
+      view.unmount();
+    },
+  );
 
   test('two Roots that merge one payload each land it', async () => {
     mocks.createFromFetch.mockReturnValueOnce(resolvedThenable({ page: 'P' }));

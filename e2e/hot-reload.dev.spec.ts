@@ -213,6 +213,41 @@ test.describe('hot reload', () => {
     expect(requests).toEqual([]);
   });
 
+  test('RSC hot reload retains an accepted destination before it paints', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    await page
+      .getByRole('button', { name: 'Start suspended navigation' })
+      .click();
+    await expect(page.getByTestId('accepted')).toHaveText('true');
+    await expect(
+      page.getByRole('button', { name: 'Finish suspended navigation' }),
+    ).toBeVisible();
+    const reloaded = page.waitForResponse(
+      (response) =>
+        response.url().includes('/RSC/') &&
+        response.request().method() === 'GET',
+    );
+    modifyFile(
+      standaloneDir,
+      'src/pages/suspended.tsx',
+      'Suspended destination',
+      'Updated suspended destination',
+    );
+    const response = await reloaded;
+    expect(response.url()).toContain('suspended');
+    await page
+      .getByRole('button', { name: 'Finish suspended navigation' })
+      .click();
+    await expect(page).toHaveURL(`http://localhost:${port}/suspended`);
+    await expect(page.getByRole('heading')).toHaveText(
+      'Updated suspended destination',
+    );
+    await expect(page.getByText('Client ready')).toBeVisible();
+  });
+
   test('css modules', async ({ page }) => {
     await page.goto(`http://localhost:${port}/css-modules`);
     await waitForHydration(page);

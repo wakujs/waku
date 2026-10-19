@@ -59,9 +59,9 @@ type NavigateOptions = {
   unstable_instant?: boolean;
   /**
    * Called when a newer navigation, such as a `<Link>` click, another `push`,
-   * `reload()`, or back/forward, cancels this one before it finishes: before
-   * it commits, or for an instant navigation, while its response is still
-   * streaming. It can run after the returned promise has resolved.
+   * `reload()`, or back/forward, cancels this one while its response is pending.
+   * An instant navigation can already have painted its shell. Accepted
+   * responses are not cancelled while their components finish rendering.
    */
   unstable_onSuperseded?: () => void;
 };

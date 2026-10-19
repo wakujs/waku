@@ -7,6 +7,10 @@ import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import { encodeRoutePath } from '../isomorphic-utils/router-protocol.js';
 import { createRscParams, useRouterCache } from './caches.js';
 
+/**
+ * Refetches the supplied route and registered lazy slices on development reloads.
+ * Reads the route before `onBeforeRefetch` runs and invalidates Router caches.
+ */
 export const useHmrRefetch = ({
   getSettledRoute,
   onBeforeRefetch,
@@ -20,11 +24,10 @@ export const useHmrRefetch = ({
   useEffect(() => {
     if (import.meta.hot) {
       const refetchRouteOnHmr = () => {
+        const settledRoute = getSettledRoute();
         onBeforeRefetch?.();
         cache.clearCaches();
-        const settledRoute = getSettledRoute();
         startTransition(() => {
-          // the reload clears the set, so the response has to teach it again
           void mergeElements(
             cache.fetchRsc(
               encodeRoutePath(settledRoute.path),

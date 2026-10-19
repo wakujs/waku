@@ -25,7 +25,7 @@ type CachedLoadOptions = LoadOptions & {
   refetch?: boolean;
   /** Supplies the first attempt's response; follows use normal fetching. */
   adopt?: Promise<Elements>;
-  /** Current Root elements used for etags and static-route reuse. */
+  /** Retained elements used for etags and static-route reuse. */
   base: Elements;
   /** Overrides Minimal's default build-mismatch reload when supplied. */
   onBuildIdMismatch?: (url: URL) => void;
@@ -56,7 +56,6 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
     fetchRsc,
     slices: createSliceCache(fetchRsc),
     prefetchRoute: (route: RouteProps, options?: PrefetchOptions): void => {
-      // the caller skips this with canReuseStaticRoute, which needs its elements
       const rscPath = encodeRoutePath(route.path);
       manager.prefetch(
         rscPath,
@@ -89,8 +88,9 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
     canReuseStaticRoute,
     /**
      * Loads with static reuse, an optional initial response, prefetch, or the
-     * network, in that order. Preserves `unstable_load`'s follow and cancellation
-     * behavior, and releases prefetch subscriptions as their attempts finish.
+     * network, in that order, using `unstable_load`'s follow and cancellation rules.
+     * Network results are response patches; cached prefetches return stored
+     * maps. Combine patches with the retained base when reading a full snapshot.
      * Does not merge elements or commit browser state. Cached synchronous
      * commits belong to the binding, before awaiting this method.
      */

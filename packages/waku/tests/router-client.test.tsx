@@ -171,6 +171,9 @@ const withRouteMeta = (
 // Per-root elements state, wired to each mocked Root through context so a
 // refetch or merge targets the Root that made it (see the factory).
 type RootStore = {
+  applyCustom: (
+    update: (prev: Promise<ElementsMap>) => Promise<ElementsMap>,
+  ) => void;
   applySync: (data: Record<string, unknown>) => void;
   applyAsync: (data: Promise<Record<string, unknown>>) => void;
   applySwr: (
@@ -344,6 +347,21 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
     const storeRef = React.useRef<RootStore>(undefined);
     if (!storeRef.current) {
       storeRef.current = {
+        applyCustom: (update) => {
+          testHoisted.onMerge?.();
+          const results = new WeakMap<
+            Promise<ElementsMap>,
+            Promise<ElementsMap>
+          >();
+          setElements((prev) => {
+            let result = results.get(prev);
+            if (!result) {
+              result = update(prev);
+              results.set(prev, result);
+            }
+            return result;
+          });
+        },
         applySync: (data) => {
           testHoisted.onMerge?.();
           testHoisted.mergeTypes.push('sync');
@@ -383,17 +401,25 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
   ) => data;
   const mergeByStore = new WeakMap<
     object,
-    (
-      data: Record<string, unknown> | Promise<Record<string, unknown>>,
-    ) => Promise<Record<string, unknown>>
+    ReturnType<typeof actual.useMergeElements_UNSTABLE>
   >();
   const useMockMergeElements = () => {
     const store = React.use(StoreContext);
     let fn = store && mergeByStore.get(store);
     if (!fn) {
-      fn = (data) => {
+      fn = (data, merge) => {
         const dataPromise = Promise.resolve(data);
-        if (data instanceof Promise || 'then' in data) {
+        if (merge) {
+          testHoisted.mergeTypes.push(
+            data instanceof Promise || 'then' in data ? 'async' : 'sync',
+          );
+          store?.applyCustom((prev) =>
+            merge(
+              prev,
+              dataPromise.catch(() => ({})),
+            ),
+          );
+        } else if (data instanceof Promise || 'then' in data) {
           store?.applyAsync(dataPromise.catch(() => ({})));
         } else {
           store?.applySync(data);
@@ -467,12 +493,9 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
         : testHoisted.inner!)(rscPath, ...rest),
     );
     const data = abortable(requested, options?.signal);
-    return data.then((result) => {
-      const response = adoptElements(withRouteMeta(result, rscPath, rscParams));
-      return options?.unstable_base
-        ? actual.unstable_combineElements(options.unstable_base, response)
-        : response;
-    });
+    return data.then((result) =>
+      adoptElements(withRouteMeta(result, rscPath, rscParams)),
+    );
   };
   testHoisted.newFetchRsc = () => {
     testHoisted.fetchRsc = vi.fn(fetchRscImpl);
@@ -2326,7 +2349,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('normal navigation merges only after the fetch resolves', async () => {
+  test('normal navigation queues its pending fetch before committing the response', async () => {
     const pending = createDeferred<Record<string, unknown>>();
     installRefetch(vi.fn<RefetchInner>(() => pending.promise));
     const capture = { router: null as RouterApi | null };
@@ -2359,7 +2382,7 @@ describe('Router integration', () => {
       });
 
       expect(currentFetch()).toHaveBeenCalledTimes(1);
-      expect(testHoisted.mergeTypes).toEqual([]);
+      expect(testHoisted.mergeTypes).toEqual(['async']);
       expect(capture.router?.path).toBe('/start');
       expect(window.location.pathname).toBe('/start');
 
@@ -2383,6 +2406,7 @@ describe('Router integration', () => {
       expect(view.container.textContent).toContain('server action');
       expect(view.container.textContent).not.toContain('route response');
     } finally {
+      pending.resolve({});
       view.unmount();
     }
   });
@@ -4528,12 +4552,14 @@ describe('Router integration', () => {
     }
   });
 
-  test('an adopted instant landing does not merge a settle patch', async () => {
+  test('an adopted instant landing does not repeat history or scroll', async () => {
     const pending = createDeferred<Record<string, unknown>>();
     const refetch = vi.fn<RefetchInner>(() => pending.promise);
     installRefetch(refetch);
     const capture = { router: null as RouterApi | null };
     const Probe = makeProbe(capture);
+    const historyPushSpy = vi.spyOn(window.history, 'pushState');
+    const historyReplaceSpy = vi.spyOn(window.history, 'replaceState');
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
       return;
     });
@@ -4553,8 +4579,9 @@ describe('Router integration', () => {
       });
       expect(window.location.pathname).toBe('/next');
       expect(scrollToSpy).toHaveBeenCalled();
+      historyPushSpy.mockClear();
+      historyReplaceSpy.mockClear();
       scrollToSpy.mockClear();
-      testHoisted.mergeTypes.length = 0;
 
       await act(async () => {
         pending.resolve({ [ROUTE_ID]: ['/next', ''], [IS_STATIC_ID]: true });
@@ -4562,9 +4589,14 @@ describe('Router integration', () => {
         await flush();
       });
 
-      expect(testHoisted.mergeTypes).toEqual(['swr']);
+      expect(capture.router?.path).toBe('/next');
+      expect(window.location.pathname).toBe('/next');
+      expect(historyPushSpy).not.toHaveBeenCalled();
+      expect(historyReplaceSpy).not.toHaveBeenCalled();
       expect(scrollToSpy).not.toHaveBeenCalled();
     } finally {
+      historyPushSpy.mockRestore();
+      historyReplaceSpy.mockRestore();
       scrollToSpy.mockRestore();
       view.unmount();
     }
