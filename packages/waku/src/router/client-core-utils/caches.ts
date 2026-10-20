@@ -1,6 +1,7 @@
 import {
   unstable_combineElements as combineElements,
   unstable_formatRscUrl as formatRscUrl,
+  unstable_getElementResponse as getElementResponse,
   unstable_isImmutableElement as isImmutableElement,
   useFetchRsc_UNSTABLE as useFetchRsc,
 } from 'waku/minimal/client';
@@ -48,18 +49,13 @@ export const createRscParams = (query: string): URLSearchParams =>
 
 const createRouterCache = (fetchRsc: FetchRsc) => {
   const fetchRoute: FetchRsc = async (rscPath, rscParams, options) => {
-    let redirectedUrl: URL | undefined;
-    const elements = await fetchRsc(rscPath, rscParams, {
-      ...options,
-      unstable_onResponse: (response) => {
-        redirectedUrl = response.redirected ? new URL(response.url) : undefined;
-        options?.unstable_onResponse?.(response);
-      },
-    });
+    const elements = await fetchRsc(rscPath, rscParams, options);
+    const response = getElementResponse(elements, ROUTE_ID);
     const route = getRouteFromElements(elements);
-    if (!redirectedUrl || !route || !isStaticFromElements(elements)) {
+    if (!response?.redirected || !route || !isStaticFromElements(elements)) {
       return elements;
     }
+    const redirectedUrl = new URL(response.url);
     if (
       redirectedUrl.pathname !==
       formatRscUrl(encodeRoutePath(route.path), redirectedUrl).pathname

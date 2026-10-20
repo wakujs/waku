@@ -28,8 +28,10 @@ import {
   adoptElements,
   collectEtags,
   combineElements,
+  getElementResponse,
   isImmutableElement,
 } from './client-utils/element-etags.js';
+import type { ElementResponse } from './client-utils/element-etags.js';
 import {
   getInitialRscEntry,
   releaseInitialRscEntry,
@@ -88,6 +90,7 @@ type Elements = Readonly<Record<string | symbol, unknown>>;
 
 export {
   combineElements as unstable_combineElements,
+  getElementResponse as unstable_getElementResponse,
   isImmutableElement as unstable_isImmutableElement,
 };
 
@@ -101,7 +104,6 @@ type FetchRscElementsOptions = {
   type?: 'rsc' | 'call';
   signal?: AbortSignal;
   onBuildIdMismatch?: () => void;
-  onResponse?: FetchRscOptions['unstable_onResponse'];
   etags?: Etags;
   initial?: NonNullable<ReturnType<typeof consumeInitialRscEntry>>;
 };
@@ -175,12 +177,33 @@ const reloadOnBuildIdMismatch = (
   );
 };
 
+const getResponseSource = (
+  response: Response,
+  sources: ReadonlySet<Response>,
+): Response | undefined => {
+  if (response.url) {
+    return response;
+  }
+  for (const source of sources) {
+    if (
+      source === response ||
+      (response.body !== null && source.body === response.body)
+    ) {
+      return source;
+    }
+  }
+  if (sources.size === 1) {
+    return sources.values().next().value;
+  }
+};
+
 const fetchRscElements = (
   rscPath: string,
   rscParams: unknown,
   options: FetchRscElementsOptions,
   store: RootStore | undefined,
 ): ReturnType<RequestRsc> => {
+  const responses = new Set<Response>();
   let request: RequestRsc = (
     path,
     params,
@@ -202,16 +225,26 @@ const fetchRscElements = (
           signal,
           options.etags,
         );
+    let responseMetadata: ElementResponse | undefined;
     const elements = decodeRsc(
-      responsePromise,
+      responsePromise.then((response) => {
+        const source = getResponseSource(response, responses);
+        if (source) {
+          responseMetadata = { url: source.url, redirected: source.redirected };
+        }
+        return response;
+      }),
       temporaryReferences,
       debug?.debugChannel,
     );
     reloadOnBuildIdMismatch(elements, options.onBuildIdMismatch);
     return elements.then((data) =>
       type === 'call'
-        ? { elements: adoptElements(data), value: data._value }
-        : { elements: adoptElements(data) },
+        ? {
+            elements: adoptElements(data, responseMetadata),
+            value: data._value,
+          }
+        : { elements: adoptElements(data, responseMetadata) },
     );
   };
   try {
@@ -225,10 +258,7 @@ const fetchRscElements = (
       type: options.type ?? 'rsc',
       fetch: async (input, init) => {
         const response = await transport(input, init);
-        options.onResponse?.({
-          url: response.url,
-          redirected: response.redirected,
-        });
+        responses.add(response);
         return response;
       },
       ...(options.signal ? { signal: options.signal } : {}),
@@ -301,9 +331,6 @@ const fetchRsc = (
       ...(options?.signal ? { signal: options.signal } : {}),
       ...(options?.onBuildIdMismatch
         ? { onBuildIdMismatch: options.onBuildIdMismatch }
-        : {}),
-      ...(options?.unstable_onResponse
-        ? { onResponse: options.unstable_onResponse }
         : {}),
     },
     store,

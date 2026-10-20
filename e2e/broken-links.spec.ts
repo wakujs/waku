@@ -4,6 +4,7 @@ import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 declare global {
   interface Window {
     __pushOutcome?: string;
+    __rscCache?: { hits: number; misses: number };
   }
 }
 
@@ -78,10 +79,57 @@ test.describe('broken-links: normal server', () => {
   });
 
   test.describe('client side navigation', () => {
+    test('HTTP redirect queries survive an enhancer serving cached decoded elements', async ({
+      page,
+    }) => {
+      let redirectRequests = 0;
+      page.on('request', (request) => {
+        if (new URL(request.url()).pathname.endsWith('/R/redirect-query.txt')) {
+          redirectRequests++;
+        }
+      });
+      await page.goto(`http://localhost:${port}/?cache-rsc`);
+      await waitForHydration(page);
+      for (let visit = 0; visit < 2; visit++) {
+        await page
+          .getByRole('link', { name: 'Redirect with query', exact: true })
+          .click();
+        await expect(page.getByTestId('route-query')).toHaveText(
+          '/exists?callbackUrl=%2Fguarded',
+        );
+        await expect(page).toHaveURL(
+          `http://localhost:${port}/exists?callbackUrl=%2Fguarded`,
+        );
+        await page.getByRole('link', { name: 'Back', exact: true }).click();
+        await expect(page.getByRole('heading')).toHaveText('Index');
+      }
+      expect(await page.evaluate(() => window.__rscCache)).toEqual({
+        hits: 1,
+        misses: 1,
+      });
+      expect(redirectRequests).toBe(1);
+    });
+
     test('HTTP redirects preserve their query when an app enhancer rebuilds the response', async ({
       page,
     }) => {
       await page.goto(`http://localhost:${port}/?wrap-fetch=1000`);
+      await waitForHydration(page);
+      await page
+        .getByRole('link', { name: 'Redirect with query', exact: true })
+        .click();
+      await expect(page.getByTestId('route-query')).toHaveText(
+        '/exists?callbackUrl=%2Fguarded',
+      );
+      await expect(page).toHaveURL(
+        `http://localhost:${port}/exists?callbackUrl=%2Fguarded`,
+      );
+    });
+
+    test('a discarded fetch does not replace the selected response redirect query', async ({
+      page,
+    }) => {
+      await page.goto(`http://localhost:${port}/?wrap-fetch=1000&extra-fetch`);
       await waitForHydration(page);
       await page
         .getByRole('link', { name: 'Redirect with query', exact: true })
