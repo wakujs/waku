@@ -14,7 +14,7 @@ import {
 } from '../isomorphic-utils/router-protocol.js';
 import type { RouteData } from '../isomorphic-utils/router-protocol.js';
 
-const REDIRECT_ENHANCER_ORDER = 90;
+const REDIRECT_ENHANCER_ORDER = 80;
 
 export const ROUTER_STATE_ID = Symbol('waku-router-state');
 
