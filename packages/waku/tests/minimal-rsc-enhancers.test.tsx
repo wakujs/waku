@@ -14,8 +14,6 @@ import type {
 import {
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
-  unstable_combineElements as combineElements,
-  unstable_getElementResponse as getElementResponse,
   useElementsPromise_UNSTABLE as useElementsPromise,
   useFetchRsc_UNSTABLE as useFetchRsc,
   useMergeElements_UNSTABLE as useMergeElements,
@@ -166,14 +164,16 @@ test('composes logical inputs, transport, and decoded elements', async () => {
   expect(order).toEqual(['first', 'first result']);
 });
 
-test('rebuilt responses retain their element response metadata', async () => {
+test('response observation precedes enhancer transformations without exposing the body', async () => {
   const root = await mount('initial');
+  const order: string[] = [];
   root.register(
     (next) => (path, params, options) =>
       next(path, params, {
         ...options,
         fetch: async (input, init) => {
           const response = await options.fetch(input, init);
+          order.push('transform');
           return new Response(response.body, response);
         },
       }),
@@ -185,44 +185,19 @@ test('rebuilt responses retain their element response metadata', async () => {
     redirected: { value: true },
   });
   request.mockResolvedValueOnce(response);
-  const elements = await root.fetch('next');
+  const onResponse = vi.fn(() => order.push('observe'));
+  const elements = await root.fetch('next', undefined, {
+    unstable_onResponse: onResponse,
+  });
   expect(elements.content).toBe('redirected');
-  expect(getElementResponse(elements, 'content')).toEqual({
+  expect(onResponse).toHaveBeenCalledExactlyOnceWith({
     url: 'http://localhost/final?query=callback',
     redirected: true,
   });
+  expect(order).toEqual(['observe', 'transform']);
 });
 
-test('a single fetched response retains metadata through a body transformation', async () => {
-  const root = await mount('initial');
-  root.register(
-    (next) => (path, params, options) =>
-      next(path, params, {
-        ...options,
-        fetch: async (input, init) => {
-          const response = await options.fetch(input, init);
-          return new Response(
-            (await response.text()).replace('server', 'changed'),
-            response,
-          );
-        },
-      }),
-  );
-  const response = Response.json({ content: 'server' });
-  Object.defineProperties(response, {
-    url: { value: 'http://localhost/final' },
-    redirected: { value: true },
-  });
-  request.mockResolvedValueOnce(response);
-  const elements = await root.fetch('next');
-  expect(elements.content).toBe('changed');
-  expect(getElementResponse(elements, 'content')).toEqual({
-    url: 'http://localhost/final',
-    redirected: true,
-  });
-});
-
-test('retried requests retain metadata from the response that was decoded', async () => {
+test('response observation reports every native response from a retrying enhancer', async () => {
   const root = await mount('initial');
   root.register(
     (next) => (path, params, options) =>
@@ -243,56 +218,27 @@ test('retried requests retain metadata from the response that was decoded', asyn
   });
   Object.defineProperty(second, 'url', { value: 'http://localhost/second' });
   request.mockResolvedValueOnce(first).mockResolvedValueOnce(second);
-  const elements = await root.fetch('next');
-  expect(elements.content).toBe('second');
-  expect(getElementResponse(elements, 'content')).toEqual({
-    url: 'http://localhost/second',
-    redirected: false,
+  const onResponse = vi.fn();
+  const elements = await root.fetch('next', undefined, {
+    unstable_onResponse: onResponse,
   });
+  expect(elements.content).toBe('second');
+  expect(onResponse.mock.calls).toEqual([
+    [{ url: 'http://localhost/first', redirected: true }],
+    [{ url: 'http://localhost/second', redirected: false }],
+  ]);
 });
 
-test('client-created enhancer results have no response metadata', async () => {
+test('response observation skips an enhancer that answers without fetching', async () => {
   const root = await mount('initial');
   root.register(() => async () => ({ elements: { content: 'cached' } }));
   request.mockClear();
-  const elements = await root.fetch('next');
-  expect(elements).toEqual({ content: 'cached' });
-  expect(getElementResponse(elements, 'content')).toBeUndefined();
+  const onResponse = vi.fn();
+  expect(
+    await root.fetch('next', undefined, { unstable_onResponse: onResponse }),
+  ).toEqual({ content: 'cached' });
+  expect(onResponse).not.toHaveBeenCalled();
   expect(request).not.toHaveBeenCalled();
-});
-
-test('combined elements keep response metadata with each selected value', async () => {
-  const root = await mount('initial');
-  const first = Response.json({ content: 'first', retained: 'retained' });
-  Object.defineProperty(first, 'url', { value: 'http://localhost/first' });
-  const second = Response.json({ content: 'second', added: 'added' });
-  Object.defineProperty(second, 'url', { value: 'http://localhost/second' });
-  request.mockResolvedValueOnce(first).mockResolvedValueOnce(second);
-  const a = await root.fetch('first');
-  const b = await root.fetch('second');
-  const combined = combineElements(a, b);
-  expect(getElementResponse(combined, 'content')?.url).toBe(
-    'http://localhost/second',
-  );
-  expect(getElementResponse(combined, 'retained')?.url).toBe(
-    'http://localhost/first',
-  );
-  expect(getElementResponse(combined, 'added')?.url).toBe(
-    'http://localhost/second',
-  );
-  expect(
-    getElementResponse(
-      combineElements(a, b, { filter: () => false }),
-      'content',
-    )?.url,
-  ).toBe('http://localhost/first');
-  expect(
-    getElementResponse(
-      combineElements(combined, { content: 'client' }),
-      'content',
-    ),
-  ).toBeUndefined();
-  expect(getElementResponse({ ...a }, 'content')).toBeUndefined();
 });
 
 test('Root-bound requests stay isolated and actions keep their request-time enhancer chain', async () => {

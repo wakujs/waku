@@ -5144,6 +5144,7 @@ describe('Router integration', () => {
     });
     expect(prefetchRsc.mock.calls.at(0)?.[2]).toEqual({
       onBuildIdMismatch: expect.any(Function),
+      unstable_onResponse: expect.any(Function),
     });
 
     await act(async () => {
@@ -5152,6 +5153,7 @@ describe('Router integration', () => {
     });
     expect(prefetchRsc.mock.calls.at(1)?.[2]).toEqual({
       onBuildIdMismatch: expect.any(Function),
+      unstable_onResponse: expect.any(Function),
       unstable_base: expect.objectContaining({
         [unstable_getRouteSlotId('/next')]: expect.anything(),
       }),

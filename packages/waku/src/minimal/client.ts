@@ -11,7 +11,6 @@ export {
   useMergeElements_UNSTABLE,
   unstable_combineElements,
   unstable_formatRscUrl,
-  unstable_getElementResponse,
   unstable_getErrorInfo,
   unstable_isImmutableElement,
 } from './client-runtime.js';

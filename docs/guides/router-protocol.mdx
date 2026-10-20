@@ -109,9 +109,13 @@ Reading `ROUTE` is therefore not enough to decide what to write to history.
 
 For an HTTP redirect to a different static route, the Router cache reads the
 destination query from the final response URL for route fetches and prefetches.
-Minimal's `unstable_getElementResponse(elements, 'ROUTE')` identifies the response
-that supplied the route metadata, including when an enhancer returns cached
-elements. Cache-free bindings can use the same metadata for this reconciliation.
+Minimal's `unstable_onResponse` reports this URL before application fetch wrappers
+transform the response. Cache-free bindings can use the same callback for this
+reconciliation. Enhancers that return cached decoded elements produce no response
+notification, so this reconciliation does not recover their redirect queries.
+When an enhancer fetches multiple responses, the Router uses the last notification;
+it does not identify which response supplied the returned elements.
+
 Once a static route is cached, navigation can reuse it without a request. Redirect
 rules that must run for each query change require a dynamic route.
 

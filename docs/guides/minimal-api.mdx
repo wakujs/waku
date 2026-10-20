@@ -45,8 +45,7 @@ The Minimal API consists of server handler contracts and client rendering primit
 | `waku/minimal/client` | `useElementsPromise_UNSTABLE`                                                                | Reading the current element map.                                      |
 | `waku/minimal/client` | `useRegisterRscEnhancer_UNSTABLE`                                                            | Extending the RSC requests a `Root` makes.                            |
 | `waku/minimal/client` | `useRegisterRscReloadListener_UNSTABLE`                                                      | Choosing the RSC input to refresh during development reloads.         |
-| `waku/minimal/client` | `unstable_combineElements`                                                                   | Combining element maps without losing their metadata.                 |
-| `waku/minimal/client` | `unstable_getElementResponse`                                                                | Reading the response URL and redirect status for an element.          |
+| `waku/minimal/client` | `unstable_combineElements`                                                                   | Combining element maps without losing their etags.                    |
 | `waku/minimal/client` | `unstable_getErrorInfo`                                                                      | Reading status, redirect and network-error information.               |
 | `waku/minimal/client` | `unstable_formatRscUrl`                                                                      | Constructing an RSC payload URL.                                      |
 
@@ -59,11 +58,7 @@ implementation modules.
 Advanced composition APIs remain available to any Minimal-based framework:
 
 - `unstable_combineElements(a, b, { filter })` selects keys from `b`
-  while preserving their validators and response metadata.
-- `unstable_getElementResponse(elements, slotId)` reads the final URL and
-  redirect status of the response that supplied that value. The metadata stays
-  with cached records and follows each value through `unstable_combineElements`.
-  Client-created values and plain copies have none.
+  while preserving their validators.
 - `unstable_isImmutableElement(elements, slotId)` inspects a slot's immutable
   status without exposing its validator.
 - `useMergeElements_UNSTABLE` accepts a merge callback for custom updates to
@@ -651,7 +646,7 @@ Important behavior:
 - Each slot's etag stays with the element map Minimal made it in. Passing a map as `unstable_base` to `fetchRsc` sends its etags, so the server can skip the slots it holds. A map made by `combineElements` keeps them; a copy made with a spread or `Object.assign` does not.
 - If you return only `InnerApp`, previously rendered elements such as `App` stay mounted.
 - If the refetch fails, the existing element map stays in place.
-- `unstable_getElementResponse(elements, slotId)` returns `{ url, redirected }` for the response that supplied an element, without exposing its body. It remains available when an enhancer returns cached decoded elements. Use `unstable_combineElements` to retain this metadata with selected values; plain copies and client-created values have none.
+- `fetchRsc` accepts `unstable_onResponse: ({ url, redirected }) => void` to observe each native network response before enhancer transformations. `url` is the final URL after redirects. The callback receives metadata only, so it cannot consume the response body. Enhancers must call the supplied `options.fetch` to produce notifications. An enhancer that returns without fetching produces no notification; one that fetches several times produces a notification for each response, in arrival order. Notifications do not identify which response supplied the returned elements. Router uses the last notification to resolve HTTP redirects.
 
 With `unstable_base`, `fetchRsc` sends the base's validators and returns only
 the response entries. Omitted slots are not filled from the base. Passing this
@@ -755,7 +750,6 @@ Important behavior:
 
 - `options.type` is `rsc` for a payload fetch and `call` for a server function call.
 - The result is `{ elements, value }`, where `value` is a server function's return value. The elements never carry Minimal's reserved keys.
-- Response metadata belongs to the decoded response, including when a wrapper returns an earlier result from parallel fetches. Rebuilding a response with its original body retains the association, as does transforming the body from a single fetch. If a wrapper fetches several responses, replaces the chosen body, and discards the chosen response's `url` and `redirected` properties, its source is ambiguous and response metadata is unavailable.
 - Build a changed element map with `unstable_combineElements`. Each slot's etag stays with the map Minimal made it in, so a result rebuilt with a spread arrives without them and the server stops skipping the slots the Root already holds.
 - Enhancers run for the Root's fetches, the server actions it receives, and its development reloads, but not for its initial payload. A bare server action goes to the Root mounted last, which is not necessarily the one that rendered the component calling it.
 - A higher `order`, the optional second argument that defaults to `0`, wraps a lower one, so it runs earlier on the request and later on the result. At the same order, a later registration wraps an earlier one. The Waku router registers its own enhancer at order 100. Enhancers above that order must return the result without introducing an asynchronous delay after the inner enhancer resolves. The router acts on an action's result while the chain is still unwinding: it applies the route change and decides whether a rerender of the page the action came from still applies. Minimal merges the returned elements only after the whole chain resolves. Delaying the result above the router can therefore render the new route before its slot has been merged, so `Slot` throws, or let a navigation started during the delay be overwritten when the action's elements are applied.

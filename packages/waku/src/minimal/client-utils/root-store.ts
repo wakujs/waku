@@ -22,6 +22,17 @@ export type FetchRscOptions = {
   signal?: AbortSignal;
   onBuildIdMismatch?: () => void;
   /**
+   * Observes native responses from the supplied `options.fetch` before
+   * enhancer transformations.
+   * Receives its final URL and redirect status without access to the body.
+   * Multiple fetches notify in response arrival order; throwing rejects the request.
+   * Not called for responses served entirely by an enhancer without fetching.
+   */
+  unstable_onResponse?: (response: {
+    url: string;
+    redirected: boolean;
+  }) => void;
+  /**
    * Retained elements whose etags are sent, allowing the server to omit them.
    * The returned response does not include omitted entries from this base.
    */

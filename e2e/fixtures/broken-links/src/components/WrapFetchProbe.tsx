@@ -16,12 +16,6 @@ export function WrapFetchProbe() {
           ...options,
           fetch: async (input, init) => {
             const response = await options.fetch(input, init);
-            if (
-              new URLSearchParams(window.location.search).has('extra-fetch')
-            ) {
-              const unused = await options.fetch(response.url);
-              await unused.body?.cancel();
-            }
             return new Response(response.body, response);
           },
         }),

@@ -147,51 +147,53 @@ describe('layer-1 router caches', () => {
     expect(fetchRsc.mock.calls[0]?.[0]).toBe(encodeRoutePath('/next'));
     expect(fetchRsc.mock.calls[0]?.[2]).toEqual({
       onBuildIdMismatch: expect.any(Function),
+      unstable_onResponse: expect.any(Function),
     });
   });
 
-  it('route fetches replay the cached redirect query while retaining slot etags', async () => {
+  it('route fetches apply the observed redirect query while retaining slot etags', async () => {
     const path = '/exists';
     const slot = getRouteSlotId(path);
+    const elements = adoptElements({
+      [slot]: 'page',
+      [ROUTE_ID]: [path, ''],
+      [IS_STATIC_ID]: true,
+      [ETAGS_ID]: { [slot]: IMMUTABLE_ETAG },
+    });
     const url = formatRscUrl(
       encodeRoutePath(path),
       new URL('http://localhost'),
     );
     url.searchParams.set('query', 'callbackUrl=%2Fguarded');
-    const elements = adoptElements(
+    const response = { url: url.href, redirected: true };
+    fetchRsc.mockImplementationOnce(async (_path, _params, options) => {
+      options?.unstable_onResponse?.(response);
+      return elements;
+    });
+    const onResponse = vi.fn();
+    const result = await cache.fetchRsc(
+      encodeRoutePath('/guarded'),
+      undefined,
       {
-        [slot]: 'page',
-        [ROUTE_ID]: [path, ''],
-        [IS_STATIC_ID]: true,
-        [ETAGS_ID]: { [slot]: IMMUTABLE_ETAG },
+        unstable_onResponse: onResponse,
       },
-      { url: url.href, redirected: true },
     );
-    fetchRsc.mockResolvedValue(elements);
-    for (let visit = 0; visit < 2; visit++) {
-      const result = await cache.fetchRsc(encodeRoutePath('/guarded'));
-      expect(result[ROUTE_ID]).toEqual([path, 'callbackUrl=%2Fguarded']);
-      expect(isImmutableElement(result, slot)).toBe(true);
-    }
-    expect(elements[ROUTE_ID]).toEqual([path, '']);
+    expect(result[ROUTE_ID]).toEqual([path, 'callbackUrl=%2Fguarded']);
+    expect(isImmutableElement(result, slot)).toBe(true);
+    expect(onResponse).toHaveBeenCalledExactlyOnceWith(response);
   });
 
-  it('prefetch stores the redirect query associated with the destination payload', async () => {
+  it('prefetch stores the observed redirect query with the destination payload', async () => {
     const path = '/exists';
     const url = formatRscUrl(
       encodeRoutePath(path),
       new URL('http://localhost'),
     );
     url.searchParams.set('query', 'callbackUrl=%2Fguarded');
-    fetchRsc.mockResolvedValueOnce(
-      adoptElements(
-        {
-          [ROUTE_ID]: [path, ''],
-          [IS_STATIC_ID]: true,
-        },
-        { url: url.href, redirected: true },
-      ),
-    );
+    fetchRsc.mockImplementationOnce(async (_path, _params, options) => {
+      options?.unstable_onResponse?.({ url: url.href, redirected: true });
+      return { [ROUTE_ID]: [path, ''], [IS_STATIC_ID]: true };
+    });
     const requested = route('/guarded');
     cache.prefetchRoute(requested);
     await cache.getPrefetch(requested)?.promise;
@@ -201,21 +203,19 @@ describe('layer-1 router caches', () => {
     ]);
   });
 
-  it('keeps a nonredirected payload query unchanged', async () => {
+  it('uses the last response even when it did not redirect', async () => {
     const path = '/exists';
     const url = formatRscUrl(
       encodeRoutePath(path),
       new URL('http://localhost'),
     );
     url.searchParams.set('query', 'callbackUrl=%2Fguarded');
-    const elements = adoptElements(
-      { [ROUTE_ID]: [path, ''], [IS_STATIC_ID]: true },
-      {
-        url: url.href,
-        redirected: false,
-      },
-    );
-    fetchRsc.mockResolvedValueOnce(elements);
+    const elements = { [ROUTE_ID]: [path, ''], [IS_STATIC_ID]: true };
+    fetchRsc.mockImplementationOnce(async (_path, _params, options) => {
+      options?.unstable_onResponse?.({ url: url.href, redirected: true });
+      options?.unstable_onResponse?.({ url: url.href, redirected: false });
+      return elements;
+    });
     expect(await cache.fetchRsc(encodeRoutePath('/guarded'))).toBe(elements);
   });
 
