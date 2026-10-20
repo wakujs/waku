@@ -11,9 +11,9 @@
   "dependencies": {
     "context-library": "0.0.0",
     "dummy-library": "0.0.0",
-    "react": "~19.3.0",
-    "react-dom": "~19.3.0",
-    "react-server-dom-webpack": "~19.3.0",
+    "react": "~19.3.1",
+    "react-dom": "~19.3.1",
+    "react-server-dom-webpack": "~19.3.1",
     "waku": "1.0.0-rc.3"
   },
   "devDependencies": {
