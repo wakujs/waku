@@ -101,7 +101,6 @@ type FetchRscElementsOptions = {
   type?: 'rsc' | 'call';
   signal?: AbortSignal;
   onBuildIdMismatch?: () => void;
-  onResponse?: FetchRscOptions['unstable_onResponse'];
   etags?: Etags;
   initial?: NonNullable<ReturnType<typeof consumeInitialRscEntry>>;
 };
@@ -215,7 +214,6 @@ const fetchRscElements = (
     );
   };
   try {
-    const transport = fetch.bind(globalThis);
     for (const [enhance] of [...(store?.enhancers ?? [])].sort(
       (a, b) => a[1] - b[1],
     )) {
@@ -223,14 +221,7 @@ const fetchRscElements = (
     }
     return request(rscPath, rscParams, {
       type: options.type ?? 'rsc',
-      fetch: async (input, init) => {
-        const response = await transport(input, init);
-        options.onResponse?.({
-          url: response.url,
-          redirected: response.redirected,
-        });
-        return response;
-      },
+      fetch: fetch.bind(globalThis),
       ...(options.signal ? { signal: options.signal } : {}),
     });
   } catch (e) {
@@ -301,9 +292,6 @@ const fetchRsc = (
       ...(options?.signal ? { signal: options.signal } : {}),
       ...(options?.onBuildIdMismatch
         ? { onBuildIdMismatch: options.onBuildIdMismatch }
-        : {}),
-      ...(options?.unstable_onResponse
-        ? { onResponse: options.unstable_onResponse }
         : {}),
     },
     store,

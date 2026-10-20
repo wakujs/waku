@@ -1,18 +1,14 @@
 import {
-  unstable_combineElements as combineElements,
-  unstable_formatRscUrl as formatRscUrl,
   unstable_isImmutableElement as isImmutableElement,
   useFetchRsc_UNSTABLE as useFetchRsc,
 } from 'waku/minimal/client';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
-  ROUTE_ID,
   encodeRoutePath,
   getRouteFromElements,
   getRouteSlotId,
   isStaticFromElements,
 } from '../isomorphic-utils/router-protocol.js';
-import type { RouteData } from '../isomorphic-utils/router-protocol.js';
 import { load } from './load.js';
 import type { LoadOptions, LoadOutcome } from './load.js';
 import {
@@ -47,32 +43,6 @@ export const createRscParams = (query: string): URLSearchParams =>
   new URLSearchParams({ query });
 
 const createRouterCache = (fetchRsc: FetchRsc) => {
-  const fetchRoute: FetchRsc = async (rscPath, rscParams, options) => {
-    let redirectedUrl: URL | undefined;
-    const elements = await fetchRsc(rscPath, rscParams, {
-      ...options,
-      unstable_onResponse: (response) => {
-        redirectedUrl = response.redirected ? new URL(response.url) : undefined;
-        options?.unstable_onResponse?.(response);
-      },
-    });
-    const route = getRouteFromElements(elements);
-    if (!redirectedUrl || !route || !isStaticFromElements(elements)) {
-      return elements;
-    }
-    if (
-      redirectedUrl.pathname !==
-      formatRscUrl(encodeRoutePath(route.path), redirectedUrl).pathname
-    ) {
-      return elements;
-    }
-    return combineElements(elements, {
-      [ROUTE_ID]: [
-        route.path,
-        redirectedUrl.searchParams.get('query') ?? '',
-      ] satisfies RouteData,
-    });
-  };
   const manager = createPrefetchManager();
   const staticPathSet = new Set<string>();
 
@@ -83,7 +53,7 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
     staticPathSet.has(route.path) && getRouteSlotId(route.path) in elements;
 
   return {
-    fetchRsc: fetchRoute,
+    fetchRsc,
     slices: createSliceCache(fetchRsc),
     prefetchRoute: (route: RouteProps, options?: PrefetchOptions): void => {
       const rscPath = encodeRoutePath(route.path);
@@ -91,7 +61,7 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
         rscPath,
         route.query,
         (base, invalidate) =>
-          fetchRoute(rscPath, createRscParams(route.query), {
+          fetchRsc(rscPath, createRscParams(route.query), {
             ...(base ? { unstable_base: base } : {}),
             onBuildIdMismatch: () => {
               invalidate();
@@ -159,7 +129,7 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
                 return cached.promise;
               }
               const onBuildIdMismatch = opts.onBuildIdMismatch;
-              return fetchRoute(
+              return fetchRsc(
                 encodeRoutePath(attempt.route.path),
                 createRscParams(attempt.route.query),
                 {

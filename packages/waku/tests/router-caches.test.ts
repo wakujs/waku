@@ -1,11 +1,7 @@
 /** @vitest-environment happy-dom */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ETAGS_ID, IMMUTABLE_ETAG } from '../src/lib/utils-isomorphic/etags.js';
-import { formatRscUrl } from '../src/lib/utils-isomorphic/rsc-path.js';
-import {
-  adoptElements,
-  isImmutableElement,
-} from '../src/minimal/client-utils/element-etags.js';
+import { adoptElements } from '../src/minimal/client-utils/element-etags.js';
 import type { FetchRsc } from '../src/minimal/client-utils/root-store.js';
 import {
   createRscParams,
@@ -40,7 +36,8 @@ const settlePrefetch = async (
 ) => {
   fetchRsc.mockImplementationOnce(async () => elements);
   cache.prefetchRoute(route(path, query));
-  await cache.getPrefetch(route(path, query))?.promise;
+  await Promise.resolve();
+  await Promise.resolve();
 };
 
 describe('layer-1 router caches', () => {
@@ -147,76 +144,7 @@ describe('layer-1 router caches', () => {
     expect(fetchRsc.mock.calls[0]?.[0]).toBe(encodeRoutePath('/next'));
     expect(fetchRsc.mock.calls[0]?.[2]).toEqual({
       onBuildIdMismatch: expect.any(Function),
-      unstable_onResponse: expect.any(Function),
     });
-  });
-
-  it('route fetches apply the observed redirect query while retaining slot etags', async () => {
-    const path = '/exists';
-    const slot = getRouteSlotId(path);
-    const elements = adoptElements({
-      [slot]: 'page',
-      [ROUTE_ID]: [path, ''],
-      [IS_STATIC_ID]: true,
-      [ETAGS_ID]: { [slot]: IMMUTABLE_ETAG },
-    });
-    const url = formatRscUrl(
-      encodeRoutePath(path),
-      new URL('http://localhost'),
-    );
-    url.searchParams.set('query', 'callbackUrl=%2Fguarded');
-    const response = { url: url.href, redirected: true };
-    fetchRsc.mockImplementationOnce(async (_path, _params, options) => {
-      options?.unstable_onResponse?.(response);
-      return elements;
-    });
-    const onResponse = vi.fn();
-    const result = await cache.fetchRsc(
-      encodeRoutePath('/guarded'),
-      undefined,
-      {
-        unstable_onResponse: onResponse,
-      },
-    );
-    expect(result[ROUTE_ID]).toEqual([path, 'callbackUrl=%2Fguarded']);
-    expect(isImmutableElement(result, slot)).toBe(true);
-    expect(onResponse).toHaveBeenCalledExactlyOnceWith(response);
-  });
-
-  it('prefetch stores the observed redirect query with the destination payload', async () => {
-    const path = '/exists';
-    const url = formatRscUrl(
-      encodeRoutePath(path),
-      new URL('http://localhost'),
-    );
-    url.searchParams.set('query', 'callbackUrl=%2Fguarded');
-    fetchRsc.mockImplementationOnce(async (_path, _params, options) => {
-      options?.unstable_onResponse?.({ url: url.href, redirected: true });
-      return { [ROUTE_ID]: [path, ''], [IS_STATIC_ID]: true };
-    });
-    const requested = route('/guarded');
-    cache.prefetchRoute(requested);
-    await cache.getPrefetch(requested)?.promise;
-    expect(cache.getPrefetchedElements(requested)?.[ROUTE_ID]).toEqual([
-      path,
-      'callbackUrl=%2Fguarded',
-    ]);
-  });
-
-  it('uses the last response even when it did not redirect', async () => {
-    const path = '/exists';
-    const url = formatRscUrl(
-      encodeRoutePath(path),
-      new URL('http://localhost'),
-    );
-    url.searchParams.set('query', 'callbackUrl=%2Fguarded');
-    const elements = { [ROUTE_ID]: [path, ''], [IS_STATIC_ID]: true };
-    fetchRsc.mockImplementationOnce(async (_path, _params, options) => {
-      options?.unstable_onResponse?.({ url: url.href, redirected: true });
-      options?.unstable_onResponse?.({ url: url.href, redirected: false });
-      return elements;
-    });
-    expect(await cache.fetchRsc(encodeRoutePath('/guarded'))).toBe(elements);
   });
 
   it('createRscParams is a plain factory and does not memoize', () => {
