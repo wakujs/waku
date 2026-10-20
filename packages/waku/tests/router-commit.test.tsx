@@ -3824,6 +3824,90 @@ test('instant settlement preserves removal of a newly added slot before metadata
   }
 });
 
+test('instant settlement renders a constructor dependency before metadata acceptance', async () => {
+  const response = defer<Elements>();
+  const acceptanceGate = defer<void>();
+  const outcomeReady = defer<void>();
+  const shell = (
+    <>
+      <p>cached shell</p>
+      <Suspense fallback="waiting for page">
+        <Slot id="page:two" />
+      </Suspense>
+    </>
+  );
+  mocks.queue.push({
+    ...payload('/one', <p>page one</p>),
+    root: (
+      <>
+        <Probe id="a" />
+        <ErrorBoundary>
+          <Children />
+        </ErrorBoundary>
+      </>
+    ),
+    [getRouteSlotId('/two')]: shell,
+    'page:two': <p>cached page</p>,
+    _etags: { root: 1, [getRouteSlotId('/two')]: 1 },
+  });
+  const view = await mount(
+    <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+  );
+  const load = loader.load;
+  vi.spyOn(loader, 'load').mockImplementationOnce(async (...args) => {
+    const outcome = await load(...args);
+    outcomeReady.resolve();
+    await acceptanceGate.promise;
+    return outcome;
+  });
+  mocks.queue.push(response.promise);
+  let navigation: Promise<void> | undefined;
+  try {
+    await act(async () => {
+      navigation = controls.get('a')!.router.push('/two', {
+        unstable_instant: true,
+      });
+      await flush();
+    });
+    expect(view.textContent).toContain('cached shellwaiting for page');
+    await act(async () => {
+      response.resolve({
+        [ROUTE_ID]: ['/two', ''],
+        [IS_STATIC_ID]: false,
+        'page:two': (
+          <p>
+            fresh page <Slot id="constructor" />
+          </p>
+        ),
+        constructor: 'response dependency',
+        _etags: { constructor: 'constructor-v1' },
+      });
+      await outcomeReady.promise;
+      await flush();
+    });
+    expect(view.textContent).toContain(
+      'cached shellfresh page response dependency',
+    );
+    expect(view.textContent).not.toContain('Caught an unexpected error');
+    await act(async () => {
+      acceptanceGate.resolve();
+      await navigation;
+      await flush();
+    });
+    expect(view.textContent).toContain(
+      'cached shellfresh page response dependency',
+    );
+    expect(window.location.pathname).toBe('/two');
+  } finally {
+    await act(async () => {
+      acceptanceGate.resolve();
+      response.resolve({});
+      await navigation;
+      await flush();
+    });
+  }
+});
+
 test.each([
   { update: 'none', dependency: 'details' },
   { update: 'action', dependency: 'details' },

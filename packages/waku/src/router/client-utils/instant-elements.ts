@@ -31,20 +31,20 @@ export const useMergeInstantElements = () => {
           const elementsPromise = response.catch(() => current);
           const available = base
             ? combineElements(current, base, {
-                filter: (key) => typeof key === 'string' && !(key in current),
+                filter: (key) =>
+                  typeof key === 'string' && !Object.hasOwn(current, key),
               })
             : current;
           const holes: Record<string | symbol, unknown> = {};
           for (const key of Reflect.ownKeys(available)) {
-            const pinned =
-              key in current
-                ? pin(key)
-                : isImmutableElement(available, String(key));
+            const pinned = Object.hasOwn(current, key)
+              ? pin(key)
+              : isImmutableElement(available, String(key));
             if (!pinned) {
               holes[key] = elementsPromise.then((elements) =>
-                key in elements
+                Object.hasOwn(elements, key)
                   ? elements[key]
-                  : base && key in base
+                  : base && Object.hasOwn(base, key)
                     ? base[key]
                     : current[key],
               );
@@ -75,7 +75,8 @@ export const useMergeInstantElements = () => {
               return previous;
             }
             const shouldMerge = (current: Elements, key: string) =>
-              !(key in current) || !!(overlay && Object.hasOwn(overlay, key));
+              !Object.hasOwn(current, key) ||
+              !!(overlay && Object.hasOwn(overlay, key));
             const current = mergeResults.get(previous);
             if (
               current &&
