@@ -1,4 +1,4 @@
-import { useLayoutEffect } from 'react';
+import { useInsertionEffect } from 'react';
 import {
   unstable_combineElements as combineElements,
   unstable_formatRscUrl as formatRscUrl,
@@ -18,7 +18,7 @@ export const ROUTER_STATE_ID = Symbol('waku-router-state');
 
 export const useServerRedirect = () => {
   const registerRscEnhancer = useRegisterRscEnhancer();
-  useLayoutEffect(
+  useInsertionEffect(
     () =>
       registerRscEnhancer((next) => async (rscPath, rscParams, options) => {
         if (options.type !== 'rsc') {

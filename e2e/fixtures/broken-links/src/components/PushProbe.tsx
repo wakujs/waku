@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback, useLayoutEffect } from 'react';
 import { useRouter } from 'waku';
 
 declare global {
@@ -9,18 +10,29 @@ declare global {
 }
 
 export function PushProbe() {
-  const router = useRouter();
-  const push = (to: string) => {
-    window.__pushOutcome = 'pending';
-    router.push(to as never).then(
-      () => {
-        window.__pushOutcome = 'resolved';
-      },
-      () => {
-        window.__pushOutcome = 'rejected';
-      },
-    );
-  };
+  const { push: navigate } = useRouter();
+  const push = useCallback(
+    (to: string) => {
+      window.__pushOutcome = 'pending';
+      navigate(to as never).then(
+        () => {
+          window.__pushOutcome = 'resolved';
+        },
+        () => {
+          window.__pushOutcome = 'rejected';
+        },
+      );
+    },
+    [navigate],
+  );
+  useLayoutEffect(() => {
+    if (
+      new URLSearchParams(window.location.search).has('layout-redirect') &&
+      !window.__pushOutcome
+    ) {
+      push('/redirect-query');
+    }
+  }, [push]);
   return (
     <p>
       <button

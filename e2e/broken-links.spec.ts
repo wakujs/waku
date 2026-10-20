@@ -78,6 +78,22 @@ test.describe('broken-links: normal server', () => {
   });
 
   test.describe('client side navigation', () => {
+    test('a redirect from the initial layout effect preserves the static query', async ({
+      page,
+    }) => {
+      await page.goto(`http://localhost:${port}/?layout-redirect`);
+      await expect(page.getByRole('heading')).toHaveText('Existing page');
+      await expect
+        .poll(() => page.evaluate(() => window.__pushOutcome))
+        .toBe('resolved');
+      await expect(page.getByTestId('route-query')).toHaveText(
+        '/exists?callbackUrl=%2Fguarded',
+      );
+      await expect(page).toHaveURL(
+        `http://localhost:${port}/exists?callbackUrl=%2Fguarded`,
+      );
+    });
+
     test('HTTP redirects preserve the static destination query on repeat visits', async ({
       page,
     }) => {
