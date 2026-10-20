@@ -80,6 +80,65 @@ export const waitForPortReady = async (port: number): Promise<void> =>
     tryConnect();
   });
 
+// localhost can resolve to an address this machine cannot use (::1 with IPv6
+// off), so happy eyeballs reports that failure alongside the real refusal.
+const UNUSABLE_ADDRESS_CODES = new Set([
+  'EADDRNOTAVAIL',
+  'EAFNOSUPPORT',
+  'EHOSTUNREACH',
+  'ENETUNREACH',
+]);
+
+const isConnectionRefused = (err: NodeJS.ErrnoException): boolean => {
+  const codes = (err instanceof AggregateError ? err.errors : [err]).map(
+    (e: NodeJS.ErrnoException) => e.code,
+  );
+  return (
+    codes.includes('ECONNREFUSED') &&
+    codes.every(
+      (code) =>
+        code === 'ECONNREFUSED' ||
+        (code !== undefined && UNUSABLE_ADDRESS_CODES.has(code)),
+    )
+  );
+};
+
+const waitForPortClosed = async (port: number): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const start = Date.now();
+    const retry = (reason: string) => {
+      if (Date.now() - start >= PORT_WAIT_TIMEOUT_MS) {
+        reject(
+          new Error(
+            `Timeout while waiting for port ${port} to close: ${reason}`,
+          ),
+        );
+        return;
+      }
+      setTimeout(tryConnect, 50);
+    };
+    const tryConnect = () => {
+      const socket = createConnection(port);
+      socket.setTimeout(1000, () => {
+        socket.destroy();
+        retry('connection attempt timed out');
+      });
+      socket.once('connect', () => {
+        socket.destroy();
+        retry('still accepting connections');
+      });
+      socket.once('error', (err) => {
+        socket.destroy();
+        if (isConnectionRefused(err)) {
+          resolve();
+        } else {
+          retry(err.message);
+        }
+      });
+    };
+    tryConnect();
+  });
+
 export const runShell = (command: string, cwd: string): ChildProcess =>
   spawn(command, {
     cwd,
@@ -218,6 +277,7 @@ export const prepareNormalSetup = (
     await waitForPortReady(port);
     const stopApp = async () => {
       await terminate(cp);
+      await waitForPortClosed(port);
     };
     return { port, stopApp, fixtureDir, buildResult };
   };
@@ -409,6 +469,7 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     const stopApp = async () => {
       builtModeMap.delete(packageManager);
       await terminate(cp);
+      await waitForPortClosed(port);
     };
     return { port, stopApp, standaloneDir };
   };
