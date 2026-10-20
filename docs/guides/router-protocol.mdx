@@ -114,7 +114,7 @@ below order 80 run after Router observes the response; wrappers above that order
 can change the URL and redirect status Router receives. Custom client bindings
 can implement the same reconciliation with Minimal's RSC enhancer API.
 
-A decoded-result cache should wrap the redirect enhancer, for example at order 95,
+A decoded-result cache should wrap the redirect enhancer, for example at order 90,
 so it stores corrected route metadata. Cache hits bypass response observation.
 When a wrapper fetches multiple responses, Router uses the last response it sees;
 it does not identify which response supplied the returned elements.
