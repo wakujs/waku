@@ -69,14 +69,14 @@ importers:
   e2e/fixtures/base-path:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -97,14 +97,14 @@ importers:
         specifier: ^4.12.14
         version: 4.12.14
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       serve:
         specifier: ^14.2.6
         version: 14.2.6
@@ -125,14 +125,14 @@ importers:
   e2e/fixtures/cache-tag:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -153,14 +153,14 @@ importers:
         specifier: ^4.12.14
         version: 4.12.14
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9(esbuild@0.28.2))
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9(esbuild@0.28.2))
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -184,17 +184,17 @@ importers:
   e2e/fixtures/create-pages:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-error-boundary:
         specifier: ^6.1.6
-        version: 6.1.6(@types/react@19.3.0)(react@19.3.0)
+        version: 6.1.6(@types/react@19.3.0)(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       serve:
         specifier: ^14.2.6
         version: 14.2.6
@@ -224,14 +224,14 @@ importers:
         specifier: ^1.21.2
         version: 1.21.2
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9(esbuild@0.28.2))
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9(esbuild@0.28.2))
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -261,14 +261,14 @@ importers:
         specifier: link:modules/custom-adapter
         version: link:modules/custom-adapter
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -286,14 +286,14 @@ importers:
   e2e/fixtures/custom-user-adapter:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -311,14 +311,14 @@ importers:
   e2e/fixtures/define-router:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -340,16 +340,16 @@ importers:
     dependencies:
       nuqs:
         specifier: ^2.10.1
-        version: 2.10.1(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)
+        version: 2.10.1(@tanstack/react-router@1.170.41(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -370,14 +370,14 @@ importers:
   e2e/fixtures/fs-router-build-split:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -395,14 +395,14 @@ importers:
   e2e/fixtures/hot-reload:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -420,14 +420,14 @@ importers:
   e2e/fixtures/instant-nav:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -452,22 +452,22 @@ importers:
         version: 4.12.14
       jotai:
         specifier: ^3.0.1
-        version: 3.0.1(@types/react@19.3.0)(react@19.3.0)
+        version: 3.0.1(@types/react@19.3.0)(react@19.3.1)
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
       waku-jotai:
         specifier: ^0.7.0
-        version: 0.7.0(jotai@3.0.1(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)(waku@packages+waku)
+        version: 0.7.0(jotai@3.0.1(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)(waku@packages+waku)
     devDependencies:
       '@types/react':
         specifier: ^19.3.0
@@ -482,14 +482,14 @@ importers:
   e2e/fixtures/monorepo:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -500,14 +500,14 @@ importers:
         specifier: ^4.12.14
         version: 4.12.14
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -525,14 +525,14 @@ importers:
   e2e/fixtures/partial-build:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       serve:
         specifier: ^14.2.6
         version: 14.2.6
@@ -553,14 +553,14 @@ importers:
   e2e/fixtures/performance-track:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -575,17 +575,17 @@ importers:
   e2e/fixtures/react-compiler:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9(esbuild@0.28.2))
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9(esbuild@0.28.2))
       react-wrap-balancer:
         specifier: ^1.1.1
-        version: 1.1.1(react@19.3.0)
+        version: 1.1.1(react@19.3.1)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -612,17 +612,17 @@ importers:
   e2e/fixtures/react-tweet:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9(esbuild@0.28.2))
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9(esbuild@0.28.2))
       react-tweet:
         specifier: ^3.3.1
-        version: 3.3.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 3.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -646,14 +646,14 @@ importers:
   e2e/fixtures/render-type:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       serve:
         specifier: ^14.2.6
         version: 14.2.6
@@ -674,14 +674,14 @@ importers:
   e2e/fixtures/router-client:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -699,14 +699,14 @@ importers:
   e2e/fixtures/router-client-no-404:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -724,14 +724,14 @@ importers:
   e2e/fixtures/router-client-no-ssr:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -749,14 +749,14 @@ importers:
   e2e/fixtures/rsc-asset:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -777,14 +777,14 @@ importers:
         specifier: link:modules/ai
         version: link:modules/ai
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -802,14 +802,14 @@ importers:
   e2e/fixtures/rsc-css-modules:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -827,14 +827,14 @@ importers:
   e2e/fixtures/spa-example:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -852,14 +852,14 @@ importers:
   e2e/fixtures/ssg-performance:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -877,14 +877,14 @@ importers:
   e2e/fixtures/ssg-render-error:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -902,14 +902,14 @@ importers:
   e2e/fixtures/ssg-wildcard:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -928,19 +928,19 @@ importers:
     dependencies:
       '@ai-sdk/rsc':
         specifier: ^3.0.127
-        version: 3.0.127(react@19.3.0)(zod@4.6.5)
+        version: 3.0.127(react@19.3.1)(zod@4.6.5)
       ai:
         specifier: ^7.0.127
         version: 7.0.127(zod@4.6.5)
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -961,17 +961,17 @@ importers:
         specifier: ^4.12.14
         version: 4.12.14
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-error-boundary:
         specifier: ^6.1.6
-        version: 6.1.6(@types/react@19.3.0)(react@19.3.0)
+        version: 6.1.6(@types/react@19.3.0)(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -989,14 +989,14 @@ importers:
   e2e/fixtures/ssr-context-provider:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -1014,14 +1014,14 @@ importers:
   e2e/fixtures/ssr-nonce:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -1042,14 +1042,14 @@ importers:
         specifier: ^4.12.14
         version: 4.12.14
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -1067,14 +1067,14 @@ importers:
   e2e/fixtures/ssr-redirect:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -1092,17 +1092,17 @@ importers:
   e2e/fixtures/ssr-swr:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       swr:
         specifier: ^2.5.1
-        version: 2.5.1(react@19.3.0)
+        version: 2.5.1(react@19.3.1)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -1120,17 +1120,17 @@ importers:
   e2e/fixtures/ssr-target-bundle:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       react-textarea-autosize:
         specifier: ^8.5.9
-        version: 8.5.9(@types/react@19.3.0)(react@19.3.0)
+        version: 8.5.9(@types/react@19.3.0)(react@19.3.1)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -1148,20 +1148,20 @@ importers:
   e2e/fixtures/styled-components:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       serve:
         specifier: ^14.2.6
         version: 14.2.6
       styled-components:
         specifier: ^6.5.3
-        version: 6.5.3(css-to-react-native@3.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 6.5.3(css-to-react-native@3.2.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -1179,14 +1179,14 @@ importers:
   e2e/fixtures/tailwindcss:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9(esbuild@0.28.2))
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9(esbuild@0.28.2))
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -1211,19 +1211,19 @@ importers:
     dependencies:
       '@tanstack/react-router':
         specifier: ^1.170.41
-        version: 1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 1.170.41(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/react-router-devtools':
         specifier: ^1.167.2
-        version: 1.167.2(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tanstack/router-core@1.171.34)(csstype@3.2.3)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 1.167.2(@tanstack/react-router@1.170.41(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@tanstack/router-core@1.171.34)(csstype@3.2.3)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -1241,14 +1241,14 @@ importers:
   e2e/fixtures/use-router:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -1267,22 +1267,22 @@ importers:
     dependencies:
       jotai:
         specifier: ^3.0.1
-        version: 3.0.1(@types/react@19.3.0)(react@19.3.0)
+        version: 3.0.1(@types/react@19.3.0)(react@19.3.1)
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
       waku-jotai:
         specifier: ^0.7.0
-        version: 0.7.0(jotai@3.0.1(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)(waku@packages+waku)
+        version: 0.7.0(jotai@3.0.1(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)(waku@packages+waku)
     devDependencies:
       '@types/react':
         specifier: ^19.3.0
@@ -1297,14 +1297,14 @@ importers:
   e2e/fixtures/wildcard-api-routes:
     dependencies:
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9)
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9)
       waku:
         specifier: latest
         version: link:../../../packages/waku
@@ -1362,7 +1362,7 @@ importers:
         version: 6.0.1(@rolldown/plugin-babel@0.2.4(@babel/core@7.29.7)(@babel/runtime@7.29.7)(rolldown@1.2.12)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
       '@vitejs/plugin-rsc':
         specifier: ^0.5.33
-        version: 0.5.33(react-dom@19.3.0(react@19.3.0))(react-server-dom-webpack@19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9(@swc/core@1.15.3(@swc/helpers@0.5.23))(esbuild@0.28.2)))(react@19.3.0)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
+        version: 0.5.33(react-dom@19.3.1(react@19.3.1))(react-server-dom-webpack@19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9(@swc/core@1.15.3(@swc/helpers@0.5.23))(esbuild@0.28.2)))(react@19.3.1)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
       dotenv:
         specifier: ^18.0.5
         version: 18.0.5
@@ -1389,14 +1389,14 @@ importers:
         specifier: ^20.14.5
         version: 20.14.5
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9(@swc/core@1.15.3(@swc/helpers@0.5.23))(esbuild@0.28.2))
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9(@swc/core@1.15.3(@swc/helpers@0.5.23))(esbuild@0.28.2))
       ts-expect:
         specifier: ^1.3.0
         version: 1.3.0
@@ -1417,22 +1417,22 @@ importers:
         version: 2.3.2
       framer-motion:
         specifier: ^14.0.0
-        version: 14.0.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 14.0.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       jotai:
         specifier: ^3.0.1
-        version: 3.0.1(@types/react@19.3.0)(react@19.3.0)
+        version: 3.0.1(@types/react@19.3.0)(react@19.3.1)
       next-mdx-remote:
         specifier: ^6.0.0
-        version: 6.0.0(@types/react@19.3.0)(react@19.3.0)
+        version: 6.0.0(@types/react@19.3.0)(react@19.3.1)
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9(esbuild@0.28.2))
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9(esbuild@0.28.2))
       remark-gfm:
         specifier: ^4.0.1
         version: 4.0.1
@@ -1480,14 +1480,14 @@ importers:
         specifier: ^4.12.14
         version: 4.12.14
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9(esbuild@0.28.2))
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9(esbuild@0.28.2))
       waku:
         specifier: 1.0.0-rc.3
         version: link:../../packages/waku
@@ -1523,14 +1523,14 @@ importers:
         specifier: ^4.12.14
         version: 4.12.14
       react:
-        specifier: ~19.3.0
-        version: 19.3.0
+        specifier: ~19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ~19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: ~19.3.1
+        version: 19.3.1(react@19.3.1)
       react-server-dom-webpack:
-        specifier: ~19.3.0
-        version: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9(esbuild@0.28.2))
+        specifier: ~19.3.1
+        version: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9(esbuild@0.28.2))
       waku:
         specifier: 1.0.0-rc.3
         version: link:../../packages/waku
@@ -2647,9 +2647,6 @@ packages:
       '@emnapi/core': ^1.7.1 || ^2.0.0-alpha.4
       '@emnapi/runtime': ^1.7.1 || ^2.0.0-alpha.4
 
-  '@oxc-project/types@0.151.0':
-    resolution: {integrity: sha512-J1yXrIlNDZVzE3ada310xeAw7nH8yCAyLPuUIsjKatFPmfn5bS1oW+cM+QsGOtVWd5nhSpbwZWx/rue+r5Z+PA==}
-
   '@oxc-project/types@0.152.0':
     resolution: {integrity: sha512-oM/5rLBm2tPkg0iBgkH/FOeR3PCDpY19GTgAZjMFM8h9WI9VW7cLgzp6nwtarYKmovavIQZ+Fe/RKX/8C8O/Rw==}
 
@@ -2671,22 +2668,10 @@ packages:
     resolution: {integrity: sha512-yi6R0HyHtsoWTRA06Col4WoDs7SvlXU3DLMNP2bdAgs7HK18dTEVl1weXgxRzi8gwLteGUbIg29zulxIB3GSdg==}
     engines: {node: '>= 10'}
 
-  '@rolldown/binding-android-arm-eabi@1.2.11':
-    resolution: {integrity: sha512-A5kXfGKvKWWZE0TtPrfsvT+q4Y5d1QG8gGUzpYjGydM+fARM9MuX90PrXYXe0XbsDVgyxxNzHo6giCj90bsFNw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm]
-    os: [android]
-
   '@rolldown/binding-android-arm-eabi@1.2.12':
     resolution: {integrity: sha512-dB/a1214qKfHMXCpgqR4OZT+jS4kTyEXbQGJPqzobt5EwH5rX080pxE37alt3RzvR1bf1Yz/yGqRfrYAxuPw0A==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
-    os: [android]
-
-  '@rolldown/binding-android-arm64@1.2.11':
-    resolution: {integrity: sha512-z6cTycz+iJ4PVkuL4HHW4DfTfoeU/2nqYYuSOrTmH7yHK5Y0LCOnA03V4ZNxavyVaU1oOqUgIg2klN/s+USGOA==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
     os: [android]
 
   '@rolldown/binding-android-arm64@1.2.12':
@@ -2695,22 +2680,10 @@ packages:
     cpu: [arm64]
     os: [android]
 
-  '@rolldown/binding-darwin-arm64@1.2.11':
-    resolution: {integrity: sha512-jShvqNtP6vDC6/A5JOAzbVV+DkgHqhl/ScVCJEbt+TUY6QYz7YnXcrg3sLtFBniro0f/Ld50ZwCWA6f7KYD1nQ==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [darwin]
-
   '@rolldown/binding-darwin-arm64@1.2.12':
     resolution: {integrity: sha512-3YIhqHD96nA5SaYNRBR16HnGv4oavZvXfD/ayHM+oYZ0WD/8lBAtf6zQua4kEyAvpqrluKXl0lnOBoiNby7x9w==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
-    os: [darwin]
-
-  '@rolldown/binding-darwin-x64@1.2.11':
-    resolution: {integrity: sha512-f2i2xiNWq1Z1l2++q2fuhZRdLAT3aqxD6vRNm1RAxpUoBcdqNB3C0s1Bt+K+PbEx2F5F4gQp6hqKkphCY/xF9w==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
     os: [darwin]
 
   '@rolldown/binding-darwin-x64@1.2.12':
@@ -2719,36 +2692,17 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@rolldown/binding-freebsd-x64@1.2.11':
-    resolution: {integrity: sha512-4Ir5FSOKIAMr4r0kExpt1s3bMgzJU3rA45AYOHtQpls0oNeqcYBKrWMlckrYH4KCfGLfkfn1tN1dmZPMVsdXow==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
-    os: [freebsd]
-
   '@rolldown/binding-freebsd-x64@1.2.12':
     resolution: {integrity: sha512-uMvssit0a4W+/7D8CbHUvG719mH3R2jwXAlh/XcPvuHTE0g++LymF88DCGNX0HM2rBOn0xrzgXktIB6fLSJBTQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [freebsd]
 
-  '@rolldown/binding-linux-arm-gnueabihf@1.2.11':
-    resolution: {integrity: sha512-/gnRDM+39BROzAN/k1OZjDPnDMcZxB/0EUxKjONO5yVkNEvlsoMDrxGNKgZi/ttFriS2gwlDNzB65pvNbFOXIQ==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm]
-    os: [linux]
-
   '@rolldown/binding-linux-arm-gnueabihf@1.2.12':
     resolution: {integrity: sha512-XcFu0R0xWnwzSf4IQgFH1rJIckPN1pLy2R+4r9IDB7Yfu/ys9cVqfa4pBrMHj7a3gl8mIR4nRNPg0e5IvEVs6g==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
     os: [linux]
-
-  '@rolldown/binding-linux-arm64-gnu@1.2.11':
-    resolution: {integrity: sha512-PFaK8HwvAHbaKbBcDNQihjMKYvFnA5hiENx/l5tphTDz1E0WFp32l0A7aq7lyUwGsRw/xSrNIy/gIK4thrSCrw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [linux]
-    libc: [glibc]
 
   '@rolldown/binding-linux-arm64-gnu@1.2.12':
     resolution: {integrity: sha512-260UrKgn8tz39ak+SMDOirKzr7V04M9dWPw5llW00SwBivCZoWcRBKV1d8cXnRkUmSZA3BdiUmBHWk7734Ulpw==}
@@ -2757,13 +2711,6 @@ packages:
     os: [linux]
     libc: [glibc]
 
-  '@rolldown/binding-linux-arm64-musl@1.2.11':
-    resolution: {integrity: sha512-AskzJUIKRLPxkruR1wLKewGbOw+EYfU/9lOrBFj4AFrEA8hPpKFnODWNu2WLaNs0QNkEb9QIJufmVZZIL/bJlg==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [linux]
-    libc: [musl]
-
   '@rolldown/binding-linux-arm64-musl@1.2.12':
     resolution: {integrity: sha512-5YK1I9SqDkbPgc1IA8BgDl34suqUS2q0KWnBrirm0E51YjOs6eo6dV6jbQfNE/argHRSvd0QUGgtpIoYx+WWpw==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2771,24 +2718,10 @@ packages:
     os: [linux]
     libc: [musl]
 
-  '@rolldown/binding-linux-ppc64-gnu@1.2.11':
-    resolution: {integrity: sha512-qlUGAheh2yh8afH7QBgx0PrRHN85hKnNd78x8MeMhXivuevgd8vgf6/CstOzmNKY/lLTHvNTrPy98cLnAugzJw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [ppc64]
-    os: [linux]
-    libc: [glibc]
-
   '@rolldown/binding-linux-ppc64-gnu@1.2.12':
     resolution: {integrity: sha512-Rkcrmp7eFRg74yL5fXEU91JEWbdEPLevWwGtXpmhbjlD1StScbWTmO94Bhly+Mo+ketKYkdmM1vNUKeWSlx8cQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [ppc64]
-    os: [linux]
-    libc: [glibc]
-
-  '@rolldown/binding-linux-s390x-gnu@1.2.11':
-    resolution: {integrity: sha512-secpEad+0vCbSfn8upFySkDskv+bGPk3THSDS9Y89yc4rb4kzqHp8Dmyd9BkQW4SnhNXBZCl/6CrO//hZahNJQ==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [s390x]
     os: [linux]
     libc: [glibc]
 
@@ -2799,26 +2732,12 @@ packages:
     os: [linux]
     libc: [glibc]
 
-  '@rolldown/binding-linux-x64-gnu@1.2.11':
-    resolution: {integrity: sha512-mOVBT3dPpkWm8XBWPmU4bf+U6dYDLeMo/9ojUmis4N0L5uu10qra5vOyngZ7/PSdoE4G9KvRt4bloRxNjLas7A==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
-    os: [linux]
-    libc: [glibc]
-
   '@rolldown/binding-linux-x64-gnu@1.2.12':
     resolution: {integrity: sha512-Q9uLBO53Xd4QIq1WOycVQyPP1O4HhraEV2qqb3uTrnVw6QZih9duY4vNXOivL1xoUS1/z+W8eF4NMfl2a8Sdjw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [linux]
     libc: [glibc]
-
-  '@rolldown/binding-linux-x64-musl@1.2.11':
-    resolution: {integrity: sha512-Is78i9A8Ui4SqcxUwFJ9uMmjDn58IbVTjFWYdQestFEgeuEmHMLGNriXnVJKkwG2YiZjw8cP0zCTyDMdDGtOOg==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
-    os: [linux]
-    libc: [musl]
 
   '@rolldown/binding-linux-x64-musl@1.2.12':
     resolution: {integrity: sha512-3IBxWFMjbOZskDPKv8Lf9BCnahlKuHthWkYnyIxOH/QcJrFcS4EmcenthApkwr/5+nEqZlLzeYbxeMaX7A5u4g==}
@@ -2827,34 +2746,16 @@ packages:
     os: [linux]
     libc: [musl]
 
-  '@rolldown/binding-openharmony-arm64@1.2.11':
-    resolution: {integrity: sha512-dUCXneZ87INUMyQ0D+C0HrEBNUPNXHaPmU5GTjyKTJEiussw9Kaj5Ln8UztPe4epV/ffvgNBEadksdYhmW6xJA==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [openharmony]
-
   '@rolldown/binding-openharmony-arm64@1.2.12':
     resolution: {integrity: sha512-xtX61xg4LKPkPWilZU1ynKClz5Gj4bf74LML4r3eVLWumKnGjoEr1OSHQhMdbBDoYTi+yjrujvpZe2pUnqCrrA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [openharmony]
 
-  '@rolldown/binding-win32-arm64-msvc@1.2.11':
-    resolution: {integrity: sha512-jByxb6qfd+bH1xUd0qnfFnb17i9sWBPY2tOavJ0l3tdr3OTu+Kvtm8cd/JV5nFt657b1VqGltxg9olOEfofXWw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [win32]
-
   '@rolldown/binding-win32-arm64-msvc@1.2.12':
     resolution: {integrity: sha512-At7fPB6PCaIjzgIhEZFxuT+BBFqiQibJDT4d3PhiR3f4E7bbMZF4aKblbFfEM3sETRDd1YiQx/+U/g/B/ou5Ew==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
-    os: [win32]
-
-  '@rolldown/binding-win32-x64-msvc@1.2.11':
-    resolution: {integrity: sha512-/PzKqzAJ03i19oy2ItPvyvaVjOjBCNnfaJs8yvUdGBKmiESgnrJSQ2awd81QzFbbnAmu7YO9ZnJrDCb9VSJPRA==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
     os: [win32]
 
   '@rolldown/binding-win32-x64-msvc@1.2.12':
@@ -5688,11 +5589,6 @@ packages:
   mz@2.7.0:
     resolution: {integrity: sha512-z81GNO7nnYMEhrGh9LeymoE4+Yr0Wn5McHIZMK5cfQCl+NDX08sCZgUc9/6MHni9IWuFLm1Z3HTCXu2z9fN62Q==}
 
-  nanoid@3.3.19:
-    resolution: {integrity: sha512-Y2tUNy4ouw6tq5oDSKeQYGOyhkUBhNOcGV/02KC+6kd9eDGqdZd++mjMiIDilrBYvjEnCYvVtsuHCuP+okSfug==}
-    engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
-    hasBin: true
-
   nanoid@3.3.20:
     resolution: {integrity: sha512-uKdg2G3GNCKQn9byYOpxbGqrT2fGO5KRt5J/8b3pok8rT6qxGWF6hxMyJiEYtAf+FVyYuD9hRaDqX5uPFYJ4ZQ==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
@@ -5949,10 +5845,6 @@ packages:
   postcss-value-parser@4.2.0:
     resolution: {integrity: sha512-1NNCs6uurfkVbeXG4S8JFT9t19m45ICnif8zWLd5oPSZ50QnwMfK+H3jv408d4jw/7Bttv5axS5IiHoLaVNHeQ==}
 
-  postcss@8.5.28:
-    resolution: {integrity: sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==}
-    engines: {node: ^10 || ^12 || >=14}
-
   postcss@8.5.29:
     resolution: {integrity: sha512-49cGhUbXj8Qenv0iTMxA1cFBzxXoctpC9Ujd77t1WcbJIr6nF/eI7g/8MgxrYldFRuAXvja7xQRwavoW7kgrxQ==}
     engines: {node: ^10 || ^12 || >=14}
@@ -6051,10 +5943,10 @@ packages:
     resolution: {integrity: sha512-y3bGgqKj3QBdxLbLkomlohkvsA8gdAiUQlSBJnBhfn+BPxg4bc62d8TcBW15wavDfgexCgccckhcZvywyQYPOw==}
     hasBin: true
 
-  react-dom@19.3.0:
-    resolution: {integrity: sha512-JDk8dgif51OjFoDE70+OT9ICyYr+69HlmihNwp1+Nsfbna3t5sIiCa9ZJktDmQ4/1b/rn26hIAR2uYXDMr5r0Q==}
+  react-dom@19.3.1:
+    resolution: {integrity: sha512-Y0bARz53lhEC1NMCASs0/j+faB/zqt3R8hpvg1e8+61ZVJ4UL0UdC4cBbXfZMcIuhrfgeILTLe+ZeBCavQPtKQ==}
     peerDependencies:
-      react: ^19.3.0
+      react: ^19.3.1
 
   react-error-boundary@6.1.6:
     resolution: {integrity: sha512-CDXPnXDGyFIbkwaaJ6u+xgsRmJhSi6YdgUDW1vnyKHfXp1a9pfAlM+ZET2CDu80/A+8iRcmXN0NSY9BCCoWP5A==}
@@ -6068,12 +5960,12 @@ packages:
   react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
 
-  react-server-dom-webpack@19.3.0:
-    resolution: {integrity: sha512-ymt9RkvWtW4OpIhWf1wj4u5CxnBaVbDCkz/bw3/QFmOE7+/wg8C30uiJ/QqkEdWn/UqT5c7/rOUW/eWYMwceCg==}
+  react-server-dom-webpack@19.3.1:
+    resolution: {integrity: sha512-I1Smf6Yc+389rFWPwyYjvCQVK1XFWpb2M9gvgYgfpbZ+LPqkZtb0tT9Fwdk0K+wknK2E+ns82lC0DCYLnXCVGA==}
     engines: {node: '>=0.10.0'}
     peerDependencies:
-      react: ^19.3.0
-      react-dom: ^19.3.0
+      react: ^19.3.1
+      react-dom: ^19.3.1
       webpack: ^5.59.0
 
   react-textarea-autosize@8.5.9:
@@ -6093,8 +5985,8 @@ packages:
     peerDependencies:
       react: '>=16.8.0 || ^17.0.0 || ^18'
 
-  react@19.3.0:
-    resolution: {integrity: sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog==}
+  react@19.3.1:
+    resolution: {integrity: sha512-QNhWdt7nrgVWWQG58QuGsAR3jv3Hbe4mb4vz7w2csnHavciZJgda1CPNaldF6eVxv90ud3jUXpKlHL69gO38yw==}
     engines: {node: '>=0.10.0'}
 
   readdirp@4.1.2:
@@ -6194,11 +6086,6 @@ packages:
   responselike@4.0.2:
     resolution: {integrity: sha512-cGk8IbWEAnaCpdAt1BHzJ3Ahz5ewDJa0KseTsE3qIRMJ3C698W8psM7byCeWVpd/Ha7FUYzuRVzXoKoM6nRUbA==}
     engines: {node: '>=20'}
-
-  rolldown@1.2.11:
-    resolution: {integrity: sha512-qpSwIyz0jHQq5qXBTNxFmE6664rJ7O+4TvPFOiOaBSrz8IOHc1koKKSqTM2H6u1UG1+TveuC6vaDHKXFOvb1Kw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    hasBin: true
 
   rolldown@1.2.12:
     resolution: {integrity: sha512-8wafseiaG80xmXSfqidUNqZcylTlhmPZZt+za2m+js2sFZ8dTNlhIOV2WcbIPx2hgwPBJpEUGFAMZ9bgBBLTSQ==}
@@ -6354,10 +6241,6 @@ packages:
 
   sort-keys@1.1.2:
     resolution: {integrity: sha512-vzn8aSqKgytVik0iwdBEi+zevbTYZogewTUM6dtpmGwEcdzbub/TX4bCzRhebDCRC3QzXgJsLRKB2V/Oof7HXg==}
-    engines: {node: '>=0.10.0'}
-
-  source-map-js@1.2.1:
-    resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
     engines: {node: '>=0.10.0'}
 
   source-map-js@1.2.2:
@@ -6975,10 +6858,6 @@ packages:
   web-worker@1.5.0:
     resolution: {integrity: sha512-RiMReJrTAiA+mBjGONMnjVDP2u3p9R1vkcGz6gDIrOMT3oGuYwX2WRMYI9ipkphSuE5XKEhydbhNEJh4NY9mlw==}
 
-  webpack-sources@3.5.1:
-    resolution: {integrity: sha512-jyuiGJdtvY434z5bUZrjz67v76/ePNvFZTp9Mdz29IlH4+GPsgyGjiv0fKI+M7BdkU6ADjulUcKAd3tUK3WlEw==}
-    engines: {node: '>=10.13.0'}
-
   webpack-sources@3.6.0:
     resolution: {integrity: sha512-EIMmPVvNI0CYXyRPp34F2Qk7W37/BZVZIofS6LAUnrNjCVahS+hO4mxwFJDjQjODTGZDtVzLYoN2+1dYkhk9qA==}
     engines: {node: '>=10.13.0'}
@@ -7165,13 +7044,13 @@ snapshots:
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/rsc@3.0.127(react@19.3.0)(zod@4.6.5)':
+  '@ai-sdk/rsc@3.0.127(react@19.3.1)(zod@4.6.5)':
     dependencies:
       '@ai-sdk/provider': 4.0.21
       '@ai-sdk/provider-utils': 5.0.53(zod@4.6.5)
       ai: 7.0.127(zod@4.6.5)
       jsondiffpatch: 0.7.6
-      react: 19.3.0
+      react: 19.3.1
     optionalDependencies:
       zod: 4.6.5
 
@@ -7862,11 +7741,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@mdx-js/react@3.1.1(@types/react@19.3.0)(react@19.3.0)':
+  '@mdx-js/react@3.1.1(@types/react@19.3.0)(react@19.3.1)':
     dependencies:
       '@types/mdx': 2.0.14
       '@types/react': 19.3.0
-      react: 19.3.0
+      react: 19.3.1
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
@@ -7950,8 +7829,6 @@ snapshots:
       '@tybys/wasm-util': 0.10.4
     optional: true
 
-  '@oxc-project/types@0.151.0': {}
-
   '@oxc-project/types@0.152.0': {}
 
   '@playwright/test@1.59.1':
@@ -7972,91 +7849,46 @@ snapshots:
 
   '@resvg/resvg-wasm@2.4.1': {}
 
-  '@rolldown/binding-android-arm-eabi@1.2.11':
-    optional: true
-
   '@rolldown/binding-android-arm-eabi@1.2.12':
-    optional: true
-
-  '@rolldown/binding-android-arm64@1.2.11':
     optional: true
 
   '@rolldown/binding-android-arm64@1.2.12':
     optional: true
 
-  '@rolldown/binding-darwin-arm64@1.2.11':
-    optional: true
-
   '@rolldown/binding-darwin-arm64@1.2.12':
-    optional: true
-
-  '@rolldown/binding-darwin-x64@1.2.11':
     optional: true
 
   '@rolldown/binding-darwin-x64@1.2.12':
     optional: true
 
-  '@rolldown/binding-freebsd-x64@1.2.11':
-    optional: true
-
   '@rolldown/binding-freebsd-x64@1.2.12':
-    optional: true
-
-  '@rolldown/binding-linux-arm-gnueabihf@1.2.11':
     optional: true
 
   '@rolldown/binding-linux-arm-gnueabihf@1.2.12':
     optional: true
 
-  '@rolldown/binding-linux-arm64-gnu@1.2.11':
-    optional: true
-
   '@rolldown/binding-linux-arm64-gnu@1.2.12':
-    optional: true
-
-  '@rolldown/binding-linux-arm64-musl@1.2.11':
     optional: true
 
   '@rolldown/binding-linux-arm64-musl@1.2.12':
     optional: true
 
-  '@rolldown/binding-linux-ppc64-gnu@1.2.11':
-    optional: true
-
   '@rolldown/binding-linux-ppc64-gnu@1.2.12':
-    optional: true
-
-  '@rolldown/binding-linux-s390x-gnu@1.2.11':
     optional: true
 
   '@rolldown/binding-linux-s390x-gnu@1.2.12':
     optional: true
 
-  '@rolldown/binding-linux-x64-gnu@1.2.11':
-    optional: true
-
   '@rolldown/binding-linux-x64-gnu@1.2.12':
-    optional: true
-
-  '@rolldown/binding-linux-x64-musl@1.2.11':
     optional: true
 
   '@rolldown/binding-linux-x64-musl@1.2.12':
     optional: true
 
-  '@rolldown/binding-openharmony-arm64@1.2.11':
-    optional: true
-
   '@rolldown/binding-openharmony-arm64@1.2.12':
     optional: true
 
-  '@rolldown/binding-win32-arm64-msvc@1.2.11':
-    optional: true
-
   '@rolldown/binding-win32-arm64-msvc@1.2.12':
-    optional: true
-
-  '@rolldown/binding-win32-x64-msvc@1.2.11':
     optional: true
 
   '@rolldown/binding-win32-x64-msvc@1.2.12':
@@ -8392,32 +8224,32 @@ snapshots:
 
   '@tanstack/history@1.162.4': {}
 
-  '@tanstack/react-router-devtools@1.167.2(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(@tanstack/router-core@1.171.34)(csstype@3.2.3)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
+  '@tanstack/react-router-devtools@1.167.2(@tanstack/react-router@1.170.41(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@tanstack/router-core@1.171.34)(csstype@3.2.3)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
-      '@tanstack/react-router': 1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@tanstack/react-router': 1.170.41(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/router-devtools-core': 1.168.2(@tanstack/router-core@1.171.34)(csstype@3.2.3)
-      react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
     optionalDependencies:
       '@tanstack/router-core': 1.171.34
     transitivePeerDependencies:
       - csstype
 
-  '@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
+  '@tanstack/react-router@1.170.41(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
       '@tanstack/history': 1.162.4
-      '@tanstack/react-store': 0.11.2(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@tanstack/react-store': 0.11.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/router-core': 1.171.34
       isbot: 5.2.2
-      react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
 
-  '@tanstack/react-store@0.11.2(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
+  '@tanstack/react-store@0.11.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
       '@tanstack/store': 0.11.2
-      react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
-      use-sync-external-store: 1.7.0(react@19.3.0)
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
+      use-sync-external-store: 1.7.0(react@19.3.1)
 
   '@tanstack/router-core@1.171.34':
     dependencies:
@@ -8818,21 +8650,21 @@ snapshots:
       '@rolldown/plugin-babel': 0.2.4(@babel/core@7.29.7)(@babel/runtime@7.29.7)(rolldown@1.2.12)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
       babel-plugin-react-compiler: 1.0.0
 
-  '@vitejs/plugin-rsc@0.5.33(react-dom@19.3.0(react@19.3.0))(react-server-dom-webpack@19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9(@swc/core@1.15.3(@swc/helpers@0.5.23))(esbuild@0.28.2)))(react@19.3.0)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))':
+  '@vitejs/plugin-rsc@0.5.33(react-dom@19.3.1(react@19.3.1))(react-server-dom-webpack@19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9(@swc/core@1.15.3(@swc/helpers@0.5.23))(esbuild@0.28.2)))(react@19.3.1)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
       es-module-lexer: 2.3.1
       estree-walker: 3.0.3
       magic-string: 0.30.21
-      react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
       srvx: 0.12.5
       strip-literal: 3.1.0
       turbo-stream: 3.2.0
       vite: 8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)
       vitefu: 1.1.3(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
     optionalDependencies:
-      react-server-dom-webpack: 19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9(@swc/core@1.15.3(@swc/helpers@0.5.23))(esbuild@0.28.2))
+      react-server-dom-webpack: 19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9(@swc/core@1.15.3(@swc/helpers@0.5.23))(esbuild@0.28.2))
 
   '@vitest/mocker@5.0.3(vite@8.3.2(@types/node@26.6.4)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))':
     dependencies:
@@ -10177,14 +10009,14 @@ snapshots:
 
   form-data-encoder@4.1.0: {}
 
-  framer-motion@14.0.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
+  framer-motion@14.0.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       motion-dom: 14.0.0
       motion-utils: 14.0.0
       tslib: 2.8.1
     optionalDependencies:
-      react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
 
   fs-extra@11.4.1:
     dependencies:
@@ -10629,10 +10461,10 @@ snapshots:
 
   jiti@2.7.0: {}
 
-  jotai@3.0.1(@types/react@19.3.0)(react@19.3.0):
+  jotai@3.0.1(@types/react@19.3.0)(react@19.3.1):
     optionalDependencies:
       '@types/react': 19.3.0
-      react: 19.3.0
+      react: 19.3.1
 
   joycon@3.1.1: {}
 
@@ -11370,8 +11202,6 @@ snapshots:
       object-assign: 4.1.1
       thenify-all: 1.6.0
 
-  nanoid@3.3.19: {}
-
   nanoid@3.3.20: {}
 
   napi-postinstall@0.3.4: {}
@@ -11382,12 +11212,12 @@ snapshots:
 
   neo-async@2.6.2: {}
 
-  next-mdx-remote@6.0.0(@types/react@19.3.0)(react@19.3.0):
+  next-mdx-remote@6.0.0(@types/react@19.3.0)(react@19.3.1):
     dependencies:
       '@babel/code-frame': 7.29.7
       '@mdx-js/mdx': 3.1.1
-      '@mdx-js/react': 3.1.1(@types/react@19.3.0)(react@19.3.0)
-      react: 19.3.0
+      '@mdx-js/react': 3.1.1(@types/react@19.3.0)(react@19.3.1)
+      react: 19.3.1
       unist-util-remove: 4.0.0
       unist-util-visit: 5.1.0
       vfile: 6.0.3
@@ -11420,12 +11250,12 @@ snapshots:
       path-key: 4.0.0
       unicorn-magic: 0.3.0
 
-  nuqs@2.10.1(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0):
+  nuqs@2.10.1(@tanstack/react-router@1.170.41(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1):
     dependencies:
       '@standard-schema/spec': 1.1.0
-      react: 19.3.0
+      react: 19.3.1
     optionalDependencies:
-      '@tanstack/react-router': 1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@tanstack/react-router': 1.170.41(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
 
   object-assign@4.1.1: {}
 
@@ -11600,12 +11430,6 @@ snapshots:
 
   postcss-value-parser@4.2.0: {}
 
-  postcss@8.5.28:
-    dependencies:
-      nanoid: 3.3.19
-      picocolors: 1.1.1
-      source-map-js: 1.2.1
-
   postcss@8.5.29:
     dependencies:
       nanoid: 3.3.20
@@ -11647,68 +11471,68 @@ snapshots:
       minimist: 1.2.8
       strip-json-comments: 2.0.1
 
-  react-dom@19.3.0(react@19.3.0):
+  react-dom@19.3.1(react@19.3.1):
     dependencies:
-      react: 19.3.0
+      react: 19.3.1
       scheduler: 0.28.0
 
-  react-error-boundary@6.1.6(@types/react@19.3.0)(react@19.3.0):
+  react-error-boundary@6.1.6(@types/react@19.3.0)(react@19.3.1):
     dependencies:
-      react: 19.3.0
+      react: 19.3.1
     optionalDependencies:
       '@types/react': 19.3.0
 
   react-is@16.13.1: {}
 
-  react-server-dom-webpack@19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9(@swc/core@1.15.3(@swc/helpers@0.5.23))(esbuild@0.28.2)):
+  react-server-dom-webpack@19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9(@swc/core@1.15.3(@swc/helpers@0.5.23))(esbuild@0.28.2)):
     dependencies:
       acorn-loose: 8.5.2
       neo-async: 2.6.2
-      react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
       webpack: 5.99.9(@swc/core@1.15.3(@swc/helpers@0.5.23))(esbuild@0.28.2)
-      webpack-sources: 3.5.1
+      webpack-sources: 3.6.0
 
-  react-server-dom-webpack@19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9(esbuild@0.28.2)):
+  react-server-dom-webpack@19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9(esbuild@0.28.2)):
     dependencies:
       acorn-loose: 8.5.2
       neo-async: 2.6.2
-      react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
       webpack: 5.99.9(esbuild@0.28.2)
-      webpack-sources: 3.5.1
+      webpack-sources: 3.6.0
 
-  react-server-dom-webpack@19.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(webpack@5.99.9):
+  react-server-dom-webpack@19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.99.9):
     dependencies:
       acorn-loose: 8.5.2
       neo-async: 2.6.2
-      react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
       webpack: 5.99.9
-      webpack-sources: 3.5.1
+      webpack-sources: 3.6.0
 
-  react-textarea-autosize@8.5.9(@types/react@19.3.0)(react@19.3.0):
+  react-textarea-autosize@8.5.9(@types/react@19.3.0)(react@19.3.1):
     dependencies:
       '@babel/runtime': 7.29.7
-      react: 19.3.0
-      use-composed-ref: 1.4.0(@types/react@19.3.0)(react@19.3.0)
-      use-latest: 1.3.0(@types/react@19.3.0)(react@19.3.0)
+      react: 19.3.1
+      use-composed-ref: 1.4.0(@types/react@19.3.0)(react@19.3.1)
+      use-latest: 1.3.0(@types/react@19.3.0)(react@19.3.1)
     transitivePeerDependencies:
       - '@types/react'
 
-  react-tweet@3.3.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
+  react-tweet@3.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       '@swc/helpers': 0.5.23
       clsx: 2.1.1
-      react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
-      swr: 2.5.1(react@19.3.0)
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
+      swr: 2.5.1(react@19.3.1)
 
-  react-wrap-balancer@1.1.1(react@19.3.0):
+  react-wrap-balancer@1.1.1(react@19.3.1):
     dependencies:
-      react: 19.3.0
+      react: 19.3.1
 
-  react@19.3.0: {}
+  react@19.3.1: {}
 
   readdirp@4.1.2: {}
 
@@ -11859,27 +11683,6 @@ snapshots:
   responselike@4.0.2:
     dependencies:
       lowercase-keys: 3.0.0
-
-  rolldown@1.2.11:
-    dependencies:
-      '@oxc-project/types': 0.151.0
-      '@rolldown/pluginutils': 1.0.1
-    optionalDependencies:
-      '@rolldown/binding-android-arm-eabi': 1.2.11
-      '@rolldown/binding-android-arm64': 1.2.11
-      '@rolldown/binding-darwin-arm64': 1.2.11
-      '@rolldown/binding-darwin-x64': 1.2.11
-      '@rolldown/binding-freebsd-x64': 1.2.11
-      '@rolldown/binding-linux-arm-gnueabihf': 1.2.11
-      '@rolldown/binding-linux-arm64-gnu': 1.2.11
-      '@rolldown/binding-linux-arm64-musl': 1.2.11
-      '@rolldown/binding-linux-ppc64-gnu': 1.2.11
-      '@rolldown/binding-linux-s390x-gnu': 1.2.11
-      '@rolldown/binding-linux-x64-gnu': 1.2.11
-      '@rolldown/binding-linux-x64-musl': 1.2.11
-      '@rolldown/binding-openharmony-arm64': 1.2.11
-      '@rolldown/binding-win32-arm64-msvc': 1.2.11
-      '@rolldown/binding-win32-x64-msvc': 1.2.11
 
   rolldown@1.2.12:
     dependencies:
@@ -12146,8 +11949,6 @@ snapshots:
     dependencies:
       is-plain-obj: 1.1.0
 
-  source-map-js@1.2.1: {}
-
   source-map-js@1.2.2: {}
 
   source-map-support@0.5.21:
@@ -12288,15 +12089,15 @@ snapshots:
     dependencies:
       inline-style-parser: 0.2.7
 
-  styled-components@6.5.3(css-to-react-native@3.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
+  styled-components@6.5.3(css-to-react-native@3.2.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       '@emotion/is-prop-valid': 1.4.0
       csstype: 3.2.3
-      react: 19.3.0
+      react: 19.3.1
       stylis: 4.3.6
     optionalDependencies:
       css-to-react-native: 3.2.0
-      react-dom: 19.3.0(react@19.3.0)
+      react-dom: 19.3.1(react@19.3.1)
 
   styleq@0.2.1: {}
 
@@ -12330,11 +12131,11 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
-  swr@2.5.1(react@19.3.0):
+  swr@2.5.1(react@19.3.1):
     dependencies:
       dequal: 2.0.3
-      react: 19.3.0
-      use-sync-external-store: 1.7.0(react@19.3.0)
+      react: 19.3.1
+      use-sync-external-store: 1.7.0(react@19.3.1)
 
   system-architecture@1.0.0: {}
 
@@ -12672,28 +12473,28 @@ snapshots:
     dependencies:
       punycode: 2.3.1
 
-  use-composed-ref@1.4.0(@types/react@19.3.0)(react@19.3.0):
+  use-composed-ref@1.4.0(@types/react@19.3.0)(react@19.3.1):
     dependencies:
-      react: 19.3.0
+      react: 19.3.1
     optionalDependencies:
       '@types/react': 19.3.0
 
-  use-isomorphic-layout-effect@1.2.1(@types/react@19.3.0)(react@19.3.0):
+  use-isomorphic-layout-effect@1.2.1(@types/react@19.3.0)(react@19.3.1):
     dependencies:
-      react: 19.3.0
+      react: 19.3.1
     optionalDependencies:
       '@types/react': 19.3.0
 
-  use-latest@1.3.0(@types/react@19.3.0)(react@19.3.0):
+  use-latest@1.3.0(@types/react@19.3.0)(react@19.3.1):
     dependencies:
-      react: 19.3.0
-      use-isomorphic-layout-effect: 1.2.1(@types/react@19.3.0)(react@19.3.0)
+      react: 19.3.1
+      use-isomorphic-layout-effect: 1.2.1(@types/react@19.3.0)(react@19.3.1)
     optionalDependencies:
       '@types/react': 19.3.0
 
-  use-sync-external-store@1.7.0(react@19.3.0):
+  use-sync-external-store@1.7.0(react@19.3.1):
     dependencies:
-      react: 19.3.0
+      react: 19.3.1
 
   vary@1.1.2: {}
 
@@ -12811,10 +12612,10 @@ snapshots:
     transitivePeerDependencies:
       - msw
 
-  waku-jotai@0.7.0(jotai@3.0.1(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)(waku@packages+waku):
+  waku-jotai@0.7.0(jotai@3.0.1(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)(waku@packages+waku):
     dependencies:
-      jotai: 3.0.1(@types/react@19.3.0)(react@19.3.0)
-      react: 19.3.0
+      jotai: 3.0.1(@types/react@19.3.0)(react@19.3.1)
+      react: 19.3.1
       waku: link:packages/waku
 
   watchpack@2.5.2:
@@ -12822,8 +12623,6 @@ snapshots:
       graceful-fs: 4.2.11
 
   web-worker@1.5.0: {}
-
-  webpack-sources@3.5.1: {}
 
   webpack-sources@3.6.0: {}
 
