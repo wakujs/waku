@@ -3824,6 +3824,115 @@ test('instant settlement preserves removal of a newly added slot before metadata
   }
 });
 
+test.each([false, true])(
+  'an urgent merge keeps instant response dependencies (client suspended: %s)',
+  async (suspended) => {
+    const { flushSync } = await import('react-dom');
+    const response = defer<Elements>();
+    const ready = defer<void>();
+    const caught = vi.fn();
+    class RecordingBoundary extends ErrorBoundary {
+      componentDidCatch(error: Error) {
+        caught(error);
+      }
+    }
+    const Deferred = () => {
+      const elements = use(useElementsPromise());
+      if (suspended && Object.hasOwn(elements, 'details')) {
+        use(ready.promise);
+      }
+      return null;
+    };
+    const shell = (
+      <>
+        <p>cached shell</p>
+        <Suspense fallback="waiting for page">
+          <Slot id="page:two" />
+        </Suspense>
+      </>
+    );
+    mocks.queue.push({
+      ...payload('/one', <p>page one</p>),
+      root: (
+        <>
+          <Probe id="a" />
+          <Deferred />
+          <RecordingBoundary>
+            <Children />
+          </RecordingBoundary>
+        </>
+      ),
+      [getRouteSlotId('/two')]: shell,
+      'page:two': <p>cached page</p>,
+      _etags: { root: 1, [getRouteSlotId('/two')]: 1 },
+    });
+    const view = await mount(
+      <Router initialRoute={{ path: '/one', query: '', hash: '' }} />,
+    );
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    mocks.queue.push(response.promise);
+    let navigation: Promise<void> | undefined;
+    try {
+      await act(async () => {
+        navigation = controls
+          .get('a')!
+          .router.push('/two', { unstable_instant: true });
+        await flush();
+      });
+      expect(view.textContent).toContain('cached shellwaiting for page');
+      await act(async () => {
+        response.resolve({
+          [ROUTE_ID]: ['/two', ''],
+          [IS_STATIC_ID]: false,
+          'page:two': (
+            <p>
+              fresh page <Slot id="details" />
+            </p>
+          ),
+          details: 'new dependency',
+          _etags: { details: 'details-v1' },
+        });
+        await navigation;
+        if (!suspended) {
+          flushSync(() => {
+            void controls.get('a')!.merge({ sidebar: 'urgent update' });
+          });
+        }
+        await flush();
+      });
+      if (suspended) {
+        expect(view.textContent).not.toContain('fresh page');
+        await act(async () => {
+          flushSync(() => {
+            void controls.get('a')!.merge({ sidebar: 'urgent update' });
+          });
+          await flush();
+        });
+      }
+      expect(caught).not.toHaveBeenCalled();
+      await act(async () => {
+        ready.resolve();
+        await flush();
+      });
+      expect(view.querySelector('[data-sidebar]')?.textContent).toBe(
+        'urgent update',
+      );
+      expect(view.textContent).toContain(
+        'cached shellfresh page new dependency',
+      );
+      expect(caught).not.toHaveBeenCalled();
+      expect(window.location.pathname).toBe('/two');
+    } finally {
+      await act(async () => {
+        ready.resolve();
+        response.resolve({});
+        await navigation;
+        await flush();
+      });
+    }
+  },
+);
+
 test('instant settlement renders a constructor dependency before metadata acceptance', async () => {
   const response = defer<Elements>();
   const acceptanceGate = defer<void>();
