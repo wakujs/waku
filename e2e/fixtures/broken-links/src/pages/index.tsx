@@ -16,6 +16,12 @@ export default function Index() {
         <Link to={'/redirect' as never}>Correct redirect</Link>
       </p>
       <p>
+        <Link to={'/redirect-query' as never}>Redirect with query</Link>
+      </p>
+      <p>
+        <Link to="/exists?x=1">Plain query link</Link>
+      </p>
+      <p>
         <Link to={'/broken-redirect' as never}>Broken redirect</Link>
       </p>
       <p>

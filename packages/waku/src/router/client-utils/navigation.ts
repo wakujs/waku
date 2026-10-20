@@ -46,6 +46,7 @@ import {
   makeRouterState,
   resolveServerRedirect,
   getSettledRoute as resolveSettledRoute,
+  useServerRedirect,
 } from './router-state.js';
 import type { RouterState } from './router-state.js';
 import { scrollToHash, shouldScrollForRouteChange } from './scroll.js';
@@ -97,6 +98,7 @@ export const useNavigation = (
   fallbackRoute: RouteProps,
   routeInterceptor: ((route: RouteProps) => RouteProps | false) | undefined,
 ): Navigation => {
+  useServerRedirect();
   const cache = useRouterCache();
   const routeFallback = useInitialRoute(fallbackRoute);
   const has404 = has404FromElements(elements);
@@ -148,14 +150,15 @@ export const useNavigation = (
     if (!routerState || !destinationHref) {
       return;
     }
-    const applied = appliedRef.current?.state === routerState;
+    const navigation = routerState.navigation ?? routerState;
+    const applied = appliedRef.current?.state === navigation;
     if (!applied || appliedRef.current?.href !== destinationHref) {
       commitHistory(
         new URL(destinationHref),
         applied ? 'replace' : routerState.history,
       );
     }
-    appliedRef.current = { state: routerState, href: destinationHref };
+    appliedRef.current = { state: navigation, href: destinationHref };
     if (applied || !routerState.scroll) {
       return;
     }
@@ -419,12 +422,16 @@ export const useNavigation = (
           makeStateForAttempt(outcome, historyIntent),
           outcome.route.path,
         );
-        const state = adopted
-          ? initialState
-          : makeStateForAttempt(
-              { ...destination, follows: outcome.follows },
-              historyIntent,
-            );
+        const state =
+          adopted && isSameRoute(destination.route, initialAttempt.route)
+            ? initialState
+            : {
+                ...makeStateForAttempt(
+                  { ...destination, follows: outcome.follows },
+                  historyIntent,
+                ),
+                ...(adopted ? { navigation: initialState } : {}),
+              };
         request.target = destination.route;
         request.queuedState = state;
         const patch = combineElements(responsePatch, {

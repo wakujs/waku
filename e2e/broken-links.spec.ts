@@ -78,6 +78,28 @@ test.describe('broken-links: normal server', () => {
   });
 
   test.describe('client side navigation', () => {
+    test('HTTP redirects preserve the static destination query on repeat visits', async ({
+      page,
+    }) => {
+      await page.goto(`http://localhost:${port}/`);
+      await waitForHydration(page);
+      for (let visit = 0; visit < 2; visit++) {
+        await page
+          .getByRole('link', { name: 'Redirect with query', exact: true })
+          .click();
+        await expect(page.getByTestId('route-query')).toHaveText(
+          '/exists?callbackUrl=%2Fguarded',
+        );
+        await expect(page).toHaveURL(
+          `http://localhost:${port}/exists?callbackUrl=%2Fguarded`,
+        );
+        await page.getByRole('link', { name: 'Back', exact: true }).click();
+      }
+      await page.getByRole('link', { name: 'Plain query link' }).click();
+      await expect(page.getByTestId('route-query')).toHaveText('/exists?x=1');
+      await expect(page).toHaveURL(`http://localhost:${port}/exists?x=1`);
+    });
+
     test('a thrown redirect on client navigation resolves the push', async ({
       page,
     }) => {

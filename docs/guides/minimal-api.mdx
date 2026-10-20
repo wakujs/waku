@@ -47,6 +47,7 @@ The Minimal API consists of server handler contracts and client rendering primit
 | `waku/minimal/client` | `useRegisterRscReloadListener_UNSTABLE`                                                      | Choosing the RSC input to refresh during development reloads.         |
 | `waku/minimal/client` | `unstable_combineElements`                                                                   | Combining element maps without losing their etags.                    |
 | `waku/minimal/client` | `unstable_getErrorInfo`                                                                      | Reading status, redirect and network-error information.               |
+| `waku/minimal/client` | `unstable_formatRscUrl`                                                                      | Constructing an RSC payload URL.                                      |
 
 Examples below often import these as shorter names.
 
@@ -68,6 +69,8 @@ Advanced composition APIs remain available to any Minimal-based framework:
 - `unstable_parseRequest(request)` inspects HTTP, RSC, and server-call URLs
   without consuming their bodies. `unstable_formatRscUrl(rscPath, baseUrl)`
   constructs a payload URL using the configured base path and RSC endpoint.
+  The formatter is available from both `waku/minimal/server` and
+  `waku/minimal/client`; it preserves the base URL's query and hash.
   These support middleware in Minimal-based frameworks; request inspection
   does not validate actions or authorize access.
 

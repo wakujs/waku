@@ -1,9 +1,5 @@
-import { addBase, removeBase } from '../utils-isomorphic/path.js';
-import {
-  decodeFuncId,
-  decodeRscPath,
-  encodeRscPath,
-} from '../utils-isomorphic/rsc-path.js';
+import { removeBase } from '../utils-isomorphic/path.js';
+import { decodeFuncId, decodeRscPath } from '../utils-isomorphic/rsc-path.js';
 
 const getBasePath = () => import.meta.env?.WAKU_CONFIG_BASE_PATH ?? '/';
 const getRscBase = () => import.meta.env?.WAKU_CONFIG_RSC_BASE ?? 'RSC';
@@ -62,18 +58,4 @@ export const parseRequest = (req: Request): RequestInfo | null => {
     rscPath: parsed.rscPath,
     rscParams: req.body === null ? url.searchParams : undefined,
   };
-};
-
-/**
- * Builds an RSC payload URL for `rscPath` against `baseUrl`, using Waku's
- * configured base path and RSC endpoint. Preserves the base URL's query
- * and fragment; callers can set URL search params before issuing a request.
- */
-export const formatRscUrl = (rscPath: string, baseUrl: string | URL): URL => {
-  const url = new URL(baseUrl);
-  url.pathname = addBase(
-    '/' + getRscBase() + '/' + encodeRscPath(rscPath),
-    getBasePath(),
-  );
-  return url;
 };

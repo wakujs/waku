@@ -275,6 +275,40 @@ test.describe('instant-nav', () => {
     ).toEqual(['push /gate', 'replace /post/2']);
   });
 
+  test('an HTTP redirect during instant navigation retains its query after a server action', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/post/1`);
+    await waitForHydration(page);
+    await expect(page.getByTestId('post-body')).toHaveText('Post 1');
+    await page.getByTestId('link-post-2').click();
+    await expect(page.getByTestId('post-body')).toHaveText('Post 2');
+
+    const historyLength = await page.evaluate(() => window.history.length);
+    await page.getByTestId('link-login').click();
+    await expect(page.getByTestId('route-query')).toHaveText(
+      '/login?callbackUrl=%2Fpost%2F1',
+    );
+    await expect(page).toHaveURL(
+      `http://localhost:${port}/login?callbackUrl=%2Fpost%2F1`,
+    );
+    expect(await page.evaluate(() => window.history.length)).toBe(
+      historyLength + 1,
+    );
+
+    await page.getByRole('button', { name: 'Rerender static route' }).click();
+    await expect(page.getByTestId('rerender-result')).toHaveText('done');
+    await expect(page.getByTestId('route-query')).toHaveText(
+      '/login?callbackUrl=%2Fpost%2F1',
+    );
+    await expect(page).toHaveURL(
+      `http://localhost:${port}/login?callbackUrl=%2Fpost%2F1`,
+    );
+    await page.goBack();
+    await expect(page).toHaveURL(`http://localhost:${port}/post/2`);
+    await expect(page.getByTestId('post-body')).toHaveText('Post 2');
+  });
+
   // ...and surfaces a fetch error instead of getting stuck on the skeleton.
   test('a failed instant navigation surfaces the error instead of sticking', async ({
     page,

@@ -34,6 +34,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           gate
         </Link>
         {' | '}
+        <Link to="/post/1?redirect=1" unstable_instant data-testid="link-login">
+          login redirect
+        </Link>
+        {' | '}
         <Link
           to="/slow"
           unstable_instant

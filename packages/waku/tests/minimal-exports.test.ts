@@ -28,6 +28,7 @@ const clientExports = [
   'Root_UNSTABLE',
   'Slot_UNSTABLE',
   'unstable_combineElements',
+  'unstable_formatRscUrl',
   'unstable_getErrorInfo',
   'unstable_isImmutableElement',
   'useElementsPromise_UNSTABLE',

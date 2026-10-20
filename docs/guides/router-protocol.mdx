@@ -107,6 +107,11 @@ Fragments remain client-owned. Static route reuse also preserves the browser's
 query instead of treating build-time route metadata as a query-changing redirect.
 Reading `ROUTE` is therefore not enough to decide what to write to history.
 
+For an HTTP redirect to a different static route, the standard client reads the
+destination query from the final response URL. Once a static route is cached,
+navigation can reuse it without a request. Redirect rules that must run for each
+query change require a dynamic route.
+
 On failure, retained elements can describe an earlier route. The attempted URL
 and error state belong to the client binding, not the server metadata.
 
