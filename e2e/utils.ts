@@ -80,7 +80,7 @@ export const waitForPortReady = async (port: number): Promise<void> =>
     tryConnect();
   });
 
-export const waitForPortClosed = async (port: number): Promise<void> =>
+const waitForPortClosed = async (port: number): Promise<void> =>
   new Promise((resolve, reject) => {
     const start = Date.now();
     const tryConnect = () => {
