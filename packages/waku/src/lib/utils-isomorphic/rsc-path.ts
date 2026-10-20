@@ -29,9 +29,9 @@ export const decodeRscPath = (rscPath: string) => {
 };
 
 /**
- * Builds an RSC payload URL for `rscPath` against `baseUrl`, using Waku's
- * configured base path and RSC endpoint. Preserves the base URL's query
- * and fragment; callers can set URL search params before issuing a request.
+ * Encodes `rscPath` under Waku's configured base path and RSC endpoint.
+ * Returns a new URL preserving `baseUrl`'s origin, query, and fragment.
+ * `baseUrl` must be absolute.
  */
 export const formatRscUrl = (rscPath: string, baseUrl: string | URL): URL => {
   const url = new URL(baseUrl);

@@ -14,7 +14,7 @@ import {
 } from '../isomorphic-utils/router-protocol.js';
 import type { RouteData } from '../isomorphic-utils/router-protocol.js';
 
-const REDIRECT_ENHANCER_ORDER = 100;
+const REDIRECT_ENHANCER_ORDER = 90;
 
 export const ROUTER_STATE_ID = Symbol('waku-router-state');
 
@@ -68,7 +68,6 @@ export const useServerRedirect = () => {
   );
 };
 
-// Instant redirects retain the navigation identity across destination updates.
 export type RouterState = {
   readonly url: string; // pathname + search + hash, with the base path
   readonly requested: readonly [path: string, query: string];
@@ -76,7 +75,7 @@ export type RouterState = {
   readonly scroll: { readonly pathChanged: boolean } | null;
   readonly follows: number;
   readonly failedFrom?: RouteProps;
-  readonly navigation?: RouterState;
+  readonly originalState?: RouterState;
 };
 
 type InstantRouterState = {

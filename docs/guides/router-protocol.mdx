@@ -108,9 +108,9 @@ query instead of treating build-time route metadata as a query-changing redirect
 Reading `ROUTE` is therefore not enough to decide what to write to history.
 
 For an HTTP redirect to a different static route, Router registers an RSC enhancer
-at order 100. It reads the destination query from the final response URL and
+at order 90. It reads the destination query from the final response URL and
 corrects the decoded route metadata for navigation and prefetch. Response wrappers
-below order 100 run after Router observes the response; wrappers above that order
+below order 90 run after Router observes the response; wrappers above that order
 can change the URL and redirect status Router receives. Custom client bindings
 can implement the same reconciliation with Minimal's RSC enhancer API.
 
