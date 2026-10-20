@@ -8108,8 +8108,7 @@ describe('Router integration', () => {
       expect.anything(),
       expect.anything(),
     );
-    // one per router, doubled by the strict mode replay we accept
-    expect(getRefetchMock()).toHaveBeenCalledTimes(4);
+    expect(getRefetchMock()).toHaveBeenCalledTimes(2);
 
     view.unmount();
   });
@@ -8178,8 +8177,7 @@ describe('Router integration', () => {
 
     await flush();
     try {
-      // doubled by the strict mode replay we accept, and no more than that
-      expect(getRefetchMock()).toHaveBeenCalledTimes(2);
+      expect(getRefetchMock()).toHaveBeenCalledTimes(1);
       expect(getRefetchMock()).toHaveBeenCalledWith(
         unstable_encodeRoutePath('/404'),
         expect.any(URLSearchParams),
