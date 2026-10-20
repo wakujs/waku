@@ -46,7 +46,6 @@ import {
   makeRouterState,
   resolveServerRedirect,
   getSettledRoute as resolveSettledRoute,
-  useServerRedirect,
 } from './router-state.js';
 import type { RouterState } from './router-state.js';
 import { scrollToHash, shouldScrollForRouteChange } from './scroll.js';
@@ -98,7 +97,6 @@ export const useNavigation = (
   fallbackRoute: RouteProps,
   routeInterceptor: ((route: RouteProps) => RouteProps | false) | undefined,
 ): Navigation => {
-  useServerRedirect();
   const cache = useRouterCache();
   const routeFallback = useInitialRoute(fallbackRoute);
   const has404 = has404FromElements(elements);

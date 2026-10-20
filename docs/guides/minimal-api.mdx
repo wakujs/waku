@@ -646,6 +646,7 @@ Important behavior:
 - Each slot's etag stays with the element map Minimal made it in. Passing a map as `unstable_base` to `fetchRsc` sends its etags, so the server can skip the slots it holds. A map made by `combineElements` keeps them; a copy made with a spread or `Object.assign` does not.
 - If you return only `InnerApp`, previously rendered elements such as `App` stay mounted.
 - If the refetch fails, the existing element map stays in place.
+- `fetchRsc` accepts `unstable_onResponse: ({ url, redirected }) => void` to observe each native network response before enhancer transformations. `url` is the final URL after redirects. The callback receives metadata only, so it cannot consume the response body. Enhancers must call the supplied `options.fetch` to produce notifications. An enhancer that returns without fetching produces no notification; one that fetches several times produces a notification for each response, in arrival order. Router uses the last notification to resolve HTTP redirects.
 
 With `unstable_base`, `fetchRsc` sends the base's validators and returns only
 the response entries. Omitted slots are not filled from the base. Passing this

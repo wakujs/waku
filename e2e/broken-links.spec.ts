@@ -78,6 +78,22 @@ test.describe('broken-links: normal server', () => {
   });
 
   test.describe('client side navigation', () => {
+    test('HTTP redirects preserve their query when an app enhancer rebuilds the response', async ({
+      page,
+    }) => {
+      await page.goto(`http://localhost:${port}/?wrap-fetch=1000`);
+      await waitForHydration(page);
+      await page
+        .getByRole('link', { name: 'Redirect with query', exact: true })
+        .click();
+      await expect(page.getByTestId('route-query')).toHaveText(
+        '/exists?callbackUrl=%2Fguarded',
+      );
+      await expect(page).toHaveURL(
+        `http://localhost:${port}/exists?callbackUrl=%2Fguarded`,
+      );
+    });
+
     test('a redirect from the initial layout effect preserves the static query', async ({
       page,
     }) => {

@@ -1,67 +1,11 @@
-import { useInsertionEffect } from 'react';
-import {
-  unstable_combineElements as combineElements,
-  unstable_formatRscUrl as formatRscUrl,
-  useRegisterRscEnhancer_UNSTABLE as useRegisterRscEnhancer,
-} from 'waku/minimal/client';
 import { getRouteUrl, isSameRscRoute } from '../client-core-utils/route-url.js';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
-  ROUTE_ID,
-  encodeRoutePath,
   getRouteFromElements,
   isStaticFromElements,
 } from '../isomorphic-utils/router-protocol.js';
-import type { RouteData } from '../isomorphic-utils/router-protocol.js';
 
 export const ROUTER_STATE_ID = Symbol('waku-router-state');
-
-export const useServerRedirect = () => {
-  const registerRscEnhancer = useRegisterRscEnhancer();
-  useInsertionEffect(
-    () =>
-      registerRscEnhancer((next) => async (rscPath, rscParams, options) => {
-        if (options.type !== 'rsc') {
-          return next(rscPath, rscParams, options);
-        }
-        let redirectedUrl: URL | undefined;
-        const result = await next(rscPath, rscParams, {
-          ...options,
-          fetch: async (input, init) => {
-            const response = await options.fetch(input, init);
-            if (response.redirected) {
-              redirectedUrl = new URL(response.url);
-            }
-            return response;
-          },
-        });
-        const route = getRouteFromElements(result.elements);
-        if (
-          !redirectedUrl ||
-          !route ||
-          !isStaticFromElements(result.elements)
-        ) {
-          return result;
-        }
-        if (
-          redirectedUrl.pathname !==
-          formatRscUrl(encodeRoutePath(route.path), redirectedUrl).pathname
-        ) {
-          return result;
-        }
-        return {
-          ...result,
-          elements: combineElements(result.elements, {
-            [ROUTE_ID]: [
-              route.path,
-              redirectedUrl.searchParams.get('query') ?? '',
-            ] satisfies RouteData,
-          }),
-        };
-      }),
-    [registerRscEnhancer],
-  );
-};
 
 // Instant redirects retain the navigation identity across destination updates.
 export type RouterState = {

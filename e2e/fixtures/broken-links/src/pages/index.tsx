@@ -1,11 +1,13 @@
 import { Link } from 'waku';
 import { PushProbe } from '../components/PushProbe';
+import { WrapFetchProbe } from '../components/WrapFetchProbe';
 
 export default function Index() {
   return (
     <div>
       <h1>Index</h1>
       <PushProbe />
+      <WrapFetchProbe />
       <p>
         <Link to="/exists">Existing page</Link>
       </p>
