@@ -798,6 +798,74 @@ describe('instant element settlement', () => {
     view.unmount();
   });
 
+  test('an immutable prefetched constructor slot paints without waiting for the response', async () => {
+    const Prefetched = () => {
+      const elements = use(useElementsPromise_UNSTABLE());
+      return Object.hasOwn(elements, 'constructor') ? (
+        <Slot id="constructor" />
+      ) : (
+        'missing prefetched slot'
+      );
+    };
+    const view = await renderRoot(
+      { shell: 'shell' },
+      <>
+        <Slot id="shell" />
+        <Suspense fallback="waiting for response">
+          <Prefetched />
+        </Suspense>
+      </>,
+    );
+    const response = Promise.withResolvers<Elements>();
+    let loading: Promise<Elements> | undefined;
+    try {
+      await act(async () => {
+        loading = view.merge(
+          response.promise,
+          (key) => key === 'shell',
+          adoptElements({
+            constructor: 'prefetched constructor',
+            [ETAGS_ID]: { constructor: IMMUTABLE_ETAG },
+          }),
+        );
+      });
+      expect(view.container.textContent).toBe('shellprefetched constructor');
+      await act(async () => {
+        response.resolve({});
+        await loading;
+      });
+      expect(view.container.textContent).toBe('shellprefetched constructor');
+    } finally {
+      await act(async () => {
+        response.resolve({});
+        await loading;
+      });
+      view.unmount();
+    }
+  });
+
+  test.each(['prefetched', 'live'])(
+    'an omitted constructor slot falls back to %s',
+    async (expected) => {
+      const base: Elements =
+        expected === 'prefetched' ? { constructor: 'prefetched' } : {};
+      const view = await renderRoot(
+        { constructor: 'live' },
+        <Suspense fallback="waiting for response">
+          <Slot id="constructor" />
+        </Suspense>,
+      );
+      try {
+        await act(async () => {
+          await view.merge(Promise.resolve({}), () => false, base);
+        });
+        expect(view.container.textContent).toBe(expected);
+      } finally {
+        view.unmount();
+      }
+    },
+  );
+
   test('the paint keeps the etags of an overlay made by Minimal', async () => {
     const view = await renderRoot({ page: 'P1' }, <Keys />);
     const payload = Promise.withResolvers<Record<string, unknown>>();
