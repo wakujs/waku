@@ -133,3 +133,66 @@ test('an in-flight action reconciles its origin rerender after disconnection', a
   });
   expect(connection.onRouteChange).not.toHaveBeenCalled();
 });
+
+test('an origin rerender is dropped after a newer connection disconnects', async () => {
+  const controller = createActionRouting();
+  const first = createConnection('/first');
+  const second = createConnection('/second');
+  controller.connect(first);
+  let resolve!: () => void;
+  const pending = new Promise<void>((accept) => {
+    resolve = accept;
+  });
+  const response = controller.enhancer(async () => {
+    await pending;
+    return {
+      elements: {
+        [getRouteSlotId('/first')]: 'stale',
+        [ROUTE_ID]: ['/first', 'q=1'],
+        [IS_ORIGIN_ID]: true,
+      },
+      value: 'done',
+    };
+  })('F/action', [], { type: 'call', fetch: globalThis.fetch });
+  const disconnectSecond = controller.connect(second);
+  disconnectSecond();
+  resolve();
+  expect(await response).toEqual({ elements: {}, value: 'done' });
+  expect(first.onRouteChange).not.toHaveBeenCalled();
+  expect(second.onRouteChange).not.toHaveBeenCalled();
+});
+
+test('an in-flight route change uses the latest connection after cleanup', async () => {
+  const controller = createActionRouting();
+  const first = createConnection('/first');
+  const second = createConnection('/second');
+  controller.connect(first);
+  let resolve!: () => void;
+  const pending = new Promise<void>((accept) => {
+    resolve = accept;
+  });
+  const result = {
+    elements: { [ROUTE_ID]: ['/destination', ''], [IS_STATIC_ID]: true },
+    value: 'done',
+  };
+  const response = controller.enhancer(async () => {
+    await pending;
+    return result;
+  })('F/action', [], { type: 'call', fetch: globalThis.fetch });
+  const disconnectSecond = controller.connect(second);
+  disconnectSecond();
+  resolve();
+  expect(await response).toBe(result);
+  expect(first.onRouteChange).not.toHaveBeenCalled();
+  expect(second.onRouteChange).toHaveBeenCalledExactlyOnceWith({
+    path: '/destination',
+    query: '',
+    hash: '',
+  });
+  expect(
+    second.cache.canReuseStaticRoute(
+      { path: '/destination', query: '', hash: '' },
+      { [getRouteSlotId('/destination')]: 'destination' },
+    ),
+  ).toBe(true);
+});

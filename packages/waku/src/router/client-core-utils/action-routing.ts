@@ -37,12 +37,14 @@ export type ActionRouting = {
  */
 export const createActionRouting = (): ActionRouting => {
   let connection: Parameters<ActionRouting['connect']>[0] | undefined;
+  let connected = false;
   return {
     connect: (nextConnection) => {
       connection = nextConnection;
+      connected = true;
       return () => {
         if (connection === nextConnection) {
-          connection = undefined;
+          connected = false;
         }
       };
     },
@@ -50,13 +52,12 @@ export const createActionRouting = (): ActionRouting => {
       if (options.type !== 'call') {
         return next(rscPath, rscParams, options);
       }
-      if (!connection) {
+      if (!connected || !connection) {
         throw new Error(
           'Action routing is not connected. Call mount-time actions from useEffect, not useLayoutEffect.',
         );
       }
-      const actionConnection = connection;
-      const origin = actionConnection.getSettledRoute();
+      const origin = connection.getSettledRoute();
       const result = await next(rscPath, rscParams, {
         ...options,
         fetch: (input, init) => {
@@ -72,7 +73,7 @@ export const createActionRouting = (): ActionRouting => {
         },
       });
       const { cache, getSettledRoute, getPendingRoute, onRouteChange } =
-        connection ?? actionConnection;
+        connection;
       const handleActionElements = (nextElements: Record<string, unknown>) => {
         cache.learnStaticFromElements(nextElements);
         const route = getRouteFromElements(nextElements);
