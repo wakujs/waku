@@ -1,6 +1,10 @@
 'use client';
 
-export { useActionRouting as useActionRouting_UNSTABLE } from './client-core-utils/action-routing.js';
+export {
+  createActionRouting as unstable_createActionRouting,
+  useActionRouting as useActionRouting_UNSTABLE,
+} from './client-core-utils/action-routing.js';
+export type { ActionRouting as Unstable_ActionRouting } from './client-core-utils/action-routing.js';
 
 export {
   createRscParams as unstable_createRscParams,

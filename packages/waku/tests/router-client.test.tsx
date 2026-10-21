@@ -121,7 +121,6 @@ const testHoisted = vi.hoisted(() => ({
   // a Root's stable fetch; each test gets a new one, and so a new router cache
   fetchRsc: null as unknown as ReturnType<typeof vi.fn>,
   newFetchRsc: null as unknown as () => void,
-  // the RSC enhancers the mocked Roots registered, newest Root last
   enhancerCount: null as unknown as () => number,
   clearEnhancers: null as unknown as () => void,
   emitActionElements: null as unknown as (
@@ -333,7 +332,20 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
   // or merge from within a Root targets that Root's elements state.
   const StoreContext = React.createContext<RootStore | null>(null);
 
-  const StatefulRoot = (props: { children?: ReactNode }) => {
+  const StatefulRoot = (props: {
+    children?: ReactNode;
+    rscEnhancers?: readonly Enhance[];
+  }) => {
+    const [pipeline] = React.useState(() => [...(props.rscEnhancers ?? [])]);
+    React.useLayoutEffect(() => {
+      pipelines.push(pipeline);
+      return () => {
+        const index = pipelines.indexOf(pipeline);
+        if (index !== -1) {
+          pipelines.splice(index, 1);
+        }
+      };
+    }, [pipeline]);
     const valueRef = React.useRef<Record<string, unknown>>(undefined);
     if (!valueRef.current) {
       valueRef.current = adoptElements({
@@ -508,25 +520,15 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
     rscParams: unknown,
     options: { type: 'rsc' | 'call'; fetch: typeof fetch },
   ) => Promise<{ elements: Record<string, unknown>; value?: unknown }>;
-  const enhancers: [Enhance, number][] = [];
-  // stable like the real hook, so a re-registering effect shows up as churn
-  const registerEnhancer = (enhance: Enhance, order = 0) => {
-    const entry: [Enhance, number] = [enhance, order];
-    enhancers.push(entry);
-    return () => {
-      const index = enhancers.indexOf(entry);
-      if (index !== -1) {
-        enhancers.splice(index, 1);
-      }
-    };
-  };
-  testHoisted.enhancerCount = () => enhancers.length;
+  const pipelines: Enhance[][] = [];
+  testHoisted.enhancerCount = () =>
+    pipelines.reduce((count, pipeline) => count + pipeline.length, 0);
   testHoisted.clearEnhancers = () => {
-    enhancers.length = 0;
+    pipelines.length = 0;
   };
   testHoisted.emitActionElements = (elements) => {
     let request: Request = async () => ({ elements });
-    for (const [enhance] of [...enhancers].sort((a, b) => a[1] - b[1])) {
+    for (const enhance of pipelines.at(-1) ?? []) {
       request = enhance(request);
     }
     return request('F/action', [], { type: 'call', fetch: globalThis.fetch });
@@ -543,7 +545,6 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
       testHoisted.fetchRsc as unknown as ReturnType<
         typeof actual.useFetchRsc_UNSTABLE
       >,
-    useRegisterRscEnhancer_UNSTABLE: () => registerEnhancer,
   };
 });
 
@@ -2068,7 +2069,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('registers its action enhancer once, and removes it on unmount (StrictMode)', async () => {
+  test('installs one action enhancer per Root lifetime (StrictMode)', async () => {
     const elements = {
       [unstable_getRouteSlotId('/start')]: <div>start</div>,
       [ROUTE_ID]: ['/start', ''],
@@ -2079,12 +2080,10 @@ describe('Router integration', () => {
       elements,
     );
 
-    // Registered exactly once despite StrictMode's mount/unmount/mount cycle.
     expect(testHoisted.enhancerCount()).toBe(1);
 
     view.unmount();
 
-    // Fully unregistered on unmount, so nothing leaks into later RSC requests.
     expect(testHoisted.enhancerCount()).toBe(0);
   });
 

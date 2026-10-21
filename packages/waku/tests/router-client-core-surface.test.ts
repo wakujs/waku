@@ -43,6 +43,7 @@ describe('waku/router/client-core surface', () => {
       'unstable_MAX_FOLLOWS_PER_NAVIGATION',
       'unstable_ROUTE_ID',
       'unstable_buildMergePatch',
+      'unstable_createActionRouting',
       'unstable_createRscParams',
       'unstable_decideFollow',
       'unstable_decodeRoutePath',

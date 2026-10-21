@@ -1,9 +1,19 @@
 'use client';
 
+import { useLayoutEffect } from 'react';
 import { useRouter } from 'waku';
 
 export function RouteState() {
   const router = useRouter();
+  const { path, query, push } = router;
+  useLayoutEffect(() => {
+    if (
+      path === '/start' &&
+      new URLSearchParams(query).has('enhancer-layout')
+    ) {
+      push('/next?from=layout').catch(console.error);
+    }
+  }, [path, query, push]);
   return (
     <>
       <p data-testid="route-path">{router.path}</p>

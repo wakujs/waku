@@ -43,7 +43,7 @@ The Minimal API consists of server handler contracts and client rendering primit
 | `waku/minimal/client` | `useFetchRsc_UNSTABLE`                                                                       | Fetching and decoding an RSC payload.                                 |
 | `waku/minimal/client` | `useMergeElements_UNSTABLE`                                                                  | Merging an RSC payload into the current element map.                  |
 | `waku/minimal/client` | `useElementsPromise_UNSTABLE`                                                                | Reading the current element map.                                      |
-| `waku/minimal/client` | `useRegisterRscEnhancer_UNSTABLE`                                                            | Extending the RSC requests a `Root` makes.                            |
+| `waku/minimal/client` | `useRegisterRscEnhancer_UNSTABLE`                                                            | Deprecated effect-based registration, retained through rc.4.          |
 | `waku/minimal/client` | `useRegisterRscReloadListener_UNSTABLE`                                                      | Choosing the RSC input to refresh during development reloads.         |
 | `waku/minimal/client` | `unstable_combineElements`                                                                   | Combining element maps without losing their etags.                    |
 | `waku/minimal/client` | `unstable_getErrorInfo`                                                                      | Reading status, redirect and network-error information.               |
@@ -488,6 +488,7 @@ Props:
 
 - `initialRscPath?: string`
 - `initialRscParams?: unknown`
+- `rscEnhancers?: readonly Unstable_RscEnhancer[]`: the mount-time [request pipeline](#request-enhancers).
 - `children: ReactNode`
 
 Important behavior:
@@ -712,45 +713,106 @@ function for effect cleanup and is a no-op in production.
 
 #### Request enhancers
 
-`useRegisterRscEnhancer_UNSTABLE` extends the RSC requests of the enclosing `Root`. An enhancer wraps the request function, so it can rewrite the inputs, wrap the transport, or transform the result:
+Pass a fixed array of `Unstable_RscEnhancer` functions to `Root_UNSTABLE.rscEnhancers`. An enhancer can rewrite inputs, wrap the supplied transport, or transform decoded results. The last array entry is outermost: `[A, B]` sends requests through `B → A → server` and returns results through `server → A → B`.
+
+Configure the array in your [client entry](/create-pages#client-entry-point):
 
 ```tsx
-import { useEffect } from 'react';
-import { useRegisterRscEnhancer_UNSTABLE as useRegisterRscEnhancer } from 'waku/minimal/client';
+import { StrictMode, useState } from 'react';
+import { createRoot, hydrateRoot } from 'react-dom/client';
+import { unstable_defaultRootOptions as defaultRootOptions } from 'waku/client';
+import {
+  Root_UNSTABLE as Root,
+  Slot_UNSTABLE as Slot,
+} from 'waku/minimal/client';
+import type { Unstable_RscEnhancer } from 'waku/minimal/client';
 
-const Locale = ({ locale }: { locale: string }) => {
-  const registerRscEnhancer = useRegisterRscEnhancer();
-  useEffect(
-    () =>
-      registerRscEnhancer(
-        (requestRsc) => (rscPath, rscParams, options) =>
-          requestRsc(rscPath, rscParams, {
-            ...options,
-            fetch: (input, init) => {
-              const headers = new Headers(
-                init?.headers ??
-                  (input instanceof Request ? input.headers : undefined),
-              );
-              headers.set('accept-language', locale);
-              return options.fetch(input, { ...init, headers });
-            },
-          }),
-      ),
-    [locale, registerRscEnhancer],
+const createLocaleEnhancer =
+  (getLocale: () => string): Unstable_RscEnhancer =>
+  (next) =>
+  (path, params, options) =>
+    next(path, params, {
+      ...options,
+      fetch: (input, init) => {
+        const headers = new Headers(
+          init?.headers ??
+            (input instanceof Request ? input.headers : undefined),
+        );
+        headers.set('accept-language', getLocale());
+        return options.fetch(input, { ...init, headers });
+      },
+    });
+
+function App() {
+  const [enhancers] = useState(() => [
+    createLocaleEnhancer(() => navigator.language),
+  ]);
+  return (
+    <Root rscEnhancers={enhancers}>
+      <Slot id="App" />
+    </Root>
   );
-  return null;
-};
+}
+
+const app = (
+  <StrictMode>
+    <App />
+  </StrictMode>
+);
+if (globalThis.__WAKU_HYDRATE__) {
+  hydrateRoot(document, app, defaultRootOptions);
+} else {
+  createRoot(document, defaultRootOptions).render(app);
+}
 ```
 
-Important behavior:
+- Root copies the array once per mount. Replacing the prop or mutating the original array does not change the pipeline; remount Root to change it. Enhancers can read live state on every request without changing their membership.
+- The configured pipeline is available before descendant layout effects. `options.type` is `rsc` for a payload fetch and `call` for a server function call. Forward `options`, including the supplied `fetch` and abort signal.
+- Results contain `{ elements, value }`, where `value` is a server function's return value. Elements exclude Minimal's reserved keys. Use `unstable_combineElements` to change an element map while preserving its etags; a spread loses validators and prevents the server from skipping retained slots.
+- The initial payload bypasses enhancers, including a client network fallback when no streamed hydration payload exists. Enhancers run for subsequent Root-bound fetches, server actions received by that Root, and its development reloads. A bare server action goes to the Root mounted last, which need not be the one containing its caller.
 
-- `options.type` is `rsc` for a payload fetch and `call` for a server function call.
-- The result is `{ elements, value }`, where `value` is a server function's return value. The elements never carry Minimal's reserved keys.
-- Build a changed element map with `unstable_combineElements`. Each slot's etag stays with the map Minimal made it in, so a result rebuilt with a spread arrives without them and the server stops skipping the slots the Root already holds.
-- Enhancers run for the Root's fetches, the server actions it receives, and its development reloads, but not for its initial payload. A bare server action goes to the Root mounted last, which is not necessarily the one that rendered the component calling it.
-- A higher `order`, the optional second argument that defaults to `0`, wraps a lower one, so it runs earlier on the request and later on the result. At the same order, a later registration wraps an earlier one. The Waku router registers its own enhancer at order 100. Enhancers above that order must return the result without introducing an asynchronous delay after the inner enhancer resolves. The router acts on an action's result while the chain is still unwinding: it applies the route change and decides whether a rerender of the page the action came from still applies. Minimal merges the returned elements only after the whole chain resolves. Delaying the result above the router can therefore render the new route before its slot has been merged, so `Slot` throws, or let a navigation started during the delay be overwritten when the action's elements are applied.
-- A request keeps the enhancers it started with, so unregistering does not change a response already on its way.
-- The initial payload is a known limitation. A `Root` requests it before any descendant can register, so an application that has to reach that one request wraps `globalThis.fetch` itself.
+For the file-based Router, pass the array as `<Router unstable_rscEnhancers={enhancers} />` in `src/waku.client.tsx`. These enhancers form the inner part of Router's pipeline; its private action-routing enhancer wraps them. They can delay or transform results before Router handles them. A decoded-result cache in this inner list does not retain metadata reconciled by Router. Minimal's array has no private Router layers, so custom routers own their full composition.
+
+##### Migrating effect-based integrations
+
+In rc.4, `useRegisterRscEnhancer_UNSTABLE` remains available as a deprecated one-argument registrar returning cleanup. Legacy registrations are Root-scoped and always inside configured enhancers; later registrations wrap earlier registrations. Each request snapshots its sequence, so cleanup affects future requests only. Effect registration retains its timing limitations. There is no numeric priority argument.
+
+Move pipeline installation to the client entry and keep subscriptions, atom discovery, and HMR listeners in companion components. For example, a future `waku-jotai` integration factory could expose a per-app store, a stable enhancer, and a Provider sharing that store:
+
+```tsx
+// src/waku.client.tsx
+import { StrictMode, useState } from 'react';
+import { createRoot, hydrateRoot } from 'react-dom/client';
+import { unstable_defaultRootOptions as defaultRootOptions } from 'waku/client';
+import { Router } from 'waku/router/client';
+import { createJotaiIntegration } from 'waku-jotai/router/client';
+
+function App() {
+  const [jotai] = useState(() => createJotaiIntegration());
+  return (
+    <jotai.Provider>
+      <Router unstable_rscEnhancers={[jotai.rscEnhancer]} />
+    </jotai.Provider>
+  );
+}
+
+const app = (
+  <StrictMode>
+    <App />
+  </StrictMode>
+);
+if (globalThis.__WAKU_HYDRATE__) {
+  hydrateRoot(document, app, defaultRootOptions);
+} else {
+  createRoot(document, defaultRootOptions).render(app);
+}
+```
+
+This is a proposed ecosystem API: current `waku-jotai` does not export `createJotaiIntegration`. Its existing hook-based integration remains supported in rc.4. Minimal applications would pass the same integration's enhancer to Root's `rscEnhancers` prop.
+
+The companion must publish discovered atom IDs to the runtime captured by the enhancer, using the same Jotai store as application components. Each request reads current values. Installation does not guarantee that asynchronous atom discovery has finished: unknown paths must pass through unchanged. Router prefetch keys also do not include atom values, so prefetched results can become stale when values change; declarative installation does not solve cache invalidation.
+
+The registration hook is scheduled for removal in rc.5, after a migrated `waku-jotai` release and migration guidance are available. Other hook consumers must migrate before upgrading to rc.5.
 
 ### Common Patterns
 

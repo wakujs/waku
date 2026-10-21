@@ -9,6 +9,7 @@ import type {
 import { buildElements } from '../src/lib/utils-server/build-elements.js';
 import * as clientRuntime from '../src/minimal/client-runtime.js';
 import * as client from '../src/minimal/client.js';
+import type { Unstable_RscEnhancer } from '../src/minimal/client.js';
 import * as server from '../src/minimal/server.js';
 import type {
   Unstable_HandleBuild as HandleBuild,
@@ -46,6 +47,14 @@ const serverExports = [
 ];
 
 describe('Minimal entry points', () => {
+  test('declarative arrays and the one-argument legacy registrar share the public enhancer type', () => {
+    expectTypeOf<
+      Parameters<typeof client.Root_UNSTABLE>[0]['rscEnhancers']
+    >().toEqualTypeOf<readonly Unstable_RscEnhancer[] | undefined>();
+    expectTypeOf<
+      Parameters<ReturnType<typeof client.useRegisterRscEnhancer_UNSTABLE>>
+    >().toEqualTypeOf<[enhance: Unstable_RscEnhancer]>();
+  });
   test('handler and adapter contracts are available without identity helpers', () => {
     expectTypeOf<Handlers>().toEqualTypeOf<
       Parameters<ReturnType<typeof unstable_createServerEntryAdapter>>[0]

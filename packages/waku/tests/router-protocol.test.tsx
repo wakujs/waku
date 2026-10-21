@@ -27,6 +27,7 @@ import {
 } from '../src/minimal/client.js';
 import { unstable_parseRequest as parseRequest } from '../src/minimal/server.js';
 import {
+  unstable_createActionRouting as createActionRouting,
   unstable_decideFollow as decideFollow,
   unstable_encodeRoutePath as encodeRoutePath,
   unstable_getRouteFromElements as getRouteFromElements,
@@ -139,6 +140,7 @@ const mount = async (
     cache: ReturnType<typeof useRouterCache>;
   };
   const onRouteChange = vi.fn();
+  const actionRouting = createActionRouting();
   const Probe = () => {
     const elements = use(useElementsPromise());
     const fetchRsc = useFetchRsc();
@@ -149,7 +151,7 @@ const mount = async (
       () => getRouteFromElements(settled.current)!,
       [],
     );
-    useActionRouting({
+    useActionRouting(actionRouting, {
       getSettledRoute,
       getPendingRoute: noPendingRoute,
       onRouteChange,
@@ -169,6 +171,7 @@ const mount = async (
     root.render(
       <Suspense fallback="pending">
         <Root
+          rscEnhancers={[actionRouting.enhancer]}
           initialRscPath={encodeRoutePath(path)}
           initialRscParams={new URLSearchParams({ query })}
         >

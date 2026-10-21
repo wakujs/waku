@@ -212,9 +212,10 @@ const fetchRscElements = (
     );
   };
   try {
-    for (const [enhance] of [...(store?.enhancers ?? [])].sort(
-      (a, b) => a[1] - b[1],
-    )) {
+    for (const enhance of [
+      ...(store?.legacyEnhancers.values() ?? []),
+      ...(store?.rscEnhancers ?? []),
+    ]) {
       request = enhance(request);
     }
     return request(rscPath, rscParams, {
@@ -227,10 +228,6 @@ const fetchRscElements = (
   }
 };
 
-/**
- * callServer callback
- * This is not a public API.
- */
 export const unstable_callServerRsc = async (
   funcId: string,
   args: unknown[],
@@ -334,24 +331,26 @@ export const useFetchRsc_UNSTABLE = (): FetchRsc =>
   use(RootStoreContext)?.fetchRsc ?? fetchWithoutRoot;
 
 /**
- * Returns a registrar for the enclosing Root's RSC request enhancers. An
- * enhancer wraps the Root's requests to rewrite the inputs, wrap
- * `options.fetch`, or transform the result. Higher `order`s wrap lower ones.
+ * Registers inside the enclosing Root's configured enhancers, returning cleanup.
+ * Registrations affect future requests only. Under a server Root this is a no-op;
+ * a missing Root throws.
+ * @deprecated Configure Root_UNSTABLE `rscEnhancers` or Router
+ * `unstable_rscEnhancers`. Retained in rc.4; removal planned for rc.5 after
+ * integration migrations.
  */
-export const useRegisterRscEnhancer_UNSTABLE = () => {
+export const useRegisterRscEnhancer_UNSTABLE = (): ((
+  enhance: RequestRscEnhancer,
+) => Unregister) => {
   const store = useRootStore();
   return useCallback(
-    (enhance: RequestRscEnhancer, order = 0): Unregister => {
+    (enhance: RequestRscEnhancer): Unregister => {
       if (store === null) {
         return noop;
       }
-      const entry: [RequestRscEnhancer, number] = [enhance, order];
-      store.enhancers.push(entry);
+      const registration = Symbol();
+      store.legacyEnhancers.set(registration, enhance);
       return () => {
-        const index = store.enhancers.indexOf(entry);
-        if (index !== -1) {
-          store.enhancers.splice(index, 1);
-        }
+        store.legacyEnhancers.delete(registration);
       };
     },
     [store],
@@ -412,10 +411,17 @@ export const useRegisterRscReloadListener_UNSTABLE = () => {
 export const Root_UNSTABLE = ({
   initialRscPath,
   initialRscParams,
+  rscEnhancers = [],
   children,
 }: {
   initialRscPath?: string;
   initialRscParams?: unknown;
+  /**
+   * Initial pipeline, copied for this mount; the last enhancer is outermost.
+   * Later prop or array changes are ignored. Initial payloads bypass enhancers;
+   * the pipeline is available for requests from descendant layout effects.
+   */
+  rscEnhancers?: readonly RequestRscEnhancer[];
   children: ReactNode;
 }) => {
   const [initialInput] = useState(
@@ -437,7 +443,8 @@ export const Root_UNSTABLE = ({
         });
       },
       etags: {},
-      enhancers: [],
+      rscEnhancers: [...rscEnhancers],
+      legacyEnhancers: new Map(),
       fetchRsc: (rscPath, rscParams, options) =>
         fetchRsc(rscPath, rscParams, options, store),
     };

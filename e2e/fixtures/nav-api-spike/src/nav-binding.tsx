@@ -21,6 +21,7 @@ import {
   useMergeElements_UNSTABLE as useMergeElements,
 } from 'waku/minimal/client';
 import {
+  type Unstable_ActionRouting as ActionRouting,
   type Unstable_FollowDecision as FollowDecision,
   unstable_MAX_FOLLOWS_PER_NAVIGATION as MAX_FOLLOWS_PER_NAVIGATION,
   unstable_ROUTE_ID as ROUTE_ID,
@@ -28,6 +29,7 @@ import {
   type Unstable_RouterHost as RouterHost,
   RouterHostContext_UNSTABLE as RouterHostContext,
   unstable_buildMergePatch as buildMergePatch,
+  unstable_createActionRouting as createActionRouting,
   unstable_decideFollow as decideFollow,
   unstable_encodeRoutePath as encodeRoutePath,
   unstable_getRouteFromElements as getRouteFromElements,
@@ -184,7 +186,13 @@ class FollowBoundary extends Component<
   }
 }
 
-const NavBinding = ({ fallbackRoute }: { fallbackRoute: RouteProps }) => {
+const NavBinding = ({
+  fallbackRoute,
+  actionRouting,
+}: {
+  fallbackRoute: RouteProps;
+  actionRouting: ActionRouting;
+}) => {
   const { ownsNavigation, follows, setFollows, lastFollowRef, runRef } =
     use(FollowHostContext)!;
   const elements = use(useElementsPromise());
@@ -241,7 +249,7 @@ const NavBinding = ({ fallbackRoute }: { fallbackRoute: RouteProps }) => {
     },
     [ownsNavigation],
   );
-  useActionRouting({
+  useActionRouting(actionRouting, {
     getSettledRoute,
     getPendingRoute,
     onRouteChange: commitActionRoute,
@@ -399,6 +407,7 @@ export const NavRouter = ({
   // NavBinding remounts on every merge; this host does not. Entry state is
   // not instance-scoped (`window.navigation` is per document) and intercept
   // runs before the URL commits.
+  const [actionRouting] = useState(createActionRouting);
   const [follows, setFollows] = useState(0);
   const lastFollowRef = useRef<LastFollow | null>(null);
   const runRef = useRef<FollowRun>(async () => {});
@@ -431,8 +440,12 @@ export const NavRouter = ({
   return (
     <FollowHostContext value={followHost}>
       {ownsNavigation ? null : <p data-testid="follow-count">{follows}</p>}
-      <Root initialRscPath={initialRscPath} initialRscParams={initialRscParams}>
-        <NavBinding fallbackRoute={fallback} />
+      <Root
+        initialRscPath={initialRscPath}
+        initialRscParams={initialRscParams}
+        rscEnhancers={[actionRouting.enhancer]}
+      >
+        <NavBinding fallbackRoute={fallback} actionRouting={actionRouting} />
       </Root>
     </FollowHostContext>
   );
