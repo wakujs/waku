@@ -1,43 +1,17 @@
+import type { RequestRscEnhancer } from './root-store.js';
+
 type Elements = Readonly<Record<string | symbol, unknown>>;
 
 type InitialRscEntry = [
   rscPath: string,
   rscParams: unknown,
   elements: Promise<Elements>,
+  rscEnhancers: readonly RequestRscEnhancer[] | undefined,
 ];
 
 // An abandoned suspended render has no cleanup, so this cache must be bounded.
 const INITIAL_RSC_ENTRY_LIMIT = 32;
 const initialRscEntries: InitialRscEntry[] = [];
-
-export const createInitialRscStore = (
-  initial: Promise<Elements> | undefined,
-) => {
-  let elements = initial ?? null;
-  const listeners = new Set<() => void>();
-  return {
-    getSnapshot: () => elements,
-    getServerSnapshot: () => {
-      if (!elements) {
-        throw new Error('Missing initial RSC payload for hydration');
-      }
-      return elements;
-    },
-    subscribe: (listener: () => void) => {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
-    load: (fetchElements: () => Promise<Elements>) => {
-      if (!elements) {
-        elements = fetchElements();
-        listeners.forEach((listener) => listener());
-      }
-      return elements;
-    },
-  };
-};
 
 export const clearInitialRscEntries = (): void => {
   initialRscEntries.length = 0;
@@ -46,10 +20,12 @@ export const clearInitialRscEntries = (): void => {
 export const getInitialRscEntry = (
   rscPath: string,
   rscParams: unknown,
-  create: () => Promise<Elements> | undefined,
-): Promise<Elements> | undefined => {
+  create: () => Promise<Elements>,
+  rscEnhancers?: readonly RequestRscEnhancer[],
+): Promise<Elements> => {
   const index = initialRscEntries.findIndex(
-    (item) => item[0] === rscPath && item[1] === rscParams,
+    (item) =>
+      item[0] === rscPath && item[1] === rscParams && item[3] === rscEnhancers,
   );
   if (index !== -1) {
     const entry = initialRscEntries[index]!;
@@ -58,13 +34,10 @@ export const getInitialRscEntry = (
     return entry[2];
   }
   const elements = create();
-  if (!elements) {
-    return;
-  }
   if (initialRscEntries.length === INITIAL_RSC_ENTRY_LIMIT) {
     void initialRscEntries.shift();
   }
-  initialRscEntries.push([rscPath, rscParams, elements]);
+  initialRscEntries.push([rscPath, rscParams, elements, rscEnhancers]);
   return elements;
 };
 

@@ -9,7 +9,6 @@ import {
   useEffect,
   useLayoutEffect,
   useState,
-  useSyncExternalStore,
 } from 'react';
 import type { ReactNode } from 'react';
 import RSDWClient from 'react-server-dom-webpack/client';
@@ -32,7 +31,6 @@ import {
   isImmutableElement,
 } from './client-utils/element-etags.js';
 import {
-  createInitialRscStore,
   getInitialRscEntry,
   releaseInitialRscEntry,
 } from './client-utils/initial-rsc-store.js';
@@ -174,11 +172,18 @@ const reloadOnBuildIdMismatch = (
   );
 };
 
+const EMPTY_RSC_ENHANCERS: readonly RequestRscEnhancer[] = [];
+
+const getRootRscEnhancers = (store: RootStore | undefined) => [
+  ...(store?.legacyEnhancers.values() ?? []),
+  ...(store?.rscEnhancers ?? []),
+];
+
 const fetchRscElements = (
   rscPath: string,
   rscParams: unknown,
   options: FetchRscElementsOptions,
-  store: RootStore | undefined,
+  rscEnhancers: readonly RequestRscEnhancer[] = EMPTY_RSC_ENHANCERS,
 ): ReturnType<RequestRsc> => {
   let request: RequestRsc = (
     path,
@@ -214,10 +219,7 @@ const fetchRscElements = (
     );
   };
   try {
-    for (const enhance of [
-      ...(store?.legacyEnhancers.values() ?? []),
-      ...(store?.rscEnhancers ?? []),
-    ]) {
+    for (const enhance of rscEnhancers) {
       request = enhance(request);
     }
     return request(rscPath, rscParams, {
@@ -242,7 +244,7 @@ export const unstable_callServerRsc = async (
     rscPath,
     rscParams,
     { type: 'call', etags: rootStore?.etags ?? {} },
-    rootStore,
+    getRootRscEnhancers(rootStore),
   );
   if (Reflect.ownKeys(data).length) {
     if (!rootStore) {
@@ -277,21 +279,28 @@ const fetchRsc = (
         ? { onBuildIdMismatch: options.onBuildIdMismatch }
         : {}),
     },
-    store,
+    getRootRscEnhancers(store),
   ).then(({ elements }) => elements);
 
 const getInitialRsc = (
   rscPath: string,
   rscParams: unknown,
-): Promise<Elements> | undefined =>
-  getInitialRscEntry(rscPath, rscParams, () => {
-    const initial = consumeInitialRscEntry();
-    return initial
-      ? fetchRscElements(rscPath, rscParams, { initial }, undefined).then(
-          ({ elements }) => elements,
-        )
-      : undefined;
-  });
+  rscEnhancers: readonly RequestRscEnhancer[],
+): Promise<Elements> =>
+  getInitialRscEntry(
+    rscPath,
+    rscParams,
+    () => {
+      const initial = consumeInitialRscEntry();
+      return fetchRscElements(
+        rscPath,
+        rscParams,
+        initial ? { initial } : { etags: {} },
+        initial ? EMPTY_RSC_ENHANCERS : rscEnhancers,
+      ).then(({ elements }) => elements);
+    },
+    rscEnhancers,
+  );
 
 type MergeElements = (
   elements: Elements | Promise<Elements>,
@@ -404,15 +413,16 @@ export const useRegisterRscReloadListener_UNSTABLE = () => {
 export const Root_UNSTABLE = ({
   initialRscPath,
   initialRscParams,
-  rscEnhancers = [],
+  rscEnhancers = EMPTY_RSC_ENHANCERS,
   children,
 }: {
   initialRscPath?: string;
   initialRscParams?: unknown;
   /**
    * Initial pipeline, copied for this mount; the last enhancer is outermost.
-   * Later prop or array changes are ignored. Client bootstrap fetches use the
-   * pipeline; streamed initial payloads bypass it.
+   * Keep the array reference stable across renders, including initial Suspense
+   * retries. Remount with a new array to change the pipeline.
+   * Client bootstrap fetches use it; streamed initial payloads bypass it.
    */
   rscEnhancers?: readonly RequestRscEnhancer[];
   children: ReactNode;
@@ -420,24 +430,15 @@ export const Root_UNSTABLE = ({
   const [initialInput] = useState(
     () => [initialRscPath || '', initialRscParams] as const,
   );
-  const [initial] = useState(() =>
-    createInitialRscStore(getInitialRsc(...initialInput)),
+  const [initialElements] = useState(() =>
+    getInitialRsc(...initialInput, rscEnhancers),
   );
-  const initialElements = useSyncExternalStore(
-    initial.subscribe,
-    initial.getSnapshot,
-    initial.getServerSnapshot,
-  );
-  const [updatedElements, setElements] = useState<Promise<Elements> | null>(
-    null,
-  );
-  const elements = updatedElements ?? initialElements;
+  const [elements, setElements] = useState(initialElements);
   const [store] = useState(() => {
     const store: RootStore = {
       setElements: (update) => {
         const results = new WeakMap<Promise<Elements>, Promise<Elements>>();
-        setElements((previous) => {
-          const prev = previous ?? initial.getSnapshot()!;
+        setElements((prev) => {
           let next = results.get(prev);
           if (!next) {
             next = update(prev);
@@ -455,7 +456,6 @@ export const Root_UNSTABLE = ({
     return store;
   });
   useLayoutEffect(() => {
-    const initialElements = initial.load(() => store.fetchRsc(...initialInput));
     releaseInitialRscEntry(...initialInput, initialElements);
     const unregisterStore = registerRootStore(store);
     const unregisterReload = import.meta.hot
@@ -474,9 +474,9 @@ export const Root_UNSTABLE = ({
       unregisterStore();
       unregisterReload?.();
     };
-  }, [initial, initialInput, store]);
+  }, [initialElements, initialInput, store]);
   useEffect(() => {
-    elements?.then(
+    elements.then(
       (resolved) => {
         store.etags = collectEtags(resolved);
       },
@@ -487,7 +487,7 @@ export const Root_UNSTABLE = ({
     <RootStoreContext value={store}>
       <ElementsContext value={elements}>
         {META_GENERATOR}
-        {elements ? children : null}
+        {children}
       </ElementsContext>
     </RootStoreContext>
   );

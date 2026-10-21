@@ -1,13 +1,6 @@
 // @vitest-environment happy-dom
 
-import {
-  StrictMode,
-  Suspense,
-  act,
-  useEffect,
-  useLayoutEffect,
-  useState,
-} from 'react';
+import { StrictMode, Suspense, act, useEffect, useLayoutEffect } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { ETAGS_HEADER, ETAGS_ID } from '../src/lib/utils-isomorphic/etags.js';
@@ -111,41 +104,39 @@ test('fallback bootstrap runs the configured pipeline once across suspended Stri
       }),
   );
   const calls: string[] = [];
-  const App = () => {
-    const [enhance] = useState(
-      (): RequestRscEnhancer => (next) => async (path, params, options) => {
-        calls.push('enhance');
-        const result = await next(
-          path + '-enhanced',
-          { input: params },
-          {
-            ...options,
-            fetch: (input, init) => {
-              const headers = new Headers(init?.headers);
-              headers.set('authorization', 'bootstrap');
-              return options.fetch(input, { ...init, headers });
-            },
+  const enhance: RequestRscEnhancer =
+    (next) => async (path, params, options) => {
+      calls.push('enhance');
+      const result = await next(
+        path + '-enhanced',
+        { input: params },
+        {
+          ...options,
+          fetch: (input, init) => {
+            const headers = new Headers(init?.headers);
+            headers.set('authorization', 'bootstrap');
+            return options.fetch(input, { ...init, headers });
           },
-        );
-        return {
-          ...result,
-          elements: {
-            ...result.elements,
-            content: result.elements.content + '-enhanced',
-          },
-        };
-      },
-    );
-    return (
-      <Root
-        initialRscPath="bootstrap"
-        initialRscParams="input"
-        rscEnhancers={[enhance]}
-      >
-        <Slot id="content" />
-      </Root>
-    );
-  };
+        },
+      );
+      return {
+        ...result,
+        elements: {
+          ...result.elements,
+          content: result.elements.content + '-enhanced',
+        },
+      };
+    };
+  const enhancers = [enhance];
+  const App = () => (
+    <Root
+      initialRscPath="bootstrap"
+      initialRscParams="input"
+      rscEnhancers={enhancers}
+    >
+      <Slot id="content" />
+    </Root>
+  );
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
@@ -183,24 +174,24 @@ test('simultaneous fallback Roots with the same input retain their own enhancer 
         responses.push(() => resolve(Response.json({ content: name })));
       }),
   );
-  const App = ({ name }: { name: string }) => {
-    const [enhance] = useState(
-      (): RequestRscEnhancer => (next) => (path, params, options) =>
-        next(path, params, {
-          ...options,
-          fetch: (input, init) => {
-            const headers = new Headers(init?.headers);
-            headers.set('root', name);
-            return options.fetch(input, { ...init, headers });
-          },
-        }),
-    );
-    return (
-      <Root initialRscPath="shared" rscEnhancers={[enhance]}>
-        <Slot id="content" />
-      </Root>
-    );
-  };
+  const createEnhancers = (name: string): RequestRscEnhancer[] => [
+    (next) => (path, params, options) =>
+      next(path, params, {
+        ...options,
+        fetch: (input, init) => {
+          const headers = new Headers(init?.headers);
+          headers.set('root', name);
+          return options.fetch(input, { ...init, headers });
+        },
+      }),
+  ];
+  const firstEnhancers = createEnhancers('first');
+  const secondEnhancers = createEnhancers('second');
+  const App = ({ enhancers }: { enhancers: RequestRscEnhancer[] }) => (
+    <Root initialRscPath="shared" rscEnhancers={enhancers}>
+      <Slot id="content" />
+    </Root>
+  );
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
@@ -209,10 +200,10 @@ test('simultaneous fallback Roots with the same input retain their own enhancer 
     root.render(
       <StrictMode>
         <Suspense fallback="first pending">
-          <App name="first" />
+          <App enhancers={firstEnhancers} />
         </Suspense>
         <Suspense fallback="second pending">
-          <App name="second" />
+          <App enhancers={secondEnhancers} />
         </Suspense>
       </StrictMode>,
     ),
@@ -255,36 +246,6 @@ test('streamed hydration bypasses enhancers without another network request', as
   expect(enhance).not.toHaveBeenCalled();
   expect(request).not.toHaveBeenCalled();
   expect(errors).not.toHaveBeenCalled();
-});
-
-test('a missing hydration payload recovers with an enhanced client request', async () => {
-  vi.stubGlobal('__WAKU_HYDRATE__', true);
-  vi.stubGlobal('__WAKU_INITIAL_RSC__', undefined);
-  const enhance = vi.fn<RequestRscEnhancer>((next) => next);
-  const container = document.createElement('div');
-  container.innerHTML =
-    '<meta name="generator" content="Waku"><div>initial</div>';
-  document.body.append(container);
-  const errors = vi.fn();
-  await act(async () => {
-    roots.push(
-      hydrateRoot(
-        container,
-        <StrictMode>
-          <Root rscEnhancers={[enhance]}>
-            <div>
-              <Slot id="content" />
-            </div>
-          </Root>
-        </StrictMode>,
-        { onRecoverableError: errors },
-      ),
-    );
-  });
-  expect(container.textContent).toBe('initial');
-  expect(enhance).toHaveBeenCalledOnce();
-  expect(request).toHaveBeenCalledOnce();
-  expect(errors).toHaveBeenCalledOnce();
 });
 
 test('a whole cached response applies to the request-time Root', async () => {

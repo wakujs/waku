@@ -1,6 +1,13 @@
 'use client';
 
-import { use, useCallback, useContext, useMemo, useState } from 'react';
+import {
+  use,
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from 'react';
 import {
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
@@ -239,6 +246,35 @@ const InnerRouter = ({
   );
 };
 
+const EMPTY_RSC_ENHANCERS: readonly Unstable_RscEnhancer[] = [];
+const mountedActionRoutings: ActionRouting[] = [];
+const actionRoutingEnhancer: Unstable_RscEnhancer =
+  (next) => (rscPath, rscParams, options) => {
+    if (options.type !== 'call') {
+      return next(rscPath, rscParams, options);
+    }
+    const actionRouting = mountedActionRoutings.at(-1);
+    if (!actionRouting) {
+      throw new Error(
+        'Action routing is not connected. Call mount-time actions from useEffect, not useLayoutEffect.',
+      );
+    }
+    return actionRouting.enhancer(next)(rscPath, rscParams, options);
+  };
+const routerRscEnhancers = new WeakMap<
+  readonly Unstable_RscEnhancer[],
+  readonly Unstable_RscEnhancer[]
+>();
+
+const getRouterRscEnhancers = (enhancers: readonly Unstable_RscEnhancer[]) => {
+  let pipeline = routerRscEnhancers.get(enhancers);
+  if (!pipeline) {
+    pipeline = [...enhancers, actionRoutingEnhancer];
+    routerRscEnhancers.set(enhancers, pipeline);
+  }
+  return pipeline;
+};
+
 /**
  * Client router root. Each instance provides navigation state to its
  * descendants. Instances can start from different `initialRoute` values, but
@@ -249,13 +285,15 @@ const InnerRouter = ({
 export function Router({
   initialRoute = parseRoute(new URL(window.location.href)),
   unstable_routeInterceptor,
-  unstable_rscEnhancers = [],
+  unstable_rscEnhancers = EMPTY_RSC_ENHANCERS,
 }: {
   initialRoute?: RouteProps;
   /**
    * Initial input and transport enhancers, last entry outermost. Snapshotted
-   * once per mount; remount to change the array. Router action routing wraps
-   * this list, so result caches here do not retain its reconciled metadata.
+   * once per mount; keep the array reference stable across renders, including
+   * initial Suspense retries. Create it before rendering React and remount to
+   * change it with a new array. Router action routing wraps this list, so result
+   * caches here do not retain its reconciled metadata.
    */
   unstable_rscEnhancers?: readonly Unstable_RscEnhancer[];
   /**
@@ -266,13 +304,19 @@ export function Router({
    */
   unstable_routeInterceptor?: (route: RouteProps) => RouteProps | false;
 }) {
-  const [{ actionRouting, rscEnhancers }] = useState(() => {
-    const actionRouting = createActionRouting();
-    return {
-      actionRouting,
-      rscEnhancers: [...unstable_rscEnhancers, actionRouting.enhancer],
+  const [actionRouting] = useState(createActionRouting);
+  const [rscEnhancers] = useState(() =>
+    getRouterRscEnhancers(unstable_rscEnhancers),
+  );
+  useLayoutEffect(() => {
+    mountedActionRoutings.push(actionRouting);
+    return () => {
+      mountedActionRoutings.splice(
+        mountedActionRoutings.lastIndexOf(actionRouting),
+        1,
+      );
     };
-  });
+  }, [actionRouting]);
   const initialRscPath = encodeRoutePath(initialRoute.path);
   const initialRscParams = useInitialRscParams(
     initialRscPath,

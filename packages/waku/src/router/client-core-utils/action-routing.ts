@@ -31,9 +31,10 @@ export type ActionRouting = {
 /**
  * Creates action routing for one custom router. Install `enhancer` last in
  * that router's Root `rscEnhancers`, then connect navigation callbacks with
- * `useActionRouting_UNSTABLE` beneath the Root. Keep this object for the Root's
- * lifetime. RSC requests pass through. Actions before connection fail; start
- * mount-time actions in `useEffect`, not descendant layout effects.
+ * `useActionRouting_UNSTABLE` beneath the Root. Create the controller and Root's
+ * stable enhancer array before rendering React. RSC requests pass through.
+ * Actions before connection fail; start mount-time actions in `useEffect`,
+ * not descendant layout effects.
  */
 export const createActionRouting = (): ActionRouting => {
   let connection: Parameters<ActionRouting['connect']>[0] | undefined;
