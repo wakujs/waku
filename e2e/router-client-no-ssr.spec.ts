@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test';
+import type { Request } from '@playwright/test';
 import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('router-client-no-ssr');
@@ -20,10 +21,20 @@ test.describe('router-client-no-ssr', () => {
   });
 
   test('renders a route from the fallback shell', async ({ page }) => {
+    const rscRequests: Request[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/RSC/')) {
+        rscRequests.push(request);
+      }
+    });
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
 
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+    expect(rscRequests).toHaveLength(1);
+    expect(rscRequests[0]!.headers()['x-bootstrap-enhancer']).toBe(
+      'configured',
+    );
   });
 
   for (const [container, query] of [

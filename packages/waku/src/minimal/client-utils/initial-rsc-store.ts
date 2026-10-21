@@ -10,6 +10,35 @@ type InitialRscEntry = [
 const INITIAL_RSC_ENTRY_LIMIT = 32;
 const initialRscEntries: InitialRscEntry[] = [];
 
+export const createInitialRscStore = (
+  initial: Promise<Elements> | undefined,
+) => {
+  let elements = initial ?? null;
+  const listeners = new Set<() => void>();
+  return {
+    getSnapshot: () => elements,
+    getServerSnapshot: () => {
+      if (!elements) {
+        throw new Error('Missing initial RSC payload for hydration');
+      }
+      return elements;
+    },
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    load: (fetchElements: () => Promise<Elements>) => {
+      if (!elements) {
+        elements = fetchElements();
+        listeners.forEach((listener) => listener());
+      }
+      return elements;
+    },
+  };
+};
+
 export const clearInitialRscEntries = (): void => {
   initialRscEntries.length = 0;
 };
@@ -17,8 +46,8 @@ export const clearInitialRscEntries = (): void => {
 export const getInitialRscEntry = (
   rscPath: string,
   rscParams: unknown,
-  create: () => Promise<Elements>,
-): Promise<Elements> => {
+  create: () => Promise<Elements> | undefined,
+): Promise<Elements> | undefined => {
   const index = initialRscEntries.findIndex(
     (item) => item[0] === rscPath && item[1] === rscParams,
   );
@@ -29,6 +58,9 @@ export const getInitialRscEntry = (
     return entry[2];
   }
   const elements = create();
+  if (!elements) {
+    return;
+  }
   if (initialRscEntries.length === INITIAL_RSC_ENTRY_LIMIT) {
     void initialRscEntries.shift();
   }

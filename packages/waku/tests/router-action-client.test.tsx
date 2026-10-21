@@ -583,6 +583,9 @@ test('a configured enhancer replaces the final destination and action value befo
   const enhance: Unstable_RscEnhancer =
     (next) =>
     async (...args) => {
+      if (args[2].type !== 'call') {
+        return next(...args);
+      }
       const { value } = await next(...args);
       return {
         elements: {

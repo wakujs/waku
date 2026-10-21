@@ -9,6 +9,7 @@ import {
   useEffect,
   useLayoutEffect,
   useState,
+  useSyncExternalStore,
 } from 'react';
 import type { ReactNode } from 'react';
 import RSDWClient from 'react-server-dom-webpack/client';
@@ -31,6 +32,7 @@ import {
   isImmutableElement,
 } from './client-utils/element-etags.js';
 import {
+  createInitialRscStore,
   getInitialRscEntry,
   releaseInitialRscEntry,
 } from './client-utils/initial-rsc-store.js';
@@ -259,20 +261,6 @@ type Unregister = () => void;
 
 const noop = () => {};
 
-const fetchRootRsc = (
-  rscPath: string,
-  rscParams: unknown,
-  store?: RootStore,
-): Promise<Elements> => {
-  const initial = consumeInitialRscEntry();
-  return fetchRscElements(
-    rscPath,
-    rscParams,
-    initial ? { initial } : { etags: {} },
-    store,
-  ).then(({ elements }) => elements);
-};
-
 const fetchRsc = (
   rscPath: string,
   rscParams: unknown,
@@ -295,10 +283,15 @@ const fetchRsc = (
 const getInitialRsc = (
   rscPath: string,
   rscParams: unknown,
-): Promise<Elements> =>
-  getInitialRscEntry(rscPath, rscParams, () =>
-    fetchRootRsc(rscPath, rscParams),
-  );
+): Promise<Elements> | undefined =>
+  getInitialRscEntry(rscPath, rscParams, () => {
+    const initial = consumeInitialRscEntry();
+    return initial
+      ? fetchRscElements(rscPath, rscParams, { initial }, undefined).then(
+          ({ elements }) => elements,
+        )
+      : undefined;
+  });
 
 type MergeElements = (
   elements: Elements | Promise<Elements>,
@@ -418,8 +411,8 @@ export const Root_UNSTABLE = ({
   initialRscParams?: unknown;
   /**
    * Initial pipeline, copied for this mount; the last enhancer is outermost.
-   * Later prop or array changes are ignored. Initial payloads bypass enhancers;
-   * the pipeline is available for requests from descendant layout effects.
+   * Later prop or array changes are ignored. Client bootstrap fetches use the
+   * pipeline; streamed initial payloads bypass it.
    */
   rscEnhancers?: readonly RequestRscEnhancer[];
   children: ReactNode;
@@ -427,13 +420,24 @@ export const Root_UNSTABLE = ({
   const [initialInput] = useState(
     () => [initialRscPath || '', initialRscParams] as const,
   );
-  const [initialElements] = useState(() => getInitialRsc(...initialInput));
-  const [elements, setElements] = useState(initialElements);
+  const [initial] = useState(() =>
+    createInitialRscStore(getInitialRsc(...initialInput)),
+  );
+  const initialElements = useSyncExternalStore(
+    initial.subscribe,
+    initial.getSnapshot,
+    initial.getServerSnapshot,
+  );
+  const [updatedElements, setElements] = useState<Promise<Elements> | null>(
+    null,
+  );
+  const elements = updatedElements ?? initialElements;
   const [store] = useState(() => {
     const store: RootStore = {
       setElements: (update) => {
         const results = new WeakMap<Promise<Elements>, Promise<Elements>>();
-        setElements((prev) => {
+        setElements((previous) => {
+          const prev = previous ?? initial.getSnapshot()!;
           let next = results.get(prev);
           if (!next) {
             next = update(prev);
@@ -451,11 +455,12 @@ export const Root_UNSTABLE = ({
     return store;
   });
   useLayoutEffect(() => {
+    const initialElements = initial.load(() => store.fetchRsc(...initialInput));
     releaseInitialRscEntry(...initialInput, initialElements);
     const unregisterStore = registerRootStore(store);
     const unregisterReload = import.meta.hot
       ? registerRootReload(store, () => {
-          const data = fetchRootRsc(...initialInput, store);
+          const data = store.fetchRsc(...initialInput);
           store.setElements((prev) =>
             Promise.all([prev, data]).then(([prev, incoming]) =>
               combineElements(incoming, prev, {
@@ -469,9 +474,9 @@ export const Root_UNSTABLE = ({
       unregisterStore();
       unregisterReload?.();
     };
-  }, [initialElements, initialInput, store]);
+  }, [initial, initialInput, store]);
   useEffect(() => {
-    elements.then(
+    elements?.then(
       (resolved) => {
         store.etags = collectEtags(resolved);
       },
@@ -482,7 +487,7 @@ export const Root_UNSTABLE = ({
     <RootStoreContext value={store}>
       <ElementsContext value={elements}>
         {META_GENERATOR}
-        {children}
+        {elements ? children : null}
       </ElementsContext>
     </RootStoreContext>
   );
