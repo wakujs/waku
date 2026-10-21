@@ -94,6 +94,35 @@ test.describe(`rsc-basic`, () => {
     await expect(first.getByTestId('enhanced-by')).toHaveText('first:rsc');
   });
 
+  test('declarative enhancers handle layout-effect fetches and actions in their own Roots', async ({
+    page,
+  }) => {
+    await page.goto(
+      `http://localhost:${port}/?multiple-roots&declarative-enhancers`,
+    );
+    const first = page.getByTestId('first-root');
+    const second = page.getByTestId('second-root');
+    await expect(first.getByTestId('enhanced-by')).toHaveText('first:rsc');
+    await expect(second.getByTestId('enhanced-by')).toHaveText('second:rsc');
+    await expect(first.getByTestId('enhancer-input')).toHaveText(
+      JSON.stringify([
+        'first',
+        'first',
+        { input: { count: 1 }, name: 'first' },
+      ]),
+    );
+    await first
+      .getByRole('button', { name: 'Enhanced action', exact: true })
+      .click();
+    await expect(first.getByTestId('action-value')).toHaveText('pong');
+    await expect(second.getByTestId('enhanced-by')).toHaveText('second:call');
+    await page.getByTestId('unmount-second-root').click();
+    await first
+      .getByRole('button', { name: 'Enhanced action', exact: true })
+      .click();
+    await expect(first.getByTestId('enhanced-by')).toHaveText('first:call');
+  });
+
   test(
     'Root HMR refreshes use mounted enhancers',
     { tag: '@dev' },

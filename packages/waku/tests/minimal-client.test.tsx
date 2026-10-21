@@ -431,7 +431,8 @@ describe('minimal/client server actions', () => {
     const unregisterFirst = registerRootStore({
       setElements: firstSetElements,
       etags: { App: 'first' },
-      enhancers: [],
+      rscEnhancers: [],
+      legacyEnhancers: new Map(),
       fetchRsc: vi.fn(),
     });
 
@@ -439,7 +440,8 @@ describe('minimal/client server actions', () => {
     const unregisterSecond = registerRootStore({
       setElements: secondSetElements,
       etags: { App: 'second' },
-      enhancers: [],
+      rscEnhancers: [],
+      legacyEnhancers: new Map(),
       fetchRsc: vi.fn(),
     });
     resolveAction({ _value: 'result', App: 'updated' });
@@ -467,7 +469,8 @@ describe('minimal/client server actions', () => {
     const unregisterFirst = registerRootStore({
       setElements: firstSetElements,
       etags: { App: 'first' },
-      enhancers: [],
+      rscEnhancers: [],
+      legacyEnhancers: new Map(),
       fetchRsc: vi.fn(),
     });
 
@@ -476,7 +479,8 @@ describe('minimal/client server actions', () => {
     const unregisterSecond = registerRootStore({
       setElements: secondSetElements,
       etags: { App: 'second' },
-      enhancers: [],
+      rscEnhancers: [],
+      legacyEnhancers: new Map(),
       fetchRsc: vi.fn(),
     });
     resolveAction({ _value: 'result', App: 'updated' });
@@ -494,13 +498,15 @@ describe('minimal/client server actions', () => {
     const first = {
       setElements: vi.fn(),
       etags: { App: 'first' },
-      enhancers: [],
+      rscEnhancers: [],
+      legacyEnhancers: new Map(),
       fetchRsc: vi.fn(),
     };
     const second = {
       setElements: vi.fn(),
       etags: { App: 'second' },
-      enhancers: [],
+      rscEnhancers: [],
+      legacyEnhancers: new Map(),
       fetchRsc: vi.fn(),
     };
     const unregisterFirst = registerRootStore(first);

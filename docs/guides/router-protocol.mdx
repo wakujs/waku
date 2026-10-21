@@ -323,7 +323,7 @@ accepted but suspended navigation from being replaced by the previous page.
 
 ## Action Intent
 
-`useActionRouting_UNSTABLE` sends the settled route at action request time in
+A controller from `unstable_createActionRouting` sends the settled route at action request time in
 `X-Waku-Action-Location`. This header is client-to-server information.
 After a failed navigation, the action origin follows the retained elements'
 route metadata, which can be ahead of the request's cache baseline after an
@@ -335,9 +335,33 @@ instant paint. The failed destination's URL remains in history.
 - `rerenderRoute(destination)` and action redirects express navigation intent.
   Their destination must not be discarded merely because the user left the origin.
 
-Install `useActionRouting_UNSTABLE` in a client binding rather than recreating this
-policy. It registers before descendant passive effects can start an action. See
-[Rerender After Actions](/guides/rerender-after-actions).
+Create one controller for each Root, install its `enhancer` last in Root's
+`rscEnhancers`, and call `useActionRouting_UNSTABLE(controller, callbacks)` in the
+client binding beneath that Root. The hook connects the Root cache and current
+navigation callbacks in a layout effect; it does not install the enhancer.
+Callbacks can change without replacing the pipeline. Start mount-time actions
+in `useEffect`: actions before connection fail rather than inventing an origin.
+
+```tsx
+const [actionRouting] = useState(() => unstable_createActionRouting());
+return (
+  <Root rscEnhancers={[...inputEnhancers, actionRouting.enhancer]}>
+    <Binding actionRouting={actionRouting} />
+  </Root>
+);
+```
+
+The binding calls:
+
+```tsx
+useActionRouting_UNSTABLE(actionRouting, {
+  getSettledRoute,
+  getPendingRoute,
+  onRouteChange,
+});
+```
+
+See [Rerender After Actions](/guides/rerender-after-actions).
 
 ## Reading the Implementation
 

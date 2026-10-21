@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { Suspense, act, useEffect } from 'react';
+import { StrictMode, Suspense, act, useEffect, useLayoutEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { ETAGS_HEADER, ETAGS_ID } from '../src/lib/utils-isomorphic/etags.js';
@@ -48,7 +48,10 @@ afterEach(async () => {
   vi.unstubAllEnvs();
 });
 
-const mount = async (path: string) => {
+const mount = async (
+  path: string,
+  rscEnhancers: readonly RequestRscEnhancer[] = [],
+) => {
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -69,17 +72,27 @@ const mount = async (path: string) => {
     });
     return <Slot id="content" />;
   };
-  await act(async () => {
+  const render = (enhancers: readonly RequestRscEnhancer[]) =>
     root.render(
-      <Suspense fallback="pending">
-        <Root initialRscPath={path}>
-          <Probe />
-        </Root>
-      </Suspense>,
+      <StrictMode>
+        <Suspense fallback="pending">
+          <Root initialRscPath={path} rscEnhancers={enhancers}>
+            <Probe />
+          </Root>
+        </Suspense>
+      </StrictMode>,
     );
-  });
+  await act(async () => render(rscEnhancers));
   expect(container.textContent).toBe('initial');
-  return { ...api!, container, root, getElements: () => api.elements };
+  return {
+    ...api!,
+    container,
+    root,
+    getElements: () => api.elements,
+    rerender: async (enhancers: readonly RequestRscEnhancer[]) => {
+      await act(async () => render(enhancers));
+    },
+  };
 };
 
 test('a whole cached response applies to the request-time Root', async () => {
@@ -268,57 +281,140 @@ test('Root-bound fetches only claim validators from an explicit base', async () 
   ).toBe('{"content":"version"}');
 });
 
-test.each([false, true])(
-  'explicit order is independent of registration order: %s',
-  async (reverse) => {
-    const root = await mount('initial');
-    const applied = vi.fn();
-    const observe: RequestRscEnhancer =
-      (next) =>
-      async (...args) => {
-        const result = await next(...args);
-        if (args[2].type === 'call') {
-          applied(result.elements, result.value);
-        }
-        return result;
-      };
-    const transform: RequestRscEnhancer =
-      (next) =>
-      async (...args) => {
-        const { elements, value } = await next(...args);
-        return {
-          elements: { ...elements, content: 'final' },
-          value: String(value) + '-final',
-        };
-      };
-    if (reverse) {
-      root.register(transform);
-      root.register(observe, 1);
-    } else {
-      root.register(observe, 1);
-      root.register(transform);
-    }
-    request.mockImplementation(async () =>
-      Response.json({ content: 'server', _value: 'value' }),
+test('configured enhancers wrap legacy registrations in array order for fetches and actions', async () => {
+  const calls: string[] = [];
+  const trace =
+    (name: string): RequestRscEnhancer =>
+    (next) =>
+    async (...args) => {
+      calls.push(name);
+      const result = await next(...args);
+      calls.push(name + ' result');
+      return result;
+    };
+  const root = await mount('initial', [trace('A'), trace('B')]);
+  root.register(trace('legacy first'));
+  root.register(trace('legacy second'));
+  calls.length = 0;
+  const expected = [
+    'B',
+    'A',
+    'legacy second',
+    'legacy first',
+    'legacy first result',
+    'legacy second result',
+    'A result',
+    'B result',
+  ];
+  await root.fetch('next');
+  expect(calls).toEqual(expected);
+  calls.length = 0;
+  request.mockImplementation(async () => Response.json({ _value: 'value' }));
+  await act(async () => {
+    expect(await callServerRsc('file#action', [])).toBe('value');
+  });
+  expect(calls).toEqual(expected);
+});
+
+test('configured entries are snapshotted while their request data stays live', async () => {
+  let locale = 'en';
+  const localized: RequestRscEnhancer = (next) => (path, params, options) =>
+    next(path + '-' + locale, params, options);
+  const replaced = vi.fn<RequestRscEnhancer>((next) => next);
+  const enhancers = [localized];
+  const first = await mount('first', enhancers);
+  const second = await mount('second', [
+    (next) => (path, params, options) =>
+      next(path + '-second', params, options),
+  ]);
+  enhancers[0] = replaced;
+  await first.rerender([replaced]);
+  locale = 'fr';
+  await first.fetch('next');
+  expect(request.mock.lastCall![0]).toContain('/next-fr');
+  await second.fetch('next');
+  expect(request.mock.lastCall![0]).toContain('/next-second');
+  expect(replaced).not.toHaveBeenCalled();
+});
+
+test('duplicate legacy functions have independent, idempotent cleanup', async () => {
+  const calls: string[] = [];
+  const a: RequestRscEnhancer =
+    (next) =>
+    (...args) => {
+      calls.push('a');
+      return next(...args);
+    };
+  const b: RequestRscEnhancer =
+    (next) =>
+    (...args) => {
+      calls.push('b');
+      return next(...args);
+    };
+  const root = await mount('initial');
+  const removeFirst = root.register(a);
+  root.register(b);
+  const removeLast = root.register(a);
+  removeFirst();
+  removeFirst();
+  await root.fetch('next');
+  expect(calls).toEqual(['a', 'b']);
+  calls.length = 0;
+  removeLast();
+  await root.fetch('next');
+  expect(calls).toEqual(['b']);
+});
+
+test('a descendant layout effect finds the configured pipeline on its first fetch', async () => {
+  const enhance: RequestRscEnhancer = (next) => (path, params, options) =>
+    next(path + '-enhanced', params, options);
+  const pending: Promise<unknown>[] = [];
+  const Probe = () => {
+    const fetchRsc = useFetchRsc();
+    useLayoutEffect(() => {
+      pending.push(fetchRsc('layout'));
+    }, [fetchRsc]);
+    return <Slot id="content" />;
+  };
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  roots.push(root);
+  await act(async () => {
+    root.render(
+      <StrictMode>
+        <Suspense fallback="pending">
+          <Root rscEnhancers={[enhance]}>
+            <Probe />
+          </Root>
+        </Suspense>
+      </StrictMode>,
     );
-    expect((await root.fetch('next')).content).toBe('final');
-    expect(applied).not.toHaveBeenCalled();
-    expect(root.container.textContent).toBe('initial');
-    await act(async () => {
-      expect(await callServerRsc('file#action', [])).toBe('value-final');
-    });
-    expect(applied).toHaveBeenCalledExactlyOnceWith(
-      { content: 'final' },
-      'value-final',
-    );
-    expect(root.container.textContent).toBe('final');
-  },
-);
+  });
+  await Promise.all(pending);
+  expect(pending).toHaveLength(2);
+  expect(
+    request.mock.calls.filter(([input]) => String(input).includes('/layout')),
+  ).toEqual([
+    [expect.stringContaining('/layout-enhanced'), expect.anything()],
+    [expect.stringContaining('/layout-enhanced'), expect.anything()],
+  ]);
+});
 
 test('a development reload replaces server entries and retains omitted client symbols', async () => {
   Object.defineProperty(import.meta, 'hot', { configurable: true, value: {} });
   const CLIENT_STATE = Symbol();
-  const root = await mount('initial');
+  const root = await mount('initial', [
+    (next) => (path, params, options) =>
+      next(path, params, {
+        ...options,
+        fetch: (input, init) => {
+          const headers = new Headers(init?.headers);
+          headers.set('configured', 'yes');
+          return options.fetch(input, { ...init, headers });
+        },
+      }),
+  ]);
   await act(async () => {
     await root.merge({ obsolete: 'removed', [CLIENT_STATE]: 'retained' });
   });
@@ -333,6 +429,9 @@ test('a development reload replaces server entries and retains omitted client sy
   });
 
   expect(root.container.textContent).toBe('reloaded');
+  expect(
+    new Headers(request.mock.lastCall![1]?.headers).get('configured'),
+  ).toBe('yes');
   const elements = await root.getElements();
   expect('obsolete' in elements).toBe(false);
   expect(elements[CLIENT_STATE]).toBe('retained');

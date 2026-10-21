@@ -1,11 +1,14 @@
 'use client';
 
-import { use, useCallback, useContext, useMemo } from 'react';
+import { use, useCallback, useContext, useMemo, useState } from 'react';
 import {
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
   useElementsPromise_UNSTABLE as useElementsPromise,
 } from 'waku/minimal/client';
+import type { Unstable_RscEnhancer } from 'waku/minimal/client';
+import { createActionRouting } from './client-core-utils/action-routing.js';
+import type { ActionRouting } from './client-core-utils/action-routing.js';
 import { useRouterCache } from './client-core-utils/caches.js';
 import type { PrefetchOptions } from './client-core-utils/caches.js';
 import { RouterHostContext } from './client-core-utils/host.js';
@@ -177,9 +180,11 @@ const ThrowError = ({ error }: { error: unknown }) => {
 };
 
 const InnerRouter = ({
+  actionRouting,
   fallbackRoute,
   routeInterceptor,
 }: {
+  actionRouting: ActionRouting;
   fallbackRoute: RouteProps;
   routeInterceptor: ((route: RouteProps) => RouteProps | false) | undefined;
 }) => {
@@ -190,7 +195,7 @@ const InnerRouter = ({
     changeRoute,
     getElements,
     error: navigationError,
-  } = useNavigation(elements, fallbackRoute, routeInterceptor);
+  } = useNavigation(elements, fallbackRoute, routeInterceptor, actionRouting);
 
   const navigate = useCallback<RouterHost['navigate']>(
     (href, opts) => {
@@ -244,8 +249,15 @@ const InnerRouter = ({
 export function Router({
   initialRoute = parseRoute(new URL(window.location.href)),
   unstable_routeInterceptor,
+  unstable_rscEnhancers = [],
 }: {
   initialRoute?: RouteProps;
+  /**
+   * Initial input and transport enhancers, last entry outermost. Snapshotted
+   * once per mount; remount to change the array. Router action routing wraps
+   * this list, so result caches here do not retain its reconciled metadata.
+   */
+  unstable_rscEnhancers?: readonly Unstable_RscEnhancer[];
   /**
    * Intercepts browser history navigation (back/forward) before it commits;
    * programmatic navigation and `Link` clicks are not intercepted. Return
@@ -254,15 +266,27 @@ export function Router({
    */
   unstable_routeInterceptor?: (route: RouteProps) => RouteProps | false;
 }) {
+  const [{ actionRouting, rscEnhancers }] = useState(() => {
+    const actionRouting = createActionRouting();
+    return {
+      actionRouting,
+      rscEnhancers: [...unstable_rscEnhancers, actionRouting.enhancer],
+    };
+  });
   const initialRscPath = encodeRoutePath(initialRoute.path);
   const initialRscParams = useInitialRscParams(
     initialRscPath,
     initialRoute.query,
   );
   return (
-    <Root initialRscPath={initialRscPath} initialRscParams={initialRscParams}>
+    <Root
+      initialRscPath={initialRscPath}
+      initialRscParams={initialRscParams}
+      rscEnhancers={rscEnhancers}
+    >
       <MissingRouteHandler>
         <InnerRouter
+          actionRouting={actionRouting}
           fallbackRoute={initialRoute}
           routeInterceptor={unstable_routeInterceptor}
         />
