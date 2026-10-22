@@ -78,10 +78,10 @@ test.describe('broken-links: normal server', () => {
   });
 
   test.describe('client side navigation', () => {
-    test('a lower-order response wrapper preserves the redirect query', async ({
+    test('a configured response wrapper preserves the redirect query', async ({
       page,
     }) => {
-      await page.goto(`http://localhost:${port}/?wrap-fetch=0`);
+      await page.goto(`http://localhost:${port}/?wrap-fetch`);
       await waitForHydration(page);
       await page
         .getByRole('link', { name: 'Redirect with query', exact: true })

@@ -1,11 +1,21 @@
 'use client';
 
-import { use, useCallback, useContext, useMemo } from 'react';
+import {
+  use,
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from 'react';
 import {
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
   useElementsPromise_UNSTABLE as useElementsPromise,
 } from 'waku/minimal/client';
+import type { Unstable_RscEnhancer } from 'waku/minimal/client';
+import { createActionRouting } from './client-core-utils/action-routing.js';
+import type { ActionRouting } from './client-core-utils/action-routing.js';
 import { useRouterCache } from './client-core-utils/caches.js';
 import type { PrefetchOptions } from './client-core-utils/caches.js';
 import { RouterHostContext } from './client-core-utils/host.js';
@@ -26,6 +36,7 @@ import {
   RouterContext,
   dispatchChangeRoute,
 } from './client-utils/router-context.js';
+import { serverRedirectEnhancer } from './client-utils/router-state.js';
 import { shouldScrollByDefault } from './client-utils/scroll.js';
 import type { NavigationHref } from './isomorphic-utils/build-route-href.js';
 import type { RouteProps } from './isomorphic-utils/route-path.js';
@@ -177,9 +188,11 @@ const ThrowError = ({ error }: { error: unknown }) => {
 };
 
 const InnerRouter = ({
+  actionRouting,
   fallbackRoute,
   routeInterceptor,
 }: {
+  actionRouting: ActionRouting;
   fallbackRoute: RouteProps;
   routeInterceptor: ((route: RouteProps) => RouteProps | false) | undefined;
 }) => {
@@ -190,7 +203,7 @@ const InnerRouter = ({
     changeRoute,
     getElements,
     error: navigationError,
-  } = useNavigation(elements, fallbackRoute, routeInterceptor);
+  } = useNavigation(elements, fallbackRoute, routeInterceptor, actionRouting);
 
   const navigate = useCallback<RouterHost['navigate']>(
     (href, opts) => {
@@ -234,6 +247,35 @@ const InnerRouter = ({
   );
 };
 
+const EMPTY_RSC_ENHANCERS: readonly Unstable_RscEnhancer[] = [];
+const mountedActionRoutings: ActionRouting[] = [];
+const actionRoutingEnhancer: Unstable_RscEnhancer =
+  (next) => (rscPath, rscParams, options) => {
+    if (options.type !== 'call') {
+      return next(rscPath, rscParams, options);
+    }
+    const actionRouting = mountedActionRoutings.at(-1);
+    if (!actionRouting) {
+      throw new Error(
+        'Action routing is not connected. Call mount-time actions from useEffect, not useLayoutEffect.',
+      );
+    }
+    return actionRouting.enhancer(next)(rscPath, rscParams, options);
+  };
+const routerRscEnhancers = new WeakMap<
+  readonly Unstable_RscEnhancer[],
+  readonly Unstable_RscEnhancer[]
+>();
+
+const getRouterRscEnhancers = (enhancers: readonly Unstable_RscEnhancer[]) => {
+  let pipeline = routerRscEnhancers.get(enhancers);
+  if (!pipeline) {
+    pipeline = [...enhancers, serverRedirectEnhancer, actionRoutingEnhancer];
+    routerRscEnhancers.set(enhancers, pipeline);
+  }
+  return pipeline;
+};
+
 /**
  * Client router root. Each instance provides navigation state to its
  * descendants. Instances can start from different `initialRoute` values, but
@@ -244,8 +286,17 @@ const InnerRouter = ({
 export function Router({
   initialRoute = parseRoute(new URL(window.location.href)),
   unstable_routeInterceptor,
+  unstable_rscEnhancers = EMPTY_RSC_ENHANCERS,
 }: {
   initialRoute?: RouteProps;
+  /**
+   * Initial input and transport enhancers, last entry outermost. Snapshotted
+   * once per mount; keep the array reference stable across renders, including
+   * initial Suspense retries. Create it before rendering React and remount to
+   * change it with a new array. Router redirect and action routing wrap this
+   * list, so result caches here do not retain their reconciled metadata.
+   */
+  unstable_rscEnhancers?: readonly Unstable_RscEnhancer[];
   /**
    * Intercepts browser history navigation (back/forward) before it commits;
    * programmatic navigation and `Link` clicks are not intercepted. Return
@@ -254,15 +305,33 @@ export function Router({
    */
   unstable_routeInterceptor?: (route: RouteProps) => RouteProps | false;
 }) {
+  const [actionRouting] = useState(createActionRouting);
+  const [rscEnhancers] = useState(() =>
+    getRouterRscEnhancers(unstable_rscEnhancers),
+  );
+  useLayoutEffect(() => {
+    mountedActionRoutings.push(actionRouting);
+    return () => {
+      mountedActionRoutings.splice(
+        mountedActionRoutings.lastIndexOf(actionRouting),
+        1,
+      );
+    };
+  }, [actionRouting]);
   const initialRscPath = encodeRoutePath(initialRoute.path);
   const initialRscParams = useInitialRscParams(
     initialRscPath,
     initialRoute.query,
   );
   return (
-    <Root initialRscPath={initialRscPath} initialRscParams={initialRscParams}>
+    <Root
+      initialRscPath={initialRscPath}
+      initialRscParams={initialRscParams}
+      rscEnhancers={rscEnhancers}
+    >
       <MissingRouteHandler>
         <InnerRouter
+          actionRouting={actionRouting}
           fallbackRoute={initialRoute}
           routeInterceptor={unstable_routeInterceptor}
         />

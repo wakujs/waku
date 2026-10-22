@@ -87,6 +87,22 @@ test.describe('router-client', () => {
     await stopApp();
   });
 
+  test('a client-entry enhancer handles navigation from the initial layout effect', async ({
+    page,
+  }) => {
+    const [request] = await Promise.all([
+      page.waitForRequest(
+        (request) =>
+          request.url().includes('/RSC/') &&
+          new URL(request.url()).searchParams.get('query') === 'from=layout',
+      ),
+      page.goto(`http://localhost:${port}/start?enhancer-layout`),
+    ]);
+    expect(request.headers()['x-rsc-enhancer']).toBe('configured');
+    await expect(page).toHaveURL(`http://localhost:${port}/next?from=layout`);
+    await expect(page.getByTestId('route-path')).toHaveText('/next');
+  });
+
   test('popstate interceptor can block navigation', async ({ page }) => {
     await page.goto(`http://localhost:${port}/start`);
     await waitForHydration(page);

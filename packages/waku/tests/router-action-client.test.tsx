@@ -17,6 +17,7 @@ import {
   Children_UNSTABLE as Children,
   useRegisterRscEnhancer_UNSTABLE as useRegisterRscEnhancer,
 } from '../src/minimal/client.js';
+import type { Unstable_RscEnhancer } from '../src/minimal/client.js';
 import { Link, Router, useRouter } from '../src/router/client.js';
 import {
   ACTION_LOCATION_HEADER,
@@ -69,7 +70,7 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-const mount = async () => {
+const mount = async (rscEnhancers: readonly Unstable_RscEnhancer[] = []) => {
   let api!: {
     register: ReturnType<typeof useRegisterRscEnhancer>;
     router: ReturnType<typeof useRouter>;
@@ -100,7 +101,7 @@ const mount = async () => {
     root.render(
       <StrictMode>
         <Suspense fallback="pending">
-          <Router />
+          <Router unstable_rscEnhancers={rscEnhancers} />
         </Suspense>
       </StrictMode>,
     );
@@ -111,8 +112,97 @@ const mount = async () => {
     container,
     errors,
     getRouter: () => api.router,
+    unmount: () => {
+      root.unmount();
+      roots.splice(roots.indexOf(root), 1);
+    },
   };
 };
+
+test('a fallback Router reuses its configured bootstrap pipeline through Suspense retries', async () => {
+  const response = deferred<Record<string, unknown>>({});
+  decode.mockReturnValue(response.promise);
+  const enhance = vi.fn<Unstable_RscEnhancer>((next) => next);
+  const enhancers = [enhance];
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  roots.push(root);
+  const App = () => <Router unstable_rscEnhancers={enhancers} />;
+  await act(async () => {
+    root.render(
+      <StrictMode>
+        <Suspense fallback="pending">
+          <App />
+        </Suspense>
+      </StrictMode>,
+    );
+  });
+  expect(container.textContent).toBe('pending');
+  expect(decode).toHaveBeenCalledOnce();
+  expect(enhance).toHaveBeenCalledOnce();
+  await act(async () => {
+    response.resolve({
+      root: <Children />,
+      [getRouteSlotId('/start')]: 'start',
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    });
+  });
+  expect(container.textContent).toBe('start');
+  expect(decode).toHaveBeenCalledOnce();
+  expect(enhance).toHaveBeenCalledOnce();
+});
+
+test('Routers with the same configuration keep in-flight actions and committed callbacks isolated', async () => {
+  const enhancers: readonly Unstable_RscEnhancer[] = [(next) => next];
+  const first = await mount(enhancers);
+  const response = deferred<Record<string, unknown>>({});
+  decode.mockReturnValueOnce(response.promise);
+  let action!: Promise<unknown>;
+  await act(async () => {
+    action = callServerRsc('action#first', []);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  const second = await mount(enhancers);
+  await act(async () => {
+    response.resolve({
+      [getRouteSlotId('/first')]: 'first action',
+      [ROUTE_ID]: ['/first', ''],
+      [IS_STATIC_ID]: false,
+      _value: 'first value',
+    });
+    expect(await action).toBe('first value');
+  });
+  expect(first.container.textContent).toBe('first action');
+  expect(first.getRouter().path).toBe('/first');
+  expect(second.container.textContent).toBe('start');
+  expect(second.getRouter().path).toBe('/start');
+  decode.mockReturnValueOnce({
+    [getRouteSlotId('/second')]: 'second action',
+    [ROUTE_ID]: ['/second', ''],
+    [IS_STATIC_ID]: false,
+  });
+  await act(async () => {
+    await callServerRsc('action#second', []);
+  });
+  expect(first.container.textContent).toBe('first action');
+  expect(second.container.textContent).toBe('second action');
+  expect(second.getRouter().path).toBe('/second');
+  await act(async () => second.unmount());
+  decode.mockReturnValueOnce({
+    [getRouteSlotId('/restored')]: 'restored first',
+    [ROUTE_ID]: ['/restored', ''],
+    [IS_STATIC_ID]: false,
+  });
+  await act(async () => {
+    await callServerRsc('action#restored', []);
+  });
+  expect(first.container.textContent).toBe('restored first');
+  expect(first.getRouter().path).toBe('/restored');
+  expect(first.errors).not.toHaveBeenCalled();
+  expect(second.errors).not.toHaveBeenCalled();
+});
 
 test('an action started by a route mount effect updates the route', async () => {
   const response = deferred<Record<string, unknown>>({});
@@ -188,17 +278,14 @@ test('a short-circuited action response still updates the route', async () => {
   expect(view.errors).not.toHaveBeenCalled();
 });
 
-test('an action route update waits for response enhancers below Router order', async () => {
+test('an action route update waits for inner response enhancers', async () => {
   const view = await mount();
   const delayed = deferred(undefined);
-  view.register(
-    (next) => async (path, params, options) => {
-      const result = await next(path, params, options);
-      await delayed.promise;
-      return result;
-    },
-    99,
-  );
+  view.register((next) => async (path, params, options) => {
+    const result = await next(path, params, options);
+    await delayed.promise;
+    return result;
+  });
   decode.mockReturnValue({
     [getRouteSlotId('/next')]: 'next',
     [ROUTE_ID]: ['/next', ''],
@@ -581,23 +668,24 @@ test('a rejected enhancer response cannot navigate or cancel pending work', asyn
   expect(window.location.pathname).toBe('/middle');
 });
 
-test('an enhancer below Router order replaces the final destination and action value', async () => {
-  const view = await mount();
-  view.register(
+test('a configured enhancer replaces the final destination and action value before Router handles it', async () => {
+  const enhance: Unstable_RscEnhancer =
     (next) =>
-      async (...args) => {
-        const { value } = await next(...args);
-        return {
-          elements: {
-            [getRouteSlotId('/final')]: 'final',
-            [ROUTE_ID]: ['/final', ''],
-            [IS_STATIC_ID]: false,
-          },
-          value: String(value) + '-enhanced',
-        };
-      },
-    50,
-  );
+    async (...args) => {
+      if (args[2].type !== 'call') {
+        return next(...args);
+      }
+      const { value } = await next(...args);
+      return {
+        elements: {
+          [getRouteSlotId('/final')]: 'final',
+          [ROUTE_ID]: ['/final', ''],
+          [IS_STATIC_ID]: false,
+        },
+        value: String(value) + '-enhanced',
+      };
+    };
+  const view = await mount([enhance]);
   decode.mockReturnValueOnce({
     [getRouteSlotId('/next')]: 'next',
     [ROUTE_ID]: ['/next', ''],
@@ -703,6 +791,89 @@ test('a rerender of the route an action came from is dropped once the user left 
   expect(view.container.textContent).toBe('next');
   expect(window.location.pathname).toBe('/next');
   expect(view.errors).not.toHaveBeenCalled();
+});
+
+test('a stale action rerender is dropped while Suspense hides the Router', async () => {
+  let router!: ReturnType<typeof useRouter>;
+  const Probe = () => {
+    const current = useRouter();
+    useEffect(() => {
+      router = current;
+    });
+    return <Children />;
+  };
+  decode.mockReturnValueOnce({
+    root: <Probe />,
+    [getRouteSlotId('/start')]: 'start',
+    [ROUTE_ID]: ['/start', ''],
+    [IS_STATIC_ID]: false,
+  });
+  const container = document.createElement('div');
+  document.body.append(container);
+  const errors = vi.fn();
+  const root = createRoot(container, {
+    onCaughtError: errors,
+    onUncaughtError: errors,
+  });
+  roots.push(root);
+  const pause = deferred(undefined);
+  let hidden = false;
+  const Gate = () => {
+    if (hidden) {
+      use(pause.promise);
+    }
+    return null;
+  };
+  const render = () =>
+    root.render(
+      <Suspense fallback={<div data-fallback>pending</div>}>
+        <Gate />
+        <Router />
+      </Suspense>,
+    );
+  await act(async () => render());
+  expect(container.textContent).toBe('start');
+  const response = deferred<Record<string, unknown>>({});
+  decode.mockReturnValueOnce(response.promise);
+  let action!: Promise<unknown>;
+  await act(async () => {
+    action = callServerRsc('action#test', []);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  decode.mockReturnValueOnce({
+    [getRouteSlotId('/next')]: 'next',
+    [ROUTE_ID]: ['/next', ''],
+    [IS_STATIC_ID]: false,
+  });
+  await act(async () => {
+    await router.push('/next');
+  });
+  expect(container.textContent).toBe('next');
+  await act(async () => {
+    hidden = true;
+    render();
+  });
+  expect(container.querySelector('[data-fallback]')?.textContent).toBe(
+    'pending',
+  );
+  await act(async () => {
+    response.resolve({
+      [getRouteSlotId('/start')]: 'stale start',
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+      [IS_ORIGIN_ID]: true,
+      _value: 'done',
+    });
+    expect(await action).toBe('done');
+  });
+  await act(async () => {
+    hidden = false;
+    pause.resolve(undefined);
+    render();
+  });
+  expect(container.textContent).toBe('next');
+  expect(window.location.pathname).toBe('/next');
+  expect(errors).not.toHaveBeenCalled();
 });
 
 test('a rerender of the route an action came from is dropped over a navigation it holds back', async () => {

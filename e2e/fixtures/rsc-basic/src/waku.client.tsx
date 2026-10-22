@@ -5,7 +5,10 @@ import {
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
 } from 'waku/minimal/client';
-import { RscEnhancements } from './components/RscEnhancements.js';
+import {
+  RscEnhancements,
+  createRscEnhancer,
+} from './components/RscEnhancements.js';
 
 const multipleRoots = new URLSearchParams(window.location.search).has(
   'multiple-roots',
@@ -20,6 +23,12 @@ const rootElement = (
 );
 
 if (multipleRoots) {
+  const bootstrap = new URLSearchParams(window.location.search).has(
+    'bootstrap-enhancers',
+  );
+  const declarative = new URLSearchParams(window.location.search).has(
+    'declarative-enhancers',
+  );
   type RootName = 'first' | 'second' | 'third';
   const mounted = new Set<RootName>();
   const mountRoot = (name: RootName) => {
@@ -32,12 +41,23 @@ if (multipleRoots) {
     document.body.appendChild(container);
     const reactRoot = createRoot(container, defaultRootOptions);
     let initialRscParams: unknown;
+    const enhancers = declarative || bootstrap ? [createRscEnhancer(name)] : [];
     const renderRoot = () => {
       reactRoot.render(
         <StrictMode>
-          <Root initialRscPath={name} initialRscParams={initialRscParams}>
-            {new URLSearchParams(window.location.search).has('enhancers') && (
-              <RscEnhancements name={name} />
+          <Root
+            initialRscPath={bootstrap ? 'bootstrap' : name}
+            initialRscParams={initialRscParams}
+            rscEnhancers={enhancers}
+          >
+            {bootstrap && (
+              <p data-testid="bootstrap-input">
+                <Slot id="EnhancerInput" />
+              </p>
+            )}
+            {(declarative ||
+              new URLSearchParams(window.location.search).has('enhancers')) && (
+              <RscEnhancements name={name} declarative={declarative} />
             )}
             <Slot id="Content" />
           </Root>

@@ -1,11 +1,12 @@
 import { StrictMode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { unstable_defaultRootOptions as defaultRootOptions } from 'waku/client';
-import { NavRouter } from './nav-binding.js';
+import { NavRouter, createNavRouterConfig } from './nav-binding.js';
 
+const config = createNavRouterConfig();
 const rootElement = (
   <StrictMode>
-    <NavRouter />
+    <NavRouter config={config} />
   </StrictMode>
 );
 

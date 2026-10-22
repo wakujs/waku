@@ -16,7 +16,14 @@ export type RequestRsc = (
   },
 ) => Promise<{ elements: Elements; value?: unknown }>;
 
-export type RequestRscEnhancer = (requestRsc: RequestRsc) => RequestRsc;
+/**
+ * Wraps Root request inputs, the supplied fetch, or decoded elements and values.
+ * `options.type` distinguishes RSC fetches from server action calls. Forward the
+ * supplied fetch and signal when composing transport. Return the action value
+ * alongside elements; use `unstable_combineElements` to preserve their etags.
+ * In an enhancer array, the last entry wraps all earlier entries.
+ */
+export type RscEnhancer = (requestRsc: RequestRsc) => RequestRsc;
 
 export type FetchRscOptions = {
   signal?: AbortSignal;
@@ -37,7 +44,8 @@ export type FetchRsc = (
 export type RootStore = {
   setElements: SetElements;
   etags: Etags;
-  enhancers: [enhance: RequestRscEnhancer, order: number][];
+  rscEnhancers: readonly RscEnhancer[];
+  legacyEnhancers: Map<symbol, RscEnhancer>;
   fetchRsc: FetchRsc;
 };
 

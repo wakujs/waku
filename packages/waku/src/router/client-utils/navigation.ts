@@ -13,6 +13,7 @@ import {
   useRegisterRscReloadListener_UNSTABLE as useRegisterRscReloadListener,
 } from 'waku/minimal/client';
 import { useActionRouting } from '../client-core-utils/action-routing.js';
+import type { ActionRouting } from '../client-core-utils/action-routing.js';
 import { useRouterCache } from '../client-core-utils/caches.js';
 import { isFollowable } from '../client-core-utils/error-route.js';
 import { useHmrRefetch } from '../client-core-utils/hmr.js';
@@ -46,7 +47,6 @@ import {
   makeRouterState,
   resolveServerRedirect,
   getSettledRoute as resolveSettledRoute,
-  useServerRedirect,
 } from './router-state.js';
 import type { RouterState } from './router-state.js';
 import { scrollToHash, shouldScrollForRouteChange } from './scroll.js';
@@ -97,8 +97,8 @@ export const useNavigation = (
   elements: Elements,
   fallbackRoute: RouteProps,
   routeInterceptor: ((route: RouteProps) => RouteProps | false) | undefined,
+  actionRouting: ActionRouting,
 ): Navigation => {
-  useServerRedirect();
   const cache = useRouterCache();
   const routeFallback = useInitialRoute(fallbackRoute);
   const has404 = has404FromElements(elements);
@@ -522,7 +522,7 @@ export const useNavigation = (
     },
     [changeRoute],
   );
-  useActionRouting({
+  useActionRouting(actionRouting, {
     getSettledRoute,
     getPendingRoute,
     onRouteChange: commitActionRoute,

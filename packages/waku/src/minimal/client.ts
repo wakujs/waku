@@ -1,5 +1,7 @@
 'use client';
 
+export type { RscEnhancer as Unstable_RscEnhancer } from './client-utils/root-store.js';
+
 export {
   Root_UNSTABLE,
   Slot_UNSTABLE,

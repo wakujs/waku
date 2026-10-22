@@ -2,6 +2,7 @@
 
 import {
   Component,
+  Suspense,
   createContext,
   use,
   useCallback,
@@ -21,6 +22,7 @@ import {
   useMergeElements_UNSTABLE as useMergeElements,
 } from 'waku/minimal/client';
 import {
+  type Unstable_ActionRouting as ActionRouting,
   type Unstable_FollowDecision as FollowDecision,
   unstable_MAX_FOLLOWS_PER_NAVIGATION as MAX_FOLLOWS_PER_NAVIGATION,
   unstable_ROUTE_ID as ROUTE_ID,
@@ -28,6 +30,7 @@ import {
   type Unstable_RouterHost as RouterHost,
   RouterHostContext_UNSTABLE as RouterHostContext,
   unstable_buildMergePatch as buildMergePatch,
+  unstable_createActionRouting as createActionRouting,
   unstable_decideFollow as decideFollow,
   unstable_encodeRoutePath as encodeRoutePath,
   unstable_getRouteFromElements as getRouteFromElements,
@@ -73,17 +76,18 @@ const FollowRedirect = ({
   const { ownsNavigation, follows, setFollows, lastFollowRef, runRef } =
     use(FollowHostContext)!;
   const href = decision.url.href;
-  // a second navigate() to the same href while intercept is in-flight hangs.
-  // Strict Mode remounts this effect at the same captured count; a later slot
-  // visit after a load-time hop does not. setFollows re-renders with
-  // follows+1 — still this dispatch — so the event reads follows without
-  // listing it as a dependency.
+  const dispatchedFollowRef = useRef<LastFollow | null>(null);
   const startFollow = useEffectEvent(() => {
     const last = lastFollowRef.current;
     if (last && last.href === href && last.follows === follows) {
       return;
     }
-    lastFollowRef.current = { href, follows };
+    if (last?.href === href && last === dispatchedFollowRef.current) {
+      return;
+    }
+    const dispatch = { href, follows };
+    lastFollowRef.current = dispatch;
+    dispatchedFollowRef.current = dispatch;
     const nextFollows = follows + 1;
     setFollows(nextFollows);
     if (ownsNavigation) {
@@ -184,7 +188,13 @@ class FollowBoundary extends Component<
   }
 }
 
-const NavBinding = ({ fallbackRoute }: { fallbackRoute: RouteProps }) => {
+const NavBinding = ({
+  fallbackRoute,
+  actionRouting,
+}: {
+  fallbackRoute: RouteProps;
+  actionRouting: ActionRouting;
+}) => {
   const { ownsNavigation, follows, setFollows, lastFollowRef, runRef } =
     use(FollowHostContext)!;
   const elements = use(useElementsPromise());
@@ -241,7 +251,7 @@ const NavBinding = ({ fallbackRoute }: { fallbackRoute: RouteProps }) => {
     },
     [ownsNavigation],
   );
-  useActionRouting({
+  useActionRouting(actionRouting, {
     getSettledRoute,
     getPendingRoute,
     onRouteChange: commitActionRoute,
@@ -389,16 +399,26 @@ const NavBinding = ({ fallbackRoute }: { fallbackRoute: RouteProps }) => {
   );
 };
 
+export const createNavRouterConfig = () => {
+  const actionRouting = createActionRouting();
+  return { actionRouting, rscEnhancers: [actionRouting.enhancer] };
+};
+
 export const NavRouter = ({
   ownsNavigation = true,
   initialRoute,
+  config,
 }: {
   ownsNavigation?: boolean;
   initialRoute?: RouteProps;
+  config?: ReturnType<typeof createNavRouterConfig>;
 } = {}) => {
   // NavBinding remounts on every merge; this host does not. Entry state is
   // not instance-scoped (`window.navigation` is per document) and intercept
   // runs before the URL commits.
+  const [{ actionRouting, rscEnhancers }] = useState(
+    () => config ?? createNavRouterConfig(),
+  );
   const [follows, setFollows] = useState(0);
   const lastFollowRef = useRef<LastFollow | null>(null);
   const runRef = useRef<FollowRun>(async () => {});
@@ -428,12 +448,23 @@ export const NavRouter = ({
   if (!ready) {
     return null;
   }
+  const root = (
+    <Root
+      initialRscPath={initialRscPath}
+      initialRscParams={initialRscParams}
+      rscEnhancers={rscEnhancers}
+    >
+      <NavBinding fallbackRoute={fallback} actionRouting={actionRouting} />
+    </Root>
+  );
   return (
     <FollowHostContext value={followHost}>
       {ownsNavigation ? null : <p data-testid="follow-count">{follows}</p>}
-      <Root initialRscPath={initialRscPath} initialRscParams={initialRscParams}>
-        <NavBinding fallbackRoute={fallback} />
-      </Root>
+      {ownsNavigation ? (
+        root
+      ) : (
+        <Suspense fallback="Loading...">{root}</Suspense>
+      )}
     </FollowHostContext>
   );
 };

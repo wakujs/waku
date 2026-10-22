@@ -1,8 +1,6 @@
 import { useLayoutEffect } from 'react';
-import {
-  unstable_combineElements as combineElements,
-  useRegisterRscEnhancer_UNSTABLE as useRegisterRscEnhancer,
-} from 'waku/minimal/client';
+import { unstable_combineElements as combineElements } from 'waku/minimal/client';
+import type { Unstable_RscEnhancer } from 'waku/minimal/client';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
   ACTION_LOCATION_HEADER,
@@ -13,100 +11,131 @@ import {
 import { useRouterCache } from './caches.js';
 import { isSameRscRoute } from './route-url.js';
 
-const ACTION_ENHANCER_ORDER = 100;
-
-/**
- * Handles the server actions of the enclosing Root for a binding, so an action
- * can call `unstable_rerenderRoute()` with no arguments to rerender the route
- * it was called from. It registers an RSC enhancer at order 100, and again
- * whenever a callback changes, so pass stable callbacks.
- *
- * Each action reports `getSettledRoute()` as the route it came from. A rerender
- * of that route is dropped, keeping the action's return value, when the
- * settled route has changed by the time the response arrives or
- * `getPendingRoute()` returns another route. `getPendingRoute` returns the
- * destination of a navigation that has not settled yet, or `undefined`.
- *
- * `onRouteChange` receives the route of a response that renders a route other
- * than the settled one. Minimal merges the response's elements after the
- * enhancer chain resolves, so commit that route without fetching it.
- */
-export const useActionRouting = ({
-  getSettledRoute,
-  getPendingRoute,
-  onRouteChange,
-}: {
+type ActionRoutingCallbacks = {
   getSettledRoute: () => RouteProps;
   getPendingRoute: () => Pick<RouteProps, 'path' | 'query'> | undefined;
   onRouteChange: (route: RouteProps) => void;
-}): void => {
-  const cache = useRouterCache();
-  const registerRscEnhancer = useRegisterRscEnhancer();
-  // an action a descendant starts in a passive effect must find this enhancer
-  useLayoutEffect(() => {
-    const handleActionElements = (nextElements: Record<string, unknown>) => {
-      cache.learnStaticFromElements(nextElements);
-      const route = getRouteFromElements(nextElements);
-      if (!route) {
-        return;
-      }
-      const settledRoute = getSettledRoute();
-      if (
-        settledRoute.path === route.path &&
-        (isStaticFromElements(nextElements) ||
-          settledRoute.query === route.query)
-      ) {
-        return;
-      }
-      onRouteChange(route);
-    };
-    return registerRscEnhancer(
-      (next) => async (rscPath, rscParams, options) => {
-        if (options.type !== 'call') {
-          return next(rscPath, rscParams, options);
+};
+
+/** Holds one Root's action policy and its committed navigation callbacks. */
+export type ActionRouting = {
+  enhancer: Unstable_RscEnhancer;
+  /** Cleanup disconnects only this connection. Prefer `useActionRouting_UNSTABLE`. */
+  connect: (
+    connection: ActionRoutingCallbacks & {
+      cache: ReturnType<typeof useRouterCache>;
+    },
+  ) => () => void;
+};
+
+/**
+ * Creates action routing for one custom router. Install `enhancer` last in
+ * that router's Root `rscEnhancers`, then connect navigation callbacks with
+ * `useActionRouting_UNSTABLE` beneath the Root. Create the controller and Root's
+ * stable enhancer array before rendering React. RSC requests pass through.
+ * Actions before connection fail; start mount-time actions in `useEffect`,
+ * not descendant layout effects.
+ */
+export const createActionRouting = (): ActionRouting => {
+  let connection: Parameters<ActionRouting['connect']>[0] | undefined;
+  let connected = false;
+  return {
+    connect: (nextConnection) => {
+      connection = nextConnection;
+      connected = true;
+      return () => {
+        if (connection === nextConnection) {
+          connected = false;
         }
-        const origin = getSettledRoute();
-        const result = await next(rscPath, rscParams, {
-          ...options,
-          fetch: (input, init) => {
-            const headers = new Headers(
-              init?.headers ??
-                (input instanceof Request ? input.headers : undefined),
-            );
-            headers.set(
-              ACTION_LOCATION_HEADER,
-              origin.query ? origin.path + '?' + origin.query : origin.path,
-            );
-            return options.fetch(input, { ...init, headers });
-          },
-        });
-        if (!(IS_ORIGIN_ID in result.elements)) {
-          if (Reflect.ownKeys(result.elements).length) {
-            handleActionElements(result.elements);
-          }
-          return result;
+      };
+    },
+    enhancer: (next) => async (rscPath, rscParams, options) => {
+      if (options.type !== 'call') {
+        return next(rscPath, rscParams, options);
+      }
+      if (!connected || !connection) {
+        throw new Error(
+          'Action routing is not connected. Call mount-time actions from useEffect, not useLayoutEffect.',
+        );
+      }
+      const origin = connection.getSettledRoute();
+      const result = await next(rscPath, rscParams, {
+        ...options,
+        fetch: (input, init) => {
+          const headers = new Headers(
+            init?.headers ??
+              (input instanceof Request ? input.headers : undefined),
+          );
+          headers.set(
+            ACTION_LOCATION_HEADER,
+            origin.query ? origin.path + '?' + origin.query : origin.path,
+          );
+          return options.fetch(input, { ...init, headers });
+        },
+      });
+      const { cache, getSettledRoute, getPendingRoute, onRouteChange } =
+        connection;
+      const handleActionElements = (nextElements: Record<string, unknown>) => {
+        cache.learnStaticFromElements(nextElements);
+        const route = getRouteFromElements(nextElements);
+        if (!route) {
+          return;
         }
-        const pendingRoute = getPendingRoute();
-        // React holds a navigation back until a pending action settles
+        const settledRoute = getSettledRoute();
         if (
-          (pendingRoute && !isSameRscRoute(pendingRoute, origin)) ||
-          !isSameRscRoute(getSettledRoute(), origin)
+          settledRoute.path === route.path &&
+          (isStaticFromElements(nextElements) ||
+            settledRoute.query === route.query)
         ) {
-          return { ...result, elements: {} };
+          return;
         }
-        const elements = combineElements({}, result.elements, {
-          filter: (key) => key !== IS_ORIGIN_ID,
-        });
-        handleActionElements(elements);
-        return { ...result, elements };
-      },
-      ACTION_ENHANCER_ORDER,
-    );
-  }, [
-    cache,
-    getSettledRoute,
-    getPendingRoute,
-    onRouteChange,
-    registerRscEnhancer,
-  ]);
+        onRouteChange(route);
+      };
+      if (!(IS_ORIGIN_ID in result.elements)) {
+        if (Reflect.ownKeys(result.elements).length) {
+          handleActionElements(result.elements);
+        }
+        return result;
+      }
+      const pendingRoute = getPendingRoute();
+      // React holds a navigation back until a pending action settles
+      if (
+        (pendingRoute && !isSameRscRoute(pendingRoute, origin)) ||
+        !isSameRscRoute(getSettledRoute(), origin)
+      ) {
+        return { ...result, elements: {} };
+      }
+      const elements = combineElements({}, result.elements, {
+        filter: (key) => key !== IS_ORIGIN_ID,
+      });
+      handleActionElements(elements);
+      return { ...result, elements };
+    },
+  };
+};
+
+/**
+ * Connects a declaratively installed action-routing controller to this Root.
+ * Each action reports `getSettledRoute()` as its origin. Origin rerenders are
+ * dropped, retaining the action value, if the settled or pending route changes.
+ * `getPendingRoute` returns the uncommitted destination or `undefined`.
+ * `onRouteChange` commits a different response route without fetching: Minimal
+ * merges its elements after the enhancer chain resolves. Callback updates take
+ * effect on commit without replacing the enhancer.
+ */
+export const useActionRouting = (
+  actionRouting: ActionRouting,
+  { getSettledRoute, getPendingRoute, onRouteChange }: ActionRoutingCallbacks,
+): void => {
+  const cache = useRouterCache();
+  useLayoutEffect(
+    () =>
+      actionRouting.connect({
+        cache,
+        getSettledRoute,
+        getPendingRoute,
+        onRouteChange,
+      }),
+    [actionRouting, cache, getSettledRoute, getPendingRoute, onRouteChange],
+  );
 };

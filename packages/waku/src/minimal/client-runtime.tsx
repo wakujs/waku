@@ -42,8 +42,8 @@ import type {
   FetchRsc,
   FetchRscOptions,
   RequestRsc,
-  RequestRscEnhancer,
   RootStore,
+  RscEnhancer,
 } from './client-utils/root-store.js';
 import {
   registerRootReload,
@@ -174,11 +174,18 @@ const reloadOnBuildIdMismatch = (
   );
 };
 
+const EMPTY_RSC_ENHANCERS: readonly RscEnhancer[] = [];
+
+const getRootRscEnhancers = (store: RootStore | undefined) => [
+  ...(store?.legacyEnhancers.values() ?? []),
+  ...(store?.rscEnhancers ?? []),
+];
+
 const fetchRscElements = (
   rscPath: string,
   rscParams: unknown,
   options: FetchRscElementsOptions,
-  store: RootStore | undefined,
+  rscEnhancers: readonly RscEnhancer[] = EMPTY_RSC_ENHANCERS,
 ): ReturnType<RequestRsc> => {
   let request: RequestRsc = (
     path,
@@ -214,9 +221,7 @@ const fetchRscElements = (
     );
   };
   try {
-    for (const [enhance] of [...(store?.enhancers ?? [])].sort(
-      (a, b) => a[1] - b[1],
-    )) {
+    for (const enhance of rscEnhancers) {
       request = enhance(request);
     }
     return request(rscPath, rscParams, {
@@ -229,10 +234,6 @@ const fetchRscElements = (
   }
 };
 
-/**
- * callServer callback
- * This is not a public API.
- */
 export const unstable_callServerRsc = async (
   funcId: string,
   args: unknown[],
@@ -245,7 +246,7 @@ export const unstable_callServerRsc = async (
     rscPath,
     rscParams,
     { type: 'call', etags: rootStore?.etags ?? {} },
-    rootStore,
+    getRootRscEnhancers(rootStore),
   );
   if (Reflect.ownKeys(data).length) {
     if (!rootStore) {
@@ -264,20 +265,6 @@ type Unregister = () => void;
 
 const noop = () => {};
 
-const fetchRootRsc = (
-  rscPath: string,
-  rscParams: unknown,
-  store?: RootStore,
-): Promise<Elements> => {
-  const initial = consumeInitialRscEntry();
-  return fetchRscElements(
-    rscPath,
-    rscParams,
-    initial ? { initial } : { etags: {} },
-    store,
-  ).then(({ elements }) => elements);
-};
-
 const fetchRsc = (
   rscPath: string,
   rscParams: unknown,
@@ -294,15 +281,27 @@ const fetchRsc = (
         ? { onBuildIdMismatch: options.onBuildIdMismatch }
         : {}),
     },
-    store,
+    getRootRscEnhancers(store),
   ).then(({ elements }) => elements);
 
 const getInitialRsc = (
   rscPath: string,
   rscParams: unknown,
+  rscEnhancers: readonly RscEnhancer[],
 ): Promise<Elements> =>
-  getInitialRscEntry(rscPath, rscParams, () =>
-    fetchRootRsc(rscPath, rscParams),
+  getInitialRscEntry(
+    rscPath,
+    rscParams,
+    () => {
+      const initial = consumeInitialRscEntry();
+      return fetchRscElements(
+        rscPath,
+        rscParams,
+        initial ? { initial } : { etags: {} },
+        initial ? EMPTY_RSC_ENHANCERS : rscEnhancers,
+      ).then(({ elements }) => elements);
+    },
+    rscEnhancers,
   );
 
 type MergeElements = (
@@ -336,24 +335,26 @@ export const useFetchRsc_UNSTABLE = (): FetchRsc =>
   use(RootStoreContext)?.fetchRsc ?? fetchWithoutRoot;
 
 /**
- * Returns a registrar for the enclosing Root's RSC request enhancers. An
- * enhancer wraps the Root's requests to rewrite the inputs, wrap
- * `options.fetch`, or transform the result. Higher `order`s wrap lower ones.
+ * Registers inside the enclosing Root's configured enhancers, returning cleanup.
+ * Registrations affect future requests only. Under a server Root this is a no-op;
+ * a missing Root throws.
+ * @deprecated Configure Root_UNSTABLE `rscEnhancers` or Router
+ * `unstable_rscEnhancers`. Retained in rc.4; removal planned for rc.5 after
+ * integration migrations.
  */
-export const useRegisterRscEnhancer_UNSTABLE = () => {
+export const useRegisterRscEnhancer_UNSTABLE = (): ((
+  enhance: RscEnhancer,
+) => Unregister) => {
   const store = useRootStore();
   return useCallback(
-    (enhance: RequestRscEnhancer, order = 0): Unregister => {
+    (enhance: RscEnhancer): Unregister => {
       if (store === null) {
         return noop;
       }
-      const entry: [RequestRscEnhancer, number] = [enhance, order];
-      store.enhancers.push(entry);
+      const registration = Symbol();
+      store.legacyEnhancers.set(registration, enhance);
       return () => {
-        const index = store.enhancers.indexOf(entry);
-        if (index !== -1) {
-          store.enhancers.splice(index, 1);
-        }
+        store.legacyEnhancers.delete(registration);
       };
     },
     [store],
@@ -414,16 +415,26 @@ export const useRegisterRscReloadListener_UNSTABLE = () => {
 export const Root_UNSTABLE = ({
   initialRscPath,
   initialRscParams,
+  rscEnhancers = EMPTY_RSC_ENHANCERS,
   children,
 }: {
   initialRscPath?: string;
   initialRscParams?: unknown;
+  /**
+   * Initial pipeline, copied for this mount; the last enhancer is outermost.
+   * Keep the array reference stable across renders, including initial Suspense
+   * retries. Remount with a new array to change the pipeline.
+   * Client bootstrap fetches use it; streamed initial payloads bypass it.
+   */
+  rscEnhancers?: readonly RscEnhancer[];
   children: ReactNode;
 }) => {
   const [initialInput] = useState(
     () => [initialRscPath || '', initialRscParams] as const,
   );
-  const [initialElements] = useState(() => getInitialRsc(...initialInput));
+  const [initialElements] = useState(() =>
+    getInitialRsc(...initialInput, rscEnhancers),
+  );
   const [elements, setElements] = useState(initialElements);
   const [store] = useState(() => {
     const store: RootStore = {
@@ -439,7 +450,8 @@ export const Root_UNSTABLE = ({
         });
       },
       etags: {},
-      enhancers: [],
+      rscEnhancers: [...rscEnhancers],
+      legacyEnhancers: new Map(),
       fetchRsc: (rscPath, rscParams, options) =>
         fetchRsc(rscPath, rscParams, options, store),
     };
@@ -450,7 +462,7 @@ export const Root_UNSTABLE = ({
     const unregisterStore = registerRootStore(store);
     const unregisterReload = import.meta.hot
       ? registerRootReload(store, () => {
-          const data = fetchRootRsc(...initialInput, store);
+          const data = store.fetchRsc(...initialInput);
           store.setElements((prev) =>
             Promise.all([prev, data]).then(([prev, incoming]) =>
               combineElements(incoming, prev, {
