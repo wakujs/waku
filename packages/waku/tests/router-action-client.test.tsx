@@ -112,8 +112,97 @@ const mount = async (rscEnhancers: readonly Unstable_RscEnhancer[] = []) => {
     container,
     errors,
     getRouter: () => api.router,
+    unmount: () => {
+      root.unmount();
+      roots.splice(roots.indexOf(root), 1);
+    },
   };
 };
+
+test('a fallback Router reuses its configured bootstrap pipeline through Suspense retries', async () => {
+  const response = deferred<Record<string, unknown>>({});
+  decode.mockReturnValue(response.promise);
+  const enhance = vi.fn<Unstable_RscEnhancer>((next) => next);
+  const enhancers = [enhance];
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  roots.push(root);
+  const App = () => <Router unstable_rscEnhancers={enhancers} />;
+  await act(async () => {
+    root.render(
+      <StrictMode>
+        <Suspense fallback="pending">
+          <App />
+        </Suspense>
+      </StrictMode>,
+    );
+  });
+  expect(container.textContent).toBe('pending');
+  expect(decode).toHaveBeenCalledOnce();
+  expect(enhance).toHaveBeenCalledOnce();
+  await act(async () => {
+    response.resolve({
+      root: <Children />,
+      [getRouteSlotId('/start')]: 'start',
+      [ROUTE_ID]: ['/start', ''],
+      [IS_STATIC_ID]: false,
+    });
+  });
+  expect(container.textContent).toBe('start');
+  expect(decode).toHaveBeenCalledOnce();
+  expect(enhance).toHaveBeenCalledOnce();
+});
+
+test('Routers with the same configuration keep in-flight actions and committed callbacks isolated', async () => {
+  const enhancers: readonly Unstable_RscEnhancer[] = [(next) => next];
+  const first = await mount(enhancers);
+  const response = deferred<Record<string, unknown>>({});
+  decode.mockReturnValueOnce(response.promise);
+  let action!: Promise<unknown>;
+  await act(async () => {
+    action = callServerRsc('action#first', []);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  const second = await mount(enhancers);
+  await act(async () => {
+    response.resolve({
+      [getRouteSlotId('/first')]: 'first action',
+      [ROUTE_ID]: ['/first', ''],
+      [IS_STATIC_ID]: false,
+      _value: 'first value',
+    });
+    expect(await action).toBe('first value');
+  });
+  expect(first.container.textContent).toBe('first action');
+  expect(first.getRouter().path).toBe('/first');
+  expect(second.container.textContent).toBe('start');
+  expect(second.getRouter().path).toBe('/start');
+  decode.mockReturnValueOnce({
+    [getRouteSlotId('/second')]: 'second action',
+    [ROUTE_ID]: ['/second', ''],
+    [IS_STATIC_ID]: false,
+  });
+  await act(async () => {
+    await callServerRsc('action#second', []);
+  });
+  expect(first.container.textContent).toBe('first action');
+  expect(second.container.textContent).toBe('second action');
+  expect(second.getRouter().path).toBe('/second');
+  await act(async () => second.unmount());
+  decode.mockReturnValueOnce({
+    [getRouteSlotId('/restored')]: 'restored first',
+    [ROUTE_ID]: ['/restored', ''],
+    [IS_STATIC_ID]: false,
+  });
+  await act(async () => {
+    await callServerRsc('action#restored', []);
+  });
+  expect(first.container.textContent).toBe('restored first');
+  expect(first.getRouter().path).toBe('/restored');
+  expect(first.errors).not.toHaveBeenCalled();
+  expect(second.errors).not.toHaveBeenCalled();
+});
 
 test('an action started by a route mount effect updates the route', async () => {
   const response = deferred<Record<string, unknown>>({});
@@ -583,6 +672,9 @@ test('a configured enhancer replaces the final destination and action value befo
   const enhance: Unstable_RscEnhancer =
     (next) =>
     async (...args) => {
+      if (args[2].type !== 'call') {
+        return next(...args);
+      }
       const { value } = await next(...args);
       return {
         elements: {

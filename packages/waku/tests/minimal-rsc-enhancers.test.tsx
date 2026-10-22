@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { StrictMode, Suspense, act, useEffect, useLayoutEffect } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createRoot, hydrateRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { ETAGS_HEADER, ETAGS_ID } from '../src/lib/utils-isomorphic/etags.js';
 import { unstable_callServerRsc as callServerRsc } from '../src/minimal/client-runtime.js';
@@ -9,7 +9,7 @@ import { adoptElements } from '../src/minimal/client-utils/element-etags.js';
 import { clearInitialRscEntries } from '../src/minimal/client-utils/initial-rsc-store.js';
 import type {
   RequestRsc,
-  RequestRscEnhancer,
+  RscEnhancer,
 } from '../src/minimal/client-utils/root-store.js';
 import {
   Root_UNSTABLE as Root,
@@ -50,7 +50,7 @@ afterEach(async () => {
 
 const mount = async (
   path: string,
-  rscEnhancers: readonly RequestRscEnhancer[] = [],
+  rscEnhancers: readonly RscEnhancer[] = [],
 ) => {
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -72,7 +72,7 @@ const mount = async (
     });
     return <Slot id="content" />;
   };
-  const render = (enhancers: readonly RequestRscEnhancer[]) =>
+  const render = (enhancers: readonly RscEnhancer[]) =>
     root.render(
       <StrictMode>
         <Suspense fallback="pending">
@@ -89,16 +89,168 @@ const mount = async (
     container,
     root,
     getElements: () => api.elements,
-    rerender: async (enhancers: readonly RequestRscEnhancer[]) => {
+    rerender: async (enhancers: readonly RscEnhancer[]) => {
       await act(async () => render(enhancers));
     },
   };
 };
 
+test('fallback bootstrap runs the configured pipeline once across suspended Strict Mode renders', async () => {
+  let respond!: (response: Response) => void;
+  request.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        respond = resolve;
+      }),
+  );
+  const calls: string[] = [];
+  const enhance: RscEnhancer = (next) => async (path, params, options) => {
+    calls.push('enhance');
+    const result = await next(
+      path + '-enhanced',
+      { input: params },
+      {
+        ...options,
+        fetch: (input, init) => {
+          const headers = new Headers(init?.headers);
+          headers.set('authorization', 'bootstrap');
+          return options.fetch(input, { ...init, headers });
+        },
+      },
+    );
+    return {
+      ...result,
+      elements: {
+        ...result.elements,
+        content: result.elements.content + '-enhanced',
+      },
+    };
+  };
+  const enhancers = [enhance];
+  const App = () => (
+    <Root
+      initialRscPath="bootstrap"
+      initialRscParams="input"
+      rscEnhancers={enhancers}
+    >
+      <Slot id="content" />
+    </Root>
+  );
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  roots.push(root);
+  await act(async () =>
+    root.render(
+      <StrictMode>
+        <Suspense fallback="pending">
+          <App />
+        </Suspense>
+      </StrictMode>,
+    ),
+  );
+  expect(container.textContent).toBe('pending');
+  expect(request).toHaveBeenCalledOnce();
+  expect(String(request.mock.lastCall![0])).toContain('/bootstrap-enhanced');
+  expect(
+    new Headers(request.mock.lastCall![1]?.headers).get('authorization'),
+  ).toBe('bootstrap');
+  expect(JSON.parse(request.mock.lastCall![1]!.body as string)).toEqual({
+    input: 'input',
+  });
+  await act(async () => respond(Response.json({ content: 'initial' })));
+  expect(container.textContent).toBe('initial-enhanced');
+  expect(request).toHaveBeenCalledOnce();
+  expect(calls).toEqual(['enhance']);
+});
+
+test('simultaneous fallback Roots with the same input retain their own enhancer results', async () => {
+  const responses: (() => void)[] = [];
+  request.mockImplementation(
+    (_input, init) =>
+      new Promise((resolve) => {
+        const name = new Headers(init?.headers).get('root');
+        responses.push(() => resolve(Response.json({ content: name })));
+      }),
+  );
+  const createEnhancers = (name: string): RscEnhancer[] => [
+    (next) => (path, params, options) =>
+      next(path, params, {
+        ...options,
+        fetch: (input, init) => {
+          const headers = new Headers(init?.headers);
+          headers.set('root', name);
+          return options.fetch(input, { ...init, headers });
+        },
+      }),
+  ];
+  const firstEnhancers = createEnhancers('first');
+  const secondEnhancers = createEnhancers('second');
+  const App = ({ enhancers }: { enhancers: RscEnhancer[] }) => (
+    <Root initialRscPath="shared" rscEnhancers={enhancers}>
+      <Slot id="content" />
+    </Root>
+  );
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  roots.push(root);
+  await act(async () =>
+    root.render(
+      <StrictMode>
+        <Suspense fallback="first pending">
+          <App enhancers={firstEnhancers} />
+        </Suspense>
+        <Suspense fallback="second pending">
+          <App enhancers={secondEnhancers} />
+        </Suspense>
+      </StrictMode>,
+    ),
+  );
+  expect(request).toHaveBeenCalledTimes(2);
+  await act(async () => responses.forEach((respond) => respond()));
+  expect(container.textContent).toBe('firstsecond');
+  expect(request).toHaveBeenCalledTimes(2);
+});
+
+test('streamed hydration bypasses enhancers without another network request', async () => {
+  vi.stubGlobal('__WAKU_HYDRATE__', true);
+  vi.stubGlobal('__WAKU_INITIAL_RSC__', {
+    response: Promise.resolve(Response.json({ content: 'initial' })),
+  });
+  const enhance = vi.fn<RscEnhancer>(() => {
+    throw new Error('unexpected enhancer');
+  });
+  const container = document.createElement('div');
+  container.innerHTML =
+    '<meta name="generator" content="Waku"><div>initial</div>';
+  document.body.append(container);
+  const errors = vi.fn();
+  await act(async () => {
+    roots.push(
+      hydrateRoot(
+        container,
+        <StrictMode>
+          <Root rscEnhancers={[enhance]}>
+            <div>
+              <Slot id="content" />
+            </div>
+          </Root>
+        </StrictMode>,
+        { onRecoverableError: errors },
+      ),
+    );
+  });
+  expect(container.textContent).toBe('initial');
+  expect(enhance).not.toHaveBeenCalled();
+  expect(request).not.toHaveBeenCalled();
+  expect(errors).not.toHaveBeenCalled();
+});
+
 test('a whole cached response applies to the request-time Root', async () => {
   const first = await mount('first');
   let cached: ReturnType<RequestRsc> | undefined;
-  const cache: RequestRscEnhancer =
+  const cache: RscEnhancer =
     (next) =>
     (...args) =>
       (cached ??= next(...args));
@@ -284,7 +436,7 @@ test('Root-bound fetches only claim validators from an explicit base', async () 
 test('configured enhancers wrap legacy registrations in array order for fetches and actions', async () => {
   const calls: string[] = [];
   const trace =
-    (name: string): RequestRscEnhancer =>
+    (name: string): RscEnhancer =>
     (next) =>
     async (...args) => {
       calls.push(name);
@@ -318,9 +470,9 @@ test('configured enhancers wrap legacy registrations in array order for fetches 
 
 test('configured entries are snapshotted while their request data stays live', async () => {
   let locale = 'en';
-  const localized: RequestRscEnhancer = (next) => (path, params, options) =>
+  const localized: RscEnhancer = (next) => (path, params, options) =>
     next(path + '-' + locale, params, options);
-  const replaced = vi.fn<RequestRscEnhancer>((next) => next);
+  const replaced = vi.fn<RscEnhancer>((next) => next);
   const enhancers = [localized];
   const first = await mount('first', enhancers);
   const second = await mount('second', [
@@ -339,13 +491,13 @@ test('configured entries are snapshotted while their request data stays live', a
 
 test('duplicate legacy functions have independent, idempotent cleanup', async () => {
   const calls: string[] = [];
-  const a: RequestRscEnhancer =
+  const a: RscEnhancer =
     (next) =>
     (...args) => {
       calls.push('a');
       return next(...args);
     };
-  const b: RequestRscEnhancer =
+  const b: RscEnhancer =
     (next) =>
     (...args) => {
       calls.push('b');
@@ -366,7 +518,7 @@ test('duplicate legacy functions have independent, idempotent cleanup', async ()
 });
 
 test('a descendant layout effect finds the configured pipeline on its first fetch', async () => {
-  const enhance: RequestRscEnhancer = (next) => (path, params, options) =>
+  const enhance: RscEnhancer = (next) => (path, params, options) =>
     next(path + '-enhanced', params, options);
   const pending: Promise<unknown>[] = [];
   const Probe = () => {
@@ -494,7 +646,7 @@ test('an enhancer that throws rejects the request', async () => {
 test('each registration is its own link in the chain', async () => {
   const root = await mount('initial');
   const seen = vi.fn();
-  const count: RequestRscEnhancer =
+  const count: RscEnhancer =
     (next) =>
     (...args) => {
       seen();

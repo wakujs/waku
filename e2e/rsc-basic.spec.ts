@@ -94,6 +94,31 @@ test.describe(`rsc-basic`, () => {
     await expect(first.getByTestId('enhanced-by')).toHaveText('first:rsc');
   });
 
+  test('bootstrap enhancers isolate simultaneous Roots with identical inputs', async ({
+    page,
+  }) => {
+    const enhancedRequests: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/RSC/')) {
+        enhancedRequests.push(request.headers()['x-enhancer'] ?? '');
+      }
+    });
+    await page.goto(
+      `http://localhost:${port}/?multiple-roots&simultaneous-roots&bootstrap-enhancers`,
+    );
+    for (const name of ['first', 'second']) {
+      const root = page.getByTestId(`${name}-root`);
+      await expect(root).toContainText(name);
+      await expect(root.getByTestId('bootstrap-input')).toHaveText(
+        JSON.stringify([name, name, { name }]),
+      );
+    }
+    expect(enhancedRequests).toHaveLength(2);
+    expect(enhancedRequests).toEqual(
+      expect.arrayContaining(['first', 'second']),
+    );
+  });
+
   test('declarative enhancers handle layout-effect fetches and actions in their own Roots', async ({
     page,
   }) => {

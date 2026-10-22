@@ -19,7 +19,7 @@ export const createRscEnhancer = (name: string): Unstable_RscEnhancer => {
   let version = 0;
   return (next) => async (path, params, options) => {
     const { elements, value } = await next(
-      path === 'enhanced' ? name : path,
+      path === 'enhanced' || path === 'bootstrap' ? name : path,
       options.type === 'rsc' ? { input: params, name } : params,
       {
         ...options,
