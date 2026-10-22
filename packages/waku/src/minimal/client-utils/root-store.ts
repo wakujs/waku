@@ -23,7 +23,7 @@ export type RequestRsc = (
  * alongside elements; use `unstable_combineElements` to preserve their etags.
  * In an enhancer array, the last entry wraps all earlier entries.
  */
-export type RequestRscEnhancer = (requestRsc: RequestRsc) => RequestRsc;
+export type RscEnhancer = (requestRsc: RequestRsc) => RequestRsc;
 
 export type FetchRscOptions = {
   signal?: AbortSignal;
@@ -44,8 +44,8 @@ export type FetchRsc = (
 export type RootStore = {
   setElements: SetElements;
   etags: Etags;
-  rscEnhancers: readonly RequestRscEnhancer[];
-  legacyEnhancers: Map<symbol, RequestRscEnhancer>;
+  rscEnhancers: readonly RscEnhancer[];
+  legacyEnhancers: Map<symbol, RscEnhancer>;
   fetchRsc: FetchRsc;
 };
 

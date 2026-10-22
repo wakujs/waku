@@ -42,8 +42,8 @@ import type {
   FetchRsc,
   FetchRscOptions,
   RequestRsc,
-  RequestRscEnhancer,
   RootStore,
+  RscEnhancer,
 } from './client-utils/root-store.js';
 import {
   registerRootReload,
@@ -172,7 +172,7 @@ const reloadOnBuildIdMismatch = (
   );
 };
 
-const EMPTY_RSC_ENHANCERS: readonly RequestRscEnhancer[] = [];
+const EMPTY_RSC_ENHANCERS: readonly RscEnhancer[] = [];
 
 const getRootRscEnhancers = (store: RootStore | undefined) => [
   ...(store?.legacyEnhancers.values() ?? []),
@@ -183,7 +183,7 @@ const fetchRscElements = (
   rscPath: string,
   rscParams: unknown,
   options: FetchRscElementsOptions,
-  rscEnhancers: readonly RequestRscEnhancer[] = EMPTY_RSC_ENHANCERS,
+  rscEnhancers: readonly RscEnhancer[] = EMPTY_RSC_ENHANCERS,
 ): ReturnType<RequestRsc> => {
   let request: RequestRsc = (
     path,
@@ -285,7 +285,7 @@ const fetchRsc = (
 const getInitialRsc = (
   rscPath: string,
   rscParams: unknown,
-  rscEnhancers: readonly RequestRscEnhancer[],
+  rscEnhancers: readonly RscEnhancer[],
 ): Promise<Elements> =>
   getInitialRscEntry(
     rscPath,
@@ -341,11 +341,11 @@ export const useFetchRsc_UNSTABLE = (): FetchRsc =>
  * integration migrations.
  */
 export const useRegisterRscEnhancer_UNSTABLE = (): ((
-  enhance: RequestRscEnhancer,
+  enhance: RscEnhancer,
 ) => Unregister) => {
   const store = useRootStore();
   return useCallback(
-    (enhance: RequestRscEnhancer): Unregister => {
+    (enhance: RscEnhancer): Unregister => {
       if (store === null) {
         return noop;
       }
@@ -424,7 +424,7 @@ export const Root_UNSTABLE = ({
    * retries. Remount with a new array to change the pipeline.
    * Client bootstrap fetches use it; streamed initial payloads bypass it.
    */
-  rscEnhancers?: readonly RequestRscEnhancer[];
+  rscEnhancers?: readonly RscEnhancer[];
   children: ReactNode;
 }) => {
   const [initialInput] = useState(

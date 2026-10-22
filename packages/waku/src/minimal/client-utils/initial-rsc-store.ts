@@ -1,4 +1,4 @@
-import type { RequestRscEnhancer } from './root-store.js';
+import type { RscEnhancer } from './root-store.js';
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
 
@@ -6,7 +6,7 @@ type InitialRscEntry = [
   rscPath: string,
   rscParams: unknown,
   elements: Promise<Elements>,
-  rscEnhancers: readonly RequestRscEnhancer[] | undefined,
+  rscEnhancers: readonly RscEnhancer[] | undefined,
 ];
 
 // An abandoned suspended render has no cleanup, so this cache must be bounded.
@@ -21,7 +21,7 @@ export const getInitialRscEntry = (
   rscPath: string,
   rscParams: unknown,
   create: () => Promise<Elements>,
-  rscEnhancers?: readonly RequestRscEnhancer[],
+  rscEnhancers?: readonly RscEnhancer[],
 ): Promise<Elements> => {
   const index = initialRscEntries.findIndex(
     (item) =>

@@ -9,7 +9,7 @@ import { adoptElements } from '../src/minimal/client-utils/element-etags.js';
 import { clearInitialRscEntries } from '../src/minimal/client-utils/initial-rsc-store.js';
 import type {
   RequestRsc,
-  RequestRscEnhancer,
+  RscEnhancer,
 } from '../src/minimal/client-utils/root-store.js';
 import {
   Root_UNSTABLE as Root,
@@ -50,7 +50,7 @@ afterEach(async () => {
 
 const mount = async (
   path: string,
-  rscEnhancers: readonly RequestRscEnhancer[] = [],
+  rscEnhancers: readonly RscEnhancer[] = [],
 ) => {
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -72,7 +72,7 @@ const mount = async (
     });
     return <Slot id="content" />;
   };
-  const render = (enhancers: readonly RequestRscEnhancer[]) =>
+  const render = (enhancers: readonly RscEnhancer[]) =>
     root.render(
       <StrictMode>
         <Suspense fallback="pending">
@@ -89,7 +89,7 @@ const mount = async (
     container,
     root,
     getElements: () => api.elements,
-    rerender: async (enhancers: readonly RequestRscEnhancer[]) => {
+    rerender: async (enhancers: readonly RscEnhancer[]) => {
       await act(async () => render(enhancers));
     },
   };
@@ -104,29 +104,28 @@ test('fallback bootstrap runs the configured pipeline once across suspended Stri
       }),
   );
   const calls: string[] = [];
-  const enhance: RequestRscEnhancer =
-    (next) => async (path, params, options) => {
-      calls.push('enhance');
-      const result = await next(
-        path + '-enhanced',
-        { input: params },
-        {
-          ...options,
-          fetch: (input, init) => {
-            const headers = new Headers(init?.headers);
-            headers.set('authorization', 'bootstrap');
-            return options.fetch(input, { ...init, headers });
-          },
+  const enhance: RscEnhancer = (next) => async (path, params, options) => {
+    calls.push('enhance');
+    const result = await next(
+      path + '-enhanced',
+      { input: params },
+      {
+        ...options,
+        fetch: (input, init) => {
+          const headers = new Headers(init?.headers);
+          headers.set('authorization', 'bootstrap');
+          return options.fetch(input, { ...init, headers });
         },
-      );
-      return {
-        ...result,
-        elements: {
-          ...result.elements,
-          content: result.elements.content + '-enhanced',
-        },
-      };
+      },
+    );
+    return {
+      ...result,
+      elements: {
+        ...result.elements,
+        content: result.elements.content + '-enhanced',
+      },
     };
+  };
   const enhancers = [enhance];
   const App = () => (
     <Root
@@ -174,7 +173,7 @@ test('simultaneous fallback Roots with the same input retain their own enhancer 
         responses.push(() => resolve(Response.json({ content: name })));
       }),
   );
-  const createEnhancers = (name: string): RequestRscEnhancer[] => [
+  const createEnhancers = (name: string): RscEnhancer[] => [
     (next) => (path, params, options) =>
       next(path, params, {
         ...options,
@@ -187,7 +186,7 @@ test('simultaneous fallback Roots with the same input retain their own enhancer 
   ];
   const firstEnhancers = createEnhancers('first');
   const secondEnhancers = createEnhancers('second');
-  const App = ({ enhancers }: { enhancers: RequestRscEnhancer[] }) => (
+  const App = ({ enhancers }: { enhancers: RscEnhancer[] }) => (
     <Root initialRscPath="shared" rscEnhancers={enhancers}>
       <Slot id="content" />
     </Root>
@@ -219,7 +218,7 @@ test('streamed hydration bypasses enhancers without another network request', as
   vi.stubGlobal('__WAKU_INITIAL_RSC__', {
     response: Promise.resolve(Response.json({ content: 'initial' })),
   });
-  const enhance = vi.fn<RequestRscEnhancer>(() => {
+  const enhance = vi.fn<RscEnhancer>(() => {
     throw new Error('unexpected enhancer');
   });
   const container = document.createElement('div');
@@ -251,7 +250,7 @@ test('streamed hydration bypasses enhancers without another network request', as
 test('a whole cached response applies to the request-time Root', async () => {
   const first = await mount('first');
   let cached: ReturnType<RequestRsc> | undefined;
-  const cache: RequestRscEnhancer =
+  const cache: RscEnhancer =
     (next) =>
     (...args) =>
       (cached ??= next(...args));
@@ -437,7 +436,7 @@ test('Root-bound fetches only claim validators from an explicit base', async () 
 test('configured enhancers wrap legacy registrations in array order for fetches and actions', async () => {
   const calls: string[] = [];
   const trace =
-    (name: string): RequestRscEnhancer =>
+    (name: string): RscEnhancer =>
     (next) =>
     async (...args) => {
       calls.push(name);
@@ -471,9 +470,9 @@ test('configured enhancers wrap legacy registrations in array order for fetches 
 
 test('configured entries are snapshotted while their request data stays live', async () => {
   let locale = 'en';
-  const localized: RequestRscEnhancer = (next) => (path, params, options) =>
+  const localized: RscEnhancer = (next) => (path, params, options) =>
     next(path + '-' + locale, params, options);
-  const replaced = vi.fn<RequestRscEnhancer>((next) => next);
+  const replaced = vi.fn<RscEnhancer>((next) => next);
   const enhancers = [localized];
   const first = await mount('first', enhancers);
   const second = await mount('second', [
@@ -492,13 +491,13 @@ test('configured entries are snapshotted while their request data stays live', a
 
 test('duplicate legacy functions have independent, idempotent cleanup', async () => {
   const calls: string[] = [];
-  const a: RequestRscEnhancer =
+  const a: RscEnhancer =
     (next) =>
     (...args) => {
       calls.push('a');
       return next(...args);
     };
-  const b: RequestRscEnhancer =
+  const b: RscEnhancer =
     (next) =>
     (...args) => {
       calls.push('b');
@@ -519,7 +518,7 @@ test('duplicate legacy functions have independent, idempotent cleanup', async ()
 });
 
 test('a descendant layout effect finds the configured pipeline on its first fetch', async () => {
-  const enhance: RequestRscEnhancer = (next) => (path, params, options) =>
+  const enhance: RscEnhancer = (next) => (path, params, options) =>
     next(path + '-enhanced', params, options);
   const pending: Promise<unknown>[] = [];
   const Probe = () => {
@@ -647,7 +646,7 @@ test('an enhancer that throws rejects the request', async () => {
 test('each registration is its own link in the chain', async () => {
   const root = await mount('initial');
   const seen = vi.fn();
-  const count: RequestRscEnhancer =
+  const count: RscEnhancer =
     (next) =>
     (...args) => {
       seen();
