@@ -9,7 +9,7 @@
     "start": "waku start"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.170.41",
+    "@tanstack/react-router": "^1.170.45",
     "@tanstack/react-router-devtools": "^1.167.2",
     "react": "~19.3.1",
     "react-dom": "~19.3.1",
