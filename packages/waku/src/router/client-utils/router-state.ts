@@ -1,13 +1,55 @@
+import {
+  unstable_combineElements as combineElements,
+  unstable_formatRscUrl as formatRscUrl,
+} from 'waku/minimal/client';
+import type { Unstable_RscEnhancer } from 'waku/minimal/client';
 import { getRouteUrl, isSameRscRoute } from '../client-core-utils/route-url.js';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
+  ROUTE_ID,
+  encodeRoutePath,
   getRouteFromElements,
   isStaticFromElements,
 } from '../isomorphic-utils/router-protocol.js';
+import type { RouteData } from '../isomorphic-utils/router-protocol.js';
 
 export const ROUTER_STATE_ID = Symbol('waku-router-state');
 
-// merges carry this object by reference; the reconciler keys off its identity
+export const serverRedirectEnhancer: Unstable_RscEnhancer =
+  (next) => async (rscPath, rscParams, options) => {
+    if (options.type !== 'rsc') {
+      return next(rscPath, rscParams, options);
+    }
+    let redirectedUrl: URL | undefined;
+    const result = await next(rscPath, rscParams, {
+      ...options,
+      fetch: async (input, init) => {
+        const response = await options.fetch(input, init);
+        redirectedUrl = response.redirected ? new URL(response.url) : undefined;
+        return response;
+      },
+    });
+    const route = getRouteFromElements(result.elements);
+    if (!redirectedUrl || !route || !isStaticFromElements(result.elements)) {
+      return result;
+    }
+    if (
+      redirectedUrl.pathname !==
+      formatRscUrl(encodeRoutePath(route.path), redirectedUrl).pathname
+    ) {
+      return result;
+    }
+    return {
+      ...result,
+      elements: combineElements(result.elements, {
+        [ROUTE_ID]: [
+          route.path,
+          redirectedUrl.searchParams.get('query') ?? '',
+        ] satisfies RouteData,
+      }),
+    };
+  };
+
 export type RouterState = {
   readonly url: string; // pathname + search + hash, with the base path
   readonly requested: readonly [path: string, query: string];
@@ -15,6 +57,7 @@ export type RouterState = {
   readonly scroll: { readonly pathChanged: boolean } | null;
   readonly follows: number;
   readonly failedFrom?: RouteProps;
+  readonly originalState?: RouterState;
 };
 
 type InstantRouterState = {

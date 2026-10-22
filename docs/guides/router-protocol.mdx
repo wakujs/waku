@@ -107,6 +107,22 @@ Fragments remain client-owned. Static route reuse also preserves the browser's
 query instead of treating build-time route metadata as a query-changing redirect.
 Reading `ROUTE` is therefore not enough to decide what to write to history.
 
+For an HTTP redirect to a different static route, Router's private RSC enhancer
+reads the destination query from the final response URL and corrects the decoded
+route metadata for navigation and prefetch. It wraps the configured app enhancers,
+so it observes the response before their fetch wrappers transform it. Custom
+client bindings can implement the same reconciliation with Minimal's RSC enhancer
+API.
+
+A decoded-result cache in the configured app enhancers stores results before
+Router reconciles them. Cache hits that bypass the network cannot recover redirect
+queries from the response URL. When an enhancer fetches multiple responses, Router
+uses the last response it sees; it does not identify which response supplied the
+returned elements.
+
+Once a static route is cached, navigation can reuse it without a request. Redirect
+rules that must run for each query change require a dynamic route.
+
 On failure, retained elements can describe an earlier route. The attempted URL
 and error state belong to the client binding, not the server metadata.
 

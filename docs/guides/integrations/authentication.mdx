@@ -178,14 +178,13 @@ const auth = (): MiddlewareHandler => async (c, next) => {
 export default auth;
 ```
 
-Both ends of the redirect render dynamically. In production, a route prerendered
-as `static` is served before middleware runs, so every page under `/dashboard`
-must be `render: 'dynamic'`, as anything that reads the session must be anyway.
-So must the login page: a client-side navigation redirected to a static `/login`
-receives its prerendered payload, which carries no `callbackUrl`.
+In production, a route prerendered as `static` is served before middleware runs,
+so every page under `/dashboard` must be `render: 'dynamic'`, as anything that
+reads the session must be anyway. The login page can be static when it does not
+read the session on the server; the redirect preserves `callbackUrl` during
+client-side navigation.
 
 ```tsx
-// ./src/pages/login.tsx, and each page under ./src/pages/dashboard
 export const getConfig = async () => {
   return {
     render: 'dynamic',

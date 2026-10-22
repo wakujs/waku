@@ -14,10 +14,8 @@ export {
   createCustomError as unstable_createCustomError,
   getErrorInfo as unstable_getErrorInfo,
 } from '../lib/utils-isomorphic/custom-errors.js';
-export {
-  formatRscUrl as unstable_formatRscUrl,
-  parseRequest as unstable_parseRequest,
-} from '../lib/utils-server/request-url.js';
+export { formatRscUrl as unstable_formatRscUrl } from '../lib/utils-isomorphic/rsc-path.js';
+export { parseRequest as unstable_parseRequest } from '../lib/utils-server/request-url.js';
 
 export type { ElementSource as Unstable_ElementSource } from '../lib/utils-server/build-elements.js';
 

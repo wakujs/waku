@@ -1,3 +1,5 @@
+import { addBase } from './path.js';
+
 export const encodeRscPath = (rscPath: string) => {
   if (rscPath === '') {
     rscPath = '_';
@@ -24,6 +26,23 @@ export const decodeRscPath = (rscPath: string) => {
     rscPath = rscPath.slice(0, -1);
   }
   return rscPath;
+};
+
+/**
+ * Encodes `rscPath` under Waku's configured base path and RSC endpoint.
+ * Returns a new URL preserving `baseUrl`'s origin, query, and fragment.
+ * `baseUrl` must be absolute.
+ */
+export const formatRscUrl = (rscPath: string, baseUrl: string | URL): URL => {
+  const url = new URL(baseUrl);
+  url.pathname = addBase(
+    '/' +
+      (import.meta.env?.WAKU_CONFIG_RSC_BASE ?? 'RSC') +
+      '/' +
+      encodeRscPath(rscPath),
+    import.meta.env?.WAKU_CONFIG_BASE_PATH ?? '/',
+  );
+  return url;
 };
 
 const FUNC_PREFIX = 'F/';

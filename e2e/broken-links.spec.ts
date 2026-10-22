@@ -78,6 +78,60 @@ test.describe('broken-links: normal server', () => {
   });
 
   test.describe('client side navigation', () => {
+    test('a configured response wrapper preserves the redirect query', async ({
+      page,
+    }) => {
+      await page.goto(`http://localhost:${port}/?wrap-fetch`);
+      await waitForHydration(page);
+      await page
+        .getByRole('link', { name: 'Redirect with query', exact: true })
+        .click();
+      await expect(page.getByTestId('route-query')).toHaveText(
+        '/exists?callbackUrl=%2Fguarded',
+      );
+      await expect(page).toHaveURL(
+        `http://localhost:${port}/exists?callbackUrl=%2Fguarded`,
+      );
+    });
+
+    test('a redirect from the initial layout effect preserves the static query', async ({
+      page,
+    }) => {
+      await page.goto(`http://localhost:${port}/?layout-redirect`);
+      await expect(page.getByRole('heading')).toHaveText('Existing page');
+      await expect
+        .poll(() => page.evaluate(() => window.__pushOutcome))
+        .toBe('resolved');
+      await expect(page.getByTestId('route-query')).toHaveText(
+        '/exists?callbackUrl=%2Fguarded',
+      );
+      await expect(page).toHaveURL(
+        `http://localhost:${port}/exists?callbackUrl=%2Fguarded`,
+      );
+    });
+
+    test('HTTP redirects preserve the static destination query on repeat visits', async ({
+      page,
+    }) => {
+      await page.goto(`http://localhost:${port}/`);
+      await waitForHydration(page);
+      for (let visit = 0; visit < 2; visit++) {
+        await page
+          .getByRole('link', { name: 'Redirect with query', exact: true })
+          .click();
+        await expect(page.getByTestId('route-query')).toHaveText(
+          '/exists?callbackUrl=%2Fguarded',
+        );
+        await expect(page).toHaveURL(
+          `http://localhost:${port}/exists?callbackUrl=%2Fguarded`,
+        );
+        await page.getByRole('link', { name: 'Back', exact: true }).click();
+      }
+      await page.getByRole('link', { name: 'Plain query link' }).click();
+      await expect(page.getByTestId('route-query')).toHaveText('/exists?x=1');
+      await expect(page).toHaveURL(`http://localhost:${port}/exists?x=1`);
+    });
+
     test('a thrown redirect on client navigation resolves the push', async ({
       page,
     }) => {

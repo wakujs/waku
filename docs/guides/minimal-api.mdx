@@ -47,6 +47,7 @@ The Minimal API consists of server handler contracts and client rendering primit
 | `waku/minimal/client` | `useRegisterRscReloadListener_UNSTABLE`                                                      | Choosing the RSC input to refresh during development reloads.         |
 | `waku/minimal/client` | `unstable_combineElements`                                                                   | Combining element maps without losing their etags.                    |
 | `waku/minimal/client` | `unstable_getErrorInfo`                                                                      | Reading status, redirect and network-error information.               |
+| `waku/minimal/client` | `unstable_formatRscUrl`                                                                      | Constructing an RSC payload URL.                                      |
 
 Examples below often import these as shorter names.
 
@@ -68,6 +69,8 @@ Advanced composition APIs remain available to any Minimal-based framework:
 - `unstable_parseRequest(request)` inspects HTTP, RSC, and server-call URLs
   without consuming their bodies. `unstable_formatRscUrl(rscPath, baseUrl)`
   constructs a payload URL using the configured base path and RSC endpoint.
+  The formatter is available from both `waku/minimal/server` and
+  `waku/minimal/client`; it preserves the base URL's query and hash.
   These support middleware in Minimal-based frameworks; request inspection
   does not validate actions or authorize access.
 
@@ -764,7 +767,7 @@ if (globalThis.__WAKU_HYDRATE__) {
 - Client bootstrap fetches run the configured enhancers during render. Descendants can suspend on the result, showing an enclosing Suspense fallback. The bootstrap cache deduplicates Suspense retries by the initial path, params reference, and enhancer-array reference; separate Roots with the same cache identity may share a request. Use distinct stable enhancer arrays when independent bootstrap requests are required. If a bootstrap request fails before Root commits, resetting an enclosing error boundary with the same cache identity may reuse the rejected promise.
 - A streamed hydration payload bypasses enhancers: its request began before the client Root existed. Enhancers also run for subsequent Root-bound fetches, server actions received by that Root, and its development reloads. A bare server action goes to the Root mounted last, which need not be the one containing its caller.
 
-For the file-based Router, create the same stable array before rendering React and pass it as `<Router unstable_rscEnhancers={enhancers} />` in `src/waku.client.tsx`. These enhancers form the inner part of Router's pipeline; its private action-routing enhancer wraps them. They can delay or transform results before Router handles them. A decoded-result cache in this inner list does not retain metadata reconciled by Router. Minimal's array has no private Router layers, so custom routers own their full composition.
+For the file-based Router, create the same stable array before rendering React and pass it as `<Router unstable_rscEnhancers={enhancers} />` in `src/waku.client.tsx`. These enhancers form the inner part of Router's pipeline; its private HTTP redirect and action-routing enhancers wrap them. They can delay or transform results before Router handles them. A decoded-result cache in this inner list does not retain metadata reconciled by Router. Minimal's array has no private Router layers, so custom routers own their full composition.
 
 ##### Migrating effect-based integrations
 

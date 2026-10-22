@@ -2069,7 +2069,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('installs one action enhancer per Root lifetime (StrictMode)', async () => {
+  test('installs its request enhancers once per Root lifetime (StrictMode)', async () => {
     const elements = {
       [unstable_getRouteSlotId('/start')]: <div>start</div>,
       [ROUTE_ID]: ['/start', ''],
@@ -2080,7 +2080,7 @@ describe('Router integration', () => {
       elements,
     );
 
-    expect(testHoisted.enhancerCount()).toBe(1);
+    expect(testHoisted.enhancerCount()).toBe(2);
 
     view.unmount();
 
@@ -2102,7 +2102,7 @@ describe('Router integration', () => {
         elements,
       );
 
-      expect(testHoisted.enhancerCount()).toBe(1);
+      expect(testHoisted.enhancerCount()).toBe(2);
       await act(async () => {
         await testHoisted.emitActionElements({
           [ROUTE_ID]: ['/next', ''],
@@ -2131,7 +2131,7 @@ describe('Router integration', () => {
       },
     );
     try {
-      expect(testHoisted.enhancerCount()).toBe(1);
+      expect(testHoisted.enhancerCount()).toBe(2);
       testHoisted.mergeTypes.length = 0;
       await act(async () => {
         await testHoisted.emitActionElements({
@@ -5866,6 +5866,56 @@ describe('Router integration', () => {
       );
     } finally {
       historyReplaceSpy.mockRestore();
+      historyPushSpy.mockRestore();
+      view.unmount();
+    }
+  });
+
+  test('an immediately resolved instant redirect retains its query after a static action response', async () => {
+    installRefetch(
+      vi.fn<RefetchInner>(async () => ({
+        [ROUTE_ID]: ['/login', 'callbackUrl=%2Fguarded'],
+        [IS_STATIC_ID]: true,
+      })),
+    );
+    const capture = { router: null as RouterApi | null };
+    let mergeElements: ReturnType<typeof useMergeElements> | undefined;
+    const Probe = () => {
+      capture.router = useRouter();
+      mergeElements = useMergeElements();
+      return null;
+    };
+    const view = await renderRouter(
+      { initialRoute: { path: '/start', query: '', hash: '' } },
+      {
+        ...instantNavElements(),
+        [unstable_getRouteSlotId('/start')]: <Probe />,
+        [unstable_getRouteSlotId('/login')]: <Probe />,
+      },
+    );
+    const historyPushSpy = vi.spyOn(window.history, 'pushState');
+    try {
+      await act(async () => {
+        await capture.router!.push('/next', { unstable_instant: true });
+        await flush();
+      });
+      expect(capture.router!.path).toBe('/login');
+      expect(capture.router!.query).toBe('callbackUrl=%2Fguarded');
+      expect(historyPushSpy).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        const elements = {
+          [ROUTE_ID]: ['/login', ''],
+          [IS_STATIC_ID]: true,
+        };
+        await testHoisted.emitActionElements(elements);
+        await mergeElements!(elements);
+        await flush();
+      });
+      expect(capture.router!.query).toBe('callbackUrl=%2Fguarded');
+      expect(window.location.search).toBe('?callbackUrl=%2Fguarded');
+      expect(historyPushSpy).toHaveBeenCalledTimes(1);
+    } finally {
       historyPushSpy.mockRestore();
       view.unmount();
     }

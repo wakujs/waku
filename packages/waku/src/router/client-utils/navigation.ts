@@ -150,14 +150,15 @@ export const useNavigation = (
     if (!routerState || !destinationHref) {
       return;
     }
-    const applied = appliedRef.current?.state === routerState;
+    const originalState = routerState.originalState ?? routerState;
+    const applied = appliedRef.current?.state === originalState;
     if (!applied || appliedRef.current?.href !== destinationHref) {
       commitHistory(
         new URL(destinationHref),
         applied ? 'replace' : routerState.history,
       );
     }
-    appliedRef.current = { state: routerState, href: destinationHref };
+    appliedRef.current = { state: originalState, href: destinationHref };
     if (applied || !routerState.scroll) {
       return;
     }
@@ -421,12 +422,16 @@ export const useNavigation = (
           makeStateForAttempt(outcome, historyIntent),
           outcome.route.path,
         );
-        const state = adopted
-          ? initialState
-          : makeStateForAttempt(
-              { ...destination, follows: outcome.follows },
-              historyIntent,
-            );
+        const state =
+          adopted && isSameRoute(destination.route, initialAttempt.route)
+            ? initialState
+            : {
+                ...makeStateForAttempt(
+                  { ...destination, follows: outcome.follows },
+                  historyIntent,
+                ),
+                ...(adopted ? { originalState: initialState } : {}),
+              };
         request.target = destination.route;
         request.queuedState = state;
         const patch = combineElements(responsePatch, {

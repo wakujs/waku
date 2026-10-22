@@ -54,6 +54,8 @@ import type { RegisterRscReloadListener } from './client-utils/rsc-reload.js';
 const { createFromFetch, encodeReply, createTemporaryReferenceSet } =
   RSDWClient;
 
+export { formatRscUrl as unstable_formatRscUrl } from '../lib/utils-isomorphic/rsc-path.js';
+
 const META_GENERATOR = <meta name="generator" content="Waku" />;
 
 const BASE_RSC_PATH = `${import.meta.env?.WAKU_CONFIG_BASE_PATH ?? '/'}${

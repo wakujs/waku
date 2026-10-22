@@ -36,6 +36,7 @@ import {
   RouterContext,
   dispatchChangeRoute,
 } from './client-utils/router-context.js';
+import { serverRedirectEnhancer } from './client-utils/router-state.js';
 import { shouldScrollByDefault } from './client-utils/scroll.js';
 import type { NavigationHref } from './isomorphic-utils/build-route-href.js';
 import type { RouteProps } from './isomorphic-utils/route-path.js';
@@ -269,7 +270,7 @@ const routerRscEnhancers = new WeakMap<
 const getRouterRscEnhancers = (enhancers: readonly Unstable_RscEnhancer[]) => {
   let pipeline = routerRscEnhancers.get(enhancers);
   if (!pipeline) {
-    pipeline = [...enhancers, actionRoutingEnhancer];
+    pipeline = [...enhancers, serverRedirectEnhancer, actionRoutingEnhancer];
     routerRscEnhancers.set(enhancers, pipeline);
   }
   return pipeline;
@@ -292,8 +293,8 @@ export function Router({
    * Initial input and transport enhancers, last entry outermost. Snapshotted
    * once per mount; keep the array reference stable across renders, including
    * initial Suspense retries. Create it before rendering React and remount to
-   * change it with a new array. Router action routing wraps this list, so result
-   * caches here do not retain its reconciled metadata.
+   * change it with a new array. Router redirect and action routing wrap this
+   * list, so result caches here do not retain their reconciled metadata.
    */
   unstable_rscEnhancers?: readonly Unstable_RscEnhancer[];
   /**
