@@ -14,7 +14,7 @@
     "react": "~19.3.1",
     "react-dom": "~19.3.1",
     "react-server-dom-webpack": "~19.3.1",
-    "waku": "1.0.0-rc.3"
+    "waku": "1.0.0-rc.4"
   },
   "devDependencies": {
     "@rolldown/plugin-babel": "^0.2.4",
