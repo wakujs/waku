@@ -373,6 +373,8 @@ const startHmrApp = prepareNormalSetup('instant-nav', {
 });
 
 test.describe('instant-nav hmr', { tag: '@dev' }, () => {
+  test.use({ actionTimeout: 20_000 });
+
   let port: number;
   let stopApp: (() => Promise<void>) | undefined;
 

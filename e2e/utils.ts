@@ -15,7 +15,7 @@ import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { info, warning } from '@actions/core';
+import { info, notice, warning } from '@actions/core';
 import { test as basicTest, expect } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
 
@@ -223,6 +223,25 @@ export const test = basicTest.extend<
     };
     page.on('console', callback);
     await pageUse(page);
+    if (testInfo.status !== testInfo.expectedStatus) {
+      const requests = await page.requests().catch(() => []);
+      notice(
+        JSON.stringify({
+          url: page.url(),
+          requests: requests
+            .filter((r) => r.failure() || r.timing().responseEnd < 0)
+            .slice(-10)
+            .map((r) => ({
+              type: r.resourceType(),
+              method: r.method(),
+              url: r.url(),
+              failure: r.failure()?.errorText,
+              responseStarted: r.timing().responseStart >= 0,
+            })),
+        }),
+        { title: `Browser requests: ${testInfo.title}`, file: testInfo.file },
+      );
+    }
     page.off('console', callback);
   },
 });
