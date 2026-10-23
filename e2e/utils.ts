@@ -297,6 +297,21 @@ export const prepareNormalSetup = (
       cp.stdout?.on('data', (data) => callback(data.toString()));
       cp.stderr?.on('data', (data) => callback(data.toString()));
     }
+    if (!options?.cmd && mode !== 'STATIC') {
+      // Vite's temporary port-availability listeners can pass the TCP check.
+      let ready = false;
+      const onOutput = (data: Buffer) => {
+        ready ||= data.includes('ready: Listening on ');
+      };
+      cp.stdout?.on('data', onOutput);
+      try {
+        await expect
+          .poll(() => ready, { timeout: PORT_WAIT_TIMEOUT_MS })
+          .toBe(true);
+      } finally {
+        cp.stdout?.off('data', onOutput);
+      }
+    }
     await waitForPortReady(port, options?.host);
     const stopApp = async () => {
       await terminate(cp);
