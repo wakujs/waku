@@ -294,26 +294,30 @@ test.describe('instant-nav', () => {
     await expect(page.getByTestId('route-query')).toHaveText(
       '/login?callbackUrl=%2Fpost%2F1',
     );
-    await expect(page).toHaveURL(
-      `http://localhost:${port}/login?callbackUrl=%2Fpost%2F1`,
-    );
+    await expect
+      .poll(() => page.url())
+      .toBe(`http://localhost:${port}/login?callbackUrl=%2Fpost%2F1`);
     expect(await page.evaluate(() => window.history.length)).toBe(
       historyLength + 1,
     );
 
-    await page.getByRole('button', { name: 'Rerender static route' }).click();
+    await page.evaluate(() => {
+      document
+        .querySelector<HTMLButtonElement>('button[type="submit"]')!
+        .click();
+    });
     await waitForSelectorText(page, '[data-testid="rerender-result"]', 'done');
     await waitForSelectorText(
       page,
       '[data-testid="route-query"]',
       '/login?callbackUrl=%2Fpost%2F1',
     );
-    await expect(page).toHaveURL(
-      `http://localhost:${port}/login?callbackUrl=%2Fpost%2F1`,
-    );
-    await page.goBack();
-    await expect(page).toHaveURL(`http://localhost:${port}/post/2`);
-    await expect(page.getByTestId('post-body')).toHaveText('Post 2');
+    await expect
+      .poll(() => page.url())
+      .toBe(`http://localhost:${port}/login?callbackUrl=%2Fpost%2F1`);
+    await page.evaluate(() => window.history.back());
+    await expect.poll(() => page.url()).toBe(`http://localhost:${port}/post/2`);
+    await waitForSelectorText(page, '[data-testid="post-body"]', 'Post 2');
   });
 
   // ...and surfaces a fetch error instead of getting stuck on the skeleton.

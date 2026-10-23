@@ -365,7 +365,12 @@ test.describe(`create-pages`, () => {
               .textContent,
         ))!.slice('count: '.length),
       );
-      await page.getByRole('button', { name: 'Bump layout-first' }).click();
+      // Avoid WebKit's pending-navigation wait around experimental form actions.
+      await page.evaluate(() => {
+        document
+          .querySelector<HTMLButtonElement>('button[type="submit"]')!
+          .click();
+      });
       await waitForSelectorText(
         page,
         '[data-testid="rerender-order-count"]',
