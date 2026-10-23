@@ -8,6 +8,7 @@ import {
   getRouterCache,
 } from '../src/router/client-core-utils/caches.js';
 import {
+  INTENT_ID,
   IS_STATIC_ID,
   ROUTE_ID,
   encodeRoutePath,
@@ -132,6 +133,29 @@ describe('layer-1 router caches', () => {
     fetchRsc.mockImplementation(pending);
     cache.prefetchRoute(route('/static'));
     expect(fetchRsc).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps each static route intent for reuse and clears it with the cache', () => {
+    const redirect = Promise.resolve({
+      status: 307 as const,
+      location: '/done',
+    });
+    const missing = Promise.resolve({ status: 404 as const });
+    cache.learnStaticFromElements({
+      [ROUTE_ID]: ['/redirect', ''],
+      [IS_STATIC_ID]: true,
+      [INTENT_ID]: redirect,
+    });
+    cache.learnStaticFromElements({
+      [ROUTE_ID]: ['/dynamic', ''],
+      [IS_STATIC_ID]: false,
+      [INTENT_ID]: missing,
+    });
+    expect(cache.getStaticRouteIntent(route('/redirect'))).toBe(redirect);
+    expect(cache.getStaticRouteIntent(route('/dynamic'))).toBeUndefined();
+    expect(cache.getStaticRouteIntent(route('/other'))).toBeUndefined();
+    cache.clearCaches();
+    expect(cache.getStaticRouteIntent(route('/redirect'))).toBeUndefined();
   });
 
   it('prefetchRoute fetches by encoded rscPath and sends the query as RSC params', () => {

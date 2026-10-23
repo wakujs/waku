@@ -4,6 +4,7 @@ import {
 } from 'waku/minimal/client';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
+  INTENT_ID,
   encodeRoutePath,
   getRouteFromElements,
   getRouteSlotId,
@@ -44,13 +45,17 @@ export const createRscParams = (query: string): URLSearchParams =>
 
 const createRouterCache = (fetchRsc: FetchRsc) => {
   const manager = createPrefetchManager();
-  const staticPathSet = new Set<string>();
+  const staticRouteIntents = new Map<
+    string,
+    Promise<string | undefined> | undefined
+  >();
 
   const getPrefetchedElements = (route: RouteProps): Elements | undefined =>
     manager.getElements(encodeRoutePath(route.path));
 
   const canReuseStaticRoute = (route: RouteProps, elements: Elements) =>
-    staticPathSet.has(route.path) && getRouteSlotId(route.path) in elements;
+    staticRouteIntents.has(route.path) &&
+    getRouteSlotId(route.path) in elements;
 
   return {
     fetchRsc,
@@ -86,6 +91,8 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
     getPrefetch: (route: RouteProps): PrefetchHandle | undefined =>
       manager.get(encodeRoutePath(route.path), route.query),
     canReuseStaticRoute,
+    getStaticRouteIntent: (route: RouteProps) =>
+      staticRouteIntents.get(route.path),
     /**
      * Loads with static reuse, an optional initial response, prefetch, or the
      * network, in that order, using `unstable_load`'s follow and cancellation rules.
@@ -156,12 +163,17 @@ const createRouterCache = (fetchRsc: FetchRsc) => {
     learnStaticFromElements: (elements: Record<string, unknown>): void => {
       const route = getRouteFromElements(elements);
       if (route && isStaticFromElements(elements)) {
-        staticPathSet.add(route.path);
+        // Keep route intent with its route, just like the immutable slot.
+        // Reusing that slot must not inherit the page we navigated away from.
+        staticRouteIntents.set(
+          route.path,
+          elements[INTENT_ID] as Promise<string | undefined> | undefined,
+        );
       }
     },
     clearCaches: (): void => {
       manager.clear();
-      staticPathSet.clear();
+      staticRouteIntents.clear();
     },
   };
 };

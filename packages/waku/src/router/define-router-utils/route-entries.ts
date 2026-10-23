@@ -1,6 +1,6 @@
 import {
   unstable_buildElements as buildElements,
-  unstable_getErrorInfo as getErrorInfo,
+  unstable_isRenderCancellation as isRenderCancellation,
 } from 'waku/minimal/server';
 import type {
   Unstable_ElementSource as ElementSource,
@@ -16,7 +16,12 @@ import {
 import type { RouteData } from '../isomorphic-utils/router-protocol.js';
 import { cacheElementSource, getElementCacheId } from './element-cache.js';
 import type { ElementCache } from './element-cache.js';
-import { setRscParams, setRscPath } from './request-store.js';
+import {
+  getRequest,
+  runWithRouterStore,
+  setRscParams,
+  setRscPath,
+} from './request-store.js';
 
 export type Route = {
   elements: Record<string, ElementSource & { cacheKey?: string }> & {
@@ -62,11 +67,11 @@ export const createRouteEntries = (
     (cachedHas404 ??= (
       getHas404
         ? getHas404()
-        : resolve('/404', '').then(
-            (result) => result !== null && typeof result !== 'function',
-          )
+        : runWithRouterStore({ req: getRequest() }, () =>
+            resolve('/404', ''),
+          ).then((result) => result !== null && typeof result !== 'function')
     ).catch((error) => {
-      if (getErrorInfo(error)?.status === 404) {
+      if (isRenderCancellation(error)) {
         return false;
       }
       cachedHas404 = undefined;
@@ -78,7 +83,10 @@ export const createRouteEntries = (
     rscParams: unknown,
     clientEtags: Etags,
     cache: ElementCache,
-    resolvedRoute?: Route,
+    {
+      route: resolvedRoute,
+      populateRouteCache = false,
+    }: { route?: Route | undefined; populateRouteCache?: boolean } = {},
   ) => {
     setRscPath(rscPath);
     setRscParams(rscParams);
@@ -91,24 +99,21 @@ export const createRouteEntries = (
     validateRouteElementIds(resolved.elements);
     const { route, ...sources } = resolved.elements;
     const routeId = getRouteSlotId(pathname);
-    sources[routeId] =
-      route.cacheKey !== undefined
-        ? cacheElementSource(route, getElementCacheId(routeId, route), cache)
-        : route.immutable
-          ? {
-              ...route,
-              render: () =>
-                cache.get(getElementCacheId(routeId, route)) ?? route.render(),
-            }
-          : route;
+    sources[routeId] = route;
     const entries = await buildElements(
       clientEtags,
       Object.fromEntries(
         Object.entries(sources).map(([id, source]) => [
           id,
-          id === routeId
-            ? source
-            : cacheElementSource(source, getElementCacheId(id, source), cache),
+          cacheElementSource(
+            source,
+            getElementCacheId(id, source),
+            cache,
+            // Runtime paths may be unbounded; only builds and explicit keys populate the route cache.
+            id !== routeId ||
+              source.cacheKey !== undefined ||
+              populateRouteCache,
+          ),
         ]),
       ),
     );

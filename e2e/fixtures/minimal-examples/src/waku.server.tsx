@@ -7,7 +7,10 @@ import {
   Children_UNSTABLE as Children,
   Slot_UNSTABLE as Slot,
 } from 'waku/minimal/client';
+import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
+import { CancelRender } from './components/CancelRender';
 import { DynamicIsland } from './components/DynamicIsland';
+import { handleWeakPromise } from './weak-promise';
 // eslint-disable-next-line import/no-unresolved
 import { App } from '@/components/App';
 
@@ -49,7 +52,23 @@ const appForMode = (
 
 export default adapter(
   {
-    handleRequest: async (input, { renderRsc, renderHtml }) => {
+    handleRequest: async (input, utils) => {
+      const weak = await handleWeakPromise(input, utils);
+      if (weak !== undefined) {
+        return weak;
+      }
+      const { renderRsc, renderHtml } = utils;
+      if (input.type === 'http' && input.pathname === '/cancel-render') {
+        const Cancelled = () => cancelRender();
+        return renderHtml(
+          await renderRsc({
+            cancelled: <Cancelled />,
+            sibling: <p>Sibling survived</p>,
+          }),
+          <CancelRender />,
+          { rscPath: 'cancel-render' },
+        );
+      }
       if (input.type === 'rsc') {
         if (input.rscPath === 'island') {
           return renderRsc({

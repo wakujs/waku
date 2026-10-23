@@ -1,15 +1,24 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getErrorInfo } from '../src/lib/utils-isomorphic/custom-errors.js';
+import { unstable_isRenderCancellation as isRenderCancellation } from '../src/minimal/server.js';
 import { createConfiguredRouter } from '../src/router/create-pages-utils/router.js';
+import {
+  getRouteIntent,
+  runWithRouterStore,
+} from '../src/router/define-router-utils/request-store.js';
 import {
   unstable_redirect,
   unstable_rerenderRoute,
 } from '../src/router/define-router.js';
 import { unstable_createRouteHref } from '../src/router/href-factory.js';
 import {
+  INTENT_ID,
   ROUTE_ID,
   encodeRoutePath,
 } from '../src/router/isomorphic-utils/router-protocol.js';
+
+const intentPromise = expect.objectContaining({
+  then: expect.any(Function),
+});
 
 vi.mock('../src/server.js', () => ({
   deserializeRsc: vi.fn().mockResolvedValue(null),
@@ -114,7 +123,7 @@ describe('define-router action requests', () => {
     expect(apiHandler).not.toHaveBeenCalled();
     expect(actionFn).toHaveBeenCalledWith('arg');
     expect(renderRsc).toHaveBeenCalledWith(
-      {},
+      { [INTENT_ID]: intentPromise },
       { value: 'action-result', etags: {} },
     );
   });
@@ -475,11 +484,14 @@ describe('unstable_redirect', () => {
   const getRedirectInfo = (
     location: Parameters<typeof unstable_redirect>[0],
   ) => {
-    try {
-      unstable_redirect(location, 303);
-    } catch (e) {
-      return getErrorInfo(e);
-    }
+    return runWithRouterStore({ req: new Request('http://localhost/') }, () => {
+      try {
+        unstable_redirect(location, 303);
+      } catch (error) {
+        expect(isRenderCancellation(error)).toBe(true);
+        return getRouteIntent().value;
+      }
+    });
   };
 
   it('accepts pathname redirects', () => {
@@ -497,37 +509,23 @@ describe('unstable_redirect', () => {
   });
 
   it('accepts a backslash the url parser keeps in a query', () => {
-    try {
-      unstable_redirect(new URL('https://example.com/s?q=a\\b'), 303);
-    } catch (e) {
-      expect(getErrorInfo(e)).toEqual({
-        status: 303,
-        location: 'https://example.com/s?q=a\\b',
-      });
-    }
+    expect(getRedirectInfo(new URL('https://example.com/s?q=a\\b'))).toEqual({
+      status: 303,
+      location: 'https://example.com/s?q=a\\b',
+    });
   });
 
-  it('does not carry credentials into the error it throws', () => {
-    // a redirect thrown mid stream reaches the client as this digest
-    try {
-      unstable_redirect(new URL('https://user:pw@other.example/x'), 303);
-    } catch (e) {
-      expect(getErrorInfo(e)).toEqual({
-        status: 303,
-        location: 'https://other.example/x',
-      });
-    }
+  it('does not carry credentials into route intent', () => {
+    expect(getRedirectInfo(new URL('https://user:pw@other.example/x'))).toEqual(
+      { status: 303, location: 'https://other.example/x' },
+    );
   });
 
   it('accepts a URL target', () => {
-    try {
-      unstable_redirect(new URL('https://example.com/next?a=1'), 303);
-    } catch (e) {
-      expect(getErrorInfo(e)).toEqual({
-        status: 303,
-        location: 'https://example.com/next?a=1',
-      });
-    }
+    expect(getRedirectInfo(new URL('https://example.com/next?a=1'))).toEqual({
+      status: 303,
+      location: 'https://example.com/next?a=1',
+    });
   });
 
   it.each([

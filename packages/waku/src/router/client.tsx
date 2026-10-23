@@ -30,8 +30,9 @@ import {
 import { useNavigation } from './client-utils/navigation.js';
 import {
   MissingRouteHandler,
-  RenderErrorHandler,
+  RenderError,
 } from './client-utils/render-error.js';
+import { RouteIntent } from './client-utils/route-intent.js';
 import {
   RouterContext,
   dispatchChangeRoute,
@@ -81,9 +82,10 @@ type NavigateOptions = {
  * Resolves once the requested navigation has been handled: after its response
  * when the route needs one, right away when it does not, and when a newer
  * navigation supersedes it (see `unstable_onSuperseded`). Rejects when the
- * navigation fails, when a redirect hands the page to the browser, and when no
- * custom 404 route can answer a missing route. A redirect or 404 received while
- * fetching is followed before this resolves. It does not wait for React to
+ * route fetch fails, including an HTTP 404 without a custom page. A network
+ * HTTP 404 follows the custom page before this resolves. A streamed redirect
+ * or not-found intent can be handled after this resolves, including handing
+ * an absolute redirect to the browser. It does not wait for React to
  * render, so the address bar may still show the previous URL.
  */
 type Navigate = (
@@ -183,10 +185,6 @@ const notAvailableInServer = (name: string) => () => {
   throw new Error(`${name} is not in the server`);
 };
 
-const ThrowError = ({ error }: { error: unknown }) => {
-  throw error;
-};
-
 const InnerRouter = ({
   actionRouting,
   fallbackRoute,
@@ -202,6 +200,7 @@ const InnerRouter = ({
     route: currentRoute,
     changeRoute,
     getElements,
+    getPendingRoute,
     error: navigationError,
   } = useNavigation(elements, fallbackRoute, routeInterceptor, actionRouting);
 
@@ -222,17 +221,9 @@ const InnerRouter = ({
   );
 
   const routeElement = navigationError ? (
-    <ThrowError error={navigationError.error} />
+    <RenderError error={navigationError.error} />
   ) : (
     <Slot id={getRouteSlotId(currentRoute.path)} />
-  );
-  // TODO a followable error thrown by the root layout, or by an action it
-  // calls, is not followed. The layout's own ErrorBoundary catches it first,
-  // so wrapping this slot in another handler does not reach it
-  const rootElement = (
-    <Slot id="root">
-      <RenderErrorHandler>{routeElement}</RenderErrorHandler>
-    </Slot>
   );
   return (
     <RouterContext
@@ -240,9 +231,13 @@ const InnerRouter = ({
         route: currentRoute,
         changeRoute,
         getElements,
+        getPendingRoute,
       }}
     >
-      <RouterHostContext value={host}>{rootElement}</RouterHostContext>
+      <RouterHostContext value={host}>
+        <RouteIntent />
+        <Slot id="root">{routeElement}</Slot>
+      </RouterHostContext>
     </RouterContext>
   );
 };
@@ -342,7 +337,6 @@ export function Router({
 
 export function INTERNAL_ServerRouter({ route }: { route: RouteProps }) {
   const routeElement = <Slot id={getRouteSlotId(route.path)} />;
-  const rootElement = <Slot id="root">{routeElement}</Slot>;
   return (
     <RouterContext
       value={{
@@ -356,7 +350,8 @@ export function INTERNAL_ServerRouter({ route }: { route: RouteProps }) {
           navigate: notAvailableInServer('navigate'),
         }}
       >
-        {rootElement}
+        <RouteIntent />
+        <Slot id="root">{routeElement}</Slot>
       </RouterHostContext>
     </RouterContext>
   );

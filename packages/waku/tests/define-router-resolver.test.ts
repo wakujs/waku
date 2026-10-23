@@ -1,12 +1,11 @@
 import { runInNewContext } from 'node:vm';
 import { describe, expect, it, vi } from 'vitest';
-import {
-  type Unstable_HandleRequest as HandleRequest,
-  unstable_getErrorInfo,
-} from '../src/minimal/server.js';
+import { type Unstable_HandleRequest as HandleRequest } from '../src/minimal/server.js';
 import { unstable_createRouteHref } from '../src/router/base-types.js';
+import { getRscPath } from '../src/router/define-router-utils/request-store.js';
 import {
   getRequest,
+  requestRedirect,
   unstable_defineRouter,
   unstable_notFound,
   unstable_redirect,
@@ -16,6 +15,7 @@ import {
 import {
   ACTION_LOCATION_HEADER,
   HAS404_ID,
+  INTENT_ID,
   IS_ORIGIN_ID,
   IS_STATIC_ID,
   ROUTE_ID,
@@ -23,6 +23,10 @@ import {
   encodeSliceId,
 } from '../src/router/isomorphic-utils/router-protocol.js';
 import { deserializeRsc, serializeRsc } from '../src/server.js';
+
+const intentPromise = expect.objectContaining({
+  then: expect.any(Function),
+});
 
 vi.mock('../src/server.js', () => ({
   serializeRsc: vi.fn(async (value: unknown) =>
@@ -85,7 +89,7 @@ describe('defineRouter route resolver', () => {
     expect(render).toHaveBeenCalledOnce();
     expect(utils.renderRsc).toHaveBeenLastCalledWith(
       expect.objectContaining({ 'route:/two': 'shell' }),
-      expect.objectContaining({ etags: { 'route:/two': 1 } }),
+      { etags: { 'route:/two': 1 } },
     );
   });
 
@@ -139,10 +143,8 @@ describe('defineRouter route resolver', () => {
         utils,
       )
       .catch((error: unknown) => error);
-    expect(unstable_getErrorInfo(error)).toEqual({
-      status: 307,
-      location: href,
-    });
+    expect((error as Response).headers.get('location')).toBe(href);
+    expect((error as Response).status).toBe(307);
     expect(codec.serialize).toHaveBeenCalledExactlyOnceWith({ tag: 'a b' });
     expect(codec.parse).not.toHaveBeenCalled();
     expect(utils.renderHtml).not.toHaveBeenCalled();
@@ -362,7 +364,11 @@ describe('defineRouter route resolver', () => {
       expect.anything(),
     );
     expect(utils.renderRsc.mock.calls[0]![0]).not.toHaveProperty(HAS404_ID);
-    expect(await router.handleRequest(rscInput('/missing'), utils)).toBeNull();
+    await router.handleRequest(rscInput('/missing'), utils);
+    const missing = utils.renderRsc.mock.calls.at(-1)![0];
+    expect(JSON.parse(await (missing[INTENT_ID] as Promise<string>))).toEqual({
+      status: 404,
+    });
   });
   it('uses the same normalized route and query for document and RSC requests', async () => {
     const resolve = vi.fn<RouterOptions['resolve']>(async (path, query) =>
@@ -467,7 +473,11 @@ describe('defineRouter route resolver', () => {
     );
     expect(render).not.toHaveBeenCalled();
     expect(utils.renderRsc).toHaveBeenCalledWith(
-      { [ROUTE_ID]: ['/', ''], [IS_STATIC_ID]: false },
+      {
+        [ROUTE_ID]: ['/', ''],
+        [IS_STATIC_ID]: false,
+        [INTENT_ID]: intentPromise,
+      },
       { etags: {} },
     );
   });
@@ -489,7 +499,7 @@ describe('defineRouter route resolver', () => {
     );
     expect(resolveElement).toHaveBeenCalledWith('slice:fragment');
     expect(utils.renderRsc).toHaveBeenCalledWith(
-      { 'slice:fragment': 'fragment' },
+      { 'slice:fragment': 'fragment', [INTENT_ID]: intentPromise },
       { etags: { 'slice:fragment': 'v1' } },
     );
   });
@@ -547,11 +557,11 @@ describe('defineRouter route resolver', () => {
     expect(utils.renderHtml).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      expect.objectContaining({ status: 404, unstable_rethrowNotFound: false }),
+      expect.objectContaining({ status: 404 }),
     );
   });
 
-  it('returns a redirected route in the same RSC response', async () => {
+  it('returns a route intent and cancels the source slot for a redirect', async () => {
     const router = unstable_defineRouter({
       resolve: async (path, query) =>
         path === '/old'
@@ -569,11 +579,16 @@ describe('defineRouter route resolver', () => {
     await router.handleRequest(rscInput('/old'), utils);
     expect(utils.renderRsc).toHaveBeenCalledWith(
       expect.objectContaining({
-        [ROUTE_ID]: ['/next', 'q=one'],
-        'route:/next': 'q=one',
+        [ROUTE_ID]: ['/old', ''],
+        'route:/old': null,
       }),
       expect.anything(),
     );
+    const elements = utils.renderRsc.mock.calls[0]![0];
+    expect(JSON.parse(await (elements[INTENT_ID] as Promise<string>))).toEqual({
+      status: 307,
+      location: '/next?q=one',
+    });
   });
 
   it('keeps origin rerenders and action values in the client protocol', async () => {
@@ -694,6 +709,66 @@ describe('defineRouter route resolver', () => {
     expect(mutableRender).toHaveBeenCalledTimes(1);
   });
 
+  it.each([undefined, 'shared-route'])(
+    'builds immutable route cache key %s in source order with route metadata and separate intents',
+    async (cacheKey) => {
+      const rendered: [string, string | undefined][] = [];
+      const rootRender = vi.fn(() => {
+        rendered.push(['root', getRscPath()]);
+        requestRedirect('/root-intent');
+        return 'root';
+      });
+      const routeRender = vi.fn(() => {
+        rendered.push(['route', getRscPath()]);
+        requestRedirect('/route-intent');
+        return 'route';
+      });
+      const router = unstable_defineRouter({
+        resolve: async () => ({
+          elements: {
+            root: { immutable: true, render: rootRender },
+            route: {
+              immutable: true,
+              ...(cacheKey === undefined ? {} : { cacheKey }),
+              render: routeRender,
+            },
+          },
+        }),
+        getBuildPaths: async () => ['/built'],
+        getHas404: async () => false,
+      });
+      const metadata = new Map<string, string>();
+      const utils = makeUtils();
+      await router.handleBuild({
+        ...utils,
+        rscPath2pathname: (path) => 'payload/' + path,
+        generateFile: vi.fn(),
+        generateDefaultHtml: vi.fn(),
+        saveBuildMetadata: async (key, value) => {
+          metadata.set(key, value);
+        },
+        unstable_registerPrunableFile: vi.fn(),
+      });
+      expect(rootRender).toHaveBeenCalledOnce();
+      expect(routeRender).toHaveBeenCalledOnce();
+      expect(rendered).toEqual([
+        ['root', encodeRoutePath('/built')],
+        ['route', encodeRoutePath('/built')],
+      ]);
+      const elements = utils.renderRsc.mock.calls[0]![0];
+      expect(JSON.parse((await elements[INTENT_ID]) as string)).toEqual({
+        status: 307,
+        location: '/root-intent',
+      });
+      const cached = JSON.parse(metadata.get('defineRouter:cachedElements')!);
+      const routeCacheId = cacheKey ? 'key/' + cacheKey : 'slot/route:/built';
+      expect(cached[routeCacheId]).toEqual({
+        data: btoa(JSON.stringify('route')),
+        intent: { status: 307, location: '/route-intent' },
+      });
+    },
+  );
+
   it('emits independently resolved immutable elements without route build paths', async () => {
     const id = 'slice:folder/fragment';
     const render = vi.fn(() => 'fragment');
@@ -707,10 +782,14 @@ describe('defineRouter route resolver', () => {
     const files = new Map<string, string>();
     const metadata = new Map<string, string>();
     const utils = makeUtils();
-    utils.renderRsc.mockImplementation(
-      async (elements, options) =>
-        new Response(JSON.stringify({ elements, etags: options?.etags })).body!,
-    );
+    utils.renderRsc.mockImplementation(async (elements, options) => {
+      const payload = { ...elements };
+      const intent = payload[INTENT_ID] as { value?: string } | undefined;
+      payload[INTENT_ID] = intent?.value;
+      return new Response(
+        JSON.stringify({ elements: payload, etags: options?.etags }),
+      ).body!;
+    });
     await router.handleBuild({
       ...utils,
       rscPath2pathname: (path) => 'payload/' + path,
@@ -726,7 +805,10 @@ describe('defineRouter route resolver', () => {
     expect(files.size).toBe(1);
     expect(
       JSON.parse(files.get('payload/' + encodeSliceId('folder/fragment'))!),
-    ).toEqual({ elements: { [id]: 'fragment' }, etags: { [id]: 1 } });
+    ).toEqual({
+      elements: { [id]: 'fragment' },
+      etags: { [id]: 1 },
+    });
     const runtime = unstable_defineRouter({
       resolve: async () => null,
       resolveElement,
@@ -740,7 +822,7 @@ describe('defineRouter route resolver', () => {
       runtimeUtils,
     );
     expect(runtimeUtils.renderRsc).toHaveBeenCalledWith(
-      { [id]: 'fragment' },
+      { [id]: 'fragment', [INTENT_ID]: intentPromise },
       { etags: { [id]: 1 } },
     );
     expect(render).toHaveBeenCalledOnce();
@@ -1054,7 +1136,10 @@ describe('defineRouter route resolver', () => {
       expect.any(ReadableStream),
     );
     expect(utils.renderRsc).toHaveBeenCalledWith(
-      { 'slice:summary': 'static summary' },
+      {
+        'slice:summary': 'static summary',
+        [INTENT_ID]: intentPromise,
+      },
       { etags: { 'slice:summary': 1 } },
     );
   });

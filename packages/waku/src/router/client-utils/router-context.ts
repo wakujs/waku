@@ -22,6 +22,7 @@ export const RouterContext = createContext<{
   route: RouteProps;
   changeRoute: ChangeRoute;
   getElements?: () => Record<string, unknown>;
+  getPendingRoute?: () => Pick<RouteProps, 'path' | 'query'> | undefined;
 } | null>(null);
 
 export const dispatchChangeRoute = (

@@ -4,7 +4,6 @@ import {
   Children_UNSTABLE as Children,
   Slot_UNSTABLE as Slot,
 } from 'waku/minimal/client';
-import { unstable_createCustomError as createCustomError } from 'waku/minimal/server';
 import { ErrorBoundary } from '../router/client.js';
 import type {
   ApiHandler,
@@ -84,9 +83,9 @@ const parseSearchOrThrow = (
   try {
     return codec.parse(query);
   } catch (cause) {
-    const err = createCustomError('Bad Request', { status: 400 });
-    err.cause = cause;
-    throw err;
+    throw Object.assign(new Response('Bad Request', { status: 400 }), {
+      cause,
+    });
   }
 };
 

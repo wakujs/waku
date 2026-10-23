@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
 import type { Unstable_ElementSource as ElementSource } from 'waku/minimal/server';
+import { unstable_isRenderCancellation as isRenderCancellation } from 'waku/minimal/server';
 import { deserializeRsc, serializeRsc } from 'waku/server';
+import type { RouteIntentData } from '../isomorphic-utils/router-protocol.js';
+import { captureRouteIntent, getRouteIntent } from './request-store.js';
 
 export const ROOT_SLOT_ID = 'root';
 
@@ -17,35 +20,52 @@ export const base64ToBytes = (base64: string) =>
 
 export type CacheId = string;
 
+export type SerializedElement = {
+  data: string;
+  intent?: RouteIntentData | undefined;
+};
+
 export const createElementCache = (
-  onSerialize?: (cacheId: CacheId, serialized: string) => void,
+  onSerialize?: (cacheId: CacheId, entry: SerializedElement) => void,
 ) => {
-  const cache = new Map<CacheId, Promise<Uint8Array>>();
+  const cache = new Map<
+    CacheId,
+    Promise<{ result: Uint8Array; intent: RouteIntentData | undefined }>
+  >();
   return {
-    preload: (cacheId: CacheId, bytes: Uint8Array) => {
-      cache.set(cacheId, Promise.resolve(bytes));
+    preload: (cacheId: CacheId, { data, intent }: SerializedElement) => {
+      cache.set(
+        cacheId,
+        Promise.resolve({ result: base64ToBytes(data), intent }),
+      );
     },
     has: (cacheId: CacheId) => cache.has(cacheId),
-    get: (cacheId: CacheId) => {
-      const cachedBytes = cache.get(cacheId);
-      if (!cachedBytes) {
-        return undefined;
-      }
-      return cachedBytes.then((bytes) =>
-        deserializeRsc(bytes),
-      ) as Promise<ReactNode>;
-    },
-    set: (cacheId: CacheId, element: unknown) => {
+    get: (cacheId: CacheId) =>
+      cache.get(cacheId)?.then(({ result, intent }) => {
+        if (intent) {
+          getRouteIntent().record(intent);
+        }
+        return deserializeRsc(result) as Promise<ReactNode>;
+      }),
+    set: async (cacheId: CacheId, render: ElementSource['render']) => {
       if (cache.has(cacheId)) {
         return;
       }
-      const bytesPromise = serializeRsc(element);
-      cache.set(cacheId, bytesPromise);
-      if (onSerialize) {
-        return bytesPromise.then((bytes) => {
-          onSerialize(cacheId, bytesToBase64(bytes));
-        });
-      }
+      const entry = captureRouteIntent(async () => {
+        let element;
+        try {
+          element = await render();
+        } catch (error) {
+          if (!isRenderCancellation(error)) {
+            throw error;
+          }
+          element = null;
+        }
+        return serializeRsc(element);
+      });
+      cache.set(cacheId, entry);
+      const { result, intent } = await entry;
+      onSerialize?.(cacheId, { data: bytesToBase64(result), intent });
     },
   };
 };
@@ -56,13 +76,17 @@ export const cacheElementSource = (
   source: ElementSource,
   cacheId: CacheId,
   cache: ElementCache,
+  populate = true,
 ): ElementSource =>
   source.immutable
     ? {
         ...source,
         render: async () => {
           if (!cache.has(cacheId)) {
-            await cache.set(cacheId, await source.render());
+            if (!populate) {
+              return source.render();
+            }
+            await cache.set(cacheId, source.render);
           }
           return cache.get(cacheId);
         },

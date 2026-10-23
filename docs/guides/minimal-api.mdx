@@ -36,7 +36,8 @@ The Minimal API consists of server handler contracts and client rendering primit
 | `waku/minimal/server` | `Unstable_Handlers`                                                                          | Defining `handleRequest` and `handleBuild` for an adapter.            |
 | `waku/minimal/server` | `Unstable_HandleRequest`, `Unstable_HandleBuild`                                             | Typing individual handlers.                                           |
 | `waku/minimal/server` | `Unstable_RenderRsc`, `Unstable_RenderHtml`, `Unstable_RenderHtmlFallback`, `Unstable_Etags` | Typing rendering utilities and validators.                            |
-| `waku/minimal/server` | `unstable_createCustomError`, `unstable_getErrorInfo`                                        | Creating and reading status and redirect errors.                      |
+| `waku/minimal/server` | `unstable_cancelRender`, `unstable_isRenderCancellation`                                     | Stopping a render and recognizing cancellation.                       |
+| `waku/minimal/client` | `unstable_isRenderCancellation`                                                              | Rethrowing cancellation in custom boundaries.                         |
 | `waku/minimal/client` | `Root_UNSTABLE`                                                                              | Installing the minimal client runtime.                                |
 | `waku/minimal/client` | `Slot_UNSTABLE`                                                                              | Rendering a server element by RSC ID.                                 |
 | `waku/minimal/client` | `Children_UNSTABLE`                                                                          | Placing client-side `Slot` children inside a server-rendered element. |
@@ -45,7 +46,6 @@ The Minimal API consists of server handler contracts and client rendering primit
 | `waku/minimal/client` | `useElementsPromise_UNSTABLE`                                                                | Reading the current element map.                                      |
 | `waku/minimal/client` | `useRegisterRscReloadListener_UNSTABLE`                                                      | Choosing the RSC input to refresh during development reloads.         |
 | `waku/minimal/client` | `unstable_combineElements`                                                                   | Combining element maps without losing their etags.                    |
-| `waku/minimal/client` | `unstable_getErrorInfo`                                                                      | Reading status, redirect and network-error information.               |
 | `waku/minimal/client` | `unstable_formatRscUrl`                                                                      | Constructing an RSC payload URL.                                      |
 
 Examples below often import these as shorter names.
@@ -357,37 +357,33 @@ Important details:
 - `rscPath` and `rscParams` are opaque application data. Waku does not assign them semantics.
 - Each `fetchRsc` call issues a new request. A router-like abstraction can own prefetching and response reuse.
 
-#### Status And Redirect Errors
+#### HTTP Responses and Render Cancellation
 
-Use `createCustomError` to attach status or redirect information to an error
-that survives Flight serialization:
+Return a `Response` from `handleRequest` to set HTTP status and headers. Helpers
+called before rendering can throw a `Response`; Waku returns it unchanged.
+HTTP responses are separate from the Flight payload. A client fetch receiving a
+non-success status rejects with an `Error` whose `cause` is the `Response`.
+Network failures retain the original fetch error, such as a `TypeError`.
 
-```ts
-import { unstable_createCustomError as createCustomError } from 'waku/minimal/server';
-
-throw createCustomError('Not found', { status: 404 });
-```
-
-Throwing a status error directly from `handleRequest` produces an HTTP
-response with that status. A redirect uses a `location` and a redirect status
-such as `307`. Document requests become HTTP redirects, while RSC and server
-function redirects return a readable payload with status `200` and surface
-the redirect on the client. Payload consumers can inspect it and choose how
-to navigate:
+Use `unstable_cancelRender` to stop the current component or server function:
 
 ```ts
-import { unstable_getErrorInfo as getErrorInfo } from 'waku/minimal/client';
+import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
 
-const handleError = (error: unknown) => {
-  const info = getErrorInfo(error);
-  if (info?.location) {
-    window.location.assign(info.location);
-  }
-};
+cancelRender();
 ```
 
-`getErrorInfo` returns `null` for errors without valid Waku information. It is
-also available from `waku/minimal/server` for server-side error handling.
+`cancelRender(): never` throws internally. It carries no status or destination.
+Sibling components may continue rendering. On the client, the cancelled Slot
+renders nothing; during SSR, React uses the nearest Suspense fallback or falls
+back to client rendering. Catch blocks and custom error boundaries must rethrow
+cancellation. `unstable_isRenderCancellation(error)` from either Minimal entry
+point returns whether an error is a render cancellation. Digest handling remains
+internal to the renderer.
+
+Routers can transport navigation data independently from cancellation. Waku
+Router provides `requestRedirect` and `requestNotFound` for this; see
+[Redirects and Not Found](/guides/redirects-and-not-found).
 
 #### `handleBuild(utils)`
 

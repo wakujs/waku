@@ -15,7 +15,21 @@ Waku supports two different redirect patterns:
 
 This guide covers app-level redirects and not-found handling. For infrastructure redirects, see [Redirect Maps](/guides/redirect-maps).
 
-The APIs in this guide currently use `unstable_` names and may change.
+`requestRedirect()` and `requestNotFound()` record navigation without stopping
+your function. Return normally, or call `unstable_cancelRender()` from
+`waku/minimal/server` to terminate the current render. The deprecated
+`unstable_redirect()` and `unstable_notFound()` shown below combine those steps
+and return `never`. You can define your own terminating wrapper:
+
+```ts
+import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
+import { requestNotFound } from 'waku/router/server';
+
+export function notFound(): never {
+  requestNotFound();
+  cancelRender();
+}
+```
 
 ## Redirect from Server Code
 
@@ -90,7 +104,10 @@ export default function NewPostPage() {
 }
 ```
 
-Waku renders the destination into the same response, so the client does not make a second request. That only works for a target it can render: a path on this site, without a hash. Anything else, including a target that is not a route at all or one that renders not found, is handed to the browser as a 303, which costs a full page load. The 303 is what keeps the form submission from being sent again to the destination.
+With JavaScript, the response carries a route intent and the client navigates to
+the destination. Without JavaScript, a redirect requested before the shell is
+sent produces an HTTP redirect; a form POST uses `303` so the destination receives
+a `GET`.
 
 To stay on the page and show the action's changes instead, see [Rerendering After Server Actions](/guides/rerender-after-actions).
 
@@ -143,7 +160,7 @@ A client-side navigation to a missing route is answered the same way: the server
 
 ## Status and Streaming Notes
 
-When `notFound()` is thrown before the initial HTML shell is ready, a direct request server-renders the custom `/404` page and returns status 404. If it is thrown from inside a Suspense boundary after the shell has already been sent, the response keeps status 200 and the browser completes the not-found handling after hydration. This late path requires JavaScript; without it, the Suspense fallback remains.
+When not-found is requested before the initial HTML shell is ready, a direct request server-renders the custom `/404` page and returns status 404. If it is requested from inside a Suspense boundary after the shell has already been sent, the response keeps status 200 and the browser completes the not-found handling after hydration. This late path requires JavaScript; without it, the Suspense fallback remains.
 
 Redirects have the same streaming constraint. Once a response has started streaming to the browser, the server cannot change its HTTP status or response headers.
 

@@ -41,6 +41,18 @@ test.describe(`define-router`, () => {
     expect(response.headers().location).toBe('/foo?q=redirected');
   });
 
+  test('a cancelled resolver redirects during client navigation', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    await page
+      .getByRole('link', { name: 'Resolver redirect', exact: true })
+      .click();
+    await expect(page.getByTestId('foo-title')).toHaveText('Foo');
+    await expect(page).toHaveURL(`http://localhost:${port}/foo?q=redirected`);
+  });
+
   test('typed hrefs render and navigate from a Server Component', async ({
     page,
   }) => {

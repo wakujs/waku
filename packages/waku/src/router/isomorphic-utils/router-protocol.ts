@@ -11,6 +11,11 @@ export const HAS404_ID = 'HAS404';
 
 export const IS_ORIGIN_ID = 'IS_ORIGIN';
 
+export const INTENT_ID = 'INTENT';
+
+export type RouteIntentData =
+  { status: 404 } | { status: 303 | 307 | 308; location: string };
+
 export const ACTION_LOCATION_HEADER = 'X-Waku-Action-Location';
 
 export type RouteData = readonly [path: string, query: string];
@@ -43,7 +48,10 @@ export const has404FromElements = (
 ): boolean => !!elements[HAS404_ID];
 
 export const isMetaKey = (key: string) =>
-  key === ROUTE_ID || key === HAS404_ID || key === IS_STATIC_ID;
+  key === ROUTE_ID ||
+  key === HAS404_ID ||
+  key === IS_STATIC_ID ||
+  key === INTENT_ID;
 
 const ROUTE_SLOT_ID_PREFIX = 'route:';
 const SLICE_SLOT_ID_PREFIX = 'slice:';

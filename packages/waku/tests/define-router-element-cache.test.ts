@@ -4,7 +4,6 @@ import {
   getPathSpecCacheId,
 } from '../src/router/create-pages-utils/element-ids.js';
 import {
-  base64ToBytes,
   createElementCache,
   getSlotCacheId,
 } from '../src/router/define-router-utils/element-cache.js';
@@ -21,9 +20,6 @@ vi.mock('../src/server.js', () => ({
   ),
 }));
 
-const encode = (value: unknown) =>
-  new TextEncoder().encode(JSON.stringify(value));
-
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -31,21 +27,21 @@ beforeEach(() => {
 describe('element cache', () => {
   it('preload then get returns the deserialized value', async () => {
     const cache = createElementCache();
-    cache.preload('slot/x', encode('hello'));
+    cache.preload('slot/x', { data: btoa(JSON.stringify('hello')) });
     expect(await cache.get('slot/x')).toBe('hello');
   });
 
   it('set serializes and get returns the same value', async () => {
     const cache = createElementCache();
-    await cache.set('slot/x', 'world' as never);
+    await cache.set('slot/x', () => 'world');
     expect(await cache.get('slot/x')).toBe('world');
     expect(serializeRsc).toHaveBeenCalledTimes(1);
   });
 
   it('repeated set for one cache id does not replace or reserialize', async () => {
     const cache = createElementCache();
-    await cache.set('slot/x', 'first' as never);
-    await cache.set('slot/x', 'second' as never);
+    await cache.set('slot/x', () => 'first');
+    await cache.set('slot/x', () => 'second');
     expect(await cache.get('slot/x')).toBe('first');
     expect(serializeRsc).toHaveBeenCalledTimes(1);
   });
@@ -58,12 +54,12 @@ describe('element cache', () => {
   it('onSerialize persists bytes that another cache can restore', async () => {
     const onSerialize = vi.fn();
     const cache = createElementCache(onSerialize);
-    await cache.set('slot/x', 'a' as never);
-    await cache.set('slot/x', 'b' as never);
+    await cache.set('slot/x', () => 'a');
+    await cache.set('slot/x', () => 'b');
     expect(onSerialize).toHaveBeenCalledTimes(1);
     expect(onSerialize.mock.calls[0]![0]).toBe('slot/x');
     const restored = createElementCache();
-    restored.preload('slot/x', base64ToBytes(onSerialize.mock.calls[0]![1]));
+    restored.preload('slot/x', onSerialize.mock.calls[0]![1]);
     expect(await restored.get('slot/x')).toBe('a');
   });
 

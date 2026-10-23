@@ -68,3 +68,12 @@ export const registerRootStore = (store: RootStore) => {
     }
   };
 };
+
+/** Appends a private observer to one Root's configured request pipeline. */
+export const registerRscObserver = (store: RootStore, enhance: RscEnhancer) => {
+  const entry: RscEnhancer = (next) => enhance(next);
+  store.rscEnhancers = [...store.rscEnhancers, entry];
+  return () => {
+    store.rscEnhancers = store.rscEnhancers.filter((item) => item !== entry);
+  };
+};

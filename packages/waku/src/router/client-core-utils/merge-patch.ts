@@ -2,6 +2,7 @@ import { unstable_combineElements as combineElements } from 'waku/minimal/client
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
   HAS404_ID,
+  INTENT_ID,
   IS_STATIC_ID,
   ROUTE_ID,
   getRouteFromElements,
@@ -28,6 +29,7 @@ export const buildMergePatch = (
       key === ROUTE_ID ||
       key === HAS404_ID ||
       key === IS_STATIC_ID ||
+      key === INTENT_ID ||
       (typeof key === 'string' &&
         ((rscRouteChanged && key === routeSlotId) ||
           (Object.hasOwn(current, key) === Object.hasOwn(base, key) &&

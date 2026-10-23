@@ -3,7 +3,6 @@ import { expectType } from 'ts-expect';
 import type { TypeEqual } from 'ts-expect';
 import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockedFunction } from 'vitest';
-import { getErrorInfo } from '../src/lib/utils-isomorphic/custom-errors.js';
 import { Children_UNSTABLE as Children } from '../src/minimal/client.js';
 import type { PathsForPages } from '../src/router/base-types.js';
 import type { GetSlugs } from '../src/router/create-pages-utils/inferred-path-types.js';
@@ -3412,7 +3411,7 @@ describe('createPages search codec', () => {
     } catch (e) {
       thrown = e;
     }
-    expect(getErrorInfo(thrown)?.status).toBe(400);
+    expect((thrown as Response).status).toBe(400);
     // the original parse error is preserved as the cause
     expect((thrown as { cause?: Error }).cause?.message).toBe('invalid');
   });

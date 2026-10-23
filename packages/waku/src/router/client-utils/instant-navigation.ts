@@ -8,6 +8,7 @@ import type { RouterCache } from '../client-core-utils/caches.js';
 import { abortable } from '../client-core-utils/load.js';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
+  INTENT_ID,
   IS_STATIC_ID,
   ROUTE_ID,
   encodeRoutePath,
@@ -36,9 +37,10 @@ export const canPaintInstantOverlay = (
 // symbol keys are client owned; they are carried, never fetched
 export const pinForSwr =
   (getResolvedElements: () => Elements) => (key: string | symbol) =>
-    typeof key === 'symbol' ||
-    isMetaKey(key) ||
-    isImmutableElement(getResolvedElements(), key);
+    key !== INTENT_ID &&
+    (typeof key === 'symbol' ||
+      isMetaKey(key) ||
+      isImmutableElement(getResolvedElements(), key));
 
 export const useStartInstantPaint = (
   getElements: () => Elements,

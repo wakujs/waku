@@ -28,7 +28,7 @@ import {
 import { unstable_parseRequest as parseRequest } from '../src/minimal/server.js';
 import {
   unstable_createActionRouting as createActionRouting,
-  unstable_decideFollow as decideFollow,
+  unstable_decideRouteIntent as decideRouteIntent,
   unstable_encodeRoutePath as encodeRoutePath,
   unstable_getRouteFromElements as getRouteFromElements,
   unstable_getRouteSlotId as getRouteSlotId,
@@ -37,10 +37,9 @@ import {
   useActionRouting_UNSTABLE as useActionRouting,
   useRouterCache_UNSTABLE as useRouterCache,
 } from '../src/router/client-core.js';
+import { INTENT_ID } from '../src/router/isomorphic-utils/router-protocol.js';
 import {
   unstable_defineRouter as defineRouter,
-  unstable_notFound as notFound,
-  unstable_redirect as redirect,
   unstable_rerenderRoute as rerenderRoute,
 } from '../src/router/server.js';
 
@@ -113,6 +112,14 @@ const mount = async (
     buildId: '',
     onError: () => undefined,
   });
+  // This JSON harness omits weak entries that have no result at EOF.
+  const renderRsc = renderUtils.renderRsc;
+  renderUtils.renderRsc = async (elements, options) => {
+    const data = { ...elements };
+    const intent = data[INTENT_ID] as { value?: string } | undefined;
+    data[INTENT_ID] = intent?.value;
+    return renderRsc(data, options);
+  };
   const fetch = vi.fn<typeof globalThis.fetch>(async (url, init) => {
     const req = new Request(new URL(String(url), window.location.href), init);
     const parsed = parseRequest(req);
@@ -267,29 +274,7 @@ test('an omitted mutable slot still keeps the response route dynamic', async () 
   });
 });
 
-test('an eagerly resolved redirect reports the rendered destination to the client', async () => {
-  const binding = await mount(
-    defineRouter({
-      resolve: async (path, query) => {
-        if (path === '/old') {
-          redirect('/new?q=one');
-        }
-        return route(path + '?' + query);
-      },
-      getHas404: async () => false,
-    }),
-    '/old',
-  );
-  expect(binding.fetch).toHaveBeenCalledOnce();
-  expect(binding.container.textContent).toBe('/new?q=one');
-  expect(getRouteFromElements(binding.getView().elements)).toEqual({
-    path: '/new',
-    query: 'q=one',
-    hash: '',
-  });
-});
-
-test('a custom 404 reports its rendered route and enables following late not-found errors', async () => {
+test('a custom 404 reports its rendered route and enables following not-found intents', async () => {
   const binding = await mount(
     defineRouter({
       resolve: async (path, query) =>
@@ -305,15 +290,9 @@ test('a custom 404 reports its rendered route and enables following late not-fou
     query: 'q=one',
     hash: '',
   });
-  let error: unknown;
-  try {
-    notFound();
-  } catch (caught) {
-    error = caught;
-  }
   const url = new URL('http://localhost/missing?q=one');
-  const decision = decideFollow(
-    error,
+  const decision = decideRouteIntent(
+    { status: 404 },
     { route: { path: '/missing', query: 'q=one' }, url, follows: 0 },
     { has404: has404FromElements(elements), maxFollows: 20 },
   );

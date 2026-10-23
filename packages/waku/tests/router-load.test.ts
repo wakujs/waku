@@ -1,6 +1,5 @@
 /** @vitest-environment happy-dom */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createCustomError } from '../src/lib/utils-isomorphic/custom-errors.js';
 import type { FetchRsc } from '../src/minimal/client-utils/root-store.js';
 import { getRouterCache } from '../src/router/client-core-utils/caches.js';
 import {
@@ -19,15 +18,12 @@ type LoadOptions = Parameters<typeof cache.load>[1];
 
 const route = (path: string, query = '', hash = '') => ({ path, query, hash });
 
-const settled = route('/start');
-
 const baseOpts = (
   overrides: Partial<LoadOptions> & { signal?: AbortSignal } = {},
 ): LoadOptions => ({
   signal: overrides.signal ?? new AbortController().signal,
-  refetch: true,
   has404: false,
-  settled,
+  refetch: true,
   base: {},
   url: new URL('http://localhost/next'),
   ...overrides,
@@ -210,56 +206,6 @@ describe('load', () => {
     await expect(pendingA).resolves.toEqual({ type: 'aborted' });
   });
 
-  it.each(['startup', 'pending'] as const)(
-    'retains prefetch invalidation through follow startup, not its pending wait (%s)',
-    async (timing) => {
-      const onInvalidate = vi.fn();
-      let invalidate!: () => void;
-      let finishFollow!: (elements: Elements) => void;
-      let startFollow!: () => void;
-      const following = new Promise<void>((resolve) => {
-        startFollow = resolve;
-      });
-      const elements = { [ROUTE_ID]: ['/final', ''] };
-      fetchRsc
-        .mockImplementationOnce((_path, _params, options) => {
-          invalidate = () => options?.onBuildIdMismatch?.();
-          return Promise.reject(
-            createCustomError('moved', { location: '/final' }),
-          );
-        })
-        .mockImplementationOnce(() => {
-          if (timing === 'startup') {
-            invalidate();
-          }
-          startFollow();
-          return new Promise((resolve) => {
-            finishFollow = resolve;
-          });
-        });
-      cache.prefetchRoute(route('/next'));
-      const pending = cache.load(
-        route('/next'),
-        baseOpts({
-          onInvalidate,
-          url: new URL('/next', window.location.href),
-        }),
-      );
-      await following;
-      if (timing === 'pending') {
-        invalidate();
-      }
-      expect(onInvalidate).toHaveBeenCalledTimes(timing === 'startup' ? 1 : 0);
-      finishFollow(elements);
-      await expect(pending).resolves.toMatchObject({
-        type: 'loaded',
-        route: route('/final'),
-        elements,
-        follows: 1,
-      });
-    },
-  );
-
   it('returns aborted when the signal is already aborted', async () => {
     const controller = new AbortController();
     controller.abort();
@@ -289,69 +235,6 @@ describe('load', () => {
     await expect(pending).resolves.toEqual({ type: 'aborted' });
   });
 
-  it('follows a 404 to /404 when has404 is set', async () => {
-    fetchRsc
-      .mockRejectedValueOnce(createCustomError('nf', { status: 404 }))
-      .mockResolvedValueOnce({ [ROUTE_ID]: ['/404', ''] });
-    const outcome = await cache.load(
-      route('/missing'),
-      baseOpts({
-        has404: true,
-        url: new URL('http://localhost/missing'),
-      }),
-    );
-    expect(outcome).toMatchObject({
-      type: 'loaded',
-      route: route('/404'),
-      follows: 1,
-    });
-    expect(fetchRsc).toHaveBeenCalledTimes(2);
-    expect(fetchRsc).toHaveBeenLastCalledWith(
-      encodeRoutePath('/404'),
-      expect.any(URLSearchParams),
-      expect.any(Object),
-    );
-  });
-
-  it('follows an in-app redirect and loads the target', async () => {
-    fetchRsc
-      .mockRejectedValueOnce(
-        createCustomError('moved', {
-          status: 307,
-          location: `${window.location.origin}/final`,
-        }),
-      )
-      .mockResolvedValueOnce({ [ROUTE_ID]: ['/final', ''] });
-    const outcome = await cache.load(
-      route('/next'),
-      baseOpts({ url: new URL('/next', window.location.href) }),
-    );
-    expect(outcome).toMatchObject({
-      type: 'loaded',
-      route: route('/final'),
-      follows: 1,
-    });
-  });
-
-  it('leaves the app on an external redirect', async () => {
-    const error = createCustomError('gone', {
-      location: 'https://other.example/next',
-      unstable_leave: true,
-    });
-    fetchRsc.mockRejectedValue(error);
-    const outcome = await cache.load(route('/next'), baseOpts());
-    expect(outcome).toMatchObject({
-      type: 'external',
-      error,
-      route: route('/next'),
-      follows: 0,
-    });
-    if (outcome.type === 'external') {
-      expect(outcome.url.href).toBe('https://other.example/next');
-      expect(outcome.from.href).toBe('http://localhost/next');
-    }
-  });
-
   it('fails on a non-followable error', async () => {
     const error = new Error('boom');
     fetchRsc.mockRejectedValue(error);
@@ -379,29 +262,6 @@ describe('load', () => {
       elements,
       follows: 0,
     });
-  });
-
-  it('follow attempts after an adopted rejection fetch the new route', async () => {
-    fetchRsc.mockResolvedValue({ [ROUTE_ID]: ['/404', ''] });
-    const outcome = await cache.load(
-      route('/missing'),
-      baseOpts({
-        has404: true,
-        url: new URL('http://localhost/missing'),
-        adopt: Promise.reject(createCustomError('nf', { status: 404 })),
-      }),
-    );
-    expect(outcome).toMatchObject({
-      type: 'loaded',
-      route: route('/404'),
-      follows: 1,
-    });
-    expect(fetchRsc).toHaveBeenCalledTimes(1);
-    expect(fetchRsc).toHaveBeenCalledWith(
-      encodeRoutePath('/404'),
-      expect.any(URLSearchParams),
-      expect.any(Object),
-    );
   });
 
   it('an aborted adopt is aborted, not failed', async () => {

@@ -1,4 +1,7 @@
-import { unstable_createCustomError as createCustomError } from 'waku/minimal/server';
+import {
+  unstable_cancelRender as cancelRender,
+  unstable_isRenderCancellation as isRenderCancellation,
+} from 'waku/minimal/server';
 import type { Unstable_Handlers as Handlers } from 'waku/minimal/server';
 import { createBuildHandler } from './define-router-utils/build-handler.js';
 import type {
@@ -9,6 +12,7 @@ import { createRequestHandler } from './define-router-utils/request-handler.js';
 import {
   getRequest,
   getRerender,
+  getRouteIntent,
   getRscParams,
   getRscPath,
   runWithRouterStore,
@@ -68,23 +72,26 @@ export function unstable_rerenderRoute(pathname?: string, query?: string) {
   );
 }
 
-export function unstable_notFound(): never {
-  throw createCustomError('Not Found', { status: 404 });
+/**
+ * Requests the not-found view without terminating execution. Return from the
+ * current component or server function after calling it. Before the document
+ * shell this can produce HTTP 404; after the shell the client shows the view.
+ * The first navigation recorded for a request wins. A server function keeps its
+ * normal return value; a form submitted without JavaScript responds with 404.
+ */
+export function requestNotFound(): void {
+  getRouteIntent().record({ status: 404 });
 }
 
-/**
- * Redirect within the app, or away from it with an absolute http or https url.
- * Check destinations built from user input against your own allowlist.
- *
- * An absolute url navigates the document even when it names this origin, so
- * pass a path to stay within the app. A form submission without JavaScript is
- * followed by the browser, which resends the body on 307 and 308, so those
- * answer 303 instead.
- */
-export function unstable_redirect(
+/** @deprecated Use `requestNotFound()` and `cancelRender()` to control termination. */
+export function unstable_notFound(): never {
+  requestNotFound();
+  cancelRender();
+}
+
+const getRedirectLocation = (
   to: NavigationHref | `http://${string}` | `https://${string}` | URL,
-  status: 303 | 307 | 308 = 307,
-): never {
+) => {
   let location = to instanceof URL ? to.href : to;
   const leavesTheApp =
     location.startsWith('http://') || location.startsWith('https://');
@@ -96,8 +103,6 @@ export function unstable_redirect(
     throw new Error(`Invalid redirect location: ${JSON.stringify(location)}`);
   }
   if (leavesTheApp) {
-    // a redirect thrown mid stream reaches the client as this digest, before
-    // anything resolves it
     const url = new URL(location);
     url.username = '';
     url.password = '';
@@ -114,7 +119,34 @@ export function unstable_redirect(
       throw new Error(`Invalid redirect location: ${JSON.stringify(location)}`);
     }
   }
-  throw createCustomError('Redirect', { status, location });
+  return location;
+};
+
+/**
+ * Requests navigation without terminating execution. Return explicitly after
+ * calling it. Accepts an app-relative path or an absolute HTTP(S) URL; validate
+ * destinations derived from user input against your own allowlist. Before a
+ * dynamic document's shell this produces an HTTP redirect (303 for a form POST).
+ * After the shell, and for prerendered pages, the browser follows the intent
+ * using JavaScript.
+ * An absolute URL navigates the document even when it names this origin.
+ * The first navigation recorded for a request wins.
+ */
+export function requestRedirect(
+  to: NavigationHref | `http://${string}` | `https://${string}` | URL,
+  status: 303 | 307 | 308 = 307,
+): void {
+  const location = getRedirectLocation(to);
+  getRouteIntent().record({ status, location });
+}
+
+/** @deprecated Use `requestRedirect()` and `cancelRender()` to control termination. */
+export function unstable_redirect(
+  to: NavigationHref | `http://${string}` | `https://${string}` | URL,
+  status: 303 | 307 | 308 = 307,
+): never {
+  requestRedirect(to, status);
+  cancelRender();
 }
 
 type RouterOptions = {
@@ -158,14 +190,21 @@ export function unstable_defineRouter(fns: RouterOptions): Handlers {
   const runHandled = async <T,>(
     req: Request,
     fn: () => Promise<T>,
+    onCancel?: () => Promise<T>,
   ): Promise<T> => {
-    return runWithRouterStore(
-      { req },
-      (fns.unstable_interceptors ?? []).reduceRight(
-        (next, interceptor) => () => interceptor(next),
-        fn,
-      ),
-    );
+    return runWithRouterStore({ req }, async () => {
+      try {
+        return await (fns.unstable_interceptors ?? []).reduceRight(
+          (next, interceptor) => () => interceptor(next),
+          fn,
+        )();
+      } catch (error) {
+        if (!isRenderCancellation(error) || !onCancel) {
+          throw error;
+        }
+        return onCancel();
+      }
+    });
   };
   return {
     handleRequest: createRequestHandler({

@@ -1,9 +1,6 @@
 import { renderToReadableStream } from 'react-server-dom-webpack/server.edge';
-import {
-  getDigest,
-  getErrorInfo,
-} from './lib/utils-isomorphic/custom-errors.js';
 import { sanitizeLog } from './lib/utils-isomorphic/log.js';
+import { getDigestIfRenderCancellation } from './lib/utils-isomorphic/render-cancellation.js';
 import { bytesToStream, streamToBytes } from './lib/utils-isomorphic/stream.js';
 
 export { getEnv } from './lib/env.js';
@@ -15,10 +12,11 @@ export async function serializeRsc(element: unknown): Promise<Uint8Array> {
       {},
       {
         onError: (e: unknown) => {
-          if (!getErrorInfo(e)) {
-            console.error('Error during rendering:', sanitizeLog(e));
+          const digest = getDigestIfRenderCancellation(e);
+          if (digest) {
+            return digest;
           }
-          return getDigest(e);
+          console.error('Error during rendering:', sanitizeLog(e));
         },
       },
     ),

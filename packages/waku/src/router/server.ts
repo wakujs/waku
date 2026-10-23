@@ -7,6 +7,8 @@ export {
   unstable_setNonce,
   unstable_notFound,
   unstable_redirect,
+  requestNotFound,
+  requestRedirect,
 } from './define-router.js';
 export type { HandlerInterceptor } from './define-router.js';
 export { createPages } from './create-pages.js';

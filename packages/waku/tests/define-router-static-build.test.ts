@@ -315,8 +315,8 @@ describe('define-router handleBuild', () => {
     });
 
     const utils = {
-      renderRsc: vi.fn().mockResolvedValue(makeStream()),
-      renderRscForParse: vi.fn().mockResolvedValue(makeStream()),
+      renderRsc: vi.fn().mockImplementation(async () => makeStream()),
+      renderRscForParse: vi.fn().mockImplementation(async () => makeStream()),
       renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
       loadBuildMetadata,
       renderHtmlFallback: vi.fn(),

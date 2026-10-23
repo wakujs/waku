@@ -1,15 +1,13 @@
 import { Suspense } from 'react';
-import { unstable_createCustomError as createCustomError } from 'waku/minimal/server';
+import { unstable_redirect as redirect } from 'waku/router/server';
 
 const Late = async () => {
   await new Promise((resolve) => setTimeout(resolve, 100));
-  throw createCustomError('leaving late', {
-    status: 303,
-    location: new URL(
-      '/from-late',
-      String(process.env.WAKU_E2E_EXTERNAL_ORIGIN),
-    ).href,
-  });
+  redirect(
+    new URL('/from-late', String(process.env.WAKU_E2E_EXTERNAL_ORIGIN))
+      .href as '/',
+    303,
+  );
 };
 
 export default async function ExternalLatePage() {

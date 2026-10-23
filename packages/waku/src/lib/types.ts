@@ -10,7 +10,6 @@ export type Unstable_RenderRsc = (
   options?: {
     value?: unknown;
     etags?: Etags;
-    documentLocation?: string;
     unstable_clientModuleCallback?: (ids: string[]) => void;
   },
 ) => Promise<ReadableStream>;
@@ -25,7 +24,6 @@ export type Unstable_RenderHtml = (
     status?: number;
     nonce?: string;
     unstable_extraScriptContent?: string;
-    unstable_rethrowNotFound?: boolean;
   },
 ) => Promise<Response>;
 

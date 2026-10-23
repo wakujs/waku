@@ -32,7 +32,10 @@ import {
   unstable_isImmutableElement as isImmutableElement,
   useFetchRsc_UNSTABLE,
 } from '../src/minimal/client.js';
-import { unstable_buildElements as buildElements } from '../src/minimal/server.js';
+import {
+  unstable_buildElements as buildElements,
+  unstable_cancelRender as cancelRender,
+} from '../src/minimal/server.js';
 
 const testHoisted = vi.hoisted(() => ({
   elements: {} as Record<string, unknown>,
@@ -337,6 +340,30 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
 });
 
 describe('unstable_buildElements', () => {
+  it('cancelled factories produce an empty slot while siblings still render', async () => {
+    const result = await buildElements(
+      {},
+      {
+        cancelled: { render: async () => cancelRender() },
+        sibling: { render: () => 'sibling' },
+      },
+    );
+    expect(result.elements).toEqual({ cancelled: null, sibling: 'sibling' });
+    const failure = new Error('application failure');
+    await expect(
+      buildElements(
+        {},
+        {
+          broken: {
+            render: () => {
+              throw failure;
+            },
+          },
+        },
+      ),
+    ).rejects.toBe(failure);
+  });
+
   it('omits matched slots, attaches/clears tags, and maps immutable to the sentinel', async () => {
     const render = () => Promise.resolve('el');
     const { elements, etags } = await buildElements(

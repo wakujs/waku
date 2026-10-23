@@ -23,8 +23,10 @@ const runConfigHook = async (config: Config): Promise<UserConfig> => {
 
 test('internals exposes only runtime APIs', () => {
   expect(Object.keys(internals).sort()).toEqual([
+    'unstable_cancelRenderStream',
     'unstable_constants',
     'unstable_consumeMultiplexedStream',
+    'unstable_createWeakPromise',
     'unstable_honoMiddleware',
     'unstable_produceMultiplexedStream',
   ]);

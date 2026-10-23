@@ -29,8 +29,8 @@ const clientExports = [
   'Root_UNSTABLE',
   'Slot_UNSTABLE',
   'unstable_combineElements',
+  'unstable_isRenderCancellation',
   'unstable_formatRscUrl',
-  'unstable_getErrorInfo',
   'unstable_isImmutableElement',
   'useElementsPromise_UNSTABLE',
   'useFetchRsc_UNSTABLE',
@@ -40,9 +40,9 @@ const clientExports = [
 
 const serverExports = [
   'unstable_buildElements',
-  'unstable_createCustomError',
+  'unstable_cancelRender',
   'unstable_formatRscUrl',
-  'unstable_getErrorInfo',
+  'unstable_isRenderCancellation',
   'unstable_parseRequest',
 ];
 
@@ -87,16 +87,6 @@ describe('Minimal entry points', () => {
       );
     }
     expect(server.unstable_buildElements).toBe(buildElements);
-  });
-
-  test('custom errors expose the same protocol on the server and client', () => {
-    const info = { status: 307, location: '/next', unstable_leave: true };
-    const error = server.unstable_createCustomError('redirect', info);
-    expect(server.unstable_getErrorInfo(error)).toEqual(info);
-    expect(client.unstable_getErrorInfo(error)).toEqual(info);
-    expect(
-      client.unstable_getErrorInfo(new Error('ordinary error')),
-    ).toBeNull();
   });
 
   test('the client runtime is not a package entry point', () => {
