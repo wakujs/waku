@@ -547,8 +547,15 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
       },
       { times: 1 },
     );
-    await page.getByTestId('link-plain-post-2').click();
-    await post2Requested.promise;
+
+    await test.step(
+      'request the held navigation',
+      async () => {
+        await clickSelector(page, '[data-testid="link-plain-post-2"]');
+        await post2Requested.promise;
+      },
+      { timeout: 20_000 },
+    );
 
     const delayedPostHmrResponsePromise = page.waitForResponse((response) =>
       response.url().includes('R/post/1'),
@@ -557,8 +564,15 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     await (await delayedPostHmrResponsePromise).finished();
 
     // the retired response reaches the client, which has to discard it
-    releasePost2.resolve();
-    await post2Delivered.promise;
+    await test.step(
+      'deliver the retired response',
+      async () => {
+        releasePost2.resolve();
+        await post2Delivered.promise;
+      },
+      { timeout: 20_000 },
+    );
+
     await page.evaluate(
       () =>
         new Promise<void>((resolve) => {
@@ -566,8 +580,8 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
         }),
     );
 
-    await expect(page).toHaveURL(`http://localhost:${port}/post/1`);
-    await expect(page.getByTestId('post-body')).toHaveText('HMR Post 1');
+    await expect.poll(() => page.url()).toBe(`http://localhost:${port}/post/1`);
+    await waitForSelectorText(page, '[data-testid="post-body"]', 'HMR Post 1');
   });
 
   test('HMR replaces an in-flight lazy slice response', async ({ page }) => {
