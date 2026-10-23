@@ -5,6 +5,10 @@ import {
   Root_UNSTABLE as Root,
   Slot_UNSTABLE as Slot,
 } from 'waku/minimal/client';
+import { createJotaiIntegration } from 'waku-jotai/minimal/client';
+
+const jotai = createJotaiIntegration();
+const enhancers = [jotai.rscEnhancer];
 
 const ClientRoot = () => {
   const [key, setKey] = useState(0);
@@ -18,7 +22,7 @@ const ClientRoot = () => {
     };
   }, []);
   return (
-    <Root key={key}>
+    <Root key={key} rscEnhancers={enhancers}>
       <Slot id="App">
         <span data-testid="client-child">client child</span>
       </Slot>
@@ -28,7 +32,9 @@ const ClientRoot = () => {
 
 const rootElement = (
   <StrictMode>
-    <ClientRoot />
+    <jotai.Provider>
+      <ClientRoot />
+    </jotai.Provider>
   </StrictMode>
 );
 

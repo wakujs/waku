@@ -43,7 +43,6 @@ The Minimal API consists of server handler contracts and client rendering primit
 | `waku/minimal/client` | `useFetchRsc_UNSTABLE`                                                                       | Fetching and decoding an RSC payload.                                 |
 | `waku/minimal/client` | `useMergeElements_UNSTABLE`                                                                  | Merging an RSC payload into the current element map.                  |
 | `waku/minimal/client` | `useElementsPromise_UNSTABLE`                                                                | Reading the current element map.                                      |
-| `waku/minimal/client` | `useRegisterRscEnhancer_UNSTABLE`                                                            | Deprecated effect-based registration, retained through rc.4.          |
 | `waku/minimal/client` | `useRegisterRscReloadListener_UNSTABLE`                                                      | Choosing the RSC input to refresh during development reloads.         |
 | `waku/minimal/client` | `unstable_combineElements`                                                                   | Combining element maps without losing their etags.                    |
 | `waku/minimal/client` | `unstable_getErrorInfo`                                                                      | Reading status, redirect and network-error information.               |
@@ -498,7 +497,7 @@ Important behavior:
 
 - `initialRscPath` defaults to `''`.
 - `Root` is required for `Slot`, `Children`, `useElementsPromise`, `useMergeElements`,
-  `useRegisterRscEnhancer`, and `useRegisterRscReloadListener`. Outside a
+  and `useRegisterRscReloadListener`. Outside a
   `Root`, `useFetchRsc` still works but runs no enhancers.
 - Each `Root` owns its client store. Bare server action calls use the `Root`
   that was most recently mounted when the request starts.
@@ -771,9 +770,9 @@ For the file-based Router, create the same stable array before rendering React a
 
 ##### Migrating effect-based integrations
 
-In rc.4, `useRegisterRscEnhancer_UNSTABLE` remains available as a deprecated one-argument registrar returning cleanup. Legacy registrations are Root-scoped and always inside configured enhancers; later registrations wrap earlier registrations. Each request snapshots its sequence, so cleanup affects future requests only. Effect registration retains its timing limitations. There is no numeric priority argument.
+`useRegisterRscEnhancer_UNSTABLE` has been removed. Configure Root's `rscEnhancers` or Router's `unstable_rscEnhancers` in the client entry.
 
-Move pipeline installation to the client entry and keep subscriptions, atom discovery, and HMR listeners in companion components. For example, a future `waku-jotai` integration factory could expose a per-app store, a stable enhancer, and a Provider sharing that store:
+Keep subscriptions, atom discovery, and HMR listeners in companion components. For example, `waku-jotai` v0.8.0 provides a per-app store, a stable enhancer, and a Provider sharing that store:
 
 ```tsx
 // src/waku.client.tsx
@@ -799,11 +798,9 @@ if (globalThis.__WAKU_HYDRATE__) {
 }
 ```
 
-This is a proposed ecosystem API: current `waku-jotai` does not export `createJotaiIntegration`. Its existing hook-based integration remains supported in rc.4. Minimal applications would pass the same integration's enhancer to Root's `rscEnhancers` prop.
+Minimal applications pass the same integration's enhancer to Root's `rscEnhancers` prop.
 
 The companion must publish discovered atom IDs to the runtime captured by the enhancer, using the same Jotai store as application components. Each request reads current values. Installation does not guarantee that asynchronous atom discovery has finished: unknown paths must pass through unchanged. Router prefetch keys also do not include atom values, so prefetched results can become stale when values change; declarative installation does not solve cache invalidation.
-
-The registration hook is scheduled for removal in rc.5, after a migrated `waku-jotai` release and migration guidance are available. Other hook consumers must migrate before upgrading to rc.5.
 
 ### Common Patterns
 

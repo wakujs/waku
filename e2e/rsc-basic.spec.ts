@@ -84,7 +84,7 @@ test.describe(`rsc-basic`, () => {
         { input: { count: 1 }, name: 'first' },
       ]),
     );
-    await expect(second.getByTestId('enhanced-by')).toBeEmpty();
+    await expect(second.getByTestId('enhanced-by')).toHaveText('second:rsc');
     await first
       .getByRole('button', { name: 'Enhanced action', exact: true })
       .click();
@@ -149,16 +149,11 @@ test.describe(`rsc-basic`, () => {
   });
 
   test(
-    'Root HMR refreshes use mounted enhancers',
+    'Root HMR refreshes use configured enhancers',
     { tag: '@dev' },
     async ({ page }) => {
       await page.goto(`http://localhost:${port}/?multiple-roots&enhancers`);
       await expect(page.getByTestId('second-root')).toContainText('second');
-      await page.evaluate(() => {
-        globalThis.__WAKU_RSC_RELOAD_LISTENERS__?.forEach((listener) =>
-          listener(),
-        );
-      });
       for (const name of ['first', 'second']) {
         const root = page.getByTestId(`${name}-root`);
         await expect(root.getByTestId('enhanced-by')).toHaveText(`${name}:rsc`);

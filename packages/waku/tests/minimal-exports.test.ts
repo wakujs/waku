@@ -35,7 +35,6 @@ const clientExports = [
   'useElementsPromise_UNSTABLE',
   'useFetchRsc_UNSTABLE',
   'useMergeElements_UNSTABLE',
-  'useRegisterRscEnhancer_UNSTABLE',
   'useRegisterRscReloadListener_UNSTABLE',
 ];
 
@@ -48,13 +47,10 @@ const serverExports = [
 ];
 
 describe('Minimal entry points', () => {
-  test('declarative arrays and the one-argument legacy registrar share the public enhancer type', () => {
+  test('declarative arrays use the public enhancer type', () => {
     expectTypeOf<
       Parameters<typeof client.Root_UNSTABLE>[0]['rscEnhancers']
     >().toEqualTypeOf<readonly Unstable_RscEnhancer[] | undefined>();
-    expectTypeOf<
-      Parameters<ReturnType<typeof client.useRegisterRscEnhancer_UNSTABLE>>
-    >().toEqualTypeOf<[enhance: Unstable_RscEnhancer]>();
   });
   test('handler and adapter contracts are available without identity helpers', () => {
     expectTypeOf<Handlers>().toEqualTypeOf<

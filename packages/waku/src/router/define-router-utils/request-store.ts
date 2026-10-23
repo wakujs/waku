@@ -48,11 +48,6 @@ export function getRequest(): Request {
   return store.req;
 }
 
-/** @deprecated Use `getRequest().headers`, e.g. `getRequest().headers.get('cookie')`. */
-export function getHeaders(): Readonly<Record<string, string>> {
-  return Object.fromEntries(getRequest().headers.entries());
-}
-
 export const setRscPath = (rscPath: string) => {
   const store = routerStorage.getStore();
   if (store) {

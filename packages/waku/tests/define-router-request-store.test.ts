@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  getHeaders,
   getNonce,
   getRequest,
   getRerender,
@@ -26,12 +25,12 @@ describe('request-store', () => {
     expect(runWithRouterStore({ req }, () => getRequest())).toBe(req);
   });
 
-  it('getHeaders reads the request headers as a plain object', () => {
+  it('getRequest provides the request headers', () => {
     const req = makeRequest('http://localhost:3000/', {
       headers: { 'x-test': 'value' },
     });
-    const headers = runWithRouterStore({ req }, () => getHeaders());
-    expect(headers['x-test']).toBe('value');
+    const headers = runWithRouterStore({ req }, () => getRequest().headers);
+    expect(headers.get('x-test')).toBe('value');
   });
 
   it('nested async work sees the same request store', async () => {

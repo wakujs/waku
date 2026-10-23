@@ -4,7 +4,6 @@ import { getRerenderOrderCount } from './rerender-order-store.js';
 import {
   RerenderOrderBoundary,
   RerenderOrderForm,
-  RerenderOrderGate,
   RerenderOrderTrigger,
 } from './RerenderOrderClient.js';
 
@@ -60,7 +59,6 @@ export const createRerenderOrderPage = (mode: string, delay: number) => {
     return (
       <div>
         <h3>Rerender Order Page</h3>
-        <RerenderOrderGate />
         <RerenderOrderBoundary>
           <Suspense key="1" fallback={<p>loading...</p>}>
             <SlowContent mode={mode} delay={delay} />

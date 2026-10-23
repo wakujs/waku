@@ -17,7 +17,6 @@ import {
   useElementsPromise_UNSTABLE as useElementsPromise,
   useFetchRsc_UNSTABLE as useFetchRsc,
   useMergeElements_UNSTABLE as useMergeElements,
-  useRegisterRscEnhancer_UNSTABLE as useRegisterRscEnhancer,
 } from '../src/minimal/client.js';
 
 vi.mock('react-server-dom-webpack/client', () => ({
@@ -58,17 +57,15 @@ const mount = async (
   roots.push(root);
   let api: {
     fetch: ReturnType<typeof useFetchRsc>;
-    register: ReturnType<typeof useRegisterRscEnhancer>;
     merge: ReturnType<typeof useMergeElements>;
     elements: ReturnType<typeof useElementsPromise>;
   };
   const Probe = () => {
     const fetch = useFetchRsc();
-    const register = useRegisterRscEnhancer();
     const merge = useMergeElements();
     const elements = useElementsPromise();
     useEffect(() => {
-      api = { fetch, register, merge, elements };
+      api = { fetch, merge, elements };
     });
     return <Slot id="content" />;
   };
@@ -82,6 +79,9 @@ const mount = async (
         </Suspense>
       </StrictMode>,
     );
+  vi.stubGlobal('__WAKU_INITIAL_RSC__', {
+    response: Promise.resolve(Response.json({ content: 'initial' })),
+  });
   await act(async () => render(rscEnhancers));
   expect(container.textContent).toBe('initial');
   return {
@@ -248,13 +248,12 @@ test('streamed hydration bypasses enhancers without another network request', as
 });
 
 test('a whole cached response applies to the request-time Root', async () => {
-  const first = await mount('first');
   let cached: ReturnType<RequestRsc> | undefined;
   const cache: RscEnhancer =
     (next) =>
     (...args) =>
       (cached ??= next(...args));
-  first.register(cache);
+  const first = await mount('first', [cache]);
   request.mockImplementation(async () =>
     Response.json({ content: 'cached', _value: 'value' }),
   );
@@ -263,8 +262,7 @@ test('a whole cached response applies to the request-time Root', async () => {
   });
   expect(first.container.textContent).toBe('cached');
   request.mockImplementation(async () => Response.json({ content: 'initial' }));
-  const second = await mount('second');
-  second.register(cache);
+  const second = await mount('second', [cache]);
   request.mockClear();
   await act(async () => {
     expect(await callServerRsc('file#action', [])).toBe('value');
@@ -274,9 +272,8 @@ test('a whole cached response applies to the request-time Root', async () => {
 });
 
 test('composes logical inputs, transport, and decoded elements', async () => {
-  const root = await mount('initial');
   const order: string[] = [];
-  root.register((next) => async (path, params, options) => {
+  const first: RscEnhancer = (next) => async (path, params, options) => {
     order.push('first');
     expect(options.type).toBe('rsc');
     const { elements, value } = await next(path + '-first', params, {
@@ -296,13 +293,14 @@ test('composes logical inputs, transport, and decoded elements', async () => {
       elements: { ...elements, content: elements.content + '-decoded' },
       value,
     };
-  });
-  const unregister = root.register((next) => async (path, params, options) => {
+  };
+  const second: RscEnhancer = (next) => async (path, params, options) => {
     order.push('second');
     const result = await next(path, { input: params }, options);
     order.push('second result');
     return result;
-  });
+  };
+  const root = await mount('initial', [first, second]);
   const controller = new AbortController();
   request.mockImplementation(async () => Response.json({ content: 'server' }));
   const data = await root.fetch(
@@ -323,22 +321,16 @@ test('composes logical inputs, transport, and decoded elements', async () => {
     await root.merge(data);
   });
   expect(root.container.textContent).toBe('raw-decoded');
-  unregister();
-  order.length = 0;
-  await root.fetch('next');
-  expect(order).toEqual(['first', 'first result']);
 });
 
 test('Root-bound requests stay isolated and actions keep their request-time enhancer chain', async () => {
-  const first = await mount('first');
-  const second = await mount('second');
   const firstEnhancer = vi.fn((path: string) => path + '-first');
-  first.register(
+  const first = await mount('first', [
     (next) => (path, params, options) =>
       next(firstEnhancer(path), params, options),
-  );
+  ]);
   const actionTypes: string[] = [];
-  const unregister = second.register(
+  const second = await mount('second', [
     (next) => async (path, params, options) => {
       actionTypes.push(options.type);
       const { elements, value } = await next(path + '-second', params, options);
@@ -347,7 +339,7 @@ test('Root-bound requests stay isolated and actions keep their request-time enha
         value,
       };
     },
-  );
+  ]);
   await first.fetch('scoped');
   expect(request.mock.lastCall![0]).toContain('scoped-first');
   expect(actionTypes).toEqual([]);
@@ -359,7 +351,6 @@ test('Root-bound requests stay isolated and actions keep their request-time enha
       }),
   );
   const action = callServerRsc('file#action', []);
-  unregister();
   await act(async () => second.root.unmount());
   await act(async () => {
     respond(Response.json({ _value: 42, content: 'action' }));
@@ -371,12 +362,14 @@ test('Root-bound requests stay isolated and actions keep their request-time enha
 });
 
 test('filtering action elements preserves the return value and Minimal build checks', async () => {
-  const root = await mount('initial');
-  root.register((next) => async (...args) => {
-    const { elements, value } = await next(...args);
-    expect(elements).not.toHaveProperty('_value');
-    return { elements: {}, value };
-  });
+  const root = await mount('initial', [
+    (next) =>
+      async (...args) => {
+        const { elements, value } = await next(...args);
+        expect(elements).not.toHaveProperty('_value');
+        return { elements: {}, value };
+      },
+  ]);
   request.mockImplementation(async () =>
     Response.json({ _value: 'result', content: 'changed' }),
   );
@@ -398,12 +391,14 @@ test('filtering action elements preserves the return value and Minimal build che
 });
 
 test('action enhancers can return only client-owned symbol keys', async () => {
-  const root = await mount('initial');
   const key = Symbol();
-  root.register((next) => async (...args) => {
-    const { value } = await next(...args);
-    return { elements: { [key]: 'updated' }, value };
-  });
+  const root = await mount('initial', [
+    (next) =>
+      async (...args) => {
+        const { value } = await next(...args);
+        return { elements: { [key]: 'updated' }, value };
+      },
+  ]);
   await act(async () => {
     await callServerRsc('file#action', []);
   });
@@ -433,7 +428,7 @@ test('Root-bound fetches only claim validators from an explicit base', async () 
   ).toBe('{"content":"version"}');
 });
 
-test('configured enhancers wrap legacy registrations in array order for fetches and actions', async () => {
+test('configured enhancers compose in array order for fetches and actions', async () => {
   const calls: string[] = [];
   const trace =
     (name: string): RscEnhancer =>
@@ -445,19 +440,8 @@ test('configured enhancers wrap legacy registrations in array order for fetches 
       return result;
     };
   const root = await mount('initial', [trace('A'), trace('B')]);
-  root.register(trace('legacy first'));
-  root.register(trace('legacy second'));
   calls.length = 0;
-  const expected = [
-    'B',
-    'A',
-    'legacy second',
-    'legacy first',
-    'legacy first result',
-    'legacy second result',
-    'A result',
-    'B result',
-  ];
+  const expected = ['B', 'A', 'A result', 'B result'];
   await root.fetch('next');
   expect(calls).toEqual(expected);
   calls.length = 0;
@@ -487,34 +471,6 @@ test('configured entries are snapshotted while their request data stays live', a
   await second.fetch('next');
   expect(request.mock.lastCall![0]).toContain('/next-second');
   expect(replaced).not.toHaveBeenCalled();
-});
-
-test('duplicate legacy functions have independent, idempotent cleanup', async () => {
-  const calls: string[] = [];
-  const a: RscEnhancer =
-    (next) =>
-    (...args) => {
-      calls.push('a');
-      return next(...args);
-    };
-  const b: RscEnhancer =
-    (next) =>
-    (...args) => {
-      calls.push('b');
-      return next(...args);
-    };
-  const root = await mount('initial');
-  const removeFirst = root.register(a);
-  root.register(b);
-  const removeLast = root.register(a);
-  removeFirst();
-  removeFirst();
-  await root.fetch('next');
-  expect(calls).toEqual(['a', 'b']);
-  calls.length = 0;
-  removeLast();
-  await root.fetch('next');
-  expect(calls).toEqual(['b']);
 });
 
 test('a descendant layout effect finds the configured pipeline on its first fetch', async () => {
@@ -593,22 +549,24 @@ test('a development reload keeps only the symbols the enhanced response omits', 
   Object.defineProperty(import.meta, 'hot', { configurable: true, value: {} });
   const RETAINED = Symbol();
   const CLEARED = Symbol();
-  const root = await mount('initial');
   let version = 0;
-  root.register((next) => async (...args) => {
-    const { elements, value } = await next(...args);
-    version += 1;
-    return {
-      elements: {
-        ...elements,
-        [RETAINED]: 'retained',
-        ...(version === 1
-          ? { [CLEARED]: 'clear me' }
-          : { [CLEARED]: undefined }),
+  const root = await mount('initial', [
+    (next) =>
+      async (...args) => {
+        const { elements, value } = await next(...args);
+        version += 1;
+        return {
+          elements: {
+            ...elements,
+            [RETAINED]: 'retained',
+            ...(version === 1
+              ? { [CLEARED]: 'clear me' }
+              : { [CLEARED]: undefined }),
+          },
+          value,
+        };
       },
-      value,
-    };
-  });
+  ]);
   request.mockImplementation(async () =>
     Response.json({ content: 'reloaded' }),
   );
@@ -634,17 +592,17 @@ test('a development reload keeps only the symbols the enhanced response omits', 
 });
 
 test('an enhancer that throws rejects the request', async () => {
-  const root = await mount('initial');
   const failure = new Error('bad enhancer');
-  root.register(() => () => {
-    throw failure;
-  });
+  const root = await mount('initial', [
+    () => () => {
+      throw failure;
+    },
+  ]);
 
   await expect(root.fetch('next')).rejects.toBe(failure);
 });
 
-test('each registration is its own link in the chain', async () => {
-  const root = await mount('initial');
+test('duplicate entries each wrap the request', async () => {
   const seen = vi.fn();
   const count: RscEnhancer =
     (next) =>
@@ -652,13 +610,8 @@ test('each registration is its own link in the chain', async () => {
       seen();
       return next(...args);
     };
-  const unregister = root.register(count);
-  root.register(count);
+  const root = await mount('initial', [count, count]);
 
   await root.fetch('next');
   expect(seen).toHaveBeenCalledTimes(2);
-
-  unregister();
-  await root.fetch('next');
-  expect(seen).toHaveBeenCalledTimes(3);
 });

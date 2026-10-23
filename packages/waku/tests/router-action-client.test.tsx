@@ -13,10 +13,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { ETAGS_HEADER, ETAGS_ID } from '../src/lib/utils-isomorphic/etags.js';
 import { unstable_callServerRsc as callServerRsc } from '../src/minimal/client-runtime.js';
 import { clearInitialRscEntries } from '../src/minimal/client-utils/initial-rsc-store.js';
-import {
-  Children_UNSTABLE as Children,
-  useRegisterRscEnhancer_UNSTABLE as useRegisterRscEnhancer,
-} from '../src/minimal/client.js';
+import { Children_UNSTABLE as Children } from '../src/minimal/client.js';
 import type { Unstable_RscEnhancer } from '../src/minimal/client.js';
 import { Link, Router, useRouter } from '../src/router/client.js';
 import {
@@ -72,14 +69,12 @@ afterEach(async () => {
 
 const mount = async (rscEnhancers: readonly Unstable_RscEnhancer[] = []) => {
   let api!: {
-    register: ReturnType<typeof useRegisterRscEnhancer>;
     router: ReturnType<typeof useRouter>;
   };
   const Probe = () => {
-    const register = useRegisterRscEnhancer();
     const router = useRouter();
     useEffect(() => {
-      api = { register, router };
+      api = { router };
     });
     return <Children />;
   };
@@ -97,6 +92,9 @@ const mount = async (rscEnhancers: readonly Unstable_RscEnhancer[] = []) => {
     onUncaughtError: errors,
   });
   roots.push(root);
+  vi.stubGlobal('__WAKU_INITIAL_RSC__', {
+    response: Promise.resolve(new Response('{}')),
+  });
   await act(async () => {
     root.render(
       <StrictMode>
@@ -108,7 +106,6 @@ const mount = async (rscEnhancers: readonly Unstable_RscEnhancer[] = []) => {
   });
   expect(container.textContent).toBe('start');
   return {
-    register: api.register,
     container,
     errors,
     getRouter: () => api.router,
@@ -253,22 +250,24 @@ test('an action started by a route mount effect updates the route', async () => 
 });
 
 test('a short-circuited action response still updates the route', async () => {
-  const view = await mount();
   const request = vi.fn<typeof fetch>(async () => new Response('{}'));
   vi.stubGlobal('fetch', request);
-  view.register((next) => async (...args) => {
-    if (args[2].type !== 'call') {
-      return next(...args);
-    }
-    return {
-      elements: {
-        [getRouteSlotId('/offline')]: 'offline',
-        [ROUTE_ID]: ['/offline', ''],
-        [IS_STATIC_ID]: false,
+  const view = await mount([
+    (next) =>
+      async (...args) => {
+        if (args[2].type !== 'call') {
+          return next(...args);
+        }
+        return {
+          elements: {
+            [getRouteSlotId('/offline')]: 'offline',
+            [ROUTE_ID]: ['/offline', ''],
+            [IS_STATIC_ID]: false,
+          },
+          value: 'cached',
+        };
       },
-      value: 'cached',
-    };
-  });
+  ]);
   await act(async () => {
     expect(await callServerRsc('action#test', [])).toBe('cached');
   });
@@ -279,13 +278,14 @@ test('a short-circuited action response still updates the route', async () => {
 });
 
 test('an action route update waits for inner response enhancers', async () => {
-  const view = await mount();
   const delayed = deferred(undefined);
-  view.register((next) => async (path, params, options) => {
-    const result = await next(path, params, options);
-    await delayed.promise;
-    return result;
-  });
+  const view = await mount([
+    (next) => async (path, params, options) => {
+      const result = await next(path, params, options);
+      await delayed.promise;
+      return result;
+    },
+  ]);
   decode.mockReturnValue({
     [getRouteSlotId('/next')]: 'next',
     [ROUTE_ID]: ['/next', ''],
@@ -553,15 +553,16 @@ test('an HMR refetch cancels a pending navigation without reporting it supersede
 
 test('an action delayed by an enhancer navigates relative to the latest committed route', async () => {
   window.history.replaceState({}, '', '/start#section');
-  const view = await mount();
   const delayed = deferred(undefined);
-  view.register((next) => async (path, params, options) => {
-    const result = await next(path, params, options);
-    if (options.type === 'call') {
-      await delayed.promise;
-    }
-    return result;
-  });
+  const view = await mount([
+    (next) => async (path, params, options) => {
+      const result = await next(path, params, options);
+      if (options.type === 'call') {
+        await delayed.promise;
+      }
+      return result;
+    },
+  ]);
   decode.mockReturnValueOnce({
     [getRouteSlotId('/start')]: 'updated start',
     [ROUTE_ID]: ['/start', ''],
@@ -592,7 +593,14 @@ test('an action delayed by an enhancer navigates relative to the latest committe
 });
 
 test('an enhancer can discard an action response without cancelling navigation', async () => {
-  const view = await mount();
+  const view = await mount([
+    (next) => async (path, params, options) => {
+      const result = await next(path, params, options);
+      return options.type === 'call'
+        ? { elements: {}, value: result.value }
+        : result;
+    },
+  ]);
   const response = deferred<Record<string, unknown>>({});
   const request = vi.fn<typeof fetch>(async () => new Response('{}'));
   vi.stubGlobal('fetch', request);
@@ -603,10 +611,6 @@ test('an enhancer can discard an action response without cancelling navigation',
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
   const signal = request.mock.calls[0]![1]!.signal!;
-  view.register((next) => async (path, params, options) => {
-    const { value } = await next(path, params, options);
-    return { elements: {}, value };
-  });
   decode.mockReturnValueOnce({
     [getRouteSlotId('/next')]: 'next',
     [ROUTE_ID]: ['/next', ''],
@@ -630,7 +634,15 @@ test('an enhancer can discard an action response without cancelling navigation',
 });
 
 test('a rejected enhancer response cannot navigate or cancel pending work', async () => {
-  const view = await mount();
+  const view = await mount([
+    (next) => async (path, params, options) => {
+      const result = await next(path, params, options);
+      if (options.type === 'call') {
+        throw new Error('response rejected');
+      }
+      return result;
+    },
+  ]);
   const response = deferred<Record<string, unknown>>({});
   const request = vi.fn<typeof fetch>(async () => new Response('{}'));
   vi.stubGlobal('fetch', request);
@@ -641,10 +653,6 @@ test('a rejected enhancer response cannot navigate or cancel pending work', asyn
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
   const signal = request.mock.calls[0]![1]!.signal!;
-  view.register((next) => async (...args) => {
-    await next(...args);
-    throw new Error('response rejected');
-  });
   decode.mockReturnValueOnce({
     [getRouteSlotId('/next')]: 'next',
     [ROUTE_ID]: ['/next', ''],
@@ -752,15 +760,16 @@ test('an action reports the route it was called from and applies its rerender', 
 });
 
 test('a rerender of the route an action came from is dropped once the user left it', async () => {
-  const view = await mount();
   const delayed = deferred(undefined);
-  view.register((next) => async (path, params, options) => {
-    const result = await next(path, params, options);
-    if (options.type === 'call') {
-      await delayed.promise;
-    }
-    return result;
-  });
+  const view = await mount([
+    (next) => async (path, params, options) => {
+      const result = await next(path, params, options);
+      if (options.type === 'call') {
+        await delayed.promise;
+      }
+      return result;
+    },
+  ]);
   decode.mockReturnValueOnce({
     [getRouteSlotId('/start')]: 'refreshed start',
     [ROUTE_ID]: ['/start', ''],
@@ -913,7 +922,6 @@ test('a rerender of the route an action came from is dropped over a navigation i
 });
 
 test('an action keeps the headers of a request an inner enhancer builds', async () => {
-  const view = await mount();
   let sent: Headers | undefined;
   vi.stubGlobal(
     'fetch',
@@ -922,7 +930,7 @@ test('an action keeps the headers of a request an inner enhancer builds', async 
       return new Response('{}');
     },
   );
-  view.register(
+  await mount([
     (next) => (path, params, options) =>
       next(path, params, {
         ...options,
@@ -931,7 +939,7 @@ test('an action keeps the headers of a request an inner enhancer builds', async 
             new Request(new URL(String(input), window.location.href), init),
           ),
       }),
-  );
+  ]);
   decode.mockReturnValueOnce({ _value: 'done' });
 
   await act(async () => {

@@ -26,7 +26,7 @@ if (multipleRoots) {
   const bootstrap = new URLSearchParams(window.location.search).has(
     'bootstrap-enhancers',
   );
-  const declarative = new URLSearchParams(window.location.search).has(
+  const fetchOnMount = new URLSearchParams(window.location.search).has(
     'declarative-enhancers',
   );
   type RootName = 'first' | 'second' | 'third';
@@ -41,7 +41,11 @@ if (multipleRoots) {
     document.body.appendChild(container);
     const reactRoot = createRoot(container, defaultRootOptions);
     let initialRscParams: unknown;
-    const enhancers = declarative || bootstrap ? [createRscEnhancer(name)] : [];
+    const enhanced =
+      fetchOnMount ||
+      bootstrap ||
+      new URLSearchParams(window.location.search).has('enhancers');
+    const enhancers = enhanced ? [createRscEnhancer(name)] : [];
     const renderRoot = () => {
       reactRoot.render(
         <StrictMode>
@@ -55,9 +59,9 @@ if (multipleRoots) {
                 <Slot id="EnhancerInput" />
               </p>
             )}
-            {(declarative ||
+            {(fetchOnMount ||
               new URLSearchParams(window.location.search).has('enhancers')) && (
-              <RscEnhancements name={name} declarative={declarative} />
+              <RscEnhancements fetchOnMount={fetchOnMount} />
             )}
             <Slot id="Content" />
           </Root>
