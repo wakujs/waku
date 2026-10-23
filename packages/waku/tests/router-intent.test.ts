@@ -14,10 +14,25 @@ import {
 } from '../src/router/server.js';
 
 vi.mock('../src/server.js', () => ({
-  serializeRsc: async (value: unknown) =>
-    new TextEncoder().encode(JSON.stringify(value)),
-  deserializeRsc: async (bytes: Uint8Array) =>
-    JSON.parse(new TextDecoder().decode(bytes)),
+  serializeRsc: async (value: unknown) => {
+    try {
+      return new TextEncoder().encode(JSON.stringify(await value));
+    } catch (error) {
+      if (!isRenderCancellation(error)) {
+        throw error;
+      }
+      return new TextEncoder().encode(JSON.stringify({ cancelled: true }));
+    }
+  },
+  deserializeRsc: async (bytes: Uint8Array) => {
+    const value = JSON.parse(new TextDecoder().decode(bytes));
+    if (value?.cancelled) {
+      throw Object.assign(new Error('Flight cancellation'), {
+        digest: 'WAKU_CANCEL_RENDER',
+      });
+    }
+    return value;
+  },
 }));
 
 const withinRequest = <T>(fn: () => T, signal?: AbortSignal) =>
@@ -144,11 +159,11 @@ describe('intent metadata', () => {
     });
     const renderRsc = vi.fn(async (elements) => {
       expect(elements).toMatchObject({
-        root: null,
         'route:/old': null,
         ROUTE: ['/old', ''],
         IS_STATIC: false,
       });
+      expect(elements).not.toHaveProperty('root');
       expect(JSON.parse(await elements.INTENT)).toEqual({
         status: 307,
         location: '/next?q=one',
@@ -214,7 +229,9 @@ describe('intent metadata', () => {
       ]),
     );
     await withinRequest(async () => {
-      expect(await restored.get('slot/cancelled')).toBeNull();
+      await expect(restored.get('slot/cancelled')).rejects.toSatisfy(
+        isRenderCancellation,
+      );
       expect(getRouteIntent().value).toEqual({ status: 404 });
     });
   });

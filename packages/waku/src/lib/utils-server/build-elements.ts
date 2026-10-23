@@ -41,7 +41,9 @@ export const buildElements = async (
         if (!isRenderCancellation(error)) {
           throw error;
         }
-        elements[slotId] = null;
+        const cancelled = Promise.reject(error);
+        void cancelled.catch(() => {});
+        elements[slotId] = cancelled;
       }
       if (etag !== undefined) {
         etags[slotId] = etag;

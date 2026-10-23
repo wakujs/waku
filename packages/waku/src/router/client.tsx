@@ -37,7 +37,10 @@ import {
   RouterContext,
   dispatchChangeRoute,
 } from './client-utils/router-context.js';
-import { serverRedirectEnhancer } from './client-utils/router-state.js';
+import {
+  getRouterState,
+  serverRedirectEnhancer,
+} from './client-utils/router-state.js';
 import { shouldScrollByDefault } from './client-utils/scroll.js';
 import type { NavigationHref } from './isomorphic-utils/build-route-href.js';
 import type { RouteProps } from './isomorphic-utils/route-path.js';
@@ -204,6 +207,20 @@ const InnerRouter = ({
     error: navigationError,
   } = useNavigation(elements, fallbackRoute, routeInterceptor, actionRouting);
 
+  const [intentError, setIntentError] = useState<{
+    error: unknown;
+    scope: ReturnType<typeof getRouterState>;
+  }>();
+  const onIntentError = useCallback(
+    (error: unknown, source: Readonly<Record<string | symbol, unknown>>) => {
+      setIntentError({ error, scope: getRouterState(source) });
+    },
+    [],
+  );
+  const error =
+    navigationError ??
+    (intentError?.scope === getRouterState(elements) ? intentError : undefined);
+
   const navigate = useCallback<RouterHost['navigate']>(
     (href, opts) => {
       const url = new URL(href, window.location.href);
@@ -220,8 +237,8 @@ const InnerRouter = ({
     [currentRoute, navigate],
   );
 
-  const routeElement = navigationError ? (
-    <RenderError error={navigationError.error} />
+  const routeElement = error ? (
+    <RenderError error={error.error} />
   ) : (
     <Slot id={getRouteSlotId(currentRoute.path)} />
   );
@@ -235,8 +252,12 @@ const InnerRouter = ({
       }}
     >
       <RouterHostContext value={host}>
-        <RouteIntent />
-        <Slot id="root">{routeElement}</Slot>
+        <RouteIntent onError={onIntentError} />
+        {!('root' in elements) || (error && elements.root === null) ? (
+          routeElement
+        ) : (
+          <Slot id="root">{routeElement}</Slot>
+        )}
       </RouterHostContext>
     </RouterContext>
   );
@@ -350,7 +371,6 @@ export function INTERNAL_ServerRouter({ route }: { route: RouteProps }) {
           navigate: notAvailableInServer('navigate'),
         }}
       >
-        <RouteIntent />
         <Slot id="root">{routeElement}</Slot>
       </RouterHostContext>
     </RouterContext>

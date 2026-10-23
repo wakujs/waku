@@ -508,9 +508,11 @@ export const Slot_UNSTABLE = ({
   }
   return (
     <CancelRenderBoundary element={element}>
-      <ChildrenContextProvider value={children}>
-        {element as ReactNode}
-      </ChildrenContextProvider>
+      {(selected) => (
+        <ChildrenContextProvider value={children}>
+          {selected as ReactNode}
+        </ChildrenContextProvider>
+      )}
     </CancelRenderBoundary>
   );
 };

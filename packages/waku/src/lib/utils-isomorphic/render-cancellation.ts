@@ -19,7 +19,7 @@ export const getDigestIfRenderCancellation = (
 /**
  * Stops the current server component or function by throwing a cancellation
  * signal. Other render tasks can continue. On the client, a cancelled Slot
- * renders as empty. During SSR, cancellation uses the nearest Suspense fallback
+ * keeps its previous content, or renders nothing on its first render. During SSR, cancellation uses the nearest Suspense fallback
  * or switches to client rendering. It carries no status or navigation data.
  * Catch blocks and custom error boundaries must rethrow the signal.
  *

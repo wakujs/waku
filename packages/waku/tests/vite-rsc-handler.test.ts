@@ -150,3 +150,23 @@ test.each([false, true])(
     }
   },
 );
+
+test.each(['http', 'rsc'] as const)(
+  'Minimal handles a cancelled %s request without Router',
+  async (type) => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { processRequest } = runtime(async () => cancelRender());
+    const response = await processRequest(
+      new Request(
+        type === 'http'
+          ? 'https://app.example/page'
+          : 'https://app.example/RSC/fragment.txt',
+      ),
+    );
+    expect(response?.status).toBe(type === 'http' ? 204 : 200);
+    if (type === 'rsc') {
+      expect(mocks.render.mock.calls.at(-1)![0]).toEqual({});
+    }
+    expect(warn).not.toHaveBeenCalled();
+  },
+);

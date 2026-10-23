@@ -2,10 +2,9 @@
 
 This fixture pins React, React DOM, and React Server DOM Webpack to the same
 exact version in `package.json`. It uses the public webpack edge entry points,
-not Vite's vendored Flight runtime. It does not patch React. Repository-wide
-dependency ranges and the existing Router implementation are unchanged.
+not Vite's vendored Flight runtime. It does not patch React. The native branch also pins the workspace to this experimental runtime.
 
-The public server API is:
+The internal server API, exported from `waku/internals`, is:
 
 ```ts
 const { promise, resolve } = unstable_createWeakPromise<string>();
@@ -20,8 +19,8 @@ or resolve undefined. Consumers must treat both as absence of an intent and
 must not depend on observing unused completion through the promise alone.
 
 The experimental reference needs only the thenable factory: React serializes
-its native weak references and closes without unresolved weak work. The stable
-compatibility branch uses a server-side filter and finishes unused references
+its native weak references and closes without unresolved weak work. The separate stable
+compatibility branch adds `weak-promise-stream.ts` and uses a server-side filter and finishes unused references
 with undefined. Both use React's client decoder directly. No extra completion
 helper is part of the weak-promise API.
 
@@ -54,5 +53,4 @@ keeps HTML pending; the stable fallback can finish directly because its promise
 resolves undefined.
 
 The EOF observer in the SSR fixture is illustrative lifecycle handling, not a
-new public API or integrated Router change. Full Waku browser/Vite integration
-and Router migration remain separate from establishing this core contract.
+new public API or integrated Router change. Waku browser integration is covered by the route-intent and weak-promise E2E fixtures.

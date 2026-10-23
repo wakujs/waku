@@ -35,6 +35,7 @@ import {
 import {
   unstable_buildElements as buildElements,
   unstable_cancelRender as cancelRender,
+  unstable_isRenderCancellation as isRenderCancellation,
 } from '../src/minimal/server.js';
 
 const testHoisted = vi.hoisted(() => ({
@@ -340,7 +341,7 @@ describe('minimal per-slot cache-validator (carry + replay)', () => {
 });
 
 describe('unstable_buildElements', () => {
-  it('cancelled factories produce an empty slot while siblings still render', async () => {
+  it('cancelled factories carry cancellation while siblings still render', async () => {
     const result = await buildElements(
       {},
       {
@@ -348,7 +349,10 @@ describe('unstable_buildElements', () => {
         sibling: { render: () => 'sibling' },
       },
     );
-    expect(result.elements).toEqual({ cancelled: null, sibling: 'sibling' });
+    expect(result.elements.sibling).toBe('sibling');
+    await expect(result.elements.cancelled).rejects.toSatisfy(
+      isRenderCancellation,
+    );
     const failure = new Error('application failure');
     await expect(
       buildElements(

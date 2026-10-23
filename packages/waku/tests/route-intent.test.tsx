@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 
-import { Suspense, act, use, useLayoutEffect } from 'react';
+import { Component, Suspense, act, use, useLayoutEffect } from 'react';
+import type { ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { ETAGS_ID } from '../src/lib/utils-isomorphic/etags.js';
@@ -12,7 +13,7 @@ import {
   useFetchRsc_UNSTABLE as useFetchRsc,
   useMergeElements_UNSTABLE as useMergeElements,
 } from '../src/minimal/client.js';
-import { Router, useRouter } from '../src/router/client.js';
+import { ErrorBoundary, Router, useRouter } from '../src/router/client.js';
 import {
   HAS404_ID,
   INTENT_ID,
@@ -110,7 +111,7 @@ const payload = (
 const mount = async (path = '/one') => {
   const container = document.createElement('div');
   document.body.append(container);
-  root = createRoot(container);
+  root = createRoot(container, { onCaughtError: () => {} });
   await act(async () => {
     root!.render(
       <Suspense fallback={null}>
@@ -233,11 +234,12 @@ test('notFound without a custom page shows the fallback at the requested URL', a
     await flush();
   });
   expect(view.textContent).toContain('Not Found');
+  expect(view.textContent).not.toContain('Page /one');
   expect(window.location.pathname).toBe('/one');
   expect(vi.mocked(fetch).mock.calls).toHaveLength(requests);
 });
 
-test('a not-found intent shows the sibling fallback when the root slot is null', async () => {
+test('a not-found intent uses the outer fallback when no root is available', async () => {
   const pending = deferIntent();
   mocks.queue.push({ ...payload('/one', pending.promise), root: null });
   const view = await mount();
@@ -637,4 +639,125 @@ test('an instant HTTP 404 follow replaces the painted history entry on a server 
   expect(window.location.pathname).toBe('/recovered');
   expect(push).toHaveBeenCalledOnce();
   expect(replace).toHaveBeenCalledOnce();
+});
+
+class AppBoundary extends Component<
+  { children: ReactNode },
+  { error?: unknown }
+> {
+  state: { error?: unknown } = {};
+  static getDerivedStateFromError(error: unknown) {
+    return { error };
+  }
+  render() {
+    return this.state.error ? (
+      <p role="alert">App fallback: {String(this.state.error)}</p>
+    ) : (
+      this.props.children
+    );
+  }
+}
+
+test.each(['not-found', 'malformed'] as const)(
+  'the root owns the %s intent fallback',
+  async (kind) => {
+    const pending = defer<string | undefined>();
+    mocks.queue.push({
+      ...payload('/one', pending.promise),
+      root: (
+        <section>
+          <Probe />
+          <header>App header</header>
+          <AppBoundary>
+            <Children />
+          </AppBoundary>
+        </section>
+      ),
+    });
+    const view = await mount();
+    await act(async () => {
+      pending.resolve(
+        kind === 'not-found' ? JSON.stringify({ status: 404 }) : 'invalid JSON',
+      );
+      await flush();
+    });
+    expect(view.querySelector('header')?.textContent).toBe('App header');
+    expect(view.querySelector('[role="alert"]')?.textContent).toContain(
+      kind === 'not-found' ? 'Not Found' : 'SyntaxError',
+    );
+    expect(view.textContent).not.toContain('Page /one');
+  },
+);
+
+test('merges and repeated static visits observe a pending intent once', async () => {
+  const pending = deferIntent();
+  const then = vi.spyOn(pending.promise, 'then');
+  mocks.queue.push(payload('/one', pending.promise, true));
+  await mount();
+  for (let i = 0; i < 5; i++) {
+    await act(async () => {
+      await controls.merge({ sidebar: i });
+      await flush();
+    });
+  }
+  mocks.queue.push(payload('/two', undefined, true));
+  await act(async () => {
+    await controls.router.push('/two');
+    await flush();
+  });
+  for (let i = 0; i < 5; i++) {
+    await act(async () => {
+      await controls.router.push('/one');
+      await flush();
+    });
+    await act(async () => {
+      await controls.router.push('/two');
+      await flush();
+    });
+  }
+  expect(then).toHaveBeenCalledOnce();
+  await act(async () => {
+    pending.resolve({ status: 307, location: '/stale' });
+    await flush();
+  });
+  expect(window.location.pathname).toBe('/two');
+});
+
+test('an empty response leaves the current route and view unchanged', async () => {
+  mocks.queue.push(payload('/one'));
+  const view = await mount();
+  mocks.queue.push({});
+  await act(async () => {
+    await controls.router.push('/cancelled');
+    await flush();
+  });
+  expect(view.textContent).toContain('Page /one');
+  expect(window.location.pathname).toBe('/one');
+});
+
+test('the default root boundary recovers on the next route without replacing the root', async () => {
+  const intent = deferIntent();
+  const appRoot = (
+    <>
+      <Probe />
+      <ErrorBoundary>
+        <Children />
+      </ErrorBoundary>
+    </>
+  );
+  mocks.queue.push({ ...payload('/one', intent.promise), root: appRoot });
+  const view = await mount();
+  await act(async () => {
+    intent.resolve({ status: 404 });
+    await flush();
+  });
+  expect(view.textContent).toContain('Not Found');
+  expect(view.textContent).not.toContain('Page /one');
+  mocks.queue.push({ ...payload('/two'), root: appRoot });
+  await act(async () => {
+    await controls.router.push('/two');
+    await flush();
+  });
+  expect(view.textContent).toContain('Page /two');
+  expect(view.textContent).not.toContain('Not Found');
 });

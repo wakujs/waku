@@ -21,6 +21,7 @@ import type {
 import { sanitizeLog } from '../utils-isomorphic/log.js';
 import { joinPath } from '../utils-isomorphic/path.js';
 import { DEBUG_ID_HEADER } from '../utils-isomorphic/react-debug-channel.js';
+import { isRenderCancellation } from '../utils-isomorphic/render-cancellation.js';
 import { encodeRscPath } from '../utils-isomorphic/rsc-path.js';
 import { stringToStream } from '../utils-isomorphic/stream.js';
 import { createRenderUtils } from '../utils-server/render.js';
@@ -62,8 +63,9 @@ const toProcessRequest =
     });
 
     let res: Awaited<ReturnType<typeof handleRequest>>;
+    let input: Parameters<HandleRequest>[0] | undefined;
     try {
-      const input = await getInput(
+      input = await getInput(
         req,
         config,
         temporaryReferences,
@@ -77,6 +79,11 @@ const toProcessRequest =
         loadBuildMetadata: async (key: string) => buildMetadata.get(key),
       });
     } catch (e) {
+      if (isRenderCancellation(e)) {
+        return input?.type === 'rsc' || input?.type === 'call'
+          ? new Response(await renderUtils.renderRsc({}))
+          : new Response(null, { status: 204 });
+      }
       if (e instanceof Response) {
         return e;
       }

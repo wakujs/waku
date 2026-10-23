@@ -3,9 +3,21 @@ import type { ReactNode } from 'react';
 import { isRenderCancellation } from '../../lib/utils-isomorphic/render-cancellation.js';
 
 export class CancelRenderBoundary extends Component<
-  { element: unknown; children: ReactNode },
+  { element: unknown; children: (element: unknown) => ReactNode },
   { element: unknown; cancelled: boolean }
 > {
+  private previousElement: unknown;
+
+  componentDidMount() {
+    this.componentDidUpdate();
+  }
+
+  componentDidUpdate() {
+    if (!this.state.cancelled) {
+      this.previousElement = this.props.element;
+    }
+  }
+
   state = { element: this.props.element, cancelled: false };
 
   static getDerivedStateFromProps(
@@ -23,6 +35,10 @@ export class CancelRenderBoundary extends Component<
   }
 
   render() {
-    return this.state.cancelled ? null : this.props.children;
+    return this.props.children(
+      this.state.cancelled
+        ? (this.previousElement ?? null)
+        : this.props.element,
+    );
   }
 }

@@ -21,6 +21,9 @@ test.describe('minimal examples coverage', () => {
   }) => {
     const html = await request.get(`http://localhost:${port}/cancel-render`);
     expect(html.status()).toBe(200);
+    expect(
+      (await request.get(`http://localhost:${port}/cancel-request`)).status(),
+    ).toBe(204);
     expect(await html.text()).toContain('Sibling survived');
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
@@ -31,6 +34,12 @@ test.describe('minimal examples coverage', () => {
     await expect(page.getByText('Cancelled slot fallback')).toBeHidden();
     await page.getByRole('button', { name: 'Recover slot' }).click();
     await expect(page.getByText('Recovered slot')).toBeVisible();
+    await page.getByRole('button', { name: 'Cancel update' }).click();
+    await expect(page.getByText('Sibling updated')).toBeVisible();
+    await expect(page.getByText('Recovered slot')).toBeVisible();
+    await page.getByRole('button', { name: 'Cancel request' }).click();
+    await expect(page.getByText('Recovered slot')).toBeVisible();
+    await expect(page.getByText('Sibling updated')).toBeVisible();
     expect(errors).toEqual([]);
   });
 

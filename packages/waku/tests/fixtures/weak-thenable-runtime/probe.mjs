@@ -44,8 +44,8 @@ const vendor = dirname(
 );
 const server = require(join(vendor, 'server.edge.js'));
 const client = require(join(vendor, 'client.edge.js'));
-const { unstable_createWeakPromise: createWeakPromise } = await import(
-  sourceRoot + 'minimal/server.ts'
+const { createWeakPromise } = await import(
+  sourceRoot + 'lib/utils-server/weak-promise.ts'
 );
 const { renderWithWeakPromises } =
   mode === 'native'

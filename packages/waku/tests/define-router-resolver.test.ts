@@ -1,10 +1,15 @@
 import { runInNewContext } from 'node:vm';
 import { describe, expect, it, vi } from 'vitest';
+import {
+  unstable_cancelRender as cancelRender,
+  unstable_isRenderCancellation as isRenderCancellation,
+} from '../src/minimal/server.js';
 import { type Unstable_HandleRequest as HandleRequest } from '../src/minimal/server.js';
 import { unstable_createRouteHref } from '../src/router/base-types.js';
 import { getRscPath } from '../src/router/define-router-utils/request-store.js';
 import {
   getRequest,
+  requestNotFound,
   requestRedirect,
   unstable_defineRouter,
   unstable_notFound,
@@ -461,12 +466,20 @@ describe('defineRouter route resolver', () => {
           ? {
               elements: {
                 ...makeRoute('route', true).elements,
+                route: {
+                  immutable: true,
+                  cacheKey: 'route',
+                  render: () => 'route',
+                },
                 content: { render, getEtag: async () => 'v1' },
               },
             }
           : null,
     });
     const utils = makeUtils();
+    await router.handleRequest(rscInput('/'), utils);
+    render.mockClear();
+    utils.renderRsc.mockClear();
     await router.handleRequest(
       { ...rscInput('/'), etags: { root: 1, 'route:/': 1, content: 'v1' } },
       utils,
@@ -580,7 +593,7 @@ describe('defineRouter route resolver', () => {
     expect(utils.renderRsc).toHaveBeenCalledWith(
       expect.objectContaining({
         [ROUTE_ID]: ['/old', ''],
-        'route:/old': null,
+        'route:/old': expect.any(Promise),
       }),
       expect.anything(),
     );
@@ -1182,4 +1195,147 @@ describe('defineRouter route resolver', () => {
     sandbox.__WAKU_ROUTER_PREFETCH__!('/posts/two', (id) => modules.push(id));
     expect(modules).toEqual(['post-module']);
   });
+});
+
+it.each([undefined, 'shared'] as const)(
+  'replays an immutable route intent on an etag hit (key: %s)',
+  async (cacheKey) => {
+    const render = vi.fn(() => {
+      requestRedirect('/done');
+      return 'gate';
+    });
+    const router = unstable_defineRouter({
+      resolve: async () => ({
+        elements: {
+          root: { render: () => 'dynamic root' },
+          route: { immutable: true, ...(cacheKey ? { cacheKey } : {}), render },
+        },
+      }),
+      getHas404: async () => false,
+    });
+    const utils = makeUtils();
+    await router.handleRequest(rscInput('/gate'), utils);
+    await router.handleRequest(
+      { ...rscInput('/gate'), etags: { 'route:/gate': 1 } },
+      utils,
+    );
+    const elements = utils.renderRsc.mock.calls.at(-1)![0];
+    expect(
+      JSON.parse(await (elements[INTENT_ID] as PromiseLike<string>)),
+    ).toEqual({ status: 307, location: '/done' });
+    expect(render).toHaveBeenCalledTimes(cacheKey ? 1 : 2);
+    if (cacheKey) {
+      expect(elements).not.toHaveProperty('route:/gate');
+    }
+  },
+);
+
+it('replays build-preloaded intent metadata when an etag omits the slot', async () => {
+  const render = vi.fn(() => 'unused');
+  const router = unstable_defineRouter({
+    resolve: async () => ({
+      elements: {
+        root: { render: () => 'root' },
+        route: { immutable: true, render },
+      },
+    }),
+    getHas404: async () => false,
+  });
+  const utils = makeUtils();
+  // Use the actual metadata key rather than depending on its spelling.
+  const { ROUTER_METADATA } =
+    await import('../src/router/define-router-utils/build-metadata.js');
+  utils.loadBuildMetadata.mockImplementation(async (name) =>
+    name === ROUTER_METADATA.cachedElements
+      ? JSON.stringify({
+          'slot/route:/gate': {
+            data: btoa(JSON.stringify('gate')),
+            intent: { status: 307, location: '/done' },
+          },
+        })
+      : undefined,
+  );
+  await router.handleRequest(
+    { ...rscInput('/gate'), etags: { 'route:/gate': 1 } },
+    utils,
+  );
+  const elements = utils.renderRsc.mock.calls[0]![0];
+  expect(elements).not.toHaveProperty('route:/gate');
+  expect(
+    JSON.parse(await (elements[INTENT_ID] as PromiseLike<string>)),
+  ).toEqual({ status: 307, location: '/done' });
+  expect(render).not.toHaveBeenCalled();
+});
+
+it('uses the custom 404 after interceptor cancellation without running the gated action', async () => {
+  const router = unstable_defineRouter({
+    resolve: async (path, query) =>
+      path === '/404' ? makeRoute('missing:' + query) : makeRoute('protected'),
+    unstable_interceptors: [
+      async () => {
+        requestNotFound();
+        cancelRender();
+      },
+    ],
+  });
+  const utils = makeUtils();
+  const tryAction = vi.fn();
+  await router.handleRequest(
+    {
+      type: 'http',
+      pathname: '/protected',
+      req: new Request('http://localhost/protected?q=one'),
+      tryAction,
+    },
+    utils,
+  );
+  expect(utils.renderHtml).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.anything(),
+    expect.objectContaining({ status: 404 }),
+  );
+  expect(utils.renderRsc.mock.calls[0]![0]['route:/404']).toBe('missing:q=one');
+  expect(tryAction).not.toHaveBeenCalled();
+});
+
+it('leaves cancellation without an intent to Minimal', async () => {
+  const router = unstable_defineRouter({
+    resolve: async () => cancelRender(),
+    getHas404: async () => true,
+  });
+  const utils = makeUtils();
+  await expect(
+    router.handleRequest(
+      {
+        type: 'http',
+        pathname: '/cancelled',
+        req: new Request('http://localhost/cancelled'),
+      },
+      utils,
+    ),
+  ).rejects.toSatisfy(isRenderCancellation);
+  await expect(
+    router.handleRequest(rscInput('/cancelled'), utils),
+  ).rejects.toSatisfy(isRenderCancellation);
+  expect(utils.renderHtml).not.toHaveBeenCalled();
+  expect(utils.renderRsc).not.toHaveBeenCalled();
+});
+
+it('ignores invalid later redirects after an intent has won', async () => {
+  const router = unstable_defineRouter({
+    resolve: async () => {
+      requestRedirect('/done');
+      requestRedirect('invalid' as '/');
+      return makeRoute('body');
+    },
+  });
+  const utils = makeUtils();
+  await router.handleRequest(rscInput('/gate'), utils);
+  expect(
+    JSON.parse(
+      await (utils.renderRsc.mock.calls[0]![0][
+        INTENT_ID
+      ] as PromiseLike<string>),
+    ),
+  ).toEqual({ status: 307, location: '/done' });
 });

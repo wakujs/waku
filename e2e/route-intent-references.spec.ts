@@ -39,4 +39,27 @@ test.describe('router route intent reference preservation', () => {
     await page.getByRole('link', { name: 'Intent Static Redirect' }).click();
     await expect(page).toHaveURL(`http://127.0.0.1:${port}/destination`);
   });
+
+  test('replays a static page intent under a dynamic layout on an etag hit', async ({
+    page,
+  }) => {
+    const etags: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/RSC/R/mixed/gate')) {
+        etags.push(request.headers()['x-waku-etags'] ?? '{}');
+      }
+    });
+    await page.goto(`http://127.0.0.1:${port}/`);
+    await waitForHydration(page);
+    await page.getByRole('link', { name: 'Mixed Static Redirect' }).click();
+    await expect(page).toHaveURL(`http://127.0.0.1:${port}/destination`);
+    await page.goBack();
+    await expect(
+      page.getByRole('heading', { name: 'Home Page' }),
+    ).toBeVisible();
+    await page.getByRole('link', { name: 'Mixed Static Redirect' }).click();
+    await expect(page).toHaveURL(`http://127.0.0.1:${port}/destination`);
+    expect(etags.length).toBeGreaterThanOrEqual(2);
+    expect(JSON.parse(etags.at(-1)!)).toHaveProperty('page:/mixed/gate', 1);
+  });
 });

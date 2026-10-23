@@ -165,6 +165,52 @@ describe('minimal/client fetch', () => {
     }
   });
 
+  test('a cancelled update retains the previous Slot content and accepts later updates', async () => {
+    const cancellation = Object.assign(new Error('Flight error'), {
+      digest: 'WAKU_CANCEL_RENDER',
+    });
+    const Cancelled = () => {
+      throw cancellation;
+    };
+    mocks.createFromFetch.mockReturnValue(
+      resolvedThenable({ main: 'original', sibling: 'sibling' }),
+    );
+    stubFetch();
+    let merge!: ReturnType<typeof useMergeElements_UNSTABLE>;
+    const Probe = () => {
+      const fn = useMergeElements_UNSTABLE();
+      useEffect(() => {
+        merge = fn;
+      }, [fn]);
+      return null;
+    };
+    const container = document.createElement('div');
+    const root = createRoot(container, { onCaughtError: () => {} });
+    try {
+      await act(async () => {
+        root.render(
+          <Root initialRscPath="update-cancel">
+            <Probe />
+            <Slot id="main" />
+            <Slot id="sibling" />
+          </Root>,
+        );
+      });
+      await act(async () => {
+        await merge(
+          Promise.resolve({ main: <Cancelled />, sibling: 'updated sibling' }),
+        );
+      });
+      expect(container.textContent).toBe('originalupdated sibling');
+      await act(async () => {
+        await merge(Promise.resolve({ main: 'recovered' }));
+      });
+      expect(container.textContent).toBe('recoveredupdated sibling');
+    } finally {
+      act(() => root.unmount());
+    }
+  });
+
   test('a Slot propagates application errors to the app error boundary', async () => {
     const failure = new Error('application failure');
     const Broken = () => {

@@ -3,11 +3,13 @@
 import { Suspense } from 'react';
 import {
   Slot_UNSTABLE as Slot,
+  useFetchRsc_UNSTABLE as useFetchRsc,
   useMergeElements_UNSTABLE as useMergeElements,
 } from 'waku/minimal/client';
 
 export const CancelRender = () => {
   const merge = useMergeElements();
+  const fetchRsc = useFetchRsc();
   return (
     <html>
       <body>
@@ -22,6 +24,20 @@ export const CancelRender = () => {
           }}
         >
           Recover slot
+        </button>
+        <button
+          onClick={async () => {
+            await merge(await fetchRsc('cancel-render-update'));
+          }}
+        >
+          Cancel update
+        </button>
+        <button
+          onClick={async () => {
+            await merge(await fetchRsc('cancel-request'));
+          }}
+        >
+          Cancel request
         </button>
       </body>
     </html>

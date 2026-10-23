@@ -1,6 +1,9 @@
 // eslint-disable-next-line no-restricted-imports -- Discarded responses use Minimal's internal stream cancellation.
 import { unstable_cancelRenderStream as cancelRenderStream } from 'waku/internals';
-import { unstable_isRenderCancellation as isRenderCancellation } from 'waku/minimal/server';
+import {
+  unstable_cancelRender as cancelRender,
+  unstable_isRenderCancellation as isRenderCancellation,
+} from 'waku/minimal/server';
 import type {
   Unstable_HandleRequest as HandleRequest,
   Unstable_RenderRsc as RenderRsc,
@@ -110,15 +113,13 @@ export const createRequestHandler = ({
         },
       });
     };
-    const renderCancelledRequest = async () => {
+    const renderCancelledRequest = async (): ReturnType<HandleRequest> => {
       const intent = getRouteIntent();
+      if (!intent.value) {
+        cancelRender();
+      }
       if (input.type === 'http') {
-        return (
-          redirectResponse() ??
-          (intent.value?.status === 404
-            ? createNotFoundResponse()
-            : new Response(null))
-        );
+        return redirectResponse() ?? handleRequest(true);
       }
       if (input.type === 'rsc' && decodeSliceId(input.rscPath) === null) {
         const entries = await routeEntries.getEntriesForRoute(
@@ -135,6 +136,7 @@ export const createRequestHandler = ({
             },
           },
         );
+        delete entries!.elements.root;
         return renderRsc(
           { ...entries!.elements, [INTENT_ID]: intent.promise },
           { etags: entries!.etags },
@@ -142,7 +144,9 @@ export const createRequestHandler = ({
       }
       return renderRsc({ [INTENT_ID]: intent.promise });
     };
-    const handleRequest = async () => {
+    const handleRequest = async (
+      cancelled = false,
+    ): ReturnType<HandleRequest> => {
       const intent = getRouteIntent();
       const renderRscWithIntent: RenderRsc = (elements, options) =>
         renderRsc({ ...elements, [INTENT_ID]: intent.promise }, options);
@@ -299,15 +303,17 @@ export const createRequestHandler = ({
       }: Extract<HandlerInput, { type: 'http' }>) => {
         let actionResult: ReturnType<NonNullable<typeof tryAction>> | undefined;
         const query = new URL(req.url).searchParams.toString();
-        const resolved = await resolve(
-          pathnameToRoutePath(pathname),
-          query,
-        ).catch((error) => {
+        let resolved;
+        try {
+          resolved = cancelled
+            ? null
+            : await resolve(pathnameToRoutePath(pathname), query);
+        } catch (error) {
           if (!isRenderCancellation(error)) {
             throw error;
           }
-          return null;
-        });
+          return renderCancelledRequest();
+        }
         const beforeRenderRedirect = redirectResponse();
         if (beforeRenderRedirect) {
           return beforeRenderRedirect;
@@ -316,12 +322,15 @@ export const createRequestHandler = ({
           const url = new URL(req.url);
           url.pathname = pathname;
           const apiReq = new Request(url, req);
-          const response = await resolved(apiReq).catch((error: unknown) => {
+          let response;
+          try {
+            response = await resolved(apiReq);
+          } catch (error) {
             if (!isRenderCancellation(error)) {
               throw error;
             }
-            return new Response(null);
-          });
+            return renderCancelledRequest();
+          }
           const redirect = redirectResponse();
           if (redirect) {
             await cancelRenderStream(response.body);
@@ -356,7 +365,7 @@ export const createRequestHandler = ({
           const nonce = getNonce();
           const html = <INTERNAL_ServerRouter route={route} />;
           let formState: unknown;
-          if (tryAction) {
+          if (tryAction && !cancelled) {
             const { value, entries: rerendered } = await withRerender(
               () => (actionResult ??= tryAction()),
               () => [rscPath, rscParams] as const,
@@ -415,10 +424,7 @@ export const createRequestHandler = ({
           if (!isRenderCancellation(e)) {
             throw e;
           }
-          const redirect = redirectResponse();
-          if (redirect) {
-            return redirect;
-          }
+          return renderCancelledRequest();
         }
         if (await routeEntries.has404()) {
           // the 404 page renders for the url that was asked for, query and all

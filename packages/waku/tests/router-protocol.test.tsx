@@ -249,6 +249,7 @@ test('an omitted mutable slot still keeps the response route dynamic', async () 
     resolve: async () => ({
       elements: {
         ...route('shell', true).elements,
+        route: { ...route('shell', true).elements.route, cacheKey: 'page' },
         page: { getEtag: async () => 'v1', render: () => 'page' },
       },
     }),

@@ -114,6 +114,9 @@ export const load = async (
       if (opts.signal.aborted) {
         return { type: 'aborted' };
       }
+      if (elements && Reflect.ownKeys(elements).length === 0) {
+        return { type: 'aborted' };
+      }
       if (elements === undefined) {
         return { type: 'reused', ...attempt };
       }

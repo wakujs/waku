@@ -40,6 +40,12 @@ export const createElementCache = (
       );
     },
     has: (cacheId: CacheId) => cache.has(cacheId),
+    replayIntent: async (cacheId: CacheId) => {
+      const entry = await cache.get(cacheId);
+      if (entry?.intent) {
+        getRouteIntent().record(entry.intent);
+      }
+    },
     get: (cacheId: CacheId) =>
       cache.get(cacheId)?.then(({ result, intent }) => {
         if (intent) {
@@ -59,7 +65,9 @@ export const createElementCache = (
           if (!isRenderCancellation(error)) {
             throw error;
           }
-          element = null;
+          const cancelled = Promise.reject(error);
+          void cancelled.catch(() => {});
+          element = cancelled;
         }
         return serializeRsc(element);
       });

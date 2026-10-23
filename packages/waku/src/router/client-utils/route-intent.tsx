@@ -5,7 +5,6 @@ import {
   useEffectEvent,
   useLayoutEffect,
   useRef,
-  useState,
 } from 'react';
 import {
   unstable_combineElements as combineElements,
@@ -24,12 +23,17 @@ import {
   has404FromElements,
 } from '../isomorphic-utils/router-protocol.js';
 import type { RouteIntentData } from '../isomorphic-utils/router-protocol.js';
+import { observeRouteIntent } from './observe-route-intent.js';
 import { RouterContext } from './router-context.js';
 import { getRouterState } from './router-state.js';
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
 
-export const RouteIntent = () => {
+export const RouteIntent = ({
+  onError,
+}: {
+  onError: (error: unknown, source: Elements) => void;
+}) => {
   const elements = use(useElementsPromise());
   const router = use(RouterContext);
   const getElements = router?.getElements;
@@ -43,11 +47,6 @@ export const RouteIntent = () => {
     >(),
   );
   const mounted = useRef(true);
-  const [failure, setFailure] = useState<{ error: unknown }>();
-  const [missing, setMissing] = useState<{
-    scope: ReturnType<typeof getRouterState>;
-  }>();
-  const currentScope = getRouterState(elements);
   // A suspended Root merge can hide layout effects without unmounting.
   useEffect(() => {
     mounted.current = true;
@@ -71,7 +70,6 @@ export const RouteIntent = () => {
       source: Elements,
       pending: PromiseLike<string | undefined>,
     ) => {
-      const intent = JSON.parse(value) as RouteIntentData;
       const state = getRouterState(source);
       if (
         !changeRoute ||
@@ -81,54 +79,64 @@ export const RouteIntent = () => {
       ) {
         return;
       }
-      const sourceRoute = getRouteFromElements(source);
-      if (intent.status === 404 && sourceRoute?.path === '/404') {
-        return;
+      try {
+        const intent = JSON.parse(value) as RouteIntentData;
+        const sourceRoute = getRouteFromElements(source);
+        if (intent.status === 404 && sourceRoute?.path === '/404') {
+          return;
+        }
+        followed.current.set(pending, state);
+        const requestedUrl = new URL(
+          state?.url ?? window.location.href,
+          window.location.href,
+        );
+        const requested = state?.requested;
+        const decision = decideRouteIntent(
+          intent,
+          {
+            route: requested
+              ? { path: requested[0], query: requested[1] }
+              : (sourceRoute ?? parseRoute(requestedUrl)),
+            url: requestedUrl,
+            follows: state?.follows ?? 0,
+          },
+          {
+            has404: has404FromElements(source),
+            maxFollows: MAX_FOLLOWS_PER_NAVIGATION,
+          },
+        );
+        if (decision.type === 'none') {
+          onError(
+            new Error('Not Found', {
+              cause: new Response(null, { status: 404 }),
+            }),
+            source,
+          );
+          return;
+        }
+        if (decision.type === 'stop') {
+          onError(decision.error, source);
+          return;
+        }
+        if (decision.type === 'leave') {
+          window.location.replace(decision.url.href);
+          return;
+        }
+        const { target, url } = decision;
+        startTransition(() => {
+          changeRoute(target, {
+            shouldScroll: state
+              ? state.scroll !== null
+              : target.path !== sourceRoute?.path,
+            history: 'replace',
+            refetch: true,
+            url,
+            follows: (state?.follows ?? 0) + 1,
+          }).catch((error: unknown) => onError(error, source));
+        });
+      } catch (error) {
+        onError(error, source);
       }
-      followed.current.set(pending, state);
-      const requestedUrl = new URL(
-        state?.url ?? window.location.href,
-        window.location.href,
-      );
-      const requested = state?.requested;
-      const decision = decideRouteIntent(
-        intent,
-        {
-          route: requested
-            ? { path: requested[0], query: requested[1] }
-            : (sourceRoute ?? parseRoute(requestedUrl)),
-          url: requestedUrl,
-          follows: state?.follows ?? 0,
-        },
-        {
-          has404: has404FromElements(source),
-          maxFollows: MAX_FOLLOWS_PER_NAVIGATION,
-        },
-      );
-      if (decision.type === 'none') {
-        setMissing({ scope: state });
-        return;
-      }
-      if (decision.type === 'stop') {
-        setFailure({ error: decision.error });
-        return;
-      }
-      if (decision.type === 'leave') {
-        window.location.replace(decision.url.href);
-        return;
-      }
-      const { target, url } = decision;
-      startTransition(() => {
-        changeRoute(target, {
-          shouldScroll: state
-            ? state.scroll !== null
-            : target.path !== sourceRoute?.path,
-          history: 'replace',
-          refetch: true,
-          url,
-          follows: (state?.follows ?? 0) + 1,
-        }).catch((error: unknown) => setFailure({ error }));
-      });
     },
   );
 
@@ -138,23 +146,17 @@ export const RouteIntent = () => {
     if (!pending) {
       return;
     }
-    let active = true;
-    Promise.resolve(pending).then(
-      (value) => {
-        if (active && value !== undefined) {
-          follow(value, elements, pending);
-        }
-      },
-      (error: unknown) => {
-        if (active && isCurrent(elements)) {
-          setFailure({ error });
-        }
-      },
-    );
-    return () => {
-      active = false;
-    };
-  }, [elements]);
+    return observeRouteIntent(pending, (outcome) => {
+      if (!isCurrent(elements)) {
+        return;
+      }
+      if ('error' in outcome) {
+        onError(outcome.error, elements);
+      } else if (outcome.value !== undefined) {
+        follow(outcome.value, elements, pending);
+      }
+    });
+  }, [elements, onError]);
 
   useLayoutEffect(() => {
     if (!getElements) {
@@ -192,7 +194,7 @@ export const RouteIntent = () => {
               getRouterState(getElements()) === scope &&
               isCurrent(getElements())
             ) {
-              setFailure({ error });
+              onError(error, getElements());
             }
           },
         );
@@ -207,13 +209,7 @@ export const RouteIntent = () => {
     return () => {
       unregister();
     };
-  }, [getElements, registerRscEnhancer]);
+  }, [getElements, registerRscEnhancer, onError]);
 
-  if (failure) {
-    throw failure.error;
-  }
-  if (missing && missing.scope === currentScope) {
-    return <h1>Not Found</h1>;
-  }
   return null;
 };

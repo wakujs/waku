@@ -22,8 +22,8 @@ const native = require('./package.json').dependencies.react.startsWith(
   '0.0.0-experimental-',
 );
 const sourceRoot = fileURLToPath(new URL('../../../src/', import.meta.url));
-const { unstable_createWeakPromise: createWeakPromise } = await import(
-  sourceRoot + 'minimal/server.ts'
+const { createWeakPromise } = await import(
+  sourceRoot + 'lib/utils-server/weak-promise.ts'
 );
 const { renderWithWeakPromises } = native
   ? { renderWithWeakPromises: (data, render) => render(data) }

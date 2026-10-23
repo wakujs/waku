@@ -72,6 +72,7 @@ export const createRouteEntries = (
           ).then((result) => result !== null && typeof result !== 'function')
     ).catch((error) => {
       if (isRenderCancellation(error)) {
+        cachedHas404 = undefined;
         return false;
       }
       cachedHas404 = undefined;
@@ -100,8 +101,22 @@ export const createRouteEntries = (
     const { route, ...sources } = resolved.elements;
     const routeId = getRouteSlotId(pathname);
     sources[routeId] = route;
+    const etags = { ...clientEtags };
+    await Promise.all(
+      Object.entries(sources).map(async ([id, source]) => {
+        if (source.immutable && etags[id] === 1) {
+          const cacheId = getElementCacheId(id, source);
+          if (cache.has(cacheId)) {
+            await cache.replayIntent(cacheId);
+          } else {
+            // Uncached runtime paths must render to recover their intent.
+            delete etags[id];
+          }
+        }
+      }),
+    );
     const entries = await buildElements(
-      clientEtags,
+      etags,
       Object.fromEntries(
         Object.entries(sources).map(([id, source]) => [
           id,

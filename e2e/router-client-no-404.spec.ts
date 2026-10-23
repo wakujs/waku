@@ -45,6 +45,12 @@ test.describe('router-client-no-404', () => {
       0,
     );
     await expect(page).toHaveURL(/\/missing$/);
+    await expect(page.getByTestId('go-missing')).toHaveCount(0);
+    await page.goBack();
+    await expect(page.getByTestId('go-missing')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Not Found' })).toHaveCount(
+      0,
+    );
   });
 
   test('direct not found renders the default document without JavaScript', async ({

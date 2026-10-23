@@ -537,9 +537,11 @@ describe('unstable_redirect', () => {
     'https://',
     'https://[',
   ])('rejects invalid redirect location %s', (location) => {
-    expect(() => unstable_redirect(location)).toThrow(
-      'Invalid redirect location',
-    );
+    runWithRouterStore({ req: new Request('http://localhost/') }, () => {
+      expect(() => unstable_redirect(location)).toThrow(
+        'Invalid redirect location',
+      );
+    });
   });
 
   it('redirects to an eagerly built href with encoded params', () => {

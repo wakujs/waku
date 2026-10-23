@@ -58,6 +58,12 @@ export default adapter(
         return weak;
       }
       const { renderRsc, renderHtml } = utils;
+      if (
+        (input.type === 'http' && input.pathname === '/cancel-request') ||
+        (input.type === 'rsc' && input.rscPath === 'cancel-request')
+      ) {
+        cancelRender();
+      }
       if (input.type === 'http' && input.pathname === '/cancel-render') {
         const Cancelled = () => cancelRender();
         return renderHtml(
@@ -70,6 +76,13 @@ export default adapter(
         );
       }
       if (input.type === 'rsc') {
+        if (input.rscPath === 'cancel-render-update') {
+          const Cancelled = () => cancelRender();
+          return renderRsc({
+            cancelled: <Cancelled />,
+            sibling: <p>Sibling updated</p>,
+          });
+        }
         if (input.rscPath === 'island') {
           return renderRsc({
             'slice:dynamic': (

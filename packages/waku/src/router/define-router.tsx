@@ -76,7 +76,7 @@ export function unstable_rerenderRoute(pathname?: string, query?: string) {
  * Requests the not-found view without terminating execution. Return from the
  * current component or server function after calling it. Before the document
  * shell this can produce HTTP 404; after the shell the client shows the view.
- * The first navigation recorded for a request wins. A server function keeps its
+ * The first navigation recorded for a request wins, including concurrent renders. A server function keeps its
  * normal return value; a form submitted without JavaScript responds with 404.
  */
 export function requestNotFound(): void {
@@ -130,14 +130,16 @@ const getRedirectLocation = (
  * After the shell, and for prerendered pages, the browser follows the intent
  * using JavaScript.
  * An absolute URL navigates the document even when it names this origin.
- * The first navigation recorded for a request wins.
+ * The first navigation recorded for a request wins, including concurrent renders.
  */
 export function requestRedirect(
   to: NavigationHref | `http://${string}` | `https://${string}` | URL,
   status: 303 | 307 | 308 = 307,
 ): void {
-  const location = getRedirectLocation(to);
-  getRouteIntent().record({ status, location });
+  const intent = getRouteIntent();
+  if (!intent.value) {
+    intent.record({ status, location: getRedirectLocation(to) });
+  }
 }
 
 /** @deprecated Use `requestRedirect()` and `cancelRender()` to control termination. */
