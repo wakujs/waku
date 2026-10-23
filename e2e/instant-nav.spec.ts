@@ -3,6 +3,7 @@ import { dirname, join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type Request, expect } from '@playwright/test';
 import {
+  clickSelector,
   prepareNormalSetup,
   test,
   waitForHydration,
@@ -301,9 +302,7 @@ test.describe('instant-nav', () => {
       historyLength + 1,
     );
 
-    await page
-      .getByRole('button', { name: 'Rerender static route' })
-      .click({ noWaitAfter: true });
+    await clickSelector(page, 'button[type="submit"]');
     await waitForSelectorText(page, '[data-testid="rerender-result"]', 'done');
     await waitForSelectorText(
       page,

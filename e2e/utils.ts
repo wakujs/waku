@@ -523,3 +523,14 @@ export const waitForSelectorText = async (
     )
     .toBe(text);
 };
+
+// WebKit + react@experimental can leave locator navigation waits pending.
+export const clickSelector = async (page: Page, selector: string) => {
+  if (page.context().browser()?.browserType().name() === 'webkit') {
+    await page.evaluate((selector) => {
+      document.querySelector<HTMLElement>(selector)!.click();
+    }, selector);
+  } else {
+    await page.locator(selector).click({ noWaitAfter: true });
+  }
+};

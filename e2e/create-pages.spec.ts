@@ -1,6 +1,7 @@
 import { type Page, expect } from '@playwright/test';
 import {
   FETCH_ERROR_MESSAGES,
+  clickSelector,
   prepareNormalSetup,
   test,
   waitForHydration,
@@ -365,10 +366,7 @@ test.describe(`create-pages`, () => {
               .textContent,
         ))!.slice('count: '.length),
       );
-      // Avoid WebKit's pending-navigation wait around experimental form actions.
-      await page
-        .getByRole('button', { name: 'Bump layout-first' })
-        .click({ noWaitAfter: true });
+      await clickSelector(page, 'button[type="submit"]');
       await waitForSelectorText(
         page,
         '[data-testid="rerender-order-count"]',
