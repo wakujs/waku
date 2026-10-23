@@ -45,7 +45,6 @@ export type RootStore = {
   setElements: SetElements;
   etags: Etags;
   rscEnhancers: readonly RscEnhancer[];
-  legacyEnhancers: Map<symbol, RscEnhancer>;
   fetchRsc: FetchRsc;
 };
 

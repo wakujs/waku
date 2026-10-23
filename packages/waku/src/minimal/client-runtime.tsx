@@ -176,11 +176,6 @@ const reloadOnBuildIdMismatch = (
 
 const EMPTY_RSC_ENHANCERS: readonly RscEnhancer[] = [];
 
-const getRootRscEnhancers = (store: RootStore | undefined) => [
-  ...(store?.legacyEnhancers.values() ?? []),
-  ...(store?.rscEnhancers ?? []),
-];
-
 const fetchRscElements = (
   rscPath: string,
   rscParams: unknown,
@@ -246,7 +241,7 @@ export const unstable_callServerRsc = async (
     rscPath,
     rscParams,
     { type: 'call', etags: rootStore?.etags ?? {} },
-    getRootRscEnhancers(rootStore),
+    rootStore?.rscEnhancers,
   );
   if (Reflect.ownKeys(data).length) {
     if (!rootStore) {
@@ -260,8 +255,6 @@ export const unstable_callServerRsc = async (
   }
   return value;
 };
-
-type Unregister = () => void;
 
 const noop = () => {};
 
@@ -281,7 +274,7 @@ const fetchRsc = (
         ? { onBuildIdMismatch: options.onBuildIdMismatch }
         : {}),
     },
-    getRootRscEnhancers(store),
+    store?.rscEnhancers,
   ).then(({ elements }) => elements);
 
 const getInitialRsc = (
@@ -333,33 +326,6 @@ const fetchWithoutRoot: FetchRsc = (rscPath, rscParams, options) =>
  */
 export const useFetchRsc_UNSTABLE = (): FetchRsc =>
   use(RootStoreContext)?.fetchRsc ?? fetchWithoutRoot;
-
-/**
- * Registers inside the enclosing Root's configured enhancers, returning cleanup.
- * Registrations affect future requests only. Under a server Root this is a no-op;
- * a missing Root throws.
- * @deprecated Configure Root_UNSTABLE `rscEnhancers` or Router
- * `unstable_rscEnhancers`. Retained in rc.4; removal planned for rc.5 after
- * integration migrations.
- */
-export const useRegisterRscEnhancer_UNSTABLE = (): ((
-  enhance: RscEnhancer,
-) => Unregister) => {
-  const store = useRootStore();
-  return useCallback(
-    (enhance: RscEnhancer): Unregister => {
-      if (store === null) {
-        return noop;
-      }
-      const registration = Symbol();
-      store.legacyEnhancers.set(registration, enhance);
-      return () => {
-        store.legacyEnhancers.delete(registration);
-      };
-    },
-    [store],
-  );
-};
 
 const ElementsContext = createContext<Promise<Elements> | null>(null);
 
@@ -451,7 +417,6 @@ export const Root_UNSTABLE = ({
       },
       etags: {},
       rscEnhancers: [...rscEnhancers],
-      legacyEnhancers: new Map(),
       fetchRsc: (rscPath, rscParams, options) =>
         fetchRsc(rscPath, rscParams, options, store),
     };

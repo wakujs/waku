@@ -1,12 +1,11 @@
 'use client';
 
-import { use, useEffect, useLayoutEffect, useState } from 'react';
+import { use, useLayoutEffect, useState } from 'react';
 import {
   Slot_UNSTABLE as Slot,
   useElementsPromise_UNSTABLE as useElementsPromise,
   useFetchRsc_UNSTABLE as useFetchRsc,
   useMergeElements_UNSTABLE as useMergeElements,
-  useRegisterRscEnhancer_UNSTABLE as useRegisterRscEnhancer,
 } from 'waku/minimal/client';
 import type { Unstable_RscEnhancer } from 'waku/minimal/client';
 import { ping } from './ServerPing/actions.js';
@@ -46,27 +45,19 @@ export const createRscEnhancer = (name: string): Unstable_RscEnhancer => {
 };
 
 export const RscEnhancements = ({
-  name,
-  declarative = false,
+  fetchOnMount = false,
 }: {
-  name: string;
-  declarative?: boolean;
+  fetchOnMount?: boolean;
 }) => {
-  const register = useRegisterRscEnhancer();
   const fetchRsc = useFetchRsc();
   const mergeElements = useMergeElements();
   const elements = use(useElementsPromise());
   const [value, setValue] = useState('');
-  useEffect(() => {
-    if (!declarative) {
-      return register(createRscEnhancer(name));
-    }
-  }, [name, declarative, register]);
   useLayoutEffect(() => {
-    if (declarative) {
+    if (fetchOnMount) {
       mergeElements(fetchRsc('enhanced', { count: 1 })).catch(console.error);
     }
-  }, [declarative, fetchRsc, mergeElements]);
+  }, [fetchOnMount, fetchRsc, mergeElements]);
   return (
     <>
       <button

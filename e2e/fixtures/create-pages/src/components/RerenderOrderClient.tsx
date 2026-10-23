@@ -1,8 +1,8 @@
 'use client';
 
-import { Component, useEffect } from 'react';
+import { Component } from 'react';
 import type { ReactNode } from 'react';
-import { useRegisterRscEnhancer_UNSTABLE as useRegisterRscEnhancer } from 'waku/minimal/client';
+import type { Unstable_RscEnhancer } from 'waku/minimal/client';
 import { bumpRerenderOrder } from './funcs.js';
 
 declare global {
@@ -13,10 +13,7 @@ declare global {
 
 const encoder = new TextEncoder();
 
-// wakujs/waku#2288 needs a Flight row to land while React is yielding on it.
-// Hold back the rows that follow the page content and let the component
-// rendered just before them release the first one in a microtask: React has
-// already suspended on that row by then, and it resumes in a later task.
+// wakujs/waku#2288 requires a Flight row to arrive after React suspends on it.
 const gateFetch =
   (fetchFn: typeof fetch): typeof fetch =>
   async (input, init) => {
@@ -47,7 +44,6 @@ const gateFetch =
       }
     };
     window.__rerenderOrderRelease = release;
-    // the rest of the response has to arrive eventually
     setTimeout(() => {
       while (window.__rerenderOrderRelease) {
         release();
@@ -56,21 +52,12 @@ const gateFetch =
     return new Response(stream, response);
   };
 
-export const RerenderOrderGate = () => {
-  const registerRscEnhancer = useRegisterRscEnhancer();
-  useEffect(
-    () =>
-      registerRscEnhancer(
-        (requestRsc) => (rscPath, rscParams, options) =>
-          requestRsc(rscPath, rscParams, {
-            ...options,
-            fetch: gateFetch(options.fetch),
-          }),
-      ),
-    [registerRscEnhancer],
-  );
-  return null;
-};
+export const rerenderOrderEnhancer: Unstable_RscEnhancer =
+  (requestRsc) => (rscPath, rscParams, options) =>
+    requestRsc(rscPath, rscParams, {
+      ...options,
+      fetch: gateFetch(options.fetch),
+    });
 
 export const RerenderOrderTrigger = () => {
   if (typeof window !== 'undefined') {

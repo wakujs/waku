@@ -7,7 +7,6 @@ import type {
 } from './define-router-utils/build-handler.js';
 import { createRequestHandler } from './define-router-utils/request-handler.js';
 import {
-  getHeaders,
   getRequest,
   getRerender,
   getRscParams,
@@ -27,15 +26,11 @@ import { encodeRoutePath } from './isomorphic-utils/router-protocol.js';
 
 export {
   getRequest,
-  getHeaders as unstable_getHeaders,
   getRscPath as unstable_getRscPath,
   getRscParams as unstable_getRscParams,
   setNonce as unstable_setNonce,
 };
 export type { HandlerInterceptor };
-
-/** @deprecated Renamed to `getRequest`. */
-export const unstable_getRequest = getRequest;
 
 const encodePathname = (pathname: string) => {
   if (!pathname.startsWith('/')) {

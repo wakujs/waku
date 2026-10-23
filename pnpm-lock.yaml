@@ -469,8 +469,8 @@ importers:
         specifier: latest
         version: link:../../../packages/waku
       waku-jotai:
-        specifier: ^0.7.0
-        version: 0.7.0(jotai@3.0.1(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)(waku@packages+waku)
+        specifier: ^0.8.0
+        version: 0.8.0(jotai@3.0.1(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)(waku@packages+waku)
     devDependencies:
       '@types/react':
         specifier: ^19.3.0
@@ -1284,8 +1284,8 @@ importers:
         specifier: latest
         version: link:../../../packages/waku
       waku-jotai:
-        specifier: ^0.7.0
-        version: 0.7.0(jotai@3.0.1(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)(waku@packages+waku)
+        specifier: ^0.8.0
+        version: 0.8.0(jotai@3.0.1(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)(waku@packages+waku)
     devDependencies:
       '@types/react':
         specifier: ^19.3.0
@@ -6891,12 +6891,12 @@ packages:
       jsdom:
         optional: true
 
-  waku-jotai@0.7.0:
-    resolution: {integrity: sha512-ot/djH0oEe0bEMG6LQGHB/8qrrJ0SMD34Q//H80HgnhiSNcJybFA1Cs+fbbil/III6s3UM/fJ7a98QnvL3SKCg==}
+  waku-jotai@0.8.0:
+    resolution: {integrity: sha512-iZdMFMgMYiqSwD8cxhDErQRq11MXo7Y4dYZgSseKcMBydbLYaXksBhPTGrioeZoLuasCVHemuHwLWpvzxfA45w==}
     peerDependencies:
       jotai: '>=3.0.0'
       react: '>=19.0.0'
-      waku: '>=1.0.0-rc.1'
+      waku: '>=1.0.0-rc.4'
 
   watchpack@2.6.3:
     resolution: {integrity: sha512-s3NZy0QpTY9qGqzc0wtz4qI28z3+5qKbbAec4MV4G9N3CfgZ9wgvQRr0cl2jh/tqkWG1NWHkmVMHZpCamev5Wg==}
@@ -12733,7 +12733,7 @@ snapshots:
     transitivePeerDependencies:
       - msw
 
-  waku-jotai@0.7.0(jotai@3.0.1(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)(waku@packages+waku):
+  waku-jotai@0.8.0(jotai@3.0.1(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)(waku@packages+waku):
     dependencies:
       jotai: 3.0.1(@types/react@19.3.0)(react@19.3.1)
       react: 19.3.1
