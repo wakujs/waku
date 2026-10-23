@@ -344,7 +344,11 @@ export const useNavigation = (
           },
           ...(instantResponse ? { adopt: instantResponse } : {}),
         });
-        if (outcome.type === 'aborted' || requestRef.current !== request) {
+        if (requestRef.current !== request) {
+          return {};
+        }
+        if (outcome.type === 'aborted') {
+          requestRef.current = undefined;
           return {};
         }
         const historyIntent =

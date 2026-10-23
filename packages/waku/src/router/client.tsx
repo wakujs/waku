@@ -371,6 +371,8 @@ export function INTERNAL_ServerRouter({ route }: { route: RouteProps }) {
           navigate: notAvailableInServer('navigate'),
         }}
       >
+        {/* Match the client tree so useId stays stable during hydration. */}
+        <RouteIntent onError={() => {}} />
         <Slot id="root">{routeElement}</Slot>
       </RouterHostContext>
     </RouterContext>

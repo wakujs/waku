@@ -385,9 +385,12 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
           'utf8',
         ),
       );
+      const { stdout: overrides } = await execAsync(
+        'pnpm config get overrides --json',
+        { cwd: wakuDir },
+      );
       const pnpmOverrides = {
-        ...rootPkg.pnpm?.overrides,
-        ...rootPkg.pnpmOverrides, // Do we need this?
+        ...JSON.parse(overrides.trim() || '{}'),
         waku: `file:${wakuPackageTgz}`,
       };
       for (const file of readdirSync(standaloneDir, {

@@ -19,7 +19,8 @@ export type RouteAttempt = {
 
 /**
  * Fetches one attempt's elements. Return `undefined` only when this Root
- * already has usable content for the attempt. Forward the signal to transport.
+ * already has usable content for the attempt. An empty record cancels the
+ * update, preserving the active route. Forward the signal to transport.
  */
 export type FetchRoute = (
   attempt: RouteAttempt,

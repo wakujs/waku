@@ -724,7 +724,8 @@ test('merges and repeated static visits observe a pending intent once', async ()
 });
 
 test('an empty response leaves the current route and view unchanged', async () => {
-  mocks.queue.push(payload('/one'));
+  const intent = deferIntent();
+  mocks.queue.push(payload('/one', intent.promise));
   const view = await mount();
   mocks.queue.push({});
   await act(async () => {
@@ -733,6 +734,13 @@ test('an empty response leaves the current route and view unchanged', async () =
   });
   expect(view.textContent).toContain('Page /one');
   expect(window.location.pathname).toBe('/one');
+  mocks.queue.push(payload('/done'));
+  await act(async () => {
+    intent.resolve({ status: 307, location: '/done' });
+    await flush();
+  });
+  expect(window.location.pathname).toBe('/done');
+  expect(view.textContent).toContain('Page /done');
 });
 
 test('the default root boundary recovers on the next route without replacing the root', async () => {
