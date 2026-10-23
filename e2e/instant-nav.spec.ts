@@ -486,7 +486,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
       originalSlice.replace('lazy clock loaded', 'lazy clock HMR'),
     );
     await (await sliceHmrResponsePromise).finished();
-    await page.getByTestId('link-widget').click();
+    await clickSelector(page, '[data-testid="link-widget"]');
     await waitForSelectorText(
       page,
       '[data-testid="lazy-clock-value"]',
