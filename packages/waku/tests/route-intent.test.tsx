@@ -743,29 +743,36 @@ test('an empty response leaves the current route and view unchanged', async () =
   expect(view.textContent).toContain('Page /done');
 });
 
-test('the default root boundary recovers on the next route without replacing the root', async () => {
-  const intent = deferIntent();
-  const appRoot = (
-    <>
-      <Probe />
-      <ErrorBoundary>
-        <Children />
-      </ErrorBoundary>
-    </>
-  );
-  mocks.queue.push({ ...payload('/one', intent.promise), root: appRoot });
-  const view = await mount();
-  await act(async () => {
-    intent.resolve({ status: 404 });
-    await flush();
-  });
-  expect(view.textContent).toContain('Not Found');
-  expect(view.textContent).not.toContain('Page /one');
-  mocks.queue.push({ ...payload('/two'), root: appRoot });
-  await act(async () => {
-    await controls.router.push('/two');
-    await flush();
-  });
-  expect(view.textContent).toContain('Page /two');
-  expect(view.textContent).not.toContain('Not Found');
-});
+test.each(['/one', '/two'])(
+  'the default root boundary recovers at %s without replacing the root',
+  async (destination) => {
+    const intent = deferIntent();
+    const appRoot = (
+      <>
+        <Probe />
+        <ErrorBoundary>
+          <Children />
+        </ErrorBoundary>
+      </>
+    );
+    mocks.queue.push({ ...payload('/one', intent.promise), root: appRoot });
+    const view = await mount();
+    await act(async () => {
+      intent.resolve({ status: 404 });
+      await flush();
+    });
+    expect(view.textContent).toContain('Not Found');
+    expect(view.textContent).not.toContain('Page /one');
+    mocks.queue.push({ ...payload(destination), root: appRoot });
+    await act(async () => {
+      if (destination === '/one') {
+        await controls.router.reload();
+      } else {
+        await controls.router.push(destination);
+      }
+      await flush();
+    });
+    expect(view.textContent).toContain('Page ' + destination);
+    expect(view.textContent).not.toContain('Not Found');
+  },
+);

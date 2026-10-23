@@ -44,21 +44,17 @@ export class ErrorBoundary extends Component<
 > {
   static contextType = RouterHostContext;
   declare context: ContextType<typeof RouterHostContext>;
-  private failedRoute: { key: string | undefined } | undefined;
+  private failedRoute: { key: unknown } | undefined;
 
   state: { failure?: { error: unknown } | undefined } = {};
 
-  private getRouteKey() {
-    const route = this.context?.route;
-    return route && route.path + '?' + route.query;
-  }
-
   componentDidCatch(_error: Error, _info: ErrorInfo) {
-    this.failedRoute = { key: this.getRouteKey() };
+    this.failedRoute = { key: this.context?.route };
   }
 
   componentDidUpdate() {
-    if (this.failedRoute && this.failedRoute.key !== this.getRouteKey()) {
+    // A reload can replace route data without changing its URL.
+    if (this.failedRoute && this.failedRoute.key !== this.context?.route) {
       this.failedRoute = undefined;
       this.setState({ failure: undefined });
     }
