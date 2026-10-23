@@ -28,6 +28,8 @@ export const getConfig = async () => ({ render: 'dynamic' }) as const;
 
 Header names are case-insensitive, and `headers.get()` returns `null` for a header the request does not have.
 
+To migrate from the removed request helpers, replace `unstable_getRequest()` with `getRequest()`. `unstable_getHeaders()` returned a plain record; `getRequest().headers` is a standard `Headers` object, so replace `unstable_getHeaders()['cookie']` with `getRequest().headers.get('cookie')`.
+
 `getRequest()` throws if request context is not available. Call it during request handling, not in module scope.
 
 `getRequest().url` is the URL the request was sent to. After a client navigation, that is Waku's RSC URL (such as `/RSC/R/about.txt`), not the page URL. A page receives its params and `query` as props; elsewhere, read the route with `unstable_parseRouterRequest(getRequest())`. A server function called from the client sends its own request, which `unstable_parseRouterRequest` reports only as `{ type: 'action' }`, so pass the function any route data it needs as arguments.
