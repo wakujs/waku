@@ -301,11 +301,9 @@ test.describe('instant-nav', () => {
       historyLength + 1,
     );
 
-    await page.evaluate(() => {
-      document
-        .querySelector<HTMLButtonElement>('button[type="submit"]')!
-        .click();
-    });
+    await page
+      .getByRole('button', { name: 'Rerender static route' })
+      .click({ noWaitAfter: true });
     await waitForSelectorText(page, '[data-testid="rerender-result"]', 'done');
     await waitForSelectorText(
       page,

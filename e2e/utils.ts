@@ -15,7 +15,7 @@ import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { error, info } from '@actions/core';
+import { info, warning } from '@actions/core';
 import { test as basicTest, expect } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
 
@@ -201,7 +201,8 @@ export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
     if (ignoreErrors.some((re) => re.test(str))) {
       return;
     }
-    error(`stderr: ${str}`, {
+    // Reserve error annotations for failed tests; stderr can be intentional.
+    warning(`stderr: ${str}`, {
       title: 'Child Process Error',
       file: sourceFile,
     });

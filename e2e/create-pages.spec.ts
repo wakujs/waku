@@ -366,11 +366,9 @@ test.describe(`create-pages`, () => {
         ))!.slice('count: '.length),
       );
       // Avoid WebKit's pending-navigation wait around experimental form actions.
-      await page.evaluate(() => {
-        document
-          .querySelector<HTMLButtonElement>('button[type="submit"]')!
-          .click();
-      });
+      await page
+        .getByRole('button', { name: 'Bump layout-first' })
+        .click({ noWaitAfter: true });
       await waitForSelectorText(
         page,
         '[data-testid="rerender-order-count"]',
