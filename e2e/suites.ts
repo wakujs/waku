@@ -80,6 +80,7 @@ export const CHROMIUM_ONLY_SPECS = [
 ] as const;
 
 // TODO: Restore these WebKit specs when stable React navigation waits pass.
+// https://github.com/wakujs/waku/issues/2358
 export const WEBKIT_IGNORED_SPECS = [
   'create-pages.spec.ts',
   'fs-router.spec.ts',
