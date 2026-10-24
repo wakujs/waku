@@ -81,7 +81,7 @@ The server caches immutable named elements. It reuses immutable `route` content 
 
 Additional IDs must not start with `_`, a capital letter, or `route:`; these names are reserved for Minimal and Router metadata.
 
-Set `noSsr: true` on a route to return Waku's client-rendered document fallback; its RSC response remains available. Resolving `/404` supplies a custom not-found route. Its availability is checked once per router instance; the content is resolved on each visit. Supply `getHas404: async () => boolean` when your manifest can answer this without resolving a route, or when a catch-all also matches `/404`. See [Redirects and Not Found](/guides/redirects-and-not-found) for streaming behavior.
+Set `noSsr: true` on a router definition to return Waku's client-rendered document fallback; its RSC response remains available. Resolving `/404` supplies a custom not-found route. Its availability is checked once per router instance; the content is resolved on each visit. Supply `getHas404: async () => boolean` when your manifest can answer this without resolving a route, or when a catch-all also matches `/404`. See [Redirects and Not Found](/guides/redirects-and-not-found) for streaming behavior.
 
 For typed search, parse `query` with an application-owned codec inside `resolve`. Share that independent codec with a local `unstable_createRouteHref` factory and the client search hooks; `defineRouter` requires no codec map or browser registration. Navigation and redirects consume the resulting URL strings. See [Typed Routes](/guides/typed-routes) for examples and [migration steps](/guides/typed-routes#migration).
 
@@ -124,7 +124,7 @@ The optional `getBuildPaths` returns pathname strings, without queries or fragme
 - HTTP handlers emit their response bodies as static files.
 - Immutable routes with `noSsr` emit RSC and a default client-rendered HTML document.
 
-For explicit build planning, return `{ pathname, route?, prerender?, prefetchPattern? }` targets. `route` supplies build-specific sources or an HTTP handler rather than calling `resolve`. `prerender: false` caches only immutable sources without emitting a page, even when every source is immutable. `prefetchPattern` is a regular expression matching paths that share the target's client modules.
+For explicit build planning, return `{ pathname, routerDefinition?, prerender?, prefetchPattern? }` targets. `routerDefinition` supplies a build-specific router definition or an HTTP handler rather than calling `resolve`. `prerender: false` caches only immutable sources without emitting a page, even when every source is immutable. `prefetchPattern` is a regular expression matching paths that share the target's client modules.
 
 Omit a path to skip its build output. Omit `getBuildPaths` entirely for runtime-only routes. Custom routers do not need `PathSpec` or component source-file metadata.
 

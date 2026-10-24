@@ -13,7 +13,11 @@ import { ROUTER_METADATA } from './build-metadata.js';
 import { getRouterPrefetchCode } from './client-code.js';
 import { base64ToBytes, createElementCache } from './element-cache.js';
 import { getNonce, setRerender } from './request-store.js';
-import type { Resolve, Route, createRouteEntries } from './route-entries.js';
+import type {
+  Resolve,
+  RouterDefinition,
+  createRouteEntries,
+} from './route-entries.js';
 
 type RouteEntries = {
   elements: Record<string, unknown>;
@@ -289,7 +293,7 @@ export const createRequestHandler = ({
           pathname: string,
           query: string,
           status = 200,
-          resolvedRoute?: Route,
+          routerDefinition?: RouterDefinition,
         ) => {
           const routePath = pathnameToRoutePath(pathname);
           const rscPath = encodeRoutePath(routePath);
@@ -299,7 +303,7 @@ export const createRequestHandler = ({
             rscParams,
             clientEtags,
             requestElementCache,
-            resolvedRoute,
+            routerDefinition,
           );
           if (!entries) {
             return null;

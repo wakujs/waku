@@ -10,7 +10,10 @@ import type { RendererOption, RouteConfig } from './config.js';
 import { getPathSpecCacheId } from './element-ids.js';
 
 type Resolve = Parameters<typeof unstable_defineRouter>[0]['resolve'];
-type Route = Extract<Awaited<ReturnType<Resolve>>, { elements: unknown }>;
+type RouterDefinition = Extract<
+  Awaited<ReturnType<Resolve>>,
+  { elements: unknown }
+>;
 
 export const createRouteResolver = (registry: ConfigRegistry) => {
   const resolveElement = async (
@@ -39,7 +42,7 @@ export const createRouteResolver = (registry: ConfigRegistry) => {
     config: RouteConfig,
     pathname: string,
     query: string,
-  ): Promise<Route> => {
+  ): Promise<RouterDefinition> => {
     const option: RendererOption = {
       routePath: pathname,
       query: config.isStatic ? undefined : query,
@@ -51,7 +54,7 @@ export const createRouteResolver = (registry: ConfigRegistry) => {
         getEtag: () => spec.getEtagFromOption!(option),
       }),
     });
-    const elements: Route['elements'] = {
+    const elements: RouterDefinition['elements'] = {
       root: bind(config.rootElement),
       route: {
         ...bind(config.routeElement),

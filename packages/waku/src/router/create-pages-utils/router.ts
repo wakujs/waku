@@ -36,14 +36,15 @@ export const createConfiguredRouter = (fns: {
           if (isLiteral && config.isStatic) {
             targets.push({
               pathname,
-              route: (req: Request) => config.handler(req, { params: {} }),
+              routerDefinition: (req: Request) =>
+                config.handler(req, { params: {} }),
             });
           }
           continue;
         }
         targets.push({
           pathname,
-          route: await resolver.resolveRoute(config, pathname, ''),
+          routerDefinition: await resolver.resolveRoute(config, pathname, ''),
           prerender: isLiteral && config.isStatic,
           prefetchPattern: path2regexp(config.pathPattern ?? config.path),
         });
