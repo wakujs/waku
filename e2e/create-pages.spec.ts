@@ -4,6 +4,7 @@ import {
   prepareNormalSetup,
   test,
   waitForHydration,
+  waitForSelectorText,
 } from './utils.js';
 
 const startApp = prepareNormalSetup('create-pages');
@@ -123,7 +124,7 @@ test.describe(`create-pages`, () => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
     await page.locator("a[href='/foo']").click({ noWaitAfter: true });
-    await expect(page.locator('h2')).toHaveText('Foo');
+    await waitForSelectorText(page, 'h2', 'Foo');
 
     await page.goto(`http://localhost:${port}/foo`);
     await expect(page.getByRole('heading', { name: 'Foo' })).toBeVisible();
@@ -252,7 +253,7 @@ test.describe(`create-pages`, () => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
     await page.locator("a[href='/foo']").click({ noWaitAfter: true });
-    await expect(page.locator('h2')).toHaveText('Foo');
+    await waitForSelectorText(page, 'h2', 'Foo');
     await page.locator('text=Jump to random page').click();
     await expectNoPageErrorFor(page);
     await expect(
@@ -267,7 +268,7 @@ test.describe(`create-pages`, () => {
     await page.goto(`http://localhost:${port}`);
     await waitForHydration(page);
     await page.locator("a[href='/foo']").click({ noWaitAfter: true });
-    await expect(page.locator('h2')).toHaveText('Foo');
+    await waitForSelectorText(page, 'h2', 'Foo');
     await page.locator('text=Jump with setState').click();
     await expect(
       page.getByRole('heading', { name: 'Baz', exact: true }),
@@ -365,9 +366,11 @@ test.describe(`create-pages`, () => {
         ))!.slice('count: '.length),
       );
       await page.locator('button[type="submit"]').click({ noWaitAfter: true });
-      await expect(
-        page.locator('[data-testid="rerender-order-count"]'),
-      ).toHaveText(`count: ${before + 1}`);
+      await waitForSelectorText(
+        page,
+        '[data-testid="rerender-order-count"]',
+        `count: ${before + 1}`,
+      );
     }
   });
 
@@ -477,7 +480,7 @@ test.describe(`create-pages`, () => {
       { timeout: 1000 },
     );
     await pendingSeen;
-    await expect(page.locator(SELECTOR)).toHaveText('Long Suspense Page 2');
+    await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 2');
     const pendingSeen2 = waitForSelectorSeen(page, PENDING_SELECTOR);
     await clickClientLink(page, '/long-suspense/3');
     await page.waitForFunction(
@@ -495,7 +498,7 @@ test.describe(`create-pages`, () => {
       { timeout: 1000 },
     );
     await pendingSeen2;
-    await expect(page.locator(SELECTOR)).toHaveText('Long Suspense Page 3');
+    await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 3');
     const pendingSeen3 = waitForSelectorSeen(page, PENDING_SELECTOR);
     await clickClientLink(page, '/long-suspense/2');
     await page.waitForFunction(
@@ -513,7 +516,7 @@ test.describe(`create-pages`, () => {
       { timeout: 1000 },
     );
     await pendingSeen3;
-    await expect(page.locator(SELECTOR)).toHaveText('Long Suspense Page 2');
+    await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 2');
   });
 
   // https://github.com/wakujs/waku/issues/1437
@@ -529,9 +532,9 @@ test.describe(`create-pages`, () => {
     const pendingSeen = waitForSelectorSeen(page, PENDING_SELECTOR);
     await clickClientLink(page, '/static-long-suspense/5');
     await pendingSeen;
-    await expect(page.locator(SELECTOR)).toHaveText('Long Suspense Page 5');
+    await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 5');
     await clickClientLink(page, '/static-long-suspense/6');
-    await expect(page.locator(SELECTOR)).toHaveText('Long Suspense Page 6');
+    await waitForSelectorText(page, SELECTOR, 'Long Suspense Page 6');
   });
 
   test('api hi', async () => {

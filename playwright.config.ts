@@ -8,7 +8,6 @@ import {
   PRD_ONLY_SPECS,
   PRD_ONLY_TAG,
   UBUNTU_LTS_ONLY_SPECS,
-  WEBKIT_IGNORED_SPECS,
 } from './e2e/suites.js';
 import type { TestOptions } from './e2e/utils.js';
 
@@ -21,7 +20,6 @@ const toGlobs = (specs: readonly string[]) => specs.map((spec) => `**/${spec}`);
 
 const ubuntuLtsOnlySpecs = toGlobs(UBUNTU_LTS_ONLY_SPECS);
 const chromiumOnlySpecs = toGlobs(CHROMIUM_ONLY_SPECS);
-const webkitIgnoredSpecs = toGlobs(WEBKIT_IGNORED_SPECS);
 const prdOnlySpecs = toGlobs(PRD_ONLY_SPECS);
 const devOnlySpecs = toGlobs(DEV_ONLY_SPECS);
 const ecosystemCiIgnoredSpecs = toGlobs(ECOSYSTEM_CI_IGNORED_SPECS);
@@ -70,7 +68,6 @@ const config = defineConfig<TestOptions>({
       testIgnore: [
         ...(e2eSuite === 'full-matrix' ? ubuntuLtsOnlySpecs : []),
         ...(item.name === 'chromium' ? [] : chromiumOnlySpecs),
-        ...(item.name === 'webkit' ? webkitIgnoredSpecs : []),
         ...prdOnlySpecs,
         ...(process.env.ECOSYSTEM_CI ? ecosystemCiIgnoredSpecs : []),
       ],
@@ -89,7 +86,6 @@ const config = defineConfig<TestOptions>({
       testIgnore: [
         ...(e2eSuite === 'full-matrix' ? ubuntuLtsOnlySpecs : []),
         ...(item.name === 'chromium' ? [] : chromiumOnlySpecs),
-        ...(item.name === 'webkit' ? webkitIgnoredSpecs : []),
         ...devOnlySpecs,
         ...(process.env.ECOSYSTEM_CI ? ecosystemCiIgnoredSpecs : []),
       ],

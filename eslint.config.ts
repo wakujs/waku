@@ -162,6 +162,13 @@ export default defineConfig(
   {
     ...playwright.configs['flat/recommended'],
     files: ['e2e/**'],
+    rules: {
+      ...playwright.configs['flat/recommended'].rules,
+      'playwright/expect-expect': [
+        'warn',
+        { assertFunctionNames: ['expect', 'waitForSelectorText'] },
+      ],
+    },
   },
   {
     files: ['packages/waku/src/**/*.{ts,tsx}'],
