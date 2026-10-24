@@ -69,7 +69,8 @@ export const cacheElementSource = (
       }
     : source;
 
-export const getSlotCacheId = (slotId: string): CacheId => `slot/${slotId}`;
+const getSlotCacheId = (slotId: string): CacheId => `slot/${slotId}`;
+export const getSlotCacheIdForTest = getSlotCacheId;
 
 export const getElementCacheId = (
   slotId: string,

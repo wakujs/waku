@@ -5,8 +5,8 @@ import {
   collectEtags,
 } from '../src/minimal/client-utils/element-etags.js';
 import {
-  PREFETCH_LIMIT,
-  PREFETCH_TTL,
+  PREFETCH_LIMIT_FOR_TEST,
+  PREFETCH_TTL_FOR_TEST,
   createPrefetchManager,
 } from '../src/router/client-core-utils/prefetch-cache.js';
 
@@ -63,7 +63,7 @@ describe('router prefetch manager', () => {
   });
 
   it('has a positive default ttl', () => {
-    expect(PREFETCH_TTL).toBeGreaterThan(0);
+    expect(PREFETCH_TTL_FOR_TEST).toBeGreaterThan(0);
   });
 
   it('dedupes by path and query within the ttl', () => {
@@ -98,13 +98,15 @@ describe('router prefetch manager', () => {
 
   it('bounds the cache at PREFETCH_LIMIT, evicting the oldest first', () => {
     const manager = createPrefetchManager();
-    for (let i = 0; i < PREFETCH_LIMIT + 5; i += 1) {
+    for (let i = 0; i < PREFETCH_LIMIT_FOR_TEST + 5; i += 1) {
       manager.prefetch('/p', String(i), pending, undefined);
     }
     expect(manager.get('/p', '0')).toBeUndefined();
     expect(manager.get('/p', '4')).toBeUndefined();
     expect(manager.get('/p', '5')).toBeDefined();
-    expect(manager.get('/p', String(PREFETCH_LIMIT + 4))).toBeDefined();
+    expect(
+      manager.get('/p', String(PREFETCH_LIMIT_FOR_TEST + 4)),
+    ).toBeDefined();
   });
 
   it('merges responses for the same rscPath in the store', async () => {
@@ -116,13 +118,15 @@ describe('router prefetch manager', () => {
 
   it('bounds the store at PREFETCH_LIMIT, evicting the oldest first', async () => {
     const manager = createPrefetchManager();
-    for (let i = 0; i < PREFETCH_LIMIT + 5; i += 1) {
+    for (let i = 0; i < PREFETCH_LIMIT_FOR_TEST + 5; i += 1) {
       await settle(manager, `/p${i}`, '', { i });
     }
     expect(manager.getElements('/p0')).toBeUndefined();
     expect(manager.getElements('/p4')).toBeUndefined();
     expect(manager.getElements('/p5')).toBeDefined();
-    expect(manager.getElements(`/p${PREFETCH_LIMIT + 4}`)).toBeDefined();
+    expect(
+      manager.getElements(`/p${PREFETCH_LIMIT_FOR_TEST + 4}`),
+    ).toBeDefined();
     // merging into an existing entry does not evict another one
     await settle(manager, '/p5', 'q=b', { j: 1 });
     expect(manager.getElements('/p5')).toEqual({ i: 5, j: 1 });

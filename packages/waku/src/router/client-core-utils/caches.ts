@@ -170,7 +170,7 @@ export type RouterCache = ReturnType<typeof createRouterCache>;
 
 const routerCaches = new WeakMap<FetchRsc, RouterCache>();
 
-export const getRouterCache = (fetchRsc: FetchRsc): RouterCache => {
+const getRouterCache = (fetchRsc: FetchRsc): RouterCache => {
   let cache = routerCaches.get(fetchRsc);
   if (!cache) {
     cache = createRouterCache(fetchRsc);
@@ -178,6 +178,7 @@ export const getRouterCache = (fetchRsc: FetchRsc): RouterCache => {
   }
   return cache;
 };
+export const getRouterCacheForTest = getRouterCache;
 
 /**
  * Returns the Router cache of the enclosing Root. Outside a Root every caller

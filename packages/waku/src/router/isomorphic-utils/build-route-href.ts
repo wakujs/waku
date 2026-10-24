@@ -19,11 +19,12 @@ type AllowPathDecorators<Path extends string> = Path extends unknown
     | `#${string}`
   : never;
 
-export type RouteHref = RouteConfig extends {
+type RouteHref = RouteConfig extends {
   paths: infer UserPaths extends string;
 }
   ? AllowPathDecorators<UserPaths>
   : string;
+export type RouteHrefForTest = RouteHref;
 
 declare const constructedHref: unique symbol;
 

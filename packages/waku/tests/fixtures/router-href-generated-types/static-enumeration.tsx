@@ -1,7 +1,7 @@
 import { unstable_createRouteHref } from 'waku/router';
 import { Link, useRouter } from 'waku/router/client';
 import { unstable_redirect } from 'waku/router/server';
-import type { RouteHref } from '../../../src/router/isomorphic-utils/build-route-href.js';
+import type { RouteHrefForTest } from '../../../src/router/isomorphic-utils/build-route-href.js';
 
 const article = unstable_createRouteHref({ path: '/articles/[slug]' });
 const intro = unstable_createRouteHref({ path: '/articles/intro' });
@@ -24,7 +24,7 @@ export function StaticEnumerationProbe() {
   // @ts-expect-error route groups do not make unknown patterns valid
   void router.push(unknown({ params: { slug: 'intro' } }));
   // @ts-expect-error construction proves a pattern, not finite URL membership
-  const raw: RouteHref = unlisted;
+  const raw: RouteHrefForTest = unlisted;
   void raw;
   return (
     <>

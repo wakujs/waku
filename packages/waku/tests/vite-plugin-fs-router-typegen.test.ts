@@ -6,8 +6,8 @@ import { combinedPlugins } from '../src/lib/vite-plugins/combined-plugins.js';
 import {
   detectFsRouterUsage,
   generateFsRouterTypes,
-  getImportModuleNames,
-  toIdentifier,
+  getImportModuleNamesForTest,
+  toIdentifierForTest,
 } from '../src/lib/vite-plugins/fs-router-typegen.js';
 
 // Run every typegen test under a reversed readdir order to simulate a different
@@ -30,28 +30,28 @@ const fixturesDir = fileURLToPath(new URL('./fixtures', import.meta.url));
 
 describe('vite-plugin-fs-router-typegen', () => {
   test('generates valid module names for fs entries', async () => {
-    expect(toIdentifier('/_layout.tsx')).toBe('File_Layout');
-    expect(toIdentifier('/_root.tsx')).toBe('File_Root');
-    expect(toIdentifier('/[category]/[...tags]/index.tsx')).toBe(
+    expect(toIdentifierForTest('/_layout.tsx')).toBe('File_Layout');
+    expect(toIdentifierForTest('/_root.tsx')).toBe('File_Root');
+    expect(toIdentifierForTest('/[category]/[...tags]/index.tsx')).toBe(
       'File_CategoryTagsIndex',
     );
   });
 
   test('normalizes identifiers with punctuation and leading numbers', async () => {
-    expect(toIdentifier('foo.bar.baz.tsx')).toBe('File_FooBarBaz');
-    expect(toIdentifier('123abc.tsx')).toBe('File_123abc');
-    expect(toIdentifier('__double__underscore__.tsx')).toBe(
+    expect(toIdentifierForTest('foo.bar.baz.tsx')).toBe('File_FooBarBaz');
+    expect(toIdentifierForTest('123abc.tsx')).toBe('File_123abc');
+    expect(toIdentifierForTest('__double__underscore__.tsx')).toBe(
       'File_DoubleUnderscore',
     );
   });
 
   test('allows unicode characters in module names', async () => {
-    expect(toIdentifier('/øné_two_three.tsx')).toBe('File_ØnéTwoThree');
+    expect(toIdentifierForTest('/øné_two_three.tsx')).toBe('File_ØnéTwoThree');
   });
 
   test('handles collisions of fs entry module names', async () => {
     expect(
-      getImportModuleNames([
+      getImportModuleNamesForTest([
         '/one-two-three.tsx',
         '/one/two/three.tsx',
         '/one_two_three.tsx',
@@ -67,7 +67,7 @@ describe('vite-plugin-fs-router-typegen', () => {
 
   test('strips leading slashes when computing import module names', async () => {
     expect(
-      getImportModuleNames(['/foo.tsx', '/foo.jsx', 'bar/baz.tsx']),
+      getImportModuleNamesForTest(['/foo.tsx', '/foo.jsx', 'bar/baz.tsx']),
     ).toEqual({
       'foo.tsx': 'File_Foo',
       'foo.jsx': 'File_Foo_1',

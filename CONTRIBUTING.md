@@ -136,8 +136,8 @@ incomplete.
   safe.
 - Await or return promises. Do not leave asynchronous work floating.
 - Normalize configuration and optional inputs once near the boundary.
-- Prefer `function` declarations for exported functions and `const` arrow
-  functions for internal ones.
+- Prefer `function` declarations for functions exported for production and
+  `const` arrow functions for the rest, including exports only tests use.
 - In client code, positional parameters and tuples can be deliberate because
   they minify better than object properties. Do not convert them to objects for
   style alone. In server code, prefer objects unless a tuple has a concrete
@@ -150,7 +150,8 @@ collision, or client bundle size can justify an exception.
 
 - Give one concept one name, and use it across variables, properties, types,
   and filenames. Do not introduce a synonym for an established term.
-- Name functions with verbs.
+- Name functions with verbs. A component, Vite plugin factory, middleware, or
+  RSC enhancer is named for its role.
 - Name operations and results, not stages in the control flow. Avoid helpers and
   variables that only narrate the current step.
 - Name a map or record that looks up values by key `valuesByKey`, with words
@@ -162,8 +163,11 @@ collision, or client bundle size can justify an exception.
 - Avoid shadowing an outer binding.
 - Import a binding under its exported name. Rename an import only to resolve a
   real collision or to drop an unstable marker.
-- An export that exists only for tests ends in `ForTest`, such as
-  `dedupeHeadMetadataForTest`.
+- An export that exists only for tests ends in `ForTest`, or `_FOR_TEST` for a
+  constant. When the module also uses the binding, keep its plain name and add
+  a separate exported declaration next to it, such as
+  `export const doFooForTest = doFoo;`, `export const FOO_FOR_TEST = FOO;`, or
+  `export type FooForTest = Foo;`. Do not add the suffix with an export alias.
 - Name a component module in kebab case after its component, such as
   `foo-bar.tsx` for `FooBar`. Files whose names define routes follow the
   router's file conventions.

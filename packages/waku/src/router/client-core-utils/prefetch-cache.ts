@@ -22,10 +22,12 @@ type PrefetchCache = Map<string, PrefetchEntry>;
 // null = first prefetch still in flight; served under the etag protocol
 type PrefetchedElementsCache = Map<string, Elements | null>;
 
-export const PREFETCH_TTL = 1000 * 60;
-export const PREFETCH_LIMIT = 100;
+const PREFETCH_TTL = 1000 * 60;
+export const PREFETCH_TTL_FOR_TEST = PREFETCH_TTL;
+const PREFETCH_LIMIT = 100;
+export const PREFETCH_LIMIT_FOR_TEST = PREFETCH_LIMIT;
 
-const prefetchCacheKey = (rscPath: string, query: string): string =>
+const getPrefetchCacheKey = (rscPath: string, query: string): string =>
   rscPath + '\0' + query;
 
 const getPrefetch = (
@@ -123,7 +125,11 @@ export const createPrefetchManager = (): PrefetchManager => {
         options,
       ),
     get: (rscPath, query) =>
-      getPrefetch(prefetchCache, prefetchCacheKey(rscPath, query), Date.now()),
+      getPrefetch(
+        prefetchCache,
+        getPrefetchCacheKey(rscPath, query),
+        Date.now(),
+      ),
     getElements: (rscPath) => prefetchedElementsCache.get(rscPath) ?? undefined,
     clear: () => {
       // replace the maps so an in-flight prefetch completes into detached ones
@@ -149,7 +155,7 @@ const startPrefetch = (
   }
   // Keep an already-resolved response within the ttl instead of replacing it
   // with an in-flight one.
-  const key = prefetchCacheKey(rscPath, query);
+  const key = getPrefetchCacheKey(rscPath, query);
   const now = Date.now();
   if (getPrefetch(prefetchCache, key, now)) {
     return;

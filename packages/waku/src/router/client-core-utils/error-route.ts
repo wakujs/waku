@@ -33,7 +33,7 @@ export const isFollowable = (error: unknown) => {
  */
 export const MAX_FOLLOWS_PER_NAVIGATION = 20;
 
-export const resolveErrorRoute = (
+const resolveErrorRoute = (
   error: unknown,
   requestedUrl: URL,
   has404: boolean,
@@ -71,6 +71,7 @@ export const resolveErrorRoute = (
   }
   return { type: 'none' };
 };
+export const resolveErrorRouteForTest = resolveErrorRoute;
 
 export type FollowDecision =
   | { type: 'follow'; target: RouteProps; url: URL }

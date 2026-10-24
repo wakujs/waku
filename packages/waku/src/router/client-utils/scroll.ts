@@ -11,7 +11,7 @@ const decodeHash = (raw: string) =>
     }
   });
 
-export const getHashElement = (hash: string): HTMLElement | null => {
+const getHashElement = (hash: string): HTMLElement | null => {
   const raw = hash.slice(1);
   const decoded = decodeHash(raw);
   for (const name of new Set([raw, decoded])) {
@@ -28,6 +28,7 @@ export const getHashElement = (hash: string): HTMLElement | null => {
   }
   return decoded.toLowerCase() === 'top' ? document.documentElement : null;
 };
+export const getHashElementForTest = getHashElement;
 
 export const scrollToHash = (
   hash: string,

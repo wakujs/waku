@@ -22,7 +22,7 @@ const DO_NOT_BUNDLE = '';
 
 const PRUNABLE_KEY_PREFIX = '\0__prunable__/';
 
-const emptyStream = () =>
+const createEmptyStream = () =>
   new ReadableStream<Uint8Array>({
     start(controller) {
       controller.close();
@@ -110,7 +110,7 @@ export default createServerEntryAdapter(
         await processBuild({
           emitFile,
           unstable_registerPrunableFile: (srcPath) =>
-            emitFile(PRUNABLE_KEY_PREFIX + srcPath, emptyStream()),
+            emitFile(PRUNABLE_KEY_PREFIX + srcPath, createEmptyStream()),
         });
       });
 

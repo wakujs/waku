@@ -3,7 +3,7 @@
 import { expect, test, vi } from 'vitest';
 import type { Unstable_RscEnhancer } from '../src/minimal/client.js';
 import { createActionRouting } from '../src/router/client-core-utils/action-routing.js';
-import { getRouterCache } from '../src/router/client-core-utils/caches.js';
+import { getRouterCacheForTest } from '../src/router/client-core-utils/caches.js';
 import {
   ACTION_LOCATION_HEADER,
   IS_ORIGIN_ID,
@@ -15,7 +15,7 @@ import {
 vi.mock('react-server-dom-webpack/client', () => ({ default: {} }));
 
 const createConnection = (path: string) => ({
-  cache: getRouterCache(async () => ({})),
+  cache: getRouterCacheForTest(async () => ({})),
   getSettledRoute: () => ({ path, query: 'q=1', hash: '' }),
   getPendingRoute: () => undefined,
   onRouteChange: vi.fn(),

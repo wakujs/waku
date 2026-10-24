@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import * as minimalClient from '../src/minimal/client.js';
-import { getRouterCache } from '../src/router/client-core-utils/caches.js';
+import { getRouterCacheForTest } from '../src/router/client-core-utils/caches.js';
 import type { FetchRsc } from '../src/router/client-core-utils/caches.js';
 import { RouterContext } from '../src/router/client-utils/router-context.js';
 import type { ChangeRoute } from '../src/router/client-utils/router-context.js';
@@ -54,7 +54,7 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => roots.splice(0).forEach((root) => root.unmount()));
   document.body.replaceChildren();
-  getRouterCache(fetchRsc).clearCaches();
+  getRouterCacheForTest(fetchRsc).clearCaches();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
@@ -109,7 +109,10 @@ describe('string-producing factories with ordinary navigation', () => {
 
   test('Link hover prefetch and click preserve the encoded href under the base', async () => {
     const builtHref = buildHref();
-    const prefetchRoute = vi.spyOn(getRouterCache(fetchRsc), 'prefetchRoute');
+    const prefetchRoute = vi.spyOn(
+      getRouterCacheForTest(fetchRsc),
+      'prefetchRoute',
+    );
     const { container, changeRoute } = await mount(
       <>
         <Link to={href} unstable_prefetchOnEnter={{ mode: 'once' }}>
@@ -157,7 +160,10 @@ describe('string-producing factories with ordinary navigation', () => {
 
   test('useRouter push, replace and prefetch accept both factory output and ordinary strings', async () => {
     const builtHref = buildHref();
-    const prefetchRoute = vi.spyOn(getRouterCache(fetchRsc), 'prefetchRoute');
+    const prefetchRoute = vi.spyOn(
+      getRouterCacheForTest(fetchRsc),
+      'prefetchRoute',
+    );
     const { router, changeRoute } = await mount();
 
     await act(async () => {
