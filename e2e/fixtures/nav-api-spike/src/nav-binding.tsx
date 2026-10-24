@@ -304,7 +304,7 @@ const NavBinding = ({
       return;
     }
     if (outcome.type === 'leave') {
-      window.location.replace(outcome.url.href);
+      window.location.replace(outcome.location.href);
       return;
     }
     setFollows(outcome.follows);

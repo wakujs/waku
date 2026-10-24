@@ -52,7 +52,9 @@ describe('load', () => {
     const outcome = await cache.load(route('/next'), baseOpts());
     expect(outcome).toEqual({
       type: 'leave',
-      url: new URL('https://other.example/done'),
+      url: new URL('http://localhost/next'),
+      follows: 0,
+      location: new URL('https://other.example/done'),
     });
     expect(fetchRsc).toHaveBeenCalledOnce();
     expect(window.location.href).toBe(href);

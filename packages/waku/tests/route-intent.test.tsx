@@ -702,6 +702,193 @@ test('an absolute intent leaves once without fetching its destination', async ()
   expect(vi.mocked(fetch).mock.calls).toHaveLength(requests);
 });
 
+test.each(['push', 'replace'] as const)(
+  'a ready absolute redirect preserves the %s history intent',
+  async (mode) => {
+    mocks.queue.push(payload('/one'));
+    await mount();
+    const initialLength = window.history.length;
+    let atLeave: { href: string; length: number } | undefined;
+    const leave = vi
+      .spyOn(window.location, 'replace')
+      .mockImplementation(() => {
+        atLeave = { href: window.location.href, length: window.history.length };
+      });
+    mocks.queue.push(
+      payload(
+        '/gate',
+        Promise.resolve(
+          JSON.stringify({
+            status: 307,
+            location: 'https://other.example/done',
+          }),
+        ),
+      ),
+    );
+    await act(async () => {
+      await controls.router[mode]('/gate');
+      await flush();
+    });
+    expect(atLeave).toEqual({
+      href: new URL('/gate', window.location.origin).href,
+      length: initialLength + (mode === 'push' ? 1 : 0),
+    });
+    expect(leave).toHaveBeenCalledExactlyOnceWith('https://other.example/done');
+  },
+);
+
+test('an instant redirect chain replaces its already committed entry before leaving', async () => {
+  mocks.queue.push({
+    ...payload('/one'),
+    [getRouteSlotId('/gate')]: <p>Cached gate</p>,
+    [ETAGS_ID]: { root: 1, [getRouteSlotId('/gate')]: 1 },
+  });
+  const view = await mount();
+  const initialLength = window.history.length;
+  let atLeave: { href: string; length: number } | undefined;
+  const leave = vi.spyOn(window.location, 'replace').mockImplementation(() => {
+    atLeave = { href: window.location.href, length: window.history.length };
+  });
+  const incoming = defer<Elements>();
+  mocks.queue.push(
+    incoming.promise,
+    payload(
+      '/relay',
+      Promise.resolve(
+        JSON.stringify({
+          status: 307,
+          location: 'https://other.example/done',
+        }),
+      ),
+    ),
+  );
+  let navigating!: Promise<void>;
+  await act(async () => {
+    navigating = controls.router.push('/gate', { unstable_instant: true });
+    await flush();
+  });
+  expect(view.textContent).toContain('Cached gate');
+  expect(window.location.pathname).toBe('/gate');
+  expect(window.history.length).toBe(initialLength + 1);
+  await act(async () => {
+    incoming.resolve(
+      payload(
+        '/gate',
+        Promise.resolve(
+          JSON.stringify({
+            status: 307,
+            location: '/relay',
+          }),
+        ),
+      ),
+    );
+    await navigating;
+    await flush();
+  });
+  expect(atLeave).toEqual({
+    href: new URL('/relay', window.location.origin).href,
+    length: initialLength + 1,
+  });
+  expect(leave).toHaveBeenCalledExactlyOnceWith('https://other.example/done');
+});
+
+test('partial intent observers belong to their Root and survive another Router unmounting', async () => {
+  const cachesByName = new Map<string, ReturnType<typeof useRouterCache>>();
+  const CaptureCache = ({ name }: { name: string }) => {
+    const cache = useRouterCache();
+    useLayoutEffect(() => {
+      cachesByName.set(name, cache);
+    }, [cache, name]);
+    return null;
+  };
+  mocks.queue.push(
+    {
+      ...payload('/one'),
+      root: (
+        <>
+          <CaptureCache name="first" />
+          <Children />
+        </>
+      ),
+    },
+    {
+      ...payload('/two'),
+      root: (
+        <>
+          <CaptureCache name="second" />
+          <Children />
+        </>
+      ),
+    },
+  );
+  const view = document.createElement('div');
+  document.body.append(view);
+  root = createRoot(view, { onCaughtError: () => {} });
+  const second = (
+    <section data-root="second">
+      <Suspense fallback={null}>
+        <Router initialRoute={{ path: '/two', query: '', hash: '' }} />
+      </Suspense>
+    </section>
+  );
+  await act(async () => {
+    root!.render(
+      <>
+        <section data-root="first">
+          <Suspense fallback={null}>
+            <Router initialRoute={{ path: '/one', query: '', hash: '' }} />
+          </Suspense>
+        </section>
+        {second}
+      </>,
+    );
+    await flush();
+  });
+  mocks.queue.push(
+    {
+      [INTENT_ID]: Promise.resolve(
+        JSON.stringify({ status: 307, location: '/done' }),
+      ),
+    },
+    payload('/done'),
+  );
+  await act(async () => {
+    await cachesByName.get('first')!.fetchRsc(encodeSliceId('sidebar'));
+    await flush();
+  });
+  expect(view.querySelector('[data-root="first"]')?.textContent).toContain(
+    'Page /done',
+  );
+  expect(view.querySelector('[data-root="second"]')?.textContent).toContain(
+    'Page /two',
+  );
+  await act(async () => {
+    root!.render(
+      <>
+        {null}
+        {second}
+      </>,
+    );
+    await flush();
+  });
+  mocks.queue.push(
+    {
+      [INTENT_ID]: Promise.resolve(
+        JSON.stringify({ status: 307, location: '/last' }),
+      ),
+    },
+    payload('/last'),
+  );
+  await act(async () => {
+    await cachesByName.get('second')!.fetchRsc(encodeSliceId('sidebar'));
+    await flush();
+  });
+  expect(view.querySelector('[data-root="second"]')?.textContent).toContain(
+    'Page /last',
+  );
+  expect(window.location.pathname).toBe('/last');
+});
+
 test.each([false, true])(
   'an HTTP 404 renders the custom page at the requested URL (instant: %s)',
   async (instant) => {

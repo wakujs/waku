@@ -351,17 +351,17 @@ export const useNavigation = (
           requestRef.current = undefined;
           return {};
         }
-        if (outcome.type === 'leave') {
-          requestRef.current = undefined;
-          window.location.replace(outcome.url.href);
-          return {};
-        }
         const historyIntent =
           instantResponse &&
           outcome.follows > initialFollows &&
           options.history !== null
             ? 'replace'
             : options.history;
+        if (outcome.type === 'leave') {
+          commitHistory(outcome.url, historyIntent);
+          window.location.replace(outcome.location.href);
+          return {};
+        }
         if (outcome.type === 'failed') {
           const { error } = outcome;
           commitHistory(outcome.url, historyIntent);

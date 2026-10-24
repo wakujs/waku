@@ -119,6 +119,9 @@ Router-managed slice fetches and actions observe their intents in the originatin
 route's scope. Minimal's `useFetchRsc_UNSTABLE` only returns response data; custom
 integrations own the routing decisions for requests they make directly.
 
+Each Router owns its Minimal Root and that Root's intent observer. Separate
+Router instances keep their observers separate, including during unmount cleanup.
+
 The client uses `HAS404` to decide whether a not-found intent follows `/404` or
 shows its generic fallback. Follow decisions share loop detection and a
 navigation budget through `unstable_decideRouteIntent`. Absolute destinations
@@ -235,13 +238,13 @@ each attempt's route, intended browser URL, and follow count, plus the cancellat
 signal. It can supply `unstable_base` to `fetchRsc` for etag reuse when the binding
 retains the corresponding elements.
 
-| Outcome   | Binding responsibility                                                     |
-| --------- | -------------------------------------------------------------------------- |
-| `loaded`  | Reconcile response metadata and queue its elements with navigation intent. |
-| `reused`  | Retain existing content and queue the requested route metadata and intent. |
-| `failed`  | Present the error at the attempted URL.                                    |
-| `aborted` | Discard the result.                                                        |
-| `leave`   | Replace the document location with the returned URL.                       |
+| Outcome   | Binding responsibility                                                                                    |
+| --------- | --------------------------------------------------------------------------------------------------------- |
+| `loaded`  | Reconcile response metadata and queue its elements with navigation intent.                                |
+| `reused`  | Retain existing content and queue the requested route metadata and intent.                                |
+| `failed`  | Present the error at the attempted URL.                                                                   |
+| `aborted` | Discard the result.                                                                                       |
+| `leave`   | Commit the attempt's `url` with the navigation's history mode, then replace the document with `location`. |
 
 A callback returns `undefined` only to reuse usable content already in this Root.
 An unmatched route uses the custom page when available. With no custom page,

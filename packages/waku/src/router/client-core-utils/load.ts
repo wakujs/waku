@@ -56,7 +56,7 @@ export type LoadOutcome =
       follows: number;
     }
   | { type: 'aborted' }
-  | { type: 'leave'; url: URL };
+  | { type: 'leave'; url: URL; follows: number; location: URL };
 
 /** A payload-bearing outcome; does not imply that React has committed it. */
 export type Loaded = Extract<LoadOutcome, { type: 'loaded' }>;
@@ -96,8 +96,9 @@ export const abortable = <T>(
 /**
  * Fetches a route through the supplied callback without merging elements or
  * updating browser state. Ready intents and HTTP 404s follow within the navigation
- * budget before returning a payload. `leave` asks the binding to replace the
- * document location. Cancellation stops waiting even if the callback ignores its
+ * budget before returning a payload. `leave` carries the attempted `url` and
+ * external `location`; the binding commits history before replacing the document.
+ * Cancellation stops waiting even if the callback ignores its
  * signal. Pending intents do not delay loading; the binding observes them after
  * committing and reconciles the final response's route metadata.
  *
@@ -158,7 +159,12 @@ export const load = async (
               });
             }
             if (decision.type === 'leave') {
-              return decision;
+              return {
+                type: 'leave',
+                url: attempt.url,
+                follows: attempt.follows,
+                location: decision.url,
+              };
             }
             if (decision.type === 'stop') {
               throw decision.error;

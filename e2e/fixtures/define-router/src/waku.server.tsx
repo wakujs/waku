@@ -141,6 +141,10 @@ const routerOptions: Parameters<typeof defineRouter>[0] = {
     if (path === '/typed-redirect') {
       redirect(fooRoute({ search: { q: 'redirected' } }));
     }
+    if (path === '/absolute-redirect') {
+      requestRedirect(new URL('/api/hi', getRequest().url));
+      cancelRender();
+    }
     if (path === '/api/hi') {
       return async (req) => {
         if (req.method === 'GET') {

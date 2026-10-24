@@ -170,6 +170,28 @@ test.describe(`define-router`, () => {
     await expect(page).toHaveURL(`http://localhost:${port}/foo?q=redirected`);
   });
 
+  for (const mode of ['Push', 'Replace'] as const) {
+    test(`a ready absolute redirect preserves ${mode.toLowerCase()} history when going back`, async ({
+      page,
+    }) => {
+      await page.goto(`http://localhost:${port}/foo`);
+      await page.goto(`http://localhost:${port}/`);
+      await waitForHydration(page);
+      await page
+        .getByRole('button', { name: `${mode} absolute redirect` })
+        .click();
+      await expect(page).toHaveURL(`http://localhost:${port}/api/hi`);
+      await expect(page.locator('body')).toHaveText('hello world!');
+      await page.goBack();
+      await expect(page).toHaveURL(
+        `http://localhost:${port}/${mode === 'Push' ? '' : 'foo'}`,
+      );
+      await expect(
+        page.getByTestId(mode === 'Push' ? 'home-title' : 'foo-title'),
+      ).toHaveText(mode === 'Push' ? 'Home' : 'Foo');
+    });
+  }
+
   test('typed hrefs render and navigate from a Server Component', async ({
     page,
   }) => {
