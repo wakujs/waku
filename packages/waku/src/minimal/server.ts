@@ -3,6 +3,7 @@ import type { buildElements } from '../lib/utils-server/build-elements.js';
 export {
   cancelRender as unstable_cancelRender,
   cancelRenderStream as unstable_cancelRenderStream,
+  hasRenderCancellationDigest as unstable_hasRenderCancellationDigest,
   isRenderCancellation as unstable_isRenderCancellation,
 } from '../lib/utils-isomorphic/render-cancellation.js';
 export { createWeakPromise as unstable_createWeakPromise } from '../lib/utils-server/weak-promise.js';

@@ -1,6 +1,6 @@
 import { Component } from 'react';
 import type { ContextType, ErrorInfo, ReactNode } from 'react';
-import { unstable_isRenderCancellation as isRenderCancellation } from 'waku/minimal/client';
+import { unstable_hasRenderCancellationDigest as hasRenderCancellationDigest } from 'waku/minimal/client';
 import { RouterHostContext } from './host.js';
 
 export const isNotFoundError = (error: unknown) =>
@@ -66,7 +66,7 @@ export class ErrorBoundary extends Component<
   render() {
     if (this.state.failure) {
       const { error } = this.state.failure;
-      if (isRenderCancellation(error)) {
+      if (hasRenderCancellationDigest(error)) {
         throw error;
       }
       return renderError(

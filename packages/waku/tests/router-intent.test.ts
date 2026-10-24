@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { unstable_isRenderCancellation as isRenderCancellation } from '../src/minimal/server.js';
+import {
+  unstable_hasRenderCancellationDigest as hasRenderCancellationDigest,
+  unstable_isRenderCancellation as isRenderCancellation,
+} from '../src/minimal/server.js';
 import { createElementCache } from '../src/router/define-router-utils/element-cache.js';
 import {
   getRouteIntent,
@@ -233,7 +236,7 @@ describe('intent metadata', () => {
     );
     await withinRequest(async () => {
       await expect(restored.get('slot/cancelled')).rejects.toSatisfy(
-        isRenderCancellation,
+        hasRenderCancellationDigest,
       );
       expect(getRouteIntent().value).toEqual({ status: 404 });
     });

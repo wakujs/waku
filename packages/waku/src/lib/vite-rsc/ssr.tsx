@@ -11,7 +11,7 @@ import htmlTransform from 'virtual:vite-rsc-waku/html-transform';
 // Layering rule: src/lib must not import src modules outside src/lib.
 // Exception: SSR must share Minimal's slot context.
 import { INTERNAL_ServerRoot } from '../../minimal/client-runtime.js';
-import { isRenderCancellation } from '../utils-isomorphic/render-cancellation.js';
+import { hasRenderCancellationDigest } from '../utils-isomorphic/render-cancellation.js';
 import { batchReadableStream } from '../utils-isomorphic/stream.js';
 import {
   createBootstrapScriptContent,
@@ -101,7 +101,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
       ...(options.formState ? { formState: options.formState } : {}),
     });
   } catch (e) {
-    status = isRenderCancellation(e) ? undefined : 500;
+    status = hasRenderCancellationDigest(e) ? undefined : 500;
     // SSR empty html and go full CSR on browser, which can revive RSC errors.
     const ssrErrorRoot = (
       <html>

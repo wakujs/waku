@@ -1,6 +1,7 @@
 import {
   unstable_cancelRender as cancelRender,
   unstable_cancelRenderStream as cancelRenderStream,
+  unstable_hasRenderCancellationDigest as hasRenderCancellationDigest,
   unstable_isRenderCancellation as isRenderCancellation,
 } from 'waku/minimal/server';
 import type {
@@ -427,7 +428,7 @@ export const createRequestHandler = ({
             return await renderPage(pathname, query, 200, resolved);
           }
         } catch (e) {
-          if (!isRenderCancellation(e)) {
+          if (!isRenderCancellation(e) && !hasRenderCancellationDigest(e)) {
             throw e;
           }
           return renderCancelledRequest();

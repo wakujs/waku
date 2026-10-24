@@ -29,7 +29,7 @@ const clientExports = [
   'Root_UNSTABLE',
   'Slot_UNSTABLE',
   'unstable_combineElements',
-  'unstable_isRenderCancellation',
+  'unstable_hasRenderCancellationDigest',
   'unstable_formatRscUrl',
   'unstable_isImmutableElement',
   'useElementsPromise_UNSTABLE',
@@ -44,6 +44,7 @@ const serverExports = [
   'unstable_cancelRenderStream',
   'unstable_createWeakPromise',
   'unstable_formatRscUrl',
+  'unstable_hasRenderCancellationDigest',
   'unstable_isRenderCancellation',
   'unstable_parseRequest',
 ];

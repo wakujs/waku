@@ -1,4 +1,4 @@
-import { isRenderCancellation } from './lib/utils-isomorphic/render-cancellation.js';
+import { hasRenderCancellationDigest } from './lib/utils-isomorphic/render-cancellation.js';
 
 // Experimental, the name and the behavior might change.
 export const unstable_allowServer = <T>(x: T) => x;
@@ -7,7 +7,7 @@ export const unstable_allowServer = <T>(x: T) => x;
 export const unstable_defaultRootOptions = {
   onCaughtError(error: unknown) {
     if (
-      isRenderCancellation(error) ||
+      hasRenderCancellationDigest(error) ||
       (error instanceof Error &&
         error.cause instanceof Response &&
         error.cause.status === 404)

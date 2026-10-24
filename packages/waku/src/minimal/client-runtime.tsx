@@ -517,4 +517,4 @@ export const INTERNAL_ServerRoot = ({
   </RootStoreContext>
 );
 
-export { isRenderCancellation as unstable_isRenderCancellation } from '../lib/utils-isomorphic/render-cancellation.js';
+export { hasRenderCancellationDigest as unstable_hasRenderCancellationDigest } from '../lib/utils-isomorphic/render-cancellation.js';

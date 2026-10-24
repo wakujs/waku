@@ -3,23 +3,33 @@ const cancellation = Symbol('waku.render-cancellation');
 const CANCEL_RENDER_DIGEST = 'WAKU_CANCEL_RENDER';
 
 /**
- * Recognizes both a local server cancellation signal and its Flight-decoded error.
- * Catch blocks and error boundaries must rethrow these to preserve cancellation.
+ * Recognizes the local signal thrown by `cancelRender`. Server catch blocks
+ * must rethrow it to preserve cancellation. Decoded Flight errors use
+ * `hasRenderCancellationDigest`.
  */
 export function isRenderCancellation(error: unknown): boolean {
+  return error === cancellation;
+}
+
+/**
+ * Recognizes a cancellation after Flight decoding. Custom error boundaries
+ * must rethrow it so the enclosing Slot can retain its previous content.
+ */
+export function hasRenderCancellationDigest(error: unknown): boolean {
   return (
-    error === cancellation ||
-    (typeof error === 'object' &&
-      error !== null &&
-      'digest' in error &&
-      error.digest === CANCEL_RENDER_DIGEST)
+    typeof error === 'object' &&
+    error !== null &&
+    'digest' in error &&
+    error.digest === CANCEL_RENDER_DIGEST
   );
 }
 
 export function getDigestIfRenderCancellation(
   error: unknown,
 ): string | undefined {
-  return isRenderCancellation(error) ? CANCEL_RENDER_DIGEST : undefined;
+  return isRenderCancellation(error) || hasRenderCancellationDigest(error)
+    ? CANCEL_RENDER_DIGEST
+    : undefined;
 }
 
 /**

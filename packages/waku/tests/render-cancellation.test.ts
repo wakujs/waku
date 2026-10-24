@@ -3,6 +3,7 @@ import {
   cancelRender,
   cancelRenderStream,
   getDigestIfRenderCancellation,
+  hasRenderCancellationDigest,
   isRenderCancellation,
 } from '../src/lib/utils-isomorphic/render-cancellation.js';
 
@@ -17,10 +18,11 @@ test('a private cancellation symbol and its Flight error share a digest', () => 
   expect(Symbol.keyFor(cancellation as symbol)).toBeUndefined();
   const digest = getDigestIfRenderCancellation(cancellation);
   expect(isRenderCancellation(cancellation)).toBe(true);
+  expect(hasRenderCancellationDigest(cancellation)).toBe(false);
   expect(digest).toBe('WAKU_CANCEL_RENDER');
-  expect(
-    isRenderCancellation(Object.assign(new Error('Flight error'), { digest })),
-  ).toBe(true);
+  const decoded = Object.assign(new Error('Flight error'), { digest });
+  expect(isRenderCancellation(decoded)).toBe(false);
+  expect(hasRenderCancellationDigest(decoded)).toBe(true);
   expect(
     getDigestIfRenderCancellation(
       Object.assign(new Error('Flight error'), { digest }),
@@ -36,6 +38,9 @@ test('a private cancellation symbol and its Flight error share a digest', () => 
     getDigestIfRenderCancellation(new Error('application error')),
   ).toBeUndefined();
   expect(isRenderCancellation(new Error('application error'))).toBe(false);
+  expect(hasRenderCancellationDigest(new Error('application error'))).toBe(
+    false,
+  );
   expect(
     getDigestIfRenderCancellation({ digest: 'unrelated' }),
   ).toBeUndefined();

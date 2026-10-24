@@ -1,5 +1,6 @@
 import {
   unstable_cancelRender as cancelRender,
+  unstable_hasRenderCancellationDigest as hasRenderCancellationDigest,
   unstable_isRenderCancellation as isRenderCancellation,
 } from 'waku/minimal/server';
 import type { Unstable_Handlers as Handlers } from 'waku/minimal/server';
@@ -209,7 +210,10 @@ export function unstable_defineRouter(fns: RouterOptions): Handlers {
           fn,
         )();
       } catch (error) {
-        if (!isRenderCancellation(error) || !onCancel) {
+        if (
+          !onCancel ||
+          (!isRenderCancellation(error) && !hasRenderCancellationDigest(error))
+        ) {
           throw error;
         }
         return getRouteIntent().runInContext(() =>

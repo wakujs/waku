@@ -1,6 +1,6 @@
 import { Component } from 'react';
 import type { ReactNode } from 'react';
-import { isRenderCancellation } from '../../lib/utils-isomorphic/render-cancellation.js';
+import { hasRenderCancellationDigest } from '../../lib/utils-isomorphic/render-cancellation.js';
 
 export class CancelRenderBoundary extends Component<
   { element: unknown; children: (element: unknown) => ReactNode },
@@ -36,7 +36,7 @@ export class CancelRenderBoundary extends Component<
 
   render() {
     const failure = this.state.failure;
-    if (failure && !isRenderCancellation(failure.error)) {
+    if (failure && !hasRenderCancellationDigest(failure.error)) {
       throw failure.error;
     }
     return this.props.children(
