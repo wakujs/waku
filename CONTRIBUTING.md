@@ -203,10 +203,12 @@ Paths and URLs:
 - `rscPath` identifies an RSC request, such as `R/posts/1`. It is not a URL
   path. `formatRscUrl` builds the URL that requests it.
 - `url` holds a `URL` object.
-- `href` is a URL string in the form an `<a href>` accepts. It resolves
-  against the document URL, so a root-relative `href` includes the base path.
+- `href` is a URL string in the form an `<a href>` accepts, resolved against
+  the document URL. A root-relative `href` must already include the base path
+  to point inside the app.
 - `routeHref` is a path with its query and hash, without the base path, such
-  as `/posts/1?tab=a#top`. `createRouteHref` returns route hrefs.
+  as `/posts/1?tab=a#top`. A query or hash alone, such as `?tab=a`, applies to
+  the current route. `createRouteHref` returns route hrefs.
 - `query` is a serialized query string without the leading `?`.
   `searchParams` is a `URLSearchParams`. `search` is the data a search codec
   parses from the query, and `searchCodec` is the codec.
