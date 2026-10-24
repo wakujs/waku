@@ -383,6 +383,32 @@ test('a partial intent is observed while the page intent remains pending', async
   page.resolve(null);
 });
 
+test('page, slice and action responses share observation of the same intent promise', async () => {
+  const pending = deferIntent();
+  const then = vi.spyOn(pending.promise, 'then');
+  mocks.queue.push(payload('/one', pending.promise));
+  const view = await mount();
+  mocks.queue.push(
+    { [INTENT_ID]: pending.promise, sidebar: 'updated' },
+    { [INTENT_ID]: pending.promise, _value: 'saved' },
+  );
+  await act(async () => {
+    await controls.merge(await controls.fetch(encodeSliceId('sidebar')));
+    expect(await unstable_callServerRsc('actions#save', [])).toBe('saved');
+    await flush();
+  });
+  expect(then).toHaveBeenCalledOnce();
+  const requests = vi.mocked(fetch).mock.calls.length;
+  mocks.queue.push(payload('/done'));
+  await act(async () => {
+    pending.resolve({ status: 307, location: '/done' });
+    await flush();
+  });
+  expect(view.textContent).toContain('Page /done');
+  expect(window.location.pathname).toBe('/done');
+  expect(vi.mocked(fetch).mock.calls).toHaveLength(requests + 1);
+});
+
 test('a Router cache fetch in an initial descendant layout effect observes its intent without a merge', async () => {
   const FetchOnMount = () => {
     const { fetchRsc } = useRouterCache();

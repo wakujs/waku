@@ -4,6 +4,11 @@ import {
 } from '../isomorphic-utils/route-path.js';
 import type { RouteIntentData } from '../isomorphic-utils/router-protocol.js';
 import {
+  getRouteFromElements,
+  has404FromElements,
+} from '../isomorphic-utils/router-protocol.js';
+import type { RouteIntentOutcome } from './observe-route-intent.js';
+import {
   getRouteUrl,
   isSameRscRoute,
   parseRedirectUrl,
@@ -27,16 +32,44 @@ type FollowRequest = {
 
 type FollowOptions = { has404: boolean; maxFollows: number };
 
+export function getRouteIntentDecision(
+  outcome: RouteIntentOutcome | undefined,
+  elements: Readonly<Record<string | symbol, unknown>>,
+  requested: FollowRequest,
+  has404 = false,
+) {
+  if (!outcome) {
+    return;
+  }
+  if ('error' in outcome) {
+    throw outcome.error;
+  }
+  if (outcome.value === undefined) {
+    return;
+  }
+  const intent = JSON.parse(outcome.value) as RouteIntentData;
+  if (
+    intent.status === 404 &&
+    getRouteFromElements(elements)?.path === '/404'
+  ) {
+    return;
+  }
+  return decideRouteIntent(intent, requested, {
+    has404: has404FromElements(elements) || has404,
+    maxFollows: MAX_FOLLOWS_PER_NAVIGATION,
+  });
+}
+
 /**
  * Decides how to follow a decoded `INTENT` value using the triggering route,
  * browser URL and preceding follow count. Absolute destinations leave the
  * document; relative destinations and custom 404s share the follow budget.
  */
-export const decideRouteIntent = (
+export function decideRouteIntent(
   intent: RouteIntentData,
   requested: FollowRequest,
   options: FollowOptions,
-): FollowDecision => {
+): FollowDecision {
   let target: RouteProps;
   let url: URL;
   const location = 'location' in intent ? intent.location : undefined;
@@ -85,4 +118,4 @@ export const decideRouteIntent = (
     };
   }
   return { type: 'follow', target, url };
-};
+}

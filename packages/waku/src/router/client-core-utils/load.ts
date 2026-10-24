@@ -1,14 +1,10 @@
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
-import {
-  INTENT_ID,
-  getRouteFromElements,
-  has404FromElements,
-} from '../isomorphic-utils/router-protocol.js';
-import type { RouteIntentData } from '../isomorphic-utils/router-protocol.js';
+import { INTENT_ID } from '../isomorphic-utils/router-protocol.js';
 import { getRouteIntentOutcome } from './observe-route-intent.js';
 import {
   MAX_FOLLOWS_PER_NAVIGATION,
   decideRouteIntent,
+  getRouteIntentDecision,
 } from './route-follow.js';
 import { getRouteUrl } from './route-url.js';
 
@@ -138,38 +134,29 @@ export const load = async (
         if (opts.signal.aborted) {
           return { type: 'aborted' };
         }
-        if (outcome && 'error' in outcome) {
-          throw outcome.error;
+        const decision = getRouteIntentDecision(
+          outcome,
+          elements,
+          attempt,
+          opts.has404,
+        );
+        if (decision?.type === 'follow') {
+          return run({
+            route: decision.target,
+            url: decision.url,
+            follows: attempt.follows + 1,
+          });
         }
-        if (outcome?.value !== undefined) {
-          const intent = JSON.parse(outcome.value) as RouteIntentData;
-          if (
-            intent.status !== 404 ||
-            getRouteFromElements(elements)?.path !== '/404'
-          ) {
-            const decision = decideRouteIntent(intent, attempt, {
-              has404: has404FromElements(elements) || opts.has404,
-              maxFollows: MAX_FOLLOWS_PER_NAVIGATION,
-            });
-            if (decision.type === 'follow') {
-              return run({
-                route: decision.target,
-                url: decision.url,
-                follows: attempt.follows + 1,
-              });
-            }
-            if (decision.type === 'leave') {
-              return {
-                type: 'leave',
-                url: attempt.url,
-                follows: attempt.follows,
-                location: decision.url,
-              };
-            }
-            if (decision.type === 'stop') {
-              throw decision.error;
-            }
-          }
+        if (decision?.type === 'leave') {
+          return {
+            type: 'leave',
+            url: attempt.url,
+            follows: attempt.follows,
+            location: decision.url,
+          };
+        }
+        if (decision?.type === 'stop') {
+          throw decision.error;
         }
       }
       return {

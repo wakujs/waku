@@ -1,8 +1,10 @@
 /** @vitest-environment happy-dom */
+import { createRequire } from 'node:module';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FetchRsc } from '../src/minimal/client-utils/root-store.js';
 import { getRouterCacheForTest } from '../src/router/client-core-utils/caches.js';
 import {
+  HAS404_ID,
   INTENT_ID,
   IS_STATIC_ID,
   ROUTE_ID,
@@ -11,6 +13,15 @@ import {
 } from '../src/router/isomorphic-utils/router-protocol.js';
 
 type Elements = Record<string, unknown>;
+
+const { createFromReadableStream } = createRequire(import.meta.url)(
+  'react-server-dom-webpack/client.edge',
+) as {
+  createFromReadableStream: (
+    stream: ReadableStream,
+    options: unknown,
+  ) => Promise<Elements>;
+};
 
 const fetchRsc = vi.fn<FetchRsc>();
 const cache = getRouterCacheForTest(fetchRsc);
@@ -75,6 +86,50 @@ describe('load', () => {
       type: 'failed',
       error: { message: 'detected a navigation loop' },
     });
+    expect(fetchRsc).toHaveBeenCalledOnce();
+  });
+
+  it('follows a ready intent decoded from Flight before returning the source route', async () => {
+    const intent = JSON.stringify({
+      status: 307,
+      location: 'https://other.example/done',
+    });
+    const elements = await createFromReadableStream(
+      new Response(
+        '0:{"ROUTE":["/next",""],"INTENT":"$@1"}\n1:' +
+          JSON.stringify(intent) +
+          '\n',
+      ).body!,
+      {
+        serverConsumerManifest: {
+          moduleMap: {},
+          serverModuleMap: {},
+          moduleLoading: null,
+        },
+      },
+    );
+    fetchRsc.mockResolvedValue(elements);
+
+    const outcome = await cache.load(route('/next'), baseOpts());
+
+    expect(outcome).toMatchObject({
+      type: 'leave',
+      location: new URL('https://other.example/done'),
+    });
+    expect(fetchRsc).toHaveBeenCalledOnce();
+  });
+
+  it('loads a custom 404 that requests not-found without following it again', async () => {
+    const elements = {
+      [ROUTE_ID]: ['/404', ''],
+      [HAS404_ID]: true,
+      [INTENT_ID]: Promise.resolve(JSON.stringify({ status: 404 })),
+    };
+    fetchRsc.mockResolvedValue(elements);
+
+    const outcome = await cache.load(route('/404'), baseOpts({ has404: true }));
+
+    expect(outcome).toMatchObject({ type: 'loaded', elements });
     expect(fetchRsc).toHaveBeenCalledOnce();
   });
 

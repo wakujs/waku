@@ -13,17 +13,12 @@ import {
 import { useRouterCache } from '../client-core-utils/caches.js';
 import { observeRouteIntent } from '../client-core-utils/observe-route-intent.js';
 import type { RouteIntentOutcome } from '../client-core-utils/observe-route-intent.js';
-import {
-  MAX_FOLLOWS_PER_NAVIGATION,
-  decideRouteIntent,
-} from '../client-core-utils/route-follow.js';
+import { getRouteIntentDecision } from '../client-core-utils/route-follow.js';
 import { parseRoute } from '../client-core-utils/route-url.js';
 import {
   INTENT_ID,
   getRouteFromElements,
-  has404FromElements,
 } from '../isomorphic-utils/router-protocol.js';
-import type { RouteIntentData } from '../isomorphic-utils/router-protocol.js';
 import { RouterContext } from './router-context.js';
 import { getRouterState } from './router-state.js';
 
@@ -60,13 +55,6 @@ export const RouteIntent = ({
       if (!router?.isCurrentRoute?.(source)) {
         return;
       }
-      if ('error' in outcome) {
-        onError(outcome.error, source);
-        return;
-      }
-      if (outcome.value === undefined) {
-        return;
-      }
       const state = getRouterState(source);
       if (
         followedStateByPromise.current.has(pending) &&
@@ -75,31 +63,23 @@ export const RouteIntent = ({
         return;
       }
       try {
-        const intent = JSON.parse(outcome.value) as RouteIntentData;
         const sourceRoute = getRouteFromElements(source);
-        if (intent.status === 404 && sourceRoute?.path === '/404') {
-          return;
-        }
-        followedStateByPromise.current.set(pending, state);
         const requestedUrl = new URL(
           state?.url ?? window.location.href,
           window.location.href,
         );
         const requested = state?.requested;
-        const decision = decideRouteIntent(
-          intent,
-          {
-            route: requested
-              ? { path: requested[0], query: requested[1] }
-              : (sourceRoute ?? parseRoute(requestedUrl)),
-            url: requestedUrl,
-            follows: state?.follows ?? 0,
-          },
-          {
-            has404: has404FromElements(source),
-            maxFollows: MAX_FOLLOWS_PER_NAVIGATION,
-          },
-        );
+        const decision = getRouteIntentDecision(outcome, source, {
+          route: requested
+            ? { path: requested[0], query: requested[1] }
+            : (sourceRoute ?? parseRoute(requestedUrl)),
+          url: requestedUrl,
+          follows: state?.follows ?? 0,
+        });
+        if (!decision) {
+          return;
+        }
+        followedStateByPromise.current.set(pending, state);
         if (decision.type === 'none') {
           onError(
             new Error('Not Found', {
@@ -163,7 +143,7 @@ export const RouteIntent = ({
         ) {
           return responseElements;
         }
-        const apply = (outcome: RouteIntentOutcome) => {
+        observeRouteIntent(pending, (outcome) => {
           if (
             mounted.current &&
             !signal?.aborted &&
@@ -171,11 +151,7 @@ export const RouteIntent = ({
           ) {
             settle(outcome, getElements(), pending);
           }
-        };
-        void Promise.resolve(pending).then(
-          (value) => apply({ value }),
-          (error: unknown) => apply({ error }),
-        );
+        });
         return combineElements({}, responseElements, {
           filter: (key) => key !== INTENT_ID,
         });
