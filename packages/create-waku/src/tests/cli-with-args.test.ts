@@ -88,7 +88,7 @@ const templateChooseCases = (() => {
   const templatesRootPath = path.join(import.meta.dirname, '../../templates');
   const templates = fs.readdirSync(templatesRootPath).sort();
 
-  const seenDependecies: Set<string>[] = [];
+  const seenDependencies: Set<string>[] = [];
 
   const cases: TemplateCaseArgs[] = [];
 
@@ -98,7 +98,7 @@ const templateChooseCases = (() => {
     const filePath = path.join(templatesRootPath, templateName, 'package.json');
     const dependencies = readDependencies(filePath);
     // filter templates so that only unique dependency combinations are tested
-    for (const seen of seenDependecies) {
+    for (const seen of seenDependencies) {
       if (
         dependencies.length === seen.size &&
         dependencies.every((item) => seen.has(item))
@@ -106,7 +106,7 @@ const templateChooseCases = (() => {
         return;
       }
     }
-    seenDependecies.push(new Set(dependencies));
+    seenDependencies.push(new Set(dependencies));
     cases.push({
       name: templateName,
       index: templateIndex,

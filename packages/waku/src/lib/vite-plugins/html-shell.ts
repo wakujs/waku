@@ -46,7 +46,7 @@ export function htmlShellPlugin(): Plugin {
         let html = `<html><body></body></html>`;
         if (this.environment.mode === 'dev') {
           if (fs.existsSync('index.html')) {
-            // TODO: inline script not invalidated propery?
+            // TODO: inline script not invalidated properly?
             this.addWatchFile(path.resolve('index.html'));
             html = fs.readFileSync('index.html', 'utf-8');
             html = await server!.transformIndexHtml('/', html);
