@@ -131,6 +131,20 @@ recorded intent, do not enable whole-route reuse. Their immutable elements still
 use etags and the server element cache. This keeps request-specific redirects,
 including action redirects, out of the static route cache.
 
+Whole-route reuse also requires every immutable source to have completed its
+element-cache render, including sources omitted on an etag hit. An uncached
+runtime route can still record an intent while Flight renders its components,
+so it requires a request on later visits. Build-preloaded routes and explicitly
+keyed sources can retain whole-route reuse. A cached static redirect replayed in
+a runtime response disables whole-route reuse too; prerendered files keep their
+build-time static metadata.
+
+Prerendered files can be served and reused without running runtime interceptors.
+Routes requiring authorization or another check on every request must be dynamic;
+an interceptor does not make a prerendered page private. Record an intent before
+calling `next()` when it must take effect: after `await next()`, Flight may have
+already closed its stream, and a later intent cannot reach the browser.
+
 On failure, retained elements can describe an earlier route. The attempted URL
 and error state belong to the client binding, not the server metadata.
 

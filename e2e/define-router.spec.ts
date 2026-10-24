@@ -32,6 +32,12 @@ test.describe(`define-router`, () => {
     test(`an interceptor redirect recorded ${when} rendering is not replayed after access changes`, async ({
       page,
     }) => {
+      const requests: string[] = [];
+      page.on('request', (request) => {
+        if (request.url().includes('/RSC/R/interceptor-cache')) {
+          requests.push(request.url());
+        }
+      });
       await page.setExtraHTTPHeaders({ 'x-waku-test-gate': when });
       await page.goto(`http://localhost:${port}/`);
       await waitForHydration(page);
@@ -41,16 +47,13 @@ test.describe(`define-router`, () => {
       await page.setExtraHTTPHeaders({ 'x-waku-test-gate': 'allow' });
       await clickSelector(page, 'a[href="/"]');
       await expect(page.getByTestId('home-title')).toHaveText('Home');
+      const response = page.waitForResponse('**/RSC/R/interceptor-cache*');
       await clickSelector(page, 'a[href="/interceptor-cache"]');
+      expect(await (await response).finished()).toBeNull();
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(
         'Allowed page',
       );
-      await page.evaluate(
-        () =>
-          new Promise<void>((resolve) =>
-            requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-          ),
-      );
+      expect(requests).toHaveLength(2);
       expect(page.url()).toBe(`http://localhost:${port}/interceptor-cache`);
     });
   }
@@ -58,23 +61,56 @@ test.describe(`define-router`, () => {
   test('a static action redirect does not become the next visit intent', async ({
     page,
   }) => {
+    const requests: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/RSC/R/action-static')) {
+        requests.push(request.url());
+      }
+    });
     await page.goto(`http://localhost:${port}/action-static`);
     await waitForHydration(page);
     await clickSelector(page, 'button[type="submit"]');
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');
     await clickSelector(page, 'a[href="/"]');
     await expect(page.getByTestId('home-title')).toHaveText('Home');
+    const response = page.waitForResponse('**/RSC/R/action-static*');
     await clickSelector(page, 'a[href="/action-static"]');
+    expect(await (await response).finished()).toBeNull();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
       'Static action page',
     );
-    await page.evaluate(
-      () =>
-        new Promise<void>((resolve) =>
-          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-        ),
-    );
+    expect(requests).toHaveLength(1);
     expect(page.url()).toBe(`http://localhost:${port}/action-static`);
+  });
+
+  test('an async component intent does not make an uncached runtime route reusable', async ({
+    page,
+  }) => {
+    const requests: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/RSC/R/async-cache')) {
+        requests.push(request.url());
+      }
+    });
+    await page.setExtraHTTPHeaders({ 'x-waku-test-gate': 'deny' });
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    await clickSelector(page, 'a[href="/async-cache"]');
+    await expect(page.getByTestId('foo-title')).toHaveText('Foo');
+
+    await page.setExtraHTTPHeaders({ 'x-waku-test-gate': 'allow' });
+    await clickSelector(page, 'a[href="/"]');
+    await expect(page.getByTestId('home-title')).toHaveText('Home');
+    const response = page.waitForResponse('**/RSC/R/async-cache*', {
+      timeout: 10_000,
+    });
+    await clickSelector(page, 'a[href="/async-cache"]');
+    expect(await (await response).finished()).toBeNull();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Async page',
+    );
+    expect(requests).toHaveLength(2);
+    expect(page.url()).toBe(`http://localhost:${port}/async-cache`);
   });
 
   test('an interceptor cancellation preserves ALS in the streamed 404 page', async ({

@@ -191,6 +191,9 @@ describe('intent metadata', () => {
     );
     expect(resolve).toHaveBeenCalledOnce();
     expect(renderRsc).toHaveBeenCalledOnce();
+    expect(renderRsc).toHaveBeenCalledWith(expect.anything(), {
+      etags: { 'route:/old': '' },
+    });
   });
 
   it('keeps a cancelled resolver redirect as an HTTP response without JavaScript', async () => {

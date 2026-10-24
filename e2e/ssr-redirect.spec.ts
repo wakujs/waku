@@ -176,38 +176,25 @@ test.describe(`ssr-redirect`, () => {
     );
   });
 
-  test('normal-return action redirects with and without JavaScript', async ({
-    browser,
-  }) => {
-    for (const javaScriptEnabled of [true, false]) {
-      const context = await browser.newContext({ javaScriptEnabled });
-      try {
-        const page = await context.newPage();
+  for (const javaScriptEnabled of [true, false]) {
+    test.describe(`server actions (JavaScript ${javaScriptEnabled ? 'enabled' : 'disabled'})`, () => {
+      test.use({ javaScriptEnabled });
+      const hydrate = javaScriptEnabled ? waitForHydration : async () => {};
+
+      test('normal-return action redirects', async ({ page }) => {
         await page.goto(`http://127.0.0.1:${port}/intent-action`);
-        if (javaScriptEnabled) {
-          await waitForHydration(page);
-        }
+        await hydrate(page);
         await page
           .getByRole('button', { name: 'Intent redirect action' })
           .click();
         await expect(page.getByRole('heading')).toHaveText('Destination Page');
-      } finally {
-        await context.close();
-      }
-    }
-  });
+      });
 
-  test('normal-return action notFound shows the custom page at the posted URL', async ({
-    browser,
-  }) => {
-    for (const javaScriptEnabled of [true, false]) {
-      const context = await browser.newContext({ javaScriptEnabled });
-      try {
-        const page = await context.newPage();
+      test('normal-return action notFound shows the custom page at the posted URL', async ({
+        page,
+      }) => {
         await page.goto(`http://127.0.0.1:${port}/intent-action-missing`);
-        if (javaScriptEnabled) {
-          await waitForHydration(page);
-        }
+        await hydrate(page);
         const posted = page.waitForResponse(
           (response) => response.request().method() === 'POST',
         );
@@ -219,11 +206,9 @@ test.describe(`ssr-redirect`, () => {
         await expect(page).toHaveURL(
           `http://127.0.0.1:${port}/intent-action-missing`,
         );
-      } finally {
-        await context.close();
-      }
-    }
-  });
+      });
+    });
+  }
 
   test('a server action can send the browser to another origin', async ({
     page,

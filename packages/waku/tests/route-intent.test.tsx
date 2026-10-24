@@ -251,6 +251,52 @@ test('a not-found intent uses the outer fallback when no root is available', asy
   expect(window.location.pathname).toBe('/one');
 });
 
+test.each([false, true])(
+  'a redirect to a missing route follows the custom 404 once (instant: %s)',
+  async (instant) => {
+    mocks.queue.push({ ...payload('/one'), [HAS404_ID]: true });
+    const view = await mount();
+    const intent = deferIntent();
+    mocks.queue.push(payload('/gate', intent.promise));
+    await act(async () => {
+      await controls.router.push('/gate', { unstable_instant: instant });
+      await flush();
+    });
+    const requests = vi.mocked(fetch).mock.calls.length;
+    mocks.queue.push(payload('/missing'), payload('/404'));
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response('missing', { status: 404 }),
+    );
+    await act(async () => {
+      intent.resolve({ status: 307, location: '/missing?q=one' });
+      await flush();
+    });
+    expect(view.textContent).toContain('Page /404');
+    expect(window.location.pathname + window.location.search).toBe(
+      '/missing?q=one',
+    );
+    expect(vi.mocked(fetch).mock.calls).toHaveLength(requests + 2);
+  },
+);
+
+test('a custom 404 that requests not-found does not fetch itself again', async () => {
+  mocks.queue.push({ ...payload('/one'), [HAS404_ID]: true });
+  const view = await mount();
+  const missing = deferIntent();
+  mocks.queue.push({ ...payload('/404', missing.promise), [HAS404_ID]: true });
+  await act(async () => {
+    await controls.router.push('/404');
+    await flush();
+  });
+  const requests = vi.mocked(fetch).mock.calls.length;
+  await act(async () => {
+    missing.resolve({ status: 404 });
+    await flush();
+  });
+  expect(view.textContent).toContain('Page /404');
+  expect(vi.mocked(fetch).mock.calls).toHaveLength(requests);
+});
+
 test.each(['slice', 'action'] as const)(
   'a normal %s response preserves the active page intent',
   async (kind) => {
@@ -443,6 +489,37 @@ test.each(['page', 'slice', 'action'] as const)(
     expect(window.location.pathname).toBe('/two');
   },
 );
+
+test('an action redirect yields to a navigation that is already in flight', async () => {
+  mocks.queue.push(payload('/one'));
+  const view = await mount();
+  const intent = deferIntent();
+  mocks.queue.push({ [INTENT_ID]: intent.promise });
+  await act(async () => {
+    await unstable_callServerRsc('actions#save', []);
+    await flush();
+  });
+  const destination = defer<Elements>();
+  mocks.queue.push(destination.promise);
+  let pushed!: Promise<void>;
+  await act(async () => {
+    pushed = controls.router.push('/two');
+    await flush();
+  });
+  const requests = vi.mocked(fetch).mock.calls.length;
+  await act(async () => {
+    intent.resolve({ status: 307, location: '/stale' });
+    await flush();
+  });
+  expect(vi.mocked(fetch).mock.calls).toHaveLength(requests);
+  await act(async () => {
+    destination.resolve(payload('/two'));
+    await pushed;
+    await flush();
+  });
+  expect(view.textContent).toContain('Page /two');
+  expect(window.location.pathname).toBe('/two');
+});
 
 test('a cached static intent is followed again on a new route activation', async () => {
   mocks.queue.push(payload('/one'));

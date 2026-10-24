@@ -39,7 +39,7 @@ const createRouteIntent = (
       }
       value = intent;
       // Cancellation recovery runs after the interceptor stack has unwound.
-      resume = AsyncLocalStorage.snapshot();
+      resume = AsyncLocalStorage.snapshot?.();
       resolve(JSON.stringify(intent));
       forward?.(intent);
     },

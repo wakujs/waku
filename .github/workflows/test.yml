@@ -52,3 +52,11 @@ jobs:
       - run: pnpm test:unit
         env:
           VITE_EXPERIMENTAL_WAKU_ROUTER: true
+      - name: Weak thenable runtime probes
+        working-directory: packages/waku/tests/fixtures/weak-thenable-runtime
+        run: |
+          npm ci --ignore-scripts --legacy-peer-deps
+          NODE_ENV=development node --conditions=react-server --experimental-strip-types probe.mjs
+          NODE_ENV=production node --conditions=react-server --experimental-strip-types probe.mjs
+          NODE_ENV=development node ssr-probe.mjs
+          NODE_ENV=production node ssr-probe.mjs

@@ -4,7 +4,7 @@ import { isRenderCancellation } from '../../lib/utils-isomorphic/render-cancella
 
 export class CancelRenderBoundary extends Component<
   { element: unknown; children: (element: unknown) => ReactNode },
-  { element: unknown; cancelled: boolean }
+  { element: unknown; failure: { error: unknown } | undefined }
 > {
   private previousElement: unknown;
 
@@ -13,32 +13,34 @@ export class CancelRenderBoundary extends Component<
   }
 
   componentDidUpdate() {
-    if (!this.state.cancelled) {
+    if (!this.state.failure) {
       this.previousElement = this.props.element;
     }
   }
 
-  state = { element: this.props.element, cancelled: false };
+  state = {
+    element: this.props.element,
+    failure: undefined as { error: unknown } | undefined,
+  };
 
   static getDerivedStateFromProps(
     { element }: { element: unknown },
     state: { element: unknown },
   ) {
-    return element === state.element ? null : { element, cancelled: false };
+    return element === state.element ? null : { element, failure: undefined };
   }
 
   static getDerivedStateFromError(error: unknown) {
-    if (!isRenderCancellation(error)) {
-      throw error;
-    }
-    return { cancelled: true };
+    return { failure: { error } };
   }
 
   render() {
+    const failure = this.state.failure;
+    if (failure && !isRenderCancellation(failure.error)) {
+      throw failure.error;
+    }
     return this.props.children(
-      this.state.cancelled
-        ? (this.previousElement ?? null)
-        : this.props.element,
+      failure ? (this.previousElement ?? null) : this.props.element,
     );
   }
 }

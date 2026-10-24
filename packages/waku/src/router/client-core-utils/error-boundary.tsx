@@ -61,15 +61,15 @@ export class ErrorBoundary extends Component<
   }
 
   static getDerivedStateFromError(error: unknown) {
-    if (isRenderCancellation(error)) {
-      throw error;
-    }
     return { failure: { error } };
   }
 
   render() {
     if (this.state.failure) {
       const { error } = this.state.failure;
+      if (isRenderCancellation(error)) {
+        throw error;
+      }
       return renderError(
         error instanceof Error ? error.message : String(error),
         isNotFoundError(error),

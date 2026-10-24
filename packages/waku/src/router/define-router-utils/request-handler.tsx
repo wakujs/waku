@@ -16,8 +16,10 @@ import {
   IS_ORIGIN_ID,
   IS_STATIC_ID,
   ROUTE_ID,
+  decodeRoutePath,
   decodeSliceId,
   encodeRoutePath,
+  getRouteSlotId,
   getSliceSlotId,
 } from '../isomorphic-utils/router-protocol.js';
 import { ROUTER_METADATA } from './build-metadata.js';
@@ -26,6 +28,7 @@ import { createElementCache } from './element-cache.js';
 import type { SerializedElement } from './element-cache.js';
 import { getNonce, getRouteIntent, setRerender } from './request-store.js';
 import type { Resolve, Route, createRouteEntries } from './route-entries.js';
+import { getQuery } from './route-entries.js';
 
 type RouteEntries = {
   elements: Record<string, unknown>;
@@ -126,24 +129,19 @@ export const createRequestHandler = ({
         return redirectResponse() ?? handleRequest(true);
       }
       if (input.type === 'rsc' && decodeSliceId(input.rscPath) === null) {
-        const entries = await routeEntries.getEntriesForRoute(
-          input.rscPath,
-          input.rscParams,
-          input.etags ?? {},
-          requestElementCache,
-          {
-            route: {
-              elements: {
-                root: { render: () => null },
-                route: { render: () => null },
-              },
-            },
-          },
-        );
-        delete entries!.elements.root;
+        const pathname = decodeRoutePath(input.rscPath);
+        const slotId = getRouteSlotId(pathname);
         return renderRsc(
-          { ...entries!.elements, [INTENT_ID]: intent.promise },
-          { etags: entries!.etags },
+          {
+            ...(await routeEntries.getRouteMetadata(
+              pathname,
+              getQuery(input.rscParams),
+            )),
+            [IS_STATIC_ID]: false,
+            [slotId]: null,
+            [INTENT_ID]: intent.promise,
+          },
+          { etags: { [slotId]: '' } },
         );
       }
       return renderRsc({ [INTENT_ID]: intent.promise });
@@ -236,11 +234,7 @@ export const createRequestHandler = ({
         };
         setRerender(rerender);
         try {
-          const value = await fn().catch((error: unknown) => {
-            if (!isRenderCancellation(error)) {
-              throw error;
-            }
-          });
+          const value = await fn();
           return { value, entries: await entriesPromise, isOrigin };
         } finally {
           rendered = true;

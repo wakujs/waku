@@ -18,7 +18,10 @@ import {
   runWithRouterStore,
   setNonce,
 } from './define-router-utils/request-store.js';
-import type { HandlerInterceptor } from './define-router-utils/request-store.js';
+import type {
+  HandlerInterceptor,
+  RouterStore,
+} from './define-router-utils/request-store.js';
 import { createRouteEntries } from './define-router-utils/route-entries.js';
 import type {
   Resolve,
@@ -194,7 +197,8 @@ export function unstable_defineRouter(fns: RouterOptions): Handlers {
     fn: () => Promise<T>,
     onCancel?: () => Promise<T>,
   ): Promise<T> => {
-    return runWithRouterStore({ req }, async () => {
+    const store: RouterStore = { req };
+    return runWithRouterStore(store, async () => {
       try {
         return await (fns.unstable_interceptors ?? []).reduceRight(
           (next, interceptor) => () => interceptor(next),
@@ -204,7 +208,9 @@ export function unstable_defineRouter(fns: RouterOptions): Handlers {
         if (!isRenderCancellation(error) || !onCancel) {
           throw error;
         }
-        return getRouteIntent().runInContext(onCancel);
+        return getRouteIntent().runInContext(() =>
+          runWithRouterStore(store, onCancel),
+        );
       }
     });
   };

@@ -79,10 +79,14 @@ afterEach(async () => {
   vi.unstubAllEnvs();
 });
 
-const route = (content: string, immutable = false) => ({
+const route = (content: string, immutable = false, cacheKey?: string) => ({
   elements: {
     root: { immutable: true, render: () => 'root' },
-    route: { immutable, render: () => content },
+    route: {
+      immutable,
+      ...(cacheKey === undefined ? {} : { cacheKey }),
+      render: () => content,
+    },
   },
 });
 
@@ -200,7 +204,7 @@ test('immutable route identities do not collide across paths or imply a static p
               page: { render: () => 'mutable page' },
             },
           }
-        : route(path, true),
+        : route(path, true, path),
     getHas404: async () => false,
   });
   const binding = await mount(router, '/first');
@@ -228,6 +232,12 @@ test('immutable route identities do not collide across paths or imply a static p
   expect(binding.container.textContent).toBe('/second');
   expect(view.elements[getRouteSlotId('/first')]).toBe('/first');
   expect(view.elements[getRouteSlotId('/second')]).toBe('/second');
+  expect(
+    view.cache.canReuseStaticRoute(
+      { path: '/second', query: '', hash: '' },
+      view.elements,
+    ),
+  ).toBe(true);
   const dynamic = await view.fetchRsc(encodeRoutePath('/dynamic'));
   expect(
     view.cache.hasCachedShell(

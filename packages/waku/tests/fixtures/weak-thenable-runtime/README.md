@@ -24,7 +24,8 @@ compatibility branch adds `weak-promise-stream.ts` and uses a server-side filter
 with undefined. Both use React's client decoder directly. No extra completion
 helper is part of the weak-promise API.
 
-Install and run this fixture independently:
+The unit-test workflow installs and runs these probes on every supported Node
+version. To run them independently:
 
 ```sh
 npm ci --ignore-scripts --legacy-peer-deps

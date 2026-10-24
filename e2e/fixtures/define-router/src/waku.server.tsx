@@ -239,4 +239,36 @@ const router = defineRouter({
     sliceSources[id as keyof typeof sliceSources] || null,
 });
 
-export default adapter(router);
+// This runtime-only route deliberately has no interceptors or build cache.
+const AsyncPage = async () => {
+  await Promise.resolve();
+  if (getRequest().headers.get('x-waku-test-gate') === 'deny') {
+    requestRedirect('/foo');
+  }
+  return (
+    <>
+      <h1>Async page</h1>
+      <Link to="/">Home</Link>
+    </>
+  );
+};
+
+const runtimeRouter = defineRouter({
+  getHas404: async () => false,
+  resolve: async () => ({
+    elements: {
+      root,
+      route: { immutable: true, render: () => <AsyncPage /> },
+    },
+  }),
+});
+
+export default adapter({
+  ...router,
+  handleRequest: (input, utils) => {
+    const route = parseRouterRequest(input.req);
+    return route?.type === 'route' && route.path === '/async-cache'
+      ? runtimeRouter.handleRequest(input, utils)
+      : router.handleRequest(input, utils);
+  },
+});

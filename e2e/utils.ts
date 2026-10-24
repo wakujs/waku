@@ -541,6 +541,7 @@ export async function waitForHydration(page: Page) {
 
 // In WebKit + react@experimental, locator-based assertions can hang while
 // Playwright waits for navigation to settle. This polls DOM text directly.
+// TODO: Restore locator assertions when switching back to stable React.
 export const waitForSelectorText = async (
   page: Page,
   selector: string,
@@ -559,6 +560,7 @@ export const waitForSelectorText = async (
 };
 
 // WebKit + react@experimental can leave locator navigation waits pending.
+// TODO: Remove the WebKit path when stable React's normal locator clicks pass.
 export const clickSelector = async (page: Page, selector: string) => {
   if (page.context().browser()?.browserType().name() === 'webkit') {
     await page.evaluate((selector) => {

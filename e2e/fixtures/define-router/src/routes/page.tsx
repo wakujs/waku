@@ -7,6 +7,7 @@ const Home = () => (
     <Link to="/typed-redirect">Resolver redirect</Link>
     <Link to="/interceptor-cache">Intercepted static page</Link>
     <Link to="/action-static">Static action page</Link>
+    <Link to="/async-cache">Async runtime page</Link>
     <Slice id="slice001" />
   </div>
 );

@@ -1,3 +1,4 @@
+import { createElement } from 'react';
 import { runInNewContext } from 'node:vm';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -185,6 +186,53 @@ describe('defineRouter route resolver', () => {
     }
     expect(render).toHaveBeenCalledTimes(4);
     expect(serializeRsc).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not cache an intent recorded while Flight renders an uncached immutable route', async () => {
+    const Page = async () => {
+      await Promise.resolve();
+      requestRedirect('/login');
+      return 'page';
+    };
+    const router = unstable_defineRouter({
+      resolve: async () => ({
+        elements: {
+          root: { immutable: true, render: () => 'root' },
+          route: { immutable: true, render: () => createElement(Page) },
+        },
+      }),
+      getHas404: async () => false,
+    });
+    const utils = makeUtils();
+    utils.renderRsc.mockImplementation(async (elements) => {
+      // A factory returning JSX finishes before Flight executes its component.
+      expect(elements['route:/private']).toEqual(createElement(Page));
+      await Page();
+      expect(await elements[INTENT_ID]).toBe(
+        JSON.stringify({ status: 307, location: '/login' }),
+      );
+      expect(elements[IS_STATIC_ID]).toBe(false);
+      return new ReadableStream({ start: (controller) => controller.close() });
+    });
+
+    await router.handleRequest(rscInput('/private'), utils);
+  });
+
+  it('keeps whole-route reuse for explicitly cached immutable sources', async () => {
+    const router = unstable_defineRouter({
+      resolve: async () => ({
+        elements: {
+          root: { immutable: true, render: () => 'root' },
+          route: { immutable: true, cacheKey: 'page', render: () => 'page' },
+        },
+      }),
+      getHas404: async () => false,
+    });
+    const utils = makeUtils();
+
+    await router.handleRequest(rscInput('/cached'), utils);
+
+    expect(utils.renderRsc.mock.calls[0]![0][IS_STATIC_ID]).toBe(true);
   });
 
   it.each([false, true])(

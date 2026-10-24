@@ -3,7 +3,7 @@ import type { RouteProps } from './route-path.js';
 /** Element-map key for `[pathname, query]` of the represented route. */
 export const ROUTE_ID = 'ROUTE';
 
-/** Whether every source of the resolved route is immutable, including omitted slots. */
+/** Whether the represented route and its metadata can be reused without a request. */
 export const IS_STATIC_ID = 'IS_STATIC';
 
 /** Whether the server provides a custom `/404` route. */

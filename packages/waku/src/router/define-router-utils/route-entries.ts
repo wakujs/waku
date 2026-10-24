@@ -79,6 +79,11 @@ export const createRouteEntries = (
       throw error;
     }));
 
+  const getRouteMetadata = async (pathname: string, query: string) => ({
+    [ROUTE_ID]: [pathname, query] satisfies RouteData,
+    ...((await has404()) ? { [HAS404_ID]: true } : {}),
+  });
+
   const getEntriesForRoute = async (
     rscPath: string,
     rscParams: unknown,
@@ -132,13 +137,12 @@ export const createRouteEntries = (
         ]),
       ),
     );
-    entries.elements[ROUTE_ID] = [pathname, query] satisfies RouteData;
-    entries.elements[IS_STATIC_ID] = Object.values(sources).every(
-      (source) => source.immutable,
+    Object.assign(entries.elements, await getRouteMetadata(pathname, query));
+    // Uncached JSX may still record a request-specific intent during Flight rendering.
+    entries.elements[IS_STATIC_ID] = Object.entries(sources).every(
+      ([id, source]) =>
+        source.immutable && cache.has(getElementCacheId(id, source)),
     );
-    if (await has404()) {
-      entries.elements[HAS404_ID] = true;
-    }
     return entries;
   };
 
@@ -162,5 +166,5 @@ export const createRouteEntries = (
       : null;
   };
 
-  return { getEntriesForRoute, getEntriesForElement, has404 };
+  return { getEntriesForRoute, getEntriesForElement, getRouteMetadata, has404 };
 };
