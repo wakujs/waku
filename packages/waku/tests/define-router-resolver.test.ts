@@ -34,7 +34,7 @@ vi.mock('../src/server.js', () => ({
 }));
 
 type RouterOptions = Parameters<typeof unstable_defineRouter>[0];
-const makeRoute = (content: string, immutable = false) => ({
+const createRouterDefinition = (content: string, immutable = false) => ({
   elements: {
     root: { immutable, render: () => 'root' },
     route: { immutable, render: () => content },
@@ -91,7 +91,7 @@ describe('defineRouter route resolver', () => {
 
   it('uses explicit 404 availability without probing a catch-all', async () => {
     const resolve = vi.fn<RouterOptions['resolve']>(async () =>
-      makeRoute('content'),
+      createRouterDefinition('content'),
     );
     const getHas404 = vi.fn(async () => false);
     const router = unstable_defineRouter({ resolve, getHas404 });
@@ -125,7 +125,7 @@ describe('defineRouter route resolver', () => {
       resolve: async (path) =>
         path === '/redirect'
           ? async () => unstable_redirect(href)
-          : makeRoute('content'),
+          : createRouterDefinition('content'),
       getHas404: async () => false,
     });
     const utils = makeUtils();
@@ -186,9 +186,9 @@ describe('defineRouter route resolver', () => {
       const resolve = vi.fn<RouterOptions['resolve']>(async (path, query) =>
         path === '/404'
           ? exists
-            ? makeRoute('not found')
+            ? createRouterDefinition('not found')
             : null
-          : makeRoute(query),
+          : createRouterDefinition(query),
       );
       const router = unstable_defineRouter({ resolve });
       const utils = makeUtils();
@@ -220,7 +220,7 @@ describe('defineRouter route resolver', () => {
       if (path === '/404' && ++attempts === 1) {
         throw new Error('CMS unavailable');
       }
-      return makeRoute(query);
+      return createRouterDefinition(query);
     });
     const router = unstable_defineRouter({ resolve });
     const utils = makeUtils();
@@ -287,7 +287,7 @@ describe('defineRouter route resolver', () => {
     const router = unstable_defineRouter({
       resolve: async () => ({
         elements: {
-          ...makeRoute('route').elements,
+          ...createRouterDefinition('route').elements,
           [ROUTE_ID]: { render: () => 'content' },
         },
       }),
@@ -301,7 +301,7 @@ describe('defineRouter route resolver', () => {
   it('normalizes build paths like HTTP and escapes prefetch patterns', async () => {
     const path = '/caf%C3%A9+[x].txt';
     const resolve = vi.fn<RouterOptions['resolve']>(async (pathname) =>
-      pathname === path ? makeRoute('static', true) : null,
+      pathname === path ? createRouterDefinition('static', true) : null,
     );
     const router = unstable_defineRouter({
       resolve,
@@ -334,7 +334,7 @@ describe('defineRouter route resolver', () => {
 
   it('rejects build paths with a query instead of silently building another URL', async () => {
     const router = unstable_defineRouter({
-      resolve: async () => makeRoute('static', true),
+      resolve: async () => createRouterDefinition('static', true),
       getBuildPaths: async () => ['/items?q=one'],
     });
     const generateFile = vi.fn();
@@ -353,7 +353,7 @@ describe('defineRouter route resolver', () => {
   it('treats a not-found thrown by the 404 probe as no custom 404', async () => {
     const router = unstable_defineRouter({
       resolve: async (path) =>
-        path === '/' ? makeRoute('home') : unstable_notFound(),
+        path === '/' ? createRouterDefinition('home') : unstable_notFound(),
     });
     const utils = makeUtils();
     await router.handleRequest(rscInput('/'), utils);
@@ -366,7 +366,7 @@ describe('defineRouter route resolver', () => {
   });
   it('uses the same normalized route and query for document and RSC requests', async () => {
     const resolve = vi.fn<RouterOptions['resolve']>(async (path, query) =>
-      path === '/items' ? makeRoute(query) : null,
+      path === '/items' ? createRouterDefinition(query) : null,
     );
     const router = unstable_defineRouter({ resolve });
     const utils = makeUtils();
@@ -454,7 +454,7 @@ describe('defineRouter route resolver', () => {
         path === '/'
           ? {
               elements: {
-                ...makeRoute('route', true).elements,
+                ...createRouterDefinition('route', true).elements,
                 content: { render, getEtag: async () => 'v1' },
               },
             }
@@ -524,7 +524,9 @@ describe('defineRouter route resolver', () => {
   it('uses a custom 404 for a not-found thrown during resolution', async () => {
     const router = unstable_defineRouter({
       resolve: async (path, query) =>
-        path === '/404' ? makeRoute('not found:' + query) : unstable_notFound(),
+        path === '/404'
+          ? createRouterDefinition('not found:' + query)
+          : unstable_notFound(),
     });
     const utils = makeUtils();
     const response = await router.handleRequest(
@@ -557,12 +559,12 @@ describe('defineRouter route resolver', () => {
         path === '/old'
           ? {
               elements: {
-                ...makeRoute('').elements,
+                ...createRouterDefinition('').elements,
                 route: { render: () => unstable_redirect('/next?q=one') },
               },
             }
           : path === '/next'
-            ? makeRoute(query)
+            ? createRouterDefinition(query)
             : null,
     });
     const utils = makeUtils();
@@ -579,7 +581,7 @@ describe('defineRouter route resolver', () => {
   it('keeps origin rerenders and action values in the client protocol', async () => {
     const router = unstable_defineRouter({
       resolve: async (path, query) =>
-        path === '/origin' ? makeRoute(query) : null,
+        path === '/origin' ? createRouterDefinition(query) : null,
     });
     const utils = makeUtils();
     await router.handleRequest(
@@ -612,7 +614,7 @@ describe('defineRouter route resolver', () => {
     const router = unstable_defineRouter({
       resolve: async (path) => {
         order.push(getRequest().headers.get('marker')!);
-        return path === '/' ? makeRoute('route') : null;
+        return path === '/' ? createRouterDefinition('route') : null;
       },
       unstable_interceptors: [
         async (next) => {
@@ -642,7 +644,7 @@ describe('defineRouter route resolver', () => {
     const mutableRender = vi.fn(() => 'dynamic');
     const resolve: RouterOptions['resolve'] = async (path) =>
       path === '/static'
-        ? makeRoute('static', true)
+        ? createRouterDefinition('static', true)
         : path === '/api'
           ? async () => new Response('api')
           : path === '/dynamic'
@@ -783,7 +785,7 @@ describe('defineRouter route resolver', () => {
       getBuildPaths: async () => [
         {
           pathname: '/posts/[id]',
-          route: {
+          routerDefinition: {
             elements: {
               root: { immutable: true, render: () => 'root' },
               route: source,
@@ -1066,7 +1068,7 @@ describe('defineRouter route resolver', () => {
       getBuildPaths: async () => [
         {
           pathname: '/posts/one',
-          route: makeRoute('post', true),
+          routerDefinition: createRouterDefinition('post', true),
           prefetchPattern: '^/posts/[^/]+$',
         },
       ],

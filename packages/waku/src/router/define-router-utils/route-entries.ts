@@ -18,7 +18,7 @@ import { cacheElementSource, getElementCacheId } from './element-cache.js';
 import type { ElementCache } from './element-cache.js';
 import { setRscParams, setRscPath } from './request-store.js';
 
-export type Route = {
+export type RouterDefinition = {
   elements: Record<string, ElementSource & { cacheKey?: string }> & {
     root: ElementSource & { cacheKey?: string };
     route: ElementSource & { cacheKey?: string };
@@ -29,11 +29,13 @@ export type Route = {
 export type Resolve = (
   pathname: string,
   query: string,
-) => Promise<Route | ((req: Request) => Promise<Response>) | null>;
+) => Promise<RouterDefinition | ((req: Request) => Promise<Response>) | null>;
 
 export type ResolveElement = (id: string) => Promise<ElementSource | null>;
 
-export const validateRouteElementIds = (elements: Route['elements']) => {
+export const validateRouteElementIds = (
+  elements: RouterDefinition['elements'],
+) => {
   for (const id of Object.keys(elements)) {
     if (
       id !== 'root' &&
@@ -78,13 +80,13 @@ export const createRouteEntries = (
     rscParams: unknown,
     clientEtags: Etags,
     cache: ElementCache,
-    resolvedRoute?: Route,
+    routerDefinition?: RouterDefinition,
   ) => {
     setRscPath(rscPath);
     setRscParams(rscParams);
     const pathname = decodeRoutePath(rscPath);
     const query = getQuery(rscParams);
-    const resolved = resolvedRoute ?? (await resolve(pathname, query));
+    const resolved = routerDefinition ?? (await resolve(pathname, query));
     if (!resolved || typeof resolved === 'function') {
       return null;
     }

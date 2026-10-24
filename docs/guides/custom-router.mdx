@@ -124,7 +124,7 @@ The optional `getBuildPaths` returns pathname strings, without queries or fragme
 - HTTP handlers emit their response bodies as static files.
 - Immutable routes with `noSsr` emit RSC and a default client-rendered HTML document.
 
-For explicit build planning, return `{ pathname, route?, prerender?, prefetchPattern? }` targets. `route` supplies build-specific sources or an HTTP handler rather than calling `resolve`. `prerender: false` caches only immutable sources without emitting a page, even when every source is immutable. `prefetchPattern` is a regular expression matching paths that share the target's client modules.
+For explicit build planning, return `{ pathname, routerDefinition?, prerender?, prefetchPattern? }` targets. `routerDefinition` supplies a build-specific router definition or an HTTP handler rather than calling `resolve`. `prerender: false` caches only immutable sources without emitting a page, even when every source is immutable. `prefetchPattern` is a regular expression matching paths that share the target's client modules.
 
 Omit a path to skip its build output. Omit `getBuildPaths` entirely for runtime-only routes. Custom routers do not need `PathSpec` or component source-file metadata.
 
