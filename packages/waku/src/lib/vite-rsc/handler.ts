@@ -83,21 +83,24 @@ const toProcessRequest =
       });
     } catch (e) {
       if (isRenderCancellation(e) || hasRenderCancellationDigest(e)) {
-        return input?.type === 'rsc' || input?.type === 'call'
-          ? new Response(await renderUtils.renderRsc({}))
-          : new Response(null, { status: 204 });
-      }
-      if (e instanceof Response) {
+        res =
+          input?.type === 'rsc' || input?.type === 'call'
+            ? await renderUtils.renderRsc({})
+            : new Response(null, { status: 204 });
+      } else if (e instanceof Response) {
         return e;
+      } else {
+        console.warn(sanitizeLog(e));
+        return new Response('Internal Server Error', { status: 500 });
       }
-      console.warn(sanitizeLog(e));
-      return new Response('Internal Server Error', { status: 500 });
     } finally {
       finishDebugChannel?.();
     }
 
     if (res instanceof ReadableStream) {
-      return new Response(res);
+      return new Response(res, {
+        headers: { 'cache-control': 'private, no-store' },
+      });
     } else if (res && res !== 'fallback') {
       return res;
     }

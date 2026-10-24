@@ -61,6 +61,13 @@ test.describe(`ssr-redirect`, () => {
     });
     expect(response.status()).toBe(307);
     expect(response.headers().location).toBe('/destination');
+    expect(response.headers()['cache-control']).toBe('private, no-store');
+    const rscResponse = await request.get(
+      `http://localhost:${port}/RSC/R/intent.txt`,
+    );
+    expect(rscResponse.status()).toBe(200);
+    expect(rscResponse.headers()['cache-control']).toBe('private, no-store');
+    expect(await rscResponse.text()).toContain('/destination');
   });
 
   test('discarding a redirect response with pending rendering is quiet', async ({
@@ -139,10 +146,16 @@ test.describe(`ssr-redirect`, () => {
   test('late normal-return redirect follows in the browser after the shell', async ({
     page,
   }) => {
-    const response = await page.goto(`http://localhost:${port}/intent-late`, {
-      waitUntil: 'commit',
-    });
+    const rscResponse = await fetch(
+      `http://localhost:${port}/RSC/R/intent-late.txt`,
+    );
     try {
+      expect(rscResponse.headers.get('cache-control')).toBe(
+        'private, no-store',
+      );
+      const response = await page.goto(`http://localhost:${port}/intent-late`, {
+        waitUntil: 'commit',
+      });
       expect(response?.status()).toBe(200);
       await expect(page.getByRole('heading')).toHaveText(
         'Intent redirect shell',
@@ -150,6 +163,7 @@ test.describe(`ssr-redirect`, () => {
     } finally {
       redirectGate.resolve();
     }
+    expect(await rscResponse.text()).toContain('/destination');
     await expect(page.getByRole('heading')).toHaveText('Destination Page');
     await expect(page).toHaveURL(`http://localhost:${port}/destination`);
   });

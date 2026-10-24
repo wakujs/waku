@@ -485,9 +485,13 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
       originalSlice.replace('lazy clock loaded', 'lazy clock HMR'),
     );
     await (await sliceHmrResponsePromise).finished();
-    await page
-      .locator('[data-testid="link-widget"]')
-      .click({ noWaitAfter: true });
+    await page.evaluate(() => {
+      const link = document.querySelector('[data-testid="link-widget"]');
+      if (!(link instanceof HTMLAnchorElement)) {
+        throw new Error('Missing widget link');
+      }
+      link.click();
+    });
     await waitForSelectorText(
       page,
       '[data-testid="lazy-clock-value"]',

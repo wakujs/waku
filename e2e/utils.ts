@@ -294,9 +294,13 @@ export const prepareNormalSetup = (
     }
     if (!options?.cmd && mode !== 'STATIC') {
       // Vite's temporary port-availability listeners can pass the TCP check.
+      const readyMessage = 'ready: Listening on ';
+      let output = '';
       let ready = false;
       const onOutput = (data: Buffer) => {
-        ready ||= data.includes('ready: Listening on ');
+        output += data.toString();
+        ready ||= output.includes(readyMessage);
+        output = output.slice(-readyMessage.length);
       };
       cp.stdout?.on('data', onOutput);
       try {

@@ -70,6 +70,42 @@ test('returns an HTTP rejection without encoding it in Flight', async () => {
   );
 });
 
+test('marks runtime streams private before their bodies finish', async () => {
+  let controller!: ReadableStreamDefaultController<Uint8Array>;
+  const stream = new ReadableStream<Uint8Array>({
+    start(value) {
+      controller = value;
+      controller.enqueue(new TextEncoder().encode('shell'));
+    },
+  });
+  mocks.render.mockReturnValueOnce(stream);
+  const { processRequest } = runtime(async (_input, utils) =>
+    utils.renderRsc({}),
+  );
+  const response = await processRequest(
+    new Request('https://app.example/RSC/page.txt'),
+  );
+  try {
+    expect(response?.status).toBe(200);
+    expect(response?.headers.get('cache-control')).toBe('private, no-store');
+  } finally {
+    controller.enqueue(new TextEncoder().encode('late result'));
+    controller.close();
+  }
+  expect(await response?.text()).toBe('shelllate result');
+});
+
+test('preserves an explicit response cache policy', async () => {
+  const response = new Response('public content', {
+    headers: { 'cache-control': 'public, max-age=60' },
+  });
+  const { processRequest } = runtime(async () => response);
+  expect(
+    await processRequest(new Request('https://app.example/RSC/page.txt')),
+  ).toBe(response);
+  expect(response.headers.get('cache-control')).toBe('public, max-age=60');
+});
+
 test('reports an ordinary handler failure as a generic 500', async () => {
   const error = new Error('private details');
   const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -165,6 +201,7 @@ test.each(['http', 'rsc'] as const)(
     );
     expect(response?.status).toBe(type === 'http' ? 204 : 200);
     if (type === 'rsc') {
+      expect(response?.headers.get('cache-control')).toBe('private, no-store');
       expect(mocks.render.mock.calls.at(-1)![0]).toEqual({});
     }
     expect(warn).not.toHaveBeenCalled();
