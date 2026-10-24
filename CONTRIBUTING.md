@@ -75,7 +75,10 @@ behavior.
 Unstable APIs use `_UNSTABLE` for React components, hooks, and contexts,
 `Unstable_` for TypeScript types, and `unstable_` for other values and
 functions. A deprecated alias keeps the name it shipped with; the
-convention applies to the name an API is introduced under.
+convention applies to the name an API is introduced under. The marker belongs
+to the name a package entry point exports. Internal modules use the unmarked
+name, and an import from a package entry point may drop the marker, as in
+`unstable_createCustomError as createCustomError`.
 
 ### For AI agents
 
@@ -97,6 +100,9 @@ incomplete.
   or redundant comments. In tests, avoid unrelated cleanup.
 - Do not add a public option, generic abstraction, or compatibility layer for
   one exceptional case.
+- Repetition alone is not a reason to refactor. A small definition, such as an
+  `Elements` type, can repeat across modules while its copies stay consistent
+  and readable. Do not add a shared abstraction only to remove duplication.
 - Prefer fewer concepts. Every new name, file, or type should represent a
   distinction the code needs, not make the design look complete or symmetric.
 - Split a module only at a real boundary, not to move one small helper into its
@@ -115,10 +121,8 @@ incomplete.
 - Prefer direct control flow, early returns, and native platform APIs.
 - Use `const` unless a binding must be reassigned. Local mutation of an array,
   map, set, or result object is fine when it makes the algorithm clearer.
-- Name functions with verbs. Do not create a wrapper that only supplies fixed
-  arguments to another function.
-- Name operations and results, not stages in the control flow. Avoid helpers and
-  variables that only narrate the current step.
+- Do not create a wrapper that only supplies fixed arguments to another
+  function.
 - Extract a helper when it owns a meaningful operation or invariant, not merely
   to shorten the caller.
 - Do not add refs, contexts, locks, or other coordination state that only
@@ -132,6 +136,37 @@ incomplete.
   safe.
 - Await or return promises. Do not leave asynchronous work floating.
 - Normalize configuration and optional inputs once near the boundary.
+- Prefer `function` declarations for exported functions and `const` arrow
+  functions for internal ones.
+- In client code, positional parameters and tuples can be deliberate because
+  they minify better than object properties. Do not convert them to objects for
+  style alone. In server code, prefer objects unless a tuple has a concrete
+  performance or readability benefit.
+
+### Naming
+
+These are defaults. A clear distinction, a native API convention, a name
+collision, or client bundle size can justify an exception.
+
+- Give one concept one name, and use it across variables, properties, types,
+  and filenames. Do not introduce a synonym for an established term.
+- Name functions with verbs.
+- Name operations and results, not stages in the control flow. Avoid helpers and
+  variables that only narrate the current step.
+- Name a map or record that looks up values by key `valuesByKey`, with words
+  that say what the keys and values are, such as `sliceIdsByRoutePath`.
+- Name a conversion `aToB`, not `a2b`.
+- Use full words in public APIs and outer scopes, such as `options` rather than
+  `opts`. Inner scopes may use short names, and short names in client code can
+  be deliberate. Do not lengthen them only to be explicit.
+- Avoid shadowing an outer binding.
+- Import a binding under its exported name. Rename an import only to resolve a
+  real collision or to drop an unstable marker.
+- An export that exists only for tests ends in `ForTest`, such as
+  `dedupeHeadMetadataForTest`.
+- Name a component module in kebab case after its component, such as
+  `foo-bar.tsx` for `FooBar`. Files whose names define routes follow the
+  router's file conventions.
 
 ### TypeScript
 
@@ -180,7 +215,6 @@ Before adding a comment, look for a better home, in this order:
 - An exported symbol is not necessarily a public API. JSDoc is editor
   documentation for callers, so a symbol no public entry point exposes gets
   none; comment it like any other code.
-- An export that exists only for tests says so in its name.
 
 ### Tests
 
