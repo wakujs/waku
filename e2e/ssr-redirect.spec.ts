@@ -13,10 +13,19 @@ test.describe(`ssr-redirect`, () => {
   let other: Server;
   const hits: string[] = [];
   const serverOutput: string[] = [];
+  const notFoundGate = Promise.withResolvers<void>();
+  const redirectGate = Promise.withResolvers<void>();
 
   test.beforeAll(async ({ mode }) => {
     // a second origin that sends no cors headers, which a fetch cannot read
     other = createServer((req, res) => {
+      if (req.url === '/redirect-gate') {
+        return redirectGate.promise.then(() => res.end());
+      }
+      if (req.url === '/not-found-gate') {
+        void notFoundGate.promise.then(() => res.end());
+        return;
+      }
       hits.push(`${req.method} ${req.headers.origin ?? 'none'} ${req.url}`);
       res.writeHead(200, { 'content-type': 'text/html' });
       res.end('<html><body><h1>Other Origin</h1></body></html>');
@@ -43,6 +52,176 @@ test.describe(`ssr-redirect`, () => {
     await new Promise<void>((resolve) => other.close(() => resolve()));
     await stopApp();
   });
+
+  test('normal-return redirect has a real pre-shell HTTP status', async ({
+    request,
+  }) => {
+    const response = await request.get(`http://localhost:${port}/intent`, {
+      maxRedirects: 0,
+    });
+    expect(response.status()).toBe(307);
+    expect(response.headers().location).toBe('/destination');
+    expect(response.headers()['cache-control']).toBe('private, no-store');
+    const rscResponse = await request.get(
+      `http://localhost:${port}/RSC/R/intent.txt`,
+    );
+    expect(rscResponse.status()).toBe(200);
+    expect(rscResponse.headers()['cache-control']).toBe('private, no-store');
+    expect(await rscResponse.text()).toContain('/destination');
+  });
+
+  test('discarding a redirect response with pending rendering is quiet', async ({
+    page,
+    request,
+  }) => {
+    const outputStart = serverOutput.length;
+    const response = await request.get(
+      `http://localhost:${port}/intent-pending`,
+      { maxRedirects: 0 },
+    );
+    expect(response.status()).toBe(307);
+    expect(response.headers().location).toBe('/destination');
+    await page.goto(`http://localhost:${port}/intent-pending`);
+    await waitForHydration(page);
+    await expect(page.getByRole('heading')).toHaveText('Destination Page');
+    expect(serverOutput.slice(outputStart).join('')).not.toContain(
+      'Error during rendering',
+    );
+  });
+
+  test('static normal-return redirect follows after hydration', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/intent-static`);
+    await expect(page.getByRole('heading')).toHaveText('Destination Page');
+    await expect(page).toHaveURL(`http://localhost:${port}/destination`);
+  });
+
+  test('flat pass-through preserves opaque action values and client props', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/intent-opaque`);
+    await waitForHydration(page);
+    await page.getByRole('button', { name: 'Echo opaque reference' }).click();
+    await expect(page.getByTestId('opaque-value')).toHaveText(
+      'same opaque value',
+    );
+    await expect(page.getByTestId('opaque-prop')).toHaveText(
+      'same opaque prop',
+    );
+  });
+
+  test('normal-return notFound produces HTTP 404 and the custom page', async ({
+    request,
+  }) => {
+    const response = await request.get(
+      `http://localhost:${port}/intent-missing`,
+    );
+    expect(response.status()).toBe(404);
+    expect(await response.text()).toContain('Custom Not Found');
+  });
+
+  test('flat route intents follow during client navigation', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    await page
+      .getByRole('link', { name: 'Intent Redirect', exact: true })
+      .click();
+    await expect(page.getByRole('heading')).toHaveText('Destination Page');
+    await expect(page).toHaveURL(`http://localhost:${port}/destination`);
+  });
+
+  test('flat notFound intents preserve the requested URL', async ({ page }) => {
+    await page.goto(`http://localhost:${port}/`);
+    await waitForHydration(page);
+    await page
+      .getByRole('link', { name: 'Intent Missing', exact: true })
+      .click();
+    await expect(page.getByRole('heading')).toHaveText('Custom Not Found');
+    await expect(page).toHaveURL(`http://localhost:${port}/intent-missing`);
+  });
+
+  test('late normal-return redirect follows in the browser after the shell', async ({
+    page,
+  }) => {
+    const rscResponse = await fetch(
+      `http://localhost:${port}/RSC/R/intent-late.txt`,
+    );
+    try {
+      expect(rscResponse.headers.get('cache-control')).toBe(
+        'private, no-store',
+      );
+      const response = await page.goto(`http://localhost:${port}/intent-late`, {
+        waitUntil: 'commit',
+      });
+      expect(response?.status()).toBe(200);
+      await expect(page.getByRole('heading')).toHaveText(
+        'Intent redirect shell',
+      );
+    } finally {
+      redirectGate.resolve();
+    }
+    expect(await rscResponse.text()).toContain('/destination');
+    await expect(page.getByRole('heading')).toHaveText('Destination Page');
+    await expect(page).toHaveURL(`http://localhost:${port}/destination`);
+  });
+
+  test('late notFound shows the custom page after the shell', async ({
+    page,
+  }) => {
+    const response = await page.goto(
+      `http://localhost:${port}/intent-late-missing`,
+      { waitUntil: 'commit' },
+    );
+    try {
+      expect(response?.status()).toBe(200);
+      await expect(page.getByRole('heading')).toHaveText(
+        'Intent not-found shell',
+      );
+    } finally {
+      notFoundGate.resolve();
+    }
+    await expect(page.getByRole('heading')).toHaveText('Custom Not Found');
+    await expect(page).toHaveURL(
+      `http://localhost:${port}/intent-late-missing`,
+    );
+  });
+
+  for (const javaScriptEnabled of [true, false]) {
+    test.describe(`server actions (JavaScript ${javaScriptEnabled ? 'enabled' : 'disabled'})`, () => {
+      test.use({ javaScriptEnabled });
+      const hydrate = javaScriptEnabled ? waitForHydration : async () => {};
+
+      test('normal-return action redirects', async ({ page }) => {
+        await page.goto(`http://localhost:${port}/intent-action`);
+        await hydrate(page);
+        await page
+          .getByRole('button', { name: 'Intent redirect action' })
+          .click();
+        await expect(page.getByRole('heading')).toHaveText('Destination Page');
+      });
+
+      test('normal-return action notFound shows the custom page at the posted URL', async ({
+        page,
+      }) => {
+        await page.goto(`http://localhost:${port}/intent-action-missing`);
+        await hydrate(page);
+        const posted = page.waitForResponse(
+          (response) => response.request().method() === 'POST',
+        );
+        await page
+          .getByRole('button', { name: 'Missing action', exact: true })
+          .click();
+        expect((await posted).status()).toBe(javaScriptEnabled ? 200 : 404);
+        await expect(page.getByRole('heading')).toHaveText('Custom Not Found');
+        await expect(page).toHaveURL(
+          `http://localhost:${port}/intent-action-missing`,
+        );
+      });
+    });
+  }
 
   test('a server action can send the browser to another origin', async ({
     page,

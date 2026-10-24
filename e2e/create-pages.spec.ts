@@ -359,10 +359,18 @@ test.describe(`create-pages`, () => {
     await expect(count).toHaveText(/^count: \d+$/);
     for (let i = 0; i < 3; i++) {
       const before = Number(
-        (await count.textContent())!.slice('count: '.length),
+        (await page.evaluate(
+          () =>
+            document.querySelector('[data-testid="rerender-order-count"]')!
+              .textContent,
+        ))!.slice('count: '.length),
       );
-      await page.getByRole('button', { name: 'Bump layout-first' }).click();
-      await expect(count).toHaveText(`count: ${before + 1}`);
+      await page.locator('button[type="submit"]').click({ noWaitAfter: true });
+      await waitForSelectorText(
+        page,
+        '[data-testid="rerender-order-count"]',
+        `count: ${before + 1}`,
+      );
     }
   });
 

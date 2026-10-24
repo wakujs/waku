@@ -85,7 +85,7 @@ test.describe('fs-router', () => {
     await expect
       .poll(() => navigations, { timeout: 10_000 })
       .toBeGreaterThanOrEqual(2);
-    await expect(page).toHaveURL(`http://localhost:${port}/foo`);
+    await expect.poll(() => page.url()).toBe(`http://localhost:${port}/foo`);
   });
 
   test('recovers when the entry chunk itself fails to load', async ({

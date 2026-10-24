@@ -49,12 +49,13 @@ have the same content. Merges can retain previously visited routes' slots.
 Route responses also carry these entries. They are control data, not components
 to render with `Slot`.
 
-| Entry       | Contract                                                                                                                                           |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ROUTE`     | `[pathname, query]` of the route the server rendered, not necessarily the requested route.                                                         |
-| `IS_STATIC` | Every source of that route is immutable, including sources omitted by matching etags. It does not mean HTML was emitted at build time.             |
-| `HAS404`    | A custom `/404` route is available. Present when true.                                                                                             |
-| `IS_ORIGIN` | An action used the no-argument `rerenderRoute()` form to refresh its request-time origin. The action enhancer consumes this marker before merging. |
+| Entry       | Contract                                                                                                                                                             |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ROUTE`     | `[pathname, query]` of the route the server rendered, not necessarily the requested route.                                                                           |
+| `IS_STATIC` | The whole route can be reused without a request: its sources are immutable and its metadata is request-independent. It does not mean HTML was emitted at build time. |
+| `INTENT`    | Weak promise for a JSON string with `{ status: 404 }` or `{ status, location }`. An unused intent may remain pending or resolve to `undefined`.                      |
+| `HAS404`    | A custom `/404` route is available. Present when true.                                                                                                               |
+| `IS_ORIGIN` | An action used the no-argument `rerenderRoute()` form to refresh its request-time origin. The action enhancer consumes this marker before merging.                   |
 
 Use `unstable_getRouteFromElements`, `unstable_isStaticFromElements`, and
 `unstable_has404FromElements` from `waku/router/client-core` to read route
@@ -87,20 +88,44 @@ spreads discard the validators associated with their values.
 
 ## Requested, Rendered, and Browser URLs
 
-| Situation               | Requested route  | Rendered route | Browser URL after commit |
-| ----------------------- | ---------------- | -------------- | ------------------------ |
-| Ordinary navigation     | `/post?q=one`    | `/post?q=one`  | `/post?q=one`            |
-| Eager internal redirect | `/old`           | `/new`         | `/new`                   |
-| Custom not-found route  | `/missing?q=one` | `/404?q=one`   | `/missing?q=one`         |
+| Situation              | Requested route  | Rendered route | Browser URL after commit |
+| ---------------------- | ---------------- | -------------- | ------------------------ |
+| Ordinary navigation    | `/post?q=one`    | `/post?q=one`  | `/post?q=one`            |
+| Resolver rewrite       | `/old`           | `/new`         | `/new`                   |
+| Custom not-found route | `/missing?q=one` | `/404?q=one`   | `/missing?q=one`         |
 
-An early internal redirect can be resolved on the server into the destination's
-elements in the same response. `ROUTE` tells the client which destination landed.
-Not every redirect can be resolved this way: document redirects leave the router,
-and redirects thrown by streamed slots are handled by the client error boundary.
+`requestRedirect` and `requestNotFound` record navigation in `INTENT` without
+throwing. The client observes it independently from slot rendering, including
+when the requesting component stops with `cancelRender()`. Do not await an
+unused intent to decide whether a route has loaded. HTTP document requests use
+redirect statuses or render the 404 page when the shell has not been sent.
 
-Similarly, a fetch can succeed before a streamed slot throws not-found. The
-client uses `HAS404` to decide whether to follow `/404` or show its generic
-not-found fallback. Follow decisions share loop detection and a navigation budget.
+The first recorded intent wins. Its promise can settle and reach the browser
+before other components finish, so a later intent cannot replace it. Concurrent
+components have no guaranteed ordering; redirect and not-found intents have no
+priority over each other.
+
+Weak-promise listeners run synchronously so React can emit the intent before
+the component's render task completes. Deferring notification to a promise
+microtask can let Flight finish its last task and close the stream first.
+
+The loader follows intents already available with a response before committing
+that response, preserving the active content while the destination loads. An
+intent that arrives after commit follows from the displayed route. The destination
+uses an existing route cache when possible; otherwise it needs its own request
+so that rendering uses the destination request's URL and context.
+
+Router-managed slice fetches and actions observe their intents in the originating
+route's scope. Minimal's `useFetchRsc_UNSTABLE` only returns response data; custom
+integrations own the routing decisions for requests they make directly.
+
+Each Router owns its Minimal Root and that Root's intent observer. Separate
+Router instances keep their observers separate, including during unmount cleanup.
+
+The client uses `HAS404` to decide whether a not-found intent follows `/404` or
+shows its generic fallback. Follow decisions share loop detection and a
+navigation budget through `unstable_decideRouteIntent`. Absolute destinations
+leave the document; app-relative destinations use client navigation.
 See [Redirects and Not Found](/guides/redirects-and-not-found) for SSR and streaming.
 
 Fragments remain client-owned. Static route reuse also preserves the browser's
@@ -123,12 +148,31 @@ returned elements.
 Once a static route is cached, navigation can reuse it without a request. Redirect
 rules that must run for each query change require a dynamic route.
 
+Runtime responses that pass through handler interceptors, or already have a
+recorded intent, do not enable whole-route reuse. Their immutable elements still
+use etags and the server element cache. This keeps request-specific redirects,
+including action redirects, out of the static route cache.
+
+Whole-route reuse also requires every immutable source to have completed its
+element-cache render, including sources omitted on an etag hit. An uncached
+runtime route can still record an intent while Flight renders its components,
+so it requires a request on later visits. Build-preloaded routes and explicitly
+keyed sources can retain whole-route reuse. A cached static redirect replayed in
+a runtime response disables whole-route reuse too; prerendered files keep their
+build-time static metadata.
+
+Prerendered files can be served and reused without running runtime interceptors.
+Routes requiring authorization or another check on every request must be dynamic;
+an interceptor does not make a prerendered page private. Record an intent before
+calling `next()` when it must take effect: after `await next()`, Flight may have
+already closed its stream, and a later intent cannot reach the browser.
+
 On failure, retained elements can describe an earlier route. The attempted URL
 and error state belong to the client binding, not the server metadata.
 
 ## Navigation Hrefs and Search
 
-`Link`, `push`, `replace`, `prefetch`, and `unstable_redirect` consume URL strings.
+`Link`, `push`, `replace`, `prefetch`, and `requestRedirect` consume URL strings.
 `unstable_createRouteHref` from `waku/router` binds a local pattern and optional
 search codec to a function returning an app-base-free primitive string. Its
 type-only brand records the normalized route pattern, not membership in a
@@ -145,9 +189,11 @@ destination must independently validate its incoming query.
 
 ## Loading Without a Cache
 
-`unstable_load` from `waku/router/client-core` accepts a fetch callback. It follows
-fetch-time redirects and custom 404s, enforces the follow budget, and stops waiting
-when cancelled. It does not require the Router cache or merge elements.
+`unstable_load` from `waku/router/client-core` accepts a fetch callback. It
+recovers from real HTTP 404s, including missing files on a static host, within the
+follow budget and stops waiting when cancelled. It does not require the Router
+cache or merge elements. It follows ready intents before returning a payload;
+the binding observes intents that arrive after commit.
 
 This hook binds the loader to the enclosing Minimal `Root` without a Router cache:
 
@@ -182,36 +228,29 @@ function from a navigation handler:
 const outcome = await loadRoute(requested, {
   signal: controller.signal,
   has404,
-  settled,
   url: requestedUrl,
   follows,
 });
 ```
 
-Here `settled` identifies the route whose composition the binding retains for
-reuse, which can be accepted before it paints. `follows` is zero for a new
-navigation or the preceding count for a render-time follow. The callback receives
+Here `follows` is zero for a new navigation or the preceding follow count. The callback receives
 each attempt's route, intended browser URL, and follow count, plus the cancellation
 signal. It can supply `unstable_base` to `fetchRsc` for etag reuse when the binding
 retains the corresponding elements.
 
-| Outcome    | Binding responsibility                                                     |
-| ---------- | -------------------------------------------------------------------------- |
-| `loaded`   | Reconcile response metadata and queue its elements with navigation intent. |
-| `reused`   | Retain existing content and queue the requested route metadata and intent. |
-| `external` | Leave the document for `url`, applying the binding's history policy.       |
-| `failed`   | Present the error at the attempted URL.                                    |
-| `aborted`  | Discard the result.                                                        |
+| Outcome   | Binding responsibility                                                                                    |
+| --------- | --------------------------------------------------------------------------------------------------------- |
+| `loaded`  | Reconcile response metadata and queue its elements with navigation intent.                                |
+| `reused`  | Retain existing content and queue the requested route metadata and intent.                                |
+| `failed`  | Present the error at the attempted URL.                                                                   |
+| `aborted` | Discard the result.                                                                                       |
+| `leave`   | Commit the attempt's `url` with the navigation's history mode, then replace the document with `location`. |
 
-A callback returns `undefined` only to reuse usable content already in this Root;
-missing routes must reject with a not-found error. A hash-only fetch redirect back
-to the settled RSC route also returns `reused`, avoiding an identical fetch.
-`outcome.route` describes the final attempt, not necessarily the server-rendered
-destination: reconcile `ROUTE` using the URL rules above. Streamed-slot errors
-must continue the same follow budget through the binding's error boundary.
-Each boundary dispatches a caught error's follow once; React effect replay does
-not start another request. Separate boundaries handle a shared error
-independently.
+A callback returns `undefined` only to reuse usable content already in this Root.
+An unmatched route uses the custom page when available. With no custom page,
+or on a static host, the request can instead reject with an HTTP 404. `outcome.route` describes the
+final attempt, not necessarily the rendered destination: reconcile `ROUTE` using
+the URL rules above. Observing `INTENT` continues the same follow budget.
 
 Bindings that want Router's cache policy call `useRouterCache_UNSTABLE()` during
 rendering. Its `cache.load(requested, { ...options, base: elements })` wraps the
@@ -302,10 +341,10 @@ Fetching and committing are different boundaries. An ordinary fetch can finish
 while a client component is suspended; its navigation promise does not wait for
 that component. Successful ordinary navigations apply history and scrolling
 after the snapshot commits. Eligible instant navigations can commit a cached
-shell while fetching continues. Fetch failures and external redirects write
-history without waiting for a successful content commit; failures render an
-error rather than a slot that was never fetched. The render-error boundary has
-its own reset conditions, separate from clearing the Router's fetch error.
+shell while fetching continues. Fetch failures write history without waiting
+for a successful content commit and render the error rather than an unfetched
+slot. A boundary handles initial HTTP 404s; application error boundaries handle
+ordinary render errors, and Minimal's Slot boundary handles render cancellation.
 
 Router's `useMergeInstantElements` owns the eager rendering policy. It uses
 Minimal's merge callback to retain pinned slots, wait on the response for other
@@ -385,17 +424,17 @@ See [Rerender After Actions](/guides/rerender-after-actions).
 
 Paths below are relative to `packages/waku/src/router`.
 
-| Responsibility                                                | File                                                               |
-| ------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Protocol IDs, RSC inputs, slot IDs, and metadata readers      | `isomorphic-utils/router-protocol.ts`                              |
-| Route resolution to elements and route metadata               | `define-router-utils/route-entries.ts`                             |
-| Request handling, redirects, not-found, and action responses  | `define-router-utils/request-handler.tsx`                          |
-| Client action intent and stale-origin protection              | `client-core-utils/action-routing.ts`                              |
-| Fetch-time follows and render-time follow policy              | `client-core-utils/load.ts` and `client-core-utils/error-route.ts` |
-| Element/route/history commit in the standard binding          | `client-utils/navigation.ts` and `client-utils/router-state.ts`    |
-| Cached eager paints and response adoption                     | `client-utils/instant-navigation.ts`                               |
-| Pinned slots, waiting values, and instant response settlement | `client-utils/instant-elements.ts`                                 |
-| Rendered error handling and boundary resets                   | `client-utils/render-error.tsx` and `client.tsx`                   |
+| Responsibility                                                | File                                                                |
+| ------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Protocol IDs, RSC inputs, slot IDs, and metadata readers      | `isomorphic-utils/router-protocol.ts`                               |
+| Route resolution to elements and route metadata               | `define-router-utils/route-entries.ts`                              |
+| Request handling, redirects, not-found, and action responses  | `define-router-utils/request-handler.tsx`                           |
+| Client action intent and stale-origin protection              | `client-core-utils/action-routing.ts`                               |
+| Fetch-time follows and render-time follow policy              | `client-core-utils/load.ts` and `client-core-utils/route-follow.ts` |
+| Element/route/history commit in the standard binding          | `client-utils/navigation.ts` and `client-utils/router-state.ts`     |
+| Cached eager paints and response adoption                     | `client-utils/instant-navigation.ts`                                |
+| Pinned slots, waiting values, and instant response settlement | `client-utils/instant-elements.ts`                                  |
+| Rendered error handling and boundary resets                   | `client-utils/render-error.tsx` and `client.tsx`                    |
 
 `packages/waku/tests/router-protocol.test.tsx` exercises server responses through
 Minimal's client and Router's public helpers, substituting only Flight

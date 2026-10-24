@@ -6,6 +6,8 @@ import {
   Slot_UNSTABLE as Slot,
 } from 'waku/minimal/client';
 import { createJotaiIntegration } from 'waku-jotai/minimal/client';
+import { CancelRender } from './components/CancelRender';
+import { WeakPromiseRoot } from './components/WeakPromise';
 
 const jotai = createJotaiIntegration();
 const enhancers = [jotai.rscEnhancer];
@@ -33,7 +35,15 @@ const ClientRoot = () => {
 const rootElement = (
   <StrictMode>
     <jotai.Provider>
-      <ClientRoot />
+      {window.location.pathname === '/cancel-render' ? (
+        <Root>
+          <CancelRender />
+        </Root>
+      ) : window.location.pathname === '/weak' ? (
+        <WeakPromiseRoot />
+      ) : (
+        <ClientRoot />
+      )}
     </jotai.Provider>
   </StrictMode>
 );

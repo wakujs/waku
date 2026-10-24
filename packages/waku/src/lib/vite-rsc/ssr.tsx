@@ -11,7 +11,7 @@ import htmlTransform from 'virtual:vite-rsc-waku/html-transform';
 // Layering rule: src/lib must not import src modules outside src/lib.
 // Exception: SSR must share Minimal's slot context.
 import { INTERNAL_ServerRoot } from '../../minimal/client-runtime.js';
-import { getErrorInfo } from '../utils-isomorphic/custom-errors.js';
+import { hasRenderCancellationDigest } from '../utils-isomorphic/render-cancellation.js';
 import { batchReadableStream } from '../utils-isomorphic/stream.js';
 import {
   createBootstrapScriptContent,
@@ -42,7 +42,6 @@ type RenderHtmlStream = (
     formState: ReactFormState | undefined;
     nonce: string | undefined;
     extraScriptContent: string | undefined;
-    rethrowNotFound: boolean | undefined;
     debugId: string | undefined;
     onError: (e: unknown) => string | undefined;
   },
@@ -102,11 +101,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
       ...(options.formState ? { formState: options.formState } : {}),
     });
   } catch (e) {
-    const info = getErrorInfo(e);
-    if (info?.location || (options.rethrowNotFound && info?.status === 404)) {
-      throw e;
-    }
-    status = info?.status || 500;
+    status = hasRenderCancellationDigest(e) ? undefined : 500;
     // SSR empty html and go full CSR on browser, which can revive RSC errors.
     const ssrErrorRoot = (
       <html>
@@ -118,6 +113,7 @@ export const renderHtmlStream: RenderHtmlStream = async (
         getBootstrapPreamble({
           hydrate: false,
           initialRsc: true,
+          debugId: options.debugId,
         }) +
         bootstrapScriptContent +
         (options.extraScriptContent || ''),

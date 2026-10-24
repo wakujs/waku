@@ -1,6 +1,6 @@
 import {
   unstable_buildElements as buildElements,
-  unstable_getErrorInfo as getErrorInfo,
+  unstable_isRenderCancellation as isRenderCancellation,
 } from 'waku/minimal/server';
 import type {
   Unstable_ElementSource as ElementSource,
@@ -16,7 +16,12 @@ import {
 import type { RouteData } from '../isomorphic-utils/router-protocol.js';
 import { cacheElementSource, getElementCacheId } from './element-cache.js';
 import type { ElementCache } from './element-cache.js';
-import { setRscParams, setRscPath } from './request-store.js';
+import {
+  getRequest,
+  runWithRouterStore,
+  setRscParams,
+  setRscPath,
+} from './request-store.js';
 
 export type RouterDefinition = {
   elements: Record<string, ElementSource & { cacheKey?: string }> & {
@@ -64,23 +69,37 @@ export const createRouteEntries = (
     (cachedHas404 ??= (
       getHas404
         ? getHas404()
-        : resolve('/404', '').then(
-            (result) => result !== null && typeof result !== 'function',
-          )
+        : runWithRouterStore({ req: getRequest() }, () =>
+            resolve('/404', ''),
+          ).then((result) => result !== null && typeof result !== 'function')
     ).catch((error) => {
-      if (getErrorInfo(error)?.status === 404) {
+      if (error instanceof Response && error.status === 404) {
         return false;
       }
       cachedHas404 = undefined;
+      if (isRenderCancellation(error)) {
+        return false;
+      }
       throw error;
     }));
+
+  const getRouteMetadata = async (pathname: string, query: string) => ({
+    [ROUTE_ID]: [pathname, query] satisfies RouteData,
+    ...((await has404()) ? { [HAS404_ID]: true } : {}),
+  });
 
   const getEntriesForRoute = async (
     rscPath: string,
     rscParams: unknown,
     clientEtags: Etags,
     cache: ElementCache,
-    routerDefinition?: RouterDefinition,
+    {
+      routerDefinition,
+      populateRouteCache = false,
+    }: {
+      routerDefinition?: RouterDefinition | undefined;
+      populateRouteCache?: boolean;
+    } = {},
   ) => {
     setRscPath(rscPath);
     setRscParams(rscParams);
@@ -93,34 +112,41 @@ export const createRouteEntries = (
     validateRouteElementIds(resolved.elements);
     const { route, ...sources } = resolved.elements;
     const routeId = getRouteSlotId(pathname);
-    sources[routeId] =
-      route.cacheKey !== undefined
-        ? cacheElementSource(route, getElementCacheId(routeId, route), cache)
-        : route.immutable
-          ? {
-              ...route,
-              render: () =>
-                cache.get(getElementCacheId(routeId, route)) ?? route.render(),
-            }
-          : route;
+    sources[routeId] = route;
+    const etags = { ...clientEtags };
+    await Promise.all(
+      Object.entries(sources).map(async ([id, source]) => {
+        if (source.immutable && etags[id] === 1) {
+          const cacheId = getElementCacheId(id, source);
+          if (cache.has(cacheId)) {
+            await cache.replayIntent(cacheId);
+          } else {
+            delete etags[id];
+          }
+        }
+      }),
+    );
     const entries = await buildElements(
-      clientEtags,
+      etags,
       Object.fromEntries(
         Object.entries(sources).map(([id, source]) => [
           id,
-          id === routeId
-            ? source
-            : cacheElementSource(source, getElementCacheId(id, source), cache),
+          cacheElementSource(
+            source,
+            getElementCacheId(id, source),
+            cache,
+            id !== routeId ||
+              source.cacheKey !== undefined ||
+              populateRouteCache,
+          ),
         ]),
       ),
     );
-    entries.elements[ROUTE_ID] = [pathname, query] satisfies RouteData;
-    entries.elements[IS_STATIC_ID] = Object.values(sources).every(
-      (source) => source.immutable,
+    Object.assign(entries.elements, await getRouteMetadata(pathname, query));
+    entries.elements[IS_STATIC_ID] = Object.entries(sources).every(
+      ([id, source]) =>
+        source.immutable && cache.has(getElementCacheId(id, source)),
     );
-    if (await has404()) {
-      entries.elements[HAS404_ID] = true;
-    }
     return entries;
   };
 
@@ -144,5 +170,5 @@ export const createRouteEntries = (
       : null;
   };
 
-  return { getEntriesForRoute, getEntriesForElement, has404 };
+  return { getEntriesForRoute, getEntriesForElement, getRouteMetadata, has404 };
 };

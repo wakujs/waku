@@ -1,4 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { unstable_createWeakPromise as createWeakPromise } from 'waku/minimal/server';
+import type { RouteIntentData } from '../isomorphic-utils/router-protocol.js';
 
 export type HandlerInterceptor = <T>(next: () => Promise<T>) => Promise<T>;
 
@@ -10,9 +12,65 @@ export type RouterStore = {
   rscParams?: unknown;
   rerender?: Rerender;
   nonce?: string;
+  intent?: ReturnType<typeof createRouteIntent>;
 };
 
 const routerStorage = new AsyncLocalStorage<RouterStore>();
+
+const createRouteIntent = (
+  signal?: AbortSignal,
+  forward?: (intent: RouteIntentData) => void,
+) => {
+  const { promise, resolve } = createWeakPromise();
+  let value: RouteIntentData | undefined;
+  let resume: ReturnType<typeof AsyncLocalStorage.snapshot> | undefined;
+  return {
+    promise,
+    get value() {
+      return value;
+    },
+    runInContext<T>(fn: () => T): T {
+      return resume ? resume(fn) : fn();
+    },
+    record(intent: RouteIntentData) {
+      if (value || signal?.aborted) {
+        return;
+      }
+      value = intent;
+      resume = AsyncLocalStorage.snapshot?.();
+      resolve(JSON.stringify(intent));
+      forward?.(intent);
+    },
+  };
+};
+
+export const getRouteIntent = () => {
+  const store = routerStorage.getStore();
+  if (!store) {
+    throw new Error('Route intent is not available.');
+  }
+  return (store.intent ??= createRouteIntent(store.req.signal));
+};
+
+export const captureRouteIntent = async <T>(fn: () => Promise<T>) => {
+  const store = routerStorage.getStore();
+  if (!store) {
+    return { result: await fn(), intent: undefined };
+  }
+  const parent = getRouteIntent();
+  let active = true;
+  const intent = createRouteIntent(undefined, (value) => {
+    if (active) {
+      parent.record(value);
+    }
+  });
+  try {
+    const result = await runWithRouterStore({ ...store, intent }, fn);
+    return { result, intent: intent.value };
+  } finally {
+    active = false;
+  }
+};
 
 export const runWithRouterStore = <T>(store: RouterStore, fn: () => T): T =>
   routerStorage.run(store, fn);

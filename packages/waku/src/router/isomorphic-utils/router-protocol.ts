@@ -3,13 +3,18 @@ import type { RouteProps } from './route-path.js';
 /** Element-map key for `[pathname, query]` of the represented route. */
 export const ROUTE_ID = 'ROUTE';
 
-/** Whether every source of the resolved route is immutable, including omitted slots. */
+/** Whether the represented route and its metadata can be reused without a request. */
 export const IS_STATIC_ID = 'IS_STATIC';
 
 /** Whether the server provides a custom `/404` route. */
 export const HAS404_ID = 'HAS404';
 
 export const IS_ORIGIN_ID = 'IS_ORIGIN';
+
+export const INTENT_ID = 'INTENT';
+
+export type RouteIntentData =
+  { status: 404 } | { status: 303 | 307 | 308; location: string };
 
 export const ACTION_LOCATION_HEADER = 'X-Waku-Action-Location';
 
@@ -30,8 +35,9 @@ export const getRouteFromElements = (
 };
 
 /**
- * Returns whether every source of the represented route is immutable, including
- * slots omitted by etags. Returns false without metadata; unrelated to prerendering.
+ * Returns whether the represented route can be reused without a request. Its
+ * sources must be immutable and its metadata request-independent. Returns false
+ * without metadata; unrelated to prerendering.
  */
 export const isStaticFromElements = (
   elements: Record<string, unknown>,
@@ -43,7 +49,10 @@ export const has404FromElements = (
 ): boolean => !!elements[HAS404_ID];
 
 export const isMetaKey = (key: string) =>
-  key === ROUTE_ID || key === HAS404_ID || key === IS_STATIC_ID;
+  key === ROUTE_ID ||
+  key === HAS404_ID ||
+  key === IS_STATIC_ID ||
+  key === INTENT_ID;
 
 const ROUTE_SLOT_ID_PREFIX = 'route:';
 const SLICE_SLOT_ID_PREFIX = 'slice:';

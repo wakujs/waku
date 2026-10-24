@@ -11,7 +11,7 @@ export {
   useElementsPromise_UNSTABLE,
   useMergeElements_UNSTABLE,
   unstable_combineElements,
+  unstable_hasRenderCancellationDigest,
   unstable_formatRscUrl,
-  unstable_getErrorInfo,
   unstable_isImmutableElement,
 } from './client-runtime.js';

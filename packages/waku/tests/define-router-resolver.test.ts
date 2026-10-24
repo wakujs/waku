@@ -1,12 +1,17 @@
+import { createElement } from 'react';
 import { runInNewContext } from 'node:vm';
 import { describe, expect, it, vi } from 'vitest';
 import {
-  type Unstable_HandleRequest as HandleRequest,
-  unstable_getErrorInfo,
+  unstable_cancelRender as cancelRender,
+  unstable_isRenderCancellation as isRenderCancellation,
 } from '../src/minimal/server.js';
+import { type Unstable_HandleRequest as HandleRequest } from '../src/minimal/server.js';
 import { unstable_createRouteHref } from '../src/router/base-types.js';
+import { getRscPath } from '../src/router/define-router-utils/request-store.js';
 import {
   getRequest,
+  requestNotFound,
+  requestRedirect,
   unstable_defineRouter,
   unstable_notFound,
   unstable_redirect,
@@ -16,6 +21,7 @@ import {
 import {
   ACTION_LOCATION_HEADER,
   HAS404_ID,
+  INTENT_ID,
   IS_ORIGIN_ID,
   IS_STATIC_ID,
   ROUTE_ID,
@@ -23,6 +29,10 @@ import {
   encodeSliceId,
 } from '../src/router/isomorphic-utils/router-protocol.js';
 import { deserializeRsc, serializeRsc } from '../src/server.js';
+
+const intentPromise = expect.objectContaining({
+  then: expect.any(Function),
+});
 
 vi.mock('../src/server.js', () => ({
   serializeRsc: vi.fn(async (value: unknown) =>
@@ -85,7 +95,7 @@ describe('defineRouter route resolver', () => {
     expect(render).toHaveBeenCalledOnce();
     expect(utils.renderRsc).toHaveBeenLastCalledWith(
       expect.objectContaining({ 'route:/two': 'shell' }),
-      expect.objectContaining({ etags: { 'route:/two': 1 } }),
+      { etags: { 'route:/two': 1 } },
     );
   });
 
@@ -139,10 +149,8 @@ describe('defineRouter route resolver', () => {
         utils,
       )
       .catch((error: unknown) => error);
-    expect(unstable_getErrorInfo(error)).toEqual({
-      status: 307,
-      location: href,
-    });
+    expect((error as Response).headers.get('location')).toBe(href);
+    expect((error as Response).status).toBe(307);
     expect(codec.serialize).toHaveBeenCalledExactlyOnceWith({ tag: 'a b' });
     expect(codec.parse).not.toHaveBeenCalled();
     expect(utils.renderHtml).not.toHaveBeenCalled();
@@ -178,6 +186,53 @@ describe('defineRouter route resolver', () => {
     }
     expect(render).toHaveBeenCalledTimes(4);
     expect(serializeRsc).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not cache an intent recorded while Flight renders an uncached immutable route', async () => {
+    const Page = async () => {
+      await Promise.resolve();
+      requestRedirect('/login');
+      return 'page';
+    };
+    const router = unstable_defineRouter({
+      resolve: async () => ({
+        elements: {
+          root: { immutable: true, render: () => 'root' },
+          route: { immutable: true, render: () => createElement(Page) },
+        },
+      }),
+      getHas404: async () => false,
+    });
+    const utils = makeUtils();
+    utils.renderRsc.mockImplementation(async (elements) => {
+      // A factory returning JSX finishes before Flight executes its component.
+      expect(elements['route:/private']).toEqual(createElement(Page));
+      await Page();
+      expect(await elements[INTENT_ID]).toBe(
+        JSON.stringify({ status: 307, location: '/login' }),
+      );
+      expect(elements[IS_STATIC_ID]).toBe(false);
+      return new ReadableStream({ start: (controller) => controller.close() });
+    });
+
+    await router.handleRequest(rscInput('/private'), utils);
+  });
+
+  it('keeps whole-route reuse for explicitly cached immutable sources', async () => {
+    const router = unstable_defineRouter({
+      resolve: async () => ({
+        elements: {
+          root: { immutable: true, render: () => 'root' },
+          route: { immutable: true, cacheKey: 'page', render: () => 'page' },
+        },
+      }),
+      getHas404: async () => false,
+    });
+    const utils = makeUtils();
+
+    await router.handleRequest(rscInput('/cached'), utils);
+
+    expect(utils.renderRsc.mock.calls[0]![0][IS_STATIC_ID]).toBe(true);
   });
 
   it.each([false, true])(
@@ -234,6 +289,58 @@ describe('defineRouter route resolver', () => {
     expect(utils.renderRsc).toHaveBeenLastCalledWith(
       expect.objectContaining({ 'route:/404': 'q=second', [HAS404_ID]: true }),
       expect.anything(),
+    );
+  });
+
+  it('renders a valid document and caches absence when the 404 probe throws an HTTP 404 Response', async () => {
+    let probes = 0;
+    const router = unstable_defineRouter({
+      resolve: async (path) => {
+        if (path === '/404') {
+          probes++;
+          throw new Response('Not Found', { status: 404 });
+        }
+        return createRouterDefinition('home');
+      },
+    });
+    const utils = makeUtils();
+    const response = await router.handleRequest(
+      {
+        type: 'http',
+        pathname: '/',
+        req: new Request('http://localhost/'),
+      },
+      utils,
+    );
+    expect(response).toBeInstanceOf(Response);
+    expect((response as Response).status).toBe(200);
+    expect(utils.renderRsc).toHaveBeenCalledWith(
+      expect.objectContaining({ 'route:/': 'home', [ROUTE_ID]: ['/', ''] }),
+      expect.anything(),
+    );
+    expect(utils.renderRsc.mock.calls[0]![0]).not.toHaveProperty(HAS404_ID);
+    await router.handleRequest(rscInput('/another'), utils);
+    expect(probes).toBe(1);
+  });
+
+  it('retries a cancelled 404 probe on the next request', async () => {
+    let probes = 0;
+    const router = unstable_defineRouter({
+      resolve: async (path) => {
+        if (path === '/404' && ++probes === 1) {
+          cancelRender();
+        }
+        return createRouterDefinition('page');
+      },
+    });
+    const utils = makeUtils();
+    await router.handleRequest(rscInput('/one'), utils);
+    expect(utils.renderRsc.mock.calls[0]![0]).not.toHaveProperty(HAS404_ID);
+    await router.handleRequest(rscInput('/two'), utils);
+    expect(probes).toBe(2);
+    expect(utils.renderRsc.mock.calls.at(-1)![0]).toHaveProperty(
+      HAS404_ID,
+      true,
     );
   });
 
@@ -362,7 +469,11 @@ describe('defineRouter route resolver', () => {
       expect.anything(),
     );
     expect(utils.renderRsc.mock.calls[0]![0]).not.toHaveProperty(HAS404_ID);
-    expect(await router.handleRequest(rscInput('/missing'), utils)).toBeNull();
+    await router.handleRequest(rscInput('/missing'), utils);
+    const missing = utils.renderRsc.mock.calls.at(-1)![0];
+    expect(JSON.parse(await (missing[INTENT_ID] as Promise<string>))).toEqual({
+      status: 404,
+    });
   });
   it('uses the same normalized route and query for document and RSC requests', async () => {
     const resolve = vi.fn<RouterOptions['resolve']>(async (path, query) =>
@@ -455,19 +566,31 @@ describe('defineRouter route resolver', () => {
           ? {
               elements: {
                 ...createRouterDefinition('route', true).elements,
+                route: {
+                  immutable: true,
+                  cacheKey: 'route',
+                  render: () => 'route',
+                },
                 content: { render, getEtag: async () => 'v1' },
               },
             }
           : null,
     });
     const utils = makeUtils();
+    await router.handleRequest(rscInput('/'), utils);
+    render.mockClear();
+    utils.renderRsc.mockClear();
     await router.handleRequest(
       { ...rscInput('/'), etags: { root: 1, 'route:/': 1, content: 'v1' } },
       utils,
     );
     expect(render).not.toHaveBeenCalled();
     expect(utils.renderRsc).toHaveBeenCalledWith(
-      { [ROUTE_ID]: ['/', ''], [IS_STATIC_ID]: false },
+      {
+        [ROUTE_ID]: ['/', ''],
+        [IS_STATIC_ID]: false,
+        [INTENT_ID]: intentPromise,
+      },
       { etags: {} },
     );
   });
@@ -489,7 +612,7 @@ describe('defineRouter route resolver', () => {
     );
     expect(resolveElement).toHaveBeenCalledWith('slice:fragment');
     expect(utils.renderRsc).toHaveBeenCalledWith(
-      { 'slice:fragment': 'fragment' },
+      { 'slice:fragment': 'fragment', [INTENT_ID]: intentPromise },
       { etags: { 'slice:fragment': 'v1' } },
     );
   });
@@ -549,11 +672,11 @@ describe('defineRouter route resolver', () => {
     expect(utils.renderHtml).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      expect.objectContaining({ status: 404, unstable_rethrowNotFound: false }),
+      expect.objectContaining({ status: 404 }),
     );
   });
 
-  it('returns a redirected route in the same RSC response', async () => {
+  it('returns a route intent and cancels the source slot for a redirect', async () => {
     const router = unstable_defineRouter({
       resolve: async (path, query) =>
         path === '/old'
@@ -571,11 +694,16 @@ describe('defineRouter route resolver', () => {
     await router.handleRequest(rscInput('/old'), utils);
     expect(utils.renderRsc).toHaveBeenCalledWith(
       expect.objectContaining({
-        [ROUTE_ID]: ['/next', 'q=one'],
-        'route:/next': 'q=one',
+        [ROUTE_ID]: ['/old', ''],
+        'route:/old': expect.any(Promise),
       }),
       expect.anything(),
     );
+    const elements = utils.renderRsc.mock.calls[0]![0];
+    expect(JSON.parse(await (elements[INTENT_ID] as Promise<string>))).toEqual({
+      status: 307,
+      location: '/next?q=one',
+    });
   });
 
   it('keeps origin rerenders and action values in the client protocol', async () => {
@@ -696,6 +824,66 @@ describe('defineRouter route resolver', () => {
     expect(mutableRender).toHaveBeenCalledTimes(1);
   });
 
+  it.each([undefined, 'shared-route'])(
+    'builds immutable route cache key %s in source order with route metadata and separate intents',
+    async (cacheKey) => {
+      const rendered: [string, string | undefined][] = [];
+      const rootRender = vi.fn(() => {
+        rendered.push(['root', getRscPath()]);
+        requestRedirect('/root-intent');
+        return 'root';
+      });
+      const routeRender = vi.fn(() => {
+        rendered.push(['route', getRscPath()]);
+        requestRedirect('/route-intent');
+        return 'route';
+      });
+      const router = unstable_defineRouter({
+        resolve: async () => ({
+          elements: {
+            root: { immutable: true, render: rootRender },
+            route: {
+              immutable: true,
+              ...(cacheKey === undefined ? {} : { cacheKey }),
+              render: routeRender,
+            },
+          },
+        }),
+        getBuildPaths: async () => ['/built'],
+        getHas404: async () => false,
+      });
+      const metadata = new Map<string, string>();
+      const utils = makeUtils();
+      await router.handleBuild({
+        ...utils,
+        rscPath2pathname: (path) => 'payload/' + path,
+        generateFile: vi.fn(),
+        generateDefaultHtml: vi.fn(),
+        saveBuildMetadata: async (key, value) => {
+          metadata.set(key, value);
+        },
+        unstable_registerPrunableFile: vi.fn(),
+      });
+      expect(rootRender).toHaveBeenCalledOnce();
+      expect(routeRender).toHaveBeenCalledOnce();
+      expect(rendered).toEqual([
+        ['root', encodeRoutePath('/built')],
+        ['route', encodeRoutePath('/built')],
+      ]);
+      const elements = utils.renderRsc.mock.calls[0]![0];
+      expect(JSON.parse((await elements[INTENT_ID]) as string)).toEqual({
+        status: 307,
+        location: '/root-intent',
+      });
+      const cached = JSON.parse(metadata.get('defineRouter:cachedElements')!);
+      const routeCacheId = cacheKey ? 'key/' + cacheKey : 'slot/route:/built';
+      expect(cached[routeCacheId]).toEqual({
+        data: btoa(JSON.stringify('route')),
+        intent: { status: 307, location: '/route-intent' },
+      });
+    },
+  );
+
   it('emits independently resolved immutable elements without route build paths', async () => {
     const id = 'slice:folder/fragment';
     const render = vi.fn(() => 'fragment');
@@ -709,10 +897,14 @@ describe('defineRouter route resolver', () => {
     const files = new Map<string, string>();
     const metadata = new Map<string, string>();
     const utils = makeUtils();
-    utils.renderRsc.mockImplementation(
-      async (elements, options) =>
-        new Response(JSON.stringify({ elements, etags: options?.etags })).body!,
-    );
+    utils.renderRsc.mockImplementation(async (elements, options) => {
+      const payload = { ...elements };
+      const intent = payload[INTENT_ID] as { value?: string } | undefined;
+      payload[INTENT_ID] = intent?.value;
+      return new Response(
+        JSON.stringify({ elements: payload, etags: options?.etags }),
+      ).body!;
+    });
     await router.handleBuild({
       ...utils,
       rscPath2pathname: (path) => 'payload/' + path,
@@ -728,7 +920,10 @@ describe('defineRouter route resolver', () => {
     expect(files.size).toBe(1);
     expect(
       JSON.parse(files.get('payload/' + encodeSliceId('folder/fragment'))!),
-    ).toEqual({ elements: { [id]: 'fragment' }, etags: { [id]: 1 } });
+    ).toEqual({
+      elements: { [id]: 'fragment' },
+      etags: { [id]: 1 },
+    });
     const runtime = unstable_defineRouter({
       resolve: async () => null,
       resolveElement,
@@ -742,7 +937,7 @@ describe('defineRouter route resolver', () => {
       runtimeUtils,
     );
     expect(runtimeUtils.renderRsc).toHaveBeenCalledWith(
-      { [id]: 'fragment' },
+      { [id]: 'fragment', [INTENT_ID]: intentPromise },
       { etags: { [id]: 1 } },
     );
     expect(render).toHaveBeenCalledOnce();
@@ -1056,7 +1251,10 @@ describe('defineRouter route resolver', () => {
       expect.any(ReadableStream),
     );
     expect(utils.renderRsc).toHaveBeenCalledWith(
-      { 'slice:summary': 'static summary' },
+      {
+        'slice:summary': 'static summary',
+        [INTENT_ID]: intentPromise,
+      },
       { etags: { 'slice:summary': 1 } },
     );
   });
@@ -1099,4 +1297,149 @@ describe('defineRouter route resolver', () => {
     sandbox.__WAKU_ROUTER_PREFETCH__!('/posts/two', (id) => modules.push(id));
     expect(modules).toEqual(['post-module']);
   });
+});
+
+it.each([undefined, 'shared'] as const)(
+  'replays an immutable route intent on an etag hit (key: %s)',
+  async (cacheKey) => {
+    const render = vi.fn(() => {
+      requestRedirect('/done');
+      return 'gate';
+    });
+    const router = unstable_defineRouter({
+      resolve: async () => ({
+        elements: {
+          root: { render: () => 'dynamic root' },
+          route: { immutable: true, ...(cacheKey ? { cacheKey } : {}), render },
+        },
+      }),
+      getHas404: async () => false,
+    });
+    const utils = makeUtils();
+    await router.handleRequest(rscInput('/gate'), utils);
+    await router.handleRequest(
+      { ...rscInput('/gate'), etags: { 'route:/gate': 1 } },
+      utils,
+    );
+    const elements = utils.renderRsc.mock.calls.at(-1)![0];
+    expect(
+      JSON.parse(await (elements[INTENT_ID] as PromiseLike<string>)),
+    ).toEqual({ status: 307, location: '/done' });
+    expect(render).toHaveBeenCalledTimes(cacheKey ? 1 : 2);
+    if (cacheKey) {
+      expect(elements).not.toHaveProperty('route:/gate');
+    }
+  },
+);
+
+it('replays build-preloaded intent metadata when an etag omits the slot', async () => {
+  const render = vi.fn(() => 'unused');
+  const router = unstable_defineRouter({
+    resolve: async () => ({
+      elements: {
+        root: { render: () => 'root' },
+        route: { immutable: true, render },
+      },
+    }),
+    getHas404: async () => false,
+  });
+  const utils = makeUtils();
+  // Use the actual metadata key rather than depending on its spelling.
+  const { ROUTER_METADATA } =
+    await import('../src/router/define-router-utils/build-metadata.js');
+  utils.loadBuildMetadata.mockImplementation(async (name) =>
+    name === ROUTER_METADATA.cachedElements
+      ? JSON.stringify({
+          'slot/route:/gate': {
+            data: btoa(JSON.stringify('gate')),
+            intent: { status: 307, location: '/done' },
+          },
+        })
+      : undefined,
+  );
+  await router.handleRequest(
+    { ...rscInput('/gate'), etags: { 'route:/gate': 1 } },
+    utils,
+  );
+  const elements = utils.renderRsc.mock.calls[0]![0];
+  expect(elements).not.toHaveProperty('route:/gate');
+  expect(
+    JSON.parse(await (elements[INTENT_ID] as PromiseLike<string>)),
+  ).toEqual({ status: 307, location: '/done' });
+  expect(render).not.toHaveBeenCalled();
+});
+
+it('uses the custom 404 after interceptor cancellation without running the gated action', async () => {
+  const router = unstable_defineRouter({
+    resolve: async (path, query) =>
+      path === '/404'
+        ? createRouterDefinition('missing:' + query)
+        : createRouterDefinition('protected'),
+    unstable_interceptors: [
+      async () => {
+        requestNotFound();
+        cancelRender();
+      },
+    ],
+  });
+  const utils = makeUtils();
+  const tryAction = vi.fn();
+  await router.handleRequest(
+    {
+      type: 'http',
+      pathname: '/protected',
+      req: new Request('http://localhost/protected?q=one'),
+      tryAction,
+    },
+    utils,
+  );
+  expect(utils.renderHtml).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.anything(),
+    expect.objectContaining({ status: 404 }),
+  );
+  expect(utils.renderRsc.mock.calls[0]![0]['route:/404']).toBe('missing:q=one');
+  expect(tryAction).not.toHaveBeenCalled();
+});
+
+it('leaves cancellation without an intent to Minimal', async () => {
+  const router = unstable_defineRouter({
+    resolve: async () => cancelRender(),
+    getHas404: async () => true,
+  });
+  const utils = makeUtils();
+  await expect(
+    router.handleRequest(
+      {
+        type: 'http',
+        pathname: '/cancelled',
+        req: new Request('http://localhost/cancelled'),
+      },
+      utils,
+    ),
+  ).rejects.toSatisfy(isRenderCancellation);
+  await expect(
+    router.handleRequest(rscInput('/cancelled'), utils),
+  ).rejects.toSatisfy(isRenderCancellation);
+  expect(utils.renderHtml).not.toHaveBeenCalled();
+  expect(utils.renderRsc).not.toHaveBeenCalled();
+});
+
+it('ignores invalid later redirects after an intent has won', async () => {
+  const router = unstable_defineRouter({
+    resolve: async () => {
+      requestRedirect('/done');
+      requestRedirect('invalid' as '/');
+      return createRouterDefinition('body');
+    },
+  });
+  const utils = makeUtils();
+  await router.handleRequest(rscInput('/gate'), utils);
+  expect(
+    JSON.parse(
+      await (utils.renderRsc.mock.calls[0]![0][
+        INTENT_ID
+      ] as PromiseLike<string>),
+    ),
+  ).toEqual({ status: 307, location: '/done' });
 });

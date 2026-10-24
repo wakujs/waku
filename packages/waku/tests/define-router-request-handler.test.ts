@@ -1,24 +1,27 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Unstable_RenderHtml } from '../src/lib/types.js';
-import {
-  unstable_createCustomError,
-  unstable_getErrorInfo,
-} from '../src/minimal/server.js';
 import { createConfiguredRouter } from '../src/router/create-pages-utils/router.js';
 import {
   ACTION_LOCATION_HEADER,
+  INTENT_ID,
   IS_ORIGIN_ID,
+  IS_STATIC_ID,
   ROUTE_ID,
   encodeRoutePath,
   encodeSliceId,
 } from '../src/router/isomorphic-utils/router-protocol.js';
 import {
+  createPages,
   getRequest,
-  unstable_notFound,
-  unstable_redirect,
+  requestRedirect,
+  unstable_defineRouter,
   unstable_rerenderRoute,
   unstable_setNonce,
 } from '../src/router/server.js';
+
+const intentPromise = expect.objectContaining({
+  then: expect.any(Function),
+});
 
 vi.mock('../src/server.js', () => ({
   deserializeRsc: vi.fn().mockResolvedValue(null),
@@ -34,7 +37,7 @@ const makeStream = () =>
   });
 
 const makeUtils = (loadBuildMetadata = vi.fn()) => ({
-  renderRsc: vi.fn().mockResolvedValue(makeStream()),
+  renderRsc: vi.fn().mockImplementation(async () => makeStream()),
   parseRsc: vi.fn(),
   renderHtml: vi
     .fn<Unstable_RenderHtml>()
@@ -73,7 +76,108 @@ const dynamicRoute = (name: string) => ({
   elements: {},
 });
 
+const staticRoute = (name: string) => ({
+  ...dynamicRoute(name),
+  isStatic: true,
+  rootElement: { isStatic: true, renderer: () => 'root' },
+  routeElement: { isStatic: true, renderer: () => 'route' },
+});
+
 describe('request dispatch', () => {
+  it('accounts for interceptors registered during createPages initialization', async () => {
+    const router = createPages(async ({ createPage, createInterceptor }) => {
+      createInterceptor(async (next) => {
+        const result = await next();
+        requestRedirect('/login');
+        return result;
+      });
+      return [
+        createPage({
+          render: 'static',
+          path: '/cached',
+          component: () => null,
+        }),
+      ];
+    });
+    const utils = makeUtils();
+
+    await router.handleRequest(rscInput(encodeRoutePath('/cached')), utils);
+
+    expect(utils.renderRsc.mock.calls[0]![0][IS_STATIC_ID]).toBe(false);
+  });
+
+  it.each(['before', 'after'])(
+    'does not cache an interceptor intent recorded %s rendering',
+    async (when) => {
+      const { handleRequest } = createConfiguredRouter({
+        getConfigs: async () => [staticRoute('/cached')],
+        unstable_interceptors: [
+          async (next) => {
+            if (when === 'before') {
+              requestRedirect('/login');
+            }
+            const result = await next();
+            if (when === 'after') {
+              requestRedirect('/login');
+            }
+            return result;
+          },
+        ],
+      });
+      const utils = makeUtils();
+
+      await handleRequest(rscInput(encodeRoutePath('/cached')), utils);
+
+      const elements = utils.renderRsc.mock.calls[0]![0];
+      expect(elements[IS_STATIC_ID]).toBe(false);
+      await expect(elements[INTENT_ID]).resolves.toBe(
+        JSON.stringify({ status: 307, location: '/login' }),
+      );
+    },
+  );
+
+  it('does not cache a request intent recorded by resolve', async () => {
+    const router = unstable_defineRouter({
+      resolve: async () => {
+        requestRedirect('/login');
+        return {
+          elements: {
+            root: { immutable: true, render: () => null },
+            route: { immutable: true, render: () => null },
+          },
+        };
+      },
+      getHas404: async () => false,
+    });
+    const utils = makeUtils();
+
+    await router.handleRequest(rscInput(encodeRoutePath('/cached')), utils);
+
+    expect(utils.renderRsc.mock.calls[0]![0][IS_STATIC_ID]).toBe(false);
+  });
+
+  it('does not cache a redirect recorded after an action rerenders static elements', async () => {
+    const { handleRequest } = createConfiguredRouter({
+      getConfigs: async () => [staticRoute('/cached')],
+    });
+    const utils = makeUtils();
+
+    await handleRequest(
+      callInput(async () => {
+        unstable_rerenderRoute('/cached');
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        requestRedirect('/login');
+        return 'action-result';
+      }),
+      utils,
+    );
+
+    const [elements, options] = utils.renderRsc.mock.calls[0]!;
+    expect(elements[ROUTE_ID]).toEqual(['/cached', '']);
+    expect(elements[IS_STATIC_ID]).toBe(false);
+    expect(options?.value).toBe('action-result');
+  });
+
   it('returns null for an unknown rsc route', async () => {
     const { handleRequest } = createConfiguredRouter({
       getConfigs: async () => [dynamicRoute('/about')],
@@ -174,7 +278,7 @@ describe('request dispatch', () => {
     expect(utils.renderRsc.mock.calls[0]![0]).not.toHaveProperty(IS_ORIGIN_ID);
   });
 
-  it('renders nothing for an action that does not ask, so an effect calling it cannot loop', async () => {
+  it('renders no slots for an action that does not ask, so an effect calling it cannot loop', async () => {
     const { handleRequest } = createConfiguredRouter({
       getConfigs: async () => [dynamicRoute('/dest')],
     });
@@ -184,7 +288,7 @@ describe('request dispatch', () => {
       utils,
     );
     expect(utils.renderRsc).toHaveBeenCalledWith(
-      {},
+      { [INTENT_ID]: intentPromise },
       { value: 'fn-value', etags: {} },
     );
   });
@@ -213,7 +317,7 @@ describe('request dispatch', () => {
       utils,
     );
     expect(utils.renderRsc).toHaveBeenCalledWith(
-      {},
+      { [INTENT_ID]: intentPromise },
       { value: 'fn-value', etags: {} },
     );
   });
@@ -296,83 +400,6 @@ describe('request dispatch', () => {
     expect(elements).not.toHaveProperty(IS_ORIGIN_ID);
   });
 
-  it('keeps the query of a server-function redirect', async () => {
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [dynamicRoute('/dest')],
-    });
-    const utils = makeUtils();
-    await handleRequest(
-      callInput(async () => {
-        unstable_redirect('/dest?a=1' as never);
-      }),
-      utils,
-    );
-    expect(utils.renderRsc).toHaveBeenCalledWith(
-      expect.objectContaining({ [ROUTE_ID]: ['/dest', 'a=1'] }),
-      { etags: {} },
-    );
-  });
-
-  it('leaves a server-function redirect to a non-route for the browser', async () => {
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [dynamicRoute('/dest'), dynamicRoute('/404')],
-    });
-    const utils = makeUtils();
-    await expect(
-      handleRequest(
-        callInput(async () => {
-          unstable_redirect('/nowhere' as never);
-        }),
-        utils,
-      ),
-    ).rejects.toThrow('Redirect');
-    expect(utils.renderRsc).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    'https://example.com/dest',
-    '//example.com/dest',
-    '/dest#frag',
-    '/\\example.com/dest',
-    '/\t/evil.com/dest',
-  ])(
-    'leaves a server-function redirect to %s for the browser to follow',
-    async (location) => {
-      const { handleRequest } = createConfiguredRouter({
-        getConfigs: async () => [dynamicRoute('/dest')],
-      });
-      const utils = makeUtils();
-      const err = await handleRequest(
-        callInput(async () => {
-          throw unstable_createCustomError('Redirect', {
-            status: 307,
-            location,
-          });
-        }),
-        utils,
-      ).catch((e: unknown) => e);
-      expect(unstable_getErrorInfo(err)).toEqual({ status: 307, location });
-      expect(utils.renderRsc).not.toHaveBeenCalled();
-    },
-  );
-
-  it('responds to a server-function redirect with the destination route', async () => {
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [dynamicRoute('/dest')],
-    });
-    const utils = makeUtils();
-    await handleRequest(
-      callInput(async () => {
-        unstable_redirect('/dest', 303);
-      }),
-      utils,
-    );
-    expect(utils.renderRsc).toHaveBeenCalledWith(
-      expect.objectContaining({ [ROUTE_ID]: ['/dest', ''] }),
-      { etags: {} },
-    );
-  });
-
   it('maps api params and rewrites the request pathname', async () => {
     const apiHandler = vi.fn().mockResolvedValue(new Response('api'));
     const { handleRequest } = createConfiguredRouter({
@@ -421,27 +448,6 @@ describe('request dispatch', () => {
     );
   });
 
-  it('answers a route that renders not found with the 404 payload', async () => {
-    const notFound = {
-      ...dynamicRoute('/gone'),
-      routeElement: {
-        isStatic: false,
-        renderer: () => {
-          unstable_notFound();
-        },
-      },
-    };
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [notFound, dynamicRoute('/404')],
-    });
-    const utils = makeUtils();
-    await handleRequest(rscInput(encodeRoutePath('/gone')), utils);
-    expect(utils.renderRsc).toHaveBeenCalledWith(
-      expect.objectContaining({ [ROUTE_ID]: ['/404', ''] }),
-      expect.anything(),
-    );
-  });
-
   it('propagates a non-404 failure from a route render', async () => {
     const boom = {
       ...dynamicRoute('/boom'),
@@ -462,28 +468,6 @@ describe('request dispatch', () => {
     expect(utils.renderRsc).not.toHaveBeenCalled();
   });
 
-  it('gives up quietly when the 404 route renders not found', async () => {
-    const recursive = {
-      ...dynamicRoute('/404'),
-      routeElement: {
-        isStatic: false,
-        renderer: () => {
-          unstable_notFound();
-        },
-      },
-    };
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [recursive],
-    });
-    const utils = makeUtils();
-    const res = await handleRequest(
-      rscInput(encodeRoutePath('/missing')),
-      utils,
-    );
-    expect(res).toBeNull();
-    expect(utils.renderRsc).not.toHaveBeenCalled();
-  });
-
   it('surfaces a broken 404 route instead of reporting no route', async () => {
     const broken = {
       ...dynamicRoute('/404'),
@@ -500,208 +484,6 @@ describe('request dispatch', () => {
     await expect(
       handleRequest(rscInput(encodeRoutePath('/missing')), makeUtils()),
     ).rejects.toThrow('the 404 page is broken');
-  });
-
-  it('responds to a route redirect with the destination route', async () => {
-    const moved = {
-      ...dynamicRoute('/moved'),
-      routeElement: {
-        isStatic: false,
-        renderer: () => {
-          unstable_redirect('/dest?a=1' as never);
-        },
-      },
-    };
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [moved, dynamicRoute('/dest')],
-    });
-    const utils = makeUtils();
-
-    await handleRequest(rscInput(encodeRoutePath('/moved')), utils);
-
-    expect(utils.renderRsc).toHaveBeenCalledWith(
-      expect.objectContaining({ [ROUTE_ID]: ['/dest', 'a=1'] }),
-      { etags: {} },
-    );
-  });
-
-  it('asks interceptors about the destination, not the route that moved', async () => {
-    const seen: string[] = [];
-    const moved = {
-      ...dynamicRoute('/moved'),
-      routeElement: {
-        isStatic: false,
-        renderer: () => {
-          unstable_redirect('/dest' as never);
-        },
-      },
-    };
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [moved, dynamicRoute('/dest')],
-      unstable_interceptors: [
-        async (next) => {
-          seen.push(new URL(getRequest().url).pathname);
-          return next();
-        },
-      ],
-    });
-
-    await handleRequest(rscInput(encodeRoutePath('/moved')), makeUtils());
-
-    // a guard on /dest would never run if it only saw the request for /moved
-    expect(seen[seen.length - 1]).toBe('/dest');
-  });
-
-  it('keeps the base path on the destination it asks about', async () => {
-    const seen: string[] = [];
-    const moved = {
-      ...dynamicRoute('/moved'),
-      routeElement: {
-        isStatic: false,
-        renderer: () => {
-          unstable_redirect('/dest' as never);
-        },
-      },
-    };
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [moved, dynamicRoute('/dest')],
-      unstable_interceptors: [
-        async (next) => {
-          seen.push(new URL(getRequest().url).pathname);
-          return next();
-        },
-      ],
-    });
-    const rscPath = encodeRoutePath('/moved');
-
-    await handleRequest(
-      {
-        type: 'rsc' as const,
-        // the app is mounted under /docs, so getInput strips it from pathname
-        pathname: '/RSC/' + rscPath,
-        rscPath,
-        rscParams: undefined,
-        req: new Request('http://localhost/docs/RSC/' + rscPath),
-      },
-      makeUtils(),
-    );
-
-    expect(seen[seen.length - 1]).toBe('/docs/dest');
-  });
-
-  it('hands off a route redirect whose destination fails to render', async () => {
-    const moved = {
-      ...dynamicRoute('/moved'),
-      routeElement: {
-        isStatic: false,
-        renderer: () => {
-          unstable_redirect('/dest' as never);
-        },
-      },
-    };
-    const broken = {
-      ...dynamicRoute('/dest'),
-      routeElement: {
-        isStatic: false,
-        renderer: () => {
-          throw new Error('the destination is broken');
-        },
-      },
-    };
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [moved, broken],
-    });
-    const utils = makeUtils();
-
-    const err = await handleRequest(
-      rscInput(encodeRoutePath('/moved')),
-      utils,
-    ).catch((e: unknown) => e);
-
-    // the browser goes to /dest and meets the error there, at its own url
-    expect(unstable_getErrorInfo(err)).toEqual({
-      status: 307,
-      location: '/dest',
-    });
-  });
-
-  it('hands off a route redirect the destination cannot answer', async () => {
-    const moved = {
-      ...dynamicRoute('/moved'),
-      routeElement: {
-        isStatic: false,
-        renderer: () => {
-          unstable_redirect('/gone' as never);
-        },
-      },
-    };
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [moved],
-    });
-    const utils = makeUtils();
-
-    const err = await handleRequest(rscInput(encodeRoutePath('/moved')), utils)
-      // the client leaves for /gone, which answers for itself
-      .catch((e: unknown) => e);
-
-    expect(unstable_getErrorInfo(err)).toEqual({
-      status: 307,
-      location: '/gone',
-    });
-    expect(utils.renderRsc).not.toHaveBeenCalled();
-  });
-
-  it('hands off a server-function redirect whose destination is not found', async () => {
-    const gone = {
-      ...dynamicRoute('/dest'),
-      routeElement: {
-        isStatic: false,
-        renderer: () => {
-          unstable_notFound();
-        },
-      },
-    };
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [gone, dynamicRoute('/404')],
-    });
-    const utils = makeUtils();
-    const err = await handleRequest(
-      callInput(async () => {
-        unstable_redirect('/dest');
-      }),
-      utils,
-    ).catch((e: unknown) => e);
-    // the browser still lands on /dest, which renders its own 404 there
-    expect(unstable_getErrorInfo(err)).toEqual({
-      status: 307,
-      location: '/dest',
-    });
-  });
-
-  it('hands off a server-function redirect whose destination redirects', async () => {
-    const onward = {
-      ...dynamicRoute('/dest'),
-      routeElement: {
-        isStatic: false,
-        renderer: () => {
-          unstable_redirect('/onward' as never);
-        },
-      },
-    };
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [onward],
-    });
-    const utils = makeUtils();
-    const err = await handleRequest(
-      callInput(async () => {
-        unstable_redirect('/dest');
-      }),
-      utils,
-    ).catch((e: unknown) => e);
-    expect(unstable_getErrorInfo(err)).toEqual({
-      status: 307,
-      location: '/dest',
-    });
   });
 
   it('renders the 404 route with the query that was asked for', async () => {
@@ -744,38 +526,6 @@ describe('request dispatch', () => {
       expect.anything(),
       expect.objectContaining({ status: 404 }),
     );
-  });
-
-  it('keeps the 404 fallback render from rethrowing', async () => {
-    const { handleRequest } = createConfiguredRouter({
-      getConfigs: async () => [
-        dynamicRoute('/not-found'),
-        dynamicRoute('/404'),
-      ],
-    });
-    const utils = makeUtils();
-    utils.renderHtml.mockImplementation(async (_stream, _html, options) => {
-      if (options.unstable_rethrowNotFound) {
-        unstable_notFound();
-      }
-      return new Response('not found', { status: options.status ?? 200 });
-    });
-    const res = await handleRequest(
-      {
-        type: 'http',
-        pathname: '/not-found',
-        req: new Request('http://localhost/not-found'),
-      },
-      utils,
-    );
-    expect(res).toBeInstanceOf(Response);
-    expect((res as Response).status).toBe(404);
-    expect(utils.renderHtml).toHaveBeenCalledTimes(2);
-    const elements = utils.renderRsc.mock.calls[1]?.[0] as Record<
-      string,
-      unknown
-    >;
-    expect(elements?.[ROUTE_ID]).toEqual(['/404', '']);
   });
 
   it('renders fallback HTML without rendering a noSsr route', async () => {

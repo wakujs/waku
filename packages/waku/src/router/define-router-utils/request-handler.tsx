@@ -1,23 +1,38 @@
-import { unstable_getErrorInfo as getErrorInfo } from 'waku/minimal/server';
-import type { Unstable_HandleRequest as HandleRequest } from 'waku/minimal/server';
+import {
+  unstable_cancelRender as cancelRender,
+  unstable_cancelRenderStream as cancelRenderStream,
+  unstable_hasRenderCancellationDigest as hasRenderCancellationDigest,
+  unstable_isRenderCancellation as isRenderCancellation,
+} from 'waku/minimal/server';
+import type {
+  Unstable_HandleRequest as HandleRequest,
+  Unstable_RenderRsc as RenderRsc,
+} from 'waku/minimal/server';
 import { INTERNAL_ServerRouter } from '../client.js';
 import { pathnameToRoutePath } from '../isomorphic-utils/route-path.js';
 import {
   ACTION_LOCATION_HEADER,
+  INTENT_ID,
   IS_ORIGIN_ID,
+  IS_STATIC_ID,
+  ROUTE_ID,
+  decodeRoutePath,
   decodeSliceId,
   encodeRoutePath,
+  getRouteSlotId,
   getSliceSlotId,
 } from '../isomorphic-utils/router-protocol.js';
 import { ROUTER_METADATA } from './build-metadata.js';
 import { getRouterPrefetchCode } from './client-code.js';
-import { base64ToBytes, createElementCache } from './element-cache.js';
-import { getNonce, setRerender } from './request-store.js';
+import { createElementCache } from './element-cache.js';
+import type { SerializedElement } from './element-cache.js';
+import { getNonce, getRouteIntent, setRerender } from './request-store.js';
 import type {
   Resolve,
   RouterDefinition,
   createRouteEntries,
 } from './route-entries.js';
+import { getQuery } from './route-entries.js';
 
 type RouteEntries = {
   elements: Record<string, unknown>;
@@ -25,6 +40,12 @@ type RouteEntries = {
 };
 
 type HandlerInput = Parameters<HandleRequest>[0];
+
+const createNotFoundResponse = () =>
+  new Response(
+    '<!doctype html><html><head><title>Not Found</title></head><body><h1>Not Found</h1></body></html>',
+    { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } },
+  );
 
 const parseInternalRoute = (location: string, base: string) => {
   if (!location.startsWith('/') || location.includes('#')) {
@@ -62,10 +83,16 @@ export const createRequestHandler = ({
   resolve,
   routeEntries,
   runHandled,
+  hasInterceptors = () => false,
 }: {
   resolve: Resolve;
   routeEntries: ReturnType<typeof createRouteEntries>;
-  runHandled: <T>(req: Request, fn: () => Promise<T>) => Promise<T>;
+  runHandled: <T>(
+    req: Request,
+    fn: () => Promise<T>,
+    onCancel?: () => Promise<T>,
+  ) => Promise<T>;
+  hasInterceptors?: () => boolean;
 }): HandleRequest => {
   const requestElementCache = createElementCache();
   let requestElementCacheInit: Promise<void> | undefined;
@@ -75,20 +102,81 @@ export const createRequestHandler = ({
     input,
     { renderRsc, renderHtml, renderHtmlFallback, loadBuildMetadata },
   ) => {
-    return runHandled(input.req, async () => {
+    const redirectResponse = () => {
+      const requested = getRouteIntent().value;
+      if (!requested || !('location' in requested)) {
+        return undefined;
+      }
+      const url = new URL(input.req.url);
+      const base = url.pathname.slice(
+        0,
+        url.pathname.length - input.pathname.length,
+      );
+      const target = new URL(requested.location, input.req.url);
+      const location = requested.location.startsWith('/')
+        ? base + target.pathname + target.search + target.hash
+        : target.href;
+      return new Response(null, {
+        status: input.req.method === 'POST' ? 303 : requested.status,
+        headers: {
+          location,
+          'cache-control': 'private, no-store',
+        },
+      });
+    };
+    const renderCancelledRequest = async (): ReturnType<HandleRequest> => {
+      const intent = getRouteIntent();
+      if (!intent.value) {
+        cancelRender();
+      }
+      if (input.type === 'http') {
+        return redirectResponse() ?? handleRequest(true);
+      }
+      if (input.type === 'rsc' && decodeSliceId(input.rscPath) === null) {
+        const pathname = decodeRoutePath(input.rscPath);
+        const slotId = getRouteSlotId(pathname);
+        return renderRsc(
+          {
+            ...(await routeEntries.getRouteMetadata(
+              pathname,
+              getQuery(input.rscParams),
+            )),
+            [IS_STATIC_ID]: false,
+            [slotId]: null,
+            [INTENT_ID]: intent.promise,
+          },
+          { etags: { [slotId]: '' } },
+        );
+      }
+      return renderRsc({ [INTENT_ID]: intent.promise });
+    };
+    const handleRequest = async (
+      cancelled = false,
+    ): ReturnType<HandleRequest> => {
+      const intent = getRouteIntent();
+      const renderRscWithIntent: RenderRsc = (elements, options) =>
+        renderRsc(
+          {
+            ...elements,
+            ...((hasInterceptors() || intent.value) && ROUTE_ID in elements
+              ? { [IS_STATIC_ID]: false }
+              : {}),
+            [INTENT_ID]: intent.promise,
+          },
+          options,
+        );
       requestElementCacheInit ??= (async () => {
         const cachedElementsMetadata = await loadBuildMetadata(
           ROUTER_METADATA.cachedElements,
         );
         if (cachedElementsMetadata) {
-          Object.entries(JSON.parse(cachedElementsMetadata)).forEach(
-            ([cacheId, str]) => {
-              requestElementCache.preload(
-                cacheId,
-                base64ToBytes(str as string),
-              );
-            },
-          );
+          const cachedElements = JSON.parse(cachedElementsMetadata) as Record<
+            string,
+            SerializedElement
+          >;
+          for (const [cacheId, entry] of Object.entries(cachedElements)) {
+            requestElementCache.preload(cacheId, entry);
+          }
         }
       })();
       await requestElementCacheInit;
@@ -156,33 +244,6 @@ export const createRequestHandler = ({
         }
       };
 
-      const getEntriesForRedirect = async (location: string) => {
-        const redirectRoute = parseInternalRoute(location, input.req.url);
-        if (!redirectRoute) {
-          return null;
-        }
-        const url = new URL(input.req.url);
-        const base = url.pathname.slice(
-          0,
-          url.pathname.length - input.pathname.length,
-        );
-        const headers = new Headers(input.req.headers);
-        for (const name of ['content-type', 'content-length']) {
-          headers.delete(name);
-        }
-        const destination = new Request(new URL(base + location, url), {
-          headers,
-        });
-        return runHandled(destination, () =>
-          routeEntries.getEntriesForRoute(
-            encodeRoutePath(redirectRoute.path),
-            new URLSearchParams({ query: redirectRoute.query }),
-            clientEtags,
-            requestElementCache,
-          ),
-        ).catch(() => null);
-      };
-
       const handleRscRequest = async ({
         rscPath,
         rscParams,
@@ -196,7 +257,9 @@ export const createRequestHandler = ({
           if (!entries) {
             return null;
           }
-          return renderRsc(entries.elements, { etags: entries.etags });
+          return renderRscWithIntent(entries.elements, {
+            etags: entries.etags,
+          });
         }
         let entries: RouteEntries | null = null;
         try {
@@ -207,65 +270,41 @@ export const createRequestHandler = ({
             requestElementCache,
           );
         } catch (e) {
-          const info = getErrorInfo(e);
-          if (info?.location && info.status !== 404) {
-            const redirected = await getEntriesForRedirect(info.location);
-            if (!redirected) {
-              throw e;
-            }
-            return renderRsc(redirected.elements, { etags: redirected.etags });
+          if (isRenderCancellation(e)) {
+            return renderCancelledRequest();
           }
-          if (info?.status !== 404) {
-            throw e;
-          }
+          throw e;
         }
         if (!entries && (await routeEntries.has404())) {
-          entries = await routeEntries
-            .getEntriesForRoute(
-              encodeRoutePath('/404'),
-              rscParams,
-              clientEtags,
-              requestElementCache,
-            )
-            .catch((e) => {
-              if (getErrorInfo(e)?.status !== 404) {
-                throw e;
-              }
-              return null;
-            });
+          entries = await routeEntries.getEntriesForRoute(
+            encodeRoutePath('/404'),
+            rscParams,
+            clientEtags,
+            requestElementCache,
+          );
         }
         if (!entries) {
-          return null;
+          return intent.value ? renderCancelledRequest() : null;
         }
-        return renderRsc(entries.elements, { etags: entries.etags });
+        return renderRscWithIntent(entries.elements, {
+          etags: entries.etags,
+        });
       };
 
       const handleCallRequest = async ({
         fn,
         args,
       }: Extract<HandlerInput, { type: 'call' }>) => {
-        try {
-          const { value, entries, isOrigin } = await withRerender(
-            () => fn(...args),
-            () => parseActionOrigin(input.req),
-          );
-          return renderRsc(
-            isOrigin
-              ? { ...entries.elements, [IS_ORIGIN_ID]: true }
-              : entries.elements,
-            { value, etags: entries.etags },
-          );
-        } catch (e) {
-          const location = getErrorInfo(e)?.location;
-          if (!location) {
-            throw e;
-          }
-          const entries = await getEntriesForRedirect(location);
-          if (!entries) {
-            throw e;
-          }
-          return renderRsc(entries.elements, { etags: entries.etags });
-        }
+        const { value, entries, isOrigin } = await withRerender(
+          () => fn(...args),
+          () => parseActionOrigin(input.req),
+        );
+        return renderRscWithIntent(
+          isOrigin
+            ? { ...entries.elements, [IS_ORIGIN_ID]: true }
+            : entries.elements,
+          { value, etags: entries.etags },
+        );
       };
 
       const handleHttpRequest = async ({
@@ -273,28 +312,53 @@ export const createRequestHandler = ({
         req,
         tryAction,
       }: Extract<HandlerInput, { type: 'http' }>) => {
+        let actionResult: ReturnType<NonNullable<typeof tryAction>> | undefined;
         const query = new URL(req.url).searchParams.toString();
-        const resolved = await resolve(
-          pathnameToRoutePath(pathname),
-          query,
-        ).catch((error) => {
-          if (getErrorInfo(error)?.status !== 404) {
+        let resolved;
+        try {
+          resolved = cancelled
+            ? null
+            : await resolve(pathnameToRoutePath(pathname), query);
+        } catch (error) {
+          if (!isRenderCancellation(error)) {
             throw error;
           }
-          return null;
-        });
+          return renderCancelledRequest();
+        }
+        const beforeRenderRedirect = redirectResponse();
+        if (beforeRenderRedirect) {
+          return beforeRenderRedirect;
+        }
         if (typeof resolved === 'function') {
           const url = new URL(req.url);
           url.pathname = pathname;
           const apiReq = new Request(url, req);
-          return resolved(apiReq);
+          let response;
+          try {
+            response = await resolved(apiReq);
+          } catch (error) {
+            if (!isRenderCancellation(error)) {
+              throw error;
+            }
+            return renderCancelledRequest();
+          }
+          const redirect = redirectResponse();
+          if (redirect) {
+            await cancelRenderStream(response.body);
+            return redirect;
+          }
+          if (intent.value?.status === 404) {
+            await cancelRenderStream(response.body);
+            return new Response('Not Found', { status: 404 });
+          }
+          return response;
         }
         const renderPage = async (
           pathname: string,
           query: string,
           status = 200,
           routerDefinition?: RouterDefinition,
-        ) => {
+        ): Promise<Response | null> => {
           const routePath = pathnameToRoutePath(pathname);
           const rscPath = encodeRoutePath(routePath);
           const rscParams = new URLSearchParams({ query });
@@ -303,7 +367,7 @@ export const createRequestHandler = ({
             rscParams,
             clientEtags,
             requestElementCache,
-            routerDefinition,
+            { routerDefinition },
           );
           if (!entries) {
             return null;
@@ -312,19 +376,21 @@ export const createRequestHandler = ({
           const nonce = getNonce();
           const html = <INTERNAL_ServerRouter route={route} />;
           let formState: unknown;
-          if (tryAction) {
+          if (tryAction && !cancelled) {
             const { value, entries: rerendered } = await withRerender(
-              tryAction,
+              () => (actionResult ??= tryAction()),
               () => [rscPath, rscParams] as const,
             );
-            formState = value.action ? value.formState : undefined;
+            formState = value?.action ? value.formState : undefined;
             entries = {
               elements: { ...entries.elements, ...rerendered.elements },
               etags: { ...entries.etags, ...rerendered.etags },
             };
           }
-          return renderHtml(
-            await renderRsc(entries.elements, { etags: entries.etags }),
+          const response = await renderHtml(
+            await renderRscWithIntent(entries.elements, {
+              etags: entries.etags,
+            }),
             html,
             {
               rscPath,
@@ -334,11 +400,27 @@ export const createRequestHandler = ({
               unstable_extraScriptContent: getRouterPrefetchCode(
                 await getPath2moduleIds(),
               ),
-              unstable_rethrowNotFound:
-                status !== 404 && (await routeEntries.has404()),
             },
           );
+          const requested = intent.value;
+          const redirect = redirectResponse();
+          if (redirect) {
+            await cancelRenderStream(response.body);
+            return redirect;
+          }
+          if (requested?.status === 404 && pathname !== '/404') {
+            await cancelRenderStream(response.body);
+            return (await routeEntries.has404())
+              ? renderPage('/404', query, 404)
+              : createNotFoundResponse();
+          }
+          return response;
         };
+        if (intent.value?.status === 404) {
+          return (await routeEntries.has404())
+            ? renderPage('/404', query, 404)
+            : createNotFoundResponse();
+        }
         if (resolved?.noSsr) {
           const nonce = getNonce();
           return renderHtmlFallback({
@@ -350,10 +432,10 @@ export const createRequestHandler = ({
             return await renderPage(pathname, query, 200, resolved);
           }
         } catch (e) {
-          const info = getErrorInfo(e);
-          if (info?.status !== 404) {
+          if (!isRenderCancellation(e) && !hasRenderCancellationDigest(e)) {
             throw e;
           }
+          return renderCancelledRequest();
         }
         if (await routeEntries.has404()) {
           // the 404 page renders for the url that was asked for, query and all
@@ -372,6 +454,7 @@ export const createRequestHandler = ({
       if (input.type === 'http') {
         return handleHttpRequest(input);
       }
-    });
+    };
+    return runHandled(input.req, handleRequest, renderCancelledRequest);
   };
 };

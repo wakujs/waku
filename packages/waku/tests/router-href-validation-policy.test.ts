@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { getErrorInfo } from '../src/lib/utils-isomorphic/custom-errors.js';
 import type { Unstable_SearchCodec } from '../src/router/base-types.js';
 import { parseRoute } from '../src/router/client-core-utils/route-url.js';
 import { createPages } from '../src/router/create-pages.js';
@@ -161,7 +160,7 @@ describe('outbound serialization and inbound parsing', () => {
           utils,
         )
         .catch((cause: unknown) => cause);
-      expect(getErrorInfo(error)?.status).toBe(400);
+      expect((error as Response).status).toBe(400);
       expect(error).toMatchObject({
         cause: new Error(
           scenario === 'omitted search' ? 'Missing page' : 'Invalid page',
