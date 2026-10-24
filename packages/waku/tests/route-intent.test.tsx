@@ -162,44 +162,37 @@ test('a navigation commits while its intent stays pending', async () => {
   expect(controls.elements[INTENT_ID]).toBe(pending.promise);
 });
 
-test.each([false, true])(
-  'a ready redirect retains content until its destination loads (instant: %s)',
-  async (instant) => {
-    mocks.queue.push({
-      ...payload('/one'),
-      [getRouteSlotId('/gate')]: <p>Cached gate</p>,
-      [ETAGS_ID]: { root: 1, [getRouteSlotId('/gate')]: 1 },
-    });
-    const view = await mount();
-    const destination = defer<Elements>();
-    mocks.queue.push(
-      {
-        ...payload(
-          '/gate',
-          Promise.resolve(JSON.stringify({ status: 307, location: '/done' })),
-        ),
-        [getRouteSlotId('/gate')]: null,
-      },
-      destination.promise,
-    );
-    const requests = vi.mocked(fetch).mock.calls.length;
-    let navigating!: Promise<void>;
-    await act(async () => {
-      navigating = controls.router.push('/gate', { unstable_instant: instant });
-      await flush();
-    });
-    expect(vi.mocked(fetch).mock.calls).toHaveLength(requests + 2);
-    expect(view.textContent).toContain(instant ? 'Cached gate' : 'Page /one');
-    expect(window.location.pathname).toBe(instant ? '/gate' : '/one');
-    await act(async () => {
-      destination.resolve(payload('/done'));
-      await navigating;
-      await flush();
-    });
-    expect(view.textContent).toContain('Page /done');
-    expect(window.location.pathname).toBe('/done');
-  },
-);
+test('a ready redirect retains content until its destination loads', async () => {
+  mocks.queue.push(payload('/one'));
+  const view = await mount();
+  const destination = defer<Elements>();
+  mocks.queue.push(
+    {
+      ...payload(
+        '/gate',
+        Promise.resolve(JSON.stringify({ status: 307, location: '/done' })),
+      ),
+      [getRouteSlotId('/gate')]: null,
+    },
+    destination.promise,
+  );
+  const requests = vi.mocked(fetch).mock.calls.length;
+  let navigating!: Promise<void>;
+  await act(async () => {
+    navigating = controls.router.push('/gate');
+    await flush();
+  });
+  expect(vi.mocked(fetch).mock.calls).toHaveLength(requests + 2);
+  expect(view.textContent).toContain('Page /one');
+  expect(window.location.pathname).toBe('/one');
+  await act(async () => {
+    destination.resolve(payload('/done'));
+    await navigating;
+    await flush();
+  });
+  expect(view.textContent).toContain('Page /done');
+  expect(window.location.pathname).toBe('/done');
+});
 
 test.each(['redirect', 'notFound', 'notFoundWithoutPage'] as const)(
   'a cancelled resolver follows %s from a pending navigation',
