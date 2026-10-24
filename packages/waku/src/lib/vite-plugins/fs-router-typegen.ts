@@ -28,7 +28,7 @@ type ExportSpecifier = ExportNamedDeclaration['specifiers'][number] & {
 // https://tc39.es/ecma262/multipage/ecmascript-language-lexical-grammar.html#sec-names-and-keywords
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#identifiers
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#reserved_words
-export function toIdentifier(input: string): string {
+const toIdentifier = (input: string): string => {
   // Strip the file extension
   let identifier = input.includes('.')
     ? input.split('.').slice(0, -1).join('.')
@@ -53,11 +53,14 @@ export function toIdentifier(input: string): string {
       })
       .join('')
   );
-}
+};
+export const toIdentifierForTest = toIdentifier;
 
-export function getImportModuleNames(filePaths: string[]): {
+const getImportModuleNames = (
+  filePaths: string[],
+): {
   [k: string]: string;
-} {
+} => {
   const moduleNameCount: { [k: string]: number } = {};
   const moduleNames: { [k: string]: string } = {};
   for (const filePath of filePaths) {
@@ -73,7 +76,8 @@ export function getImportModuleNames(filePaths: string[]): {
     }
   }
   return moduleNames;
-}
+};
+export const getImportModuleNamesForTest = getImportModuleNames;
 
 const parseModule = async (filePath: string) => {
   const source = readFileSync(filePath, 'utf8');

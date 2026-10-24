@@ -5,7 +5,7 @@ import { adoptElements } from '../src/minimal/client-utils/element-etags.js';
 import type { FetchRsc } from '../src/minimal/client-utils/root-store.js';
 import {
   createRscParams,
-  getRouterCache,
+  getRouterCacheForTest,
 } from '../src/router/client-core-utils/caches.js';
 import {
   IS_STATIC_ID,
@@ -17,7 +17,7 @@ import {
 type Elements = Record<string, unknown>;
 
 const fetchRsc = vi.fn<FetchRsc>();
-const cache = getRouterCache(fetchRsc);
+const cache = getRouterCacheForTest(fetchRsc);
 
 const route = (path: string, query = '', hash = '') => ({ path, query, hash });
 
@@ -48,9 +48,9 @@ describe('layer-1 router caches', () => {
   });
 
   it('gives each Root its own cache, keyed by its fetch', async () => {
-    expect(getRouterCache(fetchRsc)).toBe(cache);
+    expect(getRouterCacheForTest(fetchRsc)).toBe(cache);
     const otherFetch = vi.fn<FetchRsc>();
-    const other = getRouterCache(otherFetch);
+    const other = getRouterCacheForTest(otherFetch);
     expect(other).not.toBe(cache);
 
     await settlePrefetch('/a', '', immutable('/a'));

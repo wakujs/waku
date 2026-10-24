@@ -17,7 +17,7 @@ import * as minimalClientRuntime from '../src/minimal/client-runtime.js';
 import { INTERNAL_ServerRoot } from '../src/minimal/client-runtime.js';
 import type { FetchRsc } from '../src/minimal/client-utils/root-store.js';
 import * as minimalClient from '../src/minimal/client.js';
-import { getRouterCache } from '../src/router/client-core-utils/caches.js';
+import { getRouterCacheForTest } from '../src/router/client-core-utils/caches.js';
 import type { RouterCache } from '../src/router/client-core-utils/caches.js';
 import { useHmrRefetch } from '../src/router/client-core-utils/hmr.js';
 import {
@@ -160,7 +160,7 @@ describe('useHmrRefetch', () => {
     // a fresh fetch stands for a freshly mounted Root, and so a fresh cache
     const fetchRsc = vi.fn<FetchRsc>();
     vi.spyOn(minimalClient, 'useFetchRsc_UNSTABLE').mockReturnValue(fetchRsc);
-    cache = getRouterCache(fetchRsc);
+    cache = getRouterCacheForTest(fetchRsc);
     stubHot();
   });
 

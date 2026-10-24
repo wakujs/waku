@@ -300,7 +300,7 @@ describe('define-router handleBuild', () => {
     );
 
     // Runtime: empty getConfigs simulates a fully-pruned route - the merge
-    // falls back to noRuntimeFn renderers, so any cache miss throws.
+    // falls back to throwMissingRuntimeFunction renderers, so any cache miss throws.
     const runtimeRouter = createConfiguredRouter({
       getConfigs: async () => [],
     });

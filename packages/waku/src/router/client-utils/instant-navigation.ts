@@ -5,7 +5,7 @@ import {
   useRouterCache,
 } from '../client-core-utils/caches.js';
 import type { RouterCache } from '../client-core-utils/caches.js';
-import { abortable } from '../client-core-utils/load.js';
+import { rejectOnAbort } from '../client-core-utils/load.js';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
   IS_STATIC_ID,
@@ -34,11 +34,12 @@ export const canPaintInstantOverlay = (
 ) => !follows && cache.hasCachedShell(route, resolvedElements);
 
 // symbol keys are client owned; they are carried, never fetched
-export const pinForSwr =
+const pinForSwr =
   (getResolvedElements: () => Elements) => (key: string | symbol) =>
     typeof key === 'symbol' ||
     isMetaKey(key) ||
     isImmutableElement(getResolvedElements(), key);
+export const pinForSwrForTest = pinForSwr;
 
 export const useStartInstantPaint = (
   getElements: () => Elements,
@@ -79,7 +80,7 @@ export const useStartInstantPaint = (
             },
           );
       return mergeInstantElements(
-        abortable(response, signal),
+        rejectOnAbort(response, signal),
         pinForSwr(getElements),
         prefetchedElements,
         overlay,

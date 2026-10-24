@@ -6,7 +6,7 @@ import {
 import {
   base64ToBytes,
   createElementCache,
-  getSlotCacheId,
+  getSlotCacheIdForTest,
 } from '../src/router/define-router-utils/element-cache.js';
 import type { PathSpec } from '../src/router/isomorphic-utils/path-spec.js';
 import { serializeRsc } from '../src/server.js';
@@ -68,8 +68,8 @@ describe('element cache', () => {
   });
 
   it('slot and path-spec cache ids are stable', () => {
-    expect(getSlotCacheId('main')).toBe('slot/main');
-    expect(getSlotCacheId('main')).toBe(getSlotCacheId('main'));
+    expect(getSlotCacheIdForTest('main')).toBe('slot/main');
+    expect(getSlotCacheIdForTest('main')).toBe(getSlotCacheIdForTest('main'));
     const pathSpec: PathSpec = [{ type: 'literal', name: 'foo' }];
     expect(getPathSpecCacheId(pathSpec)).toBe(
       `pathSpec/${JSON.stringify(pathSpec)}`,

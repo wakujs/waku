@@ -3,10 +3,10 @@ import { describe, expect, test, vi } from 'vitest';
 import { ETAGS_ID, IMMUTABLE_ETAG } from '../src/lib/utils-isomorphic/etags.js';
 import { adoptElements } from '../src/minimal/client-utils/element-etags.js';
 import type { FetchRsc } from '../src/minimal/client-utils/root-store.js';
-import { getRouterCache } from '../src/router/client-core-utils/caches.js';
+import { getRouterCacheForTest } from '../src/router/client-core-utils/caches.js';
 import {
   canPaintInstantOverlay,
-  pinForSwr,
+  pinForSwrForTest,
 } from '../src/router/client-utils/instant-navigation.js';
 import { ROUTER_STATE_ID } from '../src/router/client-utils/router-state.js';
 import {
@@ -24,7 +24,7 @@ const immutable = (slotId: string) =>
 
 describe('canPaintInstantOverlay', () => {
   const route = { path: '/a', query: '', hash: '' };
-  const cache = getRouterCache(vi.fn<FetchRsc>());
+  const cache = getRouterCacheForTest(vi.fn<FetchRsc>());
 
   test('uses an immutable route shell only on the first attempt', () => {
     const elements = immutable(getRouteSlotId(route.path));
@@ -35,7 +35,7 @@ describe('canPaintInstantOverlay', () => {
 
 describe('pinForSwr', () => {
   test('pins meta keys and immutable slots, not mutable ones', () => {
-    const pin = pinForSwr(() => immutable('layout:/'));
+    const pin = pinForSwrForTest(() => immutable('layout:/'));
     expect(pin(ROUTE_ID)).toBe(true);
     expect(pin(HAS404_ID)).toBe(true);
     expect(pin(IS_STATIC_ID)).toBe(true);
@@ -49,7 +49,7 @@ describe('pinForSwr', () => {
 
   test('reads the resolved elements at call time', () => {
     let resolved: Record<string, unknown> = {};
-    const pin = pinForSwr(() => resolved);
+    const pin = pinForSwrForTest(() => resolved);
     expect(pin('layout:/')).toBe(false);
     resolved = immutable('layout:/');
     expect(pin('layout:/')).toBe(true);

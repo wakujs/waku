@@ -19,13 +19,13 @@ export const GET = async (request: Request) => {
   const url = new URL(request.url);
   const filename = url.pathname.split('/').pop()!;
   if (!filename.endsWith('.png')) {
-    return notFound();
+    return createNotFoundResponse();
   }
   const slug = filename.slice(0, -4);
 
   const result = await compilePost({ folder: './private/contents', slug });
   if (!result) {
-    return notFound();
+    return createNotFoundResponse();
   }
 
   fontOptions ??= {
@@ -63,7 +63,7 @@ export const GET = async (request: Request) => {
   );
 };
 
-function notFound() {
+function createNotFoundResponse() {
   return new Response('Not Found', { status: 404 });
 }
 

@@ -1,7 +1,7 @@
 /** @vitest-environment happy-dom */
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
-  getHashElement,
+  getHashElementForTest,
   scrollToHash,
   shouldScrollByDefault,
   shouldScrollForRouteChange,
@@ -26,37 +26,39 @@ const append = (html: string) => {
 describe('getHashElement', () => {
   test('an id wins, and an anchor name counts', () => {
     append('<a name="intro">by name</a><div id="body">by id</div>');
-    expect(getHashElement('#body')?.id).toBe('body');
-    expect(getHashElement('#intro')?.localName).toBe('a');
+    expect(getHashElementForTest('#body')?.id).toBe('body');
+    expect(getHashElementForTest('#intro')?.localName).toBe('a');
   });
 
   test('a named element that is not an anchor is not a target', () => {
     append('<input name="section" /><meta name="description" />');
-    expect(getHashElement('#section')).toBeNull();
-    expect(getHashElement('#description')).toBeNull();
+    expect(getHashElementForTest('#section')).toBeNull();
+    expect(getHashElementForTest('#description')).toBeNull();
   });
 
   test('a percent encoded name decodes', () => {
     append('<div id="café au lait">x</div><div id="あ">y</div>');
-    expect(getHashElement('#caf%C3%A9%20au%20lait')?.textContent).toBe('x');
-    expect(getHashElement('#%E3%81%82')?.textContent).toBe('y');
+    expect(getHashElementForTest('#caf%C3%A9%20au%20lait')?.textContent).toBe(
+      'x',
+    );
+    expect(getHashElementForTest('#%E3%81%82')?.textContent).toBe('y');
   });
 
   test('a malformed escape leaves that part alone', () => {
     append('<div id="foo bar%ZZ">x</div>');
-    expect(getHashElement('#foo%20bar%ZZ')?.textContent).toBe('x');
+    expect(getHashElementForTest('#foo%20bar%ZZ')?.textContent).toBe('x');
   });
 
   test('top means the document, decoded or not, unless something claims it', () => {
-    expect(getHashElement('#top')).toBe(document.documentElement);
-    expect(getHashElement('#%74op')).toBe(document.documentElement);
-    expect(getHashElement('#TOP')).toBe(document.documentElement);
+    expect(getHashElementForTest('#top')).toBe(document.documentElement);
+    expect(getHashElementForTest('#%74op')).toBe(document.documentElement);
+    expect(getHashElementForTest('#TOP')).toBe(document.documentElement);
     append('<div id="top">mine</div>');
-    expect(getHashElement('#top')?.textContent).toBe('mine');
+    expect(getHashElementForTest('#top')?.textContent).toBe('mine');
   });
 
   test('an unknown fragment finds nothing', () => {
-    expect(getHashElement('#nowhere')).toBeNull();
+    expect(getHashElementForTest('#nowhere')).toBeNull();
   });
 });
 

@@ -42,12 +42,12 @@ import {
   useMergeElements_UNSTABLE as useMergeElements,
 } from '../src/minimal/client.js';
 import { unstable_createRouteHref } from '../src/router/base-types.js';
-import { getRouterCache } from '../src/router/client-core-utils/caches.js';
+import { getRouterCacheForTest } from '../src/router/client-core-utils/caches.js';
 import {
   RouterHostContext,
   useRouterHost,
 } from '../src/router/client-core-utils/host.js';
-import { PREFETCH_LIMIT } from '../src/router/client-core-utils/prefetch-cache.js';
+import { PREFETCH_LIMIT_FOR_TEST } from '../src/router/client-core-utils/prefetch-cache.js';
 import {
   unstable_encodeRoutePath,
   unstable_encodeSliceId,
@@ -195,8 +195,8 @@ const prefetchRsc = testHoisted.prefetch as unknown as MockedRefetch;
 
 const currentFetch = () => testHoisted.fetchRsc;
 const routerCache = () =>
-  getRouterCache(
-    currentFetch() as unknown as Parameters<typeof getRouterCache>[0],
+  getRouterCacheForTest(
+    currentFetch() as unknown as Parameters<typeof getRouterCacheForTest>[0],
   );
 const slices = () => routerCache().slices;
 
@@ -467,7 +467,7 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
     );
   };
 
-  const abortable = <T,>(promise: Promise<T>, signal?: AbortSignal) => {
+  const rejectOnAbort = <T,>(promise: Promise<T>, signal?: AbortSignal) => {
     if (!signal) {
       return promise;
     }
@@ -504,7 +504,7 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
         ? testHoisted.prefetch
         : testHoisted.inner!)(rscPath, ...rest),
     );
-    const data = abortable(requested, options?.signal);
+    const data = rejectOnAbort(requested, options?.signal);
     return data.then((result) =>
       adoptElements(withRouteMeta(result, rscPath, rscParams)),
     );
@@ -5214,19 +5214,19 @@ describe('Router integration', () => {
     }
 
     await act(async () => {
-      for (let i = 0; i < PREFETCH_LIMIT + 1; i += 1) {
+      for (let i = 0; i < PREFETCH_LIMIT_FOR_TEST + 1; i += 1) {
         capture.router!.prefetch(`/p${i}`, { mode: 'once' });
       }
       await flush();
     });
-    expect(prefetchRsc).toHaveBeenCalledTimes(PREFETCH_LIMIT + 1);
+    expect(prefetchRsc).toHaveBeenCalledTimes(PREFETCH_LIMIT_FOR_TEST + 1);
 
     await act(async () => {
       // /p0 was evicted by the overflowing prefetches above
       capture.router!.prefetch('/p0', { mode: 'once' });
       await flush();
     });
-    expect(prefetchRsc).toHaveBeenCalledTimes(PREFETCH_LIMIT + 2);
+    expect(prefetchRsc).toHaveBeenCalledTimes(PREFETCH_LIMIT_FOR_TEST + 2);
 
     view.unmount();
   });
