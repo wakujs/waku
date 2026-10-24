@@ -14,6 +14,8 @@ import {
   ACTION_LOCATION_HEADER,
   INTENT_ID,
   IS_ORIGIN_ID,
+  IS_STATIC_ID,
+  ROUTE_ID,
   decodeSliceId,
   encodeRoutePath,
   getSliceSlotId,
@@ -74,6 +76,7 @@ export const createRequestHandler = ({
   resolve,
   routeEntries,
   runHandled,
+  hasInterceptors = () => false,
 }: {
   resolve: Resolve;
   routeEntries: ReturnType<typeof createRouteEntries>;
@@ -82,6 +85,7 @@ export const createRequestHandler = ({
     fn: () => Promise<T>,
     onCancel?: () => Promise<T>,
   ) => Promise<T>;
+  hasInterceptors?: () => boolean;
 }): HandleRequest => {
   const requestElementCache = createElementCache();
   let requestElementCacheInit: Promise<void> | undefined;
@@ -149,7 +153,17 @@ export const createRequestHandler = ({
     ): ReturnType<HandleRequest> => {
       const intent = getRouteIntent();
       const renderRscWithIntent: RenderRsc = (elements, options) =>
-        renderRsc({ ...elements, [INTENT_ID]: intent.promise }, options);
+        renderRsc(
+          {
+            ...elements,
+            // Request instructions must not become immutable route metadata.
+            ...((hasInterceptors() || intent.value) && ROUTE_ID in elements
+              ? { [IS_STATIC_ID]: false }
+              : {}),
+            [INTENT_ID]: intent.promise,
+          },
+          options,
+        );
       requestElementCacheInit ??= (async () => {
         const cachedElementsMetadata = await loadBuildMetadata(
           ROUTER_METADATA.cachedElements,

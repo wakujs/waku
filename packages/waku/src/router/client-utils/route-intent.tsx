@@ -16,7 +16,7 @@ import {
   MAX_FOLLOWS_PER_NAVIGATION,
   decideRouteIntent,
 } from '../client-core-utils/route-follow.js';
-import { isSameRscRoute, parseRoute } from '../client-core-utils/route-url.js';
+import { parseRoute } from '../client-core-utils/route-url.js';
 import {
   INTENT_ID,
   getRouteFromElements,
@@ -37,7 +37,6 @@ export const RouteIntent = ({
   const elements = use(useElementsPromise());
   const router = use(RouterContext);
   const getElements = router?.getElements;
-  const getPendingRoute = router?.getPendingRoute;
   const changeRoute = router?.changeRoute;
   const registerRscEnhancer = useRegisterRscEnhancer();
   const followed = useRef(
@@ -55,12 +54,8 @@ export const RouteIntent = ({
     };
   }, []);
   const isCurrent = useEffectEvent((source: Elements) => {
-    const pendingRoute = getPendingRoute?.();
-    const sourceRoute = getRouteFromElements(source);
     return (
-      (!pendingRoute ||
-        !sourceRoute ||
-        isSameRscRoute(pendingRoute, sourceRoute)) &&
+      router?.isCurrentRoute?.(source) ??
       (!getElements || getElements()[INTENT_ID] === source[INTENT_ID])
     );
   });

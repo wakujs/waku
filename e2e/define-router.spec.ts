@@ -1,5 +1,10 @@
 import { expect } from '@playwright/test';
-import { prepareNormalSetup, test, waitForHydration } from './utils.js';
+import {
+  clickSelector,
+  prepareNormalSetup,
+  test,
+  waitForHydration,
+} from './utils.js';
 
 const startApp = prepareNormalSetup('define-router');
 
@@ -21,6 +26,70 @@ test.describe(`define-router`, () => {
     await expect(page.getByTestId('home-title')).toHaveText('Home');
     await page.locator("a[href='/foo']").click();
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');
+  });
+
+  for (const when of ['before', 'after']) {
+    test(`an interceptor redirect recorded ${when} rendering is not replayed after access changes`, async ({
+      page,
+    }) => {
+      await page.setExtraHTTPHeaders({ 'x-waku-test-gate': when });
+      await page.goto(`http://localhost:${port}/`);
+      await waitForHydration(page);
+      await clickSelector(page, 'a[href="/interceptor-cache"]');
+      await expect(page.getByTestId('foo-title')).toHaveText('Foo');
+
+      await page.setExtraHTTPHeaders({ 'x-waku-test-gate': 'allow' });
+      await clickSelector(page, 'a[href="/"]');
+      await expect(page.getByTestId('home-title')).toHaveText('Home');
+      await clickSelector(page, 'a[href="/interceptor-cache"]');
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+        'Allowed page',
+      );
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+          ),
+      );
+      expect(page.url()).toBe(`http://localhost:${port}/interceptor-cache`);
+    });
+  }
+
+  test('a static action redirect does not become the next visit intent', async ({
+    page,
+  }) => {
+    await page.goto(`http://localhost:${port}/action-static`);
+    await waitForHydration(page);
+    await clickSelector(page, 'button[type="submit"]');
+    await expect(page.getByTestId('foo-title')).toHaveText('Foo');
+    await clickSelector(page, 'a[href="/"]');
+    await expect(page.getByTestId('home-title')).toHaveText('Home');
+    await clickSelector(page, 'a[href="/action-static"]');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Static action page',
+    );
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
+    expect(page.url()).toBe(`http://localhost:${port}/action-static`);
+  });
+
+  test('an interceptor cancellation preserves ALS in the streamed 404 page', async ({
+    request,
+  }) => {
+    const response = await request.get(
+      `http://localhost:${port}/interceptor-missing`,
+      {
+        headers: { 'x-waku-test-context': 'tenant-a' },
+      },
+    );
+    expect(response.status()).toBe(404);
+    expect(await response.text()).toContain(
+      'Scoped Not Found: <!-- -->tenant-a',
+    );
   });
 
   test('foo', async ({ page }) => {

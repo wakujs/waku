@@ -74,7 +74,7 @@ type Navigation = {
   route: RouteProps;
   changeRoute: ChangeRoute;
   getElements: () => Elements;
-  getPendingRoute: () => Pick<RouteProps, 'path' | 'query'> | undefined;
+  isCurrentRoute: (source: Elements) => boolean;
   error: NavigationError | undefined;
 };
 
@@ -502,6 +502,20 @@ export const useNavigation = (
   );
 
   const getPendingRoute = useCallback(() => requestRef.current?.target, []);
+  const isCurrentRoute = useCallback(
+    (source: Elements) => {
+      const committed = getElements();
+      const state = getRouterState(source);
+      const request = requestRef.current;
+      // A matching URL does not give an older response ownership of a reload.
+      return (
+        getRouterState(committed) === state &&
+        committed[INTENT_ID] === source[INTENT_ID] &&
+        (!request || (!!request.queuedState && request.queuedState === state))
+      );
+    },
+    [getElements],
+  );
   const commitActionRoute = useCallback(
     (nextRoute: RouteProps) => {
       const is404 = nextRoute.path === '/404';
@@ -556,7 +570,7 @@ export const useNavigation = (
     route,
     changeRoute,
     getElements,
-    getPendingRoute,
+    isCurrentRoute,
     error: navigationError,
   };
 };

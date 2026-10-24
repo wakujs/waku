@@ -204,7 +204,7 @@ export function unstable_defineRouter(fns: RouterOptions): Handlers {
         if (!isRenderCancellation(error) || !onCancel) {
           throw error;
         }
-        return onCancel();
+        return getRouteIntent().runInContext(onCancel);
       }
     });
   };
@@ -213,6 +213,7 @@ export function unstable_defineRouter(fns: RouterOptions): Handlers {
       resolve: fns.resolve,
       routeEntries,
       runHandled,
+      hasInterceptors: () => !!fns.unstable_interceptors?.length,
     }),
     handleBuild: createBuildHandler({
       resolve: fns.resolve,

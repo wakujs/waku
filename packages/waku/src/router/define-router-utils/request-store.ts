@@ -24,16 +24,22 @@ const createRouteIntent = (
 ) => {
   const { promise, resolve } = createWeakPromise();
   let value: RouteIntentData | undefined;
+  let resume: ReturnType<typeof AsyncLocalStorage.snapshot> | undefined;
   return {
     promise,
     get value() {
       return value;
+    },
+    runInContext<T>(fn: () => T): T {
+      return resume ? resume(fn) : fn();
     },
     record(intent: RouteIntentData) {
       if (value || signal?.aborted) {
         return;
       }
       value = intent;
+      // Cancellation recovery runs after the interceptor stack has unwound.
+      resume = AsyncLocalStorage.snapshot();
       resolve(JSON.stringify(intent));
       forward?.(intent);
     },

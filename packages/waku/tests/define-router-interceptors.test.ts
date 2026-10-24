@@ -2,11 +2,13 @@ import type { ReactNode } from 'react';
 import { createElement } from 'react';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { describe, expect, it, vi } from 'vitest';
+import { unstable_cancelRender as cancelRender } from '../src/minimal/server.js';
 import { createConfiguredRouter } from '../src/router/create-pages-utils/router.js';
 import { createPages } from '../src/router/create-pages.js';
 import {
   type HandlerInterceptor,
   getRequest,
+  requestNotFound,
 } from '../src/router/define-router.js';
 import { fsRouter } from '../src/router/fs-router.js';
 
@@ -120,6 +122,26 @@ describe('define-router handler interceptors', () => {
     await callHandleRequest(router);
 
     expect(seen).toBe('from-interceptor');
+  });
+
+  it('preserves interceptor ALS when cancellation renders the custom 404', async () => {
+    const als = new AsyncLocalStorage<string>();
+    let seen: string | undefined;
+    const router = make404Router(() => {
+      seen = als.getStore();
+      return 'not found';
+    }, [
+      () =>
+        als.run('from-interceptor', async () => {
+          requestNotFound();
+          cancelRender();
+        }),
+    ]);
+
+    await callHandleRequest(router);
+
+    expect(seen).toBe('from-interceptor');
+    expect(als.getStore()).toBeUndefined();
   });
 
   it('runs createInterceptor-registered interceptors in createPages', async () => {

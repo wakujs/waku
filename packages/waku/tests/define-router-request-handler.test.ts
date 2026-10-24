@@ -5,12 +5,16 @@ import {
   ACTION_LOCATION_HEADER,
   INTENT_ID,
   IS_ORIGIN_ID,
+  IS_STATIC_ID,
   ROUTE_ID,
   encodeRoutePath,
   encodeSliceId,
 } from '../src/router/isomorphic-utils/router-protocol.js';
 import {
+  createPages,
   getRequest,
+  requestRedirect,
+  unstable_defineRouter,
   unstable_rerenderRoute,
   unstable_setNonce,
 } from '../src/router/server.js';
@@ -72,7 +76,108 @@ const dynamicRoute = (name: string) => ({
   elements: {},
 });
 
+const staticRoute = (name: string) => ({
+  ...dynamicRoute(name),
+  isStatic: true,
+  rootElement: { isStatic: true, renderer: () => 'root' },
+  routeElement: { isStatic: true, renderer: () => 'route' },
+});
+
 describe('request dispatch', () => {
+  it('accounts for interceptors registered during createPages initialization', async () => {
+    const router = createPages(async ({ createPage, createInterceptor }) => {
+      createInterceptor(async (next) => {
+        const result = await next();
+        requestRedirect('/login');
+        return result;
+      });
+      return [
+        createPage({
+          render: 'static',
+          path: '/cached',
+          component: () => null,
+        }),
+      ];
+    });
+    const utils = makeUtils();
+
+    await router.handleRequest(rscInput(encodeRoutePath('/cached')), utils);
+
+    expect(utils.renderRsc.mock.calls[0]![0][IS_STATIC_ID]).toBe(false);
+  });
+
+  it.each(['before', 'after'])(
+    'does not cache an interceptor intent recorded %s rendering',
+    async (when) => {
+      const { handleRequest } = createConfiguredRouter({
+        getConfigs: async () => [staticRoute('/cached')],
+        unstable_interceptors: [
+          async (next) => {
+            if (when === 'before') {
+              requestRedirect('/login');
+            }
+            const result = await next();
+            if (when === 'after') {
+              requestRedirect('/login');
+            }
+            return result;
+          },
+        ],
+      });
+      const utils = makeUtils();
+
+      await handleRequest(rscInput(encodeRoutePath('/cached')), utils);
+
+      const elements = utils.renderRsc.mock.calls[0]![0];
+      expect(elements[IS_STATIC_ID]).toBe(false);
+      await expect(elements[INTENT_ID]).resolves.toBe(
+        JSON.stringify({ status: 307, location: '/login' }),
+      );
+    },
+  );
+
+  it('does not cache a request intent recorded by resolve', async () => {
+    const router = unstable_defineRouter({
+      resolve: async () => {
+        requestRedirect('/login');
+        return {
+          elements: {
+            root: { immutable: true, render: () => null },
+            route: { immutable: true, render: () => null },
+          },
+        };
+      },
+      getHas404: async () => false,
+    });
+    const utils = makeUtils();
+
+    await router.handleRequest(rscInput(encodeRoutePath('/cached')), utils);
+
+    expect(utils.renderRsc.mock.calls[0]![0][IS_STATIC_ID]).toBe(false);
+  });
+
+  it('does not cache a redirect recorded after an action rerenders static elements', async () => {
+    const { handleRequest } = createConfiguredRouter({
+      getConfigs: async () => [staticRoute('/cached')],
+    });
+    const utils = makeUtils();
+
+    await handleRequest(
+      callInput(async () => {
+        unstable_rerenderRoute('/cached');
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        requestRedirect('/login');
+        return 'action-result';
+      }),
+      utils,
+    );
+
+    const [elements, options] = utils.renderRsc.mock.calls[0]!;
+    expect(elements[ROUTE_ID]).toEqual(['/cached', '']);
+    expect(elements[IS_STATIC_ID]).toBe(false);
+    expect(options?.value).toBe('action-result');
+  });
+
   it('returns null for an unknown rsc route', async () => {
     const { handleRequest } = createConfiguredRouter({
       getConfigs: async () => [dynamicRoute('/about')],

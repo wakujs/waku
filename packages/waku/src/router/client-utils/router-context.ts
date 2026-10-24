@@ -22,7 +22,9 @@ export const RouterContext = createContext<{
   route: RouteProps;
   changeRoute: ChangeRoute;
   getElements?: () => Record<string, unknown>;
-  getPendingRoute?: () => Pick<RouteProps, 'path' | 'query'> | undefined;
+  isCurrentRoute?: (
+    source: Readonly<Record<string | symbol, unknown>>,
+  ) => boolean;
 } | null>(null);
 
 export const dispatchChangeRoute = (

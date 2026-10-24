@@ -203,7 +203,7 @@ const InnerRouter = ({
     route: currentRoute,
     changeRoute,
     getElements,
-    getPendingRoute,
+    isCurrentRoute,
     error: navigationError,
   } = useNavigation(elements, fallbackRoute, routeInterceptor, actionRouting);
 
@@ -248,7 +248,7 @@ const InnerRouter = ({
         route: currentRoute,
         changeRoute,
         getElements,
-        getPendingRoute,
+        isCurrentRoute,
       }}
     >
       <RouterHostContext value={host}>

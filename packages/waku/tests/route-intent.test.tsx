@@ -743,6 +743,140 @@ test('an empty response leaves the current route and view unchanged', async () =
   expect(view.textContent).toContain('Page /done');
 });
 
+test('a late intent cannot supersede a pending reload of the same route', async () => {
+  const intent = deferIntent();
+  mocks.queue.push(payload('/one', intent.promise));
+  const view = await mount();
+  const response = defer<Elements>();
+  mocks.queue.push(response.promise);
+  let reload!: Promise<void>;
+  await act(async () => {
+    reload = controls.router.reload();
+    await flush();
+  });
+  mocks.queue.push(payload('/stale'));
+  await act(async () => {
+    intent.resolve({ status: 307, location: '/stale' });
+    await flush();
+    response.resolve(payload('/one'));
+    await reload;
+    await flush();
+  });
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(window.location.pathname).toBe('/one');
+  expect(view.textContent).toContain('Page /one');
+});
+
+test('an intent deferred by a cancelled reload still applies to the retained route', async () => {
+  const intent = deferIntent();
+  mocks.queue.push(payload('/one', intent.promise));
+  await mount();
+  const response = defer<Elements>();
+  mocks.queue.push(response.promise);
+  let reload!: Promise<void>;
+  await act(async () => {
+    reload = controls.router.reload();
+    await flush();
+  });
+  await act(async () => {
+    intent.resolve({ status: 307, location: '/done' });
+    await flush();
+  });
+  expect(fetch).toHaveBeenCalledTimes(2);
+  mocks.queue.push(payload('/done'));
+  await act(async () => {
+    response.resolve({});
+    await reload;
+    await flush();
+  });
+  expect(window.location.pathname).toBe('/done');
+});
+
+test.each([404, 500])(
+  'an unrelated slice merge does not retry a failed render (%s)',
+  async (status) => {
+    const caught = vi.spyOn(ErrorBoundary.prototype, 'componentDidCatch');
+    const appRoot = (
+      <>
+        <Probe />
+        <ErrorBoundary>
+          <Children />
+        </ErrorBoundary>
+      </>
+    );
+    const BrokenPage = vi.fn(() => {
+      throw new Error('broken page', {
+        cause: new Response(null, { status }),
+      });
+    });
+    mocks.queue.push({ ...payload('/one'), root: appRoot });
+    const view = await mount();
+    mocks.queue.push({
+      ...payload('/two'),
+      root: appRoot,
+      [getRouteSlotId('/two')]: <BrokenPage />,
+    });
+    await act(async () => {
+      await controls.router.push('/two');
+      await flush();
+    });
+    const attempts = BrokenPage.mock.calls.length;
+    const failures = caught.mock.calls.length;
+    expect(attempts).toBeGreaterThan(0);
+    expect(failures).toBeGreaterThan(0);
+    await act(async () => {
+      await controls.merge({ 'slice:sidebar': <p>updated sidebar</p> });
+      await flush();
+    });
+    expect(controls.elements['slice:sidebar']).toBeDefined();
+    expect(BrokenPage).toHaveBeenCalledTimes(attempts);
+    expect(caught).toHaveBeenCalledTimes(failures);
+    expect(view.textContent).toContain(
+      status === 404 ? 'Not Found' : 'Caught an unexpected error',
+    );
+  },
+);
+
+test.each(['not-found', 'invalid'] as const)(
+  'an unrelated slice merge does not reset an intent error (%s)',
+  async (kind) => {
+    const caught = vi.spyOn(ErrorBoundary.prototype, 'componentDidCatch');
+    const appRoot = (
+      <>
+        <Probe />
+        <ErrorBoundary>
+          <Children />
+        </ErrorBoundary>
+      </>
+    );
+    mocks.queue.push({ ...payload('/one'), root: appRoot });
+    const view = await mount();
+    const intent = defer<string>();
+    mocks.queue.push({ ...payload('/two', intent.promise), root: appRoot });
+    await act(async () => {
+      await controls.router.push('/two');
+      await flush();
+    });
+    await act(async () => {
+      intent.resolve(
+        kind === 'not-found' ? JSON.stringify({ status: 404 }) : 'invalid',
+      );
+      await flush();
+    });
+    const failures = caught.mock.calls.length;
+    expect(failures).toBeGreaterThan(0);
+    await act(async () => {
+      await controls.merge({ 'slice:sidebar': <p>updated sidebar</p> });
+      await flush();
+    });
+    expect(controls.elements['slice:sidebar']).toBeDefined();
+    expect(caught).toHaveBeenCalledTimes(failures);
+    expect(view.textContent).toContain(
+      kind === 'not-found' ? 'Not Found' : 'Caught an unexpected error',
+    );
+  },
+);
+
 test.each(['/one', '/two'])(
   'the default root boundary recovers at %s without replacing the root',
   async (destination) => {

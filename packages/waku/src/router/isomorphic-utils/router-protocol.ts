@@ -35,8 +35,9 @@ export const getRouteFromElements = (
 };
 
 /**
- * Returns whether every source of the represented route is immutable, including
- * slots omitted by etags. Returns false without metadata; unrelated to prerendering.
+ * Returns whether the represented route can be reused without a request. Its
+ * sources must be immutable and its metadata request-independent. Returns false
+ * without metadata; unrelated to prerendering.
  */
 export const isStaticFromElements = (
   elements: Record<string, unknown>,

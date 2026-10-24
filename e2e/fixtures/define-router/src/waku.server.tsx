@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { readFile } from 'node:fs/promises';
 // NOTE: I think we need one spec to use non-default adapter
 import adapter from 'waku/adapters/node';
@@ -6,10 +7,16 @@ import {
   Children_UNSTABLE as Children,
   Slot_UNSTABLE as Slot,
 } from 'waku/minimal/client';
+import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
 import { Link, Slice } from 'waku/router/client';
 import {
   unstable_defineRouter as defineRouter,
+  getRequest,
+  unstable_parseRouterRequest as parseRouterRequest,
   unstable_redirect as redirect,
+  requestNotFound,
+  requestRedirect,
+  unstable_rerenderRoute as rerenderRoute,
 } from 'waku/router/server';
 import { NavButton } from './components/nav-button.js';
 import { SearchPage } from './components/search-page.js';
@@ -83,8 +90,83 @@ const sliceSources = {
   'slice:slice002': { render: () => <Slice002 /> },
 };
 
+const requestContext = new AsyncLocalStorage<string>();
+
+const ContextNotFound = async () => {
+  await Promise.resolve();
+  return (
+    <h1>Scoped Not Found: {requestContext.getStore() ?? 'missing context'}</h1>
+  );
+};
+
 const router = defineRouter({
+  unstable_interceptors: [
+    (next) =>
+      requestContext.run(
+        getRequest().headers.get('x-waku-test-context') ?? 'default',
+        async () => {
+          const request = getRequest();
+          const route = parseRouterRequest(request);
+          if (
+            route?.type === 'route' &&
+            route.path === '/interceptor-missing'
+          ) {
+            requestNotFound();
+            cancelRender();
+          }
+          const gate =
+            route?.type === 'route' && route.path === '/interceptor-cache'
+              ? request.headers.get('x-waku-test-gate')
+              : undefined;
+          if (gate === 'before') {
+            requestRedirect('/foo');
+          }
+          const result = await next();
+          if (gate === 'after') {
+            requestRedirect('/foo');
+          }
+          return result;
+        },
+      ),
+  ],
+  getHas404: async () => true,
   resolve: async (path) => {
+    if (path === '/404') {
+      return {
+        elements: { root, route: { render: () => <ContextNotFound /> } },
+      };
+    }
+    if (path === '/interceptor-cache' || path === '/action-static') {
+      return {
+        elements: {
+          root,
+          route: {
+            immutable: true,
+            render: () => (
+              <>
+                <h1>
+                  {path === '/interceptor-cache'
+                    ? 'Allowed page'
+                    : 'Static action page'}
+                </h1>
+                <Link to="/">Home</Link>
+                {path === '/action-static' && (
+                  <form
+                    action={async () => {
+                      'use server';
+                      rerenderRoute('/action-static');
+                      requestRedirect('/foo');
+                    }}
+                  >
+                    <button type="submit">Redirect action</button>
+                  </form>
+                )}
+              </>
+            ),
+          },
+        },
+      };
+    }
     if (path === '/typed-redirect') {
       redirect(fooRoute({ search: { q: 'redirected' } }));
     }
