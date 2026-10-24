@@ -2,8 +2,8 @@ import adapter from 'waku/adapters/default';
 import App from './components/App.js';
 import { MultipleRootAction } from './components/MultipleRootAction.js';
 
-const BUILD_MATADATA_KEY = 'metadata-key';
-const BUILD_MATADATA_VALUE = 'metadata-value';
+const BUILD_METADATA_KEY = 'metadata-key';
+const BUILD_METADATA_VALUE = 'metadata-value';
 
 export default adapter({
   handleRequest: async (input, { renderRsc, loadBuildMetadata }) => {
@@ -35,7 +35,7 @@ export default adapter({
           <App
             name={input.rscPath || 'Waku'}
             params={input.rscParams}
-            metadata={(await loadBuildMetadata(BUILD_MATADATA_KEY)) || 'Empty'}
+            metadata={(await loadBuildMetadata(BUILD_METADATA_KEY)) || 'Empty'}
           />
         ),
       });
@@ -55,6 +55,6 @@ export default adapter({
     return 'fallback';
   },
   handleBuild: async ({ saveBuildMetadata }) => {
-    await saveBuildMetadata(BUILD_MATADATA_KEY, BUILD_MATADATA_VALUE);
+    await saveBuildMetadata(BUILD_METADATA_KEY, BUILD_METADATA_VALUE);
   },
 });

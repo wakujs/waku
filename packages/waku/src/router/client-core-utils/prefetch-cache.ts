@@ -13,7 +13,7 @@ export type PrefetchOptions = {
 
 export type PrefetchEntry = {
   promise: Promise<Elements>;
-  expireAt: number;
+  expiresAt: number;
   onInvalidate: (callback: () => void) => () => void;
 };
 
@@ -34,7 +34,7 @@ const getPrefetch = (
   now: number,
 ): PrefetchEntry | undefined => {
   const entry = prefetchCache.get(key);
-  if (entry && entry.expireAt <= now) {
+  if (entry && entry.expiresAt <= now) {
     prefetchCache.delete(key);
     return undefined;
   }
@@ -187,7 +187,7 @@ const startPrefetch = (
     : response;
   const entry: PrefetchEntry = {
     promise,
-    expireAt: now + (options?.ttl ?? PREFETCH_TTL),
+    expiresAt: now + (options?.ttl ?? PREFETCH_TTL),
     onInvalidate,
   };
   if (!invalidated) {
