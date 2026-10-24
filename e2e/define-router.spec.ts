@@ -1,5 +1,10 @@
 import { expect } from '@playwright/test';
-import { prepareNormalSetup, test, waitForHydration } from './utils.js';
+import {
+  createFetchResponseReader,
+  prepareNormalSetup,
+  test,
+  waitForHydration,
+} from './utils.js';
 
 const startApp = prepareNormalSetup('define-router');
 
@@ -27,6 +32,7 @@ test.describe(`define-router`, () => {
     test(`an interceptor redirect recorded ${when} rendering is not replayed after access changes`, async ({
       page,
     }) => {
+      const readResponseBody = await createFetchResponseReader(page);
       const requests: string[] = [];
       page.on('request', (request) => {
         if (request.url().includes('/RSC/R/interceptor-cache')) {
@@ -48,7 +54,7 @@ test.describe(`define-router`, () => {
       await page
         .locator('a[href="/interceptor-cache"]')
         .click({ noWaitAfter: true });
-      expect(await (await response).finished()).toBeNull();
+      await readResponseBody((await response).url());
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(
         'Allowed page',
       );
@@ -60,6 +66,7 @@ test.describe(`define-router`, () => {
   test('a static action redirect does not become the next visit intent', async ({
     page,
   }) => {
+    const readResponseBody = await createFetchResponseReader(page);
     const requests: string[] = [];
     page.on('request', (request) => {
       if (request.url().includes('/RSC/R/action-static')) {
@@ -74,7 +81,7 @@ test.describe(`define-router`, () => {
     await expect(page.getByTestId('home-title')).toHaveText('Home');
     const response = page.waitForResponse('**/RSC/R/action-static*');
     await page.locator('a[href="/action-static"]').click({ noWaitAfter: true });
-    expect(await (await response).finished()).toBeNull();
+    await readResponseBody((await response).url());
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
       'Static action page',
     );
@@ -85,6 +92,7 @@ test.describe(`define-router`, () => {
   test('an async component intent does not make an uncached runtime route reusable', async ({
     page,
   }) => {
+    const readResponseBody = await createFetchResponseReader(page);
     const requests: string[] = [];
     page.on('request', (request) => {
       if (request.url().includes('/RSC/R/async-cache')) {
@@ -104,7 +112,7 @@ test.describe(`define-router`, () => {
       timeout: 10_000,
     });
     await page.locator('a[href="/async-cache"]').click({ noWaitAfter: true });
-    expect(await (await response).finished()).toBeNull();
+    await readResponseBody((await response).url());
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
       'Async page',
     );

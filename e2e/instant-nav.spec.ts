@@ -3,6 +3,7 @@ import { dirname, join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type Request, expect } from '@playwright/test';
 import {
+  createFetchResponseReader,
   prepareNormalSetup,
   test,
   waitForHydration,
@@ -200,12 +201,13 @@ test.describe('instant-nav', () => {
   test('a repeat prefetch omits what the store holds current', async ({
     page,
   }) => {
+    const readResponseBody = await createFetchResponseReader(page);
     const bodies: string[] = [];
     page.on('response', (response) => {
       if (response.url().includes('R/hover')) {
         const index = bodies.length;
         bodies.push('pending');
-        response.text().then(
+        readResponseBody(response.url()).then(
           (text) => {
             bodies[index] = text;
           },
@@ -391,6 +393,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
   });
 
   test('an HMR update invalidates cached route data', async ({ page }) => {
+    const readResponseBody = await createFetchResponseReader(page);
     const layoutFile = join(hmrFixtureDir, 'src/pages/_layout.tsx');
     const original = readFileSync(layoutFile, 'utf-8');
     const bodies: string[] = [];
@@ -398,7 +401,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
       if (response.url().includes('R/slow')) {
         const index = bodies.length;
         bodies.push('pending');
-        response.text().then(
+        readResponseBody(response.url()).then(
           (text) => {
             bodies[index] = text;
           },
@@ -416,7 +419,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     );
     await page.getByTestId('link-widget').hover();
     const widgetResponse = await widgetResponsePromise;
-    await widgetResponse.finished();
+    await readResponseBody(widgetResponse.url());
     await page.getByTestId('link-widget').click();
     await expect(page.getByTestId('widget-static')).toBeVisible();
 
@@ -425,13 +428,13 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     );
     await page.getByTestId('link-hover').hover();
     const hoverResponse = await hoverResponsePromise;
-    await hoverResponse.finished();
+    await readResponseBody(hoverResponse.url());
 
     const refetchResponsePromise = page.waitForResponse((response) =>
       response.url().includes('R/widget'),
     );
     await page.getByTestId('minimal-refetch').click();
-    await (await refetchResponsePromise).finished();
+    await readResponseBody((await refetchResponsePromise).url());
 
     writeFileSync(
       layoutFile,
@@ -473,7 +476,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
       postFile,
       originalPost.replace('await sleep(600)', 'await sleep(601)'),
     );
-    await (await postHmrResponsePromise).finished();
+    await readResponseBody((await postHmrResponsePromise).url());
     page.off('request', recordHmrRequest);
     expect(hmrRequests.some((url) => url.includes('R/widget'))).toBe(false);
 
@@ -484,7 +487,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
       sliceFile,
       originalSlice.replace('lazy clock loaded', 'lazy clock HMR'),
     );
-    await (await sliceHmrResponsePromise).finished();
+    await readResponseBody((await sliceHmrResponsePromise).url());
     await page.evaluate(() => {
       const link = document.querySelector('[data-testid="link-widget"]');
       if (!(link instanceof HTMLAnchorElement)) {
@@ -570,7 +573,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
       response.url().includes('R/post/1'),
     );
     writeFileSync(postFile, originalPost.replace('Post {id}', 'HMR Post {id}'));
-    await (await delayedPostHmrResponsePromise).finished();
+    await readResponseBody((await delayedPostHmrResponsePromise).url());
 
     // the retired response reaches the client, which has to discard it
     await test.step(
@@ -594,6 +597,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
   });
 
   test('HMR replaces an in-flight lazy slice response', async ({ page }) => {
+    const readResponseBody = await createFetchResponseReader(page);
     const sliceFile = join(hmrFixtureDir, 'src/pages/_slices/lazy-clock.tsx');
     const source = readFileSync(sliceFile, 'utf-8');
     const firstSliceFetched = Promise.withResolvers<void>();
@@ -622,7 +626,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
         '$1lazy clock racing HMR$2',
       ),
     );
-    await (await sliceHmrResponsePromise).finished();
+    await readResponseBody((await sliceHmrResponsePromise).url());
     releaseFirstSlice.resolve();
     await page.evaluate(
       () =>
