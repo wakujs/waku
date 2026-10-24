@@ -47,7 +47,7 @@ const route = (
 ): RuntimeConfig =>
   ({
     type: 'route',
-    path: literal(name),
+    pathSpec: literal(name),
     isStatic: opts.isStatic ?? false,
     rootElement: {
       isStatic: false,

@@ -66,7 +66,8 @@ const callInput = (fn: () => Promise<unknown>, actionLocation?: string) => ({
 
 const dynamicRoute = (name: string) => ({
   type: 'route' as const,
-  path: name === '/' ? [] : [{ type: 'literal' as const, name: name.slice(1) }],
+  pathSpec:
+    name === '/' ? [] : [{ type: 'literal' as const, name: name.slice(1) }],
   isStatic: false,
   rootElement: { isStatic: false, renderer: () => 'root' },
   routeElement: { isStatic: false, renderer: () => 'route' },
@@ -379,7 +380,7 @@ describe('request dispatch', () => {
       getConfigs: async () => [
         {
           type: 'api' as const,
-          path: [
+          pathSpec: [
             { type: 'literal' as const, name: 'api' },
             { type: 'group' as const, name: 'slug' },
           ],

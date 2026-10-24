@@ -28,9 +28,9 @@ export type GetEtagFromParams = (
 
 export type RouteConfig = {
   type: 'route';
-  path: PathSpec;
+  pathSpec: PathSpec;
   isStatic: boolean;
-  pathPattern?: PathSpec;
+  pathPatternSpec?: PathSpec;
   rootElement: {
     isStatic: boolean;
     renderer: (option: RendererOption) => ReactNode;
@@ -58,7 +58,7 @@ export type RouteConfig = {
 
 type ApiConfig = {
   type: 'api';
-  path: PathSpec;
+  pathSpec: PathSpec;
   isStatic: boolean;
   handler: ApiHandler;
   sourceFile?: string;
@@ -168,9 +168,9 @@ export const mergeWithRuntimeConfigs = (
   const runtimeSliceById = new Map<string, SliceConfig>();
   for (const c of runtimeConfigs) {
     if (c.type === 'route') {
-      runtimeRouteByPath.set(getPathSpecKey(c.path), c);
+      runtimeRouteByPath.set(getPathSpecKey(c.pathSpec), c);
     } else if (c.type === 'api') {
-      runtimeApiByPath.set(getPathSpecKey(c.path), c);
+      runtimeApiByPath.set(getPathSpecKey(c.pathSpec), c);
     } else {
       runtimeSliceById.set(c.id, c);
     }
@@ -194,8 +194,8 @@ export const mergeWithRuntimeConfigs = (
   }
   return serializableConfigs.map((c) => {
     if (c.type === 'route') {
-      const runtimeItem = runtimeRouteByPath.get(getPathSpecKey(c.path));
-      const label = `route ${pathSpecAsString(c.path)}`;
+      const runtimeItem = runtimeRouteByPath.get(getPathSpecKey(c.pathSpec));
+      const label = `route ${pathSpecAsString(c.pathSpec)}`;
       const elements: RouteConfig['elements'] = {};
       for (const [id, val] of Object.entries(c.elements)) {
         const elementSpec = runtimeItem?.elements[id];
@@ -213,9 +213,11 @@ export const mergeWithRuntimeConfigs = (
       }
       return {
         type: 'route',
-        path: c.path,
+        pathSpec: c.pathSpec,
         isStatic: c.isStatic,
-        ...(c.pathPattern !== undefined ? { pathPattern: c.pathPattern } : {}),
+        ...(c.pathPatternSpec !== undefined
+          ? { pathPatternSpec: c.pathPatternSpec }
+          : {}),
         rootElement: {
           isStatic: c.rootElement.isStatic,
           renderer:
@@ -247,15 +249,15 @@ export const mergeWithRuntimeConfigs = (
       };
     }
     if (c.type === 'api') {
-      const runtimeItem = runtimeApiByPath.get(getPathSpecKey(c.path));
+      const runtimeItem = runtimeApiByPath.get(getPathSpecKey(c.pathSpec));
       return {
         type: 'api',
-        path: c.path,
+        pathSpec: c.pathSpec,
         isStatic: c.isStatic,
         handler:
           runtimeItem?.handler ??
           (async () =>
-            throwMissingRuntimeFunction(`api ${pathSpecAsString(c.path)}`)),
+            throwMissingRuntimeFunction(`api ${pathSpecAsString(c.pathSpec)}`)),
         ...(c.sourceFile ? { sourceFile: c.sourceFile } : {}),
       };
     }

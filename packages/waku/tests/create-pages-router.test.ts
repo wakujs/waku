@@ -15,7 +15,7 @@ describe('createPages router integration', () => {
       getConfigs: async () => [
         {
           type: 'route',
-          path: [{ type: 'group', name: 'id' }],
+          pathSpec: [{ type: 'group', name: 'id' }],
           isStatic: false,
           rootElement: { isStatic: true, renderer: () => null },
           routeElement: { isStatic: true, renderer: routeRenderer },

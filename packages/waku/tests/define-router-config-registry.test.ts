@@ -20,25 +20,25 @@ const route = (
   opts: {
     isStatic?: boolean;
     elements?: Record<string, unknown>;
-    pathPattern?: PathSpec;
+    pathPatternSpec?: PathSpec;
     searchCodec?: Extract<RuntimeConfig, { type: 'route' }>['searchCodec'];
   } = {},
 ): RuntimeConfig =>
   ({
     type: 'route',
-    path: literal(name),
+    pathSpec: literal(name),
     isStatic: opts.isStatic ?? false,
     rootElement: { isStatic: false, renderer: () => `root:${name}` },
     routeElement: { isStatic: false, renderer: () => `route:${name}` },
     elements: opts.elements ?? {},
-    ...(opts.pathPattern ? { pathPattern: opts.pathPattern } : {}),
+    ...(opts.pathPatternSpec ? { pathPatternSpec: opts.pathPatternSpec } : {}),
     ...(opts.searchCodec ? { searchCodec: opts.searchCodec } : {}),
   }) as unknown as RuntimeConfig;
 
 const api = (name: string): RuntimeConfig =>
   ({
     type: 'api',
-    path: literal(name),
+    pathSpec: literal(name),
     isStatic: false,
     handler: async () => new Response('ok'),
   }) as unknown as RuntimeConfig;
