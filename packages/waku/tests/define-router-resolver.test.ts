@@ -292,6 +292,33 @@ describe('defineRouter route resolver', () => {
     );
   });
 
+  it('renders a valid document when the 404 probe throws an HTTP 404 Response', async () => {
+    const router = unstable_defineRouter({
+      resolve: async (path) => {
+        if (path === '/404') {
+          throw new Response('Not Found', { status: 404 });
+        }
+        return makeRoute('home');
+      },
+    });
+    const utils = makeUtils();
+    const response = await router.handleRequest(
+      {
+        type: 'http',
+        pathname: '/',
+        req: new Request('http://localhost/'),
+      },
+      utils,
+    );
+    expect(response).toBeInstanceOf(Response);
+    expect((response as Response).status).toBe(200);
+    expect(utils.renderRsc).toHaveBeenCalledWith(
+      expect.objectContaining({ 'route:/': 'home', [ROUTE_ID]: ['/', ''] }),
+      expect.anything(),
+    );
+    expect(utils.renderRsc.mock.calls[0]![0]).not.toHaveProperty(HAS404_ID);
+  });
+
   it('reuses build-preloaded route content without retaining unbuilt routes', async () => {
     vi.mocked(serializeRsc).mockClear();
     const render = vi.fn((path: string) => path);

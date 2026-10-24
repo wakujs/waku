@@ -4,6 +4,7 @@ import {
   getPathSpecCacheId,
 } from '../src/router/create-pages-utils/element-ids.js';
 import {
+  cacheElementSource,
   createElementCache,
   getSlotCacheId,
 } from '../src/router/define-router-utils/element-cache.js';
@@ -44,6 +45,27 @@ describe('element cache', () => {
     await cache.set('slot/x', () => 'second');
     expect(await cache.get('slot/x')).toBe('first');
     expect(serializeRsc).toHaveBeenCalledTimes(1);
+  });
+
+  it('shares a pending render and retries after it fails', async () => {
+    const pending = Promise.withResolvers<string>();
+    const render = vi
+      .fn()
+      .mockImplementationOnce(() => pending.promise)
+      .mockResolvedValue('recovered');
+    const source = cacheElementSource(
+      { immutable: true, render },
+      'slot/retry',
+      createElementCache(),
+    );
+    const failure = new Error('temporary failure');
+    const first = expect(source.render()).rejects.toBe(failure);
+    const second = expect(source.render()).rejects.toBe(failure);
+    expect(render).toHaveBeenCalledOnce();
+    pending.reject(failure);
+    await Promise.all([first, second]);
+    await expect(source.render()).resolves.toBe('recovered');
+    expect(render).toHaveBeenCalledTimes(2);
   });
 
   it('get returns undefined for an unknown cache id', () => {

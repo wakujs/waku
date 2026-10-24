@@ -70,6 +70,11 @@ export const createElementCache = (
           element = cancelled;
         }
         return serializeRsc(element);
+      }).catch((error) => {
+        if (cache.get(cacheId) === entry) {
+          cache.delete(cacheId);
+        }
+        throw error;
       });
       cache.set(cacheId, entry);
       const { result, intent } = await entry;
