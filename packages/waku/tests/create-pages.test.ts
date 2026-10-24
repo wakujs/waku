@@ -9,20 +9,20 @@ import type { GetSlugs } from '../src/router/create-pages-utils/inferred-path-ty
 import { createConfiguredRouter } from '../src/router/create-pages-utils/router.js';
 import {
   createPages,
-  pathMappingWithoutGroups,
+  getPathMappingWithoutGroupsForTest,
 } from '../src/router/create-pages.js';
 import type {
   CreateApi,
   CreateLayout,
   CreatePage,
   CreateSlice,
-  HasSlugInPath,
-  HasWildcardInPath,
-  IsValidPathInSlugPath,
-  PathWithSlug,
-  PathWithWildcard,
+  HasSlugInPathForTest,
+  HasWildcardInPathForTest,
+  IsValidPathInSlugPathForTest,
+  PathWithSlugForTest,
+  PathWithWildcardForTest,
   PathWithoutSlug,
-  StaticSlugRoutePathsTuple,
+  StaticSlugRoutePathsTupleForTest,
 } from '../src/router/create-pages.js';
 import { parsePathWithSlug } from '../src/router/isomorphic-utils/path-spec.js';
 
@@ -115,60 +115,64 @@ describe('type tests', () => {
     expectType<PathWithoutSlug<'/@[username]'>>('/@[username]');
   });
   it('PathWithSlug', () => {
-    expectType<PathWithSlug<'/test/[slug]', 'slug'>>('/test/[slug]');
-    expectType<PathWithSlug<'/test/[a]/[b]', 'a'>>('/test/[a]/[b]');
-    expectType<PathWithSlug<'/test/[a]/[b]', 'b'>>('/test/[a]/[b]');
+    expectType<PathWithSlugForTest<'/test/[slug]', 'slug'>>('/test/[slug]');
+    expectType<PathWithSlugForTest<'/test/[a]/[b]', 'a'>>('/test/[a]/[b]');
+    expectType<PathWithSlugForTest<'/test/[a]/[b]', 'b'>>('/test/[a]/[b]');
     // @ts-expect-error: PathWithSlug fails if the path does not match.
-    expectType<PathWithSlug<'/test/[a]', 'a'>>('/test/[a]/[b]');
+    expectType<PathWithSlugForTest<'/test/[a]', 'a'>>('/test/[a]/[b]');
     // @ts-expect-error: PathWithSlug fails if the slug-id is not in the path.
-    expectType<PathWithSlug<'/test/[a]/[b]', 'c'>>('/test/[a]/[b]');
+    expectType<PathWithSlugForTest<'/test/[a]/[b]', 'c'>>('/test/[a]/[b]');
     // Prefixed slugs
-    expectType<PathWithSlug<'/@[username]', 'username'>>('/@[username]');
-    expectType<PathWithSlug<'/u-[id]', 'id'>>('/u-[id]');
-    expectType<PathWithSlug<'/users/@[username]/posts', 'username'>>(
+    expectType<PathWithSlugForTest<'/@[username]', 'username'>>('/@[username]');
+    expectType<PathWithSlugForTest<'/u-[id]', 'id'>>('/u-[id]');
+    expectType<PathWithSlugForTest<'/users/@[username]/posts', 'username'>>(
       '/users/@[username]/posts',
     );
   });
   it('PathWithWildcard', () => {
-    expectType<PathWithWildcard<'/test/[...path]', never, 'path'>>(
+    expectType<PathWithWildcardForTest<'/test/[...path]', never, 'path'>>(
       '/test/[...path]',
     );
-    expectType<PathWithWildcard<'/test/[slug]/[...path]', 'slug', 'path'>>(
-      '/test/[slug]/[...path]',
-    );
-    expectType<PathWithWildcard<'/test/[slug]/[...path]', 'slug', 'path'>>(
+    expectType<
+      PathWithWildcardForTest<'/test/[slug]/[...path]', 'slug', 'path'>
+    >('/test/[slug]/[...path]');
+    expectType<
+      PathWithWildcardForTest<'/test/[slug]/[...path]', 'slug', 'path'>
+    >(
       // @ts-expect-error: PathWithWildcard fails if the path does not match.
       '/test/[a]/[...path]',
     );
   });
   it('HasSlugInPath', () => {
-    expectType<HasSlugInPath<'/test/[a]/[b]', 'a'>>(true);
-    expectType<HasSlugInPath<'/test/[a]/[b]', 'b'>>(true);
-    expectType<HasSlugInPath<'/test/[a]/[b]', 'c'>>(false);
-    expectType<HasSlugInPath<'/test/[a]/[b]', 'd'>>(false);
+    expectType<HasSlugInPathForTest<'/test/[a]/[b]', 'a'>>(true);
+    expectType<HasSlugInPathForTest<'/test/[a]/[b]', 'b'>>(true);
+    expectType<HasSlugInPathForTest<'/test/[a]/[b]', 'c'>>(false);
+    expectType<HasSlugInPathForTest<'/test/[a]/[b]', 'd'>>(false);
     // Prefixed slugs
-    expectType<HasSlugInPath<'/@[username]', 'username'>>(true);
-    expectType<HasSlugInPath<'/@[username]', 'other'>>(false);
-    expectType<HasSlugInPath<'/u-[id]', 'id'>>(true);
-    expectType<HasSlugInPath<'/test/pre-[id]-suf', 'id'>>(true);
-    expectType<HasSlugInPath<'/users/@[username]/posts', 'username'>>(true);
+    expectType<HasSlugInPathForTest<'/@[username]', 'username'>>(true);
+    expectType<HasSlugInPathForTest<'/@[username]', 'other'>>(false);
+    expectType<HasSlugInPathForTest<'/u-[id]', 'id'>>(true);
+    expectType<HasSlugInPathForTest<'/test/pre-[id]-suf', 'id'>>(true);
+    expectType<HasSlugInPathForTest<'/users/@[username]/posts', 'username'>>(
+      true,
+    );
   });
   it('IsValidPathInSlugPath', () => {
-    expectType<IsValidPathInSlugPath<'/test/[a]/[b]'>>(true);
-    expectType<IsValidPathInSlugPath<'/test/[a]/[b]'>>(true);
-    expectType<IsValidPathInSlugPath<'/test'>>(true);
+    expectType<IsValidPathInSlugPathForTest<'/test/[a]/[b]'>>(true);
+    expectType<IsValidPathInSlugPathForTest<'/test/[a]/[b]'>>(true);
+    expectType<IsValidPathInSlugPathForTest<'/test'>>(true);
 
-    expectType<IsValidPathInSlugPath<'foobar'>>(false);
-    expectType<IsValidPathInSlugPath<'/'>>(false);
+    expectType<IsValidPathInSlugPathForTest<'foobar'>>(false);
+    expectType<IsValidPathInSlugPathForTest<'/'>>(false);
   });
   it('HasWildcardInPath', () => {
-    expectType<HasWildcardInPath<'/test/[...path]'>>(true);
-    expectType<HasWildcardInPath<'/test/[a]/[...path]'>>(true);
-    expectType<HasWildcardInPath<'/test/[a]/[b]/[...path]'>>(true);
+    expectType<HasWildcardInPathForTest<'/test/[...path]'>>(true);
+    expectType<HasWildcardInPathForTest<'/test/[a]/[...path]'>>(true);
+    expectType<HasWildcardInPathForTest<'/test/[a]/[b]/[...path]'>>(true);
 
-    expectType<HasWildcardInPath<'/test/[a]/[b]'>>(false);
-    expectType<HasWildcardInPath<'/test'>>(false);
-    expectType<HasWildcardInPath<'/'>>(false);
+    expectType<HasWildcardInPathForTest<'/test/[a]/[b]'>>(false);
+    expectType<HasWildcardInPathForTest<'/test'>>(false);
+    expectType<HasWildcardInPathForTest<'/'>>(false);
   });
   it('GetSlugs', () => {
     expectType<GetSlugs<'/test/[a]/[b]'>>(['a', 'b']);
@@ -182,14 +186,14 @@ describe('type tests', () => {
     expectType<GetSlugs<'/users/@[username]/posts'>>(['username']);
   });
   it('StaticSlugRoutePathsTuple', () => {
-    expectType<StaticSlugRoutePathsTuple<'/test/[a]/[b]'>>(['a', 'b']);
-    expectType<StaticSlugRoutePathsTuple<'/test/[a]/[b]/[c]'>>([
+    expectType<StaticSlugRoutePathsTupleForTest<'/test/[a]/[b]'>>(['a', 'b']);
+    expectType<StaticSlugRoutePathsTupleForTest<'/test/[a]/[b]/[c]'>>([
       'foo',
       'bar',
       'buzz',
     ]);
     // @ts-expect-error: Too many slugs
-    expectType<StaticSlugRoutePathsTuple<'/test/[a]/[b]/[c]'>>([
+    expectType<StaticSlugRoutePathsTupleForTest<'/test/[a]/[b]/[c]'>>([
       'foo',
       'bar',
       'buzz',
@@ -3437,19 +3441,25 @@ describe('createPages search codec', () => {
   });
 });
 
-describe('pathMappingWithoutGroups', () => {
+describe('getPathMappingWithoutGroups', () => {
   it('handles paths with pathless groups', () => {
     const pathSpec = parsePathWithSlug('/(foo)/bar');
-    expect(pathMappingWithoutGroups(pathSpec, '/bar')).toEqual({});
-    expect(pathMappingWithoutGroups(pathSpec, '/(foo)/bar')).toEqual(null);
+    expect(getPathMappingWithoutGroupsForTest(pathSpec, '/bar')).toEqual({});
+    expect(getPathMappingWithoutGroupsForTest(pathSpec, '/(foo)/bar')).toEqual(
+      null,
+    );
   });
 
   it('handles paths with pathless groups and groups', () => {
     const pathSpec = parsePathWithSlug('/(foo)/bar/[id]');
-    expect(pathMappingWithoutGroups(pathSpec, '/bar/123')).toEqual({
+    expect(getPathMappingWithoutGroupsForTest(pathSpec, '/bar/123')).toEqual({
       id: '123',
     });
-    expect(pathMappingWithoutGroups(pathSpec, '/(foo)/bar/123')).toEqual(null);
-    expect(pathMappingWithoutGroups(pathSpec, '/(foo)/bar/[id]')).toEqual(null);
+    expect(
+      getPathMappingWithoutGroupsForTest(pathSpec, '/(foo)/bar/123'),
+    ).toEqual(null);
+    expect(
+      getPathMappingWithoutGroupsForTest(pathSpec, '/(foo)/bar/[id]'),
+    ).toEqual(null);
   });
 });

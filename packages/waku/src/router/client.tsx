@@ -184,7 +184,7 @@ export function useRouter() {
   };
 }
 
-const notAvailableInServer = (name: string) => () => {
+const createServerStub = (name: string) => () => {
   throw new Error(`${name} is not in the server`);
 };
 
@@ -360,13 +360,13 @@ export function INTERNAL_ServerRouter({ route }: { route: RouteProps }) {
     <RouterContext
       value={{
         route,
-        changeRoute: notAvailableInServer('changeRoute'),
+        changeRoute: createServerStub('changeRoute'),
       }}
     >
       <RouterHostContext
         value={{
           route,
-          navigate: notAvailableInServer('navigate'),
+          navigate: createServerStub('navigate'),
         }}
       >
         {/* Match the client tree so useId stays stable during hydration. */}

@@ -136,8 +136,8 @@ incomplete.
   safe.
 - Await or return promises. Do not leave asynchronous work floating.
 - Normalize configuration and optional inputs once near the boundary.
-- Prefer `function` declarations for exported functions and `const` arrow
-  functions for internal ones.
+- Prefer `function` declarations for functions exported for production and
+  `const` arrow functions for the rest, including exports only tests use.
 - In client code, positional parameters and tuples can be deliberate because
   they minify better than object properties. Do not convert them to objects for
   style alone. In server code, prefer objects unless a tuple has a concrete
@@ -150,11 +150,12 @@ collision, or client bundle size can justify an exception.
 
 - Give one concept one name, and use it across variables, properties, types,
   and filenames. Do not introduce a synonym for an established term.
-- Name functions with verbs.
+- Name functions with verbs. A component, Vite plugin factory, middleware, or
+  RSC enhancer is named for its role.
 - Name operations and results, not stages in the control flow. Avoid helpers and
   variables that only narrate the current step.
 - Name a map or record that looks up values by key `valuesByKey`, with words
-  that say what the keys and values are, such as `sliceIdsByRoutePath`.
+  that say what the keys and values are, such as `runtimeSliceById`.
 - Name a conversion `aToB`, not `a2b`.
 - Use full words in public APIs and outer scopes, such as `options` rather than
   `opts`. Inner scopes may use short names, and short names in client code can
@@ -162,11 +163,79 @@ collision, or client bundle size can justify an exception.
 - Avoid shadowing an outer binding.
 - Import a binding under its exported name. Rename an import only to resolve a
   real collision or to drop an unstable marker.
-- An export that exists only for tests ends in `ForTest`, such as
-  `dedupeHeadMetadataForTest`.
+- An export that exists only for tests ends in `ForTest`, or `_FOR_TEST` for a
+  constant. When the module also uses the binding, keep its plain name and add
+  a separate exported declaration next to it, such as
+  `export const doFooForTest = doFoo;`, `export const FOO_FOR_TEST = FOO;`, or
+  `export type FooForTest = Foo;`. Do not add the suffix with an export alias.
 - Name a component module in kebab case after its component, such as
   `foo-bar.tsx` for `FooBar`. Files whose names define routes follow the
   router's file conventions.
+
+### Terminology
+
+Use these terms for the concepts they name. Native browser, HTTP, React, and
+Vite APIs keep their own names.
+
+Router concepts:
+
+- A route is the `path`, `query`, and `hash` that a router renders.
+- A page is declared with `createPage` in `createPages`. Pages and their
+  layouts produce routes.
+- A router definition, `RouterDefinition`, is what a server router resolves a
+  route to: the elements to render and how to render them.
+- Router state is the control metadata for changing routes, such as history,
+  scrolling, and redirect follows.
+- Navigation is the operation of changing the route. Name operations and their
+  records after it, not route data.
+- Location means only the native concept, such as `window.location` or the HTTP
+  `Location` header. It is not another word for a route.
+
+Paths and URLs:
+
+- `pathname` is a URL path with the base path removed. `rawPathname` is
+  `URL.pathname` as received, with the base path. Neither is percent-decoded.
+- `routePath` is a `pathname` normalized for routing, without a trailing slash
+  or `/index.html`.
+- `pathPattern` is a declared path template, such as `/posts/[id]` or
+  `/(group)/about`.
+- `pathSpec` is a parsed path or path pattern, as an array of segments.
+- `rscPath` identifies an RSC request, such as `R/posts/1`. It is not a URL
+  path. `formatRscUrl` builds the URL that requests it.
+- `url` holds a `URL` object.
+- `href` is a URL string in the form an `<a href>` accepts, resolved against
+  the document URL. A root-relative `href` must already include the base path
+  to point inside the app.
+- `routeHref` is a path with its query and hash, without the base path, such
+  as `/posts/1?tab=a#top`. A query or hash alone, such as `?tab=a`, applies to
+  the current route. `createRouteHref` returns route hrefs.
+- `query` is a serialized query string without the leading `?`.
+  `searchParams` is a `URLSearchParams`. `search` is the data a search codec
+  parses from the query, and `searchCodec` is the codec.
+- `filePath` is a file path with forward slashes, as Vite uses. `fileURL` is a
+  `file:` URL for `import()`, and `osPath` is the platform path for `node:fs`.
+
+Server functions:
+
+- `serverFunctionId` is the `<module>#<export>` string that identifies a server
+  function. A local `id` is fine when nothing else in scope has an id.
+- Action means the form action protocol, where a form submission is decoded
+  with `decodeAction` and `decodeFormState`. Do not use it for every server
+  function call.
+
+Verbs at the start of a function name:
+
+- `get`: lightweight access or derivation, without I/O or substantial work.
+- `find`: search candidates in order.
+- `fetch`: send an HTTP request through the native `fetch`.
+- `read`: consume stored data or a stream. Decoding its format is part of
+  reading.
+- `load`: prepare something for use by reading, importing, resolving,
+  initializing, or caching it.
+- `create`: construct a new value, object, or closure. Use it instead of
+  `make`.
+- `build`: assemble a result from many parts, or render it. As a noun, build
+  means the production build.
 
 ### TypeScript
 

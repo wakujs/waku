@@ -44,7 +44,7 @@ type Method =
   | 'PATCH'
   | 'QUERY';
 
-export const pathMappingWithoutGroups: typeof getPathMapping = (
+const getPathMappingWithoutGroups: typeof getPathMapping = (
   pathSpec,
   pathname,
 ) => {
@@ -53,6 +53,7 @@ export const pathMappingWithoutGroups: typeof getPathMapping = (
   );
   return getPathMapping(cleanPathSpec, pathname);
 };
+export const getPathMappingWithoutGroupsForTest = getPathMappingWithoutGroups;
 
 const sanitizeSlug = (slug: string) => slug.replace(/ /g, '-');
 
@@ -102,14 +103,15 @@ const forEachConcreteStaticPath = (
 };
 
 type IsValidPathItem<T> = T extends `/${string}` | '[]' | '' ? false : true;
-export type IsValidPathInSlugPath<T> = T extends `/${infer L}/${infer R}`
+type IsValidPathInSlugPath<T> = T extends `/${infer L}/${infer R}`
   ? IsValidPathItem<L> extends true
     ? IsValidPathInSlugPath<`/${R}`>
     : false
   : T extends `/${infer U}`
     ? IsValidPathItem<U>
     : false;
-export type HasSlugInPath<
+export type IsValidPathInSlugPathForTest<T> = IsValidPathInSlugPath<T>;
+type HasSlugInPath<
   T,
   K extends string,
 > = T extends `/${string}[${K}]${string}/${infer _Rest}`
@@ -119,23 +121,26 @@ export type HasSlugInPath<
     : T extends `/${string}[${K}]${string}`
       ? true
       : false;
+export type HasSlugInPathForTest<T, K extends string> = HasSlugInPath<T, K>;
 
-export type HasWildcardInPath<T> = T extends `/[...${string}]/${string}`
+type HasWildcardInPath<T> = T extends `/[...${string}]/${string}`
   ? true
   : T extends `/${infer _}/${infer U}`
     ? HasWildcardInPath<`/${U}`>
     : T extends `/[...${string}]`
       ? true
       : false;
+export type HasWildcardInPathForTest<T> = HasWildcardInPath<T>;
 
-export type PathWithSlug<T, K extends string> =
+type PathWithSlug<T, K extends string> =
   IsValidPathInSlugPath<T> extends true
     ? HasSlugInPath<T, K> extends true
       ? T
       : never
     : never;
+export type PathWithSlugForTest<T, K extends string> = PathWithSlug<T, K>;
 
-export type StaticSlugRoutePathsTuple<
+type StaticSlugRoutePathsTuple<
   T extends string,
   Slugs extends unknown[] = GetSlugs<T>,
   Result extends readonly string[] = [],
@@ -144,6 +149,11 @@ export type StaticSlugRoutePathsTuple<
   : Slugs extends [infer _, ...infer Rest]
     ? StaticSlugRoutePathsTuple<T, Rest, readonly [...Result, string]>
     : never;
+export type StaticSlugRoutePathsTupleForTest<
+  T extends string,
+  Slugs extends unknown[] = GetSlugs<T>,
+  Result extends readonly string[] = [],
+> = StaticSlugRoutePathsTuple<T, Slugs, Result>;
 
 type StaticSlugRoutePaths<T extends string> =
   HasWildcardInPath<T> extends true
@@ -166,11 +176,16 @@ type PathWithStaticSlugs<T extends string> = T extends `/`
     ? T
     : never;
 
-export type PathWithWildcard<
+type PathWithWildcard<
   Path,
   SlugKey extends string,
   WildSlugKey extends string,
 > = PathWithSlug<Path, SlugKey | `...${WildSlugKey}`>;
+export type PathWithWildcardForTest<
+  Path,
+  SlugKey extends string,
+  WildSlugKey extends string,
+> = PathWithWildcard<Path, SlugKey, WildSlugKey>;
 
 /**
  * Returns a `dynamic` slot's element tag (etag). While the tag is unchanged the
@@ -415,7 +430,7 @@ const createNestedElements = (
     children,
   );
 
-const routePriorityComparator = (
+const compareRoutePriority = (
   a: {
     path: PathSpec;
     type: 'route' | 'api';
@@ -550,7 +565,7 @@ export const createPages = <
     const layoutMatchPath = groupedRoutePathByRoutePath.get(path) ?? path;
     const routePathSpec = parsePathWithSlug(layoutMatchPath);
     return (pathname: string) =>
-      pathMappingWithoutGroups(routePathSpec, pathname);
+      getPathMappingWithoutGroups(routePathSpec, pathname);
   };
 
   const createLayoutPropsMapper = (layoutPath: string) => {
@@ -563,7 +578,7 @@ export const createPages = <
       const layoutRoutePath =
         '/' +
         routePath.split('/').filter(Boolean).slice(0, numSegments).join('/');
-      return pathMappingWithoutGroups(routePathSpec, layoutRoutePath) ?? {};
+      return getPathMappingWithoutGroups(routePathSpec, layoutRoutePath) ?? {};
     };
   };
 
@@ -1228,7 +1243,7 @@ export const createPages = <
       ];
       const pathConfigs = [...routeConfigs, ...buildApiConfigs()]
         // Sort routes by priority: "standard routes" -> api routes -> api wildcard routes -> standard wildcard routes
-        .sort((configA, configB) => routePriorityComparator(configA, configB));
+        .sort((configA, configB) => compareRoutePriority(configA, configB));
       return [...pathConfigs, ...buildSliceConfigs()];
     },
     ...(options?.unstable_skipBuild && {

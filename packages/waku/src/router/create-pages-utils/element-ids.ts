@@ -3,10 +3,10 @@ import {
   isRouteSlotId,
   isSliceSlotId,
 } from '../isomorphic-utils/router-protocol.js';
-import { pathSpecKey } from './config.js';
+import { getPathSpecKey } from './config.js';
 
 export const getPathSpecCacheId = (pathSpec: PathSpec) =>
-  `pathSpec/${pathSpecKey(pathSpec)}`;
+  `pathSpec/${getPathSpecKey(pathSpec)}`;
 
 export const assertNonReservedSlotId = (slotId: string) => {
   if (

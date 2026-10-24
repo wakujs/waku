@@ -73,7 +73,7 @@ export type LoadOptions = {
   follows?: number;
 };
 
-export const abortable = <T>(
+export const rejectOnAbort = <T>(
   promise: Promise<T>,
   signal: AbortSignal | undefined,
 ): Promise<T> => {
@@ -118,7 +118,7 @@ export const load = async (
       return { type: 'aborted' };
     }
     try {
-      const elements = await abortable(
+      const elements = await rejectOnAbort(
         fetchRoute(attempt, opts.signal),
         opts.signal,
       );

@@ -1,7 +1,7 @@
 /** @vitest-environment happy-dom */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FetchRsc } from '../src/minimal/client-utils/root-store.js';
-import { getRouterCache } from '../src/router/client-core-utils/caches.js';
+import { getRouterCacheForTest } from '../src/router/client-core-utils/caches.js';
 import {
   INTENT_ID,
   IS_STATIC_ID,
@@ -13,7 +13,7 @@ import {
 type Elements = Record<string, unknown>;
 
 const fetchRsc = vi.fn<FetchRsc>();
-const cache = getRouterCache(fetchRsc);
+const cache = getRouterCacheForTest(fetchRsc);
 
 type LoadOptions = Parameters<typeof cache.load>[1];
 

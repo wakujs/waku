@@ -60,7 +60,7 @@ export const pruneBuildOutput = async ({
   }
   const chunkMap = new Map(chunks.map((c) => [c.fileName, c]));
 
-  const viteAssetsOf = (chunk: Chunk) => [
+  const getViteAssets = (chunk: Chunk) => [
     ...(chunk.viteMetadata?.importedAssets ?? []),
     ...(chunk.viteMetadata?.importedCss ?? []),
   ];
@@ -69,7 +69,7 @@ export const pruneBuildOutput = async ({
   // aren't ours to manage.
   const chunkImportedAssets = new Set<string>();
   for (const chunk of chunks) {
-    for (const a of viteAssetsOf(chunk)) {
+    for (const a of getViteAssets(chunk)) {
       chunkImportedAssets.add(a);
     }
   }
@@ -114,7 +114,7 @@ export const pruneBuildOutput = async ({
         visit(dyn);
       }
     }
-    for (const a of viteAssetsOf(chunk)) {
+    for (const a of getViteAssets(chunk)) {
       keepFiles.add(a);
     }
   };
