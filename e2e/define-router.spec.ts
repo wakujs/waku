@@ -1,10 +1,5 @@
 import { expect } from '@playwright/test';
-import {
-  clickSelector,
-  prepareNormalSetup,
-  test,
-  waitForHydration,
-} from './utils.js';
+import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('define-router');
 
@@ -41,14 +36,18 @@ test.describe(`define-router`, () => {
       await page.setExtraHTTPHeaders({ 'x-waku-test-gate': when });
       await page.goto(`http://localhost:${port}/`);
       await waitForHydration(page);
-      await clickSelector(page, 'a[href="/interceptor-cache"]');
+      await page
+        .locator('a[href="/interceptor-cache"]')
+        .click({ noWaitAfter: true });
       await expect(page.getByTestId('foo-title')).toHaveText('Foo');
 
       await page.setExtraHTTPHeaders({ 'x-waku-test-gate': 'allow' });
-      await clickSelector(page, 'a[href="/"]');
+      await page.locator('a[href="/"]').click({ noWaitAfter: true });
       await expect(page.getByTestId('home-title')).toHaveText('Home');
       const response = page.waitForResponse('**/RSC/R/interceptor-cache*');
-      await clickSelector(page, 'a[href="/interceptor-cache"]');
+      await page
+        .locator('a[href="/interceptor-cache"]')
+        .click({ noWaitAfter: true });
       expect(await (await response).finished()).toBeNull();
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(
         'Allowed page',
@@ -69,12 +68,12 @@ test.describe(`define-router`, () => {
     });
     await page.goto(`http://localhost:${port}/action-static`);
     await waitForHydration(page);
-    await clickSelector(page, 'button[type="submit"]');
+    await page.locator('button[type="submit"]').click({ noWaitAfter: true });
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');
-    await clickSelector(page, 'a[href="/"]');
+    await page.locator('a[href="/"]').click({ noWaitAfter: true });
     await expect(page.getByTestId('home-title')).toHaveText('Home');
     const response = page.waitForResponse('**/RSC/R/action-static*');
-    await clickSelector(page, 'a[href="/action-static"]');
+    await page.locator('a[href="/action-static"]').click({ noWaitAfter: true });
     expect(await (await response).finished()).toBeNull();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
       'Static action page',
@@ -95,16 +94,16 @@ test.describe(`define-router`, () => {
     await page.setExtraHTTPHeaders({ 'x-waku-test-gate': 'deny' });
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
-    await clickSelector(page, 'a[href="/async-cache"]');
+    await page.locator('a[href="/async-cache"]').click({ noWaitAfter: true });
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');
 
     await page.setExtraHTTPHeaders({ 'x-waku-test-gate': 'allow' });
-    await clickSelector(page, 'a[href="/"]');
+    await page.locator('a[href="/"]').click({ noWaitAfter: true });
     await expect(page.getByTestId('home-title')).toHaveText('Home');
     const response = page.waitForResponse('**/RSC/R/async-cache*', {
       timeout: 10_000,
     });
-    await clickSelector(page, 'a[href="/async-cache"]');
+    await page.locator('a[href="/async-cache"]').click({ noWaitAfter: true });
     expect(await (await response).finished()).toBeNull();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
       'Async page',
@@ -149,11 +148,24 @@ test.describe(`define-router`, () => {
   test('a cancelled resolver redirects during client navigation', async ({
     page,
   }) => {
+    const gate = Promise.withResolvers<void>();
+    await page.route('**/RSC/R/foo*', async (route) => {
+      await gate.promise;
+      await route.continue();
+    });
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
-    await page
-      .getByRole('link', { name: 'Resolver redirect', exact: true })
-      .click();
+    const destination = page.waitForRequest('**/RSC/R/foo*');
+    try {
+      await page
+        .getByRole('link', { name: 'Resolver redirect', exact: true })
+        .click();
+      await destination;
+      await expect(page.getByTestId('home-title')).toHaveText('Home');
+      await expect(page).toHaveURL(`http://localhost:${port}/`);
+    } finally {
+      gate.resolve();
+    }
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');
     await expect(page).toHaveURL(`http://localhost:${port}/foo?q=redirected`);
   });

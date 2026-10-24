@@ -2350,7 +2350,7 @@ test.each(['redirect intent', 'fetch failure'] as const)(
       await flush();
     });
     expect(outcomeType).toBe(
-      failure === 'redirect intent' ? 'loaded' : 'failed',
+      failure === 'redirect intent' ? 'leave' : 'failed',
     );
     expect(abortedAtResolution).toBe(false);
     expect(signal?.aborted).toBe(true);

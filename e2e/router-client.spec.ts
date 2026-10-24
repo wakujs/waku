@@ -1,11 +1,6 @@
 import { expect } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
-import {
-  prepareNormalSetup,
-  test,
-  waitForHydration,
-  waitForSelectorText,
-} from './utils.js';
+import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 const startApp = prepareNormalSetup('router-client');
 const allowedConsoleErrorPatterns: RegExp[] = [
@@ -169,17 +164,13 @@ test.describe('router-client', () => {
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
 
-    await waitForSelectorText(
-      page,
-      '[data-testid="route-path"]',
+    await expect(page.locator('[data-testid="route-path"]')).toHaveText(
       '/intercepted',
     );
-    await waitForSelectorText(
-      page,
-      '[data-testid="route-query"]',
+    await expect(page.locator('[data-testid="route-query"]')).toHaveText(
       'from=interceptor',
     );
-    await waitForSelectorText(page, 'h1', 'Intercepted');
+    await expect(page.locator('h1')).toHaveText('Intercepted');
   });
 
   test('hash-only link navigation scrolls to anchor target', async ({

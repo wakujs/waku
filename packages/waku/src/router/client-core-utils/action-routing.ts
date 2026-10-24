@@ -59,7 +59,11 @@ export const createActionRouting = (): ActionRouting => {
         );
       }
       const origin = connection.getSettledRoute();
-      const result = await next(rscPath, rscParams, {
+      const applyIntent = connection.cache.captureRouteIntentScope(
+        'call',
+        options.signal,
+      );
+      const response = await next(rscPath, rscParams, {
         ...options,
         fetch: (input, init) => {
           const headers = new Headers(
@@ -73,6 +77,9 @@ export const createActionRouting = (): ActionRouting => {
           return options.fetch(input, { ...init, headers });
         },
       });
+      const elements = applyIntent?.(response.elements) ?? response.elements;
+      const result =
+        elements === response.elements ? response : { ...response, elements };
       const { cache, getSettledRoute, getPendingRoute, onRouteChange } =
         connection;
       const handleActionElements = (nextElements: Record<string, unknown>) => {
@@ -105,11 +112,11 @@ export const createActionRouting = (): ActionRouting => {
       ) {
         return { ...result, elements: {} };
       }
-      const elements = combineElements({}, result.elements, {
+      const originElements = combineElements({}, result.elements, {
         filter: (key) => key !== IS_ORIGIN_ID,
       });
-      handleActionElements(elements);
-      return { ...result, elements };
+      handleActionElements(originElements);
+      return { ...result, elements: originElements };
     },
   };
 };

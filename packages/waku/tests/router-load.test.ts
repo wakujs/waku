@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FetchRsc } from '../src/minimal/client-utils/root-store.js';
 import { getRouterCache } from '../src/router/client-core-utils/caches.js';
 import {
+  INTENT_ID,
   IS_STATIC_ID,
   ROUTE_ID,
   encodeRoutePath,
@@ -38,6 +39,41 @@ describe('load', () => {
     cache.clearCaches();
     fetchRsc.mockReset();
     vi.unstubAllEnvs();
+  });
+
+  it('returns a document redirect without fetching it or updating browser history', async () => {
+    const href = window.location.href;
+    fetchRsc.mockResolvedValue({
+      [ROUTE_ID]: ['/next', ''],
+      [INTENT_ID]: Promise.resolve(
+        JSON.stringify({ status: 307, location: 'https://other.example/done' }),
+      ),
+    });
+    const outcome = await cache.load(route('/next'), baseOpts());
+    expect(outcome).toEqual({
+      type: 'leave',
+      url: new URL('https://other.example/done'),
+    });
+    expect(fetchRsc).toHaveBeenCalledOnce();
+    expect(window.location.href).toBe(href);
+  });
+
+  it('stops a ready self-redirect before fetching the route again', async () => {
+    fetchRsc.mockResolvedValue({
+      [ROUTE_ID]: ['/next', ''],
+      [INTENT_ID]: Promise.resolve(
+        JSON.stringify({ status: 307, location: '/next' }),
+      ),
+    });
+    const outcome = await cache.load(
+      route('/next'),
+      baseOpts({ url: new URL('/next', window.location.href) }),
+    );
+    expect(outcome).toMatchObject({
+      type: 'failed',
+      error: { message: 'detected a navigation loop' },
+    });
+    expect(fetchRsc).toHaveBeenCalledOnce();
   });
 
   it('does not reuse a static path when base lacks the route slot', async () => {

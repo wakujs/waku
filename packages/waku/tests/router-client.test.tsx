@@ -331,8 +331,6 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
   // or merge from within a Root targets that Root's elements state.
   const StoreContext = React.createContext<RootStore | null>(null);
 
-  const observerPipelines = new WeakMap<RootStore, Enhance[]>();
-
   const StatefulRoot = (props: {
     children?: ReactNode;
     rscEnhancers?: readonly Enhance[];
@@ -395,7 +393,6 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
     // A boundary so a merge that suspends (pending fetch) shows a fallback
     // instead of crashing on a non-transition update; the real app supplies its
     // own boundaries.
-    observerPipelines.set(storeRef.current, pipeline);
     return React.createElement(
       StoreContext.Provider,
       { value: storeRef.current },
@@ -523,25 +520,6 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
     options: { type: 'rsc' | 'call'; fetch: typeof fetch },
   ) => Promise<{ elements: Record<string, unknown>; value?: unknown }>;
   const pipelines: Enhance[][] = [];
-  const useRegisterObserver = () => {
-    const store = React.use(StoreContext);
-    return React.useCallback(
-      (enhance: Enhance) => {
-        const pipeline = store && observerPipelines.get(store);
-        if (!pipeline) {
-          return () => {};
-        }
-        pipeline.push(enhance);
-        return () => {
-          const index = pipeline.indexOf(enhance);
-          if (index !== -1) {
-            pipeline.splice(index, 1);
-          }
-        };
-      },
-      [store],
-    );
-  };
   testHoisted.enhancerCount = () =>
     pipelines.reduce((count, pipeline) => count + pipeline.length, 0);
   testHoisted.clearEnhancers = () => {
@@ -557,7 +535,6 @@ vi.mock('../src/minimal/client-runtime.js', async () => {
 
   return {
     ...actual,
-    INTERNAL_useRegisterRscEnhancer: useRegisterObserver,
     Root_UNSTABLE: vi.fn((props: Parameters<typeof actual.Root_UNSTABLE>[0]) =>
       React.createElement(StatefulRoot, props),
     ),
@@ -2086,7 +2063,7 @@ describe('Router integration', () => {
     view.unmount();
   });
 
-  test('registers its action and route intent enhancers once, and removes them on unmount (StrictMode)', async () => {
+  test('installs its declarative enhancers once and removes them on unmount (StrictMode)', async () => {
     const elements = {
       [unstable_getRouteSlotId('/start')]: <div>start</div>,
       [ROUTE_ID]: ['/start', ''],
@@ -2097,8 +2074,7 @@ describe('Router integration', () => {
       elements,
     );
 
-    // Registered exactly once despite StrictMode's mount/unmount/mount cycle.
-    expect(testHoisted.enhancerCount()).toBe(3);
+    expect(testHoisted.enhancerCount()).toBe(2);
 
     view.unmount();
 
@@ -2120,7 +2096,7 @@ describe('Router integration', () => {
         elements,
       );
 
-      expect(testHoisted.enhancerCount()).toBe(3);
+      expect(testHoisted.enhancerCount()).toBe(2);
       await act(async () => {
         await testHoisted.emitActionElements({
           [ROUTE_ID]: ['/next', ''],
@@ -2149,7 +2125,7 @@ describe('Router integration', () => {
       },
     );
     try {
-      expect(testHoisted.enhancerCount()).toBe(3);
+      expect(testHoisted.enhancerCount()).toBe(2);
       testHoisted.mergeTypes.length = 0;
       await act(async () => {
         await testHoisted.emitActionElements({

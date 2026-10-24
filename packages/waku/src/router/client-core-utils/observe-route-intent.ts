@@ -1,20 +1,16 @@
 type Outcome = { value: string | undefined } | { error: unknown };
 type Listener = (outcome: Outcome) => void;
 
-const observations = new WeakMap<
+const observationsByPromise = new WeakMap<
   PromiseLike<string | undefined>,
   { outcome?: Outcome; listeners: Set<Listener> }
 >();
 
-/** Observe each wire promise once, without retaining obsolete render scopes. */
-export const observeRouteIntent = (
-  promise: PromiseLike<string | undefined>,
-  listener: Listener,
-) => {
-  let observation = observations.get(promise);
+const getObservation = (promise: PromiseLike<string | undefined>) => {
+  let observation = observationsByPromise.get(promise);
   if (!observation) {
     observation = { listeners: new Set() };
-    observations.set(promise, observation);
+    observationsByPromise.set(promise, observation);
     const entry = observation;
     const publish = (outcome: Outcome) => {
       entry.outcome = outcome;
@@ -24,21 +20,33 @@ export const observeRouteIntent = (
         notify(outcome);
       }
     };
-    Promise.resolve(promise).then(
+    void promise.then(
       (value) => publish({ value }),
       (error: unknown) => publish({ error }),
     );
   }
-  const entry = observation;
-  entry.listeners.add(listener);
+  return observation;
+};
+
+export async function getRouteIntentOutcome(
+  promise: PromiseLike<string | undefined>,
+) {
+  const entry = getObservation(promise);
+  await Promise.resolve();
+  return entry.outcome;
+}
+
+export function observeRouteIntent(
+  promise: PromiseLike<string | undefined>,
+  listener: Listener,
+) {
+  const entry = getObservation(promise);
   if (entry.outcome) {
-    queueMicrotask(() => {
-      if (entry.listeners.delete(listener)) {
-        listener(entry.outcome!);
-      }
-    });
+    listener(entry.outcome);
+  } else {
+    entry.listeners.add(listener);
   }
   return () => {
     entry.listeners.delete(listener);
   };
-};
+}

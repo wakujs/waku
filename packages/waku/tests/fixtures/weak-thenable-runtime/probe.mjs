@@ -13,6 +13,7 @@ const {
   AbortSignal,
   ReadableStream,
   Response,
+  TextDecoder,
   TextEncoder,
   TransformStream,
   console,
@@ -30,9 +31,8 @@ registerHooks({
     }
   },
 });
-const require = createRequire(new URL('./package.json', import.meta.url));
-const runtimePackage = require('./package.json');
-const expectedVersion = runtimePackage.dependencies.react;
+const require = createRequire(import.meta.url);
+const expectedVersion = require('react/package.json').version;
 const mode = expectedVersion.startsWith('0.0.0-experimental-')
   ? 'native'
   : 'filter';
@@ -549,6 +549,47 @@ await scenario(
       abort.abort(new Error('clean up expected unsupported weak thenable'));
       await bytes;
     }
+  },
+);
+
+await scenario(
+  'cancellation survives decoding and a second Flight render',
+  async () => {
+    const errors = [];
+    const { createRenderUtils } = await import(
+      sourceRoot + 'lib/utils-server/render.ts'
+    );
+    const { cancelRender } = await import(
+      sourceRoot + 'lib/utils-isomorphic/render-cancellation.ts'
+    );
+    const render = createRenderUtils({
+      renderToReadableStream: (data, renderOptions) =>
+        server.renderToReadableStream(data, {}, renderOptions),
+      temporaryReferences: undefined,
+      buildId: '',
+      onError: (error) => {
+        errors.push(error);
+      },
+      loadSsrEntryModule: async () => {
+        throw new Error('unused');
+      },
+    });
+    async function Page() {
+      cancelRender();
+    }
+    const bytes = await new Response(
+      await render.renderRsc({ page: React.createElement(Page) }),
+    ).arrayBuffer();
+    assert.match(new TextDecoder().decode(bytes), /WAKU_CANCEL_RENDER/);
+    const first = await client.createFromReadableStream(
+      new Response(bytes).body,
+      options,
+    );
+    const second = await new Response(
+      await render.renderRsc({ page: first.page }),
+    ).text();
+    assert.match(second, /WAKU_CANCEL_RENDER/);
+    assert.deepEqual(errors, []);
   },
 );
 

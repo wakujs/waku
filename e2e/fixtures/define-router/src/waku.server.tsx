@@ -99,36 +99,7 @@ const ContextNotFound = async () => {
   );
 };
 
-const router = defineRouter({
-  unstable_interceptors: [
-    (next) =>
-      requestContext.run(
-        getRequest().headers.get('x-waku-test-context') ?? 'default',
-        async () => {
-          const request = getRequest();
-          const route = parseRouterRequest(request);
-          if (
-            route?.type === 'route' &&
-            route.path === '/interceptor-missing'
-          ) {
-            requestNotFound();
-            cancelRender();
-          }
-          const gate =
-            route?.type === 'route' && route.path === '/interceptor-cache'
-              ? request.headers.get('x-waku-test-gate')
-              : undefined;
-          if (gate === 'before') {
-            requestRedirect('/foo');
-          }
-          const result = await next();
-          if (gate === 'after') {
-            requestRedirect('/foo');
-          }
-          return result;
-        },
-      ),
-  ],
+const routerOptions: Parameters<typeof defineRouter>[0] = {
   getHas404: async () => true,
   resolve: async (path) => {
     if (path === '/404') {
@@ -237,9 +208,42 @@ const router = defineRouter({
   getBuildElementIds: async () => ['slice:slice001'],
   resolveElement: async (id) =>
     sliceSources[id as keyof typeof sliceSources] || null,
+};
+
+const router = defineRouter(routerOptions);
+const interceptedRouter = defineRouter({
+  ...routerOptions,
+  unstable_interceptors: [
+    (next) =>
+      requestContext.run(
+        getRequest().headers.get('x-waku-test-context') ?? 'default',
+        async () => {
+          const request = getRequest();
+          const route = parseRouterRequest(request);
+          if (
+            route?.type === 'route' &&
+            route.path === '/interceptor-missing'
+          ) {
+            requestNotFound();
+            cancelRender();
+          }
+          const gate =
+            route?.type === 'route' && route.path === '/interceptor-cache'
+              ? request.headers.get('x-waku-test-gate')
+              : undefined;
+          if (gate === 'before') {
+            requestRedirect('/foo');
+          }
+          const result = await next();
+          if (gate === 'after') {
+            requestRedirect('/foo');
+          }
+          return result;
+        },
+      ),
+  ],
 });
 
-// This runtime-only route deliberately has no interceptors or build cache.
 const AsyncPage = async () => {
   await Promise.resolve();
   if (getRequest().headers.get('x-waku-test-gate') === 'deny') {
@@ -267,6 +271,13 @@ export default adapter({
   ...router,
   handleRequest: (input, utils) => {
     const route = parseRouterRequest(input.req);
+    if (
+      route?.type === 'route' &&
+      (route.path === '/interceptor-cache' ||
+        route.path === '/interceptor-missing')
+    ) {
+      return interceptedRouter.handleRequest(input, utils);
+    }
     return route?.type === 'route' && route.path === '/async-cache'
       ? runtimeRouter.handleRequest(input, utils)
       : router.handleRequest(input, utils);

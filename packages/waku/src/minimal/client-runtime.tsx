@@ -37,7 +37,6 @@ import {
 import {
   getDefaultRootStore,
   registerRootStore,
-  registerRscObserver,
 } from './client-utils/root-store.js';
 import type {
   FetchRsc,
@@ -309,20 +308,6 @@ const fetchWithoutRoot: FetchRsc = (rscPath, rscParams, options) =>
  */
 export const useFetchRsc_UNSTABLE = (): FetchRsc =>
   use(RootStoreContext)?.fetchRsc ?? fetchWithoutRoot;
-
-/** Internal observer registration for the router's streamed intent channel. */
-export const INTERNAL_useRegisterRscEnhancer = () => {
-  const store = useRootStore();
-  return useCallback(
-    (enhance: RscEnhancer) => {
-      if (!store) {
-        return noop;
-      }
-      return registerRscObserver(store, enhance);
-    },
-    [store],
-  );
-};
 
 const ElementsContext = createContext<Promise<Elements> | null>(null);
 

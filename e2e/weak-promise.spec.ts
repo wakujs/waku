@@ -17,7 +17,7 @@ test.describe('weak promises', () => {
   let stopApp: () => Promise<void>;
 
   test.beforeAll(async ({ mode }) => {
-    ({ port, stopApp } = await startApp(mode, { host: '127.0.0.1' }));
+    ({ port, stopApp } = await startApp(mode));
   });
 
   test.afterAll(async () => {
@@ -30,7 +30,7 @@ test.describe('weak promises', () => {
   }) => {
     const expected = expectedVersion;
     const response = await request.get(
-      `http://127.0.0.1:${port}/weak-flight?kind=unused`,
+      `http://localhost:${port}/weak-flight?kind=unused`,
       { timeout: 15_000 },
     );
     expect(response.ok()).toBe(true);
@@ -39,7 +39,7 @@ test.describe('weak promises', () => {
     expect(payload).toMatch(weakReference);
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
-    await page.goto(`http://127.0.0.1:${port}/weak?kind=unused`);
+    await page.goto(`http://localhost:${port}/weak?kind=unused`);
     await expect(page.getByTestId('weak-body')).toHaveText('complete');
     await expect(page.getByTestId('weak-intent')).toHaveText('none');
     await expect(page.getByTestId('weak-counter')).toHaveAttribute(
@@ -77,7 +77,7 @@ test.describe('weak promises', () => {
     request,
   }) => {
     const id = randomUUID();
-    await page.goto(`http://127.0.0.1:${port}/weak?kind=late&id=${id}`, {
+    await page.goto(`http://localhost:${port}/weak?kind=late&id=${id}`, {
       waitUntil: 'commit',
     });
     await expect(page.getByTestId('weak-shell')).toHaveText('Weak promise');
@@ -90,7 +90,7 @@ test.describe('weak promises', () => {
     await expect(page.getByTestId('weak-counter')).toHaveText('1');
     expect(
       (
-        await request.get(`http://127.0.0.1:${port}/weak-release?id=${id}`)
+        await request.get(`http://localhost:${port}/weak-release?id=${id}`)
       ).ok(),
     ).toBe(true);
     await expect(page.getByTestId('weak-intent')).toHaveText('late intent');
@@ -103,7 +103,7 @@ test.describe('weak promises', () => {
     request,
   }) => {
     const id = randomUUID();
-    await page.goto(`http://127.0.0.1:${port}/weak?kind=early&id=${id}`, {
+    await page.goto(`http://localhost:${port}/weak?kind=early&id=${id}`, {
       waitUntil: 'commit',
     });
     await expect(page.getByTestId('weak-intent')).toHaveText('early intent');
@@ -111,7 +111,7 @@ test.describe('weak promises', () => {
     await expect(page.getByTestId('weak-body')).toHaveCount(0);
     expect(
       (
-        await request.get(`http://127.0.0.1:${port}/weak-release?id=${id}`)
+        await request.get(`http://localhost:${port}/weak-release?id=${id}`)
       ).ok(),
     ).toBe(true);
     await expect(page.getByTestId('weak-body')).toHaveText('complete');

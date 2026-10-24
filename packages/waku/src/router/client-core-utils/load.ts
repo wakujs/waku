@@ -1,5 +1,12 @@
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
+  INTENT_ID,
+  getRouteFromElements,
+  has404FromElements,
+} from '../isomorphic-utils/router-protocol.js';
+import type { RouteIntentData } from '../isomorphic-utils/router-protocol.js';
+import { getRouteIntentOutcome } from './observe-route-intent.js';
+import {
   MAX_FOLLOWS_PER_NAVIGATION,
   decideRouteIntent,
 } from './route-follow.js';
@@ -48,7 +55,8 @@ export type LoadOutcome =
       error: unknown;
       follows: number;
     }
-  | { type: 'aborted' };
+  | { type: 'aborted' }
+  | { type: 'leave'; url: URL };
 
 /** A payload-bearing outcome; does not imply that React has committed it. */
 export type Loaded = Extract<LoadOutcome, { type: 'loaded' }>;
@@ -87,10 +95,11 @@ export const abortable = <T>(
 
 /**
  * Fetches a route through the supplied callback without merging elements or
- * updating browser state. HTTP 404s follow the custom page within the navigation
- * budget. Cancellation stops waiting even if the callback ignores its signal.
- * The binding reconciles response metadata and observes `INTENT` for navigation
- * requested during rendering, which can finish after this resolves.
+ * updating browser state. Ready intents and HTTP 404s follow within the navigation
+ * budget before returning a payload. `leave` asks the binding to replace the
+ * document location. Cancellation stops waiting even if the callback ignores its
+ * signal. Pending intents do not delay loading; the binding observes them after
+ * committing and reconciles the final response's route metadata.
  *
  * @example
  * const outcome = await unstable_load(fetchRoute, route, { signal, has404 });
@@ -120,6 +129,42 @@ export const load = async (
       }
       if (elements === undefined) {
         return { type: 'reused', ...attempt };
+      }
+      const pending = elements[INTENT_ID] as
+        PromiseLike<string | undefined> | undefined;
+      if (pending) {
+        const outcome = await getRouteIntentOutcome(pending);
+        if (opts.signal.aborted) {
+          return { type: 'aborted' };
+        }
+        if (outcome && 'error' in outcome) {
+          throw outcome.error;
+        }
+        if (outcome?.value !== undefined) {
+          const intent = JSON.parse(outcome.value) as RouteIntentData;
+          if (
+            intent.status !== 404 ||
+            getRouteFromElements(elements)?.path !== '/404'
+          ) {
+            const decision = decideRouteIntent(intent, attempt, {
+              has404: has404FromElements(elements) || opts.has404,
+              maxFollows: MAX_FOLLOWS_PER_NAVIGATION,
+            });
+            if (decision.type === 'follow') {
+              return run({
+                route: decision.target,
+                url: decision.url,
+                follows: attempt.follows + 1,
+              });
+            }
+            if (decision.type === 'leave') {
+              return decision;
+            }
+            if (decision.type === 'stop') {
+              throw decision.error;
+            }
+          }
+        }
       }
       return {
         type: 'loaded',

@@ -1,7 +1,6 @@
-// eslint-disable-next-line no-restricted-imports -- Discarded responses use Minimal's internal stream cancellation.
-import { unstable_cancelRenderStream as cancelRenderStream } from 'waku/internals';
 import {
   unstable_cancelRender as cancelRender,
+  unstable_cancelRenderStream as cancelRenderStream,
   unstable_isRenderCancellation as isRenderCancellation,
 } from 'waku/minimal/server';
 import type {
@@ -154,7 +153,6 @@ export const createRequestHandler = ({
         renderRsc(
           {
             ...elements,
-            // Request instructions must not become immutable route metadata.
             ...((hasInterceptors() || intent.value) && ROUTE_ID in elements
               ? { [IS_STATIC_ID]: false }
               : {}),

@@ -10,8 +10,8 @@ import {
   unstable_combineElements as combineElements,
   useElementsPromise_UNSTABLE as useElementsPromise,
 } from 'waku/minimal/client';
-// eslint-disable-next-line import/no-restricted-paths -- Per-Root intent observation is private to the router, not a public Minimal enhancer API.
-import { INTERNAL_useRegisterRscEnhancer as useRegisterRscEnhancer } from '../../minimal/client-runtime.js';
+import { useRouterCache } from '../client-core-utils/caches.js';
+import { observeRouteIntent } from '../client-core-utils/observe-route-intent.js';
 import {
   MAX_FOLLOWS_PER_NAVIGATION,
   decideRouteIntent,
@@ -23,7 +23,6 @@ import {
   has404FromElements,
 } from '../isomorphic-utils/router-protocol.js';
 import type { RouteIntentData } from '../isomorphic-utils/router-protocol.js';
-import { observeRouteIntent } from './observe-route-intent.js';
 import { RouterContext } from './router-context.js';
 import { getRouterState } from './router-state.js';
 
@@ -36,17 +35,16 @@ export const RouteIntent = ({
 }) => {
   const elements = use(useElementsPromise());
   const router = use(RouterContext);
+  const cache = useRouterCache();
   const getElements = router?.getElements;
   const changeRoute = router?.changeRoute;
-  const registerRscEnhancer = useRegisterRscEnhancer();
-  const followed = useRef(
+  const followedStateByPromise = useRef(
     new WeakMap<
       PromiseLike<string | undefined>,
       ReturnType<typeof getRouterState>
     >(),
   );
   const mounted = useRef(true);
-  // A suspended Root merge can hide layout effects without unmounting.
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -69,8 +67,8 @@ export const RouteIntent = ({
       if (
         !changeRoute ||
         !isCurrent(source) ||
-        (followed.current.has(pending) &&
-          followed.current.get(pending) === state)
+        (followedStateByPromise.current.has(pending) &&
+          followedStateByPromise.current.get(pending) === state)
       ) {
         return;
       }
@@ -80,7 +78,7 @@ export const RouteIntent = ({
         if (intent.status === 404 && sourceRoute?.path === '/404') {
           return;
         }
-        followed.current.set(pending, state);
+        followedStateByPromise.current.set(pending, state);
         const requestedUrl = new URL(
           state?.url ?? window.location.href,
           window.location.href,
@@ -157,23 +155,22 @@ export const RouteIntent = ({
     if (!getElements) {
       return;
     }
-    const unregister = registerRscEnhancer(
-      (next) => async (path, params, options) => {
-        const scope = getRouterState(getElements());
-        const result = await next(path, params, options);
-        const pending = result.elements[INTENT_ID] as
+    const unregister = cache.connectRouteIntentObserver((type, signal) => {
+      const scope = getRouterState(getElements());
+      return (responseElements) => {
+        const pending = responseElements[INTENT_ID] as
           PromiseLike<string | undefined> | undefined;
         if (
           !pending ||
-          (options.type !== 'call' && getRouteFromElements(result.elements))
+          (type !== 'call' && getRouteFromElements(responseElements))
         ) {
-          return result;
+          return responseElements;
         }
         Promise.resolve(pending).then(
           (value) => {
             if (
               !mounted.current ||
-              options.signal?.aborted ||
+              signal?.aborted ||
               getRouterState(getElements()) !== scope
             ) {
               return;
@@ -185,7 +182,7 @@ export const RouteIntent = ({
           (error: unknown) => {
             if (
               mounted.current &&
-              !options.signal?.aborted &&
+              !signal?.aborted &&
               getRouterState(getElements()) === scope &&
               isCurrent(getElements())
             ) {
@@ -193,18 +190,15 @@ export const RouteIntent = ({
             }
           },
         );
-        return {
-          ...result,
-          elements: combineElements({}, result.elements, {
-            filter: (key) => key !== INTENT_ID,
-          }),
-        };
-      },
-    );
+        return combineElements({}, responseElements, {
+          filter: (key) => key !== INTENT_ID,
+        });
+      };
+    });
     return () => {
       unregister();
     };
-  }, [getElements, registerRscEnhancer, onError]);
+  }, [cache, getElements, onError]);
 
   return null;
 };

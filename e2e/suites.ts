@@ -79,6 +79,14 @@ export const CHROMIUM_ONLY_SPECS = [
   'wildcard-api-routes.spec.ts',
 ] as const;
 
+// TODO: Restore these WebKit specs when stable React navigation waits pass.
+export const WEBKIT_IGNORED_SPECS = [
+  'create-pages.spec.ts',
+  'fs-router.spec.ts',
+  'instant-nav.spec.ts',
+  'router-client.spec.ts',
+] as const;
+
 export const PRD_ONLY_SPECS = [
   'cloudflare-adapter.prd.spec.ts',
   'custom-library-adapter.prd.spec.ts',

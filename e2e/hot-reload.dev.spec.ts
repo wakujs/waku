@@ -74,9 +74,6 @@ async function expectBackgroundColor(
 
 async function expectNoFullReloadFor(page: Page) {
   // Give Vite time to surface a delayed full reload after the hot update.
-  // React's experimental transition indicator can navigate to the same URL
-  // without requesting a document. Only a document request is a full reload.
-  // TODO: Recheck this workaround when switching back to stable React.
   let mainDocumentRequested = false;
   const onRequest = (request: Request) => {
     if (request.isNavigationRequest() && request.frame() === page.mainFrame()) {

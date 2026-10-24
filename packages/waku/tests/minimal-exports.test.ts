@@ -41,6 +41,8 @@ const clientExports = [
 const serverExports = [
   'unstable_buildElements',
   'unstable_cancelRender',
+  'unstable_cancelRenderStream',
+  'unstable_createWeakPromise',
   'unstable_formatRscUrl',
   'unstable_isRenderCancellation',
   'unstable_parseRequest',

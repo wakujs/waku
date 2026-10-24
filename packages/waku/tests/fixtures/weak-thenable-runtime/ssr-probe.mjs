@@ -13,7 +13,7 @@ const require = createRequire(import.meta.url);
 const React = require('react');
 const client = require('react-server-dom-webpack/client.edge');
 const dom = require('react-dom/server.edge');
-const version = require('./package.json').dependencies.react;
+const version = require('react/package.json').version;
 const native = version.startsWith('0.0.0-experimental-');
 const options = {
   serverConsumerManifest: {

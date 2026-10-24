@@ -187,7 +187,7 @@ const IntentFollow = ({
 
 // slot-thrown stop/none must leave this boundary so the fallback can render
 class FollowFailure extends Component<
-  { children: ReactNode },
+  { children: ReactNode; failure?: { error: unknown } | undefined },
   { error: unknown | null }
 > {
   state: { error: unknown | null } = { error: null };
@@ -195,8 +195,10 @@ class FollowFailure extends Component<
     return { error };
   }
   render() {
-    const { error } = this.state;
-    if (error !== null) {
+    const error = this.props.failure
+      ? this.props.failure.error
+      : this.state.error;
+    if (this.props.failure || error !== null) {
       const message = error instanceof Error ? error.message : String(error);
       const content = <p data-testid="follow-error">{message}</p>;
       return (
@@ -229,6 +231,7 @@ const NavBinding = ({
   const elements = use(useElementsPromise());
   const mergeElements = useMergeElements();
   const cache = useRouterCache();
+  const [failure, setFailure] = useState<{ error: unknown }>();
   const routeFallback = useInitialRoute(fallbackRoute);
   const resolvedRef = useRef(elements);
   const settledHrefRef = useRef<string>(undefined);
@@ -287,6 +290,7 @@ const NavBinding = ({
   });
 
   const runImpl: FollowRun = async (next, signal, followCount, url) => {
+    setFailure(undefined);
     const base = resolvedRef.current;
     const settled = getRouteFromElements(base) ?? routeFallback;
     const outcome = await cache.load(next, {
@@ -299,19 +303,25 @@ const NavBinding = ({
     if (outcome.type === 'aborted') {
       return;
     }
-    if (outcome.type === 'failed') {
-      throw outcome.error;
+    if (outcome.type === 'leave') {
+      window.location.replace(outcome.url.href);
+      return;
     }
-    if (outcome.type === 'reused' || outcome.type === 'loaded') {
-      setFollows(outcome.follows);
-    }
+    setFollows(outcome.follows);
     // The intercept committed the requested URL before the payload arrived.
     if (
       ownsNavigation &&
       outcome.url.href !== window.location.href &&
       outcome.url.href !== getRouteUrl(next).href
     ) {
-      window.history.replaceState(null, '', outcome.url.href);
+      void window.navigation.navigate(outcome.url.href, {
+        history: 'replace',
+        info: { fromAction: true, follows: outcome.follows },
+      });
+    }
+    if (outcome.type === 'failed') {
+      setFailure({ error: outcome.error });
+      return;
     }
     if (outcome.type === 'reused') {
       await mergeElements({
@@ -410,7 +420,7 @@ const NavBinding = ({
 
   return (
     <RouterHostContext value={host}>
-      <FollowFailure key={route.path}>
+      <FollowFailure key={route.path} failure={failure}>
         <IntentFollow
           pending={
             elements[INTENT_ID] as PromiseLike<string | undefined> | undefined

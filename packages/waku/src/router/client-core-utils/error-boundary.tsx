@@ -53,7 +53,6 @@ export class ErrorBoundary extends Component<
   }
 
   componentDidUpdate() {
-    // A reload can replace route data without changing its URL.
     if (this.failedRoute && this.failedRoute.key !== this.context?.route) {
       this.failedRoute = undefined;
       this.setState({ failure: undefined });

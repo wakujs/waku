@@ -351,6 +351,11 @@ export const useNavigation = (
           requestRef.current = undefined;
           return {};
         }
+        if (outcome.type === 'leave') {
+          requestRef.current = undefined;
+          window.location.replace(outcome.url.href);
+          return {};
+        }
         const historyIntent =
           instantResponse &&
           outcome.follows > initialFollows &&
@@ -507,8 +512,6 @@ export const useNavigation = (
       const committed = getElements();
       const state = getRouterState(source);
       const request = requestRef.current;
-      // A matching URL does not give an older response ownership of a reload.
-      // Action intents from the previous route also yield to a pending navigation.
       return (
         getRouterState(committed) === state &&
         committed[INTENT_ID] === source[INTENT_ID] &&

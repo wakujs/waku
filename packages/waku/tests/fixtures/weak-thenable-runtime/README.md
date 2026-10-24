@@ -1,10 +1,10 @@
 # Weak-thenable API reference
 
-This fixture pins React, React DOM, and React Server DOM Webpack to the same
-exact version in `package.json`. It uses the public webpack edge entry points,
-not Vite's vendored Flight runtime. It does not patch React. The native branch also pins the workspace to this experimental runtime.
+These probes use the workspace's React, React DOM, and React Server DOM Webpack
+installation and verify that their versions match. They use the public webpack
+edge entry points without patching React.
 
-The internal server API, exported from `waku/internals`, is:
+The unstable API, exported from `waku/minimal/server`, is:
 
 ```ts
 const { promise, resolve } = unstable_createWeakPromise<string>();
@@ -24,19 +24,12 @@ compatibility branch adds `weak-promise-stream.ts` and uses a server-side filter
 with undefined. Both use React's client decoder directly. No extra completion
 helper is part of the weak-promise API.
 
-The unit-test workflow installs and runs these probes on every supported Node
-version. To run them independently:
+`pnpm test` includes these development and production probes. To run them alone
+from the repository root:
 
 ```sh
-npm ci --ignore-scripts --legacy-peer-deps
-NODE_ENV=development node --conditions=react-server --experimental-strip-types probe.mjs
-NODE_ENV=production node --conditions=react-server --experimental-strip-types probe.mjs
-NODE_ENV=development node ssr-probe.mjs
-NODE_ENV=production node ssr-probe.mjs
+pnpm -F waku test:weak-promise
 ```
-
-The fixture does not bundle webpack modules, so webpack's peer installation is
-omitted. The lockfile pins the packages used by these edge-entry probes.
 
 The RSC probe checks native streaming, early and late intents, first resolution,
 ordinary async dependencies, streams/iterators, binary fragmentation, aliases,

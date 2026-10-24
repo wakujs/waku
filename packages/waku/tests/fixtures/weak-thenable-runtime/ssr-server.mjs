@@ -18,7 +18,7 @@ registerHooks({
 const require = createRequire(import.meta.url);
 const React = require('react');
 const server = require('react-server-dom-webpack/server.edge');
-const native = require('./package.json').dependencies.react.startsWith(
+const native = require('react/package.json').version.startsWith(
   '0.0.0-experimental-',
 );
 const sourceRoot = fileURLToPath(new URL('../../../src/', import.meta.url));

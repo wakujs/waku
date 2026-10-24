@@ -100,6 +100,21 @@ when the requesting component stops with `cancelRender()`. Do not await an
 unused intent to decide whether a route has loaded. HTTP document requests use
 redirect statuses or render the 404 page when the shell has not been sent.
 
+The first recorded intent wins. Its promise can settle and reach the browser
+before other components finish, so a later intent cannot replace it. Concurrent
+components have no guaranteed ordering; redirect and not-found intents have no
+priority over each other.
+
+The loader follows intents already available with a response before committing
+that response, preserving the active content while the destination loads. An
+intent that arrives after commit follows from the displayed route. The destination
+uses an existing route cache when possible; otherwise it needs its own request
+so that rendering uses the destination request's URL and context.
+
+Router-managed slice fetches and actions observe their intents in the originating
+route's scope. Minimal's `useFetchRsc_UNSTABLE` only returns response data; custom
+integrations own the routing decisions for requests they make directly.
+
 The client uses `HAS404` to decide whether a not-found intent follows `/404` or
 shows its generic fallback. Follow decisions share loop detection and a
 navigation budget through `unstable_decideRouteIntent`. Absolute destinations
@@ -170,7 +185,8 @@ destination must independently validate its incoming query.
 `unstable_load` from `waku/router/client-core` accepts a fetch callback. It
 recovers from real HTTP 404s, including missing files on a static host, within the
 follow budget and stops waiting when cancelled. It does not require the Router
-cache or merge elements. Navigation recorded in `INTENT` is observed by the binding.
+cache or merge elements. It follows ready intents before returning a payload;
+the binding observes intents that arrive after commit.
 
 This hook binds the loader to the enclosing Minimal `Root` without a Router cache:
 
@@ -221,6 +237,7 @@ retains the corresponding elements.
 | `reused`  | Retain existing content and queue the requested route metadata and intent. |
 | `failed`  | Present the error at the attempted URL.                                    |
 | `aborted` | Discard the result.                                                        |
+| `leave`   | Replace the document location with the returned URL.                       |
 
 A callback returns `undefined` only to reuse usable content already in this Root.
 An unmatched route uses the custom page when available. With no custom page,
@@ -400,17 +417,17 @@ See [Rerender After Actions](/guides/rerender-after-actions).
 
 Paths below are relative to `packages/waku/src/router`.
 
-| Responsibility                                                | File                                                               |
-| ------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Protocol IDs, RSC inputs, slot IDs, and metadata readers      | `isomorphic-utils/router-protocol.ts`                              |
-| Route resolution to elements and route metadata               | `define-router-utils/route-entries.ts`                             |
-| Request handling, redirects, not-found, and action responses  | `define-router-utils/request-handler.tsx`                          |
-| Client action intent and stale-origin protection              | `client-core-utils/action-routing.ts`                              |
-| Fetch-time follows and render-time follow policy              | `client-core-utils/load.ts` and `client-core-utils/error-route.ts` |
-| Element/route/history commit in the standard binding          | `client-utils/navigation.ts` and `client-utils/router-state.ts`    |
-| Cached eager paints and response adoption                     | `client-utils/instant-navigation.ts`                               |
-| Pinned slots, waiting values, and instant response settlement | `client-utils/instant-elements.ts`                                 |
-| Rendered error handling and boundary resets                   | `client-utils/render-error.tsx` and `client.tsx`                   |
+| Responsibility                                                | File                                                                |
+| ------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Protocol IDs, RSC inputs, slot IDs, and metadata readers      | `isomorphic-utils/router-protocol.ts`                               |
+| Route resolution to elements and route metadata               | `define-router-utils/route-entries.ts`                              |
+| Request handling, redirects, not-found, and action responses  | `define-router-utils/request-handler.tsx`                           |
+| Client action intent and stale-origin protection              | `client-core-utils/action-routing.ts`                               |
+| Fetch-time follows and render-time follow policy              | `client-core-utils/load.ts` and `client-core-utils/route-follow.ts` |
+| Element/route/history commit in the standard binding          | `client-utils/navigation.ts` and `client-utils/router-state.ts`     |
+| Cached eager paints and response adoption                     | `client-utils/instant-navigation.ts`                                |
+| Pinned slots, waiting values, and instant response settlement | `client-utils/instant-elements.ts`                                  |
+| Rendered error handling and boundary resets                   | `client-utils/render-error.tsx` and `client.tsx`                    |
 
 `packages/waku/tests/router-protocol.test.tsx` exercises server responses through
 Minimal's client and Router's public helpers, substituting only Flight

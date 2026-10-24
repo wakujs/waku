@@ -2,13 +2,7 @@ import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type Request, expect } from '@playwright/test';
-import {
-  clickSelector,
-  prepareNormalSetup,
-  test,
-  waitForHydration,
-  waitForSelectorText,
-} from './utils.js';
+import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
 // Instant navigation (`<Link ... unstable_instant>`): on a revisited (cached)
 // route, navigation paints the cached shell + the <Suspense> skeleton
@@ -302,11 +296,11 @@ test.describe('instant-nav', () => {
       historyLength + 1,
     );
 
-    await clickSelector(page, 'button[type="submit"]');
-    await waitForSelectorText(page, '[data-testid="rerender-result"]', 'done');
-    await waitForSelectorText(
-      page,
-      '[data-testid="route-query"]',
+    await page.locator('button[type="submit"]').click({ noWaitAfter: true });
+    await expect(page.locator('[data-testid="rerender-result"]')).toHaveText(
+      'done',
+    );
+    await expect(page.locator('[data-testid="route-query"]')).toHaveText(
       '/login?callbackUrl=%2Fpost%2F1',
     );
     await expect
@@ -314,7 +308,9 @@ test.describe('instant-nav', () => {
       .toBe(`http://localhost:${port}/login?callbackUrl=%2Fpost%2F1`);
     await page.evaluate(() => window.history.back());
     await expect.poll(() => page.url()).toBe(`http://localhost:${port}/post/2`);
-    await waitForSelectorText(page, '[data-testid="post-body"]', 'Post 2');
+    await expect(page.locator('[data-testid="post-body"]')).toHaveText(
+      'Post 2',
+    );
   });
 
   // ...and surfaces a fetch error instead of getting stuck on the skeleton.
@@ -444,9 +440,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     await expect(page.getByTestId('hmr-marker')).toBeVisible();
     await expect(page.getByTestId('widget-static')).toBeVisible();
 
-    await waitForSelectorText(
-      page,
-      '[data-testid="lazy-clock-value"]',
+    await expect(page.locator('[data-testid="lazy-clock-value"]')).toHaveText(
       'lazy clock loaded',
     );
     await page.evaluate(() => {
@@ -458,7 +452,9 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     const originalSlice = readFileSync(sliceFile, 'utf-8');
 
     await page.getByTestId('link-post-1').click();
-    await waitForSelectorText(page, '[data-testid="post-body"]', 'Post 1');
+    await expect(page.locator('[data-testid="post-body"]')).toHaveText(
+      'Post 1',
+    );
 
     const hmrRequests: string[] = [];
     const recordHmrRequest = (request: Request) => {
@@ -486,10 +482,10 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
       originalSlice.replace('lazy clock loaded', 'lazy clock HMR'),
     );
     await (await sliceHmrResponsePromise).finished();
-    await clickSelector(page, '[data-testid="link-widget"]');
-    await waitForSelectorText(
-      page,
-      '[data-testid="lazy-clock-value"]',
+    await page
+      .locator('[data-testid="link-widget"]')
+      .click({ noWaitAfter: true });
+    await expect(page.locator('[data-testid="lazy-clock-value"]')).toHaveText(
       'lazy clock HMR',
     );
     expect(
@@ -514,7 +510,9 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     await expect(page.getByTestId('hmr-marker')).toBeVisible();
 
     await page.getByTestId('link-post-1').click();
-    await waitForSelectorText(page, '[data-testid="post-body"]', 'Post 1');
+    await expect(page.locator('[data-testid="post-body"]')).toHaveText(
+      'Post 1',
+    );
     await page.evaluate(() => {
       (
         globalThis as typeof globalThis & {
@@ -531,7 +529,9 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
         ).__WAKU_TEST_ROUTER_KEY__ === 1,
     );
     await expect(page.getByTestId('hmr-marker')).toBeVisible();
-    await waitForSelectorText(page, '[data-testid="post-body"]', 'Post 1');
+    await expect(page.locator('[data-testid="post-body"]')).toHaveText(
+      'Post 1',
+    );
 
     // an HMR update retires a navigation whose response has not landed yet:
     // the stale response must not commit once it finally arrives
@@ -553,7 +553,9 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     await test.step(
       'request the held navigation',
       async () => {
-        await clickSelector(page, '[data-testid="link-plain-post-2"]');
+        await page
+          .locator('[data-testid="link-plain-post-2"]')
+          .click({ noWaitAfter: true });
         await post2Requested.promise;
       },
       { timeout: 20_000 },
@@ -583,7 +585,9 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
     );
 
     await expect.poll(() => page.url()).toBe(`http://localhost:${port}/post/1`);
-    await waitForSelectorText(page, '[data-testid="post-body"]', 'HMR Post 1');
+    await expect(page.locator('[data-testid="post-body"]')).toHaveText(
+      'HMR Post 1',
+    );
   });
 
   test('HMR replaces an in-flight lazy slice response', async ({ page }) => {
@@ -624,9 +628,7 @@ test.describe('instant-nav hmr', { tag: '@dev' }, () => {
         }),
     );
 
-    await waitForSelectorText(
-      page,
-      '[data-testid="lazy-clock-value"]',
+    await expect(page.locator('[data-testid="lazy-clock-value"]')).toHaveText(
       'lazy clock racing HMR',
     );
   });

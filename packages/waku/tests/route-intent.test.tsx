@@ -13,6 +13,7 @@ import {
   useFetchRsc_UNSTABLE as useFetchRsc,
   useMergeElements_UNSTABLE as useMergeElements,
 } from '../src/minimal/client.js';
+import { useRouterCache_UNSTABLE as useRouterCache } from '../src/router/client-core.js';
 import { ErrorBoundary, Router, useRouter } from '../src/router/client.js';
 import {
   HAS404_ID,
@@ -74,18 +75,20 @@ const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 let root: ReturnType<typeof createRoot> | undefined;
 let controls: {
   router: ReturnType<typeof useRouter>;
-  fetch: ReturnType<typeof useFetchRsc>;
+  fetch: ReturnType<typeof useRouterCache>['fetchRsc'];
+  rawFetch: ReturnType<typeof useFetchRsc>;
   merge: ReturnType<typeof useMergeElements>;
   elements: Elements;
 };
 
 const Probe = () => {
   const router = useRouter();
-  const fetch = useFetchRsc();
+  const { fetchRsc: fetch } = useRouterCache();
+  const rawFetch = useFetchRsc();
   const merge = useMergeElements();
   const elements = use(useElementsPromise());
   useLayoutEffect(() => {
-    controls = { router, fetch, merge, elements };
+    controls = { router, fetch, rawFetch, merge, elements };
   });
   return <output>{router.path}</output>;
 };
@@ -158,6 +161,45 @@ test('a navigation commits while its intent stays pending', async () => {
   expect(view.textContent).toContain('Page /two');
   expect(controls.elements[INTENT_ID]).toBe(pending.promise);
 });
+
+test.each([false, true])(
+  'a ready redirect retains content until its destination loads (instant: %s)',
+  async (instant) => {
+    mocks.queue.push({
+      ...payload('/one'),
+      [getRouteSlotId('/gate')]: <p>Cached gate</p>,
+      [ETAGS_ID]: { root: 1, [getRouteSlotId('/gate')]: 1 },
+    });
+    const view = await mount();
+    const destination = defer<Elements>();
+    mocks.queue.push(
+      {
+        ...payload(
+          '/gate',
+          Promise.resolve(JSON.stringify({ status: 307, location: '/done' })),
+        ),
+        [getRouteSlotId('/gate')]: null,
+      },
+      destination.promise,
+    );
+    const requests = vi.mocked(fetch).mock.calls.length;
+    let navigating!: Promise<void>;
+    await act(async () => {
+      navigating = controls.router.push('/gate', { unstable_instant: instant });
+      await flush();
+    });
+    expect(vi.mocked(fetch).mock.calls).toHaveLength(requests + 2);
+    expect(view.textContent).toContain(instant ? 'Cached gate' : 'Page /one');
+    expect(window.location.pathname).toBe(instant ? '/gate' : '/one');
+    await act(async () => {
+      destination.resolve(payload('/done'));
+      await navigating;
+      await flush();
+    });
+    expect(view.textContent).toContain('Page /done');
+    expect(window.location.pathname).toBe('/done');
+  },
+);
 
 test.each(['redirect', 'notFound', 'notFoundWithoutPage'] as const)(
   'a cancelled resolver follows %s from a pending navigation',
@@ -348,9 +390,9 @@ test('a partial intent is observed while the page intent remains pending', async
   page.resolve(null);
 });
 
-test('a partial fetch in an initial descendant layout effect observes its intent without a merge', async () => {
+test('a Router cache fetch in an initial descendant layout effect observes its intent without a merge', async () => {
   const FetchOnMount = () => {
-    const fetchRsc = useFetchRsc();
+    const { fetchRsc } = useRouterCache();
     useLayoutEffect(() => {
       void fetchRsc(encodeSliceId('sidebar'));
     }, [fetchRsc]);
@@ -372,6 +414,21 @@ test('a partial fetch in an initial descendant layout effect observes its intent
   });
   expect(view.textContent).toContain('Page /done');
   expect(window.location.pathname).toBe('/done');
+});
+
+test('a raw Minimal fetch returns intent data without applying Router navigation', async () => {
+  mocks.queue.push(payload('/one'));
+  const view = await mount();
+  const value = JSON.stringify({ status: 307, location: '/done' });
+  mocks.queue.push({ [INTENT_ID]: Promise.resolve(value) });
+  await act(async () => {
+    const result = await controls.rawFetch(encodeSliceId('sidebar'));
+    await expect(result[INTENT_ID]).resolves.toBe(value);
+    await flush();
+  });
+  expect(view.textContent).toContain('Page /one');
+  expect(window.location.pathname).toBe('/one');
+  expect(vi.mocked(fetch).mock.calls).toHaveLength(2);
 });
 
 test('a late page intent cannot leave a reused static route', async () => {

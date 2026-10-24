@@ -59,14 +59,11 @@ export const getAvailablePort = async (): Promise<number> => {
 
 const PORT_WAIT_TIMEOUT_MS = 30_000;
 
-export const waitForPortReady = async (
-  port: number,
-  host = 'localhost',
-): Promise<void> =>
+export const waitForPortReady = async (port: number): Promise<void> =>
   new Promise((resolve, reject) => {
     const start = Date.now();
     const tryConnect = () => {
-      const socket = createConnection(port, host);
+      const socket = createConnection(port);
       socket.once('connect', () => {
         socket.end();
         resolve();
@@ -263,7 +260,6 @@ export const prepareNormalSetup = (
     options?: {
       cmd?: string | undefined;
       portFlag?: string | undefined;
-      host?: string | undefined;
       onServerOutput?: (data: string) => void;
     },
   ) => {
@@ -288,9 +284,8 @@ export const prepareNormalSetup = (
       cmd = options.cmd;
     }
     const portFlag = options?.portFlag ?? '-p';
-    const hostFlag = options?.host ? `--host ${options.host}` : '';
     const port = await getAvailablePort();
-    const cp = runShell(`${cmd} ${hostFlag} ${portFlag} ${port}`, fixtureDir);
+    const cp = runShell(`${cmd} ${portFlag} ${port}`, fixtureDir);
     debugChildProcess(cp, fileURLToPath(import.meta.url));
     if (options?.onServerOutput) {
       const callback = options.onServerOutput;
@@ -312,7 +307,7 @@ export const prepareNormalSetup = (
         cp.stdout?.off('data', onOutput);
       }
     }
-    await waitForPortReady(port, options?.host);
+    await waitForPortReady(port);
     const stopApp = async () => {
       await terminate(cp);
       await waitForPortClosed(port);
@@ -538,35 +533,3 @@ export async function waitForHydration(page: Page) {
     { timeout: 20_000 },
   );
 }
-
-// In WebKit + react@experimental, locator-based assertions can hang while
-// Playwright waits for navigation to settle. This polls DOM text directly.
-// TODO: Restore locator assertions when switching back to stable React.
-export const waitForSelectorText = async (
-  page: Page,
-  selector: string,
-  text: string,
-) => {
-  await expect
-    .poll(
-      async () =>
-        page.evaluate(
-          (selector) => document.querySelector(selector)?.textContent ?? null,
-          selector,
-        ),
-      { timeout: 10_000 },
-    )
-    .toBe(text);
-};
-
-// WebKit + react@experimental can leave locator navigation waits pending.
-// TODO: Remove the WebKit path when stable React's normal locator clicks pass.
-export const clickSelector = async (page: Page, selector: string) => {
-  if (page.context().browser()?.browserType().name() === 'webkit') {
-    await page.evaluate((selector) => {
-      document.querySelector<HTMLElement>(selector)!.click();
-    }, selector);
-  } else {
-    await page.locator(selector).click({ noWaitAfter: true });
-  }
-};

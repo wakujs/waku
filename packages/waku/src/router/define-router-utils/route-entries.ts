@@ -114,7 +114,6 @@ export const createRouteEntries = (
           if (cache.has(cacheId)) {
             await cache.replayIntent(cacheId);
           } else {
-            // Uncached runtime paths must render to recover their intent.
             delete etags[id];
           }
         }
@@ -129,7 +128,6 @@ export const createRouteEntries = (
             source,
             getElementCacheId(id, source),
             cache,
-            // Runtime paths may be unbounded; only builds and explicit keys populate the route cache.
             id !== routeId ||
               source.cacheKey !== undefined ||
               populateRouteCache,
@@ -138,7 +136,6 @@ export const createRouteEntries = (
       ),
     );
     Object.assign(entries.elements, await getRouteMetadata(pathname, query));
-    // Uncached JSX may still record a request-specific intent during Flight rendering.
     entries.elements[IS_STATIC_ID] = Object.entries(sources).every(
       ([id, source]) =>
         source.immutable && cache.has(getElementCacheId(id, source)),

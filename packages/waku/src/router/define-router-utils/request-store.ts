@@ -1,6 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-// eslint-disable-next-line no-restricted-imports -- Router shares core's internal weak-promise transport.
-import { unstable_createWeakPromise as createWeakPromise } from 'waku/internals';
+import { unstable_createWeakPromise as createWeakPromise } from 'waku/minimal/server';
 import type { RouteIntentData } from '../isomorphic-utils/router-protocol.js';
 
 export type HandlerInterceptor = <T>(next: () => Promise<T>) => Promise<T>;
@@ -38,7 +37,6 @@ const createRouteIntent = (
         return;
       }
       value = intent;
-      // Cancellation recovery runs after the interceptor stack has unwound.
       resume = AsyncLocalStorage.snapshot?.();
       resolve(JSON.stringify(intent));
       forward?.(intent);
