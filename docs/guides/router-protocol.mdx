@@ -105,6 +105,10 @@ before other components finish, so a later intent cannot replace it. Concurrent
 components have no guaranteed ordering; redirect and not-found intents have no
 priority over each other.
 
+Weak-promise listeners run synchronously so React can emit the intent before
+the component's render task completes. Deferring notification to a promise
+microtask can let Flight finish its last task and close the stream first.
+
 The loader follows intents already available with a response before committing
 that response, preserving the active content while the destination loads. An
 intent that arrives after commit follows from the displayed route. The destination

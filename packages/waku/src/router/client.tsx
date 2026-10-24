@@ -242,6 +242,8 @@ const InnerRouter = ({
   ) : (
     <Slot id={getRouteSlotId(currentRoute.path)} />
   );
+  const rootAvailable =
+    'root' in elements && (!error || elements.root !== null);
   return (
     <RouterContext
       value={{
@@ -253,11 +255,7 @@ const InnerRouter = ({
     >
       <RouterHostContext value={host}>
         <RouteIntent onError={onIntentError} />
-        {!('root' in elements) || (error && elements.root === null) ? (
-          routeElement
-        ) : (
-          <Slot id="root">{routeElement}</Slot>
-        )}
+        {rootAvailable ? <Slot id="root">{routeElement}</Slot> : routeElement}
       </RouterHostContext>
     </RouterContext>
   );

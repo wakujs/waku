@@ -12,6 +12,7 @@ import {
 } from 'waku/minimal/client';
 import { useRouterCache } from '../client-core-utils/caches.js';
 import { observeRouteIntent } from '../client-core-utils/observe-route-intent.js';
+import type { RouteIntentOutcome } from '../client-core-utils/observe-route-intent.js';
 import {
   MAX_FOLLOWS_PER_NAVIGATION,
   decideRouteIntent,
@@ -37,7 +38,6 @@ export const RouteIntent = ({
   const router = use(RouterContext);
   const cache = useRouterCache();
   const getElements = router?.getElements;
-  const changeRoute = router?.changeRoute;
   const followedStateByPromise = useRef(
     new WeakMap<
       PromiseLike<string | undefined>,
@@ -51,29 +51,31 @@ export const RouteIntent = ({
       mounted.current = false;
     };
   }, []);
-  const isCurrent = useEffectEvent((source: Elements) => {
-    return (
-      router?.isCurrentRoute?.(source) ??
-      (!getElements || getElements()[INTENT_ID] === source[INTENT_ID])
-    );
-  });
-  const follow = useEffectEvent(
+  const settle = useEffectEvent(
     (
-      value: string,
+      outcome: RouteIntentOutcome,
       source: Elements,
       pending: PromiseLike<string | undefined>,
     ) => {
+      if (!router?.isCurrentRoute?.(source)) {
+        return;
+      }
+      if ('error' in outcome) {
+        onError(outcome.error, source);
+        return;
+      }
+      if (outcome.value === undefined) {
+        return;
+      }
       const state = getRouterState(source);
       if (
-        !changeRoute ||
-        !isCurrent(source) ||
-        (followedStateByPromise.current.has(pending) &&
-          followedStateByPromise.current.get(pending) === state)
+        followedStateByPromise.current.has(pending) &&
+        followedStateByPromise.current.get(pending) === state
       ) {
         return;
       }
       try {
-        const intent = JSON.parse(value) as RouteIntentData;
+        const intent = JSON.parse(outcome.value) as RouteIntentData;
         const sourceRoute = getRouteFromElements(source);
         if (intent.status === 404 && sourceRoute?.path === '/404') {
           return;
@@ -117,15 +119,17 @@ export const RouteIntent = ({
         }
         const { target, url } = decision;
         startTransition(() => {
-          changeRoute(target, {
-            shouldScroll: state
-              ? state.scroll !== null
-              : target.path !== sourceRoute?.path,
-            history: 'replace',
-            refetch: true,
-            url,
-            follows: (state?.follows ?? 0) + 1,
-          }).catch((error: unknown) => onError(error, source));
+          router
+            .changeRoute(target, {
+              shouldScroll: state
+                ? state.scroll !== null
+                : target.path !== sourceRoute?.path,
+              history: 'replace',
+              refetch: true,
+              url,
+              follows: (state?.follows ?? 0) + 1,
+            })
+            .catch((error: unknown) => onError(error, source));
         });
       } catch (error) {
         onError(error, source);
@@ -140,14 +144,7 @@ export const RouteIntent = ({
       return;
     }
     return observeRouteIntent(pending, (outcome) => {
-      if (!isCurrent(elements)) {
-        return;
-      }
-      if ('error' in outcome) {
-        onError(outcome.error, elements);
-      } else if (outcome.value !== undefined) {
-        follow(outcome.value, elements, pending);
-      }
+      settle(outcome, elements, pending);
     });
   }, [elements, onError]);
 
@@ -166,29 +163,18 @@ export const RouteIntent = ({
         ) {
           return responseElements;
         }
-        Promise.resolve(pending).then(
-          (value) => {
-            if (
-              !mounted.current ||
-              signal?.aborted ||
-              getRouterState(getElements()) !== scope
-            ) {
-              return;
-            }
-            if (value !== undefined) {
-              follow(value, getElements(), pending);
-            }
-          },
-          (error: unknown) => {
-            if (
-              mounted.current &&
-              !signal?.aborted &&
-              getRouterState(getElements()) === scope &&
-              isCurrent(getElements())
-            ) {
-              onError(error, getElements());
-            }
-          },
+        const apply = (outcome: RouteIntentOutcome) => {
+          if (
+            mounted.current &&
+            !signal?.aborted &&
+            getRouterState(getElements()) === scope
+          ) {
+            settle(outcome, getElements(), pending);
+          }
+        };
+        void Promise.resolve(pending).then(
+          (value) => apply({ value }),
+          (error: unknown) => apply({ error }),
         );
         return combineElements({}, responseElements, {
           filter: (key) => key !== INTENT_ID,

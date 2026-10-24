@@ -1,9 +1,10 @@
-type Outcome = { value: string | undefined } | { error: unknown };
-type Listener = (outcome: Outcome) => void;
+export type RouteIntentOutcome =
+  { value: string | undefined } | { error: unknown };
+type Listener = (outcome: RouteIntentOutcome) => void;
 
 const observationsByPromise = new WeakMap<
   PromiseLike<string | undefined>,
-  { outcome?: Outcome; listeners: Set<Listener> }
+  { outcome?: RouteIntentOutcome; listeners: Set<Listener> }
 >();
 
 const getObservation = (promise: PromiseLike<string | undefined>) => {
@@ -12,7 +13,7 @@ const getObservation = (promise: PromiseLike<string | undefined>) => {
     observation = { listeners: new Set() };
     observationsByPromise.set(promise, observation);
     const entry = observation;
-    const publish = (outcome: Outcome) => {
+    const publish = (outcome: RouteIntentOutcome) => {
       entry.outcome = outcome;
       const listeners = [...entry.listeners];
       entry.listeners.clear();
