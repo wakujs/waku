@@ -71,14 +71,13 @@ export const createRouteEntries = (
             resolve('/404', ''),
           ).then((result) => result !== null && typeof result !== 'function')
     ).catch((error) => {
-      if (
-        isRenderCancellation(error) ||
-        (error instanceof Response && error.status === 404)
-      ) {
-        cachedHas404 = undefined;
+      if (error instanceof Response && error.status === 404) {
         return false;
       }
       cachedHas404 = undefined;
+      if (isRenderCancellation(error)) {
+        return false;
+      }
       throw error;
     }));
 

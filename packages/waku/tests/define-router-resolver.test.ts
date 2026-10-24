@@ -292,10 +292,12 @@ describe('defineRouter route resolver', () => {
     );
   });
 
-  it('renders a valid document when the 404 probe throws an HTTP 404 Response', async () => {
+  it('renders a valid document and caches absence when the 404 probe throws an HTTP 404 Response', async () => {
+    let probes = 0;
     const router = unstable_defineRouter({
       resolve: async (path) => {
         if (path === '/404') {
+          probes++;
           throw new Response('Not Found', { status: 404 });
         }
         return makeRoute('home');
@@ -317,6 +319,29 @@ describe('defineRouter route resolver', () => {
       expect.anything(),
     );
     expect(utils.renderRsc.mock.calls[0]![0]).not.toHaveProperty(HAS404_ID);
+    await router.handleRequest(rscInput('/another'), utils);
+    expect(probes).toBe(1);
+  });
+
+  it('retries a cancelled 404 probe on the next request', async () => {
+    let probes = 0;
+    const router = unstable_defineRouter({
+      resolve: async (path) => {
+        if (path === '/404' && ++probes === 1) {
+          cancelRender();
+        }
+        return makeRoute('page');
+      },
+    });
+    const utils = makeUtils();
+    await router.handleRequest(rscInput('/one'), utils);
+    expect(utils.renderRsc.mock.calls[0]![0]).not.toHaveProperty(HAS404_ID);
+    await router.handleRequest(rscInput('/two'), utils);
+    expect(probes).toBe(2);
+    expect(utils.renderRsc.mock.calls.at(-1)![0]).toHaveProperty(
+      HAS404_ID,
+      true,
+    );
   });
 
   it('reuses build-preloaded route content without retaining unbuilt routes', async () => {
