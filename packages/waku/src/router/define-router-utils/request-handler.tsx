@@ -27,7 +27,11 @@ import { getRouterPrefetchCode } from './client-code.js';
 import { createElementCache } from './element-cache.js';
 import type { SerializedElement } from './element-cache.js';
 import { getNonce, getRouteIntent, setRerender } from './request-store.js';
-import type { Resolve, Route, createRouteEntries } from './route-entries.js';
+import type {
+  Resolve,
+  RouterDefinition,
+  createRouteEntries,
+} from './route-entries.js';
 import { getQuery } from './route-entries.js';
 
 type RouteEntries = {
@@ -353,7 +357,7 @@ export const createRequestHandler = ({
           pathname: string,
           query: string,
           status = 200,
-          resolvedRoute?: Route,
+          routerDefinition?: RouterDefinition,
         ): Promise<Response | null> => {
           const routePath = pathnameToRoutePath(pathname);
           const rscPath = encodeRoutePath(routePath);
@@ -363,7 +367,7 @@ export const createRequestHandler = ({
             rscParams,
             clientEtags,
             requestElementCache,
-            { route: resolvedRoute },
+            { routerDefinition },
           );
           if (!entries) {
             return null;

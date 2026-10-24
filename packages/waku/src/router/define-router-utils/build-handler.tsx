@@ -17,13 +17,18 @@ import { createElementCache, getElementCacheId } from './element-cache.js';
 import type { SerializedElement } from './element-cache.js';
 import { getRouteIntent } from './request-store.js';
 import { validateRouteElementIds } from './route-entries.js';
-import type { Resolve, Route, createRouteEntries } from './route-entries.js';
+import type {
+  Resolve,
+  RouterDefinition,
+  createRouteEntries,
+} from './route-entries.js';
 
 export type BuildPath =
   | string
   | {
       pathname: string;
-      route?: Route | ((req: Request) => Promise<Response>);
+      routerDefinition?:
+        RouterDefinition | ((req: Request) => Promise<Response>);
       prerender?: boolean;
       prefetchPattern?: string;
     };
@@ -100,7 +105,8 @@ export const createBuildHandler =
       const req = new Request(url);
       runTask(() =>
         runHandled(req, async () => {
-          const resolved = target?.route ?? (await resolve(routePath, ''));
+          const resolved =
+            target?.routerDefinition ?? (await resolve(routePath, ''));
           if (!resolved) {
             throw new Error('Build path did not resolve: ' + routePath);
           }
@@ -137,7 +143,7 @@ export const createBuildHandler =
             {},
             cache,
             {
-              route: resolved,
+              routerDefinition: resolved,
               populateRouteCache: true,
             },
           );
