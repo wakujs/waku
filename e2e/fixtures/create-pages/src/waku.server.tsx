@@ -7,29 +7,29 @@ import {
   unstable_notFound as notFound,
   unstable_redirect as redirect,
 } from 'waku/router/server';
-import { DeeplyNestedLayout } from './components/DeeplyNestedLayout.js';
-import DynamicLayout from './components/DynamicLayout.js';
-import ErrorPage from './components/ErrorPage.js';
-import FooPage from './components/FooPage.js';
-import HomeLayout from './components/HomeLayout.js';
-import HomePage from './components/HomePage.js';
+import { DeeplyNestedLayout } from './components/deeply-nested-layout.js';
+import DynamicLayout from './components/dynamic-layout.js';
+import ErrorPage from './components/error-page.js';
+import FooPage from './components/foo-page.js';
+import HomeLayout from './components/home-layout.js';
+import HomePage from './components/home-page.js';
 import {
   LongSuspenseLayout,
   SlowComponent,
   StaticLongSuspenseLayout,
-} from './components/LongSuspenseLayout.js';
-import NestedBazPage from './components/NestedBazPage.js';
-import NestedLayout from './components/NestedLayout.js';
-import NoSsr from './components/NoSsr.js';
-import NoSsrDynamic from './components/NoSsrDynamic.js';
-import { OptimisticActionPage } from './components/OptimisticActionPage.js';
-import RedirectToSearchPage from './components/RedirectToSearchPage.js';
-import { RerenderActionPage } from './components/RerenderActionPage.js';
+} from './components/long-suspense-layout.js';
+import NestedBazPage from './components/nested-baz-page.js';
+import NestedLayout from './components/nested-layout.js';
+import NoSsrDynamic from './components/no-ssr-dynamic.js';
+import NoSsr from './components/no-ssr.js';
+import { OptimisticActionPage } from './components/optimistic-action-page.js';
+import RedirectToSearchPage from './components/redirect-to-search-page.js';
+import { RerenderActionPage } from './components/rerender-action-page.js';
 import {
   createRerenderOrderLayout,
   createRerenderOrderPage,
-} from './components/RerenderOrder.js';
-import SearchPage from './components/SearchPage.js';
+} from './components/rerender-order.js';
+import SearchPage from './components/search-page.js';
 import { Slice001 } from './components/slice001.js';
 import { Slice002 } from './components/slice002.js';
 import { Slice003 } from './components/slice003.js';

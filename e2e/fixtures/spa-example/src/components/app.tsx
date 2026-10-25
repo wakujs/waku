@@ -1,5 +1,5 @@
-import { Counter } from './Counter';
-import { Greeting } from './Greeting';
+import { Counter } from './counter';
+import { Greeting } from './greeting';
 
 export function App() {
   return (

@@ -1,6 +1,6 @@
 import adapter from 'waku/adapters/default';
 import { Slot_UNSTABLE as Slot } from 'waku/minimal/client';
-import App from './components/App.js';
+import App from './components/app.js';
 
 // Fixed nonce for testing purposes
 const TEST_NONCE = 'test-nonce-12345';

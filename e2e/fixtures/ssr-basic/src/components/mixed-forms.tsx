@@ -1,4 +1,4 @@
-import { StatefulForm } from './StatefulForm.js';
+import { StatefulForm } from './stateful-form.js';
 
 let echo = 'none';
 

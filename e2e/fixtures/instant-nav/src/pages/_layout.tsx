@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'waku/router/client';
-import { MinimalRefetch } from '../components/MinimalRefetch';
+import { MinimalRefetch } from '../components/minimal-refetch';
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

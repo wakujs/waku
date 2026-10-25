@@ -1,6 +1,6 @@
 import { Link } from 'waku';
 import type { PageProps } from 'waku/router';
-import { SearchControls } from './SearchControls.js';
+import { SearchControls } from './search-controls.js';
 
 export default function SearchPage({ search }: PageProps<'/search'>) {
   return (

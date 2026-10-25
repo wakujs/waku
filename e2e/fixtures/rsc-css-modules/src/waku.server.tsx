@@ -1,5 +1,5 @@
 import adapter from 'waku/adapters/default';
-import App from './components/App.js';
+import App from './components/app.js';
 
 export default adapter({
   handleRequest: async (input, { renderRsc }) => {
