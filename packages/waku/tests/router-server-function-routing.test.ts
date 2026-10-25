@@ -2,8 +2,8 @@
 
 import { expect, test, vi } from 'vitest';
 import type { Unstable_RscEnhancer } from '../src/minimal/client.js';
-import { createActionRouting } from '../src/router/client-core-utils/action-routing.js';
 import { getRouterCacheForTest } from '../src/router/client-core-utils/caches.js';
+import { createServerFunctionRouting } from '../src/router/client-core-utils/server-function-routing.js';
 import {
   ACTION_LOCATION_HEADER,
   IS_ORIGIN_ID,
@@ -22,7 +22,7 @@ const createConnection = (path: string) => ({
 });
 
 test('an installed controller passes RSC through and rejects actions before connection', async () => {
-  const controller = createActionRouting();
+  const controller = createServerFunctionRouting();
   const next = vi.fn<ReturnType<Unstable_RscEnhancer>>(async () => ({
     elements: {},
   }));
@@ -32,12 +32,12 @@ test('an installed controller passes RSC through and rejects actions before conn
   expect(next).toHaveBeenCalledExactlyOnceWith('R/start', undefined, options);
   await expect(
     request('F/action', [], { ...options, type: 'call' }),
-  ).rejects.toThrow('Action routing is not connected');
+  ).rejects.toThrow('Server function routing is not connected');
   expect(next).toHaveBeenCalledTimes(1);
 });
 
 test('in-flight actions use committed callbacks and an old cleanup cannot clear a new connection', async () => {
-  const controller = createActionRouting();
+  const controller = createServerFunctionRouting();
   const first = createConnection('/first');
   const second = createConnection('/second');
   const disconnectFirst = controller.connect(first);
@@ -83,12 +83,12 @@ test('in-flight actions use committed callbacks and an old cleanup cannot clear 
   disconnectSecond();
   await expect(
     request('F/action', [], { type: 'call', fetch: transport }),
-  ).rejects.toThrow('Action routing is not connected');
+  ).rejects.toThrow('Server function routing is not connected');
 });
 
 test('controllers own independent connections', async () => {
-  const first = createActionRouting();
-  const second = createActionRouting();
+  const first = createServerFunctionRouting();
+  const second = createServerFunctionRouting();
   const firstConnection = createConnection('/first');
   const secondConnection = createConnection('/second');
   const disconnectFirst = first.connect(firstConnection);
@@ -106,7 +106,7 @@ test('controllers own independent connections', async () => {
 });
 
 test('an in-flight action reconciles its origin rerender after disconnection', async () => {
-  const controller = createActionRouting();
+  const controller = createServerFunctionRouting();
   const connection = createConnection('/origin');
   const disconnect = controller.connect(connection);
   let resolve!: () => void;
@@ -135,7 +135,7 @@ test('an in-flight action reconciles its origin rerender after disconnection', a
 });
 
 test('an origin rerender is dropped after a newer connection disconnects', async () => {
-  const controller = createActionRouting();
+  const controller = createServerFunctionRouting();
   const first = createConnection('/first');
   const second = createConnection('/second');
   controller.connect(first);
@@ -163,7 +163,7 @@ test('an origin rerender is dropped after a newer connection disconnects', async
 });
 
 test('an in-flight route change uses the latest connection after cleanup', async () => {
-  const controller = createActionRouting();
+  const controller = createServerFunctionRouting();
   const first = createConnection('/first');
   const second = createConnection('/second');
   controller.connect(first);

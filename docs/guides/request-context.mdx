@@ -32,7 +32,7 @@ To migrate from the removed request helpers, replace `unstable_getRequest()` wit
 
 `getRequest()` throws if request context is not available. Call it during request handling, not in module scope.
 
-`getRequest().url` is the URL the request was sent to. After a client navigation, that is Waku's RSC URL (such as `/RSC/R/about.txt`), not the page URL. A page receives its params and `query` as props; elsewhere, read the route with `unstable_parseRouterRequest(getRequest())`. A server function called from the client sends its own request, which `unstable_parseRouterRequest` reports only as `{ type: 'action' }`, so pass the function any route data it needs as arguments.
+`getRequest().url` is the URL the request was sent to. After a client navigation, that is Waku's RSC URL (such as `/RSC/R/about.txt`), not the page URL. A page receives its params and `query` as props; elsewhere, read the route with `unstable_parseRouterRequest(getRequest())`. A server function called from the client sends its own request, which `unstable_parseRouterRequest` reports only as `{ type: 'call' }`, so pass the function any route data it needs as arguments.
 
 `getRequest()` returns the original incoming request. Inside an API route handler, the handler's own `req` argument may have a rewritten URL (the route path with any prefix stripped), so `req.url` and `getRequest().url` can differ. Use the handler argument for routing-specific values and for the body, which it shares with `getRequest()`.
 

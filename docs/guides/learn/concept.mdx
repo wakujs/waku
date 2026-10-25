@@ -32,12 +32,12 @@ The same application deploys through adapters to Node.js, Vercel, Netlify, Cloud
 
 ## Where code runs
 
-| Code                      | Where it runs          | When it runs              |
-| ------------------------- | ---------------------- | ------------------------- |
-| Static page or layout     | Server (build machine) | Once, at build time       |
-| Dynamic page or layout    | Server                 | On every request          |
-| Server action / API route | Server                 | When invoked              |
-| Client component          | Browser                | On render and interaction |
+| Code                        | Where it runs          | When it runs              |
+| --------------------------- | ---------------------- | ------------------------- |
+| Static page or layout       | Server (build machine) | Once, at build time       |
+| Dynamic page or layout      | Server                 | On every request          |
+| Server function / API route | Server                 | When invoked              |
+| Client component            | Browser                | On render and interaction |
 
 One nuance: client components also execute once on the server per page render to produce the initial HTML (server-side rendering), then hydrate in the browser.
 

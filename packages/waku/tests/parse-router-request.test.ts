@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  encodeFuncId,
   encodeRscPath,
+  encodeServerFunctionId,
 } from '../src/lib/utils-isomorphic/rsc-path.js';
 import {
   encodeRoutePath,
@@ -97,8 +97,8 @@ describe('parseRouterRequest', () => {
   it('reports a server action as an action, with no route', () => {
     const url =
       'http://localhost/RSC/' +
-      encodeRscPath(encodeFuncId('src/actions.ts#deleteInvoice'));
-    expect(parseRouterRequest(req(url))).toEqual({ type: 'action' });
+      encodeRscPath(encodeServerFunctionId('src/actions.ts#deleteInvoice'));
+    expect(parseRouterRequest(req(url))).toEqual({ type: 'call' });
   });
 
   it('reports a slice request', () => {
@@ -238,7 +238,8 @@ describe('formatRouterRequest', () => {
 
   it('returns null for an action, which has no route to rewrite', () => {
     const url =
-      'http://localhost/RSC/' + encodeRscPath(encodeFuncId('src/a.ts#go'));
+      'http://localhost/RSC/' +
+      encodeRscPath(encodeServerFunctionId('src/a.ts#go'));
     expect(formatRouterRequest(req(url), '/new')).toBeNull();
   });
 });

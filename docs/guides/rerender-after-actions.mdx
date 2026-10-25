@@ -107,4 +107,4 @@ Every rerender gives the client a new `track` function, which runs the effect ag
 
 ## Router Requirement
 
-The no-argument form needs a router on the client that tells the server which route the action came from. Waku's router does, and a router built on `waku/router/client-core` does by installing an `unstable_createActionRouting()` controller's enhancer on Root and connecting it with `useActionRouting_UNSTABLE(controller, callbacks)`. In an action that did not come through such a router, `unstable_rerenderRoute()` throws.
+The no-argument form needs a router on the client that tells the server which route the action came from. Waku's router does, and a router built on `waku/router/client-core` does by installing an `unstable_createServerFunctionRouting()` controller's enhancer on Root and connecting it with `useServerFunctionRouting_UNSTABLE(controller, callbacks)`. In an action that did not come through such a router, `unstable_rerenderRoute()` throws.

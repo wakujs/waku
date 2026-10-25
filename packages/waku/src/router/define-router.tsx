@@ -42,12 +42,12 @@ const encodePathname = (pathname: string) => {
 };
 
 /**
- * Renders the route the current server action was called from into its
+ * Renders the route the current server function was called from into its
  * response. The client drops it if the user has left that route by then.
  */
 export function unstable_rerenderRoute(): void;
 /**
- * Renders a route into the response of the current server action. `pathname`
+ * Renders a route into the response of the current server function. `pathname`
  * is serialized as a URL pathname, so dot segments are resolved and unescaped
  * non-ASCII characters are percent-encoded. `query` is the search string
  * without `?`, serialized as URL search params, so `q=a b` becomes `q=a+b`.
