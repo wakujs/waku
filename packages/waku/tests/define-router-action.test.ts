@@ -31,7 +31,7 @@ describe('define-router action requests', () => {
       getConfigs: async () => [
         {
           type: 'api' as const,
-          path: [
+          pathSpec: [
             { type: 'group' as const, name: 'bucket' },
             { type: 'wildcard' as const, name: 'path' },
           ],
@@ -40,7 +40,7 @@ describe('define-router action requests', () => {
         },
         {
           type: 'route' as const,
-          path: [{ type: 'literal' as const, name: 'about' }],
+          pathSpec: [{ type: 'literal' as const, name: 'about' }],
           isStatic: false,
           rootElement: { isStatic: false, renderer: () => 'root' },
           routeElement: { isStatic: false, renderer: () => 'route' },
@@ -81,7 +81,7 @@ describe('define-router action requests', () => {
       getConfigs: async () => [
         {
           type: 'api' as const,
-          path: [
+          pathSpec: [
             { type: 'group' as const, name: 'bucket' },
             { type: 'wildcard' as const, name: 'path' },
           ],
@@ -124,7 +124,7 @@ describe('define-router action requests', () => {
       getConfigs: async () => [
         {
           type: 'route' as const,
-          path: [{ type: 'literal' as const, name: '404' }],
+          pathSpec: [{ type: 'literal' as const, name: '404' }],
           isStatic: false,
           rootElement: { isStatic: false, renderer: () => 'root' },
           routeElement: { isStatic: false, renderer: () => 'route' },
@@ -168,7 +168,7 @@ describe('define-router action requests', () => {
       getConfigs: async () => [
         {
           type: 'route' as const,
-          path: [],
+          pathSpec: [],
           isStatic: false,
           rootElement: { isStatic: false, renderer: () => 'root' },
           routeElement: { isStatic: false, renderer: () => 'route' },
@@ -225,7 +225,7 @@ describe('define-router action requests', () => {
       getConfigs: async () => [
         {
           type: 'route' as const,
-          path: [{ type: 'literal' as const, name: 'form' }],
+          pathSpec: [{ type: 'literal' as const, name: 'form' }],
           isStatic: false,
           rootElement: { isStatic: false, renderer: () => 'root' },
           routeElement: { isStatic: false, renderer: () => 'route' },
@@ -272,7 +272,7 @@ describe('define-router action requests', () => {
       getConfigs: async () => [
         {
           type: 'route' as const,
-          path: [],
+          pathSpec: [],
           isStatic: false,
           rootElement: { isStatic: false, renderer: () => 'root' },
           routeElement: { isStatic: false, renderer: () => 'route' },
@@ -282,7 +282,7 @@ describe('define-router action requests', () => {
         },
         {
           type: 'api' as const,
-          path: [{ type: 'wildcard' as const, name: 'path' }],
+          pathSpec: [{ type: 'wildcard' as const, name: 'path' }],
           isStatic: false,
           handler: apiHandler,
         },
@@ -343,7 +343,7 @@ describe('define-router action requests', () => {
       getConfigs: async () => [
         {
           type: 'route' as const,
-          path: [{ type: 'group' as const, name: 'name' }],
+          pathSpec: [{ type: 'group' as const, name: 'name' }],
           isStatic: false,
           rootElement: { isStatic: false, renderer: () => 'root' },
           routeElement: { isStatic: false, renderer: () => 'route' },
@@ -395,7 +395,7 @@ describe('define-router action requests', () => {
       getConfigs: async () => [
         {
           type: 'route' as const,
-          path: [{ type: 'literal' as const, name: 'search' }],
+          pathSpec: [{ type: 'literal' as const, name: 'search' }],
           isStatic: false,
           rootElement: { isStatic: false, renderer: () => 'root' },
           routeElement: { isStatic: false, renderer: () => 'route' },
@@ -437,7 +437,7 @@ describe('define-router action requests', () => {
       getConfigs: async () => [
         {
           type: 'api' as const,
-          path: [
+          pathSpec: [
             { type: 'literal' as const, name: 'api' },
             { type: 'literal' as const, name: 'form-data' },
           ],

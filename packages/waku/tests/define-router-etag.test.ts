@@ -40,7 +40,7 @@ const buildRouter = (elements: Record<string, ElementSpec>) =>
     getConfigs: async () => [
       {
         type: 'route' as const,
-        path: [{ type: 'literal' as const, name: 'foo' }],
+        pathSpec: [{ type: 'literal' as const, name: 'foo' }],
         isStatic: false,
         rootElement: { isStatic: false, renderer: () => 'root' },
         routeElement: { isStatic: false, renderer: () => 'route' },
@@ -268,7 +268,7 @@ describe('define-router etags (per-slot omit)', () => {
       getConfigs: async () => [
         {
           type: 'route' as const,
-          path: [{ type: 'literal' as const, name: 'foo' }],
+          pathSpec: [{ type: 'literal' as const, name: 'foo' }],
           isStatic: false,
           rootElement: { isStatic: false, renderer: () => 'root' },
           routeElement: { isStatic: false, renderer: () => 'route' },
@@ -330,7 +330,7 @@ describe('define-router etags (per-slot omit)', () => {
       getConfigs: async () => [
         {
           type: 'route' as const,
-          path: [{ type: 'literal' as const, name: 'foo' }],
+          pathSpec: [{ type: 'literal' as const, name: 'foo' }],
           isStatic: false,
           rootElement: {
             isStatic: false,
@@ -364,7 +364,7 @@ describe('define-router etags (per-slot omit)', () => {
       getConfigs: async () => [
         {
           type: 'route' as const,
-          path: [{ type: 'literal' as const, name: 'foo' }],
+          pathSpec: [{ type: 'literal' as const, name: 'foo' }],
           isStatic: false,
           rootElement: {
             isStatic: false,
@@ -412,7 +412,7 @@ describe('define-router etags (per-slot omit)', () => {
       getConfigs: async () => [
         {
           type: 'route' as const,
-          path: [{ type: 'literal' as const, name: 'foo' }],
+          pathSpec: [{ type: 'literal' as const, name: 'foo' }],
           isStatic: false,
           rootElement: { isStatic: false, renderer: () => 'root' },
           routeElement: { isStatic: false, renderer: () => 'route' },

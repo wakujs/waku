@@ -100,7 +100,7 @@ export const useNavigation = (
   actionRouting: ActionRouting,
 ): Navigation => {
   const cache = useRouterCache();
-  const routeFallback = useInitialRoute(fallbackRoute);
+  const initialRoute = useInitialRoute(fallbackRoute);
   const has404 = has404FromElements(elements);
   const initialElementsRef = useRef(elements);
   useEffect(() => {
@@ -128,10 +128,10 @@ export const useNavigation = (
   const destination = useMemo(
     () =>
       routerState &&
-      resolveServerRedirect(elements, routerState, routeFallback.path),
-    [elements, routerState, routeFallback],
+      resolveServerRedirect(elements, routerState, initialRoute.path),
+    [elements, routerState, initialRoute],
   );
-  const route = destination ? destination.route : routeFallback;
+  const route = destination ? destination.route : initialRoute;
   const requestRef = useRef<NavigationRequest>(undefined);
   const appliedRef = useRef<{ state: RouterState; href: string }>(undefined);
   const destinationHref = destination?.url.href;
@@ -175,15 +175,15 @@ export const useNavigation = (
   }, []);
 
   const getSettledRoute = useCallback(
-    () => resolveSettledRoute(getElements(), routeFallback),
-    [getElements, routeFallback],
+    () => resolveSettledRoute(getElements(), initialRoute),
+    [getElements, initialRoute],
   );
   const getRefetchRoute = useCallback(() => {
     const request = requestRef.current;
     return request?.queuedState && !request.queuedState.failedFrom
-      ? resolveSettledRoute(request.base, routeFallback)
+      ? resolveSettledRoute(request.base, initialRoute)
       : getSettledRoute();
-  }, [getSettledRoute, routeFallback]);
+  }, [getSettledRoute, initialRoute]);
   useHmrRefetch({
     getSettledRoute: getRefetchRoute,
     onBeforeRefetch: replaceRequest,
@@ -194,7 +194,7 @@ export const useNavigation = (
       const elements = getElements();
       const settledRoute =
         getRouterState(elements)?.failedFrom ??
-        resolveSettledRoute(elements, routeFallback);
+        resolveSettledRoute(elements, initialRoute);
       const retainedElements = requestRef.current?.base;
       const base = retainedElements ?? elements;
       let responseFallback: Elements | undefined;
@@ -383,7 +383,7 @@ export const useNavigation = (
             [ROUTER_STATE_ID]: failureState,
           };
           request.queuedState = failureState;
-          const baseRoute = resolveSettledRoute(base, routeFallback);
+          const baseRoute = resolveSettledRoute(base, initialRoute);
           request.base = combineElements(base, {
             ...patch,
             [ROUTE_ID]: [baseRoute.path, baseRoute.query],
@@ -393,7 +393,7 @@ export const useNavigation = (
               prevPromise.then((prev) => {
                 const origin = instantResponse
                   ? baseRoute
-                  : resolveSettledRoute(prev, routeFallback);
+                  : resolveSettledRoute(prev, initialRoute);
                 return combineElements(prev, {
                   ...patch,
                   [ROUTE_ID]: [origin.path, origin.query],
@@ -494,7 +494,7 @@ export const useNavigation = (
     },
     [
       cache,
-      routeFallback,
+      initialRoute,
       startInstantPaint,
       mergeElements,
       getElements,

@@ -58,7 +58,7 @@ export const createRouteResolver = (registry: ConfigRegistry) => {
       root: bind(config.rootElement),
       route: {
         ...bind(config.routeElement),
-        cacheKey: getPathSpecCacheId(config.path),
+        cacheKey: getPathSpecCacheId(config.pathSpec),
       },
       ...Object.fromEntries(
         Object.entries(config.elements).map(([id, spec]) => [id, bind(spec)]),
@@ -79,7 +79,7 @@ export const createRouteResolver = (registry: ConfigRegistry) => {
       return null;
     }
     if (config.type === 'api') {
-      const params = getPathMapping(config.path, pathname) ?? {};
+      const params = getPathMapping(config.pathSpec, pathname) ?? {};
       return (req) => config.handler(req, { params });
     }
     return resolveRoute(config, pathname, query);

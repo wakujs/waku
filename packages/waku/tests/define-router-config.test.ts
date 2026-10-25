@@ -15,7 +15,7 @@ const option = { routePath: '/foo', query: undefined };
 
 const makeRoute = (name: string): RouteConfig => ({
   type: 'route',
-  path: path(name),
+  pathSpec: path(name),
   isStatic: false,
   rootElement: {
     isStatic: false,
@@ -42,7 +42,7 @@ const makeRoute = (name: string): RouteConfig => ({
 
 const makeApi = (name: string): ApiConfigForTest => ({
   type: 'api',
-  path: path(name),
+  pathSpec: path(name),
   isStatic: true,
   handler: async () => new Response(`api:${name}`),
   sourceFile: `${name}/api.ts`,
@@ -69,7 +69,7 @@ describe('toSerializable', () => {
     expect('getEtagFromOption' in s.elements.main!).toBe(false);
     // non-function metadata is preserved
     expect(s.isStatic).toBe(false);
-    expect(s.path).toEqual(path('foo'));
+    expect(s.pathSpec).toEqual(path('foo'));
     expect(s.elements.main!.sourceFile).toBe('foo/main.tsx');
   });
 
@@ -131,7 +131,7 @@ describe('mergeWithRuntimeConfigs', () => {
     const mB = merged.find(
       (c) =>
         c.type === 'route' &&
-        getPathSpecKey(c.path) === getPathSpecKey(path('b')),
+        getPathSpecKey(c.pathSpec) === getPathSpecKey(path('b')),
     ) as RouteConfig;
     expect(mB.rootElement.renderer(option)).toBe('root:a');
   });
@@ -146,7 +146,7 @@ describe('mergeWithRuntimeConfigs', () => {
     const mB = merged.find(
       (c) =>
         c.type === 'route' &&
-        getPathSpecKey(c.path) === getPathSpecKey(path('b')),
+        getPathSpecKey(c.pathSpec) === getPathSpecKey(path('b')),
     ) as RouteConfig;
     expect(mB.elements.main!.renderer(option)).toBe('main:a');
   });

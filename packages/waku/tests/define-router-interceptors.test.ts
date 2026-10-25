@@ -31,7 +31,7 @@ const make404Router = (
     getConfigs: async () => [
       {
         type: 'route' as const,
-        path: [{ type: 'literal' as const, name: '404' }],
+        pathSpec: [{ type: 'literal' as const, name: '404' }],
         isStatic: false,
         rootElement: { isStatic: false, renderer: () => 'root' },
         routeElement: { isStatic: false, renderer },
@@ -189,7 +189,7 @@ describe('define-router handler interceptors', () => {
       getConfigs: async () => [
         {
           type: 'route' as const,
-          path: [{ type: 'literal' as const, name: 'dyn' }],
+          pathSpec: [{ type: 'literal' as const, name: 'dyn' }],
           // dynamic route: its static root/layout elements still pre-render
           isStatic: false,
           rootElement: {
@@ -220,7 +220,7 @@ describe('define-router handler interceptors', () => {
       getConfigs: async () => [
         {
           type: 'route' as const,
-          path: [{ type: 'literal' as const, name: 'static' }],
+          pathSpec: [{ type: 'literal' as const, name: 'static' }],
           isStatic: true,
           rootElement: { isStatic: true, renderer: () => 'root' },
           routeElement: { isStatic: true, renderer: () => 'route' },

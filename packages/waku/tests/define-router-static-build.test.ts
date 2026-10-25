@@ -31,7 +31,7 @@ describe('define-router handleBuild', () => {
       getConfigs: async () => [
         {
           type: 'route',
-          path: [{ type: 'literal', name: 'foo' }],
+          pathSpec: [{ type: 'literal', name: 'foo' }],
           isStatic: true,
           rootElement: { isStatic: true, renderer: () => null },
           routeElement: { isStatic: true, renderer: () => null },
@@ -41,7 +41,7 @@ describe('define-router handleBuild', () => {
         },
         {
           type: 'route',
-          path: [{ type: 'literal', name: 'bar' }],
+          pathSpec: [{ type: 'literal', name: 'bar' }],
           isStatic: true,
           rootElement: { isStatic: true, renderer: () => null },
           routeElement: { isStatic: true, renderer: () => null },
@@ -112,7 +112,7 @@ describe('define-router handleBuild', () => {
       getConfigs: async () => [
         {
           type: 'route',
-          path: [
+          pathSpec: [
             { type: 'literal', name: 'nested' },
             { type: 'group', name: 'name' },
           ],
@@ -171,7 +171,7 @@ describe('define-router handleBuild', () => {
       getConfigs: async () => [
         {
           type: 'route',
-          path: [
+          pathSpec: [
             { type: 'literal', name: 'nested' },
             { type: 'group', name: 'name' },
           ],
@@ -220,13 +220,13 @@ describe('define-router handleBuild', () => {
           type: 'api',
           handler: async () => Response.json('test'),
           isStatic: true,
-          path: [{ type: 'literal', name: 'test' }],
+          pathSpec: [{ type: 'literal', name: 'test' }],
         },
         {
           type: 'api',
           handler: async () => Response.json('test'),
           isStatic: true,
-          path: [
+          pathSpec: [
             { type: 'literal', name: 'test' },
             { type: 'literal', name: 'route' },
           ],
@@ -276,7 +276,7 @@ describe('define-router handleBuild', () => {
       getConfigs: async () => [
         {
           type: 'route',
-          path: [{ type: 'literal', name: 'foo' }],
+          pathSpec: [{ type: 'literal', name: 'foo' }],
           isStatic: true,
           rootElement: { isStatic: true, renderer: () => null },
           routeElement: { isStatic: true, renderer: () => null },
@@ -348,7 +348,7 @@ describe('define-router handleBuild', () => {
       getConfigs: async () => [
         {
           type: 'route',
-          path: [{ type: 'literal', name: 'foo' }],
+          pathSpec: [{ type: 'literal', name: 'foo' }],
           isStatic: true,
           rootElement: { isStatic: true, renderer: () => null },
           routeElement: { isStatic: true, renderer: () => null },
@@ -362,7 +362,7 @@ describe('define-router handleBuild', () => {
         },
         {
           type: 'route',
-          path: [{ type: 'literal', name: 'bar' }],
+          pathSpec: [{ type: 'literal', name: 'bar' }],
           isStatic: false,
           rootElement: { isStatic: true, renderer: () => null },
           routeElement: { isStatic: true, renderer: () => null },
@@ -396,7 +396,7 @@ describe('define-router handleBuild', () => {
     const generateDefaultHtml = vi.fn().mockResolvedValue(undefined);
     const staticRoute = (name: string, extra: object = {}) => ({
       type: 'route' as const,
-      path: [{ type: 'literal' as const, name }],
+      pathSpec: [{ type: 'literal' as const, name }],
       isStatic: true,
       rootElement: { isStatic: true, renderer: () => null },
       routeElement: { isStatic: true, renderer: () => null },
@@ -411,7 +411,7 @@ describe('define-router handleBuild', () => {
         staticRoute('nossr', { noSsr: true }),
         {
           type: 'api' as const,
-          path: [{ type: 'literal' as const, name: 'data.txt' }],
+          pathSpec: [{ type: 'literal' as const, name: 'data.txt' }],
           isStatic: true,
           handler: async () => new Response('api-body'),
         },

@@ -49,7 +49,7 @@ export const createConfigRegistry = (
     });
     cachedConfigs = configs;
     cachedHas404 = configs.some(
-      (item) => item.type === 'route' && is404(item.path),
+      (item) => item.type === 'route' && is404(item.pathSpec),
     );
   };
 
@@ -82,7 +82,7 @@ export const createConfigRegistry = (
     return getAll().find(
       (item): item is typeof item & { type: 'route' | 'api' } =>
         (item.type === 'route' || item.type === 'api') &&
-        !!getPathMapping(item.path, routePath),
+        !!getPathMapping(item.pathSpec, routePath),
     );
   };
 
