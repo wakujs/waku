@@ -1,5 +1,5 @@
 import styles from './app.module.css';
-import { ClientCounter } from './ClientCounter.js';
+import { ClientCounter } from './client-counter.js';
 
 const App = ({ name }: { name: string }) => {
   return (

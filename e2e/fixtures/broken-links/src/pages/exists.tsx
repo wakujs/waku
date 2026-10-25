@@ -1,5 +1,5 @@
 import { Link } from 'waku';
-import { ShowQuery } from '../components/ShowQuery';
+import { ShowQuery } from '../components/show-query';
 
 export default function Exists() {
   return (

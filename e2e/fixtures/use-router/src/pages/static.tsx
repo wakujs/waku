@@ -1,5 +1,5 @@
 import { Link } from 'waku';
-import TestRouter from '../TestRouter.js';
+import TestRouter from '../test-router.js';
 
 const Page = () => (
   <>

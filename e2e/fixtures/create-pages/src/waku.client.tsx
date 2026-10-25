@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { unstable_defaultRootOptions as defaultRootOptions } from 'waku/client';
 import { Router } from 'waku/router/client';
-import { rerenderOrderEnhancer } from './components/RerenderOrderClient.js';
+import { rerenderOrderEnhancer } from './components/rerender-order-client.js';
 
 const enhancers = [rerenderOrderEnhancer];
 const app = (

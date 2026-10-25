@@ -1,4 +1,4 @@
-import { OnlyClient } from './OnlyClient.js';
+import { OnlyClient } from './only-client.js';
 
 const NoSsr = () => (
   <div>

@@ -8,7 +8,7 @@ import {
 import {
   RscEnhancements,
   createRscEnhancer,
-} from './components/RscEnhancements.js';
+} from './components/rsc-enhancements.js';
 
 const multipleRoots = new URLSearchParams(window.location.search).has(
   'multiple-roots',

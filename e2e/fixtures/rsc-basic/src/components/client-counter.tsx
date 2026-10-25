@@ -6,7 +6,7 @@ import {
   useFetchRsc_UNSTABLE,
   useMergeElements_UNSTABLE,
 } from 'waku/minimal/client';
-import { ClientBox } from './Box.js';
+import { ClientBox } from './box.js';
 
 const useRefetch = () => {
   const fetchRsc = useFetchRsc_UNSTABLE();

@@ -2,9 +2,9 @@ import adapter from 'waku/adapters/default';
 import { createPages } from 'waku/router/server';
 import BuildDynamic from './build/dynamic.js';
 import BuildStatic from './build/static.js';
-import { ClientEcho } from './ClientEcho.js';
+import { ClientEcho } from './client-echo.js';
 import Root from './root.js';
-import { ServerEcho } from './ServerEcho.js';
+import { ServerEcho } from './server-echo.js';
 
 // This needs type annotations for the return type of createPages
 // @see https://github.com/microsoft/TypeScript/issues/42873#issuecomment-2065572017

@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { useRegisterRscReloadListener_UNSTABLE as useRegisterRscReloadListener } from 'waku/minimal/client';
-import { updateContent } from './ServerPing/actions.js';
+import { updateContent } from './server-ping/actions.js';
 
 type RootName = 'first' | 'second' | 'third';
 

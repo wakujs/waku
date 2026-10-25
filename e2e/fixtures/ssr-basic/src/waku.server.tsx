@@ -1,7 +1,7 @@
 import adapter from 'waku/adapters/default';
 import { Slot_UNSTABLE as Slot } from 'waku/minimal/client';
-import App from './components/App.js';
-import { MixedForms, receivePlainPost } from './components/MixedForms.js';
+import App from './components/app.js';
+import { MixedForms, receivePlainPost } from './components/mixed-forms.js';
 import TestApp from './components/test-app.js';
 
 export default adapter({

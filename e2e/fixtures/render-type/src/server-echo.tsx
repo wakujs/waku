@@ -1,5 +1,5 @@
 import { getRequest } from 'waku/router/server';
-import { Echo } from './Echo.js';
+import { Echo } from './echo.js';
 
 export function ServerEcho({ echo }: { echo: string }) {
   // TODO is there a more reasonable way?

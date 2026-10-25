@@ -1,6 +1,6 @@
-import { ServerBox } from '../Box.js';
+import { ServerBox } from '../box.js';
 import { increase, ping, wrap } from './actions.js';
-import { Counter } from './Counter.js';
+import { Counter } from './counter.js';
 
 export function ServerPing() {
   return (

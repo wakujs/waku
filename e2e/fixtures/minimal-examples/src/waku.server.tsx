@@ -9,10 +9,10 @@ import {
 } from 'waku/minimal/client';
 import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
 import { CancelRender } from './components/CancelRender';
-import { DynamicIsland } from './components/DynamicIsland';
+import { DynamicIsland } from './components/dynamic-island';
 import { handleWeakPromise } from './weak-promise';
 // eslint-disable-next-line import/no-unresolved
-import { App } from '@/components/App';
+import { App } from '@/components/app';
 
 const cookieStorage = new AsyncLocalStorage<{
   count: number;
