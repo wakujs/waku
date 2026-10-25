@@ -44,6 +44,7 @@ type HandlerInput = Parameters<HandleRequest>[0];
 const REPLACED_RESPONSE_HEADERS = [
   'accept-ranges',
   'content-digest',
+  'content-disposition',
   'content-encoding',
   'content-language',
   'content-length',

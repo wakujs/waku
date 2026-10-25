@@ -280,6 +280,7 @@ describe('request dispatch', () => {
               'cache-control': 'public, max-age=600',
               location: '/stale',
               'content-type': 'application/json',
+              'content-disposition': 'attachment; filename="old.json"',
               'content-length': '999',
               'content-encoding': 'gzip',
               'content-range': 'bytes 0-9/999',
@@ -317,6 +318,7 @@ describe('request dispatch', () => {
       expect(response.headers.get('cache-control')).toBe(expected.cacheControl);
       expect(response.headers.get('location')).toBe(expected.location);
       expect(response.headers.get('content-type')).toBe(expected.contentType);
+      expect(response.headers.get('content-disposition')).toBeNull();
       expect(response.headers.get('content-length')).toBeNull();
       expect(response.headers.get('content-encoding')).toBeNull();
       expect(response.headers.get('content-range')).toBeNull();
