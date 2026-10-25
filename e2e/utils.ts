@@ -15,13 +15,15 @@ import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { error, info } from '@actions/core';
+import { info, notice, warning } from '@actions/core';
 import { test as basicTest, expect } from '@playwright/test';
 import type { ConsoleMessage, Page } from '@playwright/test';
 
 declare global {
   var __WAKU_RSC_RELOAD_LISTENERS__: (() => void)[] | undefined;
   var __WAKU_REFETCH_RSC__: (() => void) | undefined;
+  var __WAKU_TEST_FETCH_BODIES_BY_URL__:
+    Map<string, Promise<string | undefined>> | undefined;
 }
 
 const execAsync = promisify(exec);
@@ -200,7 +202,8 @@ export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
     if (ignoreErrors.some((re) => re.test(str))) {
       return;
     }
-    error(`stderr: ${str}`, {
+    // Reserve error annotations for failed tests; stderr can be intentional.
+    warning(`stderr: ${str}`, {
       title: 'Child Process Error',
       file: sourceFile,
     });
@@ -221,9 +224,48 @@ export const test = basicTest.extend<
     };
     page.on('console', callback);
     await pageUse(page);
+    if (testInfo.status !== testInfo.expectedStatus) {
+      const requests = await page.requests().catch(() => []);
+      notice(
+        JSON.stringify({
+          url: page.url(),
+          requests: requests
+            .filter((r) => r.failure() || r.timing().responseEnd < 0)
+            .slice(-10)
+            .map((r) => ({
+              type: r.resourceType(),
+              method: r.method(),
+              url: r.url(),
+              failure: r.failure()?.errorText,
+              responseStarted: r.timing().responseStart >= 0,
+            })),
+        }),
+        { title: `Browser requests: ${testInfo.title}`, file: testInfo.file },
+      );
+    }
     page.off('console', callback);
   },
 });
+
+// Vite's temporary port-availability listeners can pass the TCP check.
+const waitForServerReadyMessage = async (cp: ChildProcess) => {
+  const readyMessage = 'ready: Listening on ';
+  let output = '';
+  let ready = false;
+  const onOutput = (data: Buffer) => {
+    output += data.toString();
+    ready ||= output.includes(readyMessage);
+    output = output.slice(-readyMessage.length);
+  };
+  cp.stdout?.on('data', onOutput);
+  try {
+    await expect
+      .poll(() => ready, { timeout: PORT_WAIT_TIMEOUT_MS })
+      .toBe(true);
+  } finally {
+    cp.stdout?.off('data', onOutput);
+  }
+};
 
 export const prepareNormalSetup = (
   fixtureName: string,
@@ -273,6 +315,9 @@ export const prepareNormalSetup = (
       const callback = options.onServerOutput;
       cp.stdout?.on('data', (data) => callback(data.toString()));
       cp.stderr?.on('data', (data) => callback(data.toString()));
+    }
+    if (!options?.cmd && mode !== 'STATIC') {
+      await waitForServerReadyMessage(cp);
     }
     await waitForPortReady(port);
     const stopApp = async () => {
@@ -520,6 +565,9 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
     // Assuming all commands support -p for port
     const cp = runShell(`${cmd} -p ${port}`, join(standaloneDir, packageDir));
     debugChildProcess(cp, fileURLToPath(import.meta.url));
+    if (mode !== 'STATIC') {
+      await waitForServerReadyMessage(cp);
+    }
     await waitForPortReady(port);
     const stopApp = async () => {
       builtModeMap.delete(packageManager);
@@ -544,6 +592,38 @@ export async function waitForHydration(page: Page) {
     null,
     { timeout: 20_000 },
   );
+}
+
+// Chromium can discard no-store streamed bodies before Playwright reads them.
+export async function createFetchResponseReader(page: Page) {
+  await page.addInitScript(() => {
+    const bodiesByUrl = new Map<string, Promise<string | undefined>>();
+    globalThis.__WAKU_TEST_FETCH_BODIES_BY_URL__ = bodiesByUrl;
+    const fetchFn = window.fetch;
+    window.fetch = (...args) => {
+      const input = args[0];
+      const url = new URL(
+        input instanceof Request ? input.url : input,
+        window.location.href,
+      ).href;
+      const responsePromise = fetchFn(...args);
+      bodiesByUrl.set(
+        url,
+        responsePromise
+          .then((response) => response.clone().text())
+          .catch(() => undefined),
+      );
+      return responsePromise;
+    };
+  });
+  return (url: string) =>
+    page.evaluate(async (url) => {
+      const body = await globalThis.__WAKU_TEST_FETCH_BODIES_BY_URL__?.get(url);
+      if (body === undefined) {
+        throw new Error(`No fetch response body for ${url}`);
+      }
+      return body;
+    }, url);
 }
 
 // In WebKit + react@experimental, locator-based assertions can hang while
