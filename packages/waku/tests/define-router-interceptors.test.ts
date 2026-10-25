@@ -37,7 +37,7 @@ const make404Router = (
     getConfigs: async () => [
       {
         type: 'route' as const,
-        path: [{ type: 'literal' as const, name: '404' }],
+        pathSpec: [{ type: 'literal' as const, name: '404' }],
         isStatic: false,
         rootElement: { isStatic: false, renderer: () => 'root' },
         routeElement: { isStatic: false, renderer },
@@ -69,7 +69,7 @@ const callHandleBuild = (router: ReturnType<typeof createConfiguredRouter>) =>
   router.handleBuild({
     renderRsc: vi.fn().mockResolvedValue(makeStream()),
     renderHtml: vi.fn().mockResolvedValue(new Response('ok')),
-    rscPath2pathname: (rscPath: string) => '/' + rscPath,
+    rscPathToFileName: (rscPath: string) => '/' + rscPath,
     saveBuildMetadata: vi.fn().mockResolvedValue(undefined),
     generateFile: vi.fn().mockResolvedValue(undefined),
     generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
@@ -258,7 +258,7 @@ describe('define-router handler interceptors', () => {
       getConfigs: async () => [
         {
           type: 'route' as const,
-          path: [{ type: 'literal' as const, name: 'dyn' }],
+          pathSpec: [{ type: 'literal' as const, name: 'dyn' }],
           // dynamic route: its static root/layout elements still pre-render
           isStatic: false,
           rootElement: {
@@ -289,7 +289,7 @@ describe('define-router handler interceptors', () => {
       getConfigs: async () => [
         {
           type: 'route' as const,
-          path: [{ type: 'literal' as const, name: 'static' }],
+          pathSpec: [{ type: 'literal' as const, name: 'static' }],
           isStatic: true,
           rootElement: { isStatic: true, renderer: () => 'root' },
           routeElement: { isStatic: true, renderer: () => 'route' },
@@ -306,7 +306,7 @@ describe('define-router handler interceptors', () => {
         seenInHtml = als.getStore();
         return new Response('ok');
       }),
-      rscPath2pathname: (rscPath: string) => '/' + rscPath,
+      rscPathToFileName: (rscPath: string) => '/' + rscPath,
       saveBuildMetadata: vi.fn().mockResolvedValue(undefined),
       generateFile: vi.fn().mockResolvedValue(undefined),
       generateDefaultHtml: vi.fn().mockResolvedValue(undefined),

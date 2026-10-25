@@ -655,7 +655,7 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [{ name: 'test', type: 'literal' }],
+        pathSpec: [{ name: 'test', type: 'literal' }],
         isStatic: true,
         slices: [],
       },
@@ -681,7 +681,7 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [{ name: 'test', type: 'literal' }],
+        pathSpec: [{ name: 'test', type: 'literal' }],
         isStatic: false,
         slices: [],
       },
@@ -703,7 +703,7 @@ describe('createPages pages and layouts', () => {
     expect(await getConfigs()).toEqual([
       {
         type: 'api',
-        path: [{ type: 'literal', name: 'test' }],
+        pathSpec: [{ type: 'literal', name: 'test' }],
         isStatic: true,
         handler: expect.any(Function),
       },
@@ -734,7 +734,7 @@ describe('createPages pages and layouts', () => {
     expect(await getConfigs()).toEqual([
       {
         type: 'api',
-        path: [
+        pathSpec: [
           { type: 'literal', name: 'test' },
           { type: 'group', name: 'slug' },
         ],
@@ -779,7 +779,7 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [{ name: 'test', type: 'literal' }],
+        pathSpec: [{ name: 'test', type: 'literal' }],
         isStatic: true,
         slices: [],
       },
@@ -813,7 +813,7 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [{ name: 'test', type: 'literal' }],
+        pathSpec: [{ name: 'test', type: 'literal' }],
         isStatic: false,
         slices: [],
       },
@@ -846,7 +846,7 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [],
+        pathSpec: [],
         isStatic: true,
         slices: ['slice001'],
       },
@@ -885,7 +885,7 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [],
+        pathSpec: [],
         isStatic: false,
         slices: ['slice001'],
       },
@@ -1007,7 +1007,7 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { name: 'test', type: 'literal' },
           { name: 'wildcard', type: 'wildcard' },
         ],
@@ -1282,7 +1282,7 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { name: 'test', type: 'literal' },
           { name: 'nested', type: 'literal' },
         ],
@@ -1323,7 +1323,7 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { name: 'test', type: 'literal' },
           { name: 'nested', type: 'literal' },
         ],
@@ -1355,7 +1355,7 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { name: 'test', type: 'literal' },
           { name: 'nested', type: 'literal' },
         ],
@@ -1388,12 +1388,12 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { name: 'test', type: 'literal' },
           { name: 'w', type: 'literal' },
           { name: 'x', type: 'literal' },
         ],
-        pathPattern: [
+        pathPatternSpec: [
           { name: 'test', type: 'literal' },
           { name: 'a', type: 'group' },
           { name: 'b', type: 'group' },
@@ -1409,12 +1409,12 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { name: 'test', type: 'literal' },
           { name: 'y', type: 'literal' },
           { name: 'z', type: 'literal' },
         ],
-        pathPattern: [
+        pathPatternSpec: [
           { name: 'test', type: 'literal' },
           { name: 'a', type: 'group' },
           { name: 'b', type: 'group' },
@@ -1447,7 +1447,7 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { name: 'test', type: 'literal' },
           { name: 'a', type: 'group' },
           { name: 'b', type: 'group' },
@@ -1478,12 +1478,12 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { name: 'test', type: 'literal' },
           { name: 'a', type: 'literal' },
           { name: 'b', type: 'literal' },
         ],
-        pathPattern: [
+        pathPatternSpec: [
           { name: 'test', type: 'literal' },
           { name: 'path', type: 'wildcard' },
         ],
@@ -1515,7 +1515,7 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { name: 'test', type: 'literal' },
           { name: 'path', type: 'wildcard' },
         ],
@@ -1547,7 +1547,7 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [{ name: 'catchAll', type: 'wildcard' }],
+        pathSpec: [{ name: 'catchAll', type: 'wildcard' }],
         isStatic: false,
         slices: [],
       },
@@ -1575,13 +1575,13 @@ describe('createPages pages and layouts', () => {
     expect(configs).toHaveLength(2);
     // Verify root route comes first (before wildcard route)
     const rootRoute = Array.from(configs).find(
-      (config) => config.type === 'route' && config.path.length === 0,
+      (config) => config.type === 'route' && config.pathSpec.length === 0,
     );
     const wildcardRoute = Array.from(configs).find(
       (config) =>
         config.type === 'route' &&
-        config.path.length === 1 &&
-        config.path[0]?.type === 'wildcard',
+        config.pathSpec.length === 1 &&
+        config.pathSpec[0]?.type === 'wildcard',
     );
     expect(rootRoute).toBeDefined();
     expect(wildcardRoute).toBeDefined();
@@ -1611,14 +1611,14 @@ describe('createPages pages and layouts', () => {
     const literalRoute = Array.from(configs).find(
       (config) =>
         config.type === 'route' &&
-        config.path.length === 1 &&
-        config.path[0]?.type === 'literal',
+        config.pathSpec.length === 1 &&
+        config.pathSpec[0]?.type === 'literal',
     );
     const slugRoute = Array.from(configs).find(
       (config) =>
         config.type === 'route' &&
-        config.path.length === 1 &&
-        config.path[0]?.type === 'group',
+        config.pathSpec.length === 1 &&
+        config.pathSpec[0]?.type === 'group',
     );
     expect(literalRoute).toBeDefined();
     expect(slugRoute).toBeDefined();
@@ -1666,11 +1666,11 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { name: 'docs', type: 'literal' },
           { name: 'v1.0.0', type: 'literal' },
         ],
-        pathPattern: [
+        pathPatternSpec: [
           { name: 'docs', type: 'literal' },
           { name: 'version', type: 'group' },
         ],
@@ -1688,11 +1688,11 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { name: 'docs', type: 'literal' },
           { name: 'v1.1.0', type: 'literal' },
         ],
-        pathPattern: [
+        pathPatternSpec: [
           { name: 'docs', type: 'literal' },
           { name: 'version', type: 'group' },
         ],
@@ -1710,11 +1710,11 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { name: 'docs', type: 'literal' },
           { name: 'v2.0.0', type: 'literal' },
         ],
-        pathPattern: [
+        pathPatternSpec: [
           { name: 'docs', type: 'literal' },
           { name: 'version', type: 'group' },
         ],
@@ -1747,11 +1747,11 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { name: 'pokemon', type: 'literal' },
           { name: 'Mr.-Mime', type: 'literal' },
         ],
-        pathPattern: [
+        pathPatternSpec: [
           { name: 'pokemon', type: 'literal' },
           { name: 'name', type: 'group' },
         ],
@@ -1769,11 +1769,11 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { name: 'pokemon', type: 'literal' },
           { name: 'Porygon-Z', type: 'literal' },
         ],
-        pathPattern: [
+        pathPatternSpec: [
           { name: 'pokemon', type: 'literal' },
           { name: 'name', type: 'group' },
         ],
@@ -1791,11 +1791,11 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { name: 'pokemon', type: 'literal' },
           { name: 'Type:-Null', type: 'literal' },
         ],
-        pathPattern: [
+        pathPatternSpec: [
           { name: 'pokemon', type: 'literal' },
           { name: 'name', type: 'group' },
         ],
@@ -1830,7 +1830,7 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: true,
-        path: [{ name: 'static', type: 'literal' }],
+        pathSpec: [{ name: 'static', type: 'literal' }],
         isStatic: true,
         slices: [],
       },
@@ -1842,7 +1842,7 @@ describe('createPages pages and layouts', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: true,
-        path: [{ name: 'dynamic', type: 'literal' }],
+        pathSpec: [{ name: 'dynamic', type: 'literal' }],
         isStatic: false,
         slices: [],
       },
@@ -2046,7 +2046,7 @@ describe('createPages pages and layouts', () => {
     expect(await getConfigs()).toEqual([
       {
         type: 'route',
-        path: [
+        pathSpec: [
           {
             type: 'literal',
             name: 'static',
@@ -2068,7 +2068,7 @@ describe('createPages pages and layouts', () => {
             name: 'foo-3',
           },
         ],
-        pathPattern: [
+        pathPatternSpec: [
           {
             type: 'literal',
             name: 'static',
@@ -2102,7 +2102,7 @@ describe('createPages pages and layouts', () => {
       },
       {
         type: 'route',
-        path: [
+        pathSpec: [
           {
             type: 'literal',
             name: 'server',
@@ -2120,7 +2120,7 @@ describe('createPages pages and layouts', () => {
             name: 'static-echo-2',
           },
         ],
-        pathPattern: [
+        pathPatternSpec: [
           {
             type: 'literal',
             name: 'server',
@@ -2158,7 +2158,7 @@ describe('createPages pages and layouts', () => {
       },
       {
         type: 'route',
-        path: [
+        pathSpec: [
           {
             type: 'literal',
             name: 'server',
@@ -2176,7 +2176,7 @@ describe('createPages pages and layouts', () => {
             name: 'hello-2',
           },
         ],
-        pathPattern: [
+        pathPatternSpec: [
           {
             type: 'literal',
             name: 'server',
@@ -2214,7 +2214,7 @@ describe('createPages pages and layouts', () => {
       },
       {
         type: 'route',
-        path: [
+        pathSpec: [
           {
             type: 'literal',
             name: 'static',
@@ -2232,7 +2232,7 @@ describe('createPages pages and layouts', () => {
             name: 'hello-2',
           },
         ],
-        pathPattern: [
+        pathPatternSpec: [
           {
             type: 'literal',
             name: 'static',
@@ -2266,7 +2266,7 @@ describe('createPages pages and layouts', () => {
       },
       {
         type: 'route',
-        path: [
+        pathSpec: [
           {
             type: 'literal',
             name: 'server',
@@ -2304,7 +2304,7 @@ describe('createPages pages and layouts', () => {
       },
       {
         type: 'route',
-        path: [
+        pathSpec: [
           {
             type: 'literal',
             name: 'server',
@@ -2342,7 +2342,7 @@ describe('createPages pages and layouts', () => {
       },
       {
         type: 'route',
-        path: [
+        pathSpec: [
           {
             type: 'literal',
             name: 'server',
@@ -2356,7 +2356,7 @@ describe('createPages pages and layouts', () => {
             name: 'static-echo',
           },
         ],
-        pathPattern: [
+        pathPatternSpec: [
           {
             type: 'literal',
             name: 'server',
@@ -2390,7 +2390,7 @@ describe('createPages pages and layouts', () => {
       },
       {
         type: 'route',
-        path: [
+        pathSpec: [
           {
             type: 'literal',
             name: 'server',
@@ -2404,7 +2404,7 @@ describe('createPages pages and layouts', () => {
             name: 'static-echo-2',
           },
         ],
-        pathPattern: [
+        pathPatternSpec: [
           {
             type: 'literal',
             name: 'server',
@@ -2438,7 +2438,7 @@ describe('createPages pages and layouts', () => {
       },
       {
         type: 'route',
-        path: [
+        pathSpec: [
           {
             type: 'literal',
             name: 'static',
@@ -2452,7 +2452,7 @@ describe('createPages pages and layouts', () => {
             name: 'bar',
           },
         ],
-        pathPattern: [
+        pathPatternSpec: [
           {
             type: 'literal',
             name: 'static',
@@ -2486,7 +2486,7 @@ describe('createPages pages and layouts', () => {
       },
       {
         type: 'route',
-        path: [
+        pathSpec: [
           {
             type: 'literal',
             name: 'server',
@@ -2520,7 +2520,7 @@ describe('createPages pages and layouts', () => {
       },
       {
         type: 'route',
-        path: [
+        pathSpec: [
           {
             type: 'literal',
             name: 'server',
@@ -2554,7 +2554,7 @@ describe('createPages pages and layouts', () => {
       },
       {
         type: 'route',
-        path: [
+        pathSpec: [
           {
             type: 'literal',
             name: 'client',
@@ -2584,7 +2584,7 @@ describe('createPages pages and layouts', () => {
       },
       {
         type: 'route',
-        path: [
+        pathSpec: [
           {
             type: 'literal',
             name: 'client',
@@ -2714,7 +2714,7 @@ describe('createPages api', () => {
     expect(await getConfigs()).toEqual([
       {
         type: 'api',
-        path: [{ type: 'literal', name: 'test' }],
+        pathSpec: [{ type: 'literal', name: 'test' }],
         isStatic: true,
         handler: expect.any(Function),
       },
@@ -2745,7 +2745,7 @@ describe('createPages api', () => {
     expect(await getConfigs()).toEqual([
       {
         type: 'api',
-        path: [
+        pathSpec: [
           { type: 'literal', name: 'test' },
           { type: 'group', name: 'slug' },
         ],
@@ -2817,12 +2817,12 @@ describe('createPages api', () => {
     expect(apiConfigs).toHaveLength(2);
 
     // Verify paths are all-literal
-    expect(apiConfigs[0]!.path).toEqual([
+    expect(apiConfigs[0]!.pathSpec).toEqual([
       { type: 'literal', name: 'test' },
       { type: 'literal', name: 'a' },
       { type: 'literal', name: 'b' },
     ]);
-    expect(apiConfigs[1]!.path).toEqual([
+    expect(apiConfigs[1]!.pathSpec).toEqual([
       { type: 'literal', name: 'test' },
       { type: 'literal', name: 'c' },
     ]);
@@ -2860,7 +2860,7 @@ describe('createPages - exactPath', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [{ name: 'test', type: 'literal' }],
+        pathSpec: [{ name: 'test', type: 'literal' }],
         isStatic: true,
         slices: [],
       },
@@ -2887,7 +2887,7 @@ describe('createPages - exactPath', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [{ name: 'test', type: 'literal' }],
+        pathSpec: [{ name: 'test', type: 'literal' }],
         isStatic: false,
         slices: [],
       },
@@ -2917,7 +2917,7 @@ describe('createPages - exactPath', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { name: 'test', type: 'literal' },
           { name: '[slug]', type: 'literal' },
         ],
@@ -2950,7 +2950,7 @@ describe('createPages - exactPath', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { name: 'test', type: 'literal' },
           { name: '[...wildcard]', type: 'literal' },
         ],
@@ -2983,7 +2983,7 @@ describe('createPages - exactPath', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { name: 'test', type: 'literal' },
           { name: '[...wildcard]', type: 'literal' },
           { name: '[slug]', type: 'literal' },
@@ -3017,7 +3017,7 @@ describe('createPages - exactPath', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { name: 'test', type: 'literal' },
           { name: '[slug]', type: 'literal' },
         ],
@@ -3048,7 +3048,7 @@ describe('createPages - grouped paths', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [{ name: 'test', type: 'literal' }],
+        pathSpec: [{ name: 'test', type: 'literal' }],
         isStatic: true,
         slices: [],
       },
@@ -3074,7 +3074,7 @@ describe('createPages - grouped paths', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { name: 'test', type: 'literal' },
           { name: 'foo', type: 'literal' },
         ],
@@ -3127,8 +3127,8 @@ describe('createPages - grouped paths', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [{ type: 'literal', name: 'x' }],
-        pathPattern: [
+        pathSpec: [{ type: 'literal', name: 'x' }],
+        pathPatternSpec: [
           { type: 'literal', name: '(group)' },
           { type: 'group', name: 'slug' },
         ],
@@ -3142,9 +3142,9 @@ describe('createPages - grouped paths', () => {
         },
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
-        path: [{ type: 'literal', name: 'y' }],
+        pathSpec: [{ type: 'literal', name: 'y' }],
         noSsr: false,
-        pathPattern: [
+        pathPatternSpec: [
           { type: 'literal', name: '(group)' },
           { type: 'group', name: 'slug' },
         ],
@@ -3159,7 +3159,7 @@ describe('createPages - grouped paths', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [{ type: 'literal', name: 'z' }],
+        pathSpec: [{ type: 'literal', name: 'z' }],
         isStatic: true,
         slices: [],
       },
@@ -3201,7 +3201,7 @@ describe('createPages - grouped paths', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [{ name: 'test', type: 'literal' }],
+        pathSpec: [{ name: 'test', type: 'literal' }],
         isStatic: true,
         slices: [],
       },
@@ -3215,7 +3215,7 @@ describe('createPages - grouped paths', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [],
+        pathSpec: [],
         isStatic: true,
         slices: [],
       },
@@ -3252,11 +3252,11 @@ describe('createPages - grouped paths', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { type: 'literal', name: 'en' },
           { type: 'literal', name: 'about' },
         ],
-        pathPattern: [
+        pathPatternSpec: [
           { type: 'literal', name: '(group)' },
           { type: 'group', name: 'lang' },
           { type: 'literal', name: 'about' },
@@ -3276,11 +3276,11 @@ describe('createPages - grouped paths', () => {
         rootElement: { isStatic: true, renderer: expect.any(Function) },
         routeElement: { isStatic: true, renderer: expect.any(Function) },
         noSsr: false,
-        path: [
+        pathSpec: [
           { type: 'literal', name: 'fr' },
           { type: 'literal', name: 'about' },
         ],
-        pathPattern: [
+        pathPatternSpec: [
           { type: 'literal', name: '(group)' },
           { type: 'group', name: 'lang' },
           { type: 'literal', name: 'about' },
@@ -3311,9 +3311,9 @@ describe('createPages - grouped paths', () => {
     const routeConfig = configs.find(
       (config) =>
         config.type === 'route' &&
-        config.path?.[0]?.name === 'layout-props' &&
-        config.path?.[1]?.name === 'lang' &&
-        config.path?.[2]?.name === 'slug',
+        config.pathSpec?.[0]?.name === 'layout-props' &&
+        config.pathSpec?.[1]?.name === 'lang' &&
+        config.pathSpec?.[2]?.name === 'slug',
     );
     const element = routeConfig.elements[
       'layout:/layout-props/[lang]'
@@ -3351,10 +3351,10 @@ describe('createPages - grouped paths', () => {
     const routeConfig = configs.find(
       (config) =>
         config.type === 'route' &&
-        config.path?.[0]?.name === 'layout-props' &&
-        config.path?.[1]?.name === 'en' &&
-        config.path?.[2]?.name === 'docs' &&
-        config.path?.[3]?.name === 'post-1',
+        config.pathSpec?.[0]?.name === 'layout-props' &&
+        config.pathSpec?.[1]?.name === 'en' &&
+        config.pathSpec?.[2]?.name === 'docs' &&
+        config.pathSpec?.[3]?.name === 'post-1',
     );
     const element = routeConfig.elements[
       'layout:/(group)/layout-props/en/docs'
@@ -3394,7 +3394,7 @@ describe('createPages search codec', () => {
     const configs = Array.from(await getConfigs()) as any[];
     const routeConfig = configs.find(
       (config) =>
-        config.type === 'route' && config.path?.[0]?.name === 'search-test',
+        config.type === 'route' && config.pathSpec?.[0]?.name === 'search-test',
     );
     expect(routeConfig.searchCodec).toBe(codec);
     const pageEl = routeConfig.elements['page:/search-test'];

@@ -7,12 +7,12 @@ import { parseRequestUrl } from './request-url.js';
 
 type HandleRequestInput = Parameters<HandleRequest>[0];
 
-const invokeServerAction = async (
-  action: (...args: unknown[]) => unknown,
+const invokeServerFunction = async (
+  serverFunction: (...args: unknown[]) => unknown,
   args: unknown[],
 ) => {
   try {
-    return await action(...args);
+    return await serverFunction(...args);
   } catch (error) {
     if (!isRenderCancellation(error)) {
       throw error;
@@ -42,14 +42,17 @@ export async function getInput(
   let input: HandleRequestInput;
   if (parsed.type !== 'http') {
     if (parsed.type === 'call') {
-      validateServerActionRequest(req);
-      const body = await getActionBody(req);
+      validateSameOriginPost(req);
+      const body = await readRequestBody(req);
       const args = await decodeReply(body, { temporaryReferences });
-      const action = await loadServerAction(parsed.actionId);
+      const serverFunction = await loadServerAction(parsed.serverFunctionId);
       input = {
         type: 'call',
         fn: (...args) =>
-          invokeServerAction(action as (...args: unknown[]) => unknown, args),
+          invokeServerFunction(
+            serverFunction as (...args: unknown[]) => unknown,
+            args,
+          ),
         args,
         pathname,
         req,
@@ -58,8 +61,8 @@ export async function getInput(
     } else {
       let rscParams: unknown = url.searchParams;
       if (req.body) {
-        validateServerActionRequest(req);
-        const body = await getActionBody(req);
+        validateSameOriginPost(req);
+        const body = await readRequestBody(req);
         rscParams = await decodeReply(body, {
           temporaryReferences,
         });
@@ -90,13 +93,13 @@ export async function getInput(
         type: 'http',
         tryAction: () =>
           (parsing ??= (async () => {
-            const formData = (await getActionBody(req)) as FormData;
+            const formData = (await readRequestBody(req)) as FormData;
             const decodedAction = await decodeAction(formData);
             if (typeof decodedAction !== 'function') {
               return { action: false as const, formData };
             }
-            validateServerActionRequest(req);
-            const result = await invokeServerAction(decodedAction, []);
+            validateSameOriginPost(req);
+            const result = await invokeServerFunction(decodedAction, []);
             const formState = await decodeFormState(result, formData);
             return { action: true as const, formState };
           })()),
@@ -125,7 +128,7 @@ export async function getInput(
   return input;
 }
 
-function validateServerActionRequest(req: Request) {
+function validateSameOriginPost(req: Request) {
   if (req.method !== 'POST') {
     throw new Response('Method Not Allowed', { status: 405 });
   }
@@ -156,7 +159,7 @@ function validateServerActionRequest(req: Request) {
   }
 }
 
-async function getActionBody(req: Request) {
+async function readRequestBody(req: Request) {
   if (!req.body) {
     throw new Error('missing request body for server function');
   }

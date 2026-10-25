@@ -208,11 +208,47 @@ export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
   });
 }
 
+// Experimental React starts a same-document navigation with info
+// 'react-transition' after a transition has been pending for 100ms. WebKit
+// accepts that policy check and then never commits it, so Playwright waits
+// forever on the next locator action. Repeating the current history entry
+// makes WebKit emit the commit. Stable and canary builds accept the indicator
+// option and never call it, so this stays off for those versions.
+const reactDomVersion = (
+  createRequire(
+    fileURLToPath(new URL('../packages/waku/package.json', import.meta.url)),
+  )('react-dom/package.json') as { version: string }
+).version;
+const flushExperimentalTransitionNavigation =
+  reactDomVersion.includes('experimental');
+const flushReactTransitionNavigation = () => {
+  if (!window.navigation) {
+    return;
+  }
+  let reactTransition = false;
+  window.navigation.addEventListener('navigate', (event) => {
+    reactTransition = event.info === 'react-transition';
+  });
+  window.navigation.addEventListener('navigatesuccess', () => {
+    if (!reactTransition) {
+      return;
+    }
+    reactTransition = false;
+    window.history.replaceState(window.history.state, '', window.location.href);
+  });
+};
+
 export const test = basicTest.extend<
   Omit<TestOptions, 'mode'>,
   Pick<TestOptions, 'mode'>
 >({
   mode: ['DEV', { option: true, scope: 'worker' }],
+  context: async ({ context }, contextUse) => {
+    if (flushExperimentalTransitionNavigation) {
+      await context.addInitScript(flushReactTransitionNavigation);
+    }
+    await contextUse(context);
+  },
   page: async ({ page }, pageUse, testInfo) => {
     const callback = (msg: ConsoleMessage) => {
       if (unexpectedErrors.some((re) => re.test(msg.text()))) {
@@ -366,6 +402,55 @@ const patchMonorepoPackageJson = (standaloneDir: string) => {
   }
 };
 
+// pnpm 11 ignores package.json `pnpm.overrides`. Standalone installs need the
+// same block from the repo's pnpm-workspace.yaml, plus the packed waku tarball.
+const readPnpmWorkspaceOverrides = (): Record<string, string> => {
+  const workspaceFile = fileURLToPath(
+    new URL('../pnpm-workspace.yaml', import.meta.url),
+  );
+  const overrides: Record<string, string> = {};
+  let inOverrides = false;
+  for (const line of readFileSync(workspaceFile, 'utf8').split('\n')) {
+    if (!/^\s/.test(line)) {
+      inOverrides = line.startsWith('overrides:');
+      continue;
+    }
+    if (!inOverrides) {
+      continue;
+    }
+    const match = /^ {2}([^:#\s][^:]*):\s*(.*?)\s*$/.exec(line);
+    const key = match?.[1];
+    const value = match?.[2];
+    if (!key || value === undefined) {
+      continue;
+    }
+    overrides[key] = value.replace(/^['"]|['"]$/g, '');
+  }
+  return overrides;
+};
+
+const writePnpmWorkspaceFile = (
+  standaloneDir: string,
+  overrides: Record<string, string>,
+  workspaces: unknown,
+) => {
+  const lines = ['linkWorkspacePackages: true'];
+  if (Array.isArray(workspaces) && workspaces.length > 0) {
+    lines.push('packages:');
+    for (const pattern of workspaces) {
+      lines.push(`  - ${JSON.stringify(String(pattern))}`);
+    }
+  }
+  lines.push('overrides:');
+  for (const [key, value] of Object.entries(overrides)) {
+    lines.push(`  ${JSON.stringify(key)}: ${JSON.stringify(value)}`);
+  }
+  writeFileSync(
+    join(standaloneDir, 'pnpm-workspace.yaml'),
+    `${lines.join('\n')}\n`,
+  );
+};
+
 export const makeTempDir = (prefix: string): string => {
   // GitHub Action on Windows doesn't support mkdtemp on global temp dir,
   // Which will cause files in `src` folder to be empty. I don't know why
@@ -425,13 +510,11 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
           'utf8',
         ),
       );
-      const { stdout: overrides } = await execAsync(
-        'pnpm config get overrides --json',
-        { cwd: wakuDir },
-      );
-      const pnpmOverrides = {
-        ...JSON.parse(overrides.trim() || '{}'),
+      const pnpmOverrides: Record<string, string> = {
+        ...readPnpmWorkspaceOverrides(),
         waku: `file:${wakuPackageTgz}`,
+        vite: createRequire(join(wakuDir, 'package.json'))('vite/package.json')
+          .version as string,
       };
       for (const file of readdirSync(standaloneDir, {
         encoding: 'utf8',
@@ -453,6 +536,15 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
                 pkg.overrides = pnpmOverrides;
                 break;
               }
+              case 'pnpm': {
+                // pnpm 11 reads overrides from pnpm-workspace.yaml, not package.json.
+                writePnpmWorkspaceFile(
+                  standaloneDir,
+                  pnpmOverrides,
+                  pkg.workspaces,
+                );
+                break;
+              }
               case 'yarn': {
                 pkg.resolutions = pnpmOverrides;
                 break;
@@ -464,17 +556,6 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
           }
           writeFileSync(f, JSON.stringify(pkg, null, 2), 'utf8');
         }
-      }
-      if (packageManager === 'pnpm') {
-        // pnpm 11 reads overrides from the workspace config, even outside a monorepo.
-        const workspaceFile = join(standaloneDir, 'pnpm-workspace.yaml');
-        const workspace = existsSync(workspaceFile)
-          ? readFileSync(workspaceFile, 'utf8')
-          : '';
-        writeFileSync(
-          workspaceFile,
-          `${workspace}\noverrides: ${JSON.stringify(pnpmOverrides)}\n`,
-        );
       }
       if (packageManager !== 'pnpm') {
         patchMonorepoPackageJson(standaloneDir);

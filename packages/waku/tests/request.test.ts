@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resolveConfig } from '../src/lib/utils-build/config.js';
 import { ETAGS_HEADER } from '../src/lib/utils-isomorphic/etags.js';
-import { encodeFuncId } from '../src/lib/utils-isomorphic/rsc-path.js';
+import { encodeServerFunctionId } from '../src/lib/utils-isomorphic/rsc-path.js';
 import { getInput } from '../src/lib/utils-server/request.js';
 import {
   unstable_cancelRender as cancelRender,
@@ -91,7 +91,10 @@ describe('getInput request URLs', () => {
     expect(inspectedPayload.rscParams?.get('query')).toBe('hello');
 
     const action = new Request(
-      formatRscUrl(encodeFuncId('actions.ts#save'), 'https://app.test/'),
+      formatRscUrl(
+        encodeServerFunctionId('actions.ts#save'),
+        'https://app.test/',
+      ),
       { method: 'POST', body: '[]', headers: { origin: 'https://app.test' } },
     );
     expect(parseRequest(action)).toEqual({ type: 'call' });

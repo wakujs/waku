@@ -22,7 +22,6 @@ import {
   useMergeElements_UNSTABLE as useMergeElements,
 } from 'waku/minimal/client';
 import {
-  type Unstable_ActionRouting as ActionRouting,
   type Unstable_FollowDecision as FollowDecision,
   unstable_INTENT_ID as INTENT_ID,
   unstable_MAX_FOLLOWS_PER_NAVIGATION as MAX_FOLLOWS_PER_NAVIGATION,
@@ -31,8 +30,9 @@ import {
   type Unstable_RouteProps as RouteProps,
   type Unstable_RouterHost as RouterHost,
   RouterHostContext_UNSTABLE as RouterHostContext,
+  type Unstable_ServerFunctionRouting as ServerFunctionRouting,
   unstable_buildMergePatch as buildMergePatch,
-  unstable_createActionRouting as createActionRouting,
+  unstable_createServerFunctionRouting as createServerFunctionRouting,
   unstable_decideRouteIntent as decideRouteIntent,
   unstable_encodeRoutePath as encodeRoutePath,
   unstable_getRouteFromElements as getRouteFromElements,
@@ -40,10 +40,10 @@ import {
   unstable_getRouteUrl as getRouteUrl,
   unstable_has404FromElements as has404FromElements,
   unstable_parseRoute as parseRoute,
-  useActionRouting_UNSTABLE as useActionRouting,
   useInitialRoute_UNSTABLE as useInitialRoute,
   useInitialRscParams_UNSTABLE as useInitialRscParams,
   useRouterCache_UNSTABLE as useRouterCache,
+  useServerFunctionRouting_UNSTABLE as useServerFunctionRouting,
 } from 'waku/router/client-core';
 import { settleNavigateFinished } from './settle-navigate-finished.js';
 
@@ -221,10 +221,10 @@ class FollowFailure extends Component<
 
 const NavBinding = ({
   fallbackRoute,
-  actionRouting,
+  serverFunctionRouting,
 }: {
   fallbackRoute: RouteProps;
-  actionRouting: ActionRouting;
+  serverFunctionRouting: ServerFunctionRouting;
 }) => {
   const { ownsNavigation, setFollows, lastFollowRef, runRef } =
     use(FollowHostContext)!;
@@ -283,7 +283,7 @@ const NavBinding = ({
     },
     [ownsNavigation],
   );
-  useActionRouting(actionRouting, {
+  useServerFunctionRouting(serverFunctionRouting, {
     getSettledRoute,
     getPendingRoute,
     onRouteChange: commitActionRoute,
@@ -435,8 +435,11 @@ const NavBinding = ({
 };
 
 export const createNavRouterConfig = () => {
-  const actionRouting = createActionRouting();
-  return { actionRouting, rscEnhancers: [actionRouting.enhancer] };
+  const serverFunctionRouting = createServerFunctionRouting();
+  return {
+    serverFunctionRouting,
+    rscEnhancers: [serverFunctionRouting.enhancer],
+  };
 };
 
 export const NavRouter = ({
@@ -451,7 +454,7 @@ export const NavRouter = ({
   // NavBinding remounts on every merge; this host does not. Entry state is
   // not instance-scoped (`window.navigation` is per document) and intercept
   // runs before the URL commits.
-  const [{ actionRouting, rscEnhancers }] = useState(
+  const [{ serverFunctionRouting, rscEnhancers }] = useState(
     () => config ?? createNavRouterConfig(),
   );
   const [follows, setFollows] = useState(0);
@@ -489,7 +492,10 @@ export const NavRouter = ({
       initialRscParams={initialRscParams}
       rscEnhancers={rscEnhancers}
     >
-      <NavBinding fallbackRoute={fallback} actionRouting={actionRouting} />
+      <NavBinding
+        fallbackRoute={fallback}
+        serverFunctionRouting={serverFunctionRouting}
+      />
     </Root>
   );
   return (

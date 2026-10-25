@@ -20,8 +20,8 @@ import {
 } from '../lib/utils-isomorphic/etags.js';
 import type { Etags } from '../lib/utils-isomorphic/etags.js';
 import {
-  encodeFuncId,
   encodeRscPath,
+  encodeServerFunctionId,
 } from '../lib/utils-isomorphic/rsc-path.js';
 import { CancelRenderBoundary } from './client-utils/cancel-render.js';
 import {
@@ -132,8 +132,8 @@ const decodeRsc = (
 ): Promise<Elements> =>
   Promise.resolve(
     createFromFetch<Elements>(checkStatus(responsePromise), {
-      callServer: (funcId: string, args: unknown[]) =>
-        unstable_callServerRsc(funcId, args),
+      callServer: (serverFunctionId: string, args: unknown[]) =>
+        unstable_callServerRsc(serverFunctionId, args),
       debugChannel,
       temporaryReferences,
     }),
@@ -212,11 +212,11 @@ const fetchRscElements = (
 };
 
 export const unstable_callServerRsc = async (
-  funcId: string,
+  serverFunctionId: string,
   args: unknown[],
 ) => {
   const rootStore = getDefaultRootStore();
-  const rscPath = encodeFuncId(funcId);
+  const rscPath = encodeServerFunctionId(serverFunctionId);
   const rscParams =
     args.length === 1 && args[0] instanceof URLSearchParams ? args[0] : args;
   const { elements: data, value } = await fetchRscElements(
@@ -228,7 +228,7 @@ export const unstable_callServerRsc = async (
   if (Reflect.ownKeys(data).length) {
     if (!rootStore) {
       throw new Error(
-        'Server action returned elements without a mounted Root component. Call mount-time actions from useEffect, not useLayoutEffect.',
+        'Server function returned elements without a mounted Root component. Call mount-time server functions from useEffect, not useLayoutEffect.',
       );
     }
     startTransition(() => {

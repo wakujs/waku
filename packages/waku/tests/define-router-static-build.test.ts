@@ -31,7 +31,7 @@ describe('define-router handleBuild', () => {
       getConfigs: async () => [
         {
           type: 'route',
-          path: [{ type: 'literal', name: 'foo' }],
+          pathSpec: [{ type: 'literal', name: 'foo' }],
           isStatic: true,
           rootElement: { isStatic: true, renderer: () => null },
           routeElement: { isStatic: true, renderer: () => null },
@@ -41,7 +41,7 @@ describe('define-router handleBuild', () => {
         },
         {
           type: 'route',
-          path: [{ type: 'literal', name: 'bar' }],
+          pathSpec: [{ type: 'literal', name: 'bar' }],
           isStatic: true,
           rootElement: { isStatic: true, renderer: () => null },
           routeElement: { isStatic: true, renderer: () => null },
@@ -78,7 +78,7 @@ describe('define-router handleBuild', () => {
     await handleBuild({
       renderRsc,
       renderHtml,
-      rscPath2pathname: (rscPath: string) => `dist/${rscPath}.txt`,
+      rscPathToFileName: (rscPath: string) => `dist/${rscPath}.txt`,
       saveBuildMetadata: vi.fn().mockResolvedValue(undefined),
       generateFile: vi.fn().mockResolvedValue(undefined),
       generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
@@ -112,7 +112,7 @@ describe('define-router handleBuild', () => {
       getConfigs: async () => [
         {
           type: 'route',
-          path: [
+          pathSpec: [
             { type: 'literal', name: 'nested' },
             { type: 'group', name: 'name' },
           ],
@@ -134,7 +134,7 @@ describe('define-router handleBuild', () => {
     await handleBuild({
       renderRsc: () => Promise.resolve(makeStream()),
       renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
-      rscPath2pathname: (rscPath: string) => `dist/${rscPath}.txt`,
+      rscPathToFileName: (rscPath: string) => `dist/${rscPath}.txt`,
       saveBuildMetadata,
       generateFile: vi.fn().mockResolvedValue(undefined),
       generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
@@ -171,7 +171,7 @@ describe('define-router handleBuild', () => {
       getConfigs: async () => [
         {
           type: 'route',
-          path: [
+          pathSpec: [
             { type: 'literal', name: 'nested' },
             { type: 'group', name: 'name' },
           ],
@@ -196,7 +196,7 @@ describe('define-router handleBuild', () => {
     await handleBuild({
       renderRsc: () => Promise.resolve(makeStream()),
       renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
-      rscPath2pathname: (rscPath: string) => `dist/${rscPath}.txt`,
+      rscPathToFileName: (rscPath: string) => `dist/${rscPath}.txt`,
       saveBuildMetadata,
       generateFile: vi.fn().mockResolvedValue(undefined),
       generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
@@ -220,13 +220,13 @@ describe('define-router handleBuild', () => {
           type: 'api',
           handler: async () => Response.json('test'),
           isStatic: true,
-          path: [{ type: 'literal', name: 'test' }],
+          pathSpec: [{ type: 'literal', name: 'test' }],
         },
         {
           type: 'api',
           handler: async () => Response.json('test'),
           isStatic: true,
-          path: [
+          pathSpec: [
             { type: 'literal', name: 'test' },
             { type: 'literal', name: 'route' },
           ],
@@ -253,7 +253,7 @@ describe('define-router handleBuild', () => {
       handleBuild({
         renderRsc: () => Promise.resolve(makeStream()),
         renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
-        rscPath2pathname: (rscPath: string) => `dist/${rscPath}.txt`,
+        rscPathToFileName: (rscPath: string) => `dist/${rscPath}.txt`,
         saveBuildMetadata: vi.fn().mockResolvedValue(undefined),
         generateFile,
         generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
@@ -276,7 +276,7 @@ describe('define-router handleBuild', () => {
       getConfigs: async () => [
         {
           type: 'route',
-          path: [{ type: 'literal', name: 'foo' }],
+          pathSpec: [{ type: 'literal', name: 'foo' }],
           isStatic: true,
           rootElement: { isStatic: true, renderer: () => null },
           routeElement: { isStatic: true, renderer: () => null },
@@ -289,7 +289,7 @@ describe('define-router handleBuild', () => {
     await buildRouter.handleBuild({
       renderRsc: () => Promise.resolve(makeStream()),
       renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
-      rscPath2pathname: (rscPath: string) => `dist/${rscPath}.txt`,
+      rscPathToFileName: (rscPath: string) => `dist/${rscPath}.txt`,
       saveBuildMetadata: buildSave,
       generateFile: vi.fn().mockResolvedValue(undefined),
       generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
@@ -348,7 +348,7 @@ describe('define-router handleBuild', () => {
       getConfigs: async () => [
         {
           type: 'route',
-          path: [{ type: 'literal', name: 'foo' }],
+          pathSpec: [{ type: 'literal', name: 'foo' }],
           isStatic: true,
           rootElement: { isStatic: true, renderer: () => null },
           routeElement: { isStatic: true, renderer: () => null },
@@ -362,7 +362,7 @@ describe('define-router handleBuild', () => {
         },
         {
           type: 'route',
-          path: [{ type: 'literal', name: 'bar' }],
+          pathSpec: [{ type: 'literal', name: 'bar' }],
           isStatic: false,
           rootElement: { isStatic: true, renderer: () => null },
           routeElement: { isStatic: true, renderer: () => null },
@@ -380,7 +380,7 @@ describe('define-router handleBuild', () => {
     await handleBuild({
       renderRsc: () => Promise.resolve(makeStream()),
       renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
-      rscPath2pathname: (rscPath: string) => `dist/${rscPath}.txt`,
+      rscPathToFileName: (rscPath: string) => `dist/${rscPath}.txt`,
       saveBuildMetadata: vi.fn().mockResolvedValue(undefined),
       generateFile: vi.fn().mockResolvedValue(undefined),
       generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
@@ -396,7 +396,7 @@ describe('define-router handleBuild', () => {
     const generateDefaultHtml = vi.fn().mockResolvedValue(undefined);
     const staticRoute = (name: string, extra: object = {}) => ({
       type: 'route' as const,
-      path: [{ type: 'literal' as const, name }],
+      pathSpec: [{ type: 'literal' as const, name }],
       isStatic: true,
       rootElement: { isStatic: true, renderer: () => null },
       routeElement: { isStatic: true, renderer: () => null },
@@ -411,7 +411,7 @@ describe('define-router handleBuild', () => {
         staticRoute('nossr', { noSsr: true }),
         {
           type: 'api' as const,
-          path: [{ type: 'literal' as const, name: 'data.txt' }],
+          pathSpec: [{ type: 'literal' as const, name: 'data.txt' }],
           isStatic: true,
           handler: async () => new Response('api-body'),
         },
@@ -428,7 +428,7 @@ describe('define-router handleBuild', () => {
     await handleBuild({
       renderRsc: () => Promise.resolve(makeStream()),
       renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
-      rscPath2pathname: (rscPath: string) => `dist/${rscPath}.txt`,
+      rscPathToFileName: (rscPath: string) => `dist/${rscPath}.txt`,
       saveBuildMetadata: vi.fn(async (key: string, value: string) => {
         savedMetadata.set(key, value);
       }),
@@ -460,6 +460,8 @@ describe('define-router handleBuild', () => {
     expect(
       serializableConfigs.find((c) => c.type === 'route')!.rootElement,
     ).not.toHaveProperty('renderer');
-    expect(savedMetadata.has('defineRouter:path2moduleIds')).toBe(true);
+    expect(savedMetadata.has('defineRouter:moduleIdsByPrefetchRegExp')).toBe(
+      true,
+    );
   });
 });

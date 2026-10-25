@@ -143,7 +143,7 @@ The post page is still a server component; the like button is a client component
 
 - `'use client'` marks the entry to client territory: that file and everything it imports are bundled for the browser.
 - Server components can render client components. The reverse is not true: a client component cannot import a server component (importing it would pull it into the client bundle), but it can receive server-rendered content via `children` or other props.
-- Props passed from server to client components must be serializable: no functions (except server actions), class instances, or other non-serializable values.
+- Props passed from server to client components must be serializable: no functions (except server functions), class instances, or other non-serializable values.
 - Client components also execute once on the server per page render to produce the initial HTML, then hydrate in the browser. Code that must never run on the server belongs in effects or event handlers.
 
 A useful default: keep components on the server, and push `'use client'` toward the leaves of the tree: the button, not the page.

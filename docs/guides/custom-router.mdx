@@ -8,7 +8,7 @@ order: 20
 
 ## When to Use a Custom Router
 
-Use `unstable_defineRouter` when you want to bring your own route matching: plain strings, regular expressions, a CMS, or another route manifest. It pairs with `waku/router/client`; Waku handles navigation, server actions, redirects, and RSC request encoding.
+Use `unstable_defineRouter` when you want to bring your own route matching: plain strings, regular expressions, a CMS, or another route manifest. It pairs with `waku/router/client`; Waku handles navigation, server function calls, redirects, and RSC request encoding.
 
 For programmatic page and layout declarations, use [`createPages`](/create-pages). For a different client protocol or lower-level request handling, use the [Minimal API](/guides/minimal-api).
 
@@ -124,7 +124,7 @@ The optional `getBuildPaths` returns pathname strings, without queries or fragme
 - HTTP handlers emit their response bodies as static files.
 - Immutable routes with `noSsr` emit RSC and a default client-rendered HTML document.
 
-For explicit build planning, return `{ pathname, routerDefinition?, prerender?, prefetchPattern? }` targets. `routerDefinition` supplies a build-specific router definition or an HTTP handler rather than calling `resolve`. `prerender: false` caches only immutable sources without emitting a page, even when every source is immutable. `prefetchPattern` is a regular expression matching paths that share the target's client modules.
+For explicit build planning, return `{ pathname, routerDefinition?, prerender?, prefetchRegExp? }` targets. `routerDefinition` supplies a build-specific router definition or an HTTP handler rather than calling `resolve`. `prerender: false` caches only immutable sources without emitting a page, even when every source is immutable. `prefetchRegExp` is a regular expression matching paths that share the target's client modules.
 
 Omit a path to skip its build output. Omit `getBuildPaths` entirely for runtime-only routes. Custom routers do not need `PathSpec` or component source-file metadata.
 
@@ -155,7 +155,7 @@ Include an element directly in a route's `elements` when it should arrive in the
 
 ## Boundaries
 
-`defineRouter` owns the protocol expected by `waku/router/client`: reserved metadata, root and route slots, action rerenders, redirects, 404 handling, SSR, and build output. Custom routers supply resolution and element sources, without importing internal IDs or encoding helpers from `waku/router/client-core`.
+`defineRouter` owns the protocol expected by `waku/router/client`: reserved metadata, root and route slots, server function rerenders, redirects, 404 handling, SSR, and build output. Custom routers supply resolution and element sources, without importing internal IDs or encoding helpers from `waku/router/client-core`.
 
 For changes to Router itself or another client binding, see [Router Protocol](/guides/router-protocol).
 

@@ -87,7 +87,7 @@ describe('pruneBuildOutput', () => {
       distDir: DIST,
       rscBundle: bundle,
       prunableFiles: ['pages/static.tsx'],
-      serverReferenceIds: new Set(),
+      serverReferenceModuleIds: new Set(),
     });
 
     expect(stubbedChunks).toContain('static-page.js');
@@ -117,7 +117,7 @@ describe('pruneBuildOutput', () => {
       distDir: DIST,
       rscBundle: bundle,
       prunableFiles: ['pages/_layout.tsx'],
-      serverReferenceIds: new Set(['/proj/src/pages/_layout.tsx']),
+      serverReferenceModuleIds: new Set(['/proj/src/pages/_layout.tsx']),
     });
 
     expect(stubbedChunks).not.toContain('static-layout.js');
@@ -152,7 +152,7 @@ describe('pruneBuildOutput', () => {
       distDir: DIST,
       rscBundle: bundle,
       prunableFiles: ['pages/static.tsx'],
-      serverReferenceIds: new Set(),
+      serverReferenceModuleIds: new Set(),
     });
 
     expect(stubbedChunks).toContain('static-page.js');

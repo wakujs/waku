@@ -30,10 +30,10 @@ export const parsePathWithSlug = (path: string): PathSpec =>
       };
     });
 
-export const pathSpecAsString = (path: PathSpec) => {
+export const pathSpecAsString = (pathSpec: PathSpec) => {
   return (
     '/' +
-    path
+    pathSpec
       .map((item) => {
         if (item.type === 'literal') {
           return item.name;
@@ -157,8 +157,8 @@ export const getPathMapping = (
 
 const escapeRegExp = (s: string) => s.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
 
-export const path2regexp = (path: PathSpec) => {
-  const parts = path.map((item) => {
+export const pathSpecToRegExpSource = (pathSpec: PathSpec) => {
+  const parts = pathSpec.map((item) => {
     if (item.type === 'literal') {
       return escapeRegExp(item.name);
     } else if (item.type === 'group') {

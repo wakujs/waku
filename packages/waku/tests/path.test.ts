@@ -3,11 +3,13 @@ import { extname, removeBase } from '../src/lib/utils-isomorphic/path.js';
 import {
   getPathMapping,
   parsePathWithSlug,
-  path2regexp,
+  pathSpecToRegExpSource,
 } from '../src/router/isomorphic-utils/path-spec.js';
 
 function matchPath(path: string, input: string) {
-  return new RegExp(path2regexp(parsePathWithSlug(path))).test(input);
+  return new RegExp(pathSpecToRegExpSource(parsePathWithSlug(path))).test(
+    input,
+  );
 }
 
 describe('extname', () => {
@@ -19,7 +21,7 @@ describe('extname', () => {
   });
 });
 
-describe('path2regexp', () => {
+describe('pathSpecToRegExpSource', () => {
   test('handles paths without slugs', () => {
     expect(matchPath('/foo/bar', '/foo/bar')).toBe(true);
     expect(matchPath('/foo/baz', '/foo/bar')).toBe(false);

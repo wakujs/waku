@@ -33,7 +33,7 @@ describe('createPages - build-time pruning', () => {
     await router.handleBuild({
       renderRsc: () => Promise.resolve(makeStream()),
       renderHtml: vi.fn().mockResolvedValue(new Response('<!doctype html>')),
-      rscPath2pathname: (rscPath: string) => `dist/${rscPath}.txt`,
+      rscPathToFileName: (rscPath: string) => `dist/${rscPath}.txt`,
       saveBuildMetadata: vi.fn().mockResolvedValue(undefined),
       generateFile: vi.fn().mockResolvedValue(undefined),
       generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
