@@ -256,7 +256,7 @@ describe('defineRouter route resolver', () => {
     const metadata = new Map<string, string>();
     await router.handleBuild({
       ...makeUtils(),
-      rscPath2pathname: (path) => path,
+      rscPathToFileName: (path) => path,
       generateFile: vi.fn(),
       generateDefaultHtml: vi.fn(),
       saveBuildMetadata: async (key, value) => {
@@ -311,7 +311,7 @@ describe('defineRouter route resolver', () => {
     const generateFile = vi.fn().mockResolvedValue(undefined);
     await router.handleBuild({
       ...makeUtils(),
-      rscPath2pathname: (path) => path,
+      rscPathToFileName: (path) => path,
       generateFile,
       generateDefaultHtml: vi.fn(),
       saveBuildMetadata: async (key, value) => {
@@ -325,7 +325,7 @@ describe('defineRouter route resolver', () => {
       expect.anything(),
     );
     const patterns = JSON.parse(
-      metadata.get('defineRouter:path2moduleIds')!,
+      metadata.get('defineRouter:moduleIdsByPrefetchRegExp')!,
     ) as Record<string, string[]>;
     const pattern = Object.keys(patterns)[0]!;
     expect(new RegExp(pattern).test(path)).toBe(true);
@@ -341,7 +341,7 @@ describe('defineRouter route resolver', () => {
     await expect(
       router.handleBuild({
         ...makeUtils(),
-        rscPath2pathname: (path) => path,
+        rscPathToFileName: (path) => path,
         generateFile,
         generateDefaultHtml: vi.fn(),
         saveBuildMetadata: vi.fn(),
@@ -664,7 +664,7 @@ describe('defineRouter route resolver', () => {
     const utils = makeUtils();
     await router.handleBuild({
       ...utils,
-      rscPath2pathname: (path) => 'payload/' + path,
+      rscPathToFileName: (path) => 'payload/' + path,
       generateFile: async (path, body) => {
         files.set(path, body);
       },
@@ -715,7 +715,7 @@ describe('defineRouter route resolver', () => {
     );
     await router.handleBuild({
       ...utils,
-      rscPath2pathname: (path) => 'payload/' + path,
+      rscPathToFileName: (path) => 'payload/' + path,
       generateFile: async (path, body) => {
         files.set(path, await new Response(body).text());
       },
@@ -765,7 +765,7 @@ describe('defineRouter route resolver', () => {
       await expect(
         router.handleBuild({
           ...makeUtils(),
-          rscPath2pathname: (path) => path,
+          rscPathToFileName: (path) => path,
           generateFile,
           generateDefaultHtml: vi.fn(),
           saveBuildMetadata: vi.fn(),
@@ -799,7 +799,7 @@ describe('defineRouter route resolver', () => {
     const generateFile = vi.fn();
     await router.handleBuild({
       ...makeUtils(),
-      rscPath2pathname: (path) => path,
+      rscPathToFileName: (path) => path,
       generateFile,
       generateDefaultHtml: vi.fn(),
       saveBuildMetadata: async (key, value) => {
@@ -862,7 +862,7 @@ describe('defineRouter route resolver', () => {
       await expect(
         router.handleBuild({
           ...makeUtils(),
-          rscPath2pathname: (path) => path,
+          rscPathToFileName: (path) => path,
           generateFile: vi.fn(),
           generateDefaultHtml: vi.fn(),
           saveBuildMetadata,
@@ -891,7 +891,7 @@ describe('defineRouter route resolver', () => {
     try {
       await router.handleBuild({
         ...makeUtils(),
-        rscPath2pathname: (path) => path,
+        rscPathToFileName: (path) => path,
         generateFile: vi.fn(),
         generateDefaultHtml: vi.fn(),
         saveBuildMetadata,
@@ -920,7 +920,7 @@ describe('defineRouter route resolver', () => {
     const metadata = new Map<string, string>();
     await router.handleBuild({
       ...makeUtils(),
-      rscPath2pathname: (path) => path,
+      rscPathToFileName: (path) => path,
       generateFile: vi.fn(),
       generateDefaultHtml: vi.fn(),
       saveBuildMetadata: async (key, value) => {
@@ -955,7 +955,7 @@ describe('defineRouter route resolver', () => {
     await expect(
       router.handleBuild({
         ...makeUtils(),
-        rscPath2pathname: (path) => path,
+        rscPathToFileName: (path) => path,
         generateFile: vi.fn(),
         generateDefaultHtml: vi.fn(),
         saveBuildMetadata,
@@ -1008,7 +1008,7 @@ describe('defineRouter route resolver', () => {
     const generateFile = vi.fn();
     await router.handleBuild({
       ...utils,
-      rscPath2pathname: (path) => path,
+      rscPathToFileName: (path) => path,
       generateFile,
       generateDefaultHtml,
       saveBuildMetadata: vi.fn(),
@@ -1044,7 +1044,7 @@ describe('defineRouter route resolver', () => {
     const generateFile = vi.fn();
     await router.handleBuild({
       ...utils,
-      rscPath2pathname: (path) => path,
+      rscPathToFileName: (path) => path,
       generateFile,
       generateDefaultHtml: vi.fn(),
       saveBuildMetadata: vi.fn(),
@@ -1069,7 +1069,7 @@ describe('defineRouter route resolver', () => {
         {
           pathname: '/posts/one',
           routerDefinition: createRouterDefinition('post', true),
-          prefetchPattern: '^/posts/[^/]+$',
+          prefetchRegExp: '^/posts/[^/]+$',
         },
       ],
     });
@@ -1080,7 +1080,7 @@ describe('defineRouter route resolver', () => {
     });
     await router.handleBuild({
       ...utils,
-      rscPath2pathname: (path) => path,
+      rscPathToFileName: (path) => path,
       generateFile: vi.fn(),
       generateDefaultHtml: vi.fn(),
       saveBuildMetadata: vi.fn(),

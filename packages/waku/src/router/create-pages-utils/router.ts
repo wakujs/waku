@@ -1,8 +1,8 @@
 // Import the public API directly; the server barrel would cycle through createPages.
 import { unstable_defineRouter } from '../define-router.js';
 import {
-  path2regexp,
   pathSpecAsString,
+  pathSpecToRegExpSource,
 } from '../isomorphic-utils/path-spec.js';
 import { getSliceSlotId } from '../isomorphic-utils/router-protocol.js';
 import { createConfigRegistry } from './config-registry.js';
@@ -48,7 +48,7 @@ export const createConfiguredRouter = (fns: {
           pathname,
           routerDefinition: await resolver.resolveRoute(config, pathname, ''),
           prerender: isLiteral && config.isStatic,
-          prefetchPattern: path2regexp(
+          prefetchRegExp: pathSpecToRegExpSource(
             config.pathPatternSpec ?? config.pathSpec,
           ),
         });

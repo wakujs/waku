@@ -1,6 +1,6 @@
 import { setServerCallback } from '@vitejs/plugin-rsc/browser';
 // Layering rule: src/lib must not import src modules outside src/lib.
-// Exception: bootstrap must share Minimal's action runtime.
+// Exception: bootstrap must share Minimal's server function runtime.
 import { unstable_callServerRsc } from '../../minimal/client-runtime.js';
 setServerCallback(unstable_callServerRsc);
 

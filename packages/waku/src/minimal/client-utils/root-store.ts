@@ -18,8 +18,8 @@ export type RequestRsc = (
 
 /**
  * Wraps Root request inputs, the supplied fetch, or decoded elements and values.
- * `options.type` distinguishes RSC fetches from server action calls. Forward the
- * supplied fetch and signal when composing transport. Return the action value
+ * `options.type` distinguishes RSC fetches from server function calls. Forward the
+ * supplied fetch and signal when composing transport. Return the server function value
  * alongside elements; use `unstable_combineElements` to preserve their etags.
  * In an enhancer array, the last entry wraps all earlier entries.
  */

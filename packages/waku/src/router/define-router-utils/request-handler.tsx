@@ -40,7 +40,7 @@ const parseInternalRoute = (location: string, base: string) => {
   };
 };
 
-const parseActionOrigin = (req: Request) => {
+const parseServerFunctionOrigin = (req: Request) => {
   const location = req.headers.get(ACTION_LOCATION_HEADER);
   if (!location) {
     return undefined;
@@ -69,7 +69,7 @@ export const createRequestHandler = ({
 }): HandleRequest => {
   const requestElementCache = createElementCache();
   let requestElementCacheInit: Promise<void> | undefined;
-  let cachedPath2moduleIds: Record<string, string[]> | undefined;
+  let cachedModuleIdsByPrefetchRegExp: Record<string, string[]> | undefined;
 
   return async (
     input,
@@ -92,13 +92,15 @@ export const createRequestHandler = ({
         }
       })();
       await requestElementCacheInit;
-      const getPath2moduleIds = async () => {
-        if (!cachedPath2moduleIds) {
-          cachedPath2moduleIds = JSON.parse(
-            (await loadBuildMetadata(ROUTER_METADATA.path2moduleIds)) || '{}',
+      const getModuleIdsByPrefetchRegExp = async () => {
+        if (!cachedModuleIdsByPrefetchRegExp) {
+          cachedModuleIdsByPrefetchRegExp = JSON.parse(
+            (await loadBuildMetadata(
+              ROUTER_METADATA.moduleIdsByPrefetchRegExp,
+            )) || '{}',
           );
         }
-        return cachedPath2moduleIds!;
+        return cachedModuleIdsByPrefetchRegExp!;
       };
 
       // html has to carry every slot, so a client etag must not omit one
@@ -121,7 +123,9 @@ export const createRequestHandler = ({
           if (rscPath === undefined) {
             const origin = getOrigin();
             if (!origin) {
-              throw new Error('The route this action came from is unknown');
+              throw new Error(
+                'The route this server function was called from is unknown',
+              );
             }
             [rscPath, rscParams] = origin;
             isOrigin = true;
@@ -247,7 +251,7 @@ export const createRequestHandler = ({
         try {
           const { value, entries, isOrigin } = await withRerender(
             () => fn(...args),
-            () => parseActionOrigin(input.req),
+            () => parseServerFunctionOrigin(input.req),
           );
           return renderRsc(
             isOrigin
@@ -332,7 +336,7 @@ export const createRequestHandler = ({
               status,
               ...(nonce ? { nonce } : {}),
               unstable_extraScriptContent: getRouterPrefetchCode(
-                await getPath2moduleIds(),
+                await getModuleIdsByPrefetchRegExp(),
               ),
               unstable_rethrowNotFound:
                 status !== 404 && (await routeEntries.has404()),

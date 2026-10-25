@@ -11,33 +11,39 @@ import {
 import { useRouterCache } from './caches.js';
 import { isSameRscRoute } from './route-url.js';
 
-type ActionRoutingCallbacks = {
+type ServerFunctionRoutingCallbacks = {
   getSettledRoute: () => RouteProps;
   getPendingRoute: () => Pick<RouteProps, 'path' | 'query'> | undefined;
   onRouteChange: (route: RouteProps) => void;
 };
 
-/** Holds one Root's action policy and its committed navigation callbacks. */
-export type ActionRouting = {
+/**
+ * Holds one Root's server function routing policy and its committed
+ * navigation callbacks.
+ */
+export type ServerFunctionRouting = {
   enhancer: Unstable_RscEnhancer;
-  /** Cleanup disconnects only this connection. Prefer `useActionRouting_UNSTABLE`. */
+  /**
+   * Cleanup disconnects only this connection. Prefer
+   * `useServerFunctionRouting_UNSTABLE`.
+   */
   connect: (
-    connection: ActionRoutingCallbacks & {
+    connection: ServerFunctionRoutingCallbacks & {
       cache: ReturnType<typeof useRouterCache>;
     },
   ) => () => void;
 };
 
 /**
- * Creates action routing for one custom router. Install `enhancer` last in
- * that router's Root `rscEnhancers`, then connect navigation callbacks with
- * `useActionRouting_UNSTABLE` beneath the Root. Create the controller and Root's
- * stable enhancer array before rendering React. RSC requests pass through.
- * Actions before connection fail; start mount-time actions in `useEffect`,
- * not descendant layout effects.
+ * Creates server function routing for one custom router. Install `enhancer`
+ * last in that router's Root `rscEnhancers`, then connect navigation
+ * callbacks with `useServerFunctionRouting_UNSTABLE` beneath the Root. Create
+ * the controller and Root's stable enhancer array before rendering React. RSC
+ * requests pass through. Server function calls before connection fail; start
+ * mount-time calls in `useEffect`, not descendant layout effects.
  */
-export const createActionRouting = (): ActionRouting => {
-  let connection: Parameters<ActionRouting['connect']>[0] | undefined;
+export const createServerFunctionRouting = (): ServerFunctionRouting => {
+  let connection: Parameters<ServerFunctionRouting['connect']>[0] | undefined;
   let connected = false;
   return {
     connect: (nextConnection) => {
@@ -55,7 +61,7 @@ export const createActionRouting = (): ActionRouting => {
       }
       if (!connected || !connection) {
         throw new Error(
-          'Action routing is not connected. Call mount-time actions from useEffect, not useLayoutEffect.',
+          'Server function routing is not connected. Call mount-time server functions from useEffect, not useLayoutEffect.',
         );
       }
       const origin = connection.getSettledRoute();
@@ -75,7 +81,9 @@ export const createActionRouting = (): ActionRouting => {
       });
       const { cache, getSettledRoute, getPendingRoute, onRouteChange } =
         connection;
-      const handleActionElements = (nextElements: Record<string, unknown>) => {
+      const handleServerFunctionElements = (
+        nextElements: Record<string, unknown>,
+      ) => {
         cache.learnStaticFromElements(nextElements);
         const route = getRouteFromElements(nextElements);
         if (!route) {
@@ -93,7 +101,7 @@ export const createActionRouting = (): ActionRouting => {
       };
       if (!(IS_ORIGIN_ID in result.elements)) {
         if (Reflect.ownKeys(result.elements).length) {
-          handleActionElements(result.elements);
+          handleServerFunctionElements(result.elements);
         }
         return result;
       }
@@ -108,34 +116,45 @@ export const createActionRouting = (): ActionRouting => {
       const elements = combineElements({}, result.elements, {
         filter: (key) => key !== IS_ORIGIN_ID,
       });
-      handleActionElements(elements);
+      handleServerFunctionElements(elements);
       return { ...result, elements };
     },
   };
 };
 
 /**
- * Connects a declaratively installed action-routing controller to this Root.
- * Each action reports `getSettledRoute()` as its origin. Origin rerenders are
- * dropped, retaining the action value, if the settled or pending route changes.
+ * Connects a declaratively installed server-function-routing controller to this Root.
+ * Each server function call reports `getSettledRoute()` as its origin. Origin
+ * rerenders are dropped, retaining the return value, if the settled or pending
+ * route changes.
  * `getPendingRoute` returns the uncommitted destination or `undefined`.
  * `onRouteChange` commits a different response route without fetching: Minimal
  * merges its elements after the enhancer chain resolves. Callback updates take
  * effect on commit without replacing the enhancer.
  */
-export const useActionRouting = (
-  actionRouting: ActionRouting,
-  { getSettledRoute, getPendingRoute, onRouteChange }: ActionRoutingCallbacks,
+export const useServerFunctionRouting = (
+  serverFunctionRouting: ServerFunctionRouting,
+  {
+    getSettledRoute,
+    getPendingRoute,
+    onRouteChange,
+  }: ServerFunctionRoutingCallbacks,
 ): void => {
   const cache = useRouterCache();
   useLayoutEffect(
     () =>
-      actionRouting.connect({
+      serverFunctionRouting.connect({
         cache,
         getSettledRoute,
         getPendingRoute,
         onRouteChange,
       }),
-    [actionRouting, cache, getSettledRoute, getPendingRoute, onRouteChange],
+    [
+      serverFunctionRouting,
+      cache,
+      getSettledRoute,
+      getPendingRoute,
+      onRouteChange,
+    ],
   );
 };

@@ -49,17 +49,17 @@ have the same content. Merges can retain previously visited routes' slots.
 Route responses also carry these entries. They are control data, not components
 to render with `Slot`.
 
-| Entry       | Contract                                                                                                                                           |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ROUTE`     | `[pathname, query]` of the route the server rendered, not necessarily the requested route.                                                         |
-| `IS_STATIC` | Every source of that route is immutable, including sources omitted by matching etags. It does not mean HTML was emitted at build time.             |
-| `HAS404`    | A custom `/404` route is available. Present when true.                                                                                             |
-| `IS_ORIGIN` | An action used the no-argument `rerenderRoute()` form to refresh its request-time origin. The action enhancer consumes this marker before merging. |
+| Entry       | Contract                                                                                                                                                                         |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ROUTE`     | `[pathname, query]` of the route the server rendered, not necessarily the requested route.                                                                                       |
+| `IS_STATIC` | Every source of that route is immutable, including sources omitted by matching etags. It does not mean HTML was emitted at build time.                                           |
+| `HAS404`    | A custom `/404` route is available. Present when true.                                                                                                                           |
+| `IS_ORIGIN` | A server function call used the no-argument `rerenderRoute()` form to refresh its request-time origin. The server function routing enhancer consumes this marker before merging. |
 
 Use `unstable_getRouteFromElements`, `unstable_isStaticFromElements`, and
 `unstable_has404FromElements` from `waku/router/client-core` to read route
-metadata. Independently fetched slices and actions that do not rerender a route
-need not contain it. Neither the action return value nor Minimal's etags are
+metadata. Independently fetched slices and server function calls that do not rerender a
+route need not contain it. Neither a server function's return value nor Minimal's etags are
 Router metadata.
 
 These contracts describe server responses. The standard client also writes
@@ -231,7 +231,7 @@ if (outcome.type === 'loaded') {
 ```
 
 Queue the response patch, not this request-time snapshot, when preserving later
-action or client updates. `unstable_buildMergePatch` implements a snapshot-conflict
+server function or client updates. `unstable_buildMergePatch` implements a snapshot-conflict
 policy for custom bindings; the standard binding queues response patches directly.
 
 If an instant paint has already merged an adopted response, the binding must not
@@ -245,12 +245,12 @@ update queue. The intent is stored under the client-only `ROUTER_STATE_ID` symbo
 it is neither a server response field nor another slot. Minimal merges it without
 interpreting it.
 
-| State                                     | Owner                      | Purpose                                                           |
-| ----------------------------------------- | -------------------------- | ----------------------------------------------------------------- |
-| Elements and attached Router state        | Minimal Root's React state | Select the content and URL intent that render together.           |
-| Requested or accepted route               | Router ref                 | Cancel pending work and route action results until UI catches up. |
-| Applied snapshot identity and destination | Router's layout effect     | Write history and scroll once for each committed intent.          |
-| Fetch error                               | Router's React state       | Render the failure and clear it when another request starts.      |
+| State                                     | Owner                      | Purpose                                                                    |
+| ----------------------------------------- | -------------------------- | -------------------------------------------------------------------------- |
+| Elements and attached Router state        | Minimal Root's React state | Select the content and URL intent that render together.                    |
+| Requested or accepted route               | Router ref                 | Cancel pending work and route server function results until UI catches up. |
+| Applied snapshot identity and destination | Router's layout effect     | Write history and scroll once for each committed intent.                   |
+| Fetch error                               | Router's React state       | Render the failure and clear it when another request starts.               |
 
 Each request carries forward accepted RSC elements as its cache baseline,
 which can be ahead of the last painted route. Accepted instant responses retain
@@ -265,19 +265,19 @@ slot stays removed even if the response returns it. Until that state commits,
 their cache baseline makes no etag
 claims because it can differ from the latest queued values. Static-route
 eligibility is learned when the accepted instant state commits.
-A metadata-only action dispatch makes no element-validator claims for its
-destination. This baseline does not track every queued action or client merge;
+A metadata-only server function dispatch makes no element-validator claims for its
+destination. This baseline does not track every queued server function or client merge;
 response patches merge with the latest queued elements through Minimal's
 update queue.
 After a failure, refetch decisions use the retained request origin, not an
-instant preview whose response may have been cancelled. Action origins use
-the retained elements' route metadata as described below. Failed commits do
+instant preview whose response may have been cancelled. Server function call
+origins use the retained elements' route metadata as described below. Failed commits do
 not learn static routes from retained preview metadata. Before replacing the
 queued Router state, a failure resolves its retained origin into route metadata,
 preserving static-page queries and instant-preview origins.
 
 An ordinary navigation queues its pending elements promise when fetching starts.
-Later action and client merges follow it in React's update order. `fetchRsc`
+Later server function and client merges follow it in React's update order. `fetchRsc`
 returns the decoded response patch without filling omitted entries from its
 request-time base. Returned entries replace earlier values, including equal
 primitive values; omitted entries retain queued values and removals. Prefetching
@@ -287,10 +287,10 @@ base. A rejected instant response preserves the previous queued values rather
 than replacing them with prefetch values. Instant fetch cancellation stops
 waiting even when transport ignores the signal.
 The destination's route slot and protocol metadata are reapplied when the
-response arrives so an action from the previous route cannot restore its
+response arrives so a server function call from the previous route cannot restore its
 composition over the destination.
 Redirect and 404 follows after an instant paint queue their pending response
-patch before later action and client updates, using the ordinary navigation
+patch before later server function and client updates, using the ordinary navigation
 merge and destination finalization. Response metadata identifies the resolved
 route and is applied independently of slot conflicts. Reusing a cached static
 route restores its static classification.
@@ -337,34 +337,34 @@ RSC hot reload selects an accepted destination before retiring the request. If
 only a pending fetch exists, it refreshes the visible route. This keeps an
 accepted but suspended navigation from being replaced by the previous page.
 
-## Action Intent
+## Server Function Intent
 
-A controller from `unstable_createActionRouting` sends the settled route at action request time in
+A controller from `unstable_createServerFunctionRouting` sends the settled route at server function request time in
 `X-Waku-Action-Location`. This header is client-to-server information.
-After a failed navigation, the action origin follows the retained elements'
+After a failed navigation, the call's origin follows the retained elements'
 route metadata, which can be ahead of the request's cache baseline after an
 instant paint. The failed destination's URL remains in history.
 
 - `rerenderRoute()` refreshes that origin and marks the response `IS_ORIGIN`.
   If the user has navigated away or a conflicting navigation is pending, the client
-  discards its elements but retains the action's return value.
-- `rerenderRoute(destination)` and action redirects express navigation intent.
+  discards its elements but retains the server function's return value.
+- `rerenderRoute(destination)` and server function redirects express navigation intent.
   Their destination must not be discarded merely because the user left the origin.
 
 Create one controller and a stable enhancer array for each Root before rendering
 React. Install its `enhancer` last in Root's `rscEnhancers`, and call
-`useActionRouting_UNSTABLE(controller, callbacks)` in the
+`useServerFunctionRouting_UNSTABLE(controller, callbacks)` in the
 client binding beneath that Root. The hook connects the Root cache and current
 navigation callbacks in a layout effect; it does not install the enhancer.
-Callbacks can change without replacing the pipeline. Start mount-time actions
-in `useEffect`: actions before connection fail rather than inventing an origin.
+Callbacks can change without replacing the pipeline. Start mount-time server function
+calls in `useEffect`: calls before connection fail rather than inventing an origin.
 
 ```tsx
-const actionRouting = unstable_createActionRouting();
-const rscEnhancers = [...inputEnhancers, actionRouting.enhancer];
+const serverFunctionRouting = unstable_createServerFunctionRouting();
+const rscEnhancers = [...inputEnhancers, serverFunctionRouting.enhancer];
 const app = (
   <Root rscEnhancers={rscEnhancers}>
-    <Binding actionRouting={actionRouting} />
+    <Binding serverFunctionRouting={serverFunctionRouting} />
   </Root>
 );
 ```
@@ -372,7 +372,7 @@ const app = (
 The binding calls:
 
 ```tsx
-useActionRouting_UNSTABLE(actionRouting, {
+useServerFunctionRouting_UNSTABLE(serverFunctionRouting, {
   getSettledRoute,
   getPendingRoute,
   onRouteChange,
@@ -385,17 +385,17 @@ See [Rerender After Actions](/guides/rerender-after-actions).
 
 Paths below are relative to `packages/waku/src/router`.
 
-| Responsibility                                                | File                                                               |
-| ------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Protocol IDs, RSC inputs, slot IDs, and metadata readers      | `isomorphic-utils/router-protocol.ts`                              |
-| Route resolution to elements and route metadata               | `define-router-utils/route-entries.ts`                             |
-| Request handling, redirects, not-found, and action responses  | `define-router-utils/request-handler.tsx`                          |
-| Client action intent and stale-origin protection              | `client-core-utils/action-routing.ts`                              |
-| Fetch-time follows and render-time follow policy              | `client-core-utils/load.ts` and `client-core-utils/error-route.ts` |
-| Element/route/history commit in the standard binding          | `client-utils/navigation.ts` and `client-utils/router-state.ts`    |
-| Cached eager paints and response adoption                     | `client-utils/instant-navigation.ts`                               |
-| Pinned slots, waiting values, and instant response settlement | `client-utils/instant-elements.ts`                                 |
-| Rendered error handling and boundary resets                   | `client-utils/render-error.tsx` and `client.tsx`                   |
+| Responsibility                                                        | File                                                               |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Protocol IDs, RSC inputs, slot IDs, and metadata readers              | `isomorphic-utils/router-protocol.ts`                              |
+| Route resolution to elements and route metadata                       | `define-router-utils/route-entries.ts`                             |
+| Request handling, redirects, not-found, and server function responses | `define-router-utils/request-handler.tsx`                          |
+| Server function call intent and stale-origin protection               | `client-core-utils/server-function-routing.ts`                     |
+| Fetch-time follows and render-time follow policy                      | `client-core-utils/load.ts` and `client-core-utils/error-route.ts` |
+| Element/route/history commit in the standard binding                  | `client-utils/navigation.ts` and `client-utils/router-state.ts`    |
+| Cached eager paints and response adoption                             | `client-utils/instant-navigation.ts`                               |
+| Pinned slots, waiting values, and instant response settlement         | `client-utils/instant-elements.ts`                                 |
+| Rendered error handling and boundary resets                           | `client-utils/render-error.tsx` and `client.tsx`                   |
 
 `packages/waku/tests/router-protocol.test.tsx` exercises server responses through
 Minimal's client and Router's public helpers, substituting only Flight

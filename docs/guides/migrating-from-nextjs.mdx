@@ -266,8 +266,8 @@ loudly:
   requests `/RSC/R/<path>.txt`, not the page path, so a middleware matching
   `/dashboard` on `c.req.path` sees the first page load and nothing after it,
   and serves the protected payload to anyone who clicks a link.
-  `unstable_parseRouterRequest` closes that particular gap, but an action
-  dispatched from the client carries no route at all, so no path rule covers it.
+  `unstable_parseRouterRequest` closes that particular gap, but a server
+  function called from the client carries no route at all, so no path rule covers it.
   And a layout is not the boundary either: Waku renders a route's layouts and
   page as independent slots, so a layout that redirects still lets the page
   render its data. Put the authorization check in the data access layer and the

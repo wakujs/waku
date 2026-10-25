@@ -28,7 +28,7 @@ Inside the app, `unstable_parseRouterRequest` reads either url as the route it a
 
 If you customize `basePath` or `rscBase`, adjust any hand-written rules accordingly.
 
-For application-level redirects implemented inside Waku routes or server actions, see [Redirects and Not Found](/guides/redirects-and-not-found) instead. That is a separate use case from the redirect-map approach described here.
+For application-level redirects implemented inside Waku routes or server functions, see [Redirects and Not Found](/guides/redirects-and-not-found) instead. That is a separate use case from the redirect-map approach described here.
 
 ### Redirect via middleware
 
@@ -76,7 +76,7 @@ Matching on `parsed.path` covers both requests with one entry per route, and kee
 
 > In a production build the adapter serves statically generated files before middleware runs, so a middleware redirect does not fire for a route rendered with `render: 'static'`. Redirect those from the hosting environment instead, or make the route dynamic.
 
-Note the `type` check: an action dispatched from the client is addressed by function id and carries no route, so a path rule can never match it. A progressively enhanced form submitted without JavaScript is the other way around — it posts to the route's own url, so it parses as `'route'` and a rule for that path does apply to it. Either way, a path rule is a redirect, not an authorization boundary; see [Authentication](/guides/integrations/authentication) for where to put checks that must not be bypassed.
+Note the `type` check: a server function called from the client is addressed by its id and carries no route, so a path rule can never match it. A progressively enhanced form submitted without JavaScript is the other way around — it posts to the route's own url, so it parses as `'route'` and a rule for that path does apply to it. Either way, a path rule is a redirect, not an authorization boundary; see [Authentication](/guides/integrations/authentication) for where to put checks that must not be bypassed.
 
 ### Redirect via hosting environment
 
@@ -104,4 +104,4 @@ This very much depends on the hosting environment you are using. For example, on
 /RSC/R/old.txt /RSC/R/new.txt 301
 ```
 
-For app-level redirects inside page code or server actions, use [Redirects and Not Found](/guides/redirects-and-not-found) instead of external redirect maps.
+For app-level redirects inside page code or server functions, use [Redirects and Not Found](/guides/redirects-and-not-found) instead of external redirect maps.

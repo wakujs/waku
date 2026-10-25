@@ -33,14 +33,14 @@ export const pruneBuildOutput = async ({
   distDir,
   rscBundle,
   prunableFiles,
-  serverReferenceIds,
+  serverReferenceModuleIds,
 }: {
   rootDir: string;
   srcDir: string;
   distDir: string;
   rscBundle: Record<string, Chunk | Asset>;
   prunableFiles: string[];
-  serverReferenceIds: ReadonlySet<string>;
+  serverReferenceModuleIds: ReadonlySet<string>;
 }): Promise<{ stubbedChunks: string[]; deletedAssets: string[] }> => {
   if (prunableFiles.length === 0) {
     return { stubbedChunks: [], deletedAssets: [] };
@@ -89,7 +89,7 @@ export const pruneBuildOutput = async ({
     if (chunk.isEntry && chunk.name !== 'build') {
       keepRoots.push(chunk.fileName);
     }
-    if (chunk.moduleIds.some((id) => serverReferenceIds.has(id))) {
+    if (chunk.moduleIds.some((id) => serverReferenceModuleIds.has(id))) {
       keepRoots.push(chunk.fileName);
     }
   }

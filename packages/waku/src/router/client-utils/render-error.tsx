@@ -109,8 +109,9 @@ const FollowError = ({
     }
     if (decision.type === 'leave') {
       // every leave replaces, so a navigation that already wrote its url does
-      // not stack an entry the reader never saw. An action leave drops the
-      // page it was on, which a form post without javascript would have kept
+      // not stack an entry the reader never saw. A leave after a server
+      // function call drops the page it was on, which a form post without
+      // javascript would have kept
       if (leftRef.current !== decision.url.href) {
         // dev replays the effect, and firefox cancels a navigation that is
         // replaced while the first is still in flight

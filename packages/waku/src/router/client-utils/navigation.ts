@@ -12,8 +12,6 @@ import {
   useMergeElements_UNSTABLE as useMergeElements,
   useRegisterRscReloadListener_UNSTABLE as useRegisterRscReloadListener,
 } from 'waku/minimal/client';
-import { useActionRouting } from '../client-core-utils/action-routing.js';
-import type { ActionRouting } from '../client-core-utils/action-routing.js';
 import { useRouterCache } from '../client-core-utils/caches.js';
 import { isFollowable } from '../client-core-utils/error-route.js';
 import { useHmrRefetch } from '../client-core-utils/hmr.js';
@@ -24,6 +22,8 @@ import {
   isSameRscRoute,
   parseRoute,
 } from '../client-core-utils/route-url.js';
+import type { ServerFunctionRouting } from '../client-core-utils/server-function-routing.js';
+import { useServerFunctionRouting } from '../client-core-utils/server-function-routing.js';
 import type { RouteProps } from '../isomorphic-utils/route-path.js';
 import {
   IS_STATIC_ID,
@@ -97,7 +97,7 @@ export const useNavigation = (
   elements: Elements,
   fallbackRoute: RouteProps,
   routeInterceptor: ((route: RouteProps) => RouteProps | false) | undefined,
-  actionRouting: ActionRouting,
+  serverFunctionRouting: ServerFunctionRouting,
 ): Navigation => {
   const cache = useRouterCache();
   const initialRoute = useInitialRoute(fallbackRoute);
@@ -505,7 +505,7 @@ export const useNavigation = (
   );
 
   const getPendingRoute = useCallback(() => requestRef.current?.target, []);
-  const commitActionRoute = useCallback(
+  const commitServerFunctionRoute = useCallback(
     (nextRoute: RouteProps) => {
       const is404 = nextRoute.path === '/404';
       dispatchChangeRoute(changeRoute, nextRoute, {
@@ -522,10 +522,10 @@ export const useNavigation = (
     },
     [changeRoute],
   );
-  useActionRouting(actionRouting, {
+  useServerFunctionRouting(serverFunctionRouting, {
     getSettledRoute,
     getPendingRoute,
-    onRouteChange: commitActionRoute,
+    onRouteChange: commitServerFunctionRoute,
   });
 
   useEffect(() => {

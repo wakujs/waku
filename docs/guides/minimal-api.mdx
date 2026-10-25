@@ -71,7 +71,7 @@ Advanced composition APIs remain available to any Minimal-based framework:
   The formatter is available from both `waku/minimal/server` and
   `waku/minimal/client`; it preserves the base URL's query and hash.
   These support middleware in Minimal-based frameworks; request inspection
-  does not validate actions or authorize access.
+  does not validate server function calls or authorize access.
 
 ### Mental Model
 
@@ -141,13 +141,13 @@ const handlers: Handlers = {
   handleBuild: async ({
     renderRsc,
     renderHtml,
-    rscPath2pathname,
+    rscPathToFileName,
     generateFile,
   }) => {
     const rscPath = '';
     const stream = await renderRsc({ App: <App name="Waku" /> });
     const [rscStream, htmlStream] = stream.tee();
-    await generateFile(rscPath2pathname(rscPath), rscStream);
+    await generateFile(rscPathToFileName(rscPath), rscStream);
     const html = await renderHtml(htmlStream, <Slot id="App" />, { rscPath });
     await generateFile('index.html', html.body!);
   },
@@ -399,7 +399,7 @@ The build utilities are:
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | `renderRsc(elements, options?)`             | Render an RSC payload stream. Use `options.value` for a server function result.                      |
 | `renderHtml(elementsStream, html, options)` | Render HTML from an RSC stream and client shell.                                                     |
-| `rscPath2pathname(rscPath)`                 | Convert an RSC path into the correct output pathname for the RSC payload.                            |
+| `rscPathToFileName(rscPath)`                | Convert an RSC path into the file name of its RSC payload, relative to `dist/public`.                |
 | `saveBuildMetadata(key, value)`             | Persist metadata that will later be available through `loadBuildMetadata(...)` in `handleRequest`.   |
 | `generateFile(fileName, body)`              | Write a file to `dist/public`. Accepts `ReadableStream` or `string`.                                 |
 | `generateDefaultHtml(fileName, options?)`   | Write the default client-rendered HTML shell to `dist/public`, optionally with extra bootstrap code. |
@@ -418,14 +418,14 @@ Prerender one HTML page and one RSC payload:
 handleBuild: async ({
   renderRsc,
   renderHtml,
-  rscPath2pathname,
+  rscPathToFileName,
   generateFile,
 }) => {
   const rscPath = '';
   const stream = await renderRsc({ App: <App name="Waku" /> });
   const [rscStream, htmlStream] = stream.tee();
 
-  await generateFile(rscPath2pathname(rscPath), rscStream);
+  await generateFile(rscPathToFileName(rscPath), rscStream);
 
   const html = await renderHtml(htmlStream, <Slot id="App" />, { rscPath });
   await generateFile('index.html', html.body!);
@@ -466,9 +466,9 @@ handleRequest: async (input, { renderRsc, loadBuildMetadata }) => {
 Render during build:
 
 ```tsx
-handleBuild: async ({ renderRsc, generateFile, rscPath2pathname }) => {
+handleBuild: async ({ renderRsc, generateFile, rscPathToFileName }) => {
   const body = await renderRsc({ App: <App name="Waku" /> });
-  await generateFile(rscPath2pathname(''), body);
+  await generateFile(rscPathToFileName(''), body);
 },
 ```
 
@@ -499,7 +499,7 @@ Important behavior:
 - `Root` is required for `Slot`, `Children`, `useElementsPromise`, `useMergeElements`,
   and `useRegisterRscReloadListener`. Outside a
   `Root`, `useFetchRsc` still works but runs no enhancers.
-- Each `Root` owns its client store. Bare server action calls use the `Root`
+- Each `Root` owns its client store. Bare server function calls use the `Root`
   that was most recently mounted when the request starts.
 - `Root` injects a `generator` meta tag. Charset and viewport are yours to
   declare.
@@ -764,9 +764,9 @@ if (globalThis.__WAKU_HYDRATE__) {
 - The configured pipeline is available before descendant layout effects. `options.type` is `rsc` for a payload fetch and `call` for a server function call. Forward `options`, including the supplied `fetch` and abort signal.
 - Results contain `{ elements, value }`, where `value` is a server function's return value. Elements exclude Minimal's reserved keys. Use `unstable_combineElements` to change an element map while preserving its etags; a spread loses validators and prevents the server from skipping retained slots.
 - Client bootstrap fetches run the configured enhancers during render. Descendants can suspend on the result, showing an enclosing Suspense fallback. The bootstrap cache deduplicates Suspense retries by the initial path, params reference, and enhancer-array reference; separate Roots with the same cache identity may share a request. Use distinct stable enhancer arrays when independent bootstrap requests are required. If a bootstrap request fails before Root commits, resetting an enclosing error boundary with the same cache identity may reuse the rejected promise.
-- A streamed hydration payload bypasses enhancers: its request began before the client Root existed. Enhancers also run for subsequent Root-bound fetches, server actions received by that Root, and its development reloads. A bare server action goes to the Root mounted last, which need not be the one containing its caller.
+- A streamed hydration payload bypasses enhancers: its request began before the client Root existed. Enhancers also run for subsequent Root-bound fetches, server function calls received by that Root, and its development reloads. A bare server function call goes to the Root mounted last, which need not be the one containing its caller.
 
-For the file-based Router, create the same stable array before rendering React and pass it as `<Router unstable_rscEnhancers={enhancers} />` in `src/waku.client.tsx`. These enhancers form the inner part of Router's pipeline; its private HTTP redirect and action-routing enhancers wrap them. They can delay or transform results before Router handles them. A decoded-result cache in this inner list does not retain metadata reconciled by Router. Minimal's array has no private Router layers, so custom routers own their full composition.
+For the file-based Router, create the same stable array before rendering React and pass it as `<Router unstable_rscEnhancers={enhancers} />` in `src/waku.client.tsx`. These enhancers form the inner part of Router's pipeline; its private HTTP redirect and server-function-routing enhancers wrap them. They can delay or transform results before Router handles them. A decoded-result cache in this inner list does not retain metadata reconciled by Router. Minimal's array has no private Router layers, so custom routers own their full composition.
 
 ##### Migrating effect-based integrations
 
@@ -872,7 +872,7 @@ if (input.type === 'http' && input.pathname === '/') {
 - `renderHtml(...)` consumes its stream. Call `tee()` if you also need to emit that same payload as a file.
 - `Slot` IDs must exactly match the keys returned by `renderRsc(...)`.
 - `undefined` is invalid for slot values. Use `null` for an intentionally empty element.
-- `rscPath2pathname(...)` should be used instead of hardcoding RSC payload file names.
+- `rscPathToFileName(...)` should be used instead of hardcoding RSC payload file names.
 - `handleBuild` emits nothing unless you explicitly call `generateFile(...)` or `generateDefaultHtml(...)`.
 - Returning `'fallback'` is not the same as returning `null`. `'fallback'` explicitly asks Waku to generate the fallback HTML response.
 - The client bootstrap for SSR uses `hydrateRoot(document, ...)`, not `createRoot(document.getElementById('root')!)`.

@@ -157,7 +157,7 @@ export const getPathMapping = (
 
 const escapeRegExp = (s: string) => s.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
 
-export const path2regexp = (pathSpec: PathSpec) => {
+export const pathSpecToRegExpSource = (pathSpec: PathSpec) => {
   const parts = pathSpec.map((item) => {
     if (item.type === 'literal') {
       return escapeRegExp(item.name);

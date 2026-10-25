@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest';
 import {
-  decodeFuncId,
   decodeRscPath,
-  encodeFuncId,
+  decodeServerFunctionId,
   encodeRscPath,
+  encodeServerFunctionId,
 } from '../src/lib/utils-isomorphic/rsc-path.js';
 import { pathnameToRoutePath } from '../src/router/isomorphic-utils/route-path.js';
 import {
@@ -59,31 +59,31 @@ describe('decodeRscPath', () => {
   });
 });
 
-describe('encodeFuncId', () => {
-  test('encodes funcId', () => {
-    expect(encodeFuncId('foo#bar')).toBe('F/foo/bar');
+describe('encodeServerFunctionId', () => {
+  test('encodes serverFunctionId', () => {
+    expect(encodeServerFunctionId('foo#bar')).toBe('F/foo/bar');
   });
 
-  test('encodes funcId with underscore prefix', () => {
-    expect(encodeFuncId('_foo#bar')).toBe('F/__foo/bar');
+  test('encodes serverFunctionId with underscore prefix', () => {
+    expect(encodeServerFunctionId('_foo#bar')).toBe('F/__foo/bar');
   });
 
-  test('throws on invalid funcId', () => {
-    expect(() => encodeFuncId('foo#bar/baz')).toThrow();
+  test('throws on invalid serverFunctionId', () => {
+    expect(() => encodeServerFunctionId('foo#bar/baz')).toThrow();
   });
 });
 
-describe('decodeFuncId', () => {
-  test('decodes funcId', () => {
-    expect(decodeFuncId('F/foo/bar')).toBe('foo#bar');
+describe('decodeServerFunctionId', () => {
+  test('decodes serverFunctionId', () => {
+    expect(decodeServerFunctionId('F/foo/bar')).toBe('foo#bar');
   });
 
-  test('decodes funcId with underscore prefix', () => {
-    expect(decodeFuncId('F/__foo/bar')).toBe('_foo#bar');
+  test('decodes serverFunctionId with underscore prefix', () => {
+    expect(decodeServerFunctionId('F/__foo/bar')).toBe('_foo#bar');
   });
 
-  test('returns null on invalid funcId', () => {
-    expect(decodeFuncId('foo/bar')).toBe(null);
+  test('returns null on invalid serverFunctionId', () => {
+    expect(decodeServerFunctionId('foo/bar')).toBe(null);
   });
 });
 

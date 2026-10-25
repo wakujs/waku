@@ -66,7 +66,7 @@ export function staticBuildPlugin({
             distDir,
             rscBundle,
             prunableFiles,
-            serverReferenceIds: new Set(
+            serverReferenceModuleIds: new Set(
               getPluginApi(viteConfig)!.manager.serverReferences.metaMap.keys(),
             ),
           });
