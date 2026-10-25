@@ -32,7 +32,7 @@ type Option = { routePath: string; query: string | undefined };
 type ElementSpec = {
   isStatic: boolean;
   renderer: (option: Option) => ReactNode;
-  getEtagFromOption?: (option: Option) => Promise<string | undefined>;
+  getEtagFromOptions?: (option: Option) => Promise<string | undefined>;
 };
 
 const buildRouter = (elements: Record<string, ElementSpec>) =>
@@ -134,7 +134,7 @@ describe('define-router etags (per-slot omit)', () => {
       page: {
         isStatic: false,
         renderer: () => createElement('div', null, 'page'),
-        getEtagFromOption: async () => 'v1',
+        getEtagFromOptions: async () => 'v1',
       },
     });
 
@@ -148,7 +148,7 @@ describe('define-router etags (per-slot omit)', () => {
       page: {
         isStatic: false,
         renderer: () => createElement('div', null, 'page'),
-        getEtagFromOption: async () => 'v1',
+        getEtagFromOptions: async () => 'v1',
       },
     });
 
@@ -162,7 +162,7 @@ describe('define-router etags (per-slot omit)', () => {
       page: {
         isStatic: false,
         renderer: () => createElement('div', null, 'page'),
-        getEtagFromOption: async () => 'v1',
+        getEtagFromOptions: async () => 'v1',
       },
     });
 
@@ -176,7 +176,7 @@ describe('define-router etags (per-slot omit)', () => {
       page: {
         isStatic: false,
         renderer: () => createElement('div', null, 'page'),
-        getEtagFromOption: async () => tag,
+        getEtagFromOptions: async () => tag,
       },
     });
 
@@ -206,7 +206,7 @@ describe('define-router etags (per-slot omit)', () => {
       page: {
         isStatic: false,
         renderer: () => createElement('div', null, 'page'),
-        getEtagFromOption: async () => tag,
+        getEtagFromOptions: async () => tag,
       },
     });
 
@@ -237,7 +237,7 @@ describe('define-router etags (per-slot omit)', () => {
       page: {
         isStatic: true,
         renderer: () => createElement('div'),
-        getEtagFromOption: async () => 'should-be-ignored',
+        getEtagFromOptions: async () => 'should-be-ignored',
       },
     });
 
@@ -251,7 +251,7 @@ describe('define-router etags (per-slot omit)', () => {
       page: {
         isStatic: false,
         renderer: () => createElement('div'),
-        getEtagFromOption: async (option) => {
+        getEtagFromOptions: async (option) => {
           seen.push(option);
           return 'v1';
         },
@@ -335,7 +335,7 @@ describe('define-router etags (per-slot omit)', () => {
           rootElement: {
             isStatic: false,
             renderer: () => 'root',
-            getEtagFromOption: async () => tag,
+            getEtagFromOptions: async () => tag,
           },
           routeElement: { isStatic: false, renderer: () => 'route' },
           elements: {},
@@ -369,14 +369,14 @@ describe('define-router etags (per-slot omit)', () => {
           rootElement: {
             isStatic: false,
             renderer: () => 'root',
-            getEtagFromOption: async () => 'r1',
+            getEtagFromOptions: async () => 'r1',
           },
           routeElement: { isStatic: false, renderer: () => 'route' },
           elements: {
             page: {
               isStatic: false,
               renderer: () => createElement('div', null, 'page'),
-              getEtagFromOption: async () => pageTag,
+              getEtagFromOptions: async () => pageTag,
             },
           },
           slices: ['mySlice'],

@@ -558,35 +558,35 @@ const pages: ReturnType<typeof createPages> = createPages(
       render: 'static',
       path: '/no-ssr',
       component: NoSsr,
-      unstable_disableSSR: true,
+      unstable_noSsr: true,
     }),
 
     createPage({
       render: 'dynamic',
       path: '/no-ssr-dynamic',
       component: NoSsrDynamic,
-      unstable_disableSSR: true,
+      unstable_noSsr: true,
     }),
 
     createPage({
       render: 'dynamic',
       path: '/no-ssr-server-only',
       component: () => <h2>No SSR Server Only</h2>,
-      unstable_disableSSR: true,
+      unstable_noSsr: true,
     }),
 
     createPage({
       render: 'dynamic',
       path: '/no-ssr-not-found',
       component: () => notFound(),
-      unstable_disableSSR: true,
+      unstable_noSsr: true,
     }),
 
     createPage({
       render: 'dynamic',
       path: '/no-ssr-slug/[id]',
       component: ({ id }) => <h2>No SSR Slug {id}</h2>,
-      unstable_disableSSR: true,
+      unstable_noSsr: true,
     }),
 
     createPage({

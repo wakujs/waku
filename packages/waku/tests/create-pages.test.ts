@@ -1811,13 +1811,13 @@ describe('createPages pages and layouts', () => {
         render: 'static',
         path: '/static',
         component: () => null,
-        unstable_disableSSR: true,
+        unstable_noSsr: true,
       }),
       createPage({
         render: 'dynamic',
         path: '/dynamic',
         component: () => null,
-        unstable_disableSSR: true,
+        unstable_noSsr: true,
       }),
     ]);
     const { getConfigs } = injectedFunctions();
@@ -1856,7 +1856,7 @@ describe('createPages pages and layouts', () => {
         path: '/post/[id]',
         staticPaths: ['a', 'b'],
         component: () => null,
-        unstable_disableSSR: true,
+        unstable_noSsr: true,
       }),
     ]);
     const { getConfigs } = injectedFunctions();
@@ -1875,7 +1875,7 @@ describe('createPages pages and layouts', () => {
         path: '/post/[id]',
         exactPath: true,
         component: () => null,
-        unstable_disableSSR: true,
+        unstable_noSsr: true,
       }),
     ]);
     const { getConfigs } = injectedFunctions();
@@ -1890,7 +1890,7 @@ describe('createPages pages and layouts', () => {
         render: 'dynamic',
         path: '/files/[...path]',
         component: () => null,
-        unstable_disableSSR: true,
+        unstable_noSsr: true,
       }),
     ]);
     const { getConfigs } = injectedFunctions();
@@ -1906,7 +1906,7 @@ describe('createPages pages and layouts', () => {
         path: '/post/[id]',
         exactPath: true,
         component: () => null,
-        unstable_disableSSR: true,
+        unstable_noSsr: true,
       }),
     ]);
     const { getConfigs } = injectedFunctions();

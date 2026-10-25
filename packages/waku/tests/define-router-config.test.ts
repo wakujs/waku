@@ -20,7 +20,7 @@ const makeRoute = (name: string): RouteConfig => ({
   rootElement: {
     isStatic: false,
     renderer: () => `root:${name}`,
-    getEtagFromOption: async () => `etag-root:${name}`,
+    getEtagFromOptions: async () => `etag-root:${name}`,
   },
   routeElement: {
     isStatic: false,
@@ -30,7 +30,7 @@ const makeRoute = (name: string): RouteConfig => ({
     main: {
       isStatic: false,
       renderer: () => `main:${name}`,
-      getEtagFromOption: async () => `etag-main:${name}`,
+      getEtagFromOptions: async () => `etag-main:${name}`,
       sourceFile: `${name}/main.tsx`,
     },
   },
@@ -63,10 +63,10 @@ describe('toSerializable', () => {
     ) as SerializableRouteConfigForTest;
     expect('searchCodec' in s).toBe(false);
     expect('renderer' in s.rootElement).toBe(false);
-    expect('getEtagFromOption' in s.rootElement).toBe(false);
+    expect('getEtagFromOptions' in s.rootElement).toBe(false);
     expect('renderer' in s.routeElement).toBe(false);
     expect('renderer' in s.elements.main!).toBe(false);
-    expect('getEtagFromOption' in s.elements.main!).toBe(false);
+    expect('getEtagFromOptions' in s.elements.main!).toBe(false);
     // non-function metadata is preserved
     expect(s.isStatic).toBe(false);
     expect(s.pathSpec).toEqual(path('foo'));
@@ -104,7 +104,7 @@ describe('mergeWithRuntimeConfigs', () => {
     );
     const mRoute = merged.find((c) => c.type === 'route') as RouteConfig;
     expect(mRoute.rootElement.renderer(option)).toBe('root:foo');
-    expect(await mRoute.rootElement.getEtagFromOption!(option)).toBe(
+    expect(await mRoute.rootElement.getEtagFromOptions!(option)).toBe(
       'etag-root:foo',
     );
     expect(mRoute.elements.main!.renderer(option)).toBe('main:foo');

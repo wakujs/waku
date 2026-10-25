@@ -23,7 +23,7 @@ It is usually a poor fit for public content pages, marketing pages, documentatio
 
 ## Disable SSR for a Page
 
-With the file-system router, return `unstable_disableSSR` from the page's `getConfig`:
+With the file-system router, return `unstable_noSsr` from the page's `getConfig`:
 
 ```tsx
 // src/pages/app.tsx
@@ -34,12 +34,12 @@ export default async function AppPage() {
 export const getConfig = async () => {
   return {
     render: 'static',
-    unstable_disableSSR: true,
+    unstable_noSsr: true,
   } as const;
 };
 ```
 
-With `createPages`, use `unstable_disableSSR` on a page:
+With `createPages`, use `unstable_noSsr` on a page:
 
 ```tsx
 // src/waku.server.tsx
@@ -52,14 +52,14 @@ const pages = createPages(async ({ createPage }) => [
     render: 'static',
     path: '/app',
     component: AppPage,
-    unstable_disableSSR: true,
+    unstable_noSsr: true,
   }),
 ]);
 
 export default adapter(pages);
 ```
 
-`unstable_disableSSR` currently uses an `unstable_` name and may change. See the [`createPages` reference](/create-pages#disabling-ssr) for the API-level details.
+`unstable_noSsr` currently uses an `unstable_` name and may change. See the [`createPages` reference](/create-pages#disabling-ssr) for the API-level details.
 
 ## Disable SSR from a Custom Server Entry
 
@@ -98,7 +98,7 @@ handleRequest: async (input, utils) => {
 };
 ```
 
-In production, a static page is served from the HTML the build prerendered for it, before `handleRequest` runs, so `'fallback'` only reaches dynamic pages. Give a static page [`unstable_disableSSR`](#disable-ssr-for-a-page) as well, and the build writes the fallback shell for it instead.
+In production, a static page is served from the HTML the build prerendered for it, before `handleRequest` runs, so `'fallback'` only reaches dynamic pages. Give a static page [`unstable_noSsr`](#disable-ssr-for-a-page) as well, and the build writes the fallback shell for it instead.
 
 ## What the Fallback Contains
 
