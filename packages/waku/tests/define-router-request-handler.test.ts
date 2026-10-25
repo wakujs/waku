@@ -88,6 +88,85 @@ const staticRoute = (name: string) => ({
 });
 
 describe('request dispatch', () => {
+  it.each([
+    {
+      record: () => unstable_redirect('/login'),
+      intent: { status: 307, location: '/login' },
+    },
+    { record: unstable_notFound, intent: { status: 404 } },
+  ])(
+    'retries a cancelled mutable slot and records its $intent on a revisit',
+    async ({ record, intent }) => {
+      const render = vi.fn(record);
+      const router = unstable_defineRouter({
+        resolve: async () => ({
+          elements: {
+            root: { render: () => 'root' },
+            route: { getEtag: async () => 'gated-v1', render },
+          },
+        }),
+        getHas404: async () => false,
+      });
+      const utils = makeUtils();
+      const input = rscInput(encodeRoutePath('/gated'));
+      await router.handleRequest(input, utils);
+      const etags = utils.renderRsc.mock.calls[0]![1]?.etags;
+      await router.handleRequest({ ...input, etags }, utils);
+
+      expect(render).toHaveBeenCalledTimes(2);
+      for (const [elements] of utils.renderRsc.mock.calls) {
+        await expect(elements[INTENT_ID]).resolves.toBe(JSON.stringify(intent));
+      }
+    },
+  );
+
+  it.each([
+    {
+      record: () => requestRedirect('/login'),
+      intent: { status: 307, location: '/login' },
+    },
+    { record: requestNotFound, intent: { status: 404 } },
+  ])(
+    'returns a $intent intent when a slice resolver returns null',
+    async ({ record, intent }) => {
+      const router = unstable_defineRouter({
+        resolve: async () => null,
+        resolveElement: async () => {
+          record();
+          return null;
+        },
+        getHas404: async () => false,
+      });
+      const utils = makeUtils();
+      const response = await router.handleRequest(
+        rscInput(encodeSliceId('guarded')),
+        utils,
+      );
+
+      expect(response).toBeInstanceOf(ReadableStream);
+      expect(utils.renderRsc).toHaveBeenCalledWith({
+        [INTENT_ID]: intentPromise,
+      });
+      await expect(utils.renderRsc.mock.calls[0]![0][INTENT_ID]).resolves.toBe(
+        JSON.stringify(intent),
+      );
+    },
+  );
+
+  it('returns null when a slice resolver returns no source or intent', async () => {
+    const router = unstable_defineRouter({
+      resolve: async () => null,
+      resolveElement: async () => null,
+      getHas404: async () => false,
+    });
+    const utils = makeUtils();
+
+    expect(
+      await router.handleRequest(rscInput(encodeSliceId('missing')), utils),
+    ).toBeNull();
+    expect(utils.renderRsc).not.toHaveBeenCalled();
+  });
+
   it('falls back to HTTP 404 when its HTML render reports a decoded cancellation', async () => {
     const utils = makeUtils();
     utils.renderHtml.mockRejectedValue(

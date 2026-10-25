@@ -9,7 +9,7 @@
  * const { promise, resolve } = unstable_createWeakPromise<string>();
  * // Pass `promise` as an element; rendering code can call `resolve('value')`.
  *
- * @see https://waku.gg/guides/router-protocol#requested-rendered-and-browser-urls
+ * @see https://waku.gg/guides/minimal-api#weak-promises
  */
 export function createWeakPromise<T extends string = string>(): {
   promise: PromiseLike<T | undefined>;

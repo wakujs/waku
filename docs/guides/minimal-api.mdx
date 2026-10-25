@@ -37,6 +37,8 @@ The Minimal API consists of server handler contracts and client rendering primit
 | `waku/minimal/server` | `Unstable_HandleRequest`, `Unstable_HandleBuild`                                                 | Typing individual handlers.                                           |
 | `waku/minimal/server` | `Unstable_RenderRsc`, `Unstable_RenderHtml`, `Unstable_RenderHtmlFallback`, `Unstable_Etags`     | Typing rendering utilities and validators.                            |
 | `waku/minimal/server` | `unstable_cancelRender`, `unstable_isRenderCancellation`, `unstable_hasRenderCancellationDigest` | Stopping a render and recognizing cancellation.                       |
+| `waku/minimal/server` | `unstable_cancelRenderStream`                                                                    | Discarding a render stream with a cancellation signal.                |
+| `waku/minimal/server` | `unstable_createWeakPromise`                                                                     | Publishing optional data without keeping an RSC render open.          |
 | `waku/minimal/client` | `unstable_hasRenderCancellationDigest`                                                           | Rethrowing cancellation in custom boundaries.                         |
 | `waku/minimal/client` | `Root_UNSTABLE`                                                                                  | Installing the minimal client runtime.                                |
 | `waku/minimal/client` | `Slot_UNSTABLE`                                                                                  | Rendering a server element by RSC ID.                                 |
@@ -391,9 +393,43 @@ available from both Minimal entry points, recognizes a Flight-decoded
 cancellation. A server catch that handles both fresh and decoded values must
 check both predicates. Digest creation remains internal to the renderer.
 
+If cancellation escapes `handleRequest`, an HTTP request receives an empty 204
+response, leaving an existing browser document in place. An RSC or server-function
+request receives an empty RSC payload, so the client keeps its elements. This is
+a no-op; data already streamed is not rolled back. A cancelled element source does
+not advertise a new etag and clears any previous client validator.
+
+Use `unstable_cancelRenderStream(stream)` to discard a render stream with the
+same cancellation signal. It returns the stream's cancellation promise, or
+`undefined` for a null body. Handle that promise; cancellation of a tee or cloned
+stream can wait for its other consumer.
+
 Routers can transport navigation data independently from cancellation. Waku
 Router provides `requestRedirect` and `requestNotFound` for this; see
 [Redirects and Not Found](/guides/redirects-and-not-found).
+
+#### Weak Promises
+
+`unstable_createWeakPromise<T extends string>()` returns `{ promise, resolve }`
+for optional data that may become available during rendering. Pass `promise`
+directly as a top-level element of `renderRsc`:
+
+```tsx
+import { unstable_createWeakPromise as createWeakPromise } from 'waku/minimal/server';
+
+const { promise, resolve } = createWeakPromise();
+const stream = await renderRsc({
+  App: <App publish={resolve} />,
+  notice: promise,
+});
+```
+
+The first resolution wins and listeners run synchronously. Values must be
+strings; encode structured data yourself. An unresolved weak promise does not
+keep rendering open, and only values published while rendering is active reach
+the client. An unused decoded promise may remain pending or resolve to
+`undefined`. Observe it without suspending the page on it. Weak promises are
+supported only as top-level RSC elements.
 
 #### `handleBuild(utils)`
 

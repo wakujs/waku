@@ -29,6 +29,56 @@ test.describe(`define-router`, () => {
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');
   });
 
+  for (const kind of ['redirect', 'not-found']) {
+    test(`a cancelled mutable slot repeats its ${kind} intent on a revisit`, async ({
+      page,
+    }) => {
+      const readBody = await createFetchResponseReader(page);
+      const etags: string[] = [];
+      page.on('request', (request) => {
+        if (request.url().includes(`/RSC/R/etag-${kind}`)) {
+          etags.push(request.headers()['x-waku-etags'] ?? '{}');
+        }
+      });
+      await page.goto(`http://localhost:${port}/`);
+      await waitForHydration(page);
+      for (let visit = 0; visit < 2; visit++) {
+        const response = page.waitForResponse(`**/RSC/R/etag-${kind}*`);
+        await page
+          .getByRole('link', { name: `Mutable ${kind}`, exact: true })
+          .click();
+        expect(await readBody((await response).url())).not.toContain(
+          'gated-v1',
+        );
+        await expect(page).toHaveURL(
+          `http://localhost:${port}/${kind === 'redirect' ? 'foo' : 'etag-not-found'}`,
+        );
+        await expect(
+          page.getByRole('heading', {
+            name:
+              kind === 'redirect' ? 'Foo' : 'Scoped Not Found: missing context',
+            exact: true,
+          }),
+        ).toBeVisible();
+        await page.goBack();
+        await expect(page.getByTestId('home-title')).toHaveText('Home');
+      }
+      expect(etags).toHaveLength(2);
+      expect(etags.join()).not.toContain('gated-v1');
+    });
+
+    test(`an unavailable slice preserves its ${kind} intent`, async ({
+      request,
+    }) => {
+      const response = await request.get(
+        `http://localhost:${port}/RSC/S/guarded-${kind}.txt`,
+      );
+      expect(response.status()).toBe(200);
+      expect(response.headers()['cache-control']).toBe('private, no-store');
+      expect(await response.text()).toContain('"INTENT"');
+    });
+  }
+
   for (const kind of ['ready', 'late']) {
     const release =
       kind === 'late'
@@ -290,6 +340,7 @@ test.describe(`define-router`, () => {
         { headers: { 'x-waku-test-cancel-404': '1' } },
       );
       expect(response.status()).toBe(404);
+      expect(response.headers()['cache-control']).toBe('private, no-store');
       expect(await response.text()).toContain('<h1>Not Found</h1>');
     });
   }

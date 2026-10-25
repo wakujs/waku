@@ -1,5 +1,5 @@
 import { IMMUTABLE_ETAG, isValidEtag } from '../utils-isomorphic/etags.js';
-import type { Etags } from '../utils-isomorphic/etags.js';
+import type { Etag, Etags } from '../utils-isomorphic/etags.js';
 import {
   hasRenderCancellationDigest,
   isRenderCancellation,
@@ -34,7 +34,7 @@ export const buildElements = async (
       const rawEtag = elementSource.immutable
         ? IMMUTABLE_ETAG
         : await elementSource.getEtag?.();
-      const etag = isValidEtag(rawEtag) ? rawEtag : undefined;
+      let etag: Etag | undefined = isValidEtag(rawEtag) ? rawEtag : undefined;
       if (etag !== undefined && etag === clientEtags[slotId]) {
         return;
       }
@@ -50,6 +50,7 @@ export const buildElements = async (
         const cancelled = Promise.reject(error);
         void cancelled.catch(() => {});
         elements[slotId] = cancelled;
+        etag = undefined;
       }
       if (etag !== undefined) {
         etags[slotId] = etag;

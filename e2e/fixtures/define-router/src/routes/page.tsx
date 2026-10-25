@@ -12,6 +12,8 @@ const Home = () => (
     <Link to="/interceptor-cache">Intercepted static page</Link>
     <Link to="/action-static">Static action page</Link>
     <Link to="/async-cache">Async runtime page</Link>
+    <Link to="/etag-redirect">Mutable redirect</Link>
+    <Link to="/etag-not-found">Mutable not-found</Link>
     <Slice id="slice001" />
   </div>
 );

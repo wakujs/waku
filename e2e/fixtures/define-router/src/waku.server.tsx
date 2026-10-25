@@ -112,6 +112,24 @@ const ContextNotFound = async () => {
 const routerOptions: Parameters<typeof defineRouter>[0] = {
   getHas404: async () => true,
   resolve: async (path) => {
+    if (path === '/etag-redirect' || path === '/etag-not-found') {
+      return {
+        elements: {
+          root,
+          route: {
+            getEtag: async () => 'gated-v1',
+            render: () => {
+              if (path === '/etag-redirect') {
+                requestRedirect('/foo');
+              } else {
+                requestNotFound();
+              }
+              cancelRender();
+            },
+          },
+        },
+      };
+    }
     if (path === '/fragment-release') {
       return async () => {
         const release = releaseFragment;
@@ -294,8 +312,14 @@ const routerOptions: Parameters<typeof defineRouter>[0] = {
   },
   getBuildPaths: async () => [...Object.keys(PATH_PAGE), '/api/empty'],
   getBuildElementIds: async () => ['slice:slice001'],
-  resolveElement: async (id) =>
-    sliceSources[id as keyof typeof sliceSources] || null,
+  resolveElement: async (id) => {
+    if (id === 'slice:guarded-redirect') {
+      requestRedirect('/foo');
+    } else if (id === 'slice:guarded-not-found') {
+      requestNotFound();
+    }
+    return sliceSources[id as keyof typeof sliceSources] || null;
+  },
 };
 
 const router = defineRouter(routerOptions);

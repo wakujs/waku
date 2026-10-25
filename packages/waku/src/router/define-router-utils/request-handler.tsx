@@ -92,7 +92,13 @@ const replaceHttpResponse = async <T,>(
 const createNotFoundResponse = () =>
   new Response(
     '<!doctype html><html><head><title>Not Found</title></head><body><h1>Not Found</h1></body></html>',
-    { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } },
+    {
+      status: 404,
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'cache-control': 'private, no-store',
+      },
+    },
   );
 
 const parseInternalRoute = (location: string, base: string) => {
@@ -332,7 +338,7 @@ export const createRequestHandler = ({
             requestElementCache,
           );
           if (!entries) {
-            return null;
+            return intent.value ? renderCancelledRequest() : null;
           }
           return renderRscWithIntent(entries.elements, {
             etags: entries.etags,
