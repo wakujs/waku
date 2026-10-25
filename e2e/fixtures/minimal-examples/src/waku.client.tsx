@@ -6,8 +6,8 @@ import {
   Slot_UNSTABLE as Slot,
 } from 'waku/minimal/client';
 import { createJotaiIntegration } from 'waku-jotai/minimal/client';
-import { CancelRender } from './components/CancelRender';
-import { WeakPromiseRoot } from './components/WeakPromise';
+import { CancelRender } from './components/cancel-render';
+import { WeakPromiseRoot } from './components/weak-promise';
 
 const jotai = createJotaiIntegration();
 const enhancers = [jotai.rscEnhancer];

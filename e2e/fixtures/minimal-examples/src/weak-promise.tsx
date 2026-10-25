@@ -5,7 +5,7 @@ import flightPackage from 'react-server-dom-webpack/package.json';
 import { Slot_UNSTABLE as Slot } from 'waku/minimal/client';
 import { unstable_createWeakPromise as createWeakPromise } from 'waku/minimal/server';
 import type { Unstable_HandleRequest } from 'waku/minimal/server';
-import { WeakPromiseProbe } from './components/WeakPromise';
+import { WeakPromiseProbe } from './components/weak-promise';
 import { INTENT_ID, RUNTIME_ID, WEAK_APP_ID } from './weak-promise-protocol';
 
 const releases = new Map<string, () => void>();

@@ -8,7 +8,7 @@ import {
   Slot_UNSTABLE as Slot,
 } from 'waku/minimal/client';
 import { unstable_cancelRender as cancelRender } from 'waku/minimal/server';
-import { CancelRender } from './components/CancelRender';
+import { CancelRender } from './components/cancel-render';
 import { DynamicIsland } from './components/dynamic-island';
 import { handleWeakPromise } from './weak-promise';
 // eslint-disable-next-line import/no-unresolved
