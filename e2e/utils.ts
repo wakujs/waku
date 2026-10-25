@@ -323,6 +323,53 @@ const patchMonorepoPackageJson = (standaloneDir: string) => {
   }
 };
 
+// pnpm 11 ignores package.json `pnpm.overrides`. Standalone installs need the
+// same block from the repo's pnpm-workspace.yaml, plus the packed waku tarball.
+const readPnpmWorkspaceOverrides = (): Record<string, string> => {
+  const workspaceFile = fileURLToPath(
+    new URL('../pnpm-workspace.yaml', import.meta.url),
+  );
+  const overrides: Record<string, string> = {};
+  let inOverrides = false;
+  for (const line of readFileSync(workspaceFile, 'utf8').split('\n')) {
+    if (!/^\s/.test(line)) {
+      inOverrides = line.startsWith('overrides:');
+      continue;
+    }
+    if (!inOverrides) {
+      continue;
+    }
+    const match = /^ {2}([^:#\s][^:]*):\s*(.*?)\s*$/.exec(line);
+    if (!match) {
+      continue;
+    }
+    overrides[match[1]] = match[2].replace(/^['"]|['"]$/g, '');
+  }
+  return overrides;
+};
+
+const writePnpmWorkspaceFile = (
+  standaloneDir: string,
+  overrides: Record<string, string>,
+  workspaces: unknown,
+) => {
+  const lines = ['linkWorkspacePackages: true'];
+  if (Array.isArray(workspaces) && workspaces.length > 0) {
+    lines.push('packages:');
+    for (const pattern of workspaces) {
+      lines.push(`  - ${JSON.stringify(String(pattern))}`);
+    }
+  }
+  lines.push('overrides:');
+  for (const [key, value] of Object.entries(overrides)) {
+    lines.push(`  ${JSON.stringify(key)}: ${JSON.stringify(value)}`);
+  }
+  writeFileSync(
+    join(standaloneDir, 'pnpm-workspace.yaml'),
+    `${lines.join('\n')}\n`,
+  );
+};
+
 export const makeTempDir = (prefix: string): string => {
   // GitHub Action on Windows doesn't support mkdtemp on global temp dir,
   // Which will cause files in `src` folder to be empty. I don't know why
@@ -383,9 +430,10 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
         ),
       );
       const pnpmOverrides = {
-        ...rootPkg.pnpm?.overrides,
-        ...rootPkg.pnpmOverrides, // Do we need this?
+        ...readPnpmWorkspaceOverrides(),
         waku: `file:${wakuPackageTgz}`,
+        vite: createRequire(join(wakuDir, 'package.json'))('vite/package.json')
+          .version as string,
       };
       for (const file of readdirSync(standaloneDir, {
         encoding: 'utf8',
@@ -408,7 +456,12 @@ export const prepareStandaloneSetup = (fixtureName: string) => {
                 break;
               }
               case 'pnpm': {
-                pkg.pnpm = { overrides: pnpmOverrides };
+                // pnpm 11 reads overrides from pnpm-workspace.yaml, not package.json.
+                writePnpmWorkspaceFile(
+                  standaloneDir,
+                  pnpmOverrides,
+                  pkg.workspaces,
+                );
                 break;
               }
               case 'yarn': {
