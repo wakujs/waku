@@ -210,11 +210,37 @@ export function debugChildProcess(cp: ChildProcess, sourceFile: string) {
   });
 }
 
+// React's default transition indicator replaces the current URL through the
+// Navigation API. WebKit accepts that policy check and then never commits a
+// same-document navigation, so Playwright waits forever on the next locator
+// action. Repeating the current history entry makes WebKit emit the commit.
+// This stays in the harness; the product client does not special-case it.
+const flushReactTransitionNavigation = () => {
+  if (!window.navigation) {
+    return;
+  }
+  let reactTransition = false;
+  window.navigation.addEventListener('navigate', (event) => {
+    reactTransition = event.info === 'react-transition';
+  });
+  window.navigation.addEventListener('navigatesuccess', () => {
+    if (!reactTransition) {
+      return;
+    }
+    reactTransition = false;
+    window.history.replaceState(window.history.state, '', window.location.href);
+  });
+};
+
 export const test = basicTest.extend<
   Omit<TestOptions, 'mode'>,
   Pick<TestOptions, 'mode'>
 >({
   mode: ['DEV', { option: true, scope: 'worker' }],
+  context: async ({ context }, contextUse) => {
+    await context.addInitScript(flushReactTransitionNavigation);
+    await contextUse(context);
+  },
   page: async ({ page }, pageUse, testInfo) => {
     const callback = (msg: ConsoleMessage) => {
       if (unexpectedErrors.some((re) => re.test(msg.text()))) {
