@@ -94,7 +94,7 @@ describe('parseRouterRequest', () => {
     expect(parseRouterRequest(req(url))).toMatchObject({ query: '' });
   });
 
-  it('reports a server action as an action, with no route', () => {
+  it('reports a server function call with no route', () => {
     const url =
       'http://localhost/RSC/' +
       encodeRscPath(encodeServerFunctionId('src/actions.ts#deleteInvoice'));
@@ -236,7 +236,7 @@ describe('formatRouterRequest', () => {
     ).toBe('/app/new');
   });
 
-  it('returns null for an action, which has no route to rewrite', () => {
+  it('returns null for a server function call, which has no route to rewrite', () => {
     const url =
       'http://localhost/RSC/' +
       encodeRscPath(encodeServerFunctionId('src/a.ts#go'));

@@ -81,7 +81,9 @@ export const createServerFunctionRouting = (): ServerFunctionRouting => {
       });
       const { cache, getSettledRoute, getPendingRoute, onRouteChange } =
         connection;
-      const handleActionElements = (nextElements: Record<string, unknown>) => {
+      const handleServerFunctionElements = (
+        nextElements: Record<string, unknown>,
+      ) => {
         cache.learnStaticFromElements(nextElements);
         const route = getRouteFromElements(nextElements);
         if (!route) {
@@ -99,7 +101,7 @@ export const createServerFunctionRouting = (): ServerFunctionRouting => {
       };
       if (!(IS_ORIGIN_ID in result.elements)) {
         if (Reflect.ownKeys(result.elements).length) {
-          handleActionElements(result.elements);
+          handleServerFunctionElements(result.elements);
         }
         return result;
       }
@@ -114,7 +116,7 @@ export const createServerFunctionRouting = (): ServerFunctionRouting => {
       const elements = combineElements({}, result.elements, {
         filter: (key) => key !== IS_ORIGIN_ID,
       });
-      handleActionElements(elements);
+      handleServerFunctionElements(elements);
       return { ...result, elements };
     },
   };

@@ -40,7 +40,7 @@ const parseInternalRoute = (location: string, base: string) => {
   };
 };
 
-const parseActionOrigin = (req: Request) => {
+const parseServerFunctionOrigin = (req: Request) => {
   const location = req.headers.get(ACTION_LOCATION_HEADER);
   if (!location) {
     return undefined;
@@ -123,7 +123,9 @@ export const createRequestHandler = ({
           if (rscPath === undefined) {
             const origin = getOrigin();
             if (!origin) {
-              throw new Error('The route this action came from is unknown');
+              throw new Error(
+                'The route this server function was called from is unknown',
+              );
             }
             [rscPath, rscParams] = origin;
             isOrigin = true;
@@ -249,7 +251,7 @@ export const createRequestHandler = ({
         try {
           const { value, entries, isOrigin } = await withRerender(
             () => fn(...args),
-            () => parseActionOrigin(input.req),
+            () => parseServerFunctionOrigin(input.req),
           );
           return renderRsc(
             isOrigin

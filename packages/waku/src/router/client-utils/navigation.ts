@@ -505,7 +505,7 @@ export const useNavigation = (
   );
 
   const getPendingRoute = useCallback(() => requestRef.current?.target, []);
-  const commitActionRoute = useCallback(
+  const commitServerFunctionRoute = useCallback(
     (nextRoute: RouteProps) => {
       const is404 = nextRoute.path === '/404';
       dispatchChangeRoute(changeRoute, nextRoute, {
@@ -525,7 +525,7 @@ export const useNavigation = (
   useServerFunctionRouting(serverFunctionRouting, {
     getSettledRoute,
     getPendingRoute,
-    onRouteChange: commitActionRoute,
+    onRouteChange: commitServerFunctionRoute,
   });
 
   useEffect(() => {
