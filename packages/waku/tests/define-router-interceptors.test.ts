@@ -63,7 +63,7 @@ const callHandleBuild = (router: ReturnType<typeof createConfiguredRouter>) =>
   router.handleBuild({
     renderRsc: vi.fn().mockResolvedValue(makeStream()),
     renderHtml: vi.fn().mockResolvedValue(new Response('ok')),
-    rscPath2pathname: (rscPath: string) => '/' + rscPath,
+    rscPathToFileName: (rscPath: string) => '/' + rscPath,
     saveBuildMetadata: vi.fn().mockResolvedValue(undefined),
     generateFile: vi.fn().mockResolvedValue(undefined),
     generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
@@ -237,7 +237,7 @@ describe('define-router handler interceptors', () => {
         seenInHtml = als.getStore();
         return new Response('ok');
       }),
-      rscPath2pathname: (rscPath: string) => '/' + rscPath,
+      rscPathToFileName: (rscPath: string) => '/' + rscPath,
       saveBuildMetadata: vi.fn().mockResolvedValue(undefined),
       generateFile: vi.fn().mockResolvedValue(undefined),
       generateDefaultHtml: vi.fn().mockResolvedValue(undefined),
