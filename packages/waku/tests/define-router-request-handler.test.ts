@@ -18,6 +18,8 @@ import {
   requestNotFound,
   requestRedirect,
   unstable_defineRouter,
+  unstable_notFound,
+  unstable_redirect,
   unstable_rerenderRoute,
   unstable_setNonce,
 } from '../src/router/server.js';
@@ -86,6 +88,127 @@ const staticRoute = (name: string) => ({
 });
 
 describe('request dispatch', () => {
+  it.each([
+    { status: 303, record: () => unstable_redirect('/login'), has404: false },
+    { status: 404, record: unstable_notFound, has404: false },
+    { status: 404, record: unstable_notFound, has404: true },
+  ])(
+    'does not start a form action after a source requests $status (custom 404: $has404)',
+    async ({ status, record, has404 }) => {
+      const tryAction = vi.fn(async () => ({
+        action: true as const,
+        formState: null,
+      }));
+      const utils = makeUtils();
+      utils.renderHtml.mockImplementation(
+        async (_stream, _html, options) =>
+          new Response('page', { status: options.status ?? 200 }),
+      );
+      const router = unstable_defineRouter({
+        resolve: async (path) => ({
+          elements: {
+            root: { render: () => 'root' },
+            route: { render: path === '/404' ? () => 'not found' : record },
+          },
+        }),
+        getHas404: async () => has404,
+      });
+      const response = (await router.handleRequest(
+        {
+          type: 'http',
+          pathname: '/account',
+          req: new Request('http://localhost/account', { method: 'POST' }),
+          tryAction,
+        },
+        utils,
+      )) as Response;
+
+      expect(response.status).toBe(status);
+      expect(tryAction).not.toHaveBeenCalled();
+    },
+  );
+
+  it('returns a redirect while cancellation of a cloned response remains pending', async () => {
+    let controller!: ReadableStreamDefaultController<Uint8Array>;
+    const original = new Response(
+      new ReadableStream<Uint8Array>({
+        start(value) {
+          controller = value;
+        },
+      }),
+    );
+    const clone = original.clone();
+    const cancel = vi.spyOn(clone.body!, 'cancel');
+    const router = unstable_defineRouter({
+      resolve: async () => async () => {
+        requestRedirect('/login');
+        return clone;
+      },
+      getHas404: async () => false,
+    });
+    let response: Response | undefined;
+    const pending = router
+      .handleRequest(
+        {
+          type: 'http',
+          pathname: '/api',
+          req: new Request('http://localhost/api'),
+        },
+        makeUtils(),
+      )
+      .then((value) => {
+        response = value as Response;
+      });
+    try {
+      await vi.waitFor(() => expect(response?.status).toBe(307));
+      expect(response?.headers.get('location')).toBe('/login');
+      expect(cancel).toHaveBeenCalledOnce();
+      expect(cancel.mock.calls[0]![0]).toSatisfy(isRenderCancellation);
+    } finally {
+      controller.close();
+      await original.body!.cancel();
+      await pending;
+    }
+  });
+
+  it('returns a late 404 even when discarding the original body rejects', async () => {
+    const cancel = vi.fn(async () => {
+      throw new Error('cleanup failed');
+    });
+    const utils = makeUtils();
+    utils.renderHtml.mockResolvedValue(
+      new Response(new ReadableStream({ cancel })),
+    );
+    const router = unstable_defineRouter({
+      resolve: async () => ({
+        elements: {
+          root: { render: () => 'root' },
+          route: { render: () => 'page' },
+        },
+      }),
+      getHas404: async () => false,
+      unstable_interceptors: [
+        async (next) => {
+          const response = await next();
+          requestNotFound();
+          return response;
+        },
+      ],
+    });
+    const response = (await router.handleRequest(
+      {
+        type: 'http',
+        pathname: '/account',
+        req: new Request('http://localhost/account'),
+      },
+      utils,
+    )) as Response;
+
+    expect(response.status).toBe(404);
+    expect(await response.text()).toContain('<h1>Not Found</h1>');
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
   it.each(['GET', 'POST'])(
     'honors a redirect recorded after an interceptor awaits a document %s',
     async (method) => {

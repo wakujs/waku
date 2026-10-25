@@ -64,7 +64,7 @@ const replaceHttpResponse = async <T,>(
   response: Response | undefined,
   createResponse: () => T,
 ): Promise<Response | Awaited<T>> => {
-  await cancelRenderStream(response?.body ?? null);
+  void cancelRenderStream(response?.body ?? null)?.catch(() => {});
   const replacement = await createResponse();
   if (!response || !(replacement instanceof Response)) {
     return replacement;
@@ -451,7 +451,7 @@ export const createRequestHandler = ({
           const nonce = getNonce();
           const html = <INTERNAL_ServerRouter route={route} />;
           let formState: unknown;
-          if (tryAction && !cancelled) {
+          if (tryAction && !cancelled && (!intent.value || actionResult)) {
             const { value, entries: rerendered } = await withRerender(
               () => (actionResult ??= tryAction()),
               () => [rscPath, rscParams] as const,

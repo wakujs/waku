@@ -99,6 +99,8 @@ throwing. The client observes it independently from slot rendering, including
 when the requesting component stops with `cancelRender()`. Do not await an
 unused intent to decide whether a route has loaded. HTTP document requests use
 redirect statuses or render the 404 page when the shell has not been sent.
+Router does not start a form action if an intent has already been recorded.
+An action that has already run retains its form state for the not-found view.
 
 The first recorded intent wins. Its promise can settle and reach the browser
 before other components finish, so a later intent cannot replace it. Concurrent
@@ -172,10 +174,12 @@ intent before calling `next()` when it must take effect: after `await next()`,
 Flight may have already closed its stream, and a later intent cannot reach the
 browser.
 
-Replacing an HTTP response cancels its body and preserves its other applicable
-headers, including each `Set-Cookie` value. The replacement supplies the status,
-`Location`, and body metadata; its own headers take precedence. Its cache policy
-defaults to `private, no-store` unless the replacement explicitly sets one.
+Replacing an HTTP response starts cancellation of its body without waiting for
+stream cleanup, which may depend on another tee or clone consumer. Applicable
+headers, including each `Set-Cookie` value, are preserved. The replacement
+supplies the status, `Location`, and body metadata; its own headers take
+precedence. Its cache policy defaults to `private, no-store` unless the replacement
+explicitly sets one.
 Validators and metadata for the discarded body are not inherited.
 
 On failure, retained elements can describe an earlier route. The attempted URL

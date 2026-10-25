@@ -28,6 +28,37 @@ test.describe(`define-router`, () => {
     await expect(page.getByTestId('foo-title')).toHaveText('Foo');
   });
 
+  test.describe('no-JavaScript form cancellation', () => {
+    test.use({ javaScriptEnabled: false });
+
+    for (const { kind, status, destination, heading } of [
+      { kind: 'redirect', status: 303, destination: '/foo', heading: 'Foo' },
+      {
+        kind: 'not-found',
+        status: 404,
+        destination: '/guarded-form-not-found',
+        heading: 'Scoped Not Found: missing context',
+      },
+    ]) {
+      test(`a ${kind} from the route source prevents executing the action`, async ({
+        page,
+      }) => {
+        await page.goto(`http://localhost:${port}/guarded-form-${kind}`);
+        const posted = page.waitForResponse(
+          (response) => response.request().method() === 'POST',
+        );
+        await page
+          .getByRole('button', { name: 'Submit guarded action' })
+          .click();
+        expect((await posted).status()).toBe(status);
+        await expect(page).toHaveURL(`http://localhost:${port}${destination}`);
+        await expect(
+          page.getByRole('heading', { name: heading, exact: true }),
+        ).toBeVisible();
+      });
+    }
+  });
+
   for (const when of ['before', 'after']) {
     test(`an interceptor redirect recorded ${when} rendering is not replayed after access changes`, async ({
       page,

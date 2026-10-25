@@ -107,6 +107,38 @@ const routerOptions: Parameters<typeof defineRouter>[0] = {
         elements: { root, route: { render: () => <ContextNotFound /> } },
       };
     }
+    if (
+      path === '/guarded-form-redirect' ||
+      path === '/guarded-form-not-found'
+    ) {
+      return {
+        elements: {
+          root,
+          route: {
+            render: () => {
+              if (getRequest().method === 'POST') {
+                if (path === '/guarded-form-redirect') {
+                  requestRedirect('/foo');
+                } else {
+                  requestNotFound();
+                }
+                cancelRender();
+              }
+              return (
+                <form
+                  action={async () => {
+                    'use server';
+                    throw new Error('Guarded form action must not execute');
+                  }}
+                >
+                  <button type="submit">Submit guarded action</button>
+                </form>
+              );
+            },
+          },
+        },
+      };
+    }
     if (path === '/interceptor-cache' || path === '/action-static') {
       return {
         elements: {
