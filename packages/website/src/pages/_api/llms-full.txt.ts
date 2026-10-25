@@ -1,7 +1,7 @@
-import { loadGuides, loadReadme } from '../../lib/load-docs';
+import { loadGuides, readReadme } from '../../lib/load-docs';
 
 export const GET = async () => {
-  let readme = loadReadme();
+  let readme = readReadme();
   readme = readme.replace(
     /⛩️ The minimal React framework\n\n[\s\S]*?\n\n## Introduction/,
     '⛩️ The minimal React framework\n\n## Introduction',

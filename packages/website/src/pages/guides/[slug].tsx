@@ -1,5 +1,5 @@
 import { PostPage } from '../../components/post-page';
-import { getPostPaths } from '../../lib/get-file-name';
+import { readPostPaths } from '../../lib/find-file-name';
 
 type BlogArticlePageProps = {
   slug: string;
@@ -10,7 +10,7 @@ export default async function BlogArticlePage({ slug }: BlogArticlePageProps) {
 }
 
 export const getConfig = async () => {
-  const blogPaths = await getPostPaths('../../docs/guides');
+  const blogPaths = await readPostPaths('../../docs/guides');
 
   return {
     render: 'static',

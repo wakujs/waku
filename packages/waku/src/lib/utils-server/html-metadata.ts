@@ -163,7 +163,7 @@ const namesItselfTwice = (tag: Tag): boolean => {
 const declaresValue = (tag: Tag): boolean =>
   tag.name === 'title' || tag.attributes.has('content');
 
-const readMetadataKey = (
+const getMetadataKey = (
   tag: Tag,
   filter: MetadataFilter,
 ): string | undefined => {
@@ -269,7 +269,7 @@ const scanHead = (html: string, scan: HeadScan): boolean => {
         return true;
       }
     }
-    const key = readMetadataKey(tag, scan.filter);
+    const key = getMetadataKey(tag, scan.filter);
     if (key !== undefined) {
       if (namesItselfTwice(tag)) {
         scan.spans.length = 0;

@@ -7,7 +7,7 @@ import { getAuthor } from '../../lib/get-author';
 import type { BlogFrontmatter } from '../../types';
 
 export default async function BlogIndexPage() {
-  const articles = await getArticles();
+  const articles = await readArticles();
 
   return (
     <Page>
@@ -19,7 +19,7 @@ export default async function BlogIndexPage() {
   );
 }
 
-const getArticles = async () => {
+const readArticles = async () => {
   const blogFileNames: Array<string> = [];
   const blogArticles: Array<{
     slug: string;

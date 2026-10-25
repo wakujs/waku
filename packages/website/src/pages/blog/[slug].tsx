@@ -1,6 +1,6 @@
 import { getMetadataBaseUrl } from '../../components/meta';
 import { PostPage } from '../../components/post-page';
-import { getPostPaths } from '../../lib/get-file-name';
+import { readPostPaths } from '../../lib/find-file-name';
 
 type BlogArticlePageProps = {
   slug: string;
@@ -17,7 +17,7 @@ export default async function BlogArticlePage({ slug }: BlogArticlePageProps) {
 }
 
 export const getConfig = async () => {
-  const blogPaths = await getPostPaths('./private/contents');
+  const blogPaths = await readPostPaths('./private/contents');
 
   return {
     render: 'static',

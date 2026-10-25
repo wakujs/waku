@@ -2,9 +2,9 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   ROUTER_STATE_ID,
+  createRouterState,
   getRouterState,
   getSettledRoute,
-  makeRouterState,
   resolveServerRedirect,
 } from '../src/router/client-utils/router-state.js';
 import {
@@ -22,12 +22,12 @@ const urlOf = (path: string) => new URL(path, window.location.origin);
 
 const withRouterState = (
   elements: Record<string, unknown>,
-  routerState: ReturnType<typeof makeRouterState>,
+  routerState: ReturnType<typeof createRouterState>,
 ) => ({ ...elements, [ROUTER_STATE_ID]: routerState });
 
-describe('makeRouterState', () => {
+describe('createRouterState', () => {
   test('captures the url, the requested route and the intents', () => {
-    const routerState = makeRouterState(
+    const routerState = createRouterState(
       route('/a', 'x=1'),
       urlOf('/a?x=1#top'),
       {
@@ -45,7 +45,7 @@ describe('makeRouterState', () => {
   });
 
   test('no scroll intent when scrolling is off', () => {
-    const routerState = makeRouterState(route('/a'), urlOf('/a'), {
+    const routerState = createRouterState(route('/a'), urlOf('/a'), {
       history: 'replace',
       scroll: false,
       pathChanged: true,
@@ -57,7 +57,7 @@ describe('makeRouterState', () => {
 
 describe('getRouterState', () => {
   test('reads the state the record carries under the symbol', () => {
-    const routerState = makeRouterState(route('/a'), urlOf('/a'), {
+    const routerState = createRouterState(route('/a'), urlOf('/a'), {
       history: 'push',
       scroll: false,
       pathChanged: false,
@@ -70,7 +70,7 @@ describe('getRouterState', () => {
 
 describe('resolveServerRedirect', () => {
   test('a failed navigation reports the attempted route and url', () => {
-    const attempted = makeRouterState(
+    const attempted = createRouterState(
       route('/next', 'b=2', '#bottom'),
       urlOf('/next?b=2#bottom'),
       {
@@ -94,7 +94,7 @@ describe('resolveServerRedirect', () => {
   });
 
   test('path from the elements, query and hash from the routerState url', () => {
-    const routerState = makeRouterState(
+    const routerState = createRouterState(
       route('/a', 'x=1'),
       urlOf('/a?x=1#top'),
       {
@@ -115,7 +115,7 @@ describe('resolveServerRedirect', () => {
   });
 
   test('a static response does not echo the query; the routerState url keeps it', () => {
-    const routerState = makeRouterState(route('/a', 'x=1'), urlOf('/a?x=1'), {
+    const routerState = createRouterState(route('/a', 'x=1'), urlOf('/a?x=1'), {
       history: 'replace',
       scroll: false,
       pathChanged: false,
@@ -132,7 +132,7 @@ describe('resolveServerRedirect', () => {
   });
 
   test('a server redirect moves the route and the url', () => {
-    const routerState = makeRouterState(route('/a'), urlOf('/a'), {
+    const routerState = createRouterState(route('/a'), urlOf('/a'), {
       history: 'push',
       scroll: false,
       pathChanged: true,
@@ -152,7 +152,7 @@ describe('resolveServerRedirect', () => {
   test('a server redirect keeps the base path in the url', () => {
     vi.stubEnv('WAKU_CONFIG_BASE_PATH', '/docs/');
     try {
-      const routerState = makeRouterState(route('/a'), urlOf('/docs/a'), {
+      const routerState = createRouterState(route('/a'), urlOf('/docs/a'), {
         history: 'replace',
         scroll: false,
         pathChanged: false,
@@ -167,12 +167,16 @@ describe('resolveServerRedirect', () => {
   });
 
   test('a server redirect to the 404 route keeps the requested url', () => {
-    const routerState = makeRouterState(route('/missing'), urlOf('/missing'), {
-      history: 'replace',
-      scroll: false,
-      pathChanged: true,
-      follows: 0,
-    });
+    const routerState = createRouterState(
+      route('/missing'),
+      urlOf('/missing'),
+      {
+        history: 'replace',
+        scroll: false,
+        pathChanged: true,
+        follows: 0,
+      },
+    );
     const elements = { [ROUTE_ID]: ['/404', ''] };
     const { route: resolvedRoute, url } = resolveServerRedirect(
       elements,
@@ -192,7 +196,7 @@ describe('getSettledRoute', () => {
   });
 
   test('a landed navigation resolves the server redirect', () => {
-    const routerState = makeRouterState(route('/a'), urlOf('/a#top'), {
+    const routerState = createRouterState(route('/a'), urlOf('/a#top'), {
       history: 'push',
       scroll: true,
       pathChanged: true,
@@ -207,7 +211,7 @@ describe('getSettledRoute', () => {
 
   test('a failed navigation keeps the last settled route', () => {
     const settledRoute = route('/a', 'x=1', '#top');
-    const routerState = makeRouterState(route('/b'), urlOf('/b?y=2#bottom'), {
+    const routerState = createRouterState(route('/b'), urlOf('/b?y=2#bottom'), {
       history: null,
       scroll: false,
       pathChanged: false,
@@ -230,12 +234,16 @@ describe('getSettledRoute', () => {
   test.each([route('/instant', 'q=2'), route('/a', 'x=2')])(
     'a failed navigation uses the retained route $path?$query',
     (retained) => {
-      const routerState = makeRouterState(route('/failed'), urlOf('/failed'), {
-        history: null,
-        scroll: false,
-        pathChanged: false,
-        follows: 0,
-      });
+      const routerState = createRouterState(
+        route('/failed'),
+        urlOf('/failed'),
+        {
+          history: null,
+          scroll: false,
+          pathChanged: false,
+          follows: 0,
+        },
+      );
       const elements = withRouterState(
         { [ROUTE_ID]: [retained.path, retained.query] },
         { ...routerState, failedFrom: route('/a', 'x=1', '#old') },

@@ -6,8 +6,8 @@ import {
 } from 'waku/minimal/client';
 import {
   ROUTER_STATE_ID,
+  createInstantRouterState,
   getRouterState,
-  makeInstantRouterState,
 } from './router-state.js';
 
 type Elements = Readonly<Record<string | symbol, unknown>>;
@@ -56,7 +56,7 @@ export const useMergeInstantElements = () => {
             : waiting;
           const eagerElements = routerState
             ? combineElements(elements, {
-                [ROUTER_STATE_ID]: makeInstantRouterState(
+                [ROUTER_STATE_ID]: createInstantRouterState(
                   routerState,
                   elements,
                 ),
@@ -91,7 +91,7 @@ export const useMergeInstantElements = () => {
               });
               return routerState
                 ? combineElements(elements, {
-                    [ROUTER_STATE_ID]: makeInstantRouterState(
+                    [ROUTER_STATE_ID]: createInstantRouterState(
                       routerState,
                       elements,
                     ),
