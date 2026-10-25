@@ -8,7 +8,7 @@ import {
 } from 'node:fs';
 import { dirname, join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { Frame, Page } from '@playwright/test';
+import type { Page, Request } from '@playwright/test';
 import { expect } from '@playwright/test';
 import { prepareNormalSetup, test, waitForHydration } from './utils.js';
 
@@ -74,22 +74,22 @@ async function expectBackgroundColor(
 
 async function expectNoFullReloadFor(page: Page) {
   // Give Vite time to surface a delayed full reload after the hot update.
-  let mainFrameNavigated = false;
-  const onFrameNavigated = (frame: Frame) => {
-    if (frame === page.mainFrame()) {
-      mainFrameNavigated = true;
+  let mainDocumentRequested = false;
+  const onRequest = (request: Request) => {
+    if (request.isNavigationRequest() && request.frame() === page.mainFrame()) {
+      mainDocumentRequested = true;
     }
   };
 
-  page.on('framenavigated', onFrameNavigated);
+  page.on('request', onRequest);
   try {
     // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(500);
   } finally {
-    page.off('framenavigated', onFrameNavigated);
+    page.off('request', onRequest);
   }
 
-  expect(mainFrameNavigated).toBe(false);
+  expect(mainDocumentRequested).toBe(false);
 }
 
 test.afterAll(() => {
