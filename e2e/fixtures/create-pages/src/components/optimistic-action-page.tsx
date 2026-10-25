@@ -1,5 +1,5 @@
 import { unstable_rerenderRoute } from 'waku/router/server';
-import { OptimisticActionForm } from './OptimisticActionForm.js';
+import { OptimisticActionForm } from './optimistic-action-form.js';
 
 let submittedName = '';
 

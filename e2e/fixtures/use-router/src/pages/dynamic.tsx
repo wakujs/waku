@@ -1,6 +1,6 @@
 import { Link } from 'waku';
 import { MyButton } from '../components/my-button.js';
-import TestRouter from '../TestRouter.js';
+import TestRouter from '../test-router.js';
 
 let dynamicRenderCount = 0;
 

@@ -8,7 +8,7 @@ import {
   useMergeElements_UNSTABLE as useMergeElements,
 } from 'waku/minimal/client';
 import type { Unstable_RscEnhancer } from 'waku/minimal/client';
-import { ping } from './ServerPing/actions.js';
+import { ping } from './server-ping/actions.js';
 
 const VERSION = Symbol();
 const RETAINED = Symbol();

@@ -1,5 +1,5 @@
 import type { PageProps } from 'waku/router';
-import { Path } from '../Path.js';
+import { Path } from '../path.js';
 
 export default async function Test({ path }: PageProps<'/[slug]'>) {
   await new Promise((resolve) =>

@@ -1,4 +1,4 @@
-import { Counter } from './Counter.js';
+import { Counter } from './counter.js';
 
 const App = ({ name }: { name: string }) => {
   return (

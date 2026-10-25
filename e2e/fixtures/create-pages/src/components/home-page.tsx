@@ -1,4 +1,4 @@
-import { HomeSearchLink } from './HomeSearchLink.js';
+import { HomeSearchLink } from './home-search-link.js';
 
 const Home = () => (
   <div>

@@ -1,5 +1,5 @@
 import { Link } from 'waku';
-import { PushProbe } from '../components/PushProbe';
+import { PushProbe } from '../components/push-probe';
 
 export default function Index() {
   return (

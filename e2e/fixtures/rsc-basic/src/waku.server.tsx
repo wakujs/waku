@@ -1,6 +1,6 @@
 import adapter from 'waku/adapters/default';
-import App from './components/App.js';
-import { MultipleRootAction } from './components/MultipleRootAction.js';
+import App from './components/app.js';
+import { MultipleRootAction } from './components/multiple-root-action.js';
 
 const BUILD_METADATA_KEY = 'metadata-key';
 const BUILD_METADATA_VALUE = 'metadata-value';

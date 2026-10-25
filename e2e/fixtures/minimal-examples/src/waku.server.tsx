@@ -7,9 +7,9 @@ import {
   Children_UNSTABLE as Children,
   Slot_UNSTABLE as Slot,
 } from 'waku/minimal/client';
-import { DynamicIsland } from './components/DynamicIsland';
+import { DynamicIsland } from './components/dynamic-island';
 // eslint-disable-next-line import/no-unresolved
-import { App } from '@/components/App';
+import { App } from '@/components/app';
 
 const cookieStorage = new AsyncLocalStorage<{
   count: number;

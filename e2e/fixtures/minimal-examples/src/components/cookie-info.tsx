@@ -1,5 +1,5 @@
 import { getCookieCount, getItemCount } from '../waku.server';
-import { Counter } from './Counter';
+import { Counter } from './counter';
 
 export function CookieInfo() {
   return (

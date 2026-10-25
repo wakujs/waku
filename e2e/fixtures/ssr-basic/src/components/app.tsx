@@ -2,8 +2,8 @@ import { Suspense } from 'react';
 import { preload } from 'react-dom';
 import config from '../../private/config.js';
 import { AIProvider } from '../ai/index.js';
-import { AIClient } from './AIClient.js';
-import { Counter } from './Counter.js';
+import { AIClient } from './ai-client.js';
+import { Counter } from './counter.js';
 import { TestEnvClient } from './test-env/client.js';
 import { TestEnvServer } from './test-env/server.js';
 

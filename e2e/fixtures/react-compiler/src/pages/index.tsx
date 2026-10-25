@@ -1,5 +1,5 @@
 import { Balancer } from 'react-wrap-balancer';
-import { Counter } from '../components/Counter';
+import { Counter } from '../components/counter';
 
 export default function HomePage() {
   return (

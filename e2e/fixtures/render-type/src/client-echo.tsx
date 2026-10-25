@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Echo } from './Echo.js';
+import { Echo } from './echo.js';
 
 export function ClientEcho({ echo }: { echo: string }) {
   const [timeStamp, setTimestamp] = useState(() => Date.now());
