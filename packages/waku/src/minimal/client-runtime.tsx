@@ -51,10 +51,12 @@ import {
 } from './client-utils/rsc-reload.js';
 import type { RegisterRscReloadListener } from './client-utils/rsc-reload.js';
 
+export { hasRenderCancellationDigest } from '../lib/utils-isomorphic/render-cancellation.js';
+export { formatRscUrl } from '../lib/utils-isomorphic/rsc-path.js';
+export { combineElements, isImmutableElement };
+
 const { createFromFetch, encodeReply, createTemporaryReferenceSet } =
   RSDWClient;
-
-export { formatRscUrl } from '../lib/utils-isomorphic/rsc-path.js';
 
 const META_GENERATOR = <meta name="generator" content="Waku" />;
 
@@ -76,8 +78,6 @@ const checkStatus = async (
 
 // only the client adds symbol keys; a decoded server payload has string keys
 type Elements = Readonly<Record<string | symbol, unknown>>;
-
-export { combineElements, isImmutableElement };
 
 const mergeElementsPromise = (
   a: Promise<Elements>,
@@ -509,5 +509,3 @@ export const INTERNAL_ServerRoot = ({
     </ElementsContext>
   </RootStoreContext>
 );
-
-export { hasRenderCancellationDigest } from '../lib/utils-isomorphic/render-cancellation.js';
