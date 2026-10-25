@@ -365,16 +365,7 @@ test.describe(`create-pages`, () => {
               .textContent,
         ))!.slice('count: '.length),
       );
-      // React's transition indicator navigates to the current URL. WebKit
-      // reports that policy check as unfinished, so a later locator click waits
-      // forever. The DOM click still submits the action.
-      await page.evaluate(() => {
-        const button = document.querySelector('button[type="submit"]');
-        if (!(button instanceof HTMLButtonElement)) {
-          throw new Error('missing submit button');
-        }
-        button.click();
-      });
+      await page.locator('button[type="submit"]').click({ noWaitAfter: true });
       await waitForSelectorText(
         page,
         '[data-testid="rerender-order-count"]',
