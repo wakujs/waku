@@ -239,11 +239,23 @@ const interceptedRouter = defineRouter({
             requestRedirect('/foo');
           }
           const result = await next();
-          if (gate === 'after') {
-            requestRedirect('/foo');
-          }
-          if (gate === 'after-not-found') {
-            requestNotFound();
+          if (gate === 'after' || gate === 'after-not-found') {
+            if (result instanceof Response) {
+              result.headers.append(
+                'set-cookie',
+                'session=interceptor; HttpOnly; Path=/',
+              );
+              result.headers.append(
+                'set-cookie',
+                'preferences=compact; Path=/',
+              );
+              result.headers.set('x-waku-test-interceptor', 'kept');
+            }
+            if (gate === 'after') {
+              requestRedirect('/foo');
+            } else {
+              requestNotFound();
+            }
           }
           return result;
         },

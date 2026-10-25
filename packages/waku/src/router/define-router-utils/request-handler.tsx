@@ -41,6 +41,52 @@ type RouteEntries = {
 
 type HandlerInput = Parameters<HandleRequest>[0];
 
+const REPLACED_RESPONSE_HEADERS = [
+  'accept-ranges',
+  'content-digest',
+  'content-encoding',
+  'content-language',
+  'content-length',
+  'content-location',
+  'content-md5',
+  'content-range',
+  'content-type',
+  'digest',
+  'etag',
+  'expires',
+  'last-modified',
+  'location',
+  'repr-digest',
+];
+
+const replaceHttpResponse = async <T,>(
+  response: Response | undefined,
+  createResponse: () => T,
+): Promise<Response | Awaited<T>> => {
+  await cancelRenderStream(response?.body ?? null);
+  const replacement = await createResponse();
+  if (!response || !(replacement instanceof Response)) {
+    return replacement;
+  }
+  const headers = new Headers(response.headers);
+  for (const name of REPLACED_RESPONSE_HEADERS) {
+    headers.delete(name);
+  }
+  for (const [name, value] of replacement.headers) {
+    if (name !== 'set-cookie') {
+      headers.set(name, value);
+    }
+  }
+  for (const cookie of replacement.headers.getSetCookie()) {
+    headers.append('set-cookie', cookie);
+  }
+  return new Response(replacement.body, {
+    status: replacement.status,
+    statusText: replacement.statusText,
+    headers,
+  });
+};
+
 const createNotFoundResponse = () =>
   new Response(
     '<!doctype html><html><head><title>Not Found</title></head><body><h1>Not Found</h1></body></html>',
@@ -170,8 +216,10 @@ export const createRequestHandler = ({
       ) {
         return response;
       }
-      await cancelRenderStream(httpResponse?.body ?? null);
-      return redirect ?? renderCancelledRequest();
+      return replaceHttpResponse(
+        httpResponse,
+        () => redirect ?? renderCancelledRequest(),
+      );
     };
     const handleRequest = async (
       cancelled = false,
@@ -370,13 +418,11 @@ export const createRequestHandler = ({
             return renderCancelledRequest();
           }
           const redirect = redirectResponse();
-          if (redirect) {
-            await cancelRenderStream(response.body);
-            return redirect;
-          }
-          if (intent.value?.status === 404) {
-            await cancelRenderStream(response.body);
-            return new Response('Not Found', { status: 404 });
+          if (redirect || intent.value?.status === 404) {
+            return replaceHttpResponse(
+              response,
+              () => redirect ?? new Response('Not Found', { status: 404 }),
+            );
           }
           return response;
         }
@@ -429,17 +475,19 @@ export const createRequestHandler = ({
               ),
             },
           );
-          const requested = intent.value;
           const redirect = redirectResponse();
-          if (redirect) {
-            await cancelRenderStream(response.body);
-            return redirect;
-          }
-          if (requested?.status === 404 && pathname !== '/404') {
-            await cancelRenderStream(response.body);
-            return (await routeEntries.has404())
-              ? renderPage('/404', query, 404)
-              : createNotFoundResponse();
+          if (
+            redirect ||
+            (intent.value?.status === 404 && pathname !== '/404')
+          ) {
+            return replaceHttpResponse(
+              response,
+              async () =>
+                redirect ??
+                ((await routeEntries.has404())
+                  ? renderPage('/404', query, 404)
+                  : createNotFoundResponse()),
+            );
           }
           return response;
         };

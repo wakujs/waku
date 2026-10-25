@@ -172,6 +172,11 @@ intent before calling `next()` when it must take effect: after `await next()`,
 Flight may have already closed its stream, and a later intent cannot reach the
 browser.
 
+Replacing an HTTP response cancels its body and preserves its other applicable
+headers, including each `Set-Cookie` value. The replacement supplies the status,
+`Location`, and body metadata; its own headers, including any cache policy, take
+precedence. Validators and metadata for the discarded body are not inherited.
+
 On failure, retained elements can describe an earlier route. The attempted URL
 and error state belong to the client binding, not the server metadata.
 

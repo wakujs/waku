@@ -75,6 +75,16 @@ test.describe(`define-router`, () => {
     );
     expect(response.status()).toBe(307);
     expect(response.headers().location).toBe('/foo');
+    expect(response.headers()['x-waku-test-interceptor']).toBe('kept');
+    expect(
+      response
+        .headersArray()
+        .filter(({ name }) => name.toLowerCase() === 'set-cookie')
+        .map(({ value }) => value),
+    ).toEqual([
+      'session=interceptor; HttpOnly; Path=/',
+      'preferences=compact; Path=/',
+    ]);
   });
 
   test('a direct document request honors a late interceptor 404 in its context', async ({
@@ -93,6 +103,17 @@ test.describe(`define-router`, () => {
         `http://localhost:${port}/interceptor-cache`,
       );
       expect(response?.status()).toBe(404);
+      expect(response?.headers()['x-waku-test-interceptor']).toBe('kept');
+      expect(await context.cookies()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'session',
+            value: 'interceptor',
+            httpOnly: true,
+          }),
+          expect.objectContaining({ name: 'preferences', value: 'compact' }),
+        ]),
+      );
       await expect(
         page.getByRole('heading', { name: 'Scoped Not Found: tenant-after' }),
       ).toBeVisible();
