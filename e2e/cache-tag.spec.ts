@@ -1,5 +1,10 @@
 import { expect } from '@playwright/test';
-import { prepareNormalSetup, test, waitForHydration } from './utils.js';
+import {
+  createFetchResponseReader,
+  prepareNormalSetup,
+  test,
+  waitForHydration,
+} from './utils.js';
 
 const startApp = prepareNormalSetup('cache-tag');
 
@@ -19,6 +24,7 @@ test.describe('cache-tag', () => {
     page,
     browser,
   }) => {
+    const readResponseBody = await createFetchResponseReader(page);
     await page.goto(`http://localhost:${port}/`);
     await waitForHydration(page);
     await expect(page.getByTestId('home-heading')).toBeVisible();
@@ -26,7 +32,7 @@ test.describe('cache-tag', () => {
     // 1) First navigation to /cached: the element is sent over the wire.
     const firstRsc = page.waitForResponse('**/RSC/R/cached.txt**');
     await page.getByTestId('to-cached').click();
-    const firstBody = await (await firstRsc).text();
+    const firstBody = await readResponseBody((await firstRsc).url());
     await expect(page.getByTestId('cached-content')).toHaveText(
       'cached render #1',
     );
@@ -50,7 +56,7 @@ test.describe('cache-tag', () => {
     await expect(page.getByTestId('home-heading')).toBeVisible();
     const secondRsc = page.waitForResponse('**/RSC/R/cached.txt**');
     await page.getByTestId('to-cached').click();
-    const secondBody = await (await secondRsc).text();
+    const secondBody = await readResponseBody((await secondRsc).url());
     await expect(page.getByTestId('cached-content')).toHaveText(
       'cached render #1',
     );
@@ -66,7 +72,7 @@ test.describe('cache-tag', () => {
     expect(invalidation.ok()).toBe(true);
     const thirdRsc = page.waitForResponse('**/RSC/R/cached.txt**');
     await page.getByTestId('to-cached').click();
-    const thirdBody = await (await thirdRsc).text();
+    const thirdBody = await readResponseBody((await thirdRsc).url());
     await expect(page.getByTestId('cached-content')).toHaveText(
       'cached render #2',
     );
